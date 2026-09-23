@@ -316,7 +316,8 @@
        (skia-close! sh)
        (draw-rect (surface-canvas s) 0 0 6 4 p)
        (check-equal? (surface-pixel s 2 2) red)
-       ;; The getter promotes the borrowed native pointer to an owned wrapper.
+       ;; The C getter returns a distinct owned reference; closing or
+       ;; detaching the paint cannot invalidate this wrapper.
        (with-skia ([held (paint-shader p)])
          (check-true (shader? held))
          (paint-set-shader! p #f)
@@ -383,6 +384,252 @@
                  [p (make-paint #:shader blend #:antialias? #f)])
        (draw-paint (surface-canvas s) p)
        (check-equal? (surface-pixel s 1 1) (rgb 0 0 0))))
+   (test-case "PNG encoding, metadata probing, and encoded decode round trip"
+     (with-skia ([im (rgba-bytes->image
+                      2 2
+                      (bytes 255 0 0 255   0 255 0 255
+                             0 0 255 255   255 255 255 255))])
+       (check-false (image-original-encoded-bytes im))
+       (define png (image->png-bytes im))
+       (check-equal? (subbytes png 0 8) #"\211PNG\r\n\032\n")
+       (check-equal? (image->encoded-bytes im 'png) png)
+       (check-exn exn:fail:contract?
+                  (lambda () (image->encoded-bytes im 'bmp)))
+       (check-exn exn:fail? (lambda () (image-from-bytes #"not an image")))
+       (check-exn exn:fail?
+                  (lambda () (encoded-image-info-from-bytes #"not an image")))
+       (define info (encoded-image-info-from-bytes png))
+       (check-true (encoded-image-info? info))
+       (check-equal? (encoded-image-info-width info) 2)
+       (check-equal? (encoded-image-info-height info) 2)
+       (check-equal? (encoded-image-info-format info) 'png)
+       (check-equal? (encoded-image-info-origin info) 'top-left)
+       (check-true (exact-nonnegative-integer? (encoded-image-info-frame-count info)))
+       (with-skia ([decoded (image-from-bytes png)])
+         (check-equal? (image-width decoded) 2)
+         (check-equal? (image-height decoded) 2)
+         (check-true (symbol? (image-color-type decoded)))
+         (check-not-false (memq (image-alpha-type decoded)
+                                '(unknown opaque premul unpremul)))
+         (check-equal? (image-original-encoded-bytes decoded) png)
+         (check-equal? (image->rgba-bytes decoded)
+                       (bytes 255 0 0 255   0 255 0 255
+                              0 0 255 255   255 255 255 255)))))
+   (test-case "JPEG encoding probes and decodes"
+     (define pixels (make-bytes (* 8 8 4)))
+     (for ([i (in-range 0 (bytes-length pixels) 4)])
+       (bytes-set! pixels i 255)
+       (bytes-set! pixels (+ i 3) 255))
+     (with-skia ([im (rgba-bytes->image 8 8 pixels)])
+       (define jpg (image->jpeg-bytes im #:quality 100 #:downsample 'yuv-444))
+       (check-equal? (subbytes jpg 0 2) #"\377\330")
+       (define info (encoded-image-info-from-bytes jpg))
+       (check-equal? (encoded-image-info-format info) 'jpeg)
+       (check-equal? (list (encoded-image-info-width info)
+                           (encoded-image-info-height info))
+                     '(8 8))
+       (with-skia ([decoded (image-from-bytes jpg)])
+         (define c (let ([bs (image->rgba-bytes decoded)])
+                     (rgba (bytes-ref bs 0) (bytes-ref bs 1)
+                           (bytes-ref bs 2) (bytes-ref bs 3))))
+         (check-true (> (rgba-red c) 200))
+         (check-true (< (rgba-green c) 80))
+         (check-true (< (rgba-blue c) 80)))))
+   (test-case "lossless WebP encoding probes and decodes"
+     (with-skia ([im (rgba-bytes->image
+                      2 1 (bytes 255 0 0 255 0 0 255 255))])
+       (define webp (image->webp-bytes im #:quality 75 #:lossless? #t))
+       (check-equal? (subbytes webp 0 4) #"RIFF")
+       (check-equal? (subbytes webp 8 12) #"WEBP")
+       (define info (encoded-image-info-from-bytes webp))
+       (check-equal? (encoded-image-info-format info) 'webp)
+       (check-equal? (list (encoded-image-info-width info)
+                           (encoded-image-info-height info))
+                     '(2 1))
+       (with-skia ([decoded (image-from-bytes webp)])
+         (check-equal? (image->rgba-bytes decoded)
+                       (bytes 255 0 0 255 0 0 255 255)))))
+   (test-case "encoded image files probe, decode, and save"
+     (define file (make-temporary-file "racket-skia-codec-~a.png"))
+     (dynamic-wind
+       void
+       (lambda ()
+         (with-skia ([src (rgba-bytes->image
+                           2 1 (bytes 255 0 0 255 0 0 255 255))])
+           (save-image src file 'png #:exists 'replace)
+           (define info (encoded-image-info-from-file file))
+           (check-equal? (encoded-image-info-format info) 'png)
+           (check-equal? (list (encoded-image-info-width info)
+                               (encoded-image-info-height info))
+                         '(2 1))
+           (with-skia ([decoded (image-from-file file)])
+             (check-equal? (image->rgba-bytes decoded)
+                           (bytes 255 0 0 255 0 0 255 255)))))
+       (lambda () (when (file-exists? file) (delete-file file)))))
+   (test-case "image subsets copy the requested raster region"
+     (with-skia ([im (rgba-bytes->image
+                      4 2
+                      (bytes 255 0 0 255 255 0 0 255 0 0 255 255 0 0 255 255
+                             255 0 0 255 255 0 0 255 0 0 255 255 0 0 255 255))]
+                 [sub (image-subset im 2 0 2 2)])
+       (check-equal? (list (image-width sub) (image-height sub)) '(2 2))
+       (check-equal? (image->rgba-bytes sub)
+                     (bytes 0 0 255 255 0 0 255 255
+                            0 0 255 255 0 0 255 255))
+       (check-exn exn:fail? (lambda () (image-subset im 3 0 2 1)))))
+   (test-case "source-rectangle image drawing selects only the requested pixels"
+     (with-skia ([im (rgba-bytes->image
+                      4 1
+                      (bytes 255 0 0 255 255 0 0 255
+                             0 0 255 255 0 0 255 255))]
+                 [s (make-surface 4 1)])
+       (draw-image-subrect (surface-canvas s) im
+                           2 0 2 1
+                           0 0 4 1
+                           #:sampling 'nearest)
+       (for ([x (in-range 4)])
+         (check-equal? (surface-pixel s x 0) blue))
+       (check-exn exn:fail?
+                  (lambda ()
+                    (draw-image-subrect (surface-canvas s) im
+                                        3 0 2 1 0 0 4 1)))))
+   (test-case "dash path effects attach to paints and getters own a reference"
+     (define effect (make-dash-path-effect '(6 4)))
+     (define paint (make-paint #:color 'black #:style 'stroke #:stroke-width 2
+                               #:cap 'butt #:antialias? #f
+                               #:path-effect effect))
+     ;; A paint retains its own reference.
+     (skia-close! effect)
+     (define held (paint-path-effect paint))
+     (check-true (path-effect? held))
+     ;; The getter result owns a distinct reference and survives paint closure.
+     (skia-close! paint)
+     (with-skia ([s (make-surface 32 6 #:background 'white)]
+                 [q (make-paint #:color 'black #:style 'stroke #:stroke-width 2
+                                #:cap 'butt #:antialias? #f
+                                #:path-effect held)])
+       (draw-line (surface-canvas s) 0 3 31 3 q)
+       (check-equal? (surface-pixel s 2 3) (rgb 0 0 0))
+       (check-equal? (surface-pixel s 7 3) white)
+       (check-equal? (surface-pixel s 12 3) (rgb 0 0 0)))
+     (skia-close! held))
+   (test-case "corner discrete trim compose and sum path effects construct and retain inputs"
+     (define corner (make-corner-path-effect 5))
+     (define discrete (make-discrete-path-effect 6 2 17))
+     (define trim (make-trim-path-effect 1/4 3/4))
+     (define composed (make-compose-path-effect corner trim))
+     (define summed (make-sum-path-effect discrete trim))
+     ;; Composite effects retain the native inputs they need.
+     (skia-close! corner)
+     (skia-close! discrete)
+     (skia-close! trim)
+     (with-skia ([s (make-surface 100 5 #:background 'white)]
+                 [p (make-paint #:color 'black #:style 'stroke #:stroke-width 2
+                                #:antialias? #f #:path-effect composed)])
+       (draw-line (surface-canvas s) 0 2 99 2 p)
+       (check-not-equal? (surface-pixel s 50 2) white)
+       (paint-set-path-effect! p summed)
+       (with-skia ([copy (paint-path-effect p)])
+         (check-true (path-effect? copy)))
+       (paint-set-path-effect! p #f)
+       (check-false (paint-path-effect p)))
+     (skia-close! composed)
+     (skia-close! summed))
+   (test-case "trim path effect keeps the requested middle fraction"
+     (with-skia ([s (make-surface 101 5 #:background 'white)]
+                 [e (make-trim-path-effect 1/4 3/4)]
+                 [p (make-paint #:color 'black #:style 'stroke #:stroke-width 2
+                                #:cap 'butt #:antialias? #f #:path-effect e)])
+       (draw-line (surface-canvas s) 0 2 100 2 p)
+       (check-equal? (surface-pixel s 10 2) white)
+       (check-equal? (surface-pixel s 50 2) (rgb 0 0 0))
+       (check-equal? (surface-pixel s 90 2) white)))
+   (test-case "path measure samples a line and snapshots source geometry"
+     (define source (make-path '((move 0 0) (line 100 0))))
+     (define measure (make-path-measure source))
+     (check-= (path-measure-length measure) 100.0 0.001)
+     (check-false (path-measure-closed? measure))
+     (define-values (x y tx ty) (path-measure-position+tangent measure 25))
+     (check-= x 25.0 0.001)
+     (check-= y 0.0 0.001)
+     (check-= tx 1.0 0.001)
+     (check-= ty 0.0 0.001)
+     (with-skia ([segment (path-measure-segment measure 20 60)])
+       (define-values (sx sy sw sh) (path-tight-bounds segment))
+       (check-= sx 20.0 0.001)
+       (check-= sy 0.0 0.001)
+       (check-= sw 40.0 0.001)
+       (check-= sh 0.0 0.001))
+     ;; Mutating and then explicitly closing the original cannot alter the
+     ;; measure: the Racket wrapper owns a private path snapshot.
+     (path-reset! source)
+     (path-move-to! source 0 0)
+     (path-line-to! source 10 0)
+     (skia-close! source)
+     (check-= (path-measure-length measure) 100.0 0.001)
+     (check-exn exn:fail? (lambda () (path-measure-position+tangent measure 101)))
+     (skia-close! measure))
+   (test-case "path measure traverses contours and safely replaces its snapshot"
+     (define multi
+       (make-path '((move 0 0) (line 10 0)
+                    (move 0 20) (line 30 20))))
+     (define measure (make-path-measure multi))
+     (check-= (path-measure-length measure) 10.0 0.001)
+     (check-true (path-measure-next-contour! measure))
+     (check-= (path-measure-length measure) 30.0 0.001)
+     (check-false (path-measure-next-contour! measure))
+     (define replacement (make-path '((move 0 0) (line 3 4))))
+     (path-measure-set-path! measure replacement #:force-closed? #t)
+     (skia-close! replacement)
+     (check-true (path-measure-closed? measure))
+     (check-= (path-measure-length measure) 10.0 0.001)
+     (path-measure-set-path! measure #f)
+     (check-= (path-measure-length measure) 0.0 0.001)
+     (define-values (x y tx ty) (path-measure-position+tangent measure 0))
+     (check-false x) (check-false y) (check-false tx) (check-false ty)
+     (skia-close! multi)
+     (skia-close! measure))
+   (test-case "boolean path operations produce expected filled regions"
+     (with-skia ([a (make-path)] [b (make-path)])
+       (path-add-rect! a 0 0 20 20)
+       (path-add-rect! b 10 0 20 20)
+       (with-skia ([u (path-union a b)]
+                   [i (path-intersect a b)]
+                   [d (path-difference a b)]
+                   [x (path-xor a b)]
+                   [r (path-reverse-difference a b)])
+         (for ([px '(5 15 25)]) (check-true (path-contains? u px 10)))
+         (check-false (path-contains? i 5 10))
+         (check-true (path-contains? i 15 10))
+         (check-false (path-contains? i 25 10))
+         (check-true (path-contains? d 5 10))
+         (check-false (path-contains? d 15 10))
+         (check-false (path-contains? d 25 10))
+         (check-true (path-contains? x 5 10))
+         (check-false (path-contains? x 15 10))
+         (check-true (path-contains? x 25 10))
+         (check-false (path-contains? r 5 10))
+         (check-false (path-contains? r 15 10))
+         (check-true (path-contains? r 25 10)))))
+   (test-case "path simplify and winding conversion preserve filled geometry"
+     (with-skia ([p (make-path #:fill-rule 'even-odd)])
+       (path-add-rect! p 0 0 30 30)
+       (path-add-rect! p 10 10 10 10)
+       (with-skia ([simple (path-simplify p)]
+                   [winding (path-as-winding p)])
+         (for ([q (in-list (list simple winding))])
+           (check-true (path-contains? q 5 5))
+           (check-false (path-contains? q 15 15)))
+         (check-eq? (path-fill-rule winding) 'winding))))
+   (test-case "closed path effects and measures reject native use"
+     (define effect (make-dash-path-effect '(2 2)))
+     (define path (make-path '((move 0 0) (line 10 0))))
+     (define measure (make-path-measure path))
+     (skia-close! effect)
+     (skia-close! measure)
+     (check-exn #rx"closed" (lambda () (make-paint #:path-effect effect)))
+     (check-exn #rx"closed" (lambda () (path-measure-length measure)))
+     (skia-close! path))
    (test-case "default typeface introspection"
      (with-skia ([tf (make-typeface)])
        (check-true (string? (typeface-family-name tf)))

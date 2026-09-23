@@ -4,10 +4,12 @@
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
   (printf "Pinned native package: SkiaSharp ~a\n" native-package-version)
-  (printf "ABI sizes: pointer=~a image-info=~a rect=~a point=~a sampling=~a PNG-options=~a font-metrics=~a\n"
+  (printf "ABI sizes: pointer=~a image-info=~a rect=~a point=~a irect=~a sampling=~a PNG-options=~a JPEG-options=~a WebP-options=~a font-metrics=~a\n"
           (ctype-sizeof _pointer) (ctype-sizeof _sk-image-info)
-          (ctype-sizeof _sk-rect) (ctype-sizeof _sk-point) (ctype-sizeof _sk-sampling)
-          (ctype-sizeof _sk-png-options) (ctype-sizeof _sk-font-metrics))
+          (ctype-sizeof _sk-rect) (ctype-sizeof _sk-point) (ctype-sizeof _sk-irect)
+          (ctype-sizeof _sk-sampling) (ctype-sizeof _sk-png-options)
+          (ctype-sizeof _sk-jpeg-options) (ctype-sizeof _sk-webp-options)
+          (ctype-sizeof _sk-font-metrics))
   (skia-check!)
   (printf "Native library: ~a\n" (skia-native-library-path))
   (printf "Native ABI version: ~a\n" (skia-native-version))
@@ -32,4 +34,46 @@
     (unless (and (> (rgba-red left) (rgba-blue left))
                  (> (rgba-blue right) (rgba-red right)))
       (error 'doctor "gradient shader rasterization failed"))
-    (printf "Shaders/gradients passed; linear endpoint dominance verified\n")))
+    (printf "Shaders/gradients passed; linear endpoint dominance verified\n"))
+  (with-skia ([s (make-surface 8 8 #:background 'red)]
+              [im (surface-snapshot s)])
+    (define png (image->png-bytes im))
+    (define jpg (image->jpeg-bytes im #:quality 95))
+    (define webp (image->webp-bytes im #:lossless? #t))
+    (for ([data (in-list (list png jpg webp))]
+          [format (in-list '(png jpeg webp))])
+      (define info (encoded-image-info-from-bytes data))
+      (unless (and (eq? (encoded-image-info-format info) format)
+                   (= (encoded-image-info-width info) 8)
+                   (= (encoded-image-info-height info) 8))
+        (error 'doctor "~a codec metadata failed" format))
+      (with-skia ([decoded (image-from-bytes data)])
+        (unless (and (= (image-width decoded) 8) (= (image-height decoded) 8))
+          (error 'doctor "~a decode failed" format))))
+    (printf "Codecs passed; PNG/JPEG/WebP encode, probe, and decode verified\n"))
+  (with-skia ([path (make-path '((move 0 0) (line 100 0)))]
+              [measure (make-path-measure path)]
+              [dash (make-dash-path-effect '(6 4))]
+              [paint (make-paint #:style 'stroke #:stroke-width 2
+                                 #:path-effect dash)]
+              [a (make-path)]
+              [b (make-path)])
+    (unless (< (abs (- (path-measure-length measure) 100.0)) 0.001)
+      (error 'doctor "path measurement length failed"))
+    (define-values (x y tx ty) (path-measure-position+tangent measure 40))
+    (unless (and x y tx ty (< (abs (- x 40.0)) 0.001)
+                 (< (abs y) 0.001) (< (abs (- tx 1.0)) 0.001)
+                 (< (abs ty) 0.001))
+      (error 'doctor "path position/tangent failed"))
+    (path-add-rect! a 0 0 20 20)
+    (path-add-rect! b 10 0 20 20)
+    (with-skia ([u (path-union a b)])
+      (unless (and (path-contains? u 5 10)
+                   (path-contains? u 25 10))
+        (error 'doctor "boolean path union failed")))
+    (define held (paint-path-effect paint))
+    (unless (path-effect? held)
+      (error 'doctor "paint path-effect attachment failed"))
+    ;; The getter result owns a native reference.
+    (skia-close! held)
+    (printf "Path effects/measurement passed; dash, tangent, and boolean ops verified\n")))

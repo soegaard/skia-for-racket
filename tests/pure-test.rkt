@@ -50,8 +50,12 @@
      (check-equal? (ctype-sizeof _sk-image-info) (+ p 16))
      (check-equal? (ctype-sizeof _sk-rect) 16)
      (check-equal? (ctype-sizeof _sk-point) 8)
+     (check-equal? (ctype-sizeof _sk-irect) 16)
      (check-equal? (ctype-sizeof _sk-sampling) 24)
      (check-equal? (ctype-sizeof _sk-png-options) (+ 8 (* 3 p)))
+     (check-equal? (ctype-sizeof _sk-jpeg-options)
+                   (+ 12 (if (= p 8) 4 0) (* 3 p)))
+     (check-equal? (ctype-sizeof _sk-webp-options) (+ 8 (* 2 p)))
      (check-equal? (ctype-sizeof _sk-font-metrics) 64))
    (test-case "native struct field order"
      (define info (make-sk-image-info #f 123 456 4 2))
@@ -70,6 +74,27 @@
      (define p (make-sk-point 12.5 -7.25))
      (check-= (ptr-ref p _float) 12.5 0.001)
      (check-= (ptr-ref (ptr-add p 4) _float) -7.25 0.001))
+   (test-case "codec and encoder ABI field order"
+     (define p (ctype-sizeof _pointer))
+     (define ir (make-sk-irect 1 2 30 40))
+     (check-equal? (ptr-ref ir _int32) 1)
+     (check-equal? (ptr-ref (ptr-add ir 4) _int32) 2)
+     (check-equal? (ptr-ref (ptr-add ir 8) _int32) 30)
+     (check-equal? (ptr-ref (ptr-add ir 12) _int32) 40)
+     (define jpeg (make-sk-jpeg-options 91 2 1 #f #f #f))
+     (check-equal? (ptr-ref jpeg _int) 91)
+     (check-equal? (ptr-ref (ptr-add jpeg 4) _int) 2)
+     (check-equal? (ptr-ref (ptr-add jpeg 8) _int) 1)
+     (define jpeg-ptr-start (+ 12 (if (= p 8) 4 0)))
+     (for ([offset (in-list (list jpeg-ptr-start
+                                  (+ jpeg-ptr-start p)
+                                  (+ jpeg-ptr-start (* 2 p))))])
+       (check-false (ptr-ref (ptr-add jpeg offset) _pointer)))
+     (define webp (make-sk-webp-options 1 73.5 #f #f))
+     (check-equal? (ptr-ref webp _int) 1)
+     (check-= (ptr-ref (ptr-add webp 4) _float) 73.5 0.001)
+     (check-false (ptr-ref (ptr-add webp 8) _pointer))
+     (check-false (ptr-ref (ptr-add webp (+ 8 p)) _pointer)))
    (test-case "sampling padding is honored"
      (define s (make-sk-sampling 0 #f 0.0 0.0 1 0))
      (check-equal? (ptr-ref (ptr-add s 4) _uint8) 0)
@@ -122,6 +147,60 @@
                              0 0 2 0 0 2 '(red blue))))
      (check-exn exn:fail:contract? (lambda () (make-image-shader 'not-an-image)))
      (check-exn exn:fail? (lambda () (make-blend-shader 'wrong 'a 'b))))
+   (test-case "path-effect options validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (make-paint #:path-effect 'wrong)))
+     (check-exn exn:fail? (lambda () (make-dash-path-effect '(5))))
+     (check-exn exn:fail? (lambda () (make-dash-path-effect '(5 3 2))))
+     (check-exn exn:fail:contract? (lambda () (make-dash-path-effect '(5 -1))))
+     (check-exn exn:fail? (lambda () (make-dash-path-effect '(0 0))))
+     (check-exn exn:fail:contract? (lambda () (make-dash-path-effect '(5 5) +inf.0)))
+     (check-exn exn:fail:contract? (lambda () (make-corner-path-effect 0)))
+     (check-exn exn:fail:contract? (lambda () (make-discrete-path-effect 0 2)))
+     (check-exn exn:fail:contract? (lambda () (make-discrete-path-effect 1e-6 2)))
+     (check-exn exn:fail:contract? (lambda () (make-discrete-path-effect 4 -1)))
+     (check-exn exn:fail:contract? (lambda () (make-discrete-path-effect 4 1 -1)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-discrete-path-effect 4 1 #x100000000)))
+     (check-exn exn:fail? (lambda () (make-trim-path-effect -0.1 1)))
+     (check-exn exn:fail? (lambda () (make-trim-path-effect 0.8 0.2)))
+     (check-exn exn:fail? (lambda () (make-trim-path-effect 0.5 0.5)))
+     (check-exn exn:fail? (lambda () (make-trim-path-effect 0 1)))
+     (check-exn exn:fail? (lambda () (make-trim-path-effect 0 1.1)))
+     (check-exn exn:fail? (lambda () (make-trim-path-effect 0 1 #:mode 'wrong)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-compose-path-effect 'wrong 'also-wrong)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-sum-path-effect 'wrong 'also-wrong))))
+   (test-case "path-measure options validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (make-path-measure 'not-a-path)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-path-measure 'not-a-path #:force-closed? 1)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-path-measure 'not-a-path #:res-scale 0))))
+   (test-case "encoded image inputs validate before native loading"
+     (check-exn exn:fail? (lambda () (image-from-bytes #"")))
+     (check-exn exn:fail? (lambda () (encoded-image-info-from-bytes #"")))
+     (check-exn exn:fail?
+                (lambda () (image-from-file "definitely-not-an-image-file.png")))
+     (check-exn exn:fail?
+                (lambda ()
+                  (encoded-image-info-from-file "definitely-not-an-image-file.png")))
+     (parameterize ([current-skia-byte-limit 3])
+       (check-exn exn:fail? (lambda () (image-from-bytes #"abcd")))
+       (check-exn exn:fail?
+                  (lambda () (encoded-image-info-from-bytes #"abcd"))))
+     (check-exn exn:fail:contract?
+                (lambda () (image->png-bytes #f #:compression 10)))
+     (check-exn exn:fail:contract?
+                (lambda () (image->jpeg-bytes #f #:quality 101)))
+     (check-exn exn:fail?
+                (lambda () (image->jpeg-bytes #f #:downsample 'wrong)))
+     (check-exn exn:fail:contract?
+                (lambda () (image->webp-bytes #f #:quality -1)))
+     (check-exn exn:fail:contract?
+                (lambda () (image->webp-bytes #f #:lossless? 1)))
+     (check-exn exn:fail:contract?
+                (lambda () (image->encoded-bytes #f 'bmp))))
    (test-case "font metrics ABI field order"
      (define m
        (make-sk-font-metrics #x0f

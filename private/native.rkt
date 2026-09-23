@@ -81,6 +81,20 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; Immutable native data and codec inspection.
+(define-native sk_data_new_with_copy (_fun _bytes _size -> _pointer))
+(define-native sk_data_new_from_file (_fun _bytes -> _pointer))
+(define-native sk_data_unref (_fun _pointer -> _void))
+(define-native sk_data_get_size (_fun _pointer -> _size))
+(define-native sk_data_get_data (_fun _pointer -> _pointer))
+(define-native sk_codec_new_from_data (_fun _pointer -> _pointer))
+(define-native sk_codec_destroy (_fun _pointer -> _void))
+(define-native sk_codec_get_info (_fun _pointer _sk-image-info-pointer -> _void))
+(define-native sk_codec_get_encoded_format (_fun _pointer -> _int))
+(define-native sk_codec_get_origin (_fun _pointer -> _int))
+(define-native sk_codec_get_frame_count (_fun _pointer -> _int))
+(define-native sk_colorspace_unref (_fun _pointer -> _void))
+
 ;; Native-owned CPU surfaces. No Racket byte buffer is retained by Skia.
 (define-native sk_surface_new_raster
   (_fun _sk-image-info-pointer _size _pointer -> _pointer))
@@ -143,10 +157,11 @@
 (define-native sk_paint_set_blendmode (_fun _pointer _int -> _void))
 (define-native sk_paint_get_shader (_fun _pointer -> _pointer))
 (define-native sk_paint_set_shader (_fun _pointer _pointer -> _void))
+(define-native sk_paint_get_path_effect (_fun _pointer -> _pointer))
+(define-native sk_paint_set_path_effect (_fun _pointer _pointer -> _void))
 
 ;; Shader/gradient primitives. Gradient arrays are consumed synchronously;
 ;; Skia constructs its own immutable shader state before these calls return.
-(define-native sk_shader_ref (_fun _pointer -> _void))
 (define-native sk_shader_unref (_fun _pointer -> _void))
 (define-native sk_shader_new_color (_fun _uint32 -> _pointer))
 (define-native sk_shader_new_linear_gradient
@@ -183,6 +198,45 @@
 (define-native sk_path_contains (_fun _pointer _float _float -> _stdbool))
 (define-native sk_path_get_filltype (_fun _pointer -> _int))
 (define-native sk_path_set_filltype (_fun _pointer _int -> _void))
+
+;; Path effects. These are SkRefCnt-derived and the constructors return one
+;; owned reference. Paint setters retain their own reference.
+(define-native sk_path_effect_unref (_fun _pointer -> _void))
+(define-native sk_path_effect_create_dash
+  (_fun _pointer _int _float -> _pointer))
+(define-native sk_path_effect_create_corner (_fun _float -> _pointer))
+(define-native sk_path_effect_create_discrete
+  (_fun _float _float _uint32 -> _pointer))
+(define-native sk_path_effect_create_compose
+  (_fun _pointer _pointer -> _pointer))
+(define-native sk_path_effect_create_sum
+  (_fun _pointer _pointer -> _pointer))
+(define-native sk_path_effect_create_trim
+  (_fun _float _float _int -> _pointer))
+
+;; Path measurement. The public wrapper snapshots the source path because the
+;; native SkPathMeasure stores a pointer to path data rather than retaining a
+;; ref-counted object.
+(define-native sk_pathmeasure_new_with_path
+  (_fun _pointer _stdbool _float -> _pointer))
+(define-native sk_pathmeasure_destroy (_fun _pointer -> _void))
+(define-native sk_pathmeasure_set_path
+  (_fun _pointer _pointer _stdbool -> _void))
+(define-native sk_pathmeasure_get_length (_fun _pointer -> _float))
+(define-native sk_pathmeasure_get_pos_tan
+  (_fun _pointer _float _sk-point-pointer _sk-point-pointer -> _stdbool))
+(define-native sk_pathmeasure_get_segment
+  (_fun _pointer _float _float _pointer _stdbool -> _stdbool))
+(define-native sk_pathmeasure_is_closed (_fun _pointer -> _stdbool))
+(define-native sk_pathmeasure_next_contour (_fun _pointer -> _stdbool))
+
+;; Boolean path operations.
+(define-native sk_pathop_op
+  (_fun _pointer _pointer _int _pointer -> _stdbool))
+(define-native sk_pathop_simplify
+  (_fun _pointer _pointer -> _stdbool))
+(define-native sk_pathop_as_winding
+  (_fun _pointer _pointer -> _stdbool))
 
 
 ;; Typeface/font primitives --------------------------------------------------
@@ -238,6 +292,16 @@
 (define-native sk_image_unref (_fun _pointer -> _void))
 (define-native sk_image_new_raster_copy
   (_fun _sk-image-info-pointer _bytes _size -> _pointer))
+(define-native sk_image_new_from_encoded (_fun _pointer -> _pointer))
+(define-native sk_image_get_width (_fun _pointer -> _int))
+(define-native sk_image_get_height (_fun _pointer -> _int))
+(define-native sk_image_get_color_type (_fun _pointer -> _int))
+(define-native sk_image_get_alpha_type (_fun _pointer -> _int))
+(define-native sk_image_make_subset_raster
+  (_fun _pointer _sk-irect-pointer -> _pointer))
+(define-native sk_image_make_raster_image (_fun _pointer -> _pointer))
+(define-native sk_image_peek_pixels (_fun _pointer _pointer -> _stdbool))
+(define-native sk_image_ref_encoded (_fun _pointer -> _pointer))
 (define-native sk_image_make_shader
   (_fun _pointer _int _int _sk-sampling-pointer _pointer -> _pointer))
 (define-native sk_image_read_pixels
@@ -251,9 +315,10 @@
 (define-native sk_dynamicmemorywstream_detach_as_data (_fun _pointer -> _pointer))
 (define-native sk_pngencoder_encode
   (_fun _pointer _pointer _sk-png-options-pointer -> _stdbool))
-(define-native sk_data_get_size (_fun _pointer -> _size))
-(define-native sk_data_get_data (_fun _pointer -> _pointer))
-(define-native sk_data_unref (_fun _pointer -> _void))
+(define-native sk_jpegencoder_encode
+  (_fun _pointer _pointer _sk-jpeg-options-pointer -> _stdbool))
+(define-native sk_webpencoder_encode
+  (_fun _pointer _pointer _sk-webp-options-pointer -> _stdbool))
 
 ;; Pre-resolve *all* callouts before allocating objects. Destructors then
 ;; never need a first-time library lookup while a finalizer is running.

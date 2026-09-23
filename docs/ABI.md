@@ -25,32 +25,42 @@ Racket `_stdbool` (one byte), not an int-sized `_bool`.
 |---|---|---:|
 | Image info | color-space pointer, int32 width, int32 height, int color type, int alpha type | 24 |
 | Rectangle | float left, top, right, bottom | 16 |
+| Integer rectangle | int32 left, top, right, bottom | 16 |
 | Point | float x, y | 8 |
 | Sampling options | int max-anisotropy, bool use-cubic, padding, float B, float C, int filter, int mipmap | 24 |
 | PNG options | int filter flags, int compression, comments pointer, ICC-profile pointer, ICC-description pointer | 32 |
+| JPEG options | int quality, int downsample, int alpha option, alignment, XMP pointer, ICC-profile pointer, ICC-description pointer | 40 |
+| WebP options | int compression, float quality, ICC-profile pointer, ICC-description pointer | 24 |
 | Font metrics | uint32 flags, then 15 floats from top through strikeout position | 64 |
 
-All three PNG pointer fields are initialized to NULL. An older two-field PNG
-options declaration would be unsafe with this API; the native encoder reads
-the later fields. Sampling fields are initialized even when cubic filtering
-and mipmaps are disabled. Surface creation explicitly selects RGBA8888 rather
-than relying on platform-dependent native color ordering.
+All optional PNG/JPEG/WebP pointer fields used by this binding are initialized
+to NULL. JPEG's first pointer begins at offset 16 on a 64-bit ABI because the
+three leading C ints occupy 12 bytes and the pointer requires 8-byte alignment.
+The host-C checker and Racket pure tests both exercise these offsets. Sampling
+fields are initialized even when cubic filtering and mipmaps are disabled.
+Surface creation explicitly selects RGBA8888 rather than relying on
+platform-dependent native color ordering.
 
 `sk_point_t` is two adjacent C floats. Linear gradients pass two points as four
 contiguous floats; radial, sweep, and conical constructors use the corresponding
 8-byte point structure. Tile modes are the pinned native values clamp=0,
 repeat=1, mirror=2, decal=3.
 
+The integer rectangle is used for raster image subsets. Source rectangles passed
+to `sk_canvas_draw_image_rect` remain floating-point `sk_rect_t` values.
+
 The font-metrics flags are copied as a 32-bit mask. The four decoration fields
 (underline thickness/position and strikeout thickness/position) are exposed to
 Racket only when their corresponding native validity bit is set. UTF-8 simple
 text uses the pinned native text-encoding value 0.
 
-The 0.1 layout declarations were live-tested on macOS/aarch64 with Racket
-9.3.0.2. The new 0.2 `SKFontMetrics` declaration is covered by source tests and
-a host-C mirror, but still requires the included Racket tests on a machine with
-the pinned native library. A host-C layout check is not a substitute for
-validating Racket's actual FFI declaration.
+The 0.1 through 0.4 declarations have been live-tested on macOS/aarch64 with
+Racket 9.3.0.2 and the pinned native asset. Version 0.5 adds no new C struct
+layouts; its path-effect, path-measure, and PathOps callouts are source/ABI
+checked in the authoring environment and require the included local
+Racket/native run before they receive the same validation status. A host-C
+layout check is not a substitute for validating Racket's actual FFI
+declarations.
 
 ## Ownership map
 
@@ -58,17 +68,23 @@ validating Racket's actual FFI declaration.
 |---|---|---|
 | Surface | `sk_surface_unref` | One owned reference |
 | Canvas from a surface | None | Borrowed; surface wrapper retained |
-| Paint | `sk_paint_delete` | Native-owned object; retains an attached shader |
+| Paint | `sk_paint_delete` | Native-owned object; retains attached shader/path-effect refs |
 | Shader | `sk_shader_unref` | One owned reference |
+| Path effect | `sk_path_effect_unref` | One owned reference; paints/composed effects retain inputs |
 | Path | `sk_path_delete` | Native-owned object |
-| Image/snapshot | `sk_image_unref` | One owned reference |
+| Path measure | `sk_pathmeasure_destroy` | Owns a private cloned `SkPath`; measure destroyed before clone |
+| Image/snapshot/decoded/subset image | `sk_image_unref` | One owned reference |
 | Typeface | `sk_typeface_unref` | One owned reference |
 | Font | `sk_font_delete` | Native-owned object; may retain a private default typeface wrapper |
+| Temporary encoded `SkData` | `sk_data_unref` | Owned while creating/probing an encoded image |
+| Temporary codec | `sk_codec_destroy` | Owned only while copying metadata |
+| Codec info color-space reference | `sk_colorspace_unref` | Released after scalar metadata is copied |
+| Temporary raster image | `sk_image_unref` | Owned while exposing a pixmap for encoding |
 | Temporary font style | `sk_fontstyle_delete` | Owned only during family matching |
 | Temporary native string | `sk_string_destructor` | Owned while copying a family name to Racket |
-| Temporary pixmap | `sk_pixmap_destructor` | Wrapper owns descriptor; surface owns pixels |
+| Temporary pixmap | `sk_pixmap_destructor` | Descriptor owned only during encoding; pixels are borrowed |
 | Temporary stream | `sk_dynamicmemorywstream_destroy` | Owned during encoding |
-| Detached encoded data | `sk_data_unref` | Owned until bytes copied |
+| Detached encoded data | `sk_data_unref` | Owned until bytes are copied to Racket |
 
 Each owned handle contains a mutable pointer, a release operation, the creating
 Racket thread, and a kind label. Explicit release invalidates the pointer first
@@ -84,18 +100,54 @@ stress testing on both Racket CS and target operating systems.
 
 Public constructors never give Skia retained pointers into movable Racket pixel
 storage. Surfaces allocate native pixels. RGBA image input uses the native copy
-constructor. Pixel readback and encoded output are copied into normal Racket
-byte strings. `make-sized-byte-string` is not used because it is not supported
-by Racket CS. The bridge to `bitmap%` also copies.
+constructor. Encoded byte input is copied into native `SkData`; both
+`SkImages::DeferredFromEncodedData` and `SkCodec::MakeFromData` take their own
+native references before the temporary Racket-side `SkData` wrapper is released.
+File-backed encoded data is likewise confined to the constructor/probe scope.
+Pixel readback and encoded output are copied into normal Racket byte strings.
+`make-sized-byte-string` is not used because it is not supported by Racket CS.
+The bridge to `bitmap%` also copies.
+
+`sk_codec_get_info` deserves special care: the C shim's `ToImageInfo` returns a
+referenced color-space pointer. Version 0.4 does not yet expose color spaces, so
+the metadata probe copies width/height/color/alpha scalars and releases that
+reference with `sk_colorspace_unref`, including when metadata conversion raises.
+The pinned C shim implements `sk_codec_get_frame_count` using
+`getFrameInfo().size()`, so still images may report zero frame-info entries.
+
+Encoding a general `image?` first obtains a temporary raster image, borrows its
+pixels through a temporary pixmap descriptor, writes to a native dynamic memory
+stream, detaches `SkData`, then copies the encoded bytes to Racket. No returned
+byte string aliases Skia memory. Image subsets own a new native image reference;
+source-rectangle drawing borrows only the already-owned source image during the
+synchronous canvas call.
 
 Gradient colors and optional positions are copied into temporary atomic native
-arrays for one synchronous FFI call. Skia constructs immutable shader state before
-the call returns; no shader retains those array pointers. Image shaders and blend
-shaders retain their native image/shader dependencies internally. `sk_paint_get_shader`
-returns a borrowed pointer, so the public `paint-shader` operation calls
-`sk_shader_ref` before creating an owned Racket wrapper. Setting a shader on a
-paint gives the paint its own native reference; closing the caller's shader wrapper
-therefore does not invalidate the paint.
+arrays for one synchronous FFI call. Skia constructs immutable shader state
+before the call returns; no shader retains those array pointers. Image shaders
+and blend shaders retain their native image/shader dependencies internally.
+
+The m119 C paint getters are ownership-producing calls: `sk_paint_get_shader`
+uses `refShader().release()` and `sk_paint_get_path_effect` uses
+`refPathEffect().release()`. Public `paint-shader` and `paint-path-effect`
+therefore wrap those returned pointers directly as one owned reference. The
+initial 0.3/0.4 `paint-shader` wrapper incorrectly added another
+`sk_shader_ref`; rendering remained correct, but one native ref leaked per
+getter call. Version 0.5 removes that extra ref. Paint setters use `sk_ref_sp`,
+so paints retain their own references independently of caller wrappers.
+
+Dash interval arrays are temporary atomic native float arrays consumed
+synchronously by `SkDashPathEffect::Make`. Path effects returned by constructors
+own one native reference; compose/sum effects retain their dependencies.
+
+Raw `SkPathMeasure` stores a pointer to path data rather than a ref-counted path.
+The public 0.5 wrapper therefore clones the input `SkPath` and owns that private
+snapshot together with the measure. Its release operation destroys
+`SkPathMeasure` first and then the snapshot. Replacing the measured path clones
+the new input before swapping it into the native measure, then deletes the old
+snapshot. This prevents explicit closure or mutation of the caller's path from
+creating dangling native state. Boolean PathOps consume owned path pointers only
+for the duration of synchronous calls and write into a newly owned result path.
 
 Typeface family names are copied out of temporary native `sk_string_t` objects
 before those strings are destroyed. Text is encoded into temporary Racket UTF-8
@@ -115,9 +167,12 @@ caller may close its typeface wrapper after successful font construction.
 No native-to-Racket callbacks, custom streams invoking Racket callbacks,
 retained client pixel buffers, GPU contexts, arbitrary user native pointers,
 C++ exceptions, font-manager/fallback abstraction, shaping engine, bidi
-reordering, paragraph layout, or public shader-local matrices enter this
-binding. Version 0.3 adds reference-counted shaders and the CPU gradient/image
-shader constructors without widening those boundaries.
+reordering, paragraph layout, public color-space objects, public codec objects,
+or public shader-local matrices enter this binding. Version 0.4 exposes
+single-image encoded data through high-level copied byte/file operations; it
+does not expose incremental/scanline decode, animation frame decode, EXIF
+orientation normalization, or arbitrary encoder metadata.
+
 Normal C library failures are converted to Racket exceptions where the ABI
 provides failure results; a native crash/abort cannot be caught as an ordinary
 Racket exception by this wrapper.
@@ -125,9 +180,12 @@ Racket exception by this wrapper.
 ## Revalidation when changing the pin
 
 Compare every used C prototype, enum, struct layout, and ownership rule against
-the new version. Update the package URLs and accepted milestone together.
-Run pure tests, doctor, native tests, and visual examples on each supported
-architecture. Review alpha conversion, PNG option fields, sampling padding,
-font-metrics layout and validity flags, UTF-8/glyph conversion, typeface/font
-lifetime, image snapshot lifetime, and both explicit and GC cleanup. Do not simply widen
-the milestone check until an incompatible build loads.
+the new version. Update the package URLs and accepted milestone together. Run
+pure tests, doctor, native tests, and visual examples on each supported
+architecture. Review alpha conversion; PNG/JPEG/WebP option fields; codec
+color-space ownership; encoded-data retention; source/subset rectangles;
+sampling padding; font-metrics layout and validity flags; UTF-8/glyph
+conversion; shader/path-effect refcounts; path-measure snapshot ownership;
+PathOps results; typeface/font lifetime; image snapshot lifetime; and both
+explicit and GC cleanup. Do not simply widen the milestone check until
+an incompatible build loads.

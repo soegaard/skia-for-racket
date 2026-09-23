@@ -17,21 +17,39 @@
          canvas-clip-rect! canvas-clip-path!
          draw-paint draw-line draw-rect draw-rounded-rect draw-circle draw-oval
          draw-path draw-polygon
-         paint? make-paint paint-copy paint-color paint-shader
+         paint? make-paint paint-copy paint-color paint-shader paint-path-effect
          paint-set-color! paint-set-style! paint-set-stroke-width!
          paint-set-antialias! paint-set-cap! paint-set-join!
          paint-set-miter-limit! paint-set-blend-mode! paint-set-shader!
+         paint-set-path-effect!
          shader? make-color-shader make-linear-gradient-shader
          make-radial-gradient-shader make-sweep-gradient-shader
          make-two-point-conical-gradient-shader make-image-shader
          make-blend-shader
+         path-effect? make-dash-path-effect make-corner-path-effect
+         make-discrete-path-effect make-trim-path-effect
+         make-compose-path-effect make-sum-path-effect
          skia-path? make-path path-copy path-move-to! path-line-to!
          path-quad-to! path-cubic-to! path-close! path-reset!
          path-add-rect! path-add-oval! path-add-circle!
          path-bounds path-tight-bounds path-contains?
          path-fill-rule path-set-fill-rule!
-         image? image-width image-height surface-snapshot
-         rgba-bytes->image image->rgba-bytes draw-image draw-image-rect
+         path-op path-union path-intersect path-difference path-xor
+         path-reverse-difference path-simplify path-as-winding
+         path-measure? make-path-measure path-measure-set-path!
+         path-measure-length path-measure-position+tangent
+         path-measure-segment path-measure-next-contour! path-measure-closed?
+         image? image-width image-height image-color-type image-alpha-type
+         surface-snapshot rgba-bytes->image image-from-bytes image-from-file
+         image->rgba-bytes image-original-encoded-bytes
+         image->png-bytes image->jpeg-bytes image->webp-bytes
+         image->encoded-bytes save-image image-subset
+         draw-image draw-image-rect draw-image-subrect
+         encoded-image-info? encoded-image-info-width encoded-image-info-height
+         encoded-image-info-format encoded-image-info-color-type
+         encoded-image-info-alpha-type encoded-image-info-origin
+         encoded-image-info-frame-count
+         encoded-image-info-from-bytes encoded-image-info-from-file
          typeface? make-typeface typeface-from-family typeface-from-file
          typeface-family-name typeface-weight typeface-width typeface-slant
          font? make-font font-size font-set-size!
@@ -57,8 +75,16 @@
 (struct canvas (surface) #:constructor-name make-canvas-record)
 (struct paint (handle) #:constructor-name make-paint-record)
 (struct shader (handle) #:constructor-name make-shader-record)
+(struct path-effect (handle) #:constructor-name make-path-effect-record)
 (struct skia-path (handle) #:constructor-name make-path-record)
+;; snapshot-box contains a raw native SkPath pointer owned together with the
+;; native SkPathMeasure. It is never exposed by the public API.
+(struct path-measure (handle snapshot-box) #:constructor-name make-path-measure-record)
 (struct image (handle width height) #:constructor-name make-image-record)
+(struct encoded-image-info
+  (width height format color-type alpha-type origin frame-count)
+  #:transparent
+  #:constructor-name make-encoded-image-info-record)
 (struct typeface (handle) #:constructor-name make-typeface-record)
 ;; owner keeps an implicitly-created default typeface reachable for at least
 ;; as long as the font wrapper. SkFont itself also retains its typeface.
@@ -72,14 +98,17 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (surface? v) (paint? v) (shader? v) (skia-path? v) (image? v)
+  (or (surface? v) (paint? v) (shader? v) (path-effect? v)
+      (skia-path? v) (path-measure? v) (image? v)
       (typeface? v) (font? v)))
 
 (define (resource-handle who v)
   (cond [(surface? v) (surface-handle v)]
         [(paint? v) (paint-handle v)]
         [(shader? v) (shader-handle v)]
+        [(path-effect? v) (path-effect-handle v)]
         [(skia-path? v) (skia-path-handle v)]
+        [(path-measure? v) (path-measure-handle v)]
         [(image? v) (image-handle v)]
         [(typeface? v) (typeface-handle v)]
         [(font? v) (font-handle v)]
@@ -118,7 +147,11 @@
 (define (surface-h who v) (typed-handle who v surface? surface-handle "surface?"))
 (define (paint-h who v) (typed-handle who v paint? paint-handle "paint?"))
 (define (shader-h who v) (typed-handle who v shader? shader-handle "shader?"))
+(define (path-effect-h who v)
+  (typed-handle who v path-effect? path-effect-handle "path-effect?"))
 (define (path-h who v) (typed-handle who v skia-path? skia-path-handle "skia-path?"))
+(define (path-measure-h who v)
+  (typed-handle who v path-measure? path-measure-handle "path-measure?"))
 (define (image-h who v) (typed-handle who v image? image-handle "image?"))
 (define (typeface-h who v) (typed-handle who v typeface? typeface-handle "typeface?"))
 (define (font-h who v) (typed-handle who v font? font-handle "font?"))
@@ -255,7 +288,8 @@
                     #:join [join 'miter]
                     #:miter-limit [miter 4]
                     #:blend-mode [blend 'src-over]
-                    #:shader [sh #f])
+                    #:shader [sh #f]
+                    #:path-effect [effect #f])
   ;; Validate every option before allocating native state.
   (define col (color->argb color))
   (define sty (choice 'make-paint style style-values))
@@ -267,15 +301,22 @@
   (define bl (choice 'make-paint blend blend-values))
   (unless (or (not sh) (shader? sh))
     (raise-argument-error 'make-paint "(or/c #f shader?)" sh))
+  (unless (or (not effect) (path-effect? effect))
+    (raise-argument-error 'make-paint "(or/c #f path-effect?)" effect))
   (define sh-hnd (and sh (shader-h 'make-paint sh)))
+  (define effect-hnd (and effect (path-effect-h 'make-paint effect)))
   (skia-check!)
   (define hnd (new-owned 'make-paint 'paint sk_paint_new sk_paint_delete))
   (initialize-resource
    (make-paint-record hnd)
    (lambda (_)
+     (define handles
+       (append (list hnd)
+               (if sh-hnd (list sh-hnd) '())
+               (if effect-hnd (list effect-hnd) '())))
      (call-with-owned
-      'make-paint (if sh-hnd (list hnd sh-hnd) (list hnd))
-      (lambda (p . shader-pointers)
+      'make-paint handles
+      (lambda (p . optional-pointers)
         (sk_paint_set_color p col)
         (sk_paint_set_style p sty)
         (sk_paint_set_stroke_width p wid)
@@ -284,7 +325,12 @@
         (sk_paint_set_stroke_join p jo)
         (sk_paint_set_stroke_miter p mi)
         (sk_paint_set_blendmode p bl)
-        (when sh-hnd (sk_paint_set_shader p (car shader-pointers))))))))
+        (define remaining optional-pointers)
+        (when sh-hnd
+          (sk_paint_set_shader p (car remaining))
+          (set! remaining (cdr remaining)))
+        (when effect-hnd
+          (sk_paint_set_path_effect p (car remaining))))))))
 
 (define (paint-copy p)
   (call-with-owned 'paint-copy (list (paint-h 'paint-copy p))
@@ -301,14 +347,23 @@
   (call-with-owned
    who (list (paint-h who p))
    (lambda (pp)
-     ;; sk_paint_get_shader returns a borrowed pointer. Convert it to one owned
-     ;; reference before the paint leaves this protected call.
+     ;; The m119 C shim uses refShader().release(), so this is already one
+     ;; owned reference. Wrapping it directly avoids an extra leaked ref.
      (define sp (sk_paint_get_shader pp))
      (and sp
-          (begin
-            (sk_shader_ref sp)
-            (make-shader-record
-             (new-owned who 'shader (lambda () sp) sk_shader_unref)))))))
+          (make-shader-record
+           (new-owned who 'shader (lambda () sp) sk_shader_unref))))))
+
+(define (paint-path-effect p)
+  (define who 'paint-path-effect)
+  (call-with-owned
+   who (list (paint-h who p))
+   (lambda (pp)
+     ;; Like sk_paint_get_shader, the C shim returns one owned reference.
+     (define ep (sk_paint_get_path_effect pp))
+     (and ep
+          (make-path-effect-record
+           (new-owned who 'path-effect (lambda () ep) sk_path_effect_unref))))))
 
 (define (set-paint-value! who p value native-setter)
   (call-with-owned who (list (paint-h who p))
@@ -348,6 +403,18 @@
     [else
      (call-with-owned who (list (paint-h who p))
        (lambda (pp) (sk_paint_set_shader pp #f)))]))
+
+(define (paint-set-path-effect! p effect)
+  (define who 'paint-set-path-effect!)
+  (unless (or (not effect) (path-effect? effect))
+    (raise-argument-error who "(or/c #f path-effect?)" effect))
+  (cond
+    [effect
+     (call-with-owned who (list (paint-h who p) (path-effect-h who effect))
+       (lambda (pp ep) (sk_paint_set_path_effect pp ep)))]
+    [else
+     (call-with-owned who (list (paint-h who p))
+       (lambda (pp) (sk_paint_set_path_effect pp #f)))]))
 
 ;; Shaders and gradients ----------------------------------------------------
 
@@ -527,6 +594,97 @@
       (new-owned who 'shader
                  (lambda () (sk_shader_new_blend blend dp sp))
                  sk_shader_unref)))))
+
+;; Path effects -------------------------------------------------------------
+
+(define (new-path-effect who create)
+  (skia-check!)
+  (make-path-effect-record
+   (new-owned who 'path-effect create sk_path_effect_unref)))
+
+(define (path-effect-sequence who intervals)
+  (define xs
+    (cond [(list? intervals) intervals]
+          [(vector? intervals) (vector->list intervals)]
+          [else (raise-argument-error who "(or/c list? vector?)" intervals)]))
+  (unless (and (>= (length xs) 2) (even? (length xs)))
+    (raise-arguments-error who
+                           "dash intervals must contain an even number of entries, at least two"
+                           "intervals" intervals))
+  (define checked (for/list ([x (in-list xs)]) (nonnegative-scalar who x)))
+  (unless (positive? (apply + checked))
+    (raise-arguments-error who "dash intervals must not all be zero"
+                           "intervals" intervals))
+  (define native-bytes (* 4 (length checked)))
+  (unless (<= native-bytes (current-skia-byte-limit))
+    (raise-arguments-error who "dash interval array exceeds current-skia-byte-limit"
+                           "required native bytes" native-bytes
+                           "limit" (current-skia-byte-limit)))
+  checked)
+
+(define (make-dash-path-effect intervals [phase 0])
+  (define who 'make-dash-path-effect)
+  (define checked (path-effect-sequence who intervals))
+  (define ph (scalar who phase))
+  (define arr (native-array checked _float))
+  (new-path-effect who
+                   (lambda ()
+                     (sk_path_effect_create_dash arr (length checked) ph))))
+
+(define (make-corner-path-effect radius)
+  (define who 'make-corner-path-effect)
+  (define r (positive-scalar who radius))
+  (new-path-effect who (lambda () (sk_path_effect_create_corner r))))
+
+(define (make-discrete-path-effect segment-length deviation [seed 0])
+  (define who 'make-discrete-path-effect)
+  (define seg (positive-scalar who segment-length))
+  ;; SkDiscretePathEffect::Make rejects lengths <= SK_ScalarNearlyZero
+  ;; (1/4096), so reject them here rather than surfacing a native-null error.
+  (unless (> seg (/ 1.0 4096.0))
+    (raise-argument-error who "finite real greater than 1/4096" segment-length))
+  (define dev (nonnegative-scalar who deviation))
+  (define sd (uint32 who seed))
+  (new-path-effect who
+                   (lambda () (sk_path_effect_create_discrete seg dev sd))))
+
+(define (make-trim-path-effect start stop #:mode [mode 'normal])
+  (define who 'make-trim-path-effect)
+  (define a (scalar who start))
+  (define b (scalar who stop))
+  (unless (and (<= 0.0 a 1.0) (<= 0.0 b 1.0) (< a b))
+    (raise-arguments-error who
+                           "start and stop must satisfy 0 <= start < stop <= 1"
+                           "start" start "stop" stop))
+  (define m (choice who mode trim-path-effect-mode-values))
+  ;; Upstream treats the full normal span as a no-op and returns NULL rather
+  ;; than a path-effect object. Keep the public constructor total over its
+  ;; documented domain by rejecting that no-op explicitly.
+  (when (and (= m 0) (= a 0.0) (= b 1.0))
+    (raise-arguments-error who
+                           "the full normal interval is a no-op, not a native path effect"
+                           "start" start "stop" stop "mode" mode))
+  (new-path-effect who (lambda () (sk_path_effect_create_trim a b m))))
+
+(define (make-compose-path-effect outer inner)
+  (define who 'make-compose-path-effect)
+  (define oh (path-effect-h who outer))
+  (define ih (path-effect-h who inner))
+  (new-path-effect
+   who
+   (lambda ()
+     (call-with-owned who (list oh ih)
+       (lambda (op ip) (sk_path_effect_create_compose op ip))))))
+
+(define (make-sum-path-effect first second)
+  (define who 'make-sum-path-effect)
+  (define fh (path-effect-h who first))
+  (define sh (path-effect-h who second))
+  (new-path-effect
+   who
+   (lambda ()
+     (call-with-owned who (list fh sh)
+       (lambda (fp sp) (sk_path_effect_create_sum fp sp))))))
 
 ;; Canvas state -------------------------------------------------------------
 
@@ -763,6 +921,166 @@
   (define fill (choice 'path-set-fill-rule! value fill-values))
   (call-with-owned 'path-set-fill-rule! (list (path-h 'path-set-fill-rule! p))
     (lambda (pp) (sk_path_set_filltype pp fill))))
+
+;; Boolean path operations --------------------------------------------------
+
+(define (path-result who proc)
+  (define result (make-path))
+  (with-handlers ([exn? (lambda (e) (skia-close! result) (raise e))])
+    (if (proc (path-h who result))
+        result
+        (begin
+          (skia-close! result)
+          (error who "native path operation failed")))))
+
+(define (path-op a b operation)
+  (define who 'path-op)
+  (define op (choice who operation path-op-values))
+  (define ah (path-h who a))
+  (define bh (path-h who b))
+  (path-result
+   who
+   (lambda (rh)
+     (call-with-owned who (list ah bh rh)
+       (lambda (ap bp rp) (sk_pathop_op ap bp op rp))))))
+
+(define (path-union a b) (path-op a b 'union))
+(define (path-intersect a b) (path-op a b 'intersect))
+(define (path-difference a b) (path-op a b 'difference))
+(define (path-xor a b) (path-op a b 'xor))
+(define (path-reverse-difference a b) (path-op a b 'reverse-difference))
+
+(define (path-simplify p)
+  (define who 'path-simplify)
+  (define ph (path-h who p))
+  (path-result
+   who
+   (lambda (rh)
+     (call-with-owned who (list ph rh)
+       (lambda (pp rp) (sk_pathop_simplify pp rp))))))
+
+(define (path-as-winding p)
+  (define who 'path-as-winding)
+  (define ph (path-h who p))
+  (path-result
+   who
+   (lambda (rh)
+     (call-with-owned who (list ph rh)
+       (lambda (pp rp) (sk_pathop_as_winding pp rp))))))
+
+;; Path measurement ---------------------------------------------------------
+
+(define (snapshot-native-path who p)
+  (call-with-owned who (list (path-h who p))
+    (lambda (pp)
+      (define snapshot (sk_path_clone pp))
+      (unless snapshot (error who "native path snapshot failed"))
+      snapshot)))
+
+(define (make-path-measure p #:force-closed? [force-closed? #f]
+                           #:res-scale [res-scale 1])
+  (define who 'make-path-measure)
+  (boolean who force-closed?)
+  (define scale (positive-scalar who res-scale))
+  ;; Validate the wrapper before native loading, then snapshot after preflight.
+  (path-h who p)
+  ;; Snapshot semantics make the measure independent of later path mutation or
+  ;; explicit closure. The measure and snapshot are destroyed in that order.
+  (skia-check!)
+  (define snapshot (snapshot-native-path who p))
+  (define snapshot-box (box snapshot))
+  (with-handlers ([exn?
+                   (lambda (e)
+                     (define sp (unbox snapshot-box))
+                     (when sp
+                       (set-box! snapshot-box #f)
+                       (sk_path_delete sp))
+                     (raise e))])
+    (define hnd
+      (new-owned
+       who 'path-measure
+       (lambda () (sk_pathmeasure_new_with_path snapshot force-closed? scale))
+       (lambda (mp)
+         (sk_pathmeasure_destroy mp)
+         (define sp (unbox snapshot-box))
+         (when sp
+           (set-box! snapshot-box #f)
+           (sk_path_delete sp)))))
+    (make-path-measure-record hnd snapshot-box)))
+
+(define (path-measure-set-path! m p #:force-closed? [force-closed? #f])
+  (define who 'path-measure-set-path!)
+  (unless (or (not p) (skia-path? p))
+    (raise-argument-error who "(or/c #f skia-path?)" p))
+  (boolean who force-closed?)
+  (define new-snapshot (and p (snapshot-native-path who p)))
+  (with-handlers ([exn?
+                   (lambda (e)
+                     (when new-snapshot (sk_path_delete new-snapshot))
+                     (raise e))])
+    (call-with-owned who (list (path-measure-h who m))
+      (lambda (mp)
+        (sk_pathmeasure_set_path mp new-snapshot force-closed?)))
+    (define box (path-measure-snapshot-box m))
+    (define old-snapshot (unbox box))
+    (set-box! box new-snapshot)
+    (when old-snapshot (sk_path_delete old-snapshot))
+    (void)))
+
+(define (path-measure-length m)
+  (call-with-owned 'path-measure-length
+                   (list (path-measure-h 'path-measure-length m))
+                   sk_pathmeasure_get_length))
+
+(define (path-measure-closed? m)
+  (call-with-owned 'path-measure-closed?
+                   (list (path-measure-h 'path-measure-closed? m))
+                   sk_pathmeasure_is_closed))
+
+(define (checked-measure-distance who m value)
+  (define d (nonnegative-scalar who value))
+  (define len (path-measure-length m))
+  (unless (<= d len)
+    (raise-arguments-error who "distance is beyond the current contour"
+                           "distance" value "contour length" len))
+  d)
+
+(define (path-measure-position+tangent m distance)
+  (define who 'path-measure-position+tangent)
+  (define d (checked-measure-distance who m distance))
+  (define pos (make-sk-point 0.0 0.0))
+  (define tan (make-sk-point 0.0 0.0))
+  (define ok?
+    (call-with-owned who (list (path-measure-h who m))
+      (lambda (mp) (sk_pathmeasure_get_pos_tan mp d pos tan))))
+  (if ok?
+      (values (sk-point-x pos) (sk-point-y pos)
+              (sk-point-x tan) (sk-point-y tan))
+      (values #f #f #f #f)))
+
+(define (path-measure-segment m start stop
+                              #:start-with-move-to? [start-with-move-to? #t])
+  (define who 'path-measure-segment)
+  (boolean who start-with-move-to?)
+  (define a (checked-measure-distance who m start))
+  (define b (checked-measure-distance who m stop))
+  (unless (< a b)
+    (raise-arguments-error who "start must be less than stop"
+                           "start" start "stop" stop))
+  (define result (make-path))
+  (with-handlers ([exn? (lambda (e) (skia-close! result) (raise e))])
+    (define ok?
+      (call-with-owned who (list (path-measure-h who m) (path-h who result))
+        (lambda (mp rp)
+          (sk_pathmeasure_get_segment mp a b rp start-with-move-to?))))
+    (if ok?
+        result
+        (begin (skia-close! result) #f))))
+
+(define (path-measure-next-contour! m)
+  (call-with-owned 'path-measure-next-contour!
+                   (list (path-measure-h 'path-measure-next-contour! m))
+                   sk_pathmeasure_next_contour))
 
 ;; Typefaces and fonts --------------------------------------------------------
 
@@ -1077,7 +1395,7 @@
                                 fx fy fp pp)))
     p))
 
-;; Immutable image snapshots and copied pixel input -------------------------
+;; Images, encoded data, codecs, and copied pixel input ---------------------
 
 (define (surface-snapshot s)
   (call-with-owned 'surface-snapshot (list (surface-h 'surface-snapshot s))
@@ -1112,6 +1430,145 @@
               sk_image_unref)
    w h))
 
+(define (checked-file-data who filename)
+  (unless (path-string? filename)
+    (raise-argument-error who "path-string?" filename))
+  (unless (file-exists? filename)
+    (raise-arguments-error who "image file does not exist" "path" filename))
+  (define n (file-size filename))
+  (unless (positive? n)
+    (raise-arguments-error who "encoded image file is empty" "path" filename))
+  (unless (<= n (current-skia-byte-limit))
+    (raise-arguments-error who "encoded image file exceeds current-skia-byte-limit"
+                           "encoded bytes" n "limit" (current-skia-byte-limit)))
+  (define raw-path (path->bytes (path->complete-path filename)))
+  (when (regexp-match? #rx#"\0" raw-path)
+    (raise-arguments-error who "image path contains an embedded NUL" "path" filename))
+  (values (nul-terminated-bytes raw-path) n))
+
+(define (call-with-encoded-data-from-bytes who bs proc)
+  (positive-encoded-bytes who bs)
+  (skia-check!)
+  (call-with-native-temporary
+   who 'encoded-data
+   (lambda () (sk_data_new_with_copy bs (bytes-length bs)))
+   sk_data_unref proc))
+
+(define (call-with-encoded-data-from-file who filename proc)
+  (define-values (path-bytes _n) (checked-file-data who filename))
+  (skia-check!)
+  (call-with-native-temporary
+   who 'encoded-data
+   (lambda () (sk_data_new_from_file path-bytes))
+   sk_data_unref proc))
+
+(define (make-image-from-data who call-with-data)
+  (call-with-data
+   (lambda (dp)
+     (define hnd
+       (new-owned who 'image (lambda () (sk_image_new_from_encoded dp)) sk_image_unref))
+     (with-handlers ([exn? (lambda (e) (owned-close! who hnd) (raise e))])
+       (define-values (w h)
+         (call-with-owned who (list hnd)
+           (lambda (ip) (values (sk_image_get_width ip) (sk_image_get_height ip)))))
+       ;; Reject dimensions that the rest of this CPU binding cannot safely
+       ;; materialize under its documented limits.
+       (check-dimensions who w h)
+       (make-image-record hnd w h)))))
+
+(define (image-from-bytes bs)
+  (define who 'image-from-bytes)
+  (positive-encoded-bytes who bs)
+  (make-image-from-data
+   who (lambda (proc) (call-with-encoded-data-from-bytes who bs proc))))
+
+(define (image-from-file filename)
+  (define who 'image-from-file)
+  ;; Validate before loading the native library.
+  (checked-file-data who filename)
+  (make-image-from-data
+   who (lambda (proc) (call-with-encoded-data-from-file who filename proc))))
+
+(define (copy-native-data who data)
+  (define n (sk_data_get_size data))
+  (unless (<= 1 n (current-skia-byte-limit))
+    (error who "native data size ~a exceeds current-skia-byte-limit, or is empty" n))
+  (define src (sk_data_get_data data))
+  (unless src (error who "native data returned a null pointer"))
+  (define out (make-bytes n))
+  (memcpy out src n)
+  out)
+
+(define (image-original-encoded-bytes im)
+  (define who 'image-original-encoded-bytes)
+  (call-with-owned
+   who (list (image-h who im))
+   (lambda (ip)
+     (define dp (sk_image_ref_encoded ip))
+     (and dp
+          (call-with-native-temporary
+           who 'encoded-data (lambda () dp) sk_data_unref
+           (lambda (data) (copy-native-data who data)))))))
+
+(define (codec-info-from-data who data)
+  (call-with-native-temporary
+   who 'codec (lambda () (sk_codec_new_from_data data)) sk_codec_destroy
+   (lambda (cp)
+     (define info (make-sk-image-info #f 0 0 0 0))
+     (sk_codec_get_info cp info)
+     ;; ToImageInfo() returns a referenced color-space pointer in this ABI.
+     ;; Metadata inspection does not expose colorspaces yet, so release that
+     ;; reference after copying the scalar fields, including on exceptions.
+     (define colorspace (sk-image-info-colorspace info))
+     (dynamic-wind
+       void
+       (lambda ()
+         (define w (sk-image-info-width info))
+         (define h (sk-image-info-height info))
+         (unless (and (exact-positive-integer? w) (exact-positive-integer? h))
+           (error who "codec returned invalid dimensions ~ax~a" w h))
+         (define frames (sk_codec_get_frame_count cp))
+         ;; The pinned C shim implements this as getFrameInfo().size(); still
+         ;; images commonly report zero rather than one.
+         (unless (and (exact-integer? frames) (>= frames 0))
+           (error who "codec returned invalid frame count ~a" frames))
+         (make-encoded-image-info-record
+          w h
+          (enum-name who (sk_codec_get_encoded_format cp)
+                     encoded-format-values "encoded image format")
+          (enum-name who (sk-image-info-color-type info)
+                     color-type-values "color type")
+          (enum-name who (sk-image-info-alpha-type info)
+                     alpha-type-values "alpha type")
+          (enum-name who (sk_codec_get_origin cp)
+                     encoded-origin-values "encoded origin")
+          frames))
+       (lambda ()
+         (when colorspace
+           (sk_colorspace_unref colorspace)))))))
+
+(define (encoded-image-info-from-bytes bs)
+  (define who 'encoded-image-info-from-bytes)
+  (call-with-encoded-data-from-bytes
+   who bs (lambda (dp) (codec-info-from-data who dp))))
+
+(define (encoded-image-info-from-file filename)
+  (define who 'encoded-image-info-from-file)
+  (call-with-encoded-data-from-file
+   who filename (lambda (dp) (codec-info-from-data who dp))))
+
+(define (image-color-type im)
+  (define who 'image-color-type)
+  (enum-name who
+             (call-with-owned who (list (image-h who im)) sk_image_get_color_type)
+             color-type-values "color type"))
+
+(define (image-alpha-type im)
+  (define who 'image-alpha-type)
+  (enum-name who
+             (call-with-owned who (list (image-h who im)) sk_image_get_alpha_type)
+             alpha-type-values "alpha type"))
+
 (define (image->rgba-bytes im #:premultiplied? [premultiplied? #f])
   (define hnd (image-h 'image->rgba-bytes im))
   (boolean 'image->rgba-bytes premultiplied?)
@@ -1126,6 +1583,112 @@
                out (* 4 w) 0 0 0)
         (error 'image->rgba-bytes "native image pixel read failed"))))
   out)
+
+(define (call-with-image-pixmap who im proc)
+  (call-with-owned
+   who (list (image-h who im))
+   (lambda (ip)
+     ;; Deferred encoded images do not necessarily expose a pixmap. Ask Skia
+     ;; for a raster image first, then borrow its pixels only within this scope.
+     (call-with-native-temporary
+      who 'raster-image (lambda () (sk_image_make_raster_image ip)) sk_image_unref
+      (lambda (raster)
+        (call-with-native-temporary
+         who 'pixmap sk_pixmap_new sk_pixmap_destructor
+         (lambda (pixmap)
+           (unless (sk_image_peek_pixels raster pixmap)
+             (error who "raster image did not expose its pixels"))
+           (proc pixmap))))))))
+
+(define (encode-pixmap-to-bytes who pixmap encoder options)
+  (call-with-native-temporary
+   who 'encoded-stream sk_dynamicmemorywstream_new sk_dynamicmemorywstream_destroy
+   (lambda (stream)
+     (unless (encoder stream pixmap options)
+       (error who "native image encoder failed"))
+     (call-with-native-temporary
+      who 'encoded-data
+      (lambda () (sk_dynamicmemorywstream_detach_as_data stream)) sk_data_unref
+      (lambda (data) (copy-native-data who data))))))
+
+(define (image->png-bytes im #:compression [compression 6])
+  (define who 'image->png-bytes)
+  (unless (and (exact-integer? compression) (<= 0 compression 9))
+    (raise-argument-error who "exact integer from 0 through 9" compression))
+  (define options (make-sk-png-options png-all-filters compression #f #f #f))
+  (call-with-image-pixmap
+   who im (lambda (pixmap) (encode-pixmap-to-bytes who pixmap sk_pngencoder_encode options))))
+
+(define (image->jpeg-bytes im
+                           #:quality [quality 90]
+                           #:downsample [downsample 'yuv-420]
+                           #:alpha [alpha 'ignore])
+  (define who 'image->jpeg-bytes)
+  (define q (quality-integer who quality))
+  (define ds (choice who downsample jpeg-downsample-values))
+  (define a (choice who alpha jpeg-alpha-values))
+  (define options (make-sk-jpeg-options q ds a #f #f #f))
+  (call-with-image-pixmap
+   who im (lambda (pixmap) (encode-pixmap-to-bytes who pixmap sk_jpegencoder_encode options))))
+
+(define (image->webp-bytes im #:quality [quality 90] #:lossless? [lossless? #f])
+  (define who 'image->webp-bytes)
+  (define q (quality-scalar who quality))
+  (define lossless (boolean who lossless?))
+  (define compression (choice who (if lossless 'lossless 'lossy) webp-compression-values))
+  (define options (make-sk-webp-options compression q #f #f))
+  (call-with-image-pixmap
+   who im (lambda (pixmap) (encode-pixmap-to-bytes who pixmap sk_webpencoder_encode options))))
+
+(define (image->encoded-bytes im format
+                              #:quality [quality 90]
+                              #:png-compression [png-compression 6]
+                              #:jpeg-downsample [jpeg-downsample 'yuv-420]
+                              #:jpeg-alpha [jpeg-alpha 'ignore]
+                              #:webp-lossless? [webp-lossless? #f])
+  (case format
+    [(png) (image->png-bytes im #:compression png-compression)]
+    [(jpeg) (image->jpeg-bytes im #:quality quality
+                               #:downsample jpeg-downsample #:alpha jpeg-alpha)]
+    [(webp) (image->webp-bytes im #:quality quality #:lossless? webp-lossless?)]
+    [else
+     (raise-argument-error 'image->encoded-bytes "'png, 'jpeg, or 'webp" format)]))
+
+(define (save-image im filename format
+                    #:exists [exists 'error]
+                    #:quality [quality 90]
+                    #:png-compression [png-compression 6]
+                    #:jpeg-downsample [jpeg-downsample 'yuv-420]
+                    #:jpeg-alpha [jpeg-alpha 'ignore]
+                    #:webp-lossless? [webp-lossless? #f])
+  (unless (path-string? filename)
+    (raise-argument-error 'save-image "path-string?" filename))
+  (unless (memq exists '(error replace))
+    (raise-argument-error 'save-image "'error or 'replace" exists))
+  ;; Encode first so a native failure never truncates an existing destination.
+  (define data
+    (image->encoded-bytes im format
+                          #:quality quality
+                          #:png-compression png-compression
+                          #:jpeg-downsample jpeg-downsample
+                          #:jpeg-alpha jpeg-alpha
+                          #:webp-lossless? webp-lossless?))
+  (call-with-output-file filename
+    (lambda (out) (write-bytes data out) (void))
+    #:mode 'binary #:exists exists))
+
+(define (image-subset im x y w h)
+  (define who 'image-subset)
+  (define subset
+    (exact-source-rectangle who x y w h (image-width im) (image-height im)))
+  (call-with-owned
+   who (list (image-h who im))
+   (lambda (ip)
+     (make-image-record
+      (new-owned who 'image
+                 (lambda () (sk_image_make_subset_raster ip subset))
+                 sk_image_unref)
+      w h))))
 
 (define (draw-image c im x y #:sampling [mode 'nearest] #:paint [p #f])
   (define ih (image-h 'draw-image im))
@@ -1144,5 +1707,17 @@
   (define smp (sampling 'draw-image-rect mode))
   (define others (if p (list ih (paint-h 'draw-image-rect p)) (list ih)))
   (call-on-canvas 'draw-image-rect c others
+    (lambda (cp ip . paints)
+      (sk_canvas_draw_image_rect cp ip src dst smp (if p (car paints) #f)))))
+
+(define (draw-image-subrect c im sx sy sw sh dx dy dw dh
+                            #:sampling [mode 'linear] #:paint [p #f])
+  (define who 'draw-image-subrect)
+  (define ih (image-h who im))
+  (define src (source-rect who sx sy sw sh (image-width im) (image-height im)))
+  (define dst (rect who dx dy dw dh))
+  (define smp (sampling who mode))
+  (define others (if p (list ih (paint-h who p)) (list ih)))
+  (call-on-canvas who c others
     (lambda (cp ip . paints)
       (sk_canvas_draw_image_rect cp ip src dst smp (if p (car paints) #f)))))

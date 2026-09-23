@@ -1,16 +1,17 @@
-# Racket Skia — 0.3.0
+# Racket Skia — 0.5.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** the 0.1 drawing/image baseline was live-validated on
-macOS/aarch64 with Racket 9.3.0.2: the doctor passed, all 57 source test cases
-passed, and all three original examples rendered correctly. The 0.2 text
-example has since rendered successfully on that setup. Version 0.3 adds shaders
-and gradients; those new native calls were source/ABI checked in the authoring
-environment but still require the included local doctor and 77-case suite
-before 0.3 is considered live validated. See [TESTING.md](TESTING.md).
+**Verification status:** versions 0.1 through 0.4 are live-validated on
+macOS/aarch64 with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1 native
+asset. The completed 0.4 doctor passed, all 85 source test cases passed
+(19 pure, 6 lifetime, 60 native), and the codec visual probe rendered
+correctly. Version 0.5 adds path effects, path measurement, and boolean path
+operations; those new paths are source/ABI checked in the authoring environment
+but still require the included local doctor, test suite, and visual probe. See
+[TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -21,8 +22,11 @@ and containment; immutable image snapshots and copied RGBA input; image
 placement/scaling; native PNG encoding; default/family/file-backed typefaces;
 configurable fonts and metrics; UTF-8 simple-text drawing/measurement; glyph
 IDs and text/glyph outline paths; owned shaders; color, linear, radial, sweep,
-and conical gradients; image tiling; shader blending; explicit/scoped resource
-cleanup and GC fallback. An optional module copies pixels into a Racket `bitmap%`.
+and conical gradients; image tiling; shader blending; PNG/JPEG/WebP encoded
+image decode and encode; codec metadata probing; image subsets and source-rectangle
+drawing; dash/corner/discrete/trim/composed path effects; path measurement,
+segments and tangents; boolean path operations; explicit/scoped resource cleanup
+and GC fallback. An optional module copies pixels into a Racket `bitmap%`.
 
 The unsafe ABI layer is private. Public resource wrappers do not expose raw
 pointers. The source distribution contains no native binary or font files.
@@ -32,7 +36,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.3.0-20260923
+cd racket-skia-0.5.0-20260923
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -46,6 +50,8 @@ mkdir -p output &&
 "$RACKET" examples/gallery.rkt output/gallery.png &&
 "$RACKET" examples/text.rkt output/text.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
+"$RACKET" examples/codecs.rkt output/codecs.png &&
+"$RACKET" examples/path-effects.rkt output/path-effects.png &&
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
@@ -209,10 +215,88 @@ C-array interface:
 
 Tile modes are `'clamp`, `'repeat`, `'mirror`, and `'decal`. Image shaders can
 tile an `image?` independently on x and y; blend shaders combine two shader
-outputs using the same blend-mode names as paints. The native paint/shader
-relationship is reference counted, so closing the supplied shader wrapper does
-not invalidate a paint that already retained it. Shader-local matrices are not
-yet public API.
+outputs using the same blend-mode names as paints. The native paint/shader relationship is reference counted, so closing the
+supplied shader wrapper does not invalidate a paint that already retained it.
+`paint-shader` returns a distinct owned native reference from the m119 C shim.
+Shader-local matrices are not yet public API.
+
+## Encoded images and codecs
+
+Version 0.4 adds high-level encoded image I/O without exposing native codec or
+stream pointers. Encoded bytes are copied into Skia-owned data, and encoded
+output is copied back into ordinary Racket byte strings.
+
+```racket
+(with-skia ([source (make-surface 320 200 #:background 'white)]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-circle (surface-canvas source) 160 100 70 blue)
+  (with-skia ([image (surface-snapshot source)])
+    (define png  (image->png-bytes image))
+    (define jpeg (image->jpeg-bytes image #:quality 90))
+    (define webp (image->webp-bytes image #:lossless? #t))
+
+    (define info (encoded-image-info-from-bytes jpeg))
+    (printf "~a × ~a, ~a\n"
+            (encoded-image-info-width info)
+            (encoded-image-info-height info)
+            (encoded-image-info-format info))
+
+    (with-skia ([decoded (image-from-bytes png)])
+      (save-image decoded "copy.webp" 'webp #:exists 'replace))))
+```
+
+`image-from-file` and `encoded-image-info-from-file` provide file-backed entry
+points. The probe API reports format, dimensions, color/alpha type, encoded
+orientation, and the pinned codec shim's frame-info count without materializing
+a public image object. `draw-image-subrect` maps a source rectangle directly to
+a destination rectangle; `image-subset` instead creates a new owned image.
+
+The implemented encoders are PNG, JPEG, and WebP. JPEG exposes quality,
+subsampling, and alpha behavior; WebP exposes quality and lossy/lossless mode.
+See the API reference for the exact option symbols and the m119 frame-count
+semantics.
+
+## Path effects, measurement, and boolean operations
+
+Version 0.5 extends the vector side of the library without exposing native path
+pointers. Path effects are owned, reference-counted resources and can be attached
+to ordinary stroke paints:
+
+```racket
+(with-skia ([s (make-surface 640 240 #:background 'white)]
+            [effect (make-dash-path-effect '(12 7) 3)]
+            [paint (make-paint #:color "#326DE6"
+                               #:style 'stroke
+                               #:stroke-width 6
+                               #:cap 'round
+                               #:path-effect effect)]
+            [curve (make-path
+                    '((move 40 180)
+                      (cubic 140 20 480 260 600 60)))])
+  (draw-path (surface-canvas s) curve paint)
+  (save-png s "dashed-curve.png"))
+```
+
+Also available are corner, discrete, trim, compose, and sum effects. A paint
+retains its own native path-effect reference, and `paint-path-effect` returns a
+newly owned wrapper.
+
+`make-path-measure` deliberately snapshots the supplied path. This differs from
+raw `SkPathMeasure`, which stores a pointer to path data: mutating or explicitly
+closing the original Racket path therefore cannot invalidate the measure.
+Measurement is contour-based and supports length, closed-state queries,
+position/tangent sampling, contour traversal, and segment extraction.
+
+```racket
+(with-skia ([p (make-path '((move 0 0) (line 100 0)))]
+            [m (make-path-measure p)])
+  (define-values (x y tx ty)
+    (path-measure-position+tangent m 25))
+  (printf "point=(~a,~a), tangent=(~a,~a)\n" x y tx ty))
+```
+
+Boolean operations return new owned paths: union, intersection, difference,
+xor, reverse difference, simplification, and conversion to winding fill.
 
 ## Paths and scoped state
 
@@ -255,10 +339,11 @@ row-major RGBA pixels, with straight alpha by default. Pass
 memory. Eight-bit premultiplication can lose color precision at low alpha;
 fully transparent RGB values are not preserved by a premultiplied surface.
 
-`current-skia-byte-limit` defaults to 256 MiB per checked buffer/surface size.
-It is **not** a process memory budget: encoding, snapshots, bridges, and copies
-may consume additional memory. Surfaces are not custodian-memory-accounted.
-Dimensions are restricted to 1 through 32768 on each axis.
+`current-skia-byte-limit` defaults to 256 MiB per checked buffer/surface or
+encoded-input/output size. It is **not** a process memory budget: decoding,
+encoding, snapshots, bridges, and copies may consume additional memory. Surfaces
+are not custodian-memory-accounted. Dimensions are restricted to 1 through
+32768 on each axis for public image resources.
 
 ## Interoperation with racket/draw
 
@@ -277,13 +362,13 @@ The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 
 ## Boundaries of this version
 
-No GPU/Metal/Vulkan support, text shaping/paragraph layout, filters, dashes,
-SVG/PDF output, encoded-image-file decoding, arbitrary matrix concat,
-shader-local matrices, source-rectangle cropping, font-manager/fallback API,
-or `dc<%>` compatibility is implemented. Image input is RGBA bytes or surface
-snapshots. Text is the
-low-level simple-text/glyph layer; complex-script shaping and bidirectional
-layout require a later text layer.
+No GPU/Metal/Vulkan support, text shaping/paragraph layout, image/color/mask
+filters, SVG/PDF output, arbitrary matrix concat, shader-local matrices,
+font-manager/fallback API, animation-frame decoding, orientation normalization,
+public color-space/codec objects, or `dc<%>` compatibility is implemented.
+Encoded image support is currently high-level single-image decode/probe plus
+PNG/JPEG/WebP encode. Text remains the low-level simple-text/glyph layer;
+complex-script shaping and bidirectional layout require a later text layer.
 
 Native resources are confined to the Racket thread that created them. The
 implementation rejects cross-thread drawing and explicit destruction.
@@ -302,7 +387,7 @@ private/types.rkt        exact native struct layouts
 private/lifetime.rkt     ownership cells and scoped cleanup
 private/core.rkt         drawing/resource implementation
 private/check.rkt        argument validation and option mapping
-examples/                circle, gallery, text, gradients, bitmap bridge
+examples/                circle, gallery, text, gradients, codecs, path effects, bitmap bridge
 tests/                  pure, lifetime, and live-rendering suites
 tools/                  explicit native installer and doctor
 docs/                   API reference and ABI/source notes

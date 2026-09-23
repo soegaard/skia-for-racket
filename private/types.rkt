@@ -12,8 +12,16 @@
   ([left _float] [top _float] [right _float] [bottom _float]))
 (define-cstruct _sk-point
   ([x _float] [y _float]))
+(define-cstruct _sk-irect
+  ([left _int32] [top _int32] [right _int32] [bottom _int32]))
 (define-cstruct _sk-png-options
   ([filter-flags _int] [zlib-level _int] [comments _pointer]
+   [icc-profile _pointer] [icc-description _pointer]))
+(define-cstruct _sk-jpeg-options
+  ([quality _int] [downsample _int] [alpha-option _int]
+   [xmp-metadata _pointer] [icc-profile _pointer] [icc-description _pointer]))
+(define-cstruct _sk-webp-options
+  ([compression _int] [quality _float]
    [icc-profile _pointer] [icc-description _pointer]))
 (define-cstruct _sk-sampling
   ([max-aniso _int] [use-cubic _stdbool]

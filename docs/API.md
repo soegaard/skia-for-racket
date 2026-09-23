@@ -1,4 +1,4 @@
-# API reference — version 0.3.0
+# API reference — version 0.5.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -91,9 +91,10 @@ resource management is provided. Every native resource may only be used or
 explicitly closed on its creating Racket thread. Type predicates, immutable
 metadata accessors, and `skia-closed?` do not access native memory.
 
-The byte limit guards requested surface/pixel sizes and copied encoded output,
-not total memory consumption or the encoder's internal allocations. Set it
-with `parameterize` before allocating or reading larger images.
+The byte limit guards requested surface/pixel sizes, encoded input, and copied
+encoded output, not total memory consumption or codec/encoder internal
+allocations. Set it with `parameterize` before allocating or reading larger
+images. Metadata probing itself does not allocate a decoded pixel buffer.
 
 ## Surfaces and PNG
 
@@ -135,10 +136,12 @@ The two pixel-output flags must be booleans.
             #:join [join 'miter]
             #:miter-limit [limit 4]
             #:blend-mode [mode 'src-over]
-            #:shader [shader-or-false #f])
+            #:shader [shader-or-false #f]
+            #:path-effect [path-effect-or-false #f])
 (paint-copy paint)
 (paint-color paint) ; rgba value
 (paint-shader paint) ; newly owned shader or #f
+(paint-path-effect paint) ; newly owned path effect or #f
 (paint-set-color! paint color)
 (paint-set-style! paint style)
 (paint-set-stroke-width! paint width)
@@ -148,6 +151,7 @@ The two pixel-output flags must be booleans.
 (paint-set-miter-limit! paint limit)
 (paint-set-blend-mode! paint mode)
 (paint-set-shader! paint shader-or-false)
+(paint-set-path-effect! paint path-effect-or-false)
 ```
 
 Styles: `'fill`, `'stroke`, `'stroke-and-fill`. Caps: `'butt`, `'round`,
@@ -155,11 +159,14 @@ Styles: `'fill`, `'stroke`, `'stroke-and-fill`. Caps: `'butt`, `'round`,
 stroke semantics, not an invisible stroke. The default is fill; request stroke
 explicitly when drawing open curves. `draw-line` uses line-stroke semantics.
 Paints are mutable; `paint-copy` creates an independently owned copy.
-A paint may hold a shader. The native paint retains its own shader reference,
-so the shader wrapper supplied to `make-paint` or `paint-set-shader!` may be
-closed immediately after the call. `paint-set-shader!` accepts `#f` to remove
-the shader. `paint-shader` returns `#f` or a **newly owned** shader wrapper;
-closing that wrapper does not change the paint.
+A paint may hold a shader and/or path effect. The native paint retains its own
+references, so wrappers supplied to `make-paint`, `paint-set-shader!`, or
+`paint-set-path-effect!` may be closed immediately after the call. The setters
+accept `#f` to remove the corresponding object. `paint-shader` and
+`paint-path-effect` each return `#f` or a **newly owned** wrapper; closing that
+wrapper does not change the paint. In the pinned m119 C shim, both getters
+already return owned references (`refShader().release()` and
+`refPathEffect().release()`), so the Racket wrapper does not add another ref.
 
 Blend modes:
 
@@ -239,6 +246,38 @@ destination and `b` as the source before applying multiply.
 This version deliberately has no public shader-local matrix API. Canvas
 transforms still affect drawing normally; a later matrix layer can expose
 Skia's local shader matrices without leaking the unsafe native struct.
+
+## Path effects
+
+```racket
+(path-effect? value)
+(make-dash-path-effect intervals [phase 0])
+(make-corner-path-effect radius)
+(make-discrete-path-effect segment-length deviation [seed 0])
+(make-trim-path-effect start stop #:mode [mode 'normal])
+(make-compose-path-effect outer inner)
+(make-sum-path-effect first second)
+```
+
+A path effect is an owned, reference-counted Skia resource. It is normally used
+with a stroke paint through `#:path-effect` or `paint-set-path-effect!`.
+`make-dash-path-effect` accepts a list or vector with an even number of
+nonnegative lengths, at least two entries, and not all zero. Zero entries are
+allowed; for example, round caps plus `(0 gap)` can produce dots. `phase` is a
+finite scalar.
+
+`make-corner-path-effect` requires a positive radius. The discrete effect
+requires a segment length greater than 1/4096, nonnegative deviation, and an
+optional 32-bit unsigned seed; a fixed seed makes Skia's perturbation deterministic for
+the same path. Trim positions are normalized contour fractions satisfying
+`0 <= start < stop <= 1`; mode is `'normal` or `'inverted`. The full normal
+span `(0,1)` is rejected because upstream represents it as no path effect (a
+no-op) rather than an allocated effect.
+
+Compose applies `inner` and then `outer`, following Skia's composition model.
+Sum evaluates both effects and combines their resulting geometry. Both
+constructors retain the native references they need, so the input wrappers may
+be closed after successful construction.
 
 ## Canvas state and transforms
 
@@ -330,6 +369,14 @@ Rectangles with excessively large corner radii use Skia's radius fitting.
 (path-contains? path x y)
 (path-fill-rule path)
 (path-set-fill-rule! path rule)
+(path-op path-a path-b operation)
+(path-union path-a path-b)
+(path-intersect path-a path-b)
+(path-difference path-a path-b)
+(path-xor path-a path-b)
+(path-reverse-difference path-a path-b)
+(path-simplify path)
+(path-as-winding path)
 ```
 
 The predicate is deliberately `skia-path?`, leaving Racket's filesystem
@@ -355,21 +402,66 @@ consider curve extrema. Neither reports the extent of a rendered stroke.
 Containment tests the filled path interior, not stroke-distance hit testing.
 For a list of bounds, use `(call-with-values (lambda () (path-bounds p)) list)`.
 
-## Images
+Boolean operations return newly owned paths and raise if Skia reports an
+operation failure. `path-op` accepts `'difference`, `'intersect`, `'union`,
+`'xor`, or `'reverse-difference`; the named helpers select those operations.
+`path-simplify` resolves self-intersections/overlaps according to Skia PathOps.
+`path-as-winding` returns equivalent filled geometry expressed with winding
+fill where the native conversion succeeds.
+
+## Path measurement
+
+```racket
+(path-measure? value)
+(make-path-measure path
+                   #:force-closed? [flag #f]
+                   #:res-scale [scale 1])
+(path-measure-set-path! measure path-or-false
+                        #:force-closed? [flag #f])
+(path-measure-length measure)
+(path-measure-closed? measure)
+(path-measure-position+tangent measure distance)
+  ; FOUR VALUES: x, y, tangent-x, tangent-y
+  ; all four are #f when the current contour has no measurable point
+(path-measure-segment measure start stop
+                      #:start-with-move-to? [flag #t])
+  ; -> newly owned skia-path? or #f if native extraction fails
+(path-measure-next-contour! measure) ; -> boolean
+```
+
+Measurements are contour-based. `path-measure-length`, `path-measure-closed?`,
+position/tangent queries, and segment extraction operate on the current contour;
+`path-measure-next-contour!` advances and returns `#t` while another contour
+exists. Distances are checked against the current contour: they must be
+nonnegative and at most its measured length. Segment extraction additionally
+requires `start < stop`.
+
+The public wrapper has **snapshot semantics**. Raw `SkPathMeasure` stores a
+pointer to path data rather than owning a ref-counted path. To prevent use after
+free through explicit Racket closure or later mutation, `make-path-measure`
+clones the source path into private native storage. `path-measure-set-path!`
+replaces that private snapshot atomically; passing `#f` clears the measure.
+Closing or mutating the original path therefore does not affect an existing
+measure. The private snapshot is destroyed immediately after the native
+measure, including GC fallback cleanup.
+
+`#:force-closed? #t` asks Skia to measure each open contour as though a closing
+segment were present. `#:res-scale` is a positive finite scalar controlling
+Skia's curve-measurement resolution; 1 is the native default.
+
+## Images and codecs
+
+### Image resources and raw pixels
 
 ```racket
 (image? value)
 (image-width image)
 (image-height image)
+(image-color-type image)
+(image-alpha-type image)
 (surface-snapshot surface)
 (rgba-bytes->image width height pixels #:premultiplied? [flag #f])
 (image->rgba-bytes image #:premultiplied? [flag #f])
-(draw-image canvas image x y
-            #:sampling [mode 'nearest]
-            #:paint [paint-or-false #f])
-(draw-image-rect canvas image x y width height
-                 #:sampling [mode 'linear]
-                 #:paint [paint-or-false #f])
 ```
 
 Images expose immutable pixel content but are owned resources that must be
@@ -378,11 +470,147 @@ RGBA input is copied, not borrowed, and must contain exactly `4*width*height`
 bytes in top-to-bottom row order. In premultiplied input every RGB channel must
 be at most alpha; invalid input is rejected. Output is copied as for surfaces.
 
-Sampling is `'nearest` or `'linear`. The first drawing function places an image
-at its natural size before the canvas transform. The second maps the **entire
-source image** to the destination rectangle; there is no source-crop parameter.
-The optional paint is passed to Skia for image compositing. A false paint
-selects native defaults. This version has no encoded PNG/JPEG loading API.
+`image-color-type` and `image-alpha-type` report Skia's native image metadata
+as symbols. Alpha types are `'unknown`, `'opaque`, `'premul`, or `'unpremul`.
+Color types currently mirror the pinned m119 enumeration, including
+`'rgba-8888`, `'bgra-8888`, `'gray-8`, `'rgba-f16`, `'rgba-f32`, and the other
+formats documented by Skia. These report the image's representation; use
+`image->rgba-bytes` when a normalized RGBA8888 copy is wanted.
+
+### Decode encoded images
+
+```racket
+(image-from-bytes encoded-bytes)
+(image-from-file path)
+(image-original-encoded-bytes image) ; -> bytes? or #f
+```
+
+`image-from-bytes` copies a nonempty encoded byte string into native immutable
+`SkData` and asks Skia to create a deferred image. `image-from-file` reads
+through Skia's native data API after checking that the path names a nonempty
+regular file. The resulting image owns all native state it needs; no pointer to
+Racket-managed byte storage is retained.
+
+The encoded input length is limited by `current-skia-byte-limit`. Decoded image
+dimensions must also satisfy the normal surface/image dimension and RGBA byte
+limits before a wrapper is returned. Codec availability is determined by the
+pinned native SkiaSharp build; PNG, JPEG, and WebP are exercised by this
+version's native regression tests.
+
+`image-original-encoded-bytes` asks Skia whether the image still retains its
+original encoded representation. It returns a fresh Racket byte string when
+one exists and `#f` otherwise. In particular, an image decoded by
+`image-from-bytes` normally retains the supplied encoded data, while raster
+images, snapshots, and transformed/subset images need not have such data.
+
+### Probe encoded image metadata
+
+```racket
+(encoded-image-info? value)
+(encoded-image-info-from-bytes encoded-bytes)
+(encoded-image-info-from-file path)
+(encoded-image-info-width info)
+(encoded-image-info-height info)
+(encoded-image-info-format info)
+(encoded-image-info-color-type info)
+(encoded-image-info-alpha-type info)
+(encoded-image-info-origin info)
+(encoded-image-info-frame-count info)
+```
+
+The probe constructors use Skia's codec header/metadata interface rather than
+materializing an `image?`. The returned `encoded-image-info` is an immutable
+Racket value and owns no native resource. Known format symbols in the pinned
+ABI are:
+
+```racket
+'bmp 'gif 'ico 'jpeg 'png 'wbmp 'webp 'pkm 'ktx
+'astc 'dng 'heif 'avif 'jpeg-xl
+```
+
+Encoded origins are `'top-left`, `'top-right`, `'bottom-right`, `'bottom-left`,
+`'left-top`, `'right-top`, `'right-bottom`, or `'left-bottom`. This API reports
+the encoded orientation; it does not itself normalize or rotate pixels.
+
+A subtle m119 ABI detail: `encoded-image-info-frame-count` reflects the size of
+Skia's frame-info vector. A non-animated codec can therefore report **0**, not
+1. Treat a positive value as available animation frame information rather than
+assuming that every still image has a one-frame count.
+
+### Encode images
+
+```racket
+(image->png-bytes image #:compression [level 6])
+(image->jpeg-bytes image
+                   #:quality [quality 90]
+                   #:downsample [mode 'yuv-420]
+                   #:alpha [mode 'ignore])
+(image->webp-bytes image
+                   #:quality [quality 90]
+                   #:lossless? [flag #f])
+
+(image->encoded-bytes image format
+                      #:quality [quality 90]
+                      #:png-compression [level 6]
+                      #:jpeg-downsample [mode 'yuv-420]
+                      #:jpeg-alpha [mode 'ignore]
+                      #:webp-lossless? [flag #f])
+
+(save-image image path format
+            #:exists [mode 'error]
+            #:quality [quality 90]
+            #:png-compression [level 6]
+            #:jpeg-downsample [mode 'yuv-420]
+            #:jpeg-alpha [mode 'ignore]
+            #:webp-lossless? [flag #f])
+```
+
+The supported output format symbols are `'png`, `'jpeg`, and `'webp`. Encoding
+first obtains a CPU raster representation and passes its borrowed pixmap to the
+corresponding native Skia encoder. The resulting native data is copied into a
+fresh Racket byte string before temporary streams/pixmaps are released.
+
+PNG compression is an exact integer 0 through 9 and uses all PNG filters. JPEG
+quality is an exact integer 0 through 100. JPEG downsampling is `'yuv-420`,
+`'yuv-422`, or `'yuv-444`; alpha handling is `'ignore` or `'blend-on-black`.
+WebP quality is any finite real from 0 through 100 and `#:lossless? #t` selects
+Skia's lossless WebP encoder mode. Options irrelevant to the selected generic
+format are ignored.
+
+`save-image` encodes completely before opening the destination, so an encoder
+failure cannot truncate an existing file. `#:exists` is `'error` or `'replace`,
+with the same behavior as `save-png`. Output filename extensions are not used
+to select a codec; the explicit `format` argument controls encoding.
+
+### Subsets and drawing
+
+```racket
+(image-subset image x y width height)
+
+(draw-image canvas image x y
+            #:sampling [mode 'nearest]
+            #:paint [paint-or-false #f])
+(draw-image-rect canvas image x y width height
+                 #:sampling [mode 'linear]
+                 #:paint [paint-or-false #f])
+(draw-image-subrect canvas image
+                    source-x source-y source-width source-height
+                    destination-x destination-y destination-width destination-height
+                    #:sampling [mode 'linear]
+                    #:paint [paint-or-false #f])
+```
+
+`image-subset` requires an exact-integer source rectangle with positive width
+and height fully inside the image. It returns a new owned immutable image.
+
+Sampling is `'nearest` or `'linear`. `draw-image` places the image at its
+natural size before the canvas transform. `draw-image-rect` maps the **entire
+source image** to the destination rectangle. `draw-image-subrect` instead maps
+the supplied source rectangle to the supplied destination rectangle without
+allocating an intermediate subset image. Source coordinates/extents for the
+drawing operation are finite nonnegative reals and must remain inside the
+image. The optional paint is passed to Skia for image compositing; `#f` requests
+native defaults.
 
 ## Typefaces, fonts, and simple text
 

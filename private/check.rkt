@@ -59,6 +59,35 @@
 (define clip-values (hasheq 'difference 0 'intersect 1))
 (define sampling-values (hasheq 'nearest 0 'linear 1))
 (define tile-mode-values (hasheq 'clamp 0 'repeat 1 'mirror 2 'decal 3))
+(define trim-path-effect-mode-values (hasheq 'normal 0 'inverted 1))
+(define path-op-values
+  (hasheq 'difference 0 'intersect 1 'union 2 'xor 3 'reverse-difference 4))
+
+;; Encoded image / codec values from the pinned SkiaSharp m119 ABI.
+(define encoded-format-values
+  (hasheq 'bmp 0 'gif 1 'ico 2 'jpeg 3 'png 4 'wbmp 5 'webp 6
+          'pkm 7 'ktx 8 'astc 9 'dng 10 'heif 11 'avif 12 'jpeg-xl 13))
+(define alpha-type-values
+  (hasheq 'unknown 0 'opaque 1 'premul 2 'unpremul 3))
+(define color-type-values
+  (hasheq 'unknown 0 'alpha-8 1 'rgb-565 2 'argb-4444 3
+          'rgba-8888 4 'rgb-888x 5 'bgra-8888 6
+          'rgba-1010102 7 'bgra-1010102 8
+          'rgb-101010x 9 'bgr-101010x 10 'bgr-101010x-xr 11
+          'rgba-10x6 12 'gray-8 13 'rgba-f16-norm 14 'rgba-f16 15
+          'rgba-f32 16 'r8g8-unorm 17 'a16-float 18 'r16g16-float 19
+          'a16-unorm 20 'r16g16-unorm 21 'r16g16b16a16-unorm 22
+          'srgba-8888 23 'r8-unorm 24))
+(define encoded-origin-values
+  (hasheq 'top-left 1 'top-right 2 'bottom-right 3 'bottom-left 4
+          'left-top 5 'right-top 6 'right-bottom 7 'left-bottom 8))
+(define jpeg-downsample-values
+  (hasheq 'yuv-420 0 'yuv-422 1 'yuv-444 2))
+(define jpeg-alpha-values
+  (hasheq 'ignore 0 'blend-on-black 1))
+(define webp-compression-values
+  (hasheq 'lossy 0 'lossless 1))
+
 (define blend-values
   (for/hasheq ([name (in-list
                     '(clear src dst src-over dst-over src-in dst-in
@@ -72,6 +101,56 @@
 (define (sampling who mode)
   (make-sk-sampling 0 #f 0.0 0.0
                     (choice who mode sampling-values) 0))
+
+(define (uint32 who value)
+  (unless (and (exact-integer? value) (<= 0 value #xffffffff))
+    (raise-argument-error who "exact integer from 0 through 4294967295" value))
+  value)
+
+(define (quality-integer who value)
+  (unless (and (exact-integer? value) (<= 0 value 100))
+    (raise-argument-error who "exact integer from 0 through 100" value))
+  value)
+
+(define (quality-scalar who value)
+  (define q (scalar who value))
+  (unless (<= 0.0 q 100.0)
+    (raise-argument-error who "finite real from 0 through 100" value))
+  q)
+
+(define (positive-encoded-bytes who value)
+  (unless (bytes? value) (raise-argument-error who "bytes?" value))
+  (define n (bytes-length value))
+  (unless (positive? n)
+    (raise-arguments-error who "encoded image data is empty" "bytes" value))
+  (unless (<= n (current-skia-byte-limit))
+    (raise-arguments-error who "encoded image data exceeds current-skia-byte-limit"
+                           "encoded bytes" n "limit" (current-skia-byte-limit)))
+  value)
+
+(define (exact-source-rectangle who x y w h image-width image-height)
+  (for ([v (in-list (list x y))])
+    (unless (exact-nonnegative-integer? v)
+      (raise-argument-error who "exact-nonnegative-integer? for source x/y" v)))
+  (for ([v (in-list (list w h))])
+    (unless (exact-positive-integer? v)
+      (raise-argument-error who "exact-positive-integer? for source width/height" v)))
+  (unless (and (<= (+ x w) image-width) (<= (+ y h) image-height))
+    (raise-arguments-error who "source rectangle lies outside the image"
+                           "source" (list x y w h)
+                           "image size" (list image-width image-height)))
+  (make-sk-irect x y (+ x w) (+ y h)))
+
+(define (source-rect who x y w h image-width image-height)
+  (define fx (nonnegative-scalar who x))
+  (define fy (nonnegative-scalar who y))
+  (define fw (nonnegative-scalar who w))
+  (define fh (nonnegative-scalar who h))
+  (unless (and (<= (+ fx fw) image-width) (<= (+ fy fh) image-height))
+    (raise-arguments-error who "source rectangle lies outside the image"
+                           "source" (list x y w h)
+                           "image size" (list image-width image-height)))
+  (make-sk-rect fx fy (+ fx fw) (+ fy fh)))
 
 ;; Fonts --------------------------------------------------------------------
 
