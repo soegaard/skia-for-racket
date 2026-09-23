@@ -1,0 +1,14 @@
+# Third-party components
+
+The source ZIP contains original Racket bindings and no native library or font
+files. The explicit installer downloads a SkiaSharp native-assets NuGet package.
+That package includes Skia and third-party components under their own licenses;
+the binding's MIT license does not replace those licenses.
+
+The installer retains the original `package.nupkg`, package metadata, source
+URL, and locally computed SHA-256 hashes under `native/<platform>/`.
+Review the upstream license and third-party notices before redistributing a
+bundle with native binaries. See `docs/SOURCES.md` for upstream repositories.
+
+The package is experimental and is not affiliated with, endorsed by, or an
+official binding of either the Skia or Racket projects.

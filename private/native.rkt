@@ -1,0 +1,254 @@
+#lang racket/base
+(require ffi/unsafe
+         racket/promise
+         racket/runtime-path
+         racket/path
+         "types.rkt")
+(provide native-package-version native-platform native-filename
+         skia-check! skia-available? skia-native-version skia-native-library-path)
+
+(define native-package-version "3.119.1")
+(define-runtime-path native-root "../native")
+
+(define (native-platform)
+  (case (system-type 'os)
+    [(macosx) "osx"]
+    [(unix)
+     (case (system-type 'arch)
+       [(x86_64) "linux-x64"]
+       [(aarch64) "linux-arm64"]
+       [else #f])]
+    [else #f]))
+
+(define (native-filename)
+  (if (eq? (system-type 'os) 'macosx)
+      "libSkiaSharp.dylib"
+      "libSkiaSharp.so"))
+
+;; Requiring or compiling the package does not load a native library.
+;; No network access occurs here. The explicit installer is separate.
+(define native-library
+  (delay/sync
+    (define override (getenv "RACKET_SKIA_LIBRARY"))
+    (define platform (native-platform))
+    (define candidates
+      (cond
+        [override (list (path->complete-path override))]
+        [platform
+         (list (build-path native-root platform (native-filename))
+               "libSkiaSharp")]
+        [else
+         (error 'skia
+                "unsupported automatic library selection for ~a/~a; set RACKET_SKIA_LIBRARY to a compatible library"
+                (system-type 'os) (system-type 'arch))]))
+    (define failures '())
+    (define found
+      (for/or ([candidate (in-list candidates)])
+        (with-handlers ([exn:fail?
+                         (lambda (e)
+                           (set! failures (cons (exn-message e) failures))
+                           #f)])
+          (define lib (ffi-lib candidate))
+          ;; Probe the version before calling functions with versioned structs.
+          (define milestone
+            ((get-ffi-obj "sk_version_get_milestone" lib (_fun -> _int))))
+          (unless (= milestone 119)
+            (error 'skia
+                   "incompatible native milestone ~a; this binding requires 119 (SkiaSharp ~a)"
+                   milestone native-package-version))
+          (cons lib candidate))))
+    (unless found
+      (error 'skia
+             (string-append
+              "could not load a compatible libSkiaSharp\n"
+              "  run: bash tools/install-native.sh\n"
+              "  or set RACKET_SKIA_LIBRARY to the full library filename\n"
+              "  native package: ~a\n  loader errors: ~a")
+             native-package-version (reverse failures)))
+    found))
+
+(define native-bindings '())
+(define-syntax-rule (define-native name signature)
+  (begin
+    (provide name)
+    (define delayed-procedure
+      (delay/sync
+        (get-ffi-obj 'name (car (force native-library)) signature)))
+    (set! native-bindings
+          (cons (cons 'name delayed-procedure) native-bindings))
+    (define (name . args) (apply (force delayed-procedure) args))))
+
+(define-native sk_version_get_milestone (_fun -> _int))
+(define-native sk_version_get_increment (_fun -> _int))
+
+;; Native-owned CPU surfaces. No Racket byte buffer is retained by Skia.
+(define-native sk_surface_new_raster
+  (_fun _sk-image-info-pointer _size _pointer -> _pointer))
+(define-native sk_surface_unref (_fun _pointer -> _void))
+(define-native sk_surface_get_canvas (_fun _pointer -> _pointer))
+(define-native sk_surface_new_image_snapshot (_fun _pointer -> _pointer))
+(define-native sk_surface_read_pixels
+  (_fun _pointer _sk-image-info-pointer _bytes _size _int _int -> _stdbool))
+(define-native sk_surface_peek_pixels (_fun _pointer _pointer -> _stdbool))
+
+(define-native sk_canvas_clear (_fun _pointer _uint32 -> _void))
+(define-native sk_canvas_save (_fun _pointer -> _int))
+(define-native sk_canvas_get_save_count (_fun _pointer -> _int))
+(define-native sk_canvas_restore (_fun _pointer -> _void))
+(define-native sk_canvas_restore_to_count (_fun _pointer _int -> _void))
+(define-native sk_canvas_translate (_fun _pointer _float _float -> _void))
+(define-native sk_canvas_scale (_fun _pointer _float _float -> _void))
+(define-native sk_canvas_rotate_degrees (_fun _pointer _float -> _void))
+(define-native sk_canvas_rotate_radians (_fun _pointer _float -> _void))
+(define-native sk_canvas_skew (_fun _pointer _float _float -> _void))
+(define-native sk_canvas_reset_matrix (_fun _pointer -> _void))
+(define-native sk_canvas_clip_rect_with_operation
+  (_fun _pointer _sk-rect-pointer _int _stdbool -> _void))
+(define-native sk_canvas_clip_path_with_operation
+  (_fun _pointer _pointer _int _stdbool -> _void))
+(define-native sk_canvas_draw_paint (_fun _pointer _pointer -> _void))
+(define-native sk_canvas_draw_line
+  (_fun _pointer _float _float _float _float _pointer -> _void))
+(define-native sk_canvas_draw_rect
+  (_fun _pointer _sk-rect-pointer _pointer -> _void))
+(define-native sk_canvas_draw_round_rect
+  (_fun _pointer _sk-rect-pointer _float _float _pointer -> _void))
+(define-native sk_canvas_draw_circle
+  (_fun _pointer _float _float _float _pointer -> _void))
+(define-native sk_canvas_draw_oval
+  (_fun _pointer _sk-rect-pointer _pointer -> _void))
+(define-native sk_canvas_draw_path (_fun _pointer _pointer _pointer -> _void))
+(define-native sk_canvas_draw_image
+  (_fun _pointer _pointer _float _float _sk-sampling-pointer _pointer -> _void))
+(define-native sk_canvas_draw_image_rect
+  (_fun _pointer _pointer _sk-rect-pointer _sk-rect-pointer
+        _sk-sampling-pointer _pointer -> _void))
+
+;; Simple text drawing.  The public API intentionally names this "simple"
+;; because this Skia entry point does not perform script shaping.
+(define-native sk_canvas_draw_simple_text
+  (_fun _pointer _bytes _size _int _float _float _pointer _pointer -> _void))
+
+(define-native sk_paint_new (_fun -> _pointer))
+(define-native sk_paint_clone (_fun _pointer -> _pointer))
+(define-native sk_paint_delete (_fun _pointer -> _void))
+(define-native sk_paint_set_antialias (_fun _pointer _stdbool -> _void))
+(define-native sk_paint_set_color (_fun _pointer _uint32 -> _void))
+(define-native sk_paint_get_color (_fun _pointer -> _uint32))
+(define-native sk_paint_set_style (_fun _pointer _int -> _void))
+(define-native sk_paint_set_stroke_width (_fun _pointer _float -> _void))
+(define-native sk_paint_set_stroke_miter (_fun _pointer _float -> _void))
+(define-native sk_paint_set_stroke_cap (_fun _pointer _int -> _void))
+(define-native sk_paint_set_stroke_join (_fun _pointer _int -> _void))
+(define-native sk_paint_set_blendmode (_fun _pointer _int -> _void))
+
+(define-native sk_path_new (_fun -> _pointer))
+(define-native sk_path_delete (_fun _pointer -> _void))
+(define-native sk_path_clone (_fun _pointer -> _pointer))
+(define-native sk_path_move_to (_fun _pointer _float _float -> _void))
+(define-native sk_path_line_to (_fun _pointer _float _float -> _void))
+(define-native sk_path_quad_to
+  (_fun _pointer _float _float _float _float -> _void))
+(define-native sk_path_cubic_to
+  (_fun _pointer _float _float _float _float _float _float -> _void))
+(define-native sk_path_close (_fun _pointer -> _void))
+(define-native sk_path_reset (_fun _pointer -> _void))
+(define-native sk_path_add_rect (_fun _pointer _sk-rect-pointer _int -> _void))
+(define-native sk_path_add_oval (_fun _pointer _sk-rect-pointer _int -> _void))
+(define-native sk_path_add_circle
+  (_fun _pointer _float _float _float _int -> _void))
+(define-native sk_path_get_bounds (_fun _pointer _sk-rect-pointer -> _void))
+(define-native sk_path_compute_tight_bounds
+  (_fun _pointer _sk-rect-pointer -> _void))
+(define-native sk_path_contains (_fun _pointer _float _float -> _stdbool))
+(define-native sk_path_get_filltype (_fun _pointer -> _int))
+(define-native sk_path_set_filltype (_fun _pointer _int -> _void))
+
+
+;; Typeface/font primitives --------------------------------------------------
+
+(define-native sk_typeface_create_default (_fun -> _pointer))
+(define-native sk_typeface_create_from_file (_fun _bytes _int -> _pointer))
+(define-native sk_typeface_create_from_name (_fun _bytes _pointer -> _pointer))
+(define-native sk_typeface_get_family_name (_fun _pointer -> _pointer))
+(define-native sk_typeface_get_font_slant (_fun _pointer -> _int))
+(define-native sk_typeface_get_font_weight (_fun _pointer -> _int))
+(define-native sk_typeface_get_font_width (_fun _pointer -> _int))
+(define-native sk_typeface_unref (_fun _pointer -> _void))
+
+(define-native sk_fontstyle_new (_fun _int _int _int -> _pointer))
+(define-native sk_fontstyle_delete (_fun _pointer -> _void))
+
+(define-native sk_font_new_with_values
+  (_fun _pointer _float _float _float -> _pointer))
+(define-native sk_font_delete (_fun _pointer -> _void))
+(define-native sk_font_get_size (_fun _pointer -> _float))
+(define-native sk_font_set_size (_fun _pointer _float -> _void))
+(define-native sk_font_get_scale_x (_fun _pointer -> _float))
+(define-native sk_font_set_scale_x (_fun _pointer _float -> _void))
+(define-native sk_font_get_skew_x (_fun _pointer -> _float))
+(define-native sk_font_set_skew_x (_fun _pointer _float -> _void))
+(define-native sk_font_get_edging (_fun _pointer -> _int))
+(define-native sk_font_set_edging (_fun _pointer _int -> _void))
+(define-native sk_font_get_hinting (_fun _pointer -> _int))
+(define-native sk_font_set_hinting (_fun _pointer _int -> _void))
+(define-native sk_font_is_subpixel (_fun _pointer -> _stdbool))
+(define-native sk_font_set_subpixel (_fun _pointer _stdbool -> _void))
+(define-native sk_font_is_linear_metrics (_fun _pointer -> _stdbool))
+(define-native sk_font_set_linear_metrics (_fun _pointer _stdbool -> _void))
+(define-native sk_font_is_embolden (_fun _pointer -> _stdbool))
+(define-native sk_font_set_embolden (_fun _pointer _stdbool -> _void))
+(define-native sk_font_get_metrics
+  (_fun _pointer _sk-font-metrics-pointer -> _float))
+(define-native sk_font_measure_text
+  (_fun _pointer _bytes _size _int _sk-rect-pointer _pointer -> _float))
+(define-native sk_font_text_to_glyphs
+  (_fun _pointer _bytes _size _int _pointer _int -> _int))
+(define-native sk_font_unichar_to_glyph
+  (_fun _pointer _int32 -> _uint16))
+(define-native sk_font_get_path
+  (_fun _pointer _uint16 _pointer -> _stdbool))
+(define-native sk_text_utils_get_path
+  (_fun _bytes _size _int _float _float _pointer _pointer -> _void))
+
+(define-native sk_string_destructor (_fun _pointer -> _void))
+(define-native sk_string_get_c_str (_fun _pointer -> _pointer))
+(define-native sk_string_get_size (_fun _pointer -> _size))
+
+(define-native sk_image_unref (_fun _pointer -> _void))
+(define-native sk_image_new_raster_copy
+  (_fun _sk-image-info-pointer _bytes _size -> _pointer))
+(define-native sk_image_read_pixels
+  (_fun _pointer _sk-image-info-pointer _bytes _size _int _int _int -> _stdbool))
+
+;; Native PNG encoder; no dependency on racket/draw's encoder.
+(define-native sk_pixmap_new (_fun -> _pointer))
+(define-native sk_pixmap_destructor (_fun _pointer -> _void))
+(define-native sk_dynamicmemorywstream_new (_fun -> _pointer))
+(define-native sk_dynamicmemorywstream_destroy (_fun _pointer -> _void))
+(define-native sk_dynamicmemorywstream_detach_as_data (_fun _pointer -> _pointer))
+(define-native sk_pngencoder_encode
+  (_fun _pointer _pointer _sk-png-options-pointer -> _stdbool))
+(define-native sk_data_get_size (_fun _pointer -> _size))
+(define-native sk_data_get_data (_fun _pointer -> _pointer))
+(define-native sk_data_unref (_fun _pointer -> _void))
+
+;; Pre-resolve *all* callouts before allocating objects. Destructors then
+;; never need a first-time library lookup while a finalizer is running.
+(define native-ready
+  (delay/sync
+    (force native-library)
+    (for ([entry (in-list (reverse native-bindings))])
+      (force (cdr entry)))
+    #t))
+
+(define (skia-check!) (force native-ready) (void))
+(define (skia-available?)
+  (with-handlers ([exn:fail? (lambda (_) #f)])
+    (skia-check!) #t))
+(define (skia-native-version)
+  (skia-check!)
+  (format "~a.~a" (sk_version_get_milestone) (sk_version_get_increment)))
+(define (skia-native-library-path)
+  (skia-check!)
+  (cdr (force native-library)))

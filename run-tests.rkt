@@ -1,0 +1,23 @@
+#lang racket/base
+(require racket/cmdline racket/runtime-path rackunit/text-ui
+         "main.rkt" "tests/pure-test.rkt" "tests/lifetime-test.rkt")
+
+(define-runtime-path native-tests-file "tests/native-test.rkt")
+
+(module+ main
+  (define pure-only? #f)
+  (command-line
+   #:program "racket run-tests.rkt"
+   #:once-each
+   [("--pure") "Run only tests that do not load libSkiaSharp"
+                 (set! pure-only? #t)]
+   #:args () (void))
+  (define failures (+ (run-tests pure-tests) (run-tests lifetime-tests)))
+  (cond
+    [pure-only? (displayln "Native rendering tests NOT RUN (--pure).")]
+    [else
+     ;; A missing/incompatible library is a failure, not a silently skipped test.
+     (skia-check!)
+     (set! failures
+           (+ failures (run-tests (dynamic-require native-tests-file 'native-tests))))])
+  (exit (if (zero? failures) 0 1)))
