@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 — 2026-09-23
+
+Adds the first standalone shader layer: owned `shader?` resources, color
+shaders, linear/radial/sweep/two-point-conical gradients, tiled image shaders,
+blend shaders, and shader attachment/querying on paints. Gradient stops accept
+lists or vectors with optional explicit positions and all four Skia tile modes.
+The implementation keeps the unsafe C ABI private and promotes borrowed paint
+shader pointers to owned references before exposing them to Racket.
+
+The doctor, ABI checks, native regression suite, API reference, and a new
+`examples/gradients.rkt` visual smoke test are extended for the feature. The
+0.3 source can be statically checked in the authoring environment, but its new
+native shader calls still require the local Racket/libSkiaSharp test run before
+0.3 is considered live validated.
+
 ## 0.2.0 — 2026-09-23
 
 Adds the first standalone font and text layer: default, family, and file-backed

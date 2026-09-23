@@ -13,6 +13,7 @@ typedef struct {
     int color_type, alpha_type;
 } image_info;
 typedef struct { float left, top, right, bottom; } rect;
+typedef struct { float x, y; } point;
 typedef struct {
     int max_aniso;
     bool use_cubic;
@@ -38,6 +39,8 @@ _Static_assert(sizeof(bool) == 1, "one-byte C bool required");
 _Static_assert(sizeof(image_info) == sizeof(void *) + 16, "image-info layout");
 _Static_assert(offsetof(image_info, width) == sizeof(void *), "width offset");
 _Static_assert(sizeof(rect) == 16, "rectangle layout");
+_Static_assert(sizeof(point) == 8, "point layout");
+_Static_assert(offsetof(point, y) == 4, "point y offset");
 _Static_assert(sizeof(sampling) == 24, "sampling layout");
 _Static_assert(offsetof(sampling, cubic_b) == 8, "sampling padding");
 _Static_assert(offsetof(sampling, filter) == 16, "filter offset");
@@ -49,8 +52,8 @@ _Static_assert(offsetof(font_metrics, cap_height) == 44, "font-metrics cap-heigh
 _Static_assert(offsetof(font_metrics, underline_thickness) == 48, "font-metrics underline offset");
 _Static_assert(offsetof(font_metrics, strikeout_position) == 60, "font-metrics strikeout offset");
 int main(void) {
-    printf("host C: image-info=%zu rect=%zu sampling=%zu png-options=%zu font-metrics=%zu\n",
-           sizeof(image_info), sizeof(rect), sizeof(sampling), sizeof(png_options), sizeof(font_metrics));
+    printf("host C: image-info=%zu rect=%zu point=%zu sampling=%zu png-options=%zu font-metrics=%zu\n",
+           sizeof(image_info), sizeof(rect), sizeof(point), sizeof(sampling), sizeof(png_options), sizeof(font_metrics));
     puts("Layout assertions passed; no Skia or Racket code was executed.");
     return 0;
 }

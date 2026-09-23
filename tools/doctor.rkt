@@ -4,9 +4,9 @@
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
   (printf "Pinned native package: SkiaSharp ~a\n" native-package-version)
-  (printf "ABI sizes: pointer=~a image-info=~a rect=~a sampling=~a PNG-options=~a font-metrics=~a\n"
+  (printf "ABI sizes: pointer=~a image-info=~a rect=~a point=~a sampling=~a PNG-options=~a font-metrics=~a\n"
           (ctype-sizeof _pointer) (ctype-sizeof _sk-image-info)
-          (ctype-sizeof _sk-rect) (ctype-sizeof _sk-sampling)
+          (ctype-sizeof _sk-rect) (ctype-sizeof _sk-point) (ctype-sizeof _sk-sampling)
           (ctype-sizeof _sk-png-options) (ctype-sizeof _sk-font-metrics))
   (skia-check!)
   (printf "Native library: ~a\n" (skia-native-library-path))
@@ -22,4 +22,14 @@
     (unless (> width 0)
       (error 'doctor "simple text measurement failed"))
     (printf "Font/text passed; default family: ~s; \"Skia\" advance: ~a\n"
-            (typeface-family-name tf) width)))
+            (typeface-family-name tf) width))
+  (with-skia ([s (make-surface 21 1)]
+              [sh (make-linear-gradient-shader 0 0 20 0 '(red blue))]
+              [p (make-paint #:shader sh)])
+    (draw-paint (surface-canvas s) p)
+    (define left (surface-pixel s 1 0))
+    (define right (surface-pixel s 19 0))
+    (unless (and (> (rgba-red left) (rgba-blue left))
+                 (> (rgba-blue right) (rgba-red right)))
+      (error 'doctor "gradient shader rasterization failed"))
+    (printf "Shaders/gradients passed; linear endpoint dominance verified\n")))

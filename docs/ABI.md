@@ -25,6 +25,7 @@ Racket `_stdbool` (one byte), not an int-sized `_bool`.
 |---|---|---:|
 | Image info | color-space pointer, int32 width, int32 height, int color type, int alpha type | 24 |
 | Rectangle | float left, top, right, bottom | 16 |
+| Point | float x, y | 8 |
 | Sampling options | int max-anisotropy, bool use-cubic, padding, float B, float C, int filter, int mipmap | 24 |
 | PNG options | int filter flags, int compression, comments pointer, ICC-profile pointer, ICC-description pointer | 32 |
 | Font metrics | uint32 flags, then 15 floats from top through strikeout position | 64 |
@@ -34,6 +35,11 @@ options declaration would be unsafe with this API; the native encoder reads
 the later fields. Sampling fields are initialized even when cubic filtering
 and mipmaps are disabled. Surface creation explicitly selects RGBA8888 rather
 than relying on platform-dependent native color ordering.
+
+`sk_point_t` is two adjacent C floats. Linear gradients pass two points as four
+contiguous floats; radial, sweep, and conical constructors use the corresponding
+8-byte point structure. Tile modes are the pinned native values clamp=0,
+repeat=1, mirror=2, decal=3.
 
 The font-metrics flags are copied as a 32-bit mask. The four decoration fields
 (underline thickness/position and strikeout thickness/position) are exposed to
@@ -52,7 +58,8 @@ validating Racket's actual FFI declaration.
 |---|---|---|
 | Surface | `sk_surface_unref` | One owned reference |
 | Canvas from a surface | None | Borrowed; surface wrapper retained |
-| Paint | `sk_paint_delete` | Native-owned object |
+| Paint | `sk_paint_delete` | Native-owned object; retains an attached shader |
+| Shader | `sk_shader_unref` | One owned reference |
 | Path | `sk_path_delete` | Native-owned object |
 | Image/snapshot | `sk_image_unref` | One owned reference |
 | Typeface | `sk_typeface_unref` | One owned reference |
@@ -81,6 +88,15 @@ constructor. Pixel readback and encoded output are copied into normal Racket
 byte strings. `make-sized-byte-string` is not used because it is not supported
 by Racket CS. The bridge to `bitmap%` also copies.
 
+Gradient colors and optional positions are copied into temporary atomic native
+arrays for one synchronous FFI call. Skia constructs immutable shader state before
+the call returns; no shader retains those array pointers. Image shaders and blend
+shaders retain their native image/shader dependencies internally. `sk_paint_get_shader`
+returns a borrowed pointer, so the public `paint-shader` operation calls
+`sk_shader_ref` before creating an owned Racket wrapper. Setting a shader on a
+paint gives the paint its own native reference; closing the caller's shader wrapper
+therefore does not invalidate the paint.
+
 Typeface family names are copied out of temporary native `sk_string_t` objects
 before those strings are destroyed. Text is encoded into temporary Racket UTF-8
 bytes and consumed synchronously. Glyph arrays are allocated only for the
@@ -99,8 +115,9 @@ caller may close its typeface wrapper after successful font construction.
 No native-to-Racket callbacks, custom streams invoking Racket callbacks,
 retained client pixel buffers, GPU contexts, arbitrary user native pointers,
 C++ exceptions, font-manager/fallback abstraction, shaping engine, bidi
-reordering, or paragraph layout enter this binding. Version 0.2 exposes only
-the low-level typeface/font/simple-text/glyph layer.
+reordering, paragraph layout, or public shader-local matrices enter this
+binding. Version 0.3 adds reference-counted shaders and the CPU gradient/image
+shader constructors without widening those boundaries.
 Normal C library failures are converted to Racket exceptions where the ABI
 provides failure results; a native crash/abort cannot be caught as an ordinary
 Racket exception by this wrapper.

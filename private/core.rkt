@@ -17,10 +17,14 @@
          canvas-clip-rect! canvas-clip-path!
          draw-paint draw-line draw-rect draw-rounded-rect draw-circle draw-oval
          draw-path draw-polygon
-         paint? make-paint paint-copy paint-color
+         paint? make-paint paint-copy paint-color paint-shader
          paint-set-color! paint-set-style! paint-set-stroke-width!
          paint-set-antialias! paint-set-cap! paint-set-join!
-         paint-set-miter-limit! paint-set-blend-mode!
+         paint-set-miter-limit! paint-set-blend-mode! paint-set-shader!
+         shader? make-color-shader make-linear-gradient-shader
+         make-radial-gradient-shader make-sweep-gradient-shader
+         make-two-point-conical-gradient-shader make-image-shader
+         make-blend-shader
          skia-path? make-path path-copy path-move-to! path-line-to!
          path-quad-to! path-cubic-to! path-close! path-reset!
          path-add-rect! path-add-oval! path-add-circle!
@@ -52,6 +56,7 @@
 ;; The surface, not a separately finalized canvas pointer, owns the canvas.
 (struct canvas (surface) #:constructor-name make-canvas-record)
 (struct paint (handle) #:constructor-name make-paint-record)
+(struct shader (handle) #:constructor-name make-shader-record)
 (struct skia-path (handle) #:constructor-name make-path-record)
 (struct image (handle width height) #:constructor-name make-image-record)
 (struct typeface (handle) #:constructor-name make-typeface-record)
@@ -67,12 +72,13 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (surface? v) (paint? v) (skia-path? v) (image? v)
+  (or (surface? v) (paint? v) (shader? v) (skia-path? v) (image? v)
       (typeface? v) (font? v)))
 
 (define (resource-handle who v)
   (cond [(surface? v) (surface-handle v)]
         [(paint? v) (paint-handle v)]
+        [(shader? v) (shader-handle v)]
         [(skia-path? v) (skia-path-handle v)]
         [(image? v) (image-handle v)]
         [(typeface? v) (typeface-handle v)]
@@ -111,6 +117,7 @@
   (accessor v))
 (define (surface-h who v) (typed-handle who v surface? surface-handle "surface?"))
 (define (paint-h who v) (typed-handle who v paint? paint-handle "paint?"))
+(define (shader-h who v) (typed-handle who v shader? shader-handle "shader?"))
 (define (path-h who v) (typed-handle who v skia-path? skia-path-handle "skia-path?"))
 (define (image-h who v) (typed-handle who v image? image-handle "image?"))
 (define (typeface-h who v) (typed-handle who v typeface? typeface-handle "typeface?"))
@@ -247,7 +254,8 @@
                     #:cap [cap 'butt]
                     #:join [join 'miter]
                     #:miter-limit [miter 4]
-                    #:blend-mode [blend 'src-over])
+                    #:blend-mode [blend 'src-over]
+                    #:shader [sh #f])
   ;; Validate every option before allocating native state.
   (define col (color->argb color))
   (define sty (choice 'make-paint style style-values))
@@ -257,14 +265,17 @@
   (define jo (choice 'make-paint join join-values))
   (define mi (nonnegative-scalar 'make-paint miter))
   (define bl (choice 'make-paint blend blend-values))
+  (unless (or (not sh) (shader? sh))
+    (raise-argument-error 'make-paint "(or/c #f shader?)" sh))
+  (define sh-hnd (and sh (shader-h 'make-paint sh)))
   (skia-check!)
   (define hnd (new-owned 'make-paint 'paint sk_paint_new sk_paint_delete))
   (initialize-resource
    (make-paint-record hnd)
    (lambda (_)
      (call-with-owned
-      'make-paint (list hnd)
-      (lambda (p)
+      'make-paint (if sh-hnd (list hnd sh-hnd) (list hnd))
+      (lambda (p . shader-pointers)
         (sk_paint_set_color p col)
         (sk_paint_set_style p sty)
         (sk_paint_set_stroke_width p wid)
@@ -272,7 +283,8 @@
         (sk_paint_set_stroke_cap p ca)
         (sk_paint_set_stroke_join p jo)
         (sk_paint_set_stroke_miter p mi)
-        (sk_paint_set_blendmode p bl))))))
+        (sk_paint_set_blendmode p bl)
+        (when sh-hnd (sk_paint_set_shader p (car shader-pointers))))))))
 
 (define (paint-copy p)
   (call-with-owned 'paint-copy (list (paint-h 'paint-copy p))
@@ -283,6 +295,20 @@
 (define (paint-color p)
   (color->rgba
    (call-with-owned 'paint-color (list (paint-h 'paint-color p)) sk_paint_get_color)))
+
+(define (paint-shader p)
+  (define who 'paint-shader)
+  (call-with-owned
+   who (list (paint-h who p))
+   (lambda (pp)
+     ;; sk_paint_get_shader returns a borrowed pointer. Convert it to one owned
+     ;; reference before the paint leaves this protected call.
+     (define sp (sk_paint_get_shader pp))
+     (and sp
+          (begin
+            (sk_shader_ref sp)
+            (make-shader-record
+             (new-owned who 'shader (lambda () sp) sk_shader_unref)))))))
 
 (define (set-paint-value! who p value native-setter)
   (call-with-owned who (list (paint-h who p))
@@ -310,6 +336,197 @@
 (define (paint-set-blend-mode! p v)
   (set-paint-value! 'paint-set-blend-mode! p
                     (choice 'paint-set-blend-mode! v blend-values) sk_paint_set_blendmode))
+
+(define (paint-set-shader! p sh)
+  (define who 'paint-set-shader!)
+  (unless (or (not sh) (shader? sh))
+    (raise-argument-error who "(or/c #f shader?)" sh))
+  (cond
+    [sh
+     (call-with-owned who (list (paint-h who p) (shader-h who sh))
+       (lambda (pp sp) (sk_paint_set_shader pp sp)))]
+    [else
+     (call-with-owned who (list (paint-h who p))
+       (lambda (pp) (sk_paint_set_shader pp #f)))]))
+
+;; Shaders and gradients ----------------------------------------------------
+
+(define (gradient-sequence who value description)
+  (cond [(list? value) value]
+        [(vector? value) (vector->list value)]
+        [else (raise-argument-error who description value)]))
+
+(define (checked-gradient-stops who colors positions)
+  (define color-list
+    (gradient-sequence who colors "(or/c list? vector?) for gradient colors"))
+  (unless (>= (length color-list) 2)
+    (raise-arguments-error who "a gradient requires at least two colors"
+                           "colors" colors))
+  (define packed-colors (for/list ([c (in-list color-list)]) (color->argb c)))
+  (define position-list
+    (and positions
+         (gradient-sequence who positions
+                            "(or/c #f list? vector?) for gradient positions")))
+  (when (and position-list (not (= (length position-list) (length color-list))))
+    (raise-arguments-error who "colors and positions must have the same length"
+                           "color count" (length color-list)
+                           "position count" (length position-list)))
+  (define checked-positions
+    (and position-list
+         (for/list ([pos (in-list position-list)])
+           (define f (scalar who pos))
+           (unless (<= 0.0 f 1.0)
+             (raise-arguments-error who "gradient positions must be between 0 and 1"
+                                    "position" pos))
+           f)))
+  (when checked-positions
+    (for ([a (in-list checked-positions)]
+          [b (in-list (cdr checked-positions))])
+      (when (> a b)
+        (raise-arguments-error who "gradient positions must be nondecreasing"
+                               "positions" positions))))
+  (define native-bytes
+    (* 4 (+ (length packed-colors)
+            (if checked-positions (length checked-positions) 0))))
+  (unless (<= native-bytes (current-skia-byte-limit))
+    (raise-arguments-error who "gradient stop arrays exceed current-skia-byte-limit"
+                           "required native bytes" native-bytes
+                           "limit" (current-skia-byte-limit)))
+  (values packed-colors checked-positions))
+
+(define (native-array values type)
+  (define out (malloc (length values) type 'atomic))
+  (for ([v (in-list values)] [i (in-naturals)])
+    (ptr-set! out type i v))
+  out)
+
+(define (gradient-native-arrays colors positions)
+  (values (native-array colors _uint32)
+          (and positions (native-array positions _float))))
+
+(define (new-shader who create)
+  (skia-check!)
+  (make-shader-record (new-owned who 'shader create sk_shader_unref)))
+
+(define (make-color-shader color)
+  (define argb (color->argb color))
+  (new-shader 'make-color-shader (lambda () (sk_shader_new_color argb))))
+
+(define (make-linear-gradient-shader x0 y0 x1 y1 colors
+                                     #:positions [positions #f]
+                                     #:tile-mode [tile-mode 'clamp])
+  (define who 'make-linear-gradient-shader)
+  (define fx0 (scalar who x0))
+  (define fy0 (scalar who y0))
+  (define fx1 (scalar who x1))
+  (define fy1 (scalar who y1))
+  (when (and (= fx0 fx1) (= fy0 fy1))
+    (raise-arguments-error who "gradient endpoints must be distinct"
+                           "start" (list x0 y0) "end" (list x1 y1)))
+  (define tile (choice who tile-mode tile-mode-values))
+  (define-values (packed pos) (checked-gradient-stops who colors positions))
+  ;; sk_point_t is exactly two floats; two points are therefore four
+  ;; contiguous floats at this ABI boundary.
+  (define points (native-array (list fx0 fy0 fx1 fy1) _float))
+  (define-values (native-colors native-pos) (gradient-native-arrays packed pos))
+  (new-shader
+   who
+   (lambda ()
+     (sk_shader_new_linear_gradient points native-colors native-pos
+                                    (length packed) tile #f))))
+
+(define (make-radial-gradient-shader cx cy radius colors
+                                     #:positions [positions #f]
+                                     #:tile-mode [tile-mode 'clamp])
+  (define who 'make-radial-gradient-shader)
+  (define center (make-sk-point (scalar who cx) (scalar who cy)))
+  (define r (positive-scalar who radius))
+  (define tile (choice who tile-mode tile-mode-values))
+  (define-values (packed pos) (checked-gradient-stops who colors positions))
+  (define-values (native-colors native-pos) (gradient-native-arrays packed pos))
+  (new-shader
+   who
+   (lambda ()
+     (sk_shader_new_radial_gradient center r native-colors native-pos
+                                    (length packed) tile #f))))
+
+(define (make-sweep-gradient-shader cx cy colors
+                                    #:positions [positions #f]
+                                    #:tile-mode [tile-mode 'clamp]
+                                    #:start-angle [start-angle 0]
+                                    #:end-angle [end-angle 360])
+  (define who 'make-sweep-gradient-shader)
+  (define center (make-sk-point (scalar who cx) (scalar who cy)))
+  (define start (scalar who start-angle))
+  (define end (scalar who end-angle))
+  (unless (< start end)
+    (raise-arguments-error who "start angle must be less than end angle"
+                           "start-angle" start-angle "end-angle" end-angle))
+  (define tile (choice who tile-mode tile-mode-values))
+  (define-values (packed pos) (checked-gradient-stops who colors positions))
+  (define-values (native-colors native-pos) (gradient-native-arrays packed pos))
+  (new-shader
+   who
+   (lambda ()
+     (sk_shader_new_sweep_gradient center native-colors native-pos
+                                   (length packed) tile start end #f))))
+
+(define (make-two-point-conical-gradient-shader x0 y0 radius0 x1 y1 radius1 colors
+                                                #:positions [positions #f]
+                                                #:tile-mode [tile-mode 'clamp])
+  (define who 'make-two-point-conical-gradient-shader)
+  (define fx0 (scalar who x0))
+  (define fy0 (scalar who y0))
+  (define fx1 (scalar who x1))
+  (define fy1 (scalar who y1))
+  (define r0 (nonnegative-scalar who radius0))
+  (define r1 (nonnegative-scalar who radius1))
+  (when (and (= fx0 fx1) (= fy0 fy1) (= r0 r1))
+    (raise-arguments-error who "the two gradient circles must differ"
+                           "first circle" (list x0 y0 radius0)
+                           "second circle" (list x1 y1 radius1)))
+  (define start (make-sk-point fx0 fy0))
+  (define end (make-sk-point fx1 fy1))
+  (define tile (choice who tile-mode tile-mode-values))
+  (define-values (packed pos) (checked-gradient-stops who colors positions))
+  (define-values (native-colors native-pos) (gradient-native-arrays packed pos))
+  (new-shader
+   who
+   (lambda ()
+     (sk_shader_new_two_point_conical_gradient
+      start r0 end r1 native-colors native-pos (length packed) tile #f))))
+
+(define (make-image-shader im
+                           #:tile-x [tile-x 'clamp]
+                           #:tile-y [tile-y 'clamp]
+                           #:sampling [mode 'nearest])
+  (define who 'make-image-shader)
+  (define ih (image-h who im))
+  (define tx (choice who tile-x tile-mode-values))
+  (define ty (choice who tile-y tile-mode-values))
+  (define smp (sampling who mode))
+  (skia-check!)
+  (call-with-owned
+   who (list ih)
+   (lambda (ip)
+     (make-shader-record
+      (new-owned who 'shader
+                 (lambda () (sk_image_make_shader ip tx ty smp #f))
+                 sk_shader_unref)))))
+
+(define (make-blend-shader mode destination source)
+  (define who 'make-blend-shader)
+  (define blend (choice who mode blend-values))
+  (define dh (shader-h who destination))
+  (define sh (shader-h who source))
+  (skia-check!)
+  (call-with-owned
+   who (list dh sh)
+   (lambda (dp sp)
+     (make-shader-record
+      (new-owned who 'shader
+                 (lambda () (sk_shader_new_blend blend dp sp))
+                 sk_shader_unref)))))
 
 ;; Canvas state -------------------------------------------------------------
 

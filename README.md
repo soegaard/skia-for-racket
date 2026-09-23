@@ -1,4 +1,4 @@
-# Racket Skia — 0.2.0
+# Racket Skia — 0.3.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
@@ -6,11 +6,11 @@ Racket-level and keeps the unsafe ABI layer private.
 
 **Verification status:** the 0.1 drawing/image baseline was live-validated on
 macOS/aarch64 with Racket 9.3.0.2: the doctor passed, all 57 source test cases
-passed, and all three original examples rendered correctly. Version 0.2 adds
-font and simple-text support. Those new paths were source/ABI checked in the
-authoring environment, but could not be executed there because Racket and the
-native library were unavailable. Run the included doctor and 69-case suite
-locally before treating 0.2 as validated. See [TESTING.md](TESTING.md).
+passed, and all three original examples rendered correctly. The 0.2 text
+example has since rendered successfully on that setup. Version 0.3 adds shaders
+and gradients; those new native calls were source/ABI checked in the authoring
+environment but still require the included local doctor and 77-case suite
+before 0.3 is considered live validated. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -20,8 +20,9 @@ quadratic and cubic Bézier paths; paint settings and blend modes; path bounds
 and containment; immutable image snapshots and copied RGBA input; image
 placement/scaling; native PNG encoding; default/family/file-backed typefaces;
 configurable fonts and metrics; UTF-8 simple-text drawing/measurement; glyph
-IDs and text/glyph outline paths; explicit/scoped resource cleanup and GC
-fallback. An optional module copies pixels into a Racket `bitmap%`.
+IDs and text/glyph outline paths; owned shaders; color, linear, radial, sweep,
+and conical gradients; image tiling; shader blending; explicit/scoped resource
+cleanup and GC fallback. An optional module copies pixels into a Racket `bitmap%`.
 
 The unsafe ABI layer is private. Public resource wrappers do not expose raw
 pointers. The source distribution contains no native binary or font files.
@@ -31,7 +32,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.2.0-20260923
+cd racket-skia-0.3.0-20260923
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -44,6 +45,7 @@ mkdir -p output &&
 "$RACKET" examples/circle.rkt output/circle.png &&
 "$RACKET" examples/gallery.rkt output/gallery.png &&
 "$RACKET" examples/text.rkt output/text.png &&
+"$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
@@ -189,6 +191,29 @@ an optional collection index. `font-glyph-path` and `simple-text-path` expose
 Skia's glyph outlines as ordinary owned `skia-path?` values. See the API
 reference for ownership, metrics, and accepted style names.
 
+## Shaders and gradients
+
+Version 0.3 adds reference-counted shader resources and attaches them to ordinary
+paints. The basic gradient API is intentionally Racket-level rather than a raw
+C-array interface:
+
+```racket
+(with-skia ([s (make-surface 640 240 #:background 'white)]
+            [gradient (make-linear-gradient-shader
+                       40 0 600 0 '("#326DE6" "#16A598" "#F38C42")
+                       #:positions '(0 1/2 1))]
+            [paint (make-paint #:shader gradient)])
+  (draw-rounded-rect (surface-canvas s) 40 40 560 160 24 24 paint)
+  (save-png s "gradient.png"))
+```
+
+Tile modes are `'clamp`, `'repeat`, `'mirror`, and `'decal`. Image shaders can
+tile an `image?` independently on x and y; blend shaders combine two shader
+outputs using the same blend-mode names as paints. The native paint/shader
+relationship is reference counted, so closing the supplied shader wrapper does
+not invalidate a paint that already retained it. Shader-local matrices are not
+yet public API.
+
 ## Paths and scoped state
 
 ```racket
@@ -252,10 +277,11 @@ The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 
 ## Boundaries of this version
 
-No GPU/Metal/Vulkan support, text shaping/paragraph layout, gradients, filters,
-dashes, SVG/PDF output, encoded-image-file decoding, arbitrary matrix concat,
-source-rectangle cropping, font-manager/fallback API, or `dc<%>` compatibility
-is implemented. Image input is RGBA bytes or surface snapshots. Text is the
+No GPU/Metal/Vulkan support, text shaping/paragraph layout, filters, dashes,
+SVG/PDF output, encoded-image-file decoding, arbitrary matrix concat,
+shader-local matrices, source-rectangle cropping, font-manager/fallback API,
+or `dc<%>` compatibility is implemented. Image input is RGBA bytes or surface
+snapshots. Text is the
 low-level simple-text/glyph layer; complex-script shaping and bidirectional
 layout require a later text layer.
 
@@ -276,7 +302,7 @@ private/types.rkt        exact native struct layouts
 private/lifetime.rkt     ownership cells and scoped cleanup
 private/core.rkt         drawing/resource implementation
 private/check.rkt        argument validation and option mapping
-examples/                circle, gallery, text, bitmap bridge
+examples/                circle, gallery, text, gradients, bitmap bridge
 tests/                  pure, lifetime, and live-rendering suites
 tools/                  explicit native installer and doctor
 docs/                   API reference and ABI/source notes

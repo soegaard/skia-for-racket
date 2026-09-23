@@ -2,23 +2,24 @@
 
 ## Status
 
-There are two distinct validation states in this source tree.
-
 **0.1 baseline — LIVE VALIDATED.** The drawing/image implementation was run by
 the user on macOS/aarch64 with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1
 native asset. `tools/doctor.rkt` reported native ABI milestone 119.0, raster
 readback and PNG encoding passed, all 57 source test cases passed (13 pure,
-6 lifetime, 38 native), and the circle, gallery, and bitmap-bridge examples
-rendered correctly.
+6 lifetime, 38 native), and the original examples rendered correctly.
 
-**0.2 font/text additions — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.**
-This environment has no Racket executable or libSkiaSharp, so the new font,
-typeface, text, glyph, and font-metrics paths could only receive source, ABI,
-layout, installer, and documentation checks here. The full 0.2 suite now has
-69 source test cases and should be run locally before 0.2 is considered native
-validated.
+**0.2 font/text layer — VISUAL SMOKE TEST CONFIRMED.** The user subsequently
+rendered `examples/text.rkt` successfully on the same project setup. A complete
+69-case 0.2 test transcript was not supplied in this update, so this report does
+not retroactively claim full-suite validation for every 0.2 font path.
 
-## Checks performed for 0.2 source
+**0.3 shaders/gradients — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.**
+This environment has no Racket executable or libSkiaSharp. The shader/gradient
+changes received source, ABI, layout, ownership, installer, and documentation
+checks here, but the new native calls still require the local doctor, test
+suite, and visual example. The full 0.3 suite contains 77 source test cases.
+
+## Checks performed for 0.3 source
 
 Run `python3 tools/static-check.py` and the host-C layout command shown below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -29,18 +30,19 @@ parse/expand Racket or load Skia.
 
 The host-C mirror checks the selected ABI field sizes/offsets independently of
 Racket. It does not include upstream Skia headers and does not prove Racket FFI
-layout compatibility. In 0.2 it includes the 64-byte font-metrics structure in
-addition to the 0.1 image/rectangle/sampling/PNG structures.
+layout compatibility. Version 0.3 adds the 8-byte point structure to the existing
+image/rectangle/sampling/PNG/font-metrics layout mirrors.
 
-The font/text C declarations were compared against the pinned SkiaSharp 3.119.1
-generated interface, including simple-text drawing/measurement, typeface and
-font constructors/destructors, font getters/setters, metrics, text-to-glyph,
-glyph-path/text-path, native string access, enum values, and metrics flags.
+The existing font/text declarations remain covered. The new shader declarations
+were compared against the pinned SkiaSharp 3.119.1 wrapper/interface for shader
+reference counting, color/linear/radial/sweep/two-point-conical creation,
+paint attachment/querying, image-to-shader conversion, blend shaders, tile-mode
+values, point layout, and sampling arguments.
 
 No benchmark, leak-free claim, cross-platform rendering-equivalence claim, or
 full text-layout claim is made by this report.
 
-## Run the 0.2 Racket tests locally
+## Run the 0.3 Racket tests locally
 
 From the extracted root:
 
@@ -54,11 +56,10 @@ bash tools/install-native.sh &&
 "$RACKET" run-tests.rkt
 ```
 
-A full run contains **69 source test cases**: 15 pure, 6 lifetime, and 48
-native. Cases can contain multiple assertions, so 69 is a source-case count,
-not an assertion count. The 0.2 doctor additionally creates a default typeface
-and font and checks simple-text measurement after the original raster/PNG smoke
-test.
+A full run contains **77 source test cases**: 17 pure, 6 lifetime, and 54
+native. Cases can contain multiple assertions, so 77 is a source-case count,
+not an assertion count. The doctor now checks raster/PNG, font/simple-text, and
+a linear-gradient shader smoke test.
 
 To run only tests that do not need the native library:
 
@@ -66,7 +67,7 @@ To run only tests that do not need the native library:
 "$RACKET" run-tests.rkt --pure
 ```
 
-This requests the 21 pure/lifetime cases. It does not run the 48 native cases,
+This requests the 23 pure/lifetime cases. It does not run the 54 native cases,
 and says so. A default run fails rather than silently skipping native tests
 when the library cannot load. Alternatively, after installing the package:
 
@@ -87,12 +88,11 @@ independence; copied image input; image scaling; PNG signature/dimensions,
 decoding and same-process repeatability; overwrite refusal; bitmap channel
 order; and repeated allocate/render/encode/close.
 
-Version 0.2 adds source/native cases for font/typeface option validation and
-metrics layout, default typeface introspection, family/style matching, font
-getters/setters, metrics, simple-text measurement/bounds, UTF-8 text-to-glyph
-mapping, character-to-glyph mapping, glyph/text outline paths, actual text
-rasterization, font retention after closing a caller's typeface wrapper, and
-closed font/typeface rejection.
+Version 0.2 added source/native cases for the font/typeface and simple-text
+layer. Version 0.3 adds point-layout and gradient-option validation; shader
+reference ownership through paints; color, linear, radial, sweep, conical,
+image, and blend shader rasterization; tile repetition; and closed-shader
+rejection.
 
 The repeated allocation case is not a leak detector. The suite does not yet
 measure native heap reclamation, validate every platform/font backend, shape
@@ -105,14 +105,17 @@ mkdir -p output
 "$RACKET" examples/circle.rkt output/circle.png
 "$RACKET" examples/gallery.rkt output/gallery.png
 "$RACKET" examples/text.rkt output/text.png
+"$RACKET" examples/gradients.rkt output/gradients.png
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
 Choose fresh filenames on reruns. The gallery exercises Bézier/control
 geometry, alpha overlap, clipped diagonal lines, an even-odd ring, transformed
-shapes, and image sampling. The text example exercises baseline text drawing,
-metrics, and an outline path. Inspect text placement/outlines as well as
-missing/clipped shapes, channel ordering, and transparent edge artifacts.
+shapes, and image sampling. The text example exercises baseline text drawing, metrics, and an outline path.
+The gradients example exercises all new shader families, tiling, and shader
+blending.
+Inspect stop transitions, tile seams, clipping, text placement/outlines, channel
+ordering, and transparent edge artifacts.
 
 ## Reproduce non-Racket checks
 

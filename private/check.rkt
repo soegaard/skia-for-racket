@@ -58,6 +58,7 @@
 (define direction-values (hasheq 'cw 0 'ccw 1))
 (define clip-values (hasheq 'difference 0 'intersect 1))
 (define sampling-values (hasheq 'nearest 0 'linear 1))
+(define tile-mode-values (hasheq 'clamp 0 'repeat 1 'mirror 2 'decal 3))
 (define blend-values
   (for/hasheq ([name (in-list
                     '(clear src dst src-over dst-over src-in dst-in

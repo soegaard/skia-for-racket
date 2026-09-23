@@ -49,6 +49,7 @@
      (define p (ctype-sizeof _pointer))
      (check-equal? (ctype-sizeof _sk-image-info) (+ p 16))
      (check-equal? (ctype-sizeof _sk-rect) 16)
+     (check-equal? (ctype-sizeof _sk-point) 8)
      (check-equal? (ctype-sizeof _sk-sampling) 24)
      (check-equal? (ctype-sizeof _sk-png-options) (+ 8 (* 3 p)))
      (check-equal? (ctype-sizeof _sk-font-metrics) 64))
@@ -65,6 +66,10 @@
      (check-equal? (ptr-ref (ptr-add options 4) _int) 6)
      (for ([offset (in-list (list 8 (+ 8 p) (+ 8 (* 2 p))))])
        (check-false (ptr-ref (ptr-add options offset) _pointer))))
+   (test-case "point ABI field order"
+     (define p (make-sk-point 12.5 -7.25))
+     (check-= (ptr-ref p _float) 12.5 0.001)
+     (check-= (ptr-ref (ptr-add p 4) _float) -7.25 0.001))
    (test-case "sampling padding is honored"
      (define s (make-sk-sampling 0 #f 0.0 0.0 1 0))
      (check-equal? (ptr-ref (ptr-add s 4) _uint8) 0)
@@ -85,6 +90,38 @@
                 (lambda () (typeface-from-family "x" #:slant 'wrong)))
      (check-exn exn:fail?
                 (lambda () (typeface-from-file "definitely-not-a-font-file.ttf"))))
+   (test-case "shader and gradient options validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (make-paint #:shader 'not-a-shader)))
+     (check-exn exn:fail? (lambda ()
+                            (make-linear-gradient-shader 0 0 10 0 '(red))))
+     (check-exn exn:fail? (lambda ()
+                            (make-linear-gradient-shader
+                             0 0 10 0 '(red blue) #:positions '(0))))
+     (check-exn exn:fail? (lambda ()
+                            (make-linear-gradient-shader
+                             0 0 10 0 '(red blue) #:positions '(0.8 0.2))))
+     (check-exn exn:fail? (lambda ()
+                            (make-linear-gradient-shader
+                             0 0 10 0 '(red blue) #:positions '(-0.1 1))))
+     (check-exn exn:fail? (lambda ()
+                            (make-linear-gradient-shader
+                             0 0 10 0 '(red blue) #:tile-mode 'wrong)))
+     (check-exn exn:fail? (lambda ()
+                            (make-linear-gradient-shader 2 3 2 3 '(red blue))))
+     (check-exn exn:fail:contract? (lambda ()
+                                     (make-radial-gradient-shader
+                                      0 0 0 '(red blue))))
+     (check-exn exn:fail? (lambda ()
+                            (make-sweep-gradient-shader
+                             0 0 '(red blue) #:start-angle 10 #:end-angle 10)))
+     (check-exn exn:fail:contract? (lambda ()
+                                     (make-two-point-conical-gradient-shader
+                                      0 0 -1 10 0 2 '(red blue))))
+     (check-exn exn:fail? (lambda ()
+                            (make-two-point-conical-gradient-shader
+                             0 0 2 0 0 2 '(red blue))))
+     (check-exn exn:fail:contract? (lambda () (make-image-shader 'not-an-image)))
+     (check-exn exn:fail? (lambda () (make-blend-shader 'wrong 'a 'b))))
    (test-case "font metrics ABI field order"
      (define m
        (make-sk-font-metrics #x0f

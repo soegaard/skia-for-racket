@@ -10,6 +10,9 @@ not evidence that this package's own tests have run. Checked on 2026-09-23.
 - [Canvas wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKCanvas.cs)
 - [Font wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKFont.cs)
 - [Typeface wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKTypeface.cs)
+- [Shader/gradient wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKShader.cs)
+- [Image-to-shader wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKImage.cs)
+- [Paint/shader attachment semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKPaint.cs)
 - [macOS native-assets package, 3.119.1](https://www.nuget.org/packages/SkiaSharp.NativeAssets.macOS/3.119.1)
 - [Linux NoDependencies native-assets package, 3.119.1](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Linux.NoDependencies/3.119.1)
 

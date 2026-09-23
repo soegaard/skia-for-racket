@@ -10,6 +10,8 @@
    [color-type _int] [alpha-type _int]))
 (define-cstruct _sk-rect
   ([left _float] [top _float] [right _float] [bottom _float]))
+(define-cstruct _sk-point
+  ([x _float] [y _float]))
 (define-cstruct _sk-png-options
   ([filter-flags _int] [zlib-level _int] [comments _pointer]
    [icc-profile _pointer] [icc-description _pointer]))

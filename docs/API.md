@@ -1,4 +1,4 @@
-# API reference — version 0.2.0
+# API reference — version 0.3.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -65,7 +65,7 @@ Do not interpret the milestone probe as full binary compatibility validation.
 ## Ownership and limits
 
 ```racket
-(skia-resource? value)  ; surface, paint, path, image, typeface, font; not borrowed canvas
+(skia-resource? value)  ; surface, paint, shader, path, image, typeface, font; not borrowed canvas
 (skia-closed? resource-or-canvas)
 (skia-close! resource)
 (call-with-skia-resource resource procedure-of-one-argument)
@@ -134,9 +134,11 @@ The two pixel-output flags must be booleans.
             #:cap [cap 'butt]
             #:join [join 'miter]
             #:miter-limit [limit 4]
-            #:blend-mode [mode 'src-over])
+            #:blend-mode [mode 'src-over]
+            #:shader [shader-or-false #f])
 (paint-copy paint)
 (paint-color paint) ; rgba value
+(paint-shader paint) ; newly owned shader or #f
 (paint-set-color! paint color)
 (paint-set-style! paint style)
 (paint-set-stroke-width! paint width)
@@ -145,6 +147,7 @@ The two pixel-output flags must be booleans.
 (paint-set-join! paint join)
 (paint-set-miter-limit! paint limit)
 (paint-set-blend-mode! paint mode)
+(paint-set-shader! paint shader-or-false)
 ```
 
 Styles: `'fill`, `'stroke`, `'stroke-and-fill`. Caps: `'butt`, `'round`,
@@ -152,6 +155,11 @@ Styles: `'fill`, `'stroke`, `'stroke-and-fill`. Caps: `'butt`, `'round`,
 stroke semantics, not an invisible stroke. The default is fill; request stroke
 explicitly when drawing open curves. `draw-line` uses line-stroke semantics.
 Paints are mutable; `paint-copy` creates an independently owned copy.
+A paint may hold a shader. The native paint retains its own shader reference,
+so the shader wrapper supplied to `make-paint` or `paint-set-shader!` may be
+closed immediately after the call. `paint-set-shader!` accepts `#f` to remove
+the shader. `paint-shader` returns `#f` or a **newly owned** shader wrapper;
+closing that wrapper does not change the paint.
 
 Blend modes:
 
@@ -165,6 +173,72 @@ Blend modes:
 The wrapper maps these names to the pinned native enumeration. It does not
 implement separate blend math in Racket. Alpha is supplied through the paint
 color; there is no separate normalized-alpha API.
+
+## Shaders and gradients
+
+```racket
+(shader? value)
+(make-color-shader color)
+(make-linear-gradient-shader x0 y0 x1 y1 colors
+                             #:positions [positions #f]
+                             #:tile-mode [mode 'clamp])
+(make-radial-gradient-shader center-x center-y radius colors
+                             #:positions [positions #f]
+                             #:tile-mode [mode 'clamp])
+(make-sweep-gradient-shader center-x center-y colors
+                            #:positions [positions #f]
+                            #:tile-mode [mode 'clamp]
+                            #:start-angle [degrees 0]
+                            #:end-angle [degrees 360])
+(make-two-point-conical-gradient-shader
+ x0 y0 radius0 x1 y1 radius1 colors
+ #:positions [positions #f]
+ #:tile-mode [mode 'clamp])
+(make-image-shader image
+                   #:tile-x [mode 'clamp]
+                   #:tile-y [mode 'clamp]
+                   #:sampling [sampling 'nearest])
+(make-blend-shader blend-mode destination-shader source-shader)
+```
+
+A shader is an owned, reference-counted Skia resource. Close it explicitly or
+manage it with `with-skia`. Native paints, image shaders, and blend shaders
+retain the native references they need; there is no requirement to keep the
+Racket wrappers for their inputs alive after construction.
+
+`colors` is a list or vector containing at least two values accepted by
+`color?`. `positions` is `#f` for evenly distributed stops, or a list/vector of
+the same length as `colors`. Positions must be finite numbers in the closed
+interval 0 through 1 and must be nondecreasing. Stop arrays are temporary:
+the native call consumes them synchronously and the resulting shader does not
+retain pointers into Racket-managed storage.
+
+Gradient and image tile modes are:
+
+```racket
+'clamp 'repeat 'mirror 'decal
+```
+
+`'clamp` extends the edge color, `'repeat` repeats the shader domain, `'mirror`
+alternates reflected copies, and `'decal` is transparent outside the domain.
+Linear-gradient endpoints must be distinct. A radial radius must be positive.
+The two circles of a conical gradient must differ and their radii are
+nonnegative. Sweep angles are degrees and require start < end; 0 through 360
+is the default full sweep.
+
+Image shaders use the immutable contents of an `image?` and support the same
+`'nearest` and `'linear` sampling choices as image drawing. The image can be
+closed after successful shader construction because the shader owns the native
+reference it needs.
+
+`make-blend-shader` combines two shader outputs using any blend mode listed in
+the Paints section. Its argument order follows Skia: first destination, then
+source. For example, `(make-blend-shader 'multiply a b)` evaluates `a` as the
+destination and `b` as the source before applying multiply.
+
+This version deliberately has no public shader-local matrix API. Canvas
+transforms still affect drawing normally; a later matrix layer can expose
+Skia's local shader matrices without leaking the unsafe native struct.
 
 ## Canvas state and transforms
 

@@ -141,6 +141,26 @@
 (define-native sk_paint_set_stroke_cap (_fun _pointer _int -> _void))
 (define-native sk_paint_set_stroke_join (_fun _pointer _int -> _void))
 (define-native sk_paint_set_blendmode (_fun _pointer _int -> _void))
+(define-native sk_paint_get_shader (_fun _pointer -> _pointer))
+(define-native sk_paint_set_shader (_fun _pointer _pointer -> _void))
+
+;; Shader/gradient primitives. Gradient arrays are consumed synchronously;
+;; Skia constructs its own immutable shader state before these calls return.
+(define-native sk_shader_ref (_fun _pointer -> _void))
+(define-native sk_shader_unref (_fun _pointer -> _void))
+(define-native sk_shader_new_color (_fun _uint32 -> _pointer))
+(define-native sk_shader_new_linear_gradient
+  (_fun _pointer _pointer _pointer _int _int _pointer -> _pointer))
+(define-native sk_shader_new_radial_gradient
+  (_fun _sk-point-pointer _float _pointer _pointer _int _int _pointer -> _pointer))
+(define-native sk_shader_new_sweep_gradient
+  (_fun _sk-point-pointer _pointer _pointer _int _int _float _float _pointer
+        -> _pointer))
+(define-native sk_shader_new_two_point_conical_gradient
+  (_fun _sk-point-pointer _float _sk-point-pointer _float
+        _pointer _pointer _int _int _pointer -> _pointer))
+(define-native sk_shader_new_blend
+  (_fun _int _pointer _pointer -> _pointer))
 
 (define-native sk_path_new (_fun -> _pointer))
 (define-native sk_path_delete (_fun _pointer -> _void))
@@ -218,6 +238,8 @@
 (define-native sk_image_unref (_fun _pointer -> _void))
 (define-native sk_image_new_raster_copy
   (_fun _sk-image-info-pointer _bytes _size -> _pointer))
+(define-native sk_image_make_shader
+  (_fun _pointer _int _int _sk-sampling-pointer _pointer -> _pointer))
 (define-native sk_image_read_pixels
   (_fun _pointer _sk-image-info-pointer _bytes _size _int _int _int -> _stdbool))
 

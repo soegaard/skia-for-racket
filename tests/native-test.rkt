@@ -1,5 +1,6 @@
 #lang racket/base
-(require rackunit rackunit/text-ui racket/file racket/class racket/draw
+(require rackunit rackunit/text-ui racket/file racket/class
+         (except-in racket/draw make-font)
          "../main.rkt" "../bitmap.rkt")
 (provide native-tests)
 
@@ -283,16 +284,19 @@
        (check-exn exn:fail:contract? (lambda () (draw-rect c 0 0 -1 1 p)))
        (check-exn exn:fail:contract? (lambda () (canvas-clip-rect! c 0 0 1 1 #:antialias? 1)))
        (check-exn exn:fail:contract? (lambda () (surface->png-bytes s #:compression 10)))))
-   (test-case "closed paints, paths and images reject use"
+   (test-case "closed paints, paths, images and shaders reject use"
      (with-skia ([s (make-surface 8 8)] [p (make-paint)] [path (make-path)]
-                 [im (rgba-bytes->image 1 1 (bytes 255 0 0 255))])
+                 [im (rgba-bytes->image 1 1 (bytes 255 0 0 255))]
+                 [sh (make-color-shader 'red)])
        (define c (surface-canvas s))
        (skia-close! p)
        (skia-close! path)
        (skia-close! im)
+       (skia-close! sh)
        (check-exn #rx"closed" (lambda () (draw-circle c 2 2 1 p)))
        (check-exn #rx"closed" (lambda () (path-line-to! path 1 1)))
-       (check-exn #rx"closed" (lambda () (draw-image c im 0 0)))))
+       (check-exn #rx"closed" (lambda () (draw-image c im 0 0)))
+       (check-exn #rx"closed" (lambda () (make-paint #:shader sh)))))
    (test-case "cross-thread surface access is rejected before FFI"
      (with-skia ([s (make-surface 4 4)])
        (define results (make-channel))
@@ -304,6 +308,81 @@
                 (surface-pixel s 0 0))))))
        (check-regexp-match #rx"another Racket thread" (channel-get results))
        (thread-wait worker)))
+   (test-case "color shader paint attachment and reference ownership"
+     (with-skia ([s (make-surface 12 4 #:background 'white)]
+                 [sh (make-color-shader 'red)]
+                 [p (make-paint #:shader sh #:antialias? #f)])
+       ;; The native paint keeps its own shader reference.
+       (skia-close! sh)
+       (draw-rect (surface-canvas s) 0 0 6 4 p)
+       (check-equal? (surface-pixel s 2 2) red)
+       ;; The getter promotes the borrowed native pointer to an owned wrapper.
+       (with-skia ([held (paint-shader p)])
+         (check-true (shader? held))
+         (paint-set-shader! p #f)
+         (check-false (paint-shader p))
+         (with-skia ([q (make-paint #:shader held #:antialias? #f)])
+           (draw-rect (surface-canvas s) 6 0 6 4 q)
+           (check-equal? (surface-pixel s 9 2) red)))))
+   (test-case "linear gradient interpolates and accepts explicit stops"
+     (with-skia ([s (make-surface 101 3 #:background 'white)]
+                 [sh (make-linear-gradient-shader
+                      0 0 100 0 '(red green blue)
+                      #:positions '(0 1/2 1))]
+                 [p (make-paint #:shader sh)])
+       (draw-paint (surface-canvas s) p)
+       (define left (surface-pixel s 5 1))
+       (define middle (surface-pixel s 50 1))
+       (define right (surface-pixel s 95 1))
+       (check-true (> (rgba-red left) (rgba-blue left)))
+       (check-true (> (rgba-green middle) (rgba-red middle)))
+       (check-true (> (rgba-blue right) (rgba-red right)))))
+   (test-case "radial and sweep gradients rasterize distinct regions"
+     (with-skia ([radial-surface (make-surface 41 41)]
+                 [radial (make-radial-gradient-shader
+                          20 20 20 '(red blue))]
+                 [radial-paint (make-paint #:shader radial)]
+                 [sweep-surface (make-surface 41 41)]
+                 [sweep (make-sweep-gradient-shader
+                         20 20 '(red green blue red)
+                         #:positions '(0 1/3 2/3 1))]
+                 [sweep-paint (make-paint #:shader sweep)])
+       (draw-paint (surface-canvas radial-surface) radial-paint)
+       (define center (surface-pixel radial-surface 20 20))
+       (define edge (surface-pixel radial-surface 39 20))
+       (check-true (> (rgba-red center) (rgba-blue center)))
+       (check-true (> (rgba-blue edge) (rgba-red edge)))
+       (draw-paint (surface-canvas sweep-surface) sweep-paint)
+       (define a (surface-pixel sweep-surface 39 20))
+       (define b (surface-pixel sweep-surface 20 1))
+       (define d (surface-pixel sweep-surface 1 20))
+       (check-false (and (equal? a b) (equal? b d)))))
+   (test-case "two-point conical gradient varies across its domain"
+     (with-skia ([s (make-surface 121 81)]
+                 [sh (make-two-point-conical-gradient-shader
+                      20 40 2 100 40 28 '(red blue))]
+                 [p (make-paint #:shader sh)])
+       (draw-paint (surface-canvas s) p)
+       (check-not-equal? (surface-pixel s 25 40)
+                         (surface-pixel s 95 40))))
+   (test-case "image shader tiles with nearest sampling"
+     (with-skia ([s (make-surface 6 1)]
+                 [im (rgba-bytes->image
+                      2 1 (bytes 255 0 0 255 0 0 255 255))]
+                 [sh (make-image-shader im #:tile-x 'repeat #:tile-y 'clamp
+                                        #:sampling 'nearest)]
+                 [p (make-paint #:shader sh #:antialias? #f)])
+       (draw-paint (surface-canvas s) p)
+       (for ([x (in-range 6)])
+         (check-equal? (surface-pixel s x 0) (if (even? x) red blue)))))
+   (test-case "blend shader composes two shaders"
+     (with-skia ([s (make-surface 3 3 #:background 'white)]
+                 [dst (make-color-shader 'red)]
+                 [src (make-color-shader 'blue)]
+                 [blend (make-blend-shader 'multiply dst src)]
+                 [p (make-paint #:shader blend #:antialias? #f)])
+       (draw-paint (surface-canvas s) p)
+       (check-equal? (surface-pixel s 1 1) (rgb 0 0 0))))
    (test-case "default typeface introspection"
      (with-skia ([tf (make-typeface)])
        (check-true (string? (typeface-family-name tf)))
