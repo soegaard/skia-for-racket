@@ -630,6 +630,138 @@
      (check-exn #rx"closed" (lambda () (make-paint #:path-effect effect)))
      (check-exn #rx"closed" (lambda () (path-measure-length measure)))
      (skia-close! path))
+   (test-case "paint owns color, mask and image filters independently"
+     (define swap
+       '(0 0 1 0 0
+         0 1 0 0 0
+         1 0 0 0 0
+         0 0 0 1 0))
+     (define cf (make-color-matrix-filter swap))
+     (define mf (make-blur-mask-filter 2))
+     (define imf (make-blur-image-filter 1 1))
+     (define p (make-paint #:color-filter cf #:mask-filter mf #:image-filter imf))
+     ;; SkPaint retains each reference; caller wrappers may close immediately.
+     (skia-close! cf)
+     (skia-close! mf)
+     (skia-close! imf)
+     (define held-cf (paint-color-filter p))
+     (define held-mf (paint-mask-filter p))
+     (define held-imf (paint-image-filter p))
+     (check-true (color-filter? held-cf))
+     (check-true (mask-filter? held-mf))
+     (check-true (image-filter? held-imf))
+     (paint-set-color-filter! p #f)
+     (paint-set-mask-filter! p #f)
+     (paint-set-image-filter! p #f)
+     (check-false (paint-color-filter p))
+     (check-false (paint-mask-filter p))
+     (check-false (paint-image-filter p))
+     ;; Getter results remain independently usable after detaching from p.
+     (with-skia ([q (make-paint #:color 'red
+                                #:color-filter held-cf
+                                #:mask-filter held-mf
+                                #:image-filter held-imf)])
+       (check-true (paint? q)))
+     (skia-close! held-cf)
+     (skia-close! held-mf)
+     (skia-close! held-imf)
+     (skia-close! p))
+   (test-case "color matrix filter swaps red and blue channels"
+     (with-skia ([s (make-surface 8 8)]
+                 [cf (make-color-matrix-filter
+                      '(0 0 1 0 0
+                        0 1 0 0 0
+                        1 0 0 0 0
+                        0 0 0 1 0))]
+                 [p (make-paint #:color 'red #:antialias? #f #:color-filter cf)])
+       (draw-rect (surface-canvas s) 1 1 6 6 p)
+       (check-equal? (surface-pixel s 4 4) blue)))
+   (test-case "blend and composed color filters rasterize"
+     (with-skia ([s (make-surface 16 8)]
+                 [blue-src (make-blend-color-filter 'blue 'src)]
+                 [swap-a (make-color-matrix-filter
+                          '(0 0 1 0 0
+                            0 1 0 0 0
+                            1 0 0 0 0
+                            0 0 0 1 0))]
+                 [swap-b (make-color-matrix-filter
+                          '(0 0 1 0 0
+                            0 1 0 0 0
+                            1 0 0 0 0
+                            0 0 0 1 0))]
+                 [twice (make-compose-color-filter swap-b swap-a)]
+                 [blue-paint (make-paint #:color 'red #:antialias? #f
+                                         #:color-filter blue-src)]
+                 [red-paint (make-paint #:color 'red #:antialias? #f
+                                        #:color-filter twice)])
+       (define c (surface-canvas s))
+       (draw-rect c 0 0 8 8 blue-paint)
+       (draw-rect c 8 0 8 8 red-paint)
+       (check-equal? (surface-pixel s 3 3) blue)
+       (check-equal? (surface-pixel s 12 3) red)))
+   (test-case "blur mask filter spreads alpha outside geometry"
+     (with-skia ([s (make-surface 40 40)]
+                 [mf (make-blur-mask-filter 4 #:style 'normal #:respect-ctm? #f)]
+                 [p (make-paint #:color 'red #:mask-filter mf)])
+       (draw-circle (surface-canvas s) 20 20 6 p)
+       (check-true (> (rgba-alpha (surface-pixel s 20 20)) 100))
+       ;; x=29 lies outside the unfiltered circle but inside the blur falloff.
+       (check-true (> (rgba-alpha (surface-pixel s 29 20)) 0))))
+   (test-case "blur image filter spreads rendered source"
+     (with-skia ([s (make-surface 48 32)]
+                 [imf (make-blur-image-filter 3 3 #:tile-mode 'decal)]
+                 [p (make-paint #:color 'blue #:antialias? #f #:image-filter imf)])
+       (draw-rect (surface-canvas s) 18 10 12 12 p)
+       (check-true (> (rgba-alpha (surface-pixel s 24 16)) 100))
+       ;; Outside the original x-range [18,30), but blur should reach here.
+       (check-true (> (rgba-alpha (surface-pixel s 32 16)) 0))))
+   (test-case "drop shadow and shadow-only image filters render offsets"
+     (with-skia ([s (make-surface 80 36)]
+                 [shadow (make-drop-shadow-image-filter 8 0 2 2 (rgba 0 0 0 200))]
+                 [shadow-only (make-drop-shadow-only-image-filter 18 0 2 2 (rgba 0 0 0 200))]
+                 [with-source (make-paint #:color 'red #:antialias? #f #:image-filter shadow)]
+                 [only (make-paint #:color 'red #:antialias? #f #:image-filter shadow-only)])
+       (define c (surface-canvas s))
+       (draw-rect c 5 8 12 12 with-source)
+       (draw-rect c 45 8 12 12 only)
+       ;; DropShadow includes the original source.
+       (check-true (> (rgba-red (surface-pixel s 10 13)) 180))
+       ;; Offset shadow reaches beyond the original right edge.
+       (check-true (> (rgba-alpha (surface-pixel s 23 13)) 0))
+       ;; Shadow-only suppresses the original source at x=50.
+       (check-true (< (rgba-alpha (surface-pixel s 50 13)) 20))
+       (check-true (> (rgba-alpha (surface-pixel s 68 13)) 0))))
+   (test-case "color-filter image filter and composition form a filter graph"
+     (with-skia ([s (make-surface 48 32)]
+                 [swap (make-color-matrix-filter
+                        '(0 0 1 0 0
+                          0 1 0 0 0
+                          1 0 0 0 0
+                          0 0 0 1 0))]
+                 [color-if (make-color-filter-image-filter swap)]
+                 [blur-if (make-blur-image-filter 2 2 #:input color-if)]
+                 [composed (make-compose-image-filter color-if blur-if)]
+                 [p1 (make-paint #:color 'red #:antialias? #f #:image-filter color-if)]
+                 [p2 (make-paint #:color 'red #:antialias? #f #:image-filter composed)])
+       (define c (surface-canvas s))
+       (draw-rect c 2 8 12 12 p1)
+       (draw-rect c 28 8 12 12 p2)
+       (define left (surface-pixel s 8 14))
+       (check-true (> (rgba-blue left) (rgba-red left)))
+       (define right (surface-pixel s 34 14))
+       (check-true (> (rgba-red right) (rgba-blue right)))
+       (check-true (> (rgba-alpha (surface-pixel s 42 14)) 0))))
+   (test-case "closed filter resources reject native use"
+     (define cf (make-color-matrix-filter
+                 '(0 0 1 0 0  0 1 0 0 0  1 0 0 0 0  0 0 0 1 0)))
+     (define mf (make-blur-mask-filter 2))
+     (define imf (make-blur-image-filter 2 2))
+     (skia-close! cf)
+     (skia-close! mf)
+     (skia-close! imf)
+     (check-exn #rx"closed" (lambda () (make-paint #:color-filter cf)))
+     (check-exn #rx"closed" (lambda () (make-paint #:mask-filter mf)))
+     (check-exn #rx"closed" (lambda () (make-paint #:image-filter imf))))
    (test-case "default typeface introspection"
      (with-skia ([tf (make-typeface)])
        (check-true (string? (typeface-family-name tf)))

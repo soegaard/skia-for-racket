@@ -54,13 +54,13 @@ The font-metrics flags are copied as a 32-bit mask. The four decoration fields
 Racket only when their corresponding native validity bit is set. UTF-8 simple
 text uses the pinned native text-encoding value 0.
 
-The 0.1 through 0.4 declarations have been live-tested on macOS/aarch64 with
-Racket 9.3.0.2 and the pinned native asset. Version 0.5 adds no new C struct
-layouts; its path-effect, path-measure, and PathOps callouts are source/ABI
-checked in the authoring environment and require the included local
-Racket/native run before they receive the same validation status. A host-C
-layout check is not a substitute for validating Racket's actual FFI
-declarations.
+The 0.1 through 0.5 declarations have been live-tested on macOS/aarch64 with
+Racket 9.3.0.2 and the pinned native asset. Version 0.6 adds no new by-value C
+struct layouts; its filter callouts use existing pointers/scalars plus a
+temporary 20-float color-matrix array. Those additions are source/ABI checked in
+the authoring environment and require the included local Racket/native run
+before they receive the same validation status. A host-C layout check is not a
+substitute for validating Racket's actual FFI declarations.
 
 ## Ownership map
 
@@ -68,9 +68,12 @@ declarations.
 |---|---|---|
 | Surface | `sk_surface_unref` | One owned reference |
 | Canvas from a surface | None | Borrowed; surface wrapper retained |
-| Paint | `sk_paint_delete` | Native-owned object; retains attached shader/path-effect refs |
+| Paint | `sk_paint_delete` | Native-owned object; retains attached shader/path-effect/filter refs |
 | Shader | `sk_shader_unref` | One owned reference |
 | Path effect | `sk_path_effect_unref` | One owned reference; paints/composed effects retain inputs |
+| Color filter | `sk_colorfilter_unref` | One owned reference; paints/composed filters retain inputs |
+| Mask filter | `sk_maskfilter_unref` | One owned reference; paints retain it |
+| Image filter | `sk_imagefilter_unref` | One owned reference; paints/filter graphs retain inputs |
 | Path | `sk_path_delete` | Native-owned object |
 | Path measure | `sk_pathmeasure_destroy` | Owns a private cloned `SkPath`; measure destroyed before clone |
 | Image/snapshot/decoded/subset image | `sk_image_unref` | One owned reference |
@@ -127,18 +130,26 @@ arrays for one synchronous FFI call. Skia constructs immutable shader state
 before the call returns; no shader retains those array pointers. Image shaders
 and blend shaders retain their native image/shader dependencies internally.
 
-The m119 C paint getters are ownership-producing calls: `sk_paint_get_shader`
-uses `refShader().release()` and `sk_paint_get_path_effect` uses
-`refPathEffect().release()`. Public `paint-shader` and `paint-path-effect`
-therefore wrap those returned pointers directly as one owned reference. The
-initial 0.3/0.4 `paint-shader` wrapper incorrectly added another
-`sk_shader_ref`; rendering remained correct, but one native ref leaked per
-getter call. Version 0.5 removes that extra ref. Paint setters use `sk_ref_sp`,
-so paints retain their own references independently of caller wrappers.
+The m119 C paint getters are ownership-producing calls: shader, path-effect,
+color-filter, mask-filter, and image-filter getters all call the corresponding
+`ref...().release()`. Public paint getters therefore wrap non-null returned
+pointers directly as one owned reference. The initial 0.3/0.4 `paint-shader`
+wrapper incorrectly added another `sk_shader_ref`; rendering remained correct,
+but one native ref leaked per getter call. Version 0.5 removes that extra ref.
+Paint setters use `sk_ref_sp`, so paints retain their own references independently
+of caller wrappers.
 
 Dash interval arrays are temporary atomic native float arrays consumed
 synchronously by `SkDashPathEffect::Make`. Path effects returned by constructors
 own one native reference; compose/sum effects retain their dependencies.
+
+Color-matrix filter coefficients are likewise copied into a temporary atomic
+20-float array for one synchronous constructor call. The resulting color filter
+does not retain that array. Color-filter composition, image-filter input graphs,
+and filter attachment to paints all retain inputs internally with `sk_ref_sp`.
+Filter getters from paints return ownership-producing references, not borrowed
+pointers. Blur mask/image filters and drop shadows use only scalar parameters;
+no Racket memory is retained by native filter objects.
 
 Raw `SkPathMeasure` stores a pointer to path data rather than a ref-counted path.
 The public 0.5 wrapper therefore clones the input `SkPath` and owns that private
@@ -171,7 +182,9 @@ reordering, paragraph layout, public color-space objects, public codec objects,
 or public shader-local matrices enter this binding. Version 0.4 exposes
 single-image encoded data through high-level copied byte/file operations; it
 does not expose incremental/scanline decode, animation frame decode, EXIF
-orientation normalization, or arbitrary encoder metadata.
+orientation normalization, or arbitrary encoder metadata. Version 0.6 exposes a
+focused filter subset but not crop rectangles, arithmetic/merge/morphology,
+displacement, convolution, lighting, table, or runtime-effect filter APIs.
 
 Normal C library failures are converted to Racket exceptions where the ABI
 provides failure results; a native crash/abort cannot be caught as an ordinary
@@ -185,7 +198,8 @@ pure tests, doctor, native tests, and visual examples on each supported
 architecture. Review alpha conversion; PNG/JPEG/WebP option fields; codec
 color-space ownership; encoded-data retention; source/subset rectangles;
 sampling padding; font-metrics layout and validity flags; UTF-8/glyph
-conversion; shader/path-effect refcounts; path-measure snapshot ownership;
-PathOps results; typeface/font lifetime; image snapshot lifetime; and both
-explicit and GC cleanup. Do not simply widen the milestone check until
+conversion; shader/path-effect/filter refcounts; path-measure snapshot
+ownership; PathOps results; color-matrix arrays; blur/shadow filter construction;
+filter-graph input retention; typeface/font lifetime; image snapshot lifetime;
+and both explicit and GC cleanup. Do not simply widen the milestone check until
 an incompatible build loads.

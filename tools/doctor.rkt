@@ -76,4 +76,22 @@
       (error 'doctor "paint path-effect attachment failed"))
     ;; The getter result owns a native reference.
     (skia-close! held)
-    (printf "Path effects/measurement passed; dash, tangent, and boolean ops verified\n")))
+    (printf "Path effects/measurement passed; dash, tangent, and boolean ops verified\n"))
+  (with-skia ([s (make-surface 40 24)]
+              [cf (make-color-matrix-filter
+                   '(0 0 1 0 0  0 1 0 0 0  1 0 0 0 0  0 0 0 1 0))]
+              [mf (make-blur-mask-filter 2 #:respect-ctm? #f)]
+              [imf (make-drop-shadow-image-filter 6 0 1 1 (rgba 0 0 0 180))]
+              [color-paint (make-paint #:color 'red #:antialias? #f #:color-filter cf)]
+              [effect-paint (make-paint #:color 'red #:mask-filter mf #:image-filter imf)])
+    (define c (surface-canvas s))
+    (draw-rect c 2 2 8 8 color-paint)
+    (unless (equal? (surface-pixel s 5 5) (rgb 0 0 255))
+      (error 'doctor "color-filter rasterization failed"))
+    (define held-mask (paint-mask-filter effect-paint))
+    (define held-image (paint-image-filter effect-paint))
+    (unless (and (mask-filter? held-mask) (image-filter? held-image))
+      (error 'doctor "filter attachment failed"))
+    (skia-close! held-mask)
+    (skia-close! held-image)
+    (printf "Filters/effects passed; color matrix and mask/image attachments verified\n")))

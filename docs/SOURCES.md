@@ -20,6 +20,9 @@ not evidence that this package's own tests have run. Checked on 2026-09-23.
 - [Path-effect wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKPathEffect.cs)
 - [Path-measure wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKPathMeasure.cs)
 - [PathOps wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKPath.cs)
+- [Color-filter wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKColorFilter.cs)
+- [Mask-filter wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKMaskFilter.cs)
+- [Image-filter wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKImageFilter.cs)
 - [macOS native-assets package, 3.119.1](https://www.nuget.org/packages/SkiaSharp.NativeAssets.macOS/3.119.1)
 - [Linux NoDependencies native-assets package, 3.119.1](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Linux.NoDependencies/3.119.1)
 
@@ -37,6 +40,9 @@ are not automatically substituted.
 - [Native path/path-measure/PathOps shim](https://github.com/mono/skia/blob/xamarin-mobile-bindings/src/c/sk_path.cpp)
 - [Native path-effect shim](https://github.com/mono/skia/blob/xamarin-mobile-bindings/src/c/sk_patheffect.cpp)
 - [Native paint refcount attachment/getters](https://github.com/mono/skia/blob/xamarin-mobile-bindings/src/c/sk_paint.cpp)
+- [Native color-filter shim](https://github.com/mono/skia/blob/xamarin-mobile-bindings/src/c/sk_colorfilter.cpp)
+- [Native mask-filter shim](https://github.com/mono/skia/blob/xamarin-mobile-bindings/src/c/sk_maskfilter.cpp)
+- [Native image-filter shim](https://github.com/mono/skia/blob/xamarin-mobile-bindings/src/c/sk_imagefilter.cpp)
 - [Skia API documentation](https://api.skia.org/)
 
 The moving-branch sources explain the design; the pinned generated declarations

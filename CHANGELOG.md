@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.0 — 2026-09-23
+
+Adds the first standalone filter/effects layer: owned color, mask, and image
+filter resources; 4×5 color-matrix, blend, and composed color filters; Gaussian
+mask blur; image blur; drop-shadow and shadow-only filters; color-filter image
+nodes; composed image-filter graphs; and paint constructor/getter/setter support
+for all three filter families. Paints and filter graphs retain their inputs with
+native reference counting, while getters expose independently owned wrappers.
+
+The pinned m119 C shim and Skia implementations were audited for constructor,
+attachment, getter, and release ownership. The m119 image-blur documentation
+marks mirror tiling unsupported, so the Racket constructor rejects that mode.
+The 0.6 source contains 105 test cases (23 pure, 6 lifetime, 76 native) plus a
+six-panel `examples/filters.rkt` visual probe. These new filter paths were
+source/ABI checked in the authoring environment but still require the included
+local doctor, suite, and visual probe for live validation.
+
 ## 0.5.0 — 2026-09-23
 
 Adds the first path-effects and path-measurement layer: dash, corner, discrete,
@@ -15,10 +32,10 @@ kept rendering correct but leaked one native shader reference per getter call.
 0.5 wraps the returned owned reference directly and documents the actual shim
 semantics.
 
-Versions 0.1 through 0.4 are live-validated on macOS/aarch64 with Racket
-9.3.0.2 and SkiaSharp 3.119.1. The new 0.5 paths were source/ABI checked in the
-authoring environment but still require the included doctor, test suite, and
-visual path-effects probe. See `TESTING.md`.
+The completed 0.5 tree was subsequently live-validated on macOS/aarch64 with
+Racket 9.3.0.2 and SkiaSharp 3.119.1: doctor passed, all 95 test cases passed
+(21 pure, 6 lifetime, 68 native), and the path-effects visual probe rendered
+correctly. See `TESTING.md`.
 
 ## 0.4.0 — 2026-09-23
 

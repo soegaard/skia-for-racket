@@ -1,17 +1,16 @@
-# Racket Skia — 0.5.0
+# Racket Skia — 0.6.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.4 are live-validated on
+**Verification status:** versions 0.1 through 0.5 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1 native
-asset. The completed 0.4 doctor passed, all 85 source test cases passed
-(19 pure, 6 lifetime, 60 native), and the codec visual probe rendered
-correctly. Version 0.5 adds path effects, path measurement, and boolean path
-operations; those new paths are source/ABI checked in the authoring environment
-but still require the included local doctor, test suite, and visual probe. See
-[TESTING.md](TESTING.md).
+asset. The completed 0.5 doctor passed, all 95 source test cases passed
+(21 pure, 6 lifetime, 68 native), and the path-effects visual probe rendered
+correctly. Version 0.6 adds color, mask, and image filters; those new paths are
+source/ABI checked in the authoring environment but still require the included
+local doctor, test suite, and visual probe. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -25,8 +24,10 @@ IDs and text/glyph outline paths; owned shaders; color, linear, radial, sweep,
 and conical gradients; image tiling; shader blending; PNG/JPEG/WebP encoded
 image decode and encode; codec metadata probing; image subsets and source-rectangle
 drawing; dash/corner/discrete/trim/composed path effects; path measurement,
-segments and tangents; boolean path operations; explicit/scoped resource cleanup
-and GC fallback. An optional module copies pixels into a Racket `bitmap%`.
+segments and tangents; boolean path operations; color-matrix/blend/composed
+color filters; blur mask filters; blur, drop-shadow, color, and composed image
+filters; explicit/scoped resource cleanup and GC fallback. An optional module
+copies pixels into a Racket `bitmap%`.
 
 The unsafe ABI layer is private. Public resource wrappers do not expose raw
 pointers. The source distribution contains no native binary or font files.
@@ -36,7 +37,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.5.0-20260923
+cd racket-skia-0.6.0-20260923
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -52,6 +53,7 @@ mkdir -p output &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
+"$RACKET" examples/filters.rkt output/filters.png &&
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
@@ -298,6 +300,34 @@ position/tangent sampling, contour traversal, and segment extraction.
 Boolean operations return new owned paths: union, intersection, difference,
 xor, reverse difference, simplification, and conversion to winding fill.
 
+## Filters and effects
+
+Version 0.6 adds three owned filter families that attach directly to paints and
+can also be composed into native filter graphs:
+
+```racket
+(with-skia ([s (make-surface 420 220 #:background 'white)]
+            [shadow (make-drop-shadow-image-filter
+                     12 14 7 7 (rgba 20 35 60 150))]
+            [paint (make-paint #:color "#F38C42" #:image-filter shadow)])
+  (draw-rounded-rect (surface-canvas s) 90 55 220 110 22 22 paint)
+  (save-png s "shadow.png"))
+```
+
+Color filters include 4×5 row-major color matrices, blend-mode filters, and
+composition. Mask filters currently expose Gaussian blur with the four Skia
+styles `'normal`, `'solid`, `'outer`, and `'inner`. Image filters include
+Gaussian blur, drop shadow, shadow-only, color-filter wrapping, and composition.
+An omitted image-filter input means “use the dynamically drawn source”; supplied
+input filters are retained natively, so their Racket wrappers may be closed after
+successful construction.
+
+Paints accept `#:color-filter`, `#:mask-filter`, and `#:image-filter`. The three
+getter functions return independently owned references, just like the shader and
+path-effect getters. Image-filter blur defaults to `'decal` at its input edge;
+the pinned m119 blur implementation does not support `'mirror`, so that tile
+mode is rejected explicitly by this wrapper.
+
 ## Paths and scoped state
 
 ```racket
@@ -362,10 +392,11 @@ The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 
 ## Boundaries of this version
 
-No GPU/Metal/Vulkan support, text shaping/paragraph layout, image/color/mask
-filters, SVG/PDF output, arbitrary matrix concat, shader-local matrices,
-font-manager/fallback API, animation-frame decoding, orientation normalization,
-public color-space/codec objects, or `dc<%>` compatibility is implemented.
+No GPU/Metal/Vulkan support, text shaping/paragraph layout, SVG/PDF output,
+arbitrary matrix concat, shader-local matrices, advanced filter families/crop
+rectangles, font-manager/fallback API, animation-frame decoding, orientation
+normalization, public color-space/codec objects, or `dc<%>` compatibility is
+implemented.
 Encoded image support is currently high-level single-image decode/probe plus
 PNG/JPEG/WebP encode. Text remains the low-level simple-text/glyph layer;
 complex-script shaping and bidirectional layout require a later text layer.
@@ -387,7 +418,7 @@ private/types.rkt        exact native struct layouts
 private/lifetime.rkt     ownership cells and scoped cleanup
 private/core.rkt         drawing/resource implementation
 private/check.rkt        argument validation and option mapping
-examples/                circle, gallery, text, gradients, codecs, path effects, bitmap bridge
+examples/                circle, gallery, text, gradients, codecs, path effects, filters, bitmap bridge
 tests/                  pure, lifetime, and live-rendering suites
 tools/                  explicit native installer and doctor
 docs/                   API reference and ABI/source notes

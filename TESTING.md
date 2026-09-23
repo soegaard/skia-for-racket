@@ -2,23 +2,22 @@
 
 ## Status
 
-**0.1 through 0.4 — LIVE VALIDATED on macOS/aarch64.** The user ran the
-completed 0.4 tree with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1 native
+**0.1 through 0.5 — LIVE VALIDATED on macOS/aarch64.** The user ran the
+completed 0.5 tree with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1 native
 asset. `tools/doctor.rkt` reported ABI milestone 119.0; raster/PNG,
-font/simple-text, shader/gradient, and codec smoke checks passed; all **85**
-source test cases passed (19 pure, 6 lifetime, 60 native); and the codec visual
-probe rendered correctly. That run necessarily exercises the earlier 0.1–0.3
-regression cases as well.
+font/simple-text, shader/gradient, codec, and path-effects/measurement smoke
+checks passed; all **95** source test cases passed (21 pure, 6 lifetime, 68
+native); and the path-effects visual probe rendered correctly. That run also
+confirmed the corrected `paint-shader` getter ownership path.
 
-**0.5 vector additions — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.** This
-environment has no Racket executable or libSkiaSharp. The new path effects,
-paint attachment/getters, path measurement, segment/tangent extraction, and
-boolean PathOps received source, ABI, ownership, installer, and documentation
-checks here. The full 0.5 tree contains **95 source test cases**: 21 pure, 6
-lifetime, and 68 native. The 0.5 run is also intended to confirm the corrected
-`paint-shader` ownership path after auditing the m119 native C shim.
+**0.6 filters/effects — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.** This
+environment has no Racket executable or libSkiaSharp. The new color, mask, and
+image filter resources, paint attachment/getters, filter composition, and
+raster probes received source, ABI, ownership, installer, and documentation
+checks here. The full 0.6 tree contains **105 source test cases**: 23 pure, 6
+lifetime, and 76 native.
 
-## Checks performed for 0.5 source
+## Checks performed for 0.6 source
 
 Run `python3 tools/static-check.py` and the host-C layout command below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -28,24 +27,24 @@ installer against synthetic offline archives. It does **not** parse/expand
 Racket or load Skia.
 
 The host-C mirror independently checks the selected ABI sizes/offsets from
-0.1–0.4. Version 0.5 introduces no new by-value C structs; it reuses the 8-byte
-point layout for path position/tangent output and otherwise adds pointer/scalar
-callouts. The host checker does not include upstream headers and is not a
-substitute for Racket FFI execution.
+0.1–0.5. Version 0.6 introduces no new by-value C structs; its filter APIs add
+pointer/scalar callouts plus temporary 20-float color-matrix storage. The host
+checker does not include upstream headers and is not a substitute for Racket FFI
+execution.
 
 The new declarations were compared against the pinned SkiaSharp 3.119.1
-interface and the corresponding mono/skia C shim for path-effect constructors
-and release, paint path-effect attachment/getters, path-measure construction and
-queries, and PathOps. The C shim was also audited directly for ownership. Both
-`sk_paint_get_shader` and `sk_paint_get_path_effect` return owned references via
-`ref...().release()`. This revealed and fixes a 0.3/0.4 `paint-shader` extra-ref
-leak. Raw `SkPathMeasure` retains a path pointer, so the 0.5 public wrapper uses
-a private native path clone whose lifetime is tied to the measure.
+interface and the corresponding mono/skia C shims for color filters, blur mask
+filters, image filters, and paint attachment/getters. The paint getters use
+`ref...().release()` and therefore return one owned native reference. Paint
+setters and composed filter constructors retain their inputs with native
+reference counting. The pinned m119 image-blur documentation explicitly marks
+mirror tiling unsupported; the public wrapper rejects that mode for this
+constructor instead of promising undefined behavior.
 
 No benchmark, native-heap leak-measurement claim, cross-platform rendering-
 equivalence claim, or GPU claim is made by this report.
 
-## Run the 0.5 Racket tests locally
+## Run the 0.6 Racket tests locally
 
 From the extracted root:
 
@@ -59,11 +58,11 @@ bash tools/install-native.sh &&
 "$RACKET" run-tests.rkt
 ```
 
-A successful full run should report **21 pure + 6 lifetime + 68 native = 95
+A successful full run should report **23 pure + 6 lifetime + 76 native = 105
 source test cases**. Cases contain multiple assertions, so this is not an
-assertion count. The 0.5 doctor retains all earlier smoke checks and additionally
-constructs a dash effect, measures/samples a path, attaches/gets a path effect,
-and verifies a boolean path union.
+assertion count. The 0.6 doctor retains all earlier smoke checks and additionally
+rasterizes a color matrix filter and verifies owned mask/image-filter paint
+attachments.
 
 To run only tests that do not need the native library:
 
@@ -71,7 +70,7 @@ To run only tests that do not need the native library:
 "$RACKET" run-tests.rkt --pure
 ```
 
-This requests the 27 pure/lifetime cases. It does not run the 68 native cases,
+This requests the 29 pure/lifetime cases. It does not run the 76 native cases,
 and says so. A default run fails rather than silently skipping native tests
 when the library cannot load. Alternatively, after installing the package:
 
@@ -96,13 +95,17 @@ ownership, the additional effect constructors/composition, trim rendering,
 path-measure length/position/tangent/segment behavior, private snapshot safety
 across source mutation/closure, contour traversal and path replacement, all
 five boolean PathOps, simplify/winding conversion, and use-after-close
-rejection.
+rejection. Version 0.6 adds validation and native cases for color-matrix,
+blend, and composed color filters; mask blur styles/attachment; image blur;
+drop-shadow and shadow-only filters; color-filter image nodes; composed image
+filter graphs; paint ownership/getters/detachment; and use-after-close rejection.
 
 The repeated allocation case is not a leak detector. The suite does not yet
 measure native heap reclamation directly, expose path-measure matrices or path
 iterators, validate 1D/2D stamped path effects, validate every encoded format,
 decode animation frames, normalize encoded orientation, exercise ICC/color
-space objects, shape complex scripts, or test GPU resources.
+space objects, expose advanced filter families/crop rectangles, shape complex
+scripts, or test GPU resources.
 
 ### Visual smoke checks
 
@@ -114,14 +117,14 @@ mkdir -p output
 "$RACKET" examples/gradients.rkt output/gradients.png
 "$RACKET" examples/codecs.rkt output/codecs.png
 "$RACKET" examples/path-effects.rkt output/path-effects.png
+"$RACKET" examples/filters.rkt output/filters.png
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
-Choose fresh filenames on reruns. The codecs example remains the 0.4 visual
-probe. The new path-effects example has six panels for dash, corner, discrete,
-trim, measured segment/tangent, and boolean path operations. Inspect effect
-continuity, cap/join behavior, the highlighted measured segment and tangent,
-and the expected union/intersection/xor regions.
+Choose fresh filenames on reruns. The new `filters.rkt` probe has six panels for
+a color matrix, blend color filter, mask blur, image blur, drop shadow, and a
+composed image-filter graph. Inspect channel transforms, blur falloff, shadow
+offset/source inclusion, clipping, and any unexpected seams or transparency.
 
 ## Reproduce non-Racket checks
 

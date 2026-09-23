@@ -159,6 +159,36 @@
 (define-native sk_paint_set_shader (_fun _pointer _pointer -> _void))
 (define-native sk_paint_get_path_effect (_fun _pointer -> _pointer))
 (define-native sk_paint_set_path_effect (_fun _pointer _pointer -> _void))
+(define-native sk_paint_get_colorfilter (_fun _pointer -> _pointer))
+(define-native sk_paint_set_colorfilter (_fun _pointer _pointer -> _void))
+(define-native sk_paint_get_maskfilter (_fun _pointer -> _pointer))
+(define-native sk_paint_set_maskfilter (_fun _pointer _pointer -> _void))
+(define-native sk_paint_get_imagefilter (_fun _pointer -> _pointer))
+(define-native sk_paint_set_imagefilter (_fun _pointer _pointer -> _void))
+
+;; Color, mask, and image filter primitives. The factory functions return one
+;; owned reference. Paint setters and image-filter graph constructors retain
+;; their own references to supplied child filters.
+(define-native sk_colorfilter_unref (_fun _pointer -> _void))
+(define-native sk_colorfilter_new_mode (_fun _uint32 _int -> _pointer))
+(define-native sk_colorfilter_new_compose (_fun _pointer _pointer -> _pointer))
+(define-native sk_colorfilter_new_color_matrix (_fun _pointer -> _pointer))
+
+(define-native sk_maskfilter_unref (_fun _pointer -> _void))
+(define-native sk_maskfilter_new_blur_with_flags
+  (_fun _int _float _stdbool -> _pointer))
+
+(define-native sk_imagefilter_unref (_fun _pointer -> _void))
+(define-native sk_imagefilter_new_blur
+  (_fun _float _float _int _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_color_filter
+  (_fun _pointer _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_compose
+  (_fun _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_drop_shadow
+  (_fun _float _float _float _float _uint32 _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_drop_shadow_only
+  (_fun _float _float _float _float _uint32 _pointer _pointer -> _pointer))
 
 ;; Shader/gradient primitives. Gradient arrays are consumed synchronously;
 ;; Skia constructs its own immutable shader state before these calls return.

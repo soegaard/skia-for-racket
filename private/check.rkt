@@ -59,6 +59,7 @@
 (define clip-values (hasheq 'difference 0 'intersect 1))
 (define sampling-values (hasheq 'nearest 0 'linear 1))
 (define tile-mode-values (hasheq 'clamp 0 'repeat 1 'mirror 2 'decal 3))
+(define blur-style-values (hasheq 'normal 0 'solid 1 'outer 2 'inner 3))
 (define trim-path-effect-mode-values (hasheq 'normal 0 'inverted 1))
 (define path-op-values
   (hasheq 'difference 0 'intersect 1 'union 2 'xor 3 'reverse-difference 4))

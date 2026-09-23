@@ -1,4 +1,4 @@
-# API reference — version 0.5.0
+# API reference — version 0.6.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -65,7 +65,8 @@ Do not interpret the milestone probe as full binary compatibility validation.
 ## Ownership and limits
 
 ```racket
-(skia-resource? value)  ; surface, paint, shader, path, image, typeface, font; not borrowed canvas
+(skia-resource? value)  ; surface, paint, shader, path-effect, color/mask/image filters,
+                        ; path, path-measure, image, typeface, font; not borrowed canvas
 (skia-closed? resource-or-canvas)
 (skia-close! resource)
 (call-with-skia-resource resource procedure-of-one-argument)
@@ -137,11 +138,17 @@ The two pixel-output flags must be booleans.
             #:miter-limit [limit 4]
             #:blend-mode [mode 'src-over]
             #:shader [shader-or-false #f]
-            #:path-effect [path-effect-or-false #f])
+            #:path-effect [path-effect-or-false #f]
+            #:color-filter [color-filter-or-false #f]
+            #:mask-filter [mask-filter-or-false #f]
+            #:image-filter [image-filter-or-false #f])
 (paint-copy paint)
 (paint-color paint) ; rgba value
 (paint-shader paint) ; newly owned shader or #f
 (paint-path-effect paint) ; newly owned path effect or #f
+(paint-color-filter paint) ; newly owned color filter or #f
+(paint-mask-filter paint) ; newly owned mask filter or #f
+(paint-image-filter paint) ; newly owned image filter or #f
 (paint-set-color! paint color)
 (paint-set-style! paint style)
 (paint-set-stroke-width! paint width)
@@ -152,6 +159,9 @@ The two pixel-output flags must be booleans.
 (paint-set-blend-mode! paint mode)
 (paint-set-shader! paint shader-or-false)
 (paint-set-path-effect! paint path-effect-or-false)
+(paint-set-color-filter! paint color-filter-or-false)
+(paint-set-mask-filter! paint mask-filter-or-false)
+(paint-set-image-filter! paint image-filter-or-false)
 ```
 
 Styles: `'fill`, `'stroke`, `'stroke-and-fill`. Caps: `'butt`, `'round`,
@@ -159,14 +169,14 @@ Styles: `'fill`, `'stroke`, `'stroke-and-fill`. Caps: `'butt`, `'round`,
 stroke semantics, not an invisible stroke. The default is fill; request stroke
 explicitly when drawing open curves. `draw-line` uses line-stroke semantics.
 Paints are mutable; `paint-copy` creates an independently owned copy.
-A paint may hold a shader and/or path effect. The native paint retains its own
-references, so wrappers supplied to `make-paint`, `paint-set-shader!`, or
-`paint-set-path-effect!` may be closed immediately after the call. The setters
-accept `#f` to remove the corresponding object. `paint-shader` and
-`paint-path-effect` each return `#f` or a **newly owned** wrapper; closing that
-wrapper does not change the paint. In the pinned m119 C shim, both getters
-already return owned references (`refShader().release()` and
-`refPathEffect().release()`), so the Racket wrapper does not add another ref.
+A paint may hold a shader, path effect, color filter, mask filter, and image
+filter simultaneously. The native paint retains its own references, so wrappers
+supplied to `make-paint` or any corresponding setter may be closed immediately
+after the call. All five setters accept `#f` to remove the corresponding object.
+The five getter functions return `#f` or a **newly owned** wrapper; closing that
+wrapper does not change the paint. In the pinned m119 C shim these getters use
+`ref...().release()`, so the returned pointer already owns one native reference
+and the Racket wrapper does not add another ref.
 
 Blend modes:
 
@@ -278,6 +288,65 @@ Compose applies `inner` and then `outer`, following Skia's composition model.
 Sum evaluates both effects and combines their resulting geometry. Both
 constructors retain the native references they need, so the input wrappers may
 be closed after successful construction.
+
+## Color, mask, and image filters
+
+```racket
+(color-filter? value)
+(make-color-matrix-filter matrix)
+(make-blend-color-filter color blend-mode)
+(make-compose-color-filter outer inner)
+
+(mask-filter? value)
+(make-blur-mask-filter sigma
+                       #:style [style 'normal]
+                       #:respect-ctm? [flag #t])
+
+(image-filter? value)
+(make-blur-image-filter sigma-x sigma-y
+                        #:tile-mode [mode 'decal]
+                        #:input [image-filter-or-false #f])
+(make-drop-shadow-image-filter dx dy sigma-x sigma-y color
+                               #:input [image-filter-or-false #f])
+(make-drop-shadow-only-image-filter dx dy sigma-x sigma-y color
+                                    #:input [image-filter-or-false #f])
+(make-color-filter-image-filter color-filter
+                                #:input [image-filter-or-false #f])
+(make-compose-image-filter outer inner)
+```
+
+All three filter families are owned, reference-counted Skia resources. Paints
+and composed filter graphs retain the native references they need, so input
+wrappers may be closed after successful attachment or construction. The paint
+getters return independent owned references.
+
+A color matrix is a list or vector of exactly 20 finite scalars in Skia's
+row-major 4×5 order. Conceptually it transforms `(R,G,B,A,1)` into new RGBA
+channels. `make-blend-color-filter` accepts the paint blend-mode names from the
+Paints section. `'dst` is rejected because upstream represents that exact no-op
+as a null filter rather than an allocated object. Compose evaluates `inner`
+first and then `outer`.
+
+`make-blur-mask-filter` applies a Gaussian mask blur. `sigma` must be positive.
+Styles are `'normal`, `'solid`, `'outer`, and `'inner`. With
+`#:respect-ctm? #t` (the default), Skia scales the blur sigma with the current
+canvas transform; `#f` requests a device-independent sigma.
+
+Image-filter inputs form a native DAG. Supplying `#f` for `#:input` means “use
+the dynamically rendered source”. Blur sigmas are nonnegative and at least one
+must be positive. Its tile mode is one of `'clamp`, `'repeat`, or `'decal`;
+the pinned m119 Skia documentation explicitly says mirror tiling is unsupported
+for blur image filters, so this wrapper rejects `'mirror` for that constructor.
+
+A drop-shadow filter includes the original input plus the shadow;
+`make-drop-shadow-only-image-filter` emits only the shadow. Shadow offsets are
+finite scalars and sigmas are nonnegative. `make-color-filter-image-filter`
+turns a color filter into an image-filter node. `make-compose-image-filter`
+computes `outer(inner(source))`.
+
+This first filter layer does not yet expose crop rectangles, arithmetic/merge,
+morphology, displacement, matrix convolution/transform, lighting, table filters,
+or runtime-effect filters.
 
 ## Canvas state and transforms
 

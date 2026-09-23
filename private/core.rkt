@@ -18,10 +18,12 @@
          draw-paint draw-line draw-rect draw-rounded-rect draw-circle draw-oval
          draw-path draw-polygon
          paint? make-paint paint-copy paint-color paint-shader paint-path-effect
+         paint-color-filter paint-mask-filter paint-image-filter
          paint-set-color! paint-set-style! paint-set-stroke-width!
          paint-set-antialias! paint-set-cap! paint-set-join!
          paint-set-miter-limit! paint-set-blend-mode! paint-set-shader!
-         paint-set-path-effect!
+         paint-set-path-effect! paint-set-color-filter! paint-set-mask-filter!
+         paint-set-image-filter!
          shader? make-color-shader make-linear-gradient-shader
          make-radial-gradient-shader make-sweep-gradient-shader
          make-two-point-conical-gradient-shader make-image-shader
@@ -29,6 +31,12 @@
          path-effect? make-dash-path-effect make-corner-path-effect
          make-discrete-path-effect make-trim-path-effect
          make-compose-path-effect make-sum-path-effect
+         color-filter? make-color-matrix-filter make-blend-color-filter
+         make-compose-color-filter
+         mask-filter? make-blur-mask-filter
+         image-filter? make-blur-image-filter make-drop-shadow-image-filter
+         make-drop-shadow-only-image-filter make-color-filter-image-filter
+         make-compose-image-filter
          skia-path? make-path path-copy path-move-to! path-line-to!
          path-quad-to! path-cubic-to! path-close! path-reset!
          path-add-rect! path-add-oval! path-add-circle!
@@ -76,6 +84,9 @@
 (struct paint (handle) #:constructor-name make-paint-record)
 (struct shader (handle) #:constructor-name make-shader-record)
 (struct path-effect (handle) #:constructor-name make-path-effect-record)
+(struct color-filter (handle) #:constructor-name make-color-filter-record)
+(struct mask-filter (handle) #:constructor-name make-mask-filter-record)
+(struct image-filter (handle) #:constructor-name make-image-filter-record)
 (struct skia-path (handle) #:constructor-name make-path-record)
 ;; snapshot-box contains a raw native SkPath pointer owned together with the
 ;; native SkPathMeasure. It is never exposed by the public API.
@@ -99,6 +110,7 @@
 
 (define (skia-resource? v)
   (or (surface? v) (paint? v) (shader? v) (path-effect? v)
+      (color-filter? v) (mask-filter? v) (image-filter? v)
       (skia-path? v) (path-measure? v) (image? v)
       (typeface? v) (font? v)))
 
@@ -107,6 +119,9 @@
         [(paint? v) (paint-handle v)]
         [(shader? v) (shader-handle v)]
         [(path-effect? v) (path-effect-handle v)]
+        [(color-filter? v) (color-filter-handle v)]
+        [(mask-filter? v) (mask-filter-handle v)]
+        [(image-filter? v) (image-filter-handle v)]
         [(skia-path? v) (skia-path-handle v)]
         [(path-measure? v) (path-measure-handle v)]
         [(image? v) (image-handle v)]
@@ -149,6 +164,12 @@
 (define (shader-h who v) (typed-handle who v shader? shader-handle "shader?"))
 (define (path-effect-h who v)
   (typed-handle who v path-effect? path-effect-handle "path-effect?"))
+(define (color-filter-h who v)
+  (typed-handle who v color-filter? color-filter-handle "color-filter?"))
+(define (mask-filter-h who v)
+  (typed-handle who v mask-filter? mask-filter-handle "mask-filter?"))
+(define (image-filter-h who v)
+  (typed-handle who v image-filter? image-filter-handle "image-filter?"))
 (define (path-h who v) (typed-handle who v skia-path? skia-path-handle "skia-path?"))
 (define (path-measure-h who v)
   (typed-handle who v path-measure? path-measure-handle "path-measure?"))
@@ -289,7 +310,10 @@
                     #:miter-limit [miter 4]
                     #:blend-mode [blend 'src-over]
                     #:shader [sh #f]
-                    #:path-effect [effect #f])
+                    #:path-effect [effect #f]
+                    #:color-filter [cf #f]
+                    #:mask-filter [mf #f]
+                    #:image-filter [imf #f])
   ;; Validate every option before allocating native state.
   (define col (color->argb color))
   (define sty (choice 'make-paint style style-values))
@@ -303,8 +327,17 @@
     (raise-argument-error 'make-paint "(or/c #f shader?)" sh))
   (unless (or (not effect) (path-effect? effect))
     (raise-argument-error 'make-paint "(or/c #f path-effect?)" effect))
+  (unless (or (not cf) (color-filter? cf))
+    (raise-argument-error 'make-paint "(or/c #f color-filter?)" cf))
+  (unless (or (not mf) (mask-filter? mf))
+    (raise-argument-error 'make-paint "(or/c #f mask-filter?)" mf))
+  (unless (or (not imf) (image-filter? imf))
+    (raise-argument-error 'make-paint "(or/c #f image-filter?)" imf))
   (define sh-hnd (and sh (shader-h 'make-paint sh)))
   (define effect-hnd (and effect (path-effect-h 'make-paint effect)))
+  (define cf-hnd (and cf (color-filter-h 'make-paint cf)))
+  (define mf-hnd (and mf (mask-filter-h 'make-paint mf)))
+  (define imf-hnd (and imf (image-filter-h 'make-paint imf)))
   (skia-check!)
   (define hnd (new-owned 'make-paint 'paint sk_paint_new sk_paint_delete))
   (initialize-resource
@@ -313,7 +346,10 @@
      (define handles
        (append (list hnd)
                (if sh-hnd (list sh-hnd) '())
-               (if effect-hnd (list effect-hnd) '())))
+               (if effect-hnd (list effect-hnd) '())
+               (if cf-hnd (list cf-hnd) '())
+               (if mf-hnd (list mf-hnd) '())
+               (if imf-hnd (list imf-hnd) '())))
      (call-with-owned
       'make-paint handles
       (lambda (p . optional-pointers)
@@ -330,7 +366,16 @@
           (sk_paint_set_shader p (car remaining))
           (set! remaining (cdr remaining)))
         (when effect-hnd
-          (sk_paint_set_path_effect p (car remaining))))))))
+          (sk_paint_set_path_effect p (car remaining))
+          (set! remaining (cdr remaining)))
+        (when cf-hnd
+          (sk_paint_set_colorfilter p (car remaining))
+          (set! remaining (cdr remaining)))
+        (when mf-hnd
+          (sk_paint_set_maskfilter p (car remaining))
+          (set! remaining (cdr remaining)))
+        (when imf-hnd
+          (sk_paint_set_imagefilter p (car remaining))))))))
 
 (define (paint-copy p)
   (call-with-owned 'paint-copy (list (paint-h 'paint-copy p))
@@ -364,6 +409,26 @@
      (and ep
           (make-path-effect-record
            (new-owned who 'path-effect (lambda () ep) sk_path_effect_unref))))))
+
+(define (paint-owned-filter who p native-get constructor kind release)
+  (call-with-owned
+   who (list (paint-h who p))
+   (lambda (pp)
+     ;; The m119 paint getters use ref...().release(), so a non-null result is
+     ;; already one independently-owned native reference.
+     (define fp (native-get pp))
+     (and fp
+          (constructor (new-owned who kind (lambda () fp) release))))))
+
+(define (paint-color-filter p)
+  (paint-owned-filter 'paint-color-filter p sk_paint_get_colorfilter
+                      make-color-filter-record 'color-filter sk_colorfilter_unref))
+(define (paint-mask-filter p)
+  (paint-owned-filter 'paint-mask-filter p sk_paint_get_maskfilter
+                      make-mask-filter-record 'mask-filter sk_maskfilter_unref))
+(define (paint-image-filter p)
+  (paint-owned-filter 'paint-image-filter p sk_paint_get_imagefilter
+                      make-image-filter-record 'image-filter sk_imagefilter_unref))
 
 (define (set-paint-value! who p value native-setter)
   (call-with-owned who (list (paint-h who p))
@@ -415,6 +480,27 @@
     [else
      (call-with-owned who (list (paint-h who p))
        (lambda (pp) (sk_paint_set_path_effect pp #f)))]))
+
+(define (set-paint-filter! who p value pred get-handle description native-setter)
+  (unless (or (not value) (pred value))
+    (raise-argument-error who description value))
+  (cond
+    [value
+     (call-with-owned who (list (paint-h who p) (get-handle who value))
+       (lambda (pp fp) (native-setter pp fp)))]
+    [else
+     (call-with-owned who (list (paint-h who p))
+       (lambda (pp) (native-setter pp #f)))]))
+
+(define (paint-set-color-filter! p cf)
+  (set-paint-filter! 'paint-set-color-filter! p cf color-filter? color-filter-h
+                     "(or/c #f color-filter?)" sk_paint_set_colorfilter))
+(define (paint-set-mask-filter! p mf)
+  (set-paint-filter! 'paint-set-mask-filter! p mf mask-filter? mask-filter-h
+                     "(or/c #f mask-filter?)" sk_paint_set_maskfilter))
+(define (paint-set-image-filter! p imf)
+  (set-paint-filter! 'paint-set-image-filter! p imf image-filter? image-filter-h
+                     "(or/c #f image-filter?)" sk_paint_set_imagefilter))
 
 ;; Shaders and gradients ----------------------------------------------------
 
@@ -685,6 +771,158 @@
    (lambda ()
      (call-with-owned who (list fh sh)
        (lambda (fp sp) (sk_path_effect_create_sum fp sp))))))
+
+;; Color, mask, and image filters ------------------------------------------
+
+(define (filter-sequence who value count description)
+  (define xs
+    (cond [(list? value) value]
+          [(vector? value) (vector->list value)]
+          [else (raise-argument-error who "(or/c list? vector?)" value)]))
+  (unless (= (length xs) count)
+    (raise-arguments-error who description
+                           "required entries" count "given entries" (length xs)))
+  (for/list ([x (in-list xs)]) (scalar who x)))
+
+(define (new-color-filter who create)
+  (skia-check!)
+  (make-color-filter-record
+   (new-owned who 'color-filter create sk_colorfilter_unref)))
+
+(define (make-color-matrix-filter matrix)
+  (define who 'make-color-matrix-filter)
+  (define values
+    (filter-sequence who matrix 20
+                     "a color matrix must contain exactly 20 finite real values"))
+  (define native (native-array values _float))
+  (new-color-filter who (lambda () (sk_colorfilter_new_color_matrix native))))
+
+(define (make-blend-color-filter color mode)
+  (define who 'make-blend-color-filter)
+  (define argb (color->argb color))
+  (define blend (choice who mode blend-values))
+  ;; SkColorFilters::Blend returns null for Dst because it is exactly the
+  ;; identity operation, so represent that explicitly instead of reporting a
+  ;; misleading allocation failure.
+  (when (eq? mode 'dst)
+    (raise-arguments-error who "'dst is a no-op and has no native color-filter object"
+                           "mode" mode))
+  (new-color-filter who (lambda () (sk_colorfilter_new_mode argb blend))))
+
+(define (make-compose-color-filter outer inner)
+  (define who 'make-compose-color-filter)
+  (define oh (color-filter-h who outer))
+  (define ih (color-filter-h who inner))
+  (new-color-filter
+   who
+   (lambda ()
+     (call-with-owned who (list oh ih)
+       (lambda (op ip) (sk_colorfilter_new_compose op ip))))))
+
+(define (new-mask-filter who create)
+  (skia-check!)
+  (make-mask-filter-record
+   (new-owned who 'mask-filter create sk_maskfilter_unref)))
+
+(define (make-blur-mask-filter sigma
+                               #:style [style 'normal]
+                               #:respect-ctm? [respect-ctm? #t])
+  (define who 'make-blur-mask-filter)
+  (define sig (positive-scalar who sigma))
+  (define sty (choice who style blur-style-values))
+  (define respect? (boolean who respect-ctm?))
+  (new-mask-filter who
+                   (lambda ()
+                     (sk_maskfilter_new_blur_with_flags sty sig respect?))))
+
+(define (new-image-filter who create)
+  (skia-check!)
+  (make-image-filter-record
+   (new-owned who 'image-filter create sk_imagefilter_unref)))
+
+(define (optional-image-filter-h who input)
+  (unless (or (not input) (image-filter? input))
+    (raise-argument-error who "(or/c #f image-filter?)" input))
+  (and input (image-filter-h who input)))
+
+(define (with-optional-image-input who input-h proc)
+  (if input-h
+      (call-with-owned who (list input-h) (lambda (ip) (proc ip)))
+      (proc #f)))
+
+(define (make-blur-image-filter sigma-x sigma-y
+                                #:tile-mode [tile-mode 'decal]
+                                #:input [input #f])
+  (define who 'make-blur-image-filter)
+  (define sx (nonnegative-scalar who sigma-x))
+  (define sy (nonnegative-scalar who sigma-y))
+  (when (and (zero? sx) (zero? sy))
+    (raise-arguments-error who "at least one blur sigma must be positive"
+                           "sigma-x" sigma-x "sigma-y" sigma-y))
+  (define tile (choice who tile-mode tile-mode-values))
+  ;; Upstream m119 explicitly documents mirror as unsupported for blur image
+  ;; filters. Reject it instead of silently promising a tile behavior that the
+  ;; pinned raster backend does not implement.
+  (when (eq? tile-mode 'mirror)
+    (raise-arguments-error who
+                           "'mirror is not supported for blur image filters by the pinned m119 Skia"
+                           "tile-mode" tile-mode))
+  (define ih (optional-image-filter-h who input))
+  (new-image-filter
+   who
+   (lambda ()
+     (with-optional-image-input
+      who ih
+      (lambda (ip) (sk_imagefilter_new_blur sx sy tile ip #f))))))
+
+(define (make-drop-shadow-filter who native-create dx dy sigma-x sigma-y color input)
+  (define fdx (scalar who dx))
+  (define fdy (scalar who dy))
+  (define sx (nonnegative-scalar who sigma-x))
+  (define sy (nonnegative-scalar who sigma-y))
+  (define argb (color->argb color))
+  (define ih (optional-image-filter-h who input))
+  (new-image-filter
+   who
+   (lambda ()
+     (with-optional-image-input
+      who ih
+      (lambda (ip) (native-create fdx fdy sx sy argb ip #f))))))
+
+(define (make-drop-shadow-image-filter dx dy sigma-x sigma-y color
+                                       #:input [input #f])
+  (make-drop-shadow-filter 'make-drop-shadow-image-filter
+                           sk_imagefilter_new_drop_shadow
+                           dx dy sigma-x sigma-y color input))
+
+(define (make-drop-shadow-only-image-filter dx dy sigma-x sigma-y color
+                                            #:input [input #f])
+  (make-drop-shadow-filter 'make-drop-shadow-only-image-filter
+                           sk_imagefilter_new_drop_shadow_only
+                           dx dy sigma-x sigma-y color input))
+
+(define (make-color-filter-image-filter cf #:input [input #f])
+  (define who 'make-color-filter-image-filter)
+  (define ch (color-filter-h who cf))
+  (define ih (optional-image-filter-h who input))
+  (new-image-filter
+   who
+   (lambda ()
+     (define handles (if ih (list ch ih) (list ch)))
+     (call-with-owned
+      who handles
+      (lambda (cp . rest)
+        (sk_imagefilter_new_color_filter cp (if ih (car rest) #f) #f))))))
+
+(define (make-compose-image-filter outer inner)
+  (define who 'make-compose-image-filter)
+  (define oh (image-filter-h who outer))
+  (define ih (image-filter-h who inner))
+  (new-image-filter
+   who
+   (lambda ()
+     (call-with-owned who (list oh ih)
+       (lambda (op ip) (sk_imagefilter_new_compose op ip))))))
 
 ;; Canvas state -------------------------------------------------------------
 

@@ -1,5 +1,6 @@
 #lang racket/base
-(require rackunit rackunit/text-ui ffi/unsafe
+(require racket/list
+         rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/types.rkt")
 (provide pure-tests)
 
@@ -210,6 +211,35 @@
      (check-equal? (ptr-ref m _uint32) #x0f)
      (for ([expected (in-range 1 16)] [offset (in-range 4 64 4)])
        (check-= (ptr-ref (ptr-add m offset) _float) expected 0.001)))
+   (test-case "filter constructors validate before native loading"
+     (check-exn exn:fail:contract?
+                (lambda () (make-color-matrix-filter '(1 2 3))))
+     (check-exn exn:fail:contract?
+                (lambda () (make-color-matrix-filter
+                            (append (make-list 19 0) (list +nan.0)))))
+     (check-exn exn:fail? (lambda () (make-blend-color-filter 'red 'dst)))
+     (check-exn exn:fail:contract? (lambda () (make-blend-color-filter 'red 'wrong)))
+     (check-exn exn:fail:contract? (lambda () (make-blur-mask-filter 0)))
+     (check-exn exn:fail:contract? (lambda () (make-blur-mask-filter 2 #:style 'wrong)))
+     (check-exn exn:fail:contract? (lambda () (make-blur-mask-filter 2 #:respect-ctm? 1)))
+     (check-exn exn:fail? (lambda () (make-blur-image-filter 0 0)))
+     (check-exn exn:fail:contract? (lambda () (make-blur-image-filter -1 2)))
+     (check-exn exn:fail:contract? (lambda () (make-blur-image-filter 1 2 #:tile-mode 'wrong)))
+     (check-exn exn:fail? (lambda () (make-blur-image-filter 1 2 #:tile-mode 'mirror)))
+     (check-exn exn:fail:contract? (lambda () (make-blur-image-filter 1 2 #:input 'bad)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-drop-shadow-image-filter 1 2 -1 3 'black)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-drop-shadow-image-filter 1 2 3 4 'black #:input 'bad)))
+     (check-exn exn:fail:contract? (lambda () (make-color-filter-image-filter 'bad)))
+     (check-exn exn:fail:contract? (lambda () (make-compose-image-filter 'bad 'also-bad))))
+   (test-case "paint filter options validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (make-paint #:color-filter 'bad)))
+     (check-exn exn:fail:contract? (lambda () (make-paint #:mask-filter 'bad)))
+     (check-exn exn:fail:contract? (lambda () (make-paint #:image-filter 'bad)))
+     (check-exn exn:fail:contract? (lambda () (paint-set-color-filter! 'not-a-paint #f)))
+     (check-exn exn:fail:contract? (lambda () (paint-set-mask-filter! 'not-a-paint #f)))
+     (check-exn exn:fail:contract? (lambda () (paint-set-image-filter! 'not-a-paint #f))))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))
