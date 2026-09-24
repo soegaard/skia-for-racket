@@ -932,7 +932,9 @@
      (with-skia ([p (make-path)] [rr (make-path)])
        (path-move-to! p 5 25)
        (path-conic-to! p 20 0 35 25 0.5)
-       (check-equal? (path-point-count p) 2)
+       ;; SkPath stores the contour start, conic control, and endpoint.
+       (check-equal? (path-point-count p) 3)
+       (check-equal? (path-points p) '((5.0 25.0) (20.0 0.0) (35.0 25.0)))
        (path-add-rounded-rect! rr 0 0 30 20 5 5)
        (check-true (path-contains? rr 15 10))
        (check-false (path-contains? rr -1 -1))))

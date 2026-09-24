@@ -52,16 +52,24 @@
       (draw-path c p teal)
       (draw-path c p slate))
 
-    (with-skia ([base (make-path '((move 425 430) (line 560 430) (line 560 560) (line 425 560) (close)))]
-                [bubble (svg-path->path "M 0 40 Q 0 0 40 0 L 120 0 Q 160 0 160 40 L 160 80 Q 160 120 120 120 L 50 120 L 24 148 L 32 120 Q 0 116 0 80 Z")])
-      (path-add-path! bubble base #:dx 10 #:dy 12)
-      (draw-path c bubble fill)
-      (draw-path c bubble stroke))
+    (with-skia ([base (make-path '((move 0 0) (line 120 0) (line 120 105) (line 0 105) (close)))]
+                [bubble (svg-path->path "M 0 40 Q 0 0 40 0 L 120 0 Q 160 0 160 40 L 160 80 Q 160 120 120 120 L 50 120 L 24 148 L 32 120 Q 0 116 0 80 Z")]
+                [combined (make-path)])
+      ;; Compose two local paths into one destination path inside this panel.
+      (path-add-path! combined base #:dx 430 #:dy 455)
+      (path-add-path! combined bubble #:dx 390 #:dy 420)
+      (draw-path c combined fill)
+      (draw-path c combined stroke))
 
     (with-skia ([p (svg-path->path "M 735 438 L 892 438 L 942 512 L 812 590 L 710 530 Z")])
       (draw-path c p teal)
       (draw-path c p slate)
-      (draw-simple-text c (path->svg-path p) 700 640 font text))
+      (define svg (path->svg-path p))
+      (define preview
+        (if (> (string-length svg) 34)
+            (string-append (substring svg 0 34) "...")
+            svg))
+      (draw-simple-text c preview 700 640 font text))
 
     (save-png surface out #:exists 'replace)))
 
