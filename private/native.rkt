@@ -144,6 +144,8 @@
 ;; because this Skia entry point does not perform script shaping.
 (define-native sk_canvas_draw_simple_text
   (_fun _pointer _bytes _size _int _float _float _pointer _pointer -> _void))
+(define-native sk_canvas_draw_text_blob
+  (_fun _pointer _pointer _float _float _pointer -> _void))
 
 (define-native sk_paint_new (_fun -> _pointer))
 (define-native sk_paint_clone (_fun _pointer -> _pointer))
@@ -303,7 +305,17 @@
   (_fun _pointer -> _pointer))
 
 
-;; Typeface/font primitives --------------------------------------------------
+;; Font manager, typeface, font, and text-blob primitives -------------------
+
+(define-native sk_fontmgr_create_default (_fun -> _pointer))
+(define-native sk_fontmgr_ref_default (_fun -> _pointer))
+(define-native sk_fontmgr_unref (_fun _pointer -> _void))
+(define-native sk_fontmgr_count_families (_fun _pointer -> _int))
+(define-native sk_fontmgr_get_family_name (_fun _pointer _int _pointer -> _void))
+(define-native sk_fontmgr_match_family_style
+  (_fun _pointer _pointer _pointer -> _pointer))
+(define-native sk_fontmgr_match_family_style_character
+  (_fun _pointer _pointer _pointer _pointer _int _int32 -> _pointer))
 
 (define-native sk_typeface_create_default (_fun -> _pointer))
 (define-native sk_typeface_create_from_file (_fun _bytes _int -> _pointer))
@@ -348,6 +360,15 @@
   (_fun _pointer _uint16 _pointer -> _stdbool))
 (define-native sk_text_utils_get_path
   (_fun _bytes _size _int _float _float _pointer _pointer -> _void))
+
+(define-native sk_textblob_unref (_fun _pointer -> _void))
+(define-native sk_textblob_get_bounds (_fun _pointer _sk-rect-pointer -> _void))
+(define-native sk_textblob_get_unique_id (_fun _pointer -> _uint32))
+(define-native sk_textblob_builder_new (_fun -> _pointer))
+(define-native sk_textblob_builder_delete (_fun _pointer -> _void))
+(define-native sk_textblob_builder_make (_fun _pointer -> _pointer))
+(define-native sk_textblob_builder_alloc_run_pos
+  (_fun _pointer _pointer _int _pointer _sk-textblob-runbuffer-pointer -> _void))
 
 (define-native sk_string_new_empty (_fun -> _pointer))
 (define-native sk_string_destructor (_fun _pointer -> _void))

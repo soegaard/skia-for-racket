@@ -49,18 +49,25 @@ repeat=1, mirror=2, decal=3.
 The integer rectangle is used for raster image subsets. Source rectangles passed
 to `sk_canvas_draw_image_rect` remain floating-point `sk_rect_t` values.
 
+The text-blob runbuffer mirrors `sk_textblob_builder_runbuffer_t` as four
+native pointers (`glyphs`, `pos`, `utf8text`, `clusters`). Version 0.9 only
+uses the positioned-run allocation, so `glyphs` points at native `uint16_t`
+storage and `pos` at contiguous 8-byte `sk_point_t` values. Those pointers are
+borrowed from the temporary builder and are never exposed publicly or retained
+after `sk_textblob_builder_make`.
+
 The font-metrics flags are copied as a 32-bit mask. The four decoration fields
 (underline thickness/position and strikeout thickness/position) are exposed to
 Racket only when their corresponding native validity bit is set. UTF-8 simple
 text uses the pinned native text-encoding value 0.
 
-The 0.1 through 0.5 declarations have been live-tested on macOS/aarch64 with
-Racket 9.3.0.2 and the pinned native asset. Version 0.6 adds no new by-value C
-struct layouts; its filter callouts use existing pointers/scalars plus a
-temporary 20-float color-matrix array. Those additions are source/ABI checked in
-the authoring environment and require the included local Racket/native run
-before they receive the same validation status. A host-C layout check is not a
-substitute for validating Racket's actual FFI declarations.
+The 0.1 through 0.8 declarations have been live-tested on macOS/aarch64 with
+Racket 9.3.0.2 and the pinned native asset. Version 0.9 adds the four-pointer
+text-blob runbuffer layout plus font-manager/text-blob callouts; those additions
+are source/ABI checked in the authoring environment and require the included
+local Racket/native run before they receive the same validation status. A host-C
+layout check is not a substitute for validating Racket's actual FFI
+declarations.
 
 ## Ownership map
 
@@ -78,12 +85,15 @@ substitute for validating Racket's actual FFI declarations.
 | Path measure | `sk_pathmeasure_destroy` | Owns a private cloned `SkPath`; measure destroyed before clone |
 | Image/snapshot/decoded/subset image | `sk_image_unref` | One owned reference |
 | Typeface | `sk_typeface_unref` | One owned reference |
+| Font manager | `sk_fontmgr_unref` | Owned ref-counted manager; default-manager wrapper receives its own ref |
 | Font | `sk_font_delete` | Native-owned object; may retain a private default typeface wrapper |
+| Text blob | `sk_textblob_unref` | Immutable ref-counted blob made from a temporary builder |
 | Temporary encoded `SkData` | `sk_data_unref` | Owned while creating/probing an encoded image |
 | Temporary codec | `sk_codec_destroy` | Owned only while copying metadata |
 | Codec info color-space reference | `sk_colorspace_unref` | Released after scalar metadata is copied |
 | Temporary raster image | `sk_image_unref` | Owned while exposing a pixmap for encoding |
-| Temporary font style | `sk_fontstyle_delete` | Owned only during family matching |
+| Temporary font style | `sk_fontstyle_delete` | Owned only during family/font-manager matching |
+| Temporary text-blob builder | `sk_textblob_builder_delete` | Owns writable run buffers only until the blob is sealed |
 | Temporary native string | `sk_string_destructor` | Owned while copying a family name to Racket |
 | Temporary pixmap | `sk_pixmap_destructor` | Descriptor owned only during encoding; pixels are borrowed |
 | Temporary stream | `sk_dynamicmemorywstream_destroy` | Owned during encoding |
@@ -173,11 +183,24 @@ explicit caller-owned typeface never closes that wrapper. The pinned native
 `SkFont` retains the typeface state it needs; a regression case checks that the
 caller may close its typeface wrapper after successful font construction.
 
+
+Font-manager matching returns newly owned typeface references from the native
+`sk_sp::release()` path. The manager does not need to remain live after a
+successful match. BCP-47 language strings are copied into temporary C buffers
+and a temporary `char**` array for the synchronous match call; none are
+retained by Racket or Skia afterward.
+
+Text-blob construction writes only into native run buffers allocated by the
+builder. `sk_textblob_builder_make` transfers/seals the recorded run into one
+owned blob reference. The builder is destroyed immediately afterward. The blob
+contains/copies the `SkFont` state needed by the run, so Racket does not keep a
+font wrapper alive solely for blob lifetime.
+
 ## Deliberate exclusions
 
 No native-to-Racket callbacks, custom streams invoking Racket callbacks,
 retained client pixel buffers, GPU contexts, arbitrary user native pointers,
-C++ exceptions, font-manager/fallback abstraction, shaping engine, bidi
+C++ exceptions, shaping engine, bidi
 reordering, paragraph layout, public color-space objects, public codec objects,
 or public shader-local matrices enter this binding. Version 0.4 exposes
 single-image encoded data through high-level copied byte/file operations; it
@@ -197,9 +220,11 @@ the new version. Update the package URLs and accepted milestone together. Run
 pure tests, doctor, native tests, and visual examples on each supported
 architecture. Review alpha conversion; PNG/JPEG/WebP option fields; codec
 color-space ownership; encoded-data retention; source/subset rectangles;
-sampling padding; font-metrics layout and validity flags; UTF-8/glyph
-conversion; shader/path-effect/filter refcounts; path-measure snapshot
-ownership; PathOps results; color-matrix arrays; blur/shadow filter construction;
+sampling padding; font-metrics and text-blob-runbuffer layouts; UTF-8/glyph
+conversion; font-manager match ownership and temporary BCP-47 buffers;
+text-blob builder/run-buffer ownership; shader/path-effect/filter refcounts;
+path-measure snapshot ownership; PathOps results; color-matrix arrays;
+blur/shadow filter construction;
 filter-graph input retention; typeface/font lifetime; image snapshot lifetime;
 and both explicit and GC cleanup. Do not simply widen the milestone check until
 an incompatible build loads.

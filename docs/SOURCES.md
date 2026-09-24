@@ -60,3 +60,6 @@ are the compatibility reference for this implementation.
 - Expanded path/SVG geometry in 0.8 uses the pinned Skia path C ABI for relative commands, conics, path composition, point queries, and SVG path-data parsing/serialization.
 
 - 0.8.1 audited legacy `sk_path_*` exports against the actual SkiaSharp 3.119.1 native library and the corresponding `include/c/sk_path.h` / `src/c/sk_path.cpp` C shim signatures.
+
+- Font-manager/fallback work in 0.9 was checked against the pinned SkiaSharp `SKFontManager.cs`, generated `sk_typeface.h` bindings, and mono/skia `src/c/sk_typeface.cpp` / `include/c/sk_typeface.h`.
+- Positioned text blobs in 0.9 were checked against `SKTextBlob.cs`, generated `sk_textblob.h` bindings and `SKRunBufferInternal`, plus mono/skia `src/c/sk_textblob.cpp` / `include/c/sk_textblob.h`.

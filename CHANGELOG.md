@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 — font managers and positioned text blobs
+
+- Added owned `font-manager?` resources, default/fresh manager constructors, family enumeration, family-style matching, and character fallback with BCP-47 language hints.
+- Added immutable `text-blob?` resources built from explicit glyph IDs and positions, blob bounds/unique IDs, and `draw-text-blob`.
+- Added the native `sk_textblob_builder_runbuffer_t` layout mirror and host-C layout assertions.
+- Added `examples/text-blobs.rkt`, doctor coverage, and font-manager/text-blob tests.
+
+
 ## 0.8.1 — path ABI symbol hotfix
 
 - Corrected `sk_path_add_round_rect` to the actual m119 export `sk_path_add_rounded_rect`.

@@ -68,6 +68,9 @@
          encoded-image-info-alpha-type encoded-image-info-origin
          encoded-image-info-frame-count
          encoded-image-info-from-bytes encoded-image-info-from-file
+         font-manager? make-font-manager default-font-manager
+         font-manager-family-count font-manager-family-name font-manager-families
+         font-manager-match-family font-manager-match-character
          typeface? make-typeface typeface-from-family typeface-from-file
          typeface-family-name typeface-weight typeface-width typeface-slant
          font? make-font font-size font-set-size!
@@ -85,7 +88,9 @@
          font-metrics-underline-position font-metrics-strikeout-thickness
          font-metrics-strikeout-position font-metrics-spacing
          draw-simple-text measure-simple-text simple-text-bounds
-         font-text->glyphs font-char->glyph font-glyph-path simple-text-path)
+         font-text->glyphs font-char->glyph font-glyph-path simple-text-path
+         text-blob? make-positioned-text-blob text-blob-bounds text-blob-unique-id
+         draw-text-blob)
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record)
@@ -110,10 +115,12 @@
   (width height format color-type alpha-type origin frame-count)
   #:transparent
   #:constructor-name make-encoded-image-info-record)
+(struct font-manager (handle) #:constructor-name make-font-manager-record)
 (struct typeface (handle) #:constructor-name make-typeface-record)
 ;; owner keeps an implicitly-created default typeface reachable for at least
 ;; as long as the font wrapper. SkFont itself also retains its typeface.
 (struct font (handle owner) #:constructor-name make-font-record)
+(struct text-blob (handle) #:constructor-name make-text-blob-record)
 (struct font-metrics
   (top ascent descent bottom leading
    average-character-width max-character-width
@@ -127,7 +134,7 @@
       (color-filter? v) (mask-filter? v) (image-filter? v)
       (picture? v) (picture-recorder? v)
       (skia-path? v) (path-measure? v) (image? v)
-      (typeface? v) (font? v)))
+      (font-manager? v) (typeface? v) (font? v) (text-blob? v)))
 
 (define (resource-handle who v)
   (cond [(surface? v) (surface-handle v)]
@@ -142,8 +149,10 @@
         [(skia-path? v) (skia-path-handle v)]
         [(path-measure? v) (path-measure-handle v)]
         [(image? v) (image-handle v)]
+        [(font-manager? v) (font-manager-handle v)]
         [(typeface? v) (typeface-handle v)]
         [(font? v) (font-handle v)]
+        [(text-blob? v) (text-blob-handle v)]
         [else (raise-argument-error who "skia-resource? (not a borrowed canvas)" v)]))
 
 (define (skia-closed? v)
@@ -194,8 +203,11 @@
 (define (path-measure-h who v)
   (typed-handle who v path-measure? path-measure-handle "path-measure?"))
 (define (image-h who v) (typed-handle who v image? image-handle "image?"))
+(define (font-manager-h who v)
+  (typed-handle who v font-manager? font-manager-handle "font-manager?"))
 (define (typeface-h who v) (typed-handle who v typeface? typeface-handle "typeface?"))
 (define (font-h who v) (typed-handle who v font? font-handle "font?"))
+(define (text-blob-h who v) (typed-handle who v text-blob? text-blob-handle "text-blob?"))
 
 (define (canvas-owner who c)
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
@@ -1529,7 +1541,118 @@
                    (list (path-measure-h 'path-measure-next-contour! m))
                    sk_pathmeasure_next_contour))
 
-;; Typefaces and fonts --------------------------------------------------------
+;; Font managers, typefaces, fonts, and text blobs --------------------------
+
+(define (make-font-manager)
+  (skia-check!)
+  (make-font-manager-record
+   (new-owned 'make-font-manager 'font-manager sk_fontmgr_create_default sk_fontmgr_unref)))
+
+(define (default-font-manager)
+  (skia-check!)
+  (make-font-manager-record
+   (new-owned 'default-font-manager 'font-manager sk_fontmgr_ref_default sk_fontmgr_unref)))
+
+(define (font-manager-family-count fm)
+  (call-with-owned 'font-manager-family-count
+                   (list (font-manager-h 'font-manager-family-count fm))
+                   sk_fontmgr_count_families))
+
+(define (font-manager-family-name fm index)
+  (define who 'font-manager-family-name)
+  (unless (exact-nonnegative-integer? index)
+    (raise-argument-error who "exact-nonnegative-integer?" index))
+  (call-with-owned
+   who (list (font-manager-h who fm))
+   (lambda (mp)
+     (define n (sk_fontmgr_count_families mp))
+     (unless (< index n)
+       (raise-arguments-error who "family index out of range" "index" index "count" n))
+     (call-with-native-temporary
+      who 'native-string sk_string_new_empty sk_string_destructor
+      (lambda (sp)
+        (sk_fontmgr_get_family_name mp index sp)
+        (copy-sk-string who sp))))))
+
+(define (font-manager-families fm)
+  (for/list ([i (in-range (font-manager-family-count fm))])
+    (font-manager-family-name fm i)))
+
+(define (native-c-string-pointer who value description)
+  (define str (nul-free-string who value description))
+  (define bs (nul-terminated-bytes (string->bytes/utf-8 str)))
+  (define ptr (malloc (bytes-length bs) _byte 'atomic))
+  (memcpy ptr bs (bytes-length bs))
+  ptr)
+
+(define (font-manager-style-values who weight width slant)
+  (values (font-weight who weight)
+          (font-width who width)
+          (choice who slant font-slant-values)))
+
+(define (wrap-matched-typeface who ptr)
+  (and ptr
+       (make-typeface-record
+        (new-owned who 'typeface (lambda () ptr) sk_typeface_unref))))
+
+(define (font-manager-match-family fm family
+                                   #:weight [weight 'normal]
+                                   #:width [width 'normal]
+                                   #:slant [slant 'upright])
+  (define who 'font-manager-match-family)
+  (define fmh (font-manager-h who fm))
+  (define family-ptr (native-c-string-pointer who family "string?"))
+  (define-values (wt wd sl) (font-manager-style-values who weight width slant))
+  (skia-check!)
+  (call-with-native-temporary
+   who 'font-style (lambda () (sk_fontstyle_new wt wd sl)) sk_fontstyle_delete
+   (lambda (style-ptr)
+     (call-with-owned
+      who (list fmh)
+      (lambda (mp)
+        (define result (sk_fontmgr_match_family_style mp family-ptr style-ptr))
+        (void (ptr-ref family-ptr _byte 0))
+        (wrap-matched-typeface who result))))))
+
+(define (font-manager-match-character fm character
+                                      #:family [family #f]
+                                      #:weight [weight 'normal]
+                                      #:width [width 'normal]
+                                      #:slant [slant 'upright]
+                                      #:languages [languages '()])
+  (define who 'font-manager-match-character)
+  (define fmh (font-manager-h who fm))
+  (define codepoint (unicode-scalar who character))
+  (unless (or (not family) (string? family))
+    (raise-argument-error who "(or/c #f string?)" family))
+  (unless (list? languages)
+    (raise-argument-error who "list? of language-tag strings" languages))
+  (define family-ptr
+    (and family (native-c-string-pointer who family "string?")))
+  (define language-ptrs
+    (for/list ([language (in-list languages)])
+      (native-c-string-pointer who language "language-tag string?")))
+  (define language-array
+    (and (pair? language-ptrs)
+         (let ([p (malloc (length language-ptrs) _pointer 'atomic)])
+           (for ([lp (in-list language-ptrs)] [i (in-naturals)])
+             (ptr-set! p _pointer i lp))
+           p)))
+  (define-values (wt wd sl) (font-manager-style-values who weight width slant))
+  (skia-check!)
+  (call-with-native-temporary
+   who 'font-style (lambda () (sk_fontstyle_new wt wd sl)) sk_fontstyle_delete
+   (lambda (style-ptr)
+     (call-with-owned
+      who (list fmh)
+      (lambda (mp)
+        (define result
+          (sk_fontmgr_match_family_style_character
+           mp family-ptr style-ptr language-array (length language-ptrs) codepoint))
+        (when family-ptr (void (ptr-ref family-ptr _byte 0)))
+        (when language-array (void (ptr-ref language-array _pointer 0)))
+        (for ([lp (in-list language-ptrs)]) (void (ptr-ref lp _byte 0)))
+        (wrap-matched-typeface who result))))))
 
 (define (make-typeface)
   (skia-check!)
@@ -1841,6 +1964,86 @@
         (sk_text_utils_get_path bs (bytes-length bs) text-encoding-utf8
                                 fx fy fp pp)))
     p))
+
+(define (glyph-sequence who glyphs)
+  (define xs
+    (cond [(vector? glyphs) (vector->list glyphs)]
+          [(list? glyphs) glyphs]
+          [else (raise-argument-error who "list? or vector? of glyph ids" glyphs)]))
+  (for/list ([g (in-list xs)]) (glyph-id who g)))
+
+(define (position-sequence who positions)
+  (define xs
+    (cond [(vector? positions) (vector->list positions)]
+          [(list? positions) positions]
+          [else (raise-argument-error who "list? or vector? of (list x y) positions" positions)]))
+  (for/list ([position (in-list xs)])
+    (match position
+      [(list x y) (list (scalar who x) (scalar who y))]
+      [(vector x y) (list (scalar who x) (scalar who y))]
+      [_ (raise-argument-error who "(list x y) or #(x y) position" position)])))
+
+(define (make-positioned-text-blob f glyphs positions)
+  (define who 'make-positioned-text-blob)
+  (define fh (font-h who f))
+  (define gs (glyph-sequence who glyphs))
+  (define ps (position-sequence who positions))
+  (unless (= (length gs) (length ps))
+    (raise-arguments-error who "glyph and position counts differ"
+                           "glyph count" (length gs)
+                           "position count" (length ps)))
+  (unless (pair? gs)
+    (raise-arguments-error who "at least one glyph is required" "glyphs" glyphs))
+  (define bytes-required (* (length gs) (+ (ctype-sizeof _uint16) (ctype-sizeof _sk-point))))
+  (unless (<= bytes-required (current-skia-byte-limit))
+    (raise-arguments-error who "text-blob input exceeds current-skia-byte-limit"
+                           "required bytes" bytes-required
+                           "limit" (current-skia-byte-limit)))
+  (skia-check!)
+  (call-with-native-temporary
+   who 'text-blob-builder sk_textblob_builder_new sk_textblob_builder_delete
+   (lambda (builder)
+     (call-with-owned
+      who (list fh)
+      (lambda (fp)
+        (define runbuffer (make-sk-textblob-runbuffer #f #f #f #f))
+        (sk_textblob_builder_alloc_run_pos builder fp (length gs) #f runbuffer)
+        (define glyph-ptr (sk-textblob-runbuffer-glyphs runbuffer))
+        (define pos-ptr (sk-textblob-runbuffer-pos runbuffer))
+        (unless (and glyph-ptr pos-ptr)
+          (error who "native text-blob builder returned null run buffers"))
+        (for ([g (in-list gs)] [i (in-naturals)])
+          (ptr-set! glyph-ptr _uint16 i g))
+        (for ([xy (in-list ps)] [i (in-naturals)])
+          ;; sk_point_t is exactly two consecutive C floats.
+          (ptr-set! pos-ptr _float (* 2 i) (car xy))
+          (ptr-set! pos-ptr _float (add1 (* 2 i)) (cadr xy)))
+        (define blob-ptr (sk_textblob_builder_make builder))
+        (unless blob-ptr
+          (error who "native text-blob builder produced no blob"))
+        (make-text-blob-record
+         (new-owned who 'text-blob (lambda () blob-ptr) sk_textblob_unref)))))))
+
+(define (text-blob-bounds blob)
+  (define who 'text-blob-bounds)
+  (define r (make-sk-rect 0.0 0.0 0.0 0.0))
+  (call-with-owned who (list (text-blob-h who blob))
+    (lambda (bp) (sk_textblob_get_bounds bp r)))
+  (values (sk-rect-left r) (sk-rect-top r)
+          (- (sk-rect-right r) (sk-rect-left r))
+          (- (sk-rect-bottom r) (sk-rect-top r))))
+
+(define (text-blob-unique-id blob)
+  (call-with-owned 'text-blob-unique-id
+                   (list (text-blob-h 'text-blob-unique-id blob))
+                   sk_textblob_get_unique_id))
+
+(define (draw-text-blob c blob x y p)
+  (define who 'draw-text-blob)
+  (define fx (scalar who x))
+  (define fy (scalar who y))
+  (call-on-canvas who c (list (text-blob-h who blob) (paint-h who p))
+    (lambda (cp bp pp) (sk_canvas_draw_text_blob cp bp fx fy pp))))
 
 ;; Images, encoded data, codecs, and copied pixel input ---------------------
 

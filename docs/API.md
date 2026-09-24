@@ -1,4 +1,4 @@
-# API reference — version 0.8.1
+# API reference — version 0.9.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -66,7 +66,8 @@ Do not interpret the milestone probe as full binary compatibility validation.
 
 ```racket
 (skia-resource? value)  ; surface, paint, shader, path-effect, color/mask/image filters,
-                        ; path, path-measure, image, typeface, font; not borrowed canvas
+                        ; path, path-measure, image, font-manager, typeface,
+                        ; font, text-blob; not borrowed canvas
 (skia-closed? resource-or-canvas)
 (skia-close! resource)
 (call-with-skia-resource resource procedure-of-one-argument)
@@ -681,7 +682,52 @@ drawing operation are finite nonnegative reals and must remain inside the
 image. The optional paint is passed to Skia for image compositing; `#f` requests
 native defaults.
 
-## Typefaces, fonts, and simple text
+## Font managers, typefaces, fonts, text blobs, and simple text
+
+
+### Font managers and fallback
+
+```racket
+(font-manager? value)
+(make-font-manager)
+(default-font-manager)
+(font-manager-family-count manager)
+(font-manager-family-name manager index)
+(font-manager-families manager)
+(font-manager-match-family manager family
+                           #:weight [weight 'normal]
+                           #:width [width 'normal]
+                           #:slant [slant 'upright])
+(font-manager-match-character manager character
+                              #:family [family #f]
+                              #:weight [weight 'normal]
+                              #:width [width 'normal]
+                              #:slant [slant 'upright]
+                              #:languages [languages '()])
+```
+
+A font manager is an owned native `SkFontMgr` reference. `make-font-manager`
+asks Skia to create a default platform font manager; `default-font-manager`
+returns an independently owned reference to Skia's shared default manager.
+Both wrappers are closed with the normal `skia-close!`/`with-skia` machinery.
+
+Family indices range from zero through one less than
+`font-manager-family-count`. `font-manager-family-name` raises on an invalid
+index; `font-manager-families` returns all names as newly copied Racket
+strings.
+
+`font-manager-match-family` asks the manager for the closest face matching the
+requested family/style and returns a newly owned `typeface?` or `#f`.
+`font-manager-match-character` additionally asks for a face containing one
+Unicode scalar. `family` may be `#f` to allow fallback across all families.
+`languages` is an ordered list of NUL-free BCP-47 language-tag strings passed
+to Skia as fallback hints. The binding does not parse or rewrite those tags.
+The returned typeface, when non-false, owns its native reference independently
+of the manager.
+
+On platforms/native packages without a usable system font manager, enumeration
+can be empty and matching can return `#f`; this is a platform capability, not a
+shaping fallback performed in Racket.
 
 ### Typefaces
 
@@ -837,6 +883,37 @@ Unicode scalar value. Glyph ID 0 can represent a missing glyph. A typeface can
 lack an outline for a glyph; in that case `font-glyph-path` returns `#f`.
 `simple-text-path` returns a newly owned path containing the outlines Skia
 produces for the simple text run at the supplied baseline origin.
+
+
+### Positioned text blobs
+
+```racket
+(text-blob? value)
+(make-positioned-text-blob font glyphs positions)
+(text-blob-bounds blob) ; -> x y width height
+(text-blob-unique-id blob)
+(draw-text-blob canvas blob x y paint)
+```
+
+`make-positioned-text-blob` builds one immutable native `SkTextBlob` run.
+`glyphs` is a list or vector of exact glyph IDs from 0 through 65535.
+`positions` is a same-length list/vector whose elements are `(list x y)` or
+`#(x y)` finite coordinates. At least one glyph is required. The positions are
+absolute positions inside the blob run; `(draw-text-blob ... x y ...)` adds the
+requested drawing origin when replaying the blob.
+
+The constructor allocates a temporary native `SkTextBlobBuilder`, requests a
+positioned run buffer, writes glyph IDs and `SkPoint` values into that native
+buffer synchronously, then seals it into an immutable blob. No pointer into a
+Racket list/vector is retained. Native blob data contains the font state it
+needs, so the source `font?` and its typeface wrapper may be closed after blob
+construction.
+
+`text-blob-bounds` returns native blob bounds relative to its run origin.
+`text-blob-unique-id` is Skia's unsigned blob identifier. `draw-text-blob` uses
+an ordinary paint and current canvas state. This API deliberately accepts
+already-selected glyphs and positions; it does not map Unicode to multiple
+font runs, perform bidi, or shape complex scripts.
 
 ## Racket bitmap bridge
 

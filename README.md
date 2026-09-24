@@ -1,15 +1,15 @@
-# Racket Skia — 0.8.1
+# Racket Skia — 0.9.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.7 are live-validated on
+**Verification status:** versions 0.1 through 0.8 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1 native
-asset. The completed 0.7 doctor passed, and 112 source test cases passed
-(25 pure, 6 lifetime, 81 native). Version 0.8 adds expanded path/SVG
-geometry: relative commands, conics, rounded rectangles, path composition,
-point queries, and SVG path-data conversion. Those new paths are source/ABI
+asset. The completed 0.8.1 run passed the native symbol audit with zero missing
+bindings, every doctor probe, all 118 source test cases (27 pure, 6 lifetime,
+85 native), and the SVG/path visual probe. Version 0.9 adds font-manager
+enumeration/fallback and positioned text blobs. Those new paths are source/ABI
 checked in the authoring environment but still require the included local
 doctor, test suite, and visual probe. See [TESTING.md](TESTING.md).
 
@@ -19,9 +19,10 @@ CPU RGBA surfaces; canvas save/restore, translation, scaling, rotation, skew,
 and clipping; fills, strokes, circles, ovals, rounded rectangles, polygons,
 quadratic and cubic Bézier paths; paint settings and blend modes; path bounds
 and containment; immutable image snapshots and copied RGBA input; image
-placement/scaling; native PNG encoding; default/family/file-backed typefaces;
-configurable fonts and metrics; UTF-8 simple-text drawing/measurement; glyph
-IDs and text/glyph outline paths; owned shaders; color, linear, radial, sweep,
+placement/scaling; native PNG encoding; font-manager enumeration and fallback;
+default/family/file-backed typefaces; configurable fonts and metrics; UTF-8
+simple-text drawing/measurement; positioned text blobs; glyph IDs and text/glyph
+outline paths; owned shaders; color, linear, radial, sweep,
 and conical gradients; image tiling; shader blending; PNG/JPEG/WebP encoded
 image decode and encode; codec metadata probing; image subsets and source-rectangle
 drawing; dash/corner/discrete/trim/composed path effects; path measurement,
@@ -38,7 +39,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.8.1-20260924
+cd racket-skia-0.9.0-20260924
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -52,6 +53,7 @@ mkdir -p output &&
 "$RACKET" examples/circle.rkt output/circle.png &&
 "$RACKET" examples/gallery.rkt output/gallery.png &&
 "$RACKET" examples/text.rkt output/text.png &&
+"$RACKET" examples/text-blobs.rkt output/text-blobs.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -484,3 +486,37 @@ path-data conversion.
 
 This stage is intentionally limited to SVG **path data** (`d=` content), not a
 full SVG document parser or renderer.
+
+
+## Font managers and positioned text blobs
+
+Version 0.9 adds the native font-manager layer that future shaping code will
+use for system font discovery and fallback, together with immutable positioned
+`text-blob?` resources. This stage still does **not** perform shaping.
+
+```racket
+(with-skia ([fm (default-font-manager)])
+  (define face (font-manager-match-character fm #\A #:languages '("en")))
+  (when face
+    (call-with-skia-resource
+     face
+     (lambda (tf)
+       (with-skia ([font (make-font tf #:size 32)]
+                   [paint (make-paint #:color 'black)]
+                   [surface (make-surface 260 90 #:background 'white)])
+         (define glyphs (font-text->glyphs font "AB"))
+         (with-skia ([blob (make-positioned-text-blob
+                            font glyphs '((0 0) (38 0)))])
+           (draw-text-blob (surface-canvas surface) blob 20 58 paint)
+           (save-png surface "positioned.png")))))))
+```
+
+`font-manager-match-character` can request a family/style and an ordered list
+of BCP-47 language tags. A successful match returns a newly owned `typeface?`;
+`#f` means the manager could not provide a matching face. `text-blob?` values
+copy the supplied `SkFont` state into native blob storage and can therefore
+outlive the Racket font/typeface wrappers used to construct them.
+
+Text blobs take glyph IDs and **absolute positions within the run**. HarfBuzz
+shaping is intentionally left for the next stage, where shaping output can be
+converted to these positioned runs.

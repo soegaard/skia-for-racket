@@ -4,9 +4,10 @@
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
   (printf "Pinned native package: SkiaSharp ~a\n" native-package-version)
-  (printf "ABI sizes: pointer=~a image-info=~a rect=~a point=~a irect=~a sampling=~a PNG-options=~a JPEG-options=~a WebP-options=~a font-metrics=~a\n"
+  (printf "ABI sizes: pointer=~a image-info=~a rect=~a point=~a textblob-runbuffer=~a irect=~a sampling=~a PNG-options=~a JPEG-options=~a WebP-options=~a font-metrics=~a\n"
           (ctype-sizeof _pointer) (ctype-sizeof _sk-image-info)
-          (ctype-sizeof _sk-rect) (ctype-sizeof _sk-point) (ctype-sizeof _sk-irect)
+          (ctype-sizeof _sk-rect) (ctype-sizeof _sk-point)
+          (ctype-sizeof _sk-textblob-runbuffer) (ctype-sizeof _sk-irect)
           (ctype-sizeof _sk-sampling) (ctype-sizeof _sk-png-options)
           (ctype-sizeof _sk-jpeg-options) (ctype-sizeof _sk-webp-options)
           (ctype-sizeof _sk-font-metrics))
@@ -122,4 +123,33 @@
         (error 'doctor "relative-path recording failed"))
       (unless (string? (path->svg-path p))
         (error 'doctor "path SVG serialization failed"))
-      (printf "Paths/SVG passed; relative commands, SVG conversion, and point queries verified\n"))))
+      (printf "Paths/SVG passed; relative commands, SVG conversion, and point queries verified\n")))
+  (with-skia ([fm (default-font-manager)])
+    (define family-count (font-manager-family-count fm))
+    (unless (exact-nonnegative-integer? family-count)
+      (error 'doctor "font manager returned an invalid family count"))
+    (when (positive? family-count)
+      (unless (string? (font-manager-family-name fm 0))
+        (error 'doctor "font manager family lookup failed")))
+    (define face (font-manager-match-character fm #\A #:languages '("en")))
+    (unless face
+      (error 'doctor "default font manager could not match U+0041"))
+    (call-with-skia-resource
+     face
+     (lambda (matched-face)
+       (with-skia ([font (make-font matched-face #:size 26)]
+                   [paint (make-paint #:color 'black)]
+                   [surface (make-surface 96 48)])
+         (define glyphs (font-text->glyphs font "AB"))
+         (unless (= (vector-length glyphs) 2)
+           (error 'doctor "font manager matched face did not produce two glyphs"))
+         (with-skia ([blob (make-positioned-text-blob font glyphs '((0 0) (28 0)))])
+           (define-values (_x _y w h) (text-blob-bounds blob))
+           (unless (and (> w 0) (> h 0) (positive? (text-blob-unique-id blob)))
+             (error 'doctor "positioned text blob metadata failed"))
+           (draw-text-blob (surface-canvas surface) blob 10 34 paint)
+           (define pixels (surface->rgba-bytes surface))
+           (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+                     (> (bytes-ref pixels i) 0))
+             (error 'doctor "positioned text blob rasterization failed"))))))
+    (printf "Font manager/text blobs passed; fallback, positioned runs, and replay verified\n")))

@@ -1,23 +1,21 @@
-# Verification report — 2026-09-23
+# Verification report — 2026-09-24
 
 ## Status
 
-**0.1 through 0.5 — LIVE VALIDATED on macOS/aarch64.** The user ran the
-completed 0.5 tree with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1 native
-asset. `tools/doctor.rkt` reported ABI milestone 119.0; raster/PNG,
-font/simple-text, shader/gradient, codec, and path-effects/measurement smoke
-checks passed; all **95** source test cases passed (21 pure, 6 lifetime, 68
-native); and the path-effects visual probe rendered correctly. That run also
-confirmed the corrected `paint-shader` getter ownership path.
+**0.1 through 0.8 — LIVE VALIDATED on macOS/aarch64.** The latest 0.8.1
+run used Racket 9.3.0.2 and pinned SkiaSharp 3.119.1. The native symbol audit
+reported 200 required bindings, 1059 exports, and zero missing symbols. Every
+doctor probe passed, all **118** source test cases passed (27 pure, 6 lifetime,
+85 native), and the SVG/path visual probe rendered correctly.
 
-**0.6 filters/effects — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.** This
-environment has no Racket executable or libSkiaSharp. The new color, mask, and
-image filter resources, paint attachment/getters, filter composition, and
-raster probes received source, ABI, ownership, installer, and documentation
-checks here. The full 0.6 tree contains **105 source test cases**: 23 pure, 6
-lifetime, and 76 native.
+**0.9 font manager/text blobs — NOT YET LIVE RUN IN THE AUTHORING
+ENVIRONMENT.** This environment has no Racket executable or libSkiaSharp. The
+new manager/fallback wrappers, positioned text-blob construction/drawing, and
+`sk_textblob_builder_runbuffer_t` layout received source/ABI/ownership checks
+here. The 0.9 tree contains **127 source test cases**: 30 pure, 6 lifetime, and
+91 native.
 
-## Checks performed for 0.6 source
+## Checks performed for 0.9 source
 
 Run `python3 tools/static-check.py` and the host-C layout command below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -27,24 +25,23 @@ installer against synthetic offline archives. It does **not** parse/expand
 Racket or load Skia.
 
 The host-C mirror independently checks the selected ABI sizes/offsets from
-0.1–0.5. Version 0.6 introduces no new by-value C structs; its filter APIs add
-pointer/scalar callouts plus temporary 20-float color-matrix storage. The host
+0.1–0.5. Version 0.9 adds one small by-value ABI mirror: the four-pointer
+`sk_textblob_builder_runbuffer_t`. The host checker now asserts that layout as
+well as the existing image, sampling, codec, and font-metrics layouts. The host
 checker does not include upstream headers and is not a substitute for Racket FFI
 execution.
 
 The new declarations were compared against the pinned SkiaSharp 3.119.1
-interface and the corresponding mono/skia C shims for color filters, blur mask
-filters, image filters, and paint attachment/getters. The paint getters use
-`ref...().release()` and therefore return one owned native reference. Paint
-setters and composed filter constructors retain their inputs with native
-reference counting. The pinned m119 image-blur documentation explicitly marks
-mirror tiling unsupported; the public wrapper rejects that mode for this
-constructor instead of promising undefined behavior.
+`SKFontManager`/`SKTextBlob` generated bindings and the corresponding mono/skia
+C shims. Font-manager matches return owned typeface references. Text-blob run
+buffers are temporary native storage owned by the builder until
+`sk_textblob_builder_make` seals the immutable blob. The native symbol audit is
+part of the required live validation sequence for every added FFI binding.
 
 No benchmark, native-heap leak-measurement claim, cross-platform rendering-
 equivalence claim, or GPU claim is made by this report.
 
-## Run the 0.6 Racket tests locally
+## Run the 0.9 Racket tests locally
 
 From the extracted root:
 
@@ -54,16 +51,16 @@ RACO="/Applications/Racket v9.3.0.2/bin/raco"
 
 bash tools/install-native.sh &&
 "$RACO" make main.rkt bitmap.rkt tools/doctor.rkt run-tests.rkt &&
-bash tools/audit-symbols.sh
+bash tools/audit-symbols.sh &&
 "$RACKET" tools/doctor.rkt &&
 "$RACKET" run-tests.rkt
 ```
 
-A successful full run should report **23 pure + 6 lifetime + 76 native = 105
+A successful full run should report **30 pure + 6 lifetime + 91 native = 127
 source test cases**. Cases contain multiple assertions, so this is not an
-assertion count. The 0.6 doctor retains all earlier smoke checks and additionally
-rasterizes a color matrix filter and verifies owned mask/image-filter paint
-attachments.
+assertion count. The 0.9 doctor retains every earlier smoke check and additionally
+verifies font-manager enumeration/fallback, positioned text-blob metadata, and
+text-blob rasterization.
 
 To run only tests that do not need the native library:
 
@@ -71,7 +68,7 @@ To run only tests that do not need the native library:
 "$RACKET" run-tests.rkt --pure
 ```
 
-This requests the 29 pure/lifetime cases. It does not run the 76 native cases,
+This requests the 36 pure/lifetime cases. It does not run the 91 native cases,
 and says so. A default run fails rather than silently skipping native tests
 when the library cannot load. Alternatively, after installing the package:
 
@@ -100,6 +97,10 @@ rejection. Version 0.6 adds validation and native cases for color-matrix,
 blend, and composed color filters; mask blur styles/attachment; image blur;
 drop-shadow and shadow-only filters; color-filter image nodes; composed image
 filter graphs; paint ownership/getters/detachment; and use-after-close rejection.
+Versions 0.7–0.8 cover picture recording/replay/rasterization and expanded
+path/SVG geometry. Version 0.9 adds font-manager enumeration/matching/fallback,
+BCP-47 language hints, positioned text-blob construction, bounds/IDs, blob
+replay, font-lifetime independence, and closed-resource rejection.
 
 The repeated allocation case is not a leak detector. The suite does not yet
 measure native heap reclamation directly, expose path-measure matrices or path
@@ -115,6 +116,7 @@ mkdir -p output
 "$RACKET" examples/circle.rkt output/circle.png
 "$RACKET" examples/gallery.rkt output/gallery.png
 "$RACKET" examples/text.rkt output/text.png
+"$RACKET" examples/text-blobs.rkt output/text-blobs.png
 "$RACKET" examples/gradients.rkt output/gradients.png
 "$RACKET" examples/codecs.rkt output/codecs.png
 "$RACKET" examples/path-effects.rkt output/path-effects.png
@@ -124,10 +126,11 @@ mkdir -p output
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
-Choose fresh filenames on reruns. The new `filters.rkt` probe has six panels for
-a color matrix, blend color filter, mask blur, image blur, drop shadow, and a
-composed image-filter graph. Inspect channel transforms, blur falloff, shadow
-offset/source inclusion, clipping, and any unexpected seams or transparency.
+Choose fresh filenames on reruns. The new `text-blobs.rkt` probe shows
+font-manager enumeration, family matching, character fallback, explicit
+positioned glyph runs, repeated blob replay, and nonuniform manual positions.
+Inspect family labels, glyph placement/baselines, replay consistency, and the
+wave-positioned run.
 
 ## Reproduce non-Racket checks
 
@@ -159,3 +162,12 @@ Paths/SVG passed; relative commands, SVG conversion, and point queries verified
 
 
 Before native doctor/test runs, `bash tools/audit-symbols.sh` should report zero missing required symbols. This is especially important after adding FFI bindings.
+
+
+Expected additional doctor line for 0.9:
+
+```text
+Font manager/text blobs passed; fallback, positioned runs, and replay verified
+```
+
+For 0.9 the symbol audit should see 215 `define-native` symbols and report zero missing bindings before the doctor starts.

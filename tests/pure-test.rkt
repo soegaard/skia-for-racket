@@ -51,6 +51,7 @@
      (check-equal? (ctype-sizeof _sk-image-info) (+ p 16))
      (check-equal? (ctype-sizeof _sk-rect) 16)
      (check-equal? (ctype-sizeof _sk-point) 8)
+     (check-equal? (ctype-sizeof _sk-textblob-runbuffer) (* 4 p))
      (check-equal? (ctype-sizeof _sk-irect) 16)
      (check-equal? (ctype-sizeof _sk-sampling) 24)
      (check-equal? (ctype-sizeof _sk-png-options) (+ 8 (* 3 p)))
@@ -75,6 +76,11 @@
      (define p (make-sk-point 12.5 -7.25))
      (check-= (ptr-ref p _float) 12.5 0.001)
      (check-= (ptr-ref (ptr-add p 4) _float) -7.25 0.001))
+   (test-case "text-blob runbuffer ABI field order"
+     (define p (ctype-sizeof _pointer))
+     (define r (make-sk-textblob-runbuffer #f #f #f #f))
+     (for ([offset (in-list (list 0 p (* 2 p) (* 3 p)))])
+       (check-false (ptr-ref (ptr-add r offset) _pointer))))
    (test-case "codec and encoder ABI field order"
      (define p (ctype-sizeof _pointer))
      (define ir (make-sk-irect 1 2 30 40))
@@ -252,6 +258,20 @@
    (test-case "draw-picture keywords validate before native loading"
      (check-exn exn:fail:contract? (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10)))
      (check-exn exn:fail:contract? (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10 #:height 'bad))))
+   (test-case "font-manager options validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (font-manager-family-count 'not-a-manager)))
+     (check-exn exn:fail:contract?
+                (lambda () (font-manager-match-family 'not-a-manager "Helvetica")))
+     (check-exn exn:fail:contract?
+                (lambda () (font-manager-match-character 'not-a-manager #\A)))
+     (check-exn exn:fail:contract?
+                (lambda () (font-manager-match-character 'not-a-manager #\A #:languages #f))))
+   (test-case "positioned text-blob arguments validate before native loading"
+     (check-exn exn:fail:contract?
+                (lambda () (make-positioned-text-blob 'not-a-font '#(1) '((0 0)))))
+     (check-exn exn:fail:contract? (lambda () (text-blob-bounds 'not-a-blob)))
+     (check-exn exn:fail:contract?
+                (lambda () (draw-text-blob 'not-a-canvas 'not-a-blob 0 0 'not-a-paint))))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

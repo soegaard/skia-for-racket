@@ -953,6 +953,81 @@
        (check-true (> (string-length s) 0))
        (with-skia ([q (svg-path->path s)])
          (check-true (path-contains? q 10 5)))))
+   (test-case "font managers enumerate families and own references"
+     (with-skia ([fm (default-font-manager)]
+                 [fresh (make-font-manager)])
+       (define n (font-manager-family-count fm))
+       (check-true (exact-nonnegative-integer? n))
+       (check-true (exact-nonnegative-integer? (font-manager-family-count fresh)))
+       (when (positive? n)
+         (define first (font-manager-family-name fm 0))
+         (check-true (string? first))
+         (check-not-false (member first (font-manager-families fm)))
+         (check-exn exn:fail? (lambda () (font-manager-family-name fm n))))))
+   (test-case "font manager matches family styles and fallback characters"
+     (with-skia ([fm (default-font-manager)])
+       (define count (font-manager-family-count fm))
+       (when (positive? count)
+         (define family (font-manager-family-name fm 0))
+         (define by-family (font-manager-match-family fm family))
+         (when by-family
+           (check-true (typeface? by-family))
+           (check-true (string? (typeface-family-name by-family)))
+           (skia-close! by-family)))
+       (define by-char
+         (font-manager-match-character fm #\A #:languages '("en")))
+       (when by-char
+         (check-true (typeface? by-char))
+         (with-skia ([matched-font (make-font by-char)])
+           (check-not-equal? (font-char->glyph matched-font #\A) 0))
+         (skia-close! by-char))))
+   (test-case "positioned text blob draws and reports bounds"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 30)]
+                 [p (make-paint #:color 'black)]
+                 [s (make-surface 160 60)])
+       (define glyphs (font-text->glyphs f "AB"))
+       (with-skia ([blob (make-positioned-text-blob f glyphs '((0 0) (36 0)))])
+         (define-values (_x _y w h) (text-blob-bounds blob))
+         (check-true (> w 0))
+         (check-true (> h 0))
+         (check-true (exact-nonnegative-integer? (text-blob-unique-id blob)))
+         (draw-text-blob (surface-canvas s) blob 12 42 p)
+         (define bs (surface->rgba-bytes s))
+         (check-true
+          (for/or ([i (in-range 3 (bytes-length bs) 4)])
+            (> (bytes-ref bs i) 0))))))
+   (test-case "text blob preserves explicit glyph positions"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 28)])
+       (define g (font-char->glyph f #\X))
+       (with-skia ([blob (make-positioned-text-blob f (vector g g) '((0 0) (100 0)))])
+         (define-values (_x _y w _h) (text-blob-bounds blob))
+         (check-true (> w 90)))))
+   (test-case "text blob retains font data after font wrapper closure"
+     (define tf (make-typeface))
+     (define f (make-font tf #:size 30))
+     (define glyphs (font-text->glyphs f "Hi"))
+     (define blob (make-positioned-text-blob f glyphs '((0 0) (28 0))))
+     (skia-close! f)
+     (skia-close! tf)
+     (with-skia ([s (make-surface 120 60)]
+                 [p (make-paint #:color 'black)])
+       (draw-text-blob (surface-canvas s) blob 10 42 p)
+       (define bs (surface->rgba-bytes s))
+       (check-true
+        (for/or ([i (in-range 3 (bytes-length bs) 4)])
+          (> (bytes-ref bs i) 0))))
+     (skia-close! blob))
+   (test-case "closed font-manager and text-blob resources reject use"
+     (define fm (default-font-manager))
+     (skia-close! fm)
+     (check-exn #rx"closed" (lambda () (font-manager-family-count fm)))
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 20)])
+       (define blob (make-positioned-text-blob f (vector (font-char->glyph f #\A)) '((0 0))))
+       (skia-close! blob)
+       (check-exn #rx"closed" (lambda () (text-blob-bounds blob)))))
   ))
 
 (define (make-list-of-red-pixels count)

@@ -12,6 +12,11 @@
   ([left _float] [top _float] [right _float] [bottom _float]))
 (define-cstruct _sk-point
   ([x _float] [y _float]))
+;; sk_textblob_builder_runbuffer_t: native-owned writable buffers returned by
+;; SkTextBlobBuilder allocation calls. The pointers remain valid only until
+;; the builder is made/reset/destroyed.
+(define-cstruct _sk-textblob-runbuffer
+  ([glyphs _pointer] [pos _pointer] [utf8text _pointer] [clusters _pointer]))
 (define-cstruct _sk-irect
   ([left _int32] [top _int32] [right _int32] [bottom _int32]))
 (define-cstruct _sk-png-options
