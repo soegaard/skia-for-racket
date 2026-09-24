@@ -287,6 +287,13 @@
      (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:direction 'ttb)))
      (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:line-height 0)))
      (check-exn exn:fail:contract? (lambda () (draw-text-layout 'not-a-canvas 'not-a-layout 0 0 'not-a-paint))))
+   (test-case "justification validates width before native loading"
+     (check-exn #rx"requires a positive #:width"
+                (lambda () (layout-text 'not-a-shaper "alpha beta" #:align 'justify)))
+     (check-exn #rx"requires a positive #:width"
+                (lambda ()
+                  (layout-mixed-text 'bad 'also-bad "alpha beta"
+                                     #:align 'justify-all))))
    (test-case "bidi resolver separates ordinary LTR and RTL text"
      (define-values (levels direction) (bidi-resolve-levels "abc אבג" 'auto))
      (check-eq? direction 'ltr)

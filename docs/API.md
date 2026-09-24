@@ -1,4 +1,4 @@
-# API reference — version 0.13.0
+# API reference — version 0.14.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1120,12 +1120,22 @@ width, `text-layout-width` expands to report the true occupied width.
 The resolver uses the UAX #14 tailoring that prevents breaks inside Racket's
 default grapheme clusters. SA (complex-context Southeast Asian) characters use
 UAX #14's default AL/CM fallback rather than dictionary segmentation.
-Language-specific hyphenation and justification are not performed.
+Language-specific hyphenation is not performed.
 
-Alignment is one of `'start`, `'center`, `'end`, `'left`, or `'right`. `start`
-and `end` are direction-sensitive. Paragraph layout currently accepts only
-`'auto`, `'ltr`, and `'rtl`; vertical HarfBuzz directions remain available to
-`shape-text` but not to this horizontal layout layer.
+Alignment is one of `'start`, `'center`, `'end`, `'left`, `'right`, `'justify`,
+or `'justify-all`. `start` and `end` are direction-sensitive. `'justify` expands
+U+0020 inter-word spaces on wrapped non-final lines to fill `#:width` and leaves
+the final line of each hard-break-delimited paragraph at logical start.
+`'justify-all` applies the same expansion to final and single lines. Both
+justification modes require a positive `#:width`; a line without an ordinary
+space remains start-aligned at its natural width.
+
+Justification changes only positioned glyph x origins and the horizontal
+advance. It does not reshape text or alter glyph IDs/clusters. NBSP/NNBSP,
+CJK inter-character expansion, letter spacing, and Arabic kashida are not
+synthesized. Paragraph layout currently accepts only `'auto`, `'ltr`, and
+`'rtl`; vertical HarfBuzz directions remain available to `shape-text` but not
+to this horizontal layout layer.
 
 The layout keeps its originating shaper wrapper reachable because its glyph IDs
 are meaningful only for that font. If the shaper is explicitly closed, later
@@ -1209,5 +1219,8 @@ formatting controls and omitted from shaping.
 With `#:width`, mixed layout uses the same Unicode 15.1 UAX #14 line-breaking
 engine as `layout-text`; break selection occurs on logical paragraph text before
 final per-line bidi shaping/reordering. Default grapheme clusters are kept
-intact. Southeast Asian dictionary segmentation, language-specific hyphenation,
-emergency breaking, and justification are not implemented.
+intact. `'justify` and `'justify-all` use the same U+0020 inter-word expansion
+policy after bidi/script/fallback shaping, then recompute visual run origins.
+Southeast Asian dictionary segmentation, language-specific hyphenation,
+emergency breaking, CJK inter-character justification, and Arabic kashida are
+not implemented.

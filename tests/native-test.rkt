@@ -1119,6 +1119,77 @@ third"))
        (define rx (text-layout-line-origin-x (first (text-layout-lines right-layout))))
        (check-= lx 0.0 0.001)
        (check-true (< lx cx rx))))
+   (test-case "paragraph justify stretches wrapped non-final lines"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define layout
+         (layout-text sh "alpha beta gamma delta epsilon zeta"
+                      #:width 190 #:align 'justify))
+       (define lines (text-layout-lines layout))
+       (check-true (> (length lines) 1))
+       (define first-line (first lines))
+       (check-true (regexp-match? #rx" " (text-layout-line-text first-line)))
+       (check-= (text-layout-line-width first-line) 190.0 0.01)
+       (check-= (text-layout-line-origin-x first-line) 0.0 0.01)
+       (check-true (< (text-layout-line-width (last lines)) 190.0))))
+   (test-case "paragraph justify-all stretches a final line"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define layout
+         (layout-text sh "alpha beta" #:width 260 #:align 'justify-all))
+       (define line (first (text-layout-lines layout)))
+       (check-equal? (text-layout-line-count layout) 1)
+       (check-= (text-layout-line-width line) 260.0 0.01)
+       (check-= (abs (shaped-run-advance-x (text-layout-line-run line)))
+                260.0 0.01)))
+   (test-case "RTL justify expands positioned glyphs in run direction"
+     (with-skia ([fm (default-font-manager)])
+       (define face (font-manager-match-character fm #\م #:languages '("ar")))
+       (when face
+         (call-with-skia-resource
+          face
+          (lambda (tf)
+            (with-skia ([f (make-font tf #:size 28)]
+                        [sh (make-shaper f)])
+              (define layout
+                (layout-text sh "مرحبا بالعالم"
+                             #:width 260 #:align 'justify-all
+                             #:direction 'rtl #:script 'arab #:language "ar"))
+              (define line (first (text-layout-lines layout)))
+              (check-eq? (text-layout-line-direction line) 'rtl)
+              (check-= (text-layout-line-width line) 260.0 0.01)))))))
+   (test-case "justification does not stretch no-break space"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define nbsp (string #\u00A0))
+       (define layout
+         (layout-text sh (string-append "no" nbsp "break")
+                      #:width 260 #:align 'justify-all))
+       (define line (first (text-layout-lines layout)))
+       (check-true (< (text-layout-line-width line) 260.0))))
+   (test-case "mixed bidi justification preserves runs and rasterizes"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 25)]
+                 [sh (make-shaper f)]
+                 [p (make-paint #:color 'black)]
+                 [surface (make-surface 300 160)])
+       (define layout
+         (layout-mixed-text sh fm
+                            "Racket שלום world مرحبا more text here"
+                            #:width 240 #:align 'justify))
+       (define lines (mixed-text-layout-lines layout))
+       (check-true (> (length lines) 1))
+       (check-= (mixed-text-line-width (first lines)) 240.0 0.01)
+       (check-true (> (length (mixed-text-line-runs (first lines))) 1))
+       (draw-mixed-text-layout (surface-canvas surface) layout 20 10 p)
+       (define pixels (surface->rgba-bytes surface))
+       (check-true
+        (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+          (> (bytes-ref pixels i) 0)))))
    (test-case "RTL paragraph layout uses right-edge origins"
      (with-skia ([fm (default-font-manager)])
        (define face (font-manager-match-character fm #\מ #:languages '("ar")))

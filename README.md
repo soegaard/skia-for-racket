@@ -1,16 +1,17 @@
-# Racket Skia — 0.13.0
+# Racket Skia — 0.14.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.12 are live-validated on
+**Verification status:** versions 0.1 through 0.13 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. The completed 0.12 run passed both native symbol audits, every doctor
-probe, all 150 source test cases (36 pure, 6 lifetime, 108 native), and the
-mixed-text visual probe. Version 0.13 adds Unicode 15.1 UAX #14 line breaking;
-those new paths are source/ABI checked here but still require the included live
-doctor, tests, and visual probe. See [TESTING.md](TESTING.md).
+8.3.1.2. The completed 0.13 run passed both native symbol audits (221 Skia and
+27 HarfBuzz bindings, zero missing), every doctor probe, all 159 source test
+cases (42 pure, 6 lifetime, 111 native), and the Unicode line-breaking visual
+probe. Version 0.14 adds inter-word paragraph justification; those new pure
+layout paths are source checked here and await the included live doctor, tests,
+and visual probe. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -20,7 +21,7 @@ quadratic and cubic Bézier paths; paint settings and blend modes; path bounds
 and containment; immutable image snapshots and copied RGBA input; image
 placement/scaling; native PNG encoding; font-manager enumeration and fallback;
 default/family/file-backed typefaces; configurable fonts and metrics; UTF-8
-simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; mixed-script/bidi run layout and font fallback; Unicode 15.1 line breaking; paragraph wrapping/alignment; glyph IDs and text/glyph
+simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; mixed-script/bidi run layout and font fallback; Unicode 15.1 line breaking; paragraph wrapping/alignment/justification; glyph IDs and text/glyph
 outline paths; owned shaders; color, linear, radial, sweep,
 and conical gradients; image tiling; shader blending; PNG/JPEG/WebP encoded
 image decode and encode; codec metadata probing; image subsets and source-rectangle
@@ -38,7 +39,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.13.0-20260924
+cd racket-skia-0.14.0-20260924
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -59,6 +60,7 @@ mkdir -p output &&
 "$RACKET" examples/layout.rkt output/layout.png &&
 "$RACKET" examples/mixed-text.rkt output/mixed-text.png &&
 "$RACKET" examples/line-breaking.rkt output/line-breaking.png &&
+"$RACKET" examples/justification.rkt output/justification.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -556,8 +558,8 @@ breaking, or paragraph layout.
 ## Paragraph text layout
 
 Version 0.11 builds a lightweight paragraph layer above shaped runs. `layout-text`
-performs explicit-newline handling, greedy wrapping at Unicode whitespace,
-alignment, and font-metric-based baseline placement. `draw-text-layout` draws the
+performs explicit-newline handling, Unicode line breaking, alignment,
+and font-metric-based baseline placement. `draw-text-layout` draws the
 result with the same shaper retained by the layout.
 
 ```racket
@@ -626,5 +628,18 @@ Unicode 15.1. BK/CR/LF/NL hard separators form explicit layout lines.
 The implementation uses the UAX #14 tailoring that keeps Racket default
 grapheme clusters intact. Southeast Asian dictionary segmentation is not
 provided; SA text uses UAX #14's default AL/CM resolution. Language-specific
-hyphenation, emergency breaking inside otherwise-unbreakable spans, and
-justification are not implemented.
+hyphenation and emergency breaking inside otherwise-unbreakable spans are not
+implemented.
+
+## Paragraph justification
+
+Version 0.14 adds `'justify` and `'justify-all` alignment to both paragraph
+APIs. `'justify` fills wrapped non-final lines and leaves each paragraph's final
+line at logical start; `'justify-all` also fills final and single lines. A
+positive `#:width` is required for either mode.
+
+Justification preserves HarfBuzz shaping and bidi/script/font-fallback run
+boundaries. It expands only ordinary U+0020 inter-word spaces by shifting the
+already-positioned glyphs. NBSP/NNBSP, CJK inter-character expansion, general
+letter spacing, and Arabic kashida insertion are intentionally unchanged; those
+require script- or language-specific policies beyond this stage.

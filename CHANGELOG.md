@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.0 — paragraph justification
+
+- Added `#:align 'justify` and `#:align 'justify-all` to `layout-text` and `layout-mixed-text`.
+- `justify` expands wrapped non-final lines and leaves each paragraph's final line at logical start; `justify-all` also expands final/single lines.
+- Justification adjusts positioned HarfBuzz glyph origins without reshaping, preserving glyph IDs, clusters, bidi run order, script segmentation, and font fallback.
+- Expansion is deliberately inter-word only: U+0020 SPACE absorbs the extra width; NBSP/NNBSP, CJK inter-character spacing, letter spacing, and Arabic kashida are unchanged.
+- Added LTR/RTL/mixed-bidi tests, doctor coverage, and `examples/justification.rkt`.
+- No new Skia or HarfBuzz native symbols or ABI structs are required.
+
 ## 0.13.0 — Unicode line breaking
 
 - Added a private Unicode 15.1 `Line_Break` property table and UAX #14 revision 51 resolver.
@@ -7,7 +16,7 @@
 - Preserved default grapheme clusters as an explicit UAX #14 tailoring and retained non-tailorable ZWJ behavior at grapheme boundaries.
 - Added Unicode hard-break handling for BK/CR/LF/NL separators, while retaining blank and trailing lines.
 - Added line-break property/opportunity tests, native CJK/punctuation layout tests, doctor coverage, and `examples/line-breaking.rkt`.
-- Southeast Asian dictionary segmentation, language-specific hyphenation/emergency breaking, justification, and explicit UAX #9 embedding/override/isolate controls remain outside this stage.
+- Southeast Asian dictionary segmentation, language-specific hyphenation/emergency breaking, and explicit UAX #9 embedding/override/isolate controls remain outside this stage; basic inter-word justification arrives in 0.14.
 - No new Skia or HarfBuzz native symbols or ABI structs are required.
 
 ## 0.12.0 — mixed-script and bidirectional text layout
@@ -17,7 +26,7 @@
 - Added HarfBuzz Unicode-script classification and script-aware run segmentation.
 - Added grapheme-preserving font fallback through `font-manager-match-character`, with fallback family/style metadata retained in pure layout runs.
 - Added mixed-run wrapping/alignment, run inspection APIs, doctor coverage, tests, and `examples/mixed-text.rkt`.
-- Explicit Unicode embedding/override/isolate controls are intentionally not interpreted in this stage; they are omitted from shaping. Full explicit-control UAX #9 support and justification remain future work; UAX #14 line breaking arrives in 0.13.
+- Explicit Unicode embedding/override/isolate controls are intentionally not interpreted in this stage; they are omitted from shaping. Full explicit-control UAX #9 support remains future work; UAX #14 line breaking arrives in 0.13 and inter-word justification in 0.14.
 
 ## 0.11.0 — paragraph text layout
 

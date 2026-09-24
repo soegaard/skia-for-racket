@@ -85,3 +85,9 @@ are the compatibility reference for this implementation.
   UAX #14 Example 6's default-grapheme-cluster-preserving tailoring. Complex
   context dictionary segmentation and higher-level hyphenation are documented
   exclusions.
+
+- Version 0.14 justification is implemented in pure Racket above the existing
+  positioned HarfBuzz runs. It introduces no native entry points: the layout
+  layer redistributes U+0020 inter-word slack by changing stored glyph x
+  positions and per-run/line advances while preserving shaping clusters and
+  visual bidi run order.

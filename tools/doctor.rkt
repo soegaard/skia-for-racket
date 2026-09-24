@@ -224,4 +224,31 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "UAX #14 layout rasterization failed"))
     (printf "Unicode line breaking passed; UAX #14 opportunities and CJK wrapping verified\n"))
+  (with-skia ([fm (default-font-manager)]
+              [tf (make-typeface)]
+              [font (make-font tf #:size 24)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 300 150)])
+    (define justified
+      (layout-text sh "alpha beta gamma delta epsilon"
+                   #:width 190 #:align 'justify))
+    (define j-lines (text-layout-lines justified))
+    (unless (and (> (length j-lines) 1)
+                 (< (abs (- (text-layout-line-width (car j-lines)) 190.0)) 0.01))
+      (error 'doctor "paragraph justification did not fill a wrapped line"))
+    (define mixed
+      (layout-mixed-text sh fm "Racket שלום world more text"
+                         #:width 220 #:align 'justify-all))
+    (unless (< (abs (- (mixed-text-line-width
+                        (car (mixed-text-layout-lines mixed)))
+                       220.0))
+               0.01)
+      (error 'doctor "mixed-text justification did not fill the measure"))
+    (draw-mixed-text-layout (surface-canvas surface) mixed 10 8 paint)
+    (define pixels (surface->rgba-bytes surface))
+    (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+              (> (bytes-ref pixels i) 0))
+      (error 'doctor "justified layout rasterization failed"))
+    (printf "Paragraph justification passed; justify/justify-all positioning and drawing verified\n"))
 )

@@ -2353,8 +2353,11 @@
   direction)
 
 (define (normalize-layout-align who align)
-  (unless (memq align '(start center end left right))
-    (raise-argument-error who "one of 'start, 'center, 'end, 'left, or 'right" align))
+  (unless (memq align '(start center end left right justify justify-all))
+    (raise-argument-error
+     who
+     "one of 'start, 'center, 'end, 'left, 'right, 'justify, or 'justify-all"
+     align))
   align)
 
 (define (normalize-layout-width who width)
@@ -2482,8 +2485,77 @@
     [(left) 0.0]
     [(right) (- box-width line-width)]
     [(center) (/ (- box-width line-width) 2.0)]
-    [(start) (if (eq? direction 'rtl) (- box-width line-width) 0.0)]
+    [(start justify justify-all)
+     (if (eq? direction 'rtl) (- box-width line-width) 0.0)]
     [(end) (if (eq? direction 'rtl) 0.0 (- box-width line-width))]))
+
+(define (justification-align? align)
+  (and (memq align '(justify justify-all)) #t))
+
+(define (check-justification-width who align max-width)
+  (when (and (justification-align? align) (not max-width))
+    (raise-arguments-error
+     who
+     "justification alignment requires a positive #:width"
+     "alignment" align
+     "width" #f)))
+
+(define (ordinary-space-byte-offsets text)
+  ;; Stage 0.14 intentionally implements inter-word justification only.
+  ;; U+0020 SPACE is the stretchable opportunity; NBSP, NNBSP, ideographic
+  ;; space, tabs, and script-specific elongation are not modified.
+  (define n (string-length text))
+  (let loop ([i 0] [byte-offset 0] [out '()])
+    (cond
+      [(= i n) (reverse out)]
+      [else
+       (define ch (string-ref text i))
+       (define next-byte-offset
+         (+ byte-offset (bytes-length (string->bytes/utf-8 (string ch)))))
+       (loop (add1 i) next-byte-offset
+             (if (char=? ch #\space) (cons byte-offset out) out))])))
+
+(define (justify-shaped-run run text direction target-width natural-width)
+  ;; HarfBuzz clusters are UTF-8 byte offsets. Move each positioned glyph by
+  ;; the accumulated expansion of ordinary spaces preceding it in visual flow;
+  ;; keep glyph IDs and shaping decisions unchanged.
+  (define spaces (ordinary-space-byte-offsets text))
+  (cond
+    [(or (null? spaces) (<= target-width natural-width))
+     (values run natural-width #f)]
+    [else
+     (define extra-total (- target-width natural-width))
+     (define per-space (/ extra-total (length spaces)))
+     (define rtl? (eq? direction 'rtl))
+     (define advance (shaped-run-advance-x run))
+     (define axis-sign (if (negative? advance) -1.0 1.0))
+     (define shifted-positions
+       (for/list ([point (in-list (shaped-run-positions run))]
+                  [cluster (in-list (shaped-run-clusters run))])
+         (define preceding-spaces
+           (for/sum ([space-offset (in-list spaces)]
+                     #:when (if rtl?
+                                (> space-offset cluster)
+                                (< space-offset cluster)))
+             1))
+         (match point
+           [(list px py)
+            (list (+ px (* axis-sign per-space preceding-spaces)) py)]
+           [_ point])))
+     (values
+      (shaped-run (shaped-run-glyphs run)
+                  (shaped-run-clusters run)
+                  shifted-positions
+                  (+ advance (* axis-sign extra-total))
+                  (shaped-run-advance-y run))
+      target-width
+      #t)]))
+
+(define (paragraph-line-justify? align index count)
+  (case align
+    [(justify-all) #t]
+    [(justify) (< index (sub1 count))]
+    [else #f]))
 
 (define (layout-text sh text
                      #:width [width #f]
@@ -2497,6 +2569,7 @@
   (unless (string? text) (raise-argument-error who "string?" text))
   (define max-width (normalize-layout-width who width))
   (define al (normalize-layout-align who align))
+  (check-justification-width who al max-width)
   (define dir (normalize-layout-direction who direction))
   ;; Reuse shape-text's public normalization semantics, but validate before
   ;; accessing the shaper so option errors do not need native loading.
@@ -2518,21 +2591,38 @@
                   (+ (- descent ascent)
                      (max 0.0 (font-metrics-leading metrics))))])))
   (define line-step (or requested-line-height natural-height))
-  (define paragraph-lines
+  ;; Keep paragraph boundaries long enough to distinguish a wrapped line from
+  ;; the final line of each hard-break-delimited paragraph. `justify` leaves
+  ;; that final line at start alignment; `justify-all` stretches it too.
+  (define paragraph-line-specs
     (apply append
            (for/list ([paragraph (in-list (split-explicit-lines text))])
-             (wrapped-paragraph-lines sh paragraph max-width
-                                      dir scr lang feats))))
+             (define paragraph-lines
+               (wrapped-paragraph-lines sh paragraph max-width
+                                        dir scr lang feats))
+             (define paragraph-line-count (length paragraph-lines))
+             (for/list ([line-text (in-list paragraph-lines)]
+                        [line-index (in-naturals)])
+               (list line-text
+                     (and max-width
+                          (paragraph-line-justify?
+                           al line-index paragraph-line-count)))))))
   (define raw-lines
-    (for/list ([line-text (in-list paragraph-lines)])
+    (for/list ([spec (in-list paragraph-line-specs)])
+      (define line-text (car spec))
+      (define request-justify? (cadr spec))
       (define run (shape-layout-run sh line-text dir scr lang feats))
-      (define w (run-horizontal-width run))
+      (define natural-width (run-horizontal-width run))
       (define actual-dir (effective-line-direction dir run))
-      (list line-text run w actual-dir)))
+      (define-values (final-run final-width _justified?)
+        (if request-justify?
+            (justify-shaped-run run line-text actual-dir max-width natural-width)
+            (values run natural-width #f)))
+      (list line-text final-run final-width actual-dir)))
   (define content-width
     (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
       (max m (list-ref entry 2))))
-  ;; If an unbreakable word exceeds the requested wrap width, report the true
+  ;; If an unbreakable span exceeds the requested wrap width, report the true
   ;; occupied width instead of manufacturing negative alignment offsets.
   (define box-width (max content-width (or max-width 0.0)))
   (define baseline0 (max 0.0 (- ascent)))
@@ -2546,8 +2636,7 @@
       ;; HarfBuzz returns glyphs in visual order; the positioned-run x values
       ;; are measured from the run's left drawing origin even for RTL text.
       ;; Direction affects start/end alignment, not the TextBlob origin itself.
-      (define origin-x left)
-      (text-layout-line line-text run origin-x
+      (text-layout-line line-text run left
                         (+ baseline0 (* i line-step))
                         w actual-dir)))
   (define height
@@ -2815,6 +2904,42 @@
           width)))
   (wrap-at-line-breaks paragraph max-width measure))
 
+(define (justify-mixed-runs runs natural-width target-width)
+  ;; Runs are already in visual order. Stretch the shaped positions inside
+  ;; each run, then recompute visual run origins from the expanded widths.
+  (define space-count
+    (for/sum ([r (in-list runs)])
+      (length (ordinary-space-byte-offsets (mixed-text-run-text r)))))
+  (cond
+    [(or (zero? space-count) (<= target-width natural-width))
+     (values runs natural-width #f)]
+    [else
+     (define per-space (/ (- target-width natural-width) space-count))
+     (define stretched
+       (for/list ([r (in-list runs)])
+         (define run-text (mixed-text-run-text r))
+         (define run-space-count (length (ordinary-space-byte-offsets run-text)))
+         (define old-width (mixed-text-run-width r))
+         (define new-width (+ old-width (* per-space run-space-count)))
+         (define-values (new-shaped _new-shaped-width _did-justify?)
+           (if (zero? run-space-count)
+               (values (mixed-text-run-shaped-run r) old-width #f)
+               (justify-shaped-run (mixed-text-run-shaped-run r)
+                                   run-text
+                                   (mixed-text-run-direction r)
+                                   new-width
+                                   old-width)))
+         (mixed-text-run run-text new-shaped 0.0 new-width
+                         (mixed-text-run-direction r)
+                         (mixed-text-run-level r)
+                         (mixed-text-run-script r)
+                         (mixed-text-run-family r)
+                         (mixed-text-run-weight r)
+                         (mixed-text-run-font-width r)
+                         (mixed-text-run-slant r))))
+     (define-values (placed _placed-width) (place-visual-mixed-runs stretched))
+     (values placed target-width #t)]))
+
 (define (layout-mixed-text sh fm text
                            #:width [width #f]
                            #:align [align 'start]
@@ -2826,6 +2951,7 @@
   (unless (string? text) (raise-argument-error who "string?" text))
   (define max-width (normalize-layout-width who width))
   (define al (normalize-layout-align who align))
+  (check-justification-width who al max-width)
   (define dir (normalize-layout-direction who direction))
   (define lang (normalize-shape-language who language))
   (define feats (normalize-shape-features who features))
@@ -2847,12 +2973,24 @@
   (define raw-lines '())
   (for ([paragraph (in-list (split-explicit-lines text))])
     (define paragraph-dir (mixed-paragraph-direction paragraph dir))
-    (for ([line-text (in-list
-                      (wrapped-mixed-lines sh fm paragraph max-width paragraph-dir
-                                           lang feats choice-cache))])
-      (define-values (runs w _resolved)
+    (define paragraph-lines
+      (wrapped-mixed-lines sh fm paragraph max-width paragraph-dir
+                           lang feats choice-cache))
+    (define paragraph-line-count (length paragraph-lines))
+    (for ([line-text (in-list paragraph-lines)]
+          [line-index (in-naturals)])
+      (define-values (runs natural-width _resolved)
         (shape-mixed-line sh fm line-text paragraph-dir lang feats choice-cache))
-      (set! raw-lines (cons (list line-text runs w paragraph-dir) raw-lines))))
+      (define request-justify?
+        (and max-width
+             (paragraph-line-justify? al line-index paragraph-line-count)))
+      (define-values (final-runs final-width _justified?)
+        (if request-justify?
+            (justify-mixed-runs runs natural-width max-width)
+            (values runs natural-width #f)))
+      (set! raw-lines
+            (cons (list line-text final-runs final-width paragraph-dir)
+                  raw-lines))))
   (set! raw-lines (reverse raw-lines))
   (define content-width
     (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
