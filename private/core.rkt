@@ -3,6 +3,7 @@
          racket/match
          racket/path
          "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt"
+         "harfbuzz-native.rkt" "harfbuzz-types.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
          skia-resource? skia-closed? skia-close!
@@ -90,7 +91,11 @@
          draw-simple-text measure-simple-text simple-text-bounds
          font-text->glyphs font-char->glyph font-glyph-path simple-text-path
          text-blob? make-positioned-text-blob text-blob-bounds text-blob-unique-id
-         draw-text-blob)
+         draw-text-blob
+         shaper? make-shaper
+         shaped-run? shaped-run-glyphs shaped-run-clusters shaped-run-positions
+         shaped-run-advance-x shaped-run-advance-y shaped-run-glyph-count
+         shape-text shaped-run->text-blob draw-shaped-run draw-shaped-text)
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record)
@@ -121,6 +126,8 @@
 ;; as long as the font wrapper. SkFont itself also retains its typeface.
 (struct font (handle owner) #:constructor-name make-font-record)
 (struct text-blob (handle) #:constructor-name make-text-blob-record)
+(struct shaper (handle font) #:constructor-name make-shaper-record)
+(struct shaped-run (glyphs clusters positions advance-x advance-y) #:transparent)
 (struct font-metrics
   (top ascent descent bottom leading
    average-character-width max-character-width
@@ -134,7 +141,7 @@
       (color-filter? v) (mask-filter? v) (image-filter? v)
       (picture? v) (picture-recorder? v)
       (skia-path? v) (path-measure? v) (image? v)
-      (font-manager? v) (typeface? v) (font? v) (text-blob? v)))
+      (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
   (cond [(surface? v) (surface-handle v)]
@@ -153,6 +160,7 @@
         [(typeface? v) (typeface-handle v)]
         [(font? v) (font-handle v)]
         [(text-blob? v) (text-blob-handle v)]
+        [(shaper? v) (shaper-handle v)]
         [else (raise-argument-error who "skia-resource? (not a borrowed canvas)" v)]))
 
 (define (skia-closed? v)
@@ -167,7 +175,10 @@
   ;; typeface wrapper as well. Close that wrapper deterministically after
   ;; closing the font; explicit user-supplied typefaces are never closed here.
   (when (and (font? v) (font-owner v))
-    (owned-close! 'skia-close! (typeface-handle (font-owner v)))))
+    (owned-close! 'skia-close! (typeface-handle (font-owner v))))
+  ;; A shaper snapshots the SkFont used for later TextBlob construction.
+  (when (shaper? v)
+    (skia-close! (shaper-font v))))
 
 (define (call-with-skia-resource v proc)
   (resource-handle 'call-with-skia-resource v)
@@ -208,6 +219,7 @@
 (define (typeface-h who v) (typed-handle who v typeface? typeface-handle "typeface?"))
 (define (font-h who v) (typed-handle who v font? font-handle "font?"))
 (define (text-blob-h who v) (typed-handle who v text-blob? text-blob-handle "text-blob?"))
+(define (shaper-h who v) (typed-handle who v shaper? shaper-handle "shaper?"))
 
 (define (canvas-owner who c)
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
@@ -2044,6 +2056,256 @@
   (define fy (scalar who y))
   (call-on-canvas who c (list (text-blob-h who blob) (paint-h who p))
     (lambda (cp bp pp) (sk_canvas_draw_text_blob cp bp fx fy pp))))
+
+
+;; HarfBuzz shaping ---------------------------------------------------------
+
+(define (copy-font-for-shaper who font-ptr typeface-ptr)
+  (define size (sk_font_get_size font-ptr))
+  (define scale-x (sk_font_get_scale_x font-ptr))
+  (define skew-x (sk_font_get_skew_x font-ptr))
+  (define hnd
+    (new-owned who 'shaper-font
+               (lambda () (sk_font_new_with_values typeface-ptr size scale-x skew-x))
+               sk_font_delete))
+  (define result (make-font-record hnd #f))
+  (with-handlers ([exn? (lambda (e) (skia-close! result) (raise e))])
+    (call-with-owned
+     who (list hnd)
+     (lambda (fp)
+       (sk_font_set_edging fp (sk_font_get_edging font-ptr))
+       (sk_font_set_hinting fp (sk_font_get_hinting font-ptr))
+       (sk_font_set_subpixel fp (sk_font_is_subpixel font-ptr))
+       (sk_font_set_linear_metrics fp (sk_font_is_linear_metrics font-ptr))
+       (sk_font_set_embolden fp (sk_font_is_embolden font-ptr))))
+    result))
+
+(define (typeface-font-bytes who typeface-ptr)
+  (define ttc-index (malloc _int 'atomic))
+  (ptr-set! ttc-index _int 0)
+  (call-with-native-temporary
+   who 'font-stream
+   (lambda () (sk_typeface_open_stream typeface-ptr ttc-index))
+   sk_stream_asset_destroy
+   (lambda (stream)
+     (define n (sk_stream_get_length stream))
+     (unless (and (exact-nonnegative-integer? n)
+                  (<= n (current-skia-byte-limit)))
+       (error who "font stream size ~a exceeds current-skia-byte-limit" n))
+     (unless (positive? n)
+       (error who "typeface exposed an empty font stream"))
+     (define bytes (make-bytes n))
+     (define got (sk_stream_read stream bytes n))
+     (unless (= got n)
+       (error who "font stream short read: expected ~a bytes, got ~a" n got))
+     (define index (ptr-ref ttc-index _int))
+     (unless (<= 0 index #xffffffff)
+       (error who "typeface returned invalid collection index ~a" index))
+     (values bytes index))))
+
+(define (make-hb-font who typeface-ptr)
+  (harfbuzz-check!)
+  (define-values (font-bytes ttc-index) (typeface-font-bytes who typeface-ptr))
+  (define units-per-em (sk_typeface_get_units_per_em typeface-ptr))
+  (call-with-native-temporary
+   who 'harfbuzz-blob
+   (lambda ()
+     (hb_blob_create font-bytes (bytes-length font-bytes)
+                     hb-memory-mode-duplicate #f #f))
+   hb_blob_destroy
+   (lambda (blob)
+     (call-with-native-temporary
+      who 'harfbuzz-face
+      (lambda () (hb_face_create blob ttc-index))
+      hb_face_destroy
+      (lambda (face)
+        (when (positive? units-per-em)
+          (hb_face_set_upem face units-per-em))
+        (define hb-font
+          (new-owned who 'harfbuzz-font
+                     (lambda () (hb_font_create face))
+                     hb_font_destroy))
+        (with-handlers ([exn? (lambda (e) (owned-close! who hb-font) (raise e))])
+          (call-with-owned
+           who (list hb-font)
+           (lambda (hp)
+             (hb_font_set_scale hp hb-font-size-scale hb-font-size-scale)
+             (hb_ot_font_set_funcs hp)))
+          hb-font))))))
+
+(define (make-shaper f)
+  (define who 'make-shaper)
+  (define fh (font-h who f))
+  (skia-check!)
+  (harfbuzz-check!)
+  (call-with-owned
+   who (list fh)
+   (lambda (font-ptr)
+     ;; sk_font_get_typeface returns one owned reference in the pinned C shim.
+     (call-with-native-temporary
+      who 'typeface-from-font
+      (lambda () (sk_font_get_typeface font-ptr))
+      sk_typeface_unref
+      (lambda (typeface-ptr)
+        (define private-font (copy-font-for-shaper who font-ptr typeface-ptr))
+        (with-handlers ([exn? (lambda (e) (skia-close! private-font) (raise e))])
+          (define hb-font (make-hb-font who typeface-ptr))
+          (make-shaper-record hb-font private-font)))))))
+
+(define (shaped-run-glyph-count run)
+  (unless (shaped-run? run)
+    (raise-argument-error 'shaped-run-glyph-count "shaped-run?" run))
+  (length (shaped-run-glyphs run)))
+
+(define (normalize-shape-direction who direction)
+  (unless (memq direction '(auto ltr rtl ttb btt))
+    (raise-argument-error who "one of 'auto, 'ltr, 'rtl, 'ttb, or 'btt" direction))
+  direction)
+
+(define (normalize-shape-script who script)
+  (cond [(not script) #f]
+        [(symbol? script) (symbol->string script)]
+        [(string? script) script]
+        [else (raise-argument-error who "(or/c #f symbol? string?)" script)]))
+
+(define (normalize-shape-language who language)
+  (cond [(not language) #f]
+        [(string? language)
+         (nul-free-string who language "language string")]
+        [else (raise-argument-error who "(or/c #f string?)" language)]))
+
+(define (normalize-shape-features who features)
+  (define xs
+    (cond [(list? features) features]
+          [(vector? features) (vector->list features)]
+          [else (raise-argument-error who "list? or vector? of HarfBuzz feature strings" features)]))
+  (for/list ([feature (in-list xs)])
+    (nul-free-string who feature "HarfBuzz feature string")))
+
+(define (make-hb-feature-array who features)
+  (define count (length features))
+  (if (zero? count)
+      (values #f 0)
+      (let* ([size (ctype-sizeof _hb-feature)]
+             [ptr (malloc (* count size) 'atomic)])
+        (for ([feature (in-list features)] [i (in-naturals)])
+          (define bs (string->bytes/utf-8 feature))
+          (unless (hb_feature_from_string bs (bytes-length bs) (ptr-add ptr (* i size)))
+            (raise-arguments-error who "invalid HarfBuzz feature" "feature" feature)))
+        (values ptr count))))
+
+(define (shape-text sh text
+                    #:direction [direction 'auto]
+                    #:script [script #f]
+                    #:language [language #f]
+                    #:features [features '()])
+  (define who 'shape-text)
+  (define hh (shaper-h who sh))
+  (unless (string? text) (raise-argument-error who "string?" text))
+  (define dir (normalize-shape-direction who direction))
+  (define scr (normalize-shape-script who script))
+  (define lang (normalize-shape-language who language))
+  (define feats (normalize-shape-features who features))
+  (define utf8 (string->bytes/utf-8 text))
+  (define private-font (shaper-font sh))
+  (define font-size-value (font-size private-font))
+  (define font-scale-value (font-scale-x private-font))
+  (define text-size-y (/ font-size-value hb-font-size-scale))
+  (define text-size-x (* text-size-y font-scale-value))
+  (call-with-owned
+   who (list hh)
+   (lambda (hb-font)
+     (if (zero? (bytes-length utf8))
+         (shaped-run '() '() '() 0.0 0.0)
+         (call-with-native-temporary
+          who 'harfbuzz-buffer hb_buffer_create hb_buffer_destroy
+          (lambda (buffer)
+            (hb_buffer_add_utf8 buffer utf8 (bytes-length utf8) 0 (bytes-length utf8))
+            (hb_buffer_guess_segment_properties buffer)
+            (unless (eq? dir 'auto)
+              (let* ([db (string->bytes/utf-8 (symbol->string dir))]
+                     [d (hb_direction_from_string db (bytes-length db))])
+                (when (zero? d) (error who "HarfBuzz rejected direction ~a" dir))
+                (hb_buffer_set_direction buffer d)))
+            (when scr
+              (let* ([sb (string->bytes/utf-8 scr)]
+                     [sv (hb_script_from_string sb (bytes-length sb))])
+                (when (zero? sv)
+                  (raise-arguments-error who "invalid HarfBuzz script" "script" script))
+                (hb_buffer_set_script buffer sv)))
+            (when lang
+              (let* ([lb (string->bytes/utf-8 lang)]
+                     [lv (hb_language_from_string lb (bytes-length lb))])
+                (unless lv
+                  (raise-arguments-error who "invalid HarfBuzz language" "language" lang))
+                (hb_buffer_set_language buffer lv)))
+            (define-values (feature-ptr feature-count)
+              (make-hb-feature-array who feats))
+            (hb_shape hb-font buffer feature-ptr feature-count)
+            (define count (hb_buffer_get_length buffer))
+            (define n1 (malloc _uint32 'atomic))
+            (define n2 (malloc _uint32 'atomic))
+            (ptr-set! n1 _uint32 count)
+            (ptr-set! n2 _uint32 count)
+            (define infos (hb_buffer_get_glyph_infos buffer n1))
+            (define positions (hb_buffer_get_glyph_positions buffer n2))
+            (unless (and (= (ptr-ref n1 _uint32) count)
+                         (= (ptr-ref n2 _uint32) count)
+                         (or (zero? count) (and infos positions)))
+              (error who "HarfBuzz returned inconsistent glyph buffers"))
+            (define glyphs '())
+            (define clusters '())
+            (define points '())
+            (define x 0.0)
+            (define y 0.0)
+            (for ([i (in-range count)])
+              (define info (ptr-ref infos _hb-glyph-info i))
+              (define pos (ptr-ref positions _hb-glyph-position i))
+              (define glyph (hb-glyph-info-codepoint info))
+              (unless (<= glyph #xffff)
+                (error who "glyph id ~a cannot be represented by Skia's uint16 text-blob API" glyph))
+              (set! glyphs (cons glyph glyphs))
+              (set! clusters (cons (hb-glyph-info-cluster info) clusters))
+              (set! points
+                    (cons (list (+ x (* (hb-glyph-position-x-offset pos) text-size-x))
+                                (- y (* (hb-glyph-position-y-offset pos) text-size-y)))
+                          points))
+              (set! x (+ x (* (hb-glyph-position-x-advance pos) text-size-x)))
+              (set! y (+ y (* (hb-glyph-position-y-advance pos) text-size-y))))
+            (shaped-run (reverse glyphs) (reverse clusters) (reverse points) x y)))))))
+
+(define (shaped-run->text-blob sh run)
+  (define who 'shaped-run->text-blob)
+  (shaper-h who sh)
+  (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
+  (when (null? (shaped-run-glyphs run))
+    (raise-arguments-error who "cannot create a text blob from an empty shaped run" "run" run))
+  (make-positioned-text-blob (shaper-font sh)
+                             (shaped-run-glyphs run)
+                             (shaped-run-positions run)))
+
+(define (draw-shaped-run c sh run x y p)
+  (define who 'draw-shaped-run)
+  (shaper-h who sh)
+  (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
+  (if (null? (shaped-run-glyphs run))
+      (void)
+      (with-skia ([blob (shaped-run->text-blob sh run)])
+        (draw-text-blob c blob x y p))))
+
+(define (draw-shaped-text c sh text x y p
+                          #:direction [direction 'auto]
+                          #:script [script #f]
+                          #:language [language #f]
+                          #:features [features '()])
+  (define run
+    (shape-text sh text
+                #:direction direction
+                #:script script
+                #:language language
+                #:features features))
+  (draw-shaped-run c sh run x y p)
+  run)
 
 ;; Images, encoded data, codecs, and copied pixel input ---------------------
 

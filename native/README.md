@@ -10,3 +10,15 @@ Run `bash tools/install-native.sh` from the package root. The installer writes:
 Alternatively set `RACKET_SKIA_LIBRARY` to an absolute native-library filename.
 The library must match the pinned SkiaSharp 3.119.1 ABI, not just be named Skia.
 Read the package README before using a different build.
+
+
+Version 0.10 optionally installs HarfBuzz shaping beside Skia:
+
+```text
+native/osx/libHarfBuzzSharp.dylib
+native/linux-x64/libHarfBuzzSharp.so
+native/linux-arm64/libHarfBuzzSharp.so
+```
+
+Use `bash tools/install-harfbuzz.sh`. The pinned package is
+HarfBuzzSharp.NativeAssets.* 8.3.1.2 (HarfBuzz 8.3.1).

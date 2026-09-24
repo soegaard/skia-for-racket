@@ -63,3 +63,8 @@ are the compatibility reference for this implementation.
 
 - Font-manager/fallback work in 0.9 was checked against the pinned SkiaSharp `SKFontManager.cs`, generated `sk_typeface.h` bindings, and mono/skia `src/c/sk_typeface.cpp` / `include/c/sk_typeface.h`.
 - Positioned text blobs in 0.9 were checked against `SKTextBlob.cs`, generated `sk_textblob.h` bindings and `SKRunBufferInternal`, plus mono/skia `src/c/sk_textblob.cpp` / `include/c/sk_textblob.h`.
+
+- HarfBuzzSharp 8.3.1.2 / HarfBuzz 8.3.1 C APIs (`hb_blob_*`, `hb_face_*`,
+  `hb_font_*`, `hb_buffer_*`, `hb_shape`, feature/script/language helpers) are
+  the basis of the 0.10 shaping layer. The scale/position conversion follows
+  SkiaSharp.HarfBuzz `SKShaper` from SkiaSharp v3.119.1.

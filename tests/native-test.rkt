@@ -1019,6 +1019,73 @@
         (for/or ([i (in-range 3 (bytes-length bs) 4)])
           (> (bytes-ref bs i) 0))))
      (skia-close! blob))
+   (test-case "HarfBuzz shapes Latin text into glyph positions"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 36)]
+                 [sh (make-shaper f)])
+       (define run (shape-text sh "abc"))
+       (check-equal? (shaped-run-glyph-count run) 3)
+       (check-equal? (length (shaped-run-clusters run)) 3)
+       (check-equal? (length (shaped-run-positions run)) 3)
+       (check-true (> (abs (shaped-run-advance-x run)) 0))))
+   (test-case "HarfBuzz shaping produces drawable positioned text"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 36)]
+                 [sh (make-shaper f)]
+                 [p (make-paint #:color 'black)]
+                 [s (make-surface 180 70)])
+       (define run (shape-text sh "Skia"))
+       (draw-shaped-run (surface-canvas s) sh run 12 48 p)
+       (define pixels (surface->rgba-bytes s))
+       (check-true
+        (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+          (> (bytes-ref pixels i) 0)))))
+   (test-case "shaped runs can be retained as ordinary text blobs"
+     (define tf (make-typeface))
+     (define f (make-font tf #:size 32))
+     (define sh (make-shaper f))
+     (define run (shape-text sh "blob"))
+     (define blob (shaped-run->text-blob sh run))
+     (skia-close! sh)
+     (skia-close! f)
+     (skia-close! tf)
+     (with-skia ([s (make-surface 150 60)]
+                 [p (make-paint #:color 'blue)])
+       (draw-text-blob (surface-canvas s) blob 8 42 p)
+       (define-values (_x _y w h) (text-blob-bounds blob))
+       (check-true (> w 0))
+       (check-true (> h 0)))
+     (skia-close! blob))
+   (test-case "HarfBuzz accepts direction language script and feature controls"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 30)]
+                 [sh (make-shaper f)])
+       (define run (shape-text sh "office"
+                               #:direction 'ltr
+                               #:script 'latn
+                               #:language "en"
+                               #:features '("liga=0" "kern=1")))
+       (check-true (positive? (shaped-run-glyph-count run)))
+       (check-exn exn:fail? (lambda () (shape-text sh "office" #:features '("not a feature"))))))
+   (test-case "HarfBuzz shapes RTL fallback text"
+     (with-skia ([fm (default-font-manager)])
+       (define face (font-manager-match-character fm #\م #:languages '("ar")))
+       (when face
+         (call-with-skia-resource
+          face
+          (lambda (tf)
+            (with-skia ([f (make-font tf #:size 34)]
+                        [sh (make-shaper f)])
+              (define run (shape-text sh "مرحبا" #:direction 'rtl #:script 'arab #:language "ar"))
+              (check-true (positive? (shaped-run-glyph-count run)))
+              (check-equal? (length (shaped-run-glyphs run))
+                            (length (shaped-run-positions run)))))))))
+   (test-case "closed shapers reject use"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)])
+       (define sh (make-shaper f))
+       (skia-close! sh)
+       (check-exn #rx"closed" (lambda () (shape-text sh "x")))))
    (test-case "closed font-manager and text-blob resources reject use"
      (define fm (default-font-manager))
      (skia-close! fm)
@@ -1035,5 +1102,6 @@
 
 (module+ test
   (skia-check!)
+  (harfbuzz-check!)
   (define failures (run-tests native-tests))
   (unless (zero? failures) (error 'native-tests "~a failures" failures)))

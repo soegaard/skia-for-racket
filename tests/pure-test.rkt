@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/list
          rackunit rackunit/text-ui ffi/unsafe
-         "../main.rkt" "../private/types.rkt")
+         "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt")
 (provide pure-tests)
 
 (define pure-tests
@@ -272,6 +272,13 @@
      (check-exn exn:fail:contract? (lambda () (text-blob-bounds 'not-a-blob)))
      (check-exn exn:fail:contract?
                 (lambda () (draw-text-blob 'not-a-canvas 'not-a-blob 0 0 'not-a-paint))))
+   (test-case "HarfBuzz shaping ABI struct sizes"
+     (check-equal? (ctype-sizeof _hb-glyph-info) 20)
+     (check-equal? (ctype-sizeof _hb-glyph-position) 20)
+     (check-equal? (ctype-sizeof _hb-feature) 16))
+   (test-case "shaper argument validation does not require native loading"
+     (check-exn exn:fail:contract? (lambda () (make-shaper 'not-a-font)))
+     (check-exn exn:fail:contract? (lambda () (shape-text 'not-a-shaper "abc"))))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.1 — HarfBuzz feature-struct compile fix
+
+- Renamed the Racket-side `hb_feature_t.tag` field binding to `feature-tag` to avoid colliding with the `hb-feature-tag` identifier that `define-cstruct` generates for the cstruct pointer tag. The native ABI layout is unchanged.
+
+## 0.10.0 — HarfBuzz shaping
+
+- Added lazy loading of pinned HarfBuzzSharp 8.3.1.2 / HarfBuzz 8.3.1.
+- Added owned `shaper?` resources that snapshot an Skia font/typeface for deterministic shaping and later TextBlob rendering.
+- Added immutable `shaped-run?` values with glyph IDs, UTF-8 clusters, explicit glyph positions, and x/y advances.
+- Added `shape-text`, OpenType feature strings, direction/script/language overrides, `shaped-run->text-blob`, `draw-shaped-run`, and `draw-shaped-text`.
+- Added `tools/install-harfbuzz.sh` and `tools/audit-harfbuzz-symbols.sh`.
+- Added `examples/shaping.rkt`, doctor coverage, ABI checks, and shaping tests.
+
 ## 0.9.0 — font managers and positioned text blobs
 
 - Added owned `font-manager?` resources, default/fresh manager constructors, family enumeration, family-style matching, and character fallback with BCP-47 language hints.

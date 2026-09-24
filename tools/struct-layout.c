@@ -15,6 +15,9 @@ typedef struct {
 typedef struct { float left, top, right, bottom; } rect;
 typedef struct { float x, y; } point;
 typedef struct { void *glyphs, *pos, *utf8text, *clusters; } textblob_runbuffer;
+typedef struct { uint32_t codepoint, mask, cluster, var1, var2; } hb_glyph_info;
+typedef struct { int32_t x_advance, y_advance, x_offset, y_offset, var; } hb_glyph_position;
+typedef struct { uint32_t tag, value, start, end; } hb_feature;
 typedef struct { int32_t left, top, right, bottom; } irect;
 typedef struct {
     int max_aniso;
@@ -52,6 +55,9 @@ _Static_assert(offsetof(image_info, width) == sizeof(void *), "width offset");
 _Static_assert(sizeof(rect) == 16, "rectangle layout");
 _Static_assert(sizeof(point) == 8, "point layout");
 _Static_assert(sizeof(textblob_runbuffer) == 4 * sizeof(void *), "textblob runbuffer layout");
+_Static_assert(sizeof(hb_glyph_info) == 20, "HarfBuzz glyph-info layout");
+_Static_assert(sizeof(hb_glyph_position) == 20, "HarfBuzz glyph-position layout");
+_Static_assert(sizeof(hb_feature) == 16, "HarfBuzz feature layout");
 _Static_assert(offsetof(textblob_runbuffer, clusters) == 3 * sizeof(void *), "textblob runbuffer clusters offset");
 _Static_assert(offsetof(point, y) == 4, "point y offset");
 _Static_assert(sizeof(irect) == 16, "integer rectangle layout");
@@ -74,8 +80,9 @@ _Static_assert(offsetof(font_metrics, cap_height) == 44, "font-metrics cap-heigh
 _Static_assert(offsetof(font_metrics, underline_thickness) == 48, "font-metrics underline offset");
 _Static_assert(offsetof(font_metrics, strikeout_position) == 60, "font-metrics strikeout offset");
 int main(void) {
-    printf("host C: image-info=%zu rect=%zu point=%zu textblob-runbuffer=%zu irect=%zu sampling=%zu png-options=%zu jpeg-options=%zu webp-options=%zu font-metrics=%zu\n",
+    printf("host C: image-info=%zu rect=%zu point=%zu textblob-runbuffer=%zu hb-info=%zu hb-pos=%zu hb-feature=%zu irect=%zu sampling=%zu png-options=%zu jpeg-options=%zu webp-options=%zu font-metrics=%zu\n",
            sizeof(image_info), sizeof(rect), sizeof(point), sizeof(textblob_runbuffer),
+           sizeof(hb_glyph_info), sizeof(hb_glyph_position), sizeof(hb_feature),
            sizeof(irect), sizeof(sampling), sizeof(png_options), sizeof(jpeg_options),
            sizeof(webp_options), sizeof(font_metrics));
     puts("Layout assertions passed; no Skia or Racket code was executed.");

@@ -228,3 +228,13 @@ blur/shadow filter construction;
 filter-graph input retention; typeface/font lifetime; image snapshot lifetime;
 and both explicit and GC cleanup. Do not simply widen the milestone check until
 an incompatible build loads.
+
+
+## HarfBuzz shaping ABI
+
+Version 0.10 optionally loads `libHarfBuzzSharp` 8.3.1.2, containing HarfBuzz
+8.3.1. It is lazy and separate from `libSkiaSharp`; the core Skia APIs remain
+usable without it. The shaping layer mirrors the public `hb_glyph_info_t`
+(20 bytes), `hb_glyph_position_t` (20 bytes), and `hb_feature_t` (16 bytes)
+layouts. Font bytes are copied from an owned SkTypeface stream into an
+`HB_MEMORY_MODE_DUPLICATE` blob before temporary Skia stream storage is released.

@@ -1,19 +1,25 @@
 #lang racket/base
-(require ffi/unsafe "../main.rkt" "../private/types.rkt")
+(require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt")
 (module+ main
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
   (printf "Pinned native package: SkiaSharp ~a\n" native-package-version)
-  (printf "ABI sizes: pointer=~a image-info=~a rect=~a point=~a textblob-runbuffer=~a irect=~a sampling=~a PNG-options=~a JPEG-options=~a WebP-options=~a font-metrics=~a\n"
+  (printf "ABI sizes: pointer=~a image-info=~a rect=~a point=~a textblob-runbuffer=~a irect=~a sampling=~a PNG-options=~a JPEG-options=~a WebP-options=~a font-metrics=~a HB-info=~a HB-pos=~a HB-feature=~a\n"
           (ctype-sizeof _pointer) (ctype-sizeof _sk-image-info)
           (ctype-sizeof _sk-rect) (ctype-sizeof _sk-point)
           (ctype-sizeof _sk-textblob-runbuffer) (ctype-sizeof _sk-irect)
           (ctype-sizeof _sk-sampling) (ctype-sizeof _sk-png-options)
           (ctype-sizeof _sk-jpeg-options) (ctype-sizeof _sk-webp-options)
-          (ctype-sizeof _sk-font-metrics))
+          (ctype-sizeof _sk-font-metrics)
+          (ctype-sizeof _hb-glyph-info) (ctype-sizeof _hb-glyph-position)
+          (ctype-sizeof _hb-feature))
   (skia-check!)
   (printf "Native library: ~a\n" (skia-native-library-path))
   (printf "Native ABI version: ~a\n" (skia-native-version))
+  (harfbuzz-check!)
+  (printf "HarfBuzzSharp native package: ~a\n" harfbuzz-package-version)
+  (printf "HarfBuzz library: ~a\n" (harfbuzz-native-library-path))
+  (printf "HarfBuzz version: ~a\n" (harfbuzz-native-version))
   (with-skia ([s (make-surface 2 2 #:background 'red)])
     (unless (equal? (surface-pixel s 0 0) (rgb 255 0 0))
       (error 'doctor "pixel readback failed"))
@@ -152,4 +158,20 @@
            (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
                      (> (bytes-ref pixels i) 0))
              (error 'doctor "positioned text blob rasterization failed"))))))
-    (printf "Font manager/text blobs passed; fallback, positioned runs, and replay verified\n")))
+    (printf "Font manager/text blobs passed; fallback, positioned runs, and replay verified\n"))
+  (with-skia ([tf (make-typeface)]
+              [font (make-font tf #:size 30)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 140 60)])
+    (define run (shape-text sh "office" #:language "en" #:features '("kern=1")))
+    (unless (and (positive? (shaped-run-glyph-count run))
+                 (= (length (shaped-run-glyphs run))
+                    (length (shaped-run-positions run))))
+      (error 'doctor "HarfBuzz shaping result failed"))
+    (draw-shaped-run (surface-canvas surface) sh run 8 42 paint)
+    (define pixels (surface->rgba-bytes surface))
+    (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+              (> (bytes-ref pixels i) 0))
+      (error 'doctor "HarfBuzz shaped text rasterization failed"))
+    (printf "HarfBuzz shaping passed; glyph extraction, positioning, and drawing verified\n")))

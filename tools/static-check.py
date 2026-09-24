@@ -47,7 +47,8 @@ for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):
         if ' ' not in ref:
             assert (f.parent/ref).exists(),(f,ref)
-subprocess.run(['bash','-n',str(R/'tools/install-native.sh')],check=True)
+for shell in ['install-native.sh','install-harfbuzz.sh','audit-symbols.sh','audit-harfbuzz-symbols.sh']:
+    subprocess.run(['bash','-n',str(R/'tools'/shell)],check=True)
 # Exercise installer in a separate temporary project with synthetic data.
 # No fake shared library is created in the deliverable.
 with tempfile.TemporaryDirectory(prefix='skia-installer-check-') as temp:
@@ -77,5 +78,34 @@ with tempfile.TemporaryDirectory(prefix='skia-installer-check-') as temp:
     assert not list((project/'native').glob('.install.*'))
     help=subprocess.run(['bash',str(target),'--help'],capture_output=True,text=True);assert help.returncode==0
     installed['help']='success'
-result={'racket_files_scanned':len(list(R.rglob('*.rkt'))),'source_test_case_counts':counts,'core_exports_accounted_for':len(exports),'local_module_paths':'exist','shell_syntax':'passed','installer_synthetic_tests':installed,'racket_execution':'NOT RUN','live_skia_execution':'NOT RUN'}
+# Exercise the HarfBuzz installer with the same create-only synthetic archive strategy.
+with tempfile.TemporaryDirectory(prefix='harfbuzz-installer-check-') as temp:
+    t=Path(temp); project=t/'project with spaces'; (project/'tools').mkdir(parents=True)
+    target=project/'tools/install-harfbuzz.sh';shutil.copy2(R/'tools/install-harfbuzz.sh',target)
+    if platform.system() == 'Darwin':
+        hpkg='HarfBuzzSharp.NativeAssets.macOS'; hrid='osx'; hlib='libHarfBuzzSharp.dylib'
+    elif platform.system() == 'Linux' and platform.machine() in ('x86_64','aarch64','arm64'):
+        hpkg='HarfBuzzSharp.NativeAssets.Linux'
+        hrid='linux-x64' if platform.machine() == 'x86_64' else 'linux-arm64'
+        hlib='libHarfBuzzSharp.so'
+    else:
+        raise SystemExit('HarfBuzz installer smoke checks need macOS or supported Linux.')
+    def harchive(name,version='8.3.1.2',member=True,package=hpkg):
+        f=t/name
+        with zipfile.ZipFile(f,'w') as z:
+            z.writestr('native.nuspec',f'<package><metadata><id>{package}</id><version>{version}</version></metadata></package>')
+            if member:z.writestr(f'runtimes/{hrid}/native/{hlib}',b'SYNTHETIC-HARFBUZZ-INSTALLER-TEST-NOT-A-LIBRARY')
+        return f
+    def hrun(f):return subprocess.run(['bash',str(target),'--archive',str(f)],capture_output=True,text=True)
+    good=hrun(harchive('good package.nupkg'));assert good.returncode==0,good.stderr
+    dest=project/'native'/hrid/hlib;original=dest.read_bytes()
+    hinstalled={'valid offline archive':good.returncode}
+    for key,kwargs in [('wrong-version',{'version':'9.0.0'}),('wrong-package',{'package':'Different.Package'}),('missing-member',{'member':False})]:
+        r=hrun(harchive(key+'.nupkg',**kwargs));assert r.returncode!=0;assert dest.read_bytes()==original
+        hinstalled[key]='rejected; previous library preserved'
+    assert not list((project/'native').glob('.install-hb.*'))
+    help=subprocess.run(['bash',str(target),'--help'],capture_output=True,text=True);assert help.returncode==0
+    hinstalled['help']='success'
+
+result={'racket_files_scanned':len(list(R.rglob('*.rkt'))),'source_test_case_counts':counts,'core_exports_accounted_for':len(exports),'local_module_paths':'exist','shell_syntax':'passed','installer_synthetic_tests':installed,'harfbuzz_installer_synthetic_tests':hinstalled,'racket_execution':'NOT RUN','live_skia_execution':'NOT RUN'}
 print(json.dumps(result,indent=2))

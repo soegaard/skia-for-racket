@@ -95,6 +95,11 @@
 (define-native sk_codec_get_frame_count (_fun _pointer -> _int))
 (define-native sk_colorspace_unref (_fun _pointer -> _void))
 
+;; Stream access used by the HarfBuzz shaping bridge.
+(define-native sk_stream_asset_destroy (_fun _pointer -> _void))
+(define-native sk_stream_get_length (_fun _pointer -> _size))
+(define-native sk_stream_read (_fun _pointer _bytes _size -> _size))
+
 ;; Native-owned CPU surfaces. No Racket byte buffer is retained by Skia.
 (define-native sk_surface_new_raster
   (_fun _sk-image-info-pointer _size _pointer -> _pointer))
@@ -325,6 +330,8 @@
 (define-native sk_typeface_get_font_weight (_fun _pointer -> _int))
 (define-native sk_typeface_get_font_width (_fun _pointer -> _int))
 (define-native sk_typeface_unref (_fun _pointer -> _void))
+(define-native sk_typeface_get_units_per_em (_fun _pointer -> _int))
+(define-native sk_typeface_open_stream (_fun _pointer _pointer -> _pointer))
 
 (define-native sk_fontstyle_new (_fun _int _int _int -> _pointer))
 (define-native sk_fontstyle_delete (_fun _pointer -> _void))
@@ -332,6 +339,7 @@
 (define-native sk_font_new_with_values
   (_fun _pointer _float _float _float -> _pointer))
 (define-native sk_font_delete (_fun _pointer -> _void))
+(define-native sk_font_get_typeface (_fun _pointer -> _pointer))
 (define-native sk_font_get_size (_fun _pointer -> _float))
 (define-native sk_font_set_size (_fun _pointer _float -> _void))
 (define-native sk_font_get_scale_x (_fun _pointer -> _float))

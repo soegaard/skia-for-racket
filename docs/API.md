@@ -1,4 +1,4 @@
-# API reference — version 0.9.0
+# API reference — version 0.10.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1012,3 +1012,63 @@ optional translation and either `'append` or `'extend` mode.
 accepted grammar is the usual `M/L/H/V/C/S/Q/T/A/Z` path-data language as
 implemented by Skia. `path->svg-path` serializes the current path back to a
 path-data string.
+
+
+## HarfBuzz shaping
+
+```racket
+harfbuzz-package-version
+(harfbuzz-check!)
+(harfbuzz-available?)
+(harfbuzz-native-version)
+(harfbuzz-native-library-path)
+
+(shaper? value)
+(make-shaper font)
+
+(shaped-run? value)
+(shaped-run-glyphs run)
+(shaped-run-clusters run)
+(shaped-run-positions run)
+(shaped-run-advance-x run)
+(shaped-run-advance-y run)
+(shaped-run-glyph-count run)
+
+(shape-text shaper text
+            #:direction [direction 'auto]
+            #:script [script #f]
+            #:language [language #f]
+            #:features [features '()])
+
+(shaped-run->text-blob shaper run)
+(draw-shaped-run canvas shaper run x y paint)
+(draw-shaped-text canvas shaper text x y paint
+                  #:direction [direction 'auto]
+                  #:script [script #f]
+                  #:language [language #f]
+                  #:features [features '()])
+```
+
+`make-shaper` snapshots the supplied `font?`: its typeface is copied into a
+HarfBuzz face/font and an independent Skia font wrapper is retained for later
+TextBlob creation. Closing or mutating the original font after successful
+construction does not alter the shaper.
+
+`shape-text` adds UTF-8 input to a HarfBuzz buffer, guesses segment properties,
+then applies explicit overrides. Directions are `'auto`, `'ltr`, `'rtl`, `'ttb`,
+and `'btt`. `script` is `#f`, a symbol such as `'arab`, or a string. `language`
+is a BCP-47-ish HarfBuzz language string such as `"en"` or `"ar"`. Features
+are HarfBuzz feature strings such as `"liga=0"`, `"kern=1"`, or
+`"ss01=1"`.
+
+Clusters are byte offsets into the UTF-8 input, matching HarfBuzz's semantics.
+Positions are relative glyph origins in Skia user-space units. HarfBuzz x/y
+offsets and advances are converted using the snapshotted font's size and
+horizontal scale, following SkiaSharp.HarfBuzz's m119 shaping convention.
+
+`shaped-run->text-blob` creates a normal owned `text-blob?`; empty shaped runs
+have no native blob and therefore raise in this conversion. `draw-shaped-run`
+and `draw-shaped-text` treat an empty run as a no-op.
+
+This API shapes a single font run. It does not perform paragraph-level bidi,
+script/fallback segmentation, line breaking, wrapping, or justification.
