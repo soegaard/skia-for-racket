@@ -1,7 +1,7 @@
 # Primary sources used
 
 These are upstream references for the native interface and Racket FFI choices,
-not evidence that this package's own tests have run. Checked on 2026-09-23.
+not evidence that this package's own tests have run. Checked on 2026-09-24.
 
 ## Pinned SkiaSharp interface
 
@@ -79,3 +79,9 @@ are the compatibility reference for this implementation.
   paragraph, weak, paired-bracket, neutral, implicit-level, and visual reordering
   rules for ordinary text; explicit embedding/override/isolate controls are a
   documented exclusion.
+- Version 0.13 line breaking uses Unicode 15.1 `LineBreak.txt` property data,
+  the Unicode 15.1 `emoji-data.txt` Extended_Pictographic reservation data used
+  by LB30b, and Unicode Standard Annex #14 revision 51. The implementation uses
+  UAX #14 Example 6's default-grapheme-cluster-preserving tailoring. Complex
+  context dictionary segmentation and higher-level hyphenation are documented
+  exclusions.

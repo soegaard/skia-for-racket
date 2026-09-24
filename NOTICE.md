@@ -16,7 +16,7 @@ official binding of either the Skia or Racket projects.
 
 ## Unicode data
 
-The mixed-text bidi tables include derived property assignments from the Unicode
-Character Database 15.1. Unicode and the Unicode Logo are registered trademarks
-of Unicode, Inc. See https://www.unicode.org/terms_of_use.html for Unicode data
-terms of use.
+The mixed-text bidi tables and Unicode line-breaking tables include derived
+property assignments from the Unicode Character Database 15.1 and Emoji 15.1
+data. Unicode and the Unicode Logo are registered trademarks of Unicode, Inc.
+See https://www.unicode.org/terms_of_use.html for Unicode data terms of use.

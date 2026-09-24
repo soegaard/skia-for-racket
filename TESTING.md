@@ -2,20 +2,20 @@
 
 ## Status
 
-**0.1 through 0.11 — LIVE VALIDATED on macOS/aarch64.** The latest live run
+**0.1 through 0.12 — LIVE VALIDATED on macOS/aarch64.** The latest live run
 used Racket 9.3.0.2 with pinned SkiaSharp 3.119.1 and HarfBuzzSharp 8.3.1.2.
 Both symbol audits reported zero missing bindings, every doctor probe passed,
-all **142** source test cases passed (33 pure, 6 lifetime, 103 native), and the
-paragraph-layout visual probe rendered correctly.
+all **150** source test cases passed (36 pure, 6 lifetime, 108 native), and the
+mixed-text visual probe rendered correctly. The live audits reported 221 Skia
+bindings and 27 HarfBuzz bindings, with zero missing symbols.
 
-**0.12 mixed-script/bidi layout — NOT YET LIVE RUN IN THE AUTHORING
-ENVIRONMENT.** The new bidi resolver, script/font-fallback segmentation,
-multi-run layout/drawing layer, and tests received static/source review here.
-The 0.12 tree contains **150 source test cases**: 36 pure, 6 lifetime, and 108
-native. It adds two HarfBuzz Unicode-property bindings but no new by-value ABI
-structs.
+**0.13 Unicode line breaking — NOT YET LIVE RUN IN THE AUTHORING
+ENVIRONMENT.** The Unicode 15.1 UAX #14 resolver, grapheme-preserving tailoring,
+shared paragraph/mixed-layout wrapper, tests, doctor probe, and visual example
+received source review here. The 0.13 tree contains **159 source test cases**:
+42 pure, 6 lifetime, and 111 native. It adds no native symbols or ABI structs.
 
-## Checks performed for 0.12 source
+## Checks performed for 0.13 source
 
 Run `python3 tools/static-check.py` and the host-C layout command below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -43,7 +43,7 @@ part of the required live validation sequence for every added FFI binding.
 No benchmark, native-heap leak-measurement claim, cross-platform rendering-
 equivalence claim, or GPU claim is made by this report.
 
-## Run the 0.11 Racket tests locally
+## Run the 0.13 Racket tests locally
 
 From the extracted root:
 
@@ -60,10 +60,10 @@ bash tools/audit-harfbuzz-symbols.sh &&
 "$RACKET" run-tests.rkt
 ```
 
-A successful full run should report **33 pure + 6 lifetime + 103 native = 142
+A successful full run should report **42 pure + 6 lifetime + 111 native = 159
 source test cases**. Cases contain multiple assertions, so this is not an
-assertion count. The 0.11 doctor retains every earlier smoke check and additionally verifies
-paragraph wrapping, alignment, line metrics, and layout drawing.
+assertion count. The 0.13 doctor retains every earlier smoke check and additionally
+verifies UAX #14 hyphen/CJK wrapping and rasterization.
 
 To run only tests that do not need the native library:
 
@@ -71,7 +71,7 @@ To run only tests that do not need the native library:
 "$RACKET" run-tests.rkt --pure
 ```
 
-This requests the 39 pure/lifetime cases. It does not run the 103 native cases,
+This requests the 48 pure/lifetime cases. It does not run the 111 native cases,
 and says so. A default run fails rather than silently skipping native tests
 when the library cannot load. Alternatively, after installing the package:
 
@@ -107,12 +107,17 @@ replay, font-lifetime independence, and closed-resource rejection. Version
 0.10 adds HarfBuzz loading/version checks, font-stream snapshotting, Latin and
 RTL shaping, OpenType feature parsing, UTF-8 cluster extraction, positioned
 run drawing, shaped-run to TextBlob conversion, and closed-shaper rejection.
+Version 0.11 covers paragraph wrapping/alignment; 0.12 covers mixed bidi/script
+runs and font fallback; 0.13 covers Unicode 15.1 UAX #14 opportunities,
+grapheme-preserving breaks, hard separators, unspaced CJK, and punctuation.
 
 The repeated allocation case is not a leak detector. The suite does not yet
 measure native heap reclamation directly, expose path-measure matrices or path
 iterators, validate 1D/2D stamped path effects, validate every encoded format,
 decode animation frames, normalize encoded orientation, exercise ICC/color
-space objects, expose advanced filter families/crop rectangles, perform paragraph-level bidi/run segmentation, line breaking, wrapping, or test GPU resources.
+space objects, expose advanced filter families/crop rectangles, perform
+Southeast Asian dictionary segmentation, language-specific hyphenation,
+justification, or test GPU resources.
 
 ### Visual smoke checks
 
@@ -123,6 +128,9 @@ mkdir -p output
 "$RACKET" examples/text.rkt output/text.png
 "$RACKET" examples/text-blobs.rkt output/text-blobs.png
 "$RACKET" examples/shaping.rkt output/shaping.png
+"$RACKET" examples/layout.rkt output/layout.png
+"$RACKET" examples/mixed-text.rkt output/mixed-text.png
+"$RACKET" examples/line-breaking.rkt output/line-breaking.png
 "$RACKET" examples/gradients.rkt output/gradients.png
 "$RACKET" examples/codecs.rkt output/codecs.png
 "$RACKET" examples/path-effects.rkt output/path-effects.png
@@ -133,9 +141,10 @@ mkdir -p output
 ```
 
 Choose fresh filenames on reruns. `text-blobs.rkt` covers the 0.9
-FontManager/TextBlob layer. The new `shaping.rkt` probe covers Latin shaping,
-Arabic and Hebrew RTL shaping, combining marks, OpenType feature toggles, and
-exposes clusters/positions for visual review.
+FontManager/TextBlob layer. `shaping.rkt` covers Latin/RTL shaping and OpenType
+features; `mixed-text.rkt` covers bidi/script/fallback runs; and
+`line-breaking.rkt` covers CJK, punctuation, numeric context, grapheme clusters,
+hard separators, and no-break spaces.
 
 ## Reproduce non-Racket checks
 
@@ -206,3 +215,12 @@ Mixed text layout passed; bidi runs, script segmentation, fallback, and drawing 
 
 The HarfBuzz symbol audit should now report **27** required bindings and zero
 missing symbols. The Skia audit remains at **221**.
+
+Expected additional doctor line for 0.13:
+
+```text
+Unicode line breaking passed; UAX #14 opportunities and CJK wrapping verified
+```
+
+Version 0.13 adds no native bindings, so the expected symbol counts remain
+**27 HarfBuzz** and **221 Skia**, both with zero missing symbols.

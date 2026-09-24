@@ -203,4 +203,25 @@
     (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
               (> (bytes-ref pixels i) 0))
       (error 'doctor "mixed text layout rasterization failed"))
-    (printf "Mixed text layout passed; bidi runs, script segmentation, fallback, and drawing verified\n")))
+    (printf "Mixed text layout passed; bidi runs, script segmentation, fallback, and drawing verified\n"))
+  (with-skia ([fm (default-font-manager)]
+              [tf (make-typeface)]
+              [font (make-font tf #:size 25)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 260 140)])
+    (define hyphenated (layout-text sh "alpha-beta-gamma" #:width 95))
+    (unless (> (text-layout-line-count hyphenated) 1)
+      (error 'doctor "UAX #14 hyphen opportunity did not wrap"))
+    (define cjk
+      (layout-mixed-text sh fm "世界中文排版測試沒有空格"
+                         #:width 100 #:language "zh"))
+    (unless (> (mixed-text-layout-line-count cjk) 1)
+      (error 'doctor "UAX #14 CJK opportunities did not wrap"))
+    (draw-mixed-text-layout (surface-canvas surface) cjk 10 8 paint)
+    (define pixels (surface->rgba-bytes surface))
+    (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+              (> (bytes-ref pixels i) 0))
+      (error 'doctor "UAX #14 layout rasterization failed"))
+    (printf "Unicode line breaking passed; UAX #14 opportunities and CJK wrapping verified\n"))
+)

@@ -2,7 +2,7 @@
 (require racket/list
          rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
-         "../private/bidi.rkt")
+         "../private/bidi.rkt" "../private/line-break.rkt")
 (provide pure-tests)
 
 (define pure-tests
@@ -303,6 +303,53 @@
                 (lambda () (layout-mixed-text 'bad 'also-bad "x" #:align 'diagonal)))
      (check-exn exn:fail:contract?
                 (lambda () (draw-mixed-text-layout 'bad 'not-a-layout 0 0 'paint))))
+   (test-case "UAX #14 line-break classes use Unicode 15.1 defaults"
+     (check-eq? (line-break-class #\A) 'AL)
+     (check-eq? (line-break-class #\界) 'ID)
+     (check-eq? (line-break-class #\u00A0) 'GL)
+     (check-eq? (line-break-class #\u3041) 'NS))
+   (test-case "UAX #14 finds Latin-space and ideographic opportunities"
+     (check-equal?
+      (map line-break-opportunity-index (line-break-opportunities "alpha beta"))
+      '(6 10))
+     (check-equal?
+      (map line-break-opportunity-index (line-break-opportunities "世界中文"))
+      '(1 2 3 4)))
+   (test-case "UAX #14 keeps punctuation and glue attached"
+     (check-equal?
+      (map line-break-opportunity-index (line-break-opportunities "(世界)"))
+      '(2 4))
+     (check-equal?
+      (map line-break-opportunity-index
+           (line-break-opportunities (string-append "a" (string #\u00A0) "b")))
+      '(3))
+     (check-equal?
+      (map line-break-opportunity-index
+           (line-break-opportunities (string-append "a" (string #\u2060) "b")))
+      '(3)))
+   (test-case "UAX #14 keeps ordinary numeric expressions intact"
+     (check-equal?
+      (map line-break-opportunity-index (line-break-opportunities "12,345.67"))
+      '(9)))
+   (test-case "line breaking preserves default grapheme clusters"
+     (define text (string-append "a" (string #\u0301) "界"))
+     (check-equal?
+      (map line-break-opportunity-index (line-break-opportunities text))
+      '(2 3))
+     ;; LB8a remains non-tailorable even when the ZWJ is the last code point
+     ;; of a grapheme cluster whose first code point has another class.
+     (define joined (string #\uAA14 #\u200D #\uA9A3))
+     (check-equal?
+      (map line-break-opportunity-index (line-break-opportunities joined))
+      '(3)))
+   (test-case "Unicode hard line breaks split layout paragraphs"
+     (define text
+       (string-append "a\r\nb" (string #\u2028) "c"
+                      (string #\u0085) "d" (string #\u000B) "e"))
+     (check-equal? (split-hard-lines text) '("a" "b" "c" "d" "e"))
+     (define ops (line-break-opportunities "a\r\nb"))
+     (check-equal? (map line-break-opportunity-index ops) '(3 4))
+     (check-equal? (map line-break-opportunity-kind ops) '(mandatory mandatory)))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

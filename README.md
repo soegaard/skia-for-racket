@@ -1,17 +1,16 @@
-# Racket Skia — 0.12.0
+# Racket Skia — 0.13.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.11 are live-validated on
+**Verification status:** versions 0.1 through 0.12 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. The completed 0.11 run passed both native symbol audits, every doctor
-probe, all 142 source test cases (33 pure, 6 lifetime, 103 native), and the
-paragraph-layout visual probe. Version 0.12 adds mixed-script/bidirectional run
-segmentation and font fallback; those new paths are source/ABI checked here but
-still require the included live doctor, tests, and visual probe. See
-[TESTING.md](TESTING.md).
+8.3.1.2. The completed 0.12 run passed both native symbol audits, every doctor
+probe, all 150 source test cases (36 pure, 6 lifetime, 108 native), and the
+mixed-text visual probe. Version 0.13 adds Unicode 15.1 UAX #14 line breaking;
+those new paths are source/ABI checked here but still require the included live
+doctor, tests, and visual probe. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -21,7 +20,7 @@ quadratic and cubic Bézier paths; paint settings and blend modes; path bounds
 and containment; immutable image snapshots and copied RGBA input; image
 placement/scaling; native PNG encoding; font-manager enumeration and fallback;
 default/family/file-backed typefaces; configurable fonts and metrics; UTF-8
-simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; mixed-script/bidi run layout and font fallback; paragraph wrapping/alignment; glyph IDs and text/glyph
+simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; mixed-script/bidi run layout and font fallback; Unicode 15.1 line breaking; paragraph wrapping/alignment; glyph IDs and text/glyph
 outline paths; owned shaders; color, linear, radial, sweep,
 and conical gradients; image tiling; shader blending; PNG/JPEG/WebP encoded
 image decode and encode; codec metadata probing; image subsets and source-rectangle
@@ -39,7 +38,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.12.0-20260924
+cd racket-skia-0.13.0-20260924
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -59,6 +58,7 @@ mkdir -p output &&
 "$RACKET" examples/shaping.rkt output/shaping.png &&
 "$RACKET" examples/layout.rkt output/layout.png &&
 "$RACKET" examples/mixed-text.rkt output/mixed-text.png &&
+"$RACKET" examples/line-breaking.rkt output/line-breaking.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -573,16 +573,15 @@ result with the same shaper retained by the layout.
 
 A layout is a pure Racket value containing shaped lines and keeps its shaper
 wrapper reachable. Explicitly closing that shaper invalidates subsequent drawing
-from the layout. Long unbreakable words are not split and may expand the reported
-layout width beyond `#:width`.
+from the layout. With `#:width`, version 0.13 selects greedy line fits from UAX
+#14 opportunities; a span with no legal opportunity is not emergency-split and
+may expand the reported layout width beyond `#:width`.
 
-This stage is intentionally **not a full Unicode paragraph engine**: it does not
-implement UAX #9 mixed-direction bidi resolution or UAX #14 general line breaking.
-Each line is shaped as one HarfBuzz run. With `#:direction 'auto`, shaping
-still uses HarfBuzz's guessed run direction; start/end alignment infers RTL from
-descending HarfBuzz cluster offsets and otherwise defaults to LTR. Pass an
-explicit direction for ambiguous one-glyph lines. Full mixed-direction run
-segmentation remains a later stage.
+`layout-text` remains a single-run-per-line API: it does not perform UAX #9
+mixed-direction bidi resolution or script/font run segmentation. With
+`#:direction 'auto`, HarfBuzz guesses the shaping direction; start/end alignment
+infers RTL from descending HarfBuzz cluster offsets and otherwise defaults to
+LTR. Use `layout-mixed-text` when a line needs mixed-direction or fallback runs.
 
 
 ## Mixed-script and bidirectional layout
@@ -613,5 +612,19 @@ both must remain live while drawing it.
 This stage handles the ordinary UAX #9 paragraph/weak/neutral/bracket/implicit
 rules used by natural mixed-language text. Explicit embedding, override, and
 isolate controls (`LRE/RLE/LRO/RLO/PDF/LRI/RLI/FSI/PDI`) are not interpreted;
-they are omitted from shaping. Line breaking remains the whitespace-greedy
-policy from 0.11 rather than full UAX #14, and justification is not implemented.
+they are omitted from shaping.
+
+## Unicode line breaking
+
+Version 0.13 replaces the whitespace-only wrapping policy with the default UAX
+#14 revision 51 rules over Unicode 15.1 `Line_Break` data. Both paragraph APIs
+can therefore wrap unspaced CJK text and respect opening/closing punctuation,
+numeric context, non-breaking spaces, word joiners, Hangul, regional indicators,
+emoji modifiers, and the Brahmic orthographic-syllable rules introduced in
+Unicode 15.1. BK/CR/LF/NL hard separators form explicit layout lines.
+
+The implementation uses the UAX #14 tailoring that keeps Racket default
+grapheme clusters intact. Southeast Asian dictionary segmentation is not
+provided; SA text uses UAX #14's default AL/CM resolution. Language-specific
+hyphenation, emergency breaking inside otherwise-unbreakable spans, and
+justification are not implemented.

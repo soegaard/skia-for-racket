@@ -1223,6 +1223,41 @@ third"))
                     (lambda ()
                       (draw-mixed-text-layout (surface-canvas surface) layout 0 0 p))))
        (skia-close! sh)))
+   (test-case "mixed layout wraps unspaced CJK at UAX #14 opportunities"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 28)]
+                 [sh (make-shaper f)])
+       (define layout
+         (layout-mixed-text sh fm "世界中文排版測試沒有空格"
+                            #:width 90 #:language "zh"))
+       (define lines (mixed-text-layout-lines layout))
+       (check-true (> (length lines) 1))
+       (check-true
+        (for/and ([line (in-list lines)])
+          (positive? (string-length (mixed-text-line-text line)))))))
+   (test-case "mixed layout keeps CJK punctuation on the legal side of a break"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 28)]
+                 [sh (make-shaper f)])
+       (define layout
+         (layout-mixed-text sh fm "（世界）中文，標點測試。"
+                            #:width 90 #:language "zh"))
+       (for ([line (in-list (mixed-text-layout-lines layout))])
+         (define text (mixed-text-line-text line))
+         (check-false (regexp-match? #rx"^[），。]" text))
+         (check-false (regexp-match? #rx"（$" text)))))
+   (test-case "paragraph layout recognizes all Unicode hard line separators"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define text
+         (string-append "one" (string #\u2028) "two"
+                        (string #\u0085) "three"))
+       (define layout (layout-text sh text))
+       (check-equal? (map text-layout-line-text (text-layout-lines layout))
+                     '("one" "two" "three"))))
    (test-case "closed shapers reject use"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)])

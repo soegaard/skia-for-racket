@@ -1,4 +1,4 @@
-# API reference — version 0.12.0
+# API reference — version 0.13.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1110,11 +1110,17 @@ line baselines stored in the layout are relative to that top edge. The default
 line height comes from the shaper font's native metrics; an explicit positive
 `#:line-height` overrides the baseline spacing.
 
-`#:width #f` disables wrapping. A positive width enables greedy wrapping at
-Unicode whitespace runs. Explicit CR, LF, and CRLF line breaks are preserved,
-including blank lines. Break whitespace is not retained at a wrapped line edge.
-Long unbreakable words are not split; when one exceeds the requested width,
-`text-layout-width` expands to report the true occupied width.
+`#:width #f` disables wrapping. A positive width enables greedy line fitting at
+Unicode 15.1 UAX #14 revision 51 break opportunities. BK/CR/LF/NL hard line
+separators are preserved as explicit layout lines, including blank and trailing
+lines. Ordinary break whitespace is not retained at a wrapped line edge. A span
+with no legal opportunity is not emergency-split; when it exceeds the requested
+width, `text-layout-width` expands to report the true occupied width.
+
+The resolver uses the UAX #14 tailoring that prevents breaks inside Racket's
+default grapheme clusters. SA (complex-context Southeast Asian) characters use
+UAX #14's default AL/CM fallback rather than dictionary segmentation.
+Language-specific hyphenation and justification are not performed.
 
 Alignment is one of `'start`, `'center`, `'end`, `'left`, or `'right`. `start`
 and `end` are direction-sensitive. Paragraph layout currently accepts only
@@ -1125,12 +1131,12 @@ The layout keeps its originating shaper wrapper reachable because its glyph IDs
 are meaningful only for that font. If the shaper is explicitly closed, later
 `draw-text-layout` calls fail with the normal closed-resource error.
 
-This API is deliberately narrower than a complete Unicode paragraph engine. It
-does not implement UAX #9 mixed-direction bidi resolution, script/font run
-segmentation, or UAX #14 line-break opportunities. A line is shaped as one HarfBuzz run. With `#:direction 'auto`, HarfBuzz
-guesses the shaping direction; start/end alignment infers RTL from descending
-cluster offsets and otherwise defaults to LTR. Use an explicit direction when
-an ambiguous one-glyph line must align directionally.
+This API is deliberately narrower than `layout-mixed-text`: it does not perform
+UAX #9 mixed-direction bidi resolution or script/font run segmentation. A line
+is shaped as one HarfBuzz run. With `#:direction 'auto`, HarfBuzz guesses the
+shaping direction; start/end alignment infers RTL from descending cluster
+offsets and otherwise defaults to LTR. Use an explicit direction when an
+ambiguous one-glyph line must align directionally.
 
 
 ## Mixed-script and bidirectional text layout
@@ -1193,11 +1199,15 @@ for drawing from the recorded family/style description. The caller-owned base
 shaper and font manager are retained by reference and must remain open while
 `draw-mixed-text-layout` is used.
 
-The bidi resolver in 0.12 implements paragraph direction plus the ordinary
-weak, paired-bracket, neutral, implicit-level, trailing-whitespace, and L2
-visual-reordering rules needed for natural mixed-language paragraphs. Explicit
-Unicode embedding/override/isolate controls (`LRE`, `RLE`, `LRO`, `RLO`, `PDF`,
-`LRI`, `RLI`, `FSI`, `PDI`) are intentionally not interpreted in this stage;
-they are treated as formatting controls and omitted from shaping. The layout
-also keeps 0.11's greedy Unicode-whitespace wrapping policy rather than a full
-UAX #14 line-break implementation. Justification is not implemented.
+The bidi resolver implements paragraph direction plus the ordinary weak,
+paired-bracket, neutral, implicit-level, trailing-whitespace, and L2 visual
+reordering rules needed for natural mixed-language paragraphs. Explicit Unicode
+embedding/override/isolate controls (`LRE`, `RLE`, `LRO`, `RLO`, `PDF`, `LRI`,
+`RLI`, `FSI`, `PDI`) are intentionally not interpreted; they are treated as
+formatting controls and omitted from shaping.
+
+With `#:width`, mixed layout uses the same Unicode 15.1 UAX #14 line-breaking
+engine as `layout-text`; break selection occurs on logical paragraph text before
+final per-line bidi shaping/reordering. Default grapheme clusters are kept
+intact. Southeast Asian dictionary segmentation, language-specific hyphenation,
+emergency breaking, and justification are not implemented.

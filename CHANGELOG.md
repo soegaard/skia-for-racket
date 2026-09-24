@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.0 — Unicode line breaking
+
+- Added a private Unicode 15.1 `Line_Break` property table and UAX #14 revision 51 resolver.
+- `layout-text` and `layout-mixed-text` now fit lines greedily at Unicode line-break opportunities instead of whitespace runs only, including unspaced CJK and punctuation-aware breaks.
+- Preserved default grapheme clusters as an explicit UAX #14 tailoring and retained non-tailorable ZWJ behavior at grapheme boundaries.
+- Added Unicode hard-break handling for BK/CR/LF/NL separators, while retaining blank and trailing lines.
+- Added line-break property/opportunity tests, native CJK/punctuation layout tests, doctor coverage, and `examples/line-breaking.rkt`.
+- Southeast Asian dictionary segmentation, language-specific hyphenation/emergency breaking, justification, and explicit UAX #9 embedding/override/isolate controls remain outside this stage.
+- No new Skia or HarfBuzz native symbols or ABI structs are required.
+
 ## 0.12.0 — mixed-script and bidirectional text layout
 
 - Added `layout-mixed-text` / `draw-mixed-text-layout` with multiple shaped runs per visual line.
@@ -7,7 +17,7 @@
 - Added HarfBuzz Unicode-script classification and script-aware run segmentation.
 - Added grapheme-preserving font fallback through `font-manager-match-character`, with fallback family/style metadata retained in pure layout runs.
 - Added mixed-run wrapping/alignment, run inspection APIs, doctor coverage, tests, and `examples/mixed-text.rkt`.
-- Explicit Unicode embedding/override/isolate controls are intentionally not interpreted in this stage; they are omitted from shaping. Full explicit-control UAX #9 support, UAX #14 line breaking, and justification remain future work.
+- Explicit Unicode embedding/override/isolate controls are intentionally not interpreted in this stage; they are omitted from shaping. Full explicit-control UAX #9 support and justification remain future work; UAX #14 line breaking arrives in 0.13.
 
 ## 0.11.0 — paragraph text layout
 

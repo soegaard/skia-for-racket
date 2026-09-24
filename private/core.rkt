@@ -4,7 +4,7 @@
          racket/match
          racket/path
          "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt"
-         "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt"
+         "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
          skia-resource? skia-closed? skia-close!
@@ -2362,43 +2362,75 @@
         [else (positive-scalar who width)]))
 
 (define (split-explicit-lines text)
-  ;; Preserve empty lines, including a final one after a newline. CRLF and
-  ;; bare CR are normalized to LF first.
-  (define s (regexp-replace* #rx"\r\n?" text "\n"))
-  (define n (string-length s))
-  (let loop ([start 0] [i 0] [acc '()])
-    (cond
-      [(= i n) (reverse (cons (substring s start i) acc))]
-      [(char=? (string-ref s i) #\newline)
-       (loop (add1 i) (add1 i) (cons (substring s start i) acc))]
-      [else (loop start (add1 i) acc)])))
+  ;; UAX #14 hard line breaks (BK/CR/LF/NL) delimit layout paragraphs. The
+  ;; separators themselves are not shaped; empty and trailing lines survive.
+  (split-hard-lines text))
 
 (define (breakable-layout-whitespace? ch)
-  ;; Treat ordinary Unicode whitespace as a wrap opportunity, but preserve
-  ;; non-breaking space and narrow no-break space as part of words.
+  ;; Trimming policy at an actual wrap boundary. UAX #14 decides *where* a
+  ;; break is legal; ordinary whitespace at that chosen boundary is omitted
+  ;; from the visual line, while no-break spaces remain part of the text.
   (and (char-whitespace? ch)
        (not (or (char=? ch #\u00A0) (char=? ch #\u202F)))))
 
-(define (horizontal-pieces text)
-  ;; Return (list whitespace? substring) pieces. Explicit newlines have already
-  ;; been removed by split-explicit-lines.
+(define (trim-wrap-end text start end)
+  (let loop ([i end])
+    (if (and (> i start)
+             (breakable-layout-whitespace? (string-ref text (sub1 i))))
+        (loop (sub1 i))
+        i)))
+
+(define (skip-wrap-leading-whitespace text start)
   (define n (string-length text))
+  (let loop ([i start])
+    (if (and (< i n) (breakable-layout-whitespace? (string-ref text i)))
+        (loop (add1 i))
+        i)))
+
+(define (wrap-at-line-breaks text max-width measure)
+  ;; Greedy line fitting over UAX #14 opportunities. Measure complete
+  ;; candidates because shaping across the candidate boundary can affect width.
+  ;; If the first legal segment itself exceeds max-width, preserve it intact;
+  ;; emergency breaks inside otherwise-unbreakable text are intentionally not
+  ;; synthesized here.
+  (define n (string-length text))
+  (define break-indices
+    (for/list ([op (in-list (line-break-opportunities text))]
+               #:when (positive? (line-break-opportunity-index op)))
+      (line-break-opportunity-index op)))
+  (define first-start (skip-wrap-leading-whitespace text 0))
   (cond
-    [(zero? n) '()]
+    [(= first-start n) (list "")]
     [else
-     (let loop ([start 0]
-                [i 1]
-                [space? (breakable-layout-whitespace? (string-ref text 0))]
-                [acc '()])
-       (cond
-         [(= i n)
-          (reverse (cons (list space? (substring text start i)) acc))]
-         [else
-          (define next-space? (breakable-layout-whitespace? (string-ref text i)))
-          (if (eq? next-space? space?)
-              (loop start (add1 i) space? acc)
-              (loop i (add1 i) next-space?
-                    (cons (list space? (substring text start i)) acc))) ]))]))
+     (let wrap ([start first-start] [acc '()])
+       (define candidates
+         (let drop ([xs break-indices])
+           (cond [(null? xs) '()]
+                 [(<= (car xs) start) (drop (cdr xs))]
+                 [else xs])))
+       (let choose ([xs candidates] [best #f])
+         (cond
+           [(null? xs)
+            ;; LB3 guarantees eot, so this is defensive only.
+            (reverse (cons (substring text start n) acc))]
+           [else
+            (define pos (car xs))
+            (define render-end (trim-wrap-end text start pos))
+            (define candidate (substring text start render-end))
+            (define fits? (<= (measure candidate) max-width))
+            (cond
+              [(and fits? (= pos n))
+               (reverse (cons candidate acc))]
+              [fits?
+               (choose (cdr xs) pos)]
+              [else
+               (define chosen (or best pos))
+               (define chosen-end (trim-wrap-end text start chosen))
+               (define line (substring text start chosen-end))
+               (define next-start (skip-wrap-leading-whitespace text chosen))
+               (if (>= next-start n)
+                   (reverse (cons line acc))
+                   (wrap next-start (cons line acc)))])])))]))
 
 (define (run-horizontal-width run)
   (abs (shaped-run-advance-x run)))
@@ -2422,61 +2454,12 @@
 
 (define (wrapped-paragraph-lines/limited sh paragraph max-width
                                          direction script language features)
-  ;; Greedy wrapping at Unicode whitespace runs. Break whitespace is omitted
-  ;; from the end/beginning of wrapped lines; internal whitespace is preserved.
-  ;; A single word wider than max-width is kept intact and may overflow.
-  (define pieces (horizontal-pieces paragraph))
-  (define current "")
-  (define current-width 0.0)
-  (define pending-space "")
-  (define pending-width 0.0)
-  (define lines '())
   (define (measure str)
     (if (zero? (string-length str))
         0.0
         (run-horizontal-width
          (shape-layout-run sh str direction script language features))))
-  (define (finish!)
-    (set! lines (cons current lines))
-    (set! current "")
-    (set! current-width 0.0)
-    (set! pending-space "")
-    (set! pending-width 0.0))
-  (for ([piece (in-list pieces)])
-    (define whitespace? (car piece))
-    (define str (cadr piece))
-    (cond
-      [whitespace?
-       (unless (zero? (string-length current))
-         (set! pending-space (string-append pending-space str))
-         (set! pending-width (+ pending-width (measure str))))]
-      [else
-       (define word-width (measure str))
-       ;; Shape the complete candidate rather than adding separately-shaped
-       ;; token widths: kerning and other cross-boundary features can change
-       ;; the width at a whitespace/word boundary.
-       (define candidate (string-append current pending-space str))
-       (define candidate-width (measure candidate))
-       (cond
-         [(zero? (string-length current))
-          (set! current str)
-          (set! current-width word-width)
-          (set! pending-space "")
-          (set! pending-width 0.0)]
-         [(and max-width (> candidate-width max-width))
-          (finish!)
-          (set! current str)
-          (set! current-width word-width)]
-         [else
-          (set! current candidate)
-          (set! current-width candidate-width)
-          (set! pending-space "")
-          (set! pending-width 0.0)])]))
-  (cond
-    [(zero? (string-length current))
-     ;; An empty paragraph or whitespace-only paragraph occupies one line.
-     (if (null? lines) (list "") (reverse lines))]
-    [else (reverse (cons current lines))]))
+  (wrap-at-line-breaks paragraph max-width measure))
 
 (define (effective-line-direction requested run)
   (cond
@@ -2823,12 +2806,6 @@
 
 (define (wrapped-mixed-lines/limited sh fm paragraph max-width paragraph-direction
                                      language features choice-cache)
-  ;; Same user-facing whitespace policy as layout-text, but candidate widths
-  ;; are measured after bidi/script/fallback segmentation and shaping.
-  (define pieces (horizontal-pieces paragraph))
-  (define current "")
-  (define pending-space "")
-  (define lines '())
   (define (measure str)
     (if (zero? (string-length str))
         0.0
@@ -2836,33 +2813,7 @@
                       (shape-mixed-line sh fm str paragraph-direction
                                         language features choice-cache)])
           width)))
-  (define (finish!)
-    (set! lines (cons current lines))
-    (set! current "")
-    (set! pending-space ""))
-  (for ([piece (in-list pieces)])
-    (define whitespace? (car piece))
-    (define str (cadr piece))
-    (cond
-      [whitespace?
-       (unless (zero? (string-length current))
-         (set! pending-space (string-append pending-space str)))]
-      [else
-       (define candidate (string-append current pending-space str))
-       (cond
-         [(zero? (string-length current))
-          (set! current str)
-          (set! pending-space "")]
-         [(> (measure candidate) max-width)
-          (finish!)
-          (set! current str)]
-         [else
-          (set! current candidate)
-          (set! pending-space "")])]))
-  (cond
-    [(zero? (string-length current))
-     (if (null? lines) (list "") (reverse lines))]
-    [else (reverse (cons current lines))]))
+  (wrap-at-line-breaks paragraph max-width measure))
 
 (define (layout-mixed-text sh fm text
                            #:width [width #f]
