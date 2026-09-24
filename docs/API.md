@@ -1,4 +1,4 @@
-# API reference — version 0.6.0
+# API reference — version 0.8.1
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -851,3 +851,87 @@ Both perform pixel copies and return an independent bitmap. Premultiplied
 RGBA is reordered to premultiplied ARGB before `set-argb-pixels`. They load
 `racket/draw`; importing the main drawing module alone does not. This bridge
 does not provide a Skia `dc%`, zero-copy sharing, or vector interchange.
+
+
+## Pictures and recording
+
+```racket
+(picture? value)
+(picture-width picture)
+(picture-height picture)
+
+(picture-recorder? value)
+(picture-recorder-recording? recorder)
+(make-picture-recorder)
+(call-with-picture width height procedure-of-one-argument)
+(picture-recorder-begin-recording! recorder x y width height)
+(picture-recorder-finish-recording! recorder)
+
+(draw-picture canvas picture
+              #:x [x 0]
+              #:y [y 0]
+              #:width [width #f]
+              #:height [height #f])
+
+(picture->image picture width height
+                #:background [color 'transparent])
+```
+
+A `picture?` is an immutable recording of drawing commands. A picture records
+canvas operations against a cull rectangle, keeps no borrowed canvas alive once
+recording has finished, and may be replayed on any later canvas.
+
+`call-with-picture` records into a fresh picture recorder whose logical size is
+`width` by `height`; the procedure receives a borrowed recording canvas.
+`make-picture-recorder` exposes the lower-level begin/finish cycle when callers
+need to interleave recording with other logic. Attempting to begin while the
+recorder is already active, or attempting to finish while it is inactive, is an
+error. A recording canvas becomes invalid immediately after
+`picture-recorder-finish-recording!`.
+
+`draw-picture` replays the immutable recording. With only `#:x` and `#:y`, it
+translates the replay origin. Supplying both `#:width` and `#:height` scales the
+picture from its recorded size to the requested destination size. Both scaling
+keywords must be supplied together.
+
+`picture->image` rasterizes a picture onto a temporary CPU surface and returns a
+new immutable `image?`. The requested width and height are exact positive
+integers and may differ from the picture's recorded size.
+
+
+## Expanded path and SVG geometry
+
+```racket
+(path-rmove-to! path dx dy)
+(path-rline-to! path dx dy)
+(path-rquad-to! path dcx dcy dx dy)
+(path-conic-to! path cx cy x y weight)
+(path-rconic-to! path dcx dcy dx dy weight)
+(path-rcubic-to! path dcx1 dcy1 dcx2 dcy2 dx dy)
+
+(path-add-rounded-rect! path x y width height rx ry
+                        #:direction [direction 'cw])
+(path-add-path! destination source
+                #:dx [dx 0]
+                #:dy [dy 0]
+                #:mode [mode 'append])
+(path-add-reversed-path! destination source)
+
+(path-point-count path)
+(path-point-ref path index) ; -> x y
+(path-points path)          ; -> list of (list x y)
+(path-last-point path)      ; -> x y
+(path-convex? path)
+
+(svg-path->path string #:fill-rule [fill-rule 'winding])
+(path->svg-path path)
+```
+
+Relative commands behave like their Skia counterparts: offsets are interpreted
+from the current point. `path-add-path!` replays one path into another with an
+optional translation and either `'append` or `'extend` mode.
+
+`svg-path->path` parses SVG *path data* only, not a full SVG document. The
+accepted grammar is the usual `M/L/H/V/C/S/Q/T/A/Z` path-data language as
+implemented by Skia. `path->svg-path` serializes the current path back to a
+path-data string.

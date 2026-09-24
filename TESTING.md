@@ -54,6 +54,7 @@ RACO="/Applications/Racket v9.3.0.2/bin/raco"
 
 bash tools/install-native.sh &&
 "$RACO" make main.rkt bitmap.rkt tools/doctor.rkt run-tests.rkt &&
+bash tools/audit-symbols.sh
 "$RACKET" tools/doctor.rkt &&
 "$RACKET" run-tests.rkt
 ```
@@ -118,6 +119,8 @@ mkdir -p output
 "$RACKET" examples/codecs.rkt output/codecs.png
 "$RACKET" examples/path-effects.rkt output/path-effects.png
 "$RACKET" examples/filters.rkt output/filters.png
+"$RACKET" examples/pictures.rkt output/pictures.png
+"$RACKET" examples/svg-paths.rkt output/svg-paths.png
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
@@ -139,3 +142,20 @@ bash -n tools/install-native.sh
 ```
 
 Successful static checks are not a substitute for the Racket/native run.
+
+
+Expected additional doctor line for 0.7:
+
+```text
+Pictures/recording passed; recording, replay, and rasterization verified
+```
+
+
+Expected additional doctor line for 0.8:
+
+```text
+Paths/SVG passed; relative commands, SVG conversion, and point queries verified
+```
+
+
+Before native doctor/test runs, `bash tools/audit-symbols.sh` should report zero missing required symbols. This is especially important after adding FFI bindings.

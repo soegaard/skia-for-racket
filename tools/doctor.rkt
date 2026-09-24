@@ -94,4 +94,32 @@
       (error 'doctor "filter attachment failed"))
     (skia-close! held-mask)
     (skia-close! held-image)
-    (printf "Filters/effects passed; color matrix and mask/image attachments verified\n")))
+    (printf "Filters/effects passed; color matrix and mask/image attachments verified\n"))
+  (with-skia ([pic (call-with-picture
+                    24 24
+                    (lambda (c)
+                      (with-skia ([p (make-paint #:color 'blue #:antialias? #f)])
+                        (draw-rect c 4 4 16 16 p))))]
+              [im (picture->image pic 24 24)]
+              [s (make-surface 24 24)])
+    (draw-picture (surface-canvas s) pic)
+    (unless (equal? (surface-pixel s 12 12) (rgb 0 0 255))
+      (error 'doctor "picture replay failed"))
+    (unless (and (= (image-width im) 24) (= (image-height im) 24))
+      (error 'doctor "picture rasterization failed"))
+    (printf "Pictures/recording passed; recording, replay, and rasterization verified\n")))
+  (with-skia ([p (svg-path->path "M 4 4 L 28 4 L 16 28 Z")])
+    (unless (= (path-point-count p) 3)
+      (error 'doctor "path point counting failed"))
+    (define-values (lx ly) (path-last-point p))
+    (unless (and (= lx 16.0) (= ly 28.0))
+      (error 'doctor "path last point lookup failed"))
+    (with-skia ([q (make-path '((move 0 0) (rline 10 0) (rline 0 10) (close)))]
+                [r (make-path)])
+      (path-add-rounded-rect! r 2 2 10 8 2 2)
+      (path-add-path! r q #:dx 12 #:dy 0)
+      (unless (path-convex? q)
+        (error 'doctor "relative-path recording failed"))
+      (unless (string? (path->svg-path p))
+        (error 'doctor "path SVG serialization failed"))
+      (printf "Paths/SVG passed; relative commands, SVG conversion, and point queries verified\n")))

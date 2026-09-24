@@ -240,6 +240,18 @@
      (check-exn exn:fail:contract? (lambda () (paint-set-color-filter! 'not-a-paint #f)))
      (check-exn exn:fail:contract? (lambda () (paint-set-mask-filter! 'not-a-paint #f)))
      (check-exn exn:fail:contract? (lambda () (paint-set-image-filter! 'not-a-paint #f))))
+   (test-case "svg-path->path validates data before native loading"
+     (check-exn exn:fail:contract? (lambda () (svg-path->path 42)))
+     (check-exn exn:fail? (lambda () (svg-path->path (string-append "a" (string (integer->char 0)) "b")))))
+   (test-case "path point and add-path validators run before native loading"
+     (check-exn exn:fail:contract? (lambda () (path-point-ref 'not-a-path 0)))
+     (check-exn exn:fail:contract? (lambda () (path-add-path! 'a 'b #:mode 'nope))))
+   (test-case "picture recording arguments validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (call-with-picture 0 10 void)))
+     (check-exn exn:fail:contract? (lambda () (call-with-picture 10 10 #f))))
+   (test-case "draw-picture keywords validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10)))
+     (check-exn exn:fail:contract? (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10 #:height 'bad))))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

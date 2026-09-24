@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.8.1 — path ABI symbol hotfix
+
+- Corrected `sk_path_add_round_rect` to the actual m119 export `sk_path_add_rounded_rect`.
+- Corrected translated path composition to call `sk_path_add_path_offset`; `sk_path_add_path` has only `(path, other, mode)`.
+- Corrected `sk_path_reverse_add_path` to the actual export `sk_path_add_path_reverse`.
+- Added `tools/audit-symbols.sh` to compare every `define-native` declaration with the selected native library in one pass.
+
+## 0.8.0 — expanded paths and SVG geometry
+
+- Added relative path commands, conic segments, rounded-rect insertion, path composition, point queries, and SVG path-data conversion.
+- Added `examples/svg-paths.rkt`, doctor coverage, and native tests for path/SVG geometry.
+
+
+## 0.7.1 — picture recorder symbol hotfix
+
+- Corrected the pinned m119 FFI symbol for finishing picture recording from the nonexistent `sk_picture_recorder_finish_recording_as_picture` to the exported `sk_picture_recorder_end_recording`.
+
+## 0.7.0 — pictures and recording
+
+- Added immutable `picture?` resources with `picture-width` and `picture-height`.
+- Added `picture-recorder?` resources plus `make-picture-recorder`, `picture-recorder-begin-recording!`, and `picture-recorder-finish-recording!`.
+- Added `call-with-picture` convenience recording.
+- Added `draw-picture` replay and `picture->image` rasterization.
+- Added `examples/pictures.rkt`, doctor coverage, and picture tests.
+
+# Changelog
+
 ## 0.6.0 — 2026-09-23
 
 Adds the first standalone filter/effects layer: owned color, mask, and image

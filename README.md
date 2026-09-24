@@ -1,16 +1,17 @@
-# Racket Skia — 0.6.0
+# Racket Skia — 0.8.1
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.5 are live-validated on
+**Verification status:** versions 0.1 through 0.7 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2 and the pinned SkiaSharp 3.119.1 native
-asset. The completed 0.5 doctor passed, all 95 source test cases passed
-(21 pure, 6 lifetime, 68 native), and the path-effects visual probe rendered
-correctly. Version 0.6 adds color, mask, and image filters; those new paths are
-source/ABI checked in the authoring environment but still require the included
-local doctor, test suite, and visual probe. See [TESTING.md](TESTING.md).
+asset. The completed 0.7 doctor passed, and 112 source test cases passed
+(25 pure, 6 lifetime, 81 native). Version 0.8 adds expanded path/SVG
+geometry: relative commands, conics, rounded rectangles, path composition,
+point queries, and SVG path-data conversion. Those new paths are source/ABI
+checked in the authoring environment but still require the included local
+doctor, test suite, and visual probe. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -26,7 +27,7 @@ image decode and encode; codec metadata probing; image subsets and source-rectan
 drawing; dash/corner/discrete/trim/composed path effects; path measurement,
 segments and tangents; boolean path operations; color-matrix/blend/composed
 color filters; blur mask filters; blur, drop-shadow, color, and composed image
-filters; explicit/scoped resource cleanup and GC fallback. An optional module
+filters; immutable pictures; picture recording/replay; picture rasterization; expanded path/SVG geometry; explicit/scoped resource cleanup and GC fallback. An optional module
 copies pixels into a Racket `bitmap%`.
 
 The unsafe ABI layer is private. Public resource wrappers do not expose raw
@@ -37,12 +38,13 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.6.0-20260923
+cd racket-skia-0.8.1-20260924
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
 
 bash tools/install-native.sh &&
+bash tools/audit-symbols.sh &&
 "$RACO" make main.rkt bitmap.rkt tools/doctor.rkt run-tests.rkt &&
 "$RACKET" tools/doctor.rkt &&
 "$RACKET" run-tests.rkt &&
@@ -54,6 +56,8 @@ mkdir -p output &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
 "$RACKET" examples/filters.rkt output/filters.png &&
+"$RACKET" examples/pictures.rkt output/pictures.png &&
+"$RACKET" examples/svg-paths.rkt output/svg-paths.png &&
 "$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
@@ -117,6 +121,16 @@ The installer validates the archive's package ID and version, retains the
 original archive and metadata, and records hashes. Those recorded hashes are
 not independent signature verification; HTTPS/NuGet is the download trust
 boundary. Stop active renderers before reinstalling a native library.
+
+## Native symbol audit
+
+`tools/audit-symbols.sh` compares every `define-native` declaration in
+`private/native.rkt` against the symbols actually exported by the selected
+`libSkiaSharp`. Unlike `skia-check!`, which stops when symbol resolution first
+fails, the audit reports all missing native names in one pass. Run it after
+installing or replacing the native asset and before the doctor when changing
+the FFI layer. It honors `RACKET_SKIA_LIBRARY` or accepts an explicit library
+filename.
 
 ## Install as a Racket package
 
@@ -426,3 +440,47 @@ docs/                   API reference and ABI/source notes
 
 See [API reference](docs/API.md), [ABI notes](docs/ABI.md),
 [upstream sources](docs/SOURCES.md), and [third-party notice](NOTICE.md).
+
+
+## Pictures and recording
+
+Version 0.7 adds `picture?` and `picture-recorder?` wrappers over Skia's display-list recording API. A picture is an immutable recording of canvas
+commands that can be replayed any number of times onto any canvas.
+
+```racket
+(with-skia ([picture
+             (call-with-picture
+              120 120
+              (lambda (c)
+                (with-skia ([p (make-paint #:color "#326DE6")])
+                  (draw-circle c 60 60 36 p))))]
+            [surface (make-surface 300 160 #:background "#F3F5F8")])
+  (draw-picture (surface-canvas surface) picture #:x 20 #:y 20)
+  (draw-picture (surface-canvas surface) picture #:x 160 #:y 20
+                #:width 100 #:height 100)
+  (save-png surface "pictures.png"))
+```
+
+For incremental use, `make-picture-recorder`,
+`picture-recorder-begin-recording!`, and
+`picture-recorder-finish-recording!` expose the underlying begin/finish cycle.
+Use `picture->image` to rasterize a picture into an immutable `image?`.
+
+
+## Expanded paths and SVG path data
+
+Version 0.8 extends the path layer with relative commands (`path-rline-to!`,
+`path-rquad-to!`, `path-rconic-to!`, `path-rcubic-to!`), direct conic
+segments, rounded-rect insertion, path composition, point queries, and SVG
+path-data conversion.
+
+```racket
+(with-skia ([p (svg-path->path "M 10 10 L 80 10 L 80 50 Z")])
+  (path-add-rounded-rect! p 12 12 20 14 4 4)
+  (define points (path-points p))
+  (define svg-again (path->svg-path p))
+  ...)
+```
+
+This stage is intentionally limited to SVG **path data** (`d=` content), not a
+full SVG document parser or renderer.

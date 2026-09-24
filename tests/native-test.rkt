@@ -867,7 +867,91 @@
      (for ([i (in-range 32)])
        (with-skia ([s (make-surface 16 16)] [p (make-paint #:color 'red)])
          (draw-circle (surface-canvas s) 8 8 5 p)
-         (check-true (> (bytes-length (surface->png-bytes s)) 40)))))))
+         (check-true (> (bytes-length (surface->png-bytes s)) 40)))))
+   (test-case "call-with-picture records and replays"
+     (with-skia ([pic (call-with-picture
+                       40 40
+                       (lambda (c)
+                         (with-skia ([p (make-paint #:color 'red #:antialias? #f)])
+                           (draw-rect c 10 10 20 20 p))))]
+                 [s (make-surface 60 30)])
+       (draw-picture (surface-canvas s) pic)
+       (draw-picture (surface-canvas s) pic #:x 20)
+       (check-equal? (surface-pixel s 15 15) red)
+       (check-equal? (surface-pixel s 35 15) red)))
+   (test-case "picture to image scales recorded content"
+     (with-skia ([pic (call-with-picture
+                       20 20
+                       (lambda (c)
+                         (with-skia ([p (make-paint #:color 'blue #:antialias? #f)])
+                           (draw-rect c 0 0 20 20 p))))]
+                 [img (picture->image pic 40 10)]
+                 [s (make-surface 40 10)])
+       (draw-image (surface-canvas s) img 0 0)
+       (check-equal? (surface-pixel s 5 5) blue)
+       (check-equal? (image-width img) 40)
+       (check-equal? (image-height img) 10)))
+   (test-case "explicit picture recorder toggles recording state"
+     (with-skia ([rec (make-picture-recorder)])
+       (check-false (picture-recorder-recording? rec))
+       (define rc (picture-recorder-begin-recording! rec 0 0 30 30))
+       (check-true (picture-recorder-recording? rec))
+       (with-skia ([p (make-paint #:color 'red #:antialias? #f)])
+         (draw-rect rc 5 5 20 20 p))
+       (with-skia ([pic (picture-recorder-finish-recording! rec)]
+                   [s (make-surface 30 30)])
+         (check-false (picture-recorder-recording? rec))
+         (draw-picture (surface-canvas s) pic)
+         (check-equal? (surface-pixel s 15 15) red))))
+   (test-case "recorder canvas becomes invalid after finish"
+     (with-skia ([rec (make-picture-recorder)])
+       (define rc (picture-recorder-begin-recording! rec 0 0 20 20))
+       (with-skia ([pic (picture-recorder-finish-recording! rec)])
+         (check-exn exn:fail? (lambda () (canvas-save-count rc))))))
+   (test-case "draw-picture supports scaled placement"
+     (with-skia ([pic (call-with-picture
+                       10 10
+                       (lambda (c)
+                         (with-skia ([p (make-paint #:color 'red #:antialias? #f)])
+                           (draw-rect c 0 0 10 10 p))))]
+                 [s (make-surface 40 40)])
+       (draw-picture (surface-canvas s) pic #:x 10 #:y 5 #:width 20 #:height 30)
+       (check-equal? (surface-pixel s 20 20) red)
+       (check-equal? (surface-pixel s 5 5) transparent)))
+
+   (test-case "relative path commands and point queries"
+     (with-skia ([p (make-path '((move 10 10) (rline 20 0) (rline 0 15) (close)))])
+       (check-equal? (path-point-count p) 3)
+       (check-equal? (call-with-values (lambda () (path-point-ref p 1)) list)
+                     '(30.0 10.0))
+       (check-equal? (call-with-values (lambda () (path-last-point p)) list)
+                     '(30.0 25.0))
+       (check-true (path-convex? p))
+       (check-true (path-contains? p 20 15))))
+   (test-case "conic paths and rounded rects render as expected"
+     (with-skia ([p (make-path)] [rr (make-path)])
+       (path-move-to! p 5 25)
+       (path-conic-to! p 20 0 35 25 0.5)
+       (check-equal? (path-point-count p) 2)
+       (path-add-rounded-rect! rr 0 0 30 20 5 5)
+       (check-true (path-contains? rr 15 10))
+       (check-false (path-contains? rr -1 -1))))
+   (test-case "path add-path and reverse-add-path compose geometry"
+     (with-skia ([base (make-path '((move 0 0) (line 10 0) (line 10 10) (close)))]
+                 [dest (make-path)])
+       (path-add-path! dest base #:dx 20 #:dy 0)
+       (path-add-reversed-path! dest base)
+       (check-true (path-contains? dest 25 5))
+       (check-true (>= (path-point-count dest) 6))))
+   (test-case "svg path parse and serialization round trip"
+     (with-skia ([p (svg-path->path "M 0 0 L 20 0 L 20 10 Z")])
+       (check-true (path-contains? p 10 5))
+       (define s (path->svg-path p))
+       (check-true (string? s))
+       (check-true (> (string-length s) 0))
+       (with-skia ([q (svg-path->path s)])
+         (check-true (path-contains? q 10 5)))))
+  ))
 
 (define (make-list-of-red-pixels count)
   (if (zero? count) '() (append '(255 0 0 255) (make-list-of-red-pixels (sub1 count)))))

@@ -54,3 +54,9 @@ are the compatibility reference for this implementation.
 - [Allocation and finalization](https://docs.racket-lang.org/foreign/Allocation_and_Finalization.html)
 - [Foreign pointers and memory functions](https://docs.racket-lang.org/foreign/foreign_pointer-funcs.html)
 - [bitmap% and its ARGB pixel methods](https://docs.racket-lang.org/draw/bitmap_.html)
+
+- Skia/SkiaSharp picture recorder and picture replay entry points (`sk_picture_recorder_*`, `sk_canvas_draw_picture`, `sk_picture_unref`) from the pinned m119 native ABI were used for the 0.7 recording layer.
+
+- Expanded path/SVG geometry in 0.8 uses the pinned Skia path C ABI for relative commands, conics, path composition, point queries, and SVG path-data parsing/serialization.
+
+- 0.8.1 audited legacy `sk_path_*` exports against the actual SkiaSharp 3.119.1 native library and the corresponding `include/c/sk_path.h` / `src/c/sk_path.cpp` C shim signatures.

@@ -37,9 +37,18 @@
          image-filter? make-blur-image-filter make-drop-shadow-image-filter
          make-drop-shadow-only-image-filter make-color-filter-image-filter
          make-compose-image-filter
+         picture? picture-width picture-height
+         picture-recorder? picture-recorder-recording?
+         make-picture-recorder call-with-picture
+         picture-recorder-begin-recording! picture-recorder-finish-recording!
          skia-path? make-path path-copy path-move-to! path-line-to!
-         path-quad-to! path-cubic-to! path-close! path-reset!
-         path-add-rect! path-add-oval! path-add-circle!
+         path-rmove-to! path-rline-to!
+         path-quad-to! path-rquad-to! path-conic-to! path-rconic-to!
+         path-cubic-to! path-rcubic-to! path-close! path-reset!
+         path-add-rect! path-add-rounded-rect! path-add-oval! path-add-circle!
+         path-add-path! path-add-reversed-path!
+         path-point-count path-point-ref path-points path-last-point path-convex?
+         svg-path->path path->svg-path
          path-bounds path-tight-bounds path-contains?
          path-fill-rule path-set-fill-rule!
          path-op path-union path-intersect path-difference path-xor
@@ -53,6 +62,7 @@
          image->png-bytes image->jpeg-bytes image->webp-bytes
          image->encoded-bytes save-image image-subset
          draw-image draw-image-rect draw-image-subrect
+         draw-picture picture->image
          encoded-image-info? encoded-image-info-width encoded-image-info-height
          encoded-image-info-format encoded-image-info-color-type
          encoded-image-info-alpha-type encoded-image-info-origin
@@ -79,14 +89,18 @@
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record)
-;; The surface, not a separately finalized canvas pointer, owns the canvas.
-(struct canvas (surface) #:constructor-name make-canvas-record)
+;; A canvas is always borrowed from an owning surface or picture recorder.
+(struct canvas (resource) #:constructor-name make-canvas-record)
 (struct paint (handle) #:constructor-name make-paint-record)
 (struct shader (handle) #:constructor-name make-shader-record)
 (struct path-effect (handle) #:constructor-name make-path-effect-record)
 (struct color-filter (handle) #:constructor-name make-color-filter-record)
 (struct mask-filter (handle) #:constructor-name make-mask-filter-record)
 (struct image-filter (handle) #:constructor-name make-image-filter-record)
+(struct picture (handle width height) #:constructor-name make-picture-record)
+(struct picture-recorder (handle [recording? #:mutable] [canvas-ptr #:mutable]
+                                 [bounds #:mutable] [floors #:mutable])
+  #:constructor-name make-picture-recorder-record)
 (struct skia-path (handle) #:constructor-name make-path-record)
 ;; snapshot-box contains a raw native SkPath pointer owned together with the
 ;; native SkPathMeasure. It is never exposed by the public API.
@@ -111,6 +125,7 @@
 (define (skia-resource? v)
   (or (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v)
+      (picture? v) (picture-recorder? v)
       (skia-path? v) (path-measure? v) (image? v)
       (typeface? v) (font? v)))
 
@@ -122,6 +137,8 @@
         [(color-filter? v) (color-filter-handle v)]
         [(mask-filter? v) (mask-filter-handle v)]
         [(image-filter? v) (image-filter-handle v)]
+        [(picture? v) (picture-handle v)]
+        [(picture-recorder? v) (picture-recorder-handle v)]
         [(skia-path? v) (skia-path-handle v)]
         [(path-measure? v) (path-measure-handle v)]
         [(image? v) (image-handle v)]
@@ -132,7 +149,7 @@
 (define (skia-closed? v)
   (owned-closed?
    (if (canvas? v)
-       (surface-handle (canvas-surface v))
+       (resource-handle 'skia-closed? (canvas-owner 'skia-closed? v))
        (resource-handle 'skia-closed? v))))
 
 (define (skia-close! v)
@@ -170,6 +187,9 @@
   (typed-handle who v mask-filter? mask-filter-handle "mask-filter?"))
 (define (image-filter-h who v)
   (typed-handle who v image-filter? image-filter-handle "image-filter?"))
+(define (picture-h who v) (typed-handle who v picture? picture-handle "picture?"))
+(define (picture-recorder-h who v)
+  (typed-handle who v picture-recorder? picture-recorder-handle "picture-recorder?"))
 (define (path-h who v) (typed-handle who v skia-path? skia-path-handle "skia-path?"))
 (define (path-measure-h who v)
   (typed-handle who v path-measure? path-measure-handle "path-measure?"))
@@ -179,15 +199,39 @@
 
 (define (canvas-owner who c)
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
-  (canvas-surface c))
+  (define owner (canvas-resource c))
+  (unless (or (surface? owner) (picture-recorder? owner))
+    (error who "canvas owner is corrupted"))
+  owner)
+
+(define (owner-floors owner)
+  (cond [(surface? owner) (surface-floors owner)]
+        [(picture-recorder? owner) (picture-recorder-floors owner)]
+        [else (error 'owner-floors "unsupported owner")]))
+
+(define (set-owner-floors! owner floors)
+  (cond [(surface? owner) (set-surface-floors! owner floors)]
+        [(picture-recorder? owner) (set-picture-recorder-floors! owner floors)]
+        [else (error 'set-owner-floors! "unsupported owner")]))
 
 (define (call-on-canvas who c others proc)
-  (define s (canvas-owner who c))
+  (define owner (canvas-owner who c))
   (call-with-owned
-   who (cons (surface-handle s) others)
-   (lambda (sp . ps)
-     (define cp (sk_surface_get_canvas sp))
-     (unless cp (error who "native surface returned a null canvas"))
+   who (cons (resource-handle who owner) others)
+   (lambda (op . ps)
+     (define cp
+       (cond
+         [(surface? owner)
+          (define ptr (sk_surface_get_canvas op))
+          (unless ptr (error who "native surface returned a null canvas"))
+          ptr]
+         [(picture-recorder? owner)
+          (unless (picture-recorder-recording? owner)
+            (error who "picture recorder is not currently recording"))
+          (define ptr (picture-recorder-canvas-ptr owner))
+          (unless ptr (error who "picture recorder has no active canvas"))
+          ptr]
+         [else (error who "unsupported canvas owner")]))
      (apply proc cp ps))))
 
 (define (initialize-resource v proc)
@@ -214,6 +258,74 @@
 (define (surface-canvas s)
   (call-with-owned 'surface-canvas (list (surface-h 'surface-canvas s))
                    (lambda (_) (make-canvas-record s))))
+
+;; Pictures and recording ---------------------------------------------------
+
+(define (make-picture-recorder)
+  (skia-check!)
+  (make-picture-recorder-record
+   (new-owned 'make-picture-recorder 'picture-recorder
+              sk_picture_recorder_new
+              sk_picture_recorder_delete)
+   #f #f #f '()))
+
+(define (picture-recorder-begin-recording! recorder x y w h)
+  (define who 'picture-recorder-begin-recording!)
+  (define rr
+    (if (picture-recorder? recorder)
+        recorder
+        (raise-argument-error who "picture-recorder?" recorder)))
+  (when (picture-recorder-recording? rr)
+    (error who "picture recorder is already recording"))
+  (define bounds (rect who x y w h))
+  (call-with-owned
+   who (list (picture-recorder-h who rr))
+   (lambda (rp)
+     (define cp (sk_picture_recorder_begin_recording rp bounds))
+     (unless cp
+       (error who "native picture recorder did not return a canvas"))
+     (set-picture-recorder-recording?! rr #t)
+     (set-picture-recorder-canvas-ptr! rr cp)
+     (set-picture-recorder-bounds! rr (list (sk-rect-left bounds)
+                                            (sk-rect-top bounds)
+                                            (- (sk-rect-right bounds) (sk-rect-left bounds))
+                                            (- (sk-rect-bottom bounds) (sk-rect-top bounds))))
+     (set-picture-recorder-floors! rr '())
+     (make-canvas-record rr))))
+
+(define (picture-recorder-finish-recording! recorder)
+  (define who 'picture-recorder-finish-recording!)
+  (define rr
+    (if (picture-recorder? recorder)
+        recorder
+        (raise-argument-error who "picture-recorder?" recorder)))
+  (unless (picture-recorder-recording? rr)
+    (error who "picture recorder is not currently recording"))
+  (define bounds (or (picture-recorder-bounds rr) '(0.0 0.0 0.0 0.0)))
+  (call-with-owned
+   who (list (picture-recorder-h who rr))
+   (lambda (rp)
+     (define pp (sk_picture_recorder_end_recording rp))
+     (set-picture-recorder-recording?! rr #f)
+     (set-picture-recorder-canvas-ptr! rr #f)
+     (set-picture-recorder-floors! rr '())
+     (unless pp
+       (error who "native picture recording did not produce a picture"))
+     (make-picture-record
+      (new-owned who 'picture (lambda () pp) sk_picture_unref)
+      (list-ref bounds 2) (list-ref bounds 3)))))
+
+(define (call-with-picture w h proc)
+  (define who 'call-with-picture)
+  (check-dimensions who w h)
+  (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
+    (raise-argument-error who "procedure accepting one argument" proc))
+  (call-with-skia-resource
+   (make-picture-recorder)
+   (lambda (rec)
+     (define c (picture-recorder-begin-recording! rec 0 0 w h))
+     (proc c)
+     (picture-recorder-finish-recording! rec))))
 
 (define (surface->rgba-bytes s #:premultiplied? [premultiplied? #f])
   (define hnd (surface-h 'surface->rgba-bytes s))
@@ -935,7 +1047,7 @@
   (call-on-canvas 'canvas-save-count c '() sk_canvas_get_save_count))
 
 (define (restore-floor c)
-  (define floors (surface-floors (canvas-surface c)))
+  (define floors (owner-floors (canvas-owner 'restore-floor c)))
   (if (null? floors) 1 (car floors)))
 
 (define (canvas-restore! c)
@@ -971,7 +1083,7 @@
           'call-with-canvas-state c '()
           (lambda (cp)
             (set! old-count (sk_canvas_save cp))
-            (set-surface-floors! s (cons (add1 old-count) (surface-floors s))))))
+            (set-owner-floors! s (cons (add1 old-count) (owner-floors s))))))
        thunk
        (lambda ()
          ;; Closing the owner in the body is permitted. Never touch a dangling
@@ -979,7 +1091,7 @@
          (unless (skia-closed? s)
            (call-on-canvas 'call-with-canvas-state c '()
              (lambda (cp) (sk_canvas_restore_to_count cp old-count))))
-         (set-surface-floors! s (cdr (surface-floors s))))))))
+         (set-owner-floors! s (cdr (owner-floors s))))))))
 
 (define-syntax-rule (with-canvas-state c body ...)
   (call-with-canvas-state c (lambda () body ...)))
@@ -1106,12 +1218,24 @@
     (lambda (pp) (apply native-op pp vals))))
 (define (path-move-to! p x y)
   (mutate-path! 'path-move-to! p (list x y) sk_path_move_to))
+(define (path-rmove-to! p dx dy)
+  (mutate-path! 'path-rmove-to! p (list dx dy) sk_path_rmove_to))
 (define (path-line-to! p x y)
   (mutate-path! 'path-line-to! p (list x y) sk_path_line_to))
+(define (path-rline-to! p dx dy)
+  (mutate-path! 'path-rline-to! p (list dx dy) sk_path_rline_to))
 (define (path-quad-to! p cx cy x y)
   (mutate-path! 'path-quad-to! p (list cx cy x y) sk_path_quad_to))
+(define (path-rquad-to! p dcx dcy dx dy)
+  (mutate-path! 'path-rquad-to! p (list dcx dcy dx dy) sk_path_rquad_to))
+(define (path-conic-to! p cx cy x y weight)
+  (mutate-path! 'path-conic-to! p (list cx cy x y weight) sk_path_conic_to))
+(define (path-rconic-to! p dcx dcy dx dy weight)
+  (mutate-path! 'path-rconic-to! p (list dcx dcy dx dy weight) sk_path_rconic_to))
 (define (path-cubic-to! p cx1 cy1 cx2 cy2 x y)
   (mutate-path! 'path-cubic-to! p (list cx1 cy1 cx2 cy2 x y) sk_path_cubic_to))
+(define (path-rcubic-to! p dcx1 dcy1 dcx2 dcy2 dx dy)
+  (mutate-path! 'path-rcubic-to! p (list dcx1 dcy1 dcx2 dcy2 dx dy) sk_path_rcubic_to))
 (define (path-close! p)
   (call-with-owned 'path-close! (list (path-h 'path-close! p)) sk_path_close))
 (define (path-reset! p)
@@ -1123,6 +1247,13 @@
   (define dir (choice 'path-add-rect! direction direction-values))
   (call-with-owned 'path-add-rect! (list (path-h 'path-add-rect! p))
     (lambda (pp) (sk_path_add_rect pp r dir))))
+(define (path-add-rounded-rect! p x y w h rx ry #:direction [direction 'cw])
+  (define r (rect 'path-add-rounded-rect! x y w h))
+  (define frx (nonnegative-scalar 'path-add-rounded-rect! rx))
+  (define fry (nonnegative-scalar 'path-add-rounded-rect! ry))
+  (define dir (choice 'path-add-rounded-rect! direction direction-values))
+  (call-with-owned 'path-add-rounded-rect! (list (path-h 'path-add-rounded-rect! p))
+    (lambda (pp) (sk_path_add_rounded_rect pp r frx fry dir))))
 (define (path-add-oval! p x y w h #:direction [direction 'cw])
   (define r (rect 'path-add-oval! x y w h))
   (define dir (choice 'path-add-oval! direction direction-values))
@@ -1135,6 +1266,78 @@
   (define dir (choice 'path-add-circle! direction direction-values))
   (call-with-owned 'path-add-circle! (list (path-h 'path-add-circle! p))
     (lambda (pp) (sk_path_add_circle pp fx fy fr dir))))
+
+(define (path-add-path! dest src #:dx [dx 0] #:dy [dy 0] #:mode [mode 'append])
+  (define who 'path-add-path!)
+  (define fdx (scalar who dx))
+  (define fdy (scalar who dy))
+  (define mo (choice who mode path-add-mode-values))
+  (call-with-owned who (list (path-h who dest) (path-h who src))
+    (lambda (dp sp)
+      (if (and (zero? fdx) (zero? fdy))
+          (sk_path_add_path dp sp mo)
+          (sk_path_add_path_offset dp sp fdx fdy mo)))))
+
+(define (path-add-reversed-path! dest src)
+  (define who 'path-add-reversed-path!)
+  (call-with-owned who (list (path-h who dest) (path-h who src))
+    (lambda (dp sp) (sk_path_add_path_reverse dp sp))))
+
+(define (path-point-count p)
+  (call-with-owned 'path-point-count (list (path-h 'path-point-count p)) sk_path_count_points))
+
+(define (path-point-ref p index)
+  (define who 'path-point-ref)
+  (unless (and (exact-integer? index) (>= index 0))
+    (raise-argument-error who "exact-nonnegative-integer?" index))
+  (define pt (make-sk-point 0.0 0.0))
+  (call-with-owned who (list (path-h who p))
+    (lambda (pp)
+      (define n (sk_path_count_points pp))
+      (unless (< index n)
+        (raise-arguments-error who "point index out of range" "index" index "count" n))
+      (sk_path_get_point pp index pt)))
+  (values (sk-point-x pt) (sk-point-y pt)))
+
+(define (path-points p)
+  (for/list ([i (in-range (path-point-count p))])
+    (call-with-values (lambda () (path-point-ref p i)) list)))
+
+(define (path-last-point p)
+  (define who 'path-last-point)
+  (define pt (make-sk-point 0.0 0.0))
+  (call-with-owned who (list (path-h who p))
+    (lambda (pp)
+      (unless (sk_path_get_last_point pp pt)
+        (error who "path has no last point"))))
+  (values (sk-point-x pt) (sk-point-y pt)))
+
+(define (path-convex? p)
+  (call-with-owned 'path-convex? (list (path-h 'path-convex? p)) sk_path_is_convex))
+
+(define (svg-path->path data #:fill-rule [fill-rule 'winding])
+  (define who 'svg-path->path)
+  (unless (string? data) (raise-argument-error who "string?" data))
+  (when (regexp-match? #rx"\0" data)
+    (raise-arguments-error who "SVG path data contains an embedded NUL" "data" data))
+  (define bytes (nul-terminated-bytes (string->bytes/utf-8 data)))
+  (define p (make-path '() #:fill-rule fill-rule))
+  (call-with-owned who (list (path-h who p))
+    (lambda (pp)
+      (unless (sk_path_parse_svg_string pp bytes)
+        (error who "invalid SVG path data"))))
+  p)
+
+(define (path->svg-path p)
+  (define who 'path->svg-path)
+  (call-with-owned
+   who (list (path-h who p))
+   (lambda (pp)
+     (call-with-native-temporary
+      who 'native-string sk_string_new_empty sk_string_destructor
+      (lambda (sp)
+        (sk_path_to_svg_string pp sp)
+        (copy-sk-string who sp))))))
 
 (define (get-path-bounds who p native-get)
   (define r (make-sk-rect 0.0 0.0 0.0 0.0))
@@ -1959,3 +2162,39 @@
   (call-on-canvas who c others
     (lambda (cp ip . paints)
       (sk_canvas_draw_image_rect cp ip src dst smp (if p (car paints) #f)))))
+
+
+(define (draw-picture c pic #:x [x 0] #:y [y 0] #:width [w #f] #:height [h #f])
+  (define who 'draw-picture)
+  (define _ph (picture-h who pic))
+  (define fx (scalar who x))
+  (define fy (scalar who y))
+  (define scaled?
+    (cond
+      [(and (eq? w #f) (eq? h #f)) #f]
+      [(and (not (eq? w #f)) (not (eq? h #f))) #t]
+      [else
+       (raise-arguments-error who
+                              "#:width and #:height must be given together or both omitted"
+                              "width" w "height" h)]))
+  (define fw (and scaled? (nonnegative-scalar who w)))
+  (define fh (and scaled? (nonnegative-scalar who h)))
+  (call-with-canvas-state
+   c
+   (lambda ()
+     (unless (and (= fx 0.0) (= fy 0.0))
+       (canvas-translate! c fx fy))
+     (when scaled?
+       (when (or (zero? (picture-width pic)) (zero? (picture-height pic)))
+         (error who "cannot scale a picture with a zero-size recorded extent"))
+       (canvas-scale! c (/ fw (picture-width pic)) (/ fh (picture-height pic))))
+     (call-on-canvas who c (list (picture-h who pic))
+       (lambda (cp pp) (sk_canvas_draw_picture cp pp #f #f))))))
+
+(define (picture->image pic width height #:background [background 'transparent])
+  (define who 'picture->image)
+  (define _ph (picture-h who pic))
+  (check-dimensions who width height)
+  (with-skia ([surface (make-surface width height #:background background)])
+    (draw-picture (surface-canvas surface) pic #:width width #:height height)
+    (surface-snapshot surface)))

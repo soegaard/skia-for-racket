@@ -137,6 +137,8 @@
 (define-native sk_canvas_draw_image_rect
   (_fun _pointer _pointer _sk-rect-pointer _sk-rect-pointer
         _sk-sampling-pointer _pointer -> _void))
+(define-native sk_canvas_draw_picture
+  (_fun _pointer _pointer _pointer _pointer -> _void))
 
 ;; Simple text drawing.  The public API intentionally names this "simple"
 ;; because this Skia entry point does not perform script shaping.
@@ -211,17 +213,40 @@
 (define-native sk_path_delete (_fun _pointer -> _void))
 (define-native sk_path_clone (_fun _pointer -> _pointer))
 (define-native sk_path_move_to (_fun _pointer _float _float -> _void))
+(define-native sk_path_rmove_to (_fun _pointer _float _float -> _void))
 (define-native sk_path_line_to (_fun _pointer _float _float -> _void))
+(define-native sk_path_rline_to (_fun _pointer _float _float -> _void))
 (define-native sk_path_quad_to
   (_fun _pointer _float _float _float _float -> _void))
+(define-native sk_path_rquad_to
+  (_fun _pointer _float _float _float _float -> _void))
+(define-native sk_path_conic_to
+  (_fun _pointer _float _float _float _float _float -> _void))
+(define-native sk_path_rconic_to
+  (_fun _pointer _float _float _float _float _float -> _void))
 (define-native sk_path_cubic_to
+  (_fun _pointer _float _float _float _float _float _float -> _void))
+(define-native sk_path_rcubic_to
   (_fun _pointer _float _float _float _float _float _float -> _void))
 (define-native sk_path_close (_fun _pointer -> _void))
 (define-native sk_path_reset (_fun _pointer -> _void))
 (define-native sk_path_add_rect (_fun _pointer _sk-rect-pointer _int -> _void))
+(define-native sk_path_add_rounded_rect
+  (_fun _pointer _sk-rect-pointer _float _float _int -> _void))
 (define-native sk_path_add_oval (_fun _pointer _sk-rect-pointer _int -> _void))
 (define-native sk_path_add_circle
   (_fun _pointer _float _float _float _int -> _void))
+(define-native sk_path_add_path
+  (_fun _pointer _pointer _int -> _void))
+(define-native sk_path_add_path_offset
+  (_fun _pointer _pointer _float _float _int -> _void))
+(define-native sk_path_add_path_reverse (_fun _pointer _pointer -> _void))
+(define-native sk_path_count_points (_fun _pointer -> _int))
+(define-native sk_path_get_point (_fun _pointer _int _sk-point-pointer -> _void))
+(define-native sk_path_get_last_point (_fun _pointer _sk-point-pointer -> _stdbool))
+(define-native sk_path_is_convex (_fun _pointer -> _stdbool))
+(define-native sk_path_parse_svg_string (_fun _pointer _bytes -> _stdbool))
+(define-native sk_path_to_svg_string (_fun _pointer _pointer -> _void))
 (define-native sk_path_get_bounds (_fun _pointer _sk-rect-pointer -> _void))
 (define-native sk_path_compute_tight_bounds
   (_fun _pointer _sk-rect-pointer -> _void))
@@ -267,6 +292,15 @@
   (_fun _pointer _pointer -> _stdbool))
 (define-native sk_pathop_as_winding
   (_fun _pointer _pointer -> _stdbool))
+
+;; Picture recording / replay.
+(define-native sk_picture_unref (_fun _pointer -> _void))
+(define-native sk_picture_recorder_new (_fun -> _pointer))
+(define-native sk_picture_recorder_delete (_fun _pointer -> _void))
+(define-native sk_picture_recorder_begin_recording
+  (_fun _pointer _sk-rect-pointer -> _pointer))
+(define-native sk_picture_recorder_end_recording
+  (_fun _pointer -> _pointer))
 
 
 ;; Typeface/font primitives --------------------------------------------------
@@ -315,6 +349,7 @@
 (define-native sk_text_utils_get_path
   (_fun _bytes _size _int _float _float _pointer _pointer -> _void))
 
+(define-native sk_string_new_empty (_fun -> _pointer))
 (define-native sk_string_destructor (_fun _pointer -> _void))
 (define-native sk_string_get_c_str (_fun _pointer -> _pointer))
 (define-native sk_string_get_size (_fun _pointer -> _size))

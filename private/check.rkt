@@ -63,6 +63,7 @@
 (define trim-path-effect-mode-values (hasheq 'normal 0 'inverted 1))
 (define path-op-values
   (hasheq 'difference 0 'intersect 1 'union 2 'xor 3 'reverse-difference 4))
+(define path-add-mode-values (hasheq 'append 0 'extend 1))
 
 ;; Encoded image / codec values from the pinned SkiaSharp m119 ABI.
 (define encoded-format-values
