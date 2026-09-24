@@ -1,17 +1,18 @@
-# Racket Skia — 0.10.0
+# Racket Skia — 0.11.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.9 are live-validated on
-macOS/aarch64 with Racket 9.3.0.2 and pinned SkiaSharp 3.119.1. The completed
-0.9 run passed all doctor probes, all 127 source test cases (30 pure, 6
-lifetime, 91 native), and the text-blob visual probe. Version 0.10 adds
-HarfBuzz shaping through pinned HarfBuzzSharp 8.3.1.2 / HarfBuzz 8.3.1. The
-new shaping paths are source/ABI checked in the authoring environment but still
-require the included local installer, symbol audit, doctor, tests, and visual
-probe. See [TESTING.md](TESTING.md).
+**Verification status:** versions 0.1 through 0.10 are live-validated on
+macOS/aarch64 with Racket 9.3.0.2, pinned SkiaSharp 3.119.1, and
+HarfBuzzSharp 8.3.1.2 / HarfBuzz 8.3.1. The completed 0.10.1 run passed both
+native symbol audits, every doctor probe, all 135 source test cases (32 pure,
+6 lifetime, 97 native), and the shaping visual probe. Version 0.11 adds
+single-direction paragraph layout, greedy whitespace wrapping, explicit line
+breaks, alignment, line metrics, and layout drawing. Those new layout paths
+are source checked here and await the included local doctor/tests/visual probe.
+See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -21,7 +22,7 @@ quadratic and cubic Bézier paths; paint settings and blend modes; path bounds
 and containment; immutable image snapshots and copied RGBA input; image
 placement/scaling; native PNG encoding; font-manager enumeration and fallback;
 default/family/file-backed typefaces; configurable fonts and metrics; UTF-8
-simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; glyph IDs and text/glyph
+simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; paragraph wrapping/alignment; glyph IDs and text/glyph
 outline paths; owned shaders; color, linear, radial, sweep,
 and conical gradients; image tiling; shader blending; PNG/JPEG/WebP encoded
 image decode and encode; codec metadata probing; image subsets and source-rectangle
@@ -39,7 +40,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.10.0-20260924
+cd racket-skia-0.11.0-20260924
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -48,7 +49,6 @@ bash tools/install-native.sh &&
 bash tools/install-harfbuzz.sh &&
 bash tools/audit-symbols.sh &&
 bash tools/audit-harfbuzz-symbols.sh &&
-bash tools/audit-symbols.sh &&
 "$RACO" make main.rkt bitmap.rkt tools/doctor.rkt run-tests.rkt &&
 "$RACKET" tools/doctor.rkt &&
 "$RACKET" run-tests.rkt &&
@@ -58,6 +58,7 @@ mkdir -p output &&
 "$RACKET" examples/text.rkt output/text.png &&
 "$RACKET" examples/text-blobs.rkt output/text-blobs.png &&
 "$RACKET" examples/shaping.rkt output/shaping.png &&
+"$RACKET" examples/layout.rkt output/layout.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -550,3 +551,35 @@ cluster byte offsets, explicit glyph positions, and final x/y advances. Optional
 to HarfBuzz run properties. This stage shapes one font run; it does not yet do
 Unicode bidi paragraph resolution, script/fallback run segmentation, line
 breaking, or paragraph layout.
+
+
+## Paragraph text layout
+
+Version 0.11 builds a lightweight paragraph layer above shaped runs. `layout-text`
+performs explicit-newline handling, greedy wrapping at Unicode whitespace,
+alignment, and font-metric-based baseline placement. `draw-text-layout` draws the
+result with the same shaper retained by the layout.
+
+```racket
+(with-skia ([font (make-font #:size 28)]
+            [sh (make-shaper font)]
+            [paint (make-paint #:color 'black)])
+  (define layout
+    (layout-text sh "A paragraph that wraps across several lines."
+                 #:width 220
+                 #:align 'center))
+  (draw-text-layout canvas layout 20 20 paint))
+```
+
+A layout is a pure Racket value containing shaped lines and keeps its shaper
+wrapper reachable. Explicitly closing that shaper invalidates subsequent drawing
+from the layout. Long unbreakable words are not split and may expand the reported
+layout width beyond `#:width`.
+
+This stage is intentionally **not a full Unicode paragraph engine**: it does not
+implement UAX #9 mixed-direction bidi resolution or UAX #14 general line breaking.
+Each line is shaped as one HarfBuzz run. With `#:direction 'auto`, shaping
+still uses HarfBuzz's guessed run direction; start/end alignment infers RTL from
+descending HarfBuzz cluster offsets and otherwise defaults to LTR. Pass an
+explicit direction for ambiguous one-glyph lines. Full mixed-direction run
+segmentation remains a later stage.

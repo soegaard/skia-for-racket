@@ -238,3 +238,10 @@ usable without it. The shaping layer mirrors the public `hb_glyph_info_t`
 (20 bytes), `hb_glyph_position_t` (20 bytes), and `hb_feature_t` (16 bytes)
 layouts. Font bytes are copied from an owned SkTypeface stream into an
 `HB_MEMORY_MODE_DUPLICATE` blob before temporary Skia stream storage is released.
+
+
+## Version 0.11 paragraph layout
+
+Version 0.11 adds no native declarations and no ABI structs. Paragraph layout
+is implemented in Racket above the live-validated 0.10 shaping and text-blob
+layers, so both symbol-audit counts remain unchanged.

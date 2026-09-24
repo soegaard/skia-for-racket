@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 — paragraph text layout
+
+- Added pure `text-layout?` and `text-layout-line?` values above shaped runs.
+- Added `layout-text` with explicit newlines, greedy Unicode-whitespace wrapping, start/center/end/left/right alignment, horizontal LTR/RTL direction, and configurable line height.
+- Added `draw-text-layout` using font-metric-derived baselines.
+- Added `examples/layout.rkt`, doctor coverage, and layout tests.
+- No new native symbols or ABI structs are required by this stage.
+
 ## 0.10.1 — HarfBuzz feature-struct compile fix
 
 - Renamed the Racket-side `hb_feature_t.tag` field binding to `feature-tag` to avoid colliding with the `hb-feature-tag` identifier that `define-cstruct` generates for the cstruct pointer tag. The native ABI layout is unchanged.

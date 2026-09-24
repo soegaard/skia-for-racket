@@ -2,18 +2,20 @@
 
 ## Status
 
-**0.1 through 0.9 — LIVE VALIDATED on macOS/aarch64.** The latest 0.9 run
-used Racket 9.3.0.2 with pinned SkiaSharp 3.119.1. Every doctor probe passed,
-all **127** source test cases passed (30 pure, 6 lifetime, 91 native), and the
-font-manager/text-blob visual probe rendered correctly.
+**0.1 through 0.10 — LIVE VALIDATED on macOS/aarch64.**
 
-**0.10 HarfBuzz shaping — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.**
-This environment has no Racket executable or native Skia/HarfBuzz libraries.
-The shaping bridge, HarfBuzz ABI mirrors, installer/audit scripts, and tests
-received source/ABI/ownership checks here. The 0.10 tree contains **135 source
-test cases**: 32 pure, 6 lifetime, and 97 native.
+The completed 0.10.1 run used Racket 9.3.0.2 with pinned SkiaSharp 3.119.1
+and HarfBuzzSharp 8.3.1.2 / HarfBuzz 8.3.1. Both native symbol audits
+reported zero missing symbols, every doctor probe passed, all **135** source
+test cases passed (32 pure, 6 lifetime, 97 native), and the shaping visual
+probe rendered correctly.
 
-## Checks performed for 0.10 source
+**0.11 paragraph layout — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.**
+This stage is pure Racket code layered over the already-bound shaping APIs; it
+adds no native symbols or ABI structs. It received static/source checks here and
+requires the local doctor, tests, and `examples/layout.rkt` visual probe.
+
+## Checks performed for 0.11 source
 
 Run `python3 tools/static-check.py` and the host-C layout command below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -41,7 +43,7 @@ part of the required live validation sequence for every added FFI binding.
 No benchmark, native-heap leak-measurement claim, cross-platform rendering-
 equivalence claim, or GPU claim is made by this report.
 
-## Run the 0.10 Racket tests locally
+## Run the 0.11 Racket tests locally
 
 From the extracted root:
 
@@ -58,11 +60,10 @@ bash tools/audit-harfbuzz-symbols.sh &&
 "$RACKET" run-tests.rkt
 ```
 
-A successful full run should report **32 pure + 6 lifetime + 97 native = 135
+A successful full run should report **33 pure + 6 lifetime + 103 native = 142
 source test cases**. Cases contain multiple assertions, so this is not an
-assertion count. The 0.9 doctor retains every earlier smoke check and additionally
-verifies font-manager enumeration/fallback, positioned text-blob metadata, and
-text-blob rasterization.
+assertion count. The 0.11 doctor retains every earlier smoke check and additionally verifies
+paragraph wrapping, alignment, line metrics, and layout drawing.
 
 To run only tests that do not need the native library:
 
@@ -70,7 +71,7 @@ To run only tests that do not need the native library:
 "$RACKET" run-tests.rkt --pure
 ```
 
-This requests the 38 pure/lifetime cases. It does not run the 97 native cases,
+This requests the 39 pure/lifetime cases. It does not run the 103 native cases,
 and says so. A default run fails rather than silently skipping native tests
 when the library cannot load. Alternatively, after installing the package:
 
@@ -188,3 +189,10 @@ HarfBuzz shaping passed; glyph extraction, positioning, and drawing verified
 
 Before the doctor, `bash tools/audit-harfbuzz-symbols.sh` must report zero
 missing `define-hb-native` symbols.
+
+
+Expected additional doctor line for 0.11:
+
+```text
+Paragraph layout passed; wrapping, alignment, metrics, and drawing verified
+```

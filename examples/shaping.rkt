@@ -52,13 +52,13 @@
                               (shaped-run-advance-x latin-run))
                       50 230 small-font text-paint)
 
-    (define arabic-run (draw-shaped-text c arabic-shaper "مرحبا" 590 180 orange
+    (define arabic-run (draw-shaped-text c arabic-shaper "مرحبا" 410 180 orange
                                          #:direction 'rtl #:script 'arab #:language "ar"))
     (draw-simple-text c
                       (format "~a glyphs" (shaped-run-glyph-count arabic-run))
                       375 230 small-font text-paint)
 
-    (define hebrew-run (draw-shaped-text c hebrew-shaper "שלום" 910 180 teal
+    (define hebrew-run (draw-shaped-text c hebrew-shaper "שלום" 710 180 teal
                                          #:direction 'rtl #:script 'hebr #:language "he"))
     (draw-simple-text c
                       (format "clusters ~s" (shaped-run-clusters hebrew-run))
@@ -85,8 +85,12 @@
     (draw-shaped-run c latin-shaper cluster-run 710 500 blue)
     (draw-simple-text c (format "clusters: ~s" (shaped-run-clusters cluster-run))
                       700 555 small-font text-paint)
-    (draw-simple-text c (format "positions: ~s" (shaped-run-positions cluster-run))
-                      700 585 small-font text-paint)
+    (define position-text (format "positions: ~s" (shaped-run-positions cluster-run)))
+    (define position-preview
+      (if (> (string-length position-text) 35)
+          (string-append (substring position-text 0 35) "...")
+          position-text))
+    (draw-simple-text c position-preview 700 585 small-font text-paint)
 
     (save-png surface out #:exists 'replace)))
 

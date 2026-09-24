@@ -174,4 +174,16 @@
     (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
               (> (bytes-ref pixels i) 0))
       (error 'doctor "HarfBuzz shaped text rasterization failed"))
-    (printf "HarfBuzz shaping passed; glyph extraction, positioning, and drawing verified\n")))
+    (printf "HarfBuzz shaping passed; glyph extraction, positioning, and drawing verified\n"))
+  (with-skia ([tf (make-typeface)]
+              [font (make-font tf #:size 24)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 180 100)])
+    (define layout (layout-text sh "alpha beta gamma" #:width 100 #:align 'center))
+    (unless (> (text-layout-line-count layout) 1)
+      (error 'doctor "text layout did not wrap"))
+    (draw-text-layout (surface-canvas surface) layout 10 6 paint)
+    (unless (> (text-layout-height layout) 0)
+      (error 'doctor "text layout metrics failed"))
+    (printf "Paragraph layout passed; wrapping, alignment, metrics, and drawing verified\n")))

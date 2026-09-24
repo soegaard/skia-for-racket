@@ -68,3 +68,5 @@ are the compatibility reference for this implementation.
   `hb_font_*`, `hb_buffer_*`, `hb_shape`, feature/script/language helpers) are
   the basis of the 0.10 shaping layer. The scale/position conversion follows
   SkiaSharp.HarfBuzz `SKShaper` from SkiaSharp v3.119.1.
+
+- Version 0.11 paragraph layout is implemented in Racket above the existing HarfBuzz/Skia shaping substrate; no additional upstream native entry points are introduced.

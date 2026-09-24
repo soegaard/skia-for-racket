@@ -1,5 +1,5 @@
 #lang racket/base
-(require rackunit rackunit/text-ui racket/file racket/class
+(require rackunit rackunit/text-ui racket/file racket/class racket/list
          (except-in racket/draw make-font)
          "../main.rkt" "../bitmap.rkt")
 (provide native-tests)
@@ -1080,6 +1080,89 @@
               (check-true (positive? (shaped-run-glyph-count run)))
               (check-equal? (length (shaped-run-glyphs run))
                             (length (shaped-run-positions run)))))))))
+   (test-case "paragraph layout wraps and exposes line metrics"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 28)]
+                 [sh (make-shaper f)])
+       (define wide (layout-text sh "alpha beta gamma" #:width 500))
+       (define narrow (layout-text sh "alpha beta gamma" #:width 100))
+       (check-equal? (text-layout-line-count wide) 1)
+       (check-true (> (text-layout-line-count narrow) 1))
+       (check-true (>= (text-layout-width narrow) 100.0))
+       (check-true (> (text-layout-height narrow) 0))
+       (check-true (> (text-layout-line-height narrow) 0))
+       (for ([line (in-list (text-layout-lines narrow))])
+         (check-true (text-layout-line? line))
+         (check-true (shaped-run? (text-layout-line-run line)))
+         (check-true (>= (text-layout-line-width line) 0)))))
+   (test-case "paragraph layout preserves explicit blank lines"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define layout (layout-text sh "first
+
+third"))
+       (check-equal? (text-layout-line-count layout) 3)
+       (check-equal? (map text-layout-line-text (text-layout-lines layout))
+                     '("first" "" "third"))
+       (check-true (< (text-layout-line-baseline (first (text-layout-lines layout)))
+                      (text-layout-line-baseline (third (text-layout-lines layout)))))))
+   (test-case "paragraph alignment computes stable origins"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define left-layout (layout-text sh "abc" #:width 200 #:align 'left #:direction 'ltr))
+       (define center-layout (layout-text sh "abc" #:width 200 #:align 'center #:direction 'ltr))
+       (define right-layout (layout-text sh "abc" #:width 200 #:align 'right #:direction 'ltr))
+       (define lx (text-layout-line-origin-x (first (text-layout-lines left-layout))))
+       (define cx (text-layout-line-origin-x (first (text-layout-lines center-layout))))
+       (define rx (text-layout-line-origin-x (first (text-layout-lines right-layout))))
+       (check-= lx 0.0 0.001)
+       (check-true (< lx cx rx))))
+   (test-case "RTL paragraph layout uses right-edge origins"
+     (with-skia ([fm (default-font-manager)])
+       (define face (font-manager-match-character fm #\מ #:languages '("ar")))
+       (when face
+         (call-with-skia-resource
+          face
+          (lambda (tf)
+            (with-skia ([f (make-font tf #:size 30)]
+                        [sh (make-shaper f)])
+              (define layout (layout-text sh "مرحبا بالعالم" #:width 240
+                                          #:direction 'rtl #:script 'arab #:language "ar"))
+              (define line (first (text-layout-lines layout)))
+              (check-eq? (text-layout-line-direction line) 'rtl)
+              (check-true (> (text-layout-line-origin-x line) 0))
+              ;; Auto shaping still exposes descending HarfBuzz clusters for
+              ;; this ordinary RTL run, which the paragraph layer uses for
+              ;; start/end alignment direction.
+              (define auto-layout (layout-text sh "مرحبا" #:width 240
+                                               #:script 'arab #:language "ar"))
+              (check-eq? (text-layout-line-direction
+                          (first (text-layout-lines auto-layout)))
+                         'rtl)))))))
+   (test-case "paragraph layouts rasterize through shaped runs"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 28)]
+                 [sh (make-shaper f)]
+                 [p (make-paint #:color 'black)]
+                 [surface (make-surface 220 140)])
+       (define layout (layout-text sh "one two three four" #:width 150 #:align 'center))
+       (draw-text-layout (surface-canvas surface) layout 20 10 p)
+       (define pixels (surface->rgba-bytes surface))
+       (check-true
+        (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+          (> (bytes-ref pixels i) 0)))))
+   (test-case "paragraph layout reports closed shaper on drawing"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)])
+       (define sh (make-shaper f))
+       (define layout (layout-text sh "retained layout"))
+       (skia-close! sh)
+       (with-skia ([surface (make-surface 200 70)]
+                   [p (make-paint #:color 'black)])
+         (check-exn #rx"closed"
+                    (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 p))))))
    (test-case "closed shapers reject use"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)])

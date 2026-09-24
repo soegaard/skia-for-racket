@@ -1,5 +1,6 @@
 #lang racket/base
 (require ffi/unsafe
+         racket/list
          racket/match
          racket/path
          "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt"
@@ -95,7 +96,13 @@
          shaper? make-shaper
          shaped-run? shaped-run-glyphs shaped-run-clusters shaped-run-positions
          shaped-run-advance-x shaped-run-advance-y shaped-run-glyph-count
-         shape-text shaped-run->text-blob draw-shaped-run draw-shaped-text)
+         shape-text shaped-run->text-blob draw-shaped-run draw-shaped-text
+         text-layout? text-layout-lines text-layout-width text-layout-height
+         text-layout-line-height text-layout-line-count
+         text-layout-line? text-layout-line-text text-layout-line-run
+         text-layout-line-origin-x text-layout-line-baseline
+         text-layout-line-width text-layout-line-direction
+         layout-text draw-text-layout)
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record)
@@ -128,6 +135,11 @@
 (struct text-blob (handle) #:constructor-name make-text-blob-record)
 (struct shaper (handle font) #:constructor-name make-shaper-record)
 (struct shaped-run (glyphs clusters positions advance-x advance-y) #:transparent)
+;; A text layout is a pure Racket value, but it intentionally keeps the shaper
+;; wrapper reachable. It therefore remains drawable while the shaper is live;
+;; explicitly closing that shaper invalidates later drawing from the layout.
+(struct text-layout (shaper lines width height line-height) #:transparent)
+(struct text-layout-line (text run origin-x baseline width direction) #:transparent)
 (struct font-metrics
   (top ascent descent bottom leading
    average-character-width max-character-width
@@ -2306,6 +2318,261 @@
                 #:features features))
   (draw-shaped-run c sh run x y p)
   run)
+
+
+;; Paragraph text layout ----------------------------------------------------
+
+(define (text-layout-line-count layout)
+  (unless (text-layout? layout)
+    (raise-argument-error 'text-layout-line-count "text-layout?" layout))
+  (length (text-layout-lines layout)))
+
+(define (normalize-layout-direction who direction)
+  (unless (memq direction '(auto ltr rtl))
+    (raise-argument-error who "one of 'auto, 'ltr, or 'rtl" direction))
+  direction)
+
+(define (normalize-layout-align who align)
+  (unless (memq align '(start center end left right))
+    (raise-argument-error who "one of 'start, 'center, 'end, 'left, or 'right" align))
+  align)
+
+(define (normalize-layout-width who width)
+  (cond [(not width) #f]
+        [else (positive-scalar who width)]))
+
+(define (split-explicit-lines text)
+  ;; Preserve empty lines, including a final one after a newline. CRLF and
+  ;; bare CR are normalized to LF first.
+  (define s (regexp-replace* #rx"\r\n?" text "\n"))
+  (define n (string-length s))
+  (let loop ([start 0] [i 0] [acc '()])
+    (cond
+      [(= i n) (reverse (cons (substring s start i) acc))]
+      [(char=? (string-ref s i) #\newline)
+       (loop (add1 i) (add1 i) (cons (substring s start i) acc))]
+      [else (loop start (add1 i) acc)])))
+
+(define (breakable-layout-whitespace? ch)
+  ;; Treat ordinary Unicode whitespace as a wrap opportunity, but preserve
+  ;; non-breaking space and narrow no-break space as part of words.
+  (and (char-whitespace? ch)
+       (not (or (char=? ch #\u00A0) (char=? ch #\u202F)))))
+
+(define (horizontal-pieces text)
+  ;; Return (list whitespace? substring) pieces. Explicit newlines have already
+  ;; been removed by split-explicit-lines.
+  (define n (string-length text))
+  (cond
+    [(zero? n) '()]
+    [else
+     (let loop ([start 0]
+                [i 1]
+                [space? (breakable-layout-whitespace? (string-ref text 0))]
+                [acc '()])
+       (cond
+         [(= i n)
+          (reverse (cons (list space? (substring text start i)) acc))]
+         [else
+          (define next-space? (breakable-layout-whitespace? (string-ref text i)))
+          (if (eq? next-space? space?)
+              (loop start (add1 i) space? acc)
+              (loop i (add1 i) next-space?
+                    (cons (list space? (substring text start i)) acc))) ]))]))
+
+(define (run-horizontal-width run)
+  (abs (shaped-run-advance-x run)))
+
+(define (shape-layout-run sh text direction script language features)
+  (shape-text sh text
+              #:direction direction
+              #:script script
+              #:language language
+              #:features features))
+
+(define (wrapped-paragraph-lines sh paragraph max-width
+                                 direction script language features)
+  ;; With wrapping disabled, preserve the paragraph text exactly, including
+  ;; leading/trailing whitespace. Wrapped lines deliberately trim whitespace
+  ;; only where it becomes a line-break boundary.
+  (if max-width
+      (wrapped-paragraph-lines/limited sh paragraph max-width
+                                       direction script language features)
+      (list paragraph)))
+
+(define (wrapped-paragraph-lines/limited sh paragraph max-width
+                                         direction script language features)
+  ;; Greedy wrapping at Unicode whitespace runs. Break whitespace is omitted
+  ;; from the end/beginning of wrapped lines; internal whitespace is preserved.
+  ;; A single word wider than max-width is kept intact and may overflow.
+  (define pieces (horizontal-pieces paragraph))
+  (define current "")
+  (define current-width 0.0)
+  (define pending-space "")
+  (define pending-width 0.0)
+  (define lines '())
+  (define (measure str)
+    (if (zero? (string-length str))
+        0.0
+        (run-horizontal-width
+         (shape-layout-run sh str direction script language features))))
+  (define (finish!)
+    (set! lines (cons current lines))
+    (set! current "")
+    (set! current-width 0.0)
+    (set! pending-space "")
+    (set! pending-width 0.0))
+  (for ([piece (in-list pieces)])
+    (define whitespace? (car piece))
+    (define str (cadr piece))
+    (cond
+      [whitespace?
+       (unless (zero? (string-length current))
+         (set! pending-space (string-append pending-space str))
+         (set! pending-width (+ pending-width (measure str))))]
+      [else
+       (define word-width (measure str))
+       ;; Shape the complete candidate rather than adding separately-shaped
+       ;; token widths: kerning and other cross-boundary features can change
+       ;; the width at a whitespace/word boundary.
+       (define candidate (string-append current pending-space str))
+       (define candidate-width (measure candidate))
+       (cond
+         [(zero? (string-length current))
+          (set! current str)
+          (set! current-width word-width)
+          (set! pending-space "")
+          (set! pending-width 0.0)]
+         [(and max-width (> candidate-width max-width))
+          (finish!)
+          (set! current str)
+          (set! current-width word-width)]
+         [else
+          (set! current candidate)
+          (set! current-width candidate-width)
+          (set! pending-space "")
+          (set! pending-width 0.0)])]))
+  (cond
+    [(zero? (string-length current))
+     ;; An empty paragraph or whitespace-only paragraph occupies one line.
+     (if (null? lines) (list "") (reverse lines))]
+    [else (reverse (cons current lines))]))
+
+(define (effective-line-direction requested run)
+  (cond
+    [(eq? requested 'rtl) 'rtl]
+    [(eq? requested 'ltr) 'ltr]
+    [else
+     ;; shape-text currently exposes clusters but not the HarfBuzz buffer's
+     ;; direction. For ordinary horizontal runs, descending UTF-8 cluster
+     ;; offsets identify an RTL visual run; ambiguous one-glyph/empty runs
+     ;; default to LTR. Callers needing deterministic ambiguous-line alignment
+     ;; can pass #:direction explicitly.
+     (define clusters (shaped-run-clusters run))
+     (if (and (pair? clusters) (pair? (cdr clusters))
+              (> (car clusters) (last clusters)))
+         'rtl
+         'ltr)]))
+
+(define (line-left-offset align direction box-width line-width)
+  (case align
+    [(left) 0.0]
+    [(right) (- box-width line-width)]
+    [(center) (/ (- box-width line-width) 2.0)]
+    [(start) (if (eq? direction 'rtl) (- box-width line-width) 0.0)]
+    [(end) (if (eq? direction 'rtl) 0.0 (- box-width line-width))]))
+
+(define (layout-text sh text
+                     #:width [width #f]
+                     #:align [align 'start]
+                     #:direction [direction 'auto]
+                     #:script [script #f]
+                     #:language [language #f]
+                     #:features [features '()]
+                     #:line-height [line-height #f])
+  (define who 'layout-text)
+  (unless (string? text) (raise-argument-error who "string?" text))
+  (define max-width (normalize-layout-width who width))
+  (define al (normalize-layout-align who align))
+  (define dir (normalize-layout-direction who direction))
+  ;; Reuse shape-text's public normalization semantics, but validate before
+  ;; accessing the shaper so option errors do not need native loading.
+  (define scr (normalize-shape-script who script))
+  (define lang (normalize-shape-language who language))
+  (define feats (normalize-shape-features who features))
+  (define requested-line-height
+    (cond [(not line-height) #f]
+          [else (positive-scalar who line-height)]))
+  (shaper-h who sh)
+  (define metrics (font-get-metrics (shaper-font sh)))
+  (define ascent (font-metrics-ascent metrics))
+  (define descent (font-metrics-descent metrics))
+  (define natural-height
+    (let ([spacing (font-metrics-spacing metrics)])
+      (cond [(and (real? spacing) (> spacing 0)) spacing]
+            [else
+             (max 1.0
+                  (+ (- descent ascent)
+                     (max 0.0 (font-metrics-leading metrics))))])))
+  (define line-step (or requested-line-height natural-height))
+  (define paragraph-lines
+    (apply append
+           (for/list ([paragraph (in-list (split-explicit-lines text))])
+             (wrapped-paragraph-lines sh paragraph max-width
+                                      dir scr lang feats))))
+  (define raw-lines
+    (for/list ([line-text (in-list paragraph-lines)])
+      (define run (shape-layout-run sh line-text dir scr lang feats))
+      (define w (run-horizontal-width run))
+      (define actual-dir (effective-line-direction dir run))
+      (list line-text run w actual-dir)))
+  (define content-width
+    (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
+      (max m (list-ref entry 2))))
+  ;; If an unbreakable word exceeds the requested wrap width, report the true
+  ;; occupied width instead of manufacturing negative alignment offsets.
+  (define box-width (max content-width (or max-width 0.0)))
+  (define baseline0 (max 0.0 (- ascent)))
+  (define lines
+    (for/list ([entry (in-list raw-lines)] [i (in-naturals)])
+      (define line-text (list-ref entry 0))
+      (define run (list-ref entry 1))
+      (define w (list-ref entry 2))
+      (define actual-dir (list-ref entry 3))
+      (define left (line-left-offset al actual-dir box-width w))
+      ;; HarfBuzz returns glyphs in visual order; the positioned-run x values
+      ;; are measured from the run's left drawing origin even for RTL text.
+      ;; Direction affects start/end alignment, not the TextBlob origin itself.
+      (define origin-x left)
+      (text-layout-line line-text run origin-x
+                        (+ baseline0 (* i line-step))
+                        w actual-dir)))
+  (define height
+    (if (null? lines)
+        0.0
+        (+ baseline0
+           (* (sub1 (length lines)) line-step)
+           (max 0.0 descent))))
+  (text-layout sh lines box-width height line-step))
+
+(define (draw-text-layout c layout x y p)
+  (define who 'draw-text-layout)
+  (unless (text-layout? layout)
+    (raise-argument-error who "text-layout?" layout))
+  (define fx (scalar who x))
+  (define fy (scalar who y))
+  (define sh (text-layout-shaper layout))
+  ;; Report a clear closed-resource error even for an all-empty layout.
+  (call-with-owned who (list (shaper-h who sh)) (lambda (_) (void)))
+  (paint-h who p)
+  ;; Validate the borrowed canvas even when every line is empty.
+  (call-on-canvas who c '() (lambda (_) (void)))
+  (for ([line (in-list (text-layout-lines layout))])
+    (draw-shaped-run c sh (text-layout-line-run line)
+                     (+ fx (text-layout-line-origin-x line))
+                     (+ fy (text-layout-line-baseline line))
+                     p))
+  (void))
 
 ;; Images, encoded data, codecs, and copied pixel input ---------------------
 

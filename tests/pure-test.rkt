@@ -279,6 +279,13 @@
    (test-case "shaper argument validation does not require native loading"
      (check-exn exn:fail:contract? (lambda () (make-shaper 'not-a-font)))
      (check-exn exn:fail:contract? (lambda () (shape-text 'not-a-shaper "abc"))))
+   (test-case "text-layout options validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper 42)))
+     (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:width 0)))
+     (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:align 'diagonal)))
+     (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:direction 'ttb)))
+     (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:line-height 0)))
+     (check-exn exn:fail:contract? (lambda () (draw-text-layout 'not-a-canvas 'not-a-layout 0 0 'not-a-paint))))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

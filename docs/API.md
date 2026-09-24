@@ -1,4 +1,4 @@
-# API reference — version 0.10.0
+# API reference — version 0.11.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1072,3 +1072,62 @@ and `draw-shaped-text` treat an empty run as a no-op.
 
 This API shapes a single font run. It does not perform paragraph-level bidi,
 script/fallback segmentation, line breaking, wrapping, or justification.
+
+
+## Paragraph text layout
+
+```racket
+(text-layout? value)
+(text-layout-lines layout)
+(text-layout-width layout)
+(text-layout-height layout)
+(text-layout-line-height layout)
+(text-layout-line-count layout)
+
+(text-layout-line? value)
+(text-layout-line-text line)
+(text-layout-line-run line)
+(text-layout-line-origin-x line)
+(text-layout-line-baseline line)
+(text-layout-line-width line)
+(text-layout-line-direction line)
+
+(layout-text shaper text
+             #:width [width #f]
+             #:align [align 'start]
+             #:direction [direction 'auto]
+             #:script [script #f]
+             #:language [language #f]
+             #:features [features '()]
+             #:line-height [line-height #f])
+
+(draw-text-layout canvas layout x y paint)
+```
+
+`layout-text` creates a pure Racket layout containing one `shaped-run?` per
+line. `x` and `y` in `draw-text-layout` are the top-left of the layout box; the
+line baselines stored in the layout are relative to that top edge. The default
+line height comes from the shaper font's native metrics; an explicit positive
+`#:line-height` overrides the baseline spacing.
+
+`#:width #f` disables wrapping. A positive width enables greedy wrapping at
+Unicode whitespace runs. Explicit CR, LF, and CRLF line breaks are preserved,
+including blank lines. Break whitespace is not retained at a wrapped line edge.
+Long unbreakable words are not split; when one exceeds the requested width,
+`text-layout-width` expands to report the true occupied width.
+
+Alignment is one of `'start`, `'center`, `'end`, `'left`, or `'right`. `start`
+and `end` are direction-sensitive. Paragraph layout currently accepts only
+`'auto`, `'ltr`, and `'rtl`; vertical HarfBuzz directions remain available to
+`shape-text` but not to this horizontal layout layer.
+
+The layout keeps its originating shaper wrapper reachable because its glyph IDs
+are meaningful only for that font. If the shaper is explicitly closed, later
+`draw-text-layout` calls fail with the normal closed-resource error.
+
+This API is deliberately narrower than a complete Unicode paragraph engine. It
+does not implement UAX #9 mixed-direction bidi resolution, script/font run
+segmentation, or UAX #14 line-break opportunities. A line is shaped as one HarfBuzz run. With `#:direction 'auto`, HarfBuzz
+guesses the shaping direction; start/end alignment infers RTL from descending
+cluster offsets and otherwise defaults to LTR. Use an explicit direction when
+an ambiguous one-glyph line must align directionally.
