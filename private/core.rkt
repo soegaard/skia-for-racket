@@ -1199,9 +1199,15 @@
      (for ([command (in-list commands)])
        (match command
          [(list 'move x y) (path-move-to! p x y)]
+         [(list 'rmove dx dy) (path-rmove-to! p dx dy)]
          [(list 'line x y) (path-line-to! p x y)]
+         [(list 'rline dx dy) (path-rline-to! p dx dy)]
          [(list 'quad cx cy x y) (path-quad-to! p cx cy x y)]
+         [(list 'rquad dcx dcy dx dy) (path-rquad-to! p dcx dcy dx dy)]
+         [(list 'conic cx cy x y weight) (path-conic-to! p cx cy x y weight)]
+         [(list 'rconic dcx dcy dx dy weight) (path-rconic-to! p dcx dcy dx dy weight)]
          [(list 'cubic cx1 cy1 cx2 cy2 x y) (path-cubic-to! p cx1 cy1 cx2 cy2 x y)]
+         [(list 'rcubic dcx1 dcy1 dcx2 dcy2 dx dy) (path-rcubic-to! p dcx1 dcy1 dcx2 dcy2 dx dy)]
          [(list 'close) (path-close! p)]
          [_ (raise-arguments-error 'make-path "invalid path command"
                                     "command" command)])))))
