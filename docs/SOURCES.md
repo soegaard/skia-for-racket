@@ -70,3 +70,12 @@ are the compatibility reference for this implementation.
   SkiaSharp.HarfBuzz `SKShaper` from SkiaSharp v3.119.1.
 
 - Version 0.11 paragraph layout is implemented in Racket above the existing HarfBuzz/Skia shaping substrate; no additional upstream native entry points are introduced.
+
+- Unicode bidirectional data used by the 0.12 pure-Racket resolver is generated
+  from Unicode 15.1 property data (matching the HarfBuzz 8.3-era Unicode data).
+  Script classification is queried through HarfBuzz's default Unicode functions
+  with `hb_unicode_funcs_get_default` / `hb_unicode_script`.
+- The 0.12 resolver follows the relevant Unicode Bidirectional Algorithm (UAX #9)
+  paragraph, weak, paired-bracket, neutral, implicit-level, and visual reordering
+  rules for ordinary text; explicit embedding/override/isolate controls are a
+  documented exclusion.

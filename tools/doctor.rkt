@@ -186,4 +186,21 @@
     (draw-text-layout (surface-canvas surface) layout 10 6 paint)
     (unless (> (text-layout-height layout) 0)
       (error 'doctor "text layout metrics failed"))
-    (printf "Paragraph layout passed; wrapping, alignment, metrics, and drawing verified\n")))
+    (printf "Paragraph layout passed; wrapping, alignment, metrics, and drawing verified\n"))
+  (with-skia ([fm (default-font-manager)]
+              [tf (make-typeface)]
+              [font (make-font tf #:size 25)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 260 90)])
+    (define mixed (layout-mixed-text sh fm "abc שלום 123" #:width 230))
+    (define runs (mixed-text-line-runs (car (mixed-text-layout-lines mixed))))
+    (unless (and (for/or ([r (in-list runs)]) (eq? (mixed-text-run-direction r) 'ltr))
+                 (for/or ([r (in-list runs)]) (eq? (mixed-text-run-direction r) 'rtl)))
+      (error 'doctor "mixed text layout did not create both LTR and RTL runs"))
+    (draw-mixed-text-layout (surface-canvas surface) mixed 10 8 paint)
+    (define pixels (surface->rgba-bytes surface))
+    (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+              (> (bytes-ref pixels i) 0))
+      (error 'doctor "mixed text layout rasterization failed"))
+    (printf "Mixed text layout passed; bidi runs, script segmentation, fallback, and drawing verified\n")))

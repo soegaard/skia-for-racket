@@ -1,18 +1,17 @@
-# Racket Skia — 0.11.0
+# Racket Skia — 0.12.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.10 are live-validated on
-macOS/aarch64 with Racket 9.3.0.2, pinned SkiaSharp 3.119.1, and
-HarfBuzzSharp 8.3.1.2 / HarfBuzz 8.3.1. The completed 0.10.1 run passed both
-native symbol audits, every doctor probe, all 135 source test cases (32 pure,
-6 lifetime, 97 native), and the shaping visual probe. Version 0.11 adds
-single-direction paragraph layout, greedy whitespace wrapping, explicit line
-breaks, alignment, line metrics, and layout drawing. Those new layout paths
-are source checked here and await the included local doctor/tests/visual probe.
-See [TESTING.md](TESTING.md).
+**Verification status:** versions 0.1 through 0.11 are live-validated on
+macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
+8.3.1.2. The completed 0.11 run passed both native symbol audits, every doctor
+probe, all 142 source test cases (33 pure, 6 lifetime, 103 native), and the
+paragraph-layout visual probe. Version 0.12 adds mixed-script/bidirectional run
+segmentation and font fallback; those new paths are source/ABI checked here but
+still require the included live doctor, tests, and visual probe. See
+[TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -22,7 +21,7 @@ quadratic and cubic Bézier paths; paint settings and blend modes; path bounds
 and containment; immutable image snapshots and copied RGBA input; image
 placement/scaling; native PNG encoding; font-manager enumeration and fallback;
 default/family/file-backed typefaces; configurable fonts and metrics; UTF-8
-simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; paragraph wrapping/alignment; glyph IDs and text/glyph
+simple-text drawing/measurement; positioned text blobs; HarfBuzz-shaped glyph runs; mixed-script/bidi run layout and font fallback; paragraph wrapping/alignment; glyph IDs and text/glyph
 outline paths; owned shaders; color, linear, radial, sweep,
 and conical gradients; image tiling; shader blending; PNG/JPEG/WebP encoded
 image decode and encode; codec metadata probing; image subsets and source-rectangle
@@ -40,7 +39,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.11.0-20260924
+cd racket-skia-0.12.0-20260924
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -59,6 +58,7 @@ mkdir -p output &&
 "$RACKET" examples/text-blobs.rkt output/text-blobs.png &&
 "$RACKET" examples/shaping.rkt output/shaping.png &&
 "$RACKET" examples/layout.rkt output/layout.png &&
+"$RACKET" examples/mixed-text.rkt output/mixed-text.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -583,3 +583,35 @@ still uses HarfBuzz's guessed run direction; start/end alignment infers RTL from
 descending HarfBuzz cluster offsets and otherwise defaults to LTR. Pass an
 explicit direction for ambiguous one-glyph lines. Full mixed-direction run
 segmentation remains a later stage.
+
+
+## Mixed-script and bidirectional layout
+
+Version 0.12 adds a multi-run paragraph layer above `layout-text`. It resolves
+ordinary mixed LTR/RTL text, segments by bidi level and HarfBuzz Unicode script,
+and chooses fallback system fonts at grapheme-cluster boundaries.
+
+```racket
+(with-skia ([fm (default-font-manager)]
+            [face (make-typeface)]
+            [font (make-font face #:size 28)]
+            [shaper (make-shaper font)]
+            [paint (make-paint #:color 'black)])
+  (define layout
+    (layout-mixed-text shaper fm
+                       "Racket שלום 123 مرحبا"
+                       #:width 280))
+  (draw-mixed-text-layout canvas layout 20 20 paint))
+```
+
+`mixed-text-layout?` exposes visual lines, and each `mixed-text-run?` exposes
+its text, shaped run, visual x origin, bidi level/direction, script, and
+fallback family (or `#f` for the base shaper). The layout is a pure Racket
+value but retains references to the caller-owned base shaper and font manager;
+both must remain live while drawing it.
+
+This stage handles the ordinary UAX #9 paragraph/weak/neutral/bracket/implicit
+rules used by natural mixed-language text. Explicit embedding, override, and
+isolate controls (`LRE/RLE/LRO/RLO/PDF/LRI/RLI/FSI/PDI`) are not interpreted;
+they are omitted from shaping. Line breaking remains the whitespace-greedy
+policy from 0.11 rather than full UAX #14, and justification is not implemented.

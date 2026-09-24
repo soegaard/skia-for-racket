@@ -12,3 +12,11 @@ bundle with native binaries. See `docs/SOURCES.md` for upstream repositories.
 
 The package is experimental and is not affiliated with, endorsed by, or an
 official binding of either the Skia or Racket projects.
+
+
+## Unicode data
+
+The mixed-text bidi tables include derived property assignments from the Unicode
+Character Database 15.1. Unicode and the Unicode Logo are registered trademarks
+of Unicode, Inc. See https://www.unicode.org/terms_of_use.html for Unicode data
+terms of use.

@@ -1163,6 +1163,66 @@ third"))
                    [p (make-paint #:color 'black)])
          (check-exn #rx"closed"
                     (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 p))))))
+   (test-case "mixed text layout resolves visual bidi runs"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 26)]
+                 [sh (make-shaper f)])
+       (define layout (layout-mixed-text sh fm "abc שלום 123" #:width 400))
+       (check-equal? (mixed-text-layout-line-count layout) 1)
+       (define line (first (mixed-text-layout-lines layout)))
+       (check-eq? (mixed-text-line-direction line) 'ltr)
+       (define dirs (map mixed-text-run-direction (mixed-text-line-runs line)))
+       (check-not-false (memq 'ltr dirs))
+       (check-not-false (memq 'rtl dirs))
+       (check-true (for/and ([r (in-list (mixed-text-line-runs line))])
+                     (>= (mixed-text-run-origin-x r) 0)))))
+   (test-case "mixed text layout records font fallback"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 28)]
+                 [sh (make-shaper f)])
+       (define missing? (zero? (font-char->glyph f #\界)))
+       (define layout (layout-mixed-text sh fm "A界B" #:width 300 #:language "zh"))
+       (define runs (mixed-text-line-runs (first (mixed-text-layout-lines layout))))
+       (when missing?
+         (check-not-false (for/or ([r (in-list runs)]) (mixed-text-run-family r))))))
+   (test-case "mixed text layout preserves LTR number runs in RTL paragraphs"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 28)]
+                 [sh (make-shaper f)])
+       (define layout (layout-mixed-text sh fm "שלום 123" #:width 300 #:direction 'rtl))
+       (define line (first (mixed-text-layout-lines layout)))
+       (check-eq? (mixed-text-line-direction line) 'rtl)
+       (check-true (for/or ([r (in-list (mixed-text-line-runs line))])
+                     (and (eq? (mixed-text-run-direction r) 'ltr)
+                          (regexp-match? #rx"[0-9]" (mixed-text-run-text r)))))))
+   (test-case "mixed text layout wraps and rasterizes"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 27)]
+                 [sh (make-shaper f)]
+                 [p (make-paint #:color 'black)]
+                 [surface (make-surface 300 180)])
+       (define layout
+         (layout-mixed-text sh fm "Racket שלום world مرحبا 123" #:width 190))
+       (check-true (> (mixed-text-layout-line-count layout) 1))
+       (draw-mixed-text-layout (surface-canvas surface) layout 20 10 p)
+       (define pixels (surface->rgba-bytes surface))
+       (check-true (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+                     (> (bytes-ref pixels i) 0)))))
+   (test-case "mixed text layout reports closed dependencies"
+     (define fm (default-font-manager))
+     (with-skia ([tf (make-typeface)] [f (make-font tf #:size 24)])
+       (define sh (make-shaper f))
+       (define layout (layout-mixed-text sh fm "abc שלום"))
+       (skia-close! fm)
+       (with-skia ([surface (make-surface 200 80)] [p (make-paint #:color 'black)])
+         (check-exn #rx"closed"
+                    (lambda ()
+                      (draw-mixed-text-layout (surface-canvas surface) layout 0 0 p))))
+       (skia-close! sh)))
    (test-case "closed shapers reject use"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)])

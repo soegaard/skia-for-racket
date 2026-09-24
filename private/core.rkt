@@ -4,7 +4,7 @@
          racket/match
          racket/path
          "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt"
-         "harfbuzz-native.rkt" "harfbuzz-types.rkt"
+         "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
          skia-resource? skia-closed? skia-close!
@@ -102,7 +102,17 @@
          text-layout-line? text-layout-line-text text-layout-line-run
          text-layout-line-origin-x text-layout-line-baseline
          text-layout-line-width text-layout-line-direction
-         layout-text draw-text-layout)
+         layout-text draw-text-layout
+         mixed-text-layout? mixed-text-layout-lines mixed-text-layout-width
+         mixed-text-layout-height mixed-text-layout-line-height
+         mixed-text-layout-line-count
+         mixed-text-line? mixed-text-line-text mixed-text-line-runs
+         mixed-text-line-origin-x mixed-text-line-baseline
+         mixed-text-line-width mixed-text-line-direction
+         mixed-text-run? mixed-text-run-text mixed-text-run-shaped-run
+         mixed-text-run-origin-x mixed-text-run-width mixed-text-run-direction
+         mixed-text-run-level mixed-text-run-script mixed-text-run-family
+         layout-mixed-text draw-mixed-text-layout)
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record)
@@ -140,6 +150,16 @@
 ;; explicitly closing that shaper invalidates later drawing from the layout.
 (struct text-layout (shaper lines width height line-height) #:transparent)
 (struct text-layout-line (text run origin-x baseline width direction) #:transparent)
+;; Mixed layouts keep caller-owned base shaper/font-manager wrappers reachable.
+;; Fallback fonts/shapers are created transiently during layout/drawing, so the
+;; layout itself owns no hidden native resources.
+(struct mixed-text-layout (shaper font-manager lines width height line-height) #:transparent)
+(struct mixed-text-line (text runs origin-x baseline width direction) #:transparent)
+(struct mixed-text-run
+  (text shaped-run origin-x width direction level script
+        family weight font-width slant)
+  #:transparent)
+(struct fallback-choice (family weight width slant) #:transparent)
 (struct font-metrics
   (top ascent descent bottom leading
    average-character-width max-character-width
@@ -2572,6 +2592,395 @@
                      (+ fx (text-layout-line-origin-x line))
                      (+ fy (text-layout-line-baseline line))
                      p))
+  (void))
+
+;; Mixed-script / mixed-direction layout -----------------------------------
+
+(define (mixed-text-layout-line-count layout)
+  (unless (mixed-text-layout? layout)
+    (raise-argument-error 'mixed-text-layout-line-count "mixed-text-layout?" layout))
+  (length (mixed-text-layout-lines layout)))
+
+(define (hb-tag->script-symbol tag)
+  (cond
+    [(zero? tag) #f]
+    [else
+     (define chars
+       (for/list ([shift '(24 16 8 0)])
+         (integer->char (bitwise-and #xff (arithmetic-shift tag (- shift))))))
+     (define sym (string->symbol (string-downcase (list->string chars))))
+     (if (memq sym '(zyyy zinh zzzz)) #f sym)]))
+
+(define (unicode-script-symbol ch)
+  (define ufuncs (hb_unicode_funcs_get_default))
+  (unless ufuncs (error 'unicode-script-symbol "HarfBuzz returned no Unicode property provider"))
+  (hb-tag->script-symbol (hb_unicode_script ufuncs (char->integer ch))))
+
+(define (font-choice-relevant-char? ch)
+  ;; Directional formatting controls, join controls, variation selectors, and
+  ;; other format characters need not have standalone cmap glyphs. They must
+  ;; remain in the grapheme text passed to HarfBuzz, but should not by
+  ;; themselves trigger a fallback font.
+  (define cp (char->integer ch))
+  (and (not (char-whitespace? ch))
+       (not (bidi-explicit-control? ch))
+       (not (eq? (char-general-category ch) 'cf))
+       (not (<= #xfe00 cp #xfe0f))
+       (not (<= #xe0100 cp #xe01ef))))
+
+(define (hash-ref/cache! ht key thunk)
+  (hash-ref ht key
+            (lambda ()
+              (define value (thunk))
+              (hash-set! ht key value)
+              value)))
+
+(define (cluster-font-choice base-font fm cluster language cache)
+  (define missing
+    (for/first ([ch (in-string cluster)]
+                #:when (and (font-choice-relevant-char? ch)
+                            (zero? (font-char->glyph base-font ch))))
+      ch))
+  (if (not missing)
+      #f
+      (let ([key (cons (char->integer missing) language)])
+        (hash-ref/cache!
+         cache key
+         (lambda ()
+           (define tf
+             (font-manager-match-character
+              fm missing
+              #:languages (if language (list language) '())))
+           (if (not tf)
+               #f
+               (call-with-skia-resource
+                tf
+                (lambda (face)
+                  (fallback-choice (typeface-family-name face)
+                                   (typeface-weight face)
+                                   (typeface-width face)
+                                   (typeface-slant face))))))))))
+
+(define (make-font-like base-font tf)
+  (make-font tf
+             #:size (font-size base-font)
+             #:scale-x (font-scale-x base-font)
+             #:skew-x (font-skew-x base-font)
+             #:edging (font-edging base-font)
+             #:hinting (font-hinting base-font)
+             #:subpixel? (font-subpixel? base-font)
+             #:linear-metrics? (font-linear-metrics? base-font)
+             #:embolden? (font-embolden? base-font)))
+
+(define (call-with-choice-shaper who base-shaper fm choice proc)
+  (cond
+    [(not choice) (proc base-shaper)]
+    [else
+     (define tf
+       (font-manager-match-family
+        fm (fallback-choice-family choice)
+        #:weight (fallback-choice-weight choice)
+        #:width (fallback-choice-width choice)
+        #:slant (fallback-choice-slant choice)))
+     (unless tf
+       (error who "fallback family ~s is no longer available"
+              (fallback-choice-family choice)))
+     (call-with-skia-resource
+      tf
+      (lambda (face)
+        (call-with-skia-resource
+         (make-font-like (shaper-font base-shaper) face)
+         (lambda (font)
+           (call-with-skia-resource (make-shaper font) proc)))))]))
+
+(define (strip-explicit-bidi-controls str)
+  (list->string
+   (for/list ([ch (in-string str)] #:unless (bidi-explicit-control? ch)) ch)))
+
+(struct logical-mixed-piece (text level script choice) #:transparent)
+
+(define (grapheme-pieces sh fm text levels language choice-cache)
+  (define base-font (shaper-font sh))
+  (define n (string-length text))
+  (let loop ([start 0] [acc '()])
+    (cond
+      [(>= start n) (reverse acc)]
+      [else
+       (define span (string-grapheme-span text start n))
+       (define end (+ start span))
+       (define raw (substring text start end))
+       (define clean (strip-explicit-bidi-controls raw))
+       (define render-indices
+         (for/list ([i (in-range start end)]
+                    #:unless (bidi-explicit-control? (string-ref text i)))
+           i))
+       (cond
+         [(zero? (string-length clean)) (loop end acc)]
+         [else
+          (define level
+            (if (pair? render-indices)
+                (vector-ref levels (car render-indices))
+                0))
+          (define script
+            (for/or ([ch (in-string clean)]) (unicode-script-symbol ch)))
+          (define choice (cluster-font-choice base-font fm clean language choice-cache))
+          (loop end (cons (logical-mixed-piece clean level script choice) acc))])])) )
+
+(define (coalesce-logical-pieces pieces)
+  (define out '())
+  (for ([piece (in-list pieces)])
+    (cond
+      [(and (pair? out)
+            (= (logical-mixed-piece-level piece)
+               (logical-mixed-piece-level (car out)))
+            (equal? (logical-mixed-piece-script piece)
+                    (logical-mixed-piece-script (car out)))
+            (equal? (logical-mixed-piece-choice piece)
+                    (logical-mixed-piece-choice (car out))))
+       (define prev (car out))
+       (set! out
+             (cons (logical-mixed-piece
+                    (string-append (logical-mixed-piece-text prev)
+                                   (logical-mixed-piece-text piece))
+                    (logical-mixed-piece-level prev)
+                    (logical-mixed-piece-script prev)
+                    (logical-mixed-piece-choice prev))
+                   (cdr out)))]
+      [else (set! out (cons piece out))]))
+  (reverse out))
+
+(define (mixed-run-from-piece sh fm piece language features)
+  (define level (logical-mixed-piece-level piece))
+  (define direction (if (odd? level) 'rtl 'ltr))
+  (define script (logical-mixed-piece-script piece))
+  (define choice (logical-mixed-piece-choice piece))
+  (define shaped
+    (call-with-choice-shaper
+     'layout-mixed-text sh fm choice
+     (lambda (run-shaper)
+       (shape-text run-shaper (logical-mixed-piece-text piece)
+                   #:direction direction
+                   #:script script
+                   #:language language
+                   #:features features))))
+  (define width (run-horizontal-width shaped))
+  (mixed-text-run
+   (logical-mixed-piece-text piece) shaped 0.0 width direction level script
+   (and choice (fallback-choice-family choice))
+   (and choice (fallback-choice-weight choice))
+   (and choice (fallback-choice-width choice))
+   (and choice (fallback-choice-slant choice))))
+
+(define (place-visual-mixed-runs runs)
+  (let loop ([xs runs] [cursor 0.0] [out '()])
+    (cond
+      [(null? xs) (values (reverse out) cursor)]
+      [else
+       (define r (car xs))
+       (define advance (shaped-run-advance-x (mixed-text-run-shaped-run r)))
+       ;; RTL HarfBuzz runs commonly advance toward negative x. Put the run's
+       ;; drawing origin at the right edge in that case so its visual extent
+       ;; still begins at the current left-to-right visual cursor.
+       (define origin (+ cursor (if (negative? advance) (mixed-text-run-width r) 0.0)))
+       (define placed
+         (mixed-text-run (mixed-text-run-text r)
+                         (mixed-text-run-shaped-run r)
+                         origin
+                         (mixed-text-run-width r)
+                         (mixed-text-run-direction r)
+                         (mixed-text-run-level r)
+                         (mixed-text-run-script r)
+                         (mixed-text-run-family r)
+                         (mixed-text-run-weight r)
+                         (mixed-text-run-font-width r)
+                         (mixed-text-run-slant r)))
+       (loop (cdr xs) (+ cursor (mixed-text-run-width r)) (cons placed out))])))
+
+(define (shape-mixed-line sh fm text paragraph-direction language features choice-cache)
+  (define-values (levels resolved-direction)
+    (bidi-resolve-levels text paragraph-direction))
+  (define logical
+    (coalesce-logical-pieces
+     (grapheme-pieces sh fm text levels language choice-cache)))
+  (define shaped
+    (for/list ([piece (in-list logical)])
+      (mixed-run-from-piece sh fm piece language features)))
+  (define visual
+    (bidi-reorder-items shaped mixed-text-run-level))
+  (define-values (placed width) (place-visual-mixed-runs visual))
+  (values placed width resolved-direction))
+
+(define (mixed-paragraph-direction paragraph requested)
+  (define-values (_levels dir) (bidi-resolve-levels paragraph requested))
+  dir)
+
+(define (wrapped-mixed-lines sh fm paragraph max-width paragraph-direction
+                             language features choice-cache)
+  (if max-width
+      (wrapped-mixed-lines/limited sh fm paragraph max-width paragraph-direction
+                                   language features choice-cache)
+      (list paragraph)))
+
+(define (wrapped-mixed-lines/limited sh fm paragraph max-width paragraph-direction
+                                     language features choice-cache)
+  ;; Same user-facing whitespace policy as layout-text, but candidate widths
+  ;; are measured after bidi/script/fallback segmentation and shaping.
+  (define pieces (horizontal-pieces paragraph))
+  (define current "")
+  (define pending-space "")
+  (define lines '())
+  (define (measure str)
+    (if (zero? (string-length str))
+        0.0
+        (let-values ([(runs width dir)
+                      (shape-mixed-line sh fm str paragraph-direction
+                                        language features choice-cache)])
+          width)))
+  (define (finish!)
+    (set! lines (cons current lines))
+    (set! current "")
+    (set! pending-space ""))
+  (for ([piece (in-list pieces)])
+    (define whitespace? (car piece))
+    (define str (cadr piece))
+    (cond
+      [whitespace?
+       (unless (zero? (string-length current))
+         (set! pending-space (string-append pending-space str)))]
+      [else
+       (define candidate (string-append current pending-space str))
+       (cond
+         [(zero? (string-length current))
+          (set! current str)
+          (set! pending-space "")]
+         [(> (measure candidate) max-width)
+          (finish!)
+          (set! current str)]
+         [else
+          (set! current candidate)
+          (set! pending-space "")])]))
+  (cond
+    [(zero? (string-length current))
+     (if (null? lines) (list "") (reverse lines))]
+    [else (reverse (cons current lines))]))
+
+(define (layout-mixed-text sh fm text
+                           #:width [width #f]
+                           #:align [align 'start]
+                           #:direction [direction 'auto]
+                           #:language [language #f]
+                           #:features [features '()]
+                           #:line-height [line-height #f])
+  (define who 'layout-mixed-text)
+  (unless (string? text) (raise-argument-error who "string?" text))
+  (define max-width (normalize-layout-width who width))
+  (define al (normalize-layout-align who align))
+  (define dir (normalize-layout-direction who direction))
+  (define lang (normalize-shape-language who language))
+  (define feats (normalize-shape-features who features))
+  (define requested-line-height
+    (and line-height (positive-scalar who line-height)))
+  (shaper-h who sh)
+  (font-manager-h who fm)
+  (define base-font (shaper-font sh))
+  (define metrics (font-get-metrics base-font))
+  (define ascent (font-metrics-ascent metrics))
+  (define descent (font-metrics-descent metrics))
+  (define natural-height
+    (let ([spacing (font-metrics-spacing metrics)])
+      (cond [(and (real? spacing) (> spacing 0)) spacing]
+            [else (max 1.0 (+ (- descent ascent)
+                              (max 0.0 (font-metrics-leading metrics))))])))
+  (define line-step (or requested-line-height natural-height))
+  (define choice-cache (make-hash))
+  (define raw-lines '())
+  (for ([paragraph (in-list (split-explicit-lines text))])
+    (define paragraph-dir (mixed-paragraph-direction paragraph dir))
+    (for ([line-text (in-list
+                      (wrapped-mixed-lines sh fm paragraph max-width paragraph-dir
+                                           lang feats choice-cache))])
+      (define-values (runs w _resolved)
+        (shape-mixed-line sh fm line-text paragraph-dir lang feats choice-cache))
+      (set! raw-lines (cons (list line-text runs w paragraph-dir) raw-lines))))
+  (set! raw-lines (reverse raw-lines))
+  (define content-width
+    (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
+      (max m (list-ref entry 2))))
+  (define box-width (max content-width (or max-width 0.0)))
+  (define baseline0 (max 0.0 (- ascent)))
+  (define lines
+    (for/list ([entry (in-list raw-lines)] [i (in-naturals)])
+      (define line-text (list-ref entry 0))
+      (define runs (list-ref entry 1))
+      (define w (list-ref entry 2))
+      (define line-dir (list-ref entry 3))
+      (mixed-text-line line-text runs
+                       (line-left-offset al line-dir box-width w)
+                       (+ baseline0 (* i line-step))
+                       w line-dir)))
+  (define height
+    (if (null? lines)
+        0.0
+        (+ baseline0 (* (sub1 (length lines)) line-step)
+           (max 0.0 descent))))
+  (mixed-text-layout sh fm lines box-width height line-step))
+
+(define (fallback-choice-from-run r)
+  (and (mixed-text-run-family r)
+       (fallback-choice (mixed-text-run-family r)
+                        (mixed-text-run-weight r)
+                        (mixed-text-run-font-width r)
+                        (mixed-text-run-slant r))))
+
+(define (draw-mixed-text-layout c layout x y p)
+  (define who 'draw-mixed-text-layout)
+  (unless (mixed-text-layout? layout)
+    (raise-argument-error who "mixed-text-layout?" layout))
+  (define fx (scalar who x))
+  (define fy (scalar who y))
+  (define base-shaper (mixed-text-layout-shaper layout))
+  (define fm (mixed-text-layout-font-manager layout))
+  ;; Caller-owned dependencies must still be live when the pure layout is used.
+  (call-with-owned who (list (shaper-h who base-shaper)
+                             (font-manager-h who fm))
+                   (lambda (_a _b) (void)))
+  (paint-h who p)
+  (call-on-canvas who c '() (lambda (_) (void)))
+  (define cache (make-hash))
+  (define (cached-shaper run)
+    (define choice (fallback-choice-from-run run))
+    (cond
+      [(not choice) base-shaper]
+      [else
+       (hash-ref/cache!
+        cache choice
+        (lambda ()
+          (define tf
+            (font-manager-match-family
+             fm (fallback-choice-family choice)
+             #:weight (fallback-choice-weight choice)
+             #:width (fallback-choice-width choice)
+             #:slant (fallback-choice-slant choice)))
+          (unless tf
+            (error who "fallback family ~s is no longer available"
+                   (fallback-choice-family choice)))
+          (call-with-skia-resource
+           tf
+           (lambda (face)
+             (call-with-skia-resource
+              (make-font-like (shaper-font base-shaper) face)
+              (lambda (font) (make-shaper font)))))))]))
+  (dynamic-wind
+    void
+    (lambda ()
+      (for ([line (in-list (mixed-text-layout-lines layout))])
+        (for ([run (in-list (mixed-text-line-runs line))])
+          (draw-shaped-run
+           c (cached-shaper run) (mixed-text-run-shaped-run run)
+           (+ fx (mixed-text-line-origin-x line) (mixed-text-run-origin-x run))
+           (+ fy (mixed-text-line-baseline line)) p))))
+    (lambda ()
+      (for ([sh (in-hash-values cache)]) (skia-close! sh))))
   (void))
 
 ;; Images, encoded data, codecs, and copied pixel input ---------------------

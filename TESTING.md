@@ -1,21 +1,21 @@
-# Verification report — 2026-09-24
+# Testing
 
 ## Status
 
-**0.1 through 0.10 — LIVE VALIDATED on macOS/aarch64.**
+**0.1 through 0.11 — LIVE VALIDATED on macOS/aarch64.** The latest live run
+used Racket 9.3.0.2 with pinned SkiaSharp 3.119.1 and HarfBuzzSharp 8.3.1.2.
+Both symbol audits reported zero missing bindings, every doctor probe passed,
+all **142** source test cases passed (33 pure, 6 lifetime, 103 native), and the
+paragraph-layout visual probe rendered correctly.
 
-The completed 0.10.1 run used Racket 9.3.0.2 with pinned SkiaSharp 3.119.1
-and HarfBuzzSharp 8.3.1.2 / HarfBuzz 8.3.1. Both native symbol audits
-reported zero missing symbols, every doctor probe passed, all **135** source
-test cases passed (32 pure, 6 lifetime, 97 native), and the shaping visual
-probe rendered correctly.
+**0.12 mixed-script/bidi layout — NOT YET LIVE RUN IN THE AUTHORING
+ENVIRONMENT.** The new bidi resolver, script/font-fallback segmentation,
+multi-run layout/drawing layer, and tests received static/source review here.
+The 0.12 tree contains **150 source test cases**: 36 pure, 6 lifetime, and 108
+native. It adds two HarfBuzz Unicode-property bindings but no new by-value ABI
+structs.
 
-**0.11 paragraph layout — NOT YET LIVE RUN IN THE AUTHORING ENVIRONMENT.**
-This stage is pure Racket code layered over the already-bound shaping APIs; it
-adds no native symbols or ABI structs. It received static/source checks here and
-requires the local doctor, tests, and `examples/layout.rkt` visual probe.
-
-## Checks performed for 0.11 source
+## Checks performed for 0.12 source
 
 Run `python3 tools/static-check.py` and the host-C layout command below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -196,3 +196,13 @@ Expected additional doctor line for 0.11:
 ```text
 Paragraph layout passed; wrapping, alignment, metrics, and drawing verified
 ```
+
+
+Expected additional doctor line for 0.12:
+
+```text
+Mixed text layout passed; bidi runs, script segmentation, fallback, and drawing verified
+```
+
+The HarfBuzz symbol audit should now report **27** required bindings and zero
+missing symbols. The Skia audit remains at **221**.

@@ -109,6 +109,9 @@
 (define-hb-native hb_script_from_string (_fun _bytes _int -> _uint32))
 (define-hb-native hb_language_from_string (_fun _bytes _int -> _pointer))
 (define-hb-native hb_feature_from_string (_fun _bytes _int _pointer -> _stdbool))
+;; Borrowed default Unicode property provider; do not destroy it.
+(define-hb-native hb_unicode_funcs_get_default (_fun -> _pointer))
+(define-hb-native hb_unicode_script (_fun _pointer _uint32 -> _uint32))
 (define-hb-native hb_shape (_fun _pointer _pointer _pointer _uint32 -> _void))
 
 (define hb-ready

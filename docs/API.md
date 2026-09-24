@@ -1,4 +1,4 @@
-# API reference — version 0.11.0
+# API reference — version 0.12.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1131,3 +1131,73 @@ segmentation, or UAX #14 line-break opportunities. A line is shaped as one HarfB
 guesses the shaping direction; start/end alignment infers RTL from descending
 cluster offsets and otherwise defaults to LTR. Use an explicit direction when
 an ambiguous one-glyph line must align directionally.
+
+
+## Mixed-script and bidirectional text layout
+
+```racket
+(mixed-text-layout? value)
+(mixed-text-layout-lines layout)
+(mixed-text-layout-width layout)
+(mixed-text-layout-height layout)
+(mixed-text-layout-line-height layout)
+(mixed-text-layout-line-count layout)
+
+(mixed-text-line? value)
+(mixed-text-line-text line)
+(mixed-text-line-runs line)
+(mixed-text-line-origin-x line)
+(mixed-text-line-baseline line)
+(mixed-text-line-width line)
+(mixed-text-line-direction line)
+
+(mixed-text-run? value)
+(mixed-text-run-text run)
+(mixed-text-run-shaped-run run)
+(mixed-text-run-origin-x run)
+(mixed-text-run-width run)
+(mixed-text-run-direction run)
+(mixed-text-run-level run)
+(mixed-text-run-script run)
+(mixed-text-run-family run)
+
+(layout-mixed-text shaper font-manager text
+                   #:width [width #f]
+                   #:align [align 'start]
+                   #:direction [direction 'auto]
+                   #:language [language #f]
+                   #:features [features '()]
+                   #:line-height [line-height #f])
+
+(draw-mixed-text-layout canvas layout x y paint)
+```
+
+`layout-mixed-text` extends the single-run paragraph layer to visual lines made
+from multiple shaped runs. Paragraph direction is `'ltr`, `'rtl`, or `'auto`.
+For automatic direction the first ordinary strong character selects the
+paragraph base direction. Resolved bidi levels determine run direction and
+visual run ordering; HarfBuzz shapes each run with its resolved horizontal
+direction and Unicode script.
+
+Run segmentation preserves Racket Unicode grapheme clusters. A grapheme whose
+visible scalars are unavailable in the base shaper's font asks the supplied
+`font-manager?` for a character fallback. Fallback is therefore chosen at a
+grapheme boundary instead of splitting a base character from its combining
+marks. `mixed-text-run-family` reports the selected fallback family string;
+`#f` means the run uses the base shaper. Script is a lower-case ISO 15924-style
+symbol such as `'latn`, `'arab`, or `'hebr`, or `#f` for Common/Inherited data.
+
+The returned layout is a pure Racket value. It does **not** own hidden fallback
+font resources: fallback shapers are temporary during layout and are recreated
+for drawing from the recorded family/style description. The caller-owned base
+shaper and font manager are retained by reference and must remain open while
+`draw-mixed-text-layout` is used.
+
+The bidi resolver in 0.12 implements paragraph direction plus the ordinary
+weak, paired-bracket, neutral, implicit-level, trailing-whitespace, and L2
+visual-reordering rules needed for natural mixed-language paragraphs. Explicit
+Unicode embedding/override/isolate controls (`LRE`, `RLE`, `LRO`, `RLO`, `PDF`,
+`LRI`, `RLI`, `FSI`, `PDI`) are intentionally not interpreted in this stage;
+they are treated as formatting controls and omitted from shaping. The layout
+also keeps 0.11's greedy Unicode-whitespace wrapping policy rather than a full
+UAX #14 line-break implementation. Justification is not implemented.

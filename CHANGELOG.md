@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0 — mixed-script and bidirectional text layout
+
+- Added `layout-mixed-text` / `draw-mixed-text-layout` with multiple shaped runs per visual line.
+- Added ordinary Unicode bidi resolution for paragraph direction, weak/neutral types, paired brackets, implicit levels, and visual run reordering.
+- Added HarfBuzz Unicode-script classification and script-aware run segmentation.
+- Added grapheme-preserving font fallback through `font-manager-match-character`, with fallback family/style metadata retained in pure layout runs.
+- Added mixed-run wrapping/alignment, run inspection APIs, doctor coverage, tests, and `examples/mixed-text.rkt`.
+- Explicit Unicode embedding/override/isolate controls are intentionally not interpreted in this stage; they are omitted from shaping. Full explicit-control UAX #9 support, UAX #14 line breaking, and justification remain future work.
+
 ## 0.11.0 — paragraph text layout
 
 - Added pure `text-layout?` and `text-layout-line?` values above shaped runs.

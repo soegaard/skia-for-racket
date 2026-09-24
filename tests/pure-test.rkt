@@ -1,7 +1,8 @@
 #lang racket/base
 (require racket/list
          rackunit rackunit/text-ui ffi/unsafe
-         "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt")
+         "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
+         "../private/bidi.rkt")
 (provide pure-tests)
 
 (define pure-tests
@@ -286,6 +287,22 @@
      (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:direction 'ttb)))
      (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:line-height 0)))
      (check-exn exn:fail:contract? (lambda () (draw-text-layout 'not-a-canvas 'not-a-layout 0 0 'not-a-paint))))
+   (test-case "bidi resolver separates ordinary LTR and RTL text"
+     (define-values (levels direction) (bidi-resolve-levels "abc אבג" 'auto))
+     (check-eq? direction 'ltr)
+     (check-true (for/and ([i (in-range 3)]) (even? (vector-ref levels i))))
+     (check-true (for/and ([i (in-range 4 7)]) (odd? (vector-ref levels i)))))
+   (test-case "bidi resolver keeps numbers LTR inside an RTL paragraph"
+     (define-values (levels direction) (bidi-resolve-levels "אבג 123" 'auto))
+     (check-eq? direction 'rtl)
+     (check-true (for/and ([i (in-range 3)]) (odd? (vector-ref levels i))))
+     (check-true (for/and ([i (in-range 4 7)]) (even? (vector-ref levels i)))))
+   (test-case "mixed-layout arguments validate before native loading"
+     (check-exn exn:fail:contract? (lambda () (layout-mixed-text 'bad 'also-bad 42)))
+     (check-exn exn:fail:contract?
+                (lambda () (layout-mixed-text 'bad 'also-bad "x" #:align 'diagonal)))
+     (check-exn exn:fail:contract?
+                (lambda () (draw-mixed-text-layout 'bad 'not-a-layout 0 0 'paint))))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

@@ -245,3 +245,14 @@ layouts. Font bytes are copied from an owned SkTypeface stream into an
 Version 0.11 adds no native declarations and no ABI structs. Paragraph layout
 is implemented in Racket above the live-validated 0.10 shaping and text-blob
 layers, so both symbol-audit counts remain unchanged.
+
+
+## 0.12 mixed text
+
+Version 0.12 adds no Skia C ABI structs and no new by-value HarfBuzz structs.
+It adds the borrowed `hb_unicode_funcs_get_default` lookup and
+`hb_unicode_script` query, bringing the HarfBuzz symbol audit from 25 to 27
+required exports. The default Unicode-functions pointer is transfer-none and is
+never destroyed by the Racket wrapper. Mixed-layout objects are pure Racket
+metadata; transient fallback shapers follow the existing deterministic resource
+cleanup rules.
