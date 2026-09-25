@@ -4,7 +4,7 @@
          racket/match
          racket/path
          racket/vector
-         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt"
+         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt" "pdf-util.rkt"
          "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt" "joining.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
@@ -123,7 +123,7 @@
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record)
-;; A canvas is always borrowed from an owning surface or picture recorder.
+;; A canvas is always borrowed from a surface, picture recorder, or individual PDF page.
 (struct canvas (resource) #:constructor-name make-canvas-record)
 (struct paint (handle) #:constructor-name make-paint-record)
 (struct shader (handle) #:constructor-name make-shader-record)
@@ -182,12 +182,14 @@
 (define (skia-resource? v)
   (or (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
-      (picture? v) (picture-recorder? v)
+      (picture? v) (picture-recorder? v) (document? v)
       (skia-path? v) (path-measure? v) (image? v) (codec? v)
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
   (cond [(surface? v) (surface-handle v)]
+        [(document? v) (document-handle v)]
+        [(pdf-page? v) (document-handle (pdf-page-document v))]
         [(paint? v) (paint-handle v)]
         [(shader? v) (shader-handle v)]
         [(path-effect? v) (path-effect-handle v)]
@@ -209,10 +211,10 @@
         [else (raise-argument-error who "skia-resource? (not a borrowed canvas)" v)]))
 
 (define (skia-closed? v)
-  (owned-closed?
-   (if (canvas? v)
-       (resource-handle 'skia-closed? (canvas-owner 'skia-closed? v))
-       (resource-handle 'skia-closed? v))))
+  (define owner (if (canvas? v) (canvas-owner 'skia-closed? v) v))
+  (if (pdf-page? owner)
+      (pdf-page-closed? owner)
+      (owned-closed? (resource-handle 'skia-closed? owner))))
 
 (define (skia-close! v)
   (owned-close! 'skia-close! (resource-handle 'skia-close! v))
@@ -271,18 +273,20 @@
 (define (canvas-owner who c)
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
   (define owner (canvas-resource c))
-  (unless (or (surface? owner) (picture-recorder? owner))
+  (unless (or (surface? owner) (picture-recorder? owner) (pdf-page? owner))
     (error who "canvas owner is corrupted"))
   owner)
 
 (define (owner-floors owner)
   (cond [(surface? owner) (surface-floors owner)]
         [(picture-recorder? owner) (picture-recorder-floors owner)]
+        [(pdf-page? owner) (pdf-page-floors owner)]
         [else (error 'owner-floors "unsupported owner")]))
 
 (define (set-owner-floors! owner floors)
   (cond [(surface? owner) (set-surface-floors! owner floors)]
         [(picture-recorder? owner) (set-picture-recorder-floors! owner floors)]
+        [(pdf-page? owner) (set-pdf-page-floors! owner floors)]
         [else (error 'set-owner-floors! "unsupported owner")]))
 
 (define (call-on-canvas who c others proc)
@@ -302,6 +306,7 @@
           (define ptr (picture-recorder-canvas-ptr owner))
           (unless ptr (error who "picture recorder has no active canvas"))
           ptr]
+         [(pdf-page? owner) (pdf-page-pointer/checked who owner)]
          [else (error who "unsupported canvas owner")]))
      (apply proc cp ps))))
 
@@ -309,6 +314,280 @@
   (with-handlers ([exn? (lambda (e) (skia-close! v) (raise e))])
     (proc v)
     v))
+
+(provide document? make-pdf-document document-state document-page-count
+         document-begin-page! document-end-page! document-finish! document-abort!
+         document->pdf-bytes save-pdf
+         call-with-document-page with-document-page
+         call-with-pdf-bytes call-with-pdf-file)
+
+;; PDF documents ------------------------------------------------------------
+;; One owned handle releases the document before its borrowed output stream.
+;; The release closure captures storage, never the wrapper (no finalizer cycle).
+(struct pdf-storage ([stream #:mutable] [data #:mutable] [native-closed? #:mutable]))
+(struct document (handle storage [status #:mutable] [page #:mutable] [count #:mutable])
+  #:constructor-name make-document-record)
+;; Each begin-page gets a distinct token. In particular, an old canvas must
+;; NEVER become usable again when the same document starts its next page.
+(struct pdf-page (document pointer [floors #:mutable] [scoped? #:mutable]))
+
+(define (document-h who d)
+  (typed-handle who d document? document-handle "document?"))
+
+(define (document-state d)
+  (define h (document-h 'document-state d))
+  (if (owned-closed? h)
+      (if (eq? (document-status d) 'aborted) 'aborted 'closed)
+      (document-status d)))
+
+(define (document-page-count d)
+  (document-h 'document-page-count d)
+  (document-count d))
+
+(define (pdf-page-closed? p)
+  (define d (pdf-page-document p))
+  (or (owned-closed? (document-handle d))
+      (not (eq? p (document-page d)))))
+
+(define (pdf-page-pointer/checked who p)
+  (when (pdf-page-closed? p)
+    (error who "PDF page canvas is closed (page ended or document released)"))
+  (pdf-page-pointer p))
+
+(define (release-pdf-native! storage dp)
+  ;; An unfinished document is aborted rather than accidentally published by
+  ;; SkDocument's destructor. No file output or Racket callback occurs here.
+  (unless (pdf-storage-native-closed? storage)
+    (sk_document_abort dp)
+    (set-pdf-storage-native-closed?! storage #t))
+  (sk_document_unref dp)
+  (when (pdf-storage-data storage)
+    (sk_data_unref (pdf-storage-data storage))
+    (set-pdf-storage-data! storage #f))
+  (when (pdf-storage-stream storage)
+    (sk_dynamicmemorywstream_destroy (pdf-storage-stream storage))
+    (set-pdf-storage-stream! storage #f)))
+
+(define (call-with-pdf-metadata who fields creation modified dpi quality proc)
+  ;; AsDocumentPDFMetadata copies strings/timestamps by value. Keep all
+  ;; temporary SkStrings and date structs alive through that conversion.
+  (let loop ([remaining fields] [pointers '()])
+    (cond
+      [(null? remaining)
+       (define metadata
+         (apply make-sk-pdf-metadata
+                (append (reverse pointers) (list creation modified dpi #f quality))))
+       (begin0 (proc metadata)
+         (void/reference-sink creation modified metadata))]
+      [(zero? (bytes-length (car remaining)))
+       (loop (cdr remaining) (cons #f pointers))]
+      [else
+       (define bs (car remaining))
+       (call-with-native-temporary
+        who 'pdf-metadata-string
+        (lambda () (sk_string_new_with_copy bs (bytes-length bs)))
+        sk_string_destructor
+        (lambda (sp) (loop (cdr remaining) (cons sp pointers))))])))
+
+(define (make-pdf-document #:title [title ""] #:author [author ""]
+                           #:subject [subject ""] #:keywords [keywords ""]
+                           #:creator [creator "skia-for-racket"]
+                           #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                           #:creation-date [creation-date #f]
+                           #:modified-date [modified-date #f]
+                           #:raster-dpi [raster-dpi 144]
+                           #:encoding-quality [encoding-quality 101])
+  (define who 'make-pdf-document)
+  ;; Validate every public option before resolving or loading native code.
+  (define fields (pdf-metadata-bytes who (list title author subject keywords creator producer)))
+  (define creation (pdf-date-time who creation-date))
+  (define modified (pdf-date-time who modified-date))
+  (define dpi (pdf-raster-dpi who raster-dpi))
+  (define quality (pdf-encoding-quality who encoding-quality))
+  (skia-check!)
+  (define storage (pdf-storage #f #f #f))
+  (define hnd
+    (call-with-pdf-metadata
+     who fields creation modified dpi quality
+     (lambda (metadata)
+       (new-owned
+        who 'pdf-document
+        (lambda ()
+          (define sp (sk_dynamicmemorywstream_new))
+          (unless sp (error who "native PDF stream allocation failed"))
+          (set-pdf-storage-stream! storage sp)
+          (with-handlers ([(lambda (_) #t)
+                           (lambda (e)
+                             (sk_dynamicmemorywstream_destroy sp)
+                             (set-pdf-storage-stream! storage #f)
+                             (raise e))])
+            (define dp (sk_document_create_pdf_from_stream_with_metadata sp metadata))
+            (unless dp (error who "native PDF document allocation failed"))
+            dp))
+        (lambda (dp) (release-pdf-native! storage dp))))))
+  (make-document-record hnd storage 'open #f 0))
+
+(define (document-begin-page! d width height)
+  (define who 'document-begin-page!)
+  (define hnd (document-h who d))
+  (define w (pdf-page-dimension who width))
+  (define h (pdf-page-dimension who height))
+  (call-with-owned
+   who (list hnd)
+   (lambda (dp)
+     (unless (eq? (document-status d) 'open)
+       (error who "document must be open and between pages; state: ~a" (document-status d)))
+     (define cp (sk_document_begin_page dp w h #f))
+     (unless cp
+       ;; Native beginPage can enter its in-page state even when its canvas
+       ;; allocation fails. Do not leave a half-open document usable.
+       (set-document-status! d 'aborted)
+       (owned-close! who hnd)
+       (error who "native PDF page creation failed"))
+     (define page (pdf-page d cp '() #f))
+     (set-document-page! d page)
+     (set-document-status! d 'page)
+     (make-canvas-record page))))
+
+(define (end-document-page! who d expected scoped?)
+  (call-with-owned
+   who (list (document-h who d))
+   (lambda (dp)
+     (define page (document-page d))
+     (unless (and page (eq? (document-status d) 'page)
+                  (or (not expected) (eq? expected page)))
+       (error who "document has no matching active PDF page"))
+     (when (or (pair? (pdf-page-floors page))
+               (and (pdf-page-scoped? page) (not scoped?)))
+       (error who "cannot end a protected PDF page or canvas-state scope"))
+     (sk_document_end_page dp)
+     (set-document-page! d #f)
+     (set-document-status! d 'open)
+     (set-document-count! d (add1 (document-count d))))))
+
+(define (document-end-page! d)
+  (end-document-page! 'document-end-page! d #f #f))
+
+(define (document-finish! d)
+  (define who 'document-finish!)
+  (define hnd (document-h who d))
+  (call-with-owned
+   who (list hnd)
+   (lambda (dp)
+     (unless (eq? (document-status d) 'finished)
+       (unless (eq? (document-status d) 'open)
+         (error who "end the active PDF page before finishing the document"))
+       (unless (positive? (document-count d))
+         (error who "a PDF document must contain at least one completed page"))
+       (with-handlers ([(lambda (_) #t)
+                        (lambda (e)
+                          (set-document-status! d 'aborted)
+                          (owned-close! who hnd)
+                          (raise e))])
+         (define storage (document-storage d))
+         (sk_document_close dp)
+         (set-pdf-storage-native-closed?! storage #t)
+         (define data (sk_dynamicmemorywstream_detach_as_data (pdf-storage-stream storage)))
+         (unless data (error who "native PDF finalization returned no data"))
+         (set-pdf-storage-data! storage data)
+         (define n (sk_data_get_size data))
+         (unless (<= 1 n (current-skia-byte-limit))
+           (error who "PDF output size ~a is empty or exceeds current-skia-byte-limit (~a)"
+                  n (current-skia-byte-limit)))
+         (set-document-status! d 'finished)))))
+  (void))
+
+(define (document-abort! d)
+  (define hnd (document-h 'document-abort! d))
+  ;; owned-close! checks thread affinity even for an already-closed resource.
+  (owned-close! 'document-abort! hnd)
+  (set-document-page! d #f)
+  (set-document-status! d 'aborted)
+  (void))
+
+(define (document->pdf-bytes d)
+  (define who 'document->pdf-bytes)
+  (call-with-owned
+   who (list (document-h who d))
+   (lambda (_dp)
+     (unless (eq? (document-status d) 'finished)
+       (error who "document-finish! must succeed before reading PDF bytes"))
+     (copy-native-data who (pdf-storage-data (document-storage d))))))
+
+(define (save-pdf d filename #:exists [exists 'error])
+  (define target (pdf-output-path 'save-pdf filename exists))
+  (write-pdf-file-bytes! 'save-pdf (document->pdf-bytes d) target exists))
+
+(define (call-with-document-page d width height proc)
+  (define who 'call-with-document-page)
+  (document-h who d)
+  (pdf-page-dimension who width)
+  (pdf-page-dimension who height)
+  (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
+    (raise-argument-error who "procedure accepting one canvas argument" proc))
+  (define c #f)
+  (define completed? #f)
+  (call-with-continuation-barrier
+   (lambda ()
+     (dynamic-wind
+       (lambda ()
+         (parameterize-break #f
+           (set! c (document-begin-page! d width height))
+           (set-pdf-page-scoped?! (canvas-resource c) #t)))
+       (lambda ()
+         (call-with-values
+          (lambda () (proc c))
+          (lambda results
+            (parameterize-break #f
+              (end-document-page! who d (canvas-resource c) #t)
+              (set! completed? #t))
+            (apply values results))))
+       (lambda ()
+         ;; Includes arbitrary raised values, breaks, and continuation escapes.
+         ;; A partially authored page cannot silently become a successful PDF.
+         (unless completed? (document-abort! d)))))))
+
+(define-syntax-rule (with-document-page (canvas document width height) body ...)
+  (call-with-document-page document width height (lambda (canvas) body ...)))
+
+(define (call-with-pdf-bytes proc
+                             #:title [title ""] #:author [author ""]
+                             #:subject [subject ""] #:keywords [keywords ""]
+                             #:creator [creator "skia-for-racket"]
+                             #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                             #:creation-date [creation-date #f]
+                             #:modified-date [modified-date #f]
+                             #:raster-dpi [raster-dpi 144]
+                             #:encoding-quality [encoding-quality 101])
+  (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
+    (raise-argument-error 'call-with-pdf-bytes "procedure accepting one document argument" proc))
+  (with-skia ([d (make-pdf-document
+                 #:title title #:author author #:subject subject #:keywords keywords
+                 #:creator creator #:producer producer
+                 #:creation-date creation-date #:modified-date modified-date
+                 #:raster-dpi raster-dpi #:encoding-quality encoding-quality)])
+    (call-with-values (lambda () (proc d)) (lambda ignored (void)))
+    (document-finish! d)
+    (document->pdf-bytes d)))
+
+(define (call-with-pdf-file filename proc #:exists [exists 'error]
+                            #:title [title ""] #:author [author ""]
+                            #:subject [subject ""] #:keywords [keywords ""]
+                            #:creator [creator "skia-for-racket"]
+                            #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                            #:creation-date [creation-date #f]
+                            #:modified-date [modified-date #f]
+                            #:raster-dpi [raster-dpi 144]
+                            #:encoding-quality [encoding-quality 101])
+  ;; Freeze the destination before user code can change current-directory.
+  (define target (pdf-output-path 'call-with-pdf-file filename exists))
+  (define bs
+    (call-with-pdf-bytes
+     proc #:title title #:author author #:subject subject #:keywords keywords
+     #:creator creator #:producer producer
+     #:creation-date creation-date #:modified-date modified-date
+     #:raster-dpi raster-dpi #:encoding-quality encoding-quality))
+  (write-pdf-file-bytes! 'call-with-pdf-file bs target exists))
 
 (define (optional-color-space-h who cs)
   (cond [(not cs) #f]
@@ -1385,7 +1664,7 @@
        (lambda ()
          ;; Closing the owner in the body is permitted. Never touch a dangling
          ;; borrowed pointer during cleanup; the Racket bookkeeping still unwinds.
-         (unless (skia-closed? s)
+         (unless (skia-closed? c)
            (call-on-canvas 'call-with-canvas-state c '()
              (lambda (cp) (sk_canvas_restore_to_count cp old-count))))
          (set-owner-floors! s (cdr (owner-floors s))))))))

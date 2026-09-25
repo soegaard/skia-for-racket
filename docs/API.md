@@ -1,9 +1,70 @@
-# API reference — version 0.20.0
+# API reference — version 0.21.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+## PDF documents
+
+```racket
+(document? value)
+(make-pdf-document #:title [title ""] #:author [author ""]
+                   #:subject [subject ""] #:keywords [keywords ""]
+                   #:creator [creator "skia-for-racket"]
+                   #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                   #:creation-date [creation-date #f]
+                   #:modified-date [modified-date #f]
+                   #:raster-dpi [raster-dpi 144]
+                   #:encoding-quality [encoding-quality 101])
+(document-state document)              ; open, page, finished, aborted, closed
+(document-page-count document)         ; completed pages
+(document-begin-page! document width height) ; borrowed canvas?
+(document-end-page! document)
+(document-finish! document)
+(document-abort! document)
+(document->pdf-bytes document)          ; independent copy; requires finish
+(save-pdf document path #:exists [exists 'error]) ; requires finish
+(call-with-document-page document width height procedure)
+(with-document-page (canvas document width height) body ...)
+(call-with-pdf-bytes procedure <same metadata/encoding keywords as make-pdf-document>)
+(call-with-pdf-file path procedure #:exists [exists 'error]
+                    <same metadata/encoding keywords as make-pdf-document>)
+```
+
+A document is an owned `skia-resource?` supported by `with-skia`; page canvases
+are borrowed and must not be closed individually. Each page canvas expires
+permanently when its page ends or its document is released. All existing draw,
+clip, state, transform, text, image, and picture operations accept these canvases.
+Native PDF representation/fallback may differ from raster rendering.
+
+Page dimensions are finite reals in [0.001,14400], in points (72 per inch).
+Coordinates remain top-left/y-down. Begin requires an open document between
+pages; end requires an active page. Finish requires at least one completed page
+and no active page, and is idempotent until release. State/page-count queries
+are Racket-only and remain available after release. Other document operations
+that access native state are thread-confined. Abort releases and discards output;
+generic close aborts unfinished work and never writes a file implicitly.
+
+The page procedure receives a canvas; the PDF helper procedure receives a
+document. Page scopes preserve return values and end on success, but abort the
+document on exceptions, breaks, or continuation escapes. Manual end is prohibited
+inside a protected page or canvas-state scope. The byte/file helpers finish and
+release their documents automatically; their procedure's values are ignored.
+File helpers return void and publish through a same-directory temporary file
+only after drawing and finalization succeed. Existing-file policy is error or
+replace. No streaming port/native callback API is introduced.
+
+Metadata strings must be NUL-free; dates are `#f` or valid Racket `date?` values
+with year 1–9999, seconds 0–59, and integral-minute UTC offsets within +/-23:59.
+Subseconds are not represented. DPI is finite in [1,9600] and affects fallback
+rasterization, not page size. Encoding quality is an exact integer in [0,101];
+101 requests lossless output, while 0–100 allows JPEG for opaque images.
+PDF/A is not enabled. Metadata bytes, finalized output, and each copy are checked
+against `current-skia-byte-limit`, not Skia's total intermediate memory.
+
+See [PDF output](PDF-OUTPUT.md) for lifecycle details, limitations, and sources,
+and [PDF tests](PDF-TESTING.md) for native and visual verification.
 
 ## Animated codecs and encoded orientation
 

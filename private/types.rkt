@@ -2,6 +2,16 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;; Full sk_document_pdf_datetime_t and sk_document_pdf_metadata_t layouts.
+;; Metadata's C bool is one byte, followed by padding before encoding-quality.
+(define-cstruct _sk-pdf-datetime
+  ([zone-minutes _int16] [year _uint16] [month _uint8] [weekday _uint8]
+   [day _uint8] [hour _uint8] [minute _uint8] [second _uint8]))
+(define-cstruct _sk-pdf-metadata
+  ([title _pointer] [author _pointer] [subject _pointer] [keywords _pointer]
+   [creator _pointer] [producer _pointer] [creation _pointer] [modified _pointer]
+   [raster-dpi _float] [pdfa? _stdbool] [encoding-quality _int]))
+
 ;; These layouts match SkiaSharp v3.119.1's SkiaApi.generated.cs and
 ;; generated native structs.  Keep this module boring: the FFI boundary
 ;; depends on byte-for-byte agreement with the pinned native ABI.

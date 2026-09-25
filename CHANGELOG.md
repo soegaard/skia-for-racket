@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.21.0 — PDF document output
+
+- Added owned PDF documents and per-page borrowed canvases using the existing
+  drawing API. Ended page canvases stay invalid when later pages begin.
+- Added explicit begin/end/finish/abort operations, copied PDF bytes, safe file
+  publication, scoped page helpers, and multi-page convenience functions.
+- Added UTF-8 metadata, optional explicit dates, raster-fallback DPI, and native
+  lossless/JPEG image-quality policy. Page dimensions are fractional PDF points.
+- Document/stream/data lifetimes are released in order; unfinished documents are
+  aborted. Exceptions, breaks, and continuation escapes cannot publish partial
+  file output. PDF does not introduce native-to-Racket callbacks.
+- Added 12 pure and 21 native cases (252 total source cases), doctor coverage,
+  a C ABI mirror, a three-page visual probe with raster reference PNGs, and an
+  optional parser-based PDF inspector. Adds seven Skia symbols (247 total),
+  no HarfBuzz symbols (27 total), and two C layouts (metadata/timestamp).
+- Based on pushed 0.20 commit `ccabb4741edc227a1dbeba91a47adf5082d7417f`.
+  The user's 0.20 native suite and visual probe are green. This stage has source
+  and host-C checks only in the authoring environment; Racket/native/PDF visual
+  validation is still required. See `docs/PDF-TESTING.md`.
+
 ## 0.20.0 — advanced codecs
 
 - Added owned, thread-confined codecs with copied byte/file inputs, native

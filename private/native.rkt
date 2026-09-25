@@ -81,6 +81,17 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; Native PDF output. SkDocument borrows the stream and owns each page canvas.
+(define-native sk_document_create_pdf_from_stream_with_metadata
+  (_fun _pointer _sk-pdf-metadata-pointer -> _pointer))
+(define-native sk_document_begin_page
+  (_fun _pointer _float _float _pointer -> _pointer))
+(define-native sk_document_end_page (_fun _pointer -> _void))
+(define-native sk_document_close (_fun _pointer -> _void))
+(define-native sk_document_abort (_fun _pointer -> _void))
+(define-native sk_document_unref (_fun _pointer -> _void))
+(define-native sk_string_new_with_copy (_fun _bytes _size -> _pointer))
+
 ;; Immutable native data and codec inspection.
 (define-native sk_data_new_with_copy (_fun _bytes _size -> _pointer))
 (define-native sk_data_new_from_file (_fun _bytes -> _pointer))

@@ -1,5 +1,33 @@
 # Native ABI and ownership notes
 
+## PDF document ownership and layouts
+
+The PDF layer adds seven Skia symbols and no HarfBuzz symbols. Its C metadata
+layout has eight pointers, a float raster DPI, a one-byte bool, padding, and an
+int encoding quality: 80 bytes on the validated 64-bit C mirror. The timestamp
+contains int16 UTC-offset minutes, uint16 year, and six uint8 calendar/clock
+fields: 10 bytes. The corresponding Racket FFI layouts still require a host run.
+
+A single owned handle releases an unfinished document by aborting it, then
+unrefs the document, unrefs any detached output data, and destroys the native
+memory stream. The document borrows that stream. Finalization closes the native
+document and detaches its output into retained SkData; each public byte read
+copies the data. Native stream/data pointers never escape the public API.
+
+The metadata shim copies SkStrings and timestamps during construction; the
+wrapper scopes all temporary strings and keeps date structs alive through the
+call. No Racket port or pixel buffer is retained by a native document.
+
+Every page canvas has a fresh Racket validity token and retains its document.
+Native calls require both a live thread-confined document handle and the exact
+currently active page token. Ending a page invalidates its canvases permanently;
+starting another page cannot revive an earlier canvas, even if Skia reuses an
+address. Protected page/canvas scopes reject manual page-ending.
+
+See [PDF output](PDF-OUTPUT.md) for pinned source links and
+[PDF validation](PDF-TESTING.md) for ABI, native, structural, and visual checks.
+The version-specific sections below retain historical implementation notes.
+
 ## Version boundary
 
 The reference is the `v3.119.1` tag of SkiaSharp, especially the generated
@@ -200,14 +228,13 @@ font wrapper alive solely for blob lifetime.
 
 No native-to-Racket callbacks, custom streams invoking Racket callbacks,
 retained client pixel buffers, GPU contexts, arbitrary user native pointers,
-C++ exceptions, shaping engine, bidi
-reordering, paragraph layout, public color-space objects, public codec objects,
-or public shader-local matrices enter this binding. Version 0.4 exposes
-single-image encoded data through high-level copied byte/file operations; it
-does not expose incremental/scanline decode, animation frame decode, EXIF
-orientation normalization, or arbitrary encoder metadata. Version 0.6 exposes a
-focused filter subset but not crop rectangles, arithmetic/merge/morphology,
-displacement, convolution, lighting, table, or runtime-effect filter APIs.
+or C++ exception boundary enter the public API. Shaping, bidi/paragraph layout,
+color spaces, owned codecs, animated frames, orientation normalization, and PDF
+output are implemented above the private native layer. Incremental/scanline
+decoding, arbitrary encoder metadata, shader-local matrices, and full SVG
+output remain outside this release. The filter subset does not expose crop
+rectangles, arithmetic/merge/morphology, displacement, convolution, lighting,
+table, or runtime-effect filter APIs.
 
 Normal C library failures are converted to Racket exceptions where the ABI
 provides failure results; a native crash/abort cannot be caught as an ordinary

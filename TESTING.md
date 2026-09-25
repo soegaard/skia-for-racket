@@ -1,17 +1,21 @@
 # Testing
 
-## Current revision: 0.20 advanced codecs
+## Current stage: PDF output (0.21)
 
-The complete current command sequence is in
-[`docs/CODEC-TESTING.md`](docs/CODEC-TESTING.md). The 0.20 patch adds 27 cases:
-10 pure and 17 native. Expected totals are **64 pure + 6 lifetime + 149 native
-= 219 source test cases**. The full runner includes both new suites;
-`--pure` runs 70 pure/lifetime cases. Required symbols are 240 Skia and
-27 HarfBuzz. The new tests have **not** been executed in the authoring
-environment; fixture and host-C mirror validation are not native validation.
-Historical commands/counts below describe their named revision, not 0.20.
+The user's 0.20 run passed 219 source cases, native symbol audits, doctor,
+and the animation/orientation visual probe. The pushed baseline is
+`ccabb4741edc227a1dbeba91a47adf5082d7417f`.
 
-## Status
+The 0.21 PDF stage adds 12 pure and 21 native cases: **252 source cases** in
+seven suites (54 + 6 + 10 + 12 + 132 + 17 + 21). Required symbols are 247 Skia
+and 27 HarfBuzz. PDF ABI sizes on the current 64-bit target are metadata 80
+and timestamp 10 bytes. These are expected host results, not a claimed live run.
+
+Authoring checks are source/patch/host-C checks, not Racket compilation or
+native execution. No generated Skia PDF has been visually validated here.
+Run [the complete PDF validation sequence](docs/PDF-TESTING.md).
+
+## Historical validation notes
 
 **0.1 through 0.14 — LIVE VALIDATED on macOS/aarch64.** The latest live run
 used Racket 9.3.0.2 with pinned SkiaSharp 3.119.1 and HarfBuzzSharp 8.3.1.2.

@@ -1,21 +1,36 @@
-# Racket Skia — 0.20.0
+# Racket Skia — 0.21.0
 
-An experimental standalone CPU-rendering binding to Skia through the native
-SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
-Racket-level and keeps the unsafe ABI layer private.
+An experimental standalone CPU drawing and PDF-output binding to Skia through
+SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
+layer remains private.
 
-**Verification status:** versions 0.1 through 0.19 have been reported green on
-macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. This revision starts from the pushed 0.19 ICC-corrected baseline,
-`257517a5c9f561b075c2fff23dd3ccad3be39d9a`, and preserves that correction.
-The previous Unicode 15.1 conformance baseline remains **10274/10274
-LineBreakTest** and **91707/91707 BidiCharacterTest**; it is not a new 0.20 run.
+**Verification status:** the user has live-validated 0.20 on macOS/aarch64 with
+Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp 8.3.1.2: 219 source cases,
+both symbol audits, doctor, and the animation/orientation visual probe passed.
+This revision starts from `ccabb4741edc227a1dbeba91a47adf5082d7417f`.
+**0.21 has not been compiled or run against Racket/native Skia in the authoring
+environment.** See [PDF validation](docs/PDF-TESTING.md).
+The earlier Unicode 15.1 baseline remains 10274/10274 line-break and
+91707/91707 bidi-character cases; no new full conformance result is claimed.
 
-Version 0.20 adds owned codecs, fully composited GIF/WebP frame decoding,
-all eight encoded-orientation transforms, and frame/loop/color-space metadata.
-**The new Racket/native tests have not been run in the authoring environment.**
-See [the 0.20 validation instructions](docs/CODEC-TESTING.md) for the complete
-local build/test/doctor/visual sequence and the exact verification boundary.
+## PDF documents
+
+```racket
+(call-with-pdf-file
+ "example.pdf"
+ (lambda (doc)
+   (with-document-page (canvas doc 595.28 841.89)
+     (with-skia ([paint (make-paint #:color 'blue)])
+       (draw-circle canvas 100 120 40 paint))))
+ #:title "Example PDF" #:exists 'replace)
+```
+
+The same canvas drawing operations now target multi-page PDFs. Output can be
+copied to bytes or safely published to a file; metadata and fallback raster DPI
+are configurable. PDF page dimensions are points, not pixels. See the
+[PDF guide](docs/PDF-OUTPUT.md) and [API reference](docs/API.md#pdf-documents).
+`examples/pdf-documents.rkt` writes a three-page PDF and separate raster reference
+PNGs. Those PNGs are not PDF renderings; compare them with an actual PDF viewer.
 
 ## Animated frames and orientation
 
@@ -439,14 +454,13 @@ The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 
 ## Boundaries of this version
 
-No GPU/Metal/Vulkan support, text shaping/paragraph layout, SVG/PDF output,
-arbitrary matrix concat, shader-local matrices, advanced filter families/crop
-rectangles, font-manager/fallback API, animation-frame decoding, orientation
-normalization, public color-space/codec objects, or `dc<%>` compatibility is
-implemented.
-Encoded image support is currently high-level single-image decode/probe plus
-PNG/JPEG/WebP encode. Text remains the low-level simple-text/glyph layer;
-complex-script shaping and bidirectional layout require a later text layer.
+The library supports native PDF document output, shaped/paragraph/bidirectional
+text, font management, animated-frame decoding, encoded-orientation
+normalization, and owned color spaces/codecs. Full SVG document output,
+GPU/Metal/Vulkan contexts, arbitrary matrix concatenation, shader-local matrices,
+advanced filter families/crop rectangles, and a Skia-backed `dc<%>` remain outside
+the public API. PNG/JPEG/WebP are the exposed image encoders. PDF is an output
+backend, not a PDF reader/editor/renderer; see [PDF limits](docs/PDF-OUTPUT.md).
 
 Native resources are confined to the Racket thread that created them. The
 implementation rejects cross-thread drawing and explicit destruction.
