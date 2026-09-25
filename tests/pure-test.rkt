@@ -472,6 +472,15 @@
      (check-equal?
       (arabic-kashida-boundaries (string #\u0628 #\u200C #\u0628))
       '()))
+   (test-case "color-space validation does not require native loading"
+     (check-exn exn:fail:contract?
+                (lambda () (make-surface 1 1 #:color-space 'not-a-color-space)))
+     (check-exn exn:fail:contract?
+                (lambda ()
+                  (rgba-bytes->image 1 1 (bytes 0 0 0 255)
+                                     #:color-space 'not-a-color-space)))
+     (check-exn exn:fail?
+                (lambda () (color-space-from-icc-bytes #""))))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

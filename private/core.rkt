@@ -10,7 +10,11 @@
 (provide current-skia-byte-limit
          skia-resource? skia-closed? skia-close!
          call-with-skia-resource with-skia
-         surface? make-surface surface-width surface-height surface-canvas
+         color-space? make-srgb-color-space make-linear-srgb-color-space
+         color-space-from-icc-bytes color-space->icc-bytes
+         color-space-srgb? color-space-linear-gamma? color-space-gamma-close-to-srgb?
+         color-space=? color-space->linear-gamma color-space->srgb-gamma
+         surface? make-surface surface-width surface-height surface-canvas surface-color-space
          surface->rgba-bytes surface-pixel surface->png-bytes save-png
          canvas? canvas-clear! canvas-save! canvas-save-count
          canvas-restore! canvas-restore-to-count!
@@ -59,7 +63,7 @@
          path-measure? make-path-measure path-measure-set-path!
          path-measure-length path-measure-position+tangent
          path-measure-segment path-measure-next-contour! path-measure-closed?
-         image? image-width image-height image-color-type image-alpha-type
+         image? image-width image-height image-color-type image-alpha-type image-color-space
          surface-snapshot rgba-bytes->image image-from-bytes image-from-file
          image->rgba-bytes image-original-encoded-bytes
          image->png-bytes image->jpeg-bytes image->webp-bytes
@@ -127,6 +131,7 @@
 (struct color-filter (handle) #:constructor-name make-color-filter-record)
 (struct mask-filter (handle) #:constructor-name make-mask-filter-record)
 (struct image-filter (handle) #:constructor-name make-image-filter-record)
+(struct color-space (handle) #:constructor-name make-color-space-record)
 (struct picture (handle width height) #:constructor-name make-picture-record)
 (struct picture-recorder (handle [recording? #:mutable] [canvas-ptr #:mutable]
                                  [bounds #:mutable] [floors #:mutable])
@@ -176,7 +181,7 @@
 
 (define (skia-resource? v)
   (or (surface? v) (paint? v) (shader? v) (path-effect? v)
-      (color-filter? v) (mask-filter? v) (image-filter? v)
+      (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
       (picture? v) (picture-recorder? v)
       (skia-path? v) (path-measure? v) (image? v)
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
@@ -189,6 +194,7 @@
         [(color-filter? v) (color-filter-handle v)]
         [(mask-filter? v) (mask-filter-handle v)]
         [(image-filter? v) (image-filter-handle v)]
+        [(color-space? v) (color-space-handle v)]
         [(picture? v) (picture-handle v)]
         [(picture-recorder? v) (picture-recorder-handle v)]
         [(skia-path? v) (skia-path-handle v)]
@@ -245,6 +251,8 @@
   (typed-handle who v mask-filter? mask-filter-handle "mask-filter?"))
 (define (image-filter-h who v)
   (typed-handle who v image-filter? image-filter-handle "image-filter?"))
+(define (color-space-h who v)
+  (typed-handle who v color-space? color-space-handle "color-space?"))
 (define (picture-h who v) (typed-handle who v picture? picture-handle "picture?"))
 (define (picture-recorder-h who v)
   (typed-handle who v picture-recorder? picture-recorder-handle "picture-recorder?"))
@@ -301,18 +309,236 @@
     (proc v)
     v))
 
+(define (optional-color-space-h who cs)
+  (cond [(not cs) #f]
+        [(color-space? cs) (color-space-h who cs)]
+        [else (raise-argument-error who "(or/c #f color-space?)" cs)]))
+
+(define (wrap-owned-color-space who create)
+  (make-color-space-record
+   (new-owned who 'color-space create sk_colorspace_unref)))
+
+(define (make-ref-counted-singleton-color-space who getter)
+  (skia-check!)
+  (wrap-owned-color-space
+   who
+   (lambda ()
+     (define ptr (getter))
+     (when ptr (sk_colorspace_ref ptr))
+     ptr)))
+
+(define (make-srgb-color-space)
+  (make-ref-counted-singleton-color-space 'make-srgb-color-space
+                                          sk_colorspace_new_srgb))
+
+(define (make-linear-srgb-color-space)
+  (make-ref-counted-singleton-color-space 'make-linear-srgb-color-space
+                                          sk_colorspace_new_srgb_linear))
+
+(define (positive-profile-bytes who bs)
+  (unless (bytes? bs) (raise-argument-error who "bytes?" bs))
+  (define n (bytes-length bs))
+  (unless (positive? n)
+    (raise-arguments-error who "ICC profile bytes are empty" "bytes" bs))
+  (unless (<= n (current-skia-byte-limit))
+    (raise-arguments-error who "ICC profile exceeds current-skia-byte-limit"
+                           "profile bytes" n
+                           "limit" (current-skia-byte-limit)))
+  n)
+
+(define (color-space-from-icc-bytes bs)
+  (define who 'color-space-from-icc-bytes)
+  (define n (positive-profile-bytes who bs))
+  (skia-check!)
+  ;; skcms keeps pointers into the source buffer while the temporary profile is
+  ;; being parsed, so copy the bytes into native SKData for the duration of the
+  ;; parse. SkColorSpace::Make copies the resulting transfer function/matrix;
+  ;; neither the profile nor its backing bytes need to outlive construction.
+  (define data (sk_data_new_with_copy bs n))
+  (unless data (error who "native ICC data copy failed"))
+  (define profile (sk_colorspace_icc_profile_new))
+  (unless profile
+    (sk_data_unref data)
+    (error who "native ICC profile allocation failed"))
+  (dynamic-wind
+    void
+    (lambda ()
+      (define src (sk_data_get_data data))
+      (unless (and src (sk_colorspace_icc_profile_parse src n profile))
+        (error who "invalid or unsupported ICC profile"))
+      (define ptr (sk_colorspace_new_icc profile))
+      (unless ptr (error who "native color space rejected ICC profile"))
+      (wrap-owned-color-space who (lambda () ptr)))
+    (lambda ()
+      (sk_colorspace_icc_profile_delete profile)
+      (sk_data_unref data))))
+
+(define (icc-put-u16! out at n)
+  (bytes-set! out at (bitwise-and (arithmetic-shift n -8) #xff))
+  (bytes-set! out (+ at 1) (bitwise-and n #xff)))
+
+(define (icc-put-u32! out at n)
+  (bytes-set! out at (bitwise-and (arithmetic-shift n -24) #xff))
+  (bytes-set! out (+ at 1) (bitwise-and (arithmetic-shift n -16) #xff))
+  (bytes-set! out (+ at 2) (bitwise-and (arithmetic-shift n -8) #xff))
+  (bytes-set! out (+ at 3) (bitwise-and n #xff)))
+
+(define (icc-put-signature! out at text)
+  (define raw (string->bytes/utf-8 text))
+  (unless (= (bytes-length raw) 4)
+    (error 'color-space->icc-bytes "internal ICC signature is not four bytes: ~s" text))
+  (bytes-copy! out at raw))
+
+(define (icc-put-s15fixed16! out at x)
+  (define scaled (inexact->exact (round (* (exact->inexact x) 65536.0))))
+  (unless (<= (- (expt 2 31)) scaled (sub1 (expt 2 31)))
+    (error 'color-space->icc-bytes "ICC fixed-point value is out of range: ~a" x))
+  (icc-put-u32! out at (if (negative? scaled) (+ scaled (expt 2 32)) scaled)))
+
+(define (make-icc-xyz-tag x y z)
+  (define out (make-bytes 20 0))
+  (icc-put-signature! out 0 "XYZ ")
+  (icc-put-s15fixed16! out 8 x)
+  (icc-put-s15fixed16! out 12 y)
+  (icc-put-s15fixed16! out 16 z)
+  out)
+
+(define (make-icc-parametric-tag transfer)
+  ;; ICC parametricCurveType function 4 is exactly the seven-parameter form
+  ;; used by skcms/SkColorSpace: y=(a*x+b)^g+e above d, else c*x+f.
+  (define out (make-bytes 40 0))
+  (icc-put-signature! out 0 "para")
+  (icc-put-u16! out 8 4)
+  (for ([x (in-vector transfer)] [at (in-range 12 40 4)])
+    (icc-put-s15fixed16! out at x))
+  out)
+
+(define (align4 n) (bitwise-and (+ n 3) (bitwise-not 3)))
+
+(define (matrix+trc->icc-bytes transfer xyz)
+  ;; Minimal deterministic ICC v4 RGB monitor profile. The XYZ matrix returned
+  ;; by Skia is row-major RGB->XYZ(D50); ICC rXYZ/gXYZ/bXYZ tags are its columns.
+  (define tags
+    (list
+     (cons "rXYZ" (make-icc-xyz-tag (vector-ref xyz 0)
+                                     (vector-ref xyz 3)
+                                     (vector-ref xyz 6)))
+     (cons "gXYZ" (make-icc-xyz-tag (vector-ref xyz 1)
+                                     (vector-ref xyz 4)
+                                     (vector-ref xyz 7)))
+     (cons "bXYZ" (make-icc-xyz-tag (vector-ref xyz 2)
+                                     (vector-ref xyz 5)
+                                     (vector-ref xyz 8)))
+     (cons "wtpt" (make-icc-xyz-tag 0.9642 1.0 0.8249))
+     (cons "rTRC" (make-icc-parametric-tag transfer))
+     (cons "gTRC" (make-icc-parametric-tag transfer))
+     (cons "bTRC" (make-icc-parametric-tag transfer))))
+  (define table-end (+ 128 4 (* 12 (length tags))))
+  (define total
+    (+ table-end
+       (for/sum ([tag (in-list tags)])
+         (align4 (bytes-length (cdr tag))))))
+  (define out (make-bytes total 0))
+  ;; ICC header.
+  (icc-put-u32! out 0 total)
+  (icc-put-u32! out 8 #x04300000) ; ICC v4.3
+  (icc-put-signature! out 12 "mntr")
+  (icc-put-signature! out 16 "RGB ")
+  (icc-put-signature! out 20 "XYZ ")
+  ;; Fixed deterministic creation date: 2026-09-25 00:00:00.
+  (for ([n (in-list '(2026 9 25 0 0 0))] [at (in-range 24 36 2)])
+    (icc-put-u16! out at n))
+  (icc-put-signature! out 36 "acsp")
+  (icc-put-s15fixed16! out 68 0.9642)
+  (icc-put-s15fixed16! out 72 1.0)
+  (icc-put-s15fixed16! out 76 0.8249)
+  (icc-put-signature! out 80 "Rkt ")
+  ;; Tag table and aligned payloads.
+  (icc-put-u32! out 128 (length tags))
+  (let loop ([rest tags] [entry-at 132] [data-at table-end])
+    (unless (null? rest)
+      (define sig (caar rest))
+      (define payload (cdar rest))
+      (define n (bytes-length payload))
+      (icc-put-signature! out entry-at sig)
+      (icc-put-u32! out (+ entry-at 4) data-at)
+      (icc-put-u32! out (+ entry-at 8) n)
+      (bytes-copy! out data-at payload)
+      (loop (cdr rest) (+ entry-at 12) (+ data-at (align4 n)))))
+  out)
+
+(define (color-space->icc-bytes cs)
+  (define who 'color-space->icc-bytes)
+  (define hnd (color-space-h who cs))
+  (skia-check!)
+  (call-with-owned
+   who (list hnd)
+   (lambda (cp)
+     (define transfer-ptr (malloc (* 7 (ctype-sizeof _float)) 'atomic))
+     (define xyz-ptr (malloc (* 9 (ctype-sizeof _float)) 'atomic))
+     (unless (sk_colorspace_is_numerical_transfer_fn cp transfer-ptr)
+       (error who "color space has no numerical transfer function suitable for ICC export"))
+     (unless (sk_colorspace_to_xyzd50 cp xyz-ptr)
+       (error who "color space has no XYZ D50 matrix suitable for ICC export"))
+     (define transfer
+       (for/vector ([i (in-range 7)]) (ptr-ref transfer-ptr _float i)))
+     (define xyz
+       (for/vector ([i (in-range 9)]) (ptr-ref xyz-ptr _float i)))
+     (define out (matrix+trc->icc-bytes transfer xyz))
+     (unless (<= (bytes-length out) (current-skia-byte-limit))
+       (error who "ICC profile size ~a exceeds current-skia-byte-limit"
+              (bytes-length out)))
+     out)))
+
+(define (color-space-srgb? cs)
+  (define who 'color-space-srgb?)
+  (call-with-owned who (list (color-space-h who cs)) sk_colorspace_is_srgb))
+
+(define (color-space-linear-gamma? cs)
+  (define who 'color-space-linear-gamma?)
+  (call-with-owned who (list (color-space-h who cs)) sk_colorspace_gamma_is_linear))
+
+(define (color-space-gamma-close-to-srgb? cs)
+  (define who 'color-space-gamma-close-to-srgb?)
+  (call-with-owned who (list (color-space-h who cs)) sk_colorspace_gamma_close_to_srgb))
+
+(define (color-space=? a b)
+  (define who 'color-space=?)
+  (call-with-owned who (list (color-space-h who a) (color-space-h who b))
+                   sk_colorspace_equals))
+
+(define (color-space->linear-gamma cs)
+  (define who 'color-space->linear-gamma)
+  (define ptr
+    (call-with-owned who (list (color-space-h who cs)) sk_colorspace_make_linear_gamma))
+  (wrap-owned-color-space who (lambda () ptr)))
+
+(define (color-space->srgb-gamma cs)
+  (define who 'color-space->srgb-gamma)
+  (define ptr
+    (call-with-owned who (list (color-space-h who cs)) sk_colorspace_make_srgb_gamma))
+  (wrap-owned-color-space who (lambda () ptr)))
+
 ;; Surfaces -----------------------------------------------------------------
 
-(define (make-surface w h #:background [background 'transparent])
-  (check-dimensions 'make-surface w h)
+(define (make-surface w h #:background [background 'transparent]
+                      #:color-space [cs #f])
+  (define who 'make-surface)
+  (check-dimensions who w h)
   (define argb (color->argb background))
+  (define cs-hnd (optional-color-space-h who cs))
   (skia-check!)
+  (define ptr
+    (if cs-hnd
+        (call-with-owned
+         who (list cs-hnd)
+         (lambda (cp)
+           (sk_surface_new_raster
+            (make-sk-image-info cp w h rgba-8888 alpha-premul) 0 #f)))
+        (sk_surface_new_raster
+         (make-sk-image-info #f w h rgba-8888 alpha-premul) 0 #f)))
   (define hnd
-    (new-owned 'make-surface 'surface
-               (lambda ()
-                 (sk_surface_new_raster
-                  (make-sk-image-info #f w h rgba-8888 alpha-premul) 0 #f))
-               sk_surface_unref))
+    (new-owned who 'surface (lambda () ptr) sk_surface_unref))
   (initialize-resource
    (make-surface-record hnd w h '())
    (lambda (s) (canvas-clear! (surface-canvas s) argb))))
@@ -320,6 +546,9 @@
 (define (surface-canvas s)
   (call-with-owned 'surface-canvas (list (surface-h 'surface-canvas s))
                    (lambda (_) (make-canvas-record s))))
+
+(define (surface-color-space s)
+  (call-with-skia-resource (surface-snapshot s) image-color-space))
 
 ;; Pictures and recording ---------------------------------------------------
 
@@ -389,20 +618,25 @@
      (proc c)
      (picture-recorder-finish-recording! rec))))
 
-(define (surface->rgba-bytes s #:premultiplied? [premultiplied? #f])
-  (define hnd (surface-h 'surface->rgba-bytes s))
-  (boolean 'surface->rgba-bytes premultiplied?)
+(define (surface->rgba-bytes s #:premultiplied? [premultiplied? #f]
+                             #:color-space [cs #f])
+  (define who 'surface->rgba-bytes)
+  (define hnd (surface-h who s))
+  (boolean who premultiplied?)
+  (define cs-hnd (optional-color-space-h who cs))
   (define w (surface-width s))
   (define h (surface-height s))
-  (define out (make-bytes (check-dimensions 'surface->rgba-bytes w h)))
+  (define out (make-bytes (check-dimensions who w h)))
+  (define handles (if cs-hnd (list hnd cs-hnd) (list hnd)))
   (call-with-owned
-   'surface->rgba-bytes (list hnd)
-   (lambda (sp)
+   who handles
+   (lambda (sp . rest)
+     (define cp (and (pair? rest) (car rest)))
      (unless (sk_surface_read_pixels
-              sp (make-sk-image-info #f w h rgba-8888
+              sp (make-sk-image-info cp w h rgba-8888
                                      (if premultiplied? alpha-premul alpha-unpremul))
               out (* 4 w) 0 0)
-       (error 'surface->rgba-bytes "native pixel read failed"))))
+       (error who "native pixel read failed"))))
   out)
 
 (define (surface-pixel s x y)
@@ -3678,11 +3912,14 @@
                   (lambda () (sk_surface_new_image_snapshot sp)) sk_image_unref)
        (surface-width s) (surface-height s)))))
 
-(define (rgba-bytes->image w h pixels #:premultiplied? [premultiplied? #f])
-  (define n (check-dimensions 'rgba-bytes->image w h))
-  (boolean 'rgba-bytes->image premultiplied?)
+(define (rgba-bytes->image w h pixels #:premultiplied? [premultiplied? #f]
+                           #:color-space [cs #f])
+  (define who 'rgba-bytes->image)
+  (define n (check-dimensions who w h))
+  (boolean who premultiplied?)
+  (define cs-hnd (optional-color-space-h who cs))
   (unless (and (bytes? pixels) (= n (bytes-length pixels)))
-    (raise-arguments-error 'rgba-bytes->image "expected exactly width*height*4 RGBA bytes"
+    (raise-arguments-error who "expected exactly width*height*4 RGBA bytes"
                            "required length" n "pixels" pixels))
   ;; Invalid premultiplied input can violate native assumptions.
   (when premultiplied?
@@ -3691,16 +3928,23 @@
       (unless (and (<= (bytes-ref pixels i) a)
                    (<= (bytes-ref pixels (+ i 1)) a)
                    (<= (bytes-ref pixels (+ i 2)) a))
-        (error 'rgba-bytes->image "RGB exceeds alpha in premultiplied pixel ~a" (quotient i 4)))))
+        (error who "RGB exceeds alpha in premultiplied pixel ~a" (quotient i 4)))))
   (skia-check!)
+  (define ptr
+    (if cs-hnd
+        (call-with-owned
+         who (list cs-hnd)
+         (lambda (cp)
+           (sk_image_new_raster_copy
+            (make-sk-image-info cp w h rgba-8888
+                                (if premultiplied? alpha-premul alpha-unpremul))
+            pixels (* 4 w))))
+        (sk_image_new_raster_copy
+         (make-sk-image-info #f w h rgba-8888
+                             (if premultiplied? alpha-premul alpha-unpremul))
+         pixels (* 4 w))))
   (make-image-record
-   (new-owned 'rgba-bytes->image 'image
-              (lambda ()
-                (sk_image_new_raster_copy
-                 (make-sk-image-info #f w h rgba-8888
-                                     (if premultiplied? alpha-premul alpha-unpremul))
-                 pixels (* 4 w)))
-              sk_image_unref)
+   (new-owned who 'image (lambda () ptr) sk_image_unref)
    w h))
 
 (define (checked-file-data who filename)
@@ -3842,19 +4086,32 @@
              (call-with-owned who (list (image-h who im)) sk_image_get_alpha_type)
              alpha-type-values "alpha type"))
 
-(define (image->rgba-bytes im #:premultiplied? [premultiplied? #f])
-  (define hnd (image-h 'image->rgba-bytes im))
-  (boolean 'image->rgba-bytes premultiplied?)
+(define (image-color-space im)
+  (define who 'image-color-space)
+  ;; The pinned C shim returns image->refColorSpace().release(), i.e. a newly
+  ;; owned reference rather than a borrowed pointer.
+  (define ptr
+    (call-with-owned who (list (image-h who im)) sk_image_get_colorspace))
+  (and ptr (wrap-owned-color-space who (lambda () ptr))))
+
+(define (image->rgba-bytes im #:premultiplied? [premultiplied? #f]
+                           #:color-space [cs #f])
+  (define who 'image->rgba-bytes)
+  (define hnd (image-h who im))
+  (boolean who premultiplied?)
+  (define cs-hnd (optional-color-space-h who cs))
   (define w (image-width im))
   (define h (image-height im))
-  (define out (make-bytes (check-dimensions 'image->rgba-bytes w h)))
-  (call-with-owned 'image->rgba-bytes (list hnd)
-    (lambda (ip)
+  (define out (make-bytes (check-dimensions who w h)))
+  (define handles (if cs-hnd (list hnd cs-hnd) (list hnd)))
+  (call-with-owned who handles
+    (lambda (ip . rest)
+      (define cp (and (pair? rest) (car rest)))
       (unless (sk_image_read_pixels
-               ip (make-sk-image-info #f w h rgba-8888
+               ip (make-sk-image-info cp w h rgba-8888
                                       (if premultiplied? alpha-premul alpha-unpremul))
                out (* 4 w) 0 0 0)
-        (error 'image->rgba-bytes "native image pixel read failed"))))
+        (error who "native image pixel read failed"))))
   out)
 
 (define (call-with-image-pixmap who im proc)

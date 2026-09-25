@@ -21,13 +21,19 @@ lifetime, 124 native), the break-provider visual probe rendered correctly, and
 the full Unicode conformance run remained green at **10274/10274** line-break
 and **91707/91707** bidi-character cases.
 
-**0.18 script-aware justification — NOT YET LIVE RUN IN THE AUTHORING
-ENVIRONMENT.** CJK inter-character expansion, Arabic joining-data/kashida
-shaping, mixed-run distribution, tests, doctor coverage, and the visual example
-received source review here. The 0.18 tree contains **187 source test cases**:
-53 pure, 6 lifetime, and 128 native. It adds no native symbols or ABI structs.
+**0.18 script-aware justification — LIVE VALIDATED on macOS/aarch64.** The
+source/native suite and doctor probes are green, and the six-panel
+`script-justification.rkt` visual probe rendered correctly. The 0.18 tree has
+**187 source test cases**: 53 pure, 6 lifetime, and 128 native.
 
-## Checks performed for 0.18 source
+**0.19 color spaces and ICC color management — NOT YET LIVE RUN IN THE
+AUTHORING ENVIRONMENT.** The new owned color-space/ICC paths, tagged raster
+surfaces/images, conversion readback, tests, doctor probe, and visual example
+received source review here. The 0.19 tree contains **192 source test cases**:
+54 pure, 6 lifetime, and 132 native. It adds 16 Skia symbols, no HarfBuzz
+symbols, and no new native struct layouts.
+
+## Checks performed for 0.19 source
 
 Run `python3 tools/static-check.py` and the host-C layout command below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -55,7 +61,7 @@ part of the required live validation sequence for every added FFI binding.
 No benchmark, native-heap leak-measurement claim, cross-platform rendering-
 equivalence claim, or GPU claim is made by this report.
 
-## Run the 0.18 Racket tests locally
+## Run the 0.19 Racket tests locally
 
 From the extracted root:
 
@@ -74,14 +80,16 @@ mkdir -p output &&
 "$RACKET" examples/bidi-controls.rkt output/bidi-controls.png &&
 "$RACKET" examples/break-providers.rkt output/break-providers.png &&
 "$RACKET" examples/script-justification.rkt output/script-justification.png &&
+"$RACKET" examples/color-spaces.rkt output/color-spaces.png &&
 RACKET="$RACKET" bash tools/run-unicode-conformance.sh &&
 python3 tools/update-source-sums.py
 ```
 
-A successful rackunit/native run should report **53 pure + 6 lifetime + 128
-native = 187 source test cases**. Cases contain multiple assertions, so this is
-not an assertion count. The 0.18 doctor retains every earlier smoke check and
-additionally verifies CJK inter-character expansion and Arabic kashida shaping.
+A successful rackunit/native run should report **54 pure + 6 lifetime + 132
+native = 192 source test cases**. Cases contain multiple assertions, so this is
+not an assertion count. The 0.19 doctor retains every earlier smoke check and
+additionally verifies built-in color spaces, ICC round-tripping, tagged rasters,
+and sRGB/linear conversion readback.
 The separate conformance command must remain green at **10274/10274** line-break
 and **91707/91707** bidi-character cases.
 
@@ -91,7 +99,7 @@ To run only tests that do not need the native libraries:
 "$RACKET" run-tests.rkt --pure
 ```
 
-This requests the 59 pure/lifetime cases. It does not run the 128 native cases,
+This requests the 60 pure/lifetime cases. It does not run the 132 native cases,
 and says so. A default run fails rather than silently skipping native tests
 when the library cannot load. Alternatively, after installing the package:
 
@@ -142,8 +150,8 @@ distribution.
 The repeated allocation case is not a leak detector. The suite does not yet
 measure native heap reclamation directly, expose path-measure matrices or path
 iterators, validate 1D/2D stamped path effects, validate every encoded format,
-decode animation frames, normalize encoded orientation, exercise ICC/color
-space objects, expose advanced filter families/crop rectangles, ship a built-
+decode animation frames, normalize encoded orientation, inject ICC profiles into
+encoded output, expose custom RGB transfer/matrix spaces, or expose advanced filter families/crop rectangles, ship a built-
 in Southeast Asian dictionary or language-specific hyphenator, perform emergency
 breaking, language-specific Arabic kashida ranking/font-specific justification
 alternates, or test GPU resources.
@@ -164,6 +172,7 @@ mkdir -p output
 "$RACKET" examples/bidi-controls.rkt output/bidi-controls.png
 "$RACKET" examples/break-providers.rkt output/break-providers.png
 "$RACKET" examples/script-justification.rkt output/script-justification.png
+"$RACKET" examples/color-spaces.rkt output/color-spaces.png
 "$RACKET" examples/gradients.rkt output/gradients.png
 "$RACKET" examples/codecs.rkt output/codecs.png
 "$RACKET" examples/path-effects.rkt output/path-effects.png
@@ -307,3 +316,12 @@ Script-aware justification passed; CJK inter-character and Arabic kashida expans
 
 Version 0.18 adds no native bindings, so the expected symbol counts remain
 **27 HarfBuzz** and **221 Skia**, both with zero missing symbols.
+
+Expected additional doctor line for 0.19:
+
+```text
+Color management passed; sRGB/linear tagging, ICC round-trip, and conversion verified
+```
+
+Version 0.19 requires **237 Skia** symbols and **27 HarfBuzz** symbols, both
+with zero missing. It adds no native ABI structs.

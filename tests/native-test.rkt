@@ -1559,6 +1559,46 @@ third"))
        (check-true
         (for/or ([i (in-range 3 (bytes-length pixels) 4)])
           (> (bytes-ref pixels i) 0)))))
+   (test-case "sRGB and linear-sRGB color spaces expose gamma metadata"
+     (with-skia ([srgb (make-srgb-color-space)]
+                 [linear (make-linear-srgb-color-space)])
+       (check-true (color-space-srgb? srgb))
+       (check-true (color-space-gamma-close-to-srgb? srgb))
+       (check-true (color-space-linear-gamma? linear))
+       (check-false (color-space=? srgb linear))
+       (with-skia ([linear2 (color-space->linear-gamma srgb)]
+                   [srgb2 (color-space->srgb-gamma linear)])
+         (check-true (color-space=? linear linear2))
+         (check-true (color-space=? srgb srgb2)))))
+   (test-case "ICC profiles round-trip through owned color spaces"
+     (with-skia ([srgb (make-srgb-color-space)])
+       (define icc (color-space->icc-bytes srgb))
+       (check-true (> (bytes-length icc) 100))
+       (with-skia ([round (color-space-from-icc-bytes icc)])
+         (check-true (color-space-gamma-close-to-srgb? round))
+         (check-true (> (bytes-length (color-space->icc-bytes round)) 100)))))
+   (test-case "tagged raster images convert between sRGB and linear readback"
+     (with-skia ([srgb (make-srgb-color-space)]
+                 [linear (make-linear-srgb-color-space)]
+                 [im (rgba-bytes->image 1 1 (bytes 128 64 32 255)
+                                        #:color-space srgb)])
+       (with-skia ([ics (image-color-space im)])
+         (check-true (color-space=? ics srgb)))
+       (define linear-pixels (image->rgba-bytes im #:color-space linear))
+       (check-true (< (bytes-ref linear-pixels 0) 128))
+       (check-true (< (bytes-ref linear-pixels 1) 64))
+       (check-equal? (bytes-ref linear-pixels 3) 255)))
+   (test-case "surface color space survives snapshots and explicit readback"
+     (with-skia ([srgb (make-srgb-color-space)]
+                 [surface (make-surface 4 4 #:background "#808080"
+                                        #:color-space srgb)])
+       (with-skia ([scs (surface-color-space surface)]
+                   [snap (surface-snapshot surface)])
+         (check-true (color-space=? scs srgb))
+         (with-skia ([ics (image-color-space snap)])
+           (check-true (color-space=? ics srgb))))
+       (check-equal? (bytes-length (surface->rgba-bytes surface #:color-space srgb))
+                     (* 4 4 4))))
    (test-case "paragraph layout recognizes all Unicode hard line separators"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)]

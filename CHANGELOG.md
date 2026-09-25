@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.19.0 — color spaces and ICC color management
+
+- Added owned `color-space?` wrappers with sRGB and linear-sRGB constructors, gamma queries, equality, and transfer-function conversion helpers.
+- Added ICC profile import/export through byte strings, with native profile lifetime retained safely by ICC-created color spaces.
+- `make-surface` and `rgba-bytes->image` now accept `#:color-space`; snapshots preserve the tag and `surface-color-space` / `image-color-space` expose owned references.
+- `surface->rgba-bytes` and `image->rgba-bytes` accept a destination `#:color-space`, allowing Skia to perform CPU color conversion during readback.
+- Added doctor/native coverage and `examples/color-spaces.rkt`. Encoded-output ICC injection and custom RGB transfer/matrix constructors remain future work.
+- Adds 16 Skia C-ABI symbols and no HarfBuzz symbols or new native struct layouts.
+
 ## 0.18.0 — script-aware justification
 
 - Extended `justify` / `justify-all` from U+0020-only expansion to automatic script-aware opportunities.

@@ -93,7 +93,32 @@
 (define-native sk_codec_get_encoded_format (_fun _pointer -> _int))
 (define-native sk_codec_get_origin (_fun _pointer -> _int))
 (define-native sk_codec_get_frame_count (_fun _pointer -> _int))
+
+;; Ref-counted color spaces plus ICC profile helpers. The two built-in sRGB
+;; constructors return immortal singleton pointers; public wrappers take an
+;; explicit reference before treating them as owned resources.
+(define-native sk_colorspace_ref (_fun _pointer -> _void))
 (define-native sk_colorspace_unref (_fun _pointer -> _void))
+(define-native sk_colorspace_new_srgb (_fun -> _pointer))
+(define-native sk_colorspace_new_srgb_linear (_fun -> _pointer))
+(define-native sk_colorspace_is_srgb (_fun _pointer -> _stdbool))
+(define-native sk_colorspace_gamma_close_to_srgb (_fun _pointer -> _stdbool))
+(define-native sk_colorspace_gamma_is_linear (_fun _pointer -> _stdbool))
+(define-native sk_colorspace_equals (_fun _pointer _pointer -> _stdbool))
+(define-native sk_colorspace_make_linear_gamma (_fun _pointer -> _pointer))
+(define-native sk_colorspace_make_srgb_gamma (_fun _pointer -> _pointer))
+(define-native sk_colorspace_icc_profile_new (_fun -> _pointer))
+(define-native sk_colorspace_icc_profile_delete (_fun _pointer -> _void))
+(define-native sk_colorspace_icc_profile_parse
+  (_fun _pointer _size _pointer -> _stdbool))
+(define-native sk_colorspace_new_icc (_fun _pointer -> _pointer))
+;; SkColorSpace::toProfile populates an in-memory skcms profile but does not
+;; serialize ICC bytes. Query the numerical transfer function and D50 matrix
+;; instead; the Racket layer writes a compact matrix/TRC ICC profile.
+(define-native sk_colorspace_is_numerical_transfer_fn
+  (_fun _pointer _pointer -> _stdbool))
+(define-native sk_colorspace_to_xyzd50
+  (_fun _pointer _pointer -> _stdbool))
 
 ;; Stream access used by the HarfBuzz shaping bridge.
 (define-native sk_stream_asset_destroy (_fun _pointer -> _void))
@@ -391,6 +416,7 @@
 (define-native sk_image_get_height (_fun _pointer -> _int))
 (define-native sk_image_get_color_type (_fun _pointer -> _int))
 (define-native sk_image_get_alpha_type (_fun _pointer -> _int))
+(define-native sk_image_get_colorspace (_fun _pointer -> _pointer))
 (define-native sk_image_make_subset_raster
   (_fun _pointer _sk-irect-pointer -> _pointer))
 (define-native sk_image_make_raster_image (_fun _pointer -> _pointer))

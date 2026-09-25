@@ -381,4 +381,28 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "script-aware justification rasterization failed"))
     (printf "Script-aware justification passed; CJK inter-character and Arabic kashida expansion verified\n"))
+  (with-skia ([srgb (make-srgb-color-space)]
+              [linear (make-linear-srgb-color-space)]
+              [surface (make-surface 6 6 #:background "#808080" #:color-space srgb)]
+              [im (rgba-bytes->image 1 1 (bytes 128 64 32 255) #:color-space srgb)])
+    (unless (and (color-space-srgb? srgb)
+                 (color-space-linear-gamma? linear)
+                 (not (color-space=? srgb linear)))
+      (error 'doctor "built-in color spaces did not report expected gamma metadata"))
+    (define icc (color-space->icc-bytes srgb))
+    (unless (> (bytes-length icc) 100)
+      (error 'doctor "sRGB color space did not produce an ICC profile"))
+    (with-skia ([round (color-space-from-icc-bytes icc)]
+                [surface-cs (surface-color-space surface)]
+                [image-cs (image-color-space im)])
+      (unless (and (color-space-gamma-close-to-srgb? round)
+                   (color-space=? surface-cs srgb)
+                   (color-space=? image-cs srgb))
+        (error 'doctor "ICC or tagged color-space round-trip failed")))
+    (define linear-pixels (image->rgba-bytes im #:color-space linear))
+    (unless (and (< (bytes-ref linear-pixels 0) 128)
+                 (< (bytes-ref linear-pixels 1) 64)
+                 (= (bytes-ref linear-pixels 3) 255))
+      (error 'doctor "sRGB-to-linear pixel conversion failed"))
+    (printf "Color management passed; sRGB/linear tagging, ICC round-trip, and conversion verified\n"))
 )

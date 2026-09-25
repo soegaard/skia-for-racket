@@ -109,3 +109,12 @@ are the compatibility reference for this implementation.
   the existing HarfBuzz layer. CJK justification is implemented above shaping
   by distributing advance across adjacent Han/Hiragana/Katakana/Hangul grapheme
   and compatible visual-run boundaries; no new native entry points are added.
+
+- Version 0.19 color management uses the pinned SkiaSharp 3.119.1 generated
+  `sk_colorspace.h` bindings plus `SKColorSpace.cs`, `SKColorSpaceStructs.cs`,
+  `SKImageInfoNative`, and the image/surface C-ABI entry points. Built-in sRGB
+  values are native singletons, so the Racket wrapper acquires a reference
+  before adopting them. ICC import uses Skia's skcms parser. ICC export queries
+  Skia's numerical transfer function and XYZ D50 matrix and writes a compact
+  deterministic matrix/TRC ICC v4 profile in Racket; `SkColorSpace::toProfile`
+  itself produces semantic skcms fields, not a serialized ICC byte buffer.

@@ -1,7 +1,7 @@
 #lang info
 (define collection "skia")
-(define version "0.18.0")
-(define pkg-desc "Experimental standalone CPU Skia drawing, script-aware CJK/Arabic justification, pluggable segmentation and hyphenation hooks, full Unicode bidi controls, Unicode conformance tooling, paragraph justification, Unicode line breaking, mixed-script/bidi text layout, paragraph text layout, HarfBuzz shaping, font management/text blobs, expanded paths/SVG geometry, filters, pictures/recording, vector effects, text, shaders, and image codecs through the SkiaSharp C ABI")
+(define version "0.19.0")
+(define pkg-desc "Experimental standalone CPU Skia drawing, color-space and ICC color management, script-aware CJK/Arabic justification, pluggable segmentation and hyphenation hooks, full Unicode bidi controls, Unicode conformance tooling, paragraph justification, Unicode line breaking, mixed-script/bidi text layout, paragraph text layout, HarfBuzz shaping, font management/text blobs, expanded paths/SVG geometry, filters, pictures/recording, vector effects, text, shaders, and image codecs through the SkiaSharp C ABI")
 (define deps '(("base" #:version "8.7") "draw-lib"))
 (define build-deps '("rackunit-lib"))
 (define license 'MIT)

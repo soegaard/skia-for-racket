@@ -1,4 +1,4 @@
-# API reference — version 0.18.0
+# API reference — version 0.19.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -66,7 +66,7 @@ Do not interpret the milestone probe as full binary compatibility validation.
 
 ```racket
 (skia-resource? value)  ; surface, paint, shader, path-effect, color/mask/image filters,
-                        ; path, path-measure, image, font-manager, typeface,
+                        ; color-space, path, path-measure, image, font-manager, typeface,
                         ; font, text-blob; not borrowed canvas
 (skia-closed? resource-or-canvas)
 (skia-close! resource)
@@ -102,21 +102,25 @@ images. Metadata probing itself does not allocate a decoded pixel buffer.
 
 ```racket
 (surface? value)
-(make-surface width height #:background [color 'transparent])
+(make-surface width height #:background [color 'transparent]
+              #:color-space [color-space-or-false #f])
 (surface-width surface)
 (surface-height surface)
 (surface-canvas surface) ; borrowed canvas, shares the surface's graphics state
 (surface-pixel surface x y) ; one rgba value, exact pixel indices
-(surface->rgba-bytes surface #:premultiplied? [flag #f])
+(surface->rgba-bytes surface #:premultiplied? [flag #f]
+                       #:color-space [color-space-or-false #f])
 (surface->png-bytes surface #:compression [level 6])
 (save-png surface path #:exists [mode 'error] #:compression [level 6])
 ```
 
 A new surface is initialized to its background color; it never exposes
 uninitialized pixels. Internal storage is CPU RGBA8888 with premultiplied
-alpha and no explicit color-space object. Pixel readback copies data into
-ordinary Racket byte strings; default output is straight RGBA. Rows are
-contiguous with stride `4*width`, starting at the top row.
+alpha. `#:color-space #f` retains the original untagged behavior; supplying a
+`color-space?` associates that native color space with the raster. Pixel
+readback copies data into ordinary Racket byte strings; default output is
+straight RGBA. With `#:color-space`, readback converts into the requested
+destination space. Rows are contiguous with stride `4*width`.
 
 PNG is encoded by Skia's native PNG encoder, not `racket/draw`. Compression is
 an exact integer from 0 through 9. All PNG scanline filters are enabled. PNG
@@ -529,9 +533,12 @@ Skia's curve-measurement resolution; 1 is the native default.
 (image-height image)
 (image-color-type image)
 (image-alpha-type image)
+(image-color-space image)
 (surface-snapshot surface)
-(rgba-bytes->image width height pixels #:premultiplied? [flag #f])
-(image->rgba-bytes image #:premultiplied? [flag #f])
+(rgba-bytes->image width height pixels #:premultiplied? [flag #f]
+                   #:color-space [color-space-or-false #f])
+(image->rgba-bytes image #:premultiplied? [flag #f]
+                   #:color-space [color-space-or-false #f])
 ```
 
 Images expose immutable pixel content but are owned resources that must be
@@ -1255,6 +1262,42 @@ preceding its break. `'justify` and `'justify-all` distribute slack over
 script-appropriate opportunities after bidi/script/fallback segmentation:
 U+0020 word spaces, adjacent CJK grapheme/run boundaries, and Arabic cursive
 connections selected from Unicode 15.1 Joining_Type data. Arabic display runs
+
+## Color spaces and ICC profiles
+
+```racket
+(color-space? value)
+(make-srgb-color-space)
+(make-linear-srgb-color-space)
+(color-space-from-icc-bytes bytes)
+(color-space->icc-bytes color-space)
+(color-space-srgb? color-space)
+(color-space-linear-gamma? color-space)
+(color-space-gamma-close-to-srgb? color-space)
+(color-space=? left right)
+(color-space->linear-gamma color-space)
+(color-space->srgb-gamma color-space)
+(surface-color-space surface)
+(image-color-space image)
+```
+
+Color spaces are owned resources and follow the same close/thread rules as
+other native wrappers. The sRGB constructors safely acquire a reference to
+Skia's process-lifetime singleton before exposing an owned Racket wrapper.
+`surface-color-space` and `image-color-space` return a new owned reference or
+`#f` when the object is untagged.
+
+`color-space-from-icc-bytes` parses an ICC profile and keeps the corresponding
+native profile alive for the lifetime required by the created color space.
+`color-space->icc-bytes` serializes a native color space back to ICC bytes. Both
+copied profile directions obey `current-skia-byte-limit`.
+
+Passing `#:color-space` to `make-surface` or `rgba-bytes->image` tags the raster
+with that source space. Passing it to `surface->rgba-bytes` or
+`image->rgba-bytes` specifies the destination space and requests a native CPU
+conversion. Omitting it retains the earlier untagged/readback behavior. This
+stage does not add custom transfer-function/XYZ constructors or explicit ICC
+profile injection options to PNG/JPEG/WebP encoding.
 are reshaped with U+0640 TATWEEL while `mixed-text-line-text` and
 `mixed-text-run-text` retain the logical source text; exposed shaped-run cluster
 offsets are remapped to that logical UTF-8 text. The package does not ship

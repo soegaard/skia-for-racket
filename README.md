@@ -1,17 +1,16 @@
-# Racket Skia — 0.18.0
+# Racket Skia — 0.19.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.17 are live-validated on
+**Verification status:** versions 0.1 through 0.18 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. The completed 0.17 run passed both symbol audits, every doctor probe,
-all 182 source test cases (52 pure, 6 lifetime, 124 native), the break-provider
-visual probe, and the full Unicode 15.1 conformance inputs at **10274/10274
-LineBreakTest** and **91707/91707 BidiCharacterTest**. Version 0.18 adds
-script-aware justification and awaits the included live tests/doctor/visual
-probe. See [TESTING.md](TESTING.md).
+8.3.1.2. The completed 0.18 run passed the full source/native suite and the
+script-aware justification visual probe; the Unicode 15.1 conformance baseline
+remains **10274/10274 LineBreakTest** and **91707/91707 BidiCharacterTest**.
+Version 0.19 adds color-space/ICC support and awaits the included live symbol
+audit, doctor, tests, and visual probe. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -39,7 +38,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.18.0-20260925
+cd racket-skia-0.19.0-20260925
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -64,6 +63,7 @@ mkdir -p output &&
 "$RACKET" examples/bidi-controls.rkt output/bidi-controls.png &&
 "$RACKET" examples/break-providers.rkt output/break-providers.png &&
 "$RACKET" examples/script-justification.rkt output/script-justification.png &&
+"$RACKET" examples/color-spaces.rkt output/color-spaces.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -702,3 +702,17 @@ Arabic opportunities instead of assigning it to one script. The candidate
 selection is structural rather than a language-specific typographic ranking;
 font-specific `jalt` policies and editorial kashida preferences remain outside
 this stage.
+
+## Color spaces and ICC color management
+
+Version 0.19 adds explicit color-space metadata to the CPU image/surface path.
+`make-srgb-color-space` and `make-linear-srgb-color-space` expose owned wrappers
+around Skia's built-in spaces; gamma/equality helpers and transfer-function
+conversion keep the native color-space object behind the Racket API.
+
+ICC profiles can be imported from and exported to byte strings. Raster surfaces
+and copied RGBA images accept `#:color-space`; snapshots retain that tag.
+`surface->rgba-bytes` and `image->rgba-bytes` optionally take a destination
+color space, so Skia converts pixels during CPU readback instead of merely
+relabeling the channel bytes. Encoded-output ICC injection and arbitrary RGB
+transfer/matrix construction are not part of this stage.
