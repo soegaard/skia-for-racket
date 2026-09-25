@@ -2,19 +2,20 @@
 
 ## Status
 
-**0.1 through 0.13 — LIVE VALIDATED on macOS/aarch64.** The latest live run
+**0.1 through 0.14 — LIVE VALIDATED on macOS/aarch64.** The latest live run
 used Racket 9.3.0.2 with pinned SkiaSharp 3.119.1 and HarfBuzzSharp 8.3.1.2.
 Both symbol audits reported zero missing bindings (221 Skia, 27 HarfBuzz), every
-doctor probe passed, all **159** source test cases passed (42 pure, 6 lifetime,
-111 native), and the Unicode line-breaking visual probe rendered correctly.
+doctor probe passed, all **165** source test cases passed (43 pure, 6 lifetime,
+116 native), and the paragraph-justification visual probe rendered correctly.
 
-**0.14 paragraph justification — NOT YET LIVE RUN IN THE AUTHORING
-ENVIRONMENT.** The new `justify`/`justify-all` alignment paths, positioned-glyph
-space expansion for LTR/RTL/mixed text, tests, doctor probe, and visual example
-received source review here. The 0.14 tree contains **165 source test cases**:
-43 pure, 6 lifetime, and 116 native. It adds no native symbols or ABI structs.
+**0.15–0.16 Unicode conformance + explicit bidi controls — NOT YET LIVE RUN IN
+THE AUTHORING ENVIRONMENT.** The conformance parsers/runners, full explicit
+UAX #9 resolver, paragraph-wide wrapped-level integration, tests, doctor probes,
+and visual example received source review here. The 0.16 tree contains **175
+source test cases**: 50 pure, 6 lifetime, and 119 native. It adds no native
+symbols or ABI structs.
 
-## Checks performed for 0.14 source
+## Checks performed for 0.16 source
 
 Run `python3 tools/static-check.py` and the host-C layout command below to
 reproduce the non-Racket checks. The checker verifies balanced source strings
@@ -42,7 +43,7 @@ part of the required live validation sequence for every added FFI binding.
 No benchmark, native-heap leak-measurement claim, cross-platform rendering-
 equivalence claim, or GPU claim is made by this report.
 
-## Run the 0.14 Racket tests locally
+## Run the 0.16 Racket tests locally
 
 From the extracted root:
 
@@ -56,21 +57,27 @@ bash tools/audit-symbols.sh &&
 bash tools/audit-harfbuzz-symbols.sh &&
 "$RACO" make main.rkt bitmap.rkt tools/doctor.rkt run-tests.rkt &&
 "$RACKET" tools/doctor.rkt &&
-"$RACKET" run-tests.rkt
+"$RACKET" run-tests.rkt &&
+mkdir -p output &&
+"$RACKET" examples/bidi-controls.rkt output/bidi-controls.png &&
+RACKET="$RACKET" bash tools/run-unicode-conformance.sh &&
+python3 tools/update-source-sums.py
 ```
 
-A successful full run should report **43 pure + 6 lifetime + 116 native = 165
-source test cases**. Cases contain multiple assertions, so this is not an
-assertion count. The 0.14 doctor retains every earlier smoke check and additionally
-verifies justify/justify-all width expansion and rasterization.
+A successful rackunit/native run should report **50 pure + 6 lifetime + 119
+native = 175 source test cases**. Cases contain multiple assertions, so this is
+not an assertion count. The 0.16 doctor retains every earlier smoke check and
+additionally verifies conformance smoke vectors plus explicit embeddings,
+overrides, isolates, and wrapped directional scopes. The separate conformance
+command runs the complete pinned Unicode 15.1 upstream test inputs.
 
-To run only tests that do not need the native library:
+To run only tests that do not need the native libraries:
 
 ```sh
 "$RACKET" run-tests.rkt --pure
 ```
 
-This requests the 49 pure/lifetime cases. It does not run the 116 native cases,
+This requests the 56 pure/lifetime cases. It does not run the 119 native cases,
 and says so. A default run fails rather than silently skipping native tests
 when the library cannot load. Alternatively, after installing the package:
 
@@ -109,6 +116,9 @@ run drawing, shaped-run to TextBlob conversion, and closed-shaper rejection.
 Version 0.11 covers paragraph wrapping/alignment; 0.12 covers mixed bidi/script
 runs and font fallback; 0.13 covers Unicode 15.1 UAX #14 opportunities,
 grapheme-preserving breaks, hard separators, unspaced CJK, and punctuation.
+Version 0.14 covers inter-word justify/justify-all positioning; 0.15 adds the
+Unicode 15.1 conformance harness; 0.16 covers explicit embeddings, overrides,
+isolates, FSI, overflow handling, and scopes spanning wrapped lines.
 
 The repeated allocation case is not a leak detector. The suite does not yet
 measure native heap reclamation directly, expose path-measure matrices or path
@@ -131,6 +141,7 @@ mkdir -p output
 "$RACKET" examples/mixed-text.rkt output/mixed-text.png
 "$RACKET" examples/line-breaking.rkt output/line-breaking.png
 "$RACKET" examples/justification.rkt output/justification.png
+"$RACKET" examples/bidi-controls.rkt output/bidi-controls.png
 "$RACKET" examples/gradients.rkt output/gradients.png
 "$RACKET" examples/codecs.rkt output/codecs.png
 "$RACKET" examples/path-effects.rkt output/path-effects.png
@@ -145,7 +156,9 @@ FontManager/TextBlob layer. `shaping.rkt` covers Latin/RTL shaping and OpenType
 features; `mixed-text.rkt` covers bidi/script/fallback runs; and
 `line-breaking.rkt` covers CJK, punctuation, numeric context, grapheme clusters,
 hard separators, and no-break spaces; 0.14 covers LTR/RTL/mixed inter-word
-justification and justify-all final-line behavior.
+justification and justify-all final-line behavior. `bidi-controls.rkt` covers
+embeddings, overrides, isolates, FSI, and explicit scopes that span UAX #14
+wrapping.
 
 ## Reproduce non-Racket checks
 
@@ -160,6 +173,7 @@ bash -n tools/install-native.sh
 bash -n tools/install-harfbuzz.sh
 bash -n tools/audit-symbols.sh
 bash -n tools/audit-harfbuzz-symbols.sh
+bash -n tools/run-unicode-conformance.sh
 ```
 
 Successful static checks are not a substitute for the Racket/native run.
@@ -233,4 +247,20 @@ Paragraph justification passed; justify/justify-all positioning and drawing veri
 ```
 
 Version 0.14 adds no native bindings, so the expected symbol counts remain
+**27 HarfBuzz** and **221 Skia**, both with zero missing symbols.
+
+
+Expected additional doctor line for 0.15:
+
+```text
+Unicode conformance harness passed; line-break and bidi smoke vectors verified
+```
+
+Expected additional doctor line for 0.16:
+
+```text
+Explicit bidi controls passed; embeddings, overrides, isolates, and wrapped scopes verified
+```
+
+Versions 0.15–0.16 add no native bindings, so the expected symbol counts remain
 **27 HarfBuzz** and **221 Skia**, both with zero missing symbols.

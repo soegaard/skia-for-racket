@@ -2,7 +2,8 @@
 (require racket/list
          rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
-         "../private/bidi.rkt" "../private/line-break.rkt")
+         "../private/bidi.rkt" "../private/line-break.rkt"
+         "../private/unicode-conformance.rkt")
 (provide pure-tests)
 
 (define pure-tests
@@ -304,6 +305,92 @@
      (check-eq? direction 'rtl)
      (check-true (for/and ([i (in-range 3)]) (odd? (vector-ref levels i))))
      (check-true (for/and ([i (in-range 4 7)]) (even? (vector-ref levels i)))))
+   (test-case "Unicode conformance parsers accept official test syntax"
+     (define lb
+       (parse-line-break-test-line
+        "÷ 0041 × 0020 ÷ 0042 ÷ # Latin + space"))
+     (check-equal? (line-break-case-text lb) "A B")
+     (check-equal? (line-break-case-breaks lb) '(0 2 3))
+     (define bc
+       (parse-bidi-character-test-line
+        "05D0 0041; 2; 1; 1 2; 1 0 # Hebrew + Latin"))
+     (check-eq? (bidi-character-case-requested bc) 'auto)
+     (check-equal? (bidi-character-case-paragraph-level bc) 1)
+     (check-equal? (bidi-character-case-levels bc) '(1 2))
+     (check-equal? (bidi-character-case-reorder bc) '(1 0)))
+   (test-case "Unicode conformance smoke vectors pass"
+     (define lb-result
+       (run-line-break-conformance-port
+        (open-input-string "÷ 0041 × 0020 ÷ 0042 ÷\n")))
+     (check-equal? (unicode-conformance-result-total lb-result) 1)
+     (check-equal? (unicode-conformance-result-passed lb-result) 1)
+     (check-equal? (unicode-conformance-result-failures lb-result) '())
+     (define bidi-result
+       (run-bidi-character-conformance-port
+        (open-input-string "05D0 0041; 2; 1; 1 2; 1 0\n")))
+     (check-equal? (unicode-conformance-result-total bidi-result) 1)
+     (check-equal? (unicode-conformance-result-passed bidi-result) 1)
+     (check-equal? (unicode-conformance-result-failures bidi-result) '()))
+   (test-case "bidi explicit embeddings and overrides set nested levels"
+     (define rlo-text
+       (string #\A #\u202E #\B #\C #\u202C #\space #\D))
+     (define-values (rlo-levels rlo-dir)
+       (bidi-resolve-levels rlo-text 'ltr))
+     (check-eq? rlo-dir 'ltr)
+     (check-equal? (vector-ref rlo-levels 0) 0)
+     (check-equal? (vector-ref rlo-levels 2) 1)
+     (check-equal? (vector-ref rlo-levels 3) 1)
+     (check-equal? (vector-ref rlo-levels 6) 0)
+     (define lre-text
+       (string #\u05D0 #\u202A #\a #\b #\u202C))
+     (define-values (lre-levels lre-dir)
+       (bidi-resolve-levels lre-text 'rtl))
+     (check-eq? lre-dir 'rtl)
+     (check-equal? (vector-ref lre-levels 2) 2)
+     (check-equal? (vector-ref lre-levels 3) 2))
+   (test-case "bidi isolates protect surrounding paragraph direction"
+     (define text (string #\u2067 #\u05D0 #\u2069 #\A))
+     (define-values (levels direction) (bidi-resolve-levels text 'auto))
+     (check-eq? direction 'ltr)
+     (check-true (odd? (vector-ref levels 1)))
+     (check-equal? (vector-ref levels 3) 0))
+   (test-case "bidi FSI chooses direction from isolate contents"
+     (define rtl-isolate (string #\A #\u2068 #\u05D0 #\u2069 #\B))
+     (define-values (rtl-levels rtl-dir)
+       (bidi-resolve-levels rtl-isolate 'auto))
+     (check-eq? rtl-dir 'ltr)
+     (check-true (odd? (vector-ref rtl-levels 2)))
+     (define ltr-isolate
+       (string #\u05D0 #\u2068 #\a #\u2069 #\u05D1))
+     (define-values (ltr-levels outer-dir)
+       (bidi-resolve-levels ltr-isolate 'auto))
+     (check-eq? outer-dir 'rtl)
+     (check-equal? (vector-ref ltr-levels 2) 2))
+   (test-case "bidi X9 controls and overflow remain well-defined"
+     (check-true (bidi-x9-removed? #\u202A))
+     (check-true (bidi-x9-removed? #\u202C))
+     (check-false (bidi-x9-removed? #\u2067))
+     (check-false (bidi-x9-removed? #\u2069))
+     (define deep
+       (string-append (make-string 140 #\u202B)
+                      "A"
+                      (make-string 140 #\u202C)))
+     (define-values (levels _direction) (bidi-resolve-levels deep 'ltr))
+     (check-true
+      (for/and ([level (in-vector levels)]) (<= level 126))))
+   (test-case "bidi line-specific L1 resets trailing isolate formatting"
+     (define text
+       (string-append "A " (string #\u2067) "אב" (string #\u2069) "   B"))
+     (define first-line-end (sub1 (string-length text)))
+     (define-values (levels direction)
+       (bidi-resolve-levels text 'ltr
+                            #:line-breaks
+                            (list first-line-end (string-length text))))
+     (check-eq? direction 'ltr)
+     ;; The spaces immediately before the logical line end are reset to the
+     ;; paragraph level by L1 even though the preceding isolate is RTL.
+     (check-equal? (vector-ref levels (- first-line-end 1)) 0)
+     (check-equal? (vector-ref levels (- first-line-end 2)) 0))
    (test-case "mixed-layout arguments validate before native loading"
      (check-exn exn:fail:contract? (lambda () (layout-mixed-text 'bad 'also-bad 42)))
      (check-exn exn:fail:contract?

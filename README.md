@@ -1,17 +1,17 @@
-# Racket Skia — 0.14.0
+# Racket Skia — 0.16.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.13 are live-validated on
+**Verification status:** versions 0.1 through 0.14 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. The completed 0.13 run passed both native symbol audits (221 Skia and
-27 HarfBuzz bindings, zero missing), every doctor probe, all 159 source test
-cases (42 pure, 6 lifetime, 111 native), and the Unicode line-breaking visual
-probe. Version 0.14 adds inter-word paragraph justification; those new pure
-layout paths are source checked here and await the included live doctor, tests,
-and visual probe. See [TESTING.md](TESTING.md).
+8.3.1.2. The completed 0.14 run passed both native symbol audits (221 Skia and
+27 HarfBuzz bindings, zero missing), every doctor probe, all 165 source test
+cases (43 pure, 6 lifetime, 116 native), and the paragraph-justification visual
+probe. Versions 0.15–0.16 add Unicode conformance tooling and full UAX #9
+explicit-control handling; those new paths are source checked here and await the
+included local conformance/native/visual validation. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -39,7 +39,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.14.0-20260924
+cd racket-skia-0.16.0-20260925
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -61,6 +61,7 @@ mkdir -p output &&
 "$RACKET" examples/mixed-text.rkt output/mixed-text.png &&
 "$RACKET" examples/line-breaking.rkt output/line-breaking.png &&
 "$RACKET" examples/justification.rkt output/justification.png &&
+"$RACKET" examples/bidi-controls.rkt output/bidi-controls.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -611,10 +612,14 @@ fallback family (or `#f` for the base shaper). The layout is a pure Racket
 value but retains references to the caller-owned base shaper and font manager;
 both must remain live while drawing it.
 
-This stage handles the ordinary UAX #9 paragraph/weak/neutral/bracket/implicit
-rules used by natural mixed-language text. Explicit embedding, override, and
-isolate controls (`LRE/RLE/LRO/RLO/PDF/LRI/RLI/FSI/PDI`) are not interpreted;
-they are omitted from shaping.
+The mixed bidi resolver now implements ordinary UAX #9 resolution plus explicit
+embeddings, overrides, and isolates. `LRE/RLE/LRO/RLO/PDF` use the directional
+status stack; `LRI/RLI/FSI/PDI` use isolating run sequences, including FSI's
+first-strong direction rule and the specification's overflow limits. Formatting
+controls are omitted from HarfBuzz input after they have affected resolved
+levels. Paragraph levels are resolved before wrapping and line-specific L1 is
+reapplied after UAX #14 chooses visual line boundaries, so an explicit scope can
+span wrapped lines without being restarted.
 
 ## Unicode line breaking
 
@@ -643,3 +648,20 @@ boundaries. It expands only ordinary U+0020 inter-word spaces by shifting the
 already-positioned glyphs. NBSP/NNBSP, CJK inter-character expansion, general
 letter spacing, and Arabic kashida insertion are intentionally unchanged; those
 require script- or language-specific policies beyond this stage.
+
+## Unicode conformance tooling
+
+Version 0.15 adds a development-time harness for the official Unicode 15.1
+`LineBreakTest.txt` and `BidiCharacterTest.txt` corpora. The large upstream test
+files are not vendored. Run `tools/run-unicode-conformance.sh` to download the
+pinned files temporarily, or pass `--data-dir` to use an offline copy. The
+line-break runner filters expected opportunities inside default grapheme
+clusters to match this library's documented UAX #14 tailoring.
+
+## Explicit bidirectional controls
+
+Version 0.16 completes the explicit-control layer used by `layout-mixed-text`.
+Embeddings, overrides, isolates, FSI, overflow behavior, bracket resolution in
+isolating run sequences, and line-specific trailing resets are handled before
+script/font segmentation. The controls themselves remain formatting metadata
+and do not become drawable glyphs.

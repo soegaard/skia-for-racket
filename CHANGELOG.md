@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.16.0 — explicit Unicode bidi controls
+
+- `layout-mixed-text` now interprets UAX #9 explicit embeddings, overrides, and isolates: `LRE/RLE/LRO/RLO/PDF/LRI/RLI/FSI/PDI`.
+- Added the directional-status-stack rules, overflow handling through level 125, matching isolates, FSI direction selection, isolating run sequences, scoped bracket resolution, and line-specific L1 resets.
+- Explicit formatting controls remain zero-width and are removed before HarfBuzz shaping; their resolved paragraph levels are retained across UAX #14 wrapping so a directional scope may span visual lines.
+- Added pure resolver tests, native wrapped-scope/isolate tests, doctor coverage, and `examples/bidi-controls.rkt`.
+- No new Skia or HarfBuzz native symbols or ABI structs are required.
+
+## 0.15.0 — Unicode conformance hardening
+
+- Added a pure-Racket conformance harness for Unicode 15.1 `LineBreakTest.txt` and `BidiCharacterTest.txt`, including the library's documented default-grapheme-cluster line-break tailoring.
+- Added `tools/unicode-conformance.rkt` plus `tools/run-unicode-conformance.sh`, which can use an offline Unicode-data directory or fetch the pinned 15.1 test files from unicode.org.
+- Added parser/smoke-vector regression tests and a reproducible source-checksum updater.
+- The multi-megabyte Unicode test corpora are development inputs and are not vendored in the package.
+- No new native symbols or ABI structs are required.
+
 ## 0.14.0 — paragraph justification
 
 - Added `#:align 'justify` and `#:align 'justify-all` to `layout-text` and `layout-mixed-text`.

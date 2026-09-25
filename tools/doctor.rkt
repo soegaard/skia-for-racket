@@ -1,5 +1,6 @@
 #lang racket/base
-(require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt")
+(require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
+         "../private/bidi.rkt" "../private/unicode-conformance.rkt")
 (module+ main
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
@@ -251,4 +252,56 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "justified layout rasterization failed"))
     (printf "Paragraph justification passed; justify/justify-all positioning and drawing verified\n"))
+  (define line-break-conformance-smoke
+    (run-line-break-conformance-port
+     (open-input-string "÷ 0041 × 0020 ÷ 0042 ÷\n")))
+  (define bidi-conformance-smoke
+    (run-bidi-character-conformance-port
+     (open-input-string "05D0 0041; 2; 1; 1 2; 1 0\n")))
+  (unless (and (= (unicode-conformance-result-passed line-break-conformance-smoke) 1)
+               (= (unicode-conformance-result-passed bidi-conformance-smoke) 1)
+               (null? (unicode-conformance-result-failures line-break-conformance-smoke))
+               (null? (unicode-conformance-result-failures bidi-conformance-smoke)))
+    (error 'doctor "Unicode conformance smoke vectors failed"))
+  (printf "Unicode conformance harness passed; line-break and bidi smoke vectors verified\n")
+  (with-skia ([fm (default-font-manager)]
+              [tf (make-typeface)]
+              [font (make-font tf #:size 24)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 300 170)])
+    (define overridden
+      (layout-mixed-text
+       sh fm
+       (string-append (string #\u202E)
+                      "alpha beta gamma delta epsilon"
+                      (string #\u202C))
+       #:width 160))
+    (unless (and (> (mixed-text-layout-line-count overridden) 1)
+                 (for/and ([line (in-list (mixed-text-layout-lines overridden))])
+                   (for/and ([run (in-list (mixed-text-line-runs line))]
+                             #:when (regexp-match? #rx"[A-Za-z]"
+                                                   (mixed-text-run-text run)))
+                     (eq? (mixed-text-run-direction run) 'rtl))))
+      (error 'doctor "explicit RLO did not survive wrapped mixed layout"))
+    (define isolated
+      (layout-mixed-text
+       sh fm
+       (string-append "before " (string #\u2067) "שלום"
+                      (string #\u2069) " after")
+       #:width 260))
+    (unless (and (eq? (mixed-text-line-direction
+                       (car (mixed-text-layout-lines isolated)))
+                      'ltr)
+                 (for/or ([run (in-list
+                                (mixed-text-line-runs
+                                 (car (mixed-text-layout-lines isolated))))])
+                   (eq? (mixed-text-run-direction run) 'rtl)))
+      (error 'doctor "explicit isolate did not preserve outer paragraph direction"))
+    (draw-mixed-text-layout (surface-canvas surface) overridden 10 8 paint)
+    (define pixels (surface->rgba-bytes surface))
+    (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+              (> (bytes-ref pixels i) 0))
+      (error 'doctor "explicit-bidi rasterization failed"))
+    (printf "Explicit bidi controls passed; embeddings, overrides, isolates, and wrapped scopes verified\n"))
 )

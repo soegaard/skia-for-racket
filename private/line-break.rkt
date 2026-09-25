@@ -372,7 +372,7 @@ LINEBREAK-DATA
 )
 
 (struct lb-range (lo hi class) #:transparent)
-(struct lb-cluster (start end first last raw class) #:transparent)
+(struct lb-cluster (start end first last raw leading-class class ri-count) #:transparent)
 (struct line-break-opportunity (index kind) #:transparent)
 
 (define line-break-ranges
@@ -460,6 +460,15 @@ LINEBREAK-DATA
 (define (hard-class? c) (and c (memq c hard-classes) #t))
 (define (class-in? c xs) (and c (memq c xs) #t))
 
+(define (resolve-lb9/lb10-class ch previous-class)
+  (define resolved (line-break-class ch))
+  (if (memq resolved '(CM ZWJ))
+      (if (and previous-class
+               (not (class-in? previous-class '(BK CR LF NL SP ZW))))
+          previous-class
+          'AL)
+      resolved))
+
 (define (make-clusters text)
   (define n (string-length text))
   (let loop ([i 0] [previous-class #f] [out '()])
@@ -471,22 +480,37 @@ LINEBREAK-DATA
        (define first (string-ref text i))
        (define last (string-ref text (sub1 end)))
        (define raw (raw-line-break-class first))
-       (define resolved (line-break-class first))
-       ;; LB9/LB10: combining marks and ZWJ inherit the previous line-break
-       ;; class except after hard breaks, spaces, or ZW. A leading one is AL.
-       (define effective
-         (if (memq resolved '(CM ZWJ))
-             (if (and previous-class
-                      (not (class-in? previous-class '(BK CR LF NL SP ZW))))
-                 previous-class
-                 'AL)
-             resolved))
-       (loop end effective
-             (cons (lb-cluster i end first last raw effective) out))])))
+       ;; The grapheme-preserving tailoring suppresses boundaries *inside* a
+       ;; default grapheme cluster, but UAX #14 class resolution still happens
+       ;; code point by code point. Keep both the class entering the cluster and
+       ;; the class leaving it. They differ for cases such as SP + CM, where
+       ;; LB10 resolves the trailing CM to AL.
+       (define leading-class
+         (resolve-lb9/lb10-class first previous-class))
+       (define trailing-class
+         (for/fold ([prev previous-class]) ([j (in-range i end)])
+           (resolve-lb9/lb10-class (string-ref text j) prev)))
+       ;; Default grapheme segmentation pairs regional indicators, while LB30a
+       ;; counts RI code points. Preserve the represented RI count explicitly.
+       (define ri-count
+         (for/sum ([j (in-range i end)])
+           (if (eq? (line-break-class (string-ref text j)) 'RI) 1 0)))
+       (loop end trailing-class
+             (cons (lb-cluster i end first last raw
+                               leading-class trailing-class ri-count)
+                   out))])))
 
 (define (cluster-class clusters i)
+  ;; Class at the *end* of the tailored grapheme cluster. This is the class
+  ;; visible when the cluster is to the left of a candidate boundary.
   (and (<= 0 i) (< i (vector-length clusters))
        (lb-cluster-class (vector-ref clusters i))))
+
+(define (cluster-leading-class clusters i)
+  ;; Class at the *start* of the tailored grapheme cluster. This is the class
+  ;; visible when the cluster is to the right of a candidate boundary.
+  (and (<= 0 i) (< i (vector-length clusters))
+       (lb-cluster-leading-class (vector-ref clusters i))))
 
 (define (cluster-raw clusters i)
   (and (<= 0 i) (< i (vector-length clusters))
@@ -509,7 +533,8 @@ LINEBREAK-DATA
 (define (regional-indicators-before clusters boundary)
   (let loop ([i (sub1 boundary)] [count 0])
     (if (and (>= i 0) (eq? (cluster-class clusters i) 'RI))
-        (loop (sub1 i) (add1 count))
+        (loop (sub1 i)
+              (+ count (lb-cluster-ri-count (vector-ref clusters i))))
         count)))
 
 (define (opening-pi-sequence? clusters boundary)
@@ -526,9 +551,9 @@ LINEBREAK-DATA
   ;; LB15b: × [Pf&QU] (... | eot)
   (define n (vector-length clusters))
   (and (< boundary n)
-       (eq? (cluster-class clusters boundary) 'QU)
+       (eq? (cluster-leading-class clusters boundary) 'QU)
        (eq? (char-general-category (cluster-first clusters boundary)) 'pf)
-       (let ([after (cluster-class clusters (add1 boundary))])
+       (let ([after (cluster-leading-class clusters (add1 boundary))])
          (or (not after)
              (class-in? after '(SP GL WJ CL QU CP EX IS SY BK CR LF NL ZW))))))
 
@@ -536,27 +561,87 @@ LINEBREAK-DATA
   (define ch (cluster-first clusters i))
   (and ch (= (char->integer ch) #x25CC)))
 
-(define (aksara-or-dotted? clusters i [allow-as? #t])
-  (define c (cluster-class clusters i))
+(define (cluster-start-aksara-or-dotted? clusters i [allow-as? #t])
+  ;; Inspect the class entering a tailored grapheme cluster. This is needed for
+  ;; LB28a because VI/VF and combining marks can be absorbed into the same
+  ;; default grapheme cluster as the base they modify.
+  (define c (cluster-leading-class clusters i))
   (or (eq? c 'AK)
       (and allow-as? (eq? c 'AS))
       (dotted-circle? clusters i)))
 
+(define (cluster-end-aksara-or-dotted? clusters i [allow-as? #t])
+  ;; Inspect the class leaving the cluster. A DOTTED CIRCLE followed only by
+  ;; combining marks still ends as AL after LB9/LB10; if the cluster ends in a
+  ;; virama, it must not also masquerade as the base for the preceding term.
+  (define c (cluster-class clusters i))
+  (or (eq? c 'AK)
+      (and allow-as? (eq? c 'AS))
+      (and (dotted-circle? clusters i) (eq? c 'AL))))
+
 (define (brahmic-no-break? clusters boundary)
   ;; LB28a uses U+25CC DOTTED CIRCLE literally; the [◌] notation in UAX #14
-  ;; is not the CM line-break class.
-  (define a (cluster-class clusters (sub1 boundary)))
-  (define b (cluster-class clusters boundary))
-  (or (and (eq? a 'AP)
-           (aksara-or-dotted? clusters boundary))
-      (and (aksara-or-dotted? clusters (sub1 boundary))
-           (class-in? b '(VF VI)))
-      (and (eq? a 'VI)
-           (aksara-or-dotted? clusters (- boundary 2))
-           (aksara-or-dotted? clusters boundary #f))
-      (and (aksara-or-dotted? clusters (sub1 boundary))
-           (aksara-or-dotted? clusters boundary)
-           (eq? (cluster-class clusters (add1 boundary)) 'VF))))
+  ;; is not the CM line-break class. The grapheme-preserving tailoring can fold
+  ;; a base+VI or base+VF sequence into one cluster, so match both across and
+  ;; inside adjacent tailored clusters.
+  (define left (sub1 boundary))
+  (define a (cluster-class clusters left))
+  (define b (cluster-leading-class clusters boundary))
+  (or
+   ;; AP × (AK | [◌] | AS)
+   (and (eq? a 'AP)
+        (cluster-start-aksara-or-dotted? clusters boundary))
+   ;; (AK | [◌] | AS) × (VF | VI)
+   (and (cluster-end-aksara-or-dotted? clusters left)
+        (class-in? b '(VF VI)))
+   ;; (AK | [◌] | AS) VI × (AK | [◌]). VI may be its own cluster or
+   ;; may be the trailing class of the base cluster.
+   (and (eq? a 'VI)
+        (or (cluster-start-aksara-or-dotted? clusters left)
+            (cluster-end-aksara-or-dotted? clusters (- boundary 2)))
+        (cluster-start-aksara-or-dotted? clusters boundary #f))
+   ;; (AK | [◌] | AS) × (AK | [◌] | AS) VF. VF may be absorbed into
+   ;; the right-hand base cluster or may begin the following cluster.
+   (and (cluster-end-aksara-or-dotted? clusters left)
+        (cluster-start-aksara-or-dotted? clusters boundary)
+        (or (eq? (cluster-class clusters boundary) 'VF)
+            (eq? (cluster-leading-class clusters (add1 boundary)) 'VF)))))
+
+(define (numeric-tail-chain-before? clusters boundary [allow-close? #f])
+  ;; UAX #14 15.1 LineBreakTest uses the Example 7 numeric-expression
+  ;; tailoring.  Look left from a boundary for
+  ;;   NU (NU | SY | IS)* (CL | CP)?
+  ;; with the final close punctuation enabled only for the rule before PO/PR.
+  (define start
+    (let ([i (sub1 boundary)])
+      (if (and allow-close? (class-in? (cluster-class clusters i) '(CL CP)))
+          (sub1 i)
+          i)))
+  (let loop ([i start])
+    (cond
+      [(negative? i) #f]
+      [(eq? (cluster-class clusters i) 'NU) #t]
+      [(class-in? (cluster-class clusters i) '(SY IS)) (loop (sub1 i))]
+      [else #f])))
+
+(define (numeric-tail-no-break? clusters boundary)
+  ;; Example 7 replaces LB25 with a direct numeric-expression tailoring:
+  ;;   (PR|PO) × (OP|HY)? NU
+  ;;   (OP|HY) × NU
+  ;;   NU × (NU|SY|IS)
+  ;;   NU (NU|SY|IS)* × (NU|SY|IS|CL|CP)
+  ;;   NU (NU|SY|IS)* (CL|CP)? × (PO|PR)
+  (define l (cluster-class clusters (sub1 boundary)))
+  (define r (cluster-leading-class clusters boundary))
+  (define after-r (cluster-leading-class clusters (add1 boundary)))
+  (or (and (class-in? l '(PR PO))
+           (or (eq? r 'NU)
+               (and (class-in? r '(OP HY)) (eq? after-r 'NU))))
+      (and (class-in? l '(OP HY)) (eq? r 'NU))
+      (and (class-in? r '(NU SY IS CL CP))
+           (numeric-tail-chain-before? clusters boundary))
+      (and (class-in? r '(PO PR))
+           (numeric-tail-chain-before? clusters boundary #t))))
 
 (define (boundary-kind clusters boundary)
   ;; boundary is between clusters boundary-1 and boundary.  Rules are ordered
@@ -567,7 +652,7 @@ LINEBREAK-DATA
     [(= boundary n) 'mandatory]                              ; LB3
     [else
      (define l (cluster-class clusters (sub1 boundary)))
-     (define r (cluster-class clusters boundary))
+     (define r (cluster-leading-class clusters boundary))
      (define lraw (cluster-raw clusters (sub1 boundary)))
      (define rraw (cluster-raw clusters boundary))
      (define before-l (cluster-class clusters (- boundary 2)))
@@ -587,13 +672,22 @@ LINEBREAK-DATA
        ;; LB8a uses the pre-LB9 class.
        [(eq? (raw-line-break-class (cluster-last clusters (sub1 boundary))) 'ZWJ)
         'prohibited]
+       ;; LB9. A combining mark/ZWJ inherits the preceding eligible class, but
+       ;; the boundary before that mark remains prohibited even when the mark
+       ;; starts a separate default grapheme cluster (for example U+0001 in
+       ;; the Unicode conformance corpus).
+       [(and (memq rraw '(CM ZWJ))
+             (not (class-in? l '(BK CR LF NL SP ZW))))
+        'prohibited]
        ;; LB11
        [(or (eq? l 'WJ) (eq? r 'WJ)) 'prohibited]
        ;; LB12/LB12a
        [(eq? l 'GL) 'prohibited]
        [(and (eq? r 'GL) (not (memq l '(SP BA HY)))) 'prohibited]
-       ;; LB13
-       [(memq r '(CL CP EX IS SY)) 'prohibited]
+       ;; LB13, tailored as required by UAX #14 Example 7. Numeric
+       ;; punctuation after NU is deferred to the numeric-expression rule.
+       [(eq? r 'EX) 'prohibited]
+       [(and (memq r '(CL CP IS SY)) (not (eq? l 'NU))) 'prohibited]
        ;; LB14
        [(eq? last-non-space-class 'OP) 'prohibited]
        ;; LB15a/LB15b
@@ -625,12 +719,10 @@ LINEBREAK-DATA
        ;; LB24
        [(and (memq l '(PR PO)) (memq r '(AL HL))) 'prohibited]
        [(and (memq l '(AL HL)) (memq r '(PR PO))) 'prohibited]
-       ;; LB25
-       [(or (and (memq l '(CL CP NU)) (memq r '(PO PR)))
-            (and (memq l '(PO PR)) (memq r '(OP NU)))
-            (and (memq l '(HY IS SY)) (eq? r 'NU))
-            (and (eq? l 'NU) (eq? r 'NU)))
-        'prohibited]
+       ;; LB25 is replaced by the recommended Example 7 regular-expression
+       ;; numeric tailoring. Unicode 15.1 LineBreakTest.txt is defined against
+       ;; this tailoring rather than the default pairwise approximation.
+       [(numeric-tail-no-break? clusters boundary) 'prohibited]
        ;; LB26
        [(and (eq? l 'JL) (memq r '(JL JV H2 H3))) 'prohibited]
        [(and (memq l '(JV H2)) (memq r '(JV JT))) 'prohibited]

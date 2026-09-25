@@ -1,7 +1,7 @@
 #lang racket/base
 (require rackunit rackunit/text-ui racket/file racket/class racket/list
          (except-in racket/draw make-font)
-         "../main.rkt" "../bitmap.rkt")
+         "../main.rkt" "../bitmap.rkt" "../private/bidi.rkt")
 (provide native-tests)
 
 (define white (rgb 255 255 255))
@@ -1234,6 +1234,66 @@ third"))
                    [p (make-paint #:color 'black)])
          (check-exn #rx"closed"
                     (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 p))))))
+   (test-case "mixed text interprets explicit overrides and omits controls"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 26)]
+                 [sh (make-shaper f)])
+       (define text
+         (string-append "left " (string #\u202E) "abc 123"
+                        (string #\u202C) " right"))
+       (define layout (layout-mixed-text sh fm text #:width 420))
+       (define runs (mixed-text-line-runs (first (mixed-text-layout-lines layout))))
+       (check-true
+        (for/and ([r (in-list runs)])
+          (for/and ([ch (in-string (mixed-text-run-text r))])
+            (not (bidi-explicit-control? ch)))))
+       (check-true
+        (for/or ([r (in-list runs)])
+          (and (regexp-match? #rx"abc" (mixed-text-run-text r))
+               (eq? (mixed-text-run-direction r) 'rtl))))))
+   (test-case "mixed text isolates do not leak direction"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 26)]
+                 [sh (make-shaper f)])
+       (define text
+         (string-append "before " (string #\u2067) "שלום 123"
+                        (string #\u2069) " after"))
+       (define layout (layout-mixed-text sh fm text #:width 420))
+       (define line (first (mixed-text-layout-lines layout)))
+       (check-eq? (mixed-text-line-direction line) 'ltr)
+       (check-true
+        (for/or ([r (in-list (mixed-text-line-runs line))])
+          (eq? (mixed-text-run-direction r) 'rtl)))
+       (check-true
+        (for/or ([r (in-list (mixed-text-line-runs line))])
+          (and (regexp-match? #rx"after" (mixed-text-run-text r))
+               (eq? (mixed-text-run-direction r) 'ltr))))))
+   (test-case "explicit bidi scopes survive UAX #14 wrapping"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 25)]
+                 [sh (make-shaper f)]
+                 [p (make-paint #:color 'black)]
+                 [surface (make-surface 260 180)])
+       (define text
+         (string-append (string #\u202E)
+                        "alpha beta gamma delta epsilon zeta"
+                        (string #\u202C)))
+       (define layout (layout-mixed-text sh fm text #:width 150))
+       (define lines (mixed-text-layout-lines layout))
+       (check-true (> (length lines) 1))
+       (check-true
+        (for/and ([line (in-list lines)])
+          (for/and ([r (in-list (mixed-text-line-runs line))]
+                    #:when (regexp-match? #rx"[A-Za-z]" (mixed-text-run-text r)))
+            (eq? (mixed-text-run-direction r) 'rtl))))
+       (draw-mixed-text-layout (surface-canvas surface) layout 10 8 p)
+       (define pixels (surface->rgba-bytes surface))
+       (check-true
+        (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+          (> (bytes-ref pixels i) 0)))))
    (test-case "mixed text layout resolves visual bidi runs"
      (with-skia ([fm (default-font-manager)]
                  [tf (make-typeface)]

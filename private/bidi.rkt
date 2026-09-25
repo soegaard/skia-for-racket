@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/list racket/vector)
 (provide bidi-class bidi-resolve-levels bidi-reorder-items
-         bidi-explicit-control? bidi-bracket-info)
+         bidi-explicit-control? bidi-x9-removed? bidi-bracket-info)
 
 ;; Generated from Python unicodedata 15.1.0. The ranges encode the
 ;; Unicode Bidi_Class property. Unassigned scalar values use the ordinary
@@ -1508,10 +1508,10 @@
           [(> cp b) (loop (add1 mid) hi)]
           [else (vector-ref entry 2)])))
 
-;; Explicit embeddings/overrides/isolates are deliberately not interpreted by
-;; this first mixed-run layer. They are removed from shaping and treated as BN
-;; for level resolution. LRM/RLM/ALM are not in this set; their strong bidi
-;; classes still affect paragraph direction as Unicode specifies.
+;; Explicit embedding/override/isolate formatting controls are classified here
+;; for both the retained ordinary-text regression resolver and the full UAX #9
+;; resolver below. LRM/RLM/ALM are not formatting controls in this set; their
+;; strong bidi classes continue to affect paragraph direction normally.
 (define explicit-bidi-control-codepoints
   (hasheqv #x202a #t #x202b #t #x202c #t #x202d #t #x202e #t
            #x2066 #t #x2067 #t #x2068 #t #x2069 #t))
@@ -1601,7 +1601,7 @@
        (set-bracket-type! open resolved)
        (set-bracket-type! close resolved)])))
 
-(define (bidi-resolve-levels text [requested 'auto])
+(define (bidi-resolve-levels/ordinary-legacy text [requested 'auto])
   ;; Implements the paragraph-direction, weak, bracket, neutral, implicit, and
   ;; line-reset portions of UAX #9 for ordinary text. Explicit embedding,
   ;; override, and isolate controls are intentionally treated as BN; callers
@@ -1722,6 +1722,495 @@
       (vector-set! levels i base-level)
       (reset-tail (sub1 i))))
   (values levels base-dir))
+
+;; Version 0.16 full explicit-control resolver. The earlier ordinary-text
+;; resolver is retained above as bidi-resolve-levels/ordinary-legacy for
+;; source-level regression comparison, but this definition is the exported path.
+(define (uax9-x9-type? t)
+  (and (memq t '(RLE LRE RLO LRO PDF BN)) #t))
+
+(define (uax9-isolate-initiator-type? t)
+  (and (memq t '(LRI RLI FSI)) #t))
+
+(define (bidi-x9-removed? ch-or-codepoint)
+  (uax9-x9-type? (bidi-class ch-or-codepoint)))
+
+(define (uax9-level-direction level)
+  (if (even? level) 'L 'R))
+
+(define (uax9-strong-for-neutral t)
+  (case t
+    [(L) 'L]
+    [(R EN AN) 'R]
+    [else #f]))
+
+(define (uax9-neutral-or-isolate? t)
+  (and (memq t '(B S WS ON FSI LRI RLI PDI)) #t))
+
+(define (uax9-next-odd-level level)
+  (if (even? level) (add1 level) (+ level 2)))
+
+(define (uax9-next-even-level level)
+  (if (even? level) (+ level 2) (add1 level)))
+
+(define (uax9-determine-matching-isolates classes)
+  (define n (vector-length classes))
+  (define matching-pdis (make-vector n n))
+  (define matching-initiators (make-vector n -1))
+  (define stack '())
+  (for ([i (in-range n)])
+    (define t (vector-ref classes i))
+    (cond
+      [(uax9-isolate-initiator-type? t)
+       (set! stack (cons i stack))]
+      [(and (eq? t 'PDI) (pair? stack))
+       (define opener (car stack))
+       (set! stack (cdr stack))
+       (vector-set! matching-pdis opener i)
+       (vector-set! matching-initiators i opener)]))
+  (values matching-pdis matching-initiators))
+
+(define (uax9-paragraph-level-between classes matching-pdis start end)
+  ;; P2/P3: isolate contents do not influence their enclosing paragraph.
+  (let loop ([i start])
+    (cond
+      [(>= i end) 0]
+      [else
+       (define t (vector-ref classes i))
+       (cond
+         [(eq? t 'L) 0]
+         [(memq t '(R AL)) 1]
+         [(uax9-isolate-initiator-type? t)
+          (define pdi (vector-ref matching-pdis i))
+          (loop (if (< pdi end) (add1 pdi) end))]
+         [else (loop (add1 i))])])) )
+
+(struct uax9-status (level override isolate?) #:transparent)
+
+(define uax9-max-explicit-depth 125)
+
+(define (uax9-determine-explicit-levels classes matching-pdis paragraph-level)
+  ;; X1-X8. This follows the directional-status-stack algorithm, including
+  ;; overflow isolate/embedding counts and FSI direction selection.
+  (define n (vector-length classes))
+  (define result-types (vector-copy classes))
+  (define result-levels (make-vector n paragraph-level))
+  (define stack (list (uax9-status paragraph-level 'neutral #f)))
+  (define overflow-isolates 0)
+  (define overflow-embeddings 0)
+  (define valid-isolates 0)
+  (define (top) (car stack))
+  (define (top-level) (uax9-status-level (top)))
+  (define (top-override) (uax9-status-override (top)))
+  (define (push! level override isolate?)
+    (set! stack (cons (uax9-status level override isolate?) stack)))
+  (define (pop!)
+    (when (pair? (cdr stack)) (set! stack (cdr stack))))
+  (define (reset-stack!)
+    (set! stack (list (uax9-status paragraph-level 'neutral #f))))
+  (for ([i (in-range n)])
+    (define t (vector-ref classes i))
+    (cond
+      [(or (memq t '(LRE RLE LRO RLO)) (uax9-isolate-initiator-type? t))
+       (define isolate? (uax9-isolate-initiator-type? t))
+       (define rtl?
+         (cond
+           [(eq? t 'FSI)
+            (= 1 (uax9-paragraph-level-between classes matching-pdis
+                                          (add1 i) (vector-ref matching-pdis i)))]
+           [else (memq t '(RLE RLO RLI))]))
+       (when isolate?
+         (vector-set! result-levels i (top-level))
+         (unless (eq? (top-override) 'neutral)
+           (vector-set! result-types i (top-override))))
+       (define new-level
+         (if rtl? (uax9-next-odd-level (top-level)) (uax9-next-even-level (top-level))))
+       (cond
+         [(and (<= new-level uax9-max-explicit-depth)
+               (zero? overflow-isolates)
+               (zero? overflow-embeddings))
+          (when isolate? (set! valid-isolates (add1 valid-isolates)))
+          (define override
+            (case t
+              [(LRO) 'L]
+              [(RLO) 'R]
+              [else 'neutral]))
+          (push! new-level override isolate?)
+          (unless isolate? (vector-set! result-levels i new-level))]
+         [isolate?
+          (set! overflow-isolates (add1 overflow-isolates))]
+         [(zero? overflow-isolates)
+          (set! overflow-embeddings (add1 overflow-embeddings))])]
+      [(eq? t 'PDI)
+       (cond
+         [(positive? overflow-isolates)
+          (set! overflow-isolates (sub1 overflow-isolates))]
+         [(positive? valid-isolates)
+          (set! overflow-embeddings 0)
+          (let pop-to-isolate ()
+            (unless (uax9-status-isolate? (top))
+              (pop!)
+              (pop-to-isolate)))
+          (pop!)
+          (set! valid-isolates (sub1 valid-isolates))])
+       (vector-set! result-levels i (top-level))]
+      [(eq? t 'PDF)
+       (vector-set! result-levels i (top-level))
+       (cond
+         [(positive? overflow-isolates) (void)]
+         [(positive? overflow-embeddings)
+          (set! overflow-embeddings (sub1 overflow-embeddings))]
+         [(and (pair? (cdr stack)) (not (uax9-status-isolate? (top))))
+          (pop!)])]
+      [(eq? t 'B)
+       (set! overflow-isolates 0)
+       (set! overflow-embeddings 0)
+       (set! valid-isolates 0)
+       (vector-set! result-levels i paragraph-level)
+       (reset-stack!)]
+      [else
+       (vector-set! result-levels i (top-level))
+       (unless (or (eq? t 'BN) (eq? (top-override) 'neutral))
+         (vector-set! result-types i (top-override)))]))
+  (values result-types result-levels))
+
+(define (uax9-determine-level-runs classes levels)
+  ;; X9 removes embeddings/overrides/PDF/BN before level runs are built.
+  (define runs '())
+  (define current '())
+  (define current-level #f)
+  (define (flush!)
+    (when (pair? current)
+      (set! runs (cons (reverse current) runs))
+      (set! current '())))
+  (for ([i (in-range (vector-length classes))]
+        #:unless (uax9-x9-type? (vector-ref classes i)))
+    (define level (vector-ref levels i))
+    (if (and current-level (= level current-level))
+        (set! current (cons i current))
+        (begin
+          (flush!)
+          (set! current-level level)
+          (set! current (list i)))))
+  (flush!)
+  (reverse runs))
+
+(struct uax9-sequence (indices types level sos eos) #:transparent)
+
+(define (uax9-previous-non-x9 classes start)
+  (let loop ([i (sub1 start)])
+    (cond
+      [(negative? i) #f]
+      [(uax9-x9-type? (vector-ref classes i)) (loop (sub1 i))]
+      [else i])))
+
+(define (uax9-next-non-x9 classes start)
+  (define n (vector-length classes))
+  (let loop ([i (add1 start)])
+    (cond
+      [(>= i n) #f]
+      [(uax9-x9-type? (vector-ref classes i)) (loop (add1 i))]
+      [else i])))
+
+(define (uax9-make-isolating-run-sequences classes result-types result-levels
+                                      matching-pdis matching-initiators
+                                      paragraph-level)
+  ;; X10: concatenate level runs across matching isolate initiator/PDI pairs.
+  (define runs (uax9-determine-level-runs classes result-levels))
+  (define n (vector-length classes))
+  (define run-for-char (make-vector n #f))
+  (for ([run (in-list runs)] [ri (in-naturals)])
+    (for ([idx (in-list run)]) (vector-set! run-for-char idx ri)))
+  (define (continuation-run? run)
+    (define first (car run))
+    (and (eq? (vector-ref classes first) 'PDI)
+         (>= (vector-ref matching-initiators first) 0)))
+  (define sequences '())
+  (for ([run (in-list runs)] [ri (in-naturals)]
+        #:unless (continuation-run? run))
+    (define indices
+      (let follow ([run-index ri] [acc '()])
+        (define r (list-ref runs run-index))
+        (define next-acc (append acc r))
+        (define last-index (last r))
+        (define last-type (vector-ref classes last-index))
+        (define pdi (and (uax9-isolate-initiator-type? last-type)
+                         (vector-ref matching-pdis last-index)))
+        (cond
+          [(and pdi (< pdi n) (vector-ref run-for-char pdi))
+           (follow (vector-ref run-for-char pdi) next-acc)]
+          [else next-acc])))
+    (when (pair? indices)
+      (define first-index (car indices))
+      (define last-index (last indices))
+      (define level (vector-ref result-levels first-index))
+      (define prev-index (uax9-previous-non-x9 classes first-index))
+      (define prev-level
+        (if prev-index (vector-ref result-levels prev-index) paragraph-level))
+      (define sos (uax9-level-direction (max prev-level level)))
+      (define succ-level
+        (if (uax9-isolate-initiator-type? (vector-ref classes last-index))
+            paragraph-level
+            (let ([next-index (uax9-next-non-x9 classes last-index)])
+              (if next-index
+                  (vector-ref result-levels next-index)
+                  paragraph-level))))
+      (define eos (uax9-level-direction (max succ-level level)))
+      (define seq-types
+        (list->vector (for/list ([idx (in-list indices)])
+                        (vector-ref result-types idx))))
+      (set! sequences
+            (cons (uax9-sequence (list->vector indices) seq-types level sos eos)
+                  sequences))))
+  (reverse sequences))
+
+(define (uax9-sequence-find-run-limit types start predicate?)
+  (let loop ([i start])
+    (if (and (< i (vector-length types)) (predicate? (vector-ref types i)))
+        (loop (add1 i))
+        i)))
+
+(define (uax9-resolve-weak-types! seq)
+  (define types (uax9-sequence-types seq))
+  (define n (vector-length types))
+  ;; W1
+  (define preceding (uax9-sequence-sos seq))
+  (for ([i (in-range n)])
+    (define t (vector-ref types i))
+    (cond
+      [(eq? t 'NSM)
+       (vector-set! types i
+                    (if (memq preceding '(LRI RLI FSI PDI)) 'ON preceding))]
+      [else (set! preceding t)]))
+  ;; W2
+  (for ([i (in-range n)])
+    (when (eq? (vector-ref types i) 'EN)
+      (let scan ([j (sub1 i)])
+        (when (>= j 0)
+          (define t (vector-ref types j))
+          (cond
+            [(memq t '(L R AL))
+             (when (eq? t 'AL) (vector-set! types i 'AN))]
+            [else (scan (sub1 j))])))))
+  ;; W3
+  (for ([i (in-range n)])
+    (when (eq? (vector-ref types i) 'AL) (vector-set! types i 'R)))
+  ;; W4
+  (for ([i (in-range 1 (sub1 n))])
+    (define t (vector-ref types i))
+    (define a (vector-ref types (sub1 i)))
+    (define b (vector-ref types (add1 i)))
+    (cond
+      [(and (eq? t 'ES) (eq? a 'EN) (eq? b 'EN)) (vector-set! types i 'EN)]
+      [(and (eq? t 'CS) (eq? a 'EN) (eq? b 'EN)) (vector-set! types i 'EN)]
+      [(and (eq? t 'CS) (eq? a 'AN) (eq? b 'AN)) (vector-set! types i 'AN)]))
+  ;; W5
+  (let loop ([i 0])
+    (when (< i n)
+      (if (eq? (vector-ref types i) 'ET)
+          (let* ([limit (uax9-sequence-find-run-limit types i (lambda (t) (eq? t 'ET)))]
+                 [left (if (zero? i) (uax9-sequence-sos seq)
+                           (vector-ref types (sub1 i)))]
+                 [right (if (= limit n) (uax9-sequence-eos seq)
+                            (vector-ref types limit))])
+            (when (or (eq? left 'EN) (eq? right 'EN))
+              (for ([k (in-range i limit)]) (vector-set! types k 'EN)))
+            (loop limit))
+          (loop (add1 i)))))
+  ;; W6
+  (for ([i (in-range n)])
+    (when (memq (vector-ref types i) '(ES ET CS)) (vector-set! types i 'ON)))
+  ;; W7
+  (for ([i (in-range n)])
+    (when (eq? (vector-ref types i) 'EN)
+      (define prev-strong (uax9-sequence-sos seq))
+      (let scan ([j (sub1 i)])
+        (when (>= j 0)
+          (define t (vector-ref types j))
+          (if (memq t '(L R))
+              (set! prev-strong t)
+              (scan (sub1 j)))))
+      (when (eq? prev-strong 'L) (vector-set! types i 'L)))))
+
+(define (uax9-bracket-match? close-cp expected-cp)
+  (or (= close-cp expected-cp)
+      (and (= close-cp #x232a) (= expected-cp #x3009))
+      (and (= close-cp #x3009) (= expected-cp #x232a))))
+
+(define (uax9-sequence-bracket-pairs text seq)
+  ;; BD16: at most 63 open brackets are tracked per isolating run sequence.
+  (define indices (uax9-sequence-indices seq))
+  (define types (uax9-sequence-types seq))
+  (define stack '())
+  (define pairs '())
+  (define aborted? #f)
+  (for ([pos (in-range (vector-length indices))] #:break aborted?)
+    (when (eq? (vector-ref types pos) 'ON)
+      (define idx (vector-ref indices pos))
+      (define info (bidi-bracket-info (string-ref text idx)))
+      (when info
+        (case (cdr info)
+          [(open)
+           (if (>= (length stack) 63)
+               (begin (set! stack '()) (set! pairs '()) (set! aborted? #t))
+               (set! stack (cons (cons pos (car info)) stack)))]
+          [(close)
+           (define close-cp (char->integer (string-ref text idx)))
+           (let find ([xs stack])
+             (cond
+               [(null? xs) (void)]
+               [(uax9-bracket-match? close-cp (cdar xs))
+                (set! pairs (cons (cons (caar xs) pos) pairs))
+                (set! stack (cdr xs))]
+               [else (find (cdr xs))]))]))))
+  (if aborted? '() (sort pairs < #:key car)))
+
+(define (uax9-set-bracket-type! text seq pos resolved)
+  (define indices (uax9-sequence-indices seq))
+  (define types (uax9-sequence-types seq))
+  (vector-set! types pos resolved)
+  (let loop ([p (add1 pos)])
+    (when (< p (vector-length indices))
+      (define idx (vector-ref indices p))
+      (when (eq? (bidi-class (string-ref text idx)) 'NSM)
+        (vector-set! types p resolved)
+        (loop (add1 p))))))
+
+(define (uax9-resolve-brackets! text seq)
+  ;; N0, scoped to one isolating run sequence.
+  (define types (uax9-sequence-types seq))
+  (define embed (uax9-level-direction (uax9-sequence-level seq)))
+  (define opposite (if (eq? embed 'L) 'R 'L))
+  (for ([pair (in-list (uax9-sequence-bracket-pairs text seq))])
+    (define open (car pair))
+    (define close (cdr pair))
+    (define enclosed
+      (for/list ([i (in-range (add1 open) close)]
+                 #:do [(define s (uax9-strong-for-neutral (vector-ref types i)))]
+                 #:when s)
+        s))
+    (define resolved
+      (cond
+        [(memq embed enclosed) embed]
+        [(memq opposite enclosed)
+         (define before
+           (let scan ([i (sub1 open)])
+             (cond
+               [(negative? i) (uax9-sequence-sos seq)]
+               [else (or (uax9-strong-for-neutral (vector-ref types i))
+                         (scan (sub1 i)))])))
+         (if (eq? before opposite) opposite embed)]
+        [else #f]))
+    (when resolved
+      (uax9-set-bracket-type! text seq open resolved)
+      (uax9-set-bracket-type! text seq close resolved))))
+
+(define (uax9-resolve-neutral-types! seq)
+  ;; N1/N2. EN/AN count as R when looking across a neutral sequence.
+  (define types (uax9-sequence-types seq))
+  (define n (vector-length types))
+  (define embed (uax9-level-direction (uax9-sequence-level seq)))
+  (let loop ([i 0])
+    (cond
+      [(>= i n) (void)]
+      [(uax9-neutral-or-isolate? (vector-ref types i))
+       (define limit (uax9-sequence-find-run-limit types i uax9-neutral-or-isolate?))
+       (define before
+         (if (zero? i)
+             (uax9-sequence-sos seq)
+             (or (uax9-strong-for-neutral (vector-ref types (sub1 i))) embed)))
+       (define after
+         (if (= limit n)
+             (uax9-sequence-eos seq)
+             (or (uax9-strong-for-neutral (vector-ref types limit)) embed)))
+       (define resolved (if (eq? before after) before embed))
+       (for ([k (in-range i limit)]) (vector-set! types k resolved))
+       (loop limit)]
+      [else (loop (add1 i))])))
+
+(define (uax9-apply-sequence! seq result-types result-levels)
+  ;; I1/I2 and copy the resolved types/levels back to paragraph coordinates.
+  (define indices (uax9-sequence-indices seq))
+  (define types (uax9-sequence-types seq))
+  (define embedding-level (uax9-sequence-level seq))
+  (for ([p (in-range (vector-length indices))])
+    (define idx (vector-ref indices p))
+    (define t (vector-ref types p))
+    (define delta
+      (if (even? embedding-level)
+          (cond [(eq? t 'R) 1] [(memq t '(AN EN)) 2] [else 0])
+          (if (memq t '(L EN AN)) 1 0)))
+    (vector-set! result-types idx t)
+    (vector-set! result-levels idx (+ embedding-level delta))))
+
+(define (uax9-assign-x9-levels! classes result-types result-levels paragraph-level)
+  ;; Retain formatting characters in the backing string while giving them the
+  ;; level of the preceding character, as permitted by UAX #9 section 5.2.
+  (for ([i (in-range (vector-length classes))])
+    (when (uax9-x9-type? (vector-ref classes i))
+      (vector-set! result-types i (vector-ref classes i))
+      (vector-set! result-levels i
+                   (if (zero? i) paragraph-level (vector-ref result-levels (sub1 i)))))))
+
+(define (uax9-l1-resettable? t)
+  (and (memq t '(WS FSI LRI RLI PDI RLE LRE RLO LRO PDF BN)) #t))
+
+(define (uax9-apply-l1! classes levels paragraph-level line-breaks)
+  ;; L1 is line-specific. LINE-BREAKS contains logical end indices (exclusive).
+  (define n (vector-length classes))
+  (for ([i (in-range n)])
+    (when (memq (vector-ref classes i) '(B S))
+      (vector-set! levels i paragraph-level)
+      (let reset ([j (sub1 i)])
+        (when (and (>= j 0) (uax9-l1-resettable? (vector-ref classes j)))
+          (vector-set! levels j paragraph-level)
+          (reset (sub1 j))))))
+  (define start 0)
+  (for ([limit (in-list line-breaks)])
+    (define bounded (min n (max start limit)))
+    (let reset ([j (sub1 bounded)])
+      (when (and (>= j start) (uax9-l1-resettable? (vector-ref classes j)))
+        (vector-set! levels j paragraph-level)
+        (reset (sub1 j))))
+    (set! start bounded)))
+
+(define (bidi-resolve-levels text [requested 'auto] #:line-breaks [line-breaks #f])
+  ;; UAX #9 P2/P3, X1-X10, W1-W7, N0-N2, I1/I2, and line-specific L1.
+  ;; Formatting controls are retained in paragraph coordinates but X9 controls
+  ;; do not participate in isolating run sequences.
+  (unless (string? text) (raise-argument-error 'bidi-resolve-levels "string?" text))
+  (unless (memq requested '(auto ltr rtl))
+    (raise-argument-error 'bidi-resolve-levels "one of 'auto, 'ltr, or 'rtl" requested))
+  (define n (string-length text))
+  (define classes (for/vector ([ch (in-string text)]) (bidi-class ch)))
+  (define-values (matching-pdis matching-initiators)
+    (uax9-determine-matching-isolates classes))
+  (define paragraph-level
+    (case requested
+      [(ltr) 0]
+      [(rtl) 1]
+      [else (uax9-paragraph-level-between classes matching-pdis 0 n)]))
+  (define base-dir (if (even? paragraph-level) 'ltr 'rtl))
+  (define-values (result-types result-levels)
+    (uax9-determine-explicit-levels classes matching-pdis paragraph-level))
+  (for ([seq (in-list
+              (uax9-make-isolating-run-sequences
+               classes result-types result-levels
+               matching-pdis matching-initiators paragraph-level))])
+    (uax9-resolve-weak-types! seq)
+    (uax9-resolve-brackets! text seq)
+    (uax9-resolve-neutral-types! seq)
+    (uax9-apply-sequence! seq result-types result-levels))
+  (uax9-assign-x9-levels! classes result-types result-levels paragraph-level)
+  (define breaks (or line-breaks (list n)))
+  (unless (and (list? breaks)
+               (for/and ([x (in-list breaks)])
+                 (and (exact-nonnegative-integer? x) (<= x n))))
+    (raise-argument-error 'bidi-resolve-levels
+                          "list of character indices from 0 through string length"
+                          breaks))
+  (uax9-apply-l1! classes result-levels paragraph-level breaks)
+  (values result-levels base-dir))
 
 (define (bidi-reorder-items items level-of)
   ;; UAX #9 L2 on already-segmented items. Each item must cover a single

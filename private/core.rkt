@@ -2435,6 +2435,56 @@
                    (reverse (cons line acc))
                    (wrap next-start (cons line acc)))])])))]))
 
+(struct wrapped-slice (start render-end logical-end text) #:transparent)
+
+(define (wrap-at-line-break-slices text max-width measure-range)
+  ;; Greedy line fitting over UAX #14 opportunities while retaining paragraph
+  ;; coordinates. The coordinate form lets the bidi layer resolve a paragraph
+  ;; once and apply the resulting levels consistently across wrapped lines.
+  (define n (string-length text))
+  (define break-indices
+    (for/list ([op (in-list (line-break-opportunities text))]
+               #:when (positive? (line-break-opportunity-index op)))
+      (line-break-opportunity-index op)))
+  (define first-start (skip-wrap-leading-whitespace text 0))
+  (cond
+    [(= first-start n) (list (wrapped-slice n n n ""))]
+    [else
+     (let wrap ([start first-start] [acc '()])
+       (define candidates
+         (let drop ([xs break-indices])
+           (cond [(null? xs) '()]
+                 [(<= (car xs) start) (drop (cdr xs))]
+                 [else xs])))
+       (let choose ([xs candidates] [best #f])
+         (cond
+           [(null? xs)
+            (reverse
+             (cons (wrapped-slice start n n (substring text start n)) acc))]
+           [else
+            (define pos (car xs))
+            (define render-end (trim-wrap-end text start pos))
+            (define fits? (<= (measure-range start render-end) max-width))
+            (cond
+              [(and fits? (= pos n))
+               (reverse
+                (cons (wrapped-slice start render-end pos
+                                     (substring text start render-end))
+                      acc))]
+              [fits? (choose (cdr xs) pos)]
+              [else
+               ;; Preserve an over-wide first legal segment rather than
+               ;; synthesizing an emergency break inside an unbreakable span.
+               (define chosen (or best pos))
+               (define chosen-end (trim-wrap-end text start chosen))
+               (define line
+                 (wrapped-slice start chosen-end chosen
+                                (substring text start chosen-end)))
+               (define next-start (skip-wrap-leading-whitespace text chosen))
+               (if (>= next-start n)
+                   (reverse (cons line acc))
+                   (wrap next-start (cons line acc)))])])))]))
+
 (define (run-horizontal-width run)
   (abs (shaped-run-advance-x run)))
 
@@ -2868,6 +2918,41 @@
                          (mixed-text-run-slant r)))
        (loop (cdr xs) (+ cursor (mixed-text-run-width r)) (cons placed out))])))
 
+(define (shape-mixed-line/resolved sh fm text levels resolved-direction
+                                   language features choice-cache)
+  (define logical
+    (coalesce-logical-pieces
+     (grapheme-pieces sh fm text levels language choice-cache)))
+  (define shaped
+    (for/list ([piece (in-list logical)])
+      (mixed-run-from-piece sh fm piece language features)))
+  (define visual
+    (bidi-reorder-items shaped mixed-text-run-level))
+  (define-values (placed width) (place-visual-mixed-runs visual))
+  (values placed width resolved-direction))
+
+(define (slice-levels levels start end)
+  (for/vector ([i (in-range start end)]) (vector-ref levels i)))
+
+(define (wrapped-mixed-line-slices sh fm paragraph max-width paragraph-direction
+                                   paragraph-levels language features choice-cache)
+  (cond
+    [(not max-width)
+     (list (wrapped-slice 0 (string-length paragraph) (string-length paragraph)
+                          paragraph))]
+    [else
+     (wrap-at-line-break-slices
+      paragraph max-width
+      (lambda (start end)
+        (if (= start end)
+            0.0
+            (let-values ([(runs width dir)
+                          (shape-mixed-line/resolved
+                           sh fm (substring paragraph start end)
+                           (slice-levels paragraph-levels start end)
+                           paragraph-direction language features choice-cache)])
+              width))))]))
+
 (define (shape-mixed-line sh fm text paragraph-direction language features choice-cache)
   (define-values (levels resolved-direction)
     (bidi-resolve-levels text paragraph-direction))
@@ -2972,15 +3057,29 @@
   (define choice-cache (make-hash))
   (define raw-lines '())
   (for ([paragraph (in-list (split-explicit-lines text))])
-    (define paragraph-dir (mixed-paragraph-direction paragraph dir))
-    (define paragraph-lines
-      (wrapped-mixed-lines sh fm paragraph max-width paragraph-dir
-                           lang feats choice-cache))
-    (define paragraph-line-count (length paragraph-lines))
-    (for ([line-text (in-list paragraph-lines)]
+    ;; Resolve the whole hard-break-delimited paragraph before wrapping. UAX #9
+    ;; explicit scopes therefore survive visual line breaks instead of being
+    ;; restarted independently on each wrapped substring.
+    (define-values (paragraph-levels paragraph-dir)
+      (bidi-resolve-levels paragraph dir))
+    (define paragraph-slices
+      (wrapped-mixed-line-slices sh fm paragraph max-width paragraph-dir
+                                 paragraph-levels lang feats choice-cache))
+    (define logical-line-ends
+      (for/list ([slice (in-list paragraph-slices)])
+        (wrapped-slice-logical-end slice)))
+    (define-values (final-paragraph-levels _final-dir)
+      (bidi-resolve-levels paragraph dir #:line-breaks logical-line-ends))
+    (define paragraph-line-count (length paragraph-slices))
+    (for ([slice (in-list paragraph-slices)]
           [line-index (in-naturals)])
+      (define start (wrapped-slice-start slice))
+      (define end (wrapped-slice-render-end slice))
+      (define line-text (wrapped-slice-text slice))
+      (define line-levels (slice-levels final-paragraph-levels start end))
       (define-values (runs natural-width _resolved)
-        (shape-mixed-line sh fm line-text paragraph-dir lang feats choice-cache))
+        (shape-mixed-line/resolved sh fm line-text line-levels paragraph-dir
+                                   lang feats choice-cache))
       (define request-justify?
         (and max-width
              (paragraph-line-justify? al line-index paragraph-line-count)))

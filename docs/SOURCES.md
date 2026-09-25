@@ -91,3 +91,11 @@ are the compatibility reference for this implementation.
   layer redistributes U+0020 inter-word slack by changing stored glyph x
   positions and per-run/line advances while preserving shaping clusters and
   visual bidi run order.
+- Version 0.15 conformance tooling targets the normative Unicode 15.1
+  `auxiliary/LineBreakTest.txt` and `BidiCharacterTest.txt` files. The upstream
+  corpora are fetched only by the optional development script or supplied from
+  an offline directory; they are not runtime/package data.
+- Version 0.16 follows UAX #9 explicit rules X1–X10, isolating run sequences,
+  FSI first-strong resolution, overflow counters, N0 bracket scoping, I1/I2,
+  and line-specific L1. Explicit formatting controls are removed before shaping
+  only after their paragraph-level directional effect has been resolved.

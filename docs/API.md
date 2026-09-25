@@ -1,4 +1,4 @@
-# API reference — version 0.14.0
+# API reference — version 0.16.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1209,12 +1209,19 @@ for drawing from the recorded family/style description. The caller-owned base
 shaper and font manager are retained by reference and must remain open while
 `draw-mixed-text-layout` is used.
 
-The bidi resolver implements paragraph direction plus the ordinary weak,
-paired-bracket, neutral, implicit-level, trailing-whitespace, and L2 visual
-reordering rules needed for natural mixed-language paragraphs. Explicit Unicode
-embedding/override/isolate controls (`LRE`, `RLE`, `LRO`, `RLO`, `PDF`, `LRI`,
-`RLI`, `FSI`, `PDI`) are intentionally not interpreted; they are treated as
-formatting controls and omitted from shaping.
+The bidi resolver implements paragraph direction, explicit directional status
+stack processing, isolating run sequences, weak/neutral/bracket resolution,
+implicit levels, and L1/L2 behavior. `LRE`, `RLE`, `LRO`, `RLO`, `PDF`, `LRI`,
+`RLI`, `FSI`, and `PDI` therefore affect the resolved runs. Formatting controls
+are removed before shaping and never become glyphs. `FSI` chooses its isolate
+direction from the first strong character while ignoring nested isolate
+contents.
+
+When `#:width` wraps a paragraph, explicit scopes are resolved on the complete
+logical paragraph first. After UAX #14 selects logical line ends, line-specific
+L1 trailing resets are applied and the paragraph levels are sliced for each
+visual line. This permits embeddings, overrides, and isolates to span wrapped
+lines correctly rather than restarting at every substring.
 
 With `#:width`, mixed layout uses the same Unicode 15.1 UAX #14 line-breaking
 engine as `layout-text`; break selection occurs on logical paragraph text before
