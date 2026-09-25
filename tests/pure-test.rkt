@@ -295,6 +295,26 @@
                 (lambda ()
                   (layout-mixed-text 'bad 'also-bad "alpha beta"
                                      #:align 'justify-all))))
+   (test-case "layout break opportunities validate without native loading"
+     (define op (make-layout-break-opportunity 4 "-"))
+     (check-true (layout-break-opportunity? op))
+     (check-equal? (layout-break-opportunity-index op) 4)
+     (check-equal? (layout-break-opportunity-insert op) "-")
+     (check-exn exn:fail:contract?
+                (lambda () (make-layout-break-opportunity -1)))
+     (check-exn exn:fail:contract?
+                (lambda () (make-layout-break-opportunity 1 42)))
+     (check-exn #rx"hard line breaks"
+                (lambda () (make-layout-break-opportunity 1 "-\n"))))
+   (test-case "break provider arity validates before native loading"
+     (check-exn exn:fail:contract?
+                (lambda ()
+                  (layout-text 'not-a-shaper "alpha" #:width 40
+                               #:break-provider (lambda (text) '(2)))))
+     (check-exn exn:fail:contract?
+                (lambda ()
+                  (layout-mixed-text 'bad 'also-bad "alpha" #:width 40
+                                     #:break-provider (lambda () '(2))))))
    (test-case "bidi resolver separates ordinary LTR and RTL text"
      (define-values (levels direction) (bidi-resolve-levels "abc אבג" 'auto))
      (check-eq? direction 'ltr)

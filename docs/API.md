@@ -1,4 +1,4 @@
-# API reference — version 0.16.0
+# API reference — version 0.17.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1092,6 +1092,11 @@ script/fallback segmentation, line breaking, wrapping, or justification.
 (text-layout-line-width line)
 (text-layout-line-direction line)
 
+(layout-break-opportunity? value)
+(make-layout-break-opportunity index [insert ""])
+(layout-break-opportunity-index opportunity)
+(layout-break-opportunity-insert opportunity)
+
 (layout-text shaper text
              #:width [width #f]
              #:align [align 'start]
@@ -1099,6 +1104,7 @@ script/fallback segmentation, line breaking, wrapping, or justification.
              #:script [script #f]
              #:language [language #f]
              #:features [features '()]
+             #:break-provider [break-provider #f]
              #:line-height [line-height #f])
 
 (draw-text-layout canvas layout x y paint)
@@ -1119,8 +1125,19 @@ width, `text-layout-width` expands to report the true occupied width.
 
 The resolver uses the UAX #14 tailoring that prevents breaks inside Racket's
 default grapheme clusters. SA (complex-context Southeast Asian) characters use
-UAX #14's default AL/CM fallback rather than dictionary segmentation.
-Language-specific hyphenation is not performed.
+UAX #14's default AL/CM fallback in the core resolver. A non-`#f`
+`#:break-provider` supplements those Unicode opportunities. The provider is
+called as `(break-provider paragraph language)` for each hard-break-delimited
+paragraph and must return a list of interior string indices or
+`layout-break-opportunity?` values. Indices are Racket string indices, not UTF-8
+byte offsets, and must be default-grapheme boundaries.
+
+`make-layout-break-opportunity` attaches optional display-only text to a
+boundary. The insertion is included in `text-layout-line-text` only when that
+break is selected; the following line resumes at the unchanged logical string
+index. This makes dictionary segmentation and language-specific hyphenation
+pluggable without changing the UAX #14 resolver itself. Providers are not called
+when `#:width` is `#f` because no wrapping decision is needed.
 
 Alignment is one of `'start`, `'center`, `'end`, `'left`, `'right`, `'justify`,
 or `'justify-all`. `start` and `end` are direction-sensitive. `'justify` expands
@@ -1183,6 +1200,7 @@ ambiguous one-glyph line must align directionally.
                    #:direction [direction 'auto]
                    #:language [language #f]
                    #:features [features '()]
+                   #:break-provider [break-provider #f]
                    #:line-height [line-height #f])
 
 (draw-mixed-text-layout canvas layout x y paint)
@@ -1226,8 +1244,11 @@ lines correctly rather than restarting at every substring.
 With `#:width`, mixed layout uses the same Unicode 15.1 UAX #14 line-breaking
 engine as `layout-text`; break selection occurs on logical paragraph text before
 final per-line bidi shaping/reordering. Default grapheme clusters are kept
-intact. `'justify` and `'justify-all` use the same U+0020 inter-word expansion
-policy after bidi/script/fallback shaping, then recompute visual run origins.
-Southeast Asian dictionary segmentation, language-specific hyphenation,
-emergency breaking, CJK inter-character justification, and Arabic kashida are
-not implemented.
+intact. A `#:break-provider` contributes the same supplemental boundaries as in
+`layout-text`. Selected display-only suffixes do not alter paragraph indices or
+UAX #9 resolution; a suffix is shaped with the resolved level immediately
+preceding its break. `'justify` and `'justify-all` use the same U+0020 inter-word
+expansion policy after bidi/script/fallback shaping, then recompute visual run
+origins. The package does not ship a Southeast Asian dictionary or language-
+specific hyphenator; emergency breaking, CJK inter-character justification, and
+Arabic kashida are not implemented.

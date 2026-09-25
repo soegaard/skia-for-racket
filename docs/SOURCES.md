@@ -99,3 +99,7 @@ are the compatibility reference for this implementation.
   FSI first-strong resolution, overflow counters, N0 bracket scoping, I1/I2,
   and line-specific L1. Explicit formatting controls are removed before shaping
   only after their paragraph-level directional effect has been resolved.
+- Version 0.17 keeps higher-level segmentation and hyphenation policy outside
+  the Unicode algorithms. Break providers contribute supplemental grapheme-safe
+  boundaries after the conformant UAX #14 pass; optional display suffixes are
+  layout metadata and do not mutate the logical paragraph used by UAX #9.

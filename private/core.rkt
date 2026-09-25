@@ -97,6 +97,8 @@
          shaped-run? shaped-run-glyphs shaped-run-clusters shaped-run-positions
          shaped-run-advance-x shaped-run-advance-y shaped-run-glyph-count
          shape-text shaped-run->text-blob draw-shaped-run draw-shaped-text
+         layout-break-opportunity? make-layout-break-opportunity
+         layout-break-opportunity-index layout-break-opportunity-insert
          text-layout? text-layout-lines text-layout-width text-layout-height
          text-layout-line-height text-layout-line-count
          text-layout-line? text-layout-line-text text-layout-line-run
@@ -145,6 +147,9 @@
 (struct text-blob (handle) #:constructor-name make-text-blob-record)
 (struct shaper (handle font) #:constructor-name make-shaper-record)
 (struct shaped-run (glyphs clusters positions advance-x advance-y) #:transparent)
+(struct layout-break-opportunity (index insert)
+  #:transparent
+  #:constructor-name make-layout-break-opportunity-record)
 ;; A text layout is a pure Racket value, but it intentionally keeps the shaper
 ;; wrapper reachable. It therefore remains drawable while the shaper is live;
 ;; explicitly closing that shaper invalidates later drawing from the layout.
@@ -2364,6 +2369,112 @@
   (cond [(not width) #f]
         [else (positive-scalar who width)]))
 
+(define (layout-break-insert-valid? insert)
+  (for/and ([ch (in-string insert)])
+    (and (not (bidi-explicit-control? ch))
+         (not (memv ch '(#\newline #\return #\u000B #\u000C
+                         #\u0085 #\u2028 #\u2029))))))
+
+(define (make-layout-break-opportunity index [insert ""])
+  (unless (and (exact-integer? index) (>= index 0))
+    (raise-argument-error 'make-layout-break-opportunity
+                          "exact-nonnegative-integer?" index))
+  (unless (string? insert)
+    (raise-argument-error 'make-layout-break-opportunity "string?" insert))
+  (unless (layout-break-insert-valid? insert)
+    (raise-arguments-error
+     'make-layout-break-opportunity
+     "insert must not contain hard line breaks or bidi formatting controls"
+     "insert" insert))
+  (make-layout-break-opportunity-record index insert))
+
+(struct wrap-break (index insert) #:transparent)
+
+(define (normalize-layout-break-provider who provider)
+  (cond
+    [(not provider) #f]
+    [(and (procedure? provider) (procedure-arity-includes? provider 2)) provider]
+    [else
+     (raise-argument-error
+      who
+      "#f or a procedure accepting (paragraph language)"
+      provider)]))
+
+(define (grapheme-boundary-table text)
+  (define n (string-length text))
+  (define boundaries (make-hasheqv))
+  (hash-set! boundaries 0 #t)
+  (let loop ([i 0])
+    (when (< i n)
+      (define next (+ i (string-grapheme-span text i n)))
+      (hash-set! boundaries next #t)
+      (loop next)))
+  boundaries)
+
+(define (provider-wrap-breaks who provider text language)
+  (cond
+    [(not provider) '()]
+    [else
+     (define supplied (provider text language))
+     (unless (list? supplied)
+       (raise-arguments-error who
+                              "break provider must return a list"
+                              "result" supplied))
+     (define n (string-length text))
+     (define boundaries (grapheme-boundary-table text))
+     (define by-index (make-hasheqv))
+     (for ([item (in-list supplied)])
+       (define opportunity
+         (cond
+           [(and (exact-integer? item) (>= item 0))
+            (make-layout-break-opportunity item)]
+           [(layout-break-opportunity? item) item]
+           [else
+            (raise-arguments-error
+             who
+             "break provider entries must be exact indices or layout-break-opportunity values"
+             "entry" item)]))
+       (define index (layout-break-opportunity-index opportunity))
+       (define insert (layout-break-opportunity-insert opportunity))
+       (unless (and (> index 0) (< index n))
+         (raise-arguments-error who
+                                "break provider index must be inside the paragraph"
+                                "index" index
+                                "paragraph-length" n))
+       (unless (hash-ref boundaries index #f)
+         (raise-arguments-error
+          who
+          "break provider index must be a default grapheme-cluster boundary"
+          "index" index))
+       (when (hash-has-key? by-index index)
+         (define previous (hash-ref by-index index))
+         (unless (string=? previous insert)
+           (raise-arguments-error
+            who
+            "break provider returned conflicting insertions for one index"
+            "index" index
+            "first" previous
+            "second" insert)))
+       (hash-set! by-index index insert))
+     (sort
+      (for/list ([(index insert) (in-hash by-index)])
+        (wrap-break index insert))
+      < #:key wrap-break-index)]))
+
+(define (combined-wrap-breaks who text language break-provider)
+  ;; Higher-level opportunities supplement rather than replace UAX #14. A
+  ;; provider entry at an already-legal boundary may attach display-only text.
+  (define by-index (make-hasheqv))
+  (for ([op (in-list (line-break-opportunities text))]
+        #:when (positive? (line-break-opportunity-index op)))
+    (hash-set! by-index (line-break-opportunity-index op) ""))
+  (for ([br (in-list (provider-wrap-breaks who break-provider text language))])
+    (hash-set! by-index (wrap-break-index br) (wrap-break-insert br)))
+  (sort
+   (for/list ([(index insert) (in-hash by-index)])
+     (wrap-break index insert))
+   < #:key wrap-break-index))
+
 (define (split-explicit-lines text)
   ;; UAX #14 hard line breaks (BK/CR/LF/NL) delimit layout paragraphs. The
   ;; separators themselves are not shaped; empty and trailing lines survive.
@@ -2390,97 +2501,101 @@
         (loop (add1 i))
         i)))
 
-(define (wrap-at-line-breaks text max-width measure)
-  ;; Greedy line fitting over UAX #14 opportunities. Measure complete
-  ;; candidates because shaping across the candidate boundary can affect width.
-  ;; If the first legal segment itself exceeds max-width, preserve it intact;
-  ;; emergency breaks inside otherwise-unbreakable text are intentionally not
-  ;; synthesized here.
+(define (wrap-at-line-breaks text max-width measure
+                             [break-provider #f] [language #f]
+                             [who 'layout-text])
+  ;; Greedy line fitting over UAX #14 plus higher-level opportunities. A
+  ;; provider insertion is rendered only when that break is actually selected.
   (define n (string-length text))
-  (define break-indices
-    (for/list ([op (in-list (line-break-opportunities text))]
-               #:when (positive? (line-break-opportunity-index op)))
-      (line-break-opportunity-index op)))
+  (define breaks (combined-wrap-breaks who text language break-provider))
   (define first-start (skip-wrap-leading-whitespace text 0))
   (cond
     [(= first-start n) (list "")]
     [else
      (let wrap ([start first-start] [acc '()])
        (define candidates
-         (let drop ([xs break-indices])
+         (let drop ([xs breaks])
            (cond [(null? xs) '()]
-                 [(<= (car xs) start) (drop (cdr xs))]
+                 [(<= (wrap-break-index (car xs)) start) (drop (cdr xs))]
                  [else xs])))
        (let choose ([xs candidates] [best #f])
          (cond
            [(null? xs)
-            ;; LB3 guarantees eot, so this is defensive only.
             (reverse (cons (substring text start n) acc))]
            [else
-            (define pos (car xs))
+            (define br (car xs))
+            (define pos (wrap-break-index br))
+            (define insert (wrap-break-insert br))
             (define render-end (trim-wrap-end text start pos))
-            (define candidate (substring text start render-end))
+            (define candidate
+              (string-append (substring text start render-end) insert))
             (define fits? (<= (measure candidate) max-width))
             (cond
               [(and fits? (= pos n))
                (reverse (cons candidate acc))]
-              [fits?
-               (choose (cdr xs) pos)]
+              [fits? (choose (cdr xs) br)]
               [else
-               (define chosen (or best pos))
-               (define chosen-end (trim-wrap-end text start chosen))
-               (define line (substring text start chosen-end))
-               (define next-start (skip-wrap-leading-whitespace text chosen))
+               ;; Preserve an over-wide first legal segment rather than
+               ;; synthesizing an emergency break inside an unbreakable span.
+               (define chosen (or best br))
+               (define chosen-pos (wrap-break-index chosen))
+               (define chosen-end (trim-wrap-end text start chosen-pos))
+               (define line
+                 (string-append (substring text start chosen-end)
+                                (wrap-break-insert chosen)))
+               (define next-start
+                 (skip-wrap-leading-whitespace text chosen-pos))
                (if (>= next-start n)
                    (reverse (cons line acc))
                    (wrap next-start (cons line acc)))])])))]))
 
-(struct wrapped-slice (start render-end logical-end text) #:transparent)
+(struct wrapped-slice (start render-end logical-end text insert) #:transparent)
 
-(define (wrap-at-line-break-slices text max-width measure-range)
-  ;; Greedy line fitting over UAX #14 opportunities while retaining paragraph
-  ;; coordinates. The coordinate form lets the bidi layer resolve a paragraph
-  ;; once and apply the resulting levels consistently across wrapped lines.
+(define (wrap-at-line-break-slices text max-width measure-range
+                                   [break-provider #f] [language #f]
+                                   [who 'layout-mixed-text])
+  ;; Coordinate-preserving counterpart to wrap-at-line-breaks. Insertions are
+  ;; display-only and are not part of the paragraph coordinates used by bidi.
   (define n (string-length text))
-  (define break-indices
-    (for/list ([op (in-list (line-break-opportunities text))]
-               #:when (positive? (line-break-opportunity-index op)))
-      (line-break-opportunity-index op)))
+  (define breaks (combined-wrap-breaks who text language break-provider))
   (define first-start (skip-wrap-leading-whitespace text 0))
   (cond
-    [(= first-start n) (list (wrapped-slice n n n ""))]
+    [(= first-start n) (list (wrapped-slice n n n "" ""))]
     [else
      (let wrap ([start first-start] [acc '()])
        (define candidates
-         (let drop ([xs break-indices])
+         (let drop ([xs breaks])
            (cond [(null? xs) '()]
-                 [(<= (car xs) start) (drop (cdr xs))]
+                 [(<= (wrap-break-index (car xs)) start) (drop (cdr xs))]
                  [else xs])))
        (let choose ([xs candidates] [best #f])
          (cond
            [(null? xs)
             (reverse
-             (cons (wrapped-slice start n n (substring text start n)) acc))]
+             (cons (wrapped-slice start n n (substring text start n) "") acc))]
            [else
-            (define pos (car xs))
+            (define br (car xs))
+            (define pos (wrap-break-index br))
+            (define insert (wrap-break-insert br))
             (define render-end (trim-wrap-end text start pos))
-            (define fits? (<= (measure-range start render-end) max-width))
+            (define fits? (<= (measure-range start render-end insert) max-width))
             (cond
               [(and fits? (= pos n))
                (reverse
                 (cons (wrapped-slice start render-end pos
-                                     (substring text start render-end))
+                                     (substring text start render-end) insert)
                       acc))]
-              [fits? (choose (cdr xs) pos)]
+              [fits? (choose (cdr xs) br)]
               [else
-               ;; Preserve an over-wide first legal segment rather than
-               ;; synthesizing an emergency break inside an unbreakable span.
-               (define chosen (or best pos))
-               (define chosen-end (trim-wrap-end text start chosen))
+               (define chosen (or best br))
+               (define chosen-pos (wrap-break-index chosen))
+               (define chosen-end (trim-wrap-end text start chosen-pos))
                (define line
-                 (wrapped-slice start chosen-end chosen
-                                (substring text start chosen-end)))
-               (define next-start (skip-wrap-leading-whitespace text chosen))
+                 (wrapped-slice start chosen-end chosen-pos
+                                (substring text start chosen-end)
+                                (wrap-break-insert chosen)))
+               (define next-start
+                 (skip-wrap-leading-whitespace text chosen-pos))
                (if (>= next-start n)
                    (reverse (cons line acc))
                    (wrap next-start (cons line acc)))])])))]))
@@ -2496,24 +2611,27 @@
               #:features features))
 
 (define (wrapped-paragraph-lines sh paragraph max-width
-                                 direction script language features)
+                                 direction script language features
+                                 [break-provider #f])
   ;; With wrapping disabled, preserve the paragraph text exactly, including
   ;; leading/trailing whitespace. Wrapped lines deliberately trim whitespace
   ;; only where it becomes a line-break boundary.
   (if max-width
       (wrapped-paragraph-lines/limited sh paragraph max-width
-                                       direction script language features)
+                                       direction script language features
+                                       break-provider)
       (list paragraph)))
 
 (define (wrapped-paragraph-lines/limited sh paragraph max-width
-                                         direction script language features)
+                                         direction script language features
+                                         break-provider)
   (define (measure str)
     (if (zero? (string-length str))
         0.0
         (run-horizontal-width
          (shape-layout-run sh str direction script language features))))
-  (wrap-at-line-breaks paragraph max-width measure))
-
+  (wrap-at-line-breaks paragraph max-width measure
+                       break-provider language 'layout-text))
 (define (effective-line-direction requested run)
   (cond
     [(eq? requested 'rtl) 'rtl]
@@ -2614,6 +2732,7 @@
                      #:script [script #f]
                      #:language [language #f]
                      #:features [features '()]
+                     #:break-provider [break-provider #f]
                      #:line-height [line-height #f])
   (define who 'layout-text)
   (unless (string? text) (raise-argument-error who "string?" text))
@@ -2626,6 +2745,7 @@
   (define scr (normalize-shape-script who script))
   (define lang (normalize-shape-language who language))
   (define feats (normalize-shape-features who features))
+  (define bp (normalize-layout-break-provider who break-provider))
   (define requested-line-height
     (cond [(not line-height) #f]
           [else (positive-scalar who line-height)]))
@@ -2649,7 +2769,7 @@
            (for/list ([paragraph (in-list (split-explicit-lines text))])
              (define paragraph-lines
                (wrapped-paragraph-lines sh paragraph max-width
-                                        dir scr lang feats))
+                                        dir scr lang feats bp))
              (define paragraph-line-count (length paragraph-lines))
              (for/list ([line-text (in-list paragraph-lines)]
                         [line-index (in-naturals)])
@@ -2919,10 +3039,21 @@
        (loop (cdr xs) (+ cursor (mixed-text-run-width r)) (cons placed out))])))
 
 (define (shape-mixed-line/resolved sh fm text levels resolved-direction
-                                   language features choice-cache)
+                                   language features choice-cache
+                                   #:insert [insert ""]
+                                   #:insert-level [insert-level #f])
+  (define display-level
+    (or insert-level (if (eq? resolved-direction 'rtl) 1 0)))
+  (define base-pieces
+    (grapheme-pieces sh fm text levels language choice-cache))
+  (define insert-pieces
+    (if (zero? (string-length insert))
+        '()
+        (grapheme-pieces sh fm insert
+                         (make-vector (string-length insert) display-level)
+                         language choice-cache)))
   (define logical
-    (coalesce-logical-pieces
-     (grapheme-pieces sh fm text levels language choice-cache)))
+    (coalesce-logical-pieces (append base-pieces insert-pieces)))
   (define shaped
     (for/list ([piece (in-list logical)])
       (mixed-run-from-piece sh fm piece language features)))
@@ -2934,24 +3065,40 @@
 (define (slice-levels levels start end)
   (for/vector ([i (in-range start end)]) (vector-ref levels i)))
 
+(define (display-insert-level text levels paragraph-direction)
+  ;; A discretionary suffix does not participate in paragraph bidi resolution.
+  ;; It inherits the resolved level of the last drawable character before it.
+  (let loop ([i (sub1 (string-length text))])
+    (cond
+      [(negative? i) (if (eq? paragraph-direction 'rtl) 1 0)]
+      [(bidi-explicit-control? (string-ref text i)) (loop (sub1 i))]
+      [else (vector-ref levels i)])))
+
 (define (wrapped-mixed-line-slices sh fm paragraph max-width paragraph-direction
-                                   paragraph-levels language features choice-cache)
+                                   paragraph-levels language features choice-cache
+                                   [break-provider #f])
   (cond
     [(not max-width)
      (list (wrapped-slice 0 (string-length paragraph) (string-length paragraph)
-                          paragraph))]
+                          paragraph ""))]
     [else
      (wrap-at-line-break-slices
       paragraph max-width
-      (lambda (start end)
-        (if (= start end)
+      (lambda (start end insert)
+        (define line-text (substring paragraph start end))
+        (define line-levels (slice-levels paragraph-levels start end))
+        (if (and (= start end) (zero? (string-length insert)))
             0.0
             (let-values ([(runs width dir)
                           (shape-mixed-line/resolved
-                           sh fm (substring paragraph start end)
-                           (slice-levels paragraph-levels start end)
-                           paragraph-direction language features choice-cache)])
-              width))))]))
+                           sh fm line-text line-levels paragraph-direction
+                           language features choice-cache
+                           #:insert insert
+                           #:insert-level
+                           (display-insert-level line-text line-levels
+                                                 paragraph-direction))])
+              width)))
+      break-provider language 'layout-mixed-text)]))
 
 (define (shape-mixed-line sh fm text paragraph-direction language features choice-cache)
   (define-values (levels resolved-direction)
@@ -3031,6 +3178,7 @@
                            #:direction [direction 'auto]
                            #:language [language #f]
                            #:features [features '()]
+                           #:break-provider [break-provider #f]
                            #:line-height [line-height #f])
   (define who 'layout-mixed-text)
   (unless (string? text) (raise-argument-error who "string?" text))
@@ -3040,6 +3188,7 @@
   (define dir (normalize-layout-direction who direction))
   (define lang (normalize-shape-language who language))
   (define feats (normalize-shape-features who features))
+  (define bp (normalize-layout-break-provider who break-provider))
   (define requested-line-height
     (and line-height (positive-scalar who line-height)))
   (shaper-h who sh)
@@ -3064,7 +3213,7 @@
       (bidi-resolve-levels paragraph dir))
     (define paragraph-slices
       (wrapped-mixed-line-slices sh fm paragraph max-width paragraph-dir
-                                 paragraph-levels lang feats choice-cache))
+                                 paragraph-levels lang feats choice-cache bp))
     (define logical-line-ends
       (for/list ([slice (in-list paragraph-slices)])
         (wrapped-slice-logical-end slice)))
@@ -3075,11 +3224,16 @@
           [line-index (in-naturals)])
       (define start (wrapped-slice-start slice))
       (define end (wrapped-slice-render-end slice))
-      (define line-text (wrapped-slice-text slice))
+      (define base-line-text (wrapped-slice-text slice))
+      (define insert (wrapped-slice-insert slice))
+      (define line-text (string-append base-line-text insert))
       (define line-levels (slice-levels final-paragraph-levels start end))
       (define-values (runs natural-width _resolved)
-        (shape-mixed-line/resolved sh fm line-text line-levels paragraph-dir
-                                   lang feats choice-cache))
+        (shape-mixed-line/resolved
+         sh fm base-line-text line-levels paragraph-dir lang feats choice-cache
+         #:insert insert
+         #:insert-level
+         (display-insert-level base-line-text line-levels paragraph-dir)))
       (define request-justify?
         (and max-width
              (paragraph-line-justify? al line-index paragraph-line-count)))

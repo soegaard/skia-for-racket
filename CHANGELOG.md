@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.0 — external segmentation and hyphenation hooks
+
+- Added public `layout-break-opportunity?` values and `make-layout-break-opportunity` for discretionary breaks with optional display-only suffix text such as `"-"`.
+- Added `#:break-provider` to `layout-text` and `layout-mixed-text`. Providers receive each hard-break-delimited paragraph and normalized language hint and return supplemental string-index break boundaries.
+- Provider boundaries supplement rather than replace Unicode 15.1 UAX #14 opportunities, allowing application-supplied Thai/Lao/Khmer dictionary segmentation or language-specific hyphenation without embedding a dictionary in the core package.
+- Provider indices must be interior Racket default-grapheme boundaries. A suffix is shaped only when its boundary is selected; mixed layout preserves paragraph-wide UAX #9 resolution and gives the suffix the resolved level immediately preceding the break.
+- Added pure/native tests, doctor coverage, and `examples/break-providers.rkt`.
+- No new Skia or HarfBuzz native symbols or ABI structs are required.
+
 ## 0.16.0 — explicit Unicode bidi controls
 
 - `layout-mixed-text` now interprets UAX #9 explicit embeddings, overrides, and isolates: `LRE/RLE/LRO/RLO/PDF/LRI/RLI/FSI/PDI`.

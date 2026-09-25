@@ -1354,6 +1354,97 @@ third"))
                     (lambda ()
                       (draw-mixed-text-layout (surface-canvas surface) layout 0 0 p))))
        (skia-close! sh)))
+   (test-case "custom break provider segments an otherwise unbreakable word"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define prefix-width
+         (text-layout-line-width
+          (first (text-layout-lines (layout-text sh "alpha")))))
+       (define full-width
+         (text-layout-line-width
+          (first (text-layout-lines (layout-text sh "alphabeta")))))
+       (define width (+ prefix-width 1.0))
+       (check-true (< width full-width))
+       (define layout
+         (layout-text sh "alphabeta" #:width width
+                      #:break-provider (lambda (paragraph language) '(5))))
+       (check-equal? (map text-layout-line-text (text-layout-lines layout))
+                     '("alpha" "beta"))))
+   (test-case "discretionary break insertion appears only on a selected break"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define prefix-width
+         (text-layout-line-width
+          (first (text-layout-lines (layout-text sh "alpha-")))))
+       (define layout
+         (layout-text sh "alphabeta" #:width (+ prefix-width 1.0)
+                      #:break-provider
+                      (lambda (paragraph language)
+                        (list (make-layout-break-opportunity 5 "-")))))
+       (check-equal? (map text-layout-line-text (text-layout-lines layout))
+                     '("alpha-" "beta"))))
+   (test-case "break provider cannot split a default grapheme cluster"
+     (with-skia ([tf (make-typeface)]
+                 [f (make-font tf #:size 24)]
+                 [sh (make-shaper f)])
+       (define text (string-append "a" (string #\u0301) "b"))
+       (check-exn #rx"grapheme-cluster boundary"
+                  (lambda ()
+                    (layout-text sh text #:width 20
+                                 #:break-provider
+                                 (lambda (paragraph language) '(1)))))))
+   (test-case "mixed layout accepts external Southeast Asian segmentation"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 26)]
+                 [sh (make-shaper f)])
+       (define word "ภาษาไทย")
+       (define text (string-append word word))
+       (define word-layout
+         (layout-mixed-text sh fm word #:language "th"))
+       (define word-width
+         (mixed-text-line-width (first (mixed-text-layout-lines word-layout))))
+       (define layout
+         (layout-mixed-text
+          sh fm text #:width (+ word-width 1.0) #:language "th"
+          #:break-provider
+          (lambda (paragraph language)
+            (if (equal? language "th") (list (string-length word)) '()))))
+       (check-equal? (mixed-text-layout-line-count layout) 2)
+       (check-equal? (map mixed-text-line-text (mixed-text-layout-lines layout))
+                     (list word word))))
+   (test-case "RTL mixed layout gives a discretionary suffix the preceding level"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 25)]
+                 [sh (make-shaper f)]
+                 [p (make-paint #:color 'black)]
+                 [surface (make-surface 240 120)])
+       (define prefix-width
+         (mixed-text-line-width
+          (first (mixed-text-layout-lines
+                  (layout-mixed-text sh fm "שלום-" #:direction 'rtl)))))
+       (define layout
+         (layout-mixed-text
+          sh fm "שלוםעולם" #:width (+ prefix-width 1.0) #:direction 'rtl
+          #:break-provider
+          (lambda (paragraph language)
+            (list (make-layout-break-opportunity 4 "-")))))
+       (check-equal? (map mixed-text-line-text (mixed-text-layout-lines layout))
+                     '("שלום-" "עולם"))
+       (check-true
+        (for/or ([run (in-list
+                       (mixed-text-line-runs
+                        (first (mixed-text-layout-lines layout))))])
+          (and (string=? (mixed-text-run-text run) "-")
+               (eq? (mixed-text-run-direction run) 'rtl))))
+       (draw-mixed-text-layout (surface-canvas surface) layout 10 8 p)
+       (define pixels (surface->rgba-bytes surface))
+       (check-true
+        (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+          (> (bytes-ref pixels i) 0)))))
    (test-case "mixed layout wraps unspaced CJK at UAX #14 opportunities"
      (with-skia ([fm (default-font-manager)]
                  [tf (make-typeface)]

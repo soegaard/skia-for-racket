@@ -304,4 +304,36 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "explicit-bidi rasterization failed"))
     (printf "Explicit bidi controls passed; embeddings, overrides, isolates, and wrapped scopes verified\n"))
+  (with-skia ([tf (make-typeface)]
+              [font (make-font tf #:size 24)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 220 120)])
+    (define alpha-width
+      (text-layout-line-width
+       (car (text-layout-lines (layout-text sh "alpha")))))
+    (define segmented
+      (layout-text sh "alphabeta" #:width (+ alpha-width 1.0)
+                   #:break-provider (lambda (paragraph language) '(5))))
+    (unless (equal? (map text-layout-line-text (text-layout-lines segmented))
+                    '("alpha" "beta"))
+      (error 'doctor "external break provider did not segment text"))
+    (define alpha-hyphen-width
+      (text-layout-line-width
+       (car (text-layout-lines (layout-text sh "alpha-")))))
+    (define hyphenated
+      (layout-text
+       sh "alphabeta" #:width (+ alpha-hyphen-width 1.0)
+       #:break-provider
+       (lambda (paragraph language)
+         (list (make-layout-break-opportunity 5 "-")))))
+    (unless (equal? (map text-layout-line-text (text-layout-lines hyphenated))
+                    '("alpha-" "beta"))
+      (error 'doctor "discretionary break insertion was not rendered"))
+    (draw-text-layout (surface-canvas surface) hyphenated 8 8 paint)
+    (define pixels (surface->rgba-bytes surface))
+    (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+              (> (bytes-ref pixels i) 0))
+      (error 'doctor "break-provider rasterization failed"))
+    (printf "Break providers passed; external segmentation and discretionary hyphen insertion verified\n"))
 )

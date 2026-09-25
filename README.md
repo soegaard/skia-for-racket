@@ -1,4 +1,4 @@
-# Racket Skia — 0.16.0
+# Racket Skia — 0.17.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
@@ -6,12 +6,11 @@ Racket-level and keeps the unsafe ABI layer private.
 
 **Verification status:** versions 0.1 through 0.14 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. The completed 0.14 run passed both native symbol audits (221 Skia and
-27 HarfBuzz bindings, zero missing), every doctor probe, all 165 source test
-cases (43 pure, 6 lifetime, 116 native), and the paragraph-justification visual
-probe. Versions 0.15–0.16 add Unicode conformance tooling and full UAX #9
-explicit-control handling; those new paths are source checked here and await the
-included local conformance/native/visual validation. See [TESTING.md](TESTING.md).
+8.3.1.2. The 0.15–0.16 source/native suite and doctor probes were green before
+the final conformance refinements, and the final Unicode 15.1 run passed
+**10274/10274 LineBreakTest** and **91707/91707 BidiCharacterTest** cases.
+Version 0.17 adds higher-level break providers and awaits its included live
+source/native/visual validation. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -39,7 +38,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.16.0-20260925
+cd racket-skia-0.17.0-20260925
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -62,6 +61,7 @@ mkdir -p output &&
 "$RACKET" examples/line-breaking.rkt output/line-breaking.png &&
 "$RACKET" examples/justification.rkt output/justification.png &&
 "$RACKET" examples/bidi-controls.rkt output/bidi-controls.png &&
+"$RACKET" examples/break-providers.rkt output/break-providers.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -631,10 +631,10 @@ emoji modifiers, and the Brahmic orthographic-syllable rules introduced in
 Unicode 15.1. BK/CR/LF/NL hard separators form explicit layout lines.
 
 The implementation uses the UAX #14 tailoring that keeps Racket default
-grapheme clusters intact. Southeast Asian dictionary segmentation is not
-provided; SA text uses UAX #14's default AL/CM resolution. Language-specific
-hyphenation and emergency breaking inside otherwise-unbreakable spans are not
-implemented.
+grapheme clusters intact. SA text uses UAX #14's default AL/CM resolution in
+the core resolver. Version 0.17 lets higher-level code supplement those breaks
+with dictionary or hyphenation boundaries; emergency breaking inside otherwise-
+unbreakable spans is still not synthesized.
 
 ## Paragraph justification
 
@@ -665,3 +665,20 @@ Embeddings, overrides, isolates, FSI, overflow behavior, bracket resolution in
 isolating run sequences, and line-specific trailing resets are handled before
 script/font segmentation. The controls themselves remain formatting metadata
 and do not become drawable glyphs.
+
+## External segmentation and hyphenation hooks
+
+Version 0.17 adds `#:break-provider` to both paragraph APIs. A provider is a
+procedure of two arguments, `(paragraph language)`, called once for each
+hard-break-delimited paragraph when wrapping is enabled. It returns a list of
+additional string indices or `layout-break-opportunity?` values. The indices
+supplement normal UAX #14 opportunities and must fall on Racket default-
+grapheme boundaries.
+
+`make-layout-break-opportunity` can attach display-only text to a boundary. For
+example, `(make-layout-break-opportunity 5 "-")` makes index 5 a legal break
+and draws the hyphen only if that boundary is selected. This supports external
+Thai/Lao/Khmer segmenters and language-specific hyphenators without building a
+dictionary into this standalone Skia binding. In mixed bidi text the suffix
+inherits the resolved level immediately before the break and does not alter the
+logical paragraph's UAX #9 resolution.
