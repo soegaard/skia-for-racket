@@ -4,7 +4,7 @@
          racket/match
          racket/path
          racket/vector
-         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt" "pdf-util.rkt"
+         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt" "pdf-util.rkt" "svg-util.rkt"
          "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt" "joining.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
@@ -182,13 +182,14 @@
 (define (skia-resource? v)
   (or (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
-      (picture? v) (picture-recorder? v) (document? v)
+      (picture? v) (picture-recorder? v) (document? v) (svg-document? v)
       (skia-path? v) (path-measure? v) (image? v) (codec? v)
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
   (cond [(surface? v) (surface-handle v)]
         [(document? v) (document-handle v)]
+        [(svg-document? v) (svg-document-handle v)]
         [(pdf-page? v) (document-handle (pdf-page-document v))]
         [(paint? v) (paint-handle v)]
         [(shader? v) (shader-handle v)]
@@ -212,9 +213,9 @@
 
 (define (skia-closed? v)
   (define owner (if (canvas? v) (canvas-owner 'skia-closed? v) v))
-  (if (pdf-page? owner)
-      (pdf-page-closed? owner)
-      (owned-closed? (resource-handle 'skia-closed? owner))))
+  (cond [(pdf-page? owner) (pdf-page-closed? owner)]
+        [(and (canvas? v) (svg-document? owner)) (svg-canvas-closed? owner)]
+        [else (owned-closed? (resource-handle 'skia-closed? owner))]))
 
 (define (skia-close! v)
   (owned-close! 'skia-close! (resource-handle 'skia-close! v))
@@ -273,7 +274,8 @@
 (define (canvas-owner who c)
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
   (define owner (canvas-resource c))
-  (unless (or (surface? owner) (picture-recorder? owner) (pdf-page? owner))
+  (unless (or (surface? owner) (picture-recorder? owner) (pdf-page? owner)
+              (svg-document? owner))
     (error who "canvas owner is corrupted"))
   owner)
 
@@ -281,12 +283,14 @@
   (cond [(surface? owner) (surface-floors owner)]
         [(picture-recorder? owner) (picture-recorder-floors owner)]
         [(pdf-page? owner) (pdf-page-floors owner)]
+        [(svg-document? owner) (svg-document-floors owner)]
         [else (error 'owner-floors "unsupported owner")]))
 
 (define (set-owner-floors! owner floors)
   (cond [(surface? owner) (set-surface-floors! owner floors)]
         [(picture-recorder? owner) (set-picture-recorder-floors! owner floors)]
         [(pdf-page? owner) (set-pdf-page-floors! owner floors)]
+        [(svg-document? owner) (set-svg-document-floors! owner floors)]
         [else (error 'set-owner-floors! "unsupported owner")]))
 
 (define (call-on-canvas who c others proc)
@@ -307,6 +311,7 @@
           (unless ptr (error who "picture recorder has no active canvas"))
           ptr]
          [(pdf-page? owner) (pdf-page-pointer/checked who owner)]
+         [(svg-document? owner) (svg-canvas-pointer/checked who owner)]
          [else (error who "unsupported canvas owner")]))
      (apply proc cp ps))))
 
@@ -314,6 +319,212 @@
   (with-handlers ([exn? (lambda (e) (skia-close! v) (raise e))])
     (proc v)
     v))
+
+(provide svg-document? make-svg-document svg-document-width svg-document-height
+         svg-document-state svg-document-canvas
+         svg-document-finish! svg-document-abort!
+         svg-document->bytes svg-document->string save-svg
+         call-with-svg-bytes call-with-svg-string call-with-svg-file
+         shaped-run->path draw-rasterized)
+
+;; SVG output ---------------------------------------------------------------
+;; Unlike PDF, Skia's SVG backend owns a canvas, not an SkDocument. Deleting
+;; that canvas closes the XML root. One owned STREAM handle keeps everything
+;; alive; its release closure captures storage, never the public wrapper.
+(struct svg-storage ([canvas #:mutable] [xml #:mutable]))
+(struct svg-document (handle storage width height title description prefix
+                             [status #:mutable] [floors #:mutable])
+  #:constructor-name make-svg-document-record)
+
+(define (svg-document-h who d)
+  (typed-handle who d svg-document? svg-document-handle "svg-document?"))
+
+(define (svg-document-state d)
+  (define h (svg-document-h 'svg-document-state d))
+  (if (owned-closed? h)
+      (if (eq? (svg-document-status d) 'aborted) 'aborted 'closed)
+      (svg-document-status d)))
+
+(define (svg-canvas-closed? d)
+  (or (owned-closed? (svg-document-handle d))
+      (not (eq? (svg-document-status d) 'open))
+      (not (svg-storage-canvas (svg-document-storage d)))))
+
+(define (svg-canvas-pointer/checked who d)
+  (when (svg-canvas-closed? d)
+    (error who "SVG canvas is closed (document finished, aborted, or released)"))
+  (svg-storage-canvas (svg-document-storage d)))
+
+(define (release-svg-native! storage sp)
+  ;; Clear first: explicit release and GC cleanup cannot delete the same canvas
+  ;; twice. Finalizers may finish an XML stream internally but never publish it.
+  (define cp (svg-storage-canvas storage))
+  (set-svg-storage-canvas! storage #f)
+  (when cp (sk_canvas_destroy cp))
+  (set-svg-storage-xml! storage #f)
+  (sk_dynamicmemorywstream_destroy sp))
+
+(define (make-svg-document width height #:title [title ""]
+                            #:description [description ""] #:id-prefix [id-prefix "skia"])
+  (define who 'make-svg-document)
+  (define w (svg-dimension who width))
+  (define h (svg-dimension who height))
+  (define-values (t d) (svg-metadata who title description))
+  (define prefix (svg-id-prefix who id-prefix))
+  ;; All argument validation precedes native loading/allocation.
+  (skia-check!)
+  (define storage (svg-storage #f #f))
+  (define handle
+    (new-owned
+     who 'svg-document
+     (lambda ()
+       (define sp (sk_dynamicmemorywstream_new))
+       (unless sp (error who "native SVG stream allocation failed"))
+       (with-handlers ([(lambda (_) #t)
+                        (lambda (e) (release-svg-native! storage sp) (raise e))])
+         (define bounds (make-sk-rect 0.0 0.0 w h))
+         (define cp (sk_svgcanvas_create_with_stream bounds sp))
+         (unless cp (error who "native SVG canvas allocation failed"))
+         (set-svg-storage-canvas! storage cp)
+         sp))
+     (lambda (sp) (release-svg-native! storage sp))))
+  (make-svg-document-record handle storage w h t d prefix 'open '()))
+
+(define (svg-document-canvas d)
+  (call-with-owned
+   'svg-document-canvas (list (svg-document-h 'svg-document-canvas d))
+   (lambda (_sp)
+     (svg-canvas-pointer/checked 'svg-document-canvas d)
+     (make-canvas-record d))))
+
+(define (svg-document-finish! d)
+  (define who 'svg-document-finish!)
+  (define hnd (svg-document-h who d))
+  (call-with-owned
+   who (list hnd)
+   (lambda (sp)
+     (unless (eq? (svg-document-status d) 'finished)
+       (svg-canvas-pointer/checked who d)
+       (unless (null? (svg-document-floors d))
+         (error who "cannot finish SVG inside a protected canvas-state scope"))
+       (with-handlers ([(lambda (_) #t)
+                        (lambda (e)
+                          (set-svg-document-status! d 'aborted)
+                          (owned-close! who hnd)
+                          (raise e))])
+         (define storage (svg-document-storage d))
+         (define cp (svg-storage-canvas storage))
+         (set-svg-document-status! d 'finishing)
+         (set-svg-storage-canvas! storage #f)
+         ;; A flush is not sufficient. This MUST precede stream detachment.
+         (sk_canvas_destroy cp)
+         (define xml
+           (call-with-native-temporary
+            who 'svg-data
+            (lambda () (sk_dynamicmemorywstream_detach_as_data sp)) sk_data_unref
+            (lambda (dp)
+              (finish-svg-xml who (copy-native-data who dp)
+                              (svg-document-width d) (svg-document-height d)
+                              (svg-document-title d) (svg-document-description d)
+                              (svg-document-prefix d)))))
+         (set-svg-storage-xml! storage xml)
+         (set-svg-document-status! d 'finished)))))
+  (void))
+
+(define (svg-document-abort! d)
+  (define hnd (svg-document-h 'svg-document-abort! d))
+  ;; Also checks thread ownership after an earlier close/abort.
+  (owned-close! 'svg-document-abort! hnd)
+  (set-svg-document-status! d 'aborted)
+  (void))
+
+(define (svg-document->bytes d)
+  (define who 'svg-document->bytes)
+  (call-with-owned
+   who (list (svg-document-h who d))
+   (lambda (_sp)
+     (unless (eq? (svg-document-status d) 'finished)
+       (error who "svg-document-finish! must succeed before reading SVG bytes"))
+     (define xml (svg-storage-xml (svg-document-storage d)))
+     (unless (<= (bytes-length xml) (current-skia-byte-limit))
+       (error who "SVG output exceeds current-skia-byte-limit"))
+     ;; Independent mutable result, like document->pdf-bytes and image encoders.
+     (bytes-copy xml))))
+
+(define (svg-document->string d)
+  (bytes->string/utf-8 (svg-document->bytes d) #f))
+
+(define (save-svg d filename #:exists [exists 'error])
+  (define target (svg-output-path 'save-svg filename exists))
+  (write-svg-file-bytes! 'save-svg (svg-document->bytes d) target exists))
+
+(define (call-with-svg-bytes width height proc #:title [title ""]
+                             #:description [description ""] #:id-prefix [id-prefix "skia"])
+  (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
+    (raise-argument-error 'call-with-svg-bytes "procedure accepting one canvas argument" proc))
+  (with-skia ([d (make-svg-document width height #:title title
+                                   #:description description #:id-prefix id-prefix)])
+    ;; with-skia covers arbitrary raises, breaks, and continuation escapes.
+    ;; No completed bytes escape until the callback AND XML finalization succeed.
+    (call-with-values (lambda () (proc (svg-document-canvas d))) (lambda ignored (void)))
+    (svg-document-finish! d)
+    (svg-document->bytes d)))
+
+(define (call-with-svg-string width height proc #:title [title ""]
+                              #:description [description ""] #:id-prefix [id-prefix "skia"])
+  (bytes->string/utf-8
+   (call-with-svg-bytes width height proc #:title title
+                        #:description description #:id-prefix id-prefix) #f))
+
+(define (call-with-svg-file filename width height proc #:exists [exists 'error]
+                            #:title [title ""] #:description [description ""]
+                            #:id-prefix [id-prefix "skia"])
+  ;; Fix the absolute destination before a callback can change current-directory.
+  (define target (svg-output-path 'call-with-svg-file filename exists))
+  (define bs (call-with-svg-bytes width height proc #:title title
+                                 #:description description #:id-prefix id-prefix))
+  (write-svg-file-bytes! 'call-with-svg-file bs target exists))
+
+;; These two helpers work with every backend, not only SVG. They make the
+;; trade-off between editable text, glyph outlines, and raster content explicit.
+(define (shaped-run->path sh run)
+  (define who 'shaped-run->path)
+  (define hh (shaper-h who sh))
+  (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
+  (call-with-owned who (list hh) (lambda (_) (void)))
+  (define out (make-path))
+  (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! out) (raise e))])
+    (for ([gid (in-list (shaped-run-glyphs run))]
+          [pos (in-list (shaped-run-positions run))])
+      (define gp (font-glyph-path (shaper-font sh) gid))
+      ;; Empty/bitmap-only glyphs need not expose an outline. This intentionally
+      ;; has the same outline-only limitation as simple-text-path, not a claim
+      ;; to preserve color emoji. draw-rasterized preserves rendered glyphs.
+      (when gp
+        (call-with-skia-resource gp
+          (lambda (p) (path-add-path! out p #:dx (car pos) #:dy (cadr pos))))))
+    out))
+
+(define (draw-rasterized c x y width height proc #:scale [scale 1])
+  (define who 'draw-rasterized)
+  (define fx (scalar who x))
+  (define fy (scalar who y))
+  (define fw (positive-scalar who width))
+  (define fh (positive-scalar who height))
+  (define-values (pw ph) (rasterized-dimensions who width height scale))
+  (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
+    (raise-argument-error who "procedure accepting one canvas argument" proc))
+  ;; Validate destination liveness/thread before executing user code.
+  (call-on-canvas who c '() (lambda (_) (void)))
+  (with-skia ([s (make-surface pw ph)])
+    (define rc (surface-canvas s))
+    ;; Account for independent rounding of raster width/height without moving
+    ;; logical coordinates. The callback sees local (0,0)..(width,height).
+    (canvas-scale! rc (/ pw fw) (/ ph fh))
+    (call-with-values (lambda () (proc rc)) (lambda ignored (void)))
+    (with-skia ([im (surface-snapshot s)])
+      (draw-image-rect c im fx fy fw fh #:sampling 'linear)))
+  (void))
 
 (provide document? make-pdf-document document-state document-page-count
          document-begin-page! document-end-page! document-finish! document-abort!

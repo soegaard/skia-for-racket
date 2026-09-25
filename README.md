@@ -1,17 +1,43 @@
-# Racket Skia — 0.21.0
+# Racket Skia — 0.22.0
 
-An experimental standalone CPU drawing and PDF-output binding to Skia through
+An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the user has live-validated 0.20 on macOS/aarch64 with
-Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp 8.3.1.2: 219 source cases,
-both symbol audits, doctor, and the animation/orientation visual probe passed.
-This revision starts from `ccabb4741edc227a1dbeba91a47adf5082d7417f`.
-**0.21 has not been compiled or run against Racket/native Skia in the authoring
-environment.** See [PDF validation](docs/PDF-TESTING.md).
+**Verification status:** the maintainer reported the 0.21 tests passing and
+supplied the three-page PDF plus raster references. This revision starts from
+the pushed PDF-output commit `246f70cd80e26bc5d8da126e86ff7e520225a5f7`.
+**0.22 has source/context-patch checks only here; Racket compilation, native
+SVG tests, and viewer validation remain required.** See [SVG validation](docs/SVG-TESTING.md).
 The earlier Unicode 15.1 baseline remains 10274/10274 line-break and
 91707/91707 bidi-character cases; no new full conformance result is claimed.
+
+## SVG documents
+
+```racket
+(call-with-svg-file
+ "example.svg" 300 180
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color 'blue)])
+     (draw-circle canvas 100 90 45 paint)))
+ #:title "Example SVG" #:exists 'replace)
+```
+
+SVG helpers receive a normal canvas directly. They produce complete UTF-8 SVG
+bytes, strings, or safely published files with explicit dimensions/viewBox,
+escaped title/description, and stable prefixed resource IDs. They are not PDF
+page wrappers. Existing PDF output is unchanged.
+
+The pinned native SVG serializer is not equivalent to every raster/PDF
+operation. Native text relies on viewer fonts and glyph-to-Unicode conversion;
+use `simple-text-path` or `shaped-run->path` for explicit outlines. Use
+`draw-rasterized` for bounded effects/shaders that require pixels, while
+surrounding content stays vector. There is no blanket automatic fallback.
+See the [SVG guide and coverage table](docs/SVG-OUTPUT.md).
+
+`examples/svg-documents.rkt` writes three SVGs, their separately drawn raster
+references, and a browser review page. `tools/inspect-svg-output.py` checks the
+actual SVG structure using Python's standard library; it does not render it.
 
 ## PDF documents
 
@@ -454,13 +480,14 @@ The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 
 ## Boundaries of this version
 
-The library supports native PDF document output, shaped/paragraph/bidirectional
-text, font management, animated-frame decoding, encoded-orientation
-normalization, and owned color spaces/codecs. Full SVG document output,
-GPU/Metal/Vulkan contexts, arbitrary matrix concatenation, shader-local matrices,
-advanced filter families/crop rectangles, and a Skia-backed `dc<%>` remain outside
-the public API. PNG/JPEG/WebP are the exposed image encoders. PDF is an output
-backend, not a PDF reader/editor/renderer; see [PDF limits](docs/PDF-OUTPUT.md).
+The library supports native PDF and SVG document output, shaped/paragraph/
+bidirectional text, font management, animated-frame decoding, encoded-orientation
+normalization, and owned color spaces/codecs. GPU/Metal/Vulkan contexts,
+arbitrary matrix concatenation, shader-local matrices, advanced filter
+families/crop rectangles, and a Skia-backed `dc<%>` remain outside the public API.
+PNG/JPEG/WebP are the exposed image encoders. PDF and SVG are output backends,
+not input parsers/editors/renderers. See [PDF limits](docs/PDF-OUTPUT.md) and
+[the narrower native SVG coverage](docs/SVG-OUTPUT.md#backend-coverage-and-limits).
 
 Native resources are confined to the Racket thread that created them. The
 implementation rejects cross-thread drawing and explicit destruction.

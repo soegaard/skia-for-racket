@@ -1,19 +1,25 @@
 # Testing
 
-## Current stage: PDF output (0.21)
+## Current stage: SVG output (0.22)
 
-The user's 0.20 run passed 219 source cases, native symbol audits, doctor,
-and the animation/orientation visual probe. The pushed baseline is
-`ccabb4741edc227a1dbeba91a47adf5082d7417f`.
+The maintainer reported the 0.21 tests passing and supplied its three-page PDF
+and raster references. The pushed baseline is
+`246f70cd80e26bc5d8da126e86ff7e520225a5f7` (PDF document output).
 
-The 0.21 PDF stage adds 12 pure and 21 native cases: **252 source cases** in
-seven suites (54 + 6 + 10 + 12 + 132 + 17 + 21). Required symbols are 247 Skia
-and 27 HarfBuzz. PDF ABI sizes on the current 64-bit target are metadata 80
-and timestamp 10 bytes. These are expected host results, not a claimed live run.
+SVG adds 16 pure and 27 native cases: **295 expected source cases** in nine
+suites (54 + 6 + 10 + 12 + 16 + 132 + 17 + 21 + 27). Required symbols become
+249 Skia and remain 27 HarfBuzz. No new native struct layouts are introduced.
+The full runner includes all existing PDF/codec suites; `--pure` runs 98 cases.
 
-Authoring checks are source/patch/host-C checks, not Racket compilation or
-native execution. No generated Skia PDF has been visually validated here.
-Run [the complete PDF validation sequence](docs/PDF-TESTING.md).
+Authoring checks are source/context-patch checks and six synthetic Python
+inspector tests, not Racket compilation, a full checkout validation, or native
+SVG generation/rendering. Run [the complete SVG sequence](docs/SVG-TESTING.md)
+and review the actual SVGs in the generated browser comparison page. The PNGs
+are separately drawn raster references, not SVG rasterizations.
+
+The 0.21 baseline has 252 cases and 247 Skia symbols; its metadata/timestamp
+layout checks are retained in the new validation sequence. The prior full
+Unicode conformance results are not new results for this stage.
 
 ## Historical validation notes
 

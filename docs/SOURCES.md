@@ -3,6 +3,17 @@
 These are upstream references for the native interface and Racket FFI choices,
 not evidence that this package's own tests have run. Checked on 2026-09-24.
 
+## SVG output audit (2026-09-26)
+
+These pinned sources define the narrower native SVG behavior, not proof that
+the new Racket tests or viewer probes have run:
+
+- [C factory: two arguments, no SVG flags](https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/src/c/sk_svg.cpp)
+- [SVG canvas lifetime and C++ flags](https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/include/svg/SkSVGCanvas.h)
+- [Rounded native viewport construction](https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/src/svg/SkSVGCanvas.cpp)
+- [Paint/clip/image/text serialization and unsupported cases](https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/src/svg/SkSVGDevice.cpp)
+- [Owned canvas deletion](https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/src/c/sk_canvas.cpp)
+
 ## Pinned SkiaSharp interface
 
 - [Generated C signatures, structs, and enumerations, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SkiaApi.generated.cs)

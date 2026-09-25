@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.22.0 — SVG document output
+
+- Added owned single-viewport SVG documents with borrowed canvases, explicit
+  finish/abort, copied bytes/strings, and safe file publication. Canvas deletion
+  completes the XML before stream detachment; closed canvas aliases stay invalid.
+- Added fractional dimensions/viewBox, escaped UTF-8 title/description, and
+  deterministic resource-ID canonicalization with a caller-selected prefix.
+- Added backend-independent `shaped-run->path` and `draw-rasterized` helpers:
+  explicit glyph geometry or local pixel groups, not hidden whole-page fallback.
+- Documented the pinned C shim's missing SVG flags, native glyph/text mapping,
+  unsupported shader/filter/clip/blend cases, and lack of font embedding.
+- Added 16 pure and 27 native cases (295 expected total), a doctor probe, three
+  SVG examples with raster references/browser comparison, and a standard-library
+  Python structural inspector with six synthetic self-tests.
+- Adds two Skia symbols (249 total), no HarfBuzz symbols (27 total), and no
+  native struct layouts. Existing PDF, ICC/color, and codec code is retained.
+- Based on pushed PDF commit `246f70cd80e26bc5d8da126e86ff7e520225a5f7` after
+  the maintainer reported its tests passing. New Racket/native SVG execution
+  awaits host validation; see `docs/SVG-TESTING.md` for the verification boundary.
+
 ## 0.21.0 — PDF document output
 
 - Added owned PDF documents and per-page borrowed canvases using the existing

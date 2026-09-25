@@ -1,5 +1,26 @@
 # Native ABI and ownership notes
 
+## SVG canvas ownership
+
+SVG adds `sk_svgcanvas_create_with_stream` and `sk_canvas_destroy`: 249 required
+Skia symbols in total, 27 HarfBuzz symbols, and no new C layouts. The pinned C
+factory takes only bounds and a stream; it does not expose C++ flags.
+
+A single owned native memory-stream handle retains private SVG storage. The
+storage holds the owned SVG canvas, which must be deleted before detaching the
+stream because its destructor closes buffered XML elements. This destructor is
+never used for borrowed surface, picture, or PDF page canvases. Finish caches
+postprocessed immutable Racket bytes and invalidates every SVG canvas alias;
+the live document may still supply independent byte/string copies. Releasing
+or aborting the wrapper discards the cache and destroys any remaining canvas
+before the stream. The release closure captures storage, not the wrapper.
+
+Native callouts remain synchronous and thread-confined. Scoped exits and
+continuation escapes close the owned handle; finalizers never publish files.
+The two explicit geometry/raster helpers use existing path/font/image APIs.
+The root/ID postprocessor is deliberately limited to the pinned serializer's
+XML, not a general SVG parser or sanitizer. See [SVG output](SVG-OUTPUT.md).
+
 ## PDF document ownership and layouts
 
 The PDF layer adds seven Skia symbols and no HarfBuzz symbols. Its C metadata

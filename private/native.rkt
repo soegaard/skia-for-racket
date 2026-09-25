@@ -81,6 +81,12 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; SVG owns its canvas; surface/PDF canvases remain borrowed and must never
+;; be passed to this destructor. The pinned SVG C shim has no flags argument.
+(define-native sk_svgcanvas_create_with_stream
+  (_fun _sk-rect-pointer _pointer -> _pointer))
+(define-native sk_canvas_destroy (_fun _pointer -> _void))
+
 ;; Native PDF output. SkDocument borrows the stream and owns each page canvas.
 (define-native sk_document_create_pdf_from_stream_with_metadata
   (_fun _pointer _sk-pdf-metadata-pointer -> _pointer))

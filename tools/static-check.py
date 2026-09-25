@@ -19,7 +19,8 @@ def sexps(text):
 counts={}
 for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-tests'),('native-test.rkt','native-tests'),
               ('codec-pure-test.rkt','codec-pure-tests'),('codec-native-test.rkt','codec-native-tests'),
-              ('pdf-pure-test.rkt','pdf-pure-tests'),('pdf-native-test.rkt','pdf-native-tests')]:
+              ('pdf-pure-test.rkt','pdf-pure-tests'),('pdf-native-test.rkt','pdf-native-tests'),
+              ('svg-pure-test.rkt','svg-pure-tests'),('svg-native-test.rkt','svg-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1

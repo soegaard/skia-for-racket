@@ -1,9 +1,109 @@
-# API reference — version 0.21.0
+# API reference — version 0.22.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+## SVG documents
+
+```racket
+(svg-document? value)
+(make-svg-document width height
+                   #:title [title ""]
+                   #:description [description ""]
+                   #:id-prefix [id-prefix "skia"])
+(svg-document-width svg)
+(svg-document-height svg)
+(svg-document-state svg)             ; open, finished, aborted, closed
+(svg-document-canvas svg)            ; borrowed canvas, only while open
+(svg-document-finish! svg)
+(svg-document-abort! svg)
+(svg-document->bytes svg)            ; independent mutable bytes, after finish
+(svg-document->string svg)           ; UTF-8 string, after finish
+(save-svg svg path #:exists [exists 'error])
+
+(call-with-svg-bytes width height draw
+                     #:title [title ""]
+                     #:description [description ""]
+                     #:id-prefix [id-prefix "skia"])
+(call-with-svg-string width height draw
+                      #:title [title ""]
+                      #:description [description ""]
+                      #:id-prefix [id-prefix "skia"])
+(call-with-svg-file path width height draw
+                    #:exists [exists 'error]
+                    #:title [title ""]
+                    #:description [description ""]
+                    #:id-prefix [id-prefix "skia"])
+```
+
+SVG is a single-viewport output backend, not an SVG reader or a PDF page.
+Its owned document is a `skia-resource?`, but not a PDF `document?`. It works
+with `with-skia`, `skia-close!`, and the existing canvas drawing functions.
+Width and height are finite reals from 0.001 through 32768 SVG user units;
+queries return inexact values. The result has explicit width/height and
+`viewBox="0 0 width height"`. No separately positioned viewBox is exposed.
+
+The `draw` procedure receives one **canvas**, runs once, and may return any
+number of values, which are ignored. Convenience helpers finish after a normal
+return, copy the result, and release all native resources on any exit. Saved
+canvas aliases become invalid. In the explicit API, finish is idempotent while
+the wrapper is live and makes every borrowed canvas invalid, but the finished
+document remains live for repeated reads/saves. Reads before finish or after
+close raise. Abort discards even a previously finished result and is idempotent.
+Finish inside a protected `with-canvas-state` scope raises; closing/aborting
+inside such a scope is safe. Native operations retain the creator-thread rule.
+
+Title/description are XML 1.0-compatible strings, escaped as UTF-8 `<title>` and
+`<desc>` content; empty strings omit the elements. The ID prefix is 1–64 ASCII
+characters, starting with a letter/underscore and then letters/digits/`_`/`.`/`-`.
+Native resource IDs and attribute references are renumbered in definition order.
+Use distinct prefixes for roots inserted inline in the same HTML document.
+This improves repeatability of native clip IDs; it does not promise identical
+font-dependent or cross-platform output.
+
+File helpers require an existing parent directory and accept `'error` or
+`'replace`. They complete the XML before writing a same-directory temporary
+file and publishing it; drawing/finalization failures preserve an existing
+file. The absolute destination is fixed before the callback. Byte limits apply
+to metadata, native XML copies, postprocessed output, and readback, not to the
+native stream's total allocation before finish. A vector viewport does not
+allocate or charge a width-by-height RGBA buffer just for existing.
+
+**Native SVG coverage is narrower than raster/PDF coverage.** The pinned C shim
+has no exposed text-to-path/compact-XML flags. Native text may emit `<text>`
+with font-family names but no font binaries, and its reverse glyph-to-Unicode
+mapping can omit shaped glyphs or lose their semantics. General shader/filter/
+blend/difference-clip operations are not guaranteed, and there is no blanket
+automatic raster fallback. See the [SVG coverage table](SVG-OUTPUT.md#backend-coverage-and-limits).
+
+### Explicit outline and raster helpers
+
+```racket
+(shaped-run->path shaper run) ; independent owned path, baseline-local positions
+(draw-rasterized canvas x y width height draw #:scale [scale 1])
+```
+
+`shaped-run->path` uses the supplied live shaper's snapshotted font and the
+run's glyph IDs/positions. Supply the same shaper used for the run. The path
+outlives the shaper; an empty run gives an empty path. Missing outlines,
+including bitmap-only glyphs, are omitted, as with `simple-text-path`; color
+emoji are not preserved by outlining. The result is geometry, not selectable
+text. Use `simple-text-path` for unshaped labels and draw either with `draw-path`.
+These helpers work on raster and PDF backends too.
+
+`draw-rasterized` draws once into a transparent local raster canvas and embeds
+its snapshot in the destination rectangle. Its callback uses local logical
+bounds `(0,0)..(width,height)`. Scale is pixels per unit, a finite real from
+1/1024 through 1024. Pixel sizes are the ceilings of width/height times scale
+and must satisfy normal raster limits. Each initial axis scale accounts for
+rounding. The temporary canvas is invalid after the call. Include padding for
+blur/shadows; the group is clipped at its bounds. Destination-dependent blending
+requires the necessary backdrop inside the group; the existing destination is
+not captured. Surrounding SVG geometry remains vector.
+
+See [the SVG guide](SVG-OUTPUT.md) for complete examples and limitations.
 
 ## PDF documents
 
