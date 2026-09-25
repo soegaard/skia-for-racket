@@ -1,16 +1,37 @@
-# Racket Skia — 0.19.0
+# Racket Skia — 0.20.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.18 are live-validated on
+**Verification status:** versions 0.1 through 0.19 have been reported green on
 macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. The completed 0.18 run passed the full source/native suite and the
-script-aware justification visual probe; the Unicode 15.1 conformance baseline
-remains **10274/10274 LineBreakTest** and **91707/91707 BidiCharacterTest**.
-Version 0.19 adds color-space/ICC support and awaits the included live symbol
-audit, doctor, tests, and visual probe. See [TESTING.md](TESTING.md).
+8.3.1.2. This revision starts from the pushed 0.19 ICC-corrected baseline,
+`257517a5c9f561b075c2fff23dd3ccad3be39d9a`, and preserves that correction.
+The previous Unicode 15.1 conformance baseline remains **10274/10274
+LineBreakTest** and **91707/91707 BidiCharacterTest**; it is not a new 0.20 run.
+
+Version 0.20 adds owned codecs, fully composited GIF/WebP frame decoding,
+all eight encoded-orientation transforms, and frame/loop/color-space metadata.
+**The new Racket/native tests have not been run in the authoring environment.**
+See [the 0.20 validation instructions](docs/CODEC-TESTING.md) for the complete
+local build/test/doctor/visual sequence and the exact verification boundary.
+
+## Animated frames and orientation
+
+```racket
+(with-skia ([codec (codec-from-file "animation.gif")])
+  (printf "~a selectable frames\n" (codec-frame-count codec))
+  (with-skia ([frame (codec->image codec #:frame-index 0)])
+    ;; The frame is a detached full-canvas raster, normalized by default.
+    (save-image frame "frame-0.png" 'png #:exists 'replace)))
+```
+
+`image-frame-from-bytes` and `image-frame-from-file` offer one-shot decoding.
+Use `#:normalize-origin? #f` for encoded pixel coordinates. Existing image
+constructors retain their previous behavior. Run `examples/advanced-codecs.rkt`
+for the animation/orientation contact sheet. Detailed contracts are in
+[the API reference](docs/API.md#animated-codecs-and-encoded-orientation).
 
 ## Implemented
 

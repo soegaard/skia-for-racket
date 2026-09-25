@@ -17,7 +17,8 @@ def sexps(text):
     assert len(stack)==1
     return root
 counts={}
-for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-tests'),('native-test.rkt','native-tests')]:
+for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-tests'),('native-test.rkt','native-tests'),
+              ('codec-pure-test.rkt','codec-pure-tests'),('codec-native-test.rkt','codec-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1

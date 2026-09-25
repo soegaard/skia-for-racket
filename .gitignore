@@ -1,6 +1,7 @@
 compiled/
 **/compiled/
 output/
+downloads/
 native/*/
 *.nupkg
 .DS_Store

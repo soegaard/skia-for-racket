@@ -19,6 +19,15 @@
   ([glyphs _pointer] [pos _pointer] [utf8text _pointer] [clusters _pointer]))
 (define-cstruct _sk-irect
   ([left _int32] [top _int32] [right _int32] [bottom _int32]))
+;; SkiaSharp 3.119.1, skia 40f75dc: bool is one byte, and the frame
+;; rectangle is inline (not a pointer). Keep the complete 44-byte frame record.
+(define-cstruct _sk-codec-options
+  ([zero-initialized _int] [subset _pointer]
+   [frame-index _int] [prior-frame _int]))
+(define-cstruct _sk-codec-frame-info
+  ([required-frame _int] [duration _int] [fully-received _stdbool]
+   [alpha-type _int] [has-alpha-within-bounds _stdbool]
+   [disposal-method _int] [blend _int] [frame-rect _sk-irect]))
 (define-cstruct _sk-png-options
   ([filter-flags _int] [zlib-level _int] [comments _pointer]
    [icc-profile _pointer] [icc-description _pointer]))

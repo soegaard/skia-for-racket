@@ -1,5 +1,16 @@
 # Testing
 
+## Current revision: 0.20 advanced codecs
+
+The complete current command sequence is in
+[`docs/CODEC-TESTING.md`](docs/CODEC-TESTING.md). The 0.20 patch adds 27 cases:
+10 pure and 17 native. Expected totals are **64 pure + 6 lifetime + 149 native
+= 219 source test cases**. The full runner includes both new suites;
+`--pure` runs 70 pure/lifetime cases. Required symbols are 240 Skia and
+27 HarfBuzz. The new tests have **not** been executed in the authoring
+environment; fixture and host-C mirror validation are not native validation.
+Historical commands/counts below describe their named revision, not 0.20.
+
 ## Status
 
 **0.1 through 0.14 — LIVE VALIDATED on macOS/aarch64.** The latest live run
@@ -26,12 +37,12 @@ source/native suite and doctor probes are green, and the six-panel
 `script-justification.rkt` visual probe rendered correctly. The 0.18 tree has
 **187 source test cases**: 53 pure, 6 lifetime, and 128 native.
 
-**0.19 color spaces and ICC color management — NOT YET LIVE RUN IN THE
-AUTHORING ENVIRONMENT.** The new owned color-space/ICC paths, tagged raster
-surfaces/images, conversion readback, tests, doctor probe, and visual example
-received source review here. The 0.19 tree contains **192 source test cases**:
-54 pure, 6 lifetime, and 132 native. It adds 16 Skia symbols, no HarfBuzz
-symbols, and no new native struct layouts.
+**0.19 color spaces and ICC color management — REPORTED LIVE VALIDATED on
+macOS/aarch64.** The maintainer reported all tests passing after the ICC export
+correction and pushed commit `257517a5c9f561b075c2fff23dd3ccad3be39d9a`.
+That corrected tree is the 0.20 baseline. The 0.19 tree contains **192 source
+test cases**: 54 pure, 6 lifetime, and 132 native. It adds 16 Skia symbols,
+no HarfBuzz symbols, and no new native struct layouts.
 
 ## Checks performed for 0.19 source
 

@@ -1,9 +1,118 @@
-# API reference — version 0.19.0
+# API reference — version 0.20.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+## Animated codecs and encoded orientation
+
+```racket
+(codec? value)
+(codec-from-bytes encoded-bytes)        ; owned codec; input is copied
+(codec-from-file path)                 ; owned codec; file is read into a snapshot
+(codec-info codec)                     ; immutable encoded-image-info
+(codec-frame-count codec)              ; decodable frames, including 1 for still images
+(codec-repetition-count codec)         ; -1 infinite; 0 once; n additional repetitions
+(codec-frame-info codec frame-index)   ; immutable metadata, or #f for a still image
+(codec-color-space codec)              ; separately owned color-space or #f
+
+(codec->image codec
+              #:frame-index [frame-index 0]
+              #:normalize-origin? [normalize-origin? #t]
+              #:color-space [color-space #f])
+(image-frame-from-bytes encoded-bytes [frame-index 0]
+                        #:normalize-origin? [normalize-origin? #t]
+                        #:color-space [color-space #f])
+(image-frame-from-file path [frame-index 0]
+                       #:normalize-origin? [normalize-origin? #t]
+                       #:color-space [color-space #f])
+
+(encoded-image-info-display-width info)
+(encoded-image-info-display-height info)
+
+(codec-frame-info? value)
+(codec-frame-info-index info)
+(codec-frame-info-required-frame info)
+(codec-frame-info-duration info)
+(codec-frame-info-fully-received? info)
+(codec-frame-info-alpha-type info)
+(codec-frame-info-has-alpha-within-bounds? info)
+(codec-frame-info-disposal-method info)
+(codec-frame-info-blend info)
+(codec-frame-info-rect info)
+```
+
+A codec is an owned, creator-thread-confined native resource. Use `with-skia`
+or close it with `skia-close!`. It owns a copy of the encoded input, so later
+mutation of a caller's byte string, or modification/deletion of a source file,
+does not change that codec. The file constructor bounds its snapshot read even
+when a file grows between the initial size check and the read. Empty,
+unrecognized, unsupported, or over-limit input raises an exception.
+
+`codec-info` uses the existing `encoded-image-info` record. Its width and height
+are the **encoded** dimensions; the two display-dimension accessors account
+for orientation. Its `encoded-image-info-frame-count` preserves the native
+animation-table count, which is commonly **0 for still images**. In contrast,
+`codec-frame-count` is the number of selectable frames and is **1 for still
+images**. Frame indexes are zero-based exact integers; out-of-range indexes
+raise contract errors. For a still image with an empty animation table,
+`(codec-frame-info codec 0)` returns `#f` rather than invented animation data.
+
+Animation metadata is copied into immutable Racket values and remains valid
+after the codec is closed. `required-frame` is a preceding frame index or `#f`
+when no prior frame is required. `duration` is the encoded duration in
+**milliseconds**, without a playback minimum or browser-style delay clamping.
+`fully-received?` reports native frame completeness. `alpha-type` uses the
+ordinary image alpha-type symbols. `has-alpha-within-bounds?` describes the
+encoded frame rectangle, not necessarily the fully composited canvas.
+`disposal-method` is `'keep`, `'restore-background`, or `'restore-previous`;
+`blend` is `'src` or `'src-over`. `rect` is an immutable
+`#(x y width height)` in **encoded coordinates**, including when decoded output
+is orientation-normalized. Metadata does not imply successful pixel decoding.
+
+The repetition count is not a total-play count: `-1` means indefinitely,
+`0` means play once, and a positive integer means that many repetitions after
+the first play. For example, `2` means three complete plays. Playback scheduling
+and disposal are different concepts: the caller schedules durations, while
+Skia handles the frame dependencies, blending, and disposal during decoding.
+
+`codec->image` eagerly decodes a **fully composited, full-canvas** frame, not an
+isolated subframe rectangle. Each call starts with fresh zeroed pixels and
+passes `fPriorFrame = -1`, asking Skia to reconstruct all required frames.
+Calls in reverse or arbitrary order do not depend on an earlier call's pixel
+buffer. This deliberately favors correctness and independent results over a
+sequential playback cache: dependencies may be decoded repeatedly. The codec
+itself is mutable native state and must not be shared across Racket threads.
+The returned image owns an independent raster copy and remains usable after
+closing the codec. Its `image-original-encoded-bytes` result is `#f`.
+
+Normalization is enabled by default in the **new** frame-decoding functions.
+All eight encoded origins are handled, including mirrors and transposes;
+origins 5 through 8 swap the dimensions. Normalization permutes packed pixels
+without interpolation or channel arithmetic. With `#:normalize-origin? #f`,
+the output remains in encoded coordinates. The existing `image-from-bytes`
+and `image-from-file` functions retain their previous behavior. Re-encoding a
+normalized raster does not retain an EXIF instruction that would rotate it a
+second time.
+
+A `#:color-space` argument converts the decoded pixels to that color space.
+The default `#f` preserves the source color-space tag when one is available;
+it does not remove that tag or request an arbitrary reinterpretation. Decoding
+uses premultiplied RGBA8888 internally. `codec-color-space` returns a separately
+owned reference that the caller must close; it can outlive the codec. Returned
+images likewise retain their color-space tag independently of caller wrappers.
+
+Every native decode result other than success raises an exception, including
+`incomplete-input`; no partially decoded raster is silently returned. Encoded
+snapshot sizes and requested raster sizes respect `current-skia-byte-limit`.
+This remains a **per-buffer limit**, not a total native-heap or aggregate-memory
+limit: normalization can allocate another raster-sized buffer, and the returned
+image is a native copy. Animation encoding, incremental/streaming decode,
+subsampling, and a sequential-frame cache are not provided by this API.
+
+For executable examples and regression coverage, see
+[`CODEC-TESTING.md`](CODEC-TESTING.md) and `examples/advanced-codecs.rkt`.
 
 ## Conventions
 

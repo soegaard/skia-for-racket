@@ -93,6 +93,12 @@
 (define-native sk_codec_get_encoded_format (_fun _pointer -> _int))
 (define-native sk_codec_get_origin (_fun _pointer -> _int))
 (define-native sk_codec_get_frame_count (_fun _pointer -> _int))
+;; Synchronous decode only: native code never retains the Racket pixel buffer.
+(define-native sk_codec_get_pixels
+  (_fun _pointer _sk-image-info-pointer _bytes _size _sk-codec-options-pointer -> _int))
+(define-native sk_codec_get_frame_info_for_index
+  (_fun _pointer _int _sk-codec-frame-info-pointer -> _stdbool))
+(define-native sk_codec_get_repetition_count (_fun _pointer -> _int))
 
 ;; Ref-counted color spaces plus ICC profile helpers. The two built-in sRGB
 ;; constructors return immortal singleton pointers; public wrappers take an

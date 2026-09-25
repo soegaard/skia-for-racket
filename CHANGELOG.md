@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.20.0 — advanced codecs
+
+- Added owned, thread-confined codecs with copied byte/file inputs, native
+  metadata snapshots, owned color-space queries, frame counts, and repeat counts.
+- Added eager, independently decoded full-canvas frames. Skia reconstructs
+  dependencies and applies animation disposal/blending; no previous-output
+  buffer is assumed. GIF and animated WebP have deterministic pixel fixtures.
+- Added exact normalization for all eight encoded origins, with an explicit
+  opt-out, display-dimension queries, and one-shot byte/file frame constructors.
+- Exposed frame duration, required frame, completeness, alpha, disposal, blend,
+  and encoded-coordinate frame rectangles. Preserved the legacy zero-count
+  still-image metadata convention while exposing one selectable still frame.
+- Added strict decode-result handling, 10 pure and 17 native test cases,
+  doctor coverage, a host-C ABI mirror, and a self-contained visual example.
+- Adds three Skia C-ABI symbols (240 total), no HarfBuzz symbols (27 total),
+  and two complete native struct layouts. Expected suite: 219 source cases.
+- Based on `257517a5c9f561b075c2fff23dd3ccad3be39d9a`; the corrected 0.19 ICC
+  implementation and the previous image-decoding entry points are unchanged.
+- Source/fixture/C-layout checks were performed. Racket compilation, the new
+  native suite, native symbol audits, doctor, and visual rendering await the
+  host run described in `docs/CODEC-TESTING.md`.
+
 ## 0.19.0 — color spaces and ICC color management
 
 - Added owned `color-space?` wrappers with sRGB and linear-sRGB constructors, gamma queries, equality, and transfer-function conversion helpers.

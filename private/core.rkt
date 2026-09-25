@@ -4,7 +4,7 @@
          racket/match
          racket/path
          racket/vector
-         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt"
+         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt"
          "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt" "joining.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
@@ -183,7 +183,7 @@
   (or (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
       (picture? v) (picture-recorder? v)
-      (skia-path? v) (path-measure? v) (image? v)
+      (skia-path? v) (path-measure? v) (image? v) (codec? v)
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
@@ -200,6 +200,7 @@
         [(skia-path? v) (skia-path-handle v)]
         [(path-measure? v) (path-measure-handle v)]
         [(image? v) (image-handle v)]
+        [(codec? v) (codec-handle v)]
         [(font-manager? v) (font-manager-handle v)]
         [(typeface? v) (typeface-handle v)]
         [(font? v) (font-handle v)]
@@ -4073,6 +4074,263 @@
   (define who 'encoded-image-info-from-file)
   (call-with-encoded-data-from-file
    who filename (lambda (dp) (codec-info-from-data who dp))))
+
+;; Advanced codecs ---------------------------------------------------------
+;; These resources own immutable encoded data through SkCodec. Frame output
+;; is an independent raster image; no prior-frame pixel buffer is retained.
+(provide codec? codec-from-bytes codec-from-file codec-info codec-frame-count
+         codec-repetition-count codec-frame-info codec-color-space codec->image
+         image-frame-from-bytes image-frame-from-file
+         encoded-image-info-display-width encoded-image-info-display-height
+         codec-frame-info? codec-frame-info-index codec-frame-info-required-frame
+         codec-frame-info-duration codec-frame-info-fully-received?
+         codec-frame-info-alpha-type codec-frame-info-has-alpha-within-bounds?
+         codec-frame-info-disposal-method codec-frame-info-blend
+         codec-frame-info-rect)
+
+(struct codec (handle) #:constructor-name make-codec-record)
+(struct codec-frame-info
+  (index required-frame duration fully-received? alpha-type
+         has-alpha-within-bounds? disposal-method blend rect)
+  #:transparent
+  #:constructor-name make-codec-frame-info-record
+  #:omit-define-syntaxes)
+
+(define (codec-h who c)
+  (typed-handle who c codec? codec-handle "codec?"))
+
+(define (codec-native-frame-count who cp)
+  (define count (sk_codec_get_frame_count cp))
+  (unless (exact-nonnegative-integer? count)
+    (error who "codec returned invalid animation frame count ~a" count))
+  count)
+
+(define (codec-check-frame who cp index)
+  (checked-codec-index who index)
+  (define count (codec-native-frame-count who cp))
+  (unless (< index (max 1 count))
+    (raise-arguments-error who "frame index is outside the image"
+                           "frame index" index "decodable frames" (max 1 count)))
+  count)
+
+;; The C shim returns an owned color-space reference in image info. It must
+;; remain live during decode/copy and must be released even when decoding fails.
+(define (call-with-codec-image-info who cp proc)
+  (define info (make-sk-image-info #f 0 0 0 0))
+  (sk_codec_get_info cp info)
+  (define cs (sk-image-info-colorspace info))
+  (dynamic-wind
+    void
+    (lambda ()
+      (unless (and (exact-positive-integer? (sk-image-info-width info))
+                   (exact-positive-integer? (sk-image-info-height info)))
+        (error who "codec returned invalid dimensions"))
+      (proc info))
+    (lambda () (when cs (sk_colorspace_unref cs)))))
+
+(define (make-codec-from-data who call-with-data)
+  (call-with-data
+   (lambda (dp)
+     (define c
+       (make-codec-record
+        (new-owned who 'codec (lambda () (sk_codec_new_from_data dp))
+                   sk_codec_destroy)))
+     (with-handlers ([exn? (lambda (e) (skia-close! c) (raise e))])
+       ;; Metadata is safe to inspect without allocating a decoded raster.
+       (codec-info c)
+       c))))
+
+(define (codec-from-bytes bs)
+  (define who 'codec-from-bytes)
+  (make-codec-from-data
+   who (lambda (proc) (call-with-encoded-data-from-bytes who bs proc))))
+
+(define (codec-from-file filename)
+  (define who 'codec-from-file)
+  ;; Read an owned snapshot rather than retaining a file mapping. Bound every
+  ;; read, including when a file grows after the initial size check.
+  (checked-file-data who filename)
+  (define bs
+    (call-with-input-file filename
+      (lambda (in)
+        (define out (open-output-bytes))
+        (define limit (current-skia-byte-limit))
+        (let loop ([total 0])
+          (define chunk (read-bytes (min 65536 (add1 (- limit total))) in))
+          (cond
+            [(eof-object? chunk) (get-output-bytes out)]
+            [else
+             (define next (+ total (bytes-length chunk)))
+             (when (> next limit)
+               (error who "encoded image file exceeds current-skia-byte-limit"))
+             (write-bytes chunk out)
+             (loop next)])))
+      #:mode 'binary))
+  (make-codec-from-data
+   who (lambda (proc) (call-with-encoded-data-from-bytes who bs proc))))
+
+(define (codec-info c)
+  (define who 'codec-info)
+  (call-with-owned
+   who (list (codec-h who c))
+   (lambda (cp)
+     (call-with-codec-image-info
+      who cp
+      (lambda (info)
+        (make-encoded-image-info-record
+         (sk-image-info-width info) (sk-image-info-height info)
+         (enum-name who (sk_codec_get_encoded_format cp)
+                    encoded-format-values "encoded image format")
+         (enum-name who (sk-image-info-color-type info) color-type-values "color type")
+         (enum-name who (sk-image-info-alpha-type info) alpha-type-values "alpha type")
+         (enum-name who (sk_codec_get_origin cp) encoded-origin-values "encoded origin")
+         (codec-native-frame-count who cp)))))))
+
+(define (encoded-image-info-display-width info)
+  (define-values (w h)
+    (oriented-dimensions 'encoded-image-info-display-width
+                        (encoded-image-info-width info) (encoded-image-info-height info)
+                        (encoded-image-info-origin info)))
+  w)
+(define (encoded-image-info-display-height info)
+  (define-values (w h)
+    (oriented-dimensions 'encoded-image-info-display-height
+                        (encoded-image-info-width info) (encoded-image-info-height info)
+                        (encoded-image-info-origin info)))
+  h)
+
+;; Unlike the legacy metadata field, this is the number of decodable frames:
+;; still images have one frame, although their animation metadata table is empty.
+(define (codec-frame-count c)
+  (define who 'codec-frame-count)
+  (call-with-owned who (list (codec-h who c))
+    (lambda (cp) (max 1 (codec-native-frame-count who cp)))))
+
+(define (codec-repetition-count c)
+  (define who 'codec-repetition-count)
+  (call-with-owned who (list (codec-h who c))
+    (lambda (cp)
+      (define count (sk_codec_get_repetition_count cp))
+      (unless (and (exact-integer? count) (>= count -1))
+        (error who "codec returned invalid repetition count ~a" count))
+      count)))
+
+;; Returns #f only for the valid still-image frame with no animation metadata.
+;; Rect is #(x y width height), always in encoded (not oriented) pixels.
+(define (codec-frame-info c index)
+  (define who 'codec-frame-info)
+  (define hnd (codec-h who c))
+  (checked-codec-index who index)
+  (call-with-owned
+   who (list hnd)
+   (lambda (cp)
+     (define count (codec-check-frame who cp index))
+     (cond
+       [(zero? count) #f]
+       [else
+        (define info
+          (make-sk-codec-frame-info -1 0 #f 0 #f 1 0 (make-sk-irect 0 0 0 0)))
+        (unless (sk_codec_get_frame_info_for_index cp index info)
+          (error who "native frame metadata is unavailable for frame ~a" index))
+        (define required (sk-codec-frame-info-required-frame info))
+        (define duration (sk-codec-frame-info-duration info))
+        (unless (and (<= -1 required) (< required index) (>= duration 0))
+          (error who "native frame metadata has an invalid dependency or duration"))
+        (define r (sk-codec-frame-info-frame-rect info))
+        (make-codec-frame-info-record
+         index (and (>= required 0) required) duration
+         (sk-codec-frame-info-fully-received info)
+         (enum-name who (sk-codec-frame-info-alpha-type info) alpha-type-values "alpha type")
+         (sk-codec-frame-info-has-alpha-within-bounds info)
+         (enum-name who (sk-codec-frame-info-disposal-method info)
+                    codec-disposal-values "animation disposal method")
+         (enum-name who (sk-codec-frame-info-blend info)
+                    codec-blend-values "animation blend")
+         (vector-immutable (sk-irect-left r) (sk-irect-top r)
+                           (- (sk-irect-right r) (sk-irect-left r))
+                           (- (sk-irect-bottom r) (sk-irect-top r))))]))))
+
+(define (codec-color-space c)
+  (define who 'codec-color-space)
+  (call-with-owned
+   who (list (codec-h who c))
+   (lambda (cp)
+     (call-with-codec-image-info
+      who cp
+      (lambda (info)
+        (define cs (sk-image-info-colorspace info))
+        (and cs
+             (wrap-owned-color-space
+              who (lambda () (sk_colorspace_ref cs) cs))))))))
+
+(define (codec->image c #:frame-index [index 0]
+                       #:normalize-origin? [normalize? #t]
+                       #:color-space [cs #f])
+  (define who 'codec->image)
+  (define hnd (codec-h who c))
+  (checked-codec-index who index)
+  (boolean who normalize?)
+  (define cs-hnd (optional-color-space-h who cs))
+  (call-with-owned
+   who (if cs-hnd (list hnd cs-hnd) (list hnd))
+   (lambda (cp . colorspaces)
+     (codec-check-frame who cp index)
+     (call-with-codec-image-info
+      who cp
+      (lambda (source-info)
+        (define w (sk-image-info-width source-info))
+        (define h (sk-image-info-height source-info))
+        (define n (check-dimensions who w h))
+        ;; #f preserves the source color space; a supplied space converts during
+        ;; decode. The output copy retains the chosen native color-space tag.
+        (define target-cs
+          (if cs-hnd (car colorspaces) (sk-image-info-colorspace source-info)))
+        (define pixels (make-bytes n 0))
+        (define options (make-sk-codec-options 0 #f index -1))
+        ;; kNoFrame (-1) asks Skia to decode dependencies into this fresh buffer.
+        ;; Passing index-1 here would falsely claim the buffer already held it.
+        (define result
+          (sk_codec_get_pixels cp (make-sk-image-info target-cs w h rgba-8888 alpha-premul)
+                               pixels (* 4 w) options))
+        (unless (= result 0)
+          (error who "frame ~a decode failed: ~a (native result ~a)"
+                 index (codec-result-name result) result))
+        (define-values (ow oh output)
+          (if normalize?
+              (orient-rgba-bytes
+               who w h pixels
+               (enum-name who (sk_codec_get_origin cp) encoded-origin-values "encoded origin"))
+              (values w h pixels)))
+        ;; Both _bytes calls are synchronous and retain no Racket buffer.
+        (make-image-record
+         (new-owned who 'image
+                    (lambda ()
+                      (sk_image_new_raster_copy
+                       (make-sk-image-info target-cs ow oh rgba-8888 alpha-premul)
+                       output (* 4 ow)))
+                    sk_image_unref)
+         ow oh))))))
+
+(define (image-frame-from-bytes bs [index 0]
+                                #:normalize-origin? [normalize? #t]
+                                #:color-space [cs #f])
+  (define who 'image-frame-from-bytes)
+  (checked-codec-index who index)
+  (boolean who normalize?)
+  (optional-color-space-h who cs)
+  (with-skia ([c (codec-from-bytes bs)])
+    (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space cs)))
+
+(define (image-frame-from-file filename [index 0]
+                              #:normalize-origin? [normalize? #t]
+                              #:color-space [cs #f])
+  (define who 'image-frame-from-file)
+  (checked-codec-index who index)
+  (boolean who normalize?)
+  (optional-color-space-h who cs)
+  (with-skia ([c (codec-from-file filename)])
+    (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space cs)))
+
 
 (define (image-color-type im)
   (define who 'image-color-type)
