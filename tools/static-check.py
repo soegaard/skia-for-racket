@@ -20,7 +20,8 @@ counts={}
 for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-tests'),('native-test.rkt','native-tests'),
               ('codec-pure-test.rkt','codec-pure-tests'),('codec-native-test.rkt','codec-native-tests'),
               ('pdf-pure-test.rkt','pdf-pure-tests'),('pdf-native-test.rkt','pdf-native-tests'),
-              ('svg-pure-test.rkt','svg-pure-tests'),('svg-native-test.rkt','svg-native-tests')]:
+              ('svg-pure-test.rkt','svg-pure-tests'),('svg-native-test.rkt','svg-native-tests'),
+              ('output-pure-test.rkt','output-pure-tests'),('output-native-test.rkt','output-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -45,6 +46,21 @@ for f in ast:
         if '#:constructor-name' in f:defined.add(f[f.index('#:constructor-name')+1])
 assert not set(exports)-defined, sorted(set(exports)-defined)
 api=(R/'docs/API.md').read_text();assert not [s for s in exports if s not in api]
+# The common page layer is a separate public module with local definitions.
+output_defined=set();output_exports=[]
+for f in sexps((R/'output.rkt').read_text()):
+    if not isinstance(f,list) or not f:continue
+    if f[0]=='provide':output_exports+=f[1:]
+    elif f[0] in ('define','define-syntax','define-syntax-rule'):
+        output_defined.add(f[1][0] if isinstance(f[1],list) else f[1])
+    elif f[0]=='struct':
+        n=f[1];output_defined|={n,n+'?'}
+        for field in f[2]:
+            k=field[0] if isinstance(field,list) else field
+            output_defined.add(n+'-'+k)
+        if '#:constructor-name' in f:output_defined.add(f[f.index('#:constructor-name')+1])
+assert not set(output_exports)-output_defined, sorted(set(output_exports)-output_defined)
+assert not [s for s in output_exports if s not in api]
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):
@@ -110,5 +126,5 @@ with tempfile.TemporaryDirectory(prefix='harfbuzz-installer-check-') as temp:
     help=subprocess.run(['bash',str(target),'--help'],capture_output=True,text=True);assert help.returncode==0
     hinstalled['help']='success'
 
-result={'racket_files_scanned':len(list(R.rglob('*.rkt'))),'source_test_case_counts':counts,'core_exports_accounted_for':len(exports),'local_module_paths':'exist','shell_syntax':'passed','installer_synthetic_tests':installed,'harfbuzz_installer_synthetic_tests':hinstalled,'racket_execution':'NOT RUN','live_skia_execution':'NOT RUN'}
+result={'racket_files_scanned':len(list(R.rglob('*.rkt'))),'source_test_case_counts':counts,'core_exports_accounted_for':len(exports),'output_exports_accounted_for':len(output_exports),'local_module_paths':'exist','shell_syntax':'passed','installer_synthetic_tests':installed,'harfbuzz_installer_synthetic_tests':hinstalled,'racket_execution':'NOT RUN','live_skia_execution':'NOT RUN'}
 print(json.dumps(result,indent=2))

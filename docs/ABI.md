@@ -1,5 +1,26 @@
 # Native ABI and ownership notes
 
+## Shared output and text-blob snapshots
+
+The shared page/export layer adds no native symbols or C layouts: 249 Skia and
+27 HarfBuzz bindings remain required. Page specifications and unit/margin data
+are ordinary immutable Racket values. They do not retain native output canvases.
+
+Text blobs now retain an independent private SkFont snapshot and normalized
+immutable glyph/position lists. Construction takes a temporary owned typeface
+reference from the already-bound font query, copies the existing font properties,
+and releases that temporary reference. Native blobs retain their own typeface
+references independently. Explicit blob close releases both blob and snapshot;
+each owned handle also has its own GC fallback. No release closure captures the
+public blob wrapper. Returned outline paths own copied geometry and outlive the
+blob. Creator-thread checks precede drawing/conversion.
+
+Scoped text and raster-density parameters do not alter native structures. Text
+policy acts during drawing/recording; it cannot rewrite a native picture replay.
+Padded rasterization uses native-owned surfaces and copied snapshots, with no
+retained Racket pixel buffers or new native-to-Racket callbacks. SVG physical-size
+postprocessing changes only the completed root's width/height unit suffixes.
+
 ## SVG canvas ownership
 
 SVG adds `sk_svgcanvas_create_with_stream` and `sk_canvas_destroy`: 249 required

@@ -1,9 +1,115 @@
-# API reference — version 0.22.0
+# API reference — version 0.23.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+## Shared PDF/SVG page output
+
+These helpers are available from `skia` and `skia/output`. They own no new
+native backend; they use the PDF and SVG interfaces below. See the
+[shared-output guide](OUTPUT-GUIDE.md) for complete examples and limitations.
+
+```racket
+(unit->points value [unit 'pt])
+(output-page? value)
+(make-output-page width height draw
+                  #:unit [unit 'pt]
+                  #:margins [margins 0]
+                  #:background [background #f]
+                  #:clip? [clip? #t])
+(output-page-width page)                 ; original drawing units
+(output-page-height page)
+(output-page-unit page)
+(output-page-margins page)               ; (list left top right bottom)
+(output-page-background page)            ; #f or immutable rgba value
+(output-page-clip? page)
+(output-page-size-in-points page)        ; two values
+(output-page-content-size page)          ; two values, original unit
+
+(output->bytes page-or-pages format
+               #:title [title ""] #:description [description ""]
+               #:text-mode [text-mode 'auto] #:raster-dpi [raster-dpi 144]
+               #:id-prefix [id-prefix #f] #:encoding-quality [quality #f])
+(save-output page-or-pages path format
+             #:exists [exists 'error]
+             #:title [title ""] #:description [description ""]
+             #:text-mode [text-mode 'auto] #:raster-dpi [raster-dpi 144]
+             #:id-prefix [id-prefix #f] #:encoding-quality [quality #f])
+
+(draw-output-page canvas page
+                  #:text-mode [text-mode 'native] #:raster-dpi [raster-dpi 144])
+(output-page->image page #:dpi [dpi 96] #:text-mode [text-mode 'native]
+                        #:color-space [color-space #f])
+```
+
+An output page is an immutable, non-native value with a one-canvas drawing
+callback. The callback must require no keywords; its return values are ignored.
+It runs once per page per export, not once for the entire lifetime of the page.
+Captured resources must remain live and obey the usual creator-thread rule.
+
+Units are `'pt`, `'in`, `'mm`, `'cm`, or `'px` (CSS pixels). `unit->points` permits
+signed finite lengths and preserves exact arithmetic when possible. Page width
+and height must convert to 0.001–14400 points. Margins are a nonnegative scalar
+or a four-element list in **left/top/right/bottom** order, in drawing units, and
+must leave positive content width and height. The callback origin is moved to
+the inner top-left corner. Content is clipped there unless `#:clip? #f`.
+A background color paints the full page before that content clip; `#f` paints
+nothing. Canvas state and output parameters are restored on every scoped exit.
+
+Format is explicitly `'pdf` or `'svg`. PDF permits one page or a nonempty list;
+SVG requires one page or a singleton list. Multiple SVG pages raise before any
+callback. PDF dimensions are points; the shared SVG output has the same
+point-valued viewBox and root width/height with `pt` units. CSS/zoom/print scaling
+can still resize the result. The low-level SVG functions retain user-unit sizing.
+
+Description maps to PDF subject / SVG `<desc>`. ID prefix is SVG-only and follows
+the existing SVG prefix contract. Encoding quality is PDF-only, 0–101, with 101
+meaning lossless. `#f` uses the format default. Options supplied to the wrong
+format raise; they are not silently ignored. File publication uses the existing
+completed-output temporary-file/rename helpers, with an absolute path resolved
+before drawing. Use low-level APIs for additional format-specific metadata.
+
+Text mode is `'auto`, `'native`, or `'outline`; auto chooses native for PDF and
+outline for SVG. Raster DPI is a finite real in 1–9600. It controls PDF fallback
+DPI and default explicit-group scale, not vector resolution. The derived scale
+`dpi * points-per-unit / 72` must lie within 1/1024–1024 for every page. All pages
+and options are checked before drawing the first page. Additional transforms
+inside a callback do not automatically alter raster density.
+
+`draw-output-page` assumes one current destination unit corresponds to one point,
+before the page's unit conversion. It preserves the existing transform/clip.
+`output-page->image` returns an independently owned snapshot with pixel sizes
+`ceiling(point-size * dpi / 72)`, subject to raster dimension/byte limits. It is
+a separate raster rendering of the callback, not a PDF/SVG rasterization.
+
+### Scoped text policy and detached blob outlines
+
+```racket
+(current-text-output-mode)                 ; initial value: 'native
+(current-text-output-mode 'outline)        ; accepts 'native or 'outline only
+(current-raster-output-scale)              ; initial value: 1
+(current-raster-output-scale scale)        ; finite 1/1024–1024
+(text-blob->path text-blob)                 ; independent owned path
+```
+
+Use `parameterize` for scoped choices. Simple text, shaped runs, both paragraph
+APIs, and prebuilt text blobs honor the text parameter at drawing time. The
+low-level PDF/SVG helpers leave it alone. A pre-recorded picture cannot be
+rewritten: its text representation was fixed when its commands were recorded.
+
+`text-blob->path` uses private snapshotted font properties and copied glyph
+positions retained at blob construction. It is independent of later source-font
+mutation/closure or input-vector mutation. The result is baseline-local and
+outlives the blob. Blob close releases its private font as well as its native
+blob; each has independent GC fallback and remains thread-confined.
+
+Outlines are geometry, not searchable/editable text. Glyphs without monochrome
+outlines, including some bitmap/color glyphs, are omitted. Use an explicit raster
+group to preserve their rendered pixels. Native text may have backend-specific
+font/extraction behavior; this layer does not promise universal font embedding,
+semantic text round trips, or exact small-size hinting equivalence.
 
 ## SVG documents
 
@@ -82,7 +188,9 @@ automatic raster fallback. See the [SVG coverage table](SVG-OUTPUT.md#backend-co
 
 ```racket
 (shaped-run->path shaper run) ; independent owned path, baseline-local positions
-(draw-rasterized canvas x y width height draw #:scale [scale 1])
+(draw-rasterized canvas x y width height draw
+                 #:scale [scale (current-raster-output-scale)]
+                 #:padding [padding 0] #:color-space [color-space #f])
 ```
 
 `shaped-run->path` uses the supplied live shaper's snapshotted font and the
@@ -94,14 +202,21 @@ text. Use `simple-text-path` for unshaped labels and draw either with `draw-path
 These helpers work on raster and PDF backends too.
 
 `draw-rasterized` draws once into a transparent local raster canvas and embeds
-its snapshot in the destination rectangle. Its callback uses local logical
-bounds `(0,0)..(width,height)`. Scale is pixels per unit, a finite real from
-1/1024 through 1024. Pixel sizes are the ceilings of width/height times scale
-and must satisfy normal raster limits. Each initial axis scale accounts for
-rounding. The temporary canvas is invalid after the call. Include padding for
-blur/shadows; the group is clipped at its bounds. Destination-dependent blending
-requires the necessary backdrop inside the group; the existing destination is
-not captured. Surrounding SVG geometry remains vector.
+its snapshot. The callback keeps local content bounds `(0,0)..(width,height)`.
+Padding is a nonnegative scalar or `(list left top right bottom)` in those units;
+it expands the image to `(x-left,y-top,width+left+right,height+top+bottom)` without
+shrinking or moving the content. Scale is pixels per unit, a finite real from
+1/1024 through 1024, defaulting to the scoped parameter (initially 1). Pixel sizes
+are ceilings of the padded dimensions times scale and obey normal raster/byte
+limits. Independent axis scaling accounts for integer rounding. The temporary
+canvas is invalid after return. The optional color space tags the temporary
+surface/snapshot; it does not introduce end-to-end ICC guarantees.
+
+Raster callbacks temporarily use native text rendering even in an outer outline
+scope, so bitmap/color glyphs can remain pixels. Destination-dependent blending
+requires the backdrop inside the group; the existing destination is not captured.
+Padding does not bypass the destination or page-content clip. Surrounding SVG
+geometry remains vector; no blanket automatic fallback is introduced.
 
 See [the SVG guide](SVG-OUTPUT.md) for complete examples and limitations.
 

@@ -1,4 +1,16 @@
 #lang racket/base
+(require "output-util.rkt")
+(provide current-text-output-mode current-raster-output-scale text-blob->path)
+
+;; Legacy drawing remains native by default. Shared exporters parameterize
+;; these choices only while authoring a page; no global backend is installed.
+(define current-text-output-mode
+  (make-parameter 'native
+                  (lambda (v) (output-text-mode 'current-text-output-mode v))))
+(define current-raster-output-scale
+  (make-parameter 1
+                  (lambda (v) (raster-output-scale 'current-raster-output-scale v))))
+
 (require ffi/unsafe
          racket/list
          racket/match
@@ -150,7 +162,9 @@
 ;; owner keeps an implicitly-created default typeface reachable for at least
 ;; as long as the font wrapper. SkFont itself also retains its typeface.
 (struct font (handle owner) #:constructor-name make-font-record)
-(struct text-blob (handle) #:constructor-name make-text-blob-record)
+;; A private font snapshot and immutable positions allow exact outline replay
+;; after the caller mutates/closes the font used to construct this blob.
+(struct text-blob (handle font glyphs positions) #:constructor-name make-text-blob-record)
 (struct shaper (handle font) #:constructor-name make-shaper-record)
 (struct shaped-run (glyphs clusters positions advance-x advance-y) #:transparent)
 (struct layout-break-opportunity (index insert)
@@ -226,7 +240,11 @@
     (owned-close! 'skia-close! (typeface-handle (font-owner v))))
   ;; A shaper snapshots the SkFont used for later TextBlob construction.
   (when (shaper? v)
-    (skia-close! (shaper-font v))))
+    (skia-close! (shaper-font v)))
+  ;; A blob's snapshot is independent of the native blob's retained typeface.
+  ;; Each has its own GC fallback; explicit close releases both immediately.
+  (when (text-blob? v)
+    (skia-close! (text-blob-font v))))
 
 (define (call-with-skia-resource v proc)
   (resource-handle 'call-with-skia-resource v)
@@ -505,25 +523,31 @@
           (lambda (p) (path-add-path! out p #:dx (car pos) #:dy (cadr pos))))))
     out))
 
-(define (draw-rasterized c x y width height proc #:scale [scale 1])
+(define (draw-rasterized c x y width height proc
+                         #:scale [scale (current-raster-output-scale)]
+                         #:padding [padding 0] #:color-space [cs #f])
   (define who 'draw-rasterized)
   (define fx (scalar who x))
   (define fy (scalar who y))
-  (define fw (positive-scalar who width))
-  (define fh (positive-scalar who height))
-  (define-values (pw ph) (rasterized-dimensions who width height scale))
-  (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
-    (raise-argument-error who "procedure accepting one canvas argument" proc))
-  ;; Validate destination liveness/thread before executing user code.
-  (call-on-canvas who c '() (lambda (_) (void)))
-  (with-skia ([s (make-surface pw ph)])
+  (define-values (pw ph left top bw bh)
+    (rasterized-geometry who width height scale padding))
+  (define dx (scalar who (- fx left)))
+  (define dy (scalar who (- fy top)))
+  (define cs-hnd (optional-color-space-h who cs))
+  (output-drawing-procedure who proc)
+  ;; Validate all resources before executing user code or allocating a surface.
+  (call-on-canvas who c (if cs-hnd (list cs-hnd) '()) (lambda ignored (void)))
+  (with-skia ([s (make-surface pw ph #:color-space cs)])
     (define rc (surface-canvas s))
-    ;; Account for independent rounding of raster width/height without moving
-    ;; logical coordinates. The callback sees local (0,0)..(width,height).
-    (canvas-scale! rc (/ pw fw) (/ ph fh))
-    (call-with-values (lambda () (proc rc)) (lambda ignored (void)))
+    (canvas-scale! rc (/ pw bw) (/ ph bh))
+    (canvas-translate! rc left top)
+    ;; Padding expands the image without rescaling/repositioning the original
+    ;; content box. Native glyph rendering inside a raster group also preserves
+    ;; bitmap/color glyphs that have no monochrome outline.
+    (parameterize ([current-text-output-mode 'native])
+      (call-with-values (lambda () (proc rc)) (lambda ignored (void))))
     (with-skia ([im (surface-snapshot s)])
-      (draw-image-rect c im fx fy fw fh #:sampling 'linear)))
+      (draw-image-rect c im dx dy bw bh #:sampling 'linear)))
   (void))
 
 (provide document? make-pdf-document document-state document-page-count
@@ -2654,11 +2678,18 @@
   (define bs (utf8-text who text))
   (define fx (scalar who x))
   (define fy (scalar who y))
-  (call-on-canvas
-   who c (list (font-h who f) (paint-h who p))
-   (lambda (cp fp pp)
-     (sk_canvas_draw_simple_text cp bs (bytes-length bs) text-encoding-utf8
-                                 fx fy fp pp))))
+  (define handles (list (font-h who f) (paint-h who p)))
+  (cond
+    [(eq? (current-text-output-mode) 'outline)
+     (call-on-canvas who c handles (lambda ignored (void)))
+     (with-skia ([outline (simple-text-path f text fx fy)])
+       (draw-path c outline p))]
+    [else
+     (call-on-canvas
+      who c handles
+      (lambda (cp fp pp)
+        (sk_canvas_draw_simple_text cp bs (bytes-length bs) text-encoding-utf8
+                                    fx fy fp pp)))]))
 
 (define (measure-simple-text f text #:paint [p #f])
   (define who 'measure-simple-text)
@@ -2796,8 +2827,15 @@
         (define blob-ptr (sk_textblob_builder_make builder))
         (unless blob-ptr
           (error who "native text-blob builder produced no blob"))
-        (make-text-blob-record
-         (new-owned who 'text-blob (lambda () blob-ptr) sk_textblob_unref)))))))
+        (define hnd (new-owned who 'text-blob (lambda () blob-ptr) sk_textblob_unref))
+        (with-handlers ([(lambda (_) #t)
+                         (lambda (e) (owned-close! who hnd) (raise e))])
+          (call-with-native-temporary
+           who 'text-blob-typeface
+           (lambda () (sk_font_get_typeface fp)) sk_typeface_unref
+           (lambda (tp)
+             (define snapshot (copy-font-for-shaper who fp tp))
+             (make-text-blob-record hnd snapshot gs ps)))))))))
 
 (define (text-blob-bounds blob)
   (define who 'text-blob-bounds)
@@ -2813,12 +2851,35 @@
                    (list (text-blob-h 'text-blob-unique-id blob))
                    sk_textblob_get_unique_id))
 
+(define (text-blob->path blob)
+  (define who 'text-blob->path)
+  (call-with-owned who (list (text-blob-h who blob)) (lambda (_) (void)))
+  (define out (make-path))
+  (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! out) (raise e))])
+    (for ([gid (in-list (text-blob-glyphs blob))]
+          [pos (in-list (text-blob-positions blob))])
+      (define gp (font-glyph-path (text-blob-font blob) gid))
+      ;; Spaces and bitmap-only/color glyphs need not have monochrome outlines.
+      (when gp
+        (call-with-skia-resource gp
+          (lambda (p) (path-add-path! out p #:dx (car pos) #:dy (cadr pos))))))
+    out))
+
 (define (draw-text-blob c blob x y p)
   (define who 'draw-text-blob)
   (define fx (scalar who x))
   (define fy (scalar who y))
-  (call-on-canvas who c (list (text-blob-h who blob) (paint-h who p))
-    (lambda (cp bp pp) (sk_canvas_draw_text_blob cp bp fx fy pp))))
+  (define handles (list (text-blob-h who blob) (paint-h who p)))
+  (cond
+    [(eq? (current-text-output-mode) 'outline)
+     (call-on-canvas who c handles (lambda ignored (void)))
+     (with-skia ([outline (text-blob->path blob)])
+       (with-canvas-state c
+         (canvas-translate! c fx fy)
+         (draw-path c outline p)))]
+    [else
+     (call-on-canvas who c handles
+       (lambda (cp bp pp) (sk_canvas_draw_text_blob cp bp fx fy pp)))]))
 
 
 ;; HarfBuzz shaping ---------------------------------------------------------
@@ -3051,10 +3112,19 @@
   (define who 'draw-shaped-run)
   (shaper-h who sh)
   (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
-  (if (null? (shaped-run-glyphs run))
-      (void)
-      (with-skia ([blob (shaped-run->text-blob sh run)])
-        (draw-text-blob c blob x y p))))
+  (cond
+    [(null? (shaped-run-glyphs run)) (void)]
+    [(eq? (current-text-output-mode) 'outline)
+     (define fx (scalar who x))
+     (define fy (scalar who y))
+     (call-on-canvas who c (list (shaper-h who sh) (paint-h who p)) (lambda ignored (void)))
+     (with-skia ([outline (shaped-run->path sh run)])
+       (with-canvas-state c
+         (canvas-translate! c fx fy)
+         (draw-path c outline p)))]
+    [else
+     (with-skia ([blob (shaped-run->text-blob sh run)])
+       (draw-text-blob c blob x y p))]))
 
 (define (draw-shaped-text c sh text x y p
                           #:direction [direction 'auto]

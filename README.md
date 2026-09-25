@@ -1,16 +1,42 @@
-# Racket Skia — 0.22.0
+# Racket Skia — 0.23.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer reported the 0.21 tests passing and
-supplied the three-page PDF plus raster references. This revision starts from
-the pushed PDF-output commit `246f70cd80e26bc5d8da126e86ff7e520225a5f7`.
-**0.22 has source/context-patch checks only here; Racket compilation, native
-SVG tests, and viewer validation remain required.** See [SVG validation](docs/SVG-TESTING.md).
-The earlier Unicode 15.1 baseline remains 10274/10274 line-break and
-91707/91707 bidi-character cases; no new full conformance result is claimed.
+**Verification status:** the maintainer reported the 0.22 tests passing and
+supplied its SVGs and separate raster references. This revision starts from
+`fa7d04e881df9f80a99e62e5f51aaa5ec30b02dc` (`Add SVG document output`).
+**0.23 has source/context-patch and synthetic inspector checks here, not a
+Racket/native run.** See [vector-output validation](docs/OUTPUT-TESTING.md).
+Expected suite: 344 source cases; native symbols remain 249 Skia / 27 HarfBuzz.
+Earlier full Unicode conformance results are historical, not new 0.23 results.
+
+## Shared PDF/SVG pages
+
+```racket
+(define page
+  (make-output-page 210 148.5
+    (lambda (c)
+      (with-skia ([p (make-paint #:color 'blue)])
+        (draw-circle c 30 30 15 p)))
+    #:unit 'mm #:margins 10 #:background 'white))
+(save-output page "drawing.pdf" 'pdf #:exists 'replace)
+(save-output page "drawing.svg" 'svg #:exists 'replace)
+```
+
+A page has explicit units, margins, background, and clipping. The same callback
+can target either format; PDF also accepts a list of differently sized pages.
+SVG gets physical point-sized root dimensions that match the PDF media box.
+Auto text policy retains native PDF text and outlines SVG text, including
+paragraphs and prebuilt text blobs. Padded raster groups inherit export density
+without shrinking their original content box. The low-level APIs retain their
+native-text and SVG-user-unit defaults.
+
+See the [shared-output guide](docs/OUTPUT-GUIDE.md), the [API reference](docs/API.md),
+and `examples/vector-output.rkt` for the complete PDF/SVG/raster review registry.
+Already-recorded pictures cannot have their text policy changed retroactively;
+unsupported native SVG effects still need explicit rasterization.
 
 ## SVG documents
 

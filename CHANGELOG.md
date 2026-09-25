@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.23.0 — vector-output refinement
+
+- Added reusable output-page specifications and shared PDF/SVG byte/file exports,
+  explicit physical units, margins, content clipping, and page backgrounds.
+  PDF accepts multiple pages; SVG rejects extra pages instead of dropping them.
+- Shared SVG exports now use physical pt root dimensions matching PDF media boxes;
+  the low-level SVG interface retains its existing user-unit sizing.
+- Added scoped native/outline text policy across simple, shaped, paragraph,
+  mixed-run, and prebuilt-blob drawing. Auto export chooses native PDF / outlined
+  SVG. Already-recorded native pictures are intentionally not rewritten.
+- Added independent text-blob outline conversion using private font snapshots
+  and copied glyph/position metadata, including source-mutation/closure tests.
+- Extended explicit raster groups with density inheritance, four-sided padding,
+  and optional color-space tags, while preserving their local content origin.
+- Added 20 pure and 29 native cases (344 expected total), doctor coverage, one
+  PDF/SVG/raster visual registry, and a structural inspector with eight synthetic
+  tests plus optional pypdf-backed size/text/font inspection.
+- Adds no native bindings or layouts: 249 Skia and 27 HarfBuzz remain required.
+  Based on `fa7d04e881df9f80a99e62e5f51aaa5ec30b02dc`. Authoring validation is
+  source/context-patch and synthetic-parser validation, not a Racket/native run.
+
 ## 0.22.0 — SVG document output
 
 - Added owned single-viewport SVG documents with borrowed canvases, explicit

@@ -1,25 +1,29 @@
 # Testing
 
-## Current stage: SVG output (0.22)
+## Current stage: vector-output refinement (0.23)
 
-The maintainer reported the 0.21 tests passing and supplied its three-page PDF
+The maintainer reported the 0.22 tests passing and supplied its actual SVGs
 and raster references. The pushed baseline is
-`246f70cd80e26bc5d8da126e86ff7e520225a5f7` (PDF document output).
+`fa7d04e881df9f80a99e62e5f51aaa5ec30b02dc` (`Add SVG document output`).
 
-SVG adds 16 pure and 27 native cases: **295 expected source cases** in nine
-suites (54 + 6 + 10 + 12 + 16 + 132 + 17 + 21 + 27). Required symbols become
-249 Skia and remain 27 HarfBuzz. No new native struct layouts are introduced.
-The full runner includes all existing PDF/codec suites; `--pure` runs 98 cases.
+The new stage adds 20 pure and 29 native cases: **344 expected source cases**
+(112 pure, 6 lifetime, 226 native). `--pure` runs 118 cases. Native requirements
+stay 249 Skia symbols, 27 HarfBuzz symbols, and the existing C layouts.
 
-Authoring checks are source/context-patch checks and six synthetic Python
-inspector tests, not Racket compilation, a full checkout validation, or native
-SVG generation/rendering. Run [the complete SVG sequence](docs/SVG-TESTING.md)
-and review the actual SVGs in the generated browser comparison page. The PNGs
-are separately drawn raster references, not SVG rasterizations.
+Authoring checks cover source/function-body structure, exports/docs, eight
+synthetic Python inspector tests, a synthetic PDF parser smoke test, and
+forward/reverse patch application against fetched source contexts. Three small
+complete files were checked against their Git blob hashes. This is **not** a
+Racket compilation, native run, complete-checkout test, or visual validation.
 
-The 0.21 baseline has 252 cases and 247 Skia symbols; its metadata/timestamp
-layout checks are retained in the new validation sequence. The prior full
-Unicode conformance results are not new results for this stage.
+Run [the vector-output sequence](docs/OUTPUT-TESTING.md), including the single
+`examples/vector-output.rkt` registry. Inspect the actual PDF and SVGs, not just
+the separately drawn raster references. The new inspector checks nominal
+physical sizing and padded raster pixel dimensions; optional PDF inspection
+reports native text and font resources.
+
+The earlier full Unicode conformance results remain historical. The PDF/SVG
+stage guides describe their named releases rather than a new run for 0.23.
 
 ## Historical validation notes
 
