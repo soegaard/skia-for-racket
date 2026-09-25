@@ -3,7 +3,7 @@
          rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
          "../private/bidi.rkt" "../private/line-break.rkt"
-         "../private/unicode-conformance.rkt")
+         "../private/unicode-conformance.rkt" "../private/joining.rkt")
 (provide pure-tests)
 
 (define pure-tests
@@ -464,6 +464,14 @@
      (define ops (line-break-opportunities "a\r\nb"))
      (check-equal? (map line-break-opportunity-index ops) '(3 4))
      (check-equal? (map line-break-opportunity-kind ops) '(mandatory mandatory)))
+   (test-case "Unicode joining data exposes Arabic kashida boundaries"
+     (check-eq? (joining-type #\u0628) 'D)
+     (check-eq? (joining-type #\u0627) 'R)
+     (check-eq? (joining-type #\u0640) 'C)
+     (check-equal? (arabic-kashida-boundaries "بب") '(1))
+     (check-equal?
+      (arabic-kashida-boundaries (string #\u0628 #\u200C #\u0628))
+      '()))
    (test-case "filesystem path predicate is not shadowed"
      (check-true (path? (string->path "sample.png")))
      (check-false (skia-path? (string->path "sample.png"))))))

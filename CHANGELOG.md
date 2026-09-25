@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.0 — script-aware justification
+
+- Extended `justify` / `justify-all` from U+0020-only expansion to automatic script-aware opportunities.
+- Added CJK inter-character expansion for Han, Hiragana, Katakana, and Hangul, including compatible boundaries between separately shaped visual runs while excluding common punctuation.
+- Added Unicode 15.1 Joining_Type data and Arabic kashida shaping: eligible cursive connections receive display-only U+0640 TATWEEL material, are reshaped by HarfBuzz, and preserve logical line/run text.
+- Mixed lines distribute slack across inter-word, CJK, and Arabic opportunities; paragraph bidi resolution, fallback selection, break-provider indices, and Unicode conformance behavior remain unchanged.
+- Added joining-data pure tests, CJK/Arabic/mixed native tests, doctor coverage, and `examples/script-justification.rkt`.
+- No new Skia or HarfBuzz native symbols or ABI structs are required.
+
 ## 0.17.0 — external segmentation and hyphenation hooks
 
 - Added public `layout-break-opportunity?` values and `make-layout-break-opportunity` for discretionary breaks with optional display-only suffix text such as `"-"`.

@@ -1470,6 +1470,95 @@ third"))
          (define text (mixed-text-line-text line))
          (check-false (regexp-match? #rx"^[），。]" text))
          (check-false (regexp-match? #rx"（$" text)))))
+   (test-case "CJK justification expands inter-character opportunities"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 27)]
+                 [sh (make-shaper f)])
+       (define text "世界中文排版")
+       (define natural (layout-mixed-text sh fm text #:language "zh"))
+       (define natural-width
+         (mixed-text-line-width (first (mixed-text-layout-lines natural))))
+       (define target (+ natural-width 80.0))
+       (define justified
+         (layout-mixed-text sh fm text #:width target #:align 'justify-all
+                            #:language "zh"))
+       (define line (first (mixed-text-layout-lines justified)))
+       (check-equal? (mixed-text-layout-line-count justified) 1)
+       (check-equal? (mixed-text-line-text line) text)
+       (check-= (mixed-text-line-width line) target 0.01)))
+   (test-case "CJK justification spans Han and kana run boundaries"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 27)]
+                 [sh (make-shaper f)])
+       (define text "世界かなカナ")
+       (define natural (layout-mixed-text sh fm text #:language "ja"))
+       (define natural-line (first (mixed-text-layout-lines natural)))
+       (check-true (> (length (mixed-text-line-runs natural-line)) 1))
+       (define target (+ (mixed-text-line-width natural-line) 70.0))
+       (define justified
+         (layout-mixed-text sh fm text #:width target #:align 'justify-all
+                            #:language "ja"))
+       (check-= (mixed-text-line-width
+                 (first (mixed-text-layout-lines justified)))
+                target 0.01)))
+   (test-case "Arabic justification adds kashida shaping material"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 29)]
+                 [sh (make-shaper f)])
+       (define text "مرحبابكم")
+       (define natural
+         (layout-mixed-text sh fm text #:direction 'rtl #:language "ar"))
+       (define natural-line (first (mixed-text-layout-lines natural)))
+       (define natural-glyphs
+         (for/sum ([r (in-list (mixed-text-line-runs natural-line))])
+           (shaped-run-glyph-count (mixed-text-run-shaped-run r))))
+       (define target (+ (mixed-text-line-width natural-line) 70.0))
+       (define justified
+         (layout-mixed-text sh fm text #:width target #:align 'justify-all
+                            #:direction 'rtl #:language "ar"))
+       (define line (first (mixed-text-layout-lines justified)))
+       (define justified-glyphs
+         (for/sum ([r (in-list (mixed-text-line-runs line))])
+           (shaped-run-glyph-count (mixed-text-run-shaped-run r))))
+       (check-equal? (mixed-text-line-text line) text)
+       (check-= (mixed-text-line-width line) target 0.01)
+       (check-true (> justified-glyphs natural-glyphs))
+       ;; Display-only tatweels must not leak display-string byte offsets into
+       ;; the public shaped-run cluster metadata.
+       (for ([r (in-list (mixed-text-line-runs line))])
+         (define logical-bytes
+           (bytes-length (string->bytes/utf-8 (mixed-text-run-text r))))
+         (check-true
+          (for/and ([cluster (in-list
+                              (shaped-run-clusters
+                               (mixed-text-run-shaped-run r)))])
+            (<= 0 cluster logical-bytes))))))
+   (test-case "script-aware justification distributes across mixed runs"
+     (with-skia ([fm (default-font-manager)]
+                 [tf (make-typeface)]
+                 [f (make-font tf #:size 27)]
+                 [sh (make-shaper f)]
+                 [p (make-paint #:color 'black)]
+                 [surface (make-surface 340 120)])
+       (define text "Racket 世界かな")
+       (define natural (layout-mixed-text sh fm text #:language "ja"))
+       (define natural-width
+         (mixed-text-line-width (first (mixed-text-layout-lines natural))))
+       (define target (+ natural-width 90.0))
+       (define justified
+         (layout-mixed-text sh fm text #:width target #:align 'justify-all
+                            #:language "ja"))
+       (define line (first (mixed-text-layout-lines justified)))
+       (check-= (mixed-text-line-width line) target 0.01)
+       (check-true (> (length (mixed-text-line-runs line)) 1))
+       (draw-mixed-text-layout (surface-canvas surface) justified 10 8 p)
+       (define pixels (surface->rgba-bytes surface))
+       (check-true
+        (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+          (> (bytes-ref pixels i) 0)))))
    (test-case "paragraph layout recognizes all Unicode hard line separators"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)]

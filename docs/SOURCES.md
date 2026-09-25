@@ -103,3 +103,9 @@ are the compatibility reference for this implementation.
   the Unicode algorithms. Break providers contribute supplemental grapheme-safe
   boundaries after the conformant UAX #14 pass; optional display suffixes are
   layout metadata and do not mutate the logical paragraph used by UAX #9.
+- Version 0.18 script-aware justification uses Unicode 15.1
+  `ArabicShaping.txt` Joining_Type values to identify cursive Arabic boundaries.
+  U+0640 TATWEEL is inserted only into temporary display strings and reshaped by
+  the existing HarfBuzz layer. CJK justification is implemented above shaping
+  by distributing advance across adjacent Han/Hiragana/Katakana/Hangul grapheme
+  and compatible visual-run boundaries; no new native entry points are added.

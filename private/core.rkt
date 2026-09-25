@@ -3,8 +3,9 @@
          racket/list
          racket/match
          racket/path
+         racket/vector
          "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt"
-         "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt"
+         "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt" "joining.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
          skia-resource? skia-closed? skia-close!
@@ -2719,6 +2720,251 @@
       target-width
       #t)]))
 
+(define cjk-justification-scripts '(hani hira kana hang))
+
+(define (cjk-justification-script? script)
+  (and script (memq script cjk-justification-scripts) #t))
+
+(define (inferred-line-script text requested-script)
+  (or requested-script
+      (for/or ([ch (in-string text)]) (unicode-script-symbol ch))))
+
+(define (ordinary-space-boundary-byte-offsets text)
+  ;; Boundaries immediately after U+0020. Unlike the 0.14 helper, using the
+  ;; post-space byte offset lets the same position-shifting primitive serve CJK
+  ;; inter-character and Arabic connection boundaries too.
+  (define n (string-length text))
+  (let loop ([i 0] [byte-offset 0] [out '()])
+    (cond
+      [(= i n) (reverse out)]
+      [else
+       (define ch (string-ref text i))
+       (define next-byte-offset
+         (+ byte-offset (bytes-length (string->bytes/utf-8 (string ch)))))
+       (loop (add1 i) next-byte-offset
+             (if (char=? ch #\space)
+                 (cons next-byte-offset out)
+                 out))])))
+
+(define (cjk-boundary-byte-offsets text)
+  ;; Stretch only between adjacent default grapheme clusters that both have a
+  ;; CJK script. Common punctuation therefore stays attached to the surrounding
+  ;; text instead of becoming an inter-character expansion point.
+  (define n (string-length text))
+  (let loop ([start 0] [byte-offset 0] [previous-script #f] [out '()])
+    (cond
+      [(>= start n) (reverse out)]
+      [else
+       (define end (+ start (string-grapheme-span text start n)))
+       (define cluster-text (substring text start end))
+       (define script
+         (for/or ([ch (in-string cluster-text)]) (unicode-script-symbol ch)))
+       (define next-byte-offset
+         (+ byte-offset (bytes-length (string->bytes/utf-8 cluster-text))))
+       (loop end next-byte-offset script
+             (if (and (cjk-justification-script? previous-script)
+                      (cjk-justification-script? script))
+                 (cons byte-offset out)
+                 out))])))
+
+(define (string-index-boundaries->byte-offsets text indices)
+  (define wanted (make-hasheqv))
+  (for ([i (in-list indices)]) (hash-set! wanted i #t))
+  (define n (string-length text))
+  (let loop ([i 0] [byte-offset 0] [out '()])
+    (cond
+      [(= i n) (reverse out)]
+      [else
+       (define out* (if (hash-ref wanted i #f) (cons byte-offset out) out))
+       (define ch (string-ref text i))
+       (loop (add1 i)
+             (+ byte-offset (bytes-length (string->bytes/utf-8 (string ch))))
+             out*)])))
+
+(define (adjust-shaped-run-at-boundaries run direction byte-boundaries delta)
+  ;; Change the visual advance by DELTA without altering glyph IDs. A boundary
+  ;; is a UTF-8 byte offset immediately before the glyphs that move in logical
+  ;; LTR order. RTL uses the mirror count because HarfBuzz clusters descend.
+  (cond
+    [(or (null? byte-boundaries) (zero? delta)) run]
+    [else
+     (define rtl? (eq? direction 'rtl))
+     (define advance (shaped-run-advance-x run))
+     (define axis-sign
+       (cond [(negative? advance) -1.0]
+             [(positive? advance) 1.0]
+             [rtl? -1.0]
+             [else 1.0]))
+     (define per (/ delta (length byte-boundaries)))
+     (define shifted
+       (for/list ([point (in-list (shaped-run-positions run))]
+                  [cluster (in-list (shaped-run-clusters run))])
+         (define preceding
+           (for/sum ([boundary (in-list byte-boundaries)]
+                     #:when (if rtl?
+                                (> boundary cluster)
+                                (<= boundary cluster)))
+             1))
+         (match point
+           [(list px py) (list (+ px (* axis-sign per preceding)) py)]
+           [_ point])))
+     (shaped-run (shaped-run-glyphs run)
+                 (shaped-run-clusters run)
+                 shifted
+                 (+ advance (* axis-sign delta))
+                 (shaped-run-advance-y run))]))
+
+(define tatweel-char #\u0640)
+(define tatweel-byte-length
+  (bytes-length (string->bytes/utf-8 (string tatweel-char))))
+
+(define (build-kashida-display text boundaries counts)
+  ;; COUNTS is parallel to BOUNDARIES. Return the display-only string together
+  ;; with UTF-8 boundaries immediately after every inserted tatweel. Those
+  ;; boundaries let a small overshoot be compressed without changing glyphs.
+  (define counts-by-index (make-hasheqv))
+  (for ([boundary (in-list boundaries)]
+        [count (in-vector counts)])
+    (when (positive? count) (hash-set! counts-by-index boundary count)))
+  (define n (string-length text))
+  (let loop ([i 0] [byte-offset 0] [pieces '()] [after-offsets '()])
+    (cond
+      [(> i n)
+       (values (apply string-append (reverse pieces))
+               (reverse after-offsets))]
+      [else
+       (define count (hash-ref counts-by-index i 0))
+       (define-values (byte-after-inserts offsets*)
+         (for/fold ([cursor byte-offset] [outs after-offsets])
+                   ([_ (in-range count)])
+           (define next (+ cursor tatweel-byte-length))
+           (values next (cons next outs))))
+       (define pieces*
+         (if (positive? count)
+             (cons (make-string count tatweel-char) pieces)
+             pieces))
+       (cond
+         [(= i n)
+          (values (apply string-append (reverse pieces*))
+                  (reverse offsets*))]
+         [else
+          (define ch (string-ref text i))
+          (loop (add1 i)
+                (+ byte-after-inserts
+                   (bytes-length (string->bytes/utf-8 (string ch))))
+                (cons (string ch) pieces*)
+                offsets*)])])) )
+
+(define (remap-kashida-run-clusters run after-offsets)
+  ;; HarfBuzz cluster offsets belong to the temporary display string. Collapse
+  ;; each inserted TATWEEL byte span back onto its logical source boundary so
+  ;; public shaped-run clusters remain offsets into mixed/text-layout line text.
+  (cond
+    [(null? after-offsets) run]
+    [else
+     (define clusters
+       (for/list ([cluster (in-list (shaped-run-clusters run))])
+         (- cluster
+            (* tatweel-byte-length
+               (for/sum ([after (in-list after-offsets)]
+                         #:when (<= after cluster))
+                 1)))))
+     (shaped-run (shaped-run-glyphs run)
+                 clusters
+                 (shaped-run-positions run)
+                 (shaped-run-advance-x run)
+                 (shaped-run-advance-y run))]))
+
+(define (shape-kashida-to-width shape-display text direction target-width natural-run)
+  ;; Insert U+0640 at Unicode Joining_Type-compatible cursive boundaries. The
+  ;; final small difference is absorbed at the inserted connection boundaries,
+  ;; so the positioned run reaches the requested measure exactly while the
+  ;; logical line text remains unchanged.
+  (define natural-width (run-horizontal-width natural-run))
+  (define candidates (arabic-kashida-boundaries text))
+  (cond
+    [(or (null? candidates) (<= target-width natural-width))
+     (values natural-run natural-width text #f)]
+    [else
+     (define count (length candidates))
+     (define counts (make-vector count 0))
+     (define max-attempts 128)
+     (let loop ([attempt 0]
+                [counts counts]
+                [run natural-run]
+                [width natural-width]
+                [display text]
+                [after-offsets '()]
+                [stalled 0])
+       (cond
+         [(>= width target-width)
+          (define adjusted
+            (adjust-shaped-run-at-boundaries
+             run direction after-offsets (- target-width width)))
+          (values (remap-kashida-run-clusters adjusted after-offsets)
+                  target-width display #t)]
+         [(or (>= attempt max-attempts) (>= stalled count))
+          (define fallback-boundaries
+            (if (pair? after-offsets)
+                after-offsets
+                (string-index-boundaries->byte-offsets text candidates)))
+          (define adjusted
+            (adjust-shaped-run-at-boundaries
+             run direction fallback-boundaries (- target-width width)))
+          (values (if (pair? after-offsets)
+                      (remap-kashida-run-clusters adjusted after-offsets)
+                      adjusted)
+                  target-width display #t)]
+         [else
+          (define slot (modulo attempt count))
+          (define next-counts (vector-copy counts))
+          (vector-set! next-counts slot (add1 (vector-ref next-counts slot)))
+          (define-values (next-display next-after-offsets)
+            (build-kashida-display text candidates next-counts))
+          (define next-run (shape-display next-display))
+          (define next-width (run-horizontal-width next-run))
+          (loop (add1 attempt) next-counts next-run next-width
+                next-display next-after-offsets
+                (if (> next-width (+ width 0.001)) 0 (add1 stalled)))]))]))
+
+(define (justify-layout-run sh run text direction script language features
+                            target-width natural-width)
+  (define effective-script (inferred-line-script text script))
+  (define spaces (ordinary-space-boundary-byte-offsets text))
+  (define cjk-boundaries
+    (if (cjk-justification-script? effective-script)
+        (cjk-boundary-byte-offsets text)
+        '()))
+  (define kashida-indices
+    (if (eq? effective-script 'arab)
+        (arabic-kashida-boundaries text)
+        '()))
+  (define total-opportunities
+    (+ (length spaces) (length cjk-boundaries) (length kashida-indices)))
+  (cond
+    [(or (zero? total-opportunities) (<= target-width natural-width))
+     (values run natural-width #f)]
+    [else
+     (define per (/ (- target-width natural-width) total-opportunities))
+     (define arabic-target
+       (+ natural-width (* per (length kashida-indices))))
+     (define-values (base-run base-width display-text _used-kashida?)
+       (if (pair? kashida-indices)
+           (shape-kashida-to-width
+            (lambda (display)
+              (shape-layout-run sh display direction script language features))
+            text direction arabic-target run)
+           (values run natural-width text #f)))
+     (define post-boundaries
+       (append (ordinary-space-boundary-byte-offsets text)
+               (if (cjk-justification-script? effective-script)
+                   (cjk-boundary-byte-offsets text)
+                   '())))
+     (define remaining (- target-width base-width))
+     (values (adjust-shaped-run-at-boundaries
+              base-run direction post-boundaries remaining)
+             target-width #t)]))
+
 (define (paragraph-line-justify? align index count)
   (case align
     [(justify-all) #t]
@@ -2786,7 +3032,8 @@
       (define actual-dir (effective-line-direction dir run))
       (define-values (final-run final-width _justified?)
         (if request-justify?
-            (justify-shaped-run run line-text actual-dir max-width natural-width)
+            (justify-layout-run sh run line-text actual-dir scr lang feats
+                                max-width natural-width)
             (values run natural-width #f)))
       (list line-text final-run final-width actual-dir)))
   (define content-width
@@ -3136,40 +3383,135 @@
           width)))
   (wrap-at-line-breaks paragraph max-width measure))
 
-(define (justify-mixed-runs runs natural-width target-width)
-  ;; Runs are already in visual order. Stretch the shaped positions inside
-  ;; each run, then recompute visual run origins from the expanded widths.
-  (define space-count
-    (for/sum ([r (in-list runs)])
-      (length (ordinary-space-byte-offsets (mixed-text-run-text r)))))
-  (cond
-    [(or (zero? space-count) (<= target-width natural-width))
-     (values runs natural-width #f)]
-    [else
-     (define per-space (/ (- target-width natural-width) space-count))
-     (define stretched
-       (for/list ([r (in-list runs)])
-         (define run-text (mixed-text-run-text r))
-         (define run-space-count (length (ordinary-space-byte-offsets run-text)))
-         (define old-width (mixed-text-run-width r))
-         (define new-width (+ old-width (* per-space run-space-count)))
-         (define-values (new-shaped _new-shaped-width _did-justify?)
-           (if (zero? run-space-count)
-               (values (mixed-text-run-shaped-run r) old-width #f)
-               (justify-shaped-run (mixed-text-run-shaped-run r)
-                                   run-text
-                                   (mixed-text-run-direction r)
-                                   new-width
-                                   old-width)))
-         (mixed-text-run run-text new-shaped 0.0 new-width
+(define (mixed-run-choice r)
+  (and (mixed-text-run-family r)
+       (fallback-choice (mixed-text-run-family r)
+                        (mixed-text-run-weight r)
+                        (mixed-text-run-font-width r)
+                        (mixed-text-run-slant r))))
+
+(define (mixed-run-space-count r)
+  (length (ordinary-space-boundary-byte-offsets (mixed-text-run-text r))))
+
+(define (mixed-run-cjk-boundaries r)
+  (if (cjk-justification-script? (mixed-text-run-script r))
+      (cjk-boundary-byte-offsets (mixed-text-run-text r))
+      '()))
+
+(define (mixed-run-kashida-indices r)
+  (if (eq? (mixed-text-run-script r) 'arab)
+      (arabic-kashida-boundaries (mixed-text-run-text r))
+      '()))
+
+(define (mixed-run-justification-count r)
+  (+ (mixed-run-space-count r)
+     (length (mixed-run-cjk-boundaries r))
+     (length (mixed-run-kashida-indices r))))
+
+(define (cjk-run-boundary? left right)
+  (and left right
+       (cjk-justification-script? (mixed-text-run-script left))
+       (cjk-justification-script? (mixed-text-run-script right))))
+
+(define (cross-run-cjk-count runs)
+  (for/sum ([left (in-list runs)]
+            [right (in-list (if (pair? runs) (cdr runs) '()))])
+    (if (cjk-run-boundary? left right) 1 0)))
+
+(define (shape-mixed-run-display sh fm r display language features)
+  (call-with-choice-shaper
+   'layout-mixed-text sh fm (mixed-run-choice r)
+   (lambda (run-shaper)
+     (shape-text run-shaper display
+                 #:direction (mixed-text-run-direction r)
+                 #:script (mixed-text-run-script r)
+                 #:language language
+                 #:features features))))
+
+(define (justify-one-mixed-run sh fm r per language features)
+  (define natural-width (mixed-text-run-width r))
+  (define text (mixed-text-run-text r))
+  (define spaces (mixed-run-space-count r))
+  (define cjk-boundaries (mixed-run-cjk-boundaries r))
+  (define kashida-indices (mixed-run-kashida-indices r))
+  (define target-arabic
+    (+ natural-width (* per (length kashida-indices))))
+  (define-values (base-shaped base-width display-text _used-kashida?)
+    (if (pair? kashida-indices)
+        (shape-kashida-to-width
+         (lambda (display)
+           (shape-mixed-run-display sh fm r display language features))
+         text (mixed-text-run-direction r) target-arabic
+         (mixed-text-run-shaped-run r))
+        (values (mixed-text-run-shaped-run r) natural-width text #f)))
+  (define post-boundaries
+    (append (ordinary-space-boundary-byte-offsets text)
+            (if (cjk-justification-script? (mixed-text-run-script r))
+                (cjk-boundary-byte-offsets text)
+                '())))
+  (define final-width
+    (+ natural-width (* per (+ spaces
+                              (length cjk-boundaries)
+                              (length kashida-indices)))))
+  (define final-shaped
+    (adjust-shaped-run-at-boundaries
+     base-shaped (mixed-text-run-direction r) post-boundaries
+     (- final-width base-width)))
+  (mixed-text-run text final-shaped 0.0 final-width
+                  (mixed-text-run-direction r)
+                  (mixed-text-run-level r)
+                  (mixed-text-run-script r)
+                  (mixed-text-run-family r)
+                  (mixed-text-run-weight r)
+                  (mixed-text-run-font-width r)
+                  (mixed-text-run-slant r)))
+
+(define (place-visual-mixed-runs/justified runs cjk-gap)
+  (let loop ([xs runs] [cursor 0.0] [out '()])
+    (cond
+      [(null? xs) (values (reverse out) cursor)]
+      [else
+       (define r (car xs))
+       (define advance (shaped-run-advance-x (mixed-text-run-shaped-run r)))
+       (define origin (+ cursor (if (negative? advance) (mixed-text-run-width r) 0.0)))
+       (define placed
+         (mixed-text-run (mixed-text-run-text r)
+                         (mixed-text-run-shaped-run r)
+                         origin
+                         (mixed-text-run-width r)
                          (mixed-text-run-direction r)
                          (mixed-text-run-level r)
                          (mixed-text-run-script r)
                          (mixed-text-run-family r)
                          (mixed-text-run-weight r)
                          (mixed-text-run-font-width r)
-                         (mixed-text-run-slant r))))
-     (define-values (placed _placed-width) (place-visual-mixed-runs stretched))
+                         (mixed-text-run-slant r)))
+       (define next (and (pair? (cdr xs)) (cadr xs)))
+       (define gap (if (cjk-run-boundary? r next) cjk-gap 0.0))
+       (loop (cdr xs)
+             (+ cursor (mixed-text-run-width r) gap)
+             (cons placed out))])))
+
+(define (justify-mixed-runs sh fm runs natural-width target-width language features)
+  ;; Distribute slack over script-appropriate visual opportunities. Latin and
+  ;; other scripts retain inter-word U+0020 expansion; CJK also expands between
+  ;; adjacent CJK graphemes/runs; Arabic uses joining-compatible tatweel points.
+  (define internal-count
+    (for/sum ([r (in-list runs)]) (mixed-run-justification-count r)))
+  (define cross-count (cross-run-cjk-count runs))
+  (define total-count (+ internal-count cross-count))
+  (cond
+    [(or (zero? total-count) (<= target-width natural-width))
+     (values runs natural-width #f)]
+    [else
+     (define per (/ (- target-width natural-width) total-count))
+     (define stretched
+       (for/list ([r (in-list runs)])
+         (justify-one-mixed-run sh fm r per language features)))
+     (define-values (placed placed-width)
+       (place-visual-mixed-runs/justified stretched per))
+     ;; Floating-point accumulation may differ by a few ulps; expose the exact
+     ;; requested layout measure just like the 0.14 inter-word implementation.
      (values placed target-width #t)]))
 
 (define (layout-mixed-text sh fm text
@@ -3239,7 +3581,8 @@
              (paragraph-line-justify? al line-index paragraph-line-count)))
       (define-values (final-runs final-width _justified?)
         (if request-justify?
-            (justify-mixed-runs runs natural-width max-width)
+            (justify-mixed-runs sh fm runs natural-width max-width
+                                lang feats)
             (values runs natural-width #f)))
       (set! raw-lines
             (cons (list line-text final-runs final-width paragraph-dir)

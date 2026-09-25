@@ -1,16 +1,17 @@
-# Racket Skia — 0.17.0
+# Racket Skia — 0.18.0
 
 An experimental standalone CPU-rendering binding to Skia through the native
 SkiaSharp C ABI. It is a Racket collection named `skia`; its public API is
 Racket-level and keeps the unsafe ABI layer private.
 
-**Verification status:** versions 0.1 through 0.14 are live-validated on
+**Verification status:** versions 0.1 through 0.17 are live-validated on
 macOS/aarch64 with Racket 9.3.0.2, SkiaSharp 3.119.1, and HarfBuzzSharp
-8.3.1.2. The 0.15–0.16 source/native suite and doctor probes were green before
-the final conformance refinements, and the final Unicode 15.1 run passed
-**10274/10274 LineBreakTest** and **91707/91707 BidiCharacterTest** cases.
-Version 0.17 adds higher-level break providers and awaits its included live
-source/native/visual validation. See [TESTING.md](TESTING.md).
+8.3.1.2. The completed 0.17 run passed both symbol audits, every doctor probe,
+all 182 source test cases (52 pure, 6 lifetime, 124 native), the break-provider
+visual probe, and the full Unicode 15.1 conformance inputs at **10274/10274
+LineBreakTest** and **91707/91707 BidiCharacterTest**. Version 0.18 adds
+script-aware justification and awaits the included live tests/doctor/visual
+probe. See [TESTING.md](TESTING.md).
 
 ## Implemented
 
@@ -38,7 +39,7 @@ pointers. The source distribution contains no native binary or font files.
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.17.0-20260925
+cd racket-skia-0.18.0-20260925
 
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 RACO="/Applications/Racket v9.3.0.2/bin/raco"
@@ -62,6 +63,7 @@ mkdir -p output &&
 "$RACKET" examples/justification.rkt output/justification.png &&
 "$RACKET" examples/bidi-controls.rkt output/bidi-controls.png &&
 "$RACKET" examples/break-providers.rkt output/break-providers.png &&
+"$RACKET" examples/script-justification.rkt output/script-justification.png &&
 "$RACKET" examples/gradients.rkt output/gradients.png &&
 "$RACKET" examples/codecs.rkt output/codecs.png &&
 "$RACKET" examples/path-effects.rkt output/path-effects.png &&
@@ -682,3 +684,21 @@ Thai/Lao/Khmer segmenters and language-specific hyphenators without building a
 dictionary into this standalone Skia binding. In mixed bidi text the suffix
 inherits the resolved level immediately before the break and does not alter the
 logical paragraph's UAX #9 resolution.
+
+## Script-aware justification
+
+Version 0.18 extends `'justify` and `'justify-all` beyond U+0020 word spaces.
+Han, Hiragana, Katakana, and Hangul runs gain inter-character opportunities
+between adjacent CJK grapheme clusters, including compatible boundaries between
+separate visual runs. Common punctuation is not turned into a stretch point.
+
+Arabic runs use Unicode 15.1 Joining_Type data to find cursive boundaries where
+U+0640 ARABIC TATWEEL can be inserted as display-only shaping material. The
+logical line text and bidi paragraph remain unchanged; HarfBuzz reshapes the
+justified display run, cluster offsets are mapped back to logical UTF-8
+coordinates, and any small width remainder is absorbed at the same
+cursive connections. Mixed lines distribute slack across word-space, CJK, and
+Arabic opportunities instead of assigning it to one script. The candidate
+selection is structural rather than a language-specific typographic ranking;
+font-specific `jalt` policies and editorial kashida preferences remain outside
+this stage.

@@ -1,4 +1,4 @@
-# API reference — version 0.17.0
+# API reference — version 0.18.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
@@ -1147,10 +1147,14 @@ the final line of each hard-break-delimited paragraph at logical start.
 justification modes require a positive `#:width`; a line without an ordinary
 space remains start-aligned at its natural width.
 
-Justification changes only positioned glyph x origins and the horizontal
-advance. It does not reshape text or alter glyph IDs/clusters. NBSP/NNBSP,
-CJK inter-character expansion, letter spacing, and Arabic kashida are not
-synthesized. Paragraph layout currently accepts only `'auto`, `'ltr`, and
+Justification is script-aware in version 0.18. Ordinary U+0020 spaces remain
+stretchable for every script. Han, Hiragana, Katakana, and Hangul additionally
+stretch between adjacent CJK grapheme clusters. Arabic text uses Unicode 15.1
+Joining_Type-compatible boundaries and reshapes display-only U+0640 TATWEEL
+insertions with HarfBuzz. The logical `text-layout-line-text` value is not
+modified by those display insertions, and shaped-run cluster offsets are mapped
+back to the logical line's UTF-8 byte coordinates. NBSP/NNBSP and punctuation are not general
+stretch points. Paragraph layout currently accepts only `'auto`, `'ltr`, and
 `'rtl`; vertical HarfBuzz directions remain available to `shape-text` but not
 to this horizontal layout layer.
 
@@ -1247,8 +1251,13 @@ final per-line bidi shaping/reordering. Default grapheme clusters are kept
 intact. A `#:break-provider` contributes the same supplemental boundaries as in
 `layout-text`. Selected display-only suffixes do not alter paragraph indices or
 UAX #9 resolution; a suffix is shaped with the resolved level immediately
-preceding its break. `'justify` and `'justify-all` use the same U+0020 inter-word
-expansion policy after bidi/script/fallback shaping, then recompute visual run
-origins. The package does not ship a Southeast Asian dictionary or language-
-specific hyphenator; emergency breaking, CJK inter-character justification, and
-Arabic kashida are not implemented.
+preceding its break. `'justify` and `'justify-all` distribute slack over
+script-appropriate opportunities after bidi/script/fallback segmentation:
+U+0020 word spaces, adjacent CJK grapheme/run boundaries, and Arabic cursive
+connections selected from Unicode 15.1 Joining_Type data. Arabic display runs
+are reshaped with U+0640 TATWEEL while `mixed-text-line-text` and
+`mixed-text-run-text` retain the logical source text; exposed shaped-run cluster
+offsets are remapped to that logical UTF-8 text. The package does not ship
+a Southeast Asian dictionary or language-specific hyphenator; emergency
+breaking and language/font-specific kashida ranking or `jalt` policy remain
+outside this stage.

@@ -336,4 +336,49 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "break-provider rasterization failed"))
     (printf "Break providers passed; external segmentation and discretionary hyphen insertion verified\n"))
+  (with-skia ([fm (default-font-manager)]
+              [tf (make-typeface)]
+              [font (make-font tf #:size 27)]
+              [sh (make-shaper font)]
+              [paint (make-paint #:color 'black)]
+              [surface (make-surface 360 150)])
+    (define cjk-natural
+      (layout-mixed-text sh fm "世界中文" #:language "zh"))
+    (define cjk-width
+      (mixed-text-line-width (car (mixed-text-layout-lines cjk-natural))))
+    (define cjk-target (+ cjk-width 70.0))
+    (define cjk
+      (layout-mixed-text sh fm "世界中文" #:width cjk-target
+                         #:align 'justify-all #:language "zh"))
+    (unless (< (abs (- (mixed-text-line-width
+                        (car (mixed-text-layout-lines cjk)))
+                       cjk-target))
+               0.01)
+      (error 'doctor "CJK inter-character justification did not fill the measure"))
+    (define arabic-natural
+      (layout-mixed-text sh fm "مرحبابكم" #:direction 'rtl #:language "ar"))
+    (define arabic-line (car (mixed-text-layout-lines arabic-natural)))
+    (define arabic-glyphs
+      (for/sum ([r (in-list (mixed-text-line-runs arabic-line))])
+        (shaped-run-glyph-count (mixed-text-run-shaped-run r))))
+    (define arabic-target (+ (mixed-text-line-width arabic-line) 65.0))
+    (define arabic
+      (layout-mixed-text sh fm "مرحبابكم" #:width arabic-target
+                         #:align 'justify-all #:direction 'rtl #:language "ar"))
+    (define arabic-justified-line (car (mixed-text-layout-lines arabic)))
+    (define arabic-justified-glyphs
+      (for/sum ([r (in-list (mixed-text-line-runs arabic-justified-line))])
+        (shaped-run-glyph-count (mixed-text-run-shaped-run r))))
+    (unless (and (< (abs (- (mixed-text-line-width arabic-justified-line)
+                            arabic-target))
+                    0.01)
+                 (> arabic-justified-glyphs arabic-glyphs))
+      (error 'doctor "Arabic kashida justification did not add shaping material"))
+    (draw-mixed-text-layout (surface-canvas surface) cjk 10 8 paint)
+    (draw-mixed-text-layout (surface-canvas surface) arabic 10 70 paint)
+    (define pixels (surface->rgba-bytes surface))
+    (unless (for/or ([i (in-range 3 (bytes-length pixels) 4)])
+              (> (bytes-ref pixels i) 0))
+      (error 'doctor "script-aware justification rasterization failed"))
+    (printf "Script-aware justification passed; CJK inter-character and Arabic kashida expansion verified\n"))
 )
