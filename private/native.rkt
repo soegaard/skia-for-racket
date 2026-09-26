@@ -81,6 +81,32 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; SkSL compiler/reflection. Use index queries only after validating the count:
+;; the C shim's from-name queries dereference a null pointer on a missing name.
+(define-native sk_runtimeeffect_make_for_shader (_fun _pointer _pointer -> _pointer))
+(define-native sk_runtimeeffect_make_for_color_filter (_fun _pointer _pointer -> _pointer))
+(define-native sk_runtimeeffect_make_for_blender (_fun _pointer _pointer -> _pointer))
+(define-native sk_runtimeeffect_unref (_fun _pointer -> _void))
+(define-native sk_runtimeeffect_get_uniform_byte_size (_fun _pointer -> _size))
+(define-native sk_runtimeeffect_get_uniforms_size (_fun _pointer -> _size))
+(define-native sk_runtimeeffect_get_uniform_name (_fun _pointer _int _pointer -> _void))
+(define-native sk_runtimeeffect_get_uniform_from_index
+  (_fun _pointer _int _sk-runtime-uniform-pointer -> _void))
+(define-native sk_runtimeeffect_get_children_size (_fun _pointer -> _size))
+(define-native sk_runtimeeffect_get_child_name (_fun _pointer _int _pointer -> _void))
+(define-native sk_runtimeeffect_get_child_from_index
+  (_fun _pointer _int _sk-runtime-child-pointer -> _void))
+(define-native sk_runtimeeffect_make_shader
+  (_fun _pointer _pointer _pointer _size _pointer -> _pointer))
+(define-native sk_runtimeeffect_make_color_filter
+  (_fun _pointer _pointer _pointer _size -> _pointer))
+(define-native sk_runtimeeffect_make_blender
+  (_fun _pointer _pointer _pointer _size -> _pointer))
+(define-native sk_blender_new_mode (_fun _int -> _pointer))
+(define-native sk_blender_unref (_fun _pointer -> _void))
+(define-native sk_paint_set_blender (_fun _pointer _pointer -> _void))
+(define-native sk_paint_get_blender (_fun _pointer -> _pointer))
+
 ;; Document annotations. SkData contains copied, NUL-terminated ASCII URI/ID
 ;; bytes. PDF and SVG consume the data synchronously; picture recordings ref it.
 (define-native sk_canvas_draw_url_annotation

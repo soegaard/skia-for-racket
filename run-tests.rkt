@@ -4,7 +4,7 @@
          "tests/codec-pure-test.rkt" "tests/pdf-pure-test.rkt"
          "tests/svg-pure-test.rkt" "tests/output-pure-test.rkt"
          "tests/path-matrix-pure-test.rkt" "tests/filter-graph-pure-test.rkt"
-         "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt")
+         "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt")
 
 (define-runtime-path native-tests-file "tests/native-test.rkt")
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
@@ -20,6 +20,8 @@
 
 (define-runtime-path annotation-native-tests-file "tests/annotation-native-test.rkt")
 
+(define-runtime-path runtime-native-tests-file "tests/runtime-native-test.rkt")
+
 (module+ main
   (define pure-only? #f)
   (command-line
@@ -32,7 +34,7 @@
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
                       (run-tests svg-pure-tests) (run-tests output-pure-tests)
                       (run-tests path-matrix-pure-tests) (run-tests filter-graph-pure-tests)
-                      (run-tests color-output-pure-tests) (run-tests annotation-pure-tests)))
+                      (run-tests color-output-pure-tests) (run-tests annotation-pure-tests) (run-tests runtime-pure-tests)))
   (cond
     [pure-only? (displayln "Native rendering tests NOT RUN (--pure).")]
     [else
@@ -47,5 +49,6 @@
               (run-tests (dynamic-require path-matrix-native-tests-file 'path-matrix-native-tests))
               (run-tests (dynamic-require filter-graph-native-tests-file 'filter-graph-native-tests))
               (run-tests (dynamic-require color-output-native-tests-file 'color-output-native-tests))
-              (run-tests (dynamic-require annotation-native-tests-file 'annotation-native-tests))))])
+              (run-tests (dynamic-require annotation-native-tests-file 'annotation-native-tests))
+              (run-tests (dynamic-require runtime-native-tests-file 'runtime-native-tests))))])
   (exit (if (zero? failures) 0 1)))

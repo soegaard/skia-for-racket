@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.28.0 — runtime effects / SkSL
+
+- Added owned compiled runtime effects and ordinary shader, color-filter, and
+  blender instances with immutable uniform/child snapshots.
+- Copied reflection exposes names, types, counts, offsets, precision/color flags,
+  and child kinds without retaining borrowed C++ string views.
+- Added checked, tightly packed float/int/vector/matrix/array uniforms, structured
+  compilation errors, affine shader local matrices, and typed child binding.
+- Added preset blender objects, paint setter/getter integration, and common
+  lifetime/thread validation for runtime-effect and blender resources.
+- Added 38 pure and 39 native cases, a doctor, reflection ABI mirror, and one
+  twelve-panel PDF/SVG/reference runner with explicit bounded raster fallback.
+- Adds 18 Skia symbols (319 total); HarfBuzz remains 27. Expected suite: 670 cases.
+  Native/Racket execution is not claimed by the authoring checks.
+
 ## 0.27.0 — PDF/SVG links and document annotations
 
 - Added canvas URL rectangles, named destinations, internal links, backend

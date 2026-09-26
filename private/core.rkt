@@ -9,6 +9,21 @@
   (provide color-space-h wrap-owned-color-space))
 (provide image-convert-color-space)
 
+;; Runtime effects and blenders participate in the same owned-resource lifetime
+;; protocol, but their implementation and reflection API live in a separate
+;; module. This private bridge is never re-exported by main.rkt.
+(struct runtime-effect-resource (handle kind source byte-size uniforms children)
+  #:constructor-name make-runtime-effect-record)
+(struct blender-resource (handle) #:constructor-name make-blender-record)
+(module* runtime-internals #f
+  (provide runtime-effect-resource? make-runtime-effect-record
+           runtime-effect-resource-handle runtime-effect-resource-kind
+           runtime-effect-resource-source runtime-effect-resource-byte-size
+           runtime-effect-resource-uniforms runtime-effect-resource-children
+           blender-resource? blender-resource-handle make-blender-record
+           new-shader new-color-filter shader-h color-filter-h paint-h
+           copy-sk-string call-with-native-temporary))
+
 ;; Convert *samples*, unlike an ICC metadata override. Untagged input requires
 ;; an explicit source declaration; never silently reinterpret it as sRGB.
 (define (image-convert-color-space im destination #:source-color-space [source #f])
@@ -243,14 +258,17 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (surface? v) (paint? v) (shader? v) (path-effect? v)
+  (or (runtime-effect-resource? v) (blender-resource? v)
+      (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
       (picture? v) (picture-recorder? v) (document? v) (svg-document? v)
       (skia-path? v) (path-measure? v) (image? v) (codec? v)
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
-  (cond [(surface? v) (surface-handle v)]
+  (cond [(runtime-effect-resource? v) (runtime-effect-resource-handle v)]
+        [(blender-resource? v) (blender-resource-handle v)]
+        [(surface? v) (surface-handle v)]
         [(document? v) (document-handle v)]
         [(svg-document? v) (svg-document-handle v)]
         [(pdf-page? v) (document-handle (pdf-page-document v))]

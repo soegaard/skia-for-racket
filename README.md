@@ -1,16 +1,37 @@
-# Racket Skia — 0.27.0
+# Racket Skia — 0.28.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer's 0.26 run passed all 541 source cases,
-native audits, doctor, and the output inspector after the two ICC/PNG fixes.
-This revision starts from `0d250497fcc5b5f61e3d95d5395ae4056ae41f4e`.
-**0.27 has source/context-patch and synthetic-inspector checks in the authoring
-environment, not Racket/native execution.** See [link validation](docs/ANNOTATION-TESTING.md).
-Expected suite: 593 source cases; 301 Skia / 27 HarfBuzz symbols; no new C layouts.
-Earlier full Unicode conformance results remain historical.
+**Verification status:** the maintainer's 0.27 run passed all 593 cases, native
+symbol audits, and doctor. This revision starts from
+`aed63287d0d375513db5c8577b4b72de2ec5a3d8` (document annotations).
+**0.28 has source, host-C, and synthetic-inspector checks, not a Racket/native
+run in the authoring environment.** See [runtime validation](docs/RUNTIME-TESTING.md).
+Expected suite: 670 cases; 319 Skia / 27 HarfBuzz symbols. Earlier full Unicode
+conformance results remain historical.
+
+## Runtime effects / SkSL
+
+Compile a program once, then bind checked uniform and child snapshots to create
+ordinary shaders, color filters, or paint blenders. Effects and blenders use the
+existing owned-resource lifetime rules; reflection is copied into immutable values.
+
+```racket
+(with-skia ([effect
+             (make-runtime-effect
+              "layout(color) uniform half4 color; half4 main(float2 p) { return half4(color.rgb*color.a,color.a); }")]
+            [shader (runtime-effect->shader effect #:uniforms (hash 'color '(0.2 0.4 0.8 1)))]
+            [paint (make-paint #:shader shader)])
+  (draw-circle canvas 100 90 45 paint))
+```
+
+The [guide](docs/RUNTIME-EFFECTS.md) explains tight uniform packing, column-major
+matrix uniforms, premultiplied output, typed child slots, and structured compiler
+errors. Generic SkSL/custom blenders require explicit bounded raster groups in
+PDF/SVG; surrounding labels and geometry remain vector. There is no GPU context
+or universal automatic fallback in this revision.
 
 ## Links and named destinations
 

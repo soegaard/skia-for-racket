@@ -1,10 +1,88 @@
-# API reference — version 0.27.0
+# API reference — version 0.28.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
 
+
+## Runtime effects / SkSL
+
+Available from `skia` and `skia/runtime-effects`. See the
+[runtime guide](RUNTIME-EFFECTS.md) and [ABI notes](RUNTIME-ABI.md).
+
+```racket
+(runtime-effect? value)
+(make-runtime-effect source #:kind [kind 'shader])
+(runtime-effect-kind effect) ; 'shader, 'color-filter, or 'blender
+(runtime-effect-source effect)
+(runtime-effect-uniform-byte-size effect)
+(runtime-effect-uniforms effect)
+(runtime-effect-children effect)
+(runtime-effect-uniform-bytes effect bindings)
+
+(runtime-effect->shader effect
+  #:uniforms [bindings (hash)] #:children [children (hash)]
+  #:local-matrix [matrix #f])
+(runtime-effect->color-filter effect
+  #:uniforms [bindings (hash)] #:children [children (hash)])
+(runtime-effect->blender effect
+  #:uniforms [bindings (hash)] #:children [children (hash)])
+
+(runtime-uniform? value)
+(runtime-uniform-name uniform)
+(runtime-uniform-offset uniform)
+(runtime-uniform-type uniform)
+(runtime-uniform-count uniform)
+(runtime-uniform-byte-size uniform)
+(runtime-uniform-array? uniform)
+(runtime-uniform-color? uniform)
+(runtime-uniform-half-precision? uniform)
+
+(runtime-child? value)
+(runtime-child-name child)
+(runtime-child-kind child)
+(runtime-child-index child)
+
+(exn:fail:skia-sksl? exception)
+(exn:fail:skia-sksl-kind exception)
+(exn:fail:skia-sksl-source exception)
+(exn:fail:skia-sksl-diagnostics exception)
+
+(blender? value)
+(make-blend-mode-blender blend-mode)
+(paint-set-blender! paint blender-or-false)
+(paint-blender paint)
+```
+
+Effects and blenders are owned resources compatible with `with-skia` and
+`skia-close!`. Factories return ordinary owned shaders/color filters/blenders.
+Instances retain their native effect, uniform data, and children; the original
+wrappers can be closed after successful construction. Paint setters retain their
+inputs; `paint-blender` returns an owned reference or `#f` for implicit source-over.
+`paint-set-blend-mode!` replaces a custom blender; `paint-set-blender!` with `#f`
+resets source-over. There is no new `make-paint` keyword.
+
+Uniforms and children use hashes with string/symbol names. All reflected names
+are required; missing, unknown, duplicate-normalized, null, or wrongly typed
+bindings raise. Numeric types are `'float`, `'float2`, `'float3`, `'float4`,
+`'float2x2`, `'float3x3`, `'float4x4`, `'int`, `'int2`, `'int3`, and `'int4`.
+Scalars take one number. Vectors/matrices/arrays take flat lists/vectors with
+exactly the reflected component count. Integers must be exact signed int32;
+floats must be finite C-float values. Every component, including `half`, uses
+four bytes. Matrices are column-major and arrays have no std140 padding.
+The separate shader local matrix is an invertible affine geometry `matrix?`.
+
+Reflection contains detached immutable values and remains readable after effect
+closure. Packing produces independent immutable bytes. Native factories still
+require a live effect and children on their creating thread. Compilation errors
+preserve Skia's diagnostics, copied source, and requested kind.
+
+`layout(color)` uniforms are unpremultiplied extended sRGB colors; shader output
+must be premultiplied. No implicit time, mutable uniform buffer, GPU context, or
+source-code sandbox is installed. Use `draw-rasterized` for generic runtime nodes
+in PDF/SVG; backdrop-dependent blenders require their backdrop in the same group.
+The new example rasterizes only four bounded panels per page, not the whole page.
 
 ## Document links and destinations
 

@@ -1,6 +1,21 @@
 # Testing
 
-## Current revision: links and document annotations (0.27)
+## Current revision: runtime effects / SkSL (0.28)
+
+The pushed 0.27 baseline is `aed63287d0d375513db5c8577b4b72de2ec5a3d8`.
+The maintainer's log reports 593 passing cases and all native doctor/audit checks.
+This pass adds 38 pure and 39 native cases: **670 expected cases**
+(263 pure + 6 lifetime + 401 native). `--pure` runs 269 cases.
+Required symbols: **319 Skia / 27 HarfBuzz**. New 64-bit reflection records are
+40 bytes (uniform) and 24 bytes (child).
+
+Run [the complete sequence](docs/RUNTIME-TESTING.md). It compiles every test module
+with the selected Racket, then runs doctor, the entire suite, and the combined
+PDF/SVG/reference registry. Authoring checks are source/patch checks, six host-C
+mirrors, and fourteen synthetic inspector tests, not Racket/native execution.
+The actual runtime programs and vector outputs still require host validation.
+
+## Previous revision: links and document annotations (0.27)
 
 The maintainer's 0.26 validation passed 541 cases after both ICC/PNG fixes.
 The new baseline is `0d250497fcc5b5f61e3d95d5395ae4056ae41f4e`.

@@ -2,6 +2,15 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;; m119 copies std::string_view as two machine words. Their ordering is a C++
+;; library detail, so NEVER dereference these words as a name pointer. The
+;; separate get_uniform_name / get_child_name calls copy names into SkString.
+(define-cstruct _sk-runtime-uniform
+  ([name-word0 _size] [name-word1 _size] [offset _size]
+   [type _int] [count _int] [flags _uint32]))
+(define-cstruct _sk-runtime-child
+  ([name-word0 _size] [name-word1 _size] [type _int] [index _int]))
+
 ;; skcms SDR transfer function and RGB->XYZ(D50), not geometry matrices.
 (define-cstruct _sk-transfer
   ([g _float] [a _float] [b _float] [c _float] [d _float] [e _float] [f _float]))

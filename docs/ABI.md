@@ -1,5 +1,18 @@
 # Native ABI and ownership notes
 
+## Runtime effects
+
+Eighteen additional callouts bring the requirement to 319 Skia symbols; HarfBuzz
+remains 27. New 64-bit reflection records are 40 bytes (uniform) and 24 (child).
+Their two leading string-view words are intentionally opaque: names are copied
+using the native name queries rather than interpreting C++ library internals.
+
+Uniform data uses reflected, tightly packed four-byte components; half is still
+32-bit storage, and matrix uniforms are column-major. The shader's separate
+local matrix uses the existing row-major geometry M33. Native factories retain
+uniform data and correctly typed children. See [runtime ABI notes](RUNTIME-ABI.md)
+for layout offsets, ownership, and the boundary of the host-C mirror check.
+
 ## Document annotations
 
 Three synchronous annotation entry points bring the requirement to 301 Skia
