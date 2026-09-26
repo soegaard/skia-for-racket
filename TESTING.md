@@ -1,6 +1,21 @@
 # Testing
 
-## Current revision: path inspection and matrices (0.24)
+## Current revision: advanced filter graphs (0.25)
+
+The maintainer's 0.24 suite/probes are green. The new baseline is
+`cd046ac6eb92d7c0534b70900a341b1014cd6fbe`.
+This stage adds 30 pure and 44 native cases: **472 expected cases**
+(166 pure + 6 lifetime + 300 native). Required symbols: **285 Skia / 27 HarfBuzz**.
+New layouts are 8-byte isize, 8-byte ipoint, and 12-byte point3 records.
+
+Run [the complete validation sequence](docs/FILTER-TESTING.md). It compiles
+all tests with the selected Racket, then runs doctor, the entire suite,
+the combined PDF/SVG/reference registry, and the SVG inspector.
+Source/context-patch, host-C and ten synthetic inspector tests were performed
+here. Racket compilation/native execution and visual review remain required.
+No new full Unicode conformance result is claimed.
+
+## Previous revision: path inspection and matrices (0.24)
 
 The maintainer's complete 0.23 source/native run passed 344 cases. Its PDF/SVG
 and raster references were reviewed. The pushed baseline is

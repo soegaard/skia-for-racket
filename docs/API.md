@@ -1,9 +1,100 @@
-# API reference — version 0.24.0
+# API reference — version 0.25.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+## Advanced image-filter graphs
+
+These constructors are exported by `skia` / `main.rkt`. All return owned
+`image-filter?` values and attach through `#:image-filter` on existing paints.
+See [the guide](FILTER-GRAPHS.md) for full examples and native backend limits.
+
+```racket
+(make-crop-image-filter rectangle #:input [input #f])
+(make-offset-image-filter dx dy #:input [input #f] #:crop [crop #f])
+(make-merge-image-filter inputs #:crop [crop #f])
+(make-blend-image-filter mode background foreground #:crop [crop #f])
+(make-arithmetic-image-filter k1 k2 k3 k4 background foreground
+                              #:enforce-premul? [flag #t] #:crop [crop #f])
+(make-compose-image-filter outer inner #:crop [crop #f])
+```
+
+```racket
+(make-dilate-image-filter radius-x radius-y #:input [input #f] #:crop [crop #f])
+(make-erode-image-filter radius-x radius-y #:input [input #f] #:crop [crop #f])
+(make-displacement-map-image-filter x-channel y-channel scale displacement color
+                                   #:crop [crop #f])
+(make-matrix-convolution-image-filter width height kernel
+                                     #:offset [offset #f]
+                                     #:gain [gain 1] #:bias [bias 0]
+                                     #:tile-mode [mode 'decal]
+                                     #:convolve-alpha? [flag #t]
+                                     #:input [input #f] #:crop [crop #f])
+(make-matrix-transform-image-filter matrix #:sampling [sampling 'linear]
+                                   #:input [input #f] #:crop [crop #f])
+(make-tile-image-filter source destination #:input [input #f] #:crop [crop #f])
+(make-magnifier-image-filter lens zoom #:inset [inset 0]
+                            #:sampling [sampling 'linear]
+                            #:input [input #f] #:crop [crop #f])
+```
+
+```racket
+(make-image-source-filter image #:source [source #f] #:destination [destination #f]
+                          #:sampling [sampling 'linear] #:crop [crop #f])
+(make-picture-image-filter picture #:crop [crop #f])
+(make-shader-image-filter shader #:dither? [flag #f] #:crop [crop #f])
+```
+
+```racket
+(make-distant-lit-diffuse-image-filter direction color
+ #:surface-scale [height 1] #:coefficient [kd 1] #:input [input #f] #:crop [crop #f])
+(make-point-lit-diffuse-image-filter location color
+ #:surface-scale [height 1] #:coefficient [kd 1] #:input [input #f] #:crop [crop #f])
+(make-spot-lit-diffuse-image-filter location target color
+ #:exponent [exponent 1] #:cutoff-angle [degrees 45]
+ #:surface-scale [height 1] #:coefficient [kd 1] #:input [input #f] #:crop [crop #f])
+(make-distant-lit-specular-image-filter direction color
+ #:surface-scale [height 1] #:coefficient [ks 1] #:shininess [shininess 16]
+ #:input [input #f] #:crop [crop #f])
+(make-point-lit-specular-image-filter location color
+ #:surface-scale [height 1] #:coefficient [ks 1] #:shininess [shininess 16]
+ #:input [input #f] #:crop [crop #f])
+(make-spot-lit-specular-image-filter location target color
+ #:exponent [exponent 1] #:cutoff-angle [degrees 45]
+ #:surface-scale [height 1] #:coefficient [ks 1] #:shininess [shininess 16]
+ #:input [input #f] #:crop [crop #f])
+```
+
+Rectangles are four-element lists/vectors in **x, y, width, height** order.
+Crop defaults to `#f`; empty crops are permitted. Other rectangles have positive,
+native-float-representable extents. Crop bounds are in filter-local coordinates.
+For input positions, `#f` means the dynamic source, not an empty image. Merge
+is nonempty and draws in list order with source-over blending. Binary operators
+use background/Dst first, foreground/Src second. Composition is outer(inner(source)).
+
+Convolution kernels are flat row-major lists/vectors copied during construction.
+Dimensions are exact 1..2048; offsets are exact in-range indices, defaulting to
+floor(width/2), floor(height/2). Gain is a finite multiplier; bias uses the
+historical 0..255 channel scale. Kernel dimensions/offsets are in filter-layer
+pixels, not drawing units. Native kernel/pointer copies respect the byte limit.
+Non-decal convolution tiling requires a crop; mirror remains unsupported for
+blur/convolution. Non-decal blur/convolution crops also establish input tile
+bounds before the output crop. See the guide's pinned-backend qualification.
+
+Morphology radii are nonnegative. Displacement selectors are red/green/blue/alpha.
+Image source rectangles lie within the image; absent destinations preserve source
+coordinates. Matrices must have a representable inverse. Sampling is nearest/linear.
+Magnifier zoom is at least 1, inset nonnegative. Light triples must be finite;
+directions are nonzero and spot location/target differ. Reflection coefficients
+are nonnegative, shininess 1..128, spot exponent 0..128, cutoff angle 0..90 degrees.
+
+Inputs are retained natively, and valid identity graph results remain owned.
+Closed or cross-thread wrappers cannot be used to create new graphs. General
+SVG filter graphs require explicit `draw-rasterized`; native PDF filters can
+rasterize and are not guaranteed to remain vector. Existing calls that omit
+`#:crop` retain their behavior.
 
 ## Affine matrices and path inspection
 
@@ -778,14 +869,14 @@ be closed after successful construction.
 (image-filter? value)
 (make-blur-image-filter sigma-x sigma-y
                         #:tile-mode [mode 'decal]
-                        #:input [image-filter-or-false #f])
+                        #:input [image-filter-or-false #f] #:crop [crop #f])
 (make-drop-shadow-image-filter dx dy sigma-x sigma-y color
-                               #:input [image-filter-or-false #f])
+                               #:input [image-filter-or-false #f] #:crop [crop #f])
 (make-drop-shadow-only-image-filter dx dy sigma-x sigma-y color
-                                    #:input [image-filter-or-false #f])
+                                    #:input [image-filter-or-false #f] #:crop [crop #f])
 (make-color-filter-image-filter color-filter
-                                #:input [image-filter-or-false #f])
-(make-compose-image-filter outer inner)
+                                #:input [image-filter-or-false #f] #:crop [crop #f])
+(make-compose-image-filter outer inner #:crop [crop #f])
 ```
 
 All three filter families are owned, reference-counted Skia resources. Paints
@@ -817,9 +908,9 @@ finite scalars and sigmas are nonnegative. `make-color-filter-image-filter`
 turns a color filter into an image-filter node. `make-compose-image-filter`
 computes `outer(inner(source))`.
 
-This first filter layer does not yet expose crop rectangles, arithmetic/merge,
-morphology, displacement, matrix convolution/transform, lighting, table filters,
-or runtime-effect filters.
+Crop rectangles, arithmetic/merge, morphology, displacement, convolution,
+transforms, sources, and lighting are described in Advanced image-filter graphs.
+Table color filters and runtime-effect filters remain outside this API.
 
 ## Canvas state and transforms
 

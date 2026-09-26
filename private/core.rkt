@@ -1,5 +1,10 @@
 #lang racket/base
-(require "output-util.rkt")
+(require "output-util.rkt" "filter-util.rkt")
+;; A private bridge, not re-exported by main.rkt. Graph constructors live in a
+;; separate module; public callers never receive handles or native pointers.
+(module* filter-internals #f
+  (provide new-image-filter optional-image-filter-h image-h picture-h shader-h
+           call-with-native-temporary))
 (provide current-text-output-mode current-raster-output-scale text-blob->path)
 
 ;; Legacy drawing remains native by default. Shared exporters parameterize
@@ -1781,8 +1786,9 @@
 
 (define (make-blur-image-filter sigma-x sigma-y
                                 #:tile-mode [tile-mode 'decal]
-                                #:input [input #f])
+                                #:input [input #f] #:crop [crop #f])
   (define who 'make-blur-image-filter)
+  (define cr (optional-filter-crop who crop))
   (define sx (nonnegative-scalar who sigma-x))
   (define sy (nonnegative-scalar who sigma-y))
   (when (and (zero? sx) (zero? sy))
@@ -1802,9 +1808,10 @@
    (lambda ()
      (with-optional-image-input
       who ih
-      (lambda (ip) (sk_imagefilter_new_blur sx sy tile ip #f))))))
+      (lambda (ip) (sk_imagefilter_new_blur sx sy tile ip cr))))))
 
-(define (make-drop-shadow-filter who native-create dx dy sigma-x sigma-y color input)
+(define (make-drop-shadow-filter who native-create dx dy sigma-x sigma-y color input crop)
+  (define cr (optional-filter-crop who crop))
   (define fdx (scalar who dx))
   (define fdy (scalar who dy))
   (define sx (nonnegative-scalar who sigma-x))
@@ -1816,22 +1823,23 @@
    (lambda ()
      (with-optional-image-input
       who ih
-      (lambda (ip) (native-create fdx fdy sx sy argb ip #f))))))
+      (lambda (ip) (native-create fdx fdy sx sy argb ip cr))))))
 
 (define (make-drop-shadow-image-filter dx dy sigma-x sigma-y color
-                                       #:input [input #f])
+                                       #:input [input #f] #:crop [crop #f])
   (make-drop-shadow-filter 'make-drop-shadow-image-filter
                            sk_imagefilter_new_drop_shadow
-                           dx dy sigma-x sigma-y color input))
+                           dx dy sigma-x sigma-y color input crop))
 
 (define (make-drop-shadow-only-image-filter dx dy sigma-x sigma-y color
-                                            #:input [input #f])
+                                            #:input [input #f] #:crop [crop #f])
   (make-drop-shadow-filter 'make-drop-shadow-only-image-filter
                            sk_imagefilter_new_drop_shadow_only
-                           dx dy sigma-x sigma-y color input))
+                           dx dy sigma-x sigma-y color input crop))
 
-(define (make-color-filter-image-filter cf #:input [input #f])
+(define (make-color-filter-image-filter cf #:input [input #f] #:crop [crop #f])
   (define who 'make-color-filter-image-filter)
+  (define cr (optional-filter-crop who crop))
   (define ch (color-filter-h who cf))
   (define ih (optional-image-filter-h who input))
   (new-image-filter
@@ -1841,17 +1849,24 @@
      (call-with-owned
       who handles
       (lambda (cp . rest)
-        (sk_imagefilter_new_color_filter cp (if ih (car rest) #f) #f))))))
+        (sk_imagefilter_new_color_filter cp (if ih (car rest) #f) cr))))))
 
-(define (make-compose-image-filter outer inner)
+(define (make-compose-image-filter outer inner #:crop [crop #f])
   (define who 'make-compose-image-filter)
+  (define cr (optional-filter-crop who crop))
   (define oh (image-filter-h who outer))
   (define ih (image-filter-h who inner))
   (new-image-filter
    who
    (lambda ()
      (call-with-owned who (list oh ih)
-       (lambda (op ip) (sk_imagefilter_new_compose op ip))))))
+       (lambda (op ip)
+         (if cr
+             (call-with-native-temporary
+              who 'uncropped-composition
+              (lambda () (sk_imagefilter_new_compose op ip)) sk_imagefilter_unref
+              (lambda (fp) (sk_imagefilter_new_offset 0.0 0.0 fp cr)))
+             (sk_imagefilter_new_compose op ip)))))))
 
 ;; Canvas state -------------------------------------------------------------
 

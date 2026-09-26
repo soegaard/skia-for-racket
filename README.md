@@ -1,16 +1,41 @@
-# Racket Skia — 0.24.0
+# Racket Skia — 0.25.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer's 0.23 run passed all 344 source cases
-and supplied the PDF/SVG/reference probes. This revision starts from
-`36b4b44dae46e30bb07dcdb569a254c8fdd4d982` (shared vector output).
-**0.24 has source/context-patch, synthetic-inspector and host-C layout checks;
-Racket/native execution is still required.** See [validation](docs/PATH-MATRIX-TESTING.md).
-Expected suite: 398 source cases; 265 Skia / 27 HarfBuzz symbols.
-Earlier full Unicode conformance results are historical, not new 0.24 results.
+**Verification status:** the maintainer's 0.24 run passed all 398 source cases,
+native audits, doctor, and the PDF/SVG/reference probes. This revision starts
+from `cd046ac6eb92d7c0534b70900a341b1014cd6fbe` (path inspection and matrices).
+**0.25 has source/context-patch, host-C and synthetic-inspector checks only
+in the authoring environment; Racket/native validation is required.** See
+[the current validation sequence](docs/FILTER-TESTING.md).
+Expected suite: 472 source cases; 285 Skia / 27 HarfBuzz symbols.
+Earlier full Unicode conformance results remain historical.
+
+## Advanced filter graphs
+
+Merge, blend, arithmetic, morphology, displacement, convolution, image
+transforms, tiling, magnification, explicit image/picture/shader sources, and
+six alpha-lighting constructors use the existing image-filter paint API.
+Crops are available on the existing filters and as explicit graph nodes.
+
+```racket
+(with-skia ([shadow (make-drop-shadow-only-image-filter 8 6 4 4 (rgba 0 0 0 120))]
+            [graph (make-merge-image-filter (list shadow #f) #:crop '(0 0 300 160))]
+            [paint (make-paint #:color 'blue #:image-filter graph)])
+  (draw-rounded-rect canvas 40 35 190 85 14 14 paint))
+```
+
+An input `#f` denotes the dynamic source, not transparent pixels. Merge order is
+back to front. The [guide](docs/FILTER-GRAPHS.md) explains output cropping versus
+input cropping, convolution pixel units and tiling, and ownership. Native PDF
+filters can rasterize. General filter graphs on SVG need explicit bounded
+`draw-rasterized` groups; there is no blanket automatic fallback.
+
+The validation script uses the same selected Racket for compiling all test
+modules and running the complete suite. `examples/filter-graphs.rkt` is one
+registry for the PDF, SVGs, independent references, and browser review page.
 
 ## Path inspection and affine matrices
 
@@ -530,9 +555,10 @@ The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 The library supports native PDF and SVG document output, shaped/paragraph/
 bidirectional text, font management, animated-frame decoding, encoded-orientation
 normalization, owned color spaces/codecs, path inspection and affine matrix
-operations. GPU/Metal/Vulkan contexts, general 3D/perspective transforms,
-advanced filter families/crop rectangles, and a Skia-backed `dc<%>` remain outside
-the public API. Shader-local matrices are exposed but require explicit raster
+operations, and advanced filter graphs/crops. GPU/Metal/Vulkan contexts,
+general 3D/perspective transforms, runtime effects, table color filters, and a
+Skia-backed `dc<%>` remain outside the public API. Shader-local matrices and
+general filter graphs require explicit raster
 handling when the pinned SVG serializer cannot represent them faithfully.
 PNG/JPEG/WebP are the exposed image encoders. PDF and SVG are output backends,
 not input parsers/editors/renderers. See [PDF limits](docs/PDF-OUTPUT.md) and

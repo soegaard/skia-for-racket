@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.25.0 — advanced filter graphs and crop semantics
+
+- Added merge, blend/arithmetic, offset, morphology, displacement, convolution,
+  affine image transforms, tile, magnifier, image/picture/shader source nodes,
+  and six diffuse/specular lighting constructors: 21 new public constructors.
+- Added #:crop to blur, both shadow constructors, color-filter image nodes, and
+  composition, plus an explicit standalone output-crop node. Rectangles use xywh.
+- Preserved dynamic-source semantics for #f; private identity nodes keep valid
+  native Src/Dst and identity optimizations owned instead of treating them as
+  allocation failures. Parent graphs and paints retain their inputs natively.
+- Copied input arrays and kernels with byte limits, strict geometry/enum checks,
+  and explicit convolution pixel-unit and crop/tile semantics. No claimed
+  blanket SVG filter support: the new SVG probes rasterize panels explicitly.
+- Added 30 pure + 44 native tests (472 total), doctor coverage, three C structure
+  mirrors (8/8/12 bytes), ten Python inspector tests, and one 18-panel registry
+  for native PDF, SVG raster groups, and independent native raster references.
+- Added 20 native symbols: 285 Skia / 27 HarfBuzz. The single-interpreter
+  validation script continues to compile all tests/*.rkt before running them.
+- Based on cd046ac6eb92d7c0534b70900a341b1014cd6fbe. Authoring checks are not
+  Racket compilation or native execution; see docs/FILTER-TESTING.md.
+
 ## 0.24.0 — path inspection and affine matrices
 
 - Added immutable six-coefficient affine matrix values, composition/inversion,

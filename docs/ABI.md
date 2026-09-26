@@ -1,5 +1,25 @@
 # Native ABI and ownership notes
 
+## Filter graphs
+
+Twenty additional synchronous C factories bring the requirement to 285 Skia
+symbols; HarfBuzz remains 27. New structures are two int32 pairs (isize/ipoint,
+8 bytes each) and three floats (point3, 12 bytes). Matrix transforms use the
+existing 36-byte M33, not the canvas M44. See tools/check-filter-abi.c.
+
+The pinned shim refs graph inputs, images, pictures, and shaders. Constructors
+validate and hold owned inputs during native calls; input pointer arrays,
+convolution kernels, crop rectangles, and sampling structures are temporary.
+Native kernels are copied. Graphs may outlive their input wrappers, and paints
+may outlive graph wrappers. Private identity Offset nodes represent implicit
+source slots so optimized valid Src/Dst/identity results remain non-null owned
+resources. Empty results, such as a clear blend or empty crop, are not source.
+
+Factories without a native crop parameter use a scoped intermediate reference
+and an output crop implemented via zero-offset-with-crop. There are no new
+native-to-Racket callbacks or changes to document/page lifetimes. See
+[the filter guide](FILTER-GRAPHS.md) for pinned crop/tile qualifications.
+
 ## Path/matrix boundary
 
 See [the pinned matrix ABI audit](PATH-MATRIX-ABI.md). Canvas entry points use

@@ -3,7 +3,7 @@
          "main.rkt" "tests/pure-test.rkt" "tests/lifetime-test.rkt"
          "tests/codec-pure-test.rkt" "tests/pdf-pure-test.rkt"
          "tests/svg-pure-test.rkt" "tests/output-pure-test.rkt"
-         "tests/path-matrix-pure-test.rkt")
+         "tests/path-matrix-pure-test.rkt" "tests/filter-graph-pure-test.rkt")
 
 (define-runtime-path native-tests-file "tests/native-test.rkt")
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
@@ -12,6 +12,8 @@
 (define-runtime-path output-native-tests-file "tests/output-native-test.rkt")
 
 (define-runtime-path path-matrix-native-tests-file "tests/path-matrix-native-test.rkt")
+
+(define-runtime-path filter-graph-native-tests-file "tests/filter-graph-native-test.rkt")
 
 (module+ main
   (define pure-only? #f)
@@ -24,7 +26,7 @@
   (define failures (+ (run-tests pure-tests) (run-tests lifetime-tests)
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
                       (run-tests svg-pure-tests) (run-tests output-pure-tests)
-                      (run-tests path-matrix-pure-tests)))
+                      (run-tests path-matrix-pure-tests) (run-tests filter-graph-pure-tests)))
   (cond
     [pure-only? (displayln "Native rendering tests NOT RUN (--pure).")]
     [else
@@ -36,5 +38,6 @@
               (run-tests (dynamic-require pdf-native-tests-file 'pdf-native-tests))
               (run-tests (dynamic-require svg-native-tests-file 'svg-native-tests))
               (run-tests (dynamic-require output-native-tests-file 'output-native-tests))
-              (run-tests (dynamic-require path-matrix-native-tests-file 'path-matrix-native-tests))))])
+              (run-tests (dynamic-require path-matrix-native-tests-file 'path-matrix-native-tests))
+              (run-tests (dynamic-require filter-graph-native-tests-file 'filter-graph-native-tests))))])
   (exit (if (zero? failures) 0 1)))

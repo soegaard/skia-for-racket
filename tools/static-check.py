@@ -23,7 +23,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('svg-pure-test.rkt','svg-pure-tests'),('svg-native-test.rkt','svg-native-tests'),
               ('output-pure-test.rkt','output-pure-tests'),('output-native-test.rkt','output-native-tests'),
               ('path-matrix-pure-test.rkt','path-matrix-pure-tests'),
-              ('path-matrix-native-test.rkt','path-matrix-native-tests')]:
+              ('path-matrix-native-test.rkt','path-matrix-native-tests'),
+              ('filter-graph-pure-test.rkt','filter-graph-pure-tests'),
+              ('filter-graph-native-test.rkt','filter-graph-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -65,7 +67,7 @@ assert not set(output_exports)-output_defined, sorted(set(output_exports)-output
 assert not [s for s in output_exports if s not in api]
 # Pure matrix values and the private implementation's SAFE public exports.
 # No binding from core's path-matrix-internals submodule is exported by main.
-for module in ['matrix.rkt', 'private/path-matrix.rkt']:
+for module in ['matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rkt']:
     local=set(); public=[]
     for form in sexps((R/module).read_text()):
         if not isinstance(form,list) or not form: continue
@@ -80,6 +82,7 @@ for module in ['matrix.rkt', 'private/path-matrix.rkt']:
     assert not set(public)-local, (module, sorted(set(public)-local))
     assert not [s for s in public if s not in api], (module, public)
 subprocess.run(['bash','-n',str(R/'tools/validate-path-matrix.sh')],check=True)
+subprocess.run(['bash','-n',str(R/'tools/validate-filter-graphs.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

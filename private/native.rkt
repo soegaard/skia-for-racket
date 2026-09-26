@@ -81,6 +81,45 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; Advanced image filters. Every array/rect is consumed synchronously and every
+;; retained input is ref-counted by the pinned C shim. Crop pointers are nullable.
+(define-native sk_imagefilter_new_offset (_fun _float _float _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_merge (_fun _pointer _int _pointer -> _pointer))
+(define-native sk_imagefilter_new_blend (_fun _int _pointer _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_arithmetic
+  (_fun _float _float _float _float _stdbool _pointer _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_dilate (_fun _float _float _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_erode (_fun _float _float _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_displacement_map_effect
+  (_fun _int _int _float _pointer _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_matrix_convolution
+  (_fun _sk-isize-pointer _pointer _float _float _sk-ipoint-pointer _int _stdbool
+        _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_matrix_transform
+  (_fun _sk-matrix-pointer _sk-sampling-pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_image
+  (_fun _pointer _sk-rect-pointer _sk-rect-pointer _sk-sampling-pointer -> _pointer))
+(define-native sk_imagefilter_new_shader (_fun _pointer _stdbool _pointer -> _pointer))
+(define-native sk_imagefilter_new_picture (_fun _pointer -> _pointer))
+(define-native sk_imagefilter_new_tile
+  (_fun _sk-rect-pointer _sk-rect-pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_magnifier
+  (_fun _sk-rect-pointer _float _float _sk-sampling-pointer _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_distant_lit_diffuse
+  (_fun _sk-point3-pointer _uint32 _float _float _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_point_lit_diffuse
+  (_fun _sk-point3-pointer _uint32 _float _float _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_spot_lit_diffuse
+  (_fun _sk-point3-pointer _sk-point3-pointer _float _float _uint32 _float _float
+        _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_distant_lit_specular
+  (_fun _sk-point3-pointer _uint32 _float _float _float _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_point_lit_specular
+  (_fun _sk-point3-pointer _uint32 _float _float _float _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_spot_lit_specular
+  (_fun _sk-point3-pointer _sk-point3-pointer _float _float _uint32 _float _float _float
+        _pointer _pointer -> _pointer))
+
 ;; Affine matrix adapters. Canvas uses the 64-byte SkM44 storage; path,
 ;; shader and measurement functions use the 36-byte sk_matrix_t conversion.
 (define-native sk_canvas_get_matrix (_fun _pointer _sk-m44-pointer -> _void))

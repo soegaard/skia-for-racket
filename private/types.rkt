@@ -2,6 +2,11 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;; Pinned sk_isize_t / sk_ipoint_t / sk_point3_t used by filter factories.
+(define-cstruct _sk-isize ([width _int32] [height _int32]))
+(define-cstruct _sk-ipoint ([x _int32] [y _int32]))
+(define-cstruct _sk-point3 ([x _float] [y _float] [z _float]))
+
 ;; m119: path/shader/measure matrices are nine row-major floats.
 (define-cstruct _sk-matrix
   ([xx _float] [xy _float] [x0 _float]
