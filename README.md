@@ -1,18 +1,38 @@
-# Racket Skia — 0.26.0
+# Racket Skia — 0.27.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer's 0.25 run passed all 472 source cases,
-native audits, doctor and the SVG inspector, and supplied PDF/SVG/reference
-artifacts. This revision starts from
-`7372d061ff2e1cf0c85c44a48d8ce5b994538027` (`Add filter graph support`).
-**0.26 has source/context-patch, host-C and synthetic-inspector checks only
-in the authoring environment; Racket/native validation remains required.** See
-[the current validation sequence](docs/COLOR-OUTPUT-TESTING.md).
-Expected suite: 541 source cases; 298 Skia / 27 HarfBuzz symbols.
+**Verification status:** the maintainer's 0.26 run passed all 541 source cases,
+native audits, doctor, and the output inspector after the two ICC/PNG fixes.
+This revision starts from `0d250497fcc5b5f61e3d95d5395ae4056ae41f4e`.
+**0.27 has source/context-patch and synthetic-inspector checks in the authoring
+environment, not Racket/native execution.** See [link validation](docs/ANNOTATION-TESTING.md).
+Expected suite: 593 source cases; 301 Skia / 27 HarfBuzz symbols; no new C layouts.
 Earlier full Unicode conformance results remain historical.
+
+## Links and named destinations
+
+```racket
+(canvas-annotate-url! canvas 10 20 180 25 "https://docs.racket-lang.org/")
+(canvas-link-destination! canvas 10 60 180 25 "later")
+;; This definition can be on a later PDF page.
+(canvas-define-destination! canvas "later" 10 200)
+```
+
+The rectangles use current canvas coordinates, including shared-page units and
+margins. They add no pixels. PDF supports forward references across pages;
+SVG resolves same-document names to stable predefined views. Duplicate definitions
+and unresolved names raise errors before publication. URL annotations can be
+recorded in pictures; named annotations are added to live document canvases.
+Raster output ignores annotation operations after argument validation.
+
+See [the annotation guide](docs/ANNOTATIONS.md) for clipping/bounding-rectangle
+semantics, URI restrictions, stable fragment IDs, and ownership. The single
+`examples/document-links.rkt` runner exports PDF, SVGs, raster references and
+an **interactive** HTML review page using `object` rather than `img` for SVGs.
+The existing ICC sentinel workaround and color-output implementation are unchanged.
 
 ## Color-managed output
 

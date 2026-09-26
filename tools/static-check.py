@@ -27,7 +27,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('filter-graph-pure-test.rkt','filter-graph-pure-tests'),
               ('filter-graph-native-test.rkt','filter-graph-native-tests'),
               ('color-output-pure-test.rkt','color-output-pure-tests'),
-              ('color-output-native-test.rkt','color-output-native-tests')]:
+              ('color-output-native-test.rkt','color-output-native-tests'),
+              ('annotation-pure-test.rkt','annotation-pure-tests'),
+              ('annotation-native-test.rkt','annotation-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -69,7 +71,7 @@ assert not set(output_exports)-output_defined, sorted(set(output_exports)-output
 assert not [s for s in output_exports if s not in api]
 # Pure matrix values and the private implementation's SAFE public exports.
 # No binding from core's path-matrix-internals submodule is exported by main.
-for module in ['matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rkt', 'color-space.rkt']:
+for module in ['matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rkt', 'color-space.rkt', 'annotations.rkt']:
     local=set(); public=[]
     for form in sexps((R/module).read_text()):
         if not isinstance(form,list) or not form: continue
@@ -86,6 +88,7 @@ for module in ['matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rk
 subprocess.run(['bash','-n',str(R/'tools/validate-path-matrix.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-filter-graphs.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-color-output.sh')],check=True)
+subprocess.run(['bash','-n',str(R/'tools/validate-document-links.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

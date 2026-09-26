@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.27.0 — PDF/SVG links and document annotations
+
+- Added canvas URL rectangles, named destinations, internal links, backend
+  queries, and deterministic PDF/SVG destination-ID helpers.
+- PDF references resolve across pages. SVG references resolve to predefined
+  views; duplicate or missing names cannot silently enter completed exports.
+- Native URL annotations retain copied data through picture recording/replay.
+  Named annotations on recorders reject; raster annotations are validated no-ops.
+- SVG finalization relocates native annotation rectangles to a root overlay to
+  avoid stale graphics clips, preserves URI text, and emits href plus xlink:href.
+- Added 25 pure and 27 native cases, doctor, a single three-page PDF/SVG registry,
+  interactive object-based review HTML, and a structural inspector.
+- Three additional native symbols (301 total); no new structs or encoder changes.
+
 ## 0.26.0 — color-managed encoded and document output
 
 - Added immutable SDR transfer values, named transfer/gamut queries, custom RGB

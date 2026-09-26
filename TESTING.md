@@ -1,6 +1,20 @@
 # Testing
 
-## Current revision: color-managed output (0.26)
+## Current revision: links and document annotations (0.27)
+
+The maintainer's 0.26 validation passed 541 cases after both ICC/PNG fixes.
+The new baseline is `0d250497fcc5b5f61e3d95d5395ae4056ae41f4e`.
+This stage adds 25 pure and 27 native tests: **593 expected cases**
+(225 pure + 6 lifetime + 362 native). `--pure` runs 231 cases.
+Required symbols: **301 Skia / 27 HarfBuzz**. No new native layouts.
+
+Run [the complete annotation sequence](docs/ANNOTATION-TESTING.md). One selected
+Racket compiles all tests and then runs doctor, the whole suite, and the combined
+PDF/SVG/reference runner. The review HTML embeds interactive SVG documents.
+Source/context-patch and synthetic inspector checks are authoring checks only;
+Racket/native execution and viewer validation remain required on the host.
+
+## Previous revision: color-managed output (0.26)
 
 The maintainer's 0.25 log reports 472 passing source cases, all native audits
 and doctor checks, and six 416x256 embedded panels in each SVG. The pushed

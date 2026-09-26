@@ -87,9 +87,12 @@
      (define replacement
        (cond
          [(bytes=? name #"id") value]
-         [(and (or (bytes=? name #"href") (bytes=? name #"xlink:href"))
-               (positive? (bytes-length value)) (= (bytes-ref value 0) 35))
-          (bytes-append #"#" (lookup (subbytes value 1)))]
+         [(or (bytes=? name #"href") (bytes=? name #"xlink:href"))
+          ;; A non-fragment URI is opaque link data, not a paint-server value.
+          ;; In particular, url(#text) in a URL must not become a resource ref.
+          (if (and (positive? (bytes-length value)) (= (bytes-ref value 0) 35))
+              (bytes-append #"#" (lookup (subbytes value 1)))
+              value)]
          [else
           (regexp-replace* #rx#"url\\(#([^)]*)\\)" value
                            (lambda (_ old) (bytes-append #"url(#" (lookup old) #")")))]))

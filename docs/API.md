@@ -1,9 +1,39 @@
-# API reference — version 0.26.0
+# API reference — version 0.27.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+
+## Document links and destinations
+
+Available from `skia` and `skia/annotations`. See the [annotation guide](ANNOTATIONS.md).
+
+```racket
+(canvas-annotation-backend canvas) ; 'pdf, 'svg, 'raster, or 'recording
+(canvas-annotate-url! canvas x y width height uri)
+(canvas-define-destination! canvas name x y)
+(canvas-link-destination! canvas x y width height name)
+(destination-id name)
+(svg-destination-id name #:id-prefix [prefix "skia"])
+```
+
+Annotations add no visible drawing and use current canvas coordinates, including
+units, margins and affine transforms. Native hot regions are axis-aligned bounds
+of transformed/clipped rectangles, not path-shaped hit regions. Names are copied
+Unicode strings encoded as stable ASCII IDs. Duplicate definitions reject
+immediately; undefined references reject at document finish, before publication.
+PDF names span its pages; SVG names resolve to predefined views within one file.
+Use an ordinary relative URI and `svg-destination-id` for a sibling SVG target.
+
+URIs must be escaped ASCII `http`, `https`, `mailto`, or relative references.
+Use the named-link API instead of a fragment-only URI. No link is opened or
+fetched by this library. URL annotations survive picture recording and vector
+replay; named annotations on a recorder reject and must be added after replay.
+Raster annotations are validated no-ops, including inside rasterized groups.
+ID helpers are pure; canvas operations enforce normal lifetime/thread ownership.
+The existing PDF/A mode does not become a conformance or accessibility guarantee.
 
 ## Color-space construction, inspection and output
 

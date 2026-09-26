@@ -1,5 +1,10 @@
 #lang racket/base
-(require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt")
+(require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt"
+         "annotation-util.rkt")
+;; Private ownership bridge, not re-exported by main.rkt or annotations.rkt.
+(module* annotation-internals #f
+  (provide call-on-canvas canvas-owner pdf-page? pdf-page-document
+           call-with-native-temporary))
 (module* color-internals #f
   (provide color-space-h wrap-owned-color-space))
 (provide image-convert-color-space)
@@ -277,6 +282,7 @@
 
 (define (skia-close! v)
   (owned-close! 'skia-close! (resource-handle 'skia-close! v))
+  (annotation-forget! v)
   ;; A font created without an explicit typeface owns a private default
   ;; typeface wrapper as well. Close that wrapper deterministically after
   ;; closing the font; explicit user-supplied typefaces are never closed here.
@@ -475,10 +481,14 @@
        (svg-canvas-pointer/checked who d)
        (unless (null? (svg-document-floors d))
          (error who "cannot finish SVG inside a protected canvas-state scope"))
+       ;; Check before destroying the native canvas, so a manual caller can
+       ;; resolve a forward reference and retry. Scoped file exports abort.
+       (annotation-check! who d)
        (with-handlers ([(lambda (_) #t)
                         (lambda (e)
                           (set-svg-document-status! d 'aborted)
                           (owned-close! who hnd)
+                          (annotation-forget! d)
                           (raise e))])
          (define storage (svg-document-storage d))
          (define cp (svg-storage-canvas storage))
@@ -491,18 +501,24 @@
             who 'svg-data
             (lambda () (sk_dynamicmemorywstream_detach_as_data sp)) sk_data_unref
             (lambda (dp)
-              (finish-svg-xml who (copy-native-data who dp)
-                              (svg-document-width d) (svg-document-height d)
-                              (svg-document-title d) (svg-document-description d)
-                              (svg-document-prefix d)))))
+              (define finalized
+                (finish-svg-xml who (copy-native-data who dp)
+                                (svg-document-width d) (svg-document-height d)
+                                (svg-document-title d) (svg-document-description d)
+                                (svg-document-prefix d)))
+              (finish-svg-annotations who d finalized
+                                      (svg-document-width d) (svg-document-height d)
+                                      (svg-document-prefix d)))))
          (set-svg-storage-xml! storage xml)
-         (set-svg-document-status! d 'finished)))))
+         (set-svg-document-status! d 'finished)
+         (annotation-forget! d)))))
   (void))
 
 (define (svg-document-abort! d)
   (define hnd (svg-document-h 'svg-document-abort! d))
   ;; Also checks thread ownership after an earlier close/abort.
   (owned-close! 'svg-document-abort! hnd)
+  (annotation-forget! d)
   (set-svg-document-status! d 'aborted)
   (void))
 
@@ -766,10 +782,12 @@
          (error who "end the active PDF page before finishing the document"))
        (unless (positive? (document-count d))
          (error who "a PDF document must contain at least one completed page"))
+       (annotation-check! who d)
        (with-handlers ([(lambda (_) #t)
                         (lambda (e)
                           (set-document-status! d 'aborted)
                           (owned-close! who hnd)
+                          (annotation-forget! d)
                           (raise e))])
          (define storage (document-storage d))
          (sk_document_close dp)
@@ -781,13 +799,15 @@
          (unless (<= 1 n (current-skia-byte-limit))
            (error who "PDF output size ~a is empty or exceeds current-skia-byte-limit (~a)"
                   n (current-skia-byte-limit)))
-         (set-document-status! d 'finished)))))
+         (set-document-status! d 'finished)
+         (annotation-forget! d)))))
   (void))
 
 (define (document-abort! d)
   (define hnd (document-h 'document-abort! d))
   ;; owned-close! checks thread affinity even for an already-closed resource.
   (owned-close! 'document-abort! hnd)
+  (annotation-forget! d)
   (set-document-page! d #f)
   (set-document-status! d 'aborted)
   (void))

@@ -81,6 +81,15 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; Document annotations. SkData contains copied, NUL-terminated ASCII URI/ID
+;; bytes. PDF and SVG consume the data synchronously; picture recordings ref it.
+(define-native sk_canvas_draw_url_annotation
+  (_fun _pointer _sk-rect-pointer _pointer -> _void))
+(define-native sk_canvas_draw_named_destination_annotation
+  (_fun _pointer _sk-point-pointer _pointer -> _void))
+(define-native sk_canvas_draw_link_destination_annotation
+  (_fun _pointer _sk-rect-pointer _pointer -> _void))
+
 ;; SDR RGB color-space construction and detached numerical inspection.
 (define-native sk_colorspace_new_rgb (_fun _sk-transfer-pointer _sk-xyz-pointer -> _pointer))
 (define-native sk_colorspace_transfer_fn_named_srgb (_fun _sk-transfer-pointer -> _void))

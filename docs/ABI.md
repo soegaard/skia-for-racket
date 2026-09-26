@@ -1,5 +1,24 @@
 # Native ABI and ownership notes
 
+## Document annotations
+
+Three synchronous annotation entry points bring the requirement to 301 Skia
+symbols; HarfBuzz remains 27. Existing 16-byte rects, 8-byte points, and owned
+SkData are reused. No native struct or encoder layout changes are introduced.
+URI/ID bytes include the terminal NUL in SkData's size. Native picture recording
+retains a data reference; the transient constructor reference is then released.
+
+Document name registries contain copied Racket strings/points in weak-key tables,
+never pointers or references back to their document keys. Canvas access, mutation,
+and finalization use the existing live-owner/thread checks. Validation precedes
+native closing; explicit finish/abort/close releases registry entries. No finalizer
+must call a Racket callback, serialize XML, or publish a file.
+
+PDF delegates rectangle transformation/clipping and destination registration to
+the pinned backend. SVG retains native calculated rectangle bounds, relocates
+annotation elements outside stale graphics clip groups, and appends deterministic
+predefined views for named points. See [annotation semantics](ANNOTATIONS.md).
+
 ## Color output
 
 Thirteen additional synchronous bindings bring the requirement to
