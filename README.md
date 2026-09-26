@@ -1,17 +1,48 @@
-# Racket Skia — 0.25.0
+# Racket Skia — 0.26.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer's 0.24 run passed all 398 source cases,
-native audits, doctor, and the PDF/SVG/reference probes. This revision starts
-from `cd046ac6eb92d7c0534b70900a341b1014cd6fbe` (path inspection and matrices).
-**0.25 has source/context-patch, host-C and synthetic-inspector checks only
-in the authoring environment; Racket/native validation is required.** See
-[the current validation sequence](docs/FILTER-TESTING.md).
-Expected suite: 472 source cases; 285 Skia / 27 HarfBuzz symbols.
+**Verification status:** the maintainer's 0.25 run passed all 472 source cases,
+native audits, doctor and the SVG inspector, and supplied PDF/SVG/reference
+artifacts. This revision starts from
+`7372d061ff2e1cf0c85c44a48d8ce5b994538027` (`Add filter graph support`).
+**0.26 has source/context-patch, host-C and synthetic-inspector checks only
+in the authoring environment; Racket/native validation remains required.** See
+[the current validation sequence](docs/COLOR-OUTPUT-TESTING.md).
+Expected suite: 541 source cases; 298 Skia / 27 HarfBuzz symbols.
 Earlier full Unicode conformance results remain historical.
+
+## Color-managed output
+
+`make-rgb-color-space` combines an SDR transfer function with an XYZ-D50 gamut.
+Named choices include sRGB, linear sRGB, Display P3, Adobe RGB and SDR Rec. 2020.
+Detached transfer/matrix values support inspection, custom primaries, and native
+transfer inversion.
+
+`image-convert-color-space` changes samples. Encoder `#:color-space` converts
+before encoding; `#:icc-profile` overrides metadata without changing samples.
+These keywords reach PNG, JPEG and WebP byte/file output, and surface PNG output.
+ICC overrides are restricted to RGB matrix/TRC profiles supported by the native
+writer, which regenerates a semantically equivalent profile rather than copying
+arbitrary ICC tags verbatim.
+
+```racket
+(with-skia ([linear (make-linear-srgb-color-space)]
+            [srgb (make-srgb-color-space)]
+            [im (rgba-bytes->image 1 1 (bytes 128 128 128 255)
+                                  #:color-space linear)])
+  (save-image im "converted.png" 'png #:color-space srgb
+              #:icc-profile (color-space->icc-bytes srgb) #:exists 'replace))
+```
+
+PDF `#:pdfa? #t` exposes Skia's XMP/UUID/fixed-sRGB-output-intent mode, not a
+PDF/A conformance guarantee. Normalize source-image samples to sRGB before
+embedding in portable documents: the pinned PDF serializer does not reliably
+preserve source-image ICC profiles. See [the guide](docs/COLOR-OUTPUT.md).
+`examples/color-output.rkt` supplies one PDF/SVG/raster registry, six tagged
+encoded images, source profiles, and a comparison HTML page.
 
 ## Advanced filter graphs
 

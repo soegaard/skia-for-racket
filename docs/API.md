@@ -1,9 +1,109 @@
-# API reference — version 0.25.0
+# API reference — version 0.26.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+## Color-space construction, inspection and output
+
+The numerical color-space functions are also exported by `skia/color-space`.
+The conversion and encoder functions are exported by `skia`. See the
+[color-output guide](COLOR-OUTPUT.md) for worked examples and backend limits.
+
+```racket
+(transfer-function? value)
+(make-transfer-function g a b c d e f)
+(transfer-function-coefficients transfer) ; immutable seven-element vector
+(named-transfer-function name)           ; srgb, linear, gamma-2.2, rec2020
+(transfer-function-evaluate transfer x)
+(transfer-function-invert transfer)      ; detached transfer or #f
+(named-xyz-d50 name)                     ; srgb, adobe-rgb, display-p3, rec2020, xyz
+(primaries->xyz-d50 red green blue white) ; (x y) lists/vectors; D50-adapted result
+(make-rgb-color-space transfer gamut)    ; owned color-space?
+(color-space-transfer-function space)    ; detached transfer or #f
+(color-space-xyz-d50 space)              ; immutable row-major vector or #f
+(image-convert-color-space image destination #:source-color-space [source #f])
+```
+
+`transfer` is a transfer value or one of the transfer names. `gamut` is a
+nine-coefficient RGB-to-XYZ(D50) list/vector or one of the gamut names. Values
+are rounded to binary32; custom matrices must be nonsingular. A color gamut
+matrix is not a geometry `matrix?`. Named queries, inversion, native creation,
+and color-space inspection use Skia. Custom transfer construction/evaluation
+are pure Racket operations.
+
+Coefficients use `y=(a*x+b)^g+e` for `x>=d`, otherwise `y=c*x+f`. The value
+constructor checks finite coefficients, g>0, nonnegative a/c/d, and a*d+b>=0
+after float conversion. It does not guarantee continuity or invertibility.
+Evaluation requires finite x>=0, is not clamped, and rejects nonfinite results.
+PQ, HLG and negative-domain HDR encodings are not exposed here.
+
+Conversion changes samples and returns an independent eight-bit RGBA image
+with the destination tag. It does not mutate the source or gamma-correct alpha.
+Out-of-gamut colors are clamped, not perceptually mapped. Untagged input requires
+`#:source-color-space`; that declaration is rejected for already-tagged input.
+Explicit close of a native color space invalidates later native queries, but
+previously returned numerical values remain usable.
+
+### Additional encoder keywords
+
+All seven functions below retain their existing format-specific options and
+also accept these common color options:
+
+```racket
+(image->png-bytes image ...
+                  #:color-space [destination #f]
+                  #:icc-profile [profile-bytes #f] #:icc-description [description #f])
+(image->jpeg-bytes image ...
+                   #:color-space [destination #f]
+                   #:icc-profile [profile-bytes #f] #:icc-description [description #f])
+(image->webp-bytes image ...
+                   #:color-space [destination #f]
+                   #:icc-profile [profile-bytes #f] #:icc-description [description #f])
+(image->encoded-bytes image format ...
+                      #:color-space [destination #f]
+                      #:icc-profile [profile-bytes #f] #:icc-description [description #f])
+(save-image image path format ...
+            #:color-space [destination #f]
+            #:icc-profile [profile-bytes #f] #:icc-description [description #f])
+(surface->png-bytes surface ...
+                    #:color-space [destination #f]
+                    #:icc-profile [profile-bytes #f] #:icc-description [description #f])
+(save-png surface path ...
+          #:color-space [destination #f]
+          #:icc-profile [profile-bytes #f] #:icc-description [description #f])
+```
+
+Here `...` means the unchanged compression/quality/file options detailed in the
+format-specific sections below; these common keywords apply in addition to
+those signatures. `#:color-space` converts before encoding and requires tagged
+input. `#:icc-profile` overrides metadata only; it does not change samples.
+The caller must ensure an override describes the resulting sample values.
+Default `#f` retains automatic native profile handling, not forced untagging.
+
+Profile overrides accept SDR RGB matrix/TRC ICC bytes with XYZ PCS. LUT/HDR
+profiles are rejected before the native writer. Skia regenerates the profile,
+so arbitrary tags and original profile bytes are not guaranteed to survive.
+The description requires an explicit profile and 1–4096 printable ASCII
+characters; omission uses `skia-for-racket RGB`. The source profile, parsed
+native profile and description remain live throughout the synchronous encode.
+Input/metadata/output byte limits and existing encode-before-opening file
+semantics still apply.
+
+### Additional PDF option
+
+`make-pdf-document`, `call-with-pdf-bytes`, `call-with-pdf-file`, `output->bytes`,
+and `save-output` also accept `#:pdfa? [flag #f]`, in addition to the options
+shown in their sections below. True forwards Skia's PDF/A metadata mode:
+XMP, a UUID, and a fixed sRGB output intent. It is not conformance certification
+or automatic conversion of embedded samples. The UUID prevents byte-for-byte
+reproducibility. Shared SVG output rejects true before running its callback.
+
+Normalize images to sRGB before portable PDF/SVG embedding. The pinned PDF
+bitmap serializer does not reliably preserve source-image profiles. This API
+does not expose arbitrary PDF output intents, CMYK proofing, or whole-document
+SVG ICC profiles. See the guide for the precise output boundary.
 
 ## Advanced image-filter graphs
 
@@ -1854,9 +1954,9 @@ copied profile directions obey `current-skia-byte-limit`.
 Passing `#:color-space` to `make-surface` or `rgba-bytes->image` tags the raster
 with that source space. Passing it to `surface->rgba-bytes` or
 `image->rgba-bytes` specifies the destination space and requests a native CPU
-conversion. Omitting it retains the earlier untagged/readback behavior. This
-stage does not add custom transfer-function/XYZ constructors or explicit ICC
-profile injection options to PNG/JPEG/WebP encoding.
+conversion. Omitting it retains the earlier untagged/readback behavior.
+Custom RGB construction, explicit image conversion and encoder ICC options are
+described in the color-output section above and in COLOR-OUTPUT.md.
 are reshaped with U+0640 TATWEEL while `mixed-text-line-text` and
 `mixed-text-run-text` retain the logical source text; exposed shaped-run cluster
 offsets are remapped to that logical UTF-8 text. The package does not ship

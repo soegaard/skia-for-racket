@@ -192,11 +192,14 @@ glyphs can be drawn as pixels. An explicit inner parameterization can override i
 
 `#:color-space` tags the temporary rendering surface and its snapshot through
 the existing owned color-space API. It is optional and defaults to `#f`. This is
-not a new promise of end-to-end ICC equivalence between PDF and SVG. Arbitrary
-encoded-output ICC injection and custom RGB color spaces remain separate work.
+not a promise of end-to-end ICC equivalence between PDF and SVG. Explicit
+sample conversion, custom RGB spaces, and encoder ICC overrides are available;
+see [color-managed output](COLOR-OUTPUT.md). For portable document embedding,
+normalize image samples to sRGB before drawing. Merely tagging the temporary
+surface is not a guarantee that the pinned PDF serializer preserves its profile.
 
 Unsupported native SVG operations still do not receive universal automatic
-fallback. This stage does not silently rasterize difficult shaders, change
+fallback. The library does not silently rasterize difficult shaders, change
 blend modes, or repair every backend limitation. Use explicit groups and review
 the actual output. See the SVG coverage table in `SVG-OUTPUT.md`.
 

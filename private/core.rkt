@@ -1,5 +1,44 @@
 #lang racket/base
-(require "output-util.rkt" "filter-util.rkt")
+(require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt")
+(module* color-internals #f
+  (provide color-space-h wrap-owned-color-space))
+(provide image-convert-color-space)
+
+;; Convert *samples*, unlike an ICC metadata override. Untagged input requires
+;; an explicit source declaration; never silently reinterpret it as sRGB.
+(define (image-convert-color-space im destination #:source-color-space [source #f])
+  (define who 'image-convert-color-space)
+  (define ih (image-h who im))
+  (define dh (color-space-h who destination))
+  (define sh (optional-color-space-h who source))
+  (call-with-owned who (append (list ih dh) (if sh (list sh) '())) (lambda ignored (void)))
+  (define w (image-width im))
+  (define h (image-height im))
+  (define tagged (image-color-space im))
+  (cond
+    [tagged
+     (call-with-skia-resource
+      tagged
+      (lambda (_tag)
+        (when source
+          (raise-arguments-error who "#:source-color-space is only for untagged input"
+                                 "source" source))
+        (rgba-bytes->image w h (image->rgba-bytes im #:color-space destination)
+                          #:color-space destination)))]
+    [source
+     (with-skia ([declared (rgba-bytes->image w h (image->rgba-bytes im)
+                                            #:color-space source)])
+       (image-convert-color-space declared destination))]
+    [else (error who "untagged input: supply #:source-color-space explicitly")]))
+
+(define (call-with-output-image who im cs proc)
+  (define ih (image-h who im))
+  (define ch (optional-color-space-h who cs))
+  (call-with-owned who (if ch (list ih ch) (list ih)) (lambda ignored (void)))
+  (if cs
+      (with-skia ([converted (image-convert-color-space im cs)]) (proc converted))
+      (proc im)))
+
 ;; A private bridge, not re-exported by main.rkt. Graph constructors live in a
 ;; separate module; public callers never receive handles or native pointers.
 (module* filter-internals #f
@@ -614,7 +653,7 @@
     (sk_dynamicmemorywstream_destroy (pdf-storage-stream storage))
     (set-pdf-storage-stream! storage #f)))
 
-(define (call-with-pdf-metadata who fields creation modified dpi quality proc)
+(define (call-with-pdf-metadata who fields creation modified dpi quality pdfa? proc)
   ;; AsDocumentPDFMetadata copies strings/timestamps by value. Keep all
   ;; temporary SkStrings and date structs alive through that conversion.
   (let loop ([remaining fields] [pointers '()])
@@ -622,7 +661,7 @@
       [(null? remaining)
        (define metadata
          (apply make-sk-pdf-metadata
-                (append (reverse pointers) (list creation modified dpi #f quality))))
+                (append (reverse pointers) (list creation modified dpi pdfa? quality))))
        (begin0 (proc metadata)
          (void/reference-sink creation modified metadata))]
       [(zero? (bytes-length (car remaining)))
@@ -642,8 +681,10 @@
                            #:creation-date [creation-date #f]
                            #:modified-date [modified-date #f]
                            #:raster-dpi [raster-dpi 144]
-                           #:encoding-quality [encoding-quality 101])
+                           #:encoding-quality [encoding-quality 101]
+                           #:pdfa? [pdfa? #f])
   (define who 'make-pdf-document)
+  (boolean who pdfa?)
   ;; Validate every public option before resolving or loading native code.
   (define fields (pdf-metadata-bytes who (list title author subject keywords creator producer)))
   (define creation (pdf-date-time who creation-date))
@@ -654,7 +695,7 @@
   (define storage (pdf-storage #f #f #f))
   (define hnd
     (call-with-pdf-metadata
-     who fields creation modified dpi quality
+     who fields creation modified dpi quality pdfa?
      (lambda (metadata)
        (new-owned
         who 'pdf-document
@@ -804,14 +845,15 @@
                              #:creation-date [creation-date #f]
                              #:modified-date [modified-date #f]
                              #:raster-dpi [raster-dpi 144]
-                             #:encoding-quality [encoding-quality 101])
+                             #:encoding-quality [encoding-quality 101]
+                             #:pdfa? [pdfa? #f])
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error 'call-with-pdf-bytes "procedure accepting one document argument" proc))
   (with-skia ([d (make-pdf-document
                  #:title title #:author author #:subject subject #:keywords keywords
                  #:creator creator #:producer producer
                  #:creation-date creation-date #:modified-date modified-date
-                 #:raster-dpi raster-dpi #:encoding-quality encoding-quality)])
+                 #:raster-dpi raster-dpi #:encoding-quality encoding-quality #:pdfa? pdfa?)])
     (call-with-values (lambda () (proc d)) (lambda ignored (void)))
     (document-finish! d)
     (document->pdf-bytes d)))
@@ -824,7 +866,8 @@
                             #:creation-date [creation-date #f]
                             #:modified-date [modified-date #f]
                             #:raster-dpi [raster-dpi 144]
-                            #:encoding-quality [encoding-quality 101])
+                            #:encoding-quality [encoding-quality 101]
+                             #:pdfa? [pdfa? #f])
   ;; Freeze the destination before user code can change current-directory.
   (define target (pdf-output-path 'call-with-pdf-file filename exists))
   (define bs
@@ -832,7 +875,7 @@
      proc #:title title #:author author #:subject subject #:keywords keywords
      #:creator creator #:producer producer
      #:creation-date creation-date #:modified-date modified-date
-     #:raster-dpi raster-dpi #:encoding-quality encoding-quality))
+     #:raster-dpi raster-dpi #:encoding-quality encoding-quality #:pdfa? pdfa?))
   (write-pdf-file-bytes! 'call-with-pdf-file bs target exists))
 
 (define (optional-color-space-h who cs)
@@ -1187,48 +1230,30 @@
    hnd (lambda (h) (owned-close! who h))
    (lambda (h) (call-with-owned who (list h) proc))))
 
-(define (surface->png-bytes s #:compression [compression 6])
+(define (surface->png-bytes s #:compression [compression 6]
+                            #:color-space [cs #f] #:icc-profile [icc #f]
+                            #:icc-description [description #f])
   (define who 'surface->png-bytes)
-  (define hnd (surface-h who s))
+  (surface-h who s)
   (unless (and (exact-integer? compression) (<= 0 compression 9))
     (raise-argument-error who "exact integer from 0 through 9" compression))
-  (define options (make-sk-png-options png-all-filters compression #f #f #f))
-  (call-with-owned
-   who (list hnd)
-   (lambda (sp)
-     ;; The pixmap borrows the surface's pixels only within this call.
-     (call-with-native-temporary
-      who 'pixmap sk_pixmap_new sk_pixmap_destructor
-      (lambda (pixmap)
-        (unless (sk_surface_peek_pixels sp pixmap)
-          (error who "CPU surface did not expose its pixels"))
-        (call-with-native-temporary
-         who 'png-stream sk_dynamicmemorywstream_new sk_dynamicmemorywstream_destroy
-         (lambda (stream)
-           (unless (sk_pngencoder_encode stream pixmap options)
-             (error who "native PNG encoder failed"))
-           (call-with-native-temporary
-            who 'encoded-data
-            (lambda () (sk_dynamicmemorywstream_detach_as_data stream)) sk_data_unref
-            (lambda (data)
-              (define n (sk_data_get_size data))
-              (unless (<= 1 n (current-skia-byte-limit))
-                (error who "encoded PNG size ~a exceeds the byte limit, or is empty" n))
-              (define src (sk_data_get_data data))
-              (unless src (error who "encoded PNG returned a null data pointer"))
-              (define out (make-bytes n))
-              ;; make-sized-byte-string is intentionally avoided: it is not
-              ;; supported by Racket CS. Copy into an ordinary Racket byte string.
-              (memcpy out src n)
-              out)))))))))
+  (optional-color-space-h who cs)
+  (define profile (checked-encoding-profile who icc))
+  (icc-description-bytes who profile description)
+  (with-skia ([im (surface-snapshot s)])
+    (image->png-bytes im #:compression compression #:color-space cs
+                     #:icc-profile profile #:icc-description description)))
 
-(define (save-png s filename #:exists [exists 'error] #:compression [compression 6])
+(define (save-png s filename #:exists [exists 'error] #:compression [compression 6]
+                  #:color-space [cs #f] #:icc-profile [icc #f]
+                  #:icc-description [description #f])
   (unless (path-string? filename)
     (raise-argument-error 'save-png "path-string?" filename))
   (unless (memq exists '(error replace))
     (raise-argument-error 'save-png "'error or 'replace" exists))
   ;; Encode before opening the destination, so native errors do not truncate it.
-  (define data (surface->png-bytes s #:compression compression))
+  (define data (surface->png-bytes s #:compression compression #:color-space cs
+                                  #:icc-profile icc #:icc-description description))
   (call-with-output-file filename
     (lambda (out) (write-bytes data out) (void))
     #:mode 'binary #:exists exists))
@@ -4980,71 +5005,109 @@
       (lambda () (sk_dynamicmemorywstream_detach_as_data stream)) sk_data_unref
       (lambda (data) (copy-native-data who data))))))
 
-(define (image->png-bytes im #:compression [compression 6])
+(define (encode-color-output who im cs icc description make-options encoder
+                             #:explicit-png-profile? [explicit-png-profile? #f])
+  (define profile (checked-encoding-profile who icc))
+  (icc-description-bytes who profile description)
+  (call-with-output-image
+   who im cs
+   (lambda (source)
+     (call-with-encoder-profile
+      who profile description
+      (lambda (pp text)
+        (define options (make-options pp text))
+        ;; m119's PNG encoder special-cases an sRGB-tagged pixmap before it
+        ;; consults Options.fICCProfile: it emits an sRGB chunk and silently
+        ;; ignores an explicit ICC override. However, Skia's shared
+        ;; icc_from_color_space helper also refuses to write *any* ICC data if
+        ;; the pixmap color space is null, even when Options.fICCProfile is
+        ;; non-null. Therefore an explicit PNG override needs a temporary
+        ;; non-sRGB, non-null metadata tag. Linear-sRGB is used only as that
+        ;; sentinel: the pixmap borrows the original raster pixels, PNG's
+        ;; scanline conversion depends on color/alpha type rather than this
+        ;; tag, and the explicit parsed profile supplies the encoded color
+        ;; characterization. Neither samples nor the source image/tag change.
+        ;; JPEG/WebP do not have the sRGB shortcut and retain the real tag.
+        (call-with-image-pixmap
+         who source
+         (lambda (pixmap)
+           (cond
+             [(and explicit-png-profile? profile)
+              (with-skia ([sentinel (make-linear-srgb-color-space)])
+                (call-with-owned
+                 who (list (color-space-h who sentinel))
+                 (lambda (sp)
+                   ;; SkPixmap takes its own ref to the supplied color space.
+                   (sk_pixmap_set_colorspace pixmap sp)
+                   (encode-pixmap-to-bytes who pixmap encoder options))))]
+             [else
+              (encode-pixmap-to-bytes who pixmap encoder options)]))))))))
+
+(define (image->png-bytes im #:compression [compression 6]
+                          #:color-space [cs #f] #:icc-profile [icc #f]
+                          #:icc-description [description #f])
   (define who 'image->png-bytes)
   (unless (and (exact-integer? compression) (<= 0 compression 9))
     (raise-argument-error who "exact integer from 0 through 9" compression))
-  (define options (make-sk-png-options png-all-filters compression #f #f #f))
-  (call-with-image-pixmap
-   who im (lambda (pixmap) (encode-pixmap-to-bytes who pixmap sk_pngencoder_encode options))))
+  (encode-color-output who im cs icc description
+                       (lambda (pp text) (make-sk-png-options png-all-filters compression #f pp text))
+                       sk_pngencoder_encode
+                       #:explicit-png-profile? #t))
 
-(define (image->jpeg-bytes im
-                           #:quality [quality 90]
-                           #:downsample [downsample 'yuv-420]
-                           #:alpha [alpha 'ignore])
+(define (image->jpeg-bytes im #:quality [quality 90]
+                           #:downsample [downsample 'yuv-420] #:alpha [alpha 'ignore]
+                           #:color-space [cs #f] #:icc-profile [icc #f]
+                           #:icc-description [description #f])
   (define who 'image->jpeg-bytes)
   (define q (quality-integer who quality))
   (define ds (choice who downsample jpeg-downsample-values))
   (define a (choice who alpha jpeg-alpha-values))
-  (define options (make-sk-jpeg-options q ds a #f #f #f))
-  (call-with-image-pixmap
-   who im (lambda (pixmap) (encode-pixmap-to-bytes who pixmap sk_jpegencoder_encode options))))
+  (encode-color-output who im cs icc description
+                       (lambda (pp text) (make-sk-jpeg-options q ds a #f pp text))
+                       sk_jpegencoder_encode))
 
-(define (image->webp-bytes im #:quality [quality 90] #:lossless? [lossless? #f])
+(define (image->webp-bytes im #:quality [quality 90] #:lossless? [lossless? #f]
+                           #:color-space [cs #f] #:icc-profile [icc #f]
+                           #:icc-description [description #f])
   (define who 'image->webp-bytes)
   (define q (quality-scalar who quality))
   (define lossless (boolean who lossless?))
   (define compression (choice who (if lossless 'lossless 'lossy) webp-compression-values))
-  (define options (make-sk-webp-options compression q #f #f))
-  (call-with-image-pixmap
-   who im (lambda (pixmap) (encode-pixmap-to-bytes who pixmap sk_webpencoder_encode options))))
+  (encode-color-output who im cs icc description
+                       (lambda (pp text) (make-sk-webp-options compression q pp text))
+                       sk_webpencoder_encode))
 
-(define (image->encoded-bytes im format
-                              #:quality [quality 90]
+(define (image->encoded-bytes im format #:quality [quality 90]
                               #:png-compression [png-compression 6]
                               #:jpeg-downsample [jpeg-downsample 'yuv-420]
                               #:jpeg-alpha [jpeg-alpha 'ignore]
-                              #:webp-lossless? [webp-lossless? #f])
+                              #:webp-lossless? [webp-lossless? #f]
+                              #:color-space [cs #f] #:icc-profile [icc #f]
+                              #:icc-description [description #f])
   (case format
-    [(png) (image->png-bytes im #:compression png-compression)]
-    [(jpeg) (image->jpeg-bytes im #:quality quality
-                               #:downsample jpeg-downsample #:alpha jpeg-alpha)]
-    [(webp) (image->webp-bytes im #:quality quality #:lossless? webp-lossless?)]
-    [else
-     (raise-argument-error 'image->encoded-bytes "'png, 'jpeg, or 'webp" format)]))
+    [(png) (image->png-bytes im #:compression png-compression #:color-space cs
+                             #:icc-profile icc #:icc-description description)]
+    [(jpeg) (image->jpeg-bytes im #:quality quality #:downsample jpeg-downsample #:alpha jpeg-alpha
+                               #:color-space cs #:icc-profile icc #:icc-description description)]
+    [(webp) (image->webp-bytes im #:quality quality #:lossless? webp-lossless?
+                               #:color-space cs #:icc-profile icc #:icc-description description)]
+    [else (raise-argument-error 'image->encoded-bytes "'png, 'jpeg, or 'webp" format)]))
 
-(define (save-image im filename format
-                    #:exists [exists 'error]
-                    #:quality [quality 90]
+(define (save-image im filename format #:exists [exists 'error] #:quality [quality 90]
                     #:png-compression [png-compression 6]
-                    #:jpeg-downsample [jpeg-downsample 'yuv-420]
-                    #:jpeg-alpha [jpeg-alpha 'ignore]
-                    #:webp-lossless? [webp-lossless? #f])
-  (unless (path-string? filename)
-    (raise-argument-error 'save-image "path-string?" filename))
-  (unless (memq exists '(error replace))
-    (raise-argument-error 'save-image "'error or 'replace" exists))
-  ;; Encode first so a native failure never truncates an existing destination.
+                    #:jpeg-downsample [jpeg-downsample 'yuv-420] #:jpeg-alpha [jpeg-alpha 'ignore]
+                    #:webp-lossless? [webp-lossless? #f]
+                    #:color-space [cs #f] #:icc-profile [icc #f] #:icc-description [description #f])
+  (unless (path-string? filename) (raise-argument-error 'save-image "path-string?" filename))
+  (unless (memq exists '(error replace)) (raise-argument-error 'save-image "'error or 'replace" exists))
+  ;; Retain the existing encode-before-opening failure behavior.
   (define data
-    (image->encoded-bytes im format
-                          #:quality quality
-                          #:png-compression png-compression
-                          #:jpeg-downsample jpeg-downsample
-                          #:jpeg-alpha jpeg-alpha
-                          #:webp-lossless? webp-lossless?))
-  (call-with-output-file filename
-    (lambda (out) (write-bytes data out) (void))
-    #:mode 'binary #:exists exists))
+    (image->encoded-bytes im format #:quality quality #:png-compression png-compression
+                          #:jpeg-downsample jpeg-downsample #:jpeg-alpha jpeg-alpha
+                          #:webp-lossless? webp-lossless? #:color-space cs
+                          #:icc-profile icc #:icc-description description))
+  (call-with-output-file filename (lambda (out) (write-bytes data out) (void))
+                         #:mode 'binary #:exists exists))
 
 (define (image-subset im x y w h)
   (define who 'image-subset)

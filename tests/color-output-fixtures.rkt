@@ -1,0 +1,26 @@
+#lang racket/base
+(provide fixture-icc)
+
+;; Synthetic matrix/TRC profile for pure *structure* tests. This fixture is not
+;; offered as a display characterization and is not a native encoder result.
+(define (fixture-icc)
+  (define (u16 n) (integer->integer-bytes n 2 #f #t))
+  (define (u32 n) (integer->integer-bytes n 4 #f #t))
+  (define xyz (bytes-append #"XYZ \0\0\0\0" (u32 65536) (u32 0) (u32 0)))
+  (define curve (bytes-append #"curv\0\0\0\0" (u32 1) (u16 256) (u16 0)))
+  (define tags (list (cons #"rXYZ" xyz) (cons #"gXYZ" xyz) (cons #"bXYZ" xyz)
+                     (cons #"rTRC" curve) (cons #"gTRC" curve) (cons #"bTRC" curve)))
+  (define pos (+ 132 (* 12 (length tags))))
+  (define out (make-bytes (+ pos (apply + (map (lambda (p) (bytes-length (cdr p))) tags))) 0))
+  (bytes-copy! out 0 (u32 (bytes-length out)))
+  (bytes-copy! out 8 #"\4\60\0\0mntrRGB XYZ ")
+  (bytes-copy! out 36 #"acsp")
+  (bytes-copy! out 128 (u32 (length tags)))
+  (for ([tag (in-list tags)] [i (in-naturals)])
+    (define at (+ 132 (* 12 i)))
+    (bytes-copy! out at (car tag))
+    (bytes-copy! out (+ at 4) (u32 pos))
+    (bytes-copy! out (+ at 8) (u32 (bytes-length (cdr tag))))
+    (bytes-copy! out pos (cdr tag))
+    (set! pos (+ pos (bytes-length (cdr tag)))))
+  out)

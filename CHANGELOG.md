@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.26.0 — color-managed encoded and document output
+
+- Added immutable SDR transfer values, named transfer/gamut queries, custom RGB
+  construction, chromaticity-to-XYZ-D50 conversion, and detached inspection.
+- Added explicit image sample conversion. Untagged input requires a source
+  declaration; tagged input cannot have its source silently overridden.
+- Extended PNG/JPEG/WebP and surface PNG encoders with destination conversion,
+  matrix/TRC ICC overrides and descriptions. Native profile buffers remain live
+  throughout encoding; metadata overrides alone never convert pixel samples.
+- Exposed the existing Skia PDF/A metadata flag through low-level and shared
+  PDF exports. It requests XMP/UUID/sRGB output intent, not certified conformance.
+- Added a unified PDF/SVG/encoded-image color probe and semantic ICC inspector.
+  The guide documents 8-bit SDR limitations, profile regeneration, and the
+  pinned PDF image-color limitation requiring explicit sRGB normalization.
+- Added 34 pure and 35 native tests (541 total), doctor coverage, color ABI
+  mirror and a one-interpreter validation script compiling every test module.
+- Based on 0.25 commit `7372d061ff2e1cf0c85c44a48d8ce5b994538027` after the
+  maintainer reported its successful run. New native validation awaits the host.
+
 ## 0.25.0 — advanced filter graphs and crop semantics
 
 - Added merge, blend/arithmetic, offset, morphology, displacement, convolution,

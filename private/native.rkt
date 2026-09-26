@@ -81,6 +81,22 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; SDR RGB color-space construction and detached numerical inspection.
+(define-native sk_colorspace_new_rgb (_fun _sk-transfer-pointer _sk-xyz-pointer -> _pointer))
+(define-native sk_colorspace_transfer_fn_named_srgb (_fun _sk-transfer-pointer -> _void))
+(define-native sk_colorspace_transfer_fn_named_linear (_fun _sk-transfer-pointer -> _void))
+(define-native sk_colorspace_transfer_fn_named_2dot2 (_fun _sk-transfer-pointer -> _void))
+(define-native sk_colorspace_transfer_fn_named_rec2020 (_fun _sk-transfer-pointer -> _void))
+(define-native sk_colorspace_transfer_fn_invert
+  (_fun _sk-transfer-pointer _sk-transfer-pointer -> _stdbool))
+(define-native sk_colorspace_primaries_to_xyzd50
+  (_fun _sk-primaries-pointer _sk-xyz-pointer -> _stdbool))
+(define-native sk_colorspace_xyz_named_srgb (_fun _sk-xyz-pointer -> _void))
+(define-native sk_colorspace_xyz_named_adobe_rgb (_fun _sk-xyz-pointer -> _void))
+(define-native sk_colorspace_xyz_named_display_p3 (_fun _sk-xyz-pointer -> _void))
+(define-native sk_colorspace_xyz_named_rec2020 (_fun _sk-xyz-pointer -> _void))
+(define-native sk_colorspace_xyz_named_xyz (_fun _sk-xyz-pointer -> _void))
+
 ;; Advanced image filters. Every array/rect is consumed synchronously and every
 ;; retained input is ref-counted by the pinned C shim. Crop pointers are nullable.
 (define-native sk_imagefilter_new_offset (_fun _float _float _pointer _pointer -> _pointer))
@@ -517,6 +533,7 @@
 ;; Native PNG encoder; no dependency on racket/draw's encoder.
 (define-native sk_pixmap_new (_fun -> _pointer))
 (define-native sk_pixmap_destructor (_fun _pointer -> _void))
+(define-native sk_pixmap_set_colorspace (_fun _pointer _pointer -> _void))
 (define-native sk_dynamicmemorywstream_new (_fun -> _pointer))
 (define-native sk_dynamicmemorywstream_destroy (_fun _pointer -> _void))
 (define-native sk_dynamicmemorywstream_detach_as_data (_fun _pointer -> _pointer))

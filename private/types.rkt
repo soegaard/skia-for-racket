@@ -2,6 +2,17 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;; skcms SDR transfer function and RGB->XYZ(D50), not geometry matrices.
+(define-cstruct _sk-transfer
+  ([g _float] [a _float] [b _float] [c _float] [d _float] [e _float] [f _float]))
+(define-cstruct _sk-xyz
+  ([m00 _float] [m01 _float] [m02 _float]
+   [m10 _float] [m11 _float] [m12 _float]
+   [m20 _float] [m21 _float] [m22 _float]))
+(define-cstruct _sk-primaries
+  ([rx _float] [ry _float] [gx _float] [gy _float]
+   [bx _float] [by _float] [wx _float] [wy _float]))
+
 ;; Pinned sk_isize_t / sk_ipoint_t / sk_point3_t used by filter factories.
 (define-cstruct _sk-isize ([width _int32] [height _int32]))
 (define-cstruct _sk-ipoint ([x _int32] [y _int32]))

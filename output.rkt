@@ -118,8 +118,12 @@
 
 (define (output->bytes source format #:title [title ""] #:description [description ""]
                        #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
-                       #:id-prefix [prefix #f] #:encoding-quality [quality #f])
+                       #:id-prefix [prefix #f] #:encoding-quality [quality #f]
+                       #:pdfa? [pdfa? #f])
   (define who 'output->bytes)
+  (boolean who pdfa?)
+  (when (and pdfa? (eq? format 'svg))
+    (raise-arguments-error who "#:pdfa? is PDF-only" "given" pdfa?))
   (define pages (output-pages who source format))
   (output-text-mode who mode #:auto? #t)
   (pdf-raster-dpi who dpi)
@@ -138,7 +142,7 @@
           (call-with-document-page
            doc w h
            (lambda (c) (draw-output-page c page #:text-mode effective-mode #:raster-dpi dpi)))))
-      #:title title #:subject description #:raster-dpi dpi #:encoding-quality q)]
+      #:title title #:subject description #:raster-dpi dpi #:encoding-quality q #:pdfa? pdfa?)]
     [else
      (when quality (raise-arguments-error who "#:encoding-quality is PDF-only" "given" quality))
      (define id (or prefix "skia"))
@@ -156,7 +160,8 @@
 (define (save-output source filename format #:exists [exists 'error]
                      #:title [title ""] #:description [description ""]
                      #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
-                     #:id-prefix [prefix #f] #:encoding-quality [quality #f])
+                     #:id-prefix [prefix #f] #:encoding-quality [quality #f]
+                       #:pdfa? [pdfa? #f])
   (define who 'save-output)
   (check-format who format)
   ;; Resolve/check the destination before invoking the drawing callback.
@@ -164,5 +169,5 @@
     ((if (eq? format 'pdf) pdf-output-path svg-output-path) who filename exists))
   (define bytes (output->bytes source format #:title title #:description description
                                #:text-mode mode #:raster-dpi dpi
-                               #:id-prefix prefix #:encoding-quality quality))
+                               #:id-prefix prefix #:encoding-quality quality #:pdfa? pdfa?))
   ((if (eq? format 'pdf) write-pdf-file-bytes! write-svg-file-bytes!) who bytes target exists))

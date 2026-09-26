@@ -1,6 +1,24 @@
 # Testing
 
-## Current revision: advanced filter graphs (0.25)
+## Current revision: color-managed output (0.26)
+
+The maintainer's 0.25 log reports 472 passing source cases, all native audits
+and doctor checks, and six 416x256 embedded panels in each SVG. The pushed
+baseline is `7372d061ff2e1cf0c85c44a48d8ce5b994538027`.
+
+This stage adds 34 pure and 35 native cases: **541 expected cases**
+(200 pure + 6 lifetime + 335 native). `--pure` runs 206 cases.
+Native requirements become **298 Skia / 27 HarfBuzz** symbols. New transfer,
+XYZ and primaries layouts are 28, 36 and 32 bytes; encoder layouts are unchanged.
+
+[Run the color-output validation sequence](docs/COLOR-OUTPUT-TESTING.md).
+It compiles every test module with the one selected interpreter. Authoring
+checks are source/context-patch, host-C and synthetic inspector checks, not
+Racket compilation or native rendering. No new full Unicode result is claimed.
+The PNG/JPEG/WebP inspector checks embedded ICC semantics, not just markers.
+Optional PDF inspection checks output intents/XMP, not archival conformance.
+
+## Previous revision: advanced filter graphs (0.25)
 
 The maintainer's 0.24 suite/probes are green. The new baseline is
 `cd046ac6eb92d7c0534b70900a341b1014cd6fbe`.

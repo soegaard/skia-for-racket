@@ -1,5 +1,39 @@
 # Native ABI and ownership notes
 
+## Color output
+
+Thirteen additional synchronous bindings bring the requirement to
+298 Skia symbols; HarfBuzz remains 27. Twelve construct/query color spaces;
+the extra `sk_pixmap_set_colorspace` binding is used only on the temporary PNG
+encoding view when an explicit ICC profile must override Skia's sRGB shortcut.
+That view must remain color-space-tagged: m119's shared ICC writer returns no
+profile at all for a null source color space. The wrapper therefore substitutes
+a temporary linear-sRGB tag (non-null and not `isSRGB`) while the explicit parsed
+ICC profile supplies the actual encoded characterization. Pixel bytes are not
+converted or relabeled on the caller's image.
+Native transfer functions are seven
+floats (28 bytes), XYZ-D50 matrices nine row-major floats (36 bytes), and
+primaries/white-point chromaticities eight floats (32 bytes). These are color
+transforms, not the geometry M33/M44 types.
+
+Existing PNG/JPEG/WebP option layouts are unchanged. Their ICC profile fields
+point to a parsed native skcms profile, not raw ICC bytes or SkData. The wrapper
+copies incoming bytes into SkData, parses a temporary native profile, and keeps
+both plus a native NUL-terminated description alive until encoding completes.
+All of those pointers are private. Native writing rebuilds profile metadata;
+unsupported LUT/HDR override profiles are rejected before that writer is called.
+
+New RGB constructors copy the numerical values. Returned inspection vectors and
+transfer records are detached and immutable; color-space wrappers retain the
+same creator-thread/explicit-close rules as other owned resources. Pixel
+conversion creates an independent eight-bit RGBA raster rather than mutating
+source data or retagging it in place.
+
+PDF/A uses the already-declared metadata bool. It adds no C layout or new PDF
+symbol and does not create a user-selectable output intent. The native document
+metadata copier consumes the flag synchronously, as it does existing strings
+and dates. See [color-output semantics](COLOR-OUTPUT.md).
+
 ## Filter graphs
 
 Twenty additional synchronous C factories bring the requirement to 285 Skia
