@@ -1,16 +1,37 @@
-# Racket Skia — 0.23.0
+# Racket Skia — 0.24.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer reported the 0.22 tests passing and
-supplied its SVGs and separate raster references. This revision starts from
-`fa7d04e881df9f80a99e62e5f51aaa5ec30b02dc` (`Add SVG document output`).
-**0.23 has source/context-patch and synthetic inspector checks here, not a
-Racket/native run.** See [vector-output validation](docs/OUTPUT-TESTING.md).
-Expected suite: 344 source cases; native symbols remain 249 Skia / 27 HarfBuzz.
-Earlier full Unicode conformance results are historical, not new 0.23 results.
+**Verification status:** the maintainer's 0.23 run passed all 344 source cases
+and supplied the PDF/SVG/reference probes. This revision starts from
+`36b4b44dae46e30bb07dcdb569a254c8fdd4d982` (shared vector output).
+**0.24 has source/context-patch, synthetic-inspector and host-C layout checks;
+Racket/native execution is still required.** See [validation](docs/PATH-MATRIX-TESTING.md).
+Expected suite: 398 source cases; 265 Skia / 27 HarfBuzz symbols.
+Earlier full Unicode conformance results are historical, not new 0.24 results.
+
+## Path inspection and affine matrices
+
+```racket
+(for ([segment (in-path-segments path #:mode 'raw)])
+  (printf "~a ~s\n" (path-segment-verb segment) (path-segment-points segment)))
+
+(with-canvas-state canvas
+  (canvas-concat! canvas
+    (matrix-compose (matrix-translate 100 60) (matrix-rotate-degrees 30)))
+  (draw-path canvas path paint))
+```
+
+Path inspection returns detached immutable values, with raw/normal closure
+semantics, conic weights, contour grouping and reconstruction commands. Affine
+matrix values support composition, inversion, canvas get/set/concat, transformed
+paths, path-measure frames and shader-local transforms. Matrices are values,
+not native resources. See [the guide](docs/PATH-MATRIX.md).
+
+The validation script compiles **all** `tests/*.rkt` with the chosen Racket,
+including dynamically loaded suites, before running the tests and probes.
 
 ## Shared PDF/SVG pages
 
@@ -508,9 +529,11 @@ The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 
 The library supports native PDF and SVG document output, shaped/paragraph/
 bidirectional text, font management, animated-frame decoding, encoded-orientation
-normalization, and owned color spaces/codecs. GPU/Metal/Vulkan contexts,
-arbitrary matrix concatenation, shader-local matrices, advanced filter
-families/crop rectangles, and a Skia-backed `dc<%>` remain outside the public API.
+normalization, owned color spaces/codecs, path inspection and affine matrix
+operations. GPU/Metal/Vulkan contexts, general 3D/perspective transforms,
+advanced filter families/crop rectangles, and a Skia-backed `dc<%>` remain outside
+the public API. Shader-local matrices are exposed but require explicit raster
+handling when the pinned SVG serializer cannot represent them faithfully.
 PNG/JPEG/WebP are the exposed image encoders. PDF and SVG are output backends,
 not input parsers/editors/renderers. See [PDF limits](docs/PDF-OUTPUT.md) and
 [the narrower native SVG coverage](docs/SVG-OUTPUT.md#backend-coverage-and-limits).

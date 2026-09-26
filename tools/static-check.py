@@ -21,7 +21,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('codec-pure-test.rkt','codec-pure-tests'),('codec-native-test.rkt','codec-native-tests'),
               ('pdf-pure-test.rkt','pdf-pure-tests'),('pdf-native-test.rkt','pdf-native-tests'),
               ('svg-pure-test.rkt','svg-pure-tests'),('svg-native-test.rkt','svg-native-tests'),
-              ('output-pure-test.rkt','output-pure-tests'),('output-native-test.rkt','output-native-tests')]:
+              ('output-pure-test.rkt','output-pure-tests'),('output-native-test.rkt','output-native-tests'),
+              ('path-matrix-pure-test.rkt','path-matrix-pure-tests'),
+              ('path-matrix-native-test.rkt','path-matrix-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -61,6 +63,23 @@ for f in sexps((R/'output.rkt').read_text()):
         if '#:constructor-name' in f:output_defined.add(f[f.index('#:constructor-name')+1])
 assert not set(output_exports)-output_defined, sorted(set(output_exports)-output_defined)
 assert not [s for s in output_exports if s not in api]
+# Pure matrix values and the private implementation's SAFE public exports.
+# No binding from core's path-matrix-internals submodule is exported by main.
+for module in ['matrix.rkt', 'private/path-matrix.rkt']:
+    local=set(); public=[]
+    for form in sexps((R/module).read_text()):
+        if not isinstance(form,list) or not form: continue
+        if form[0]=='provide': public+=form[1:]
+        elif form[0] in ('define','define-syntax','define-syntax-rule'):
+            local.add(form[1][0] if isinstance(form[1],list) else form[1])
+        elif form[0]=='struct':
+            name=form[1]; local|={name,name+'?'}
+            for field in form[2]:
+                local.add(name+'-'+(field[0] if isinstance(field,list) else field))
+            if '#:constructor-name' in form: local.add(form[form.index('#:constructor-name')+1])
+    assert not set(public)-local, (module, sorted(set(public)-local))
+    assert not [s for s in public if s not in api], (module, public)
+subprocess.run(['bash','-n',str(R/'tools/validate-path-matrix.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

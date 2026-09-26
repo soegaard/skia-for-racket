@@ -81,6 +81,31 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; Affine matrix adapters. Canvas uses the 64-byte SkM44 storage; path,
+;; shader and measurement functions use the 36-byte sk_matrix_t conversion.
+(define-native sk_canvas_get_matrix (_fun _pointer _sk-m44-pointer -> _void))
+(define-native sk_canvas_set_matrix (_fun _pointer _sk-m44-pointer -> _void))
+(define-native sk_canvas_concat (_fun _pointer _sk-m44-pointer -> _void))
+(define-native sk_path_transform (_fun _pointer _sk-matrix-pointer -> _void))
+(define-native sk_path_transform_to_dest
+  (_fun _pointer _sk-matrix-pointer _pointer -> _void))
+(define-native sk_shader_with_local_matrix
+  (_fun _pointer _sk-matrix-pointer -> _pointer))
+(define-native sk_pathmeasure_get_matrix
+  (_fun _pointer _float _sk-matrix-pointer _int -> _stdbool))
+
+;; Iterators are scoped inside an eager snapshot; no native iterator escapes.
+;; The C shim uses int (not bool) for forceClose and isCloseLine.
+(define-native sk_path_create_iter (_fun _pointer _int -> _pointer))
+(define-native sk_path_iter_next (_fun _pointer _pointer -> _int))
+(define-native sk_path_iter_conic_weight (_fun _pointer -> _float))
+(define-native sk_path_iter_is_close_line (_fun _pointer -> _int))
+(define-native sk_path_iter_destroy (_fun _pointer -> _void))
+(define-native sk_path_create_rawiter (_fun _pointer -> _pointer))
+(define-native sk_path_rawiter_next (_fun _pointer _pointer -> _int))
+(define-native sk_path_rawiter_conic_weight (_fun _pointer -> _float))
+(define-native sk_path_rawiter_destroy (_fun _pointer -> _void))
+
 ;; SVG owns its canvas; surface/PDF canvases remain borrowed and must never
 ;; be passed to this destructor. The pinned SVG C shim has no flags argument.
 (define-native sk_svgcanvas_create_with_stream

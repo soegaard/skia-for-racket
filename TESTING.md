@@ -1,6 +1,23 @@
 # Testing
 
-## Current stage: vector-output refinement (0.23)
+## Current revision: path inspection and matrices (0.24)
+
+The maintainer's complete 0.23 source/native run passed 344 cases. Its PDF/SVG
+and raster references were reviewed. The pushed baseline is
+`36b4b44dae46e30bb07dcdb569a254c8fdd4d982`.
+
+The new revision adds 24 pure and 30 native cases: **398 expected cases**
+(136 pure + 6 lifetime + 256 native). Symbol counts are 265 Skia / 27 HarfBuzz.
+The M33/M44 native layouts are 36/64 bytes. Authoring checks include source and
+fetched-context patch checks, the compiled host-C mirror, and eight synthetic
+inspector tests, **not** Racket compilation or native Skia execution.
+
+Run [the current validation sequence](docs/PATH-MATRIX-TESTING.md). It compiles
+all tests/*.rkt using the selected Racket's raco module before dynamically
+loading suites. A stale tests/compiled file is rebuilt, not silently deleted.
+Earlier sections below describe historical releases and their verification.
+
+## Previous stage: vector-output refinement (0.23)
 
 The maintainer reported the 0.22 tests passing and supplied its actual SVGs
 and raster references. The pushed baseline is

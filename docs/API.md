@@ -1,9 +1,91 @@
-# API reference — version 0.23.0
+# API reference — version 0.24.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
+
+## Affine matrices and path inspection
+
+```racket
+(matrix? value)
+(make-matrix [xx 1] [yx 0] [xy 0] [yy 1] [x0 0] [y0 0])
+matrix-identity
+(matrix-xx matrix) (matrix-yx matrix) (matrix-xy matrix)
+(matrix-yy matrix) (matrix-x0 matrix) (matrix-y0 matrix)
+(matrix->vector matrix)             ; immutable #(xx yx xy yy x0 y0)
+(vector->matrix vector)             ; copied/validated six coefficients
+(matrix-translate x y)
+(matrix-scale x [y x])
+(matrix-skew x y)                    ; shear factors
+(matrix-rotate radians)
+(matrix-rotate-degrees degrees)
+(matrix-compose matrix ...)          ; A*B applies B first, then A
+(matrix-invert matrix)               ; matrix or #f
+(matrix-map-point matrix x y)        ; two values, includes translation
+(matrix-map-vector matrix x y)       ; two values, ignores translation
+(matrix-map-rect matrix x y width height) ; x y width height of axis-aligned bounds
+
+(canvas-transform canvas)
+(canvas-set-transform! canvas matrix)
+(canvas-concat! canvas matrix)       ; current <- current * matrix
+(path-transform path matrix)        ; independent owned path
+(path-transform! path matrix)
+(shader-with-local-matrix shader matrix) ; independent owned shader reference
+
+(path-segment? value)
+(path-segment-verb segment)          ; move line quad conic cubic close
+(path-segment-points segment)        ; immutable list of (list x y)
+(path-segment-conic-weight segment)  ; #f except for conic
+(path-segment-closing-line? segment) ; normal iterator's synthetic line
+(path-segments path #:mode [mode 'normal] #:force-closed? [force-closed? #f])
+(in-path-segments path #:mode [mode 'normal] #:force-closed? [force-closed? #f])
+(path->commands path)               ; raw absolute make-path commands
+(path-contour? value)
+(path-contour-segments contour)
+(path-contour-closed? contour)
+(path-contours path #:mode [mode 'normal] #:force-closed? [force-closed? #f])
+(path-measure-matrix measure distance #:mode [mode 'position+tangent])
+```
+
+Matrices are immutable affine 2D values, not native resources. Coefficients
+are finite C-float-representable reals, rounded at construction. Vector order
+represents rows `(xx xy x0)`, `(yx yy y0)`, `(0 0 1)`. Composition and point
+mapping reject unrepresentable results. Inversion returns `#f` for singular
+or unrepresentable inverses; near-singular matrices remain precision-sensitive.
+Positive rotation maps x toward y (clockwise in the default y-down canvas).
+Negative/zero scale is allowed. Rectangular extents must be nonnegative.
+
+Canvas queries return a detached matrix; setters do not reset clips. Use concat
+rather than set to preserve an output-page's unit/margin transform. These calls
+retain normal canvas lifetime, save/restore, and creator-thread rules. The
+public abstraction deliberately does not expose 3D/projective matrices.
+
+Snapshots copy points before releasing the scoped native iterator. Sequences
+are eagerly captured when constructed and may be iterated repeatedly after
+source mutation or closure. Normal mode can synthesize closing lines; raw
+mode returns stored verbs and rejects `#:force-closed? #t`. Conic weights are
+read only for conics; close has no points. Point counts are 1/2/3/3/4/0 for
+move/line/quad/conic/cubic/close. Lines and curves include their start point.
+Contours group these snapshots and identify a final close. Raw move-only
+contours are preserved. The logical snapshot budget is 16 bytes per segment
+plus 8 bytes per point, bounded by `current-skia-byte-limit`, not total heap use.
+
+Reconstruction commands do not contain the fill rule: pass `path-fill-rule`
+separately to `make-path`. Path transforms preserve it. Transforming only a
+path does not scale its later stroke width or transform its paint. A canvas
+transform applies to the entire drawing operation.
+
+Measurement modes are `position`, `tangent`, and `position+tangent`. Distance
+is finite and nonnegative; values past the current contour's length clamp to
+its endpoint. Empty/zero-length contours return `#f`. The combined frame maps
+local origin to the point and local x-axis to the tangent. It does not advance
+the measure's current contour.
+
+Shader-local matrices change sampling coordinates, retain the source natively,
+and leave drawing geometry unchanged. Native SVG cannot reliably represent
+these transforms: use an explicit bounded `draw-rasterized` group for them.
+See [the guide](PATH-MATRIX.md) and [ABI audit](PATH-MATRIX-ABI.md).
 
 ## Shared PDF/SVG page output
 
@@ -643,9 +725,10 @@ the Paints section. Its argument order follows Skia: first destination, then
 source. For example, `(make-blend-shader 'multiply a b)` evaluates `a` as the
 destination and `b` as the source before applying multiply.
 
-This version deliberately has no public shader-local matrix API. Canvas
-transforms still affect drawing normally; a later matrix layer can expose
-Skia's local shader matrices without leaking the unsafe native struct.
+`shader-with-local-matrix` creates a shader with an affine local transform.
+Canvas transforms still affect the complete drawing operation. The pinned SVG
+serializer does not reliably serialize shader-local transforms; use a bounded
+`draw-rasterized` group for these shaders when exporting SVG.
 
 ## Path effects
 

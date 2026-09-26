@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.24.0 — path inspection and affine matrices
+
+- Added immutable six-coefficient affine matrix values, composition/inversion,
+  point/vector/bounds mapping, and canvas transform get/set/concat operations.
+- Added eager detached raw/normal path snapshots, reusable sequences, conic
+  weights, generated closing-line flags, contour groups and raw reconstruction.
+- Added copied/in-place path transforms, path-measure placement matrices, and
+  independently owned shader-local-matrix wrappers.
+- Audited the distinct m119 matrix boundaries: 36-byte M33 for paths/shaders,
+  64-byte column-major SkM44 storage for canvas functions. Added an independent
+  native-translate/readback test, not just a self-consistent get/set round trip.
+- Added 24 pure and 30 native tests: 398 total cases (136 pure, 6 lifetime,
+  256 native). Adds 16 Skia symbols (265 total); HarfBuzz remains 27.
+- Added one PDF/SVG/raster-reference probe runner and an eight-test structural
+  inspector. Local shader examples explicitly rasterize only the shader panel.
+- Validation now compiles all tests/*.rkt through the selected Racket's raco
+  module, avoiding stale dynamically loaded test bytecode from another version.
+- Starts from 36b4b44dae46e30bb07dcdb569a254c8fdd4d982. Source/context-patch,
+  host-C and synthetic inspector checks are not Racket/native execution.
+
 ## 0.23.0 — vector-output refinement
 
 - Added reusable output-page specifications and shared PDF/SVG byte/file exports,

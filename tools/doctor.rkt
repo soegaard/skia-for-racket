@@ -1,7 +1,8 @@
 #lang racket/base
 (require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
          "../private/bidi.rkt" "../private/unicode-conformance.rkt"
-         "codec-doctor.rkt" "pdf-doctor.rkt" "svg-doctor.rkt" "output-doctor.rkt")
+         "codec-doctor.rkt" "pdf-doctor.rkt" "svg-doctor.rkt" "output-doctor.rkt"
+         "path-matrix-doctor.rkt")
 (module+ main
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
@@ -20,6 +21,7 @@
   (pdf-doctor!)
   (svg-doctor!)
   (output-doctor!)
+  (path-matrix-doctor!)
   (printf "Native library: ~a\n" (skia-native-library-path))
   (printf "Native ABI version: ~a\n" (skia-native-version))
   (harfbuzz-check!)

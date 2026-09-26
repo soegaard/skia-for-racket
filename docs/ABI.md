@@ -1,5 +1,17 @@
 # Native ABI and ownership notes
 
+## Path/matrix boundary
+
+See [the pinned matrix ABI audit](PATH-MATRIX-ABI.md). Canvas entry points use
+64-byte SkM44 storage; path/shader/measurement entry points use 36-byte M33.
+These are not interchangeable, and the canvas's translation is at byte offsets
+48 and 52. Public values are affine; a non-affine native readback is rejected.
+
+Snapshot iterators exist only while the owning path is validated and locked.
+They are always destroyed before copied Racket values or sequences are returned.
+Shader wrappers own references; transformed paths own independent destinations.
+No public native pointer or iterator resource is added.
+
 ## Shared output and text-blob snapshots
 
 The shared page/export layer adds no native symbols or C layouts: 249 Skia and

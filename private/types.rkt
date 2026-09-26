@@ -2,6 +2,20 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;; m119: path/shader/measure matrices are nine row-major floats.
+(define-cstruct _sk-matrix
+  ([xx _float] [xy _float] [x0 _float]
+   [yx _float] [yy _float] [y0 _float]
+   [p0 _float] [p1 _float] [p2 _float]))
+;; Canvas get/set/concat reinterpret sixteen floats as SkM44, whose storage
+;; is column-major. Do not pass _sk-matrix or follow the misleading C header's
+;; row-name comment here. See docs/PATH-MATRIX-ABI.md and independent readback tests.
+(define-cstruct _sk-m44
+  ([c0r0 _float] [c0r1 _float] [c0r2 _float] [c0r3 _float]
+   [c1r0 _float] [c1r1 _float] [c1r2 _float] [c1r3 _float]
+   [c2r0 _float] [c2r1 _float] [c2r2 _float] [c2r3 _float]
+   [c3r0 _float] [c3r1 _float] [c3r2 _float] [c3r3 _float]))
+
 ;; Full sk_document_pdf_datetime_t and sk_document_pdf_metadata_t layouts.
 ;; Metadata's C bool is one byte, followed by padding before encoding-quality.
 (define-cstruct _sk-pdf-datetime

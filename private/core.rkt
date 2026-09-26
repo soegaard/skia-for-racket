@@ -338,6 +338,12 @@
     (proc v)
     v))
 
+;; Private bridge for the path/matrix module. This submodule is not re-exported
+;; by main.rkt; only safe value/resource operations form the public API.
+(module* path-matrix-internals #f
+  (provide call-on-canvas path-h path-measure-h shader-h make-shader-record
+           call-with-native-temporary))
+
 (provide svg-document? make-svg-document svg-document-width svg-document-height
          svg-document-state svg-document-canvas
          svg-document-finish! svg-document-abort!
