@@ -1,5 +1,37 @@
 # Native ABI and ownership notes
 
+## Canvas primitives and layers
+
+Seventeen added C callouts bring the requirement to **336 Skia / 27 HarfBuzz**.
+No new C struct layouts are introduced. Point arrays use two native 32-bit
+floats per point; rounded corners use four such pairs. Rect/IRect layouts are
+unchanged. All arrays are copied into scoped buffers, and opaque SkRRect values
+are allocated/configured/released synchronously around each operation.
+
+Rounded clips rebuild native-normalized RRect path verbs into an ordinary path
+before clipping. This deliberately drops the special RRect tag so the pinned
+SVG clip writer cannot replace unequal corners with a single rx/ry pair.
+Temporary paths use the existing owned path and raw-iteration machinery.
+
+Native layer save returns the pre-save count. Its restore paint is copied by
+Skia and retains attached native resources; the Racket wrapper never retains
+borrowed paint pointers. Scoped layers protect the same owner save-stack floors
+as ordinary canvas-state scopes. Recorder finalization is rejected while a
+protected scope is active. No native callbacks into user Racket code are added.
+
+Layer bounds are passed through, not used as a wrapper-enforced byte budget.
+In this pinned m119, `get_layer_mapping_and_bounds` intersects unfiltered layer
+extent with supplied bounds, despite generic API wording describing a hint.
+The public contract therefore requires conservative content bounds and does
+not promise preservation outside them. Native filters can allocate additional
+intermediates not bounded by `current-skia-byte-limit`.
+
+The observer recognizes new drawing/clip/layer entries. Save/restore and clip
+queries still execute during preflight; no fabricated layer counts or clip
+rectangles are returned. Known unsupported SVG point/layer use is reported
+before submission in strict audited exports. See
+[CANVAS-PRIMITIVES.md](CANVAS-PRIMITIVES.md) for semantic restrictions.
+
 ## Output audit observation
 
 No C symbols, C layouts, or function signatures are added or changed. The

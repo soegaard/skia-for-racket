@@ -410,6 +410,11 @@
     (proc v)
     v))
 
+;; Shared canvas state protection for the safe primitive/layer module.
+(module* canvas-primitive-internals #f
+  (provide call-on-canvas canvas-owner owner-floors set-owner-floors!
+           paint-h path-h call-with-native-temporary))
+
 ;; Private bridge for the path/matrix module. This submodule is not re-exported
 ;; by main.rkt; only safe value/resource operations form the public API.
 (module* path-matrix-internals #f
@@ -1214,6 +1219,8 @@
   (call-with-owned
    who (list (picture-recorder-h who rr))
    (lambda (rp)
+     (when (pair? (picture-recorder-floors rr))
+       (error who "cannot finish recording inside a protected canvas-state or layer scope"))
      (define pp (sk_picture_recorder_end_recording rp))
      (set-picture-recorder-recording?! rr #f)
      (set-picture-recorder-canvas-ptr! rr #f)

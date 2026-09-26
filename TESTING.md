@@ -1,6 +1,19 @@
 # Testing
 
-## Current revision: output capabilities and fallback auditing (0.29)
+## Current revision: canvas primitives and scoped layers (0.30)
+
+The baseline is `aa94a31509635090fdd2677ab393e8e005927dbb`; the maintainer reports
+passing 0.29 tests. This revision adds 28 pure and 40 native cases:
+**796 expected tests** (321 pure + 6 lifetime + 469 native).
+Required symbols: **336 Skia / 27 HarfBuzz**; no new native struct layouts.
+
+Run [the complete canvas validation sequence](docs/CANVAS-TESTING.md). One selected
+Racket compiles all test modules, then runs doctor, the full suite, and the three
+PDF/SVG/reference probes with audits and clip queries. Authoring validation is
+source/context-patch checks, six C mirrors, and 14 synthetic inspector tests;
+Racket/native execution remains a host check.
+
+## Previous revision: output capabilities and fallback auditing (0.29)
 
 The baseline is `15a449bcd3f59961001204a8a35f7d350d5404a8`; the maintainer reports
 passing 0.28 tests. This revision adds 30 pure and 28 native test cases:

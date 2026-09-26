@@ -22,6 +22,9 @@
 (define specifications
   ;; feature       PDF                  SVG                  explanation
   '((geometry       vector               vector               "Ordinary path/shape geometry; paint and clip features are reported separately.")
+    (point-sprites  vector               needs-raster         "Native isolated-point drawing is not implemented by the pinned SVG device; rasterize point sets explicitly.")
+    (recorded-color-fill vector          needs-raster         "An unbounded color fill recorded in a picture depends on the receiving clip/replay matrix. Use finite geometry or explicit rasterization for portable SVG replay.")
+    (layer          native-expansion     needs-raster         "A compositing layer can expand/rasterize in PDF and is not generally preserved by SVG. Supply conservative content bounds: m119 may restrict the layer to them. Layer-contained annotations may be lost.")
     (native-text    vector               viewer-dependent     "SVG native glyph-to-text output depends on viewer fonts and may lose shaped glyphs; use outlines for portable geometry.")
     (image          embedded-raster      embedded-raster       "An existing raster image is embedded; this is not vector geometry or an ICC/font fidelity check.")
     (linear-gradient vector              vector               "Native linear-gradient serialization; resource composition is assessed separately.")
@@ -69,7 +72,9 @@
          [(annotation) "Raster output has no link/destination metadata; annotate the receiving document canvas instead."]
          [(unknown-resource unknown-operation) (list-ref row 3)]
          [else "Rendered as raster content. The enclosing explicit group addresses vector serialization, not backdrop, padding, or color-fidelity questions."])
-       (list-ref row 3))))
+       (if (and (eq? backend 'pdf) (eq? feature 'native-text))
+           "Native PDF text; embedding, extraction, and glyph fidelity require separate validation."
+           (list-ref row 3)))))
 (define blocking-statuses '(needs-raster unsupported unknown discarded))
 (define (blocking-status? s) (and (memq s blocking-statuses) #t))
 (define (output-audit-report-blocking? r)

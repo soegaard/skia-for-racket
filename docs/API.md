@@ -1,10 +1,70 @@
-# API reference — version 0.29.0
+# API reference — version 0.30.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
 
+
+## Canvas primitives and compositing layers
+
+Available from `skia` and `skia/canvas-primitives`. See the
+[primitive/layer guide](CANVAS-PRIMITIVES.md) and [validation](CANVAS-TESTING.md).
+
+```racket
+(rounded-rect? value)
+(make-rounded-rect x y width height #:radii [radii 0])
+(rounded-rect-bounds spec) ; immutable #(x y width height)
+(rounded-rect-radii spec)  ; immutable #(#(rx ry) ...), TL TR BR BL
+
+(draw-point canvas x y paint)
+(draw-points canvas points paint #:mode [mode 'points])
+(draw-arc canvas x y width height start sweep paint #:use-center? [flag #f])
+(draw-rrect canvas spec paint)
+(draw-double-rounded-rect canvas outer-spec inner-spec paint)
+(draw-color canvas color #:blend-mode [mode 'src-over])
+
+(canvas-clip-rounded-rect! canvas spec
+                           #:operation [operation 'intersect]
+                           #:antialias? [flag #f])
+(canvas-local-clip-bounds canvas)  ; immutable vector or #f
+(canvas-device-clip-bounds canvas) ; immutable integer vector or #f
+(canvas-clip-empty? canvas)
+(canvas-clip-rect? canvas)
+(canvas-quick-reject? canvas x y width height)
+
+(canvas-save-layer! canvas #:bounds [bounds #f] #:paint [paint #f])
+(call-with-canvas-layer canvas thunk #:bounds [bounds #f] #:paint [paint #f])
+(with-canvas-layer canvas #:bounds bounds #:paint paint body ...)
+```
+
+Point modes are `'points`, `'lines` (independent pairs, even count), and
+`'polygon` (open consecutive segments). Point sets accept lists/vectors of
+coordinate pairs and are copied. They use paint stroke width/cap even when
+paint style is fill. Arc angles are degrees; positive sweep is clockwise in
+the initial y-down coordinate system. Rounded specs are pure values, not
+`with-skia` resources; native radius normalization happens on submission.
+Rounded clips use native-normalized ordinary paths to preserve unequal corner
+radii in the pinned SVG backend, including recorded-picture replay.
+Double-rounded rectangles require the inner bounding rectangle to fit inside
+the outer rounded shape, a conservative sufficient containment test.
+
+Clip bounds are conservative, not exact clip geometry. False quick rejection
+does not prove visibility. Native device coordinates can differ between PDF,
+SVG and raster backends. The layer thunk takes zero arguments. Scoped layers
+preserve body values and restore on exit, but restore is not pixel rollback.
+Layer bounds are optional local `(x y width height)` values: provide conservative
+content bounds, because m119 can restrict the layer extent to them. Paint state
+is snapshotted at save time; group alpha/effects apply once on restoration.
+
+The output auditor classifies native point sprites as SVG `needs-raster`, and
+native layers as PDF `native-expansion` / SVG `needs-raster`. Use explicit
+bounded raster groups where needed, and add document annotations outside them.
+Recorded unbounded color fills also require explicit rasterization for SVG;
+use finite rectangles for portable recorded backgrounds. Live `draw-color`
+resets/restores only the matrix while retaining the existing device clip.
+These operations do not add automatic fallback, backdrop capture, or exact
+native allocation accounting.
 
 ## Output capability and fallback audit
 

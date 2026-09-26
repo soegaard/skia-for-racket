@@ -152,7 +152,15 @@
 (define (native-feature name args)
   (case name
     [(sk_canvas_draw_paint sk_canvas_draw_line sk_canvas_draw_rect sk_canvas_draw_round_rect
-      sk_canvas_draw_circle sk_canvas_draw_oval sk_canvas_draw_path sk_canvas_clear) '(geometry)]
+      sk_canvas_draw_circle sk_canvas_draw_oval sk_canvas_draw_path sk_canvas_clear
+      sk_canvas_draw_arc sk_canvas_draw_rrect sk_canvas_draw_drrect) '(geometry)]
+    [(sk_canvas_draw_point) '(point-sprites)]
+    [(sk_canvas_draw_points) (if (= (cadr args) 0) '(point-sprites) '(geometry))]
+    [(sk_canvas_draw_color)
+     (append (if (= (list-ref args 2) 3) '(geometry) '(geometry blend-mode))
+             (if (and (canvas) (eq? (canvas-context-backend (canvas)) 'recording))
+                 '(recorded-color-fill) '()))]
+    [(sk_canvas_save_layer) '(layer)]
     [(sk_canvas_draw_simple_text sk_canvas_draw_text_blob) '(native-text)]
     [(sk_canvas_draw_image sk_canvas_draw_image_rect) '(image)]
     [(sk_canvas_draw_picture) '(picture)]

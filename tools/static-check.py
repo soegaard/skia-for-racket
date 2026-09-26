@@ -33,7 +33,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('runtime-pure-test.rkt','runtime-pure-tests'),
               ('runtime-native-test.rkt','runtime-native-tests'),
               ('output-audit-pure-test.rkt','output-audit-pure-tests'),
-              ('output-audit-native-test.rkt','output-audit-native-tests')]:
+              ('output-audit-native-test.rkt','output-audit-native-tests'),
+              ('canvas-pure-test.rkt','canvas-pure-tests'),
+              ('canvas-native-test.rkt','canvas-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -98,11 +100,12 @@ subprocess.run(['bash','-n',str(R/'tools/validate-output-audit.sh')],check=True)
 # Audit modules contain deliberate re-exports and inherited exception structs.
 # Check every named public binding against the API text; the Racket compiler
 # validates the actual module/re-export bindings in the validation script.
-for module in ['output-policy.rkt', 'output-audit.rkt']:
+for module in ['output-policy.rkt', 'output-audit.rkt', 'canvas-primitives.rkt']:
     for form in sexps((R/module).read_text()):
         if isinstance(form,list) and form and form[0]=='provide':
             public=[x for x in form[1:] if isinstance(x,str)]
             assert not [x for x in public if x not in api], (module, public)
+subprocess.run(['bash','-n',str(R/'tools/validate-canvas-primitives.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

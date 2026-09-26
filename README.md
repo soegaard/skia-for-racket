@@ -1,16 +1,28 @@
-# Racket Skia — 0.29.0
+# Racket Skia — 0.30.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer reports passing 0.28 tests. This revision
-starts from `15a449bcd3f59961001204a8a35f7d350d5404a8` (runtime effects).
-**0.29 has source/context-patch, host-C and synthetic-inspector validation only
-in the authoring environment; Racket/native execution is still required.**
-Expected suite: 728 cases (293 pure + 6 lifetime + 429 native); symbols remain
-319 Skia / 27 HarfBuzz. See [audit validation](docs/OUTPUT-AUDIT-TESTING.md).
+**Verification status:** the maintainer reports passing 0.29 tests. This revision
+starts from `aa94a31509635090fdd2677ab393e8e005927dbb` (output capability audit).
+**0.30 has source/context-patch, host-C and synthetic-inspector checks only in
+the authoring environment; Racket/native execution remains required.**
+Expected suite: 796 cases (321 pure + 6 lifetime + 469 native); 336 Skia /
+27 HarfBuzz symbols. No new native layouts. See [canvas validation](docs/CANVAS-TESTING.md).
 Earlier full Unicode conformance results remain historical.
+
+## Canvas primitives and compositing layers
+
+`canvas-primitives.rkt`, also exported by `main.rkt`, adds points/point sets,
+arcs, immutable four-corner rounded-rectangle specifications, clip queries,
+color fills, and protected scoped layers. A layer paint applies opacity and
+filters to the completed group at restore. Native layer bounds can restrict
+content in m119; supply conservative bounds or omit them.
+
+The output auditor reports native point sprites and layers as requiring SVG
+fallback. The combined PDF/SVG/reference probe keeps the remaining geometry and
+labels vector. See the [guide](docs/CANVAS-PRIMITIVES.md).
 
 ## Output capabilities and fallback auditing
 

@@ -83,6 +83,27 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; Canvas primitives. Arrays and temporary rounded rectangles are borrowed only
+;; during synchronous calls. Layer paint state is copied by Skia at save time.
+(define-native sk_canvas_draw_point (_fun _pointer _float _float _pointer -> _void))
+(define-native sk_canvas_draw_points (_fun _pointer _int _size _pointer _pointer -> _void))
+(define-native sk_canvas_draw_arc
+  (_fun _pointer _sk-rect-pointer _float _float _stdbool _pointer -> _void))
+(define-native sk_canvas_draw_rrect (_fun _pointer _pointer _pointer -> _void))
+(define-native sk_canvas_draw_drrect (_fun _pointer _pointer _pointer _pointer -> _void))
+(define-native sk_canvas_draw_color (_fun _pointer _uint32 _int -> _void))
+(define-native sk_path_add_rrect (_fun _pointer _pointer _int -> _void))
+(define-native sk_canvas_get_local_clip_bounds (_fun _pointer _sk-rect-pointer -> _stdbool))
+(define-native sk_canvas_get_device_clip_bounds (_fun _pointer _sk-irect-pointer -> _stdbool))
+(define-native sk_canvas_is_clip_empty (_fun _pointer -> _stdbool))
+(define-native sk_canvas_is_clip_rect (_fun _pointer -> _stdbool))
+(define-native sk_canvas_quick_reject (_fun _pointer _sk-rect-pointer -> _stdbool))
+(define-native sk_canvas_save_layer (_fun _pointer _pointer _pointer -> _int))
+(define-native sk_rrect_new (_fun -> _pointer))
+(define-native sk_rrect_delete (_fun _pointer -> _void))
+(define-native sk_rrect_set_rect_radii (_fun _pointer _sk-rect-pointer _pointer -> _void))
+(define-native sk_rrect_contains (_fun _pointer _sk-rect-pointer -> _stdbool))
+
 ;; SkSL compiler/reflection. Use index queries only after validating the count:
 ;; the C shim's from-name queries dereference a null pointer on a missing name.
 (define-native sk_runtimeeffect_make_for_shader (_fun _pointer _pointer -> _pointer))

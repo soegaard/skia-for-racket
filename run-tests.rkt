@@ -4,7 +4,7 @@
          "tests/codec-pure-test.rkt" "tests/pdf-pure-test.rkt"
          "tests/svg-pure-test.rkt" "tests/output-pure-test.rkt"
          "tests/path-matrix-pure-test.rkt" "tests/filter-graph-pure-test.rkt"
-         "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt")
+         "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt" "tests/canvas-pure-test.rkt")
 
 (define-runtime-path native-tests-file "tests/native-test.rkt")
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
@@ -23,6 +23,8 @@
 (define-runtime-path runtime-native-tests-file "tests/runtime-native-test.rkt")
 (define-runtime-path output-audit-native-tests-file "tests/output-audit-native-test.rkt")
 
+(define-runtime-path canvas-native-tests-file "tests/canvas-native-test.rkt")
+
 (module+ main
   (define pure-only? #f)
   (command-line
@@ -35,7 +37,7 @@
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
                       (run-tests svg-pure-tests) (run-tests output-pure-tests)
                       (run-tests path-matrix-pure-tests) (run-tests filter-graph-pure-tests)
-                      (run-tests color-output-pure-tests) (run-tests annotation-pure-tests) (run-tests runtime-pure-tests) (run-tests output-audit-pure-tests)))
+                      (run-tests color-output-pure-tests) (run-tests annotation-pure-tests) (run-tests runtime-pure-tests) (run-tests output-audit-pure-tests) (run-tests canvas-pure-tests)))
   (cond
     [pure-only? (displayln "Native rendering tests NOT RUN (--pure).")]
     [else
@@ -52,5 +54,6 @@
               (run-tests (dynamic-require color-output-native-tests-file 'color-output-native-tests))
               (run-tests (dynamic-require annotation-native-tests-file 'annotation-native-tests))
               (run-tests (dynamic-require runtime-native-tests-file 'runtime-native-tests))
-              (run-tests (dynamic-require output-audit-native-tests-file 'output-audit-native-tests))))])
+              (run-tests (dynamic-require output-audit-native-tests-file 'output-audit-native-tests))
+              (run-tests (dynamic-require canvas-native-tests-file 'canvas-native-tests))))])
   (exit (if (zero? failures) 0 1)))

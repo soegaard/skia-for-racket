@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.30.0 — canvas primitives and scoped layers
+
+- Added point sets, arcs, pure immutable four-corner rounded-rectangle
+  specifications, rounded frames and clips, and clip-aware draw-color.
+- Normalized rounded clips are rebuilt as ordinary paths so unequal corners
+  survive SVG serialization and recorded-picture replay.
+- Added detached local/device clip bounds, empty/rect predicates, and
+  conservative quick rejection; no automatic culling is installed.
+- Added native low-level and scoped save layers with paint snapshots, protected
+  save-stack floors, multiple-value preservation, and exception cleanup.
+- Documented the pinned m119 content-bounds restriction rather than promising
+  that native layer bounds are merely an ignorable allocation hint.
+- Device-clip color fills reset/restore the local matrix to avoid SVG's transformed
+  drawPaint rectangle. Unbounded recorded color fills are conservatively audited.
+- Extended output auditing and recorded-picture provenance for points and layers;
+  corrected PDF native-text explanations that previously described SVG behavior.
+- Added a picture-recorder finish guard for protected state/layer scopes.
+- Added 28 pure and 40 native cases, doctor, a combined three-page registry,
+  SVG/report/query inspector, and single-interpreter host validation.
+- Adds 17 Skia symbols (336 total); no new structs. HarfBuzz remains 27.
+
 ## 0.29.0 — output capability and fallback auditing
 
 - Added pure, conservative PDF/SVG/raster capability queries and immutable
