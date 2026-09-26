@@ -1,10 +1,86 @@
-# API reference — version 0.28.0
+# API reference — version 0.29.0
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
 square brackets for optional positional arguments and show keyword defaults.
 No pointer or unsafe FFI declarations are exported by the public collection.
 
+
+## Output capability and fallback audit
+
+Available from `skia` / `skia/output-audit`; the pure policy table is also
+`skia/output-policy`. See [the guide](OUTPUT-AUDIT.md) for contracts and limits.
+
+```racket
+(output-capability-for backend feature)
+output-feature-names
+output-backends ; '(pdf svg raster)
+
+(output-capability? value)
+(output-capability-backend capability)
+(output-capability-feature capability)
+(output-capability-status capability)
+(output-capability-reason capability)
+
+(analyze-output-page page-or-pages format
+                     #:title [title ""] #:description [description ""]
+                     #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
+                     #:id-prefix [prefix #f] #:encoding-quality [quality #f]
+                     #:pdfa? [pdfa? #f]) ; report, not output bytes
+
+(output->bytes/audit page-or-pages format
+                     #:policy [policy 'report]
+                     #:title [title ""] #:description [description ""]
+                     #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
+                     #:id-prefix [prefix #f] #:encoding-quality [quality #f]
+                     #:pdfa? [pdfa? #f]) ; two values: bytes and report
+
+(save-output/audit page-or-pages path format
+                   #:policy [policy 'error] #:exists [exists 'error]
+                   #:title [title ""] #:description [description ""]
+                   #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
+                   #:id-prefix [prefix #f] #:encoding-quality [quality #f]
+                   #:pdfa? [pdfa? #f]) ; report after successful publication
+
+(call-with-output-label string thunk)
+(with-output-label string body ...)
+current-output-audit-event-limit ; default 100000
+
+(output-audit-report? value)
+(output-audit-report-backend report)
+(output-audit-report-pages report)
+(output-audit-report-events report)
+(output-audit-report-mode report) ; 'preflight or 'export
+(output-audit-report-blocking? report)
+(output-audit-report-vector-only? report)
+(output-audit-report->jsexpr report)
+
+(output-audit-event? value)
+(output-audit-event-page event) ; 1-based
+(output-audit-event-operation event)
+(output-audit-event-scope event) ; list of immutable strings
+(output-audit-event-feature event)
+(output-audit-event-status event)
+(output-audit-event-reason event)
+(output-audit-event-details event) ; immutable numeric details hash
+
+(exn:fail:output-audit? value)
+(exn:fail:output-audit-event exception)
+```
+
+Policies are `'report`, `'error`, and `'vector-only`. Error mode rejects known
+`needs-raster`, `unsupported`, `unknown`, or `discarded` events before the native
+operation/publication. It permits existing images, native backend expansion,
+and viewer-dependent text with corresponding report entries. Vector-only mode
+rejects every status other than `vector`. It is conservative, not a proof.
+
+Preflight **executes the callback once per page** on the real backend, observes
+but suppresses target drawing callouts, and returns no document bytes. Native
+resource construction, metrics, state changes, and explicit raster groups still
+run; arbitrary callback side effects are not rolled back. An audited export
+executes once and returns the output plus its report. Missing destinations,
+callback failures, resource errors, and event-limit exhaustion raise normally.
+No automatic rasterization, font/ICC validation, sandbox, or timeout is added.
 
 ## Runtime effects / SkSL
 

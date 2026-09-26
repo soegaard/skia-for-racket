@@ -1,5 +1,24 @@
 # Native ABI and ownership notes
 
+## Output audit observation
+
+No C symbols, C layouts, or function signatures are added or changed. The
+requirement remains 319 Skia / 27 HarfBuzz symbols. The existing private
+`define-native` wrapper calls a Racket-side observer before/after its ordinary
+FFI call. Normal native calls still execute once; preflight suppresses only
+observed target drawing calls, not resource creation, metrics, state changes,
+annotations, or drawing inside explicit raster groups.
+
+The lifetime layer records compact symbolic resource provenance at allocation
+and attachment. Weak lifetime-cell keys and immutable summaries never retain
+native pointers or original child wrappers. Temporary pointer associations
+exist only during synchronous `call-with-owned` scopes. Native lifetime checks,
+thread affinity, refcounts, and release callbacks are unchanged. No observer
+callback supplied by the user runs inside the FFI/lifetime boundary.
+
+See [the output audit guide](OUTPUT-AUDIT.md) for conservative policy meanings
+and the difference between observed features and visual equivalence.
+
 ## Runtime effects
 
 Eighteen additional callouts bring the requirement to 319 Skia symbols; HarfBuzz

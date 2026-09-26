@@ -1,5 +1,5 @@
 #lang racket/base
-(require ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic)
+(require ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic "audit-trace.rkt")
 (provide owned? new-owned owned-closed? owned-close!
          call-with-owned call-with-scoped-resource)
 
@@ -23,7 +23,7 @@
 
 (define (new-owned who kind create release)
   ;; Callers resolve all native symbols before entering this allocator.
-  (allocate-owned who kind create release))
+  (audit-allocate who kind (lambda () (allocate-owned who kind create release))))
 
 (define (check-thread who h)
   (unless (eq? (owned-creator h) (current-thread))
@@ -50,7 +50,7 @@
          (check-thread who h)
          (or (owned-ptr h)
              (error who "~a is closed" (owned-kind h)))))
-     (begin0 (apply proc pointers)
+     (begin0 (audit-use handles pointers (lambda () (apply proc pointers)))
        (void/reference-sink handles)))))
 
 (define (call-with-scoped-resource value close proc)

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.29.0 — output capability and fallback auditing
+
+- Added pure, conservative PDF/SVG/raster capability queries and immutable
+  operation reports, named scopes, and JSON conversion.
+- Added dynamic preflight and single-execution audited byte/file exporters with
+  report, error, and vector-only publication policies.
+- Resource provenance follows paint attachments/copies/getters, shader/filter
+  children, path fill types, and recorded pictures, including recorder reuse.
+- Explicit raster groups record padded bounds and actual pixel dimensions;
+  known rendering features are resolved inside the group while lost document
+  annotations remain a blocking semantic-loss event.
+- Added 30 pure and 28 native tests, doctor, a three-page probe/report registry,
+  structural inspector, and single-interpreter validation script.
+- No new native symbols/layouts. Existing ICC/PNG fixes and annotations remain.
+
 ## 0.28.0 — runtime effects / SkSL
 
 - Added owned compiled runtime effects and ordinary shader, color-filter, and

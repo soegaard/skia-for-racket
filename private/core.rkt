@@ -1,6 +1,6 @@
 #lang racket/base
 (require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt"
-         "annotation-util.rkt")
+         "annotation-util.rkt" "audit-trace.rkt")
 ;; Private ownership bridge, not re-exported by main.rkt or annotations.rkt.
 (module* annotation-internals #f
   (provide call-on-canvas canvas-owner pdf-page? pdf-page-document
@@ -399,7 +399,11 @@
          [(pdf-page? owner) (pdf-page-pointer/checked who owner)]
          [(svg-document? owner) (svg-canvas-pointer/checked who owner)]
          [else (error who "unsupported canvas owner")]))
-     (apply proc cp ps))))
+     (define backend
+       (cond [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
+             [(pdf-page? owner) 'pdf] [else 'svg]))
+     (audit-on-canvas who owner backend (resource-handle who owner) others
+                      (lambda () (apply proc cp ps))))))
 
 (define (initialize-resource v proc)
   (with-handlers ([exn? (lambda (e) (skia-close! v) (raise e))])
@@ -628,8 +632,15 @@
     ;; Padding expands the image without rescaling/repositioning the original
     ;; content box. Native glyph rendering inside a raster group also preserves
     ;; bitmap/color glyphs that have no monochrome outline.
-    (parameterize ([current-text-output-mode 'native])
-      (call-with-values (lambda () (proc rc)) (lambda ignored (void))))
+    (define owner (canvas-owner who c))
+    (define backend
+      (cond [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
+            [(pdf-page? owner) 'pdf] [else 'svg]))
+    (call-with-audit-raster
+     backend pw ph (hasheq 'x dx 'y dy 'width bw 'height bh)
+     (lambda ()
+       (parameterize ([current-text-output-mode 'native])
+         (call-with-values (lambda () (proc rc)) (lambda ignored (void))))))
     (with-skia ([im (surface-snapshot s)])
       (draw-image-rect c im dx dy bw bh #:sampling 'linear)))
   (void))

@@ -2,7 +2,7 @@
 (require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
          "../private/bidi.rkt" "../private/unicode-conformance.rkt"
          "codec-doctor.rkt" "pdf-doctor.rkt" "svg-doctor.rkt" "output-doctor.rkt"
-         "path-matrix-doctor.rkt" "filter-graph-doctor.rkt" "color-output-doctor.rkt" "annotation-doctor.rkt" "runtime-doctor.rkt")
+         "path-matrix-doctor.rkt" "filter-graph-doctor.rkt" "color-output-doctor.rkt" "annotation-doctor.rkt" "runtime-doctor.rkt" "output-audit-doctor.rkt")
 (module+ main
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
@@ -26,6 +26,7 @@
   (color-output-doctor!)
   (annotation-doctor!)
   (runtime-doctor!)
+  (output-audit-doctor!)
   (printf "Native library: ~a\n" (skia-native-library-path))
   (printf "Native ABI version: ~a\n" (skia-native-version))
   (harfbuzz-check!)

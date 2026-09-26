@@ -1,16 +1,33 @@
-# Racket Skia — 0.28.0
+# Racket Skia — 0.29.0
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI
 layer remains private.
 
-**Verification status:** the maintainer's 0.27 run passed all 593 cases, native
-symbol audits, and doctor. This revision starts from
-`aed63287d0d375513db5c8577b4b72de2ec5a3d8` (document annotations).
-**0.28 has source, host-C, and synthetic-inspector checks, not a Racket/native
-run in the authoring environment.** See [runtime validation](docs/RUNTIME-TESTING.md).
-Expected suite: 670 cases; 319 Skia / 27 HarfBuzz symbols. Earlier full Unicode
-conformance results remain historical.
+**Verification status:** the maintainer reports passing 0.28 tests. This revision
+starts from `15a449bcd3f59961001204a8a35f7d350d5404a8` (runtime effects).
+**0.29 has source/context-patch, host-C and synthetic-inspector validation only
+in the authoring environment; Racket/native execution is still required.**
+Expected suite: 728 cases (293 pure + 6 lifetime + 429 native); symbols remain
+319 Skia / 27 HarfBuzz. See [audit validation](docs/OUTPUT-AUDIT-TESTING.md).
+Earlier full Unicode conformance results remain historical.
+
+## Output capabilities and fallback auditing
+
+```racket
+(define report (analyze-output-page page 'svg))
+(output-audit-report-blocking? report)
+(save-output/audit page "diagram.svg" 'svg #:policy 'error #:exists 'replace)
+```
+
+Audits execute the drawing callback; they are not static analysis. Preflight
+suppresses target drawing while collecting known risks. Audited exports draw
+once, report observed features, and optionally reject unsupported/unknown uses
+before publication. Explicit raster groups resolve representation risks but
+cannot preserve links or capture an outer backdrop. Paint copies, child
+resources, and previously recorded pictures retain compact provenance summaries.
+See the [guide](docs/OUTPUT-AUDIT.md) for policies, labels, limits, and the
+important distinction between no known policy gap and visual certification.
 
 ## Runtime effects / SkSL
 

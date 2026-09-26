@@ -1,6 +1,19 @@
 # Testing
 
-## Current revision: runtime effects / SkSL (0.28)
+## Current revision: output capabilities and fallback auditing (0.29)
+
+The baseline is `15a449bcd3f59961001204a8a35f7d350d5404a8`; the maintainer reports
+passing 0.28 tests. This revision adds 30 pure and 28 native test cases:
+**728 expected cases** (293 pure + 6 lifetime + 429 native). `--pure` runs 299.
+Required symbols remain **319 Skia / 27 HarfBuzz**. No C layouts are added.
+
+Run [the audit validation sequence](docs/OUTPUT-AUDIT-TESTING.md). All test
+modules are compiled with the selected Racket executable. Source/context-patch
+checks, six host-C mirrors, and synthetic inspector self-tests are authoring
+checks, not a Racket/native execution result. The PDF/SVG/reference probes and
+actual report contents must still be checked on the host.
+
+## Previous revision: runtime effects / SkSL (0.28)
 
 The pushed 0.27 baseline is `aed63287d0d375513db5c8577b4b72de2ec5a3d8`.
 The maintainer's log reports 593 passing cases and all native doctor/audit checks.

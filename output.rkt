@@ -1,6 +1,7 @@
 #lang racket/base
 (require "color.rkt" "private/core.rkt" "private/check.rkt"
-         "private/output-util.rkt" "private/pdf-util.rkt" "private/svg-util.rkt")
+         "private/output-util.rkt" "private/pdf-util.rkt" "private/svg-util.rkt"
+         "private/audit-trace.rkt")
 (provide unit->points output-page? make-output-page
          output-page-width output-page-height output-page-unit
          output-page-margins output-page-background output-page-clip?
@@ -137,11 +138,12 @@
      (pdf-metadata-bytes who (list title description))
      (call-with-pdf-bytes
       (lambda (doc)
-        (for ([page (in-list pages)])
+        (for ([page (in-list pages)] [index (in-naturals 1)])
           (define-values (w h) (output-page-size-in-points page))
-          (call-with-document-page
-           doc w h
-           (lambda (c) (draw-output-page c page #:text-mode effective-mode #:raster-dpi dpi)))))
+          (parameterize ([audit-page-index index])
+            (call-with-document-page
+             doc w h
+             (lambda (c) (draw-output-page c page #:text-mode effective-mode #:raster-dpi dpi))))))
       #:title title #:subject description #:raster-dpi dpi #:encoding-quality q #:pdfa? pdfa?)]
     [else
      (when quality (raise-arguments-error who "#:encoding-quality is PDF-only" "given" quality))

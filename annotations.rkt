@@ -1,6 +1,6 @@
 #lang racket/base
 (require "private/core.rkt" "private/native.rkt" "private/types.rkt"
-         "private/check.rkt" "private/annotation-util.rkt"
+         "private/check.rkt" "private/annotation-util.rkt" "private/audit-trace.rkt"
          "matrix.rkt" "private/path-matrix.rkt"
          (submod "private/core.rkt" annotation-internals))
 (provide canvas-annotation-backend canvas-annotate-url!
@@ -44,6 +44,7 @@
    who c '()
    (lambda (cp)
      (define-values (kind scope) (annotation-target who c))
+     (audit-raster-annotation! who kind)
      ;; Raster annotations are deliberately invisible no-ops. Recorded URL
      ;; annotations are native display-list commands, replayed by PDF and SVG.
      (unless (or (eq? kind 'raster) (zero? width) (zero? height))
@@ -62,6 +63,7 @@
    who c '()
    (lambda (cp)
      (define-values (kind scope) (annotation-target who c))
+     (audit-raster-annotation! who kind)
      (case kind
        [(recording)
         (raise-arguments-error who
@@ -91,6 +93,7 @@
    who c '()
    (lambda (cp)
      (define-values (kind scope) (annotation-target who c))
+     (audit-raster-annotation! who kind)
      (case kind
        [(recording)
         (raise-arguments-error who
