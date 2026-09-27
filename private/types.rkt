@@ -2,6 +2,13 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;; The m119 C shim reinterprets this record as SkCanvas::Lattice. RectTypes
+;; *elements* must be uint8_t (the C++ enum), NOT the C header's int-sized enum.
+(define-cstruct _sk-lattice
+  ([x-divs _pointer] [y-divs _pointer] [rect-types _pointer]
+   [x-count _int] [y-count _int] [bounds _pointer] [colors _pointer]))
+(define-cstruct _sk-rsxform ([scos _float] [ssin _float] [tx _float] [ty _float]))
+
 ;; m119 copies std::string_view as two machine words. Their ordering is a C++
 ;; library detail, so NEVER dereference these words as a name pointer. The
 ;; separate get_uniform_name / get_child_name calls copy names into SkString.

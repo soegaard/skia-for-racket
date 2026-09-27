@@ -154,6 +154,14 @@
     [(sk_canvas_draw_paint sk_canvas_draw_line sk_canvas_draw_rect sk_canvas_draw_round_rect
       sk_canvas_draw_circle sk_canvas_draw_oval sk_canvas_draw_path sk_canvas_clear
       sk_canvas_draw_arc sk_canvas_draw_rrect sk_canvas_draw_drrect) '(geometry)]
+    [(sk_canvas_draw_region) '(geometry)]
+    [(sk_canvas_draw_vertices) '(vertices)]
+    [(sk_canvas_draw_patch) '(coons-patch)]
+    [(sk_canvas_draw_atlas) '(image-atlas)]
+    [(sk_canvas_draw_image_nine sk_canvas_draw_image_lattice) '(image-grid)]
+    [(sk_canvas_clip_region)
+     (append '(device-region-clip)
+             (if (= (list-ref args 2) 0) '(clip-difference) '(clip-intersect)))]
     [(sk_canvas_draw_point) '(point-sprites)]
     [(sk_canvas_draw_points) (if (= (cadr args) 0) '(point-sprites) '(geometry))]
     [(sk_canvas_draw_color)

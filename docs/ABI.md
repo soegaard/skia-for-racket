@@ -1,5 +1,17 @@
 # Native ABI and ownership notes
 
+## Structured geometry
+
+Thirty-one additional callouts bring the requirement to 367 Skia / 27 HarfBuzz.
+SkRegion and SkVertices are owned resources. Input/iterator buffers never escape
+synchronous FFI scopes; mesh construction and picture recording retain copies.
+The SkLattice record is 48 bytes on 64-bit hosts (bounds/colors offsets 32/40);
+RSXform is four floats, 16 bytes. The C shim reinterprets lattice records, so its
+cell-type array must use the C++ uint8 element stride, not the C enum size.
+See GEOMETRY-PRIMITIVES.md and tools/check-geometry-abi.c. The native doctor
+tests cell kinds at several offsets independently of record-size checks.
+
+
 ## Canvas primitives and layers
 
 Seventeen added C callouts bring the requirement to **336 Skia / 27 HarfBuzz**.

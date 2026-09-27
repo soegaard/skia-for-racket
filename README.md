@@ -1,4 +1,22 @@
-# Racket Skia — 0.30.0
+# Racket Skia — 0.31.0
+
+## Structured geometry and advanced image drawing
+
+Owned integer regions and copied triangle meshes, pure lattice/atlas/Coons-patch
+specifications, and native nine-patch/lattice/atlas/patch drawing now use the
+ordinary canvas and resource APIs. The 0.30 rounded-rectangle values are retained.
+All new operations participate in output audits and picture provenance.
+
+See [the guide](docs/GEOMETRY-PRIMITIVES.md) and
+[the validation sequence](docs/GEOMETRY-TESTING.md).
+Expected suite: **876 cases**; **367 Skia / 27 HarfBuzz** symbols. New 64-bit
+layouts are 48-byte lattice / 16-byte RSXform; lattice cell kinds are uint8.
+The maintainer reports passing 0.30 tests. This 0.31 authoring run has source,
+patch, host-C, and synthetic-inspector checks, **not Racket/native execution**.
+The GitHub connection still returned 0.29, so the patch targets that visible
+source plus the exact tested 0.30 patch; no newer commit hash is claimed.
+
+### Earlier implementation notes
 
 An experimental standalone CPU drawing and PDF/SVG-output binding to Skia through
 SkiaSharp's native C ABI. The Racket collection is named `skia`; the unsafe ABI

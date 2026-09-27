@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.31.0 — structured geometry and advanced image drawing
+
+- Added owned integer regions, nonmutating Boolean operations, path conversion,
+  copied rectangle sequences, drawing, and explicit device-coordinate clipping.
+- Added immutable native triangle meshes with copied positions, texture
+  coordinates, colors, optional uint16 indices, and detached inspection data.
+- Added nine-patch/lattice images, anchored atlas sprites, and cubic Coons patches.
+  Lattice cell-kind storage matches the C++ uint8 ABI despite the C enum pointer.
+- Extended output policies and recording provenance; fixed PDF point-sprite
+  explanatory text that had described SVG instead.
+- Reused existing rounded-rectangle values; no competing native public type.
+- Added 38 pure and 42 native tests, a doctor probe, a seventh C layout mirror,
+  and a combined PDF/SVG/reference/audit registry with a structural inspector.
+- This authoring run did not execute Racket or native Skia tests.
+
+
 ## 0.30.0 — canvas primitives and scoped layers
 
 - Added point sets, arcs, pure immutable four-corner rounded-rectangle

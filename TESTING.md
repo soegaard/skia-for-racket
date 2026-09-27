@@ -1,6 +1,18 @@
 # Testing
 
-## Current revision: canvas primitives and scoped layers (0.30)
+## Current revision: structured geometry (0.31)
+
+38 pure + 42 native cases are added: **876 expected total**
+(359 pure + 6 lifetime + 511 native). `--pure` runs 365.
+Required symbols: **367 Skia / 27 HarfBuzz**. New 64-bit records: lattice=48,
+RSXform=16; the lattice cell-type pointee is uint8.
+
+Run [the geometry validation sequence](docs/GEOMETRY-TESTING.md). Racket/native
+execution was not available in authoring. The patch targets tested 0.30
+source; the connector still exposed the preceding 0.29 commit.
+
+
+## Previous revision: canvas primitives and scoped layers (0.30)
 
 The baseline is `aa94a31509635090fdd2677ab393e8e005927dbb`; the maintainer reports
 passing 0.29 tests. This revision adds 28 pure and 40 native cases:

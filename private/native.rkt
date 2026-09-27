@@ -83,6 +83,46 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; Structured geometry. Vertex arrays are copied by Skia. Lattice/atlas/patch
+;; arrays remain alive for the complete synchronous canvas call.
+(define-native sk_region_new (_fun -> _pointer))
+(define-native sk_region_delete (_fun _pointer -> _void))
+(define-native sk_region_set_rects (_fun _pointer _pointer _int -> _stdbool))
+(define-native sk_region_set_region (_fun _pointer _pointer -> _stdbool))
+(define-native sk_region_set_path (_fun _pointer _pointer _pointer -> _stdbool))
+(define-native sk_region_is_empty (_fun _pointer -> _stdbool))
+(define-native sk_region_is_rect (_fun _pointer -> _stdbool))
+(define-native sk_region_is_complex (_fun _pointer -> _stdbool))
+(define-native sk_region_get_bounds (_fun _pointer _sk-irect-pointer -> _void))
+(define-native sk_region_get_boundary_path (_fun _pointer _pointer -> _stdbool))
+(define-native sk_region_contains_point (_fun _pointer _int _int -> _stdbool))
+(define-native sk_region_contains_rect (_fun _pointer _sk-irect-pointer -> _stdbool))
+(define-native sk_region_contains (_fun _pointer _pointer -> _stdbool))
+(define-native sk_region_intersects (_fun _pointer _pointer -> _stdbool))
+(define-native sk_region_op (_fun _pointer _pointer _int -> _stdbool))
+(define-native sk_region_translate (_fun _pointer _int _int -> _void))
+(define-native sk_region_iterator_new (_fun _pointer -> _pointer))
+(define-native sk_region_iterator_delete (_fun _pointer -> _void))
+(define-native sk_region_iterator_done (_fun _pointer -> _stdbool))
+(define-native sk_region_iterator_next (_fun _pointer -> _void))
+(define-native sk_region_iterator_rect (_fun _pointer _sk-irect-pointer -> _void))
+(define-native sk_paint_get_style (_fun _pointer -> _int))
+(define-native sk_vertices_make_copy
+  (_fun _int _int _pointer _pointer _pointer _int _pointer -> _pointer))
+(define-native sk_vertices_unref (_fun _pointer -> _void))
+(define-native sk_canvas_draw_region (_fun _pointer _pointer _pointer -> _void))
+(define-native sk_canvas_clip_region (_fun _pointer _pointer _int -> _void))
+(define-native sk_canvas_draw_vertices (_fun _pointer _pointer _int _pointer -> _void))
+(define-native sk_canvas_draw_image_nine
+  (_fun _pointer _pointer _sk-irect-pointer _sk-rect-pointer _int _pointer -> _void))
+(define-native sk_canvas_draw_image_lattice
+  (_fun _pointer _pointer _sk-lattice-pointer _sk-rect-pointer _int _pointer -> _void))
+(define-native sk_canvas_draw_atlas
+  (_fun _pointer _pointer _pointer _pointer _pointer _int _int _sk-sampling-pointer
+        _pointer _pointer -> _void))
+(define-native sk_canvas_draw_patch
+  (_fun _pointer _pointer _pointer _pointer _int _pointer -> _void))
+
 ;; Canvas primitives. Arrays and temporary rounded rectangles are borrowed only
 ;; during synchronous calls. Layer paint state is copied by Skia at save time.
 (define-native sk_canvas_draw_point (_fun _pointer _float _float _pointer -> _void))

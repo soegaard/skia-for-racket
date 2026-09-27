@@ -9,6 +9,18 @@
   (provide color-space-h wrap-owned-color-space))
 (provide image-convert-color-space)
 
+;; Native regions/vertices use the ordinary resource lifetime protocol. Their
+;; public inspection data never includes borrowed pointers.
+(struct region-resource (handle) #:constructor-name make-region-record)
+(struct vertices-resource (handle mode positions texture colors indices)
+  #:constructor-name make-vertices-record)
+(module* geometry-internals #f
+  (provide region-resource? region-resource-handle make-region-record
+           vertices-resource? vertices-resource-handle make-vertices-record
+           vertices-resource-mode vertices-resource-positions
+           vertices-resource-texture vertices-resource-colors vertices-resource-indices
+           call-on-canvas path-h image-h paint-h call-with-native-temporary))
+
 ;; Runtime effects and blenders participate in the same owned-resource lifetime
 ;; protocol, but their implementation and reflection API live in a separate
 ;; module. This private bridge is never re-exported by main.rkt.
@@ -258,7 +270,8 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (runtime-effect-resource? v) (blender-resource? v)
+  (or (region-resource? v) (vertices-resource? v)
+      (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
       (picture? v) (picture-recorder? v) (document? v) (svg-document? v)
@@ -266,7 +279,9 @@
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
-  (cond [(runtime-effect-resource? v) (runtime-effect-resource-handle v)]
+  (cond [(region-resource? v) (region-resource-handle v)]
+        [(vertices-resource? v) (vertices-resource-handle v)]
+        [(runtime-effect-resource? v) (runtime-effect-resource-handle v)]
         [(blender-resource? v) (blender-resource-handle v)]
         [(surface? v) (surface-handle v)]
         [(document? v) (document-handle v)]

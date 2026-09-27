@@ -51,6 +51,11 @@
     (annotation     vector               vector               "Document links are metadata, not painted geometry; rasterization discards interactivity.")
     (picture        vector               vector               "Recorded drawing is replayed with its stored feature summary, not assumed to be a plain vector path.")
     (raster-group   rasterized           rasterized           "Explicit bounded rasterization; pixel size and padding are recorded. Outer backdrop is not captured.")
+    (vertices needs-raster needs-raster "Triangle meshes can use per-vertex colors and shader coordinates; use explicit rasterization for conservative PDF/SVG output.")
+    (coons-patch needs-raster needs-raster "Coons patches are tessellated colored/textured meshes, not promised vector paths. Rasterize explicitly.")
+    (image-atlas needs-raster needs-raster "Batched, transformed/tinted sprites have no promised vector-backend parity; rasterize explicitly.")
+    (image-grid embedded-raster needs-raster "Nine-patch/lattice embeds raster samples in PDF. Use an explicit SVG raster group; this is not vector geometry.")
+    (device-region-clip vector needs-raster "Integer region clipping is in device coordinates and ignores the local transform. Use a boundary path for portable local-coordinate clips.")
     (unknown-resource unknown            unknown              "Resource provenance was not recognized. This is not a claim of backend support.")
     (unknown-operation unknown           unknown              "A native canvas operation is outside the audited operation table.")))
 (define output-feature-names (map car specifications))
@@ -72,9 +77,12 @@
          [(annotation) "Raster output has no link/destination metadata; annotate the receiving document canvas instead."]
          [(unknown-resource unknown-operation) (list-ref row 3)]
          [else "Rendered as raster content. The enclosing explicit group addresses vector serialization, not backdrop, padding, or color-fidelity questions."])
-       (if (and (eq? backend 'pdf) (eq? feature 'native-text))
-           "Native PDF text; embedding, extraction, and glyph fidelity require separate validation."
-           (list-ref row 3)))))
+       (cond
+         [(and (eq? backend 'pdf) (eq? feature 'native-text))
+          "Native PDF text; embedding, extraction, and glyph fidelity require separate validation."]
+         [(and (eq? backend 'pdf) (eq? feature 'point-sprites))
+          "Native PDF point geometry; cap and stroke settings determine the point shape."]
+         [else (list-ref row 3)]))))
 (define blocking-statuses '(needs-raster unsupported unknown discarded))
 (define (blocking-status? s) (and (memq s blocking-statuses) #t))
 (define (output-audit-report-blocking? r)

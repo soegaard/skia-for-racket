@@ -1,4 +1,102 @@
-# API reference — version 0.30.0
+# API reference — version 0.31.0
+
+## Structured geometry and advanced image drawing
+
+Available from `skia` / `skia/geometry-primitives`.
+See [the guide](GEOMETRY-PRIMITIVES.md) and [validation](GEOMETRY-TESTING.md).
+Rectangles use `(x y width height)`; geometry input lists/vectors are copied.
+
+```racket
+(region? value)
+(make-region [rectangles '()])
+(region-copy region)
+(region-empty? region)
+(region-rect? region)
+(region-complex? region)
+(region-bounds region) ; immutable integer vector; #(0 0 0 0) when empty
+(region-rectangles region) ; list of detached immutable integer vectors
+(in-region-rectangles region) ; repeatable snapshot sequence
+(region-contains-point? region x y)
+(region-contains-rect? region rectangle)
+(region-contains-region? region other)
+(region-intersects? region other)
+(region-op region other operation)
+(region-union region other)
+(region-intersect region other)
+(region-difference region other)
+(region-xor region other)
+(region-translate region dx dy) ; independent result
+(path->region path clip-region) ; explicit finite integer clip
+(region->path region) ; independent owned path
+(draw-region canvas region paint)
+(canvas-clip-region! canvas region #:operation [operation 'intersect])
+
+(vertices? value)
+(make-vertices mode positions #:texture-coordinates [tex #f]
+               #:colors [colors #f] #:indices [indices #f])
+(vertices-mode vertices)
+(vertices-count vertices)
+(vertices-positions vertices)
+(vertices-texture-coordinates vertices)
+(vertices-colors vertices)
+(vertices-indices vertices)
+(draw-vertices canvas vertices paint #:blend-mode [blend 'modulate])
+
+(image-lattice? value)
+(make-image-lattice x-divisions y-divisions #:bounds [bounds #f]
+                    #:cell-types [cell-types #f] #:colors [colors #f])
+(image-lattice-x-divisions lattice)
+(image-lattice-y-divisions lattice)
+(image-lattice-bounds lattice)
+(image-lattice-cell-types lattice)
+(image-lattice-colors lattice)
+(draw-image-nine canvas image center x y width height
+                 #:sampling [sampling 'linear] #:paint [paint #f])
+(draw-image-lattice canvas image lattice x y width height
+                    #:sampling [sampling 'linear] #:paint [paint #f])
+
+(atlas-transform? value)
+(make-atlas-transform x y #:scale [scale 1] #:rotation [degrees 0]
+                      #:anchor [anchor '(0 0)])
+(atlas-transform-coefficients transform) ; #(scos ssin tx ty)
+(draw-atlas canvas image transforms source-rectangles
+            #:colors [colors #f] #:blend-mode [blend 'modulate]
+            #:sampling [sampling 'linear] #:cull [cull #f] #:paint [paint #f])
+
+(cubic-patch? value)
+(make-cubic-patch twelve-points #:colors [colors #f] #:texture-coordinates [tex #f])
+(cubic-patch-points patch)
+(cubic-patch-colors patch)
+(cubic-patch-texture-coordinates patch)
+(draw-patch canvas patch paint #:blend-mode [blend 'modulate])
+```
+
+Regions and vertices are owned resources recognized by `skia-resource?` and
+`with-skia`. Region operations do not mutate their inputs. Region/native queries
+are thread-confined; detached mesh snapshots remain readable after closure.
+Lattice, atlas-transform, and cubic-patch specifications are pure immutable values.
+The `rounded-rect?` values from the canvas-primitives module remain unchanged.
+
+Integer region rectangles are half-open; coordinate/edge range is
+[-1073741823,1073741823]. Mesh modes are `triangles`, `triangle-strip`, and
+`triangle-fan`; 3..65536 positions, optional uint16 indices, complete triangles.
+Texture positions are shader coordinates. For vertices/patches the extra blend
+mode combines shader/opaque paint **source** with vertex/corner-color
+**destination**, independently of the paint's canvas blend mode.
+
+Lattice arrays use row-major cells; default/transparent/fixed-color types need
+one entry per cell. Divisions must be strictly interior to the source bounds.
+Native grid cell types are marshalled as uint8 despite the C header's enum type.
+Atlas rotations use degrees; its source rectangles are image pixels and its
+transforms use sprite-local origins. A cull rectangle is a rejection hint, not
+a clip. Native patch curves share corners at indices 0,3,6,9.
+
+Audit features `vertices`, `coons-patch`, and `image-atlas` require explicit
+raster fallback on PDF/SVG. `image-grid` is embedded-raster in PDF and conservatively
+needs-raster in SVG. `device-region-clip` is a native device-unit clip in PDF and
+needs explicit handling in SVG; prefer a boundary path for local geometry.
+No automatic fallback, path-style mesh antialiasing, or native heap bound is added.
+
 
 Import `(require skia)`, or `"main.rkt"` from the extracted root. The bitmap
 bridge is a separate `(require skia/bitmap)` module. Signatures below use
