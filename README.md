@@ -1,4 +1,28 @@
-# Racket Skia — 0.33.0
+# Racket Skia — 0.38.0
+
+## Optional GPU foundation and live backend diagnostics
+
+`skia/gpu` adds explicit Ganesh context/provider ownership, scoped activation,
+creator-thread checks, generation invalidation, deferred native destruction and
+owner-side shutdown. CPU imports and constructors remain unchanged. The Racket
+GL adapter borrows an existing host; the combined diagnostic creates a test host,
+checks a real GPU target and all readback pixels, and reports the actual renderer.
+
+This foundation does not yet expose general GPU surfaces, images or window
+presentation. Metal has an early device/queue/context construction probe, not
+rendering parity. Windows x64 loaders and a pinned-assets installer are included.
+Symbols, software GL, hardware-reported GL and actual rendered output are
+reported separately. No automatic CPU fallback is introduced.
+
+See [GPU contexts](docs/GPU-FOUNDATION.md), [the ABI audit](docs/GPU-ABI.md), and
+[the complete validation sequence](docs/GPU-TESTING.md). The patch targets 0.37
+commit `a07aefeef0f91000c5a8683bb3b8835260a75064`. Authoring checks do **not**
+establish Racket compilation or live GPU support on any platform; run the host
+validation before accepting this revision. The added suite has 64 source cases.
+
+Earlier feature sections below retain their historical revision-specific notes.
+The 0.34–0.37 output-group, portable-drawing, color-filter and raster-buffer code
+is preserved; no GPU pointer is placed in the existing CPU resource wrappers.
 
 ## Persistent pictures and picture shaders
 

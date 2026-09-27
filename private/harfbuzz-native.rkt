@@ -3,6 +3,7 @@
          racket/promise
          racket/runtime-path
          racket/path
+         "native-platform.rkt"
          "harfbuzz-types.rkt")
 (provide harfbuzz-package-version harfbuzz-platform harfbuzz-filename
          harfbuzz-check! harfbuzz-available? harfbuzz-native-version
@@ -12,19 +13,10 @@
 (define-runtime-path native-root "../native")
 
 (define (harfbuzz-platform)
-  (case (system-type 'os)
-    [(macosx) "osx"]
-    [(unix)
-     (case (system-type 'arch)
-       [(x86_64) "linux-x64"]
-       [(aarch64) "linux-arm64"]
-       [else #f])]
-    [else #f]))
+  (native-rid (system-type 'os) (system-type 'arch)))
 
 (define (harfbuzz-filename)
-  (if (eq? (system-type 'os) 'macosx)
-      "libHarfBuzzSharp.dylib"
-      "libHarfBuzzSharp.so"))
+  (native-library-name 'harfbuzz (system-type 'os)))
 
 (define hb-library
   (delay/sync
@@ -68,6 +60,8 @@
              (string-append
               "could not load compatible libHarfBuzzSharp\n"
               "  run: bash tools/install-harfbuzz.sh\n"
+              "  Windows x64: powershell -File tools/install-native-windows.ps1\n"
+              "  Windows: check interpreter/DLL architecture and dependent DLLs; see docs/GPU-TESTING.md\n"
               "  or set RACKET_HARFBUZZ_LIBRARY to the full library filename\n"
               "  native package: ~a\n  loader errors: ~a")
              harfbuzz-package-version (reverse failures)))

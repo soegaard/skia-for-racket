@@ -3,6 +3,7 @@
          racket/promise
          racket/runtime-path
          racket/path
+         "native-platform.rkt"
          "types.rkt" "audit-trace.rkt")
 (provide native-package-version native-platform native-filename
          skia-check! skia-available? skia-native-version skia-native-library-path)
@@ -11,19 +12,10 @@
 (define-runtime-path native-root "../native")
 
 (define (native-platform)
-  (case (system-type 'os)
-    [(macosx) "osx"]
-    [(unix)
-     (case (system-type 'arch)
-       [(x86_64) "linux-x64"]
-       [(aarch64) "linux-arm64"]
-       [else #f])]
-    [else #f]))
+  (native-rid (system-type 'os) (system-type 'arch)))
 
 (define (native-filename)
-  (if (eq? (system-type 'os) 'macosx)
-      "libSkiaSharp.dylib"
-      "libSkiaSharp.so"))
+  (native-library-name 'skia (system-type 'os)))
 
 ;; Requiring or compiling the package does not load a native library.
 ;; No network access occurs here. The explicit installer is separate.
@@ -62,6 +54,8 @@
              (string-append
               "could not load a compatible libSkiaSharp\n"
               "  run: bash tools/install-native.sh\n"
+              "  Windows x64: powershell -File tools/install-native-windows.ps1\n"
+              "  Windows: check interpreter/DLL architecture and dependent DLLs; see docs/GPU-TESTING.md\n"
               "  or set RACKET_SKIA_LIBRARY to the full library filename\n"
               "  native package: ~a\n  loader errors: ~a")
              native-package-version (reverse failures)))

@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.38.0 — GPU foundation and explicit backend probes
+
+- Added optional backend-neutral context/provider/domain APIs with serialized
+  owner scopes, native identity checks, unique generations and deferred releases.
+- Added GC/custodian shutdown requests with owner-side draining, explicit
+  abandonment, live-child close guards and quarantined indeterminate releases.
+- Added a Racket GL adapter, separate lazy GPU symbol group, and a private
+  Ganesh target/draw/submit/readback probe with exact RGBA and context checks.
+- Added early Metal device/queue/Ganesh construction and teardown diagnostics;
+  audited the actual pinned retain behavior instead of relying on the legacy
+  transfer comment. No Metal rendering or presentation claim is made.
+- Added Windows x64 native selection, pinned archive/PE validation and explicit
+  installer/validator PowerShell entry points, without changing CPU constructors.
+- Added 64 pure source test cases, protected-flag-aware GPU ABI mirrors,
+  diagnostic/PNG inspection, synthetic Python tests, docs and a selected-Racket
+  runner that regenerates source sums only after selected validation succeeds.
+- No public GPU surface/image API yet. Authoring checks did not execute Racket,
+  live Skia/GL/Metal, Windows installation, or full-checkout native validation.
+
+## 0.37.0 — owned raster buffers
+
+- Added native-owned strided RGBA storage, exclusive pixmap/direct-canvas scopes
+  and copied immutable image snapshots.
+
+## 0.36.0 — CPU color filters
+
+- Added HSLA, gamma, lookup-table, luma, contrast, lerp and lighting factories,
+  including the explicit all-omitted ARGB identity-filter fix.
+
+## 0.35.0 — portable drawing
+
+- Added marker geometry, inspectable grid plans and cropped nine/lattice/atlas
+  placements that lower before recording and avoid whole-panel fallback.
+
+## 0.34.0 — bounded output groups
+
+- Added capture-once backend-aware native/raster decisions with retained nested
+  reports and explicit rejection of unknown or discarded semantics.
+
 ## 0.33.0 — persistent pictures and picture shaders
 
 - Added copied native SKP bytes, explicitly trusted file/byte loading, and atomic

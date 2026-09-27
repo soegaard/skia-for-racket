@@ -1,6 +1,24 @@
 # Testing
 
-## Current revision: persistent pictures (0.33)
+## Current revision: GPU foundation (0.38)
+
+Baseline: `a07aefeef0f91000c5a8683bb3b8835260a75064` (0.37).
+Run [the selected-Racket GPU validation sequence](docs/GPU-TESTING.md).
+CPU symbol requirements and constructors remain unchanged; optional GPU symbols
+have their own lazy inventory and do not prove a working renderer.
+
+The new suite contains 64 pure source cases, including actual finalizer and
+custodian registration tests with mock native operations. The C inventory
+includes m119's protected flags: GL framebuffer info is 12 bytes and texture
+info is 16 bytes. Python installer/inspector tests are synthetic and separate.
+
+The authoring environment checked source structure, Python behavior, a local
+C ABI mirror and fetched patch contexts. It did not run Racket or live GPU
+code. No new cumulative passing RackUnit count, hardware acceleration result
+or platform support claim is made. Required GPU validation must fail rather
+than silently skip an unavailable backend; CPU CI may select an explicit skip.
+
+## Previous revision: persistent pictures (0.33)
 
 Baseline: `9c2bc04e00ff9bc42b6606e0aee7703ee06e1d24`, including the 0.32
 inspector's numeric point-length fix. The maintainer reports passing 0.32 tests.
