@@ -48,6 +48,7 @@
        [(make-two-point-conical-gradient-shader) '(conical-gradient)]
        [(make-color-shader) '(solid-shader)]
        [(make-image-shader) '(image-shader)]
+       [(make-picture-shader) '(picture-shader)]
        [(make-blend-shader) '(shader-composition)]
        [(shader-with-local-matrix) '(shader-local-matrix)]
        [(runtime-effect->shader) '(runtime-shader)]
@@ -57,7 +58,9 @@
     [(image-filter) '(image-filter)] [(mask-filter) '(mask-filter)]
     [(path-effect) (if (eq? who 'make-dash-path-effect) '(dash-effect) '(path-effect))]
     [(blender) (if (eq? who 'make-blend-mode-blender) '(blend-mode) '(runtime-blender))]
-    [(image raster-image) '(image)] [(picture) '(picture)]
+    [(image raster-image) '(image)]
+    [(picture) (if (memq who '(picture-from-bytes picture-from-file))
+                   '(picture deserialized-picture) '(picture))]
     [(paint picture-recorder) '()]
     [else '()]))
 (define (audit-allocate who kind thunk)
@@ -69,9 +72,15 @@
               ;; Capture enclosing dependencies as well as uses inside create.
               (collect-dependencies! (map car (uses)))
               (thunk)))
-  (define fs
+  (define initial-fs
     (cond [(and getter initial-paint) (paint-slot initial-paint getter)]
           [else (union (base-features who kind) (unbox (allocation-deps a)))]))
+  ;; A picture shader samples pixels; recorded URL metadata does not become
+  ;; clickable shader geometry. Keep this loss visible even outside a group.
+  (define fs
+    (if (and (eq? who 'make-picture-shader) (memq 'annotation initial-fs))
+        (union (remq 'annotation initial-fs) '(picture-shader-annotation))
+        initial-fs))
   (define slots
     (if (and (eq? who 'paint-copy) initial-paint)
         (provenance-slots (summary initial-paint)) empty-slots))
@@ -228,7 +237,8 @@
      (define dst (handle-for (caddr args)))
      (when (and src dst)
        (hash-set! resources dst (provenance 'path (features src) empty-slots)))]
-    [(eq? name 'sk_picture_recorder_begin_recording)
+    [(memq name '(sk_picture_recorder_begin_recording
+                   sk_picture_recorder_begin_recording_with_bbh_factory))
      (define h (handle-for (car args)))
      (when h (hash-set! resources h (provenance 'picture-recorder '() empty-slots)))]
     [else (void)]))

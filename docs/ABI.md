@@ -1,5 +1,29 @@
 # Native ABI and ownership notes
 
+## Persistent-picture streams and retained shaders
+
+Ten additional existing C callouts bring the total to **377 Skia / 27 HarfBuzz**.
+They cover cull/ID/counter getters, serialize-to-data, deserialize-from-data,
+picture shader creation, and R-tree factory begin/new/delete. No new cstruct is
+introduced. Matrices and rectangle arguments use the existing m119 ABI.
+
+The native SKP stream starts with `skiapict`, a native-endian uint32 version,
+four float cull coordinates, and a payload-kind byte. The pinned format writer
+uses **103**, not the Skia milestone 119; its reader accepts versions 82–103.
+Wrapper header checks reject malformed framing and custom payload kinds, not
+malicious or invalid command streams. Default `SkDeserialProcs::fAllowSkSL` is
+true in the pinned source, and the C shim exposes no override. Loading therefore
+requires explicit trust and must not be advertised as sandboxed.
+
+`sk_picture_deserialize_from_data` receives a temporary native SKData copy;
+the decoded picture owns its reconstructed resources. Picture shaders retain
+native references. The R-tree factory is called synchronously; the recorder
+owns its resulting hierarchy. Skia can tighten a tree-backed picture's cull
+bounds. SKP reload reconstructs an ordinary recording, not its previous R-tree.
+
+The auditor never restores trusted Racket provenance from serialized bytes.
+All loaded pictures remain opaque/unknown, even inside explicit raster groups.
+
 ## General canvas matrices
 
 The public 3x3/4x4 vectors are **row-major**; pinned canvas set/concat/get calls

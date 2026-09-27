@@ -1,6 +1,26 @@
 # Testing
 
-## Current revision: perspective and general matrices (0.32)
+## Current revision: persistent pictures (0.33)
+
+Baseline: `9c2bc04e00ff9bc42b6606e0aee7703ee06e1d24`, including the 0.32
+inspector's numeric point-length fix. The maintainer reports passing 0.32 tests.
+This pass adds **31 pure + 40 native cases**, for **1042 expected total**
+(449 pure + 6 lifetime + 587 native). `--pure` runs 455.
+Required symbols: **377 Skia / 27 HarfBuzz**. No new native record layouts;
+all eight existing host-C mirrors remain in the validation sequence.
+
+Run [the persistent-picture validation sequence](docs/PICTURE-TESTING.md).
+The Python inspector has **22 self-tests**. Fresh-process replay uses the same
+selected Racket executable as compilation, doctor, tests, and probe creation.
+The roundtrip PDF/SVG intentionally uses report policy and keeps its blocking
+unknown-provenance finding; that finding is expected, not suppressed.
+
+Authoring validation covered source structure, native source/ABI declarations,
+context-patch application, host-C mirrors, and synthetic Python fixtures.
+Racket compilation, native tests, new Skia rendering, and fresh-process replay
+were not executed in the authoring environment.
+
+## Previous revision: perspective and general matrices (0.32)
 
 The baseline is `85f8292a5925cc14bad880675385e7d9c5a75067`, including the SVG
 region-seam fix; the maintainer reports passing 0.31 tests. This pass adds

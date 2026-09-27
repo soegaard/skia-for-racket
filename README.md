@@ -1,4 +1,25 @@
-# Racket Skia — 0.32.0
+# Racket Skia — 0.33.0
+
+## Persistent pictures and picture shaders
+
+`picture->bytes`, `picture-from-bytes`, `picture-from-file`, and `save-picture`
+add native SKP persistence to the existing owned `picture?` type. Loading is
+explicitly trusted (`#:trusted? #t`): the pinned native decoder can compile
+embedded SkSL. This is an application cache format, not a safe document format.
+Picture metadata, optional R-tree-backed recording, and tiled picture shaders
+are available from `skia/pictures` and `skia`.
+
+Loaded pictures retain an `unknown` audit finding even inside raster groups;
+there is no API to certify a stream by attaching an unverified JSON summary.
+Live picture shaders use explicit PDF/SVG raster groups. Sampled annotations
+are reported as discarded semantics.
+
+See [the picture guide](docs/PERSISTENT-PICTURES.md) and
+[the validation sequence](docs/PICTURE-TESTING.md).
+Expected current suite: **1042 cases**, including **31 new pure + 40 new native**;
+**377 Skia / 27 HarfBuzz** symbols; no new native layouts.
+The validator also runs a separate selected-Racket process to decode a cache
+and compares its RGBA pixels to the original recording.
 
 ## Perspective and general canvas matrices
 

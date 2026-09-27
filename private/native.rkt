@@ -528,6 +528,19 @@
 
 ;; Picture recording / replay.
 (define-native sk_picture_unref (_fun _pointer -> _void))
+;; m119 picture streams, metadata, picture shaders, and optional spatial index.
+(define-native sk_picture_get_unique_id (_fun _pointer -> _uint32))
+(define-native sk_picture_get_cull_rect (_fun _pointer _sk-rect-pointer -> _void))
+(define-native sk_picture_approximate_op_count (_fun _pointer _stdbool -> _int))
+(define-native sk_picture_approximate_bytes_used (_fun _pointer -> _size))
+(define-native sk_picture_serialize_to_data (_fun _pointer -> _pointer))
+(define-native sk_picture_deserialize_from_data (_fun _pointer -> _pointer))
+(define-native sk_picture_make_shader
+  (_fun _pointer _int _int _int _pointer _pointer -> _pointer))
+(define-native sk_rtree_factory_new (_fun -> _pointer))
+(define-native sk_rtree_factory_delete (_fun _pointer -> _void))
+(define-native sk_picture_recorder_begin_recording_with_bbh_factory
+  (_fun _pointer _sk-rect-pointer _pointer -> _pointer))
 (define-native sk_picture_recorder_new (_fun -> _pointer))
 (define-native sk_picture_recorder_delete (_fun _pointer -> _void))
 (define-native sk_picture_recorder_begin_recording

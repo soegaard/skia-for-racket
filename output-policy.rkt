@@ -51,6 +51,9 @@
     (projective-transform needs-raster needs-raster "Perspective or retained 3D matrix state has no promised PDF/SVG vector parity. Apply it inside an explicit bounded raster group; a later raster group does not retroactively handle an outer perspective transform.")
     (annotation     vector               vector               "Document links are metadata, not painted geometry; rasterization discards interactivity.")
     (picture        vector               vector               "Recorded drawing is replayed with its stored feature summary, not assumed to be a plain vector path.")
+    (deserialized-picture unknown unknown "Loaded SKP has no trusted Racket-side provenance. Unknown rendering and annotation semantics are not resolved merely by adding a raster group.")
+    (picture-shader needs-raster needs-raster "A sampled/tiled recorded picture is not promised as native PDF/SVG vector geometry. Rasterize a bounded group explicitly.")
+    (picture-shader-annotation discarded discarded "Picture shader sampling discards recorded links/destinations; annotate the receiving document canvas instead.")
     (raster-group   rasterized           rasterized           "Explicit bounded rasterization; pixel size and padding are recorded. Outer backdrop is not captured.")
     (vertices needs-raster needs-raster "Triangle meshes can use per-vertex colors and shader coordinates; use explicit rasterization for conservative PDF/SVG output.")
     (coons-patch needs-raster needs-raster "Coons patches are tessellated colored/textured meshes, not promised vector paths. Rasterize explicitly.")
@@ -68,7 +71,8 @@
   (unless row (raise-argument-error 'output-capability-for "symbol in output-feature-names" feature))
   (define status
     (if (eq? backend 'raster)
-        (case feature [(annotation) 'discarded] [(unknown-resource unknown-operation) 'unknown]
+        (case feature [(annotation picture-shader-annotation) 'discarded]
+              [(unknown-resource unknown-operation deserialized-picture) 'unknown]
               [else 'rasterized])
         (list-ref row (if (eq? backend 'pdf) 1 2))))
   (output-capability
@@ -76,7 +80,7 @@
    (if (eq? backend 'raster)
        (case feature
          [(annotation) "Raster output has no link/destination metadata; annotate the receiving document canvas instead."]
-         [(unknown-resource unknown-operation) (list-ref row 3)]
+         [(unknown-resource unknown-operation deserialized-picture picture-shader-annotation) (list-ref row 3)]
          [else "Rendered as raster content. The enclosing explicit group addresses vector serialization, not backdrop, padding, or color-fidelity questions."])
        (cond
          [(and (eq? backend 'pdf) (eq? feature 'native-text))

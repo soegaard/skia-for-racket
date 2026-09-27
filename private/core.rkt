@@ -9,6 +9,12 @@
   (provide color-space-h wrap-owned-color-space))
 (provide image-convert-color-space)
 
+;; Persistent-picture helpers share the existing owned picture/shader types.
+;; Native pointers and constructors stay behind this private module bridge.
+(module* picture-internals #f
+  (provide picture-h make-picture-record new-shader copy-native-data
+           call-with-native-temporary))
+
 ;; Native regions/vertices use the ordinary resource lifetime protocol. Their
 ;; public inspection data never includes borrowed pointers.
 (struct region-resource (handle) #:constructor-name make-region-record)
@@ -1198,8 +1204,11 @@
               sk_picture_recorder_delete)
    #f #f #f '()))
 
-(define (picture-recorder-begin-recording! recorder x y w h)
+(define (picture-recorder-begin-recording! recorder x y w h
+                                            #:spatial-index [spatial-index 'none])
   (define who 'picture-recorder-begin-recording!)
+  (unless (memq spatial-index '(none rtree))
+    (raise-argument-error who "'none or 'rtree" spatial-index))
   (define rr
     (if (picture-recorder? recorder)
         recorder
@@ -1210,7 +1219,15 @@
   (call-with-owned
    who (list (picture-recorder-h who rr))
    (lambda (rp)
-     (define cp (sk_picture_recorder_begin_recording rp bounds))
+     (define cp
+       (if (eq? spatial-index 'rtree)
+           ;; The factory is invoked synchronously by beginRecording. The
+           ;; recorder retains the resulting hierarchy, not this factory.
+           (call-with-native-temporary
+            who 'rtree-factory sk_rtree_factory_new sk_rtree_factory_delete
+            (lambda (factory)
+              (sk_picture_recorder_begin_recording_with_bbh_factory rp bounds factory)))
+           (sk_picture_recorder_begin_recording rp bounds)))
      (unless cp
        (error who "native picture recorder did not return a canvas"))
      (set-picture-recorder-recording?! rr #t)
@@ -1246,15 +1263,18 @@
       (new-owned who 'picture (lambda () pp) sk_picture_unref)
       (list-ref bounds 2) (list-ref bounds 3)))))
 
-(define (call-with-picture w h proc)
+(define (call-with-picture w h proc #:spatial-index [spatial-index 'none])
   (define who 'call-with-picture)
+  (unless (memq spatial-index '(none rtree))
+    (raise-argument-error who "'none or 'rtree" spatial-index))
   (check-dimensions who w h)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error who "procedure accepting one argument" proc))
   (call-with-skia-resource
    (make-picture-recorder)
    (lambda (rec)
-     (define c (picture-recorder-begin-recording! rec 0 0 w h))
+     (define c (picture-recorder-begin-recording! rec 0 0 w h
+                                                 #:spatial-index spatial-index))
      (proc c)
      (picture-recorder-finish-recording! rec))))
 

@@ -1,4 +1,45 @@
-# API reference — version 0.32.0
+# API reference — version 0.33.0
+
+## Persistent pictures
+
+Import `skia/pictures` or `skia`. The existing `picture?` resource and explicit
+ownership protocol are unchanged. See [the guide](PERSISTENT-PICTURES.md) and
+[validation](PICTURE-TESTING.md).
+
+```racket
+(picture->bytes picture)
+(picture-from-bytes bytes #:trusted? [trusted? #f]
+                         #:width [width #f] #:height [height #f])
+(picture-from-file path #:trusted? [trusted? #f]
+                        #:width [width #f] #:height [height #f])
+(save-picture picture path #:exists [mode 'error])
+(picture-cull-bounds picture)
+(picture-unique-id picture)
+(picture-approximate-op-count picture #:nested? [nested? #f])
+(picture-approximate-bytes-used picture)
+(make-picture-shader picture
+                     #:tile-x [mode 'clamp] #:tile-y [mode 'clamp]
+                     #:sampling [mode 'nearest]
+                     #:local-matrix [affine-matrix #f]
+                     #:tile-rect [rectangle #f])
+(call-with-picture width height draw #:spatial-index [index 'none])
+(picture-recorder-begin-recording! recorder x y width height
+                                 #:spatial-index [index 'none])
+```
+
+Loading requires `#:trusted? #t` because native SKP can carry executable SkSL.
+Optional nonnegative nominal width/height must be supplied together; they do
+not alter the native cull rectangle or recenter coordinates. Bounds return an
+immutable `(x y width height)` vector. IDs and counters are native, live-resource
+queries, not persistent content identifiers or total-memory measurements.
+
+`#:exists` accepts `'error` / `'replace`; publication is a same-directory
+rename after successful serialization. Tile modes are `'clamp`, `'repeat`,
+`'mirror`, `'decal`; filtering is `'nearest` / `'linear`; local matrices use the
+existing nonsingular affine `matrix?`; tiles are nonempty rectangle lists or
+vectors. Spatial indexing accepts `'none` / `'rtree` and defaults to `'none`.
+Loaded resources keep `deserialized-picture` / `unknown` in output auditing;
+live picture shaders require explicit document rasterization.
 
 ## Perspective and general canvas matrices
 

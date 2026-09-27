@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.33.0 — persistent pictures and picture shaders
+
+- Added copied native SKP bytes, explicitly trusted file/byte loading, and atomic
+  file publication. Cheap bounded header checks do not validate native payloads.
+- Added native cull-bound snapshots, process-local IDs, approximate operation
+  counts (optionally nested), and native byte estimates. Loaders accept nominal extents.
+- Added optional `#:spatial-index 'rtree` to both recording entry points. The
+  temporary factory is released after synchronous creation of the hierarchy.
+- Added retained picture shaders with tile modes, filtering, tile rectangles,
+  and the existing affine local-matrix API.
+- Preserved opaque-import provenance, including through shaders and recordings;
+  rasterization does not certify unknown semantics. Sampled links are discarded.
+- Added 31 pure and 40 native tests, doctor, combined document/reference probes,
+  metadata and audit checks, and a fresh-process raw-pixel replay comparison.
+- Native requirements are 377 Skia / 27 HarfBuzz symbols; no new layouts.
+
 ## 0.32.0 — perspective and general canvas matrices
 
 - Added separate immutable row-major 3x3 and 4x4 matrix values, checked native
