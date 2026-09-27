@@ -45,7 +45,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('output-group-pure-test.rkt','output-group-pure-tests'),
               ('output-group-native-test.rkt','output-group-native-tests'),
               ('portable-pure-test.rkt','portable-pure-tests'),
-              ('portable-native-test.rkt','portable-native-tests')]:
+              ('portable-native-test.rkt','portable-native-tests'),
+              ('color-filter-pure-test.rkt','color-filter-pure-tests'),
+              ('color-filter-native-test.rkt','color-filter-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -126,6 +128,13 @@ for form in sexps((R/'portable-drawing.rkt').read_text()):
         public=[x for x in form[1:] if isinstance(x,str)]
         assert not [x for x in public if x not in portable_api], public
 subprocess.run(['bash','-n',str(R/'tools/validate-portable-drawing.sh')],check=True)
+# CPU color-filter additions keep their detailed reference in a separate guide.
+color_filter_api=(R/'docs/CPU-COLOR-FILTERS.md').read_text()
+for form in sexps((R/'color-filters.rkt').read_text()):
+    if isinstance(form,list) and form and form[0]=='provide':
+        public=[x for x in form[1:] if isinstance(x,str)]
+        assert not [x for x in public if x not in color_filter_api], public
+subprocess.run(['bash','-n',str(R/'tools/validate-color-filters.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

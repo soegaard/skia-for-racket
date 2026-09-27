@@ -408,6 +408,18 @@
 (define-native sk_colorfilter_new_mode (_fun _uint32 _int -> _pointer))
 (define-native sk_colorfilter_new_compose (_fun _pointer _pointer -> _pointer))
 (define-native sk_colorfilter_new_color_matrix (_fun _pointer -> _pointer))
+;; Remaining m119 CPU color filters. Tables/matrices/configs are copied during
+;; the call; lerp retains its children. High-contrast layout is tested separately.
+(define-native sk_colorfilter_new_hsla_matrix (_fun _pointer -> _pointer))
+(define-native sk_colorfilter_new_linear_to_srgb_gamma (_fun -> _pointer))
+(define-native sk_colorfilter_new_srgb_to_linear_gamma (_fun -> _pointer))
+(define-native sk_colorfilter_new_lerp (_fun _float _pointer _pointer -> _pointer))
+(define-native sk_colorfilter_new_luma_color (_fun -> _pointer))
+(define-native sk_colorfilter_new_high_contrast (_fun _pointer -> _pointer))
+(define-native sk_colorfilter_new_table (_fun _pointer -> _pointer))
+(define-native sk_colorfilter_new_table_argb
+  (_fun _pointer _pointer _pointer _pointer -> _pointer))
+(define-native sk_colorfilter_new_lighting (_fun _uint32 _uint32 -> _pointer))
 
 (define-native sk_maskfilter_unref (_fun _pointer -> _void))
 (define-native sk_maskfilter_new_blur_with_flags
