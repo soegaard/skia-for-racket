@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.32.0 — perspective and general canvas matrices
+
+- Added separate immutable row-major 3x3 and 4x4 matrix values, checked native
+  float coefficients, composition, transpose, inversion, and explicit conversions.
+- Added homogeneous mapping, projected points, and rectangle bounds that return
+  false when W reaches or crosses zero rather than returning misleading bounds.
+- Added retained-depth translation/scale/rotation and an explicit camera-distance
+  projection convention; the six-coefficient affine API remains unchanged.
+- Added full canvas matrix readback, replacement, concatenation, and scoped
+  matrix application with protected restoration and multiple-value results.
+- Reused the existing column-major SkM44 callouts; no symbols or layouts added.
+- Audited general matrix operations and retained their provenance in pictures.
+  Strict PDF/SVG output requires explicit raster groups around those transforms.
+- Added 59 pure and 36 native cases, a doctor, an eighth C mirror, and one combined
+  PDF/SVG/reference/audit/matrix-trace registry with a structural inspector.
+- Preserved the 0.31 region-seam fix from the current repository baseline.
+- Authoring validation did not execute Racket or native Skia.
+
 ## 0.31.0 — structured geometry and advanced image drawing
 
 - Added owned integer regions, nonmutating Boolean operations, path conversion,

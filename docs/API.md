@@ -1,4 +1,98 @@
-# API reference — version 0.31.0
+# API reference — version 0.32.0
+
+## Perspective and general canvas matrices
+
+Pure values are available from `skia/projective-matrix`; native canvas operations
+from `skia/canvas-matrix`. Both are also exported by `skia`.
+See [the guide](PROJECTIVE-MATRICES.md) and [validation](PROJECTIVE-TESTING.md).
+The existing six-coefficient `matrix?` API is unchanged. The new types are
+immutable, use row-major coefficients, and multiply column vectors.
+
+```racket
+(matrix3? value)
+(make-matrix3 [a 1] [b 0] [c 0] [d 0] [e 1] [f 0] [g 0] [h 0] [i 1])
+matrix3-identity
+(vector->matrix3 vector-of-9)
+(matrix3->vector matrix3) ; immutable row-major vector
+(matrix3-ref matrix3 row column) ; zero-based indices
+(matrix3-compose matrix3 ...) ; A*B applies B first; no arguments => identity
+(matrix3-transpose matrix3)
+(matrix3-invert matrix3) ; matrix3 or #f if singular/out of range
+(matrix3-perspective px py) ; W = 1 + px*x + py*y
+(matrix3-affine? matrix3) ; bottom row (0 0 k), k nonzero
+(matrix->matrix3 affine)
+(matrix3->matrix matrix3) ; normalize k; affine or #f, no silent projection
+(matrix3-map-homogeneous matrix3 x y [w 1]) ; immutable #(X Y W), no divide
+(matrix3-map-point matrix3 x y) ; immutable #(X/W Y/W), or #f
+(matrix3-map-rect matrix3 x y width height) ; #(x y width height), or #f
+
+(matrix4? value)
+(make-matrix4 [a 1] [b 0] [c 0] [d 0]
+              [e 0] [f 1] [g 0] [h 0]
+              [i 0] [j 0] [k 1] [l 0]
+              [m 0] [n 0] [o 0] [p 1])
+matrix4-identity
+(vector->matrix4 vector-of-16)
+(matrix4->vector matrix4) ; immutable row-major vector
+(matrix4-ref matrix4 row column)
+(matrix4-compose matrix4 ...)
+(matrix4-transpose matrix4)
+(matrix4-invert matrix4) ; matrix4 or #f if singular/out of range
+(matrix4-translate x y [z 0])
+(matrix4-scale x [y x] [z 1])
+(matrix4-perspective positive-distance) ; W = 1 + Z/distance
+(matrix4-rotate-x-degrees degrees)
+(matrix4-rotate-y-degrees degrees)
+(matrix4-rotate-z-degrees degrees)
+(matrix4-affine-2d? matrix4) ; canonical 2D affine embedding, W=1
+(matrix->matrix4 affine)
+(matrix4->matrix matrix4) ; lossless canonical affine conversion, or #f
+(matrix3->matrix4 matrix3) ; exact embedding with Z unchanged
+(matrix4->matrix3 matrix4) ; lossless embedding conversion, or #f
+(matrix4-project-xy matrix4) ; explicitly lossy z=0 projection
+(matrix4-map-homogeneous matrix4 x y [z 0] [w 1]) ; #(X Y Z W)
+(matrix4-map-point matrix4 x y [z 0]) ; #(X/W Y/W Z/W), or #f
+(matrix4-map-rect matrix4 x y width height) ; z=0 drawing-plane bounds, or #f
+
+(canvas-matrix4 canvas) ; detached full matrix4 snapshot
+(canvas-set-matrix4! canvas matrix4) ; replace, do not replace clip
+(canvas-concat-matrix4! canvas matrix4) ; current * local
+(canvas-set-matrix3! canvas matrix3)
+(canvas-concat-matrix3! canvas matrix3)
+(call-with-canvas-matrix canvas matrix thunk #:replace? [replace? #f])
+(with-canvas-matrix canvas matrix body ...)
+(with-canvas-matrix canvas matrix #:replace? replace? body ...)
+```
+
+Matrix inputs are checked and copied as finite IEEE binary32 coefficients.
+Point-query results are double-precision immutable vectors, unlike the old
+affine query procedures' multiple values. Invalid arguments raise contract
+errors; unavailable inverse/projection results return `#f`. Rectangle extents
+must be nonnegative. Projected rectangle bounds return `#f` when W is zero on
+an edge or changes sign across the rectangle. Negative-W results are mathematical
+projections, not native visibility claims; these are not stroked/filtered bounds.
+
+`matrix4-project-xy` must be applied after full composition when depth can affect
+the result. Its lossless alternative, `matrix4->matrix3`, refuses retained Z
+terms. Full canvas readback preserves all sixteen coefficients; the existing
+`canvas-transform` continues to reject noncanonical affine state.
+
+The scoped procedure accepts any of `matrix?`, `matrix3?`, or `matrix4?`, and a
+zero-argument thunk with no required keywords. It preserves any number of return
+values and restores matrix, clip, and nested saves on normal or exceptional exit.
+Concatenation preserves physical-unit/margin transforms; replacement deliberately
+discards the previous transform, but does not undo an already installed clip.
+An unrepresentable composed matrix is rejected; a non-finite native multiplication
+result is rolled back before raising an error.
+
+General matrix operations use the `projective-transform` output feature. They
+are conservatively `needs-raster` in both PDF and SVG, and `rasterized` inside
+an explicit group. Install the matrix inside the `draw-rasterized` callback:
+a later group does not repair an outer perspective transform. Canonical affine
+matrices remain vector-compatible. Recording retains this feature even before
+an audit starts. No automatic rasterization, near/far planes, Z buffer, or
+hidden-surface processing is installed. See the guide for the axis convention,
+rounding behavior, projected bounds, and complete export example.
 
 ## Structured geometry and advanced image drawing
 

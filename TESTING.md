@@ -1,6 +1,22 @@
 # Testing
 
-## Current revision: structured geometry (0.31)
+## Current revision: perspective and general matrices (0.32)
+
+The baseline is `85f8292a5925cc14bad880675385e7d9c5a75067`, including the SVG
+region-seam fix; the maintainer reports passing 0.31 tests. This pass adds
+**59 pure + 36 native cases**, for **971 expected total**
+(418 pure + 6 lifetime + 547 native). `--pure` runs 424.
+Required symbols remain **367 Skia / 27 HarfBuzz**. SkM44 remains 64 bytes;
+the new eighth host-C mirror checks row-major/column-major conversion offsets.
+
+Run [the general-matrix validation sequence](docs/PROJECTIVE-TESTING.md).
+One selected Racket compiles all `tests/*.rkt`, then runs doctor, the full suite,
+and the combined three-page PDF/SVG/reference registry. The structural inspector
+checks bounded raster groups, full matrix snapshots, composition, and unsafe
+preflight reports. Racket/native execution was unavailable during authoring;
+source/context-patch, host-C, and synthetic Python checks do not replace it.
+
+## Previous revision: structured geometry (0.31)
 
 38 pure + 42 native cases are added: **876 expected total**
 (359 pure + 6 lifetime + 511 native). `--pure` runs 365.

@@ -37,7 +37,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('canvas-pure-test.rkt','canvas-pure-tests'),
               ('canvas-native-test.rkt','canvas-native-tests'),
               ('geometry-pure-test.rkt','geometry-pure-tests'),
-              ('geometry-native-test.rkt','geometry-native-tests')]:
+              ('geometry-native-test.rkt','geometry-native-tests'),
+              ('projective-pure-test.rkt','projective-pure-tests'),
+              ('projective-native-test.rkt','projective-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -79,7 +81,7 @@ assert not set(output_exports)-output_defined, sorted(set(output_exports)-output
 assert not [s for s in output_exports if s not in api]
 # Pure matrix values and the private implementation's SAFE public exports.
 # No binding from core's path-matrix-internals submodule is exported by main.
-for module in ['matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rkt', 'color-space.rkt', 'annotations.rkt', 'runtime-effects.rkt']:
+for module in ['projective-matrix.rkt', 'canvas-matrix.rkt', 'matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rkt', 'color-space.rkt', 'annotations.rkt', 'runtime-effects.rkt']:
     local=set(); public=[]
     for form in sexps((R/module).read_text()):
         if not isinstance(form,list) or not form: continue
@@ -109,6 +111,7 @@ for module in ['output-policy.rkt', 'output-audit.rkt', 'canvas-primitives.rkt',
             assert not [x for x in public if x not in api], (module, public)
 subprocess.run(['bash','-n',str(R/'tools/validate-canvas-primitives.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-geometry-primitives.sh')],check=True)
+subprocess.run(['bash','-n',str(R/'tools/validate-projective-matrices.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

@@ -1,6 +1,29 @@
-# Racket Skia — 0.31.0
+# Racket Skia — 0.32.0
 
-## Structured geometry and advanced image drawing
+## Perspective and general canvas matrices
+
+Immutable row-major `matrix3?` and `matrix4?` values add homogeneous point
+mapping, horizon-aware rectangle bounds, composition, inversion, and retained
+Z coordinates. `canvas-matrix4` reads all sixteen coefficients;
+`with-canvas-matrix` composes or replaces the matrix in a protected state scope.
+The existing six-coefficient affine API is unchanged. Native packing converts
+the public row-major representation to the pinned column-major SkM44 ABI.
+
+General matrices are conservatively reported as `needs-raster` for both PDF
+and SVG. Apply the matrix **inside** `draw-rasterized`; canonical affine matrices
+still pass vector-only export. Recorded pictures retain matrix provenance.
+There is no automatic fallback, depth buffer, or hidden-surface removal.
+
+See [the matrix guide](docs/PROJECTIVE-MATRICES.md) and
+[the validation sequence](docs/PROJECTIVE-TESTING.md).
+Expected suite: **971 cases** (59 new pure + 36 new native);
+**367 Skia / 27 HarfBuzz** symbols, unchanged. No new native layout or callout.
+The baseline is `85f8292a5925cc14bad880675385e7d9c5a75067`, including the SVG
+region-seam fix. The maintainer reports passing 0.31 tests. This authoring pass
+has source/context-patch, host-C, and Python-inspector checks, **not Racket/native
+execution**. Run the selected-interpreter validation before accepting 0.32.
+
+## Previous revision: structured geometry (0.31)
 
 Owned integer regions and copied triangle meshes, pure lattice/atlas/Coons-patch
 specifications, and native nine-patch/lattice/atlas/patch drawing now use the

@@ -4,7 +4,7 @@
 (provide audit-allocate audit-use audit-native-call audit-on-canvas
          audit-page-index audit-labels call-with-audit-collector
          call-with-audit-raster audit-raster-annotation!
-         current-output-audit-event-limit)
+         current-output-audit-event-limit call-with-audit-matrix)
 
 ;; Weak keys are lifetime cells. Values contain only immutable symbolic
 ;; summaries: no native pointer, owned cell, source program, or child wrapper.
@@ -149,6 +149,15 @@
                         backend op feature (output-audit-event-status event))
                 (current-continuation-marks) event))))))
 
+;; Only the synchronous matrix FFI call is wrapped, never user drawing code.
+;; This also records non-affine matrix use in picture provenance when no audit
+;; collector is installed. The policy is deliberately operation-conservative.
+(define matrix-features (make-parameter '()))
+(define (call-with-audit-matrix general? thunk)
+  (unless (boolean? general?)
+    (raise-argument-error 'call-with-audit-matrix "boolean?" general?))
+  (parameterize ([matrix-features (if general? '(projective-transform) '())]) (thunk)))
+
 (define (native-feature name args)
   (case name
     [(sk_canvas_draw_paint sk_canvas_draw_line sk_canvas_draw_rect sk_canvas_draw_round_rect
@@ -177,7 +186,8 @@
     [(sk_canvas_clip_rect_with_operation sk_canvas_clip_path_with_operation)
      (list (if (= (list-ref args 2) 0) 'clip-difference 'clip-intersect))]
     [(sk_canvas_translate sk_canvas_scale sk_canvas_rotate_degrees sk_canvas_rotate_radians
-      sk_canvas_skew sk_canvas_reset_matrix sk_canvas_set_matrix sk_canvas_concat) '(transform)]
+      sk_canvas_skew sk_canvas_reset_matrix) '(transform)]
+    [(sk_canvas_set_matrix sk_canvas_concat) (append '(transform) (matrix-features))]
     [else
      (and (string-prefix? (symbol->string name) "sk_canvas_draw_") '(unknown-operation))]))
 (define (drawable? name)

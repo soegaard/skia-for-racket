@@ -1,5 +1,23 @@
 # Native ABI and ownership notes
 
+## General canvas matrices
+
+The public 3x3/4x4 vectors are **row-major**; pinned canvas set/concat/get calls
+use the existing **column-major SkM44** record, 16 floats / 64 bytes. The bridge
+packs each coefficient at `column*4 + row`, and reverses that conversion on
+readback. Translation X/Y/Z is at byte offsets 48/52/56; W's row is at offsets
+12/28/44/60. No new native symbols or layouts are introduced: 367 Skia / 27
+HarfBuzz remain required. The eighth host-C mirror independently checks offsets;
+the native doctor also verifies readback against existing translation callouts.
+
+Values contain only copied numbers. All matrix buffers are scoped to synchronous
+FFI calls; canvas validation uses the existing owner, thread, and borrowed-lifetime
+bridge. General matrix scopes reuse protected save-stack floors. Exact arithmetic
+checks composition range first; a non-finite native result is restored to the
+previous full matrix before raising. Full readback does not silently truncate
+to affine/3x3. See [PROJECTIVE-MATRICES.md](PROJECTIVE-MATRICES.md) for the exact
+embedding, explicit plane projection, rounding, and conservative output policy.
+
 ## Structured geometry
 
 Thirty-one additional callouts bring the requirement to 367 Skia / 27 HarfBuzz.
