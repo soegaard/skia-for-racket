@@ -426,6 +426,18 @@
      (audit-on-canvas who owner backend (resource-handle who owner) others
                       (lambda () (apply proc cp ps))))))
 
+(module* output-group-internals #f
+  (provide picture-h output-group-canvas-backend output-group-canvas-recording-handle)
+  (define (output-group-canvas-backend who c)
+    (define owner (canvas-owner who c))
+    (call-on-canvas who c '() (lambda ignored (void)))
+    (cond [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
+          [(pdf-page? owner) 'pdf] [else 'svg]))
+  (define (output-group-canvas-recording-handle who c)
+    (define owner (canvas-owner who c))
+    (call-on-canvas who c '() (lambda ignored (void)))
+    (and (picture-recorder? owner) (picture-recorder-handle owner))))
+
 (define (initialize-resource v proc)
   (with-handlers ([exn? (lambda (e) (skia-close! v) (raise e))])
     (proc v)
@@ -666,7 +678,9 @@
      backend pw ph (hasheq 'x dx 'y dy 'width bw 'height bh)
      (lambda ()
        (parameterize ([current-text-output-mode 'native])
-         (call-with-values (lambda () (proc rc)) (lambda ignored (void))))))
+         (call-with-values (lambda () (proc rc)) (lambda ignored (void)))))
+     #:recording-handle
+     (and (eq? backend 'recording) (picture-recorder-handle owner)))
     (with-skia ([im (surface-snapshot s)])
       (draw-image-rect c im dx dy bw bh #:sampling 'linear)))
   (void))

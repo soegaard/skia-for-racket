@@ -21,7 +21,10 @@
 (define output-backends '(pdf svg raster))
 (define specifications
   ;; feature       PDF                  SVG                  explanation
-  '((geometry       vector               vector               "Ordinary path/shape geometry; paint and clip features are reported separately.")
+  '((output-group   vector               vector               "Captured bounded group replayed natively; resource features are reported separately.")
+    (source-replace vector               vector               "Source-replacing canvas clear; bounded output groups isolate it before compositing.")
+    (rasterized-annotation discarded     discarded            "An annotation was discarded by explicit rasterization into a recorded picture.")
+    (geometry       vector               vector               "Ordinary path/shape geometry; paint and clip features are reported separately.")
     (point-sprites  vector               needs-raster         "Native isolated-point drawing is not implemented by the pinned SVG device; rasterize point sets explicitly.")
     (recorded-color-fill vector          needs-raster         "An unbounded color fill recorded in a picture depends on the receiving clip/replay matrix. Use finite geometry or explicit rasterization for portable SVG replay.")
     (layer          native-expansion     needs-raster         "A compositing layer can expand/rasterize in PDF and is not generally preserved by SVG. Supply conservative content bounds: m119 may restrict the layer to them. Layer-contained annotations may be lost.")
@@ -71,7 +74,7 @@
   (unless row (raise-argument-error 'output-capability-for "symbol in output-feature-names" feature))
   (define status
     (if (eq? backend 'raster)
-        (case feature [(annotation picture-shader-annotation) 'discarded]
+        (case feature [(annotation picture-shader-annotation rasterized-annotation) 'discarded]
               [(unknown-resource unknown-operation deserialized-picture) 'unknown]
               [else 'rasterized])
         (list-ref row (if (eq? backend 'pdf) 1 2))))
@@ -80,7 +83,7 @@
    (if (eq? backend 'raster)
        (case feature
          [(annotation) "Raster output has no link/destination metadata; annotate the receiving document canvas instead."]
-         [(unknown-resource unknown-operation deserialized-picture picture-shader-annotation) (list-ref row 3)]
+         [(unknown-resource unknown-operation deserialized-picture picture-shader-annotation rasterized-annotation) (list-ref row 3)]
          [else "Rendered as raster content. The enclosing explicit group addresses vector serialization, not backdrop, padding, or color-fidelity questions."])
        (cond
          [(and (eq? backend 'pdf) (eq? feature 'native-text))

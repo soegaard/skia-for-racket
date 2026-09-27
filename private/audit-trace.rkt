@@ -4,7 +4,8 @@
 (provide audit-allocate audit-use audit-native-call audit-on-canvas
          audit-page-index audit-labels call-with-audit-collector
          call-with-audit-raster audit-raster-annotation!
-         current-output-audit-event-limit call-with-audit-matrix)
+         current-output-audit-event-limit call-with-audit-matrix
+         audit-resource-features call-with-output-capture audit-output-group!)
 
 ;; Weak keys are lifetime cells. Values contain only immutable symbolic
 ;; summaries: no native pointer, owned cell, source program, or child wrapper.
@@ -22,6 +23,23 @@
 (define (union . lists) (remove-duplicates (append* lists)))
 ;; Dynamic pointer associations exist only within synchronous FFI scopes.
 ;; They are never put into a report or into the persistent provenance table.
+;; Capture authoring into a picture without publishing temporary operations in
+;; the receiving document's collector. Resource provenance still accumulates.
+(define (audit-resource-features handle) (features handle))
+(define (call-with-output-capture thunk)
+  (parameterize ([collecting #f] [raster-groups '()]) (thunk)))
+
+;; Explicit rasterization into a recording must not erase unknown resources or
+;; discarded annotations. Each sink belongs to one recorder; no pointer escapes.
+(define raster-loss-sinks (make-parameter '()))
+(define (retain-raster-losses! fs)
+  (for ([sink (in-list (raster-loss-sinks))])
+    (for ([f (in-list fs)])
+      (define status (output-capability-status (output-capability-for 'raster f)))
+      (when (memq status '(unknown discarded unsupported))
+        (define loss (if (eq? f 'annotation) 'rasterized-annotation f))
+        (set-box! sink (union (unbox sink) (list loss)))))))
+
 (define uses (make-parameter '())) ; pairs (lifetime-cell . native-pointer)
 (struct allocation (who kind deps special) #:transparent)
 (define allocating (make-parameter #f))
@@ -170,8 +188,9 @@
 (define (native-feature name args)
   (case name
     [(sk_canvas_draw_paint sk_canvas_draw_line sk_canvas_draw_rect sk_canvas_draw_round_rect
-      sk_canvas_draw_circle sk_canvas_draw_oval sk_canvas_draw_path sk_canvas_clear
+      sk_canvas_draw_circle sk_canvas_draw_oval sk_canvas_draw_path
       sk_canvas_draw_arc sk_canvas_draw_rrect sk_canvas_draw_drrect) '(geometry)]
+    [(sk_canvas_clear) '(geometry source-replace)]
     [(sk_canvas_draw_region) '(geometry)]
     [(sk_canvas_draw_vertices) '(vertices)]
     [(sk_canvas_draw_patch) '(coons-patch)]
@@ -251,6 +270,8 @@
                 (for/list ([h (in-list (canvas-context-others cx))]
                            #:when (memq (handle-kind h) '(paint picture path unknown)))
                   (features h)))))
+  (when (and all (eq? (canvas-context-backend cx) 'raster))
+    (retain-raster-losses! all))
   (when all
     (cond
       [(eq? (canvas-context-backend cx) 'recording)
@@ -266,7 +287,21 @@
   (if skip? (void)
       (begin0 (thunk) (after-native! name args))))
 
-(define (call-with-audit-raster backend width height details thunk)
+(define (call-with-audit-raster backend width height details thunk
+                                #:recording-handle [recording-handle #f])
+  (define losses (box '()))
+  (define (run)
+    (define result
+      (parameterize ([raster-loss-sinks
+                      (if recording-handle
+                          (cons losses (raster-loss-sinks)) (raster-loss-sinks))])
+        (thunk)))
+    (when recording-handle
+      (define old (summary recording-handle))
+      (hash-set! resources recording-handle
+                 (provenance 'picture-recorder
+                             (union (provenance-features old) (unbox losses)) empty-slots)))
+    result)
   (define c (checked-collector))
   (if (and c (or (eq? backend (collector-backend c))
                  (and (eq? backend 'raster) (pair? (raster-groups)))))
@@ -274,9 +309,10 @@
         (set-collector-next-group! c id)
         (emit! 'draw-rasterized backend '(raster-group)
                (hash-set (hash-set details 'pixel_width width) 'pixel_height height))
-        (parameterize ([raster-groups (cons id (raster-groups))]) (thunk)))
-      (thunk)))
+        (parameterize ([raster-groups (cons id (raster-groups))]) (run)))
+      (run)))
 (define (audit-raster-annotation! operation backend)
+  (retain-raster-losses! '(annotation))
   ;; The public annotation layer intentionally makes raster annotations no-ops.
   ;; Report their semantic loss within an explicit group even though no native
   ;; annotation call is emitted by that layer.
@@ -286,3 +322,10 @@
 (module* testing #f
   (provide provenance resources summary features put-slot! uses canvas-context
            native-feature after-native! emit!))
+
+;; A single decision event complements the ordinary replay/resource events.
+;; It is emitted before destination drawing, so an outer strict policy can veto
+;; a raster strategy even when the local group policy permits that strategy.
+(define (audit-output-group! backend raster? details)
+  (emit! 'draw-output-group backend
+         (list (if raster? 'raster-group 'output-group)) details))

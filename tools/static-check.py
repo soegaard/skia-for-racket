@@ -41,7 +41,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('projective-pure-test.rkt','projective-pure-tests'),
               ('projective-native-test.rkt','projective-native-tests'),
               ('picture-pure-test.rkt','picture-pure-tests'),
-              ('picture-native-test.rkt','picture-native-tests')]:
+              ('picture-native-test.rkt','picture-native-tests'),
+              ('output-group-pure-test.rkt','output-group-pure-tests'),
+              ('output-group-native-test.rkt','output-group-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
