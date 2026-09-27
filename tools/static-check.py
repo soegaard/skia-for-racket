@@ -43,7 +43,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('picture-pure-test.rkt','picture-pure-tests'),
               ('picture-native-test.rkt','picture-native-tests'),
               ('output-group-pure-test.rkt','output-group-pure-tests'),
-              ('output-group-native-test.rkt','output-group-native-tests')]:
+              ('output-group-native-test.rkt','output-group-native-tests'),
+              ('portable-pure-test.rkt','portable-pure-tests'),
+              ('portable-native-test.rkt','portable-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -117,6 +119,13 @@ subprocess.run(['bash','-n',str(R/'tools/validate-canvas-primitives.sh')],check=
 subprocess.run(['bash','-n',str(R/'tools/validate-geometry-primitives.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-projective-matrices.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-persistent-pictures.sh')],check=True)
+# Portable drawing re-exports checked immutable plan values from its helper.
+portable_api=(R/'docs/PORTABLE-DRAWING.md').read_text()
+for form in sexps((R/'portable-drawing.rkt').read_text()):
+    if isinstance(form,list) and form and form[0]=='provide':
+        public=[x for x in form[1:] if isinstance(x,str)]
+        assert not [x for x in public if x not in portable_api], public
+subprocess.run(['bash','-n',str(R/'tools/validate-portable-drawing.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Compile, test, generate every review page, then inspect before updating sums.
+set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+RACKET="${RACKET:-racket}"
+PYTHON="${PYTHON:-python3}"
+"$RACKET" -e '(printf "Validation interpreter: ~a; version ~a; VM ~a; platform ~a/~a\n" (find-system-path (quote exec-file)) (version) (system-type (quote vm)) (system-type (quote os)) (system-type (quote arch)))'
+"$PYTHON" tools/static-check.py
+"$PYTHON" tools/inspect-portable-drawing.py --self-test
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/skia-portable-XXXXXX")"
+trap 'rm -rf "$WORK"' EXIT
+for NAME in codec pdf path-matrix filter color-output runtime geometry projective; do
+  "${CC:-cc}" -std=c11 -Wall -Wextra -pedantic "tools/check-$NAME-abi.c" -o "$WORK/$NAME"
+  "$WORK/$NAME"
+done
+bash tools/audit-symbols.sh
+bash tools/audit-harfbuzz-symbols.sh
+# Never select a different raco from PATH. Include all dynamically loaded tests.
+"$RACKET" -l raco -- make main.rkt portable-drawing.rkt output.rkt bitmap.rkt \
+  tools/doctor.rkt tools/portable-drawing-doctor.rkt run-tests.rkt tests/*.rkt \
+  examples/portable-drawing.rkt
+"$RACKET" tools/doctor.rkt
+"$RACKET" tools/portable-drawing-doctor.rkt
+"$RACKET" run-tests.rkt
+mkdir -p output
+PREFIX="output/portable-drawing-0.35"
+"$RACKET" examples/portable-drawing.rkt "$PREFIX"
+PDF_ARGS=()
+case "${CHECK_PDF:-auto}" in
+  1) PDF_ARGS=(--pdf) ;;
+  0) ;;
+  auto)
+    if "$PYTHON" -c 'import pypdf' >/dev/null 2>&1; then
+      PDF_ARGS=(--pdf)
+    else
+      printf '%s\n' 'PDF structure NOT CHECKED: pypdf is unavailable; SVG, crop plans and audits will still be checked.' >&2
+    fi ;;
+  *) printf '%s\n' 'CHECK_PDF must be auto, 0, or 1.' >&2; exit 2 ;;
+esac
+# Publish a complete inspection report only after the inspector succeeds.
+"$PYTHON" tools/inspect-portable-drawing.py --probe-prefix "$PREFIX" "${PDF_ARGS[@]}" > "$WORK/inspection.json"
+cp "$WORK/inspection.json" "$PREFIX.inspection.json"
+cat "$PREFIX.inspection.json"
+"$PYTHON" tools/update-source-sums.py
