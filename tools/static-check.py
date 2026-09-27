@@ -47,7 +47,9 @@ for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-test
               ('portable-pure-test.rkt','portable-pure-tests'),
               ('portable-native-test.rkt','portable-native-tests'),
               ('color-filter-pure-test.rkt','color-filter-pure-tests'),
-              ('color-filter-native-test.rkt','color-filter-native-tests')]:
+              ('color-filter-native-test.rkt','color-filter-native-tests'),
+              ('raster-buffer-pure-test.rkt','raster-buffer-pure-tests'),
+              ('raster-buffer-native-test.rkt','raster-buffer-native-tests')]:
     ast=sexps((R/'tests'/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
@@ -135,6 +137,13 @@ for form in sexps((R/'color-filters.rkt').read_text()):
         public=[x for x in form[1:] if isinstance(x,str)]
         assert not [x for x in public if x not in color_filter_api], public
 subprocess.run(['bash','-n',str(R/'tools/validate-color-filters.sh')],check=True)
+# Raster storage keeps its public ownership/borrow contract in its own guide.
+raster_buffer_api=(R/'docs/RASTER-BUFFERS.md').read_text()
+for form in sexps((R/'raster-buffers.rkt').read_text()):
+    if isinstance(form,list) and form and form[0]=='provide':
+        public=[x for x in form[1:] if isinstance(x,str)]
+        assert not [x for x in public if x not in raster_buffer_api], public
+subprocess.run(['bash','-n',str(R/'tools/validate-raster-buffers.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
 for f in R.rglob('*.rkt'):
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):

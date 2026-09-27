@@ -9,6 +9,18 @@
   (provide color-space-h wrap-owned-color-space))
 (provide image-convert-color-space)
 
+;; Native RGBA memory has exclusive canvas/pixmap borrows. The state box
+;; protects explicit close; a scope also keeps the allocation reachable.
+(struct raster-buffer-resource (handle width height row-bytes colorspace state)
+  #:constructor-name make-raster-buffer-record)
+(module* raster-buffer-internals #f
+  (provide raster-buffer-resource? make-raster-buffer-record
+           raster-buffer-resource-handle raster-buffer-resource-width
+           raster-buffer-resource-height raster-buffer-resource-row-bytes
+           raster-buffer-resource-colorspace raster-buffer-resource-state
+           make-surface-record make-image-record color-space-h
+           call-with-native-temporary))
+
 ;; Persistent-picture helpers share the existing owned picture/shader types.
 ;; Native pointers and constructors stay behind this private module bridge.
 (module* picture-internals #f
@@ -276,7 +288,7 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (region-resource? v) (vertices-resource? v)
+  (or (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
@@ -285,7 +297,8 @@
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
-  (cond [(region-resource? v) (region-resource-handle v)]
+  (cond [(raster-buffer-resource? v) (raster-buffer-resource-handle v)]
+        [(region-resource? v) (region-resource-handle v)]
         [(vertices-resource? v) (vertices-resource-handle v)]
         [(runtime-effect-resource? v) (runtime-effect-resource-handle v)]
         [(blender-resource? v) (blender-resource-handle v)]
@@ -320,6 +333,9 @@
         [else (owned-closed? (resource-handle 'skia-closed? owner))]))
 
 (define (skia-close! v)
+  (when (and (raster-buffer-resource? v) (unbox (raster-buffer-resource-state v)))
+    (call-with-owned 'skia-close! (list (raster-buffer-resource-handle v))
+      (lambda (_) (error 'skia-close! "cannot close a raster buffer inside an active borrow"))))
   (owned-close! 'skia-close! (resource-handle 'skia-close! v))
   (annotation-forget! v)
   ;; A font created without an explicit typeface owns a private default

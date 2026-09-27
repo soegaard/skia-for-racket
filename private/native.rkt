@@ -329,6 +329,19 @@
 ;; Native-owned CPU surfaces. No Racket byte buffer is retained by Skia.
 (define-native sk_surface_new_raster
   (_fun _sk-image-info-pointer _size _pointer -> _pointer))
+
+;; Direct storage is native-owned by the Racket wrapper. A null releaseProc
+;; means Skia borrows it only until the scoped surface is unreferenced.
+(define-native sk_surface_new_raster_direct
+  (_fun _sk-image-info-pointer _pointer _size _pointer _pointer _pointer -> _pointer))
+(define-native sk_pixmap_new_with_params
+  (_fun _sk-image-info-pointer _pointer _size -> _pointer))
+(define-native sk_pixmap_get_pixel_color (_fun _pointer _int _int -> _uint32))
+(define-native sk_pixmap_read_pixels
+  (_fun _pointer _sk-image-info-pointer _bytes _size _int _int -> _stdbool))
+(define-native sk_pixmap_erase_color (_fun _pointer _uint32 _pointer -> _stdbool))
+(define-native sk_pixmap_scale_pixels
+  (_fun _pointer _pointer _sk-sampling-pointer -> _stdbool))
 (define-native sk_surface_unref (_fun _pointer -> _void))
 (define-native sk_surface_get_canvas (_fun _pointer -> _pointer))
 (define-native sk_surface_new_image_snapshot (_fun _pointer -> _pointer))
