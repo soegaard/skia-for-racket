@@ -1,6 +1,8 @@
 # GPU foundation validation
 
-> For the current 0.40 sequence use [GPU-IMAGE-TESTING.md](GPU-IMAGE-TESTING.md).
+> For the current 0.41 sequence use [GPU-METAL-TESTING.md](GPU-METAL-TESTING.md).
+> The commands and acceptance notes below record the earlier foundation stage;
+> do not reapply earlier patches to an updated checkout.
 > The common validator also retains the offscreen comparisons and window
 > diagnostics described in [GPU-OFFSCREEN-TESTING.md](GPU-OFFSCREEN-TESTING.md).
 > The revision-specific artifacts and acceptance notes below describe 0.38.

@@ -1,6 +1,6 @@
 #lang racket/base
 (require ffi/unsafe/alloc ffi/unsafe/atomic
-         racket/list racket/future "gpu-provider.rkt")
+         racket/list racket/future "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide (struct-out gpu-driver)
          make-gpu-domain gpu-domain? domain-backend domain-generation domain-state
          domain-info domain-call domain-pointer domain-close! domain-abandon!
@@ -14,7 +14,7 @@
 
 ;; Driver procedures are PRIVATE native operations, not application callbacks.
 ;; create/describe/reset/release require a current provider. abandon must follow
-;; the backend's lost-context contract. This stage only publishes a GL driver.
+;; the backend's lost-context contract. GL and Metal share this state machine.
 (struct gpu-driver (create release abandon reset describe))
 (struct gpu-domain
   (provider driver owner generation [state #:mutable] [pointer #:mutable]
@@ -245,7 +245,7 @@
      (domain-resource d (domain-generation d) p release kind keepalive))))
 (define (domain-new-resource d kind create release #:keepalive [keepalive #f])
   (usable! 'domain-new-resource d) (current! 'domain-new-resource d)
-  (allocate-resource d kind create release keepalive))
+  (allocate-resource d kind create (capture-gpu-native-release release) keepalive))
 (define cancel-and-enqueue! ((deallocator) enqueue-resource!))
 ;; Internal finalizer entry point: unlike public close, it must not check the
 ;; current thread. It cancels this registration and ONLY queues destruction.

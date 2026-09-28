@@ -10,3 +10,10 @@
 (define gr-metal 2)
 (define gr-top-left 0)
 (define gr-bottom-left 1)
+
+;; Compare real native identity with the owning domain, not a fixed GL tag.
+(define (gpu-backend-native-id backend)
+  (case backend
+    [(opengl) gr-opengl]
+    [(metal) gr-metal]
+    [else (raise-argument-error 'gpu-backend-native-id "'opengl or 'metal" backend)]))

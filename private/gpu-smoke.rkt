@@ -28,8 +28,9 @@
          (define recording (sk_surface_get_recording_context sp))
          (unless (and recording
                       (pointer=? (gr_recording_context_get_direct_context recording) context)
-                      (= (gr_recording_context_get_backend recording) gr-opengl))
-           (error 'gpu-smoke-test "target is not backed by this Ganesh OpenGL context"))
+                      (= (gr_recording_context_get_backend recording)
+                         (gpu-backend-native-id (domain-backend domain))))
+           (error 'gpu-smoke-test "target is not backed by the requested Ganesh backend/context"))
          (define canvas (sk_surface_get_canvas sp))
          (unless canvas (error 'gpu-smoke-test "GPU surface returned a null canvas"))
          (define pp (resource-pointer paint))
@@ -54,7 +55,8 @@
                  'sample_count_note "The pinned C API does not expose this Skia-owned target's actual sample count."
                  'origin "top-left" 'transfer_format "RGBA8888-unpremultiplied"
                  'render_path "sk_surface_new_render_target"
-                 'native_backend gr-opengl 'context_matches #t 'exact_pixels #t))
+                 'native_backend (gpu-backend-native-id (domain-backend domain))
+                 'context_matches #t 'exact_pixels #t))
        (lambda ()
          (when paint (domain-resource-close! paint))
          (when surface (domain-resource-close! surface)))))))

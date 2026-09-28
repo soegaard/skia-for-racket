@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect 0.39 live files; synthetic self-tests do not exercise Racket or a GPU.
+"""Inspect OpenGL/Metal live files; synthetic self-tests do not exercise Racket or a GPU.
 
 Only the standard library is required. PNG checks compare decoded samples, not
 compressed streams. Tolerances are deliberately explicit initial acceptance
@@ -84,19 +84,21 @@ def png(data: bytes, expected: tuple[int, int]) -> bytes:
         mode = raw[offset]
         require(mode in range(5), 'unknown PNG row filter')
         row = bytearray(raw[offset+1:offset+1+stride])
-        for x in range(stride):
-            a = row[x-bpp] if x >= bpp else 0
-            b = previous[x]
-            c = previous[x-bpp] if x >= bpp else 0
-            if mode == 0: predictor = 0
-            elif mode == 1: predictor = a
-            elif mode == 2: predictor = b
-            elif mode == 3: predictor = (a+b)//2
-            else:
-                p = a+b-c
-                pa,pb,pc = abs(p-a),abs(p-b),abs(p-c)
-                predictor = a if pa <= pb and pa <= pc else b if pb <= pc else c
-            row[x] = (row[x]+predictor) & 255
+        # Filter 0 is already decoded; avoid a Python operation per channel.
+        if mode != 0:
+            for x in range(stride):
+                a = row[x-bpp] if x >= bpp else 0
+                b = previous[x]
+                c = previous[x-bpp] if x >= bpp else 0
+                if mode == 0: predictor = 0
+                elif mode == 1: predictor = a
+                elif mode == 2: predictor = b
+                elif mode == 3: predictor = (a+b)//2
+                else:
+                    p = a+b-c
+                    pa,pb,pc = abs(p-a),abs(p-b),abs(p-c)
+                    predictor = a if pa <= pb and pa <= pc else b if pb <= pc else c
+                row[x] = (row[x]+predictor) & 255
         if bpp == 4: result.extend(row)
         else:
             for x in range(0,stride,3): result.extend((*row[x:x+3],255))
@@ -159,10 +161,17 @@ def comparison(cpu, gpu, name):
             'exact_orientation_alpha_markers':True}
 
 
-def context(info, *, closed=False):
+BACKEND_IDS = {"opengl": 0, "metal": 2}
+
+def context(info, *, closed=False, backend="opengl"):
     require(isinstance(info,dict), 'missing context snapshot')
-    require(info.get('backend') == 'opengl' and info.get('native_backend') == 0,
-            'context is not native OpenGL')
+    require(backend in BACKEND_IDS and info.get('backend') == backend and
+            type(info.get('native_backend')) is int and info['native_backend'] == BACKEND_IDS[backend],
+            'context is not the requested native backend')
+    if backend == 'metal':
+        require(info.get('owns_command_queue') is True and info.get('requires_gl_context') is False and
+                info.get('requires_window') is False and isinstance(info.get('device'), str) and info['device'],
+                'Metal context does not identify its owned headless device/queue')
     require(info.get('state') == ('closed' if closed else 'ready'), 'incorrect context lifecycle state')
     require(integer(info.get('generation'),1), 'invalid context generation')
     for field in ('live_children','pending_releases','failed_releases'):
@@ -181,25 +190,35 @@ def inventory(data, names):
 
 
 def common(data):
-    require(data.get('schema_version') == 1 and data.get('stage') == '0.39', 'wrong diagnostic schema/stage')
-    require(data.get('status') == 'passed' and data.get('backend') == 'opengl', 'diagnostic did not pass OpenGL')
+    require(type(data.get('schema_version')) is int and data['schema_version'] == 1 and
+            data.get('stage') in ('0.39', '0.41'), 'wrong diagnostic schema/stage')
+    backend = data.get('backend')
+    require(data.get('status') == 'passed' and backend in BACKEND_IDS, 'diagnostic did not pass')
+    require(backend == 'opengl' or data['stage'] == '0.41', 'legacy report cannot establish Metal rendering')
+    if backend == 'metal':
+        require(data.get('os') == 'macosx' and data.get('host', {}).get('headless') is True,
+                'Metal rendering report is not from the headless macOS host')
     require(data.get('performance_measured') is False, 'this diagnostic does not measure performance')
-    context(data.get('initial_context'))
-    context(data.get('closed_context'),closed=True)
+    context(data.get('initial_context'), backend=backend)
+    context(data.get('closed_context'), closed=True, backend=backend)
     require(data['closed_context']['generation'] == data['initial_context']['generation'],
             'teardown refers to a different context')
     if data.get('require_hardware'):
         require(data['initial_context']['renderer_class'] == 'hardware-reported',
                 'required hardware renderer not reported')
+    return backend
 
 
 def offscreen(data, directory):
-    common(data)
+    backend = common(data)
+    if data["stage"] == "0.41":
+        require(type(data.get("native_test_cases")) is int and data["native_test_cases"] == 33,
+                "incorrect shared surface-suite coverage")
     require(data.get('kind') == 'offscreen', 'wrong diagnostic kind')
     inventory(data.get('surface_symbol_inventory'),SURFACE_SYMBOLS)
     require(type(data.get('native_test_failures')) is int and data['native_test_failures'] == 0,
             'live native test suite did not pass')
-    context(data.get('other_closed_context'),closed=True)
+    context(data.get('other_closed_context'),closed=True,backend=backend)
     require(data['other_closed_context']['generation'] != data['closed_context']['generation'],
             'cross-context tests need two distinct domains')
     require(data.get('detached_survived_teardown') is True, 'no detached-image teardown check')
@@ -217,7 +236,8 @@ def offscreen(data, directory):
                 'hidden transfer/panel fallback')
         target = scene.get('target',{})
         require(target.get('storage') == 'gpu' and target.get('target_kind') == 'offscreen' and
-                target.get('backend') == 'opengl' and target.get('native_backend') == 0 and
+                target.get('backend') == backend and type(target.get('native_backend')) is int and
+                target['native_backend'] == BACKEND_IDS[backend] and
                 target.get('context_matches') is True and target.get('render_path') == 'sk_surface_new_render_target',
                 'scene was not drawn into its actual Ganesh target')
         require(target.get('context_generation') == data['initial_context']['generation'], 'foreign scene context')
@@ -241,7 +261,7 @@ def offscreen(data, directory):
         cpu,gpu = load_image(directory,a,SIZE),load_image(directory,b,SIZE)
         stats = comparison(cpu,gpu,name)
         results.append({'name':name,'cpu_image':a,'gpu_image':b,**stats})
-    return {'schema_version':1,'stage':'0.39','status':'passed','kind':'offscreen','backend':'opengl',
+    return {'schema_version':1,'stage':data['stage'],'status':'passed','kind':'offscreen','backend':backend,
             'scenes_checked':len(results),'scenes':results,'rendering_verified':True,
             'exact_orientation_alpha_markers':True,'detached_image_survived_teardown':True,
             'renderer':data['initial_context']['renderer'],
@@ -250,7 +270,7 @@ def offscreen(data, directory):
 
 
 def window(data):
-    common(data)
+    require(common(data) == "opengl", "Metal presentation is not implemented by this diagnostic")
     require(data.get('kind') == 'window', 'wrong diagnostic kind')
     inventory(data.get('surface_symbol_inventory'),WINDOW_SYMBOLS)
     require(data.get('visible_pixels_verified') is False and data.get('manual_review_required') is True,
@@ -315,21 +335,28 @@ def atomic_text(path, text):
 
 def inspect(prefix):
     prefix = Path(prefix)
-    data = json.loads(Path(str(prefix)+'.diagnostic.json').read_text())
-    result = offscreen(data,prefix.parent) if data.get('kind') == 'offscreen' else window(data)
-    parts = ['<!doctype html><meta charset="utf-8"><title>Skia 0.39 GPU review</title>',
+    try:
+        report = Path(str(prefix)+'.diagnostic.json')
+        require(report.stat().st_size <= 4*1024*1024, 'oversized diagnostic report')
+        data = json.loads(report.read_text())
+        result = offscreen(data,prefix.parent) if data.get('kind') == 'offscreen' else window(data)
+    except (ValueError, OSError, KeyError, TypeError, AttributeError):
+        Path(str(prefix)+'.inspection.json').unlink(missing_ok=True)
+        Path(str(prefix)+'.review.html').unlink(missing_ok=True)
+        raise
+    parts = ['<!doctype html><meta charset="utf-8"><title>Skia GPU backend review</title>',
              '<style>body{font:16px system-ui;max-width:1100px;margin:2em auto;padding:0 1em;color:#172c3b}',
              'article{border-top:1px solid #ccd5dc;margin-top:2em;padding-top:1em}.pair{display:flex;gap:1em;flex-wrap:wrap}',
              'figure{margin:0}img{max-width:100%;background:repeating-conic-gradient(#ddd 0% 25%,white 0% 50%) 0/16px 16px}',
              'pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}figcaption{padding:.5em 0}</style>',
              '<h1>GPU surfaces — executed validation</h1>',
-             '<p>OpenGL target identity is checked by the native probe. CPU/GPU scene comparisons use direct independent draws of the same registry. ',
+             '<p>Requested native backend identity is checked by the native probe. CPU/GPU scene comparisons use direct independent draws of the same registry. ',
              'Initial numerical tolerances are not universal pixel-identity or performance guarantees.</p>']
     if result['kind'] == 'offscreen':
         parts.append('<p>Review crop edges, alpha, glyphs, shadows, meshes and perspective in both images. Transparent borders and four unequal corner colors check orientation.</p>')
         for s in result['scenes']:
             parts.append('<article><h2>'+html.escape(s['name'])+'</h2><div class="pair">')
-            for key,label in [('cpu_image','CPU reference'),('gpu_image','OpenGL readback')]:
+            for key,label in [('cpu_image','CPU reference'),('gpu_image',result['backend']+' readback')]:
                 parts.append(f'<figure><img width="420" height="260" src="{html.escape(s[key],quote=True)}" alt="{label}"><figcaption>{label}</figcaption></figure>')
             parts.append('</div><pre>'+html.escape(json.dumps(s,indent=2))+'</pre></article>')
     else:
@@ -392,6 +419,25 @@ def fixture(directory):
                     'native_backend':0,'context_matches':True,'render_path':'sk_surface_new_render_target',
                     'context_generation':1,'origin':'top-left','color_type':'RGBA8888','alpha_type':'premultiplied',
                     'actual_sample_count':False,'requested_sample_count':0}})
+    return data
+
+
+def fixture_metal_context(closed=False, generation=1):
+    info = fixture_context(closed, generation)
+    info.update(backend='metal', native_backend=2, device='SYNTHETIC Metal',
+                renderer='SYNTHETIC Metal', owns_command_queue=True,
+                requires_gl_context=False, requires_window=False)
+    return info
+
+
+def fixture_metal(directory):
+    data = fixture(directory)
+    data.update(stage='0.41', backend='metal', os='macosx', host={'headless': True}, native_test_cases=33)
+    data['initial_context'] = fixture_metal_context()
+    data['closed_context'] = fixture_metal_context(True)
+    data['other_closed_context'] = fixture_metal_context(True, 2)
+    for scene in data['scenes']:
+        scene['target'].update(backend='metal', native_backend=2)
     return data
 
 
@@ -460,6 +506,29 @@ class Checks(unittest.TestCase):
     def test_no_publication_on_error(self):
         self.data['status']='error'; prefix=self.root/'probe'
         Path(str(prefix)+'.diagnostic.json').write_text(json.dumps(self.data))
+        with self.assertRaises(ValueError): inspect(prefix)
+        self.assertFalse(Path(str(prefix)+'.inspection.json').exists())
+        self.assertFalse(Path(str(prefix)+'.review.html').exists())
+    def test_metal_valid(self):
+        self.assertEqual(offscreen(fixture_metal(self.root), self.root)['backend'], 'metal')
+    def test_metal_false_backend(self):
+        self.data = fixture_metal(self.root); self.data['initial_context']['native_backend'] = False; self.reject()
+    def test_metal_wrong_native_target(self):
+        self.data = fixture_metal(self.root); self.data['scenes'][0]['target']['native_backend'] = 0; self.reject()
+    def test_metal_wrong_context_type(self):
+        self.data = fixture_metal(self.root); self.data['closed_context']['backend'] = 'opengl'; self.reject()
+    def test_metal_requires_coverage(self):
+        self.data = fixture_metal(self.root); self.data['native_test_cases'] = False; self.reject()
+    def test_metal_headless_claim(self):
+        self.data = fixture_metal(self.root); self.data['host']['headless'] = False; self.reject()
+    def test_metal_is_not_a_window_implementation(self):
+        d = fixture_window(); d.update(stage='0.41', backend='metal')
+        with self.assertRaises(ValueError): window(d)
+    def test_failed_reinspection_removes_stale_success(self):
+        prefix = self.root/'probe'
+        for suffix in ('.inspection.json', '.review.html'):
+            Path(str(prefix)+suffix).write_text('STALE')
+        Path(str(prefix)+'.diagnostic.json').write_text('{}')
         with self.assertRaises(ValueError): inspect(prefix)
         self.assertFalse(Path(str(prefix)+'.inspection.json').exists())
         self.assertFalse(Path(str(prefix)+'.review.html').exists())

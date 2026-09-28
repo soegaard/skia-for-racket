@@ -119,7 +119,7 @@
   (define rp (n:sk_surface_get_recording_context sp))
   (unless rp (error who "native target has no GPU recording context"))
   (define native-backend (n:gr_recording_context_get_backend rp))
-  (unless (and (= native-backend gr-opengl)
+  (unless (and (= native-backend (gpu-backend-native-id (domain-backend d)))
                (pointer=? (domain-pointer d) (n:gr_recording_context_get_direct_context rp)))
     (error who "surface context/backend mismatch"))
   (hash-set* (gpu-surface-description s)

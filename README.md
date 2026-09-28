@@ -1,4 +1,27 @@
-# Racket Skia — 0.40.0
+# Racket Skia — 0.41.0
+
+## Offscreen Metal with the shared GPU API
+
+`(make-gpu-context #:backend 'metal)` creates an owned default-device/private-
+queue Ganesh Metal context on 64-bit macOS, without a GUI or OpenGL host.
+Existing GPU surfaces, images, drawing, transfers and retained graph ownership
+work with the selected backend. Explicit OpenGL-provider construction remains
+unchanged. No backend is silently replaced with CPU rendering.
+
+Metal native calls and deferred owner-side destruction use short autorelease
+scopes, never a pool left open across application drawing callbacks or yields.
+The validation runner executes the same surface/image suites and ten visual
+workflows on both backends, plus Metal lifecycle and cross-backend transfer
+checks. Review the combined `parity.review.html` after a successful host run.
+
+See [Metal API and lifetime](docs/GPU-METAL.md) and
+[the complete validation sequence](docs/GPU-METAL-TESTING.md).
+The implementation baseline is `dca0aa876b1b42f293db2fef235eecee0ed7cd5a` (0.40).
+The maintainer's 0.40 macOS OpenGL checks passed; new 0.41 Metal rendering still
+requires host validation. Metal window presentation, external interop and
+performance claims are not part of this revision.
+
+The older release-specific sections below are historical.
 
 ## GPU images and retained graph ownership
 

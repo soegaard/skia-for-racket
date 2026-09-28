@@ -1,6 +1,25 @@
 # Testing
 
-## Current revision: GPU images (0.40)
+## Current revision: offscreen Metal parity (0.41)
+
+Baseline: `dca0aa876b1b42f293db2fef235eecee0ed7cd5a` (0.40). The maintainer's
+0.40 macOS/aarch64 OpenGL run passed. Run
+[the Metal parity sequence](docs/GPU-METAL-TESTING.md) for new host evidence.
+
+The runner compiles every dynamic module with the selected Racket and retains
+CPU regression and foundation checks. It adds 34 pure Metal source cases,
+runs the same 33 surface and 42 image cases on each backend, and runs 8
+Metal-specific plus 9 cross-backend native source cases. Three Metal smoke
+cycles and ten shared scene/workflow comparisons check actual pixels and
+ownership. These source counts are not authoring execution results.
+
+Required macOS validation needs both backends; optional absence is explicit.
+Metal rendering does not certify Metal window presentation. No performance or
+universal pixel-identity claim is made. Patch delivery uses Git-generated
+hunks with meaningful context, independent line-count checks, and ordinary
+forward/reverse application checks; source sums are regenerated last.
+
+## Previous revision: GPU images (0.40)
 
 Baseline: `0eea009d393500cda7dc4a6848579c09300f53db` (0.39). The maintainer reports
 passing automated and interactive 0.39 validation on macOS/aarch64. New 0.40

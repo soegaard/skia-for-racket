@@ -7,6 +7,9 @@
 ;; Explicit live contexts are supplied by the diagnostic host. Requiring this
 ;; suite neither loads a GPU library nor creates a window.
 (define (make-gpu-surface-native-tests gpu other)
+  (define backend (gpu-context-backend gpu))
+  (define backend-id (case backend [(opengl) 0] [(metal) 2]
+                      [else (error 'gpu-surface-tests "unexpected backend")]))
   (define (target proc #:background [background 'transparent])
     (call-with-gpu-context gpu
       (lambda ()
@@ -20,13 +23,13 @@
      (target (lambda (s c)
                (check-true (surface? s)) (check-true (gpu-surface? s))
                (check-true (canvas? c)) (check-true (skia-resource? s))
-               (check-eq? (surface-backend s) 'opengl)
-               (check-eq? (canvas-execution-backend c) 'opengl))))
+               (check-eq? (surface-backend s) backend)
+               (check-eq? (canvas-execution-backend c) backend))))
    (test-case "native target is backed by the requested Ganesh context"
      (target (lambda (s c)
                (define info (gpu-surface-info s))
                (check-true (hash-ref info 'context_matches))
-               (check-equal? (hash-ref info 'native_backend) 0)
+               (check-equal? (hash-ref info 'native_backend) backend-id)
                (check-equal? (hash-ref info 'render_path) "sk_surface_new_render_target")
                (check-false (hash-ref info 'actual_sample_count)))))
    (test-case "default transparent pixels are initialized"

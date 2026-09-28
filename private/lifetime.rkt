@@ -1,6 +1,6 @@
 #lang racket/base
 (require ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic
-         racket/list racket/string "audit-trace.rkt" "gpu-domain.rkt")
+         racket/list racket/string "audit-trace.rkt" "gpu-domain.rkt" "gpu-native-scope.rkt")
 (provide owned? new-owned new-gpu-owned owned-closed? owned-close!
          call-with-owned call-with-scoped-resource
          owned-gpu-domain owned-gpu-context owned-clear-recording-affinity!
@@ -202,6 +202,11 @@
 ;; Called inside audit-native-call's execution thunk, never for skipped dry
 ;; draws. This module imports no native module, so this bridge has no cycle.
 (define (lifetime-native-call name args thunk)
+  ;; Keep the native pool inside the actual execution thunk, after preflight
+  ;; and policy checks. Dry/skipped calls do not allocate an autorelease pool.
+  (lifetime-native-call/unscoped name args
+    (lambda () (call-with-gpu-native-scope thunk))))
+(define (lifetime-native-call/unscoped name args thunk)
   (define slot (hash-ref setter-slots name #f))
   (define cx (destination))
   (cond

@@ -2,7 +2,7 @@
 """One selected Racket for CPU regression tests and explicit GPU validation.
 
 GPU_MODE=required (default), optional, or off. REQUIRE_HARDWARE=1 rejects
-software/unclassified GL driver strings. An explicit render/cleanup failure
+software/unclassified backend names. An explicit render/cleanup failure
 always fails, even in optional mode. SKIP_C_ABI=1 explicitly omits C mirrors.
 """
 from __future__ import annotations
@@ -28,7 +28,10 @@ def main() -> int:
     (ROOT/'output').mkdir(exist_ok=True)
     # Fresh directories prevent a failure or optional skip from leaving an old
     # successful image/inspection report looking like the current result.
-    directory = Path(tempfile.mkdtemp(prefix='gpu-0.40-', dir=ROOT/'output'))
+    directory = Path(tempfile.mkdtemp(prefix='gpu-0.41-', dir=ROOT/'output'))
+    os.environ['SKIA_GPU_VALIDATION_RUN'] = directory.name
+    metal_rendering = False
+    backend_parity = False
     commands = []
     skips = []
     def run(arguments, *, capture=False):
@@ -56,6 +59,8 @@ def main() -> int:
         run([sys.executable, 'tools/inspect-gpu-probe.py', '--self-test'])
         run([sys.executable, 'tools/inspect-gpu-offscreen.py', '--self-test'])
         run([sys.executable, 'tools/inspect-gpu-images.py', '--self-test'])
+        run([sys.executable, 'tools/inspect-gpu-parity.py', '--self-test'])
+        run([sys.executable, 'tools/test-patch-delivery.py'])
         if os.environ.get('SKIP_C_ABI') == '1':
             skips.append('C ABI mirrors explicitly skipped (SKIP_C_ABI=1)')
             print(skips[-1])
@@ -74,6 +79,7 @@ def main() -> int:
                    'tools/gpu-offscreen-doctor.rkt','tools/gpu-window-doctor.rkt',
                    'tools/gpu-report.rkt','examples/gpu-scenes.rkt',
                    'tools/gpu-image-doctor.rkt','examples/gpu-images.rkt',
+                   'tools/gpu-test-host.rkt','tools/gpu-metal-doctor.rkt','tools/gpu-cross-backend-doctor.rkt','examples/gpu-metal.rkt',
                    'tools/portable-drawing-doctor.rkt','tools/color-filter-doctor.rkt','tools/raster-buffer-doctor.rkt']
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))]
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu*.rkt'))]
@@ -106,32 +112,57 @@ def main() -> int:
                     # Inspection JSON and HTML are published only after all
                     # actual samples, PNG pixels, ownership and cleanup pass.
                     run([sys.executable,'tools/inspect-gpu-probe.py','--probe-prefix',prefix])
-            for kind in ('offscreen','window','image'):
-                prefix = directory / ('images' if kind == 'image' else kind)
-                arguments = [racket,f'tools/gpu-{kind}-doctor.rkt','--prefix',prefix]
+            passed = {}
+            def probe(kind, prefix_name, *, backend=None, inspector=None):
+                prefix = directory / prefix_name
+                arguments = [racket, f'tools/gpu-{kind}-doctor.rkt', '--prefix', prefix]
+                if backend: arguments += ['--backend', backend]
                 if mode == 'optional': arguments.append('--optional')
                 if hardware: arguments.append('--require-hardware')
                 run(arguments)
                 diagnostic = json.loads(Path(str(prefix)+'.diagnostic.json').read_text())
                 if diagnostic['status'] == 'unavailable' and mode == 'optional':
-                    skips.append(f'{kind} unavailable: {diagnostic.get("message")}')
+                    skips.append(f'{prefix_name} unavailable: {diagnostic.get("message")}')
                     print(skips[-1])
+                    return False
+                if diagnostic['status'] != 'passed':
+                    raise RuntimeError(f'{prefix_name}: backend diagnostic did not pass: {diagnostic.get("status")}')
+                run([sys.executable, inspector or 'tools/inspect-gpu-offscreen.py', '--probe-prefix', prefix])
+                return True
+            for kind in ('offscreen', 'window', 'image'):
+                prefix_name = 'window' if kind == 'window' else ('images' if kind == 'image' else kind)+'-opengl'
+                passed[('opengl', kind)] = probe(kind, prefix_name,
+                    backend=None if kind == 'window' else 'opengl',
+                    inspector='tools/inspect-gpu-images.py' if kind == 'image' else None)
+            if identity.startswith('macosx/'):
+                for kind in ('offscreen', 'image'):
+                    passed[('metal', kind)] = probe(kind, ('images' if kind == 'image' else kind)+'-metal',
+                        backend='metal', inspector='tools/inspect-gpu-images.py' if kind == 'image' else None)
+                lifecycle = probe('metal', 'metal-lifecycle', inspector='tools/inspect-gpu-parity.py')
+                crossing = probe('cross-backend', 'cross-backend', inspector='tools/inspect-gpu-parity.py')
+                metal_rendering = lifecycle and passed[('metal', 'offscreen')] and passed[('metal', 'image')]
+                if metal_rendering and crossing and passed[('opengl', 'offscreen')] and passed[('opengl', 'image')]:
+                    run([sys.executable, 'tools/inspect-gpu-parity.py', '--directory', directory])
+                    backend_parity = True
                 else:
-                    inspector = 'tools/inspect-gpu-images.py' if kind == 'image' else 'tools/inspect-gpu-offscreen.py'
-                    run([sys.executable,inspector,'--probe-prefix',prefix])
+                    skips.append('OpenGL/Metal parity not established: an explicitly optional backend probe was unavailable')
+            else:
+                skips.append('Metal rendering/lifecycle and OpenGL/Metal parity are macOS-only; not run on this host')
         # Repository manifest regeneration is deliberately LAST, after every
         # selected check succeeds. Optional/off runs retain explicit skips.
         run([sys.executable,'tools/update-source-sums.py'])
-        report = {'status':'passed-selected-checks','stage':'0.40','gpu_mode':mode,'identity':identity.strip(),
+        report = {'status':'passed-selected-checks','stage':'0.41','gpu_mode':mode,'identity':identity.strip(),
                   'commands':commands,'skips':skips,'hardware_string_requirement':hardware,
                   'performance_measured':False, 'visible_window_pixels_verified':False,
+                  'validation_run':directory.name, 'metal_rendering_verified':metal_rendering,
+                  'backend_parity_verified':backend_parity, 'metal_presentation_verified':False,
                   'window_manual_review_required':mode != 'off'}
         destination = directory/'validation.json'
         destination.write_text(json.dumps(report,indent=2)+'\n')
         print(f'Validation report: {destination}')
         print(f'Review files: {directory} (passed checks only)')
         if mode != 'off':
-            print('Window API checks are not visible-pixel certification. Review images.review.html and offscreen.review.html; run gpu-window-doctor.rkt --interactive.')
+            print('Window API checks are not visible-pixel certification. Review parity.review.html and backend-specific images/offscreen reviews; run gpu-window-doctor.rkt --interactive.')
         return 0
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
         # A failure record is explicitly named; no successful inspection report

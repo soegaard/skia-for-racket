@@ -1,5 +1,7 @@
 # GPU contexts and diagnostic rendering
 
+> Owned Metal contexts use the same API; see [GPU-METAL.md](GPU-METAL.md) and
+> [current validation](GPU-METAL-TESTING.md).
 > The current image/ownership extension is documented in [GPU-IMAGES.md](GPU-IMAGES.md).
 > General surfaces are described in [GPU-OFFSCREEN.md](GPU-OFFSCREEN.md).
 > The fixed `gpu-doctor` remains a foundation probe; historical validation notes
@@ -50,7 +52,7 @@ Linux uses GLX: this is not native Wayland or display-server-free EGL support.
 
 | Operation | Contract |
 |---|---|
-| `(make-gpu-context provider)` | Creates one Ganesh domain for an OpenGL provider on the current Racket thread. Requires working native symbols, a current host and a validated interface. Metal requests raise an explicit unavailability exception. |
+| `(make-gpu-context [provider #f] #:backend [backend #f])` | With an OpenGL provider, creates one Ganesh domain on the current Racket thread using the current host and a validated interface. With no provider and explicit `#:backend 'metal`, owns a default Metal device and private command queue. Backend/provider mismatches fail; no automatic fallback occurs. |
 | `(gpu-context? value)` | Type predicate, including after closure. |
 | `(gpu-context-backend context)` | Selected backend symbol, currently `opengl`. |
 | `(gpu-context-generation context)` | Unique process/place-local monotonically assigned generation; not a portable cache key. |
@@ -106,7 +108,7 @@ on each use. External adapters are trusted host integrations: the wrapper
 cannot independently prove a user-supplied `current?` callback is truthful.
 
 `describe` returns JSON-compatible data: symbol-keyed hashes, strings, lists,
-finite numbers and booleans. The OpenGL driver copies it into immutable data.
+finite numbers and booleans. Backend drivers copy it into immutable data.
 Do not return native pointers. Provider callbacks must not capture the public
 GPU context or resource wrappers through a cycle; the FFI finalizer machinery
 has restrictions on self-reachable values. Explicit close remains mandatory
@@ -120,8 +122,8 @@ mix ordinary Racket DC drawing with this GL target.
 ## Lifetime and shutdown
 
 A GPU domain owns the native Ganesh context, its generation and a native-release
-queue. Private child wrappers retain the domain, not the public context wrapper.
-Their allocator finalizers invalidate the child and append a release job only.
+queue. Public surfaces/images and GPU-dependent retained graphs keep their public
+context reachable as well as its domain. Their allocator finalizers invalidate the child and append a release job only.
 Explicit child closure also enqueues; destruction runs at activation boundaries
 or explicit drains, with children before the context. Unknown failed releases
 are quarantined rather than retried, preventing an indeterminate double free.
@@ -151,8 +153,8 @@ part of this public API.
 ## What the smoke diagnostic proves
 
 The probe allocates an 8x8 RGBA8888-premultiplied Skia render target with no
-requested multisampling, verifies its recording/direct context and OpenGL
-backend, clears it to transparency, and draws four opaque integer rectangles.
+requested multisampling, verifies its recording/direct context and requested
+OpenGL or Metal backend, clears it to transparency, and draws four opaque integer rectangles.
 The unequal left/right widths and transparent vertical column expose origin,
 channel and alpha mistakes. Every pixel is compared exactly after flush,
 submit with CPU synchronization, and explicit RGBA-unpremultiplied readback.
@@ -166,14 +168,18 @@ Software renderer names such as llvmpipe and SwiftShader are labeled explicitly.
 attestation or a performance measurement.
 
 The probe's synchronous completion is intentional for validation. It is not a
-proposal to read back or wait after every future presentation frame. Full
-flush/submit/wait and public surface/image APIs remain later milestones.
+proposal to read back or wait after every presentation frame. The public
+flush/submit/wait and surface/image APIs expose these transfer boundaries
+explicitly; see the surface and image guides.
 
 ## Metal construction audit
 
 An explicitly invoked macOS probe creates an MTLDevice, a command queue and a
 Ganesh Metal context, checks the selected backend, and destroys them repeatedly.
-It does not create Metal surfaces or claim Metal rendering/presentation parity.
+This legacy construction probe does not create Metal surfaces. The separate
+Metal lifecycle, shared scene/image, and cross-backend diagnostics exercise
+actual offscreen rendering; see [GPU-METAL-TESTING.md](GPU-METAL-TESTING.md).
+Metal window presentation is not part of this release.
 
 The pinned legacy header describes transferable device/queue references, but
 the implementation actually calls `fDevice.retain(device)` and

@@ -1,5 +1,9 @@
 # Offscreen OpenGL validation
 
+> Historical validation sequence. For the current combined OpenGL/Metal
+> run use [GPU-METAL-TESTING.md](GPU-METAL-TESTING.md). Do not reapply an
+> earlier patch to an updated checkout.
+
 Baseline: `f2aa79db1a8c24045445623c42930ebc09cc0527` (0.38, including the passing
 GC-test correction). Apply the 0.39 patch once. Do not reapply either 0.38 patch.
 The delivered source bundle is not a complete checkout.

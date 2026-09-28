@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.41.0 — offscreen Metal parity
+
+- Added explicit owned Metal context construction without an OpenGL/GUI host,
+  retaining the same surface, image, drawing and transfer interfaces.
+- Reused the pinned device/queue reference contract, with failure cleanup and
+  short native-call autorelease scopes captured by deferred destruction jobs.
+- Made native target/backend checks and shared surface/image suites select the
+  actual backend rather than assume OpenGL.
+- Added 34 pure, 8 Metal-specific and 9 cross-backend source cases, three
+  Metal rendering/teardown smoke cycles, and ten GL/Metal visual comparisons.
+- Added raw-diagnostic/PNG parity inspection, run identity, required/optional
+  orchestration checks, headless examples and API/validation documentation.
+- Added patch-hunk count/context and ordinary Git application regression tests.
+- Preserved CPU defaults, explicit transfers, retained affinity, GL window
+  behavior and final source-sum sequencing. Metal presentation, external
+  interop and performance conclusions remain outside this release.
+
 ## 0.40.0 — GPU images and transitive context affinity
 
 - Added explicit texture uploads, GPU surface snapshots/subsets, ownership

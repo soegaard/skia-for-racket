@@ -19,7 +19,7 @@ spec.loader.exec_module(validator)
 RACKET = '/test tools/Racket selected/bin/racket'
 
 class Checks(unittest.TestCase):
-    def simulate(self, mode='required', *, failure=None, unavailable=(), hardware=False, failure_probe_only=False,
+    def simulate(self, mode='required', *, failure=None, unavailable=(), hardware=False, failure_probe_only=False, failure_directory_only=False,
                  identity='macosx/aarch64; Racket test; VM chez-scheme\n'):
         before = Path.cwd()
         with tempfile.TemporaryDirectory(prefix='skia-runner-test-') as temp:
@@ -31,7 +31,7 @@ class Checks(unittest.TestCase):
             calls = []
             def fake_run(argv, **kwargs):
                 calls.append(argv)
-                code = 1 if failure and failure in argv and (not failure_probe_only or '--probe-prefix' in argv) else 0
+                code = 1 if failure and failure in argv and (not failure_probe_only or '--probe-prefix' in argv) and (not failure_directory_only or '--directory' in argv) else 0
                 if '--prefix' in argv and not code:
                     prefix = Path(argv[argv.index('--prefix')+1])
                     status = 'unavailable' if prefix.name in unavailable else 'passed'
@@ -55,8 +55,8 @@ class Checks(unittest.TestCase):
     def test_required_runs_all_stages_and_manifest_last(self):
         rc, calls, report, directory = self.simulate()
         self.assertEqual(rc, 0)
-        self.assertTrue(directory.startswith('gpu-0.40-'))
-        self.assertEqual(report['stage'], '0.40')
+        self.assertTrue(directory.startswith('gpu-0.41-'))
+        self.assertEqual(report['stage'], '0.41')
         paths = [a[1] for a in calls if len(a) > 1]
         for path in ('run-tests.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-window-doctor.rkt',
                      'tools/gpu-image-doctor.rkt','tools/inspect-gpu-images.py'):
@@ -88,12 +88,14 @@ class Checks(unittest.TestCase):
         self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
     def test_optional_initialization_skip_is_explicit(self):
-        rc, calls, report, _ = self.simulate(mode='optional', unavailable=('images',))
+        rc, calls, report, _ = self.simulate(mode='optional', unavailable=('images-opengl','images-metal'))
         self.assertEqual(rc, 0)
-        self.assertTrue(any('image unavailable' in s for s in report['skips']))
+        self.assertTrue(any('images-opengl unavailable' in s for s in report['skips']))
         self.assertFalse(any('tools/inspect-gpu-images.py' in a and '--probe-prefix' in a for a in calls))
-        image_call, = [a for a in calls if 'tools/gpu-image-doctor.rkt' in a and '--prefix' in a]
-        self.assertIn('--optional', image_call)
+        image_calls = [a for a in calls if 'tools/gpu-image-doctor.rkt' in a and '--prefix' in a]
+        self.assertEqual(len(image_calls), 2)
+        self.assertTrue(all('--optional' in a for a in image_calls))
+        self.assertFalse(report['backend_parity_verified'])
 
     def test_optional_does_not_hide_render_failure(self):
         rc, calls, report, _ = self.simulate(mode='optional', failure='tools/gpu-image-doctor.rkt')
@@ -110,17 +112,60 @@ class Checks(unittest.TestCase):
 
     def test_macos_keeps_metal_probe_and_propagates_hardware_requirement(self):
         _, calls, _, _ = self.simulate(hardware=True)
-        metal, = [a for a in calls if '--backend' in a and 'metal' in a]
-        self.assertNotIn('--require-hardware', metal)
+        construction, = [a for a in calls if 'tools/gpu-doctor.rkt' in a and 'metal' in a]
+        self.assertNotIn('--require-hardware', construction)
         for a in calls:
-            if '--prefix' in a and 'metal' not in a:
+            if '--prefix' in a and a is not construction:
                 self.assertIn('--require-hardware', a)
+
+    def test_shared_suites_run_on_both_backends(self):
+        rc, calls, report, _ = self.simulate()
+        for kind in ('offscreen','image'):
+            selected = [a for a in calls if f'tools/gpu-{kind}-doctor.rkt' in a and '--prefix' in a]
+            self.assertEqual({a[a.index('--backend')+1] for a in selected}, {'opengl','metal'})
+        self.assertTrue(report['metal_rendering_verified'])
+        self.assertTrue(report['backend_parity_verified'])
+        self.assertFalse(report['metal_presentation_verified'])
+
+    def test_metal_does_not_request_a_window(self):
+        _, calls, _, _ = self.simulate()
+        window, = [a for a in calls if 'tools/gpu-window-doctor.rkt' in a and '--prefix' in a]
+        self.assertNotIn('metal', window)
+        self.assertNotIn('--backend', window)
+
+    def test_metal_failure_cannot_update_manifest(self):
+        rc, calls, _, _ = self.simulate(failure='tools/gpu-metal-doctor.rkt')
+        self.assertEqual(rc,1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_parity_inspection_failure_cannot_update_manifest(self):
+        rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-parity.py', failure_probe_only=True)
+        self.assertEqual(rc,1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_combined_parity_failure_cannot_update_manifest(self):
+        rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-parity.py', failure_directory_only=True)
+        self.assertEqual(rc, 1)
+        self.assertTrue(any('tools/inspect-gpu-parity.py' in a and '--directory' in a for a in calls))
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_selected_racket_compiles_metal_and_cross_backend_tools(self):
+        _, calls, _, _ = self.simulate()
+        compilation, = [a for a in calls if '-l' in a and 'raco' in a]
+        for name in ('tools/gpu-metal-doctor.rkt','tools/gpu-cross-backend-doctor.rkt','tools/gpu-test-host.rkt','examples/gpu-metal.rkt'):
+            self.assertIn(name, compilation)
+
+    def test_run_identifier_is_in_report(self):
+        _, _, report, directory = self.simulate()
+        self.assertEqual(report['validation_run'], directory)
 
     def test_non_macos_does_not_claim_metal_execution(self):
         rc, calls, report, _ = self.simulate(identity='unix/x86_64; Racket test; VM chez-scheme\n')
         self.assertEqual(rc, 0)
         self.assertFalse(any('--backend' in a and 'metal' in a for a in calls))
         self.assertTrue(any('Metal construction' in s for s in report['skips']))
+        self.assertFalse(report['metal_rendering_verified'])
+        self.assertFalse(report['backend_parity_verified'])
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

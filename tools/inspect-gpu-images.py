@@ -35,10 +35,10 @@ def pattern():
     return bytes(out)
 
 
-def context(info, *, closed=False):
-    require(isinstance(info, dict) and exact_int(info.get('native_backend'), 0),
+def context(info, *, closed=False, backend="opengl"):
+    require(isinstance(info, dict) and exact_int(info.get('native_backend'), shared.BACKEND_IDS.get(backend)),
             'invalid native context backend')
-    shared.context(info, closed=closed)
+    shared.context(info, closed=closed, backend=backend)
 
 
 def inventory(value, expected):
@@ -69,12 +69,17 @@ def samples(pixels):
 
 def images(data, directory):
     require(isinstance(data, dict) and exact_int(data.get('schema_version'), 1) and
-            data.get('stage') == '0.40' and data.get('kind') == 'images', 'wrong image workflow schema')
-    require(data.get('status') == 'passed' and data.get('backend') == 'opengl', 'GPU image diagnostic did not pass')
+            data.get('stage') in ('0.40', '0.41') and data.get('kind') == 'images', 'wrong image workflow schema')
+    backend = data.get('backend')
+    require(data.get('status') == 'passed' and backend in shared.BACKEND_IDS, 'GPU image diagnostic did not pass')
+    require(backend == 'opengl' or data['stage'] == '0.41', 'legacy report cannot establish Metal rendering')
+    if backend == 'metal':
+        require(data.get('os') == 'macosx' and data.get('host', {}).get('headless') is True,
+                'Metal image report did not use the headless macOS host')
     require(data.get('performance_measured') is False, 'performance was not measured')
-    context(data.get('initial_context'))
-    context(data.get('closed_context'), closed=True)
-    context(data.get('other_closed_context'), closed=True)
+    context(data.get('initial_context'), backend=backend)
+    context(data.get('closed_context'), closed=True, backend=backend)
+    context(data.get('other_closed_context'), closed=True, backend=backend)
     generation = data['initial_context']['generation']
     require(data['closed_context']['generation'] == generation, 'wrong teardown context')
     require(data['other_closed_context']['generation'] != generation, 'missing independent cross-context validation')
@@ -100,14 +105,14 @@ def images(data, directory):
                 scene.get('original_wrappers_closed_before_replay') is True,
                 'resident graph was not replayed after original wrapper closure')
         image = scene.get('image',{})
-        require(image.get('storage') == 'gpu' and image.get('backend') == 'opengl' and
+        require(image.get('storage') == 'gpu' and image.get('backend') == backend and
                 image.get('texture_backed') is True and image.get('context_matches') is True and
                 exact_int(image.get('context_generation'),generation), 'invalid/foreign GPU image')
         require(exact_int(image.get('width'),8) and exact_int(image.get('height'),8) and
                 shared.integer(image.get('unique_id'),1), 'invalid GPU image metadata')
         target = scene.get('target',{})
-        require(target.get('storage') == 'gpu' and target.get('backend') == 'opengl' and
-                exact_int(target.get('native_backend'),0) and target.get('context_matches') is True and
+        require(target.get('storage') == 'gpu' and target.get('backend') == backend and
+                exact_int(target.get('native_backend'),shared.BACKEND_IDS[backend]) and target.get('context_matches') is True and
                 exact_int(target.get('context_generation'),generation), 'incorrect GPU drawing target')
         require(target.get('target_kind') == 'offscreen' and target.get('origin') == 'top-left' and
                 target.get('render_path') == 'sk_surface_new_render_target' and
@@ -145,7 +150,7 @@ def images(data, directory):
         results.append({'name':name,'cpu_image':a,'gpu_image':b,**stats,
                         'known_source_subset_filter_samples':True,
                         'original_wrappers_closed_before_replay':True,'replay_count':2})
-    return {'schema_version':1,'stage':'0.40','status':'passed','kind':'images','backend':'opengl',
+    return {'schema_version':1,'stage':data['stage'],'status':'passed','kind':'images','backend':backend,
             'scenes_checked':len(results),'native_test_cases':NATIVE_TEST_CASES,'scenes':results,
             'rendering_verified':True,'resident_replay_readbacks':0,'resident_replay_explicit_cpu_waits':0,
             'detached_image_survived_teardown':True,'renderer':data['initial_context']['renderer'],
@@ -174,7 +179,7 @@ def inspect(prefix):
                             '"><figcaption>'+title+'</figcaption></figure>'
                             for key,title in [('cpu_image','Independent CPU reference'),('gpu_image','GPU-resident graph; explicit final readback')])+
                     '</div><pre>'+html.escape(json.dumps(scene,indent=2))+'</pre></article>')
-    page = ('<!doctype html><meta charset="utf-8"><title>Skia 0.40 GPU images</title>'
+    page = ('<!doctype html><meta charset="utf-8"><title>Skia GPU images</title>'
             '<style>body{font:16px system-ui;max-width:1100px;margin:2em auto;padding:0 1em}'
             '.pair{display:flex;gap:1em;flex-wrap:wrap}figure{margin:0}img{max-width:100%;'
             'background:repeating-conic-gradient(#ddd 0% 25%,white 0% 50%) 0/16px 16px}'
@@ -243,6 +248,18 @@ def fixture(directory):
     return data
 
 
+def fixture_metal(directory):
+    data = fixture(directory)
+    data.update(stage='0.41', backend='metal', os='macosx', host={'headless': True})
+    data['initial_context'] = shared.fixture_metal_context()
+    data['closed_context'] = shared.fixture_metal_context(True)
+    data['other_closed_context'] = shared.fixture_metal_context(True, 2)
+    for scene in data['scenes']:
+        scene['target'].update(backend='metal', native_backend=2)
+        scene['image'].update(backend='metal')
+    return data
+
+
 class Checks(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix='skia-image-inspector-synthetic-')
@@ -255,6 +272,23 @@ class Checks(unittest.TestCase):
             images(self.data,self.directory)
     def test_valid(self):
         self.assertEqual(images(self.data,self.directory)['scenes_checked'],2)
+    def test_metal_valid(self):
+        self.assertEqual(images(fixture_metal(self.directory), self.directory)['backend'], 'metal')
+    def test_metal_wrong_target(self):
+        self.data = fixture_metal(self.directory)
+        self.reject(lambda d:d['scenes'][0]['target'].update(native_backend=0))
+    def test_metal_foreign_image_backend(self):
+        self.data = fixture_metal(self.directory)
+        self.reject(lambda d:d['scenes'][0]['image'].update(backend='opengl'))
+    def test_metal_requires_owned_queue(self):
+        self.data = fixture_metal(self.directory)
+        self.reject(lambda d:d['initial_context'].update(owns_command_queue=False))
+    def test_metal_legacy_report_is_not_parity(self):
+        self.data = fixture_metal(self.directory)
+        self.reject(lambda d:d.update(stage='0.40'))
+    def test_metal_must_be_headless(self):
+        self.data = fixture_metal(self.directory)
+        self.reject(lambda d:d['host'].update(headless=False))
     def test_wrong_stage(self): self.reject(lambda d:d.update(stage='0.39'))
     def test_unavailable(self): self.reject(lambda d:d.update(status='unavailable'))
     def test_failed_native(self): self.reject(lambda d:d.update(native_test_failures=1))

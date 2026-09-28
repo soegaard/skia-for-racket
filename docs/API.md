@@ -1,4 +1,17 @@
-# API reference — version 0.40.0
+# API reference — version 0.41.0
+
+## GPU backend selection
+
+`(make-gpu-context provider)` retains explicit OpenGL-host construction.
+`(make-gpu-context #:backend 'metal)` creates a default Metal device and owned
+private queue on 64-bit macOS without a GUI or GL context. An explicit backend
+must agree with a supplied provider; external Metal providers and automatic
+fallback are not supported. Both backends use the same surface/image APIs,
+creator-thread ownership, activation leases, explicit transfers and retained
+graph affinity. Metal window presentation is not provided.
+
+See [the Metal contract](GPU-METAL.md), including per-native-call autorelease
+scopes, explicit cross-backend transfer and ownership-sensitive teardown.
 
 ## GPU images and retained execution contexts
 
@@ -19,10 +32,10 @@ lifetime, cross-context rejection and the retained-getter/mutable-paint rules.
 ## Surface backing and GPU execution
 
 `surface-backend` is available from `skia` and reports `raster` for an ordinary
-CPU surface or `opengl` for a GPU surface. It reads immutable backing metadata,
+CPU surface or `opengl`/`metal` for a GPU surface. It reads immutable backing metadata,
 like surface dimensions; it does not require a GPU activation or certify a live
 resource. `canvas-execution-backend` validates a live canvas and reports
-`raster`, `opengl`, `recording`, `pdf`, or `svg`. A GPU canvas additionally needs
+`raster`, `opengl`, `metal`, `recording`, `pdf`, or `svg`. A GPU canvas additionally needs
 its unexpired activation on the owning thread and native context.
 
 Import `skia/gpu` for the [GPU surface API](GPU-OFFSCREEN.md):
@@ -35,7 +48,8 @@ and drawing operations are reused. `make-surface` remains CPU-only.
 `surface-snapshot`, `surface->rgba-bytes`, `surface-pixel`, and surface PNG
 helpers reject GPU targets. An explicit `gpu-surface->raster-image` produces a
 CPU-owned image usable by the existing image, shader, picture and document APIs,
-including after GPU teardown. No GPU-image wrapper is exposed yet.
+including after GPU teardown. Use `gpu-surface-snapshot` for a resident image
+that remains bound to its GPU context.
 `draw-output-group` and `draw-rasterized` reject GPU destinations in this
 revision, rather than introducing an implicit CPU intermediate. This does not
 change their existing CPU/PDF/SVG behavior.

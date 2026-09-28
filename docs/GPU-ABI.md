@@ -97,3 +97,17 @@ Pinned Windows package pages:
 
 Source review, package metadata, C mirrors and symbol inventories do not replace
 executing the actual installed binary/provider/driver combination.
+
+## Owned Metal rendering and autorelease scopes
+
+Owned Metal contexts use the audited legacy constructor above. The binding
+releases its Create/new references to the device and queue on success and
+constructor failure; Ganesh retains what it needs. No native record layout or
+new CPU-required symbol is added. The shared target validator checks native
+backend 0 for OpenGL and 2 for Metal rather than accepting a non-null surface.
+
+`objc_autoreleasePoolPush`/`objc_autoreleasePoolPop` wrap synchronous native
+operations in local atomic sections. Pools are never held across application
+drawing callbacks or `sleep`/GUI yielding. Queued native destructors capture
+their pool scope for owner-side draining, including after abandonment. See
+[Metal ownership](GPU-METAL.md) and [executed validation](GPU-METAL-TESTING.md).

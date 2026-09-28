@@ -45,7 +45,7 @@
                  (define info (gpu-image-info im))
                  (check-true (hash-ref info 'texture_backed))
                  (check-true (hash-ref info 'context_matches))
-                 (check-equal? (hash-ref info 'backend) "opengl"))))
+                 (check-equal? (hash-ref info 'backend) (symbol->string (gpu-context-backend gpu))))))
    (test-case "uploaded pixels survive an explicit image readback"
      (uploaded (lambda (cpu im) (check-equal? (gpu-image->rgba-bytes im) image-test-pixels))))
    (test-case "CPU upload source remains independent and unchanged"

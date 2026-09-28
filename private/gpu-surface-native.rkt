@@ -1,7 +1,7 @@
 #lang racket/base
 (require ffi/unsafe racket/promise
          (only-in "native.rkt" skia-native-library-path)
-         "gpu-provider.rkt")
+         "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-surface-native-check! gpu-surface-native-inventory)
 ;; Deliberately separate from the CPU symbol registry and the 0.38 probe.
 (define library (delay/sync (ffi-lib (skia-native-library-path))))
@@ -11,7 +11,9 @@
     (provide name)
     (define promise (delay/sync (get-ffi-obj 'native-name (force library) type)))
     (set! bindings (cons (list 'group 'native-name promise) bindings))
-    (define (name . args) (apply (force promise) args))))
+    (define (name . args)
+      (define call (force promise))
+      (call-with-gpu-native-scope (lambda () (apply call args))))))
 ;; These calls cannot invoke application/Racket release callbacks in 0.39.
 ;; Native context pointers are not GC-managed. Readback descriptors and pixels
 ;; are explicitly malloc'ed raw storage, never moving Racket bytes/cstructs.

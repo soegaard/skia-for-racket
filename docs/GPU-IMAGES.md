@@ -128,7 +128,9 @@ subrectangle drawing works on the owning GPU target.
 
 ## Example: keep a shader after closing its source
 
-Here `context` is an existing OpenGL context created with `make-gpu-context`.
+Here `context` is an existing OpenGL or Metal context created with
+`make-gpu-context`. An owned Metal context is created with
+`(make-gpu-context #:backend 'metal)`; it needs no GL host.
 The returned value is a CPU image, which can be encoded outside the GPU scope.
 
 ```racket
@@ -171,6 +173,8 @@ Pinned primary sources:
   successful picture finish moves the record into the returned picture before
   recorder affinity is cleared.
 
-Metal remains a construction probe at this point. GPU image interop, external
-texture adoption, share-group access, cross-place transfers, and a finalized
-public presenter API are separate work. See [validation](GPU-IMAGE-TESTING.md).
+OpenGL and Metal use the same image and retained-graph operations. Metal
+creation and native-call autorelease handling are documented in
+[GPU-METAL.md](GPU-METAL.md). GPU image interop, external texture adoption,
+share-group access, cross-place transfers, and a finalized public presenter
+API are separate work. See [current validation](GPU-METAL-TESTING.md).

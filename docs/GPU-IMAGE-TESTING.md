@@ -1,5 +1,9 @@
 # GPU image validation
 
+> Historical validation sequence. For the current combined OpenGL/Metal
+> run use [GPU-METAL-TESTING.md](GPU-METAL-TESTING.md). Do not reapply an
+> earlier patch to an updated checkout.
+
 Baseline: `0eea009d393500cda7dc4a6848579c09300f53db` (0.39). The maintainer's
 macOS/aarch64 / Apple M4 Pro automated 0.39 validation and interactive window
 inspection passed before this work. Those results do not establish a 0.40 pass.

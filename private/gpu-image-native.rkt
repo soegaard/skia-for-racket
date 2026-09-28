@@ -1,7 +1,7 @@
 #lang racket/base
 (require ffi/unsafe racket/promise
          (only-in "native.rkt" skia-native-library-path)
-         "gpu-provider.rkt")
+         "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-image-native-check! gpu-image-native-inventory)
 ;; Pinned m119 C shim; intentionally not added to the CPU-required symbol set.
 ;; None of these calls invokes application release callbacks. Construction is
@@ -13,7 +13,9 @@
     (provide name)
     (define delayed (delay/sync (get-ffi-obj 'native-name (force library) type)))
     (set! bindings (cons (cons 'native-name delayed) bindings))
-    (define (name . args) (apply (force delayed) args))))
+    (define (name . args)
+      (define call (force delayed))
+      (call-with-gpu-native-scope (lambda () (apply call args))))))
 (define-image-native texture-image/native sk_image_make_texture_image
   (_fun _pointer _pointer _stdbool _stdbool -> _pointer))
 (define-image-native snapshot/native sk_surface_new_image_snapshot

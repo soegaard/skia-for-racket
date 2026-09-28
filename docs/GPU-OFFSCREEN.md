@@ -1,9 +1,11 @@
 # Offscreen GPU surfaces
 
-The OpenGL backend uses the pinned SkiaSharp 3.119.1 / Skia m119 Ganesh C ABI.
+The OpenGL and Metal backends use the pinned SkiaSharp 3.119.1 / Skia m119
+Ganesh C ABI.
 Require `skia` for drawing and `skia/gpu` for explicit GPU resource operations.
 Requiring either module does not initialize a GUI, open a display or load a
 GPU driver. The Racket GL adapter is optional and borrows a host context.
+Owned Metal contexts require no GL or GUI host; see [GPU-METAL.md](GPU-METAL.md).
 
 The implementation builds on the context/provider ownership model described in
 [GPU-FOUNDATION.md](GPU-FOUNDATION.md). A GPU context is an execution domain;
@@ -14,7 +16,9 @@ it is not a replacement set of drawing commands.
 Here `gpu` is an already-created context, for example from
 `(make-gpu-context (make-racket-gl-provider gl-context))`. Its host must remain
 alive until `gpu-context-close!` completes. Do not create a second Ganesh context
-for a host that already has a live domain.
+for a host that already has a live domain. Alternatively, use
+`(make-gpu-context #:backend 'metal)`; the rest of the drawing and explicit
+transfer operations below are unchanged.
 
 ```racket
 (require skia skia/gpu skia/gpu-racket-gl)
@@ -34,9 +38,10 @@ for a host that already has a live domain.
 ;; Close gpu before destroying the application's native GL host.
 ```
 
-For a complete host-creation example run `tools/gpu-offscreen-doctor.rkt`.
-For a visible diagnostic run `tools/gpu-window-doctor.rkt --interactive`.
-These tools use a Racket GL window, not display-server-free headless rendering.
+For a complete OpenGL host-creation example run `tools/gpu-offscreen-doctor.rkt`.
+Its `--backend metal` mode instead uses owned Metal contexts without a window.
+For a visible OpenGL diagnostic run `tools/gpu-window-doctor.rkt --interactive`;
+that diagnostic still uses a Racket GL window and is not a Metal presenter.
 
 ## Construction and metadata
 
@@ -193,7 +198,7 @@ unchanged. GPU-assisted document fallbacks are a separate opt-in future feature.
 Native Skia may internally implement some operations differently by backend;
 a GPU target is not a promise that every primitive has identical pixels or cost.
 
-## Diagnostic window, not a public presenter
+## OpenGL diagnostic window, not a public presenter
 
 The private diagnostic captures the actual host FBO before Ganesh uses it. It
 queries drawable pixels separately from logical widget size, attachment bit
@@ -231,5 +236,7 @@ not establish a live driver result.
 This implementation was authored with source/context-patch, synthetic Python
 and local host-C checks only. No Racket expansion, RackUnit, native GPU run,
 visible window review or full-checkout execution was available in authoring.
-The preceding maintainer's 0.38 Mac results remain historical. Follow
-[GPU-OFFSCREEN-TESTING.md](GPU-OFFSCREEN-TESTING.md) before accepting 0.39 on a host.
+The maintainer has since supplied passing 0.39/0.40 Mac validation and a 0.39
+interactive-window review. Those are historical baseline results, not a new
+Metal run. Follow [GPU-METAL-TESTING.md](GPU-METAL-TESTING.md) for current
+backend-specific and direct OpenGL/Metal validation.

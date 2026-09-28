@@ -125,7 +125,17 @@ def check(root: pathlib.Path, *, require_integration=False):
         'surface_pure':suite_cases('tests/gpu-surface-pure-test.rkt','gpu-surface-pure-tests'),
         'surface_live':suite_cases('tests/gpu-surface-native-test.rkt','make-gpu-surface-native-tests',factory=True),
         'image_pure':suite_cases('tests/gpu-image-pure-test.rkt','gpu-image-pure-tests'),
-        'image_live':suite_cases('tests/gpu-image-native-test.rkt','make-gpu-image-native-tests',factory=True)}
+        'image_live':suite_cases('tests/gpu-image-native-test.rkt','make-gpu-image-native-tests',factory=True),
+        'metal_pure':suite_cases('tests/gpu-metal-pure-test.rkt','gpu-metal-pure-tests'),
+        'metal_live':suite_cases('tests/gpu-metal-native-test.rkt','make-gpu-metal-native-tests',factory=True),
+        'cross_backend_live':suite_cases('tests/gpu-cross-backend-native-test.rkt','make-gpu-cross-backend-native-tests',factory=True)}
+    for key, name, constant in [('metal_live','metal','METAL_NATIVE_CASES'),
+                                ('cross_backend_live','cross-backend','CROSS_NATIVE_CASES')]:
+        n = counts[key]
+        if f'(define gpu-{name}-native-test-count {n})' not in (root/f'tests/gpu-{name}-native-test.rkt').read_text():
+            raise ValueError(f'{name}: source suite coverage disagrees with doctor count')
+        if f'{constant} = {n}' not in (root/'tools/inspect-gpu-parity.py').read_text():
+            raise ValueError(f'{name}: inspector coverage disagrees with executable source')
     count = counts['image_live']
     if f'(define gpu-image-native-test-count {count})' not in (root/'tests/gpu-image-native-test.rkt').read_text():
         raise ValueError('GPU image native suite count differs from the doctor advertisement')
@@ -154,7 +164,8 @@ def check(root: pathlib.Path, *, require_integration=False):
         'private/native.rkt':['lifetime-native-call'],
         'raster-buffers.rkt':['module* gpu-transfer-internals','call-with-raster-buffer-gpu-transfer'],
         'run-tests.rkt':['tests/gpu-surface-pure-test.rkt','(run-tests gpu-surface-pure-tests)',
-                         'tests/gpu-image-pure-test.rkt','(run-tests gpu-image-pure-tests)'],
+                         'tests/gpu-image-pure-test.rkt','(run-tests gpu-image-pure-tests)',
+                         'tests/gpu-metal-pure-test.rkt','(run-tests gpu-metal-pure-tests)'],
         'docs/API.md':['surface-backend','canvas-execution-backend'],
     }.items():
         file = root/path
