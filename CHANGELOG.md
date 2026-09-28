@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.44.0 — GPU-assisted bounded document fallbacks
+
+- Added optional borrowed and lazily owned GPU raster executors. CPU defaults
+  and the existing native/raster/reject policy are unchanged.
+- Added explicit GPU replay/readback and CPU-image embedding at identical
+  padded, ceil-rounded raster dimensions, with scoped resource cleanup.
+- Preserved strict text/link/unknown-provenance restrictions and exact-recorder
+  nested executor inheritance; unrelated canvases cannot inherit a context.
+- Added execution/transfer reports and exact-target raster audit scopes without
+  changing GPU lifetime/affinity checks or public drawing operations.
+- Added 35 pure and 42 live source cases per backend, 16 PDF/SVG documents per
+  backend, actual vector/image/link/placement inspection and SVG PNG comparison.
+- Extended selected-Racket desktop/headless runners; source sums update last.
+  Linux EGL acceptance stays deferred to future CI by the maintainer.
+
 ## 0.43.0 — EGL headless contexts and explicit external GL boundaries
 
 - Added lazy Linux desktop-GL EGL construction with explicit platform/device

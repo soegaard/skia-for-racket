@@ -5,7 +5,8 @@
          audit-page-index audit-labels call-with-audit-collector
          call-with-audit-raster audit-raster-annotation!
          current-output-audit-event-limit call-with-audit-matrix
-         audit-resource-features call-with-output-capture audit-output-group!)
+         audit-resource-features call-with-output-capture audit-output-group!
+         call-with-audit-gpu-raster audit-output-group-execution!)
 
 ;; Weak keys are lifetime cells. Values contain only immutable symbolic
 ;; summaries: no native pointer, owned cell, source program, or child wrapper.
@@ -27,7 +28,7 @@
 ;; the receiving document's collector. Resource provenance still accumulates.
 (define (audit-resource-features handle) (features handle))
 (define (call-with-output-capture thunk)
-  (parameterize ([collecting #f] [raster-groups '()]) (thunk)))
+  (parameterize ([collecting #f] [raster-groups '()] [gpu-raster-target #f]) (thunk)))
 
 ;; Explicit rasterization into a recording must not erase unknown resources or
 ;; discarded annotations. Each sink belongs to one recorder; no pointer escapes.
@@ -120,8 +121,35 @@
 
 (struct canvas-context (operation owner backend handle others) #:transparent)
 (define canvas (make-parameter #f))
+;; A GPU target keeps its actual GPU lifetime/affinity checks in core.rkt.
+;; Only an explicitly selected bounded output raster may use raster *document
+;; representation* capabilities, and only for this exact target/lifetime cell.
+;; A parameter covering a whole GPU context would incorrectly bless unrelated
+;; surfaces or recordings created by the same program.
+(struct gpu-raster-scope (handle creator [live? #:mutable]))
+(define gpu-raster-target (make-parameter #f))
+(define (call-with-audit-gpu-raster handle thunk)
+  (define scope (gpu-raster-scope handle (current-thread) #t))
+  (call-with-continuation-barrier
+   (lambda ()
+     (parameterize ([gpu-raster-target scope])
+       (dynamic-wind
+         (lambda ()
+           (unless (gpu-raster-scope-live? scope)
+             (error 'output-audit "GPU raster audit scope has expired")))
+         thunk
+         (lambda () (set-gpu-raster-scope-live?! scope #f)))))))
 (define (audit-on-canvas operation owner backend handle others thunk)
-  (parameterize ([canvas (canvas-context operation owner backend handle others)]) (thunk)))
+  (define scope (gpu-raster-target))
+  (define bounded?
+    (and (eq? backend 'gpu) scope (eq? handle (gpu-raster-scope-handle scope))))
+  (when bounded?
+    (unless (and (gpu-raster-scope-live? scope)
+                 (eq? (current-thread) (gpu-raster-scope-creator scope)))
+      (error 'output-audit "GPU raster audit scope has expired or belongs to another thread")))
+  (parameterize ([canvas (canvas-context operation owner (if bounded? 'raster backend)
+                                         handle others)])
+    (thunk)))
 
 (struct collector (backend policy dry? creator pages events count next-group) #:mutable)
 (define collecting (make-parameter #f))
@@ -329,3 +357,9 @@
 (define (audit-output-group! backend raster? details)
   (emit! 'draw-output-group backend
          (list (if raster? 'raster-group 'output-group)) details))
+
+;; This event is separate from the policy decision above. It records actual
+;; raster execution/transfer after a detached image exists, not GPU availability
+;; inferred merely from a symbol table. A failed export returns no report/bytes.
+(define (audit-output-group-execution! backend details)
+  (emit! 'execute-output-group backend '(raster-group) details))

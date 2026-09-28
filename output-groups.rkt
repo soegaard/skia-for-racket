@@ -2,21 +2,21 @@
 (require racket/list
          "private/core.rkt" (submod "private/core.rkt" output-group-internals)
          "private/check.rkt" "private/output-util.rkt" "private/output-group-util.rkt"
-         "private/audit-trace.rkt" "canvas-matrix.rkt" "projective-matrix.rkt")
-(provide draw-output-group
+         "private/audit-trace.rkt" "private/output-executor.rkt" "canvas-matrix.rkt" "projective-matrix.rkt")
+(provide draw-output-group output-raster-executor?
          output-group-report? output-group-report-backend output-group-report-policy
          output-group-report-strategy output-group-report-reason
          output-group-report-bounds output-group-report-padded-bounds
          output-group-report-pixel-size output-group-report-scale
          output-group-report-features output-group-report-label output-group-report-children
-         output-group-report->jsexpr
+         output-group-report-execution output-group-report->jsexpr
          exn:fail:output-group? exn:fail:output-group-report)
 
 (struct output-group-report
-  (backend policy strategy reason bounds padded-bounds pixel-size scale features label children)
+  (backend policy strategy reason bounds padded-bounds pixel-size scale features label children execution)
   #:transparent #:constructor-name make-group-report)
 (struct exn:fail:output-group exn:fail (report) #:transparent)
-(struct capture-target (backend creator recording-handle) #:transparent)
+(struct capture-target (backend creator recording-handle executor) #:transparent)
 (define enclosing-target (make-parameter #f))
 (define enclosing-children (make-parameter #f))
 
@@ -34,6 +34,7 @@
           'scale (exact->inexact (output-group-report-scale report))
           'features (map symbol->string (output-group-report-features report))
           'label (output-group-report-label report)
+          'execution (output-group-report-execution report)
           'captured_children (map output-group-report->jsexpr (output-group-report-children report))))
 
 (define (reject-group! report)
@@ -48,7 +49,8 @@
                            #:padding [padding 0]
                            #:scale [scale (current-raster-output-scale)]
                            #:color-space [cs #f]
-                           #:label [label #f])
+                           #:label [label #f]
+                           #:raster-executor [requested-executor #f])
   (define who 'draw-output-group)
   (group-policy who policy)
   (define copied-label (group-label who label))
@@ -73,12 +75,19 @@
       (error who "a recording canvas can inherit an output backend only from its own enclosing output-group capture")))
   (define backend (if (eq? receiver 'recording) (capture-target-backend parent) receiver))
   (unless (memq backend '(pdf svg raster)) (error who "unsupported canvas backend: ~a" backend))
+  ;; Inherit only through the receiver's verified enclosing capture, never an
+  ;; ambient context from a callback drawing into an unrelated surface.
+  (define executor
+    (or requested-executor
+        (and (eq? receiver 'recording) (capture-target-executor parent))
+        'cpu))
+  (check-output-raster-executor! who executor)
   (when (and (eq? policy 'require-vector) (eq? backend 'raster))
     (error who "require-vector is a document-output policy, not a raster-target policy"))
   (when (and (memq receiver '(pdf svg)) (not (matrix4-affine-2d? (canvas-matrix4 c))))
     (error who "outer document matrix is not affine; put perspective inside the group callback"))
   (define captured-children (box '()))
-  (define parent-children (enclosing-children))
+  (define parent-children (and (eq? receiver 'recording) (enclosing-children)))
   ;; All temporary resources are scoped across errors, breaks, and escapes.
   ;; A callback executes once; no preflight/retry reruns authoring side effects.
   (with-skia ([recorder (make-picture-recorder)])
@@ -88,7 +97,7 @@
             (define rc (picture-recorder-begin-recording! recorder (- left) (- top) bw bh))
             (define capture-handle
               (output-group-canvas-recording-handle who rc))
-            (parameterize ([enclosing-target (capture-target backend (current-thread) capture-handle)]
+            (parameterize ([enclosing-target (capture-target backend (current-thread) capture-handle executor)]
                            [enclosing-children captured-children])
               (with-canvas-state rc
                 ;; Both strategies see exactly the same padded local clip.
@@ -109,14 +118,18 @@
             (make-group-report backend policy strategy reason
                                (vector-immutable fx fy fw fh)
                                (vector-immutable (- fx left) (- fy top) bw bh)
-                               pixels scale fs copied-label (reverse (unbox captured-children))))
+                               pixels scale fs copied-label (reverse (unbox captured-children))
+                               (output-execution-details
+                                executor (case strategy [(native) 'native] [(reject) 'rejected] [else 'planned])
+                                (and (eq? strategy 'native) backend))))
           ;; Reject device-coordinate regions, whose playback ignores the
           ;; intended group-local-to-receiver transformation.
           (when (or (eq? strategy 'reject) (memq 'device-region-clip fs))
             (reject-group!
              (if (memq 'device-region-clip fs)
                  (struct-copy output-group-report report
-                              [strategy 'reject] [reason 'device-space-clip]) report)))
+                              [strategy 'reject] [reason 'device-space-clip]
+                              [execution (output-execution-details executor 'rejected #f)]) report)))
           (define details (output-group-report->jsexpr report))
           (parameterize ([audit-labels (if copied-label (cons copied-label (audit-labels)) (audit-labels))])
             (audit-output-group! receiver (eq? strategy 'raster) details)
@@ -126,12 +139,45 @@
                  (canvas-translate! c fx fy)
                  (draw-picture c p))]
               [else
-               ;; Shift local coordinates by padding only; placement x/y remains
-               ;; outside the snapshot. Internal blending starts on transparency.
-               (draw-rasterized
-                c fx fy fw fh
-                (lambda (rc) (draw-picture rc p))
-                #:padding insets #:scale scale #:color-space cs)]))
+               ;; Representation and the outer strict audit have already accepted
+               ;; rasterization. Only now may a lazy executor acquire a GPU.
+               (define plan (prepare-output-raster executor p))
+               (define execution-backend (output-raster-plan-backend plan))
+               (define (record-execution! phase target)
+                 (set! report
+                   (struct-copy output-group-report report
+                     [execution (output-execution-details executor phase execution-backend
+                                                          #:plan plan #:target target)])))
+               (cond
+                 [(eq? execution-backend 'raster)
+                  ;; Preserve the existing CPU path, including its audit loss
+                  ;; propagation and transparent-backdrop/bitmap-glyph behavior.
+                  (draw-rasterized c fx fy fw fh (lambda (rc) (draw-picture rc p))
+                                   #:padding insets #:scale scale #:color-space cs)
+                  (record-execution! 'completed #f)
+                  (audit-output-group-execution! receiver (output-group-report->jsexpr report))]
+                 [else
+                  (define pw (vector-ref pixels 0))
+                  (define ph (vector-ref pixels 1))
+                  ((output-raster-plan-render plan)
+                   pw ph cs
+                   (lambda (rc)
+                     ;; Use ceil-derived pixel extents exactly like draw-rasterized.
+                     ;; x/y placement stays outside the isolated local picture.
+                     (canvas-scale! rc (/ pw bw) (/ ph bh))
+                     (canvas-translate! rc left top)
+                     (call-with-audit-raster
+                      receiver pw ph
+                      (hasheq 'x (- fx left) 'y (- fy top) 'width bw 'height bh
+                              'execution (output-execution-details executor 'planned execution-backend #:plan plan))
+                      (lambda ()
+                        (parameterize ([current-text-output-mode 'native]) (draw-picture rc p)))
+                      #:recording-handle receiver-recording-handle))
+                   (lambda (image target)
+                     (record-execution! 'rasterized target)
+                     (audit-output-group-execution! receiver (output-group-report->jsexpr report))
+                     (draw-image-rect c image (- fx left) (- fy top) bw bh #:sampling 'linear)
+                     (record-execution! 'completed target)))])]))
           (when parent-children
             (set-box! parent-children (cons report (unbox parent-children))))
           report))))

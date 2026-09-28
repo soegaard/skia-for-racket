@@ -28,13 +28,14 @@ def main() -> int:
     (ROOT/'output').mkdir(exist_ok=True)
     # Fresh directories prevent a failure or optional skip from leaving an old
     # successful image/inspection report looking like the current result.
-    directory = Path(tempfile.mkdtemp(prefix='gpu-0.43-', dir=ROOT/'output'))
+    directory = Path(tempfile.mkdtemp(prefix='gpu-0.44-', dir=ROOT/'output'))
     os.environ['SKIA_GPU_VALIDATION_RUN'] = directory.name
     metal_rendering = False
     backend_parity = False
     presentation_passed = {}
     presentation_summary = False
     gl_interop = False
+    gpu_output_passed = {}
     commands = []
     skips = []
     def run(arguments, *, capture=False):
@@ -67,6 +68,8 @@ def main() -> int:
         run([sys.executable, 'tools/test-patch-delivery.py'])
         run([sys.executable, 'tools/inspect-gpu-headless.py','--self-test'])
         run([sys.executable, 'tools/test-validate-gpu-headless.py'])
+        run([sys.executable, 'tools/test-validate-gpu-output.py'])
+        run([sys.executable, 'tools/inspect-gpu-output.py', '--self-test'])
         if os.environ.get('SKIP_C_ABI') == '1':
             skips.append('C ABI mirrors explicitly skipped (SKIP_C_ABI=1)')
             print(skips[-1])
@@ -90,7 +93,9 @@ def main() -> int:
                    'tools/gpu-presenter-doctor.rkt','tools/gpu-presentation-host.rkt',
                    'examples/gpu-presenters.rkt','examples/gpu-presentation-scene.rkt',
                    'gpu-egl.rkt','gpu-gl-interop.rkt','tools/gpu-egl-doctor.rkt',
-                   'tools/gpu-interop-doctor.rkt','examples/gpu-headless.rkt']
+                   'tools/gpu-interop-doctor.rkt','examples/gpu-headless.rkt',
+                   'gpu-output.rkt','private/output-executor.rkt','tools/gpu-output-doctor.rkt',
+                   'examples/gpu-output.rkt','tests/gpu-output-fixtures.rkt']
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))]
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu*.rkt'))]
         run([racket,'-l','raco','--','make',*modules])
@@ -169,10 +174,13 @@ def main() -> int:
             else:
                 skips.append('Combined presentation submission check not established: an optional presenter was unavailable')
             gl_interop = probe('interop', 'interop-opengl', inspector='tools/inspect-gpu-headless.py')
+            for backend in backends:
+                gpu_output_passed[backend] = probe('output', 'output-'+backend, backend=backend,
+                                                  inspector='tools/inspect-gpu-output.py')
         # Repository manifest regeneration is deliberately LAST, after every
         # selected check succeeds. Optional/off runs retain explicit skips.
         run([sys.executable,'tools/update-source-sums.py'])
-        report = {'status':'passed-selected-checks','stage':'0.43','gpu_mode':mode,'identity':identity.strip(),
+        report = {'status':'passed-selected-checks','stage':'0.44','gpu_mode':mode,'identity':identity.strip(),
                   'commands':commands,'skips':skips,'hardware_string_requirement':hardware,
                   'performance_measured':False, 'visible_window_pixels_verified':False,
                   'validation_run':directory.name, 'metal_rendering_verified':metal_rendering,
@@ -180,14 +188,15 @@ def main() -> int:
                   'presentation_submission_verified':presentation_passed,
                   'presentation_summary_verified':presentation_summary,
                   'window_manual_review_required':mode != 'off', 'gl_interop_verified':gl_interop,
+                  'gpu_document_output_verified':gpu_output_passed,
                   'egl_headless_verified':False,
-                  'egl_validation_note':'Not selected here: run tools/validate-gpu-headless.sh on Linux without a display server'}
+                  'egl_validation_note':'Linux EGL end-to-end acceptance deferred by maintainer to future GitHub Actions CI; not a desktop baseline blocker'}
         destination = directory/'validation.json'
         destination.write_text(json.dumps(report,indent=2)+'\n')
         print(f'Validation report: {destination}')
         print(f'Review files: {directory} (passed checks only)')
         if mode != 'off':
-            print('Submission checks are not visible-pixel certification. Review presentation.review.html and parity.review.html; run examples/gpu-presenters.rkt --backend both on macOS (--backend opengl elsewhere).')
+            print('Submission checks are not visible-pixel certification. Review output-opengl.review.html / output-metal.review.html, presentation.review.html and parity.review.html; run examples/gpu-presenters.rkt --backend both on macOS (--backend opengl elsewhere).')
         return 0
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
         # A failure record is explicitly named; no successful inspection report

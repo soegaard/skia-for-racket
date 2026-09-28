@@ -1,4 +1,28 @@
-# Racket Skia — 0.43.0
+# Racket Skia — 0.44.0
+
+## GPU-assisted bounded document fallbacks
+
+`skia/gpu-output` provides borrowed or lazily owned raster executors for
+`draw-output-group`. Select `#:raster-executor` explicitly; CPU execution remains
+the default. The existing representation policy first chooses native replay,
+bounded rasterization or rejection. A selected raster can then render on an
+OpenGL/Metal context, read back explicitly, and embed a CPU-owned image.
+
+GPU availability cannot override vector-only, annotation, native-text, unknown
+provenance or device-clip restrictions. Nested groups inherit execution only
+through their own enclosing capture. Reports separate representation, actual
+execution, context generation and transfer. Only explicit factory-unavailability
+policy permits a CPU fallback; authoring is never retried.
+
+See [API and ownership](docs/GPU-OUTPUT.md) and
+[document validation](docs/GPU-OUTPUT-TESTING.md). The runner checks actual
+PDF/SVG resources and placement, retained vector paths/links and embedded SVG
+PNG comparisons, including serialization after both GPU contexts close.
+
+The accepted baseline is `f493314201d69973956c3e5485fda0b709dcad67` (0.43).
+Its macOS checks passed; Linux EGL end-to-end acceptance is explicitly deferred
+to future GitHub Actions CI, not a blocker for this baseline. New 0.44 native
+results remain a separate host validation. No speedup is presumed.
 
 ## EGL headless contexts and external GL borrowing
 

@@ -1,6 +1,25 @@
 # Testing
 
-## Current revision: EGL headless and external GL (0.43)
+## Current revision: GPU-assisted document fallbacks (0.44)
+
+Baseline: `f493314201d69973956c3e5485fda0b709dcad67` (0.43). The maintainer
+accepted its passing macOS validation and deferred Linux EGL end-to-end
+acceptance to future GitHub Actions CI. That deferral remains in effect and
+is not a prerequisite for this stage. It is not a Linux validation claim.
+
+Run [the GPU document sequence](docs/GPU-OUTPUT-TESTING.md). It adds 35 pure
+and 42 live source cases per backend while retaining previous regressions.
+Each backend produces 16 actual PDF/SVG documents: CPU/GPU variants of four
+fixtures in both formats. Documents finish after GPU teardown. Inspection
+checks vector paths, links, embedded dimensions and placement in both formats;
+SVG PNG pixels supply numerical CPU/GPU comparison. PDF rendered pixels,
+PDF/A conformance, universal byte identity and performance are not certified.
+
+Source checks and synthetic Python tests do not establish Racket/native passes.
+The source manifest is regenerated only after all selected host checks pass.
+Review output-opengl.review.html and output-metal.review.html on macOS.
+
+## Previous revision: EGL headless and external GL (0.43)
 
 Baseline: `e5f93e529fd875661a0b0019d5b9d897ff8c9dc0` (0.42). The maintainer
 confirmed both automated and physical-window inspection on macOS/aarch64.

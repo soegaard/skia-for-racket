@@ -80,7 +80,8 @@ def read_forms(text: str):
 
 def check(root: pathlib.Path, *, require_integration=False):
     files = sorted([*root.glob('gpu*.rkt'), *root.glob('private/gpu*.rkt'),
-                    *root.glob('private/native-platform.rkt'), *root.glob('private/lifetime.rkt'),
+                    *root.glob('private/native-platform.rkt'), *root.glob('private/output-executor.rkt'),
+                    *root.glob('output-groups.rkt'), *root.glob('private/audit-trace.rkt'), *root.glob('private/lifetime.rkt'),
                     *root.glob('tests/gpu*.rkt'),
                     *root.glob('tools/gpu*.rkt'), *root.glob('examples/gpu*.rkt')])
     results = {}
@@ -133,7 +134,14 @@ def check(root: pathlib.Path, *, require_integration=False):
         'presenter_live':suite_cases('tests/gpu-presenter-native-test.rkt','make-gpu-presenter-native-tests',factory=True),
         'egl_pure':suite_cases('tests/gpu-egl-pure-test.rkt','gpu-egl-pure-tests'),
         'egl_live':suite_cases('tests/gpu-egl-native-test.rkt','make-gpu-egl-native-tests',factory=True),
-        'interop_live':suite_cases('tests/gpu-gl-interop-native-test.rkt','make-gpu-gl-interop-native-tests',factory=True)}
+        'interop_live':suite_cases('tests/gpu-gl-interop-native-test.rkt','make-gpu-gl-interop-native-tests',factory=True),
+        'output_pure':suite_cases('tests/gpu-output-pure-test.rkt','gpu-output-pure-tests'),
+        'output_live':suite_cases('tests/gpu-output-native-test.rkt','make-gpu-output-native-tests',factory=True)}
+    count = counts['output_live']
+    if f'(define gpu-output-native-test-count {count})' not in (root/'tests/gpu-output-native-test.rkt').read_text():
+        raise ValueError('GPU output doctor coverage mismatch')
+    if f'NATIVE_TEST_CASES = {count}' not in (root/'tools/inspect-gpu-output.py').read_text():
+        raise ValueError('GPU output inspector coverage mismatch')
     for key, name, constant in [('egl_live','egl','EGL_NATIVE_CASES'),
                                 ('interop_live','gl-interop','INTEROP_NATIVE_CASES')]:
         n = counts[key]
@@ -167,7 +175,8 @@ def check(root: pathlib.Path, *, require_integration=False):
                           ('private/gpu-images.rkt','GPU-IMAGES.md'),
                           ('private/gpu-presenter.rkt','GPU-PRESENTATION.md'),
                           ('gpu-egl.rkt','GPU-EGL.md'),
-                          ('gpu-gl-interop.rkt','GPU-INTEROP.md')):
+                          ('gpu-gl-interop.rkt','GPU-INTEROP.md'),
+                          ('gpu-output.rkt','GPU-OUTPUT.md')):
         forms = read_forms((root/module).read_text())
         names = [n for f in forms if isinstance(f,list) and f and f[0]=='provide' for n in f[1:] if isinstance(n,str)]
         doc = (root/'docs'/guide).read_text()
@@ -187,7 +196,8 @@ def check(root: pathlib.Path, *, require_integration=False):
                          'tests/gpu-image-pure-test.rkt','(run-tests gpu-image-pure-tests)',
                          'tests/gpu-metal-pure-test.rkt','(run-tests gpu-metal-pure-tests)',
                          'tests/gpu-presenter-pure-test.rkt','(run-tests gpu-presenter-pure-tests)',
-                         'tests/gpu-egl-pure-test.rkt','(run-tests gpu-egl-pure-tests)'],
+                         'tests/gpu-egl-pure-test.rkt','(run-tests gpu-egl-pure-tests)',
+                         'tests/gpu-output-pure-test.rkt','(run-tests gpu-output-pure-tests)'],
         'docs/API.md':['surface-backend','canvas-execution-backend'],
     }.items():
         file = root/path

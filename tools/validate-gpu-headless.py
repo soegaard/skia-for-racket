@@ -21,7 +21,7 @@ DISPLAY_VARIABLES = ('DISPLAY','WAYLAND_DISPLAY','MIR_SOCKET')
 PYTHON_CHECKS = ('test-install-native-windows.py','test-validate-gpu-headless.py',
                  'inspect-gpu-probe.py','inspect-gpu-offscreen.py','inspect-gpu-images.py',
                  'inspect-gpu-parity.py','inspect-gpu-presentation.py','inspect-gpu-headless.py',
-                 'test-patch-delivery.py')
+                 'test-patch-delivery.py','test-validate-gpu-output.py','inspect-gpu-output.py')
 
 
 def main() -> int:
@@ -32,9 +32,9 @@ def main() -> int:
     index_text = os.environ.get('SKIA_EGL_DEVICE_INDEX','0')
     surface = os.environ.get('SKIA_EGL_SURFACE','surfaceless')
     hardware = os.environ.get('REQUIRE_HARDWARE','0') == '1'
-    commands=[];skips=[];verified=False; identity=''
+    commands=[];skips=[];verified=False; output_verified=False; identity=''
     (ROOT/'output').mkdir(exist_ok=True)
-    directory=Path(tempfile.mkdtemp(prefix='gpu-0.43-headless-',dir=ROOT/'output'))
+    directory=Path(tempfile.mkdtemp(prefix='gpu-0.44-headless-',dir=ROOT/'output'))
     env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1',SKIA_GPU_VALIDATION_RUN=directory.name)
     for key in DISPLAY_VARIABLES: env.pop(key,None)
     def run(argv, *, capture=False):
@@ -70,7 +70,9 @@ def main() -> int:
         modules=['main.rkt','bitmap.rkt','gpu.rkt','gpu-egl.rkt','gpu-gl-interop.rkt','run-tests.rkt',
                  'tools/doctor.rkt','tools/portable-drawing-doctor.rkt','tools/color-filter-doctor.rkt','tools/raster-buffer-doctor.rkt',
                  'tools/gpu-egl-doctor.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-image-doctor.rkt','tools/gpu-interop-doctor.rkt',
-                 'tools/gpu-test-host.rkt','examples/gpu-headless.rkt','examples/gpu-scenes.rkt','examples/gpu-images.rkt']
+                 'tools/gpu-test-host.rkt','examples/gpu-headless.rkt','examples/gpu-scenes.rkt','examples/gpu-images.rkt',
+                 'gpu-output.rkt','private/output-executor.rkt','tools/gpu-output-doctor.rkt',
+                 'examples/gpu-output.rkt','tests/gpu-output-fixtures.rkt']
         # The suites below load no GUI. GUI-native suites and their doctors are
         # intentionally absent, rather than relying on a DISPLAY being present.
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))
@@ -112,18 +114,25 @@ def main() -> int:
                     run([sys.executable,'tools/'+inspector,'--probe-prefix',prefix])
                 run([sys.executable,'tools/inspect-gpu-headless.py','--directory',directory])
                 verified=True
+                prefix=directory/'output-egl'
+                run([racket,'tools/gpu-output-doctor.rkt','--prefix',prefix,'--host','egl',
+                     '--backend','opengl',*options,*extra])
+                data=json.loads(Path(str(prefix)+'.diagnostic.json').read_text())
+                if data.get('status')!='passed': raise RuntimeError('EGL document output did not pass')
+                run([sys.executable,'tools/inspect-gpu-output.py','--probe-prefix',prefix])
+                output_verified=True
         run([sys.executable,'tools/update-source-sums.py'])
-        report=dict(status='passed-selected-checks',stage='0.43',gpu_mode=mode,identity=identity.strip(),
+        report=dict(status='passed-selected-checks',stage='0.44',gpu_mode=mode,identity=identity.strip(),
           validation_run=directory.name,commands=commands,skips=skips,display_variables_removed=list(DISPLAY_VARIABLES),
           egl_platform=platform,egl_device_index=index,egl_surface=surface,headless_rendering_verified=verified,
-          gl_interop_verified=verified,hardware_string_requirement=hardware,performance_measured=False,
+          gl_interop_verified=verified,gpu_document_output_verified=output_verified,hardware_string_requirement=hardware,performance_measured=False,
           presentation_verified=False,window_created=False)
         (directory/'validation.json').write_text(json.dumps(report,indent=2)+'\n')
         print(f'Validation report: {directory}/validation.json')
         print(f'Headless review: {directory}/headless.review.html (published only after live gates pass)')
         return 0
     except (OSError,ValueError,RuntimeError,subprocess.CalledProcessError) as e:
-        (directory/'validation.failed.json').write_text(json.dumps(dict(status='failed',stage='0.43',
+        (directory/'validation.failed.json').write_text(json.dumps(dict(status='failed',stage='0.44',
             error=str(e),commands=commands,skips=skips),indent=2)+'\n')
         print(f'Headless validation FAILED: {e}\nDetails: {directory}',file=sys.stderr)
         return 1

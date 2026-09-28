@@ -1,4 +1,20 @@
-# API reference — version 0.43.0
+# API reference — version 0.44.0
+
+## GPU raster execution for bounded output groups
+
+Import `skia/gpu-output` for `make-gpu-raster-executor` and
+`call-with-gpu-raster-executor`. Pass the resulting `output-raster-executor?`
+to `draw-output-group` using `#:raster-executor`; explicit `'cpu` selects the
+existing CPU path. An omitted value inherits only from the exact enclosing
+output-group recorder, otherwise it selects CPU. Native/rejected groups do
+not prepare a lazy GPU context. Representation policy is unchanged.
+
+`output-group-report-execution` and `output-group-report->jsexpr` separate
+requested execution, actual backend/generation, fallback reason, readback and
+CPU-image ownership from the document representation decision. The GPU path
+reuses ordinary surfaces and canvases and explicitly detaches the result
+before embedding it. See [the complete contract](GPU-OUTPUT.md), including
+lazy ownership, strict policy vetoes, scoped audit authority and preflight.
 
 ## EGL contexts and external OpenGL storage
 
