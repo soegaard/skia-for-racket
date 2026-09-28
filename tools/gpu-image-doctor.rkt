@@ -6,7 +6,9 @@
          "../examples/gpu-images.rkt" "../tests/gpu-image-native-test.rkt"
          "gpu-report.rkt" "gpu-test-host.rkt")
 (provide gpu-image-doctor!)
-(define (gpu-image-doctor! prefix #:backend [backend 'opengl] #:required? [required? #t] #:require-hardware? [hardware? #f])
+(define (gpu-image-doctor! prefix #:backend [backend 'opengl] #:required? [required? #t] #:require-hardware? [hardware? #f]
+                              #:host [host-mode 'gui] #:egl-platform [platform 'surfaceless]
+                              #:egl-device-index [index 0] #:egl-surface [egl-surface 'surfaceless])
   (unless (memq backend '(opengl metal))
     (raise-argument-error 'gpu-image-doctor! "'opengl or 'metal" backend))
   (define context #f) (define other #f) (define survivor #f)
@@ -46,7 +48,8 @@
           (publish (report "error" (exn-message e)))
           (eprintf "GPU images ERROR: ~a\n" (exn-message e)) 1)])
     (make-directory* (or (path-only (string->path prefix)) (current-directory)))
-    (define (with-host proc) (call-with-gpu-backend-host backend proc))
+    (define (with-host proc) (call-with-gpu-backend-host backend proc #:host host-mode
+      #:egl-platform platform #:egl-device-index index #:egl-surface egl-surface))
     (dynamic-wind
       void
       (lambda ()
@@ -150,10 +153,16 @@
 (module+ main
   (define prefix "output/gpu-images-0.41")
   (define required? #t) (define hardware? #f) (define backend 'opengl)
+  (define host-mode 'gui) (define platform 'surfaceless) (define device-index 0) (define egl-surface 'surfaceless)
   (command-line #:program "gpu-image-doctor" #:once-each
+    [("--host") value "gui or egl" (set! host-mode (string->symbol value))]
+    [("--egl-platform") value "surfaceless or device" (set! platform (string->symbol value))]
+    [("--egl-device-index") value "EGL device enumeration index" (set! device-index (string->number value))]
+    [("--egl-surface") value "surfaceless or pbuffer" (set! egl-surface (string->symbol value))]
     [("--backend") value "opengl or metal" (set! backend (string->symbol value))]
     [("--prefix") value "Artifact prefix" (set! prefix value)]
     [("--optional") "Allow initialization unavailability to skip" (set! required? #f)]
     [("--require-hardware") "Require hardware-reported renderer strings" (set! hardware? #t)]
     #:args () (void))
-  (exit (gpu-image-doctor! prefix #:backend backend #:required? required? #:require-hardware? hardware?)))
+  (exit (gpu-image-doctor! prefix #:backend backend #:required? required? #:require-hardware? hardware?
+    #:host host-mode #:egl-platform platform #:egl-device-index device-index #:egl-surface egl-surface)))

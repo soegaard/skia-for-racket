@@ -28,12 +28,13 @@ def main() -> int:
     (ROOT/'output').mkdir(exist_ok=True)
     # Fresh directories prevent a failure or optional skip from leaving an old
     # successful image/inspection report looking like the current result.
-    directory = Path(tempfile.mkdtemp(prefix='gpu-0.42-', dir=ROOT/'output'))
+    directory = Path(tempfile.mkdtemp(prefix='gpu-0.43-', dir=ROOT/'output'))
     os.environ['SKIA_GPU_VALIDATION_RUN'] = directory.name
     metal_rendering = False
     backend_parity = False
     presentation_passed = {}
     presentation_summary = False
+    gl_interop = False
     commands = []
     skips = []
     def run(arguments, *, capture=False):
@@ -64,6 +65,8 @@ def main() -> int:
         run([sys.executable, 'tools/inspect-gpu-parity.py', '--self-test'])
         run([sys.executable, 'tools/inspect-gpu-presentation.py', '--self-test'])
         run([sys.executable, 'tools/test-patch-delivery.py'])
+        run([sys.executable, 'tools/inspect-gpu-headless.py','--self-test'])
+        run([sys.executable, 'tools/test-validate-gpu-headless.py'])
         if os.environ.get('SKIP_C_ABI') == '1':
             skips.append('C ABI mirrors explicitly skipped (SKIP_C_ABI=1)')
             print(skips[-1])
@@ -85,7 +88,9 @@ def main() -> int:
                    'tools/gpu-test-host.rkt','tools/gpu-metal-doctor.rkt','tools/gpu-cross-backend-doctor.rkt','examples/gpu-metal.rkt',
                    'tools/portable-drawing-doctor.rkt','tools/color-filter-doctor.rkt','tools/raster-buffer-doctor.rkt',
                    'tools/gpu-presenter-doctor.rkt','tools/gpu-presentation-host.rkt',
-                   'examples/gpu-presenters.rkt','examples/gpu-presentation-scene.rkt']
+                   'examples/gpu-presenters.rkt','examples/gpu-presentation-scene.rkt',
+                   'gpu-egl.rkt','gpu-gl-interop.rkt','tools/gpu-egl-doctor.rkt',
+                   'tools/gpu-interop-doctor.rkt','examples/gpu-headless.rkt']
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))]
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu*.rkt'))]
         run([racket,'-l','raco','--','make',*modules])
@@ -163,17 +168,20 @@ def main() -> int:
                 presentation_summary = True
             else:
                 skips.append('Combined presentation submission check not established: an optional presenter was unavailable')
+            gl_interop = probe('interop', 'interop-opengl', inspector='tools/inspect-gpu-headless.py')
         # Repository manifest regeneration is deliberately LAST, after every
         # selected check succeeds. Optional/off runs retain explicit skips.
         run([sys.executable,'tools/update-source-sums.py'])
-        report = {'status':'passed-selected-checks','stage':'0.42','gpu_mode':mode,'identity':identity.strip(),
+        report = {'status':'passed-selected-checks','stage':'0.43','gpu_mode':mode,'identity':identity.strip(),
                   'commands':commands,'skips':skips,'hardware_string_requirement':hardware,
                   'performance_measured':False, 'visible_window_pixels_verified':False,
                   'validation_run':directory.name, 'metal_rendering_verified':metal_rendering,
                   'backend_parity_verified':backend_parity, 'metal_presentation_verified':False,
                   'presentation_submission_verified':presentation_passed,
                   'presentation_summary_verified':presentation_summary,
-                  'window_manual_review_required':mode != 'off'}
+                  'window_manual_review_required':mode != 'off', 'gl_interop_verified':gl_interop,
+                  'egl_headless_verified':False,
+                  'egl_validation_note':'Not selected here: run tools/validate-gpu-headless.sh on Linux without a display server'}
         destination = directory/'validation.json'
         destination.write_text(json.dumps(report,indent=2)+'\n')
         print(f'Validation report: {destination}')

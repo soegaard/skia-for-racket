@@ -1,0 +1,16 @@
+#lang racket/base
+(provide check-gl-name check-gl-extent gl-origin-value check-gl-borrow-options)
+(define (check-gl-name who value)
+  (unless (and (exact-integer? value) (<= 1 value #xffffffff))
+    (raise-argument-error who "nonzero uint32 OpenGL object name" value)) value)
+(define (check-gl-extent who width height)
+  (for ([v (in-list (list width height))])
+    (unless (and (exact-integer? v) (<= 1 v #x7fffffff))
+      (raise-argument-error who "positive signed-32-bit pixel extent" v))))
+(define (gl-origin-value who origin)
+  (case origin [(top-left) 0] [(bottom-left) 1]
+    [else (raise-argument-error who "'top-left or 'bottom-left" origin)]))
+(define (check-gl-borrow-options who name width height origin wait?)
+  (check-gl-name who name) (check-gl-extent who width height)
+  (gl-origin-value who origin)
+  (unless (boolean? wait?) (raise-argument-error who "boolean? for wait?" wait?)))

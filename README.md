@@ -1,4 +1,29 @@
-# Racket Skia — 0.42.0
+# Racket Skia — 0.43.0
+
+## EGL headless contexts and external GL borrowing
+
+`skia/gpu-egl` creates explicit Linux EGL contexts without a native window or
+GLX, using the same OpenGL/Ganesh surface and image API. Surfaceless and device
+platforms, with either no binding surface or an explicit pbuffer, have separate
+selection and diagnostics. A borrowed-current EGL provider supports existing
+host-managed contexts without taking over their EGL object lifetimes.
+
+`skia/gpu-gl-interop` provides a scoped canvas over a restricted host-owned
+RGBA8/stencil8 framebuffer and an explicit GPU-side copy of an external RGBA8
+texture. It never adopts external names. The copy can safely enter retained
+shader/picture graphs after the host source is reused or deleted. Synchronization
+and the limited binding-restoration contract are explicit; this is not zero-copy
+import or cross-context sharing.
+
+See [EGL ownership](docs/GPU-EGL.md), [interop contracts](docs/GPU-INTEROP.md),
+and [desktop/headless validation](docs/GPU-HEADLESS-TESTING.md).
+`tools/validate-gpu.sh` retains presentation/parity tests and adds GL interop.
+`tools/validate-gpu-headless.sh` runs the Linux EGL gate with display variables
+removed and no GUI host. Both update source sums only after selected success.
+
+Baseline: `e5f93e529fd875661a0b0019d5b9d897ff8c9dc0` (0.42), whose macOS
+automated and interactive checks passed. New Racket/native execution remains
+a separate host gate. Earlier release-specific notes below are historical.
 
 ## Unified OpenGL and Metal windows
 

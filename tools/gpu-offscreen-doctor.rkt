@@ -6,7 +6,9 @@
          "gpu-report.rkt" "gpu-test-host.rkt")
 (provide gpu-offscreen-doctor!)
 (define (gpu-offscreen-doctor! prefix #:backend [backend 'opengl] #:required? [required? #t]
-                              #:require-hardware? [hardware? #f])
+                              #:require-hardware? [hardware? #f]
+                              #:host [host-mode 'gui] #:egl-platform [platform 'surfaceless]
+                              #:egl-device-index [index 0] #:egl-surface [egl-surface 'surfaceless])
   (unless (memq backend '(opengl metal))
     (raise-argument-error 'gpu-offscreen-doctor! "'opengl or 'metal" backend))
   (define started? #f)
@@ -42,7 +44,8 @@
           (eprintf "Offscreen GPU ERROR: ~a\n" (exn-message e))
           1)])
     (make-directory* (or (path-only (string->path prefix)) (current-directory)))
-    (define (with-host proc) (call-with-gpu-backend-host backend proc))
+    (define (with-host proc) (call-with-gpu-backend-host backend proc #:host host-mode
+      #:egl-platform platform #:egl-device-index index #:egl-surface egl-surface))
     (dynamic-wind
       void
       (lambda ()
@@ -123,10 +126,16 @@
 (module+ main
   (define prefix "output/gpu-offscreen-0.41")
   (define required? #t) (define hardware? #f) (define backend 'opengl)
+  (define host-mode 'gui) (define platform 'surfaceless) (define device-index 0) (define egl-surface 'surfaceless)
   (command-line #:program "gpu-offscreen-doctor" #:once-each
+    [("--host") value "gui or egl" (set! host-mode (string->symbol value))]
+    [("--egl-platform") value "surfaceless or device" (set! platform (string->symbol value))]
+    [("--egl-device-index") value "EGL device enumeration index" (set! device-index (string->number value))]
+    [("--egl-surface") value "surfaceless or pbuffer" (set! egl-surface (string->symbol value))]
     [("--backend") value "opengl or metal" (set! backend (string->symbol value))]
     [("--prefix") value "Artifact prefix" (set! prefix value)]
     [("--optional") "Allow only initialization unavailability to skip" (set! required? #f)]
     [("--require-hardware") "Require a hardware-reported renderer string" (set! hardware? #t)]
     #:args () (void))
-  (exit (gpu-offscreen-doctor! prefix #:backend backend #:required? required? #:require-hardware? hardware?)))
+  (exit (gpu-offscreen-doctor! prefix #:backend backend #:required? required? #:require-hardware? hardware?
+    #:host host-mode #:egl-platform platform #:egl-device-index device-index #:egl-surface egl-surface)))

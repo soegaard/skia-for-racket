@@ -1,4 +1,22 @@
-# API reference — version 0.42.0
+# API reference — version 0.43.0
+
+## EGL contexts and external OpenGL storage
+
+Import `skia/gpu-egl` for `make-egl-gpu-context` and
+`make-current-egl-gpu-provider`. The owned Linux constructor selects an explicit
+EGL platform/device and surfaceless or pbuffer binding surface. It returns the
+existing OpenGL `gpu-context?`, without initializing a GUI or using GLX.
+The borrowed-current provider never owns the host EGL display/context/surfaces.
+See [EGL contracts](GPU-EGL.md) for platform, initialization and place limits.
+
+Import `skia/gpu-gl-interop` for `call-with-gpu-external-gl`,
+`call-with-gpu-gl-framebuffer`, and `gpu-copy-gl-texture`. All require the
+matching active OpenGL context. The framebuffer API lends an expiring canvas;
+the texture API returns an independent GPU copy, not an escaping borrowed image.
+Neither adopts host names. Origins, supported formats, synchronization and
+limited GL binding restoration are specified in [interop contracts](GPU-INTEROP.md).
+Custom `make-gpu-provider` calls can supply `#:get-proc-address` for their native
+procedure resolver. Existing CPU, Metal and GUI constructors remain unchanged.
 
 ## Window presenters and scoped frames
 

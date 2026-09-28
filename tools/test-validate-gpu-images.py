@@ -58,8 +58,8 @@ class Checks(unittest.TestCase):
     def test_required_runs_all_stages_and_manifest_last(self):
         rc, calls, report, directory = self.simulate()
         self.assertEqual(rc, 0)
-        self.assertTrue(directory.startswith('gpu-0.42-'))
-        self.assertEqual(report['stage'], '0.42')
+        self.assertTrue(directory.startswith('gpu-0.43-'))
+        self.assertEqual(report['stage'], '0.43')
         paths = [a[1] for a in calls if len(a) > 1]
         for path in ('run-tests.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-window-doctor.rkt',
                      'tools/gpu-image-doctor.rkt','tools/inspect-gpu-images.py'):
@@ -232,6 +232,43 @@ class Checks(unittest.TestCase):
         self.assertEqual(report['presentation_submission_verified'], {'opengl':True})
         self.assertTrue(report['presentation_summary_verified'])
         self.assertFalse(any('tools/gpu-presenter-doctor.rkt' in a and 'metal' in a for a in calls))
+
+    def test_interop_uses_existing_gl_host_without_claiming_egl(self):
+        rc, calls, report, _ = self.simulate()
+        self.assertEqual(rc, 0)
+        self.assertTrue(report['gl_interop_verified'])
+        self.assertFalse(report['egl_headless_verified'])
+        probe, = [a for a in calls if 'tools/gpu-interop-doctor.rkt' in a and '--prefix' in a]
+        self.assertNotIn('--host', probe)
+        self.assertFalse(any('tools/gpu-egl-doctor.rkt' in a and '--prefix' in a for a in calls))
+
+    def test_interop_failure_blocks_manifest(self):
+        rc, calls, _, _ = self.simulate(failure='tools/gpu-interop-doctor.rkt')
+        self.assertEqual(rc, 1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_interop_inspector_failure_blocks_manifest(self):
+        rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-headless.py', failure_probe_only=True)
+        self.assertEqual(rc, 1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_optional_interop_initialization_skip(self):
+        rc, calls, report, _ = self.simulate(mode='optional', unavailable=('interop-opengl',))
+        self.assertEqual(rc, 0)
+        self.assertFalse(report['gl_interop_verified'])
+        self.assertTrue(any('interop-opengl unavailable' in s for s in report['skips']))
+
+    def test_off_cannot_claim_interop(self):
+        rc, calls, report, _ = self.simulate(mode='off')
+        self.assertEqual(rc, 0)
+        self.assertFalse(report['gl_interop_verified'])
+        self.assertFalse(any('tools/gpu-interop-doctor.rkt' in a and '--prefix' in a for a in calls))
+
+    def test_selected_racket_compiles_egl_interop(self):
+        _, calls, _, _ = self.simulate()
+        compile_call, = [a for a in calls if 'raco' in a]
+        for name in ('gpu-egl.rkt','gpu-gl-interop.rkt','tools/gpu-egl-doctor.rkt','tools/gpu-interop-doctor.rkt'):
+            self.assertIn(name, compile_call)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

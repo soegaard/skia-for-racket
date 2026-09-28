@@ -1,6 +1,24 @@
 # Testing
 
-## Current revision: unified presentation (0.42)
+## Current revision: EGL headless and external GL (0.43)
+
+Baseline: `e5f93e529fd875661a0b0019d5b9d897ff8c9dc0` (0.42). The maintainer
+confirmed both automated and physical-window inspection on macOS/aarch64.
+Run [the separate desktop and Linux headless gates](docs/GPU-HEADLESS-TESTING.md).
+
+The desktop runner retains previous tests and adds external GL borrowing/copy.
+The Linux headless runner removes display variables, creates no window, and
+uses the EGL procedure table rather than GLX. It executes 37 new pure source
+cases, 10 EGL-native and 32 GL-interop source cases, and the existing 33 surface
+and 42 image cases with their ten scene/workflow comparisons. These counts
+are checked against executable suite structure and inspector advertisements.
+
+Authoring includes Python tests and native ctypes EGL/GL probes on software
+Mesa, not Racket/Ganesh execution or hardware validation. No successful Mac
+run can substitute for the new Linux headless gate. Both runners regenerate
+source sums last; failures never publish a successful combined inspection.
+
+## Previous revision: unified presentation (0.42)
 
 Baseline: `07db8f0356e2bb508e06a119adf7f19c9396f80e` (0.41). The maintainer's
 macOS/aarch64 0.41 run passed all selected checks and offscreen image review,

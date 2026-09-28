@@ -1,6 +1,6 @@
 #lang racket/base
 (require ffi/unsafe/alloc ffi/unsafe/atomic
-         racket/list racket/future "gpu-provider.rkt" "gpu-native-scope.rkt")
+         racket/list racket/future "gpu-provider.rkt" "gpu-native-scope.rkt" "gpu-interop-guard.rkt")
 (provide (struct-out gpu-driver)
          make-gpu-domain gpu-domain? domain-backend domain-generation domain-state
          domain-info domain-call domain-pointer domain-close! domain-abandon!
@@ -56,6 +56,7 @@
   (unless (and (eq? (gpu-domain-owner d) (current-thread)) (not (current-future)))
     (error who "GPU domain belongs to another execution owner; futures are not supported")))
 (define (usable! who d)
+  (check-skia-gpu-access! who)
   (owner! who d)
   (unless (and (eq? (domain-state d) 'ready) (not (gpu-domain-requested d)))
     (error who "GPU domain is ~a~a" (domain-state d)
@@ -89,6 +90,7 @@
      (when (eq? d (hash-ref claims key #f)) (hash-remove! claims key)))))
 
 (define (make-gpu-domain provider driver)
+  (check-skia-gpu-access! 'make-gpu-domain)
   (unless (gpu-provider? provider)
     (raise-argument-error 'make-gpu-domain "gpu-provider?" provider))
   (unless (gpu-driver? driver)
@@ -186,6 +188,7 @@
   (when first-error (raise first-error))
   (length jobs)))
 (define (domain-drain! d)
+  (check-skia-gpu-access! 'domain-drain!)
   (owner! 'domain-drain! d)
   (unless (memq (domain-state d) '(ready closing abandoned))
     (error 'domain-drain! "domain is ~a" (domain-state d)))
@@ -407,3 +410,16 @@
   (usable! who d)
   (current! who d)
   (void))
+
+;; Advanced GL adapters need the provider's resolver, not GLX on an EGL
+;; context. No raw context pointer is exposed by the public GPU module.
+(module* gl-interop-internals #f
+  (provide domain-gl-resolver)
+  (define (domain-gl-resolver d)
+    (usable! 'gpu-gl-interop d)
+    (current! 'gpu-gl-interop d)
+    (unless (eq? (domain-backend d) 'opengl)
+      (error 'gpu-gl-interop "an OpenGL context is required"))
+    (or (gpu-provider-resolve (gpu-domain-provider d))
+        (error 'gpu-gl-interop
+               "provider needs #:get-proc-address for explicit GL interoperation"))))

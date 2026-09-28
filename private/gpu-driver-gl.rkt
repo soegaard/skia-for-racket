@@ -8,14 +8,19 @@
   (define interface-kind (box #f))
   (gpu-driver
    (lambda ()
-     (define interface (gr_glinterface_create_native_interface))
+     ;; The native factory can select GLX on Linux. An EGL provider must use
+     ;; its EGL resolver even when the native factory happens to succeed.
+     (define egl? (memq (gpu-provider-name provider) '(egl-owned egl-current)))
+     (define interface (and (not egl?) (gr_glinterface_create_native_interface)))
      (set-box! interface-kind "native")
      (define resolve (gpu-provider-resolve provider))
      (when (and (not interface) resolve)
        (define callback
          (lambda (_ name)
            ;; Do not allow a Racket exception to cross the native builder.
-           (with-handlers ([exn:fail? (lambda (_) #f)]) (resolve name))))
+           (with-handlers ([(lambda (_) #t) (lambda (_) #f)])
+             (define p (resolve name))
+             (and (cpointer? p) p))))
        (set! interface (gr_glinterface_assemble_gl_interface #f callback))
        (void/reference-sink callback resolve)
        (set-box! interface-kind "assembled-desktop-gl"))

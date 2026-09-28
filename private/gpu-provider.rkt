@@ -19,7 +19,8 @@
     (raise-argument-error who (format "procedure accepting ~a arguments" n) p)))
 (define (make-gpu-provider #:name name #:backend backend #:key key
                            #:call-as-current activate #:current? current?
-                           #:describe [describe (lambda () (hasheq))])
+                           #:describe [describe (lambda () (hasheq))]
+                           #:get-proc-address [resolve #f])
   (define who 'make-gpu-provider)
   (unless (symbol? name) (raise-argument-error who "symbol?" name))
   (unless (memq backend '(opengl metal))
@@ -27,7 +28,8 @@
   (unless (or (symbol? key) (exact-positive-integer? key))
     (raise-argument-error who "symbol or exact-positive-integer context identity" key))
   (arity who activate 1) (arity who current? 0) (arity who describe 0)
-  (gpu-provider name backend key activate current? describe (current-thread) #f))
+  (when resolve (arity who resolve 1))
+  (gpu-provider name backend key activate current? describe (current-thread) resolve))
 
 ;; Protect the activation contract independently of any provider's lock. The
 ;; thunk must run exactly once, synchronously, on this Racket thread. Saved

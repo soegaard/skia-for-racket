@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.43.0 — EGL headless contexts and explicit external GL boundaries
+
+- Added lazy Linux desktop-GL EGL construction with explicit platform/device
+  and surfaceless/pbuffer choices; no hidden GUI, GLX or fallback selection.
+- Added owned-display initialization accounting, API/current-binding restoration,
+  serialized activations, owner-side teardown and a borrowed-current EGL provider.
+- Added scoped, queried RGBA8/stencil8 framebuffer borrowing; external GL handoff;
+  and GPU-side texture copies that do not expose borrowed images to retained graphs.
+- Preserved external ownership, explicit origins, bounded binding restoration,
+  safe default completion at external-return boundaries and opt-in ordered reuse.
+- Added 37 pure, 10 EGL-native and 32 GL-interop source cases. A separate Linux
+  no-display runner reuses all 33 surface and 42 image cases and ten workflows.
+- Added raw-report/PNG headless/interop inspection, runner regression tests,
+  examples and ownership/validation guides. Racket/Ganesh host acceptance remains
+  separate from authoring source checks and native ctypes EGL/GL probes.
+- Preserved the accepted GL/Metal presenters and final source-sum sequencing.
+
 ## 0.42.0 — unified window presentation
 
 - Added explicitly imported GPU GUI widgets and shared presenter/frame APIs,
