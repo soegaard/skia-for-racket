@@ -1,4 +1,24 @@
-# Racket Skia — 0.39.0
+# Racket Skia — 0.40.0
+
+## GPU images and retained graph ownership
+
+`skia/gpu` now provides explicit image uploads, immutable GPU surface snapshots,
+GPU subsets, residency/context queries, and synchronous CPU detachment. GPU
+images remain ordinary `image?` values. Context affinity follows native retained
+shader, filter, paint, runtime-child and picture graphs after original wrappers
+are closed. Mutable paint slots and retained getters preserve their own affinity.
+
+CPU/PDF/SVG drawing, CPU encoding/subset helpers and SKP serialization reject
+GPU-dependent input rather than hiding a download. Detach explicitly for those
+uses. Image readback uses a same-context GPU staging surface because the pinned
+C image-readback interface omits a context argument; it is not zero-copy.
+
+See [GPU images](docs/GPU-IMAGES.md) and [validation](docs/GPU-IMAGE-TESTING.md).
+The combined runner retains all prior GPU/CPU checks and adds 33 pure + 42 live
+image cases, retained-graph visual workflows, and an independent PNG inspector.
+The baseline is `0eea009d393500cda7dc4a6848579c09300f53db`; new native execution
+still requires host validation. Earlier revision-specific acceptance notes below
+are historical. Metal rendering and external texture interop are not added here.
 
 ## Offscreen OpenGL with the ordinary drawing API
 

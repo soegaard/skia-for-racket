@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.40.0 — GPU images and transitive context affinity
+
+- Added explicit texture uploads, GPU surface snapshots/subsets, ownership
+  residency/context queries, texture validity diagnostics, and CPU detachment.
+- Added retained graph affinity through shaders, filter graphs, runtime children,
+  paint slots/copies/getters, recorders, nested pictures and picture shaders.
+  Native reference ownership survives original-wrapper mutation/closure.
+- Added owner-side queued destruction and public-context keepalive for retained
+  parents. Clearing the last native GPU paint slot restores CPU independence;
+  successful picture finish transfers affinity from the emptied recorder.
+- Reject cross-context use, implicit CPU/PDF/SVG rendering, CPU image conversion
+  and encoding, and GPU-dependent SKP serialization. Explicit image readback
+  stages through a same-context GPU surface; no zero-copy promise is made.
+- Added 33 pure + 42 live source cases, two retained-graph comparison workflows,
+  a post-teardown detached image, PNG/ledger inspection and validator regressions.
+- Preserved the 0.39 window-import and nested-activation fixes, CPU constructors,
+  separate lazy GPU symbols and all preceding selected validation steps.
+  Authoring checks do not establish a new Racket/native GPU pass.
+
 ## 0.39.0 — offscreen OpenGL surfaces and explicit transfers
 
 - Added GPU-backed `surface?` values and ordinary `canvas?` drawing with

@@ -1,6 +1,24 @@
 # Testing
 
-## Current revision: offscreen OpenGL (0.39)
+## Current revision: GPU images (0.40)
+
+Baseline: `0eea009d393500cda7dc4a6848579c09300f53db` (0.39). The maintainer reports
+passing automated and interactive 0.39 validation on macOS/aarch64. New 0.40
+execution is separate. Run [GPU image validation](docs/GPU-IMAGE-TESTING.md).
+
+This adds 33 pure and 42 live RackUnit source cases. The runner retains CPU
+regressions, foundation probes, surface comparisons and window checks, then
+runs two GPU-image retained-graph workflows and numerical PNG inspection.
+Every dynamically loaded new Racket module is compiled with the selected
+Racket. Source sums are regenerated only after all selected checks succeed.
+
+Authoring validation does not execute Racket or native Skia. Complete modified
+source files were verified by pinned Git blob hashes; larger core/native/doc
+edits were application-tested using fetched exact contexts, not a full checkout.
+No new Linux, Windows, Metal rendering, performance or visible-window claim is
+made by those authoring checks. See the delivery's authoring report.
+
+## Previous revision: offscreen OpenGL (0.39)
 
 Baseline: `f2aa79db1a8c24045445623c42930ebc09cc0527`. The maintainer's preceding
 0.38 macOS/aarch64 run passed, including the corrected GC tests, real OpenGL

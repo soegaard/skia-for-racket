@@ -94,7 +94,8 @@
               sp)
             (lambda (sp)
               (n:sk_surface_unref sp)
-              (when cp (sk_colorspace_unref cp)))))
+              (when cp (sk_colorspace_unref cp)))
+            #:keepalive context))
          (set! result
            (make-gpu-surface-record handle width height '() context d cp
              (hash-set* description 'backend (symbol->string (domain-backend d))

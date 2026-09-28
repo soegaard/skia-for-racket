@@ -1,0 +1,305 @@
+#lang racket/base
+(require rackunit racket/list (only-in ffi/unsafe void/reference-sink)
+         "gpu-fixtures.rkt" "../private/lifetime.rkt" "../private/gpu-domain.rkt"
+         "../private/gpu-context.rkt" "../private/core.rkt" "../gpu.rkt"
+         (submod "../private/core.rkt" gpu-image-internals))
+(provide gpu-image-pure-tests)
+
+;; Mock pointer values exercise real lifetime/affinity bookkeeping, not Skia.
+(define (fixture proc)
+  (call-with-mock
+   (lambda (d provider driver log abandoned?)
+     (define context (wrap-gpu-domain d))
+     (define handles '())
+     (define (track h) (set! handles (cons h handles)) h)
+     (define (cpu kind [who 'test])
+       (track (new-owned who kind (lambda () (gensym kind))
+                (lambda (_) (set-box! log (cons (list 'free kind) (unbox log)))))))
+     (define (image-handle)
+       (track (new-gpu-owned 'test 'image d context (lambda () (gensym 'image))
+                (lambda (_) (set-box! log (cons '(free image) (unbox log)))))))
+     (define (derive who kind hs)
+       (call-with-owned who hs (lambda ignored (cpu kind who))))
+     (dynamic-wind
+       void
+       (lambda ()
+         (domain-call d (lambda () (proc d context log cpu image-handle derive track))))
+       (lambda ()
+         (for ([h (in-list handles)]) (owned-close! 'test h))
+         (void/reference-sink context))))))
+(define (setter name paint child)
+  (call-with-owned 'setter (if child (list paint child) (list paint))
+    (lambda (pp . cps)
+      (lifetime-native-call name (list pp (and child (car cps))) void))))
+(define (record-image recorder image)
+  (call-with-owned 'record (list recorder image)
+    (lambda (rp ip)
+      (call-with-owned-canvas 'record recorder 'recording (list image)
+        (lambda () (lifetime-native-call 'sk_canvas_draw_image (list 'canvas ip) void))))))
+(define gpu-image-pure-tests
+  (test-suite
+   "GPU images: pure transitive affinity, setters, recording and deferred ownership"
+   (test-case "CPU handles start independent"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (check-false (owned-gpu-domain (cpu 'paint)))
+                (check-false (owned-gpu-context (cpu 'shader))))))
+   (test-case "explicit GPU handles retain context and count as children"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define h (image))
+                (check-eq? (owned-gpu-domain h) d)
+                (check-eq? (owned-gpu-context h) ctx)
+                (check-equal? (domain-live-count d) 1))))
+   (test-case "GPU image wrapper preserves image type and residency"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define im (make-image-record (image) 8 8))
+                (check-true (image? im)) (check-true (gpu-image? im))
+                (check-eq? (image-residency im) 'gpu)
+                (check-eq? (skia-resource-gpu-context im) ctx))))
+   (test-case "CPU image ownership is not inferred from the active GPU context"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define im (make-image-record (cpu 'image) 8 8))
+                (check-eq? (image-residency im) 'cpu)
+                (check-false (skia-resource-gpu-context im)))))
+   (test-case "residency query rejects a closed wrapper"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define im (make-image-record (image) 8 8))
+                (skia-close! im)
+                (check-true (gpu-image? im))
+                (check-exn exn:fail? (lambda () (image-residency im))))))
+   (test-case "shader inherits an image dependency acquired outside create"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define h (derive 'make-image-shader 'shader (list (image))))
+                (check-eq? (owned-gpu-domain h) d))))
+   (test-case "filter inherits dependencies acquired inside create"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define source (image))
+                (define h
+                  (track (new-owned 'make-image-source-filter 'image-filter
+                           (lambda () (call-with-owned 'source (list source)
+                                        (lambda (_) (gensym 'filter)))) void)))
+                (check-eq? (owned-gpu-domain h) d))))
+   (test-case "composed graphs and local-matrix copies retain affinity transitively"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define sh (derive 'make-image-shader 'shader (list (image))))
+                (define local (derive 'shader-with-local-matrix 'shader (list sh)))
+                (define mixed (derive 'make-blend-shader 'shader (list local (cpu 'shader))))
+                (check-eq? (owned-gpu-context mixed) ctx))))
+   (test-case "runtime instances retain GPU child affinity"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define child (derive 'make-image-shader 'shader (list (image))))
+                (for ([kind '(shader color-filter blender)])
+                  (define h (derive 'runtime-instance kind (list (cpu 'runtime-effect) child)))
+                  (check-eq? (owned-gpu-domain h) d)))))
+   (test-case "color-space metadata is independent even from a GPU input"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define h (derive 'image-color-space 'color-space (list (image))))
+                (check-false (owned-gpu-domain h)))))
+   (test-case "closing source handles does not erase derived ownership"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define source (image))
+                (define sh (derive 'make-image-shader 'shader (list source)))
+                (owned-close! 'test source)
+                (check-eq? (owned-gpu-domain sh) d)
+                (check-not-exn (lambda () (call-with-owned 'query (list sh) void))))))
+   (test-case "paint attachment promotes its existing lifetime cell"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (define before (call-with-owned 'query (list p) values))
+                (define sh (derive 'make-image-shader 'shader (list (image))))
+                (setter 'sk_paint_set_shader p sh)
+                (check-eq? (call-with-owned 'query (list p) values) before)
+                (check-eq? (owned-gpu-domain p) d))))
+   (test-case "clearing the last GPU paint slot removes affinity"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (setter 'sk_paint_set_shader p (derive 'shader 'shader (list (image))))
+                (define before (domain-live-count d))
+                (setter 'sk_paint_set_shader p #f)
+                (check-false (owned-gpu-domain p))
+                (check-equal? (domain-live-count d) (sub1 before)))))
+   (test-case "clearing one of two GPU paint slots preserves the other"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint)) (define src (image))
+                (setter 'sk_paint_set_shader p (derive 'shader 'shader (list src)))
+                (setter 'sk_paint_set_imagefilter p (derive 'filter 'image-filter (list src)))
+                (setter 'sk_paint_set_shader p #f)
+                (check-eq? (owned-gpu-domain p) d)
+                (setter 'sk_paint_set_imagefilter p #f)
+                (check-false (owned-gpu-domain p)))))
+   (test-case "replacing a GPU slot with a CPU child removes affinity"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (setter 'sk_paint_set_shader p (derive 'shader 'shader (list (image))))
+                (setter 'sk_paint_set_shader p (cpu 'shader))
+                (check-false (owned-gpu-domain p)))))
+   (test-case "paint clone slot snapshots are independent of future mutations"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (setter 'sk_paint_set_shader p (derive 'shader 'shader (list (image))))
+                (define copy (derive 'paint-copy 'paint (list p)))
+                (setter 'sk_paint_set_shader p #f)
+                (check-false (owned-gpu-domain p))
+                (check-eq? (owned-gpu-domain copy) d)
+                (setter 'sk_paint_set_shader copy #f)
+                (check-false (owned-gpu-domain copy)))))
+   (test-case "retained getters inherit only the selected paint slot"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (setter 'sk_paint_set_shader p (cpu 'shader))
+                (setter 'sk_paint_set_imagefilter p (derive 'filter 'image-filter (list (image))))
+                (check-false (owned-gpu-domain (derive 'paint-shader 'shader (list p))))
+                (check-eq? (owned-gpu-domain (derive 'paint-image-filter 'image-filter (list p))) d))))
+   (test-case "setting blend mode removes only the custom blender slot"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (setter 'sk_paint_set_blender p (derive 'runtime-blender 'blender (list (image))))
+                (call-with-owned 'blend (list p)
+                  (lambda (pp) (lifetime-native-call 'sk_paint_set_blendmode (list pp 3) void)))
+                (check-false (owned-gpu-domain p)))))
+   (test-case "indeterminate setter failure keeps conservative GPU ownership"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (define sh (derive 'shader 'shader (list (image))))
+                (check-exn exn:fail?
+                  (lambda ()
+                    (call-with-owned 'setter (list p sh)
+                      (lambda (pp sp)
+                        (lifetime-native-call 'sk_paint_set_shader (list pp sp)
+                          (lambda () (error 'native "injected failure")))))))
+                (check-eq? (owned-gpu-domain p) d))))
+   (test-case "GPU graph cannot target CPU raster PDF or SVG"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define src (image))
+                (for ([backend '(raster pdf svg)])
+                  (check-exn exn:fail?
+                    (lambda () (call-with-owned-canvas 'draw (cpu 'surface) backend (list src) void)))))))
+   (test-case "independent CPU resources still draw into a GPU target"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (check-not-exn
+                  (lambda () (call-with-owned-canvas 'draw (image) 'gpu (list (cpu 'paint)) void))))))
+   (test-case "recording promotes before native drawing"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define rec (cpu 'picture-recorder))
+                (record-image rec (image))
+                (check-eq? (owned-gpu-domain rec) d))))
+   (test-case "recording retains GPU affinity through a compositing layer"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define rec (cpu 'picture-recorder)) (define p (cpu 'paint))
+                (setter 'sk_paint_set_shader p (derive 'shader 'shader (list (image))))
+                (call-with-owned 'record (list rec p)
+                  (lambda (rp pp)
+                    (call-with-owned-canvas 'layer rec 'recording (list p)
+                      (lambda () (lifetime-native-call 'sk_canvas_save_layer (list 'canvas #f pp) void)))))
+                (check-eq? (owned-gpu-domain rec) d))))
+   (test-case "finished picture keeps affinity after the recorder is reset"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define rec (cpu 'picture-recorder))
+                (record-image rec (image))
+                (define pic (derive 'picture-recorder-finish-recording! 'picture (list rec)))
+                (owned-clear-recording-affinity! rec)
+                (check-false (owned-gpu-domain rec))
+                (check-eq? (owned-gpu-context pic) ctx))))
+   (test-case "nested pictures preserve retained context dependencies"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define a (cpu 'picture-recorder)) (record-image a (image))
+                (define pic (derive 'finish 'picture (list a)))
+                (define b (cpu 'picture-recorder)) (record-image b pic)
+                (check-eq? (owned-gpu-domain b) d))))
+   (test-case "serialization and implicit transfer entry points reject GPU graphs"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define h (image))
+                (for ([op '(image->rgba-bytes image->png-bytes image->jpeg-bytes
+                            image->webp-bytes image->encoded-bytes image-convert-color-space
+                            image-original-encoded-bytes image-subset picture->bytes picture->image)])
+                  (check-exn exn:fail? (lambda () (call-with-owned op (list h) void)))))))
+   (test-case "explicit close queues derived destruction without provider acquisition"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define h (derive 'shader 'shader (list (image))))
+                (define activations (event-count log 'activate))
+                (define pending (domain-pending-count d))
+                (owned-close! 'test h)
+                (check-equal? (event-count log 'activate) activations)
+                (check-equal? (domain-pending-count d) (add1 pending))
+                (check-false (member '(free shader) (events log)))
+                (domain-drain! d)
+                (check-not-false (member '(free shader) (events log))))))
+   (test-case "double close queues only one native release"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define h (derive 'shader 'shader (list (image))))
+                (owned-close! 'test h)
+                (define count (domain-pending-count d))
+                (owned-close! 'test h)
+                (check-equal? (domain-pending-count d) count))))
+   (test-case "demoted paint has one CPU destructor and no queued duplicate"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define p (cpu 'paint))
+                (setter 'sk_paint_set_shader p (derive 'shader 'shader (list (image))))
+                (setter 'sk_paint_set_shader p #f)
+                (define pending (domain-pending-count d))
+                (owned-close! 'test p)
+                (check-equal? (domain-pending-count d) pending)
+                (check-equal? (count (lambda (x) (equal? x '(free paint))) (events log)) 1))))
+   (test-case "wrong-thread derived access and close never activate the provider"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define h (derive 'shader 'shader (list (image))))
+                (define before (event-count log 'activate))
+                (check-true (exn:fail? (in-worker (lambda () (call-with-owned 'use (list h) void)))))
+                (check-true (exn:fail? (in-worker (lambda () (owned-close! 'close h)))))
+                (check-equal? (event-count log 'activate) before))))
+   (test-case "GC queues a derived destructor; weak disappearance is a separate phase"
+     (fixture (lambda (d ctx log cpu image derive track)
+                (define src (image))
+                (define weak
+                  (call-with-owned 'parent (list src)
+                    (lambda (_)
+                      (make-weak-box
+                       (new-owned 'derived 'shader (lambda () (gensym 'shader))
+                         (lambda (_) (set-box! log (cons '(free untracked) (unbox log)))))))))
+                (define before (event-count log 'activate))
+                (check-true (collect-until (lambda () (positive? (domain-pending-count d)))))
+                (check-true (collect-until (lambda () (not (weak-box-value weak)))))
+                (check-equal? (event-count log 'activate) before)
+                (domain-drain! d)
+                (check-not-false (member '(free untracked) (events log))))))
+   (test-case "retained GPU graph keeps its public context alive until the graph is closed"
+     (define-values (provider driver log abandoned?) (make-mock))
+     (define d (make-gpu-domain provider driver))
+     (define-values (h weak)
+       (let ([context (wrap-gpu-domain d)])
+         (values
+          (domain-call d
+            (lambda ()
+              (define image (new-gpu-owned 'test 'image d context (lambda () 'image) void))
+              (dynamic-wind void
+                (lambda ()
+                  (call-with-owned 'make-image-shader (list image)
+                    (lambda (_)
+                      (new-owned 'make-image-shader 'shader (lambda () 'shader) void))))
+                (lambda () (owned-close! 'test image)))))
+          (make-weak-box context))))
+     (dynamic-wind void
+       (lambda ()
+         (collect-garbage) (collect-garbage) (sleep 0.01)
+         (check-true (and (weak-box-value weak) #t))
+         (check-false (hash-ref (domain-info d) 'shutdown_requested))
+         (owned-close! 'test h)
+         (check-true (collect-until (lambda () (hash-ref (domain-info d) 'shutdown_requested))))
+         (check-true (collect-until (lambda () (not (weak-box-value weak))))))
+       (lambda () (owned-close! 'test h) (domain-close! d))))
+   (test-case "cross-domain dependencies reject before a native constructor or setter"
+     (define-values (pa da la aa) (make-mock))
+     (define-values (pb db lb ab) (make-mock))
+     (define a (make-gpu-domain pa da)) (define b (make-gpu-domain pb db))
+     (define h1 (domain-call a (lambda () (domain-new-resource a 'image (lambda () 'a) void))))
+     (define h2 (domain-call b (lambda () (domain-new-resource b 'image (lambda () 'b) void))))
+     (define called? #f)
+     (dynamic-wind void
+       (lambda ()
+         (domain-call a
+           (lambda ()
+             (check-exn exn:fail?
+               (lambda () (call-with-owned 'combine (list h1 h2)
+                            (lambda args (set! called? #t)))))))
+         (check-false called?))
+       (lambda () (domain-resource-close! h1) (domain-resource-close! h2)
+                  (domain-close! a) (domain-close! b))))))

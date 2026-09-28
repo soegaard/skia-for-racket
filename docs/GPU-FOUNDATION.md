@@ -1,21 +1,19 @@
 # GPU contexts and diagnostic rendering
 
-> This guide documents the context foundation introduced in 0.38. General
-> OpenGL surfaces and explicit transfers are now documented in
-> [GPU-OFFSCREEN.md](GPU-OFFSCREEN.md). The small `gpu-doctor` remains a
-> foundation probe; the separate 0.39 window diagnostic exercises submission,
-> swapping and resizing. Historical scope/validation notes below refer to 0.38.
+> The current image/ownership extension is documented in [GPU-IMAGES.md](GPU-IMAGES.md).
+> General surfaces are described in [GPU-OFFSCREEN.md](GPU-OFFSCREEN.md).
+> The fixed `gpu-doctor` remains a foundation probe; historical validation notes
+> below describe 0.38, not the complete current GPU API.
 
 This module is the GPU foundation for the standalone `skia` collection. It uses
 Ganesh in the pinned SkiaSharp 3.119.1 library. Requiring `skia` retains the CPU
 API and does not import GPU support. Requiring `skia/gpu` defines the optional
 API without opening a GUI, loading OpenGL/Metal, or resolving GPU symbols.
 
-The initial public operation is a fixed OpenGL rendering diagnostic. General
-GPU surfaces, borrowed drawing canvases, images, uploads, and presentation are
-not exposed yet. In particular, existing CPU `surface?`, `image?`, pixmaps and
-raster buffers have **not** been reclassified as GPU resources. No GPU pointer
-is put into a CPU-owned wrapper with a CPU finalizer.
+The fixed OpenGL diagnostic remains available alongside the surface and image
+APIs. Existing CPU constructors still produce CPU resources. GPU resources and
+their retained parent graphs use domain-aware destruction rather than native
+GPU unrefs on a CPU finalizer thread.
 
 ## Borrow an existing Racket OpenGL host
 

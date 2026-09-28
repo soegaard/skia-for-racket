@@ -1,9 +1,9 @@
 # GPU foundation validation
 
-> For the current 0.39 sequence use
-> [GPU-OFFSCREEN-TESTING.md](GPU-OFFSCREEN-TESTING.md). The common validator
-> now also runs offscreen scene comparisons and window diagnostics. The
-> revision-specific artifacts and acceptance notes below describe 0.38.
+> For the current 0.40 sequence use [GPU-IMAGE-TESTING.md](GPU-IMAGE-TESTING.md).
+> The common validator also retains the offscreen comparisons and window
+> diagnostics described in [GPU-OFFSCREEN-TESTING.md](GPU-OFFSCREEN-TESTING.md).
+> The revision-specific artifacts and acceptance notes below describe 0.38.
 
 Patch baseline: `a07aefeef0f91000c5a8683bb3b8835260a75064` (0.37).
 The delivered authoring checks are **not** Racket compilation or GPU execution.

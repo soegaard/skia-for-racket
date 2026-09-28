@@ -4,7 +4,8 @@
          racket/runtime-path
          racket/path
          "native-platform.rkt"
-         "types.rkt" "audit-trace.rkt")
+         "types.rkt" "audit-trace.rkt"
+         (only-in "lifetime.rkt" lifetime-native-call))
 (provide native-package-version native-platform native-filename
          skia-check! skia-available? skia-native-version skia-native-library-path)
 
@@ -72,7 +73,9 @@
           (cons (cons 'name delayed-procedure) native-bindings))
     (define (name . args)
       (audit-native-call 'name args
-                         (lambda () (apply (force delayed-procedure) args))))))
+        (lambda ()
+          (lifetime-native-call 'name args
+            (lambda () (apply (force delayed-procedure) args))))))))
 
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))

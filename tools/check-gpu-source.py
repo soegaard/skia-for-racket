@@ -80,7 +80,8 @@ def read_forms(text: str):
 
 def check(root: pathlib.Path, *, require_integration=False):
     files = sorted([*root.glob('gpu*.rkt'), *root.glob('private/gpu*.rkt'),
-                    *root.glob('private/native-platform.rkt'), *root.glob('tests/gpu*.rkt'),
+                    *root.glob('private/native-platform.rkt'), *root.glob('private/lifetime.rkt'),
+                    *root.glob('tests/gpu*.rkt'),
                     *root.glob('tools/gpu*.rkt'), *root.glob('examples/gpu*.rkt')])
     results = {}
     for file in files:
@@ -122,26 +123,38 @@ def check(root: pathlib.Path, *, require_integration=False):
     counts = {
         'foundation_pure':suite_cases('tests/gpu-pure-test.rkt','gpu-pure-tests'),
         'surface_pure':suite_cases('tests/gpu-surface-pure-test.rkt','gpu-surface-pure-tests'),
-        'surface_live':suite_cases('tests/gpu-surface-native-test.rkt','make-gpu-surface-native-tests',factory=True)}
+        'surface_live':suite_cases('tests/gpu-surface-native-test.rkt','make-gpu-surface-native-tests',factory=True),
+        'image_pure':suite_cases('tests/gpu-image-pure-test.rkt','gpu-image-pure-tests'),
+        'image_live':suite_cases('tests/gpu-image-native-test.rkt','make-gpu-image-native-tests',factory=True)}
+    count = counts['image_live']
+    if f'(define gpu-image-native-test-count {count})' not in (root/'tests/gpu-image-native-test.rkt').read_text():
+        raise ValueError('GPU image native suite count differs from the doctor advertisement')
+    if f'NATIVE_TEST_CASES = {count}' not in (root/'tools/inspect-gpu-images.py').read_text():
+        raise ValueError('GPU image inspector expects different suite coverage')
     public = (root/'gpu.rkt').read_text()
     if re.search(r'\(require[^)]*racket/gui',public,re.S):
         raise ValueError('GUI dependency leaked into optional GPU module')
     if 'sk_surface_new_render_target' not in (root/'private/gpu-smoke.rkt').read_text():
         raise ValueError('foundation probe lost its real GPU constructor')
-    for module in ('private/gpu-surfaces.rkt',):
+    for module, guide in (('private/gpu-surfaces.rkt','GPU-OFFSCREEN.md'),
+                          ('private/gpu-images.rkt','GPU-IMAGES.md')):
         forms = read_forms((root/module).read_text())
         names = [n for f in forms if isinstance(f,list) and f and f[0]=='provide' for n in f[1:] if isinstance(n,str)]
-        doc = (root/'docs/GPU-OFFSCREEN.md').read_text()
+        doc = (root/'docs'/guide).read_text()
         if any(n not in doc for n in names): raise ValueError(f'{module}: undocumented public binding')
     integration = {}
     for path, required in {
         'private/core.rkt':['struct gpu-surface surface','struct gpu-canvas canvas',
                             'domain-check-lease!','require-cpu-surface',
                             'surface-backend','canvas-execution-backend',
-                            "[(gpu-surface? owner) 'gpu]"],
-        'private/lifetime.rkt':['domain-resource?','resource-pointer','domain-resource-close!'],
+                            "[(gpu-surface? owner) 'gpu]",
+                            "module* gpu-image-internals", "call-with-owned-canvas", "owned-clear-recording-affinity!"],
+        'private/lifetime.rkt':['domain-resource?','resource-pointer','domain-resource-close!',
+                                'new-gpu-owned','lifetime-native-call','setter-slots','getter-slots'],
+        'private/native.rkt':['lifetime-native-call'],
         'raster-buffers.rkt':['module* gpu-transfer-internals','call-with-raster-buffer-gpu-transfer'],
-        'run-tests.rkt':['tests/gpu-surface-pure-test.rkt','(run-tests gpu-surface-pure-tests)'],
+        'run-tests.rkt':['tests/gpu-surface-pure-test.rkt','(run-tests gpu-surface-pure-tests)',
+                         'tests/gpu-image-pure-test.rkt','(run-tests gpu-image-pure-tests)'],
         'docs/API.md':['surface-backend','canvas-execution-backend'],
     }.items():
         file = root/path

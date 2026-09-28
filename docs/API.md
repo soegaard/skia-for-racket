@@ -1,4 +1,20 @@
-# API reference — version 0.39.0
+# API reference — version 0.40.0
+
+## GPU images and retained execution contexts
+
+Import `skia/gpu` with `skia`. GPU images use the existing `image?` type.
+`gpu-upload-image`, `gpu-surface-snapshot`, and `gpu-image-subset` create
+context-bound image references without implicit CPU detachment. `gpu-image?`,
+`image-residency`, `skia-resource-gpu-context`, and `gpu-image-info` distinguish
+ownership/residency and native diagnostics. GPU-dependent parent graphs inherit
+context affinity, including paint attachment snapshots and recorded pictures.
+
+Use `gpu-image->rgba-bytes`, `gpu-image->raster-image`, or
+`gpu-image-read-raster-buffer!` for explicit synchronous CPU transfers. These
+stage through a temporary GPU surface; they are not zero-copy downloads.
+Ordinary CPU encoding/subset/conversion and GPU-dependent SKP serialization
+reject GPU input. See [the complete image contract](GPU-IMAGES.md) for signatures,
+lifetime, cross-context rejection and the retained-getter/mutable-paint rules.
 
 ## Surface backing and GPU execution
 

@@ -274,6 +274,10 @@
 ;; native SkPathMeasure. It is never exposed by the public API.
 (struct path-measure (handle snapshot-box) #:constructor-name make-path-measure-record)
 (struct image (handle width height) #:constructor-name make-image-record)
+;; GPU images use the ordinary image record and an affinity-aware lifetime
+;; cell. The private bridge exports no pointer access to the public modules.
+(module* gpu-image-internals #f
+  (provide image-h make-image-record resource-handle))
 (struct encoded-image-info
   (width height format color-type alpha-type origin frame-count)
   #:transparent
@@ -476,8 +480,10 @@
        (cond [(gpu-surface? owner) 'gpu]
              [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
              [(pdf-page? owner) 'pdf] [else 'svg]))
-     (audit-on-canvas who owner backend (resource-handle who owner) others
-                      (lambda () (apply proc cp ps))))))
+     (call-with-owned-canvas who (resource-handle who owner) backend others
+       (lambda ()
+         (audit-on-canvas who owner backend (resource-handle who owner) others
+                          (lambda () (apply proc cp ps))))))))
 
 (module* output-group-internals #f
   (provide picture-h output-group-canvas-backend output-group-canvas-recording-handle)
@@ -1338,9 +1344,13 @@
      (set-picture-recorder-floors! rr '())
      (unless pp
        (error who "native picture recording did not produce a picture"))
-     (make-picture-record
-      (new-owned who 'picture (lambda () pp) sk_picture_unref)
-      (list-ref bounds 2) (list-ref bounds 3)))))
+     (begin0
+       (make-picture-record
+        (new-owned who 'picture (lambda () pp) sk_picture_unref)
+        (list-ref bounds 2) (list-ref bounds 3))
+       ;; m119 moves the recorded commands into the returned picture. Copy
+       ;; its affinity before returning the now-empty recorder to CPU ownership.
+       (owned-clear-recording-affinity! (picture-recorder-handle rr))))))
 
 (define (call-with-picture w h proc #:spatial-index [spatial-index 'none])
   (define who 'call-with-picture)

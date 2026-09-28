@@ -181,8 +181,10 @@ not roll back writes already made. This is CPU memory, not a GPU-mapped pixmap.
 `surface-snapshot`, `surface->rgba-bytes`, `surface-pixel`, `surface->png-bytes`,
 `save-png`, and consumers that use these CPU helpers reject GPU targets. Use the
 explicit functions above and then the ordinary image encoder/bitmap bridge.
-There are no public GPU images, uploads, texture handles or cross-context copies
-yet; their transitive shader/filter/picture ownership is a subsequent milestone.
+GPU images, explicit uploads, GPU snapshots/subsets, and retained graph affinity
+are now described in [GPU-IMAGES.md](GPU-IMAGES.md). CPU encoding helpers remain
+explicit transfer boundaries; use a detached raster image for those operations.
+External texture handles and shared-context access remain outside this API.
 
 Ordinary CPU images and CPU-recorded pictures can be drawn on a GPU target.
 `draw-output-group` and `draw-rasterized` reject GPU destinations instead of

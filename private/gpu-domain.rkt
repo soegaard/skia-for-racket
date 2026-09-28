@@ -8,6 +8,8 @@
          domain-live-count domain-pending-count
          domain-new-resource domain-resource?
          domain-resource-close! domain-resource-closed?
+         domain-resource-domain domain-resource-keepalive domain-resource-kind
+         domain-resource-retire! domain-resource-take!
          domain-capture-lease domain-check-lease! domain-lease-expired?)
 
 ;; Driver procedures are PRIVATE native operations, not application callbacks.
@@ -20,7 +22,10 @@
             [pending #:mutable] [failed #:mutable] [requested #:mutable]))
 (struct activation (domain generation [live? #:mutable]))
 (struct release-job (pointer release kind))
-(struct domain-resource (domain generation [pointer #:mutable] release kind))
+;; keepalive is normally the public gpu-context wrapper. Native root/queue
+;; records do not point back to this resource or keepalive wrapper.
+(struct domain-resource
+  (domain generation [pointer #:mutable] release kind [keepalive #:mutable]))
 (define active (make-parameter #f))
 (define roots (make-hasheq))
 (define claims (make-hash))
@@ -225,6 +230,7 @@
   (define p (domain-resource-pointer h))
   (when p
     (set-domain-resource-pointer! h #f)
+    (set-domain-resource-keepalive! h #f)
     (define d (domain-resource-domain h))
     (set-gpu-domain-live! d (sub1 (gpu-domain-live d)))
     (set-gpu-domain-pending!
@@ -232,15 +238,37 @@
              (gpu-domain-pending d)))))
 (define allocate-resource
   ((allocator enqueue-resource!)
-   (lambda (d kind create release)
+   (lambda (d kind create release keepalive)
      (define p (create))
      (unless p (error 'domain-new-resource "native ~a allocation returned null" kind))
      (set-gpu-domain-live! d (add1 (gpu-domain-live d)))
-     (domain-resource d (domain-generation d) p release kind))))
-(define (domain-new-resource d kind create release)
+     (domain-resource d (domain-generation d) p release kind keepalive))))
+(define (domain-new-resource d kind create release #:keepalive [keepalive #f])
   (usable! 'domain-new-resource d) (current! 'domain-new-resource d)
-  (allocate-resource d kind create release))
+  (allocate-resource d kind create release keepalive))
 (define cancel-and-enqueue! ((deallocator) enqueue-resource!))
+;; Internal finalizer entry point: unlike public close, it must not check the
+;; current thread. It cancels this registration and ONLY queues destruction.
+(define (domain-resource-retire! h)
+  (cancel-and-enqueue! h)
+  (void))
+;; Transfer a native reference back to ordinary CPU ownership only after the
+;; caller has removed its last GPU dependency (a paint setter, or a finished
+;; recorder). This is NOT a release and must happen with the domain current.
+(define take-resource!
+  ((deallocator)
+   (lambda (h)
+     (define p (domain-resource-pointer h))
+     (unless p (error 'domain-resource-take! "resource is already retired"))
+     (set-domain-resource-pointer! h #f)
+     (set-domain-resource-keepalive! h #f)
+     (define d (domain-resource-domain h))
+     (set-gpu-domain-live! d (sub1 (gpu-domain-live d)))
+     p)))
+(define (domain-resource-take! h)
+  (checked-resource-pointer h)
+  (take-resource! h))
+
 (define (domain-resource-close! h)
   (unless (domain-resource? h)
     (raise-argument-error 'domain-resource-close! "domain-resource?" h))

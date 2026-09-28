@@ -28,7 +28,7 @@ def main() -> int:
     (ROOT/'output').mkdir(exist_ok=True)
     # Fresh directories prevent a failure or optional skip from leaving an old
     # successful image/inspection report looking like the current result.
-    directory = Path(tempfile.mkdtemp(prefix='gpu-0.39-', dir=ROOT/'output'))
+    directory = Path(tempfile.mkdtemp(prefix='gpu-0.40-', dir=ROOT/'output'))
     commands = []
     skips = []
     def run(arguments, *, capture=False):
@@ -52,8 +52,10 @@ def main() -> int:
             run([sys.executable, 'tools/static-check.py'])
         run([sys.executable, 'tools/check-gpu-source.py','--require-integration'])
         run([sys.executable, 'tools/test-install-native-windows.py'])
+        run([sys.executable, 'tools/test-validate-gpu-images.py'])
         run([sys.executable, 'tools/inspect-gpu-probe.py', '--self-test'])
         run([sys.executable, 'tools/inspect-gpu-offscreen.py', '--self-test'])
+        run([sys.executable, 'tools/inspect-gpu-images.py', '--self-test'])
         if os.environ.get('SKIP_C_ABI') == '1':
             skips.append('C ABI mirrors explicitly skipped (SKIP_C_ABI=1)')
             print(skips[-1])
@@ -71,6 +73,7 @@ def main() -> int:
                    'tools/doctor.rkt','tools/gpu-doctor.rkt','tools/gpu-gui-host.rkt',
                    'tools/gpu-offscreen-doctor.rkt','tools/gpu-window-doctor.rkt',
                    'tools/gpu-report.rkt','examples/gpu-scenes.rkt',
+                   'tools/gpu-image-doctor.rkt','examples/gpu-images.rkt',
                    'tools/portable-drawing-doctor.rkt','tools/color-filter-doctor.rkt','tools/raster-buffer-doctor.rkt']
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))]
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu*.rkt'))]
@@ -103,8 +106,8 @@ def main() -> int:
                     # Inspection JSON and HTML are published only after all
                     # actual samples, PNG pixels, ownership and cleanup pass.
                     run([sys.executable,'tools/inspect-gpu-probe.py','--probe-prefix',prefix])
-            for kind in ('offscreen','window'):
-                prefix = directory / kind
+            for kind in ('offscreen','window','image'):
+                prefix = directory / ('images' if kind == 'image' else kind)
                 arguments = [racket,f'tools/gpu-{kind}-doctor.rkt','--prefix',prefix]
                 if mode == 'optional': arguments.append('--optional')
                 if hardware: arguments.append('--require-hardware')
@@ -114,11 +117,12 @@ def main() -> int:
                     skips.append(f'{kind} unavailable: {diagnostic.get("message")}')
                     print(skips[-1])
                 else:
-                    run([sys.executable,'tools/inspect-gpu-offscreen.py','--probe-prefix',prefix])
+                    inspector = 'tools/inspect-gpu-images.py' if kind == 'image' else 'tools/inspect-gpu-offscreen.py'
+                    run([sys.executable,inspector,'--probe-prefix',prefix])
         # Repository manifest regeneration is deliberately LAST, after every
         # selected check succeeds. Optional/off runs retain explicit skips.
         run([sys.executable,'tools/update-source-sums.py'])
-        report = {'status':'passed-selected-checks','stage':'0.39','gpu_mode':mode,'identity':identity.strip(),
+        report = {'status':'passed-selected-checks','stage':'0.40','gpu_mode':mode,'identity':identity.strip(),
                   'commands':commands,'skips':skips,'hardware_string_requirement':hardware,
                   'performance_measured':False, 'visible_window_pixels_verified':False,
                   'window_manual_review_required':mode != 'off'}
@@ -127,7 +131,7 @@ def main() -> int:
         print(f'Validation report: {destination}')
         print(f'Review files: {directory} (passed checks only)')
         if mode != 'off':
-            print('Window API checks are not visible-pixel certification. Review offscreen.review.html and run gpu-window-doctor.rkt --interactive.')
+            print('Window API checks are not visible-pixel certification. Review images.review.html and offscreen.review.html; run gpu-window-doctor.rkt --interactive.')
         return 0
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
         # A failure record is explicitly named; no successful inspection report

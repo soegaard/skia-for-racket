@@ -1,9 +1,10 @@
 #lang racket/base
-(require racket/runtime-path
+(require racket/runtime-path (only-in ffi/unsafe void/reference-sink)
          "private/gpu-context.rkt"
          "private/gpu-domain.rkt" "private/gpu-provider.rkt"
-         "private/gpu-surfaces.rkt")
-(provide make-gpu-surface gpu-surface? gpu-surface-info
+         "private/gpu-surfaces.rkt" "private/gpu-images.rkt")
+(provide (all-from-out "private/gpu-images.rkt")
+         make-gpu-surface gpu-surface? gpu-surface-info
          gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
          gpu-surface->rgba-bytes gpu-surface->raster-image gpu-surface-read-raster-buffer!
          gpu-context? make-gpu-context call-with-gpu-context
@@ -18,11 +19,12 @@
   (unless (gpu-provider? provider)
     (raise-argument-error 'make-gpu-context "gpu-provider?" provider))
   (unless (eq? (gpu-provider-backend provider) 'opengl)
-    (gpu-unavailable 'backend "0.39 public rendering contexts support OpenGL; Metal has a construction probe only"))
+    (gpu-unavailable 'backend "0.40 public rendering contexts support OpenGL; Metal has a construction probe only"))
   (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider))
   (wrap-gpu-domain (make-gpu-domain provider driver)))
 (define (call-with-gpu-context context thunk)
-  (domain-call (context-domain 'call-with-gpu-context context) thunk))
+  (begin0 (domain-call (context-domain 'call-with-gpu-context context) thunk)
+    (void/reference-sink context)))
 (define (gpu-context-backend context)
   (domain-backend (context-domain 'gpu-context-backend context)))
 (define (gpu-context-generation context)
