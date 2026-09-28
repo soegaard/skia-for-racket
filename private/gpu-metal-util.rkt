@@ -1,5 +1,5 @@
 #lang racket/base
-(require "gpu-provider.rkt" "gpu-domain.rkt" "gpu-native-scope.rkt")
+(require "gpu-provider.rkt" "gpu-domain.rkt" "gpu-native-scope.rkt" "gpu-metal-handles.rkt")
 (provide (struct-out metal-platform-ops) (struct-out metal-context-ops)
          make-metal-components)
 
@@ -55,13 +55,22 @@
            ;; At mono/skia 40f75dc..., MakeMetal retains BOTH borrowed arguments.
            ;; Release our Create/new +1 references on success AND null failure.
            ;; The Ganesh context is the sole long-lived owner of its queue/device.
-           (or ((metal-context-ops-create native) device queue)
-               (gpu-unavailable 'metal-ganesh "Ganesh Metal context creation returned null")))
+           (define context
+             (or ((metal-context-ops-create native) device queue)
+                 (gpu-unavailable 'metal-ganesh "Ganesh Metal context creation returned null")))
+           ;; Registry entries are borrowed from Ganesh, not extra +1 refs.
+           ;; This makes its exact submission queue available to presentation.
+           (with-handlers ([(lambda (_) #t)
+                            (lambda (e) ((metal-context-ops-release native) context) (raise e))])
+             (register-metal-handles! context device queue))
+           context)
          (lambda () (dynamic-wind void release-queue! release-device!))))))
   (define driver
     (gpu-driver
      create
-     (lambda (p) (native-call (lambda () ((metal-context-ops-release native) p))))
+     (lambda (p)
+       (forget-metal-handles! p)
+       (native-call (lambda () ((metal-context-ops-release native) p))))
      (lambda (p) (native-call (lambda () ((metal-context-ops-abandon native) p))))
      (lambda (p) (native-call (lambda () ((metal-context-ops-reset native) p))))
      (lambda (p)

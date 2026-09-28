@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.42.0 — unified window presentation
+
+- Added explicitly imported GPU GUI widgets and shared presenter/frame APIs,
+  frame/canvas expiration, actual pixel/logical sizes and target generations.
+- Added coalesced redraw scheduling, bounded geometry/scale monitoring,
+  hidden/zero/minimized skips, callback-time resize/close cancellation and
+  owner/eventspace-safe deferred cleanup for independent windows.
+- Reused actual GL host-framebuffer wrapping; added CAMetalLayer drawable
+  wrapping and presentation on the same Ganesh command queue after submission.
+  Normal frames do not request a CPU wait or readback. Aborted Metal frames
+  complete pending work before returning a drawable; uncertain cleanup is
+  quarantined rather than retried. Offscreen reference contracts are unchanged.
+- Added 53 pure and 28 live presenter source cases per backend, two-window
+  diagnostics, strict submission/lifetime inspection, SDK geometry mirrors,
+  examples and reference/validation guides. Host execution remains required.
+- Kept physical display inspection separate from automated submission evidence,
+  all preceding CPU/GPU parity gates and final source-sum sequencing intact.
+
 ## 0.41.0 — offscreen Metal parity
 
 - Added explicit owned Metal context construction without an OpenGL/GUI host,

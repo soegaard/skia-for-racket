@@ -28,6 +28,9 @@ class Checks(unittest.TestCase):
             (root/'tests/gpu-image-native-test.rkt').write_text('#lang racket/base\n')
             (root/'tests/gpu-image-pure-test.rkt').write_text('#lang racket/base\n')
             (root/'private/gpu-images.rkt').write_text('#lang racket/base\n')
+            (root/'tests/gpu-presenter-pure-test.rkt').write_text('#lang racket/base\n')
+            (root/'tests/gpu-presenter-native-test.rkt').write_text('#lang racket/base\n')
+            (root/'private/gpu-presenter.rkt').write_text('#lang racket/base\n')
             calls = []
             def fake_run(argv, **kwargs):
                 calls.append(argv)
@@ -55,8 +58,8 @@ class Checks(unittest.TestCase):
     def test_required_runs_all_stages_and_manifest_last(self):
         rc, calls, report, directory = self.simulate()
         self.assertEqual(rc, 0)
-        self.assertTrue(directory.startswith('gpu-0.41-'))
-        self.assertEqual(report['stage'], '0.41')
+        self.assertTrue(directory.startswith('gpu-0.42-'))
+        self.assertEqual(report['stage'], '0.42')
         paths = [a[1] for a in calls if len(a) > 1]
         for path in ('run-tests.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-window-doctor.rkt',
                      'tools/gpu-image-doctor.rkt','tools/inspect-gpu-images.py'):
@@ -166,6 +169,69 @@ class Checks(unittest.TestCase):
         self.assertTrue(any('Metal construction' in s for s in report['skips']))
         self.assertFalse(report['metal_rendering_verified'])
         self.assertFalse(report['backend_parity_verified'])
+
+    def test_presenter_suites_run_on_both_backends(self):
+        rc, calls, report, _ = self.simulate()
+        self.assertEqual(rc, 0)
+        chosen = [a for a in calls if 'tools/gpu-presenter-doctor.rkt' in a and '--prefix' in a]
+        self.assertEqual({a[a.index('--backend')+1] for a in chosen}, {'opengl','metal'})
+        self.assertEqual(report['presentation_submission_verified'], {'opengl':True,'metal':True})
+        self.assertTrue(report['presentation_summary_verified'])
+        self.assertFalse(report['visible_window_pixels_verified'])
+        self.assertFalse(report['metal_presentation_verified'])
+
+    def test_presenter_compile_uses_selected_racket(self):
+        _, calls, _, _ = self.simulate()
+        c, = [a for a in calls if '-l' in a and 'raco' in a]
+        for path in ('gpu-gui.rkt','private/gpu-presenter.rkt','tests/gpu-presenter-native-test.rkt',
+                     'tests/gpu-presenter-pure-test.rkt','tools/gpu-presenter-doctor.rkt',
+                     'tools/gpu-presentation-host.rkt','examples/gpu-presenters.rkt',
+                     'examples/gpu-presentation-scene.rkt'):
+            self.assertIn(path, c)
+        self.assertEqual(c[0], RACKET)
+
+    def test_presenter_failure_cannot_update_manifest(self):
+        rc, calls, report, _ = self.simulate(failure='tools/gpu-presenter-doctor.rkt')
+        self.assertEqual(rc, 1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+        self.assertEqual(report['status'], 'failed')
+
+    def test_presenter_inspection_failure_cannot_update_manifest(self):
+        rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-presentation.py', failure_probe_only=True)
+        self.assertEqual(rc, 1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_combined_presenter_failure_cannot_update_manifest(self):
+        rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-presentation.py', failure_directory_only=True)
+        self.assertEqual(rc, 1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_optional_presenter_unavailability_is_explicit(self):
+        rc, calls, report, _ = self.simulate(mode='optional', unavailable=('presentation-metal',))
+        self.assertEqual(rc, 0)
+        self.assertEqual(report['presentation_submission_verified'], {'opengl':True,'metal':False})
+        self.assertFalse(report['presentation_summary_verified'])
+        self.assertTrue(any('presentation-metal unavailable' in s for s in report['skips']))
+        self.assertFalse(any('tools/inspect-gpu-presentation.py' in a and '--directory' in a for a in calls))
+
+    def test_optional_presenter_test_failure_is_not_an_initialization_skip(self):
+        rc, calls, _, _ = self.simulate(mode='optional', failure='tools/gpu-presenter-doctor.rkt')
+        self.assertEqual(rc, 1)
+        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
+
+    def test_off_does_not_claim_presenter_submission(self):
+        rc, calls, report, _ = self.simulate(mode='off')
+        self.assertEqual(rc, 0)
+        self.assertEqual(report['presentation_submission_verified'], {})
+        self.assertFalse(report['presentation_summary_verified'])
+        self.assertFalse(any('tools/gpu-presenter-doctor.rkt' in a and '--prefix' in a for a in calls))
+
+    def test_non_macos_runs_gl_presenter_only(self):
+        rc, calls, report, _ = self.simulate(identity='unix/x86_64; Racket test; VM chez-scheme\n')
+        self.assertEqual(rc, 0)
+        self.assertEqual(report['presentation_submission_verified'], {'opengl':True})
+        self.assertTrue(report['presentation_summary_verified'])
+        self.assertFalse(any('tools/gpu-presenter-doctor.rkt' in a and 'metal' in a for a in calls))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

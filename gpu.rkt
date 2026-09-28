@@ -1,9 +1,9 @@
 #lang racket/base
 (require racket/runtime-path (only-in ffi/unsafe void/reference-sink)
-         "private/gpu-context.rkt"
+         "private/gpu-context.rkt" "private/gpu-presenter.rkt"
          "private/gpu-domain.rkt" "private/gpu-provider.rkt"
          "private/gpu-surfaces.rkt" "private/gpu-images.rkt")
-(provide (all-from-out "private/gpu-images.rkt")
+(provide (all-from-out "private/gpu-images.rkt" "private/gpu-presenter.rkt")
          make-gpu-surface gpu-surface? gpu-surface-info
          gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
          gpu-surface->rgba-bytes gpu-surface->raster-image gpu-surface-read-raster-buffer!

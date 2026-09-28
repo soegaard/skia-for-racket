@@ -1,6 +1,32 @@
-# Racket Skia — 0.41.0
+# Racket Skia — 0.42.0
 
-## Offscreen Metal with the shared GPU API
+## Unified OpenGL and Metal windows
+
+`skia/gpu-gui` provides `gpu-canvas%` and `gpu-window%`. Both use the same
+`gpu-presenter?` / short-lived `gpu-frame?` API from `skia/gpu`, with ordinary
+canvas drawing, actual pixel/logical geometry, target generations, queued
+redraws and safe close/resize behavior. `auto` selects Metal on macOS and
+OpenGL elsewhere; explicit failures never silently fall back to CPU rendering.
+
+OpenGL wraps the real host framebuffer and swaps. Metal retains the current
+CAMetalDrawable, wraps its BGRA texture, and requests presentation on the exact
+same command queue as Ganesh after rendering submission. Successful normal
+frames require no explicit CPU readback or completion wait. Cancelled Metal
+frames may synchronize for safe drawable cleanup; acquisition can block.
+
+See [presentation API and ownership](docs/GPU-PRESENTATION.md) and
+[automated and manual validation](docs/GPU-PRESENTATION-TESTING.md).
+Run `examples/gpu-presenters.rkt --backend both` on macOS to inspect the same
+callback in both windows. Automated submission/teardown checks do not certify
+physical display pixels; their review explicitly requires human inspection.
+
+Baseline: `07db8f0356e2bb508e06a119adf7f19c9396f80e` (0.41). The maintainer's
+OpenGL/Metal offscreen, image, lifecycle and parity checks passed on the Apple
+M4 Pro. New 0.42 native and visible-window execution remains a host validation
+gate. CPU imports, offscreen constructors, document policies, and explicit
+cross-context transfers are preserved. Older sections below are historical.
+
+## Offscreen Metal with the shared GPU API (0.41)
 
 `(make-gpu-context #:backend 'metal)` creates an owned default-device/private-
 queue Ganesh Metal context on 64-bit macOS, without a GUI or OpenGL host.

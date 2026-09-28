@@ -1,4 +1,22 @@
-# API reference — version 0.41.0
+# API reference — version 0.42.0
+
+## Window presenters and scoped frames
+
+Import `skia/gpu-gui` explicitly for `gpu-canvas%` and `gpu-window%`; this is the
+GUI-initializing module. The shared presenter/frame operations live in
+`skia/gpu`: `gpu-presenter?`, `gpu-presenter-render!`,
+`gpu-presenter-request-render!`, `gpu-presenter-set-render!`,
+`gpu-presenter-close!`, `gpu-drain-pending-presenters!`, and context/backend/
+state/diagnostic queries. A live `gpu-frame?` supplies `gpu-frame-canvas`,
+`gpu-frame-context`, immutable `gpu-frame-info`, pixel/logical size and scale,
+`gpu-frame-generation` and `gpu-frame-index`. Canvas/context access expires
+at callback exit; immutable geometry remains inspectable.
+
+Both GUI backends reuse ordinary drawing. `auto` selects Metal on macOS and
+OpenGL elsewhere without a failure fallback. Normal frames submit then request
+presentation with no explicit CPU readback/wait. A submission result is not a
+screen-pixel verification. See [the complete presentation contract](GPU-PRESENTATION.md)
+for widget constructors, scheduling, exceptional cleanup and owner-thread rules.
 
 ## GPU backend selection
 
@@ -8,7 +26,8 @@ private queue on 64-bit macOS without a GUI or GL context. An explicit backend
 must agree with a supplied provider; external Metal providers and automatic
 fallback are not supported. Both backends use the same surface/image APIs,
 creator-thread ownership, activation leases, explicit transfers and retained
-graph affinity. Metal window presentation is not provided.
+graph affinity. Offscreen construction does not create a window; use the
+explicit GUI module above for Metal or OpenGL window presentation.
 
 See [the Metal contract](GPU-METAL.md), including per-native-call autorelease
 scopes, explicit cross-backend transfer and ownership-sensitive teardown.

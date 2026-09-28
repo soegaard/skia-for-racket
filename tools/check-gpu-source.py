@@ -128,7 +128,9 @@ def check(root: pathlib.Path, *, require_integration=False):
         'image_live':suite_cases('tests/gpu-image-native-test.rkt','make-gpu-image-native-tests',factory=True),
         'metal_pure':suite_cases('tests/gpu-metal-pure-test.rkt','gpu-metal-pure-tests'),
         'metal_live':suite_cases('tests/gpu-metal-native-test.rkt','make-gpu-metal-native-tests',factory=True),
-        'cross_backend_live':suite_cases('tests/gpu-cross-backend-native-test.rkt','make-gpu-cross-backend-native-tests',factory=True)}
+        'cross_backend_live':suite_cases('tests/gpu-cross-backend-native-test.rkt','make-gpu-cross-backend-native-tests',factory=True),
+        'presenter_pure':suite_cases('tests/gpu-presenter-pure-test.rkt','gpu-presenter-pure-tests'),
+        'presenter_live':suite_cases('tests/gpu-presenter-native-test.rkt','make-gpu-presenter-native-tests',factory=True)}
     for key, name, constant in [('metal_live','metal','METAL_NATIVE_CASES'),
                                 ('cross_backend_live','cross-backend','CROSS_NATIVE_CASES')]:
         n = counts[key]
@@ -141,13 +143,19 @@ def check(root: pathlib.Path, *, require_integration=False):
         raise ValueError('GPU image native suite count differs from the doctor advertisement')
     if f'NATIVE_TEST_CASES = {count}' not in (root/'tools/inspect-gpu-images.py').read_text():
         raise ValueError('GPU image inspector expects different suite coverage')
+    count = counts['presenter_live']
+    if f'(define gpu-presenter-native-test-count {count})' not in (root/'tests/gpu-presenter-native-test.rkt').read_text():
+        raise ValueError('Presenter doctor coverage differs from executable source suite')
+    if f'NATIVE_TEST_CASES = {count}' not in (root/'tools/inspect-gpu-presentation.py').read_text():
+        raise ValueError('Presenter inspector coverage differs from executable source suite')
     public = (root/'gpu.rkt').read_text()
     if re.search(r'\(require[^)]*racket/gui',public,re.S):
         raise ValueError('GUI dependency leaked into optional GPU module')
     if 'sk_surface_new_render_target' not in (root/'private/gpu-smoke.rkt').read_text():
         raise ValueError('foundation probe lost its real GPU constructor')
     for module, guide in (('private/gpu-surfaces.rkt','GPU-OFFSCREEN.md'),
-                          ('private/gpu-images.rkt','GPU-IMAGES.md')):
+                          ('private/gpu-images.rkt','GPU-IMAGES.md'),
+                          ('private/gpu-presenter.rkt','GPU-PRESENTATION.md')):
         forms = read_forms((root/module).read_text())
         names = [n for f in forms if isinstance(f,list) and f and f[0]=='provide' for n in f[1:] if isinstance(n,str)]
         doc = (root/'docs'/guide).read_text()
@@ -165,7 +173,8 @@ def check(root: pathlib.Path, *, require_integration=False):
         'raster-buffers.rkt':['module* gpu-transfer-internals','call-with-raster-buffer-gpu-transfer'],
         'run-tests.rkt':['tests/gpu-surface-pure-test.rkt','(run-tests gpu-surface-pure-tests)',
                          'tests/gpu-image-pure-test.rkt','(run-tests gpu-image-pure-tests)',
-                         'tests/gpu-metal-pure-test.rkt','(run-tests gpu-metal-pure-tests)'],
+                         'tests/gpu-metal-pure-test.rkt','(run-tests gpu-metal-pure-tests)',
+                         'tests/gpu-presenter-pure-test.rkt','(run-tests gpu-presenter-pure-tests)'],
         'docs/API.md':['surface-backend','canvas-execution-backend'],
     }.items():
         file = root/path

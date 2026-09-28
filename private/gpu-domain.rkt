@@ -27,6 +27,21 @@
 (struct domain-resource
   (domain generation [pointer #:mutable] release kind [keepalive #:mutable]))
 (define active (make-parameter #f))
+;; Private GUI scheduling notifications, never native destruction or user
+;; drawing callbacks. Weak keys do not keep an optional GUI module alive.
+(define idle-notifiers (make-weak-hasheq))
+(define (notify-domain-idle!)
+  (unless (active)
+    (for ([notify (in-list (hash-keys idle-notifiers))])
+      ;; A scheduling failure must not hide the original GPU exception.
+      (with-handlers ([(lambda (_) #t) (lambda (_) (void))]) (notify)))))
+(module* presentation-internals #f
+  (provide domain-execution-active? register-domain-idle-notifier!)
+  (define (domain-execution-active?) (and (active) #t))
+  (define (register-domain-idle-notifier! notify)
+    (unless (and (procedure? notify) (procedure-arity-includes? notify 0))
+      (raise-argument-error 'register-domain-idle-notifier! "zero-argument scheduler" notify))
+    (hash-set! idle-notifiers notify #t)))
 (define roots (make-hasheq))
 (define claims (make-hash))
 (define next-generation 0)
@@ -222,7 +237,9 @@
      (current! 'call-with-gpu-context d)
      (run-scope)]
     [else
-     (provider-call (gpu-domain-provider d) run-scope)]))
+     (dynamic-wind void
+       (lambda () (provider-call (gpu-domain-provider d) run-scope))
+       notify-domain-idle!)]))
 
 (define (enqueue-resource! h)
   ;; Called by the FFI allocator's finalizer in atomic mode. No provider,

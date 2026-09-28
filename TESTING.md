@@ -1,6 +1,28 @@
 # Testing
 
-## Current revision: offscreen Metal parity (0.41)
+## Current revision: unified presentation (0.42)
+
+Baseline: `07db8f0356e2bb508e06a119adf7f19c9396f80e` (0.41). The maintainer's
+macOS/aarch64 0.41 run passed all selected checks and offscreen image review,
+including the corrected abandonment test. New window submission and visible
+output require separate 0.42 evidence; see
+[presentation validation](docs/GPU-PRESENTATION-TESTING.md).
+
+The runner retains every preceding regression/parity check, adds 53 pure and
+28 live presenter source cases per selected backend, and exercises two windows
+with three pixel extents each. Raw target/queue/expiry/cleanup reports are
+inspected without normal-frame readback or CPU completion waits. Source sums
+update last. The new C mirror checks actual Cocoa geometry SDK declarations
+on macOS, local mirrors only elsewhere. Patch validation uses ordinary Git
+application without relaxed context or recounted headers.
+
+`presentation.review.html` records submission and ownership, NOT observed
+screen pixels. Run `examples/gpu-presenters.rkt --backend both` on macOS and
+inspect orientation, colors, resize/Retina, minimize/restore and independent
+window closure. The authoring delivery does not execute Racket/native GPU,
+a macOS SDK compiler, a physical display, or a full repository checkout.
+
+## Previous revision: offscreen Metal parity (0.41)
 
 Baseline: `dca0aa876b1b42f293db2fef235eecee0ed7cd5a` (0.40). The maintainer's
 0.40 macOS/aarch64 OpenGL run passed. Run
