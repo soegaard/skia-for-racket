@@ -1,6 +1,33 @@
 # Testing
 
-## Current revision: GPU foundation (0.38)
+## Current revision: offscreen OpenGL (0.39)
+
+Baseline: `f2aa79db1a8c24045445623c42930ebc09cc0527`. The maintainer's preceding
+0.38 macOS/aarch64 run passed, including the corrected GC tests, real OpenGL
+render/readback and Metal construction. That result is not a 0.39 GPU run.
+
+Run [the offscreen/window validation sequence](docs/GPU-OFFSCREEN-TESTING.md).
+One selected Racket compiles every suite and diagnostic, runs the existing CPU
+regressions plus 35 new pure source cases, then a separate 33-case live-GPU
+suite, eight direct CPU/GPU scene pairs and the window diagnostic. Source-case
+counts are structural counts, not an execution result or assertion count.
+
+The new Python inspector checks actual PNG pixels and explicit transfer traces.
+Numerical tolerance success does not replace visual review of the scene pairs.
+The window check verifies target construction, submission, swapping, drawable
+sizes and expiration; it deliberately reports visible pixels as unverified.
+Run its interactive mode to inspect presentation and resizing.
+
+CPU requirements stay 392 Skia / 27 HarfBuzz symbols. Nine separately resolved
+surface/window callouts reuse existing native layouts; the new surface binding
+inventory includes overlapping context/CPU calls rather than adding them to
+CPU requirements. No new C record layout is introduced.
+
+Authoring checks did not execute a Racket compiler, RackUnit, native Skia or a
+window, and did not use a complete repository checkout. See the delivered
+validation report for full-file versus affected-context verification.
+
+## Previous revision: GPU foundation (0.38)
 
 Baseline: `a07aefeef0f91000c5a8683bb3b8835260a75064` (0.37).
 Run [the selected-Racket GPU validation sequence](docs/GPU-TESTING.md).

@@ -1,28 +1,38 @@
-# Racket Skia — 0.38.0
+# Racket Skia — 0.39.0
 
-## Optional GPU foundation and live backend diagnostics
+## Offscreen OpenGL with the ordinary drawing API
 
-`skia/gpu` adds explicit Ganesh context/provider ownership, scoped activation,
-creator-thread checks, generation invalidation, deferred native destruction and
-owner-side shutdown. CPU imports and constructors remain unchanged. The Racket
-GL adapter borrows an existing host; the combined diagnostic creates a test host,
-checks a real GPU target and all readback pixels, and reports the actual renderer.
+`skia/gpu` adds `make-gpu-surface`, returning the existing `surface?` interface
+with GPU backing. Its borrowed `canvas?` uses the same paths, paints, gradients,
+images, filters, SkSL, text, meshes and matrix operations as CPU drawing.
+GPU canvases require a live activation and expire when that activation ends;
+the surface itself can be reused in a later activation.
 
-This foundation does not yet expose general GPU surfaces, images or window
-presentation. Metal has an early device/queue/context construction probe, not
-rendering parity. Windows x64 loaders and a pinned-assets installer are included.
-Symbols, software GL, hardware-reported GL and actual rendered output are
-reported separately. No automatic CPU fallback is introduced.
+Submission and CPU transfers are explicit: `gpu-flush!`, `gpu-submit!`,
+`gpu-flush-and-submit!`, `gpu-wait!`, `gpu-surface->rgba-bytes`,
+`gpu-surface->raster-image`, and `gpu-surface-read-raster-buffer!`.
+The latter writes directly into the existing exclusive strided CPU buffer.
+`make-surface` stays CPU-only, and ordinary snapshot/encoding entry points reject
+GPU targets rather than creating an untracked GPU image or hidden readback.
 
-See [GPU contexts](docs/GPU-FOUNDATION.md), [the ABI audit](docs/GPU-ABI.md), and
-[the complete validation sequence](docs/GPU-TESTING.md). The patch targets 0.37
-commit `a07aefeef0f91000c5a8683bb3b8835260a75064`. Authoring checks do **not**
-establish Racket compilation or live GPU support on any platform; run the host
-validation before accepting this revision. The added suite has 64 source cases.
+See [the surface guide and reference](docs/GPU-OFFSCREEN.md),
+[context ownership](docs/GPU-FOUNDATION.md), and
+[the complete validation sequence](docs/GPU-OFFSCREEN-TESTING.md).
+The diagnostic window wraps its actual host framebuffer, submits, and swaps
+without explicit per-frame CPU waits or readbacks. It is not a finalized public
+presenter API; visible pixels and resize/HiDPI behavior require manual review.
+The offscreen runner compares eight directly rendered CPU/GPU scene pairs.
 
-Earlier feature sections below retain their historical revision-specific notes.
-The 0.34–0.37 output-group, portable-drawing, color-filter and raster-buffer code
-is preserved; no GPU pointer is placed in the existing CPU resource wrappers.
+Baseline: `f2aa79db1a8c24045445623c42930ebc09cc0527` (0.38, including the GC-test
+correction). The maintainer's 0.38 macOS/aarch64 run passed CPU tests, GL
+render/readback, and Metal construction. This 0.39 authoring delivery has source,
+context-patch, Python and host-C checks, **not Racket/native execution**.
+Linux/Windows GL and all 0.39 host execution remain validation gates.
+Metal still has a construction probe only. No GPU-image API, automatic CPU
+fallback, document acceleration, universal pixel identity or performance claim
+is introduced. Existing document-output policies remain unchanged.
+
+Earlier feature sections below retain historical revision-specific notes.
 
 ## Persistent pictures and picture shaders
 

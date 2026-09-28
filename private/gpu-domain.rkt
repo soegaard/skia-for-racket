@@ -7,7 +7,8 @@
          domain-request-shutdown! drain-pending-domains! domain-drain!
          domain-live-count domain-pending-count
          domain-new-resource domain-resource?
-         domain-resource-close! domain-resource-closed?)
+         domain-resource-close! domain-resource-closed?
+         domain-capture-lease domain-check-lease! domain-lease-expired?)
 
 ;; Driver procedures are PRIVATE native operations, not application callbacks.
 ;; create/describe/reset/release require a current provider. abandon must follow
@@ -177,38 +178,46 @@
   (define parent (active))
   (when (and parent (not (eq? d (activation-domain parent))))
     (error 'call-with-gpu-context "nested foreign GPU domains are not supported"))
-  (provider-call
-   (gpu-domain-provider d)
-   (lambda ()
-     (define lease (activation d (domain-generation d) #t))
-     (define entered? #f)
-     (define completed? #f)
-     (parameterize ([active lease])
-       (dynamic-wind
-         (lambda ()
-           (when entered? (error 'call-with-gpu-context "GPU scope has expired"))
-           (set! entered? #t)
-           (set-gpu-domain-depth! d (add1 (gpu-domain-depth d))))
-         (lambda ()
-           (when (= (gpu-domain-depth d) 1)
-             ((gpu-driver-reset (gpu-domain-driver d)) (gpu-domain-pointer d)))
-           (drain! d)
-           (begin0 (thunk) (set! completed? #t)))
-         (lambda ()
-           ;; Retire even when a release fails. Never allow that error to leave
-           ;; a usable lease or a positive scope depth behind.
-           (dynamic-wind
-             void
-             (lambda ()
-               (define current? ((gpu-provider-current? (gpu-domain-provider d))))
-               (cond
-                 [current?
-                  (if completed? (drain! d)
-                      (with-handlers ([(lambda (_) #t) (lambda (_) (void))]) (drain! d)))]
-                 [completed? (error 'call-with-gpu-context "native context changed inside GPU scope")]))
-             (lambda ()
-               (set-activation-live?! lease #f)
-               (set-gpu-domain-depth! d (sub1 (gpu-domain-depth d)))))))))))
+  (define (run-scope)
+    (define lease (activation d (domain-generation d) #t))
+    (define entered? #f)
+    (define completed? #f)
+    (parameterize ([active lease])
+      (dynamic-wind
+        (lambda ()
+          (when entered? (error 'call-with-gpu-context "GPU scope has expired"))
+          (set! entered? #t)
+          (set-gpu-domain-depth! d (add1 (gpu-domain-depth d))))
+        (lambda ()
+          (when (= (gpu-domain-depth d) 1)
+            ((gpu-driver-reset (gpu-domain-driver d)) (gpu-domain-pointer d)))
+          (drain! d)
+          (begin0 (thunk) (set! completed? #t)))
+        (lambda ()
+          ;; Retire even when a release fails. Never allow that error to leave
+          ;; a usable lease or a positive scope depth behind.
+          (dynamic-wind
+            void
+            (lambda ()
+              (define current? ((gpu-provider-current? (gpu-domain-provider d))))
+              (cond
+                [current?
+                 (if completed? (drain! d)
+                     (with-handlers ([(lambda (_) #t) (lambda (_) (void))]) (drain! d)))]
+                [completed? (error 'call-with-gpu-context "native context changed inside GPU scope")]))
+            (lambda ()
+              (set-activation-live?! lease #f)
+              (set-gpu-domain-depth! d (sub1 (gpu-domain-depth d)))))))))
+  (cond
+    [parent
+     ;; The outer scope already owns and has activated this provider. Re-entering
+     ;; the host adapter is unnecessary and, for some GL hosts, can disturb the
+     ;; native-current state that the outer lease depends on. A nested scope is
+     ;; only a new borrow/lease boundary.
+     (current! 'call-with-gpu-context d)
+     (run-scope)]
+    [else
+     (provider-call (gpu-domain-provider d) run-scope)]))
 
 (define (enqueue-resource! h)
   ;; Called by the FFI allocator's finalizer in atomic mode. No provider,
@@ -332,3 +341,24 @@
 
 ;; Only the checked accessor is visible to other modules.
 (provide (rename-out [checked-resource-pointer resource-pointer]))
+
+;; A canvas borrowed in an inner activation cannot outlive that activation,
+;; even if the same domain is active again (or its outer activation survives).
+(define (domain-capture-lease d)
+  (usable! 'surface-canvas d)
+  (current! 'surface-canvas d)
+  (active))
+(define (domain-lease-expired? lease)
+  (or (not (activation? lease))
+      (not (activation-live? lease))
+      (not (= (activation-generation lease)
+              (domain-generation (activation-domain lease))))
+      (not (eq? (domain-state (activation-domain lease)) 'ready))
+      (and (gpu-domain-requested (activation-domain lease)) #t)))
+(define (domain-check-lease! who lease)
+  (when (domain-lease-expired? lease)
+    (error who "borrowed GPU canvas scope has expired"))
+  (define d (activation-domain lease))
+  (usable! who d)
+  (current! who d)
+  (void))

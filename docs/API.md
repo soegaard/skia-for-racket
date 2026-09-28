@@ -1,4 +1,28 @@
-# API reference — version 0.33.0
+# API reference — version 0.39.0
+
+## Surface backing and GPU execution
+
+`surface-backend` is available from `skia` and reports `raster` for an ordinary
+CPU surface or `opengl` for a GPU surface. It reads immutable backing metadata,
+like surface dimensions; it does not require a GPU activation or certify a live
+resource. `canvas-execution-backend` validates a live canvas and reports
+`raster`, `opengl`, `recording`, `pdf`, or `svg`. A GPU canvas additionally needs
+its unexpired activation on the owning thread and native context.
+
+Import `skia/gpu` for the [GPU surface API](GPU-OFFSCREEN.md):
+`make-gpu-surface`, `gpu-surface?`, `gpu-surface-info`, `gpu-flush!`,
+`gpu-submit!`, `gpu-flush-and-submit!`, `gpu-wait!`,
+`gpu-surface->rgba-bytes`, `gpu-surface->raster-image`, and
+`gpu-surface-read-raster-buffer!`. Existing `surface?`, `canvas?`, `with-skia`
+and drawing operations are reused. `make-surface` remains CPU-only.
+
+`surface-snapshot`, `surface->rgba-bytes`, `surface-pixel`, and surface PNG
+helpers reject GPU targets. An explicit `gpu-surface->raster-image` produces a
+CPU-owned image usable by the existing image, shader, picture and document APIs,
+including after GPU teardown. No GPU-image wrapper is exposed yet.
+`draw-output-group` and `draw-rasterized` reject GPU destinations in this
+revision, rather than introducing an implicit CPU intermediate. This does not
+change their existing CPU/PDF/SVG behavior.
 
 ## Persistent pictures
 

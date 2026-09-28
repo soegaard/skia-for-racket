@@ -1,5 +1,6 @@
 #lang racket/base
-(require ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic "audit-trace.rkt")
+(require ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic "audit-trace.rkt"
+         "gpu-domain.rkt")
 (provide owned? new-owned owned-closed? owned-close!
          call-with-owned call-with-scoped-resource)
 
@@ -31,11 +32,13 @@
            "~a belongs to another Racket thread; create separate resources in each worker"
            (owned-kind h))))
 
-(define (owned-closed? h) (not (owned-ptr h)))
+(define (owned-closed? h)
+  (if (domain-resource? h) (domain-resource-closed? h) (not (owned-ptr h))))
 (define release-explicitly! ((deallocator) release-owned!))
 (define (owned-close! who h)
-  (check-thread who h)
-  (release-explicitly! h)
+  (cond
+    [(domain-resource? h) (domain-resource-close! h)]
+    [else (check-thread who h) (release-explicitly! h)])
   (void))
 
 (define (call-with-owned who handles proc)
@@ -47,9 +50,12 @@
    (lambda ()
      (define pointers
        (for/list ([h (in-list handles)])
-         (check-thread who h)
-         (or (owned-ptr h)
-             (error who "~a is closed" (owned-kind h)))))
+         (cond
+           [(domain-resource? h) (resource-pointer h)]
+           [else
+            (check-thread who h)
+            (or (owned-ptr h)
+                (error who "~a is closed" (owned-kind h)))])))
      (begin0 (audit-use handles pointers (lambda () (apply proc pointers)))
        (void/reference-sink handles)))))
 

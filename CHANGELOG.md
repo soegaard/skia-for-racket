@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.39.0 — offscreen OpenGL surfaces and explicit transfers
+
+- Added GPU-backed `surface?` values and ordinary `canvas?` drawing with
+  activation-bound leases, creator/domain checks and deferred native release.
+- Added explicit flush/submit/wait and synchronous RGBA, detached CPU-image and
+  direct strided raster-buffer readback. CPU snapshot/encoding entry points
+  reject GPU targets; no public GPU images are produced in this revision.
+- Added surface/execution backend queries without changing CPU constructors,
+  document representation policies or CPU-only import behavior.
+- Added a diagnostic host-framebuffer renderer with actual pixel dimensions,
+  format/origin/stencil/sample queries, GPU-only blit, asynchronous submission
+  and swapping. The automatic report does not certify visible window pixels.
+- Added 35 pure and 33 live-GPU source cases, eight direct CPU/GPU scene pairs,
+  full PNG pixel inspection, explicit comparison bounds and transfer traces.
+- Extended the selected-Racket validator; inspector reports publish on success
+  and source sums update last. The 0.38 GC-test correction is preserved.
+- This authoring delivery did not execute Racket or native GPU rendering.
+  Hardware/platform support and performance remain established only by host runs.
+
 ## 0.38.0 — GPU foundation and explicit backend probes
 
 - Added optional backend-neutral context/provider/domain APIs with serialized

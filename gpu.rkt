@@ -1,8 +1,12 @@
 #lang racket/base
 (require racket/runtime-path
          "private/gpu-context.rkt"
-         "private/gpu-domain.rkt" "private/gpu-provider.rkt")
-(provide gpu-context? make-gpu-context call-with-gpu-context
+         "private/gpu-domain.rkt" "private/gpu-provider.rkt"
+         "private/gpu-surfaces.rkt")
+(provide make-gpu-surface gpu-surface? gpu-surface-info
+         gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
+         gpu-surface->rgba-bytes gpu-surface->raster-image gpu-surface-read-raster-buffer!
+         gpu-context? make-gpu-context call-with-gpu-context
          gpu-context-backend gpu-context-generation gpu-context-state gpu-context-info
          gpu-context-close! gpu-context-abandon! gpu-context-request-shutdown!
          gpu-drain-releases! gpu-drain-pending-contexts! gpu-smoke-test
@@ -14,7 +18,7 @@
   (unless (gpu-provider? provider)
     (raise-argument-error 'make-gpu-context "gpu-provider?" provider))
   (unless (eq? (gpu-provider-backend provider) 'opengl)
-    (gpu-unavailable 'backend "0.38 public rendering contexts support OpenGL; Metal has a construction probe only"))
+    (gpu-unavailable 'backend "0.39 public rendering contexts support OpenGL; Metal has a construction probe only"))
   (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider))
   (wrap-gpu-domain (make-gpu-domain provider driver)))
 (define (call-with-gpu-context context thunk)
@@ -35,6 +39,6 @@
   (domain-drain! (context-domain 'gpu-drain-releases! context)))
 (define gpu-drain-pending-contexts! drain-pending-domains!)
 (define (gpu-smoke-test context)
-  ;; This is a fixed diagnostic, not the 0.39 general GPU-surface API.
+  ;; Retained 0.38 fixed diagnostic, independent of the general surface API.
   ((dynamic-require smoke-module 'run-gpu-smoke)
    (context-domain 'gpu-smoke-test context)))

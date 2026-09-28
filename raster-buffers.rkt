@@ -269,3 +269,18 @@
           ;; surface. An exception can leave pixels changed: no rollback.
           (with-canvas-state c (proc c)))
         (lambda () (when surface (skia-close! surface)))))))
+
+;; Private synchronous transfer lease. It is intentionally absent from the
+;; public exports. GPU readback gets a raw native destination without holding
+;; user code or a driver wait inside call-with-owned's atomic section.
+(module* gpu-transfer-internals #f
+  (provide call-with-raster-buffer-gpu-transfer)
+  (define (call-with-raster-buffer-gpu-transfer b proc)
+    (define who 'gpu-surface-read-raster-buffer!)
+    (call-exclusive who b 'gpu-transfer
+      (lambda ()
+        (define p (call-buffer who b values #:idle? #f))
+        (begin0
+          (proc p (raster-buffer-resource-width b) (raster-buffer-resource-height b)
+                (raster-buffer-resource-row-bytes b) (raster-buffer-resource-colorspace b))
+          (void/reference-sink b))))))

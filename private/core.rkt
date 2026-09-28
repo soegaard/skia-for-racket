@@ -1,4 +1,5 @@
 #lang racket/base
+(require "gpu-domain.rkt") ; pure lifecycle code; no GPU/GUI/native initialization
 (require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt"
          "annotation-util.rkt" "audit-trace.rkt")
 ;; Private ownership bridge, not re-exported by main.rkt or annotations.rkt.
@@ -229,8 +230,34 @@
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record)
+;; GPU handles use the domain's deferred-release allocator. The context wrapper
+;; is retained while the surface is reachable. Native color-space references
+;; are released with the surface handle, not with a public borrowed wrapper.
+(struct gpu-surface surface (context domain colorspace description)
+  #:constructor-name make-gpu-surface-record)
 ;; A canvas is always borrowed from a surface, picture recorder, or individual PDF page.
 (struct canvas (resource) #:constructor-name make-canvas-record)
+(struct gpu-canvas canvas (lease) #:constructor-name make-gpu-canvas-record)
+(module* gpu-surface-internals #f
+  (provide gpu-surface? make-gpu-surface-record gpu-surface-context
+           gpu-surface-domain gpu-surface-colorspace gpu-surface-description
+           surface-h surface-floors color-space-h wrap-owned-color-space
+           canvas-owner))
+(provide surface-backend canvas-execution-backend)
+(define (surface-backend s)
+  (unless (surface? s) (raise-argument-error 'surface-backend "surface?" s))
+  (if (gpu-surface? s) (domain-backend (gpu-surface-domain s)) 'raster))
+(define (canvas-execution-backend c)
+  (define owner (canvas-owner 'canvas-execution-backend c))
+  (call-on-canvas 'canvas-execution-backend c '()
+    (lambda ignored
+      (cond [(surface? owner) (surface-backend owner)]
+            [(picture-recorder? owner) 'recording]
+            [(pdf-page? owner) 'pdf]
+            [else 'svg]))))
+(define (require-cpu-surface who s)
+  (when (gpu-surface? s)
+    (error who "GPU transfers are explicit; use gpu-surface->rgba-bytes or gpu-surface->raster-image")))
 (struct paint (handle) #:constructor-name make-paint-record)
 (struct shader (handle) #:constructor-name make-shader-record)
 (struct path-effect (handle) #:constructor-name make-path-effect-record)
@@ -327,12 +354,17 @@
         [else (raise-argument-error who "skia-resource? (not a borrowed canvas)" v)]))
 
 (define (skia-closed? v)
-  (define owner (if (canvas? v) (canvas-owner 'skia-closed? v) v))
-  (cond [(pdf-page? owner) (pdf-page-closed? owner)]
-        [(and (canvas? v) (svg-document? owner)) (svg-canvas-closed? owner)]
-        [else (owned-closed? (resource-handle 'skia-closed? owner))]))
+  (cond
+    [(and (gpu-canvas? v) (domain-lease-expired? (gpu-canvas-lease v))) #t]
+    [else
+     (define owner (if (canvas? v) (canvas-owner 'skia-closed? v) v))
+     (cond [(pdf-page? owner) (pdf-page-closed? owner)]
+           [(and (canvas? v) (svg-document? owner)) (svg-canvas-closed? owner)]
+           [else (owned-closed? (resource-handle 'skia-closed? owner))])]))
 
 (define (skia-close! v)
+  (when (and (gpu-surface? v) (pair? (surface-floors v)))
+    (error 'skia-close! "cannot close a GPU surface inside a protected canvas-state scope"))
   (when (and (raster-buffer-resource? v) (unbox (raster-buffer-resource-state v)))
     (call-with-owned 'skia-close! (list (raster-buffer-resource-handle v))
       (lambda (_) (error 'skia-close! "cannot close a raster buffer inside an active borrow"))))
@@ -396,6 +428,7 @@
 
 (define (canvas-owner who c)
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
+  (when (gpu-canvas? c) (domain-check-lease! who (gpu-canvas-lease c)))
   (define owner (canvas-resource c))
   (unless (or (surface? owner) (picture-recorder? owner) (pdf-page? owner)
               (svg-document? owner))
@@ -437,7 +470,11 @@
          [(svg-document? owner) (svg-canvas-pointer/checked who owner)]
          [else (error who "unsupported canvas owner")]))
      (define backend
-       (cond [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
+       ;; GPU execution is not CPU raster execution. The document auditor has
+       ;; no GPU execution policy in this release; GPU targets never masquerade
+       ;; as its explicit CPU fallback surfaces.
+       (cond [(gpu-surface? owner) 'gpu]
+             [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
              [(pdf-page? owner) 'pdf] [else 'svg]))
      (audit-on-canvas who owner backend (resource-handle who owner) others
                       (lambda () (apply proc cp ps))))))
@@ -447,7 +484,8 @@
   (define (output-group-canvas-backend who c)
     (define owner (canvas-owner who c))
     (call-on-canvas who c '() (lambda ignored (void)))
-    (cond [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
+    (cond [(gpu-surface? owner) 'gpu]
+          [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
           [(pdf-page? owner) 'pdf] [else 'svg]))
   (define (output-group-canvas-recording-handle who c)
     (define owner (canvas-owner who c))
@@ -669,6 +707,8 @@
                          #:scale [scale (current-raster-output-scale)]
                          #:padding [padding 0] #:color-space [cs #f])
   (define who 'draw-rasterized)
+  (when (gpu-surface? (canvas-owner who c))
+    (error who "CPU raster fallback on GPU targets is not implicit; draw directly or explicitly transfer a CPU image"))
   (define fx (scalar who x))
   (define fy (scalar who y))
   (define-values (pw ph left top bw bh)
@@ -1219,10 +1259,19 @@
 
 (define (surface-canvas s)
   (call-with-owned 'surface-canvas (list (surface-h 'surface-canvas s))
-                   (lambda (_) (make-canvas-record s))))
+    (lambda (_)
+      (if (gpu-surface? s)
+          (make-gpu-canvas-record s (domain-capture-lease (gpu-surface-domain s)))
+          (make-canvas-record s)))))
 
 (define (surface-color-space s)
-  (call-with-skia-resource (surface-snapshot s) image-color-space))
+  (if (gpu-surface? s)
+      (call-with-owned 'surface-color-space (list (surface-h 'surface-color-space s))
+        (lambda (_)
+          (define cp (gpu-surface-colorspace s))
+          (and cp (wrap-owned-color-space 'surface-color-space
+                    (lambda () (sk_colorspace_ref cp) cp)))))
+      (call-with-skia-resource (surface-snapshot s) image-color-space)))
 
 ;; Pictures and recording ---------------------------------------------------
 
@@ -1311,6 +1360,7 @@
 (define (surface->rgba-bytes s #:premultiplied? [premultiplied? #f]
                              #:color-space [cs #f])
   (define who 'surface->rgba-bytes)
+  (require-cpu-surface who s)
   (define hnd (surface-h who s))
   (boolean who premultiplied?)
   (define cs-hnd (optional-color-space-h who cs))
@@ -1330,6 +1380,7 @@
   out)
 
 (define (surface-pixel s x y)
+  (require-cpu-surface 'surface-pixel s)
   (define hnd (surface-h 'surface-pixel s))
   (unless (and (exact-integer? x) (<= 0 x) (< x (surface-width s))
                (exact-integer? y) (<= 0 y) (< y (surface-height s)))
@@ -4633,6 +4684,7 @@
 ;; Images, encoded data, codecs, and copied pixel input ---------------------
 
 (define (surface-snapshot s)
+  (require-cpu-surface 'surface-snapshot s)
   (call-with-owned 'surface-snapshot (list (surface-h 'surface-snapshot s))
     (lambda (sp)
       (make-image-record

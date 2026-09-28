@@ -78,10 +78,10 @@ def read_forms(text: str):
     while index < len(tokens): forms.append(form())
     return forms
 
-def check(root: pathlib.Path):
+def check(root: pathlib.Path, *, require_integration=False):
     files = sorted([*root.glob('gpu*.rkt'), *root.glob('private/gpu*.rkt'),
                     *root.glob('private/native-platform.rkt'), *root.glob('tests/gpu*.rkt'),
-                    *root.glob('tools/gpu*.rkt')])
+                    *root.glob('tools/gpu*.rkt'), *root.glob('examples/gpu*.rkt')])
     results = {}
     for file in files:
         try:
@@ -102,29 +102,64 @@ def check(root: pathlib.Path):
         for form in forms:
             arities(form)
         results[str(file.relative_to(root))] = len(forms)
-    forms = read_forms((root/'tests/gpu-pure-test.rkt').read_text())
-    definition = [f for f in forms if isinstance(f, list) and len(f) >= 3 and f[:2] == ['define', 'gpu-pure-tests']]
-    if len(definition) != 1: raise ValueError('missing or duplicate GPU suite definition')
-    definition = definition[0]
-    if len(definition) != 3: raise ValueError('extra expressions escaped GPU test-suite into its define')
-    suite = definition[2]
-    if not isinstance(suite, list) or suite[0] != 'test-suite': raise ValueError('expected test-suite form')
-    cases = suite[2:]
-    if not all(isinstance(case, list) and case and case[0] == 'test-case' for case in cases):
-        raise ValueError('unexpected non-test-case expression at suite level')
-    source_count = len(re.findall(r'\(test-case\b', (root/'tests/gpu-pure-test.rkt').read_text()))
-    if source_count != len(cases): raise ValueError('test cases escaped the executable suite')
-    # There must not be a module-level GUI require or driver load in the safe API.
+    def suite_cases(path, name, *, factory=False):
+        source = (root/path).read_text()
+        forms = read_forms(source)
+        definitions = [f for f in forms if isinstance(f,list) and len(f)>=3 and f[0]=='define'
+                       and ((isinstance(f[1],list) and f[1] and f[1][0]==name) if factory else f[1]==name)]
+        if len(definitions)!=1: raise ValueError(f'{path}: missing or duplicate suite definition')
+        definition = definitions[0]
+        suites = [f for f in definition[2:] if isinstance(f,list) and f and f[0]=='test-suite']
+        if len(suites)!=1 or definition[-1] is not suites[0]:
+            raise ValueError(f'{path}: suite must be the final returned value')
+        if not factory and len(definition)!=3: raise ValueError(f'{path}: extra suite expressions')
+        cases = suites[0][2:]
+        if not all(isinstance(c,list) and c and c[0]=='test-case' for c in cases):
+            raise ValueError(f'{path}: non-test-case at suite level')
+        if len(re.findall(r'\(test-case\b',source))!=len(cases):
+            raise ValueError(f'{path}: test case escaped its executable suite')
+        return len(cases)
+    counts = {
+        'foundation_pure':suite_cases('tests/gpu-pure-test.rkt','gpu-pure-tests'),
+        'surface_pure':suite_cases('tests/gpu-surface-pure-test.rkt','gpu-surface-pure-tests'),
+        'surface_live':suite_cases('tests/gpu-surface-native-test.rkt','make-gpu-surface-native-tests',factory=True)}
     public = (root/'gpu.rkt').read_text()
-    if re.search(r'\(require[^)]*racket/gui', public, re.S): raise ValueError('GUI dependency leaked into GPU foundation')
+    if re.search(r'\(require[^)]*racket/gui',public,re.S):
+        raise ValueError('GUI dependency leaked into optional GPU module')
     if 'sk_surface_new_render_target' not in (root/'private/gpu-smoke.rkt').read_text():
-        raise ValueError('probe lost its explicit GPU target constructor')
-    return {'racket_source_structure': results, 'gpu_source_cases': len(cases),
-            'racket_expansion_executed': False, 'rackunit_executed': False,
-            'native_gpu_executed': False}
+        raise ValueError('foundation probe lost its real GPU constructor')
+    for module in ('private/gpu-surfaces.rkt',):
+        forms = read_forms((root/module).read_text())
+        names = [n for f in forms if isinstance(f,list) and f and f[0]=='provide' for n in f[1:] if isinstance(n,str)]
+        doc = (root/'docs/GPU-OFFSCREEN.md').read_text()
+        if any(n not in doc for n in names): raise ValueError(f'{module}: undocumented public binding')
+    integration = {}
+    for path, required in {
+        'private/core.rkt':['struct gpu-surface surface','struct gpu-canvas canvas',
+                            'domain-check-lease!','require-cpu-surface',
+                            'surface-backend','canvas-execution-backend',
+                            "[(gpu-surface? owner) 'gpu]"],
+        'private/lifetime.rkt':['domain-resource?','resource-pointer','domain-resource-close!'],
+        'raster-buffers.rkt':['module* gpu-transfer-internals','call-with-raster-buffer-gpu-transfer'],
+        'run-tests.rkt':['tests/gpu-surface-pure-test.rkt','(run-tests gpu-surface-pure-tests)'],
+        'docs/API.md':['surface-backend','canvas-execution-backend'],
+    }.items():
+        file = root/path
+        if not file.exists():
+            if require_integration: raise ValueError(f'missing full-repository integration file: {path}')
+            integration[path] = 'not present in source-only bundle'
+            continue
+        text = file.read_text()
+        if any(term not in text for term in required): raise ValueError(f'{path}: missing integration guard/export')
+        integration[path] = 'source markers present (not Racket expansion)'
+    return {'racket_source_structure':results, 'gpu_source_cases':counts,
+            'integration_source_checks':integration,
+            'racket_expansion_executed':False, 'rackunit_executed':False,
+            'native_gpu_executed':False}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[1])
+    parser.add_argument('--require-integration',action='store_true')
     args = parser.parse_args()
-    print(json.dumps(check(args.root), indent=2))
+    print(json.dumps(check(args.root,require_integration=args.require_integration),indent=2))

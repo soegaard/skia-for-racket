@@ -1,5 +1,11 @@
 # GPU contexts and diagnostic rendering
 
+> This guide documents the context foundation introduced in 0.38. General
+> OpenGL surfaces and explicit transfers are now documented in
+> [GPU-OFFSCREEN.md](GPU-OFFSCREEN.md). The small `gpu-doctor` remains a
+> foundation probe; the separate 0.39 window diagnostic exercises submission,
+> swapping and resizing. Historical scope/validation notes below refer to 0.38.
+
 This module is the GPU foundation for the standalone `skia` collection. It uses
 Ganesh in the pinned SkiaSharp 3.119.1 library. Requiring `skia` retains the CPU
 API and does not import GPU support. Requiring `skia/gpu` defines the optional

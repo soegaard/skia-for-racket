@@ -4,7 +4,7 @@
          "tests/codec-pure-test.rkt" "tests/pdf-pure-test.rkt"
          "tests/svg-pure-test.rkt" "tests/output-pure-test.rkt"
          "tests/path-matrix-pure-test.rkt" "tests/filter-graph-pure-test.rkt"
-         "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt" "tests/canvas-pure-test.rkt" "tests/geometry-pure-test.rkt" "tests/projective-pure-test.rkt" "tests/picture-pure-test.rkt" "tests/output-group-pure-test.rkt" "tests/portable-pure-test.rkt" "tests/color-filter-pure-test.rkt" "tests/raster-buffer-pure-test.rkt" "tests/gpu-pure-test.rkt")
+         "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt" "tests/canvas-pure-test.rkt" "tests/geometry-pure-test.rkt" "tests/projective-pure-test.rkt" "tests/picture-pure-test.rkt" "tests/output-group-pure-test.rkt" "tests/portable-pure-test.rkt" "tests/color-filter-pure-test.rkt" "tests/raster-buffer-pure-test.rkt" "tests/gpu-pure-test.rkt" "tests/gpu-surface-pure-test.rkt")
 
 (define-runtime-path native-tests-file "tests/native-test.rkt")
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
@@ -48,7 +48,7 @@
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
                       (run-tests svg-pure-tests) (run-tests output-pure-tests)
                       (run-tests path-matrix-pure-tests) (run-tests filter-graph-pure-tests)
-                      (run-tests color-output-pure-tests) (run-tests annotation-pure-tests) (run-tests runtime-pure-tests) (run-tests output-audit-pure-tests) (run-tests canvas-pure-tests) (run-tests geometry-pure-tests) (run-tests projective-pure-tests) (run-tests picture-pure-tests) (run-tests output-group-pure-tests) (run-tests portable-pure-tests) (run-tests color-filter-pure-tests) (run-tests raster-buffer-pure-tests) (run-tests gpu-pure-tests)))
+                      (run-tests color-output-pure-tests) (run-tests annotation-pure-tests) (run-tests runtime-pure-tests) (run-tests output-audit-pure-tests) (run-tests canvas-pure-tests) (run-tests geometry-pure-tests) (run-tests projective-pure-tests) (run-tests picture-pure-tests) (run-tests output-group-pure-tests) (run-tests portable-pure-tests) (run-tests color-filter-pure-tests) (run-tests raster-buffer-pure-tests) (run-tests gpu-pure-tests) (run-tests gpu-surface-pure-tests)))
   (cond
     [pure-only? (displayln "Native rendering tests NOT RUN (--pure).")]
     [else
