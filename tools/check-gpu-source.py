@@ -136,7 +136,15 @@ def check(root: pathlib.Path, *, require_integration=False):
         'egl_live':suite_cases('tests/gpu-egl-native-test.rkt','make-gpu-egl-native-tests',factory=True),
         'interop_live':suite_cases('tests/gpu-gl-interop-native-test.rkt','make-gpu-gl-interop-native-tests',factory=True),
         'output_pure':suite_cases('tests/gpu-output-pure-test.rkt','gpu-output-pure-tests'),
-        'output_live':suite_cases('tests/gpu-output-native-test.rkt','make-gpu-output-native-tests',factory=True)}
+        'output_live':suite_cases('tests/gpu-output-native-test.rkt','make-gpu-output-native-tests',factory=True),
+        'cache_pure':suite_cases('tests/gpu-cache-pure-test.rkt','gpu-cache-pure-tests'),
+        'performance_pure':suite_cases('tests/gpu-performance-pure-test.rkt','gpu-performance-pure-tests'),
+        'cache_live':suite_cases('tests/gpu-cache-native-test.rkt','make-gpu-cache-native-tests',factory=True)}
+    count = counts['cache_live']
+    if f'(define gpu-cache-native-test-count {count})' not in (root/'tests/gpu-cache-native-test.rkt').read_text():
+        raise ValueError('Cache native coverage mismatch')
+    if f'NATIVE_CACHE_CASES = {count}' not in (root/'tools/inspect-gpu-performance.py').read_text():
+        raise ValueError('Performance inspector native coverage mismatch')
     count = counts['output_live']
     if f'(define gpu-output-native-test-count {count})' not in (root/'tests/gpu-output-native-test.rkt').read_text():
         raise ValueError('GPU output doctor coverage mismatch')
@@ -176,7 +184,8 @@ def check(root: pathlib.Path, *, require_integration=False):
                           ('private/gpu-presenter.rkt','GPU-PRESENTATION.md'),
                           ('gpu-egl.rkt','GPU-EGL.md'),
                           ('gpu-gl-interop.rkt','GPU-INTEROP.md'),
-                          ('gpu-output.rkt','GPU-OUTPUT.md')):
+                          ('gpu-output.rkt','GPU-OUTPUT.md'),
+                          ('private/gpu-cache.rkt','GPU-CACHE.md')):
         forms = read_forms((root/module).read_text())
         names = [n for f in forms if isinstance(f,list) and f and f[0]=='provide' for n in f[1:] if isinstance(n,str)]
         doc = (root/'docs'/guide).read_text()
@@ -197,7 +206,9 @@ def check(root: pathlib.Path, *, require_integration=False):
                          'tests/gpu-metal-pure-test.rkt','(run-tests gpu-metal-pure-tests)',
                          'tests/gpu-presenter-pure-test.rkt','(run-tests gpu-presenter-pure-tests)',
                          'tests/gpu-egl-pure-test.rkt','(run-tests gpu-egl-pure-tests)',
-                         'tests/gpu-output-pure-test.rkt','(run-tests gpu-output-pure-tests)'],
+                         'tests/gpu-output-pure-test.rkt','(run-tests gpu-output-pure-tests)',
+                         'tests/gpu-cache-pure-test.rkt','(run-tests gpu-cache-pure-tests)',
+                         'tests/gpu-performance-pure-test.rkt','(run-tests gpu-performance-pure-tests)'],
         'docs/API.md':['surface-backend','canvas-execution-backend'],
     }.items():
         file = root/path

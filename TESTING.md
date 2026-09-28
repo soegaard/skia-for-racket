@@ -1,6 +1,20 @@
 # Testing
 
-## Current revision: GPU-assisted document fallbacks (0.44)
+## Current revision: GPU measurements and release stress (0.45)
+
+Baseline: `4304856a73dc8087d5962963428f37a84cbc8a21` (0.44). The maintainer's
+macOS regression/document run passed. Linux EGL end-to-end remains deferred to
+future GitHub Actions CI. See [0.45 validation](docs/GPU-PERFORMANCE-TESTING.md).
+
+Both validators retain preceding gates and add 46 pure cases, 20 native cache
+cases/backend and completion-aware benchmark/resource-stress inspection. The
+desktop runner also exercises two sustained windows per recreated pair. No-wait
+submission is not completion, cache accounting is not total memory, and queued
+presentation is not observed physical pixels. Reviews retain raw JSON/CSV,
+compare actual CPU/GPU PNGs and name all completion and cleanup boundaries.
+Source sums still update last. Authoring source checks do not execute Racket.
+
+## Previous revision: GPU-assisted document fallbacks (0.44)
 
 Baseline: `f493314201d69973956c3e5485fda0b709dcad67` (0.43). The maintainer
 accepted its passing macOS validation and deferred Linux EGL end-to-end

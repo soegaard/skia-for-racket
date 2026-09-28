@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.45.0 — measurements, cache management and release stress
+
+- Added lazy per-context cache queries, budgets, unlocked/byte/age purges and
+  explicit cleanup, preserving owner/domain checks and live resource ownership.
+- Added raw monotonic host timing for recording, first/warm replay, completion,
+  SkSL construction, fresh-image uploads, readback and presenter calls.
+- Added sustained retained graphs, finalizer/GC and cache-pressure checkpoints,
+  recreated contexts, coalesced redraws, resize and independent-window closure.
+- Added 30 cache pure, 16 timing pure and 20 cache native source cases/backend;
+  strict timing/trace/PNG/resource inspectors and independent runner tests.
+- Reports distinguish budgeted cache from total memory, host latency from GPU
+  timestamps/display latency, and measured data from unexecuted authoring gates.
+- Preserved earlier validators, last-step source sums and deferred Linux CI gate.
+
 ## 0.44.0 — GPU-assisted bounded document fallbacks
 
 - Added optional borrowed and lazily owned GPU raster executors. CPU defaults

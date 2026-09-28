@@ -58,8 +58,8 @@ class Checks(unittest.TestCase):
     def test_required_runs_all_stages_and_manifest_last(self):
         rc, calls, report, directory = self.simulate()
         self.assertEqual(rc, 0)
-        self.assertTrue(directory.startswith('gpu-0.44-'))
-        self.assertEqual(report['stage'], '0.44')
+        self.assertTrue(directory.startswith('gpu-0.45-'))
+        self.assertEqual(report['stage'], '0.45')
         paths = [a[1] for a in calls if len(a) > 1]
         for path in ('run-tests.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-window-doctor.rkt',
                      'tools/gpu-image-doctor.rkt','tools/inspect-gpu-images.py'):

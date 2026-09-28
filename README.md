@@ -1,4 +1,23 @@
-# Racket Skia — 0.44.0
+# Racket Skia — 0.45.0
+
+## Cache control, completion-aware measurements and release stress
+
+`skia/gpu` now exposes explicit per-context budget, purge, age-cleanup and
+resource-release controls. The live cache query reports budgeted usage, not
+total VRAM. The cache budget is not a hard allocation limit.
+
+New diagnostics distinguish authoring, host SkSL construction, first replay,
+warm draw/flush/submit/completion, uploads, readback and window presentation.
+They preserve raw samples and driver/target identity, and exercise sustained
+retained graphs, GC, cache pressure, resize, queued redraw and context recreation.
+They measure host latency, not isolated GPU timestamps or physical display latency;
+no speedup is claimed before an actual hardware run.
+
+See [cache API](docs/GPU-CACHE.md), [measurement boundaries](docs/GPU-PERFORMANCE.md)
+and [validation and longer runs](docs/GPU-PERFORMANCE-TESTING.md).
+The accepted baseline is 0.44 commit `4304856a73dc8087d5962963428f37a84cbc8a21`.
+Linux headless validation remains deferred to future CI. Earlier sections below
+are historical release notes.
 
 ## GPU-assisted bounded document fallbacks
 

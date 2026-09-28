@@ -1,4 +1,23 @@
-# API reference — version 0.44.0
+# API reference — version 0.45.0
+
+## GPU cache control
+
+Import `skia/gpu`. Inside the matching active GPU context use `gpu-cache-info`,
+`gpu-set-cache-limit!`, `gpu-purge-unlocked!`, `gpu-purge-bytes!`,
+`gpu-perform-deferred-cleanup!`, and `gpu-free-resources!`.
+Queries report immutable budgeted-cache snapshots; mutation procedures return
+void, not invented freed-byte counts. The budget is not an allocation ceiling,
+and cleanup does not close application resources or certify CPU completion.
+The pinned `gpu-free-resources!` native operation itself flushes/submits.
+See [cache signatures and scope](GPU-CACHE.md).
+
+These cache operations do not change `surface-backend` or
+`canvas-execution-backend`.
+
+Performance tools are diagnostics, not extra public graphics API. Their raw
+host timing, completion boundaries, driver/target identity and resource-envelope
+checks are specified in [measurement semantics](GPU-PERFORMANCE.md) and
+[validation](GPU-PERFORMANCE-TESTING.md). Linux headless acceptance is still deferred.
 
 ## GPU raster execution for bounded output groups
 

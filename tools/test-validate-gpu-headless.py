@@ -52,7 +52,7 @@ class Checks(unittest.TestCase):
     def test_full_headless_pipeline_and_sums_last(self):
         rc,calls,_,r=self.simulate();self.assertEqual(rc,0);self.assertTrue(r['headless_rendering_verified'])
         self.assertEqual(calls[-1][1],'tools/update-source-sums.py')
-        self.assertEqual([a[1] for a in calls if '--prefix' in a],['tools/gpu-egl-doctor.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-image-doctor.rkt','tools/gpu-interop-doctor.rkt','tools/gpu-output-doctor.rkt'])
+        self.assertEqual([a[1] for a in calls if '--prefix' in a],['tools/gpu-egl-doctor.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-image-doctor.rkt','tools/gpu-interop-doctor.rkt','tools/gpu-output-doctor.rkt','tools/gpu-performance-doctor.rkt'])
     def test_all_child_processes_have_no_display_environment(self):
         _,_,envs,_=self.simulate()
         for env in envs:
