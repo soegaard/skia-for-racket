@@ -1,6 +1,24 @@
 # Testing
 
-## Current revision: GPU measurements and release stress (0.45)
+## Current revision: CI and portability matrix (0.46)
+
+Baseline: `92f6119af3846966075ced0034ceb740e916bdee` (0.45). The accepted
+macOS runs include the two benchmark-report corrections. Rendering APIs and
+native versions do not change in this stage.
+
+Run the normal selected-Racket GPU validator locally before committing. It now
+includes CI infrastructure regressions and still updates source sums last.
+Commit the resulting SOURCE-SHA256SUMS.txt with all new workflow/tool files.
+CI checks that manifest without rewriting it, installs the source ZIP in a fresh
+user home, then compiles and tests the installed copy from another directory.
+
+See [CI operation, artifacts and local reproduction](docs/CI.md) and the
+[portability evidence matrix](docs/PORTABILITY.md). Both Linux EGL binding modes
+are required and cannot silently skip or create a hidden window. Only successful
+runs establish Linux support; the workflow configuration is not such evidence.
+macOS/Windows hosted jobs test CPU/native/package behavior, not GPU presentation.
+
+## Previous revision: GPU measurements and release stress (0.45)
 
 Baseline: `4304856a73dc8087d5962963428f37a84cbc8a21` (0.44). The maintainer's
 macOS regression/document run passed. Linux EGL end-to-end remains deferred to

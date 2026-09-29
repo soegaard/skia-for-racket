@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# Pull-request code runs only on fresh GitHub-hosted runners, with no secrets
+# or write token. In particular, never change this to pull_request_target.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  PYTHONUTF8: '1'
+
+jobs:
+  source:
+    name: Source and CI contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      cpu: ${{ steps.matrix.outputs.cpu }}
+      egl: ${{ steps.matrix.outputs.egl }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Source-check system tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends git unzip curl
+      - name: Validate and publish the matrix
+        id: matrix
+        run: python tools/ci_matrix.py --github-output
+      - name: Source, inspector, installer, and CI regressions
+        run: python tools/ci.py --profile source --id source
+      - name: Keep source-check evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-source-${{ github.run_attempt }}
+          path: output/ci-source/
+          if-no-files-found: warn
+          retention-days: 14
+
+  cpu:
+    name: CPU ${{ matrix.id }} / Racket ${{ matrix.racket }}
+    needs: source
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.source.outputs.cpu) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Linux runtime libraries and fonts
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            unzip curl cmake build-essential fontconfig fonts-dejavu-core \
+            fonts-liberation fonts-noto-core libcairo2 libpango-1.0-0 \
+            libpangocairo-1.0-0 libgtk-3-0t64 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: ${{ matrix.racket }}
+          architecture: ${{ matrix.architecture }}
+          distribution: full
+          variant: CS
+      - name: Test an isolated installed source package
+        env:
+          CI_LANE: ${{ matrix.id }}
+        shell: bash
+        run: python tools/ci.py --profile cpu --id "$CI_LANE"
+      - name: Keep CPU/native/package evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-${{ matrix.id }}-${{ github.run_attempt }}
+          path: output/ci-${{ matrix.id }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+  egl:
+    name: Required EGL ${{ matrix.surface }} / llvmpipe
+    needs: source
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.source.outputs.egl) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install Mesa and CPU runtime dependencies (no display server)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            unzip curl cmake build-essential fontconfig fonts-dejavu-core \
+            fonts-liberation fonts-noto-core libcairo2 libpango-1.0-0 \
+            libpangocairo-1.0-0 libgtk-3-0t64 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: ${{ matrix.racket }}
+          architecture: ${{ matrix.architecture }}
+          distribution: full
+          variant: CS
+      - name: Required installed-package EGL/Ganesh sequence
+        env:
+          CI_LANE: ${{ matrix.id }}
+        run: python tools/ci.py --profile egl --id "$CI_LANE"
+      - name: Keep EGL reports and actual visual outputs, including failures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-${{ matrix.id }}-${{ github.run_attempt }}
+          path: output/ci-${{ matrix.id }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+  required:
+    name: CI required
+    if: always()
+    needs: [source, cpu, egl]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every lane (skipped and cancelled are not passes)
+        env:
+          SOURCE_RESULT: ${{ needs.source.result }}
+          CPU_RESULT: ${{ needs.cpu.result }}
+          EGL_RESULT: ${{ needs.egl.result }}
+        run: |
+          test "$SOURCE_RESULT" = success &&
+          test "$CPU_RESULT" = success &&
+          test "$EGL_RESULT" = success

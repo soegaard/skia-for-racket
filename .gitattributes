@@ -1,0 +1,12 @@
+# Consistent source bytes on Unix and Windows; binary fixtures stay binary.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.pdf binary
+*.ttf binary
+*.otf binary
+*.woff* binary
+*.skp binary

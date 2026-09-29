@@ -22,7 +22,7 @@ PYTHON_CHECKS = ('test-install-native-windows.py','test-validate-gpu-headless.py
                  'inspect-gpu-probe.py','inspect-gpu-offscreen.py','inspect-gpu-images.py',
                  'inspect-gpu-parity.py','inspect-gpu-presentation.py','inspect-gpu-headless.py',
                  'test-patch-delivery.py','test-validate-gpu-output.py','inspect-gpu-output.py',
-                 'inspect-gpu-performance.py','test-validate-gpu-performance.py')
+                 'inspect-gpu-performance.py','test-validate-gpu-performance.py','test-ci.py')
 
 
 def main() -> int:
@@ -35,7 +35,7 @@ def main() -> int:
     hardware = os.environ.get('REQUIRE_HARDWARE','0') == '1'
     commands=[];skips=[];verified=False; output_verified=False; performance_verified=False; identity=''
     (ROOT/'output').mkdir(exist_ok=True)
-    directory=Path(tempfile.mkdtemp(prefix='gpu-0.45-headless-',dir=ROOT/'output'))
+    directory=Path(tempfile.mkdtemp(prefix='gpu-0.46-headless-',dir=ROOT/'output'))
     env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1',SKIA_GPU_VALIDATION_RUN=directory.name)
     for key in DISPLAY_VARIABLES: env.pop(key,None)
     def run(argv, *, capture=False):
@@ -75,7 +75,7 @@ def main() -> int:
                  'gpu-output.rkt','private/output-executor.rkt','tools/gpu-output-doctor.rkt',
                  'examples/gpu-output.rkt','tests/gpu-output-fixtures.rkt',
                  'tools/gpu-performance-doctor.rkt','tools/gpu-performance-work.rkt',
-                   'tools/gpu-performance-options.rkt']
+                   'tools/gpu-performance-options.rkt','tools/ci-identity.rkt','tools/ci-import-smoke.rkt','tools/ci-package-smoke.rkt']
         # The suites below load no GUI. GUI-native suites and their doctors are
         # intentionally absent, rather than relying on a DISPLAY being present.
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))
@@ -131,7 +131,7 @@ def main() -> int:
                 run([sys.executable,'tools/inspect-gpu-performance.py','--probe-prefix',performance_prefix])
                 performance_verified=True
         run([sys.executable,'tools/update-source-sums.py'])
-        report=dict(status='passed-selected-checks',stage='0.45',gpu_mode=mode,identity=identity.strip(),
+        report=dict(status='passed-selected-checks',stage='0.46',gpu_mode=mode,identity=identity.strip(),
           validation_run=directory.name,commands=commands,skips=skips,display_variables_removed=list(DISPLAY_VARIABLES),
           egl_platform=platform,egl_device_index=index,egl_surface=surface,headless_rendering_verified=verified,
           gl_interop_verified=verified,gpu_document_output_verified=output_verified,hardware_string_requirement=hardware,performance_measured=performance_verified,
@@ -142,7 +142,7 @@ def main() -> int:
         print(f'Headless review: {directory}/headless.review.html (published only after live gates pass)')
         return 0
     except (OSError,ValueError,RuntimeError,subprocess.CalledProcessError) as e:
-        (directory/'validation.failed.json').write_text(json.dumps(dict(status='failed',stage='0.45',
+        (directory/'validation.failed.json').write_text(json.dumps(dict(status='failed',stage='0.46',
             error=str(e),commands=commands,skips=skips),indent=2)+'\n')
         print(f'Headless validation FAILED: {e}\nDetails: {directory}',file=sys.stderr)
         return 1

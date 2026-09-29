@@ -1,4 +1,25 @@
-# Racket Skia — 0.45.0
+# Racket Skia — 0.46.0
+
+## CI and portability
+
+[GitHub Actions CI](docs/CI.md) checks an independently installed source package,
+not only a development checkout. The required matrix covers Linux x64, Windows
+x64, macOS ARM64 and macOS Intel with Racket CS 9.3, plus Linux CS 8.7 (the
+currently declared minimum). Two required Linux Mesa/llvmpipe lanes run the
+complete EGL headless sequence with surfaceless and pbuffer bindings and no
+display server. Software rendering establishes functionality, not acceleration.
+
+Native assets are installed afresh inside each isolated package copy. Source
+manifests are verified, never rewritten by CI. Logs, installation/native identity,
+JSON/CSV and actual visual outputs are retained even when a later check fails.
+The aggregate `CI required` check rejects failed, cancelled or skipped lanes.
+
+Baseline: `92f6119af3846966075ced0034ceb740e916bdee` (0.45), with accepted
+macOS OpenGL/Metal validation. The formerly deferred Linux acceptance is now a
+required CI job; it is **not claimed passed merely because the workflow exists**.
+Hosted macOS/Windows lanes make no GPU claim. See the explicit
+[coverage and evidence matrix](docs/PORTABILITY.md). Earlier release sections
+below are historical notes, not the current support matrix.
 
 ## Cache control, completion-aware measurements and release stress
 

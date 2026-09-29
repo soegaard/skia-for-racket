@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.46.0 — GitHub Actions CI and portability matrix
+
+- Added required source, clean installed-package CPU, and Mesa EGL lanes with
+  explicit Racket/OS/architecture identities and an aggregate required check.
+- Added source-only deterministic packaging, isolated collection resolution,
+  native-free import/pure checks, fresh native installs, package dependency
+  checking, and portable CMake/CTest ABI mirror execution, including MSVC.
+- Added required surfaceless/pbuffer EGL runs with no display environment,
+  software-renderer verification, retained failure artifacts and command logs.
+- Added read-only manifest verification for Git and installed source copies,
+  LF checkout rules, CI regression tests and a current evidence matrix.
+- Preserved local full GPU validation and all default stress sizes. No native
+  dependency migration, hosted hardware-performance claim or implicit GPU skip.
+
 ## 0.45.0 — measurements, cache management and release stress
 
 - Added lazy per-context cache queries, budgets, unlocked/byte/age purges and

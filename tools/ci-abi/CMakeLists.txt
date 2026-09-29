@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.20)
+project(skia_binding_abi_mirrors C)
+# These check local pinned ABI mirrors, not ABI compatibility by themselves.
+# Actual Skia/HarfBuzz symbol resolution and native tests run separately.
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+enable_testing()
+foreach(name codec pdf path-matrix filter color-output runtime geometry projective color-filter gpu presentation cache)
+  add_executable(abi-${name} "../check-${name}-abi.c")
+  if(MSVC)
+    target_compile_options(abi-${name} PRIVATE /W4)
+  else()
+    target_compile_options(abi-${name} PRIVATE -Wall -Wextra -pedantic)
+  endif()
+  add_test(NAME ${name} COMMAND abi-${name})
+endforeach()

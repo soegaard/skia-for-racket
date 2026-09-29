@@ -1,4 +1,7 @@
-# API reference — version 0.45.0
+# API reference — version 0.46.0
+
+This stage changes validation and packaging, not drawing/GPU APIs. See
+[CI and installed-package checks](CI.md) and [platform evidence](PORTABILITY.md).
 
 ## GPU cache control
 

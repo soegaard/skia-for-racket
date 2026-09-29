@@ -5,3 +5,5 @@ downloads/
 native/*/
 *.nupkg
 .DS_Store
+__pycache__/
+*.py[cod]

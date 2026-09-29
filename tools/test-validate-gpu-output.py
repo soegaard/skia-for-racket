@@ -57,9 +57,9 @@ class Checks(unittest.TestCase):
     def test_non_macos_does_not_claim_metal_documents(self):
         _,calls,report,_=self.desk(identity='unix/x86_64; Racket mock; VM chez-scheme\n')
         self.assertEqual(report['gpu_document_output_verified'],{'opengl':True})
-    def test_linux_baseline_gate_stays_deferred(self):
+    def test_desktop_does_not_claim_separate_ci_gate(self):
         _,_,report,_=self.desk();self.assertFalse(report['egl_headless_verified'])
-        self.assertIn('deferred',report['egl_validation_note']);self.assertIn('CI',report['egl_validation_note'])
+        self.assertIn('separate required',report['egl_validation_note']);self.assertIn('CI',report['egl_validation_note'])
     def test_headless_document_pipeline_and_sums_last(self):
         rc,calls,envs,report=self.egl();self.assertEqual(rc,0)
         self.assertTrue(report['gpu_document_output_verified'])
