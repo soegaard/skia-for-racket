@@ -14,8 +14,12 @@ status check in the repository's branch protection/ruleset. This delivery does
 not change repository settings. A workflow file cannot enable branch protection
 by itself, and it is not evidence of a successful run.
 
-The Linux headless acceptance deferred in 0.43 is now a required workflow gate.
-The current [coverage matrix](PORTABILITY.md) distinguishes it from historical
+The Linux headless acceptance deferred in 0.43 passed both required EGL lanes
+in 0.46 Actions run `36620003104` at commit
+`808befa8768e672238e3fcdc5288e497a8b2705f`. Both lanes used Mesa llvmpipe
+without a display server. This establishes software EGL/OpenGL/Ganesh
+functionality, not hardware acceleration. The current
+[coverage matrix](PORTABILITY.md) distinguishes that evidence from historical
 macOS hardware validation and from the hosted CPU-only lanes.
 
 ## Clean installation, not a checkout link

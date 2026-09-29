@@ -273,8 +273,7 @@ def validate(report,directory):
                 validation_run=report['validation_run'],config=conf,workload_sources=sources,statistics=stats,comparisons=comparisons,
                 fresh_contexts_checked=len(generations),resource_envelopes_verified=True,
                 performance_measured=True,isolated_gpu_timestamps=False,display_latency_measured=False,
-                total_gpu_memory_measured=False,speedup_claimed=False,
-                linux_headless_baseline_status='deferred-to-future-CI')
+                total_gpu_memory_measured=False,speedup_claimed=False)
 
 def atomic(path, data):
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)

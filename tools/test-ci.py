@@ -379,6 +379,12 @@ class WorkflowAndIntegration(unittest.TestCase):
         workflow = (HERE.parent / '.github/workflows/ci.yml').read_text()
         self.assertIn('fontconfig fonts-dejavu-core', workflow)
         self.assertEqual(workflow.count('fonts-noto-cjk'), 2)
+    def test_stage_reports_do_not_claim_global_linux_ci_acceptance(self):
+        for name in ('gpu-performance-doctor.rkt', 'gpu-output-doctor.rkt',
+                     'inspect-gpu-output.py', 'inspect-gpu-performance.py'):
+            text = (HERE / name).read_text()
+            self.assertNotIn('linux_headless_baseline_status', text)
+            self.assertNotIn('deferred-to-future-CI', text)
     def test_full_headless_stress_not_shortened(self):
         text = (HERE / 'ci.py').read_text()
         self.assertIn('tools/validate-gpu-headless.py', text)

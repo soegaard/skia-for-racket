@@ -20,7 +20,9 @@ These cache operations do not change `surface-backend` or
 Performance tools are diagnostics, not extra public graphics API. Their raw
 host timing, completion boundaries, driver/target identity and resource-envelope
 checks are specified in [measurement semantics](GPU-PERFORMANCE.md) and
-[validation](GPU-PERFORMANCE-TESTING.md). Linux headless acceptance is still deferred.
+[validation](GPU-PERFORMANCE-TESTING.md). The 0.46 required CI accepted the
+Linux headless path on Mesa llvmpipe in both surfaceless and pbuffer modes;
+that is software-functionality evidence, not a hardware-performance claim.
 
 ## GPU raster execution for bounded output groups
 

@@ -15,8 +15,12 @@ JSON/CSV and actual visual outputs are retained even when a later check fails.
 The aggregate `CI required` check rejects failed, cancelled or skipped lanes.
 
 Baseline: `92f6119af3846966075ced0034ceb740e916bdee` (0.45), with accepted
-macOS OpenGL/Metal validation. The formerly deferred Linux acceptance is now a
-required CI job; it is **not claimed passed merely because the workflow exists**.
+macOS OpenGL/Metal validation. The Linux headless gate deferred since 0.43
+passed the required 0.46 workflow at commit
+`808befa8768e672238e3fcdc5288e497a8b2705f` (Actions run `36620003104`) in both
+surfaceless and pbuffer modes on Mesa llvmpipe with no display server. This is
+software OpenGL/Ganesh functionality evidence, not hardware-acceleration or
+hardware-performance evidence.
 Hosted macOS/Windows lanes make no GPU claim. See the explicit
 [coverage and evidence matrix](docs/PORTABILITY.md). Earlier release sections
 below are historical notes, not the current support matrix.

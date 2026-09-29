@@ -567,7 +567,7 @@ def inspect(data, directory, *, hardware=False):
                 documents_serialized_after_gpu_teardown=True,gpu_group_readbacks=8,
                 embedded_svg_pixels_verified=True,pdf_structure_verified=True,pdf_rendered_pixels_verified=False,
                 renderer=data['initial_context']['renderer'],renderer_class=data['initial_context']['renderer_class'],
-                performance_measured=False,linux_headless_baseline_status='deferred-to-future-CI'),pixels
+                performance_measured=False),pixels
 
 
 def publish(prefix, *, hardware=False):

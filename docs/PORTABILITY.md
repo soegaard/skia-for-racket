@@ -1,8 +1,10 @@
 # Portability and evidence — 0.46
 
-Configuration is not a passing result. This table names the required automated
-lanes, not a claim that they have already executed. Read the `CI required` job
-and that run's artifacts before treating a new platform as validated.
+Configuration alone is not a passing result. The required 0.46 acceptance run
+`36620003104` at commit `808befa8768e672238e3fcdc5288e497a8b2705f` completed
+the `CI required` aggregate successfully. The table names the automated lanes
+that produced that evidence; future platform claims still require a passing run
+and inspection of its retained artifacts.
 
 | Lane | Runner | Racket CS | Required evidence |
 |---|---|---|---|
@@ -28,10 +30,11 @@ CPU, OpenGL and Metal regression runs, document inspections, cache tests, and
 sustained offscreen/redraw checks. Those historical runs used Racket 9.3.0.2.
 The matrix uses the released Racket 9.3, not that development snapshot.
 
-The Linux EGL gate deferred in 0.43 is now wired as two **required** CI jobs.
-Until those jobs actually pass, its end-to-end acceptance is pending. A failure
-must be investigated and fixed; it must not be changed to `optional`, wrapped
-in an ignored exit status, or substituted with a hidden-window run.
+The Linux EGL gate deferred in 0.43 passed both **required** 0.46 CI jobs in
+run `36620003104`: surfaceless and explicit pbuffer, both using Mesa llvmpipe
+with no display server. The jobs remain required; future failures must be
+investigated rather than changed to `optional`, ignored, or replaced by a
+hidden-window run.
 
 ## Limits of a passing run
 

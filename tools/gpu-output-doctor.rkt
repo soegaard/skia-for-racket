@@ -23,8 +23,7 @@
             'racket_version (version) 'validation_run (or (getenv "SKIA_GPU_VALIDATION_RUN") #f)
             'initial_context initial 'host host-info
             'native_test_cases gpu-output-native-test-count 'native_test_failures failures
-            'documents (reverse documents) 'performance_measured #f
-            'linux_headless_baseline_status "deferred-to-future-CI"))
+            'documents (reverse documents) 'performance_measured #f))
   (define (publish status message)
     (write-gpu-json (path ".diagnostic.json") (report status message)))
   (define (with-host proc)

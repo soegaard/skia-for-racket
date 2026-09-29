@@ -24,8 +24,7 @@
             'clock "current-inexact-monotonic-milliseconds"
             'timing_scope "instrumented host wall latency; process CPU/GC counters include other threads"
             'isolated_gpu_timestamps #f 'display_latency_measured #f 'total_gpu_memory_measured #f
-            'performance_measured (equal? status "passed") 'speedup_claimed #f
-            'linux_headless_baseline_status "deferred-to-future-CI"))
+            'performance_measured (equal? status "passed") 'speedup_claimed #f))
   (define (publish status message)
     (write-gpu-json (string->path (string-append prefix ".diagnostic.json")) (report status message)))
   (define (with-host proc)
