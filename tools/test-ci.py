@@ -372,6 +372,12 @@ class WorkflowAndIntegration(unittest.TestCase):
                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 self.assertEqual(result.returncode, 0, result.stdout)
                 self.assertIn('Missing required symbols: 0', result.stdout)
+    def test_linux_native_installer_uses_fontconfig_build(self):
+        text = (HERE / 'install-native.sh').read_text()
+        self.assertIn('PACKAGE=skiasharp.nativeassets.linux\n', text)
+        self.assertNotIn('skiasharp.nativeassets.linux.nodependencies', text)
+        workflow = (HERE.parent / '.github/workflows/ci.yml').read_text()
+        self.assertIn('fontconfig fonts-dejavu-core', workflow)
     def test_full_headless_stress_not_shortened(self):
         text = (HERE / 'ci.py').read_text()
         self.assertIn('tools/validate-gpu-headless.py', text)

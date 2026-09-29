@@ -25,7 +25,9 @@ case "$(uname -s)" in
     PACKAGE=skiasharp.nativeassets.macos ;;
   Linux)
     FILE=libSkiaSharp.so
-    PACKAGE=skiasharp.nativeassets.linux.nodependencies
+    # The public font-manager API relies on fontconfig for system font
+    # enumeration/matching; CI installs that runtime dependency explicitly.
+    PACKAGE=skiasharp.nativeassets.linux
     case "$(uname -m)" in
       x86_64) RID=linux-x64 ;;
       aarch64|arm64) RID=linux-arm64 ;;

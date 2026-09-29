@@ -35,7 +35,7 @@ the new Racket tests or viewer probes have run:
 - [Mask-filter wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKMaskFilter.cs)
 - [Image-filter wrapper semantics, v3.119.1](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKImageFilter.cs)
 - [macOS native-assets package, 3.119.1](https://www.nuget.org/packages/SkiaSharp.NativeAssets.macOS/3.119.1)
-- [Linux NoDependencies native-assets package, 3.119.1](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Linux.NoDependencies/3.119.1)
+- [Linux fontconfig native-assets package, 3.119.1](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Linux/3.119.1)
 
 The NuGet package version is pinned intentionally. Later releases exist and
 are not automatically substituted.

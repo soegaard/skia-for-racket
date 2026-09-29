@@ -579,10 +579,11 @@ range. A full Racket distribution normally supplies `draw-lib` and
 
 With Racket on `PATH`, use the same commands with `racket` and `raco` instead of
 the macOS paths. The installer selects x86-64 or ARM64 from the host architecture
-and uses `SkiaSharp.NativeAssets.Linux.NoDependencies` 3.119.1. This initial
-installer targets glibc Linux, not Alpine/musl, Windows, or cross-compilation.
-A system runtime is still required; “NoDependencies” is the upstream package
-name, not a promise that the binary works on every Linux distribution.
+and uses the fontconfig-enabled `SkiaSharp.NativeAssets.Linux` 3.119.1 package.
+This is required by the library's public default-font-manager and system-font
+matching APIs. Install a working fontconfig runtime and system fonts before the
+native probe. The installer targets glibc Linux, not Alpine/musl, Windows, or
+cross-compilation.
 
 ### Testing without a native library
 

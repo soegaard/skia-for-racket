@@ -159,7 +159,7 @@ with tempfile.TemporaryDirectory(prefix='skia-installer-check-') as temp:
     if platform.system() == 'Darwin':
         pkg='SkiaSharp.NativeAssets.macOS'; rid='osx'; lib='libSkiaSharp.dylib'
     elif platform.system() == 'Linux' and platform.machine() in ('x86_64','aarch64','arm64'):
-        pkg='SkiaSharp.NativeAssets.Linux.NoDependencies'
+        pkg='SkiaSharp.NativeAssets.Linux'
         rid='linux-x64' if platform.machine() == 'x86_64' else 'linux-arm64'
         lib='libSkiaSharp.so'
     else:
