@@ -39,7 +39,7 @@ def git(root, *args):
 def fixture(root: Path):
     root.mkdir(parents=True, exist_ok=True)
     git(root, 'init', '-q')
-    for name, content in {'.gitignore': 'output/\ncompiled/\n__pycache__/\n',
+    for name, content in {'.gitignore': 'output/\ncompiled/\n__pycache__/\n/chocopkg/\n',
                           'info.rkt': '#lang info\n(define collection "skia")\n',
                           'main.rkt': '#lang racket/base\n',
                           'tools/example.rkt': '#lang racket/base\n'}.items():
@@ -117,6 +117,11 @@ class Manifest(unittest.TestCase):
         with self.assertRaises(ValueError): ci.manifest.check(self.root)
     def test_ignored_generated_is_not_source(self):
         (self.root / 'compiled').mkdir(); (self.root / 'compiled/a.zo').write_bytes(b'compiled')
+        self.assertEqual(ci.manifest.check(self.root), 4)
+    def test_setup_racket_windows_scratch_is_not_source(self):
+        (self.root / 'chocopkg/tools').mkdir(parents=True)
+        (self.root / 'chocopkg/racket.nuspec').write_text('runner scratch')
+        (self.root / 'chocopkg/tools/chocolateyInstall.ps1').write_text('runner scratch')
         self.assertEqual(ci.manifest.check(self.root), 4)
     def test_tracked_deletion_requires_staging(self):
         git(self.root, 'add', 'main.rkt'); (self.root / 'main.rkt').unlink()
@@ -330,6 +335,12 @@ class WorkflowAndIntegration(unittest.TestCase):
     def test_lf_and_python_ignore(self):
         self.assertIn('* text=auto eol=lf', (HERE.parent / '.gitattributes').read_text())
         self.assertIn('__pycache__/', (HERE.parent / '.gitignore').read_text())
+        self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
+    def test_racket_package_metadata_is_canonical_and_complete(self):
+        text = (HERE.parent / 'info.rkt').read_text()
+        self.assertIn('(define version "0.46")', text)
+        self.assertIn('(define deps \'(("base" #:version "8.7") "draw-lib" "gui-lib" "rackunit-lib"))', text)
+        self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_full_headless_stress_not_shortened(self):
         text = (HERE / 'ci.py').read_text()
         self.assertIn('tools/validate-gpu-headless.py', text)
