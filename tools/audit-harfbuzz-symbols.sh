@@ -21,14 +21,26 @@ fi
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/racket-harfbuzz-symbols.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT INT TERM HUP
 REQ="$TMP/required.txt"; EXP="$TMP/exported.txt"; MISS="$TMP/missing.txt"
+normalize_nm_symbols() {
+  awk -v prefix="$1" '{
+    for (i = 1; i <= NF; i++) {
+      symbol = $i
+      sub(/\r$/, "", symbol)
+      sub(/^_/, "", symbol)
+      sub(/@.*/, "", symbol)
+      if (symbol ~ ("^" prefix "_[[:alnum:]_]+$"))
+        print symbol
+    }
+  }'
+}
 sed -nE 's/^[[:space:]]*\(define-hb-native[[:space:]]+([^[:space:])]+).*/\1/p' \
   "$NATIVE_RKT" | LC_ALL=C sort -u > "$REQ"
 case "$(uname -s)" in
   Darwin)
     if command -v xcrun >/dev/null 2>&1; then xcrun nm -gjU "$LIB"; else nm -gjU "$LIB"; fi |
-      sed 's/^_//' | LC_ALL=C sort -u > "$EXP" ;;
+      normalize_nm_symbols hb | LC_ALL=C sort -u > "$EXP" ;;
   Linux)
-    nm -D --defined-only "$LIB" | awk '{print $NF}' | LC_ALL=C sort -u > "$EXP" ;;
+    nm -D --defined-only "$LIB" | normalize_nm_symbols hb | LC_ALL=C sort -u > "$EXP" ;;
   *) exit 2 ;;
 esac
 comm -23 "$REQ" "$EXP" > "$MISS"

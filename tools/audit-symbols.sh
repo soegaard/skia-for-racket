@@ -52,6 +52,23 @@ REQ="$TMP/required.txt"
 EXP="$TMP/exported.txt"
 MISS="$TMP/missing.txt"
 
+# nm output is not stable across GNU nm, Apple nm and llvm-nm.  In
+# particular, it may contain address/type columns, a Mach-O leading underscore,
+# ELF symbol-version suffixes such as @@Base, or CR line endings.  Normalize
+# tokens to the C ABI identifier before comparing with the Racket declarations.
+normalize_nm_symbols() {
+  awk -v prefix="$1" '{
+    for (i = 1; i <= NF; i++) {
+      symbol = $i
+      sub(/\r$/, "", symbol)
+      sub(/^_/, "", symbol)
+      sub(/@.*/, "", symbol)
+      if (symbol ~ ("^" prefix "_[[:alnum:]_]+$"))
+        print symbol
+    }
+  }'
+}
+
 # Binding names are intentionally simple identifiers, one per define-native.
 sed -nE 's/^[[:space:]]*\(define-native[[:space:]]+([^[:space:])]+).*/\1/p' \
   "$NATIVE_RKT" | LC_ALL=C sort -u > "$REQ"
@@ -65,14 +82,14 @@ case "$(uname -s)" in
     else
       echo "Neither xcrun nm nor nm is available." >&2
       exit 2
-    fi | sed 's/^_//' | LC_ALL=C sort -u > "$EXP"
+    fi | normalize_nm_symbols sk | LC_ALL=C sort -u > "$EXP"
     ;;
   Linux)
     if ! command -v nm >/dev/null 2>&1; then
       echo "nm is required (usually from binutils)." >&2
       exit 2
     fi
-    nm -D --defined-only "$LIB" | awk '{print $NF}' | LC_ALL=C sort -u > "$EXP"
+    nm -D --defined-only "$LIB" | normalize_nm_symbols sk | LC_ALL=C sort -u > "$EXP"
     ;;
   *)
     echo "Automatic symbol extraction is supported on macOS and Linux; pass the output through nm manually on this platform." >&2

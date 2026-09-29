@@ -341,6 +341,37 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('(define version "0.46")', text)
         self.assertIn('(define deps \'(("base" #:version "8.7") "draw-lib" "gui-lib" "rackunit-lib"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
+    def test_symbol_auditors_normalize_nm_formats(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            tools = root / 'tools'; private = root / 'private'; bin_dir = root / 'bin'
+            tools.mkdir(); private.mkdir(); bin_dir.mkdir()
+            for name in ('audit-symbols.sh', 'audit-harfbuzz-symbols.sh'):
+                shutil.copy2(HERE / name, tools / name)
+            (private / 'native.rkt').write_text(
+                '(define-native sk_canvas_clear ignored)\n'
+                '(define-native sk_surface_unref ignored)\n')
+            (private / 'harfbuzz-native.rkt').write_text(
+                '(define-hb-native hb_shape ignored)\n'
+                '(define-hb-native hb_version ignored)\n')
+            nm = bin_dir / 'nm'
+            nm.write_text(
+                '#!/usr/bin/env sh\n'
+                "printf '%s\\n' '00000000 T _sk_canvas_clear' "
+                "'00000001 T sk_surface_unref@@SKIA_119' "
+                "'00000002 T _hb_shape' '00000003 T hb_version@HB_8'\\n")
+            uname = bin_dir / 'uname'
+            uname.write_text("#!/usr/bin/env sh\nprintf '%s\\n' Linux\n")
+            nm.chmod(0o755); uname.chmod(0o755)
+            env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ.get('PATH', ''))
+            for script, library in (('audit-symbols.sh', 'libSkiaSharp.so'),
+                                    ('audit-harfbuzz-symbols.sh', 'libHarfBuzzSharp.so')):
+                path = root / library; path.write_bytes(b'fake nm input only')
+                result = subprocess.run(['bash', str(tools / script), str(path)],
+                                        cwd=root, env=env, text=True,
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertIn('Missing required symbols: 0', result.stdout)
     def test_full_headless_stress_not_shortened(self):
         text = (HERE / 'ci.py').read_text()
         self.assertIn('tools/validate-gpu-headless.py', text)
