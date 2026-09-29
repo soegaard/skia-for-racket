@@ -378,6 +378,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertNotIn('skiasharp.nativeassets.linux.nodependencies', text)
         workflow = (HERE.parent / '.github/workflows/ci.yml').read_text()
         self.assertIn('fontconfig fonts-dejavu-core', workflow)
+        self.assertEqual(workflow.count('fonts-noto-cjk'), 2)
     def test_full_headless_stress_not_shortened(self):
         text = (HERE / 'ci.py').read_text()
         self.assertIn('tools/validate-gpu-headless.py', text)
