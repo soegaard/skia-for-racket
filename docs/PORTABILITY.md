@@ -1,4 +1,25 @@
-# Portability and evidence — 0.49
+# Portability and evidence — 0.50
+
+## 0.50 shared-backend validation
+
+The starting point is maintainer-accepted 0.49 commit
+`da0444bb28a9e8a50c26eb8b2df8049c94a1e9da`. Run `36743456018` passed the
+required WARP offscreen and DXGI presentation gates and the other completed
+lanes, but its Linux x64/Racket 9.3 setup failed before project tests because
+of an external download problem. The maintainer explicitly accepted 0.49
+with that exception; this is not a claim of an all-green workflow or a
+successful Linux 9.3/candidate-ABI check on that commit.
+
+0.50 keeps every existing required job and adds shared parity checks inside
+the installed-package hooks of the two Windows GPU jobs. The offscreen job
+adds the common 33 surface, 42 image, 42 document and 20 cache cases, eight
+rich scenes, retained-image workflows, 16 PDF/SVG files, and complete 540-frame
+stress. The DXGI job adds the common 1,080-frame redraw/timing workload.
+Those added gates are mandatory and cannot turn unavailable rendering into a
+skip. Their own new host/CI execution remains pending until actually run.
+
+See [GPU-BACKENDS.md](GPU-BACKENDS.md) for metadata versus runtime evidence,
+reproduction, retained artifacts, synchronization accounting and scope limits.
 
 ## New required DXGI presentation lane
 
@@ -10,7 +31,7 @@ of `CI required`; it does not replace the offscreen `d3d12` job.
 
 The accepted 0.48 starting point is commit
 `b24dc1c2ea6c5dd6d763ff6a6794e7bf87fe8a4e`, CI run `36715835971`.
-0.49 acceptance remains pending until its own required Windows run passes.
+0.49 Windows acceptance was established by run `36743456018`; see the explicit overall acceptance exception above.
 A usable desktop is required; lack of one fails this lane rather than silently
 skipping it. Buffer pixels and successful Present calls do not certify screen
 pixels or hardware acceleration. See [DXGI contracts](GPU-DXGI.md).

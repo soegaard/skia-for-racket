@@ -161,13 +161,14 @@ def comparison(cpu, gpu, name):
             'exact_orientation_alpha_markers':True}
 
 
-BACKEND_IDS = {"opengl": 0, "metal": 2}
+from gpu_backend_policy import BACKEND_IDS, check_backend_context, check_backend_host
 
 def context(info, *, closed=False, backend="opengl"):
     require(isinstance(info,dict), 'missing context snapshot')
     require(backend in BACKEND_IDS and info.get('backend') == backend and
             type(info.get('native_backend')) is int and info['native_backend'] == BACKEND_IDS[backend],
             'context is not the requested native backend')
+    check_backend_context(info, backend)
     if backend == 'metal':
         require(info.get('owns_command_queue') is True and info.get('requires_gl_context') is False and
                 info.get('requires_window') is False and isinstance(info.get('device'), str) and info['device'],
@@ -193,6 +194,7 @@ def common(data):
     require(type(data.get('schema_version')) is int and data['schema_version'] == 1 and
             data.get('stage') in ('0.39', '0.41'), 'wrong diagnostic schema/stage')
     backend = data.get('backend')
+    check_backend_host(data, backend)
     require(data.get('status') == 'passed' and backend in BACKEND_IDS, 'diagnostic did not pass')
     require(backend == 'opengl' or data['stage'] == '0.41', 'legacy report cannot establish Metal rendering')
     if backend == 'metal':

@@ -1,4 +1,5 @@
 #lang racket/base
+(require "gpu-backends.rkt")
 ;; No native library or GUI initialization in this module.
 (provide make-gpu-provider gpu-provider? gpu-provider-name gpu-provider-backend
          gpu-provider-key gpu-provider-activate gpu-provider-current?
@@ -23,8 +24,7 @@
                            #:get-proc-address [resolve #f])
   (define who 'make-gpu-provider)
   (unless (symbol? name) (raise-argument-error who "symbol?" name))
-  (unless (memq backend '(opengl metal direct3d))
-    (raise-argument-error who "'opengl, 'metal, or 'direct3d" backend))
+  (check-gpu-backend! who backend)
   (unless (or (symbol? key) (exact-positive-integer? key))
     (raise-argument-error who "symbol or exact-positive-integer context identity" key))
   (arity who activate 1) (arity who current? 0) (arity who describe 0)

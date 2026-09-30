@@ -28,7 +28,7 @@ NATIVE_TEST_CASES = 42
 SIZE = (210, 144)
 PAGE = (240, 180)
 NAMES = ('pattern', 'effects', 'perspective', 'nested')
-BACKENDS = {'opengl': 0, 'metal': 2}
+BACKENDS = _png.BACKEND_IDS
 URL = 'https://example.org/gpu-output'
 LIMIT = 32 * 1024 * 1024
 TOLERANCES = {'pattern': (0, 0), 'effects': (3.0, .06),
@@ -488,6 +488,7 @@ def inspect(data, directory, *, hardware=False):
          data.get('stage')=='0.44' and data.get('kind')=='gpu-output' and data.get('status')=='passed',
          'wrong schema/stage or failed native diagnostic')
     backend = data.get('backend'); need(backend in BACKENDS,'unsupported backend')
+    _png.check_backend_host(data, backend)
     need(isinstance(data.get('validation_run'),str) and data['validation_run'], 'missing run identity')
     need(data.get('performance_measured') is False, 'unmeasured performance claim')
     need(type(data.get('native_test_cases')) is int and data['native_test_cases']==NATIVE_TEST_CASES and

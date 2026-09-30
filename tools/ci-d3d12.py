@@ -10,6 +10,7 @@ import tempfile
 
 import ci
 from ci_matrix import load_matrix
+from gpu_parity import parity_ci_checks
 from d3d12_validation import execute
 
 
@@ -25,12 +26,17 @@ def warp_checks(runner, installed, away, env, report):
                      'hardware_acceleration_claimed': False, 'presentation_tested': False}
 
 
+def warp_and_parity_checks(runner, installed, away, env, report):
+    warp_checks(runner, installed, away, env, report)
+    parity_ci_checks(runner, installed, away, env, report, scope='offscreen')
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     output = root / 'output/ci-d3d12-warp'
     output.mkdir(parents=True, exist_ok=False)
     runner = ci.Runner(output, ci.clean_environment(os.environ))
-    report = {'schema_version': 1, 'stage': '0.48', 'profile': 'd3d12-warp',
+    report = {'schema_version': 1, 'stage': '0.50', 'profile': 'd3d12-warp',
               'status': 'running', 'checks': {}, 'commands': runner.commands,
               'hardware_acceleration_claimed': False, 'presentation_tested': False,
               'github': {k: os.environ.get(k) for k in ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')}}
@@ -41,8 +47,10 @@ def main() -> int:
         row = next(row for row in load_matrix()['cpu'] if row['id'] == 'windows-x64')
         # Reuse the FULL isolated-install/CPU/ABI path. The hook executes before
         # source re-verification, artifact copying and temporary-home destruction.
-        ci.package_checks(runner, root, row, 'cpu', report, extra_checks=warp_checks)
+        ci.package_checks(runner, root, row, 'cpu', report, extra_checks=warp_and_parity_checks)
         ci.require(report['checks'].get('required_d3d12_warp') is True, 'WARP gate did not execute')
+        ci.require(report['checks'].get('required_backend_parity_offscreen') is True,
+                   'shared offscreen parity gate did not execute')
         ci.manifest.check(root)
         report['status'] = 'passed'
         code = 0

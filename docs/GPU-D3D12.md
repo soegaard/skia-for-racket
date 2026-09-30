@@ -1,5 +1,11 @@
 # Direct3D 12 offscreen rendering — 0.48
 
+**0.50 extension:** Direct3D now uses the shared document executor and common
+scene/image/document/cache/redraw validation. The 0.48-specific exclusions
+below describe that original release. Native pin, explicit hardware/WARP
+selection and context/resource ownership are unchanged. See
+[GPU-BACKENDS.md](GPU-BACKENDS.md) for current wrapper capabilities and gates.
+
 ## Scope and acceptance
 
 This stage adds the Ganesh **Direct3D 12** backend on **Windows x64** using the

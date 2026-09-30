@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "backends": [
+    {
+      "backend": "opengl",
+      "native_backend": 0,
+      "engine": "ganesh",
+      "platforms": [
+        "macosx",
+        "unix",
+        "windows"
+      ],
+      "owned_context": false,
+      "software_selection": "host-controlled",
+      "features": {
+        "offscreen": true,
+        "images": true,
+        "explicit_transfers": true,
+        "cache_controls": true,
+        "presentation": true,
+        "document_executor": true,
+        "external_resource_interop": true
+      }
+    },
+    {
+      "backend": "metal",
+      "native_backend": 2,
+      "engine": "ganesh",
+      "platforms": [
+        "macosx"
+      ],
+      "owned_context": true,
+      "software_selection": "no-explicit-software-selector",
+      "features": {
+        "offscreen": true,
+        "images": true,
+        "explicit_transfers": true,
+        "cache_controls": true,
+        "presentation": true,
+        "document_executor": true,
+        "external_resource_interop": false
+      }
+    },
+    {
+      "backend": "direct3d",
+      "native_backend": 3,
+      "engine": "ganesh",
+      "platforms": [
+        "windows-x86_64"
+      ],
+      "owned_context": true,
+      "software_selection": "explicit-warp",
+      "features": {
+        "offscreen": true,
+        "images": true,
+        "explicit_transfers": true,
+        "cache_controls": true,
+        "presentation": true,
+        "document_executor": true,
+        "external_resource_interop": false
+      }
+    }
+  ]
+}

@@ -244,7 +244,7 @@ class CIEntry(unittest.TestCase):
             self.assertNotIn('required_d3d12_warp', report['checks'])
     def test_ci_entry_reuses_full_package_path(self):
         source = (HERE / 'ci-d3d12.py').read_text()
-        self.assertIn("ci.package_checks(runner, root, row, 'cpu', report, extra_checks=warp_checks)", source)
+        self.assertIn("ci.package_checks(runner, root, row, 'cpu', report, extra_checks=warp_and_parity_checks)", source)
         self.assertIn("ci.require(report['checks'].get('required_d3d12_warp') is True", source)
 
 

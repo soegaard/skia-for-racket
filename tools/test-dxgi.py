@@ -373,7 +373,7 @@ class CIEntry(unittest.TestCase):
             self.assertNotIn('required_dxgi_warp',report['checks'])
     def test_full_package_hook_used(self):
         text=(HERE/'ci-dxgi.py').read_text()
-        self.assertIn("ci.package_checks(runner, root, row, 'cpu', report, extra_checks=dxgi_checks)",text)
+        self.assertIn("ci.package_checks(runner, root, row, 'cpu', report, extra_checks=dxgi_and_parity_checks)",text)
         self.assertIn("ci.require(report['checks'].get('required_dxgi_warp') is True",text)
 
 
@@ -410,7 +410,7 @@ class Integration(unittest.TestCase):
         text=(HERE.parent/'private/gpu-presenter.rkt').read_text()
         self.assertIn("[(eq? outcome 'occluded) (set! result 'skipped)]",text)
     def test_version_and_docs(self):
-        self.assertIn('(define version "0.49")',(HERE.parent/'info.rkt').read_text())
+        self.assertIn('(define version "0.50")',(HERE.parent/'info.rkt').read_text())
         text=(HERE.parent/'docs/GPU-DXGI.md').read_text()
         for name in ('sync-interval','gpu-window%','gpu-canvas%','WARP','buffer-reuse','visible'):
             self.assertIn(name,text)

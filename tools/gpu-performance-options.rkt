@@ -1,4 +1,5 @@
 #lang racket/base
+(require "../private/gpu-backends.rkt" (only-in "../private/gpu-d3d12-util.rkt" d3d12-selection!))
 (require racket/cmdline racket/runtime-path racket/file file/sha1 "../private/gpu-performance-util.rkt")
 (provide read-performance-options clear-performance-results! performance-source-fingerprints)
 (define-runtime-path source-root "..")
@@ -23,6 +24,7 @@
 (define (read-performance-options default-prefix)
   (define prefix default-prefix) (define backend 'opengl) (define host 'gui)
   (define platform 'surfaceless) (define index 0) (define surface 'surfaceless)
+  (define adapter #f) (define adapter-index #f)
   (define required? #t) (define hardware? #f)
   (define (environment key fallback) (string->number (or (getenv key) (number->string fallback))))
   (define samples (environment "GPU_BENCH_SAMPLES" 12))
@@ -33,8 +35,10 @@
   (define sample-count (environment "GPU_BENCH_SAMPLE_COUNT" 0))
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]
-    [("--backend") b "opengl or metal" (set! backend (string->symbol b))]
-    [("--host") h "gui or egl" (set! host (string->symbol h))]
+    [("--backend") b "opengl, metal, or direct3d" (set! backend (string->symbol b))]
+    [("--adapter") a "Explicit Direct3D hardware or warp" (set! adapter (string->symbol a))]
+    [("--adapter-index") i "Explicit Direct3D adapter index" (set! adapter-index (or (string->number i) (error 'gpu-adapter "invalid adapter index")))]
+    [("--host") h "gui, egl, or owned" (set! host (string->symbol h))]
     [("--egl-platform") p "surfaceless or device" (set! platform (string->symbol p))]
     [("--egl-device-index") i "Explicit EGL device index" (set! index (string->number i))]
     [("--egl-surface") s "surfaceless or pbuffer" (set! surface (string->symbol s))]
@@ -48,9 +52,13 @@
     [("--optional") "Permit initial backend unavailability only" (set! required? #f)]
     [("--require-hardware") "Require hardware-reported renderer" (set! hardware? #t)]
     #:args () (void))
-  (unless (memq backend '(opengl metal)) (error 'gpu-performance "invalid backend"))
-  (unless (memq host '(gui egl)) (error 'gpu-performance "invalid host"))
+  (check-gpu-backend! 'gpu-performance backend)
+  (unless (memq host '(gui egl owned)) (error 'gpu-performance "invalid host"))
+  (when (and (or adapter adapter-index) (not (eq? backend 'direct3d)))
+    (error 'gpu-performance "adapter selection requires Direct3D"))
+  (when (eq? backend 'direct3d) (d3d12-selection! (or adapter 'hardware) (or adapter-index 0)))
   (hasheq 'prefix prefix 'backend backend 'host host 'egl_platform platform 'egl_index index
           'egl_surface surface 'required required? 'hardware hardware?
+          'adapter adapter 'adapter_index adapter-index
           'config (performance-config #:samples samples #:warmup warmup #:frames frames #:cycles cycles
                                       #:width width #:height height #:sample-count sample-count)))

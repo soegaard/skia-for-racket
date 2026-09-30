@@ -7,6 +7,8 @@ Self-tests are synthetic and do not establish native execution or performance.
 from __future__ import annotations
 import argparse, csv, html, importlib.util, io, json, math, os, re, statistics, tempfile
 from pathlib import Path
+from gpu_backend_policy import (BACKEND_IDS, check_backend_context, check_backend_host,
+                                context_signature, context_api_label, check_dxgi_present_event, check_redraw_fence_accounting)
 
 NATIVE_CACHE_CASES = 20
 SCENES = ('paths', 'text', 'runtime')
@@ -50,9 +52,10 @@ def context_check(c, backend, state='ready', generation=None, live=0):
     for k,v in [('live_children',live),('pending_releases',0),('failed_releases',0)]:
         need(type(c.get(k)) is int and c[k]==v, 'resource leak: '+k)
     need(c.get('shutdown_requested') is False,'shutdown requested')
-    need(type(c.get('native_backend')) is int and c['native_backend']=={'opengl':0,'metal':2}[backend], 'native backend ID')
+    check_backend_context(c, backend)
     need(c.get('binding_package')=='3.119.1' and c.get('native_version')=='119.0', 'native version mismatch')
-    for key in ('renderer','renderer_class','api_version','vendor'):
+    for key in (('renderer','renderer_class') if backend == 'direct3d' else
+                ('renderer','renderer_class','api_version','vendor')):
         need(isinstance(c.get(key),str) and c[key], 'missing driver identity '+key)
     if backend=='metal': need(c.get('owns_command_queue') is True,'Metal queue ownership')
     return c['generation']
@@ -113,7 +116,7 @@ def completed(row, upload=False):
 def target_check(t,backend,gen,w,h,conf=None):
     need(t.get('storage')=='gpu' and t.get('context_matches') is True,'target not proved GPU-backed')
     need(t.get('backend')==backend and t.get('context_generation')==gen,'foreign target')
-    need(type(t.get('native_backend')) is int and t['native_backend']=={'opengl':0,'metal':2}[backend],'target native backend')
+    need(type(t.get('native_backend')) is int and t['native_backend']==BACKEND_IDS[backend],'target native backend')
     need(t.get('width')==w and t.get('height')==h,'target extent')
     if conf:
         need(t.get('render_path')=='sk_surface_new_render_target' and t.get('origin')=='top-left','offscreen path/origin')
@@ -121,7 +124,7 @@ def target_check(t,backend,gen,w,h,conf=None):
     else:
         need(t.get('render_path')=='sk_surface_new_backend_render_target','presenter target path')
         need(integer(t.get('actual_sample_count')),'queried presenter samples')
-        need(t.get('origin')==('top-left' if backend=='metal' else 'bottom-left'),'presenter origin')
+        need(t.get('origin')==('top-left' if backend in ('metal','direct3d') else 'bottom-left'),'presenter origin')
 
 def safe_file(directory,name):
     need(isinstance(name,str) and name and Path(name).name==name and '/' not in name and '\\' not in name,'unsafe artifact filename')
@@ -155,7 +158,8 @@ def statistics_row(label,phase,values,unit='ms'):
 
 def validate(report,directory):
     need(report.get('schema_version')==1 and report.get('stage')=='0.45' and report.get('status')=='passed','not a successful 0.45 report')
-    backend=report.get('backend'); need(backend in ('opengl','metal'),'backend')
+    backend=report.get('backend'); need(backend in BACKEND_IDS,'backend')
+    check_backend_host(report, backend, presentation=report.get('kind') == 'redraw')
     need(isinstance(report.get('validation_run'),str) and report['validation_run'],'run identity')
     for k in ('os','architecture','racket_version'): need(isinstance(report.get(k),str) and report[k],'host identity')
     need(report.get('clock')=='current-inexact-monotonic-milliseconds','clock not monotonic')
@@ -167,9 +171,9 @@ def validate(report,directory):
     need(all(isinstance(x.get('sha1'),str) and re.fullmatch('[0-9a-f]{40}',x['sha1']) for x in sources),'source fingerprints')
     conf=report['config']; config_check(conf); stats=[]; generations=[]; comparisons=[]; identities=[]
     def identity(c):
-        gen=context_check(c,backend)
+        gen=context_check(c,backend,live=1 if backend=='direct3d' and report.get('kind')=='redraw' else 0)
         if report.get('require_hardware') is True: need(c['renderer_class']=='hardware-reported','hardware requirement')
-        signature=tuple(c[k] for k in ('renderer','vendor','api_version','native_version','binding_package'))
+        signature=context_signature(c, backend)
         need(not identities or identities[0]==signature, 'driver/device changed within one measurement report')
         identities.append(signature);generations.append(gen);return gen
     if report.get('kind')=='performance':
@@ -241,6 +245,7 @@ def validate(report,directory):
                 need(row['start_ms']<=row['callback']['start_ms']<=row['callback']['end_ms']<=row['end_ms'],'callback not inside presenter timing')
                 need(row.get('frame_expired') is True and row.get('canvas_expired') is True,'expired frame/canvas')
                 io_check(row['io_events'],present=True)
+                if backend == 'direct3d': check_dxgi_present_event(row['io_events'][-1])
                 f=row['frame'];need(integer(f.get('frame_index'),1) and f['frame_index']>previous,'frame index reuse');previous=f['frame_index']
                 pw,ph=f.get('pixel_width'),f.get('pixel_height');need(integer(pw,1) and integer(ph,1),'drawable extent')
                 sizes.add((pw,ph))
@@ -253,16 +258,25 @@ def validate(report,directory):
             cp=w.get('checkpoints',[]);need(len(cp)==conf['frames']//30,'redraw checkpoint count')
             for j,row in enumerate(cp):
                 need(row.get('frame')==30*(j+1) and row.get('queued_requests')==4 and type(row.get('queued_callbacks')) is int and row.get('queued_callbacks')==1,'queued redraw coalescing')
-                envelope(row,base,conf,backend,gen,0)
+                envelope(row,base,conf,backend,gen,1 if backend=='direct3d' else 0)
                 p=row['presenter'];need(p.get('last_error') is False and type(p.get('frames_cancelled')) is int and p.get('frames_cancelled')==0,'presenter failure')
                 a=p['adapter'];need(type(a.get('live_drawables')) is int and a['live_drawables']==0,'live drawable leak')
                 if backend=='metal':need(type(a.get('quarantined_frames')) is int and a.get('quarantined_frames')==0 and integer(a.get('pending_presentation_buffers')) and a['pending_presentation_buffers']<=1,'Metal pending/quarantine growth')
             expected=1+conf['frames']+len(cp)
-            need(w.get('render_callbacks')==expected and integer(w.get('retry_skips')),'callback accounting')
+            skipped_callbacks = w.get('skipped_callbacks', 0)
+            need(integer(skipped_callbacks) and integer(w.get('retry_skips')) and
+                 skipped_callbacks <= w['retry_skips'], 'invalid skipped callback accounting')
+            if backend != 'direct3d': need(skipped_callbacks == 0, 'unexpected skipped drawing callback')
+            need(w.get('render_callbacks')==expected+skipped_callbacks,'callback accounting')
             p=w['closed_presenter'];need(p.get('state')=='closed' and p.get('presents_requested')==expected,'presenter closure/accounting')
             a=p['adapter'];context_check(a['context'],backend,'closed',gen)
             need(type(a.get('live_drawables')) is int and a['live_drawables']==0,'closed drawable leak')
             if backend=='metal': need(a.get('layer_closed') is True and type(a.get('pending_presentation_buffers')) is int and a['pending_presentation_buffers']==0 and type(a.get('quarantined_frames')) is int and a.get('quarantined_frames')==0,'Metal teardown')
+            elif backend=='direct3d':
+                need(a.get('state')=='closed' and a.get('quarantined') is False, 'DXGI host not safely closed')
+                for field in ('live_back_buffers','presentation_context_children','quarantined_frames'):
+                    need(type(a.get(field)) is int and a[field]==0, 'DXGI retained references: '+field)
+                check_redraw_fence_accounting(w)
             else:need(a.get('owns_host_framebuffer') is False,'host framebuffer adopted')
             label=f'cycle-{number//2+1}/window-{number%2+1}'
             stats += [statistics_row(label,'presenter-call',[r['elapsed_ms'] for r in frames]),
@@ -314,7 +328,7 @@ def publish(prefix):
     page=f'''<!doctype html><meta charset="utf-8"><title>Skia 0.45 {esc(raw['kind'])}</title>
 <style>body{{font:16px system-ui;max-width:1250px;margin:35px auto;padding:0 20px}}table{{border-collapse:collapse;width:100%}}td,th{{padding:7px;border-bottom:1px solid #ddd;text-align:left}}img{{max-width:48%;height:auto;border:1px solid #ddd}}pre{{white-space:pre-wrap}}</style>
 <h1>0.45 — {esc(raw['backend'])} {esc(raw['kind'])}</h1>
-<p>{esc(first['renderer'])} · {esc(first['renderer_class'])} · {esc(first['api_version'])} · Skia {esc(first['native_version'])} · {esc(raw['os'])}/{esc(raw['architecture'])} · Racket {esc(raw['racket_version'])}</p>
+<p>{esc(first['renderer'])} · {esc(first['renderer_class'])} · {esc(context_api_label(first, raw['backend']))} · Skia {esc(first['native_version'])} · {esc(raw['os'])}/{esc(raw['architecture'])} · Racket {esc(raw['racket_version'])}</p>
 <p><strong>Measured host latency, not isolated GPU timestamps or display latency.</strong> No performance ranking is inferred. First-use means a new Ganesh context, not cold OS/driver caches. Completion-only, transfer, CPU raster and window workloads are different measurements.</p>
 <p>Cache envelopes cover budgeted Ganesh resources and live wrapper counts, not total VRAM or process RSS. Checkpoint waits/purges and GC are outside normal-frame timing. Physical screen inspection is separate.</p>
 <pre>{esc(json.dumps(raw['config'],indent=2))}</pre><p>Raw observations: <a href="{esc(outputs[2].name)}">CSV</a>; <a href="{esc(prefix.name+'.diagnostic.json')}">complete JSON</a>.</p>

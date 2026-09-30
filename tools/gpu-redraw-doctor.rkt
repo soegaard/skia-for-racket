@@ -44,7 +44,10 @@
               (for ([i (in-range 2)])
                 (define w (new gpu-window% [label (format "Skia 0.45 / ~a / ~a" backend i)]
                                [width (hash-ref config 'width)] [height (hash-ref config 'height)]
-                               [backend backend] [on-error raise] [automatic? #f] [render (lambda (f) (render i f))]))
+                               [backend backend]
+                               [adapter (hash-ref options 'adapter #f)]
+                               [adapter-index (hash-ref options 'adapter_index #f)]
+                               [on-error raise] [automatic? #f] [render (lambda (f) (render i f))]))
                 (set! hosts (append hosts (list w))) (send w show #t))
               (settle)
               (define ps (map (lambda (w) (send w get-gpu-presenter)) hosts))
@@ -55,21 +58,44 @@
                            (not (equal? (hash-ref initial 'renderer_class "unclassified") "hardware-reported")))
                   (error 'gpu-redraw "hardware-reported renderer required"))
                 (define skips 0)
+                (define skipped-callbacks 0)
+                (define measured-fence-waits 0)
+                (define (fence-waits)
+                  (if (eq? backend 'direct3d)
+                      (hash-ref (hash-ref (gpu-presenter-info p) 'adapter) 'blocking_fence_waits)
+                      0))
                 (define (draw-now)
-                  (let loop ([remaining 8])
+                  (let loop ([remaining 8] [retry-waits 0])
+                    (define before-waits (fence-waits))
+                    (define before-callbacks (vector-ref counts i))
                     (define io (box '()))
                     (define-values (result row)
                       (parameterize ([current-gpu-io-ledger io])
                         (measure-one (lambda () (gpu-presenter-render! p)))))
+                    ;; Count real DXGI waits outside the timing call itself, so
+                    ;; the recorded duration includes acquisition/backpressure.
+                    ;; No new ledger event changes the accepted DXGI protocol.
+                    (define waits (- (fence-waits) before-waits))
+                    (unless (exact-nonnegative-integer? waits)
+                      (error 'gpu-redraw "nonmonotonic backend fence accounting"))
+                    (set! measured-fence-waits (+ measured-fence-waits waits))
                     (cond
                       [(eq? result 'present-requested)
                        (define f (vector-ref last-frames i))
                        (unless (and (gpu-frame-expired? f) (skia-closed? (vector-ref last-canvases i)))
                          (error 'gpu-redraw "frame/canvas escaped its scope"))
                        (hash-set* row 'callback (vector-ref last-times i) 'frame (gpu-frame-info f)
-                                  'frame_expired #t 'canvas_expired #t 'io_events (reverse (unbox io)))]
+                                  'frame_expired #t 'canvas_expired #t 'io_events (reverse (unbox io))
+                                  'backend_fence_waits waits 'retry_backend_fence_waits retry-waits
+                                  'backend_fence_waits_included_in_elapsed #t)]
                       [(and (eq? result 'skipped) (positive? remaining))
-                       (set! skips (add1 skips)) (settle) (loop (sub1 remaining))]
+                       (set! skips (add1 skips))
+                       ;; DXGI occlusion can run a callback but not present it.
+                       ;; Preserve those callbacks rather than count them as
+                       ;; successful measured frames or silently discard them.
+                       (set! skipped-callbacks
+                         (+ skipped-callbacks (- (vector-ref counts i) before-callbacks)))
+                       (settle) (loop (sub1 remaining) (+ retry-waits waits))]
                       [else (error 'gpu-redraw "frame could not be presented: ~a" result)])))
                 (define (cache-check)
                   (call-with-gpu-context context
@@ -93,7 +119,7 @@
                   (unless (= (vector-ref counts i) (add1 old)) (error 'gpu-redraw "redraw coalescing failed"))
                   (define cache (cache-check)) (collect-garbage)
                   (define info (gpu-context-info context))
-                  (check-resource-envelope! info cache baseline config 0)
+                  (check-resource-envelope! info cache baseline config (if (eq? backend 'direct3d) 1 0))
                   (define presenter (gpu-presenter-info p))
                   (set! checkpoints
                     (cons (hasheq 'frame (* 30 (add1 batch)) 'context info 'cache cache
@@ -107,7 +133,10 @@
                   (cons (hasheq 'cycle cycle 'window i 'initial_context initial
                                 'warmup warm 'baseline_cache baseline 'frames (reverse rows)
                                 'checkpoints (reverse checkpoints) 'retry_skips skips
-                                'render_callbacks (vector-ref counts i) 'closed_presenter closed) windows))
+                                'render_callbacks (vector-ref counts i) 'closed_presenter closed
+                                'skipped_callbacks skipped-callbacks
+                                'measured_backend_fence_waits measured-fence-waits
+                                'backend_fence_waits_outside_samples (- (fence-waits) measured-fence-waits)) windows))
                 (printf "~a: redraw cycle ~a/window ~a, ~a frames; queued redraw and cleanup verified\n"
                         backend (add1 cycle) i (hash-ref config 'frames))))
             (lambda () (close-gpu-contexts! hosts (lambda (w) (send w close-gpu))))))))

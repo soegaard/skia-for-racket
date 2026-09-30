@@ -1,4 +1,29 @@
-# Racket Skia — 0.49.0
+# Racket Skia — 0.50.0
+
+## Shared GPU backend policy and validation
+
+`skia/gpu` now provides `gpu-backends`, `gpu-backend?`, and
+`gpu-backend-capabilities`. These report immutable wrapper declarations, not
+runtime availability: no native library, context, or GUI is initialized.
+OpenGL, Metal, and Direct3D use one source-only backend/native-ID registry.
+
+Direct3D now participates in the existing bounded PDF/SVG raster executor,
+including its explicit readback, capture-once authoring, retained CPU images,
+and unchanged vector/text/link policies. Surface identity is derived from
+the validated live context, not a specialized constructor's descriptive hash.
+
+`tools/validate-gpu-parity.py` runs the same rich scene, retained-image,
+document, cache/stress and redraw implementations on an explicitly selected
+backend. Required Windows WARP jobs retain their original 0.48/0.49 gates and
+add this common validation, including all 137 offscreen native cases and the
+full 540 offscreen / 1,080 presentation stress frames. The presentation timing
+report accounts for real DXGI fence waits instead of applying GL's no-wait
+assumption. No pixel tolerance, workload, or existing required lane is relaxed.
+
+The native pin and GUI `auto` selection are unchanged. External Direct3D/Metal
+resource import, Vulkan, Graphite, hardware certification and automatic native
+migration are not added. See [backend API and parity validation](docs/GPU-BACKENDS.md).
+Configuration is not acceptance: a new 0.50 host/CI run is still required.
 
 ## DXGI / Direct3D 12 window presentation
 

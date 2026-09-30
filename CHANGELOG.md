@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.50.0 — GPU backend parity and consolidation
+
+- Added a shared source-only backend/native-ID registry and immutable public
+  wrapper capability queries. No declaration claims runtime or hardware probing.
+- Enabled Direct3D in the existing bounded document executor and transfer audit;
+  retained capture-once, explicit readback and CPU-owned document retention.
+- Made GPU surface backend/generation/geometry metadata authoritative after
+  actual native recording-context validation; added production-boundary tests.
+- Extended common scene/image/document/performance hosts and inspectors to
+  explicit hardware/WARP selection. Reused existing tests and pixel tolerances.
+- Extended common redraw measurements to DXGI, accounting for the context pin,
+  backend fence waits and occlusion callbacks without counting skipped presents.
+- Added required shared parity hooks after the existing WARP/DXGI CI checks,
+  with isolated installed sources, full workloads and failure artifacts.
+- Kept native pins, CPU defaults, GUI auto selection, existing ABI checks and
+  required matrix unchanged. No new backend or external D3D interop is added.
+- Starts at maintainer-accepted 0.49 da0444bb28a9e8a50c26eb8b2df8049c94a1e9da;
+  that acceptance explicitly excepted an external Linux Racket download failure.
+  New 0.50 execution/acceptance must be established by its own host/CI results.
+
 ## 0.49.0 — DXGI / D3D12 window presentation
 
 - Added an explicit Windows x64 Direct3D presenter to the existing GPU GUI and

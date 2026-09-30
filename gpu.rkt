@@ -1,9 +1,11 @@
 #lang racket/base
+(require "private/gpu-backends.rkt")
 (require racket/runtime-path (only-in ffi/unsafe void/reference-sink)
          "private/gpu-context.rkt" "private/gpu-presenter.rkt"
          "private/gpu-domain.rkt" "private/gpu-provider.rkt"
          "private/gpu-surfaces.rkt" "private/gpu-images.rkt" "private/gpu-cache.rkt")
-(provide (all-from-out "private/gpu-images.rkt" "private/gpu-presenter.rkt" "private/gpu-cache.rkt")
+(provide gpu-backends gpu-backend? gpu-backend-capabilities
+         (all-from-out "private/gpu-images.rkt" "private/gpu-presenter.rkt" "private/gpu-cache.rkt")
          make-gpu-surface gpu-surface? gpu-surface-info
          gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
          gpu-surface->rgba-bytes gpu-surface->raster-image gpu-surface-read-raster-buffer!
@@ -22,8 +24,7 @@
   (define who 'make-gpu-context)
   (unless (or (not provider) (gpu-provider? provider))
     (raise-argument-error who "#f or gpu-provider?" provider))
-  (unless (memq requested '(#f opengl metal direct3d))
-    (raise-argument-error who "#f, 'opengl, 'metal, or 'direct3d" requested))
+  (when requested (check-gpu-backend! who requested))
   (define backend (or requested (and provider (gpu-provider-backend provider))))
   (unless backend
     (raise-arguments-error who "provide an OpenGL host or explicitly request an owned Metal/Direct3D context"))

@@ -1,4 +1,5 @@
 #lang racket/base
+(require "gpu-backends.rkt")
 ;; Pure execution protocol. No GUI or GPU/native module is loaded here.
 (require "gpu-provider.rkt")
 (provide output-raster-executor? make-output-raster-executor
@@ -34,7 +35,8 @@
     (if (eq? executor 'cpu) cpu-output-raster-plan
         ((output-raster-executor-prepare executor) picture)))
   (unless (and (output-raster-plan? plan)
-               (memq (output-raster-plan-backend plan) '(raster opengl metal)))
+               (or (eq? (output-raster-plan-backend plan) 'raster)
+                   (gpu-backend? (output-raster-plan-backend plan))))
     (error 'draw-output-group "invalid private raster execution plan"))
   (unless (eq? (output-raster-plan-backend plan) 'raster)
     (unless (exact-positive-integer? (output-raster-plan-generation plan))
@@ -44,7 +46,7 @@
 
 (define (output-execution-details executor phase backend
                                   #:plan [plan #f] #:target [target #f])
-  (define gpu? (and plan (memq (output-raster-plan-backend plan) '(opengl metal)) #t))
+  (define gpu? (and plan (gpu-backend? (output-raster-plan-backend plan))))
   (define complete? (memq phase '(rasterized completed)))
   (hasheq 'requested (if (eq? executor 'cpu) "cpu" "gpu")
           'phase (symbol->string phase)

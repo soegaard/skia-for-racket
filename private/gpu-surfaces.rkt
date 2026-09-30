@@ -1,4 +1,5 @@
 #lang racket/base
+(require "gpu-surface-identity.rkt")
 (require ffi/unsafe ffi/unsafe/atomic
          "core.rkt" "types.rkt" "lifetime.rkt" "check.rkt"
          "gpu-domain.rkt" "gpu-context.rkt" "gpu-types.rkt"
@@ -122,9 +123,9 @@
   (unless (and (= native-backend (gpu-backend-native-id (domain-backend d)))
                (pointer=? (domain-pointer d) (n:gr_recording_context_get_direct_context rp)))
     (error who "surface context/backend mismatch"))
-  (hash-set* (gpu-surface-description s)
-             'context_matches #t 'native_backend native-backend
-             'width (surface-width s) 'height (surface-height s)))
+  (gpu-surface-identity/validated (gpu-surface-description s)
+                                (domain-backend d) (domain-generation d) native-backend
+                                (surface-width s) (surface-height s)))
 (define (ready-for-read! who s)
   (gpu-surface-domain/checked who s)
   (gpu-surface-native-check!)

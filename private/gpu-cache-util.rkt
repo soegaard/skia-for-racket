@@ -1,4 +1,5 @@
 #lang racket/base
+(require "gpu-backends.rkt")
 (provide cache-size cache-age cache-boolean cache-snapshot)
 ;; These guards load no native library. Zero is a valid cache budget/request.
 (define (cache-size who n)
@@ -11,7 +12,7 @@
 (define (cache-boolean who v)
   (unless (boolean? v) (raise-argument-error who "boolean?" v)) v)
 (define (cache-snapshot backend generation limit count bytes)
-  (unless (memq backend '(opengl metal direct3d)) (error 'gpu-cache-info "invalid backend"))
+  (check-gpu-backend! 'gpu-cache-info backend)
   (unless (exact-positive-integer? generation) (error 'gpu-cache-info "invalid generation"))
   (cache-size 'gpu-cache-info limit) (cache-size 'gpu-cache-info bytes)
   (unless (exact-nonnegative-integer? count) (error 'gpu-cache-info "invalid native resource count"))

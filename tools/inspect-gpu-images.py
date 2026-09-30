@@ -71,6 +71,7 @@ def images(data, directory):
     require(isinstance(data, dict) and exact_int(data.get('schema_version'), 1) and
             data.get('stage') in ('0.40', '0.41') and data.get('kind') == 'images', 'wrong image workflow schema')
     backend = data.get('backend')
+    shared.check_backend_host(data, backend)
     require(data.get('status') == 'passed' and backend in shared.BACKEND_IDS, 'GPU image diagnostic did not pass')
     require(backend == 'opengl' or data['stage'] == '0.41', 'legacy report cannot establish Metal rendering')
     if backend == 'metal':

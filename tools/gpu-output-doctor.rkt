@@ -9,6 +9,7 @@
 (define (gpu-output-doctor! prefix #:backend [backend 'opengl] #:host [host-mode 'gui]
                             #:egl-platform [platform 'surfaceless] #:egl-device-index [index 0]
                             #:egl-surface [binding-surface 'surfaceless]
+                            #:adapter [adapter #f] #:adapter-index [adapter-index #f]
                             #:required? [required? #t] #:require-hardware? [hardware? #f])
   (define context #f) (define other #f) (define started? #f)
   (define initial #f) (define host-info #f) (define failures #f)
@@ -28,7 +29,8 @@
     (write-gpu-json (path ".diagnostic.json") (report status message)))
   (define (with-host proc)
     (call-with-gpu-backend-host backend proc #:host host-mode #:egl-platform platform
-                              #:egl-device-index index #:egl-surface binding-surface))
+                              #:egl-device-index index #:egl-surface binding-surface
+                              #:adapter adapter #:adapter-index adapter-index))
   (define (build! name variant format executor)
     (define file (path (format-name name variant format)))
     (define document
@@ -120,11 +122,14 @@
 (module+ main
   (define prefix "output/gpu-output-0.44") (define backend 'opengl) (define host-mode 'gui)
   (define platform 'surfaceless) (define index 0) (define binding-surface 'surfaceless)
+  (define adapter #f) (define adapter-index #f)
   (define required? #t) (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]
-    [("--backend") b "opengl or metal" (set! backend (string->symbol b))]
-    [("--host") h "gui or egl" (set! host-mode (string->symbol h))]
+    [("--backend") b "opengl, metal, or direct3d" (set! backend (string->symbol b))]
+    [("--adapter") a "Explicit Direct3D hardware or warp" (set! adapter (string->symbol a))]
+    [("--adapter-index") i "Explicit Direct3D adapter index" (set! adapter-index (or (string->number i) (error 'gpu-adapter "invalid adapter index")))]
+    [("--host") h "gui, egl, or owned" (set! host-mode (string->symbol h))]
     [("--egl-platform") p "surfaceless or device" (set! platform (string->symbol p))]
     [("--egl-device-index") i "Explicit device index" (set! index (string->number i))]
     [("--egl-surface") s "surfaceless or pbuffer" (set! binding-surface (string->symbol s))]
@@ -133,4 +138,5 @@
     #:args () (void))
   (exit (gpu-output-doctor! prefix #:backend backend #:host host-mode #:egl-platform platform
                            #:egl-device-index index #:egl-surface binding-surface
+                           #:adapter adapter #:adapter-index adapter-index
                            #:required? required? #:require-hardware? hardware?)))
