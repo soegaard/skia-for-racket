@@ -1,4 +1,5 @@
 #lang racket/base
+(require "gpu-interop-cleanup.rkt")
 ;; Pure validation of the intentionally small initial Direct3D handoff subset.
 (provide interop-state interop-timeout! interop-fence-value!
          check-interop-resource! call-with-interop-cleanup)
@@ -37,19 +38,3 @@
   (when (and render? (not (bitwise-bit-set? (hash-ref desc 'flags) 0)))
     (error 'd3d12-interop "scoped rendering requires ALLOW_RENDER_TARGET"))
   desc)
-;; body may raise any Racket value or escape; cleanup must still finish. A
-;; cleanup failure quarantines and supersedes the original failure. Re-entry
-;; cannot reuse a completed native handoff. Used by production and pure tests.
-(define (call-with-interop-cleanup body finish quarantine)
-  (define entered? #f)
-  (call-with-continuation-barrier
-    (lambda ()
-      (dynamic-wind
-        (lambda ()
-          (when entered? (error 'd3d12-interop "external lease expired"))
-          (set! entered? #t))
-        body
-        (lambda ()
-          (parameterize-break #f
-            (with-handlers ([(lambda (_) #t) (lambda (e) (quarantine e) (raise e))])
-              (finish))))))))

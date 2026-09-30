@@ -107,7 +107,7 @@ EXPORT HRESULT interop_fixture_descriptor(void* p,uint64_t* out,size_t n) {
   if(!p||!out||n!=9) return E_INVALIDARG;
   auto f=static_cast<Fixture*>(p);if(!f->texture) return E_POINTER;
   const auto d=f->texture->GetDesc();
-  const uint64_t values[]={d.Dimension,d.Width,d.Height,d.DepthOrArraySize,d.MipLevels,d.Format,d.SampleDesc.Count,d.SampleDesc.Quality,d.Flags};
+  const uint64_t values[]={static_cast<uint64_t>(d.Dimension),d.Width,d.Height,d.DepthOrArraySize,d.MipLevels,static_cast<uint64_t>(d.Format),d.SampleDesc.Count,d.SampleDesc.Quality,static_cast<uint64_t>(d.Flags)};
   std::memcpy(out,values,sizeof(values));return S_OK;
 }
 EXPORT HRESULT interop_fixture_unsignaled_fence(void* p,void** out) {

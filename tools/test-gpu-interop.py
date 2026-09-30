@@ -388,13 +388,13 @@ class Integration(unittest.TestCase):
         s = (HERE/'ci-import-smoke.rkt').read_text()
         self.assertIn('skia/gpu-interop', s); self.assertIn('skia/unsafe/gpu-d3d12', s)
     def test_stage_and_native_pin(self):
-        self.assertIn('(define version "0.51")', (ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.52")', (ROOT/'info.rkt').read_text())
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(), '3.119.1')
-    def test_registry_does_not_claim_metal_interop(self):
+    def test_registry_includes_completed_metal_wrapper(self):
         data = json.loads((ROOT/'private/gpu-backends.json').read_text())
         rows = {row['backend']: row for row in data['backends']}
         self.assertTrue(rows['direct3d']['features']['external_resource_interop'])
-        self.assertFalse(rows['metal']['features']['external_resource_interop'])
+        self.assertTrue(rows['metal']['features']['external_resource_interop'])
     def test_existing_gl_interop_doctor_not_replaced(self):
         self.assertIn('gpu-gl-interop-native-test', (HERE/'gpu-interop-doctor.rkt').read_text())
 

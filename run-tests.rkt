@@ -8,7 +8,8 @@
          "tests/gpu-cache-pure-test.rkt" "tests/gpu-performance-pure-test.rkt")
 
 (require "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
-         "tests/gpu-backends-pure-test.rkt" "tests/gpu-interop-pure-test.rkt")
+         "tests/gpu-backends-pure-test.rkt" "tests/gpu-interop-pure-test.rkt"
+         "tests/gpu-metal-interop-pure-test.rkt")
 (define-runtime-path native-abi-native-tests-file "tests/native-abi-native-test.rkt")
 (define-runtime-path native-tests-file "tests/native-test.rkt")
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
@@ -49,7 +50,7 @@
                  (set! pure-only? #t)]
    #:args () (void))
   (define failures (+ (run-tests pure-tests) (run-tests lifetime-tests)
-                      (run-tests native-abi-pure-tests) (run-tests gpu-d3d12-pure-tests) (run-tests gpu-dxgi-pure-tests) (run-tests gpu-backends-pure-tests) (run-tests gpu-interop-pure-tests)
+                      (run-tests native-abi-pure-tests) (run-tests gpu-d3d12-pure-tests) (run-tests gpu-dxgi-pure-tests) (run-tests gpu-backends-pure-tests) (run-tests gpu-interop-pure-tests) (run-tests gpu-metal-interop-pure-tests)
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
                       (run-tests svg-pure-tests) (run-tests output-pure-tests)
                       (run-tests path-matrix-pure-tests) (run-tests filter-graph-pure-tests)

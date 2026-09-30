@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.52.0 — Metal interop and Ganesh closeout
+
+- Added lazy, explicitly unsafe same-device Metal texture construction and
+  device-only access, using the existing generic single-use interop API.
+- Added owned GPU image copies and scoped external-target canvases with exact
+  context affinity, bounded producer/queue-tail completion and quarantine.
+- Added native texture/usage/storage/alias/swizzle checks; separated declared
+  producer coverage from verified command completion. No CPU staging or runtime
+  helper dylib is introduced, and borrowed images cannot enter retained graphs.
+- Consolidated the completion/retirement boundary shared with Direct3D;
+  preserved its behavior and cleaned up SDK fixture enum-conversion warnings.
+- Added 49 pure and 33 native Racket cases, independent Apple SDK texture
+  production/consumption, 144 handoffs, 12 retained PNGs and an isolated timeout.
+- Added Apple SDK compilation/ABI checks inside the existing macOS CPU CI lanes;
+  actual Metal execution remains an explicit required local acceptance gate.
+- Recorded Ganesh closeout boundaries and the agreed 0.53–0.57 skia-dc% /
+  skia-canvas% roadmap. Vulkan, Graphite and native ABI migration are deferred.
+- Source baseline: d6af412ba0fdf1b6ebbfb0bb5c9514cc4d6f5d5a. Its remaining
+  pbuffer dependency-install stall is not waived or converted into a test pass.
+
 ## 0.51.0 — Direct3D external-resource handoffs
 
 - Added safe generic single-handoff/copy/scoped-canvas operations and an

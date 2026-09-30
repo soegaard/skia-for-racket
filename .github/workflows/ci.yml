@@ -87,6 +87,9 @@ jobs:
           CI_LANE: ${{ matrix.id }}
         shell: bash
         run: python tools/ci.py --profile cpu --id "$CI_LANE"
+      - name: Compile and verify Metal interop Apple SDK ABI
+        if: runner.os == 'macOS'
+        run: python tools/check-metal-interop-sdk.py --output "output/ci-${{ matrix.id }}/metal-sdk"
       - name: Keep CPU/native/package evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

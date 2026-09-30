@@ -38,10 +38,10 @@
      (for* ([b (in-list (gpu-backends))]
             [f '(offscreen images explicit_transfers cache_controls presentation document_executor)])
        (check-true (hash-ref (hash-ref (gpu-backend-capabilities b) 'features) f))))
-   (test-case "external resource support remains explicitly asymmetric"
+   (test-case "interop is declared for each backend without runtime probing"
      (check-true (hash-ref (hash-ref (gpu-backend-capabilities 'opengl) 'features) 'external_resource_interop))
      (check-true (hash-ref (hash-ref (gpu-backend-capabilities 'direct3d) 'features) 'external_resource_interop))
-     (check-false (hash-ref (hash-ref (gpu-backend-capabilities 'metal) 'features) 'external_resource_interop)))
+     (check-true (hash-ref (hash-ref (gpu-backend-capabilities 'metal) 'features) 'external_resource_interop)))
    (test-case "WARP is a selection declaration, not an availability result"
      (define c (gpu-backend-capabilities 'direct3d))
      (check-equal? (hash-ref c 'software_selection) "explicit-warp")

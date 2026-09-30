@@ -74,6 +74,7 @@ def main() -> int:
         run([sys.executable, 'tools/inspect-gpu-output.py', '--self-test'])
         run([sys.executable, 'tools/inspect-gpu-performance.py', '--self-test'])
         run([sys.executable, 'tools/test-validate-gpu-performance.py'])
+        run([sys.executable, 'tools/test-metal-interop.py'])
         run([sys.executable, 'tools/test-gpu-interop.py'])
         run([sys.executable, 'tools/test-ci.py'])
         if os.environ.get('SKIP_C_ABI') == '1':
@@ -104,7 +105,8 @@ def main() -> int:
                    'examples/gpu-output.rkt','tests/gpu-output-fixtures.rkt',
                    'tools/gpu-performance-doctor.rkt','tools/gpu-performance-work.rkt',
                    'tools/gpu-performance-options.rkt','tools/ci-identity.rkt','tools/ci-import-smoke.rkt','tools/ci-package-smoke.rkt','tools/gpu-redraw-doctor.rkt']
-        modules += ['gpu-interop.rkt', 'unsafe/gpu-d3d12.rkt', 'tools/gpu-d3d12-interop-doctor.rkt']
+        modules += ['gpu-interop.rkt', 'unsafe/gpu-d3d12.rkt', 'tools/gpu-d3d12-interop-doctor.rkt',
+                    'unsafe/gpu-metal.rkt', 'tools/gpu-metal-interop-doctor.rkt']
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))]
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu*.rkt'))]
         run([racket,'-l','raco','--','make',*modules])

@@ -1,4 +1,9 @@
-# GPU backends and shared validation — 0.51
+# GPU backends and shared validation — 0.52
+
+0.52 adds [Metal same-device interop](GPU-METAL-INTEROP.md) through the generic
+single-use token API and records the [Ganesh closeout roadmap](GANESH-CLOSEOUT.md).
+The capability table describes implemented wrapper paths, not successful native
+execution on this machine. The retained 0.50/0.51 contracts follow below.
 
 0.51 adds a narrow Direct3D external-resource handoff API. The common drawing
 and parity contracts below remain unchanged. See [Direct3D interop](GPU-D3D12-INTEROP.md)
@@ -65,7 +70,7 @@ Use `gpu-context-info` for a context that has actually been created.
 | `cache_controls` | Implemented | Implemented | Implemented |
 | `presentation` | Implemented | Implemented | Implemented via DXGI |
 | `document_executor` | Implemented | Implemented | Implemented in 0.50 |
-| `external_resource_interop` | Scoped GL borrowing/copy | Not implemented | Same-device copy/scoped drawing (0.51) |
+| `external_resource_interop` | Scoped GL borrowing/copy | Same-device copy/scoped drawing (0.52) | Same-device copy/scoped drawing (0.51) |
 
 The registry is `private/gpu-backends.json`. Racket argument checks and native
 ID lookup, the Python inspectors, and the pure metadata doctor use that same

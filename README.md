@@ -1,4 +1,25 @@
-# Racket Skia — 0.51.0
+# Racket Skia — 0.52.0
+
+## Metal interop and Ganesh closeout
+
+`skia/gpu-interop` now accepts Metal tokens created by the explicitly unsafe
+`skia/unsafe/gpu-metal` bridge. Same-device RGBA8 textures support independent
+Skia-owned GPU copies and scoped external-target drawing. Producer command
+buffers and exact-Ganesh-queue completion buffers are retained and polled with
+bounded waits; unknown completion quarantines storage instead of freeing it.
+There is no CPU pixel staging or new runtime helper library.
+
+The new local Metal gate compiles an independent Apple SDK producer/consumer,
+runs 33 native cases, 144 handoffs and 12 post-teardown PNG comparisons, and
+checks a separate expected-timeout process. Both existing macOS CI lanes compile
+the Apple SDK fixture and check ABI declarations without claiming GPU execution.
+All required D3D12, DXGI, CPU, EGL and native-ABI gates remain in place.
+
+This closes the planned Ganesh feature work after validation, not every possible
+GPU API extension. The next direction is `skia-dc%`, followed by `skia-canvas%`.
+Vulkan, Graphite and a native 4.x migration are deferred. The production native
+pin and GUI `auto` behavior are unchanged. See [Metal interop](docs/GPU-METAL-INTEROP.md)
+and [Ganesh closeout / compatibility roadmap](docs/GANESH-CLOSEOUT.md).
 
 ## Direct3D external textures
 

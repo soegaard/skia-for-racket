@@ -5,7 +5,8 @@
 This stage lets an external D3D12 producer and Skia exchange an ordinary 2D
 texture on the **same actual device**. It adds independent GPU-image copies
 and scoped drawing into externally allocated render targets. The existing
-OpenGL interop API is unchanged. Metal descriptors are not implemented yet.
+OpenGL interop API is unchanged. Metal descriptors use the same generic
+operations starting in 0.52; see [Metal interop](GPU-METAL-INTEROP.md).
 
 The default native library remains SkiaSharp 3.119.1 / m119. The implementation
 uses Racket FFI directly; applications do not build or load the validation DLL.

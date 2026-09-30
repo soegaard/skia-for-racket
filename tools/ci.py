@@ -38,6 +38,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
+    'test-metal-interop.py',
     'test-gpu-interop.py',
     'test-gpu-parity.py',
     'test-dxgi.py',
