@@ -57,7 +57,7 @@
         "cache_controls": true,
         "presentation": true,
         "document_executor": true,
-        "external_resource_interop": false
+        "external_resource_interop": true
       }
     }
   ]

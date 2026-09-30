@@ -1,0 +1,72 @@
+#lang racket/base
+;; Source-only, backend-neutral, single-handoff capability. Native pointers
+;; and backend factories live in explicitly unsafe modules, never this API.
+(require racket/future "gpu-backends.rkt")
+(provide gpu-external-texture? gpu-external-texture-info gpu-external-texture-close!
+         gpu-import-image call-with-gpu-external-surface)
+(struct external-texture
+  (backend context generation owner description check operate retire observe [state #:mutable]))
+(define gpu-external-texture? external-texture?)
+(define current-external-operation (make-parameter #f))
+(define (procedure! who p n)
+  (unless (and (procedure? p) (procedure-arity-includes? p n)
+               (let-values ([(required allowed) (procedure-keywords p)]) (null? required)))
+    (raise-argument-error who (format "procedure accepting ~a arguments without required keywords" n) p)))
+(define (owner! who t)
+  (unless (external-texture? t) (raise-argument-error who "gpu-external-texture?" t))
+  (unless (and (eq? (current-thread) (external-texture-owner t)) (not (current-future)))
+    (error who "external texture belongs to another execution owner")))
+(define (gpu-external-texture-info t)
+  (owner! 'gpu-external-texture-info t)
+  (hash-set* (external-texture-description t)
+    'backend (symbol->string (external-texture-backend t))
+    'context_generation (external-texture-generation t)
+    'handoff_state (symbol->string (external-texture-state t))
+    'native ((external-texture-observe t))
+    'raw_handles_exposed #f))
+(define (gpu-external-texture-close! t)
+  (owner! 'gpu-external-texture-close! t)
+  (when (eq? (external-texture-state t) 'active)
+    (error 'gpu-external-texture-close! "external texture is in use"))
+  (unless (eq? (external-texture-state t) 'retired)
+    ;; Never retry an indeterminate retire callback. Native backends must queue
+    ;; destruction on the owner; this generic object never runs a finalizer.
+    (set-external-texture-state! t 'retired)
+    ((external-texture-retire t)))
+  (void))
+(define (run who context t mode proc)
+  (owner! who t)
+  (unless (eq? context (external-texture-context t))
+    (error who "external texture belongs to another GPU context"))
+  (unless (eq? (external-texture-state t) 'ready)
+    (error who "external texture handoff is ~a; construct a new handoff for reuse"
+           (external-texture-state t)))
+  (when (current-external-operation) (error who "nested external-resource operations are not supported"))
+  ((external-texture-check t) mode)
+  (define entered? #f)
+  (call-with-continuation-barrier
+    (lambda ()
+      (dynamic-wind
+        (lambda ()
+          (when entered? (error who "external texture handoff has expired"))
+          (set! entered? #t) (set-external-texture-state! t 'active))
+        (lambda ()
+          (parameterize ([current-external-operation (external-texture-backend t)])
+            ((external-texture-operate t) mode proc)))
+        (lambda () (set-external-texture-state! t 'consumed))))))
+(define (gpu-import-image context texture)
+  (run 'gpu-import-image context texture 'copy #f))
+(define (call-with-gpu-external-surface context texture proc)
+  (procedure! 'call-with-gpu-external-surface proc 1)
+  ;; The callback receives ONLY a borrowed Skia canvas, not a snapshot-capable
+  ;; surface. Its lease expires even when the outer GPU activation survives.
+  (run 'call-with-gpu-external-surface context texture 'surface proc))
+(module* backend-internals #f
+  (provide make-external-texture current-external-operation)
+  (define (make-external-texture backend context generation description check operate retire observe)
+    (check-gpu-backend! 'make-external-texture backend)
+    (unless (exact-positive-integer? generation) (error 'make-external-texture "invalid generation"))
+    (unless (and (hash? description) (immutable? description)) (error 'make-external-texture "immutable description required"))
+    (procedure! 'make-external-texture check 1) (procedure! 'make-external-texture operate 2)
+    (procedure! 'make-external-texture retire 0) (procedure! 'make-external-texture observe 0)
+    (external-texture backend context generation (current-thread) description check operate retire observe 'ready)))

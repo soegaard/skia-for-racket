@@ -1,4 +1,9 @@
-# GPU backends and shared validation — 0.50
+# GPU backends and shared validation — 0.51
+
+0.51 adds a narrow Direct3D external-resource handoff API. The common drawing
+and parity contracts below remain unchanged. See [Direct3D interop](GPU-D3D12-INTEROP.md)
+for retained single-use descriptors, explicit fences, GPU copies and scoped
+canvas borrowing. This is not unrestricted zero-copy or cross-device interop.
 
 ## One drawing API, explicit execution
 
@@ -60,7 +65,7 @@ Use `gpu-context-info` for a context that has actually been created.
 | `cache_controls` | Implemented | Implemented | Implemented |
 | `presentation` | Implemented | Implemented | Implemented via DXGI |
 | `document_executor` | Implemented | Implemented | Implemented in 0.50 |
-| `external_resource_interop` | Scoped GL borrowing/copy | Not implemented | Not implemented |
+| `external_resource_interop` | Scoped GL borrowing/copy | Not implemented | Same-device copy/scoped drawing (0.51) |
 
 The registry is `private/gpu-backends.json`. Racket argument checks and native
 ID lookup, the Python inspectors, and the pure metadata doctor use that same

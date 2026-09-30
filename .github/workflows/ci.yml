@@ -157,12 +157,23 @@ jobs:
           variant: CS
       - name: Required installed-package D3D12 WARP sequence
         run: python tools/ci-d3d12.py
+      - name: Required independent D3D12 interop producer and consumer
+        run: python tools/ci-d3d12-interop.py
       - name: Keep D3D12 reports, pixels and command logs, including failures
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ci-d3d12-warp-${{ github.run_attempt }}
           path: output/ci-d3d12-warp/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Keep Direct3D interop reports and independent consumer pixels
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-d3d12-interop-${{ github.run_attempt }}
+          path: output/ci-d3d12-interop/
           if-no-files-found: warn
           retention-days: 14
 

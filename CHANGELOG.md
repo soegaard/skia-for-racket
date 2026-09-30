@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.51.0 — Direct3D external-resource handoffs
+
+- Added safe generic single-handoff/copy/scoped-canvas operations and an
+  explicitly unsafe Windows resource/device bridge. Existing GL APIs remain.
+- Added native resource/heap queries, canonical device identity checks,
+  retained COM references, mandatory producer fences and bounded completion.
+- Isolated external image copies through a private D3D texture before producing
+  a Skia-owned GPU image. Scoped target return uses a shader-filled normalization
+  pass; no runtime state query, zero-copy, hardware or screen claim is made.
+- Added owner/context/lease/re-entry guards, unused-descriptor retirement and
+  process-lifetime quarantine for indeterminate native completion/release.
+- Added independent SDK producer/consumer validation, 29 native cases, six
+  stress contexts, 144 handoffs, 12 post-teardown PNG captures, and a separate
+  expected-timeout child. No abort/Crash Reporter test is used for this stage.
+- Added a required installed-package interop step after existing D3D12/parity
+  checks; retained CPU, EGL, DXGI, native ABI and source gates unchanged.
+- Source baseline is ae29c9ffa3556ec18a068f80d17f673a8cadb093. Its completed
+  0.50 lanes passed, but the aggregate was pending at implementation start.
+  This stage adds no exception for that pending dependency-install lane.
+- Local authoring tests are not Racket/Windows execution. Accept only after
+  host regressions and the new required Windows runtime checks are reviewed.
+
 ## 0.50.0 — GPU backend parity and consolidation
 
 - Added a shared source-only backend/native-ID registry and immutable public

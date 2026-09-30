@@ -1,5 +1,5 @@
 #lang racket/base
-(require ffi/unsafe
+(require ffi/unsafe "gpu-d3d12-handles.rkt"
          "gpu-d3d12-system.rkt" "gpu-d3d12-util.rkt" "gpu-d3d12-types.rkt"
          "gpu-native.rkt" "gpu-types.rkt"
          (only-in "gpu-surface-native.rkt" flush/native submit/native)
@@ -20,10 +20,12 @@
                         (make-gr-d3d-backend-context adapter device queue #f #f)))
       (when context
         (with-handlers ([(lambda (_) #t)
-                         (lambda (e) (gr_recording_context_unref context) (raise e))])
+                         (lambda (e) (forget-d3d12-handles! context) (gr_recording_context_unref context) (raise e))])
+          (register-d3d12-handles! context adapter device queue)
           (receive adapter device queue)))
       context)
-    gr_recording_context_unref gr_direct_context_abandon_context gr_direct_context_is_abandoned
+    (lambda (p) (forget-d3d12-handles! p) (gr_recording_context_unref p))
+    gr_direct_context_abandon_context gr_direct_context_is_abandoned
     (lambda (p)
       (flush/native p)
       (unless (submit/native p #t) (error 'gpu-context-close! "D3D12 final completion failed")))

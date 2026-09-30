@@ -1,6 +1,34 @@
-# Racket Skia — 0.50.0
+# Racket Skia — 0.51.0
 
-## Shared GPU backend policy and validation
+## Direct3D external textures
+
+`skia/gpu-interop` adds opaque, single-use external texture handoffs:
+`gpu-import-image` returns an independent Skia-owned GPU image, while
+`call-with-gpu-external-surface` lends only a scoped drawing canvas.
+The Windows x64 factory is explicitly unsafe, in `skia/unsafe/gpu-d3d12`.
+It validates the native resource descriptor and canonical COM device identity,
+retains resource/fence references, requires a producer fence and declared
+incoming/outgoing resource states, and completes each handoff synchronously
+with bounded fence waits. State declarations are caller obligations, not queries.
+
+The initial subset is same-device, unshared DEFAULT-heap RGBA8 2D textures,
+one mip, one array element and one sample. Copies use a private GPU bridge;
+borrowed targets use a GPU snapshot plus shader-filled normalization pass.
+There is no CPU pixel staging, but these paths are not advertised as zero-copy.
+Indeterminate completion quarantines native references instead of freeing them.
+
+The required D3D12 job keeps its offscreen/parity checks and then runs a separate
+isolated installed-package interop gate, using an independent Windows SDK
+producer/consumer, 29 native cases, 144 handoffs and 12 retained pixel captures.
+A disposable process tests expected timeout quarantine without crashing.
+Configuration is not acceptance: the new Windows gate must actually pass.
+See [API, ownership and validation](docs/GPU-D3D12-INTEROP.md).
+
+The native pin remains SkiaSharp 3.119.1. Metal interop is the next stage;
+Vulkan, Graphite and native migration remain deferred in favor of the planned
+`skia-dc%` and `skia-canvas%` compatibility work.
+
+## 0.50: shared GPU backend policy and validation
 
 `skia/gpu` now provides `gpu-backends`, `gpu-backend?`, and
 `gpu-backend-capabilities`. These report immutable wrapper declarations, not

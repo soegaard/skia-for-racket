@@ -91,8 +91,8 @@ class PolicyTests(unittest.TestCase):
     def test_common_features(self):
         for b in policy.BACKEND_IDS:
             for f in policy.FEATURES-{'external_resource_interop'}:self.assertTrue(policy.declared_capabilities(b)['features'][f])
-    def test_interop_not_invented(self):
-        self.assertFalse(policy.declared_capabilities('direct3d')['features']['external_resource_interop'])
+    def test_interop_support_is_backend_specific(self):
+        self.assertTrue(policy.declared_capabilities('direct3d')['features']['external_resource_interop'])
         self.assertFalse(policy.declared_capabilities('metal')['features']['external_resource_interop'])
     def test_unknown_backend(self):
         for b in ('vulkan','auto','raster',False):
@@ -378,7 +378,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertIn('extra_checks='+hook,s)
             self.assertIn("report['checks'].get('required_backend_parity_"+scope+"') is True",s)
     def test_version_and_pin(self):
-        self.assertIn('(define version "0.50")',(ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.51")',(ROOT/'info.rkt').read_text())
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
     def test_no_native_probe_in_declaration(self):
         s=(ROOT/'private/gpu-backends.rkt').read_text()
