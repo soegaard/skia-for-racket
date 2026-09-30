@@ -3,7 +3,12 @@ from pathlib import Path
 import re, subprocess, tempfile, shutil, zipfile, json, platform
 import syntax_scan as mod
 R=Path(__file__).resolve().parents[1]
-errors=[mod.scan(p) for p in R.rglob('*.rkt')]; assert not any(errors), errors
+# Source checks must not inspect generated/developer trees.  These names mirror
+# the repository's ignored output/cache directories; in particular, an
+# extracted delivery bundle under downloads/ is not part of the package source.
+IGNORED_RACKET_TREES={'.git','compiled','output','downloads','__pycache__'}
+racket_files=[p for p in R.rglob('*.rkt') if not (set(p.relative_to(R).parts) & IGNORED_RACKET_TREES)]
+errors=[mod.scan(p) for p in racket_files]; assert not any(errors), errors
 # Small structural reader: sufficient for counting test-suite contents and
 # recognizing top-level definitions, NOT a Racket reader or expander.
 def sexps(text):
@@ -17,7 +22,9 @@ def sexps(text):
     assert len(stack)==1
     return root
 counts={}
-for f,var in [('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-tests'),('native-test.rkt','native-tests'),
+for f,var in [('native-abi-pure-test.rkt','native-abi-pure-tests'),
+              ('native-abi-native-test.rkt','native-abi-native-tests'),
+              ('pure-test.rkt','pure-tests'),('lifetime-test.rkt','lifetime-tests'),('native-test.rkt','native-tests'),
               ('codec-pure-test.rkt','codec-pure-tests'),('codec-native-test.rkt','codec-native-tests'),
               ('pdf-pure-test.rkt','pdf-pure-tests'),('pdf-native-test.rkt','pdf-native-tests'),
               ('svg-pure-test.rkt','svg-pure-tests'),('svg-native-test.rkt','svg-native-tests'),
@@ -145,7 +152,7 @@ for form in sexps((R/'raster-buffers.rkt').read_text()):
         assert not [x for x in public if x not in raster_buffer_api], public
 subprocess.run(['bash','-n',str(R/'tools/validate-raster-buffers.sh')],check=True)
 # Check internal local require paths exist (literal relative .rkt strings).
-for f in R.rglob('*.rkt'):
+for f in racket_files:
     for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):
         if ' ' not in ref:
             assert (f.parent/ref).exists(),(f,ref)
@@ -156,6 +163,8 @@ for shell in ['install-native.sh','install-harfbuzz.sh','audit-symbols.sh','audi
 with tempfile.TemporaryDirectory(prefix='skia-installer-check-') as temp:
     t=Path(temp); project=t/'project with spaces'; (project/'tools').mkdir(parents=True)
     target=project/'tools/install-native.sh';shutil.copy2(R/'tools/install-native.sh',target)
+    (project/'private').mkdir()
+    shutil.copy2(R/'private/native-default-version.txt', project/'private/native-default-version.txt')
     if platform.system() == 'Darwin':
         pkg='SkiaSharp.NativeAssets.macOS'; rid='osx'; lib='libSkiaSharp.dylib'
     elif platform.system() == 'Linux' and platform.machine() in ('x86_64','aarch64','arm64'):
@@ -209,5 +218,5 @@ with tempfile.TemporaryDirectory(prefix='harfbuzz-installer-check-') as temp:
     help=subprocess.run(['bash',str(target),'--help'],capture_output=True,text=True);assert help.returncode==0
     hinstalled['help']='success'
 
-result={'racket_files_scanned':len(list(R.rglob('*.rkt'))),'source_test_case_counts':counts,'core_exports_accounted_for':len(exports),'output_exports_accounted_for':len(output_exports),'local_module_paths':'exist','shell_syntax':'passed','installer_synthetic_tests':installed,'harfbuzz_installer_synthetic_tests':hinstalled,'racket_execution':'NOT RUN','live_skia_execution':'NOT RUN'}
+result={'racket_files_scanned':len(racket_files),'source_test_case_counts':counts,'core_exports_accounted_for':len(exports),'output_exports_accounted_for':len(output_exports),'local_module_paths':'exist','shell_syntax':'passed','installer_synthetic_tests':installed,'harfbuzz_installer_synthetic_tests':hinstalled,'racket_execution':'NOT RUN','live_skia_execution':'NOT RUN'}
 print(json.dumps(result,indent=2))

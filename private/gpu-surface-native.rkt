@@ -1,10 +1,10 @@
 #lang racket/base
 (require ffi/unsafe racket/promise
-         (only-in "native.rkt" skia-native-library-path)
+         (only-in "native.rkt" skia-native-library-handle)
          "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-surface-native-check! gpu-surface-native-inventory)
 ;; Deliberately separate from the CPU symbol registry and the 0.38 probe.
-(define library (delay/sync (ffi-lib (skia-native-library-path))))
+(define library (delay/sync (skia-native-library-handle)))
 (define bindings '())
 (define-syntax-rule (define-surface-native group name native-name type)
   (begin

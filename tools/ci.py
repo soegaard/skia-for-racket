@@ -23,6 +23,7 @@ import time
 import zipfile
 
 from ci_matrix import load_matrix
+from native_abi import catalog as native_abi_catalog, default_version
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('ci_source_manifest', ROOT / 'tools/update-source-sums.py')
@@ -37,6 +38,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
+    'test-native-abi.py',
     'test-install-native-windows.py', 'test-validate-gpu-images.py',
     'test-validate-gpu-headless.py', 'test-validate-gpu-output.py',
     'test-validate-gpu-performance.py', 'test-patch-delivery.py', 'test-ci.py',
@@ -133,9 +135,10 @@ def verify_native_smoke(smoke: dict, installed: Path) -> list[dict]:
     # requires both operands to use the same spelling.
     installed = installed.resolve()
     require(smoke.get('status') == 'passed', 'installed collection smoke did not pass')
-    require(smoke.get('native_package_versions') == {'skia': '3.119.1', 'harfbuzz': '8.3.1.2'},
+    require(smoke.get('native_package_versions') == {'skia': default_version(), 'harfbuzz': '8.3.1.2'},
             'installed native package declarations changed')
-    require(smoke.get('native_versions') == {'skia': '119.0', 'harfbuzz': '8.3.1'}, 'wrong native ABI versions')
+    require(smoke.get('native_versions') == {'skia': native_abi_catalog()['profiles'][0]['expected_default_native_version'],
+                                             'harfbuzz': '8.3.1'}, 'wrong native ABI versions')
     require(Path(smoke['collection']).resolve() == installed.resolve(), 'smoke used a different collection')
     result = []
     for name in ('skia', 'harfbuzz'):
@@ -311,6 +314,12 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
             smoke = json.loads(runner.run([racket, '-l', 'skia/tools/ci-package-smoke'], cwd=away))
             report['native_libraries'] = verify_native_smoke(smoke, installed)
             report['checks']['installed_native_pixels_and_symbols'] = True
+            native_abi = json.loads(runner.run([racket, installed / 'tools/native-abi-doctor.rkt'], cwd=away))
+            require(native_abi.get('required_cpu_symbols_resolved') is True and
+                    native_abi.get('racket_layouts_checked') is True,
+                    'native ABI preflight evidence is incomplete')
+            report['native_abi'] = native_abi
+            report['checks']['native_abi_preflight'] = True
             if profile == 'cpu':
                 if identity['os'] != 'windows':
                     for name in ('audit-symbols.sh', 'audit-harfbuzz-symbols.sh'):
@@ -319,6 +328,18 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                     runner.run([racket, installed / 'tools' / (name + '.rkt')], cwd=away)
                 runner.run([racket, installed / 'run-tests.rkt'], cwd=away)
                 report['checks']['cpu_regressions'] = True
+                # Required negative compatibility gate, on one clean Linux lane.
+                # A rejected m153 candidate is NOT a rendering/compatibility pass.
+                if row['id'] == 'linux-x64':
+                    candidate_output = runner.output / 'native-abi-candidate'
+                    runner.run([sys.executable, installed / 'tools/native-abi-lab.py',
+                                '--candidate', '--racket', racket,
+                                '--output', candidate_output], cwd=away)
+                    candidate = json.loads((candidate_output / 'report.json').read_text(encoding='utf-8'))
+                    require(candidate.get('status') == 'passed-investigation-candidate-rejected',
+                            'candidate investigation did not establish the required safe rejection')
+                    report['native_abi_candidate'] = candidate
+                    report['checks']['candidate_abi_rejection'] = True
                 report['gpu'] = {'status': 'not-run', 'reason': 'CPU/native/package lane; no hosted GPU availability assumed'}
             else:
                 require(sys.platform.startswith('linux'), 'EGL CI lane requires Linux')

@@ -38,7 +38,7 @@ jobs:
       - name: Source-check system tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends git unzip curl
+          sudo apt-get install -y --no-install-recommends git unzip curl build-essential
       - name: Validate and publish the matrix
         id: matrix
         run: python tools/ci_matrix.py --github-output

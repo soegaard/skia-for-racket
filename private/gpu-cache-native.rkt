@@ -1,10 +1,10 @@
 #lang racket/base
 (require ffi/unsafe racket/promise
-         (only-in "native.rkt" skia-native-library-path)
+         (only-in "native.rkt" skia-native-library-handle)
          "gpu-provider.rkt" "gpu-native-scope.rkt" "gpu-raw.rkt")
 (provide cache-dispatch/native gpu-cache-native-inventory)
 ;; Independent, lazy optional registry; ordinary CPU requirements are unchanged.
-(define library (delay/sync (ffi-lib (skia-native-library-path))))
+(define library (delay/sync (skia-native-library-handle)))
 (define bindings '())
 (define-syntax-rule (define-cache-native name c-name type)
   (begin

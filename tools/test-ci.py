@@ -338,7 +338,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
-        self.assertIn('(define version "0.46")', text)
+        self.assertIn('(define version "0.47")', text)
         self.assertIn('(define deps \'(("base" #:version "8.7") "draw-lib" "gui-lib" "rackunit-lib"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):
@@ -438,6 +438,13 @@ class Orchestration(unittest.TestCase):
                             native_versions={'skia': '119.0', 'harfbuzz': '8.3.1'},
                             libraries={k: str(installed / 'native' / k) for k in ('skia', 'harfbuzz')},
                             pixels_verified=True, encoded_roundtrip_verified=True))
+                    if a[1].endswith('native-abi-doctor.rkt'):
+                        return json.dumps(dict(required_cpu_symbols_resolved=True, racket_layouts_checked=True))
+                    if a[1].endswith('native-abi-lab.py'):
+                        candidate_output = Path(a[a.index('--output') + 1])
+                        candidate_output.mkdir(parents=True, exist_ok=False)
+                        ci.write_json(candidate_output / 'report.json',
+                                      dict(status='passed-investigation-candidate-rejected'))
                     if a[1].endswith('validate-gpu-headless.py'):
                         headless_fixture(seen_installed[0] / 'output/gpu-0.46-headless-mock', row['surface'])
                     return ''
@@ -450,12 +457,20 @@ class Orchestration(unittest.TestCase):
     def test_cpu_installed_package_order(self):
         c, envs, r, e, _ = self.simulate(); self.assertIsNone(e); self.assertTrue(r['checks']['cpu_regressions'])
         self.assertEqual(r['gpu']['status'], 'not-run')
+        self.assertTrue(r['checks']['native_abi_preflight'])
+        self.assertTrue(r['checks']['candidate_abi_rejection'])
+        self.assertTrue(any(a[1].endswith('native-abi-lab.py') for a in c))
         self.assertIn('--no-cache', next(a for a in c if 'install' in a))
         self.assertTrue(any('--check-pkg-deps' in a for a in c)); self.assertTrue(any(a[0] == 'ctest' for a in c))
         self.assertEqual(c[-1][-2:], ['--check', '--manifest-only'])
         native = next(i for i, a in enumerate(c) if 'install-native' in a[1])
         pure = next(i for i, a in enumerate(c) if '--pure' in a)
         self.assertLess(pure, native)
+    def test_candidate_failure_blocks_success(self):
+        _, _, r, e, _ = self.simulate(fail='native-abi-lab.py')
+        self.assertIsNotNone(e)
+        self.assertNotIn('candidate_abi_rejection', r['checks'])
+        self.assertNotIn('gpu', r)
     def test_selected_interpreter_every_raco(self):
         c, _, r, e, _ = self.simulate(); self.assertIsNone(e)
         for a in c:
@@ -484,6 +499,7 @@ class Orchestration(unittest.TestCase):
         c, _, r, e, _ = self.simulate('cpu', 'windows-x64'); self.assertIsNone(e)
         self.assertTrue(any('-A' in a and 'x64' in a for a in c))
         self.assertFalse(any('audit-symbols.sh' in a[1] for a in c)); self.assertTrue(r['checks']['cpu_regressions'])
+        self.assertFalse(any(a[1].endswith('native-abi-lab.py') for a in c))
 
 
 class DriverResults(unittest.TestCase):

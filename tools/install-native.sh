@@ -2,12 +2,15 @@
 # Downloads a pinned native library; does not execute code from the archive.
 # Compatible with macOS's system Bash 3.2. No sudo, dotnet, or compiler needed.
 set -euo pipefail
-VERSION=3.119.1
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VERSION="$(tr -d '\r\n' < "$ROOT/private/native-default-version.txt")"
+printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+[.][0-9]+[.][0-9]+$' || {
+  echo 'Invalid private/native-default-version.txt' >&2; exit 2;
+}
 ARCHIVE=""
 usage() {
   printf '%s\n' 'Usage: bash tools/install-native.sh [--archive /path/to/package.nupkg]' \
-    'Downloads SkiaSharp 3.119.1 native assets for this platform.' \
+    "Downloads SkiaSharp $VERSION native assets for this platform." \
     'An optional local archive is useful for offline installation.'
 }
 while [ "$#" -gt 0 ]; do
@@ -61,7 +64,8 @@ EXPECTED_ID="$(printf '%s' "$PACKAGE" | sed 's/\./[.]/g')"
 grep -Eiq "<id>[[:space:]]*$EXPECTED_ID[[:space:]]*</id>" "$WORK/package.nuspec" || {
   echo "Wrong native package; expected $PACKAGE" >&2; exit 1;
 }
-grep -Eq '<version>[[:space:]]*3[.]119[.]1[[:space:]]*</version>' "$WORK/package.nuspec" || {
+EXPECTED_VERSION="$(printf '%s' "$VERSION" | sed 's/\./[.]/g')"
+grep -Eq "<version>[[:space:]]*$EXPECTED_VERSION[[:space:]]*</version>" "$WORK/package.nuspec" || {
   echo "Wrong native package version; expected $VERSION" >&2; exit 1;
 }
 MEMBER="runtimes/$RID/native/$FILE"

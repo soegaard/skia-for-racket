@@ -1,0 +1,22 @@
+#lang racket/base
+(require ffi/unsafe "types.rkt")
+(provide native-layout-sizes)
+;; This is a measurement of our Racket declarations, not reflection on an
+;; arbitrary shared library. C layout mirrors and live tests remain required.
+(define (native-layout-sizes)
+  (hasheq 'lattice (ctype-sizeof _sk-lattice) 'rsxform (ctype-sizeof _sk-rsxform)
+          'runtime_uniform (ctype-sizeof _sk-runtime-uniform)
+          'runtime_child (ctype-sizeof _sk-runtime-child)
+          'transfer (ctype-sizeof _sk-transfer) 'xyz (ctype-sizeof _sk-xyz)
+          'primaries (ctype-sizeof _sk-primaries)
+          'isize (ctype-sizeof _sk-isize) 'ipoint (ctype-sizeof _sk-ipoint)
+          'point3 (ctype-sizeof _sk-point3) 'matrix (ctype-sizeof _sk-matrix)
+          'm44 (ctype-sizeof _sk-m44) 'pdf_datetime (ctype-sizeof _sk-pdf-datetime)
+          'pdf_metadata (ctype-sizeof _sk-pdf-metadata)
+          'image_info (ctype-sizeof _sk-image-info) 'rect (ctype-sizeof _sk-rect)
+          'point (ctype-sizeof _sk-point) 'textblob_runbuffer (ctype-sizeof _sk-textblob-runbuffer)
+          'irect (ctype-sizeof _sk-irect) 'codec_options (ctype-sizeof _sk-codec-options)
+          'codec_frame_info (ctype-sizeof _sk-codec-frame-info)
+          'png_options (ctype-sizeof _sk-png-options) 'jpeg_options (ctype-sizeof _sk-jpeg-options)
+          'webp_options (ctype-sizeof _sk-webp-options) 'sampling (ctype-sizeof _sk-sampling)
+          'font_metrics (ctype-sizeof _sk-font-metrics)))

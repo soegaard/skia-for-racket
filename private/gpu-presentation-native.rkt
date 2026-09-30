@@ -2,9 +2,9 @@
 ;; Additional optional presentation ABI; resolving Metal symbols must not become
 ;; a requirement for CPU-only or OpenGL-only installations.
 (require ffi/unsafe racket/promise "gpu-native-scope.rkt" "gpu-provider.rkt"
-         (only-in "native.rkt" skia-native-library-path))
+         (only-in "native.rkt" skia-native-library-handle))
 (provide presentation-native-check! presentation-native-inventory)
-(define library (delay/sync (ffi-lib (skia-native-library-path))))
+(define library (delay/sync (skia-native-library-handle)))
 (define bindings '())
 (define-syntax-rule (define-call name symbol type)
   (begin

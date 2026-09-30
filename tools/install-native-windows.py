@@ -20,8 +20,10 @@ import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
 
+from native_abi import default_version
+
 PACKAGES = {
-    'skia': ('skiasharp.nativeassets.win32', '3.119.1', 'libSkiaSharp.dll'),
+    'skia': ('skiasharp.nativeassets.win32', default_version(), 'libSkiaSharp.dll'),
     'harfbuzz': ('harfbuzzsharp.nativeassets.win32', '8.3.1.2', 'libHarfBuzzSharp.dll'),
 }
 MAX_ARCHIVE = 180 * 1024 * 1024

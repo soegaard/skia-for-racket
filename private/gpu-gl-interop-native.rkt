@@ -1,9 +1,9 @@
 #lang racket/base
 (require ffi/unsafe racket/promise "gpu-provider.rkt" "gpu-native-scope.rkt"
-         (only-in "native.rkt" skia-native-library-path))
+         (only-in "native.rkt" skia-native-library-handle))
 (provide gl-interop-native-check! gl-interop-native-inventory)
 ;; Separate, lazy, borrowed-only inventory. NO adopted-texture constructor.
-(define library (delay/sync (ffi-lib (skia-native-library-path))))
+(define library (delay/sync (skia-native-library-handle)))
 (define bindings '())
 (define-syntax-rule (define-interop-native safe native type)
   (begin

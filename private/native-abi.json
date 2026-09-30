@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "bootstrap_symbols": [
+    "sk_version_get_milestone",
+    "sk_version_get_increment"
+  ],
+  "profiles": [
+    {
+      "id": "skiasharp-m119",
+      "milestone": 119,
+      "minimum_increment": 0,
+      "pointer_bytes": 8,
+      "expected_default_native_version": "119.0",
+      "skia_revision": "40f75dc0051d141913c07c20d4c19590c7da0cb7",
+      "layout_sizes": {
+        "lattice": 48,
+        "rsxform": 16,
+        "runtime_uniform": 40,
+        "runtime_child": 24,
+        "transfer": 28,
+        "xyz": 36,
+        "primaries": 32,
+        "isize": 8,
+        "ipoint": 8,
+        "point3": 12,
+        "matrix": 36,
+        "m44": 64,
+        "pdf_datetime": 10,
+        "pdf_metadata": 80,
+        "image_info": 24,
+        "rect": 16,
+        "point": 8,
+        "textblob_runbuffer": 32,
+        "irect": 16,
+        "codec_options": 24,
+        "codec_frame_info": 44,
+        "png_options": 32,
+        "jpeg_options": 40,
+        "webp_options": 24,
+        "sampling": 24,
+        "font_metrics": 64
+      },
+      "contracts": {
+        "canvas_matrix_storage": "column-major-m44",
+        "lattice_rect_type_bytes": 1,
+        "runtime_names": "copy-through-sk-string-only",
+        "path_measure_destination": "path",
+        "png_explicit_icc_requires_non_srgb_sentinel": true,
+        "gpu_image_readback": "explicit-same-context-surface",
+        "gpu_engine": "ganesh",
+        "graphite_wrapper": false,
+        "direct3d_wrapper": false
+      }
+    }
+  ],
+  "candidate": {
+    "package_version": "4.153.1",
+    "milestone": 153,
+    "tag": "v4.153.1",
+    "skiasharp_revision": "4783f51448f9b070dda4f87b83e941c9599e466e",
+    "skia_revision": "45afab4f1f0921f3feb97f58cf89b136fffa85e6",
+    "checked_on": "2026-09-30",
+    "policy": "investigate-only",
+    "known_semantic_blocker": "sk_pathmeasure_get_segment requires sk_pathbuilder_t*, not sk_path_t*",
+    "graphite_probe_symbols": [
+      "sk_graphite_backend_is_available",
+      "sk_graphite_context_make_recorder",
+      "sk_graphite_context_insert_recording",
+      "sk_graphite_context_submit",
+      "sk_graphite_recorder_snap",
+      "sk_graphite_surface_make_render_target",
+      "sk_graphite_context_async_rescale_and_read_pixels_surface"
+    ]
+  }
+}

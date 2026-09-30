@@ -1,66 +1,14 @@
 #lang racket/base
 (require ffi/unsafe
          racket/promise
-         racket/runtime-path
-         racket/path
-         "native-platform.rkt"
+         "native-loader.rkt"
+         (only-in "native-abi.rkt" native-abi-check-layouts!)
+         "native-layouts.rkt"
          "types.rkt" "audit-trace.rkt"
          (only-in "lifetime.rkt" lifetime-native-call))
 (provide native-package-version native-platform native-filename
-         skia-check! skia-available? skia-native-version skia-native-library-path)
-
-(define native-package-version "3.119.1")
-(define-runtime-path native-root "../native")
-
-(define (native-platform)
-  (native-rid (system-type 'os) (system-type 'arch)))
-
-(define (native-filename)
-  (native-library-name 'skia (system-type 'os)))
-
-;; Requiring or compiling the package does not load a native library.
-;; No network access occurs here. The explicit installer is separate.
-(define native-library
-  (delay/sync
-    (define override (getenv "RACKET_SKIA_LIBRARY"))
-    (define platform (native-platform))
-    (define candidates
-      (cond
-        [override (list (path->complete-path override))]
-        [platform
-         (list (build-path native-root platform (native-filename))
-               "libSkiaSharp")]
-        [else
-         (error 'skia
-                "unsupported automatic library selection for ~a/~a; set RACKET_SKIA_LIBRARY to a compatible library"
-                (system-type 'os) (system-type 'arch))]))
-    (define failures '())
-    (define found
-      (for/or ([candidate (in-list candidates)])
-        (with-handlers ([exn:fail?
-                         (lambda (e)
-                           (set! failures (cons (exn-message e) failures))
-                           #f)])
-          (define lib (ffi-lib candidate))
-          ;; Probe the version before calling functions with versioned structs.
-          (define milestone
-            ((get-ffi-obj "sk_version_get_milestone" lib (_fun -> _int))))
-          (unless (= milestone 119)
-            (error 'skia
-                   "incompatible native milestone ~a; this binding requires 119 (SkiaSharp ~a)"
-                   milestone native-package-version))
-          (cons lib candidate))))
-    (unless found
-      (error 'skia
-             (string-append
-              "could not load a compatible libSkiaSharp\n"
-              "  run: bash tools/install-native.sh\n"
-              "  Windows x64: powershell -File tools/install-native-windows.ps1\n"
-              "  Windows: check interpreter/DLL architecture and dependent DLLs; see docs/GPU-TESTING.md\n"
-              "  or set RACKET_SKIA_LIBRARY to the full library filename\n"
-              "  native package: ~a\n  loader errors: ~a")
-             native-package-version (reverse failures)))
-    found))
+         skia-check! skia-available? skia-native-version skia-native-library-path
+         skia-native-library-handle skia-native-capabilities skia-native-symbol-inventory)
 
 (define native-bindings '())
 (define-syntax-rule (define-native name signature)
@@ -682,11 +630,27 @@
 (define native-ready
   (delay/sync
     (force native-library)
+    (native-abi-check-layouts! (native-library-profile) (native-layout-sizes))
     (for ([entry (in-list (reverse native-bindings))])
       (force (cdr entry)))
     #t))
 
 (define (skia-check!) (force native-ready) (void))
+
+;; Optional registries share the exact checked handle, not a reopened filename.
+;; These functions are private plumbing except for the explicit diagnostic API.
+(define (skia-native-library-handle)
+  (skia-check!)
+  (car (force native-library)))
+(define (skia-native-capabilities)
+  (skia-check!)
+  (hash-set (hash-set (hash-set (native-library-report)
+                               'required_cpu_symbols_resolved #t)
+                     'racket_layouts_checked #t)
+            'required_cpu_symbol_count (length native-bindings)))
+(define (skia-native-symbol-inventory names)
+  (skia-check!)
+  (native-symbol-inventory names))
 (define (skia-available?)
   (with-handlers ([exn:fail? (lambda (_) #f)])
     (skia-check!) #t))

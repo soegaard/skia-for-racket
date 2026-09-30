@@ -1,12 +1,12 @@
 #lang racket/base
 (require ffi/unsafe racket/promise
-         (only-in "native.rkt" skia-native-library-path)
+         (only-in "native.rkt" skia-native-library-handle)
          "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-image-native-check! gpu-image-native-inventory)
 ;; Pinned m119 C shim; intentionally not added to the CPU-required symbol set.
 ;; None of these calls invokes application release callbacks. Construction is
 ;; synchronous and kept atomic with reference registration by new-gpu-owned.
-(define library (delay/sync (ffi-lib (skia-native-library-path))))
+(define library (delay/sync (skia-native-library-handle)))
 (define bindings '())
 (define-syntax-rule (define-image-native name native-name type)
   (begin

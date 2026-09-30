@@ -1,10 +1,10 @@
 #lang racket/base
 (require ffi/unsafe racket/promise racket/list
-         (only-in "native.rkt" skia-native-library-path) "types.rkt" "gpu-provider.rkt" "gpu-native-scope.rkt")
+         (only-in "native.rkt" skia-native-library-handle) "types.rkt" "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-native-check! gpu-native-inventory gpu-symbol-names)
 ;; Separate lazy group: the CPU native-bindings registry remains unchanged.
 ;; Loading this module does not dlopen GL, Metal, a GUI, or even libSkiaSharp.
-(define library (delay/sync (ffi-lib (skia-native-library-path))))
+(define library (delay/sync (skia-native-library-handle)))
 (define bindings '())
 (define-syntax-rule (define-gpu-native group name type)
   (begin

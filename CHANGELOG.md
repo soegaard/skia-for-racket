@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.47.0 — native ABI policy and isolated candidate investigation
+
+- Centralized the default Skia package pin and m119 ABI policy. One lazy loader
+  now supplies the exact checked library handle to CPU and optional GPU groups.
+- Added typed unsupported-ABI rejection, 26 Racket layout-size checks, and
+  explicit identity/symbol diagnostics that do not certify GPU availability.
+- Added a pinned 4.153.1 NuGet investigation with bounded fixed-member extraction,
+  subprocess isolation, actual export inventory, reviewed Graphite build-flag
+  queries and a required real-Racket negative loading test on Linux CI.
+- Documented the same-name path/path-builder semantic incompatibility and a
+  migration checklist. The default remains 3.119.1; no m153 renderer is enabled.
+- Added 30 pure and 10 live Racket source cases plus Python/C-fixture regressions;
+  retained existing installed-package, CPU, EGL and full GPU stress requirements.
+- Investigated Graphite's C API, recorder/recording ownership and async readback
+  boundary without implementing Graphite or Direct3D in this release.
+- Authoring fixture checks are not a new real-Skia/Racket/CI pass. See the
+  delivery validation record and NATIVE-ABI.md for the remaining host gates.
+
 ## 0.46.0 — GitHub Actions CI and portability matrix
 
 - Added required source, clean installed-package CPU, and Mesa EGL lanes with

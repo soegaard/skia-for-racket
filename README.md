@@ -1,4 +1,28 @@
-# Racket Skia — 0.46.0
+# Racket Skia — 0.47.0
+
+## Native ABI policy and isolated 4.x investigation
+
+The supported default remains **SkiaSharp 3.119.1**, native ABI **119.0**.
+A single lazy loader and explicit ABI profile now serve the CPU and optional
+Ganesh registries. The profile checks 64-bit Racket layout sizes before CPU
+preflight completes; every required CPU symbol is still resolved before object
+allocation. Optional GPU groups remain optional and share the same checked
+library handle. No version-check bypass or implicit backend fallback is added.
+
+`skia/native-capabilities` exposes explicit diagnostics without importing a GUI.
+The candidate tool investigates pinned **SkiaSharp 4.153.1** in a disposable
+process, inventories actual exports and requires the real Racket loader to reject
+the unsupported milestone. Same-name pointer signatures can still be incompatible:
+`sk_pathmeasure_get_segment` now requires a path builder, not a path.
+A successful investigation is not a candidate rendering or migration pass.
+
+See [native ABI API and validation](docs/NATIVE-ABI.md),
+[4.x compatibility and migration report](docs/NATIVE-MIGRATION-0.47.md), and
+[Graphite feasibility](docs/GRAPHITE-FEASIBILITY.md).
+The required Linux CPU lane adds the candidate rejection gate; all existing
+CPU, EGL, document, cache and stress gates remain. New 0.47 native results
+must be established by host/CI execution. The accepted baseline is
+`1cd0599a463c00aa50dcdef1a3f1114ca12cdf10`; earlier sections below are historical.
 
 ## CI and portability
 
