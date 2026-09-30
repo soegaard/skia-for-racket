@@ -323,22 +323,22 @@ class WorkflowAndIntegration(unittest.TestCase):
         uses = re.findall(r'^\s*- uses: (\S+)', s, re.M) + re.findall(r'^\s*uses: (\S+)', s, re.M)
         self.assertTrue(uses)
         for action in uses: self.assertRegex(action, r'^[\w.-]+/[\w.-]+@[0-9a-f]{40}$')
-        self.assertIn('contents: read', s); self.assertEqual(s.count('persist-credentials: false'), 4)
+        self.assertIn('contents: read', s); self.assertEqual(s.count('persist-credentials: false'), 5)
         uncommented = '\n'.join(l for l in s.splitlines() if not l.lstrip().startswith('#'))
         for bad in ('pull_request_target:', 'self-hosted', 'continue-on-error:', 'secrets.', 'xvfb-run', 'actions/cache'):
             self.assertNotIn(bad, uncommented)
     def test_required_aggregate_and_retained_artifacts(self):
         s = (HERE.parent / '.github/workflows/ci.yml').read_text()
-        self.assertIn('needs: [source, cpu, egl, d3d12]', s); self.assertIn('name: CI required\n    if: always()', s)
-        for group in ('SOURCE', 'CPU', 'EGL', 'D3D12'): self.assertIn(f'test "${group}_RESULT" = success', s)
-        self.assertEqual(s.count('if: always()'), 5); self.assertEqual(s.count('fail-fast: false'), 2)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]', s); self.assertIn('name: CI required\n    if: always()', s)
+        for group in ('SOURCE', 'CPU', 'EGL', 'D3D12', 'DXGI'): self.assertIn(f'test "${group}_RESULT" = success', s)
+        self.assertEqual(s.count('if: always()'), 6); self.assertEqual(s.count('fail-fast: false'), 2)
     def test_lf_and_python_ignore(self):
         self.assertIn('* text=auto eol=lf', (HERE.parent / '.gitattributes').read_text())
         self.assertIn('__pycache__/', (HERE.parent / '.gitignore').read_text())
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
-        self.assertIn('(define version "0.48")', text)
+        self.assertIn('(define version "0.49")', text)
         self.assertIn('(define deps \'(("base" #:version "8.7") "draw-lib" "gui-lib" "rackunit-lib"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):

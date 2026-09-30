@@ -1,8 +1,16 @@
 # GPU window presentation
 
+**0.49 adds explicit Windows x64 DXGI/D3D12 presentation.** The shared frame
+and presenter contract below also applies to `[backend 'direct3d]`. For its
+additional `adapter`, `adapter-index`, and `sync-interval` initialization
+arguments, buffer-reuse fence waits, occlusion, state transitions and required
+WARP tests, see [GPU-DXGI.md](GPU-DXGI.md). The historical no-CPU-wait statements
+below describe GL/Metal; D3D12 may wait for a reused buffer's prior fence, but
+normal frames perform no CPU pixel readback. `auto` selection is unchanged.
+
 Import `skia/gpu` for presenter/frame operations and `skia/gpu-gui` for the
 Racket GUI widgets. Import `skia` for ordinary drawing. The drawing callback
-is the same on OpenGL and Metal; it receives a borrowed frame, not a native
+is the same on OpenGL, Metal and Direct3D; it receives a borrowed frame, not a native
 framebuffer, closeable surface, drawable, command buffer, or texture pointer.
 
 The GUI module initializes `racket/gui/base` and therefore requires a usable

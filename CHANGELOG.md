@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.49.0 — DXGI / D3D12 window presentation
+
+- Added an explicit Windows x64 Direct3D presenter to the existing GPU GUI and
+  frame API. Hardware/WARP selection and sync interval are explicit; `auto`
+  and OpenGL/Metal behavior remain unchanged.
+- Added two-buffer flip-discard swap chains, exact-queue submission, explicit
+  PRESENT transitions, per-buffer allocator/fence reuse, bounded waits, resize
+  retirement, owner-thread cleanup and failure quarantine. Public frames expose
+  only a borrowed draw-only canvas, never a closeable/native back buffer.
+- Counted DXGI occlusion as a skip rather than a successful present. Added
+  cancellation cleanup for exceptions, unbalanced layers, resize and close.
+- Added 34 pure Racket cases and a required installed-package Windows DXGI/WARP
+  lane with SDK layout/GUID/vtable checks, all 28 shared presenter native cases,
+  six contexts/windows, 1,080 normal stress frames and 18 actual back-buffer
+  captures checked against an independent asymmetric pixel oracle.
+- Kept the existing offscreen WARP, CPU, EGL, ABI-candidate and SIGKILL fixture
+  checks. No native dependency migration, screen certification, hardware
+  performance claim, external D3D resource borrowing, HDR or fullscreen mode.
+- Host C mirrors and synthetic Python tests are not Windows/Racket execution;
+  accept this stage only after the new required DXGI lane actually passes.
+
 ## 0.48.0 — Direct3D 12 offscreen and required Windows WARP CI
 
 - Added explicit Windows x64 D3D12 hardware/WARP selection with owned COM

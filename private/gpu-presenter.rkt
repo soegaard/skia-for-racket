@@ -137,7 +137,7 @@
 (define (make-presenter adapter render on-error)
   (unless (presentation-adapter? adapter)
     (raise-argument-error 'make-presenter "private presentation adapter" adapter))
-  (unless (memq (presentation-adapter-backend adapter) '(opengl metal))
+  (unless (memq (presentation-adapter-backend adapter) '(opengl metal direct3d))
     (error 'make-presenter "unsupported backend"))
   (procedure! 'make-presenter render 1) (procedure! 'make-presenter on-error 1)
   (for ([proc (in-list (list (presentation-adapter-measure adapter)
@@ -308,9 +308,15 @@
                           (set-gpu-presenter-dirty?! p #t)
                           (cancel!)]
                          [else
-                          (present!)
-                          (set! result 'present-requested)
-                          (set-gpu-presenter-presented! p (add1 (gpu-presenter-presented p)))])
+                          ;; DXGI can finish a submitted frame but report occlusion.
+                          ;; Do not count that status as successful presentation.
+                          ;; Existing GL/Metal adapters return void, as before.
+                          (define outcome (present!))
+                          (cond
+                            [(eq? outcome 'occluded) (set! result 'skipped)]
+                            [else
+                             (set! result 'present-requested)
+                             (set-gpu-presenter-presented! p (add1 (gpu-presenter-presented p)))])])
                        (set-gpu-presenter-last! p (hash-set info 'result (symbol->string result))))
                      (lambda ()
                        (set-gpu-frame-live?! f #f)

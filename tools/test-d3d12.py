@@ -252,7 +252,7 @@ class Integration(unittest.TestCase):
     """Must run in the complete checkout/installed package; no partial-tree skips."""
     def test_required_job_and_aggregate(self):
         workflow = (HERE.parent / '.github/workflows/ci.yml').read_text()
-        self.assertIn('needs: [source, cpu, egl, d3d12]', workflow)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]', workflow)
         self.assertIn('D3D12_RESULT: ${{ needs.d3d12.result }}', workflow)
         self.assertIn('test "$D3D12_RESULT" = success', workflow)
         self.assertIn('run: python tools/ci-d3d12.py', workflow)

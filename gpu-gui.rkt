@@ -3,15 +3,18 @@
 (require racket/class racket/gui/base racket/runtime-path racket/future
          (only-in racket/draw gl-config%)
          "gpu.rkt" "private/gpu-provider.rkt"
+         "private/gpu-dxgi-util.rkt"
+         (only-in "private/gpu-d3d12-util.rkt" d3d12-selection!)
          (submod "private/gpu-presenter.rkt" adapter-internals))
 (provide gpu-canvas% gpu-window%)
 (define-runtime-path gl-adapter "private/gpu-presenter-gl.rkt")
 (define-runtime-path metal-adapter "private/gpu-presenter-metal.rkt")
+(define-runtime-path d3d12-adapter "private/gpu-presenter-d3d12.rkt")
 (define (backend-choice requested)
   (case requested
     [(auto) (if (eq? (system-type 'os) 'macosx) 'metal 'opengl)]
-    [(opengl metal) requested]
-    [else (raise-argument-error 'gpu-canvas% "'auto, 'opengl, or 'metal" requested)]))
+    [(opengl metal direct3d) requested]
+    [else (raise-argument-error 'gpu-canvas% "'auto, 'opengl, 'metal, or 'direct3d" requested)]))
 (define (handler! who space)
   (unless (and (eq? (current-thread) (eventspace-handler-thread space)) (not (current-future)))
     (error who "create/use GPU widgets on their eventspace handler thread (queue-callback)")))
@@ -32,11 +35,22 @@
   timer)
 (define gpu-canvas%
   (class canvas%
-    (init parent [backend 'auto] [render void] [on-error raise] [background 'white] [automatic? #t]
+    (init parent [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f] [render void] [on-error raise] [background 'white] [automatic? #t]
           [min-width 1] [min-height 1])
     (define space (current-eventspace))
     (handler! 'gpu-canvas% space)
     (define chosen (backend-choice backend))
+    (when (and (eq? chosen 'direct3d) (not (and (eq? (system-type 'os) 'windows)
+                                                          (eq? (system-type 'arch) 'x86_64))))
+      (gpu-unavailable 'd3d12-presentation-platform "DXGI GPU windows require Windows x64"))
+    (when (and (or adapter adapter-index sync-interval) (not (eq? chosen 'direct3d)))
+      (raise-arguments-error 'gpu-canvas% "adapter/index/sync-interval options require explicit 'direct3d"))
+    (define adapter-value (or adapter 'hardware))
+    (define adapter-index-value (or adapter-index 0))
+    (define sync-value (or sync-interval 1))
+    (when (eq? chosen 'direct3d)
+      (d3d12-selection! adapter-value adapter-index-value)
+      (dxgi-sync-interval! sync-value))
     (when (and (eq? chosen 'metal) (not (eq? (system-type 'os) 'macosx)))
       (gpu-unavailable 'metal-presentation-platform "Metal GPU windows require macOS"))
     (unless (and (procedure? render) (procedure-arity-includes? render 1))
@@ -77,6 +91,14 @@
       (presentation-metrics pw ph lw lh
         #:visible? (and (visible-to-root? canvas)
                         (or (not (is-a? top frame%)) (not (send top is-iconized?))))))
+    (define (measure-client)
+      (define canvas (live-canvas))
+      (define-values (pw ph) (send canvas get-scaled-client-size))
+      (define-values (lw lh) (send canvas get-client-size))
+      (define top (send canvas get-top-level-window))
+      (presentation-metrics pw ph lw lh
+        #:visible? (and (visible-to-root? canvas)
+                        (or (not (is-a? top frame%)) (not (send top is-iconized?))))))
     (define/public (get-gpu-presenter)
       (handler! 'get-gpu-presenter space)
       (when closed? (error 'get-gpu-presenter "GPU canvas is closed"))
@@ -91,6 +113,10 @@
             [(opengl)
              ((dynamic-require gl-adapter 'make-gl-presentation-adapter)
               (send (send this get-dc) get-gl-context) measure-gl post background-value)]
+            [(direct3d)
+             ((dynamic-require d3d12-adapter 'make-d3d12-presentation-adapter)
+              (send this get-client-handle) measure-client post background-value
+              adapter-value adapter-index-value sync-value)]
             [(metal)
              ((dynamic-require metal-adapter 'make-metal-presentation-adapter)
               (send this get-client-handle) post background-value)])))
@@ -161,10 +187,12 @@
 (define gpu-window%
   (class frame%
     (init [label "Skia GPU"] [width 640] [height 480]
-          [backend 'auto] [render void] [on-error raise] [background 'white] [automatic? #t])
+          [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f]
+          [render void] [on-error raise] [background 'white] [automatic? #t])
     (super-new [label label] [width width] [height height])
     (define canvas
-      (new gpu-canvas% [parent this] [backend backend] [render render]
+      (new gpu-canvas% [parent this] [backend backend] [adapter adapter]
+           [adapter-index adapter-index] [sync-interval sync-interval] [render render]
            [on-error on-error] [background background] [automatic? automatic?]))
     (define/public (get-gpu-canvas) canvas)
     (define/public (get-gpu-presenter) (send canvas get-gpu-presenter))

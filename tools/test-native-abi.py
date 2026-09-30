@@ -226,7 +226,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn("'--candidate', '--racket', racket", source)
         self.assertIn("report['checks']['candidate_abi_rejection'] = True", source)
         workflow = (abi.ROOT / '.github/workflows/ci.yml').read_text()
-        self.assertIn('needs: [source, cpu, egl, d3d12]', workflow)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]', workflow)
         self.assertNotIn('continue-on-error', workflow)
     def test_default_pin_single_runtime_source(self):
         self.assertIn('native-default-version.txt', (abi.ROOT / 'tools/install-native.sh').read_text())

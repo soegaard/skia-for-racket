@@ -27,7 +27,12 @@
     (define info (gpu-presenter-info p))
     (define adapter (hash-ref info 'adapter))
     (define context (hash-ref adapter 'context))
-    (check-equal? (hash-ref context 'live_children) 0)
+    ;; DXGI pins its owning context until presenter close. This is a deliberate
+    ;; host resource, not a leaked per-frame surface or back-buffer wrapper.
+    (define expected-hosts
+      (if (and (eq? backend 'direct3d) (not (equal? (hash-ref context 'state) "closed"))) 1 0))
+    (check-equal? (hash-ref adapter 'presentation_context_children 0) expected-hosts)
+    (check-equal? (hash-ref context 'live_children) expected-hosts)
     (check-equal? (hash-ref context 'pending_releases) 0)
     (check-equal? (hash-ref context 'failed_releases) 0)
     (check-equal? (hash-ref adapter 'live_drawables) 0))

@@ -6,7 +6,9 @@
          (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-owned-d3d12-components)
-(define (make-owned-d3d12-components selection index)
+(define (make-owned-d3d12-components selection index #:receive-handles [receive void])
+  (unless (and (procedure? receive) (procedure-arity-includes? receive 3))
+    (raise-argument-error 'make-owned-d3d12-components "three-argument private handle receiver" receive))
   (d3d12-selection! selection index)
   (define platform (load-d3d12-platform))
   (gpu-native-check! 'direct3d)
@@ -14,8 +16,13 @@
    platform
    (d3d12-context-ops
     (lambda (adapter device queue)
-      (gr_direct_context_make_direct3d
-       (make-gr-d3d-backend-context adapter device queue #f #f)))
+      (define context (gr_direct_context_make_direct3d
+                        (make-gr-d3d-backend-context adapter device queue #f #f)))
+      (when context
+        (with-handlers ([(lambda (_) #t)
+                         (lambda (e) (gr_recording_context_unref context) (raise e))])
+          (receive adapter device queue)))
+      context)
     gr_recording_context_unref gr_direct_context_abandon_context gr_direct_context_is_abandoned
     (lambda (p)
       (flush/native p)

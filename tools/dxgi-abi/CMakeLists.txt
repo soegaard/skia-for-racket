@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.16)
+project(skia_dxgi_abi LANGUAGES C CXX)
+enable_testing()
+if(WIN32)
+  add_executable(check-dxgi check.c guid.cpp)
+  target_compile_features(check-dxgi PRIVATE c_std_11 cxx_std_11)
+  if(MSVC)
+    target_compile_options(check-dxgi PRIVATE /W4)
+  endif()
+  add_test(NAME dxgi-sdk-layouts-and-guids COMMAND check-dxgi)
+else()
+  # Authoring aid only. execute() rejects non-Windows identities, and requires
+  # the SDK executable/report, so this target cannot satisfy the WARP CI gate.
+  add_executable(dxgi-layout-mirror mirror.c)
+  target_compile_features(dxgi-layout-mirror PRIVATE c_std_11)
+  target_compile_options(dxgi-layout-mirror PRIVATE -Wall -Wextra -pedantic)
+  add_test(NAME dxgi-host-layout-mirror COMMAND dxgi-layout-mirror)
+endif()

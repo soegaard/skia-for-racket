@@ -2,6 +2,8 @@
 (require ffi/unsafe racket/promise racket/list
          "gpu-provider.rkt" "gpu-d3d12-types.rkt" "gpu-d3d12-util.rkt")
 (provide load-d3d12-platform)
+(module* dxgi-internals #f
+  (provide method release raw hresult! out-interface))
 
 ;; Windows x64 has one calling convention for these C/COM calls. 32-bit and
 ;; ARM64 hosts are rejected BEFORE either DLL is loaded or a vtable is read.

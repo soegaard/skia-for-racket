@@ -1,4 +1,21 @@
-# Portability and evidence — 0.48
+# Portability and evidence — 0.49
+
+## New required DXGI presentation lane
+
+0.49 adds `Required DXGI presentation / D3D12 WARP` on `windows-2022`.
+It runs the complete isolated Windows CPU/package path, Windows SDK and Racket
+layout checks, the 28 shared presenter cases and actual swap-chain readback,
+rotation, resize and stress tests. The `dxgi` job is an additional dependency
+of `CI required`; it does not replace the offscreen `d3d12` job.
+
+The accepted 0.48 starting point is commit
+`b24dc1c2ea6c5dd6d763ff6a6794e7bf87fe8a4e`, CI run `36715835971`.
+0.49 acceptance remains pending until its own required Windows run passes.
+A usable desktop is required; lack of one fails this lane rather than silently
+skipping it. Buffer pixels and successful Present calls do not certify screen
+pixels or hardware acceleration. See [DXGI contracts](GPU-DXGI.md).
+
+The following records the retained offscreen/CPU/EGL scope and earlier evidence.
 
 ## New required D3D12 lane
 
@@ -10,7 +27,7 @@ CPU or either Linux EGL lane. Its adapter is explicitly Microsoft WARP.
 
 The accepted starting point is 0.47 commit
 `00661e2485daaf7d1f015baa4e06e287b121c20c` (CI run `36704037723`). New D3D12
-acceptance remains pending until its required job actually passes. A WARP pass
+acceptance was established by run `36715835971` at the 0.48 baseline above. A WARP pass
 establishes software functionality, not hardware acceleration, performance or
 physical display output. See [D3D12 contracts and reproduction](GPU-D3D12.md).
 

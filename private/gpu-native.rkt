@@ -1,5 +1,5 @@
 #lang racket/base
-(require ffi/unsafe racket/promise racket/list "gpu-d3d12-types.rkt"
+(require ffi/unsafe racket/promise racket/list "gpu-d3d12-types.rkt" "gpu-dxgi-types.rkt"
          (only-in "native.rkt" skia-native-library-handle) "types.rkt" "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-native-check! gpu-native-inventory gpu-symbol-names)
 ;; Separate lazy group: the CPU native-bindings registry remains unchanged.
@@ -56,9 +56,22 @@
 (define-gpu-native probe sk_paint_set_color (_fun _pointer _uint32 -> _void))
 (define-gpu-native probe sk_paint_set_antialias (_fun _pointer _stdbool -> _void))
 
+;; 0.49 optional DXGI group: offscreen Direct3D does not require these.
+(define-gpu-native dxgi gr_backendrendertarget_new_direct3d
+  (_fun _int _int _gr-d3d-texture-info-pointer -> _pointer))
+(define-gpu-native dxgi gr_backendrendertarget_delete (_fun _pointer -> _void))
+(define-gpu-native dxgi gr_backendrendertarget_is_valid (_fun _pointer -> _stdbool))
+(define-gpu-native dxgi gr_backendrendertarget_get_backend (_fun _pointer -> _int))
+(define-gpu-native dxgi gr_backendrendertarget_get_samples (_fun _pointer -> _int))
+(define-gpu-native dxgi gr_backendrendertarget_get_width (_fun _pointer -> _int))
+(define-gpu-native dxgi gr_backendrendertarget_get_height (_fun _pointer -> _int))
+(define-gpu-native dxgi sk_surface_new_backend_render_target
+  (_fun _pointer _pointer _int _int _pointer _pointer -> _pointer))
+(define-gpu-native dxgi gr_direct_context_free_gpu_resources (_fun _pointer -> _void))
+
 (define (selected backend)
-  (unless (memq backend '(opengl metal direct3d))
-    (raise-argument-error 'gpu-native-inventory "'opengl, 'metal, or 'direct3d" backend))
+  (unless (memq backend '(opengl metal direct3d dxgi))
+    (raise-argument-error 'gpu-native-inventory "'opengl, 'metal, 'direct3d, or private 'dxgi group" backend))
   (filter (lambda (entry) (memq (car entry) (list 'common 'probe backend)))
           (reverse bindings)))
 (define (gpu-symbol-names backend) (map cadr (selected backend)))

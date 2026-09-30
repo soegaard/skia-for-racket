@@ -1,4 +1,26 @@
-# Racket Skia — 0.48.0
+# Racket Skia — 0.49.0
+
+## DXGI / Direct3D 12 window presentation
+
+On Windows x64, `skia/gpu-gui` now accepts `[backend 'direct3d]` with
+`[adapter 'hardware]` (default) or explicit `[adapter 'warp]`, an optional
+hardware `[adapter-index 0]`, and `[sync-interval 1]` (0 or 1). The same
+`gpu-window%`, `gpu-canvas%`, presenter and scoped-frame API is used. `auto`
+selection is unchanged: Metal on macOS, OpenGL elsewhere. No fallback occurs.
+
+The presenter owns a two-buffer flip-discard swap chain on Ganesh's exact
+command queue. Per-buffer fences protect reuse; resize/close retire queued
+work and every direct/indirect back-buffer reference. Normal frames do not
+read back pixels, but buffer-reuse fence waits can block when work is pending.
+Occlusion is a skip, not a successfully presented frame.
+
+A separate required Windows WARP/DXGI lane runs the 28 shared presenter tests,
+then six coexisting-pair contexts, 1,080 stress frames, two resizes per window,
+and 18 independently checked swap-chain captures encoded after teardown.
+This validates buffer contents and presentation submission, not physical
+screen pixels or hardware performance. The 0.48 offscreen WARP gate remains.
+
+See [DXGI API, state protocol and validation](docs/GPU-DXGI.md).
 
 ## Direct3D 12 offscreen rendering and required WARP validation
 
@@ -14,7 +36,7 @@ Racket call ABI, then runs all 33 surface, 42 image and 20 cache source cases.
 Three recreate cycles exercise 540 retained-image frames and verify nine PNGs
 against an independent asymmetric pixel reference. Failure is never a skip.
 
-This is software D3D12/Ganesh correctness coverage, not hardware acceleration,
+The offscreen lane supplies software D3D12/Ganesh correctness coverage, not hardware acceleration,
 physical display pixels, a benchmark, or DXGI swap-chain presentation. The
 native pin remains SkiaSharp 3.119.1. The existing CI matrix and desktop GPU
 validators remain required and unchanged in scope. Configuration is not a
