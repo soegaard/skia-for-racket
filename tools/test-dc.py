@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+"""DC oracle/PNG/runner tests. Synthetic fixtures never count as native execution."""
+from __future__ import annotations
+import copy
+import importlib.util
+import io
+import json
+import os
+from pathlib import Path
+import re
+import struct
+import subprocess
+import sys
+import tempfile
+import unittest
+from contextlib import redirect_stdout, redirect_stderr
+from unittest.mock import patch
+import zlib
+import dc_validation as d
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+spec = importlib.util.spec_from_file_location('validate_dc', HERE/'validate-dc.py')
+v = importlib.util.module_from_spec(spec); spec.loader.exec_module(v)
+
+
+def chunk(kind, payload):
+    return struct.pack('>I', len(payload)) + kind + payload + struct.pack('>I', zlib.crc32(kind+payload) & 0xffffffff)
+
+
+def png(width, height, pixels, *, channels=4, filter_type=0, compression_tail=b''):
+    raw = bytearray(); previous = bytes(width*channels)
+    def paeth(a, b, c):
+        p = a+b-c; ds = abs(p-a), abs(p-b), abs(p-c)
+        return (a, b, c)[ds.index(min(ds))]
+    for y in range(height):
+        row = pixels[y*width*4:(y+1)*width*4]
+        if channels == 3:
+            row = b''.join(row[x:x+3] for x in range(0, len(row), 4))
+        raw.append(filter_type)
+        for i, value in enumerate(row):
+            a = row[i-channels] if i >= channels else 0
+            b = previous[i]; c = previous[i-channels] if i >= channels else 0
+            predictor = (0, a, b, (a+b)//2, paeth(a, b, c))[filter_type]
+            raw.append((value-predictor) & 255)
+        previous = row
+    return (d.PNG_MAGIC + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6 if channels == 4 else 2, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress(bytes(raw)) + compression_tail) + chunk(b'IEND', b''))
+
+
+def report(directory):
+    return dict(schema=1, stage='0.53', status='passed', validation_run=directory.name,
+                storage='persistent-cpu-raster', native_package='3.119.1', native_version='119.0',
+                pure_cases=60, pure_failures=0, native_cases=31, native_failures=0,
+                gpu_execution_verified=False, gui_initialized=False, full_drop_in_compatibility=False,
+                universal_pixel_identity_claimed=False, demo_pixel_equivalence_verified=False,
+                snapshots_encoded_after_dc_close=True, os='unix', architecture='x86_64', racket_version='9.3',
+                oracle='dc-oracle.png', skia_demo='dc-primitives.skia.png', reference_demo='dc-primitives.racket.png')
+
+
+def evidence(directory):
+    d.write_json(directory/'dc.diagnostic.json', report(directory))
+    (directory/'dc-oracle.png').write_bytes(png(48, 40, d.oracle_rgba()))
+    samples = b''.join(bytes((i%256, (i*3)%256, (i*7)%256, 255)) for i in range(460*320))
+    image = png(460, 320, samples)
+    for name in ('dc-primitives.skia.png', 'dc-primitives.racket.png'):
+        (directory/name).write_bytes(image)
+
+
+class PNG(unittest.TestCase):
+    def read(self, data, size=(48, 40)):
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t)/'image.png'; path.write_bytes(data)
+            return d.png_rgba(path, size)
+    def test_rgba_round_trip(self):
+        self.assertEqual(self.read(png(48, 40, d.oracle_rgba())), d.oracle_rgba())
+    def test_all_row_filters(self):
+        for f in range(5):
+            with self.subTest(filter=f):
+                self.assertEqual(self.read(png(48, 40, d.oracle_rgba(), filter_type=f)), d.oracle_rgba())
+    def test_rgb(self):
+        pixels = bytes((10, 20, 30, 255))*8
+        for f in range(5):
+            self.assertEqual(self.read(png(4, 2, pixels, channels=3, filter_type=f), (4, 2)), pixels)
+    def test_crc(self):
+        data = bytearray(png(48, 40, d.oracle_rgba())); data[29] ^= 1
+        with self.assertRaisesRegex(ValueError, 'CRC'): self.read(bytes(data))
+    def test_truncated(self):
+        with self.assertRaises(ValueError): self.read(png(48, 40, d.oracle_rgba())[:-5])
+    def test_trailing(self):
+        with self.assertRaisesRegex(ValueError, 'trailing'): self.read(png(48, 40, d.oracle_rgba())+b'x')
+    def test_size(self):
+        with self.assertRaisesRegex(ValueError, 'dimensions'): self.read(png(48, 40, d.oracle_rgba()), (48, 41))
+    def test_compressed_tail(self):
+        with self.assertRaises(ValueError): self.read(png(48, 40, d.oracle_rgba(), compression_tail=b'extra'))
+    def test_header_must_be_first(self):
+        data = png(48, 40, d.oracle_rgba())
+        with self.assertRaisesRegex(ValueError, 'first'): self.read(d.PNG_MAGIC + chunk(b'tEXt', b'x') + data[8:])
+    def test_duplicate_header(self):
+        data = png(48, 40, d.oracle_rgba())
+        with self.assertRaisesRegex(ValueError, 'duplicate'): self.read(data[:33]+data[8:])
+    def test_unknown_critical_chunk(self):
+        data = png(48, 40, d.oracle_rgba())
+        with self.assertRaisesRegex(ValueError, 'critical'): self.read(data[:33]+chunk(b'ABCD', b'x')+data[33:])
+    def test_missing_end(self):
+        with self.assertRaises(ValueError): self.read(png(48, 40, d.oracle_rgba())[:-12])
+    def test_more_pixels_than_header(self):
+        original = png(48, 41, d.oracle_rgba()+bytes(48*4))
+        data = original[:8]+chunk(b'IHDR', struct.pack('>IIBBBBB',48,40,8,6,0,0,0))+original[33:]
+        with self.assertRaises(ValueError): self.read(data)
+    def test_oracle_asymmetric(self):
+        data=d.oracle_rgba()
+        self.assertEqual(data[:4], bytes((255,0,0,255)))
+        self.assertEqual(data[24*4:25*4], bytes((0,200,0,255)))
+        self.assertEqual(data[(10*48+8)*4:(10*48+9)*4], bytes((120,30,200,255)))
+        self.assertEqual(data[(30*48+36)*4:(30*48+37)*4], bytes(4))
+
+
+class Inspector(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.directory = Path(self.temp.name)/'dc-test'; self.directory.mkdir(); evidence(self.directory)
+    def mutate(self, key, value):
+        raw=report(self.directory); raw[key]=value; d.write_json(self.directory/'dc.diagnostic.json',raw)
+        with self.assertRaises(ValueError): d.inspect_directory(self.directory)
+    def test_valid(self):
+        out=d.inspect_directory(self.directory); self.assertTrue(out['exact_oracle_pixels_verified'])
+        self.assertFalse(out['demo_pixel_equivalence_verified']); self.assertEqual(len(out['captures']),3)
+    def test_failed(self): self.mutate('status','failed')
+    def test_bool_schema(self): self.mutate('schema',True)
+    def test_wrong_stage(self): self.mutate('stage','0.52')
+    def test_foreign_run(self): self.mutate('validation_run','another')
+    def test_gpu_backing(self): self.mutate('storage','metal')
+    def test_native_pin(self): self.mutate('native_package','4.0.0')
+    def test_native_version(self): self.mutate('native_version','153.0')
+    def test_pure_count(self): self.mutate('pure_cases',59)
+    def test_native_count(self): self.mutate('native_cases',30)
+    def test_bool_failure(self): self.mutate('native_failures',False)
+    def test_pure_failure(self): self.mutate('pure_failures',1)
+    def test_early_encoding(self): self.mutate('snapshots_encoded_after_dc_close',False)
+    def test_bad_os(self): self.mutate('os','unknown')
+    def test_empty_version(self): self.mutate('racket_version','')
+    def test_missing_file(self):
+        (self.directory/'dc-oracle.png').unlink()
+        with self.assertRaises(ValueError): d.inspect_directory(self.directory)
+    def test_unsafe_path(self): self.mutate('oracle','../dc-oracle.png')
+    def test_foreign_interpreter(self):
+        with self.assertRaisesRegex(ValueError,'interpreter'):
+            d.inspect_directory(self.directory, identity=dict(os='unix',architecture='x86_64',version='8.7'))
+    def test_both_images_wrong_still_fails(self):
+        wrong=png(48,40,bytes((255,255,255,255))*48*40)
+        (self.directory/'dc-oracle.png').write_bytes(wrong)
+        with self.assertRaisesRegex(ValueError,'oracle'): d.inspect_directory(self.directory)
+    def test_blank_demo(self):
+        (self.directory/'dc-primitives.skia.png').write_bytes(png(460,320,bytes(460*320*4)))
+        with self.assertRaisesRegex(ValueError,'blank'): d.inspect_directory(self.directory)
+    def test_duplicate_keys(self):
+        p=self.directory/'dc.diagnostic.json'; p.write_text('{"status":"failed","status":"passed"}')
+        with self.assertRaisesRegex(ValueError,'duplicate'): d.inspect_directory(self.directory)
+    def test_nonfinite(self):
+        p=self.directory/'dc.diagnostic.json'; p.write_text('{"schema":NaN}')
+        with self.assertRaisesRegex(ValueError,'nonfinite'): d.inspect_directory(self.directory)
+    def test_review_disclaims_equality(self):
+        d.write_review(self.directory,d.inspect_directory(self.directory))
+        self.assertIn('not certified',(self.directory/'dc.review.html').read_text())
+    def test_failed_review_refused(self):
+        with self.assertRaises(ValueError): d.write_review(self.directory,dict(status='failed'))
+
+
+def claim_test(name):
+    return lambda self: self.mutate(name,True)
+for name in ('gpu_execution_verified','gui_initialized','full_drop_in_compatibility',
+             'universal_pixel_identity_claimed','demo_pixel_equivalence_verified'):
+    setattr(Inspector,'test_false_claim_'+name,claim_test(name))
+
+
+class Orchestration(unittest.TestCase):
+    def simulate(self, fail=None, mutate=False, manifest_only=False):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)/'source'; root.mkdir(); directory=Path(t)/'evidence'; directory.mkdir()
+            for name in d.SOURCE_PATHS:
+                p=root/name; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('; synthetic source\n')
+            (root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest checked by injected command')
+            calls=[]
+            class Fake:
+                def run(self, argv, *, cwd):
+                    a=list(map(str,argv)); calls.append(a)
+                    if fail and any(fail in x for x in a): raise RuntimeError('injected command failure')
+                    if a[1].endswith('ci-identity.rkt'):
+                        return json.dumps(dict(os='unix',architecture='x86_64',version='9.3',pointer_bytes=8,vm='chez-scheme'))
+                    if a[1].endswith('dc-doctor.rkt'):
+                        evidence(directory)
+                        if mutate: (root/'dc.rkt').write_text('; changed by test')
+                    return ''
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                result=v.execute(root,directory,'/selected/racket',manifest_only=manifest_only,runner=Fake())
+            path=directory/('validation.json' if result==0 else 'validation.failed.json')
+            return result,calls,d.read_json(path),sorted(x.name for x in directory.iterdir())
+    def test_order_and_identity(self):
+        code,calls,raw,names=self.simulate(); self.assertEqual(code,0)
+        self.assertIn('--check',calls[0]); self.assertIn('--check',calls[-1])
+        self.assertEqual(calls[2][0],'/selected/racket'); self.assertIn('make',calls[2])
+        self.assertTrue(raw['checks']['native_dc_and_pixels']); self.assertIn('dc.review.html',names)
+    def test_manifest_only_installation(self):
+        code,calls,raw,names=self.simulate(manifest_only=True)
+        self.assertEqual(code,0); self.assertIn('--manifest-only',calls[0]); self.assertIn('--manifest-only',calls[-1])
+    def test_compile_failure(self):
+        code,_,raw,names=self.simulate(fail='make'); self.assertEqual(code,1)
+        self.assertNotIn('native_dc_and_pixels',raw['checks']); self.assertNotIn('validation.json',names)
+    def test_native_failure(self):
+        code,_,raw,names=self.simulate(fail='dc-doctor.rkt'); self.assertEqual(code,1)
+        self.assertNotIn('dc.inspection.json',names)
+    def test_identity_failure(self): self.assertEqual(self.simulate(fail='ci-identity.rkt')[0],1)
+    def test_manifest_failure(self): self.assertEqual(self.simulate(fail='update-source-sums.py')[0],1)
+    def test_source_mutation(self):
+        code,_,raw,names=self.simulate(mutate=True); self.assertEqual(code,1)
+        self.assertIn('source changed',raw['error']); self.assertNotIn('dc.inspection.json',names)
+    def test_pointer_bool_identity(self):
+        self.assertFalse(v.exact_identity(dict(os='unix',architecture='x86_64',version='9.3',pointer_bytes=True,vm='chez-scheme')))
+    def test_unknown_vm(self):
+        self.assertFalse(v.exact_identity(dict(os='unix',architecture='x86_64',version='9.3',pointer_bytes=8,vm='racket')))
+    def test_existing_evidence_refused(self):
+        with tempfile.TemporaryDirectory() as t, patch.object(v.shutil,'which',return_value='/selected/racket'):
+            with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit): v.main(['--output',t])
+    def test_command_failure_retains_log(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t); runner=v.Runner(root)
+            with redirect_stdout(io.StringIO()), self.assertRaises(RuntimeError):
+                runner.run([sys.executable,'-c','print("before failure");raise SystemExit(7)'],cwd=root)
+            self.assertIn('before failure',(root/'logs/001.log').read_text())
+            self.assertEqual(d.read_json(root/'commands.json')[0]['returncode'],7)
+    def test_command_timeout_retains_log(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t); runner=v.Runner(root,timeout=0.1)
+            with redirect_stdout(io.StringIO()), self.assertRaises(RuntimeError):
+                runner.run([sys.executable,'-c','import time;print("started",flush=True);time.sleep(5)'],cwd=root)
+            self.assertTrue(d.read_json(root/'commands.json')[0]['timed_out'])
+
+
+class Source(unittest.TestCase):
+    def test_counts_match_racket_sources(self):
+        for kind,count in [('pure',d.PURE_CASES),('native',d.NATIVE_CASES)]:
+            text=(ROOT/f'tests/dc-{kind}-test.rkt').read_text()
+            self.assertEqual(len(re.findall(r'\(test-case\s',text)),count)
+            self.assertIn(f'(define dc-{kind}-test-count {count})',text)
+    def test_public_opt_in(self):
+        text=(ROOT/'dc.rkt').read_text(); self.assertIn('skia-dc%',text); self.assertIn('exn:fail:skia-dc:unsupported',text)
+    def test_no_private_draw_dependency(self):
+        for name in ('dc.rkt','private/dc-class.rkt','private/dc-render.rkt','private/dc-geometry.rkt'):
+            text=(ROOT/name).read_text()
+            self.assertNotIn('racket/draw/private/',text); self.assertNotIn('unsafe/cairo',text)
+            self.assertNotIn('racket/gui/base',text)
+    def test_only_skia_renderer_in_public_module(self):
+        text=(ROOT/'dc.rkt').read_text(); self.assertIn('(make-skia-dc-class skia-dc-renderer)',text)
+    def test_alpha_default_override(self):
+        text=(ROOT/'private/dc-class.rkt').read_text()
+        marker='(class* implementation% (rd:dc<%>)'
+        self.assertIn(marker,text)
+        base,final=text.split(marker,1)
+        # dc<%> itself supplies defaults for start-alpha/end-alpha. The
+        # interface may be attached only after the interface-free superclass;
+        # defining either method in that superclass causes a class* conflict.
+        self.assertNotIn('(define/public (start-alpha',base)
+        self.assertNotIn('(define/public (end-alpha',base)
+        self.assertIn('(define/override (start-alpha a)',final)
+        self.assertIn('(define/override (end-alpha)',final)
+    def test_interface_probe_uses_public_membership(self):
+        text=(ROOT/'tests/dc-pure-test.rkt').read_text()
+        self.assertIn('(check-true (is-a? dc rd:dc<%>))',text)
+        self.assertNotIn('(object-interface dc)',text)
+    def test_record_dc_private_replay_is_deferred(self):
+        native=(ROOT/'tests/dc-native-test.rkt').read_text()
+        docs=(ROOT/'docs/SKIA-DC.md').read_text()
+        self.assertNotIn('rd:record-dc%',native)
+        self.assertIn('public drawing procedure can replay into a Skia dc',native)
+        for term in ('record-dc%', 'do-set-pen!', 'do-set-brush!', '0.55'):
+            self.assertIn(term,docs)
+    def test_direct_public_path_conversion(self):
+        text=(ROOT/'private/dc-geometry.rkt').read_text(); self.assertIn('(send path get-datum)',text)
+    def test_native_oracle_not_pairwise_only(self):
+        text=(HERE/'dc_validation.py').read_text(); self.assertIn('pixels == oracle_rgba()',text)
+    def test_doctor_encoding_after_close(self):
+        text=(HERE/'dc-doctor.rkt').read_text()
+        self.assertLess(text.index('(send dc close)'),text.index('(sk:image->png-bytes im)'))
+    def test_python_syntax(self):
+        for name in ('dc_validation.py','validate-dc.py','test-dc.py'):
+            compile((HERE/name).read_text(),name,'exec')
+
+
+class Integration(unittest.TestCase):
+    """These checks intentionally require a COMPLETE applied checkout."""
+    def test_racket_suites_in_main_runner(self):
+        text=(ROOT/'run-tests.rkt').read_text()
+        self.assertIn('"tests/dc-pure-test.rkt"',text); self.assertIn('(run-tests dc-pure-tests)',text)
+        self.assertIn('"tests/dc-native-test.rkt"',text)
+        self.assertIn("(dynamic-require dc-native-tests-file 'dc-native-tests)",text)
+    def test_native_free_import_smoke(self): self.assertIn('skia/dc',(HERE/'ci-import-smoke.rkt').read_text())
+    def test_required_installed_package_pixel_gate(self):
+        text=(HERE/'ci.py').read_text()
+        self.assertIn("installed / 'tools/validate-dc.py'",text)
+        self.assertIn("report['checks']['dc_foundation'] = True",text)
+        self.assertIn("'--output', runner.output / 'dc-foundation'",text)
+        self.assertIn("'--manifest-only'",text)
+    def test_source_and_local_tests_wired(self):
+        self.assertIn("'test-dc.py'",(HERE/'ci.py').read_text())
+        self.assertIn("'tools/test-dc.py'",(HERE/'validate-gpu.py').read_text())
+    def test_version_assertions_all_updated(self):
+        self.assertIn('(define version "0.53")',(ROOT/'info.rkt').read_text())
+        for name in ('test-ci.py','test-gpu-interop.py','test-metal-interop.py','test-gpu-parity.py','test-dxgi.py'):
+            self.assertNotIn('(define version "0.52")',(HERE/name).read_text())
+    def test_pin_and_gpu_workflow_preserved(self):
+        self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
+        workflow=(ROOT/'.github/workflows/ci.yml').read_text()
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]',workflow)
+        self.assertNotIn('continue-on-error:',workflow)
+    def test_drawing_module_not_reexported_by_core(self):
+        self.assertNotIn('"dc.rkt"',(ROOT/'main.rkt').read_text())
+    def test_docs_record_limits(self):
+        text=(ROOT/'docs/SKIA-DC.md').read_text()
+        for term in ('0.54','0.55','immutable','aligned','snapshot','close'):
+            self.assertIn(term,text)
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

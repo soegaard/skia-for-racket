@@ -1,4 +1,13 @@
-# API reference — version 0.46.0
+# API reference
+
+## 0.53 persistent raster drawing context
+
+Import `skia/dc` explicitly for `skia-dc%`, `skia-dc?`,
+`skia-dc-capabilities`, and `exn:fail:skia-dc:unsupported`.
+See [the foundation API and deliberate compatibility limits](SKIA-DC.md).
+The ordinary `skia` module and existing GPU APIs are unchanged.
+
+## Historical 0.46 validation notes
 
 This stage changes validation and packaging, not drawing/GPU APIs. See
 [CI and installed-package checks](CI.md) and [platform evidence](PORTABILITY.md).

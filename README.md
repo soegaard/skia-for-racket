@@ -1,4 +1,18 @@
-# Racket Skia — 0.52.0
+# Racket Skia — 0.53.0
+
+## Persistent raster `skia-dc%` foundation
+
+Import `skia/dc` for a genuine `dc<%>` implementation over an owned CPU Skia
+surface. This first stage implements drawing state, affine transforms,
+rectangle clip snapshots and ordinary primitives. No GPU or GUI is required.
+Snapshots remain usable after DC close. Native pointers/backing surfaces are
+not exposed. Text, bitmap input, arbitrary regions and full style/alignment
+compatibility remain explicit unsupported operations, not Cairo fallbacks.
+
+See [the DC contract and limits](docs/SKIA-DC.md). The independent exact-pixel
+runner is `tools/validate-dc.py`; existing CPU CI lanes execute it from the
+isolated installed package. GPU workflows, native pins and the accepted
+`skia-canvas%` roadmap are unchanged. 0.53 still needs host/CI acceptance.
 
 ## Metal interop and Ganesh closeout
 

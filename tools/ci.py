@@ -38,6 +38,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
+    'test-dc.py',
     'test-metal-interop.py',
     'test-gpu-interop.py',
     'test-gpu-parity.py',
@@ -333,6 +334,12 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                     runner.run([racket, installed / 'tools' / (name + '.rkt')], cwd=away)
                 runner.run([racket, installed / 'run-tests.rkt'], cwd=away)
                 report['checks']['cpu_regressions'] = True
+                # Raster DC evidence is produced by the INSTALLED package and
+                # retained directly inside this job's artifact, even on failure.
+                runner.run([sys.executable, installed / 'tools/validate-dc.py',
+                            '--racket', racket, '--manifest-only',
+                            '--output', runner.output / 'dc-foundation'], cwd=away)
+                report['checks']['dc_foundation'] = True
                 # Required negative compatibility gate, on one clean Linux lane.
                 # A rejected m153 candidate is NOT a rendering/compatibility pass.
                 if row['id'] == 'linux-x64':

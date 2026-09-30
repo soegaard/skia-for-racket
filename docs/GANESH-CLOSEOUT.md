@@ -1,4 +1,11 @@
-# Ganesh closeout and Racket drawing compatibility — 0.52
+# Ganesh closeout and Racket drawing compatibility
+
+0.52 was accepted at `bff9c172b84ecb353a5134ce42abd8d49256815a` after local
+Metal interop validation and all required jobs in run `36782347694` passed.
+The 0.53 delivery adds the [raster DC foundation](SKIA-DC.md); its host and CI
+results are a separate acceptance gate. The remaining roadmap is unchanged.
+
+The following closeout records the decisions and evidence boundaries of 0.52.
 
 ## Decision
 

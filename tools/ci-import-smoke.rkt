@@ -3,7 +3,7 @@
 ;; unsets display variables. Import must not force either library or a GUI.
 (require json)
 (module+ main
-  (for ([module '(skia skia/bitmap skia/native-capabilities skia/gpu skia/gpu-egl skia/gpu-gl-interop skia/gpu-output skia/gpu-interop skia/unsafe/gpu-d3d12 skia/unsafe/gpu-metal)])
+  (for ([module '(skia skia/dc skia/bitmap skia/native-capabilities skia/gpu skia/gpu-egl skia/gpu-gl-interop skia/gpu-output skia/gpu-interop skia/unsafe/gpu-d3d12 skia/unsafe/gpu-metal)])
     (dynamic-require module #f))
   (define gui-instantiated?
     (with-handlers ([exn:fail? (lambda (_) #f)])

@@ -341,7 +341,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
-        self.assertIn('(define version "0.52")', text)
+        self.assertIn('(define version "0.53")', text)
         self.assertIn('(define deps \'(("base" #:version "8.7") "draw-lib" "gui-lib" "rackunit-lib"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):
@@ -479,6 +479,19 @@ class Orchestration(unittest.TestCase):
         for a in c:
             if 'raco' in a or a[1].endswith('.rkt') or a[-1].startswith('skia/tools/'):
                 self.assertEqual(a[0], r['racket_executable'])
+    def test_dc_foundation_uses_installed_package(self):
+        calls, _, report, error, _ = self.simulate()
+        self.assertIsNone(error)
+        command = next(c for c in calls if c[1].endswith('validate-dc.py'))
+        self.assertIn('addon', command[1])
+        self.assertIn('--manifest-only', command)
+        self.assertEqual(command[command.index('--racket') + 1], report['racket_executable'])
+        self.assertTrue(report['checks']['dc_foundation'])
+    def test_dc_failure_blocks_success(self):
+        _, _, report, error, _ = self.simulate(fail='validate-dc.py')
+        self.assertIsNotNone(error)
+        self.assertNotIn('dc_foundation', report['checks'])
+        self.assertNotIn('gpu', report)
     def test_cpu_failure_no_success(self):
         _, _, r, e, _ = self.simulate(fail='run-tests.rkt'); self.assertIsNotNone(e)
         self.assertNotIn('cpu_regressions', r['checks']); self.assertNotIn('gpu', r)

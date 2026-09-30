@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.53.0 — Persistent CPU drawing-context foundation
+
+- Added the opt-in `skia/dc` class implementing public `dc<%>` without inheriting
+  Cairo drawing machinery. The native target is private, owned CPU Skia storage.
+- Added owner-thread lifetime, independent post-close snapshots, RGBA/PNG output,
+  logical/backing geometry, affine state, color/opacity, immutable pen/brush
+  snapshots, ordinary primitives, and same-DC rectangle clipping restoration.
+- Supported positive-axis alignment and general affine smoothed drawing;
+  explicitly rejected deferred text/bitmap/region/style/alpha operations.
+- Added 60 pure production-class tests and 31 native tests, including constrained
+  bitmap-dc comparisons and a recorded-geometry smoke test. Full compatibility
+  and universal pixel identity are not claimed by interface membership.
+- Added an independent exact pixel oracle and side-by-side review PNGs, with
+  required installed-package gates in existing CPU/minimum-Racket CI lanes.
+- Kept Ganesh APIs, native pins, GPU workloads and all required jobs unchanged.
+- Based on accepted 0.52 commit bff9c172b84ecb353a5134ce42abd8d49256815a;
+  0.53 is a host/CI validation candidate, not an already accepted baseline.
+
 ## 0.52.0 — Metal interop and Ganesh closeout
 
 - Added lazy, explicitly unsafe same-device Metal texture construction and
