@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.48.0 — Direct3D 12 offscreen and required Windows WARP CI
+
+- Added explicit Windows x64 D3D12 hardware/WARP selection with owned COM
+  adapter, device and direct queue, staged cleanup, device-loss checks and
+  completion before ordinary teardown. No fallback or implicit GUI is added.
+- Added the pinned m119 by-value Ganesh context binding; retained the checked
+  shared library handle and the 3.119.1 native pin. CPU imports remain lazy.
+- Reused ordinary GPU surfaces/images/transfers/affinity and cache controls.
+  Added 32 pure source cases and a dedicated live validator reusing all 95
+  existing surface/image/cache cases, six contexts and 540 retained frames.
+- Added Windows SDK GUID/vtable/layout checks, a Racket by-value C call fixture,
+  independent PNG/transfer/lifecycle inspection and required installed-package
+  WARP CI. Existing CPU/EGL lanes and native-candidate rejection remain intact.
+- DXGI presentation, external D3D resources, GPU document executors, Graphite
+  and hardware/performance certification are not part of this release.
+- Authoring C/Python tests are not Windows/Racket/GPU acceptance. The new
+  required WARP lane must pass before this stage becomes an accepted baseline.
+
 ## 0.47.0 — native ABI policy and isolated candidate investigation
 
 - Centralized the default Skia package pin and m119 ABI policy. One lazy loader

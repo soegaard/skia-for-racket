@@ -8,7 +8,7 @@
 ;; suite neither loads a GPU library nor creates a window.
 (define (make-gpu-surface-native-tests gpu other)
   (define backend (gpu-context-backend gpu))
-  (define backend-id (case backend [(opengl) 0] [(metal) 2]
+  (define backend-id (case backend [(opengl) 0] [(metal) 2] [(direct3d) 3]
                       [else (error 'gpu-surface-tests "unexpected backend")]))
   (define (target proc #:background [background 'transparent])
     (call-with-gpu-context gpu

@@ -1,4 +1,20 @@
-# Portability and evidence — 0.46
+# Portability and evidence — 0.48
+
+## New required D3D12 lane
+
+0.48 adds `Required D3D12 WARP / Windows x64 / Racket 9.3` on
+`windows-2022`. It runs the isolated CPU/native package path followed by actual
+SDK/call-ABI checks and D3D12 offscreen surface/image/cache/stress validation.
+It is a separate required job in `CI required`, not a replacement for Windows
+CPU or either Linux EGL lane. Its adapter is explicitly Microsoft WARP.
+
+The accepted starting point is 0.47 commit
+`00661e2485daaf7d1f015baa4e06e287b121c20c` (CI run `36704037723`). New D3D12
+acceptance remains pending until its required job actually passes. A WARP pass
+establishes software functionality, not hardware acceleration, performance or
+physical display output. See [D3D12 contracts and reproduction](GPU-D3D12.md).
+
+## Retained CPU/EGL matrix and historical acceptance
 
 Configuration alone is not a passing result. The required 0.46 acceptance run
 `36620003104` at commit `808befa8768e672238e3fcdc5288e497a8b2705f` completed
@@ -43,7 +59,7 @@ context ownership, rendering, retained images, external GL boundaries, bounded
 PDF/SVG fallbacks and cache/release stress. It does not establish hardware GPU
 performance. Host-observed benchmark samples remain diagnostic data only.
 
-Hosted macOS/Windows jobs intentionally do not create GPU contexts or windows.
+Hosted macOS/Windows CPU jobs intentionally do not create GPU contexts or windows.
 They compile optional modules and run their pure tests, but report live GPU
 coverage as `not-run`. They do not replace the maintainer's full Metal/OpenGL
 hardware and physical-window checks. These remain available through
@@ -51,7 +67,8 @@ hardware and physical-window checks. These remain available through
 
 Linux ARM64, Windows ARM64, musl Linux, BSD, Wayland host interoperation, hardware
 EGL device selection and 32-bit Racket are not in this required matrix. Nor does
-this stage add Vulkan, Direct3D, Graphite or a different native ABI. The pins
+this stage add Vulkan, Graphite or a different native ABI. Direct3D WARP has
+the separate offscreen gate above, not a swap-chain/presentation gate. The pins
 remain SkiaSharp 3.119.1 (Skia ABI 119.0) and HarfBuzzSharp 8.3.1.2.
 
 The recurring macOS `Context leak detected, CoreAnalytics returned false`

@@ -49,7 +49,7 @@
         "gpu_image_readback": "explicit-same-context-surface",
         "gpu_engine": "ganesh",
         "graphite_wrapper": false,
-        "direct3d_wrapper": false
+        "direct3d_wrapper": true
       }
     }
   ],

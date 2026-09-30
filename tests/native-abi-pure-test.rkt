@@ -39,7 +39,7 @@
    (test-case "path-measure ownership" (check-equal? (hash-ref contracts 'path_measure_destination) "path"))
    (test-case "ICC workaround retained" (check-true (hash-ref contracts 'png_explicit_icc_requires_non_srgb_sentinel)))
    (test-case "Graphite not a wrapper feature" (check-false (hash-ref contracts 'graphite_wrapper)))
-   (test-case "Direct3D not a wrapper feature" (check-false (hash-ref contracts 'direct3d_wrapper)))
+   (test-case "Direct3D wrapper is explicit" (check-true (hash-ref contracts 'direct3d_wrapper)))
    (test-case "candidate policy" (check-equal? (hash-ref (hash-ref (native-abi-catalog) 'candidate) 'policy) "investigate-only"))
    (test-case "actual Racket layouts"
      (if (= (ctype-sizeof _pointer) 8)

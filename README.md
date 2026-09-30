@@ -1,4 +1,26 @@
-# Racket Skia — 0.47.0
+# Racket Skia — 0.48.0
+
+## Direct3D 12 offscreen rendering and required WARP validation
+
+`skia/gpu` accepts `#:backend 'direct3d` on Windows x64, with an owned
+DXGI adapter, D3D12 device and direct command queue. Explicit `#:adapter 'warp`
+selects software rendering; the default `#:adapter 'hardware` never falls back
+to WARP. Ordinary surfaces, images, transfers, retained context affinity and
+cache controls use the same GPU API as OpenGL and Metal.
+
+The required Windows WARP CI lane installs an isolated source package, runs
+CPU checks, verifies actual Windows SDK layouts/GUIDs/vtables and the by-value
+Racket call ABI, then runs all 33 surface, 42 image and 20 cache source cases.
+Three recreate cycles exercise 540 retained-image frames and verify nine PNGs
+against an independent asymmetric pixel reference. Failure is never a skip.
+
+This is software D3D12/Ganesh correctness coverage, not hardware acceleration,
+physical display pixels, a benchmark, or DXGI swap-chain presentation. The
+native pin remains SkiaSharp 3.119.1. The existing CI matrix and desktop GPU
+validators remain required and unchanged in scope. Configuration is not a
+passing Windows run: consult the latest required CI result and artifacts.
+
+See [D3D12 API, ownership and validation](docs/GPU-D3D12.md).
 
 ## Native ABI policy and isolated 4.x investigation
 

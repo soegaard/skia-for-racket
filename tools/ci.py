@@ -38,6 +38,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
+    'test-d3d12.py',
     'test-native-abi.py',
     'test-install-native-windows.py', 'test-validate-gpu-images.py',
     'test-validate-gpu-headless.py', 'test-validate-gpu-output.py',
@@ -260,7 +261,7 @@ def copy_artifacts(installed: Path, output: Path) -> None:
                 shutil.copy2(source, dest)
 
 
-def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: dict) -> None:
+def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: dict, *, extra_checks=None) -> None:
     selected = os.environ.get('RACKET', 'racket')
     executable = shutil.which(selected)
     if not executable and Path(selected).is_file():
@@ -353,6 +354,10 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                 require(len(runs) == 1, 'expected exactly one fresh headless run')
                 report['gpu'] = validate_headless(runs[0], row['surface'])
                 report['checks']['cpu_regressions'] = True  # included in that required runner
+            # Additional required backends use the same isolated installation.
+            # Exceptions propagate; finally still retains partial evidence.
+            if extra_checks is not None:
+                extra_checks(runner, installed, away, env, report)
             # Check against the checkout's manifest again, not just a possibly
             # changed manifest in the installed copy.
             verify_install(root, installed, home, archive)

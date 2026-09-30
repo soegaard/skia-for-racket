@@ -36,9 +36,9 @@ class PolicyTests(unittest.TestCase):
         data = abi.catalog(); data['profiles'] *= 2
         with self.assertRaises(ValueError): abi.profile_for(data, 119, 0, 8)
     def test_layout_count(self): self.assertEqual(len(abi.catalog()['profiles'][0]['layout_sizes']), 26)
-    def test_no_new_backend(self):
+    def test_direct3d_wrapper_and_no_graphite(self):
         contracts = abi.catalog()['profiles'][0]['contracts']
-        self.assertFalse(contracts['graphite_wrapper']); self.assertFalse(contracts['direct3d_wrapper'])
+        self.assertFalse(contracts['graphite_wrapper']); self.assertTrue(contracts['direct3d_wrapper'])
     def test_package_targets(self):
         self.assertEqual(abi.target_package('Linux', 'x86_64'), ('skiasharp.nativeassets.linux', 'linux-x64', 'libSkiaSharp.so'))
         self.assertEqual(abi.target_package('Darwin', 'arm64')[1], 'osx')
@@ -150,7 +150,7 @@ class WorkerTests(unittest.TestCase):
         self.root = Path(self.temp.name)
     def library(self, milestone='return 119;', increment=True, extra=''):
         source = self.root / 'fixture.c'
-        source.write_text('#include <stdbool.h>\n#include <stdlib.h>\n'
+        source.write_text('#include <stdbool.h>\n#include <stdlib.h>\n#include <signal.h>\n'
             'int sk_version_get_milestone(void) {' + milestone + '}\n' +
             ('int sk_version_get_increment(void) { return 0; }\n' if increment else '') + extra)
         lib = self.root / ('fixture.dylib' if sys.platform == 'darwin' else 'fixture.so')
@@ -186,8 +186,11 @@ class WorkerTests(unittest.TestCase):
         self.assertIsNone(result['graphite_compiled_backends'])
     def test_missing_bootstrap_is_failure(self):
         with self.assertRaisesRegex(ValueError, 'failed/crashed'): self.probe(self.library(increment=False))
-    def test_crash_is_failure(self):
-        with self.assertRaisesRegex(ValueError, 'failed/crashed'): self.probe(self.library('abort();'))
+    def test_signal_termination_is_failure(self):
+        # SIGKILL exercises abnormal worker termination without asking macOS
+        # Crash Reporter to record an intentional SIGABRT from the fixture.
+        with self.assertRaisesRegex(ValueError, 'failed/crashed'):
+            self.probe(self.library('raise(SIGKILL);'))
     def test_timeout_is_failure(self):
         with self.assertRaisesRegex(ValueError, 'timed out'): self.probe(self.library('for (;;) {}'), timeout=1)
     def test_missing_file_is_failure(self):
@@ -223,7 +226,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn("'--candidate', '--racket', racket", source)
         self.assertIn("report['checks']['candidate_abi_rejection'] = True", source)
         workflow = (abi.ROOT / '.github/workflows/ci.yml').read_text()
-        self.assertIn('needs: [source, cpu, egl]', workflow)
+        self.assertIn('needs: [source, cpu, egl, d3d12]', workflow)
         self.assertNotIn('continue-on-error', workflow)
     def test_default_pin_single_runtime_source(self):
         self.assertIn('native-default-version.txt', (abi.ROOT / 'tools/install-native.sh').read_text())

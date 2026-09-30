@@ -8,6 +8,7 @@
 (define-cstruct _gr-mtl-texture-info ([texture _pointer]))
 (define gr-opengl 0)
 (define gr-metal 2)
+(define gr-direct3d 3)
 (define gr-top-left 0)
 (define gr-bottom-left 1)
 
@@ -16,4 +17,5 @@
   (case backend
     [(opengl) gr-opengl]
     [(metal) gr-metal]
-    [else (raise-argument-error 'gpu-backend-native-id "'opengl or 'metal" backend)]))
+    [(direct3d) gr-direct3d]
+    [else (raise-argument-error 'gpu-backend-native-id "'opengl, 'metal, or 'direct3d" backend)]))

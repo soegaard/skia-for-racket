@@ -137,10 +137,39 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  d3d12:
+    name: Required D3D12 WARP / Windows x64 / Racket 9.3
+    needs: source
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Required installed-package D3D12 WARP sequence
+        run: python tools/ci-d3d12.py
+      - name: Keep D3D12 reports, pixels and command logs, including failures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-d3d12-warp-${{ github.run_attempt }}
+          path: output/ci-d3d12-warp/
+          if-no-files-found: warn
+          retention-days: 14
+
   required:
     name: CI required
     if: always()
-    needs: [source, cpu, egl]
+    needs: [source, cpu, egl, d3d12]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -149,7 +178,9 @@ jobs:
           SOURCE_RESULT: ${{ needs.source.result }}
           CPU_RESULT: ${{ needs.cpu.result }}
           EGL_RESULT: ${{ needs.egl.result }}
+          D3D12_RESULT: ${{ needs.d3d12.result }}
         run: |
           test "$SOURCE_RESULT" = success &&
           test "$CPU_RESULT" = success &&
-          test "$EGL_RESULT" = success
+          test "$EGL_RESULT" = success &&
+          test "$D3D12_RESULT" = success

@@ -1,5 +1,5 @@
 #lang racket/base
-(require ffi/unsafe racket/promise racket/list
+(require ffi/unsafe racket/promise racket/list "gpu-d3d12-types.rkt"
          (only-in "native.rkt" skia-native-library-handle) "types.rkt" "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-native-check! gpu-native-inventory gpu-symbol-names)
 ;; Separate lazy group: the CPU native-bindings registry remains unchanged.
@@ -37,6 +37,9 @@
 (define-gpu-native opengl gr_glinterface_unref (_fun _pointer -> _void))
 (define-gpu-native opengl gr_direct_context_make_gl (_fun _pointer -> _pointer))
 (define-gpu-native metal gr_direct_context_make_metal (_fun _pointer _pointer -> _pointer))
+;; The C ABI takes the complete descriptor BY VALUE, not a pointer.
+(define-gpu-native direct3d gr_direct_context_make_direct3d
+  (_fun _gr-d3d-backend-context -> _pointer))
 (define-gpu-native probe sk_surface_new_render_target
   (_fun _pointer _stdbool _sk-image-info-pointer _int _int _pointer _stdbool -> _pointer))
 (define-gpu-native probe sk_surface_get_recording_context (_fun _pointer -> _pointer))
@@ -54,8 +57,8 @@
 (define-gpu-native probe sk_paint_set_antialias (_fun _pointer _stdbool -> _void))
 
 (define (selected backend)
-  (unless (memq backend '(opengl metal))
-    (raise-argument-error 'gpu-native-inventory "'opengl or 'metal" backend))
+  (unless (memq backend '(opengl metal direct3d))
+    (raise-argument-error 'gpu-native-inventory "'opengl, 'metal, or 'direct3d" backend))
   (filter (lambda (entry) (memq (car entry) (list 'common 'probe backend)))
           (reverse bindings)))
 (define (gpu-symbol-names backend) (map cadr (selected backend)))

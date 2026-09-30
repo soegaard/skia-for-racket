@@ -16,19 +16,30 @@
 (define-runtime-path gl-driver-module "private/gpu-driver-gl.rkt")
 (define-runtime-path smoke-module "private/gpu-smoke.rkt")
 (define-runtime-path metal-driver-module "private/gpu-driver-metal.rkt")
-(define (make-gpu-context [provider #f] #:backend [requested #f])
+(define-runtime-path d3d12-driver-module "private/gpu-driver-d3d12.rkt")
+(define (make-gpu-context [provider #f] #:backend [requested #f]
+                          #:adapter [adapter #f] #:adapter-index [index #f])
   (define who 'make-gpu-context)
   (unless (or (not provider) (gpu-provider? provider))
     (raise-argument-error who "#f or gpu-provider?" provider))
-  (unless (memq requested '(#f opengl metal))
-    (raise-argument-error who "#f, 'opengl, or 'metal" requested))
+  (unless (memq requested '(#f opengl metal direct3d))
+    (raise-argument-error who "#f, 'opengl, 'metal, or 'direct3d" requested))
   (define backend (or requested (and provider (gpu-provider-backend provider))))
   (unless backend
-    (raise-arguments-error who "provide an OpenGL host or explicitly request #:backend 'metal"))
+    (raise-arguments-error who "provide an OpenGL host or explicitly request an owned Metal/Direct3D context"))
   (when (and provider (not (eq? backend (gpu-provider-backend provider))))
     (raise-arguments-error who "requested backend disagrees with the supplied provider"
                            "backend" backend "provider backend" (gpu-provider-backend provider)))
+  (when (and (or adapter index) (not (eq? backend 'direct3d)))
+    (raise-arguments-error who "adapter selection is only supported for Direct3D"))
   (case backend
+    [(direct3d)
+     (when provider
+       (gpu-unavailable 'd3d12-provider "external Direct3D providers are not supported in 0.48"))
+     (define-values (host driver)
+       ((dynamic-require d3d12-driver-module 'make-owned-d3d12-components)
+        (or adapter 'hardware) (or index 0)))
+     (wrap-gpu-domain (make-gpu-domain host driver))]
     [(opengl)
      (unless provider (raise-arguments-error who "OpenGL requires an explicit host provider"))
      (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider))
