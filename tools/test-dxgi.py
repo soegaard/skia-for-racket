@@ -330,6 +330,11 @@ class Source(unittest.TestCase):
         self.assertIn('(module* testing #f (provide current-dxgi-capture-hook))',text)
         self.assertIn('(retire-target!)\n                      (define-values',text)
         self.assertIn('(canvas-restore-to-count! canvas 1)',text)
+    def test_production_target_metadata_names_backend(self):
+        text=(HERE.parent/'private/gpu-presenter-d3d12.rkt').read_text()
+        self.assertRegex(
+            text,
+            r'\(hasheq\s+\'backend "direct3d"\s+\'storage "gpu"\s+\'target_kind "dxgi-back-buffer"')
     def test_full_controlled_workload(self):
         text=(HERE/'gpu-dxgi-doctor.rkt').read_text()
         self.assertIn('(make-gpu-presenter-native-tests \'direct3d make-window settle)',text)

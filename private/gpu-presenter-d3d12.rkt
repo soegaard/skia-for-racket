@@ -105,7 +105,8 @@
                             n:sk_surface_unref #:keepalive context))
                         (define surface
                           (make-gpu-surface-record handle w h '() context d cs
-                            (hasheq 'storage "gpu" 'target_kind "dxgi-back-buffer"
+                            (hasheq 'backend "direct3d"
+                                    'storage "gpu" 'target_kind "dxgi-back-buffer"
                                     'target_identity (format "dxgi-~a-~a" (domain-generation d) (dxgi-token-generation token))
                                     'buffer_index (dxgi-token-index token)
                                     'swap_chain_generation (dxgi-token-generation token)
