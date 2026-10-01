@@ -1,7 +1,7 @@
 #lang racket/base
 ;; Public Racket path access only. No private racket/draw or Cairo entry points.
 (require racket/class racket/list racket/vector (prefix-in rd: racket/draw) "dc-support.rkt")
-(provide dc-path-commands dc-polyline dc-rectangle dc-clip-points make-dc-clip dc-clip-data)
+(provide dc-path-commands dc-polyline dc-rectangle dc-clip-points)
 (define (dc-path-commands who path [dx 0] [dy 0])
   (unless (is-a? path rd:dc-path%) (raise-argument-error who "dc-path% object" path))
   (dc-real who dx) (dc-real who dy)
@@ -38,41 +38,3 @@
         (vector-immutable 'line (+ x w) (+ y h)) (vector-immutable 'line x (+ y h)) '#(close)))
 (define (dc-clip-points matrix x y w h)
   (dc-path-map (dc-rectangle x y w h) (lambda (x y) (dc-point matrix x y))))
-;; get-clipping-region must return an actual region%, not an invented hash.
-;; Rectangle tickets are immutable through its documented mutators. Their
-;; snapshots can be saved/restored without implementing arbitrary region import.
-(define tickets (make-weak-hasheq))
-(define (read-only who) (dc-unsupported who 'immutable-skia-rectangle-snapshot "0.54"))
-(define rectangle-region%
-  (class rd:region%
-    (init path)
-    (super-new)
-    (super set-path path 0 0 'winding)
-    (define/override (set-arc . xs) (read-only 'set-arc))
-    (define/override (set-ellipse . xs) (read-only 'set-ellipse))
-    (define/override (set-path . xs) (read-only 'set-path))
-    (define/override (set-polygon . xs) (read-only 'set-polygon))
-    (define/override (set-rectangle . xs) (read-only 'set-rectangle))
-    (define/override (set-rounded-rectangle . xs) (read-only 'set-rounded-rectangle))
-    (define/override (intersect . xs) (read-only 'intersect))
-    (define/override (subtract . xs) (read-only 'subtract))
-    (define/override (union . xs) (read-only 'union))
-    (define/override (xor . xs) (read-only 'xor))))
-(define (make-dc-clip owner commands)
-  (define p (new rd:dc-path%))
-  (for ([v (in-list commands)])
-    (case (vector-ref v 0)
-      [(move) (send p move-to (vector-ref v 1) (vector-ref v 2))]
-      [(line) (send p line-to (vector-ref v 1) (vector-ref v 2))]
-      [(close) (send p close)]))
-  (define r (new rectangle-region% [path p]))
-  (hash-set! tickets r (cons owner commands))
-  r)
-(define (dc-clip-data who owner region)
-  (cond [(not region) #f]
-        [(not (is-a? region rd:region%)) (raise-argument-error who "region% or #f" region)]
-        [else
-         (define data (hash-ref tickets region #f))
-         (unless (and data (eq? (car data) owner))
-           (dc-unsupported who 'arbitrary-or-foreign-region "0.54"))
-         (cdr data)]))

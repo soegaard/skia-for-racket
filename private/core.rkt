@@ -6,6 +6,10 @@
 (module* annotation-internals #f
   (provide call-on-canvas canvas-owner pdf-page? pdf-page-document
            call-with-native-temporary))
+;; DC text reuses existing fallback identity and font metrics. Private only;
+;; no new native entry points or public core exports.
+(module* dc-text-internals #f
+  (provide shaper-font call-with-choice-shaper fallback-choice-from-run))
 (module* color-internals #f
   (provide color-space-h wrap-owned-color-space))
 (provide image-convert-color-space)

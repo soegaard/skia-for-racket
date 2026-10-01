@@ -1,18 +1,26 @@
-# Racket Skia — 0.53.0
+# Racket Skia — 0.54.0
 
-## Persistent raster `skia-dc%` foundation
+## Skia DC text, bitmaps and clipping regions
 
-Import `skia/dc` for a genuine `dc<%>` implementation over an owned CPU Skia
-surface. This first stage implements drawing state, affine transforms,
-rectangle clip snapshots and ordinary primitives. No GPU or GUI is required.
-Snapshots remain usable after DC close. Native pointers/backing surfaces are
-not exposed. Text, bitmap input, arbitrary regions and full style/alignment
-compatibility remain explicit unsupported operations, not Cairo fallbacks.
+`skia/dc` now adds text drawing/metrics through Skia and HarfBuzz, distinct
+character/grapheme/combined shaping, public bitmap input with masks and HiDPI
+source pixels, overlap-safe copies, and real region% clipping with selected
+region locking. Its persistent CPU backing and owner-thread lifetime remain.
+No window, GPU context, or hidden Cairo drawing fallback is introduced.
 
-See [the DC contract and limits](docs/SKIA-DC.md). The independent exact-pixel
-runner is `tools/validate-dc.py`; existing CPU CI lanes execute it from the
-isolated installed package. GPU workflows, native pins and the accepted
-`skia-canvas%` roadmap are unchanged. 0.53 still needs host/CI acceptance.
+Require **Racket 8.18 and draw-lib 1.22**. Unlike 8.17, this interface supplies
+the alpha-method defaults overridden by the DC. Alpha-group rendering, extended
+styles, direct record-dc% replay and broad drop-in compatibility remain deferred.
+
+See [the API and explicit compatibility limits](docs/SKIA-DC.md). The existing
+`tools/validate-dc.py` gate now runs 96 pure and 65 native DC cases, retains the
+foundation oracle, and adds a second independent bitmap/region/copy oracle.
+All CPU lanes, including minimum Racket 8.18, run it from the installed package.
+Text sample images are not proof of Cairo/Pango pixel or metric equivalence.
+
+This is a validation candidate from `ad31074e2b3a9727a4e830290d0bf2efda031292`.
+Existing Ganesh APIs, required GPU workloads and native pins are unchanged.
+The next direction remains 0.55 compatibility, then 0.56–0.57 skia-canvas%.
 
 ## Metal interop and Ganesh closeout
 
@@ -160,7 +168,7 @@ must be established by host/CI execution. The accepted baseline is
 
 [GitHub Actions CI](docs/CI.md) checks an independently installed source package,
 not only a development checkout. The required matrix covers Linux x64, Windows
-x64, macOS ARM64 and macOS Intel with Racket CS 9.3, plus Linux CS 8.17 (the
+x64, macOS ARM64 and macOS Intel with Racket CS 9.3, plus Linux CS 8.18 (the
 currently declared minimum). Two required Linux Mesa/llvmpipe lanes run the
 complete EGL headless sequence with surfaceless and pbuffer bindings and no
 display server. Software rendering establishes functionality, not acceleration.
@@ -731,10 +739,10 @@ The installer downloads **SkiaSharp.NativeAssets.macOS 3.119.1** and extracts
 use `sudo`, or run the downloaded library. The doctor command is the first
 actual native load and rendering smoke test.
 
-Racket 8.17+ is the declared source target. It is the first released Racket
-whose `dc<%>` includes `start-alpha` and `end-alpha`.
-A full Racket distribution normally supplies `draw-lib` and
-`rackunit-lib`. Package installation below resolves the declared dependencies.
+Racket 8.18+ and draw-lib 1.22+ are required. This version of `dc<%>`
+supplies the alpha-method default implementations overridden by `skia-dc%`;
+8.17 has the methods but not these defaults. Alpha-group rendering remains
+planned for 0.55. Package installation resolves the declared dependencies.
 
 ### Linux
 

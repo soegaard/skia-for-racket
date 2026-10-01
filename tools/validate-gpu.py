@@ -106,7 +106,8 @@ def main() -> int:
                    'examples/gpu-output.rkt','tests/gpu-output-fixtures.rkt',
                    'tools/gpu-performance-doctor.rkt','tools/gpu-performance-work.rkt',
                    'tools/gpu-performance-options.rkt','tools/ci-identity.rkt','tools/ci-import-smoke.rkt','tools/ci-package-smoke.rkt','tools/gpu-redraw-doctor.rkt']
-        modules += ['dc.rkt', 'tools/dc-doctor.rkt', 'examples/dc-primitives.rkt']
+        modules += ['dc.rkt', 'tools/dc-doctor.rkt', 'examples/dc-primitives.rkt',
+                    'examples/dc-compatibility.rkt']
         modules += ['gpu-interop.rkt', 'unsafe/gpu-d3d12.rkt', 'tools/gpu-d3d12-interop-doctor.rkt',
                     'unsafe/gpu-metal.rkt', 'tools/gpu-metal-interop-doctor.rkt']
         modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))]

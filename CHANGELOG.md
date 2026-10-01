@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.54.0 — DC text, bitmaps and clipping regions
+
+- Added Skia/HarfBuzz text drawing, shared extents, glyph queries, underline,
+  font feature settings and separate character/grapheme/combined modes.
+- Added public bitmap pixel input, explicit masks, physical backing resolution,
+  cropped/scaled sections and immutable native snapshot copying for overlap.
+- Added real region% clipping with path intersections/fill rules, construction
+  versus installation transforms, and selected-region locking. Private Racket
+  region dependencies are isolated in one checked adapter, not a Cairo renderer.
+- Raised the minimum to Racket 8.18 and draw-lib 1.22: 8.17 has required alpha
+  methods but lacks the defaults used by the current override declarations.
+  Alpha-group rendering remains unsupported until the later compatibility stage.
+- Retained 60 pure/31 native foundation cases and added 36 pure/34 native cases.
+  The installed-package validator now checks two independent exact oracles;
+  large geometry and colored text samples remain explicitly limited evidence.
+- Retained all Ganesh behavior, native pins, required jobs and GPU workloads.
+- Based on ad31074e2b3a9727a4e830290d0bf2efda031292. Host and full CI acceptance
+  are required; no earlier minimum-version failure is waived by this release.
+
 ## 0.53.0 — Persistent CPU drawing-context foundation
 
 - Added the opt-in `skia/dc` class implementing public `dc<%>` without inheriting

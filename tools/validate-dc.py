@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -58,7 +59,7 @@ class Runner:
 def execute(root, directory, racket, *, manifest_only=False, runner=None):
     runner = runner or Runner(directory)
     checks = {}
-    state = dict(schema=1, stage='0.53', status='running', validation_run=directory.name,
+    state = dict(schema=1, stage='0.54', status='running', validation_run=directory.name,
                  racket_executable=racket, checks=checks, gpu_execution_verified=False,
                  full_drop_in_compatibility=False)
     try:
@@ -73,7 +74,9 @@ def execute(root, directory, racket, *, manifest_only=False, runner=None):
         validation.require(exact_identity(identity), 'unsupported Racket identity')
         state['identity'] = identity
         modules = ['dc.rkt', 'tools/dc-doctor.rkt', 'examples/dc-primitives.rkt',
-                   'tests/dc-pure-test.rkt', 'tests/dc-native-test.rkt']
+                   'tests/dc-pure-test.rkt', 'tests/dc-native-test.rkt',
+                   'tests/dc-compat-pure-test.rkt', 'tests/dc-compat-native-test.rkt',
+                   'examples/dc-compatibility.rkt']
         runner.run([racket, '-l', 'raco', '--', 'make', *[root/name for name in modules]], cwd=root)
         checks['racket_compilation'] = True
         runner.run([racket, root/'tools/dc-doctor.rkt', '--directory', directory], cwd=root)
@@ -89,7 +92,9 @@ def execute(root, directory, racket, *, manifest_only=False, runner=None):
         validation.write_json(directory/'dc.inspection.json', inspected)
         validation.write_json(directory/'validation.json', state)
         print(f'DC foundation passed: {validation.PURE_CASES} pure cases, '
-              f'{validation.NATIVE_CASES} native cases and exact oracle; {directory}')
+              f'{validation.NATIVE_CASES} native foundation cases; '
+              f'{validation.COMPAT_PURE_CASES} pure + {validation.COMPAT_NATIVE_CASES} native compatibility cases; '
+              f'two exact oracles; {directory}')
         return 0
     except (OSError, ValueError, TypeError, KeyError, RuntimeError, subprocess.SubprocessError) as exc:
         state.update(status='failed', error=str(exc))
@@ -104,7 +109,14 @@ def exact_identity(value):
     return (isinstance(value, dict) and validation.exact(value.get('pointer_bytes'), 8)
             and value.get('vm') == 'chez-scheme' and value.get('os') in ('windows', 'unix', 'macosx')
             and value.get('architecture') in ('x86_64', 'aarch64')
-            and isinstance(value.get('version'), str) and bool(value['version']))
+            and supported_version(value.get('version')))
+
+
+def supported_version(value):
+    if not isinstance(value,str) or re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}',value) is None:
+        return False
+    parts = tuple(map(int,value.split('.')))
+    return parts + (0,)*(4-len(parts)) >= (8,18,0,0)
 
 
 def main(argv=None):
@@ -124,7 +136,7 @@ def main(argv=None):
             parser.error(f'evidence directory must be new: {exc}')
     else:
         parent = ROOT/'output'; parent.mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix='dc-0.53-', dir=parent))
+        directory = Path(tempfile.mkdtemp(prefix='dc-0.54-', dir=parent))
     return execute(ROOT, directory, str(Path(executable).resolve()), manifest_only=args.manifest_only)
 
 

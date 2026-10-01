@@ -5,12 +5,13 @@
          dc-unsupported dc-real dc-unit dc-extent dc-matrix dc-transformation
          dc-identity dc-multiply dc-effective dc-point dc-singular?
          dc-physical-size dc-path-map dc-capabilities
-         (struct-out dc-renderer) (struct-out dc-ink) (struct-out dc-draw))
+         (struct-out dc-renderer) (struct-out dc-renderer+) (struct-out dc-ink) (struct-out dc-draw)
+         (struct-out dc-clip) (struct-out dc-clip-path) dc-scale-clip)
 
 (struct exn:fail:skia-dc:unsupported exn:fail:contract (method feature stage) #:transparent)
 (define (dc-unsupported who feature [stage "0.54/0.55"])
   (raise (exn:fail:skia-dc:unsupported
-          (format "~a: ~a is outside skia-dc% 0.53; planned compatibility stage ~a"
+          (format "~a: ~a is outside skia-dc% 0.54; planned compatibility stage ~a"
                   who feature stage)
           (current-continuation-marks) who feature stage)))
 (define (dc-real who v)
@@ -87,19 +88,34 @@
 ;; The renderer is private injection for testing the actual class, not a public
 ;; fallback or pluggable Cairo backend. Public construction always uses Skia.
 (struct dc-renderer (create close draw clear snapshot rgba png) #:transparent)
+(struct dc-renderer+ dc-renderer (measure-text draw-text glyph-exists? draw-bitmap copy) #:transparent)
+(struct dc-clip (paths) #:transparent)
+(struct dc-clip-path (commands rule) #:transparent)
+(define (dc-scale-clip clip backing)
+  (and clip
+       (dc-clip
+        (for/list ([p (in-list (dc-clip-paths clip))])
+          (dc-clip-path
+           (dc-path-map (dc-clip-path-commands p)
+                        (lambda (x y) (values (dc-real 'skia-dc-clip (* backing x))
+                                              (dc-real 'skia-dc-clip (* backing y)))))
+           (dc-clip-path-rule p))))))
 (struct dc-ink (rgba stroke? width cap join dashes) #:transparent)
 (struct dc-draw (commands rule matrix clip ink antialias?) #:transparent)
 (define (dc-capabilities)
-  (hasheq 'schema 1 'stage "0.53" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
+  (hasheq 'schema 1 'stage "0.54" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
           'storage "persistent-cpu-raster" 'native_probe_performed #f
           'full_drop_in_compatibility #f 'gui_initialized #f
           'drawing '(draw-arc draw-ellipse draw-line draw-lines draw-path draw-point
-                              draw-polygon draw-rectangle draw-rounded-rectangle draw-spline clear erase)
+                              draw-polygon draw-rectangle draw-rounded-rectangle draw-spline clear erase
+                              draw-text draw-bitmap draw-bitmap-section copy)
           'pen_styles '(solid transparent dot long-dash short-dash dot-dash)
           'brush_styles '(solid transparent)
           'smoothing '(unsmoothed smoothed aligned)
           'alignment "0.53 snaps positive axis-aligned transforms; use smoothed for rotation/shear/reflection"
           'selection_semantics "immutable pen/brush snapshots; caller objects are not locked"
-          'clipping "transformed rectangle snapshots; same-DC snapshot restoration and #f reset"
-          'deferred '(text text-metrics bitmap-input copy arbitrary-regions gradients stipples
+          'clipping "region% paths and intersections; construction/install transforms; selected region locking"
+          'text "Skia/HarfBuzz; characters, graphemes, combined; single-line"
+          'minimum_racket "8.18" 'minimum_draw_lib "1.22"
+          'deferred '(gradients stipples
                            hatches xor hilite alpha-groups path-ink-bounds gui gpu)))

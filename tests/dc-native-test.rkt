@@ -128,7 +128,7 @@
                                                  (check-equal? (pixel dc 2 3) '(255 0 0 255))))))
    (test-case "unsupported method leaves real pixels unchanged"
      (using-dc (lambda (dc) (send dc clear) (define before (send dc get-rgba-bytes))
-                 (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc draw-text "not yet" 1 1)))
+                 (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc start-alpha 0.5)))
                  (check-equal? (send dc get-rgba-bytes) before))))
    (test-case "integer rectangles agree with bitmap-dc%"
      (compare-with-racket (lambda (dc) (fill-mode dc) (send dc draw-rectangle 2 3 7 8)) 0))

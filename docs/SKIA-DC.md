@@ -1,230 +1,323 @@
-# `skia-dc%` — raster drawing-context foundation (0.53)
+# Skia drawing contexts — 0.54
 
-`skia/dc` is an opt-in implementation of Racket's public `dc<%>` interface,
-rendering directly to an owned, persistent **CPU Skia surface**. It does not
-subclass `bitmap-dc%`, delegate drawing to Cairo, open a window, or construct a
-GPU context. The ordinary `skia` module does not re-export this class.
+## Scope and requirements
 
-**This is the 0.53 foundation, not a complete drop-in `racket/draw` replacement.**
-Text, text metrics, bitmap input, arbitrary clipping regions, and several pen /
-brush modes are explicit unsupported operations. They do not silently fall back
-to another renderer and do not return invented measurements.
+`skia/dc` provides a persistent CPU-raster `skia-dc%` implementing Racket's
+public `dc<%>` interface. Drawing uses Skia; text uses the existing Skia font
+and HarfBuzz shaping code. This module does not create a GUI or GPU context.
+Requiring it does not load Skia or HarfBuzz. Creating a DC requires Skia;
+nonempty text measurement and drawing normally also require HarfBuzz.
 
-## Construction and ownership
+The minimum is **Racket 8.18 and draw-lib 1.22**. Racket 8.17 introduced the
+alpha methods as required interface members; 8.18 includes their default
+implementations. The final Skia class explicitly overrides those defaults.
+Raising the minimum does not implement alpha-group drawing: that remains 0.55.
+The ordinary `skia` module and all Ganesh APIs and native pins are unchanged.
+
+This is a compatibility layer with explicit limits, **not a full drop-in
+replacement for every bitmap-dc%, record-dc%, pict or GUI use**. Unimplemented
+operations raise `exn:fail:skia-dc:unsupported`; they are not rendered by a
+hidden Cairo DC. Importing public `racket/draw` types can load Racket's own
+support libraries, but Skia drawing is not routed through Cairo or Pango.
+
+## Construction and lifetime
 
 ```racket
 #lang racket/base
-(require racket/class
-         (only-in racket/draw make-pen)
-         skia/dc
-         (prefix-in sk: skia))
+(require racket/class racket/draw skia/dc)
 
 (define dc
-  (new skia-dc%
-       [width 640]
-       [height 400]
-       [backing-scale 2.0]
-       [background "white"]
-       [smoothing 'smoothed]))
+  (new skia-dc% [width 640] [height 400]
+       [backing-scale 2.0] [smoothing 'smoothed]))
 
-(define image
-  (dynamic-wind
-    void
-    (lambda ()
-      (send dc clear)
-      (send dc set-pen (make-pen #:color "navy" #:width 3))
-      (send dc set-brush "lightblue" 'solid)
-      (send dc draw-rounded-rectangle 25 25 300 160 18)
-      (send dc snapshot))
-    (lambda () (send dc close))))
-
-;; A snapshot is independently retained: encoding after DC close is valid.
-(sk:with-skia ([im image])
-  (call-with-output-file "dc-example.png"
-    (lambda (out) (write-bytes (sk:image->png-bytes im) out))
-    #:mode 'binary #:exists 'replace))
+(dynamic-wind
+ void
+ (lambda ()
+   (send dc clear)
+   (send dc set-font (make-font #:size 20 #:family 'swiss))
+   (send dc set-text-foreground "navy")
+   (send dc draw-text "Skia: office, á, שלום" 24 24 #t)
+   (call-with-output-file "dc-example.png"
+     (lambda (out) (write-bytes (send dc get-png-bytes) out))
+     #:mode 'binary #:exists 'replace))
+ (lambda () (send dc close)))
 ```
 
-Logical `width` and `height` are positive exact integers (defaults 640 and 480).
-The backing scale is positive and finite (default 1.0). Physical dimensions are
-`ceiling(width * backing-scale)` and `ceiling(height * backing-scale)` and must
-fit Skia's positive integer dimensions and existing allocation limits.
+Constructor arguments remain `[width 640]`, `[height 480]`,
+`[backing-scale 1.0]`, `[background "white"]`, and `[smoothing 'unsmoothed]`.
+Logical dimensions are positive exact integers. Physical dimensions are
+`ceiling(logical-size * backing-scale)` and must satisfy the existing Skia
+surface allocation bounds and `current-skia-byte-limit`. The new surface is
+transparent; `background` selects the color subsequently used by `clear`.
 
-The constructor allocates Skia storage. Merely requiring `skia/dc` does not
-resolve libSkiaSharp or initialize a GUI. It does load `racket/draw` to use its
-public interface and color/pen/brush/font/path/region classes; this is not a
-claim that `racket/draw` itself is free of native library dependencies.
+A DC belongs to its creating Racket thread; futures and other threads cannot
+operate on it. `close` is idempotent on that thread. `ok?` becomes false after
+close and when queried from another thread. State, drawing, measurement and
+output methods reject a closed DC. Closing releases the backing surface and
+unlocks any installed clipping region. Existing native finalization remains a
+fallback, not a replacement for deterministic `close`.
 
-Pixels initially have transparent black contents. The `background` argument is
-the color used by `clear`, not an implicit initial clear. The DC is owned by its
-creating Racket thread; using it from another thread or a future is rejected.
-Explicit `close` is recommended. It releases the owned surface once, is
-idempotent, and does not close previously obtained snapshots. No raw surface,
-canvas, native pointer or mutable backing bitmap is exposed.
+The backing surface and canvas remain private. `snapshot` returns an owned
+Skia image, independent of later drawing and usable after DC close. The caller
+must close that image through the ordinary Skia resource protocol.
 
-`skia-dc?` recognizes instances of the public class, including closed instances.
-`ok?` reports whether it is open and usable by the current execution owner.
-Other operations after close raise an error. This class has its own `close`
-method; it is not itself a `skia-resource?` for `skia-close!`.
-
-## Size and output extensions
-
-| Method | Result |
+| Extension | Result |
 |---|---|
-| `get-size` | Two logical dimensions |
-| `get-pixel-size` | Two exact physical pixel dimensions |
-| `get-backing-scale` | Construction backing scale |
-| `get-device-scale` | `1.0`, `1.0`; distinct from backing scale and user scale |
-| `snapshot` | Independent ordinary CPU Skia `image?` |
-| `get-rgba-bytes #:premultiplied? [#f]` | Copied physical RGBA pixels, row-major, four bytes per pixel |
-| `get-png-bytes` | Encoded physical raster PNG |
-| `get-capabilities` | Source-only support description for this stage |
-| `close` | Release the DC's owned target, once |
+| `get-pixel-size` | Two physical pixel dimensions |
+| `get-rgba-bytes [#:premultiplied? #f]` | Copied physical RGBA bytes |
+| `get-png-bytes` | PNG encoding of the physical backing |
+| `snapshot` | Independent, caller-owned Skia image |
+| `get-capabilities` | Immutable wrapper declarations, not runtime certification |
+| `close` | Explicit release and region unlock |
 
-The free function `(skia-dc-capabilities)` returns the same immutable declaration
-without constructing a DC. It explicitly reports `native_probe_performed #f`
-and `full_drop_in_compatibility #f`. Neither the capability query nor class
-membership proves rendering fidelity or runtime availability.
+`get-size` returns logical dimensions; `get-backing-scale` returns the backing
+scale. `get-device-scale` returns `(values 1.0 1.0)`, `get-gl-context` returns
+`#f`, and `cache-font-metrics-key` returns `0`: no shared external metrics-cache
+identity is promised. Module-level exports also include `skia-dc?`,
+`skia-dc-capabilities`, and the unsupported exception type/accessors.
 
-## State and ordinary drawing
+## Drawing state and geometry retained from 0.53
 
-Implemented drawing methods are `draw-line`, `draw-lines`, `draw-point`,
-`draw-polygon`, `draw-path`, `draw-rectangle`, `draw-rounded-rectangle`,
-`draw-ellipse`, `draw-arc`, and `draw-spline`. Paths use `dc-path%` and its public
-`get-datum` operation; there is no private Racket/Cairo path extraction.
+The context supports pen/brush/background, alpha, text color/mode/font, smoothing,
+origin, scale, rotation, initial matrix and full transformation get/set methods.
+Affine coefficients use Racket's `#(xx yx xy yy x0 y0)` order. Positive rotation
+is counter-clockwise in the default downward-y coordinates. Backing scale is
+applied separately. A singular drawing transform produces no geometry.
 
-Polygon/path offsets and the `odd-even` / `winding` fill-rule argument are
-supported. Open paths remain open for stroking; Skia applies its fill closure
-semantics. Arcs use Racket's counter-clockwise angles and separate filled
-sectors from curved outline strokes. Equal start/end angles represent a full
-ellipse. Rounded rectangles retain the public `dc-path%` radius convention.
+Ordinary primitives are `draw-line`, `draw-lines`, `draw-point`, `draw-polygon`,
+`draw-rectangle`, `draw-rounded-rectangle`, `draw-ellipse`, `draw-arc`,
+`draw-spline`, and `draw-path`. Paths use public `dc-path%` data and preserve
+winding/odd-even fill rules. Closed shapes fill before stroking; lines and
+splines do not accidentally use the brush.
 
-Lines and splines never fill with the current brush. Filled shapes draw brush
-then pen. Transparent tools suppress their respective pass. The initial pen is
-black, solid, width 1, round cap/join; the initial brush is white and solid.
+Solid/transparent brushes and solid/transparent/dot/long-dash/short-dash/dot-dash
+pens are supported, with caps, joins and hairlines. Pen/brush selection still
+installs immutable snapshots rather than locking the caller's objects. Getters
+return the installed immutable objects. Color getters return detached values.
 
-Supported pens are `solid`, `transparent`, `dot`, `long-dash`, `short-dash`, and
-`dot-dash`, with round/butt/projecting caps and round/bevel/miter joins. Width
-zero follows the foundation's device-aligned hairline rule. Supported brushes
-are `solid` and `transparent`. Invalid or deferred selections fail before
-replacing the prior tool. Colors accept ordinary `color%` objects and Racket
-color names. Channel alpha and DC `set-alpha` multiply.
+`'smoothed` supports general affine geometry. The foundation's `'unsmoothed`
+and `'aligned` snapping supports positive axis-aligned transforms only; rotated,
+sheared or reflected aligned geometry remains an explicit unsupported case.
+Use `'smoothed` for that geometry. This release does not claim complete Cairo
+pixel-alignment, hairline or dash-phase equivalence.
 
-### Tool selection is intentionally a snapshot contract
+`clear` paints the background with current DC alpha; `erase` clears to
+transparency independently of alpha. Both respect the installed clip and
+ignore the current drawing transform. Document lifecycle and flush methods
+remain checked raster no-ops: they create neither documents nor window queues.
 
-`set-pen` and `set-brush` install **immutable copies**, returned by the matching
-getters. They do not retain/lock the caller's mutable object and do not promise
-`eq?` identity with it. Changing the original object later does not change the
-DC. Colors returned by getters are detached public `color%` objects. This is an
-explicit difference from the built-in DC's installed-object locking semantics;
-full selection/identity compatibility remains 0.55 work.
+## Text and metrics
 
-Fonts and text foreground/background/mode are stored through their usual state
-methods, but no font is shaped or measured in 0.53. `cache-font-metrics-key`
-returns 0. `get-gl-context` returns `#f`.
-
-## Transformations and smoothing
-
-Six-element matrices use Racket's order:
-
-```text
-#(xx yx xy yy x0 y0)
-x' = xx*x + xy*y + x0
-y' = yx*x + yy*y + y0
+```racket
+(send dc draw-text text x y [combine #f] [offset 0] [angle 0])
+(send dc get-text-extent text [font #f] [combine #f] [offset 0])
+(send dc get-char-width)
+(send dc get-char-height)
+(send dc glyph-exists? character)
 ```
 
-The logical effective transform is:
+`draw-text` uses a top-left anchor. Its angle is in radians and turns the text
+counter-clockwise around that anchor. All drawing uses the current DC transform,
+backing scale, clipping region and opacity. With text mode `'solid`, a background
+rectangle is drawn only when the text's own angle is zero, matching the Racket
+method contract. Foreground/background color alpha is multiplied by DC alpha.
 
-```text
-initial-matrix * translation(origin) * scale * rotation(-radians)
+The three combining modes are distinct:
+
+| Mode | Shaping unit and order |
+|---|---|
+| `#f` | One Unicode character at a time, in logical order; control/format characters are excluded |
+| `'grapheme` | One Racket grapheme cluster at a time, in logical order |
+| Other true values | One combined single-line span, using existing mixed-script/bidi shaping and fallback |
+
+Offset counts Racket characters and must lie in `[0,string-length]`. A NUL
+terminates the selected text. Measurement and drawing use the same prepared
+units and fallback choices. Character-mode widths are additive; grapheme-mode
+widths are additive between clusters, without cross-cluster ligatures.
+
+Font translation uses public `font%` accessors: face/family, weight, slant,
+fractional pixel size, underline, hinting, smoothing and OpenType feature
+settings. `get-size #t` preserves Racket's platform point-to-pixel convention;
+backing scale is not folded into the font size. Fallback faces are selected and
+drawn through the library's existing mixed-text implementation. A private
+Skia-core submodule shares those existing fallback identities for metrics; no
+new native symbols or public font API are introduced.
+
+`get-text-extent` returns width, height, descent and extra leading. Extents use
+Skia's native font metrics, with a common baseline accounting for selected
+fallback runs. Aligned font hinting rounds each shaping unit's advance; unaligned
+hinting preserves fractional advances. Empty text has zero width but retains
+font height. A zero-sized font yields zero extents and no pixels. Character
+metrics use the font's average width and vertical metrics; glyph availability
+checks the selected font and an actual fallback font rather than inventing a
+positive answer.
+
+Native font, manager and shaper objects are scoped to each call. There is no
+unbounded cross-call text cache or exposed native handle. This prioritizes a
+clear lifetime boundary; no text-performance claim is made.
+
+### Text limits
+
+Combined/grapheme text containing tabs or hard line separators is explicitly
+rejected in 0.54; it is not silently treated as a paragraph. Select an explicit
+font face when a font-name-directory mapping contains a comma/Pango description;
+that description syntax is not parsed as a Skia family. Smoothed text uses
+grayscale, not LCD subpixel antialiasing, on the alpha-capable backing.
+
+Font fallback, rasterization and metrics may differ from Cairo/Pango. Extents
+are logical typographic extents, not a promise that every overhanging glyph or
+underline pixel lies inside them. Exact text pixel/metric equivalence, every
+platform's emoji behavior, and complete editor/pict compatibility are not
+certified by this stage. The text input and bitmap bridge enforce the existing
+byte limit on their checked buffers; that is not a global process-memory bound.
+
+## Bitmap input, masks and copy
+
+```racket
+(send dc draw-bitmap bitmap x y [style 'solid] [color black] [mask #f])
+(send dc draw-bitmap-section bitmap x y sx sy sw sh
+      [style 'solid] [color black] [mask #f])
+(send dc draw-bitmap-section-smooth bitmap x y dw dh sx sy sw sh
+      [style 'solid] [color black] [mask #f])
+(send dc copy x y width height x2 y2)
 ```
 
-`set-origin`, `set-scale`, `set-rotation`, and `set-initial-matrix` preserve the
-other components. `transform`, `translate`, `scale`, and `rotate` concatenate
-and collapse them into the initial matrix, resetting separate components.
-`get-transformation` is an immutable defensive snapshot and can be restored
-with `set-transformation`. The backing scale is applied separately, last on
-the destination. Numeric state uses finite doubles; drawing crosses Skia's
-binary32 boundary. This is not arbitrary-precision geometry.
+The first two methods are `dc<%>` operations; the smooth-section operation is a
+bitmap-dc-like convenience. `black` above denotes a black `color%` object. A
+valid bitmap returns `#t`, including an empty/off-target drawing; a failed source
+bitmap returns `#f`. Invalid masks and unsupported configurations raise.
 
-`smoothed` accepts general affine transforms, including rotation, shear and
-reflection. Singular transforms are accepted, with empty shape drawing.
-`clear` / `erase` still operate independently of that user transform.
+Public `bitmap%` pixels are copied on each operation, using `#:unscaled? #t` to
+retain physical backing resolution. No Cairo bitmap handle is borrowed and no
+unsafe cache ignores later bitmap mutation. Logical source coordinates are
+converted to physical coordinates. Partially out-of-range source rectangles
+clip source and destination together instead of stretching the remaining image.
 
-`unsmoothed` (the default) and `aligned` implement snapping for **positive
-axis-aligned** transforms. `aligned` enables antialiasing after snapping;
-`unsmoothed` does not. `set-alignment-scale` changes the snapping grid, not the
-logical transform. Rectangular/elliptical outlines account for the aligned
-one-unit boundary convention separately from the full-area fill.
+Color sources preserve their color/alpha and ignore monochrome style/tint.
+For monochrome sources, `'solid` draws black bits with the supplied color and
+leaves white bits transparent; `'opaque` uses the DC background for white bits.
+Monochrome `'xor` remains explicitly unsupported. Smoothing selects nearest
+sampling for `'unsmoothed`, linear otherwise; the smooth-section method always
+uses linear sampling without changing the caller's DC state.
 
-Aligned rotation, shear and reflection raise an explicit unsupported exception;
-select `smoothed` to draw those now. Broader Cairo alignment equivalence,
-edge coverage and unusual hairlines remain 0.55 work. The larger example is a
-review aid, not a guarantee of byte-identical Cairo/Skia pixels.
+Only the explicit mask argument is applied; callers wanting a loaded mask must
+pass `(send bitmap get-loaded-mask)`. Masks must be valid and have the same
+logical dimensions as the source. Alpha masks use their alpha channel; masks
+without alpha use inverse average RGB (black opaque, white transparent).
+Source alpha and mask coverage are combined once, then converted to premultiplied
+RGBA; DC opacity is applied by Skia. Differing mask backing scales are sampled
+at source-pixel centers using nearest mask pixels. This explicit bounded policy
+is not a claim of identical Cairo sampling at every fractional scale.
 
-## Clipping, clearing and erasing
+`copy` snapshots the native Skia backing before drawing. It therefore handles
+overlap without feeding modified destination pixels back into the source. It
+uses source replacement, ignores current DC opacity, and respects destination
+clipping. Source and destination are in the same DC coordinate system: under an
+affine map, the physical displacement is its linear part applied to the logical
+displacement. Outside-surface source samples are transparent (decal sampling).
+There is no CPU readback in this native raster-surface copy implementation.
 
-`set-clipping-rect` captures the rectangle under the current logical transform.
-Later transform changes do not move that stored clip. A new rectangle replaces
-the prior clip; a zero-area rectangle clips everything. `set-clipping-region #f`
-removes clipping.
+## Real region% clipping
 
-`get-clipping-region` returns a real `region%` subclass representing an immutable
-snapshot in logical device coordinates. It is not bound to a Racket DC; its
-`get-dc` is `#f`. The snapshot can be saved and restored **on the same Skia DC**.
-Documented region mutation methods raise instead of silently changing geometry
-that the DC would ignore. Arbitrary regions and another DC's snapshot are
-rejected pending 0.54. This restricted ticket is not general `region%` interop.
+```racket
+(define region (new region% [dc dc]))
+(send region set-ellipse 20 20 120 80)
+(send dc set-clipping-region region)
+;; Draw while clipped; the selected region cannot be modified.
+(send dc draw-bitmap bitmap 0 0)
+(send dc set-clipping-region #f)
+```
 
-`clear` paints the background with source-over composition and current DC alpha.
-`erase` clears pixels to transparency, independently of DC alpha. Both ignore
-the current drawing transform but respect the installed clipping region.
+`set-clipping-rect` now builds a real associated region. `get-clipping-region`
+returns the actual selected region rather than the earlier rectangle ticket.
+Associated regions must belong to this exact DC and retain their construction-
+time transformation. Unassociated regions are transformed when installed.
+Later DC transform changes do not move the installed clip.
 
-## Explicit unsupported operations
+The region adapter copies all constituent paths and their fill rules. Multiple
+region paths represent intersections and are installed as sequential Skia clips.
+Empty regions clip out everything. Standard region construction and its path-
+based combinations, including odd-even holes, are consumed without flattening
+into a rectangle or raster mask.
+
+The selected region is locked using Racket's region protocol. Replacing/removing
+it or closing the DC releases that lock. Validation precedes selection changes;
+a rejected region does not discard the old clip. A finalizer provides a weak-
+reference lock-release fallback without retaining an otherwise dead DC.
+
+Only `private/dc-region-adapter.rkt` imports `racket/draw/private/region` and
+`racket/draw/private/local`. It implements the exact private clipping-matrix
+member identity required by region construction, checks the path representation,
+and exposes only copied commands to the renderer. All other DC modules stay
+on public Racket drawing types. Minimum-version and current-version CI must
+exercise this adapter; private upstream representation changes require review.
+
+**Remaining region limit:** some built-in region utility operations, notably
+`is-empty?` on a nonempty associated region, ask their DC for a Cairo context.
+The Skia DC does not manufacture one. Such utility queries are not promised by
+this stage even though the region can be installed and clipped correctly. Full
+associated-region utility compatibility belongs to 0.55.
+
+## Remaining unsupported operations
 
 The exception `exn:fail:skia-dc:unsupported` extends `exn:fail:contract` and carries
-`method`, `feature`, and planned `stage` fields. These are not availability
-errors and must not be treated as a successful draw.
+`method`, `feature`, and planned `stage`. An exception is not a successful draw.
 
 | Deferred area | Operations |
 |---|---|
-| 0.54 text | `draw-text`, `get-text-extent`, character metrics, `glyph-exists?` |
-| 0.54 bitmap/regions | `draw-bitmap`, `draw-bitmap-section`, `copy`, arbitrary clipping regions |
-| 0.55 style/compatibility | Gradients, stipples, hatches, XOR/hilite styles, alpha groups, path ink bounds, complete alignment / object-lock semantics, direct `record-dc%` replay |
-| 0.56–0.57 GUI | `skia-canvas%`, persistent GUI management, GPU-frame facade |
+| 0.55 styles and grouping | Gradients, stipples, hatches, XOR/hilite pens/brushes, alpha groups |
+| 0.55 broader compatibility | Path ink bounds, complete alignment and object-lock semantics, associated-region utility queries, direct record-dc% replay |
+| 0.56–0.57 GUI | skia-canvas%, persistent GUI management, scoped GPU-frame facade |
 
-`start-alpha` raises; `end-alpha` with no active group is a no-op. The final class
-explicitly overrides alpha methods to avoid inheriting newer Racket interface
-default no-ops. Document lifecycle and flush methods are checked raster no-ops;
-they do not produce a PDF or synchronize a window.
+`start-alpha` still raises; `end-alpha` with no active group is a no-op.
+Direct `record-dc%` replay remains deferred: current Racket recordings use
+internal replay helpers such as `do-set-pen!` and `do-set-brush!`, beyond the
+public DC method boundary. Ordinary user procedures using supported public
+methods can draw directly. This distinction is not erased by satisfying the
+`dc<%>` interface.
 
-## Validation and next steps
+## Validation and evidence
 
-`python3 tools/validate-dc.py --racket "$RACKET"` compiles and runs 60 pure
-production-class tests and 31 native tests, creates retained snapshots, and
-checks an independently specified 48×40 pixel oracle exactly. It also retains
-460×320 Skia and Racket example images for manual review. Four native tests
-compare constrained geometry / alpha cases against `bitmap-dc%`, and a minimal
-public-method drawing procedure is replayed. Direct `record-dc%` replay is deferred
-to 0.55: current `racket/draw` recordings send private local-member methods such
-as `do-set-pen!` and `do-set-brush!`, and 0.53 deliberately does not depend on
-`racket/draw/private/*`. None of this is broad `pict` or text compatibility.
+Run `python3 tools/validate-dc.py --racket "$RACKET"`. The required sequence
+compiles the modules and executes all four suites:
 
-All existing native CPU CI lanes run the new suites and the separate exact-pixel
-gate from the isolated installed package. Artifacts are placed under the job's
-`dc-foundation` directory. Missing libraries, missing captures, compilation
-errors, wrong pixels and reduced test counts are failures, not optional skips.
-The minimum supported release is Racket 8.17, the first release whose `dc<%>`
-includes `start-alpha` and `end-alpha`. The Racket 8.17 lane remains required;
-GPU workflows and pins are unchanged.
+| Suite | Cases |
+|---|---:|
+| Foundation pure | 60 |
+| Foundation native | 31 |
+| Text/bitmap/region pure | 36 |
+| Text/bitmap/region native | 34 |
 
-0.54 adds text, bitmap input and general region support. The remaining accepted
-roadmap is unchanged: 0.55 real consumers, 0.56 `skia-canvas%`, 0.57 GPU facade.
+Thus the DC gate executes **96 pure and 65 native cases**. Foundation case
+counts and the 48x40 independent exact oracle are retained. A second independent
+64x48 exact oracle covers bitmap pixels/masks, HiDPI source sampling, copy,
+region holes/intersections and construction/installation transforms.
 
-## Reference contracts used
+Five PNGs are retained: both exact oracles, the existing 460x320 Skia/Racket
+geometry examples, and a 320x104 colored Skia text sample. The large examples
+remain manual-review material. The text-sample inspector requires nonempty
+colored ink; it does not independently prove glyph shape or text equivalence.
+Native tests separately exercise text measurement/drawing consistency and the
+supported mode/lifetime behavior. Snapshots are encoded after the DCs close.
 
-- Racket `dc<%>`: <https://docs.racket-lang.org/draw/dc___.html>
-- Racket `dc-path%`: <https://docs.racket-lang.org/draw/dc-path_.html>
-- Racket interface defaults: <https://docs.racket-lang.org/reference/createinterface.html>
-- Racket draw source inspected at `b7338af16c11183dffffd113e6bc9376d20bbdd1`.
-- Skia wrapper baseline: `bff9c172b84ecb353a5134ce42abd8d49256815a`.
+All CPU CI lanes, including the required Racket 8.18 lane, use the same validator
+from an isolated installed package. The artifact subdirectory remains
+`dc-foundation` for compatibility with CI report consumers. Missing captures,
+wrong pixels, reduced counts, old interpreters and failed commands are errors,
+not optional skips. Existing GPU gates, workloads and pins are unchanged.
+
+The source baseline for this candidate is
+`ad31074e2b3a9727a4e830290d0bf2efda031292`. Delivery checks and source inspection
+are not runtime acceptance; review the resulting host and CI evidence before
+accepting 0.54. The candidate does not retroactively turn earlier 8.7/8.17
+failures into successful runs.
+
+## Reference contracts
+
+- Racket dc<%>: <https://docs.racket-lang.org/draw/dc___.html>
+- Racket font%: <https://docs.racket-lang.org/draw/font_.html>
+- Racket bitmap%: <https://docs.racket-lang.org/draw/bitmap_.html>
+- Racket region%: <https://docs.racket-lang.org/draw/region_.html>
+- Racket 8.18 draw interface: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/dc-intf.rkt>
+- Default implementations (draw-lib 1.22): <https://github.com/racket/draw/commit/55819da32ae19b9c900bb2c64edb8600dd8c720d>
+- Isolated region adapter reference: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/region.rkt>

@@ -1,5 +1,14 @@
 # GitHub Actions CI — 0.46
 
+## Current DC compatibility gate — 0.54
+
+The declared minimum lane is Racket CS 8.18, with draw-lib 1.22 required by the
+package. The existing installed-package DC gate runs 96 pure and 65 native
+cases, both exact pixel oracles, and retains geometry/text review images under
+`dc-foundation/`. Text images do not certify Cairo/Pango glyph equivalence.
+The source manifest and all established CPU/GPU jobs remain required. A source
+configuration change is not a successful minimum-version runtime result.
+
 ## Workflow and required result
 
 `.github/workflows/ci.yml` runs for pull requests, pushes to `main`, version tags
@@ -146,7 +155,7 @@ python3 tools/ci.py --profile egl --id egl-pbuffer
 ```
 
 Other exact ids are `macos-arm64`, `macos-x64`, `windows-x64`, and
-`minimum-racket` (CS 8.17). Set `RACKET` to the complete executable path when it
+`minimum-racket` (CS 8.18). Set `RACKET` to the complete executable path when it
 is not on PATH. Development snapshot 9.3.0.2 intentionally does not masquerade
 as the matrix's released 9.3. Archive/move an existing `output/ci-<id>` before
 rerunning that lane: stale success directories are not reused automatically.

@@ -1,4 +1,18 @@
-# Portability and evidence — 0.50
+# Portability and evidence
+
+## Current minimum and DC validation — 0.54
+
+Racket 8.18 and draw-lib 1.22 are now the minimums. Racket 8.17 introduced the
+alpha methods, but 8.18 supplies their defaults used by the DC's overrides.
+The required minimum lane tests 8.18 through the full installed CPU/package
+path and the expanded text/bitmap/region DC validator. The older 8.7 rows and
+accepted-run details below are historical evidence, not the current floor.
+
+0.54 retains existing Ganesh/native pins and workloads. New runtime acceptance
+requires the host and CI reports; the larger text/geometry samples are review
+material rather than universal pixel-equivalence evidence. See [SKIA-DC.md](SKIA-DC.md).
+
+## Historical 0.50 and earlier evidence
 
 ## 0.50 shared-backend validation
 

@@ -410,7 +410,7 @@ class Integration(unittest.TestCase):
         text=(HERE.parent/'private/gpu-presenter.rkt').read_text()
         self.assertIn("[(eq? outcome 'occluded) (set! result 'skipped)]",text)
     def test_version_and_docs(self):
-        self.assertIn('(define version "0.53")',(HERE.parent/'info.rkt').read_text())
+        self.assertIn('(define version "0.54")',(HERE.parent/'info.rkt').read_text())
         text=(HERE.parent/'docs/GPU-DXGI.md').read_text()
         for name in ('sync-interval','gpu-window%','gpu-canvas%','WARP','buffer-reuse','visible'):
             self.assertIn(name,text)

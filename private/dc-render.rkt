@@ -1,33 +1,9 @@
 #lang racket/base
 ;; The only production renderer for skia/dc: existing CPU Skia operations.
 ;; There is no Cairo rendering adapter and no GPU or GUI initialization.
-(require (prefix-in sk: "../main.rkt") "dc-support.rkt")
+(require (prefix-in sk: "../main.rkt") "dc-support.rkt" "dc-bitmap.rkt"
+         "dc-geometry.rkt" "dc-native-util.rkt" "dc-text.rkt")
 (provide skia-dc-renderer)
-(define (native-color v)
-  (sk:rgba (vector-ref v 0) (vector-ref v 1) (vector-ref v 2)
-           (inexact->exact (round (* 255 (vector-ref v 3))))))
-(define (call-with-path commands rule proc)
-  (sk:with-skia ([p (sk:make-path #:fill-rule (if (eq? rule 'odd-even) 'even-odd 'winding))])
-    (for ([v (in-list commands)])
-      (case (vector-ref v 0)
-        [(move) (sk:path-move-to! p (vector-ref v 1) (vector-ref v 2))]
-        [(line) (sk:path-line-to! p (vector-ref v 1) (vector-ref v 2))]
-        [(cubic) (sk:path-cubic-to! p (vector-ref v 1) (vector-ref v 2)
-                                   (vector-ref v 3) (vector-ref v 4)
-                                   (vector-ref v 5) (vector-ref v 6))]
-        [(close) (sk:path-close! p)]
-        [else (error 'skia-dc% "invalid internal path command")]))
-    (proc p)))
-(define (set-matrix! c m)
-  (sk:canvas-set-matrix3! c
-    (sk:make-matrix3 (vector-ref m 0) (vector-ref m 2) (vector-ref m 4)
-                     (vector-ref m 1) (vector-ref m 3) (vector-ref m 5)
-                     0 0 1)))
-(define (install-clip! c clip)
-  (sk:canvas-reset-transform! c)
-  (when clip
-    (call-with-path clip 'winding
-      (lambda (p) (sk:canvas-clip-path! c p #:antialias? #f)))))
 (define (draw! surface command)
   (define c (sk:surface-canvas surface))
   (define ink (dc-draw-ink command))
@@ -59,9 +35,46 @@
                                          #:blend-mode (if erase? 'clear 'src-over)
                                          #:antialias? #f)])
         (sk:draw-paint c paint)))))
+(define (bitmap! surface data rect matrix clip opacity sampling)
+  (define c (sk:surface-canvas surface))
+  (sk:with-skia ([image (sk:rgba-bytes->image
+                        (dc-bitmap-data-width data) (dc-bitmap-data-height data)
+                        (dc-bitmap-data-pixels data) #:premultiplied? #t)]
+                [paint (sk:make-paint #:color (native-color (vector 255 255 255 opacity)))])
+    (sk:call-with-canvas-state c
+      (lambda ()
+        (install-clip! c clip)
+        (set-matrix! c matrix)
+        (sk:draw-image-subrect c image
+          (vector-ref rect 0) (vector-ref rect 1) (vector-ref rect 2) (vector-ref rect 3)
+          (vector-ref rect 4) (vector-ref rect 5) (vector-ref rect 6) (vector-ref rect 7)
+          #:sampling sampling #:paint paint))))
+  (void))
+(define (copy! surface matrix clip x y width height x2 y2)
+  ;; Immutable native snapshot prevents overlap feedback. Both source and
+  ;; destination are in the same DC coordinate system, hence their physical
+  ;; displacement is the linear part of that system applied to (x2-x,y2-y).
+  (define dest (dc-clip-points matrix x2 y2 width height))
+  (define dx (dc-real 'copy (+ (* (vector-ref matrix 0) (- x2 x))
+                              (* (vector-ref matrix 2) (- y2 y)))))
+  (define dy (dc-real 'copy (+ (* (vector-ref matrix 1) (- x2 x))
+                              (* (vector-ref matrix 3) (- y2 y)))))
+  (define c (sk:surface-canvas surface))
+  (sk:with-skia ([image (sk:surface-snapshot surface)]
+                [shader (sk:make-image-shader image #:tile-x 'decal #:tile-y 'decal
+                                               #:sampling 'nearest)]
+                [paint (sk:make-paint #:shader shader #:blend-mode 'src #:antialias? #f)])
+    (sk:call-with-canvas-state c
+      (lambda ()
+        (install-clip! c clip)
+        (call-with-path dest 'winding (lambda (p) (sk:canvas-clip-path! c p #:antialias? #f)))
+        (sk:canvas-translate! c dx dy)
+        (sk:draw-paint c paint))))
+  (void))
 (define skia-dc-renderer
-  (dc-renderer
+  (dc-renderer+
    (lambda (w h) (sk:make-surface w h #:background 'transparent))
    sk:skia-close! draw! clear! sk:surface-snapshot
    (lambda (s p?) (sk:surface->rgba-bytes s #:premultiplied? p?))
-   sk:surface->png-bytes))
+   sk:surface->png-bytes
+   dc-measure-text dc-render-text! dc-glyph-exists? bitmap! copy!))

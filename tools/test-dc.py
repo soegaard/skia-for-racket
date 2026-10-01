@@ -49,9 +49,11 @@ def png(width, height, pixels, *, channels=4, filter_type=0, compression_tail=b'
 
 
 def report(directory):
-    return dict(schema=1, stage='0.53', status='passed', validation_run=directory.name,
+    return dict(schema=1, stage='0.54', status='passed', validation_run=directory.name,
                 storage='persistent-cpu-raster', native_package='3.119.1', native_version='119.0',
                 pure_cases=60, pure_failures=0, native_cases=31, native_failures=0,
+                compat_pure_cases=36, compat_pure_failures=0, compat_native_cases=34, compat_native_failures=0,
+                compat_oracle="dc-compat-oracle.png", text_sample="dc-text.skia.png",
                 gpu_execution_verified=False, gui_initialized=False, full_drop_in_compatibility=False,
                 universal_pixel_identity_claimed=False, demo_pixel_equivalence_verified=False,
                 snapshots_encoded_after_dc_close=True, os='unix', architecture='x86_64', racket_version='9.3',
@@ -63,6 +65,8 @@ def evidence(directory):
     (directory/'dc-oracle.png').write_bytes(png(48, 40, d.oracle_rgba()))
     samples = b''.join(bytes((i%256, (i*3)%256, (i*7)%256, 255)) for i in range(460*320))
     image = png(460, 320, samples)
+    (directory/'dc-compat-oracle.png').write_bytes(png(64,48,d.compatibility_oracle_rgba()))
+    (directory/'dc-text.skia.png').write_bytes(png(320,104,samples[:320*104*4]))
     for name in ('dc-primitives.skia.png', 'dc-primitives.racket.png'):
         (directory/name).write_bytes(image)
 
@@ -125,7 +129,7 @@ class Inspector(unittest.TestCase):
         with self.assertRaises(ValueError): d.inspect_directory(self.directory)
     def test_valid(self):
         out=d.inspect_directory(self.directory); self.assertTrue(out['exact_oracle_pixels_verified'])
-        self.assertFalse(out['demo_pixel_equivalence_verified']); self.assertEqual(len(out['captures']),3)
+        self.assertFalse(out['demo_pixel_equivalence_verified']); self.assertEqual(len(out['captures']),5)
     def test_failed(self): self.mutate('status','failed')
     def test_bool_schema(self): self.mutate('schema',True)
     def test_wrong_stage(self): self.mutate('stage','0.52')
@@ -294,6 +298,8 @@ class Integration(unittest.TestCase):
         self.assertIn('"tests/dc-pure-test.rkt"',text); self.assertIn('(run-tests dc-pure-tests)',text)
         self.assertIn('"tests/dc-native-test.rkt"',text)
         self.assertIn("(dynamic-require dc-native-tests-file 'dc-native-tests)",text)
+        self.assertIn('(run-tests dc-compat-pure-tests)',text)
+        self.assertIn("(dynamic-require dc-compat-native-tests-file 'dc-compat-native-tests)",text)
     def test_native_free_import_smoke(self): self.assertIn('skia/dc',(HERE/'ci-import-smoke.rkt').read_text())
     def test_required_installed_package_pixel_gate(self):
         text=(HERE/'ci.py').read_text()
@@ -305,9 +311,16 @@ class Integration(unittest.TestCase):
         self.assertIn("'test-dc.py'",(HERE/'ci.py').read_text())
         self.assertIn("'tools/test-dc.py'",(HERE/'validate-gpu.py').read_text())
     def test_version_assertions_all_updated(self):
-        self.assertIn('(define version "0.53")',(ROOT/'info.rkt').read_text())
+        metadata=(ROOT/'info.rkt').read_text()
+        self.assertIn('(define version "0.54")',metadata)
+        self.assertIn('("base" #:version "8.18")',metadata)
+        self.assertIn('("draw-lib" #:version "1.22")',metadata)
+        matrix=json.loads((HERE/'ci-matrix.json').read_text())
+        self.assertEqual([r['racket'] for r in matrix['cpu'] if r['id']=='minimum-racket'],['8.18'])
         for name in ('test-ci.py','test-gpu-interop.py','test-metal-interop.py','test-gpu-parity.py','test-dxgi.py'):
-            self.assertNotIn('(define version "0.52")',(HERE/name).read_text())
+            text=(HERE/name).read_text()
+            for obsolete in ('0.52','0.53'):
+                self.assertNotIn('(define version "'+obsolete+'")',text)
     def test_pin_and_gpu_workflow_preserved(self):
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
         workflow=(ROOT/'.github/workflows/ci.yml').read_text()
@@ -319,6 +332,79 @@ class Integration(unittest.TestCase):
         text=(ROOT/'docs/SKIA-DC.md').read_text()
         for term in ('0.54','0.55','immutable','aligned','snapshot','close'):
             self.assertIn(term,text)
+
+
+class Compatibility(unittest.TestCase):
+    def test_minimum_identity(self):
+        self.assertTrue(v.supported_version('8.18'))
+        self.assertTrue(v.supported_version('9.3.0.2'))
+        for version in ('8.7','8.17','8.17.0.4','stable','',False):
+            self.assertFalse(v.supported_version(version))
+    def test_compatibility_case_counts(self):
+        for kind,count in [('pure',d.COMPAT_PURE_CASES),('native',d.COMPAT_NATIVE_CASES)]:
+            source=(ROOT/f'tests/dc-compat-{kind}-test.rkt').read_text()
+            self.assertEqual(len(re.findall(r'\(test-case\s',source)),count)
+            self.assertIn(f'(define dc-compat-{kind}-test-count {count})',source)
+    def test_all_compatibility_sources_fingerprinted(self):
+        for file in ('dc-region-adapter.rkt','dc-text-spec.rkt','dc-text.rkt','dc-bitmap.rkt','dc-native-util.rkt'):
+            self.assertIn('private/'+file,d.SOURCE_PATHS)
+    def test_private_region_dependency_is_isolated(self):
+        sources=list((ROOT/'private').glob('dc-*.rkt'))
+        private=[p.name for p in sources if 'racket/draw/private/' in p.read_text()]
+        self.assertEqual(private,['dc-region-adapter.rkt'])
+        adapter=(ROOT/'private/dc-region-adapter.rkt').read_text()
+        self.assertIn('[get-clipping-matrix private-get-clipping-matrix]',adapter)
+        self.assertNotIn('unsafe/cairo',adapter)
+    def test_copy_uses_immutable_snapshot_and_source_blending(self):
+        source=(ROOT/'private/dc-render.rkt').read_text()
+        self.assertIn('(sk:surface-snapshot surface)',source)
+        self.assertIn("#:blend-mode 'src",source)
+        self.assertIn("#:tile-x 'decal #:tile-y 'decal",source)
+    def test_text_is_skia_harfbuzz_not_reference_dc(self):
+        source=(ROOT/'private/dc-text.rkt').read_text()
+        for token in ('sk:layout-mixed-text','sk:draw-mixed-text-layout','sk:font-get-metrics'):
+            self.assertIn(token,source)
+        for token in ('bitmap-dc%','unsafe/pango','pango_cairo'):
+            self.assertNotIn(token,'\n'.join(l for l in source.splitlines() if not l.lstrip().startswith(';')))
+    def test_oracle_copy_overlap_and_hole(self):
+        p=d.compatibility_oracle_rgba()
+        at=lambda x,y:tuple(p[4*(y*64+x):4*(y*64+x+1)])
+        self.assertEqual(at(7,17),(20,30,40,255))
+        self.assertEqual(at(3,13),(240,120,20,255))
+        self.assertEqual(at(4,33),(0,80,160,255))
+        self.assertEqual(at(9,33),(150,80,160,255))
+    def test_doctor_runs_all_suites_before_capture(self):
+        source=(HERE/'dc-doctor.rkt').read_text()
+        for name in ('dc-compat-pure-tests','dc-compat-native-tests'):
+            self.assertLess(source.index('(run-tests '+name+')'),source.index('(render "dc-oracle.png"'))
+    def test_compatibility_counts_fail_closed(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);evidence(root)
+            for key in ('compat_pure_cases','compat_native_cases','compat_pure_failures','compat_native_failures'):
+                for bad in (None,False,-1):
+                    value=report(root);value[key]=bad;d.write_json(root/'dc.diagnostic.json',value)
+                    with self.assertRaises(ValueError): d.inspect_directory(root)
+    def test_compatibility_oracle_corruption_fails(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);evidence(root)
+            b=bytearray(d.compatibility_oracle_rgba());b[4*(33*64+4)]=1
+            (root/'dc-compat-oracle.png').write_bytes(png(64,48,b))
+            with self.assertRaisesRegex(ValueError,'independent oracle'): d.inspect_directory(root)
+    def test_text_sample_blank_fails(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);evidence(root)
+            (root/'dc-text.skia.png').write_bytes(png(320,104,bytes((255,255,255,255))*320*104))
+            with self.assertRaisesRegex(ValueError,'red/blue ink'): d.inspect_directory(root)
+    def test_missing_compatibility_capture_fails(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);evidence(root);(root/'dc-compat-oracle.png').unlink()
+            with self.assertRaises(ValueError):d.inspect_directory(root)
+    def test_runner_compiles_new_tests_and_example(self):
+        code,calls,_,_=Orchestration().simulate()
+        self.assertEqual(code,0)
+        compile=next(c for c in calls if 'make' in c)
+        for path in ('tests/dc-compat-pure-test.rkt','tests/dc-compat-native-test.rkt','examples/dc-compatibility.rkt'):
+            self.assertTrue(any(c.endswith(path) for c in compile))
 
 
 if __name__ == '__main__':

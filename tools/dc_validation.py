@@ -1,4 +1,4 @@
-"""Independent validation for the 0.53 raster DC evidence (stdlib only).
+"""Independent validation for the 0.54 raster DC evidence (stdlib only).
 
 The tiny oracle is specified here, not derived from either renderer's pixels.
 The larger Racket/Skia comparison is a manual review, not a pixel-equality gate.
@@ -12,15 +12,21 @@ from pathlib import Path
 import struct
 import zlib
 
-STAGE = '0.53'
+STAGE = '0.54'
 PURE_CASES = 60
 NATIVE_CASES = 31
+COMPAT_PURE_CASES = 36
+COMPAT_NATIVE_CASES = 34
 PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
 SOURCE_PATHS = ('dc.rkt', 'private/dc-support.rkt', 'private/dc-class.rkt',
                 'private/dc-render.rkt', 'private/dc-geometry.rkt',
                 'tests/dc-pure-test.rkt', 'tests/dc-native-test.rkt',
                 'examples/dc-primitives.rkt', 'tools/dc-doctor.rkt',
-                'tools/dc_validation.py', 'tools/validate-dc.py')
+                'tools/dc_validation.py', 'tools/validate-dc.py',
+                'private/core.rkt', 'private/dc-region-adapter.rkt', 'private/dc-bitmap.rkt',
+                'private/dc-native-util.rkt', 'private/dc-text-spec.rkt', 'private/dc-text.rkt',
+                'tests/dc-compat-pure-test.rkt', 'tests/dc-compat-native-test.rkt',
+                'examples/dc-compatibility.rkt')
 
 
 def require(condition, message):
@@ -159,6 +165,30 @@ def oracle_rgba():
     return bytes(output)
 
 
+def compatibility_oracle_rgba():
+    """64x48 oracle; independent of the Racket fixture and rendered captures."""
+    def pattern(x, y): return (30 + 40*x, 20 + 40*y, 70, 255)
+    pixels = bytearray(bytes((20, 30, 40, 255)) * (64*48))
+    def put(x, y, c): pixels[4*(y*64+x):4*(y*64+x+1)] = bytes(c)
+    for x0 in (2, 14, 44):
+        for y in range(4):
+            for x in range(4): put(x0+x, 2+y, pattern(x,y))
+    for y in range(4):
+        for x in range(2): put(8+x, 2+y, pattern(x,y))
+    for y in range(2):
+        for x in range(2): put(20+x, 2+y, (255,0,0,255) if x==y else (0,128,0,255))
+    for y in range(12,24):
+        for x in range(2,14):
+            if not (6<=x<10 and 16<=y<20): put(x,y,(240,120,20,255))
+    for y in range(15,22):
+        for x in range(25,30): put(x,y,(130,30,190,255))
+    for y in range(12,20):
+        for x in range(35,41): put(x,y,(255,230,0,255))
+    for y in range(32,36):
+        for x in range(8): put(2+x,y,((x if x<2 else x-2)*30,80,160,255))
+    return bytes(pixels)
+
+
 def inspect_directory(directory, *, identity=None):
     directory = Path(directory).resolve()
     raw = read_json(directory / 'dc.diagnostic.json')
@@ -172,7 +202,9 @@ def inspect_directory(directory, *, identity=None):
                 'universal_pixel_identity_claimed', 'demo_pixel_equivalence_verified'):
         require(raw.get(key) is False, f'unsupported DC claim: {key}')
     for key, expected in [('pure_cases', PURE_CASES), ('native_cases', NATIVE_CASES),
-                          ('pure_failures', 0), ('native_failures', 0)]:
+                          ('pure_failures', 0), ('native_failures', 0),
+                          ('compat_pure_cases', COMPAT_PURE_CASES), ('compat_native_cases', COMPAT_NATIVE_CASES),
+                          ('compat_pure_failures', 0), ('compat_native_failures', 0)]:
         require(exact(raw.get(key), expected), f'incomplete DC test evidence: {key}')
     require(raw.get('snapshots_encoded_after_dc_close') is True, 'missing post-close image encoding')
     require(raw.get('os') in ('unix', 'windows', 'macosx'), 'missing/unknown execution OS')
@@ -183,7 +215,9 @@ def inspect_directory(directory, *, identity=None):
             require(raw[report_key] == identity[identity_key], f'foreign interpreter: {report_key}')
     captures = [('oracle', 'dc-oracle.png', (48, 40)),
                 ('skia_demo', 'dc-primitives.skia.png', (460, 320)),
-                ('reference_demo', 'dc-primitives.racket.png', (460, 320))]
+                ('reference_demo', 'dc-primitives.racket.png', (460, 320)),
+                ('compat_oracle', 'dc-compat-oracle.png', (64,48)),
+                ('text_sample', 'dc-text.skia.png', (320,104))]
     receipts = []
     for key, name, dimensions in captures:
         require(raw.get(key) == name, 'unexpected capture filename')
@@ -192,6 +226,14 @@ def inspect_directory(directory, *, identity=None):
         pixels = png_rgba(path, dimensions)
         if key == 'oracle':
             require(pixels == oracle_rgba(), 'DC pixels differ from independent oracle')
+        elif key == 'compat_oracle':
+            require(pixels == compatibility_oracle_rgba(), 'bitmap/region/copy pixels differ from independent oracle')
+        elif key == 'text_sample':
+            red = sum(pixels[i] > pixels[i+1]+20 and pixels[i] > pixels[i+2]+20
+                      for i in range(0,len(pixels),4))
+            blue = sum(pixels[i+2] > pixels[i]+20 and pixels[i+2] > pixels[i+1]+20
+                       for i in range(0,len(pixels),4))
+            require(red >= 10 and blue >= 10, 'text sample lacks actual red/blue ink')
         else:
             # This only establishes nonempty actual images, not their fidelity.
             unique = {pixels[i:i+4] for i in range(0, len(pixels), 4)}
@@ -199,6 +241,8 @@ def inspect_directory(directory, *, identity=None):
         receipts.append(dict(file=name, width=dimensions[0], height=dimensions[1], sha256=sha256(path)))
     return dict(schema=1, stage=STAGE, status='passed', validation_run=directory.name,
                 storage='persistent-cpu-raster', pure_cases=PURE_CASES, native_cases=NATIVE_CASES,
+                compat_pure_cases=COMPAT_PURE_CASES, compat_native_cases=COMPAT_NATIVE_CASES,
+                compatibility_oracle_pixels_verified=True, text_sample_nonempty_verified=True,
                 exact_oracle_pixels_verified=True, snapshots_encoded_after_dc_close=True,
                 demo_pixel_equivalence_verified=False, manual_demo_review_required=True,
                 full_drop_in_compatibility=False, gpu_execution_verified=False,
@@ -209,10 +253,11 @@ def write_review(directory, report):
     directory = Path(directory)
     require(report.get('status') == 'passed', 'no success review for a failed report')
     title = html.escape(directory.name)
-    body = ['<!doctype html><meta charset="utf-8"><title>Skia DC 0.53 review</title>',
-            '<h1>Skia DC 0.53</h1><p>' + title + '</p>',
+    body = ['<!doctype html><meta charset="utf-8"><title>Skia DC 0.54 review</title>',
+            '<h1>Skia DC 0.54</h1><p>' + title + '</p>',
             '<p>The 48×40 oracle is checked exactly. The larger images are for manual comparison; '
-            'pixel equivalence, text support, and full drop-in compatibility are not certified.</p>']
+            'Font pixels are reviewed manually; the 64×48 bitmap/region/copy oracle is checked exactly. '
+            'Universal pixel equivalence and full drop-in compatibility are not certified.</p>']
     for item in report['captures']:
         name = html.escape(item['file'], quote=True)
         body.append(f'<h2>{name}</h2><img src="{name}" alt="{name}"><p>SHA-256: {item["sha256"]}</p>')

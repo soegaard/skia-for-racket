@@ -242,24 +242,25 @@
      (send dc set-origin 3 4) (send dc set-clipping-rect 1 2 5 6)
      (send dc set-origin 10 20) (send dc clear)
      (define clear-event (car (unbox e)))
-     (check-equal? (car (second clear-event)) '#(move 8.0 12.0)))
+     (check-equal? (car (dc-clip-path-commands (car (dc-clip-paths (second clear-event))))) '#(move 8.0 12.0)))
    (test-case "rectangle tickets can be restored"
      (define-values (dc e) (fresh)) (send dc set-clipping-rect 1 2 3 4)
      (define old (send dc get-clipping-region))
      (send dc set-clipping-region #f) (send dc set-clipping-region old)
      (check-eq? (send dc get-clipping-region) old))
-   (test-case "ticket mutators reject instead of silently ignoring edits"
+   (test-case "selected regions reject mutation"
      (define-values (dc e) (fresh)) (send dc set-clipping-rect 1 2 3 4)
-     (fails? (lambda () (send (send dc get-clipping-region) set-rectangle 0 0 1 1))))
-   (test-case "arbitrary and foreign regions explicitly rejected"
+     (check-exn exn:fail? (lambda () (send (send dc get-clipping-region) set-rectangle 0 0 1 1))))
+   (test-case "unassociated regions accepted and foreign associated regions rejected"
      (define-values (dc e) (fresh)) (define-values (other oe) (fresh))
      (send other set-clipping-rect 0 0 1 1)
-     (fails? (lambda () (send dc set-clipping-region (send other get-clipping-region))))
-     (fails? (lambda () (send dc set-clipping-region (new rd:region%)))))
+     (check-exn exn:fail:contract? (lambda () (send dc set-clipping-region (send other get-clipping-region))))
+     (define r (new rd:region%)) (send dc set-clipping-region r)
+     (check-eq? (send dc get-clipping-region) r))
    (test-case "clipping replacement is not intersection"
      (define-values (dc e) (fresh))
      (send dc set-clipping-rect 0 0 1 1) (send dc set-clipping-rect 10 10 5 5) (send dc clear)
-     (check-equal? (car (second (car (unbox e)))) '#(move 10.0 10.0)))
+     (check-equal? (car (dc-clip-path-commands (car (dc-clip-paths (second (car (unbox e))))))) '#(move 10.0 10.0)))
    (test-case "erase ignores DC alpha but retains clipping"
      (define-values (dc e) (fresh)) (send dc set-alpha 0.1)
      (send dc set-clipping-rect 1 2 3 4) (send dc erase)
@@ -268,12 +269,12 @@
    (test-case "clear uses background multiplied by DC alpha"
      (define-values (dc e) (fresh)) (send dc set-alpha 0.25) (send dc set-background "red") (send dc clear)
      (check-equal? (third (car (unbox e))) '#(255 0 0 0.25)))
-   (test-case "unsupported text and metric methods never fake results"
+   (test-case "a minimal recording renderer never fabricates native text metrics"
      (define-values (dc e) (fresh))
      (for ([f (list (lambda () (send dc draw-text "abc" 0 0)) (lambda () (send dc get-text-extent "abc"))
                     (lambda () (send dc get-char-width)) (lambda () (send dc get-char-height))
                     (lambda () (send dc glyph-exists? #\a)))]) (fails? f)))
-   (test-case "unsupported pixel copy and alpha groups are explicit"
+   (test-case "minimal renderer copy and deferred alpha groups remain explicit"
      (define-values (dc e) (fresh))
      (fails? (lambda () (send dc copy 0 0 1 1 2 2)))
      (fails? (lambda () (send dc start-alpha 0.5)))

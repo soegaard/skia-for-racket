@@ -1,6 +1,7 @@
 #lang racket/base
 (require racket/class racket/future racket/list racket/math racket/vector
-         (prefix-in rd: racket/draw) "dc-support.rkt" "dc-geometry.rkt")
+         (prefix-in rd: racket/draw) "dc-support.rkt" "dc-geometry.rkt"
+         "dc-region-adapter.rkt" "dc-text-spec.rkt" "dc-bitmap.rkt")
 (provide make-skia-dc-class)
 
 (define (color-value who v)
@@ -48,17 +49,15 @@
 
 (define (make-skia-dc-class renderer)
   (unless (dc-renderer? renderer) (raise-argument-error 'make-skia-dc-class "private DC renderer" renderer))
-  ;; Define methods in an interface-free superclass, then attach dc<%> below.
-  ;; Alpha methods exist in this base on all supported versions. The final
-  ;; class explicitly overrides them: a new interface default and a same-name
-  ;; superclass implementation otherwise conflict on Racket 8.17.0.4+.
+  ;; Alpha default implementations are part of draw-lib 1.22 / Racket 8.18.
+  ;; Leave those methods out of the base and override the interface defaults
+  ;; in the final class. No compatibility branch for older interfaces.
   (define implementation%
     (class object%
       (init [(logical-width width) 640] [(logical-height height) 480]
             [(requested-backing backing-scale) 1.0]
             [background "white"] [smoothing 'unsmoothed])
       (define owner (current-thread))
-      (define clip-owner (gensym 'skia-dc))
       (define-values (pixel-w pixel-h backing)
         (dc-physical-size 'skia-dc% logical-width logical-height requested-backing))
       (define w logical-width)
@@ -79,6 +78,7 @@
       (define target #f)
       (define closed? #f)
       (super-new)
+      (define region-lease (make-dc-region-lease this))
       ;; Allocate only after every construction argument is validated. Merely
       ;; requiring skia/dc or constructing its class does not load libSkiaSharp.
       (when (current-future) (error 'skia-dc% "construction in a future is not supported"))
@@ -91,6 +91,10 @@
       (define/private (check! who)
         (owner! who)
         (when closed? (error who "skia-dc% is closed")))
+      (define/private (compat! who)
+        (unless (dc-renderer+? renderer)
+          (dc-unsupported who 'recording-renderer-without-compatibility-callbacks "private test renderer")))
+      (define/private (physical-clip) (dc-scale-clip clip-commands backing))
       (define/private (effective) (dc-effective transform-state))
       (define/private (backed m) (dc-multiply (vector backing 0 0 backing 0 0) m))
       (define/private (set-transform! who v)
@@ -152,7 +156,7 @@
               (define paint (ink stroke?))
               (dc-real who (dc-ink-width paint))
               (dc-draw checked-commands rule (backed (effective))
-                       (and clip-commands (dc-path-map clip-commands (lambda (x y) (values (* backing x) (* backing y)))))
+                       (physical-clip)
                        paint (not (eq? smoothing-state 'unsmoothed)))))
           (for ([command (in-list batch)]) ((dc-renderer-draw renderer) target command)))
         (void))
@@ -211,6 +215,8 @@
           (set! closed? #t)
           (define old target)
           (set! target #f)
+          (dc-region-install! region-lease #f)
+          (set! clip-region #f) (set! clip-commands #f)
           ((dc-renderer-close renderer) old))
         (void))
       (define/public (get-size) (check! 'get-size) (values (exact->inexact w) (exact->inexact h)))
@@ -290,25 +296,20 @@
       (define/public (get-clipping-region) (check! 'get-clipping-region) clip-region)
       (define/public (set-clipping-region r)
         (check! 'set-clipping-region)
-        (define data (dc-clip-data 'set-clipping-region clip-owner r))
-        (set! clip-region r) (set! clip-commands data) (void))
+        (dc-region-select! 'set-clipping-region region-lease r this (effective) backing
+          (lambda (data) (set! clip-region r) (set! clip-commands data)))
+        (void))
       (define/public (set-clipping-rect x y width height)
         (check! 'set-clipping-rect)
         (dc-real 'set-clipping-rect x) (dc-real 'set-clipping-rect y)
         (dc-extent 'set-clipping-rect width) (dc-extent 'set-clipping-rect height)
-        (define data (dc-clip-points (effective) x y width height))
-        ;; A clip is stored persistently; reject physical-coordinate overflow
-        ;; before replacing the previous region or its immutable snapshot.
-        (dc-path-map data
-                     (lambda (x y)
-                       (values (dc-real 'set-clipping-rect (* backing x))
-                               (dc-real 'set-clipping-rect (* backing y)))))
-        (define r (make-dc-clip clip-owner data))
-        (set! clip-region r) (set! clip-commands data) (void))
+        (define r (new rd:region% [dc this]))
+        (send r set-rectangle x y width height)
+        (set-clipping-region r))
       (define/private (clear! who color)
         (check! who)
         ((dc-renderer-clear renderer) target
-         (and clip-commands (dc-path-map clip-commands (lambda (x y) (values (* backing x) (* backing y)))))
+         (physical-clip)
          color (eq? who 'erase)) (void))
       (define/public (clear) (clear! 'clear (with-opacity background-state alpha-state)))
       (define/public (erase) (clear! 'erase '#(0 0 0 0.0)))
@@ -365,22 +366,70 @@
       ;; class. dc<%> supplies default implementations for those methods, so
       ;; defining them here would conflict when the final class attaches dc<%>.
       ;; The final class* below overrides the interface defaults instead.
-      (define/public (draw-text str x y [combine #f] [offset 0] [angle 0]) (check! 'draw-text) (dc-unsupported 'draw-text 'text "0.54"))
-      (define/public (get-text-extent str [font #f] [combine #f] [offset 0]) (check! 'get-text-extent) (dc-unsupported 'get-text-extent 'text-metrics "0.54"))
-      (define/public (get-char-width) (check! 'get-char-width) (dc-unsupported 'get-char-width 'text-metrics "0.54"))
-      (define/public (get-char-height) (check! 'get-char-height) (dc-unsupported 'get-char-height 'text-metrics "0.54"))
-      (define/public (glyph-exists? c) (check! 'glyph-exists?) (dc-unsupported 'glyph-exists? 'font-search "0.54"))
-      (define/public (draw-bitmap bitmap x y [style 'solid] [color (color-object text-fg)] [mask #f])
-        (check! 'draw-bitmap) (dc-unsupported 'draw-bitmap 'bitmap-input "0.54"))
-      (define/public (draw-bitmap-section bitmap x y sx sy width height [style 'solid] [color (color-object text-fg)] [mask #f])
-        (check! 'draw-bitmap-section) (dc-unsupported 'draw-bitmap-section 'bitmap-input "0.54"))
-      (define/public (copy x y width height x2 y2) (check! 'copy) (dc-unsupported 'copy 'pixel-copy "0.54"))
+      (define/public (draw-text str x y [combine #f] [offset 0] [angle 0])
+        (check! 'draw-text) (compat! 'draw-text)
+        (dc-real 'draw-text x) (dc-real 'draw-text y) (dc-real 'draw-text angle)
+        (define request (dc-text-description 'draw-text str font-state combine offset))
+        (unless (dc-singular? (effective))
+          ((dc-renderer+-draw-text renderer) target request (backed (effective)) (physical-clip)
+           x y angle (with-opacity text-fg alpha-state) (with-opacity text-bg alpha-state)
+           (eq? text-mode-state 'solid)))
+        (void))
+      (define/public (get-text-extent str [font #f] [combine #f] [offset 0])
+        (check! 'get-text-extent) (compat! 'get-text-extent)
+        ((dc-renderer+-measure-text renderer) target
+         (dc-text-description 'get-text-extent str (or font font-state) combine offset)))
+      (define/private (font-extent who)
+        (check! who) (compat! who)
+        (call-with-values
+         (lambda () ((dc-renderer+-measure-text renderer) target (dc-font-description who font-state)))
+         list))
+      (define/public (get-char-width) (car (font-extent 'get-char-width)))
+      (define/public (get-char-height) (cadr (font-extent 'get-char-height)))
+      (define/public (glyph-exists? c)
+        (check! 'glyph-exists?) (compat! 'glyph-exists?)
+        (unless (char? c) (raise-argument-error 'glyph-exists? "char?" c))
+        ((dc-renderer+-glyph-exists? renderer) target (dc-font-description 'glyph-exists? font-state) c))
+      (define/private (bitmap! who bitmap x y sx sy sw sh dw dh style color mask smooth?)
+        (check! who) (compat! who)
+        (for ([v (in-list (list x y sx sy))]) (dc-real who v))
+        (for ([v (in-list (list sw sh dw dh))]) (dc-extent who v))
+        (define data (dc-bitmap-snapshot who bitmap style color mask (color-object background-state)))
+        (cond
+          [(not data) #f]
+          [else
+           (define rect (dc-bitmap-source-rect who data sx sy sw sh x y dw dh))
+           (when (and rect (not (dc-singular? (effective))))
+             (for ([n (in-vector rect)]) (dc-real who n))
+             ((dc-renderer+-draw-bitmap renderer) target data rect (backed (effective)) (physical-clip)
+              alpha-state (if (or smooth? (not (eq? smoothing-state 'unsmoothed))) 'linear 'nearest)))
+           #t]))
+      (define/public (draw-bitmap bitmap x y [style 'solid]
+                                  [color (color-object '#(0 0 0 1.0))] [mask #f])
+        (check! 'draw-bitmap)
+        (unless (is-a? bitmap rd:bitmap%) (raise-argument-error 'draw-bitmap "bitmap% object" bitmap))
+        (define sw (send bitmap get-width)) (define sh (send bitmap get-height))
+        (bitmap! 'draw-bitmap bitmap x y 0 0 sw sh sw sh style color mask #f))
+      (define/public (draw-bitmap-section bitmap x y sx sy width height [style 'solid]
+                                          [color (color-object '#(0 0 0 1.0))] [mask #f])
+        (bitmap! 'draw-bitmap-section bitmap x y sx sy width height width height style color mask #f))
+      (define/public (draw-bitmap-section-smooth bitmap x y dw dh sx sy sw sh [style 'solid]
+                                                 [color (color-object '#(0 0 0 1.0))] [mask #f])
+        (bitmap! 'draw-bitmap-section-smooth bitmap x y sx sy sw sh dw dh style color mask #t))
+      (define/public (copy x y width height x2 y2)
+        (check! 'copy) (compat! 'copy)
+        (for ([v (in-list (list x y x2 y2))]) (dc-real 'copy v))
+        (dc-extent 'copy width) (dc-extent 'copy height)
+        (when (and (> width 0) (> height 0) (not (dc-singular? (effective))))
+          ((dc-renderer+-copy renderer) target (backed (effective)) (physical-clip) x y width height x2 y2))
+        (void))
       (define/public (get-path-bounding-box path kind) (check! 'get-path-bounding-box) (dc-unsupported 'get-path-bounding-box 'path-ink-bounds "0.55"))))
-  (class* implementation% (rd:dc<%>)
+  (dc-region-mixin
+   (class* implementation% (rd:dc<%>)
     (super-new)
     ;; Do not call super: on recent Racket the interface's no-op implementation
     ;; would hide the intentionally unsupported alpha-group operation.
     (define/override (start-alpha a)
       (send this get-alpha) (dc-unit 'start-alpha a)
       (dc-unsupported 'start-alpha 'alpha-groups "0.55"))
-    (define/override (end-alpha) (send this get-alpha) (void))))
+    (define/override (end-alpha) (send this get-alpha) (void)))))
