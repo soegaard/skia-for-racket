@@ -14,6 +14,9 @@
   and universal pixel identity are not claimed by interface membership.
 - Added an independent exact pixel oracle and side-by-side review PNGs, with
   required installed-package gates in existing CPU/minimum-Racket CI lanes.
+- Raised the minimum supported Racket release from 8.7 to 8.17. Racket 8.17 is
+  the first release whose `dc<%>` includes `start-alpha` and `end-alpha`; the
+  required minimum-Racket CI lane now tests 8.17.
 - Kept Ganesh APIs, native pins, GPU workloads and all required jobs unchanged.
 - Based on accepted 0.52 commit bff9c172b84ecb353a5134ce42abd8d49256815a;
   0.53 is a host/CI validation candidate, not an already accepted baseline.

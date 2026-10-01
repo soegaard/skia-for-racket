@@ -214,7 +214,9 @@ All existing native CPU CI lanes run the new suites and the separate exact-pixel
 gate from the isolated installed package. Artifacts are placed under the job's
 `dc-foundation` directory. Missing libraries, missing captures, compilation
 errors, wrong pixels and reduced test counts are failures, not optional skips.
-The Racket 8.7 lane remains required; GPU workflows and pins are unchanged.
+The minimum supported release is Racket 8.17, the first release whose `dc<%>`
+includes `start-alpha` and `end-alpha`. The Racket 8.17 lane remains required;
+GPU workflows and pins are unchanged.
 
 0.54 adds text, bitmap input and general region support. The remaining accepted
 roadmap is unchanged: 0.55 real consumers, 0.56 `skia-canvas%`, 0.57 GPU facade.

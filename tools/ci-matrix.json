@@ -9,7 +9,7 @@
     {"id": "macos-arm64", "runner": "macos-15", "architecture": "arm64", "os": "macosx", "racket_arch": "aarch64", "racket": "9.3"},
     {"id": "macos-x64", "runner": "macos-15-intel", "architecture": "x64", "os": "macosx", "racket_arch": "x86_64", "racket": "9.3"},
     {"id": "windows-x64", "runner": "windows-2022", "architecture": "x64", "os": "windows", "racket_arch": "x86_64", "racket": "9.3"},
-    {"id": "minimum-racket", "runner": "ubuntu-24.04", "architecture": "x64", "os": "unix", "racket_arch": "x86_64", "racket": "8.7"}
+    {"id": "minimum-racket", "runner": "ubuntu-24.04", "architecture": "x64", "os": "unix", "racket_arch": "x86_64", "racket": "8.17"}
   ],
   "egl": [
     {"id": "egl-surfaceless", "runner": "ubuntu-24.04", "architecture": "x64", "os": "unix", "racket_arch": "x86_64", "racket": "9.3", "surface": "surfaceless"},

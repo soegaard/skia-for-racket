@@ -160,7 +160,7 @@ must be established by host/CI execution. The accepted baseline is
 
 [GitHub Actions CI](docs/CI.md) checks an independently installed source package,
 not only a development checkout. The required matrix covers Linux x64, Windows
-x64, macOS ARM64 and macOS Intel with Racket CS 9.3, plus Linux CS 8.7 (the
+x64, macOS ARM64 and macOS Intel with Racket CS 9.3, plus Linux CS 8.17 (the
 currently declared minimum). Two required Linux Mesa/llvmpipe lanes run the
 complete EGL headless sequence with surfaceless and pbuffer bindings and no
 display server. Software rendering establishes functionality, not acceleration.
@@ -731,8 +731,9 @@ The installer downloads **SkiaSharp.NativeAssets.macOS 3.119.1** and extracts
 use `sudo`, or run the downloaded library. The doctor command is the first
 actual native load and rendering smoke test.
 
-Racket 8.7+ is the declared source target; it has not been tested across that
-range. A full Racket distribution normally supplies `draw-lib` and
+Racket 8.17+ is the declared source target. It is the first released Racket
+whose `dc<%>` includes `start-alpha` and `end-alpha`.
+A full Racket distribution normally supplies `draw-lib` and
 `rackunit-lib`. Package installation below resolves the declared dependencies.
 
 ### Linux

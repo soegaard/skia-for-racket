@@ -146,7 +146,7 @@ python3 tools/ci.py --profile egl --id egl-pbuffer
 ```
 
 Other exact ids are `macos-arm64`, `macos-x64`, `windows-x64`, and
-`minimum-racket` (CS 8.7). Set `RACKET` to the complete executable path when it
+`minimum-racket` (CS 8.17). Set `RACKET` to the complete executable path when it
 is not on PATH. Development snapshot 9.3.0.2 intentionally does not masquerade
 as the matrix's released 9.3. Archive/move an existing `output/ci-<id>` before
 rerunning that lane: stale success directories are not reused automatically.

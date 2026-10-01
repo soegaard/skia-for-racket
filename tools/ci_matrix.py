@@ -42,7 +42,7 @@ def load_matrix(path: Path = HERE / 'ci-matrix.json') -> dict:
             ids.add(name)
             if RUNNERS.get(row['runner']) != (row['os'], row['racket_arch'], row['architecture']):
                 raise ValueError('runner and interpreter architecture disagree')
-            if row['racket'] not in ('8.7', '9.3'):
+            if row['racket'] not in ('8.17', '9.3'):
                 raise ValueError('use an explicit reviewed Racket release, not stable/current')
             if profile == 'egl' and (row['runner'] != 'ubuntu-24.04' or
                                      row['racket'] != '9.3' or
@@ -52,7 +52,7 @@ def load_matrix(path: Path = HERE / 'ci-matrix.json') -> dict:
     if targets != {('unix', 'x86_64'), ('macosx', 'aarch64'),
                    ('macosx', 'x86_64'), ('windows', 'x86_64')}:
         raise ValueError('missing core CPU portability target')
-    if not any(r['racket'] == '8.7' and r['os'] == 'unix' for r in data['cpu']):
+    if not any(r['racket'] == '8.17' and r['os'] == 'unix' for r in data['cpu']):
         raise ValueError('declared minimum Racket version is not tested')
     if {r['surface'] for r in data['egl']} != {'surfaceless', 'pbuffer'}:
         raise ValueError('both headless EGL binding modes must be required')
