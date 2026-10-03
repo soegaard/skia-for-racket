@@ -16,7 +16,9 @@ import unittest
 from contextlib import redirect_stdout, redirect_stderr
 from unittest.mock import patch
 import zlib
+from functools import lru_cache
 import dc_validation as d
+from test_dc_consumers import ConsumerInspector, write_consumer_fixture
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -49,13 +51,13 @@ def png(width, height, pixels, *, channels=4, filter_type=0, compression_tail=b'
 
 
 def report(directory):
-    return dict(schema=1, stage='0.55', status='passed', validation_run=directory.name,
+    return dict(schema=1, stage='0.56', status='passed', validation_run=directory.name,
                 storage='persistent-cpu-raster', native_package='3.119.1', native_version='119.0',
                 pure_cases=60, pure_failures=0, native_cases=31, native_failures=0,
                 compat_pure_cases=36, compat_pure_failures=0, compat_native_cases=34, compat_native_failures=0,
                 compat_oracle="dc-compat-oracle.png", text_sample="dc-text.skia.png",
                 replay_pure_cases=28, replay_pure_failures=0, replay_native_cases=28, replay_native_failures=0,
-                alpha_controller_cases=24, alpha_direct="dc-alpha.direct.png",
+                consumer_report="dc-consumers.json", alpha_controller_cases=24, alpha_direct="dc-alpha.direct.png",
                 alpha_procedure="dc-alpha.procedure.png", alpha_datum="dc-alpha.datum.png",
                 gpu_execution_verified=False, gui_initialized=False, full_drop_in_compatibility=False,
                 universal_pixel_identity_claimed=False, demo_pixel_equivalence_verified=False,
@@ -63,17 +65,26 @@ def report(directory):
                 oracle='dc-oracle.png', skia_demo='dc-primitives.skia.png', reference_demo='dc-primitives.racket.png')
 
 
-def evidence(directory):
-    d.write_json(directory/'dc.diagnostic.json', report(directory))
-    (directory/'dc-oracle.png').write_bytes(png(48, 40, d.oracle_rgba()))
+@lru_cache(maxsize=1)
+def base_capture_bytes():
+    # Cache only immutable synthetic PNG bytes; every test gets fresh files.
+    # The inspector still decodes/validates each file, including mutations.
     samples = b''.join(bytes((i%256, (i*3)%256, (i*7)%256, 255)) for i in range(460*320))
-    image = png(460, 320, samples)
-    (directory/'dc-compat-oracle.png').write_bytes(png(64,48,d.compatibility_oracle_rgba()))
-    (directory/'dc-text.skia.png').write_bytes(png(320,104,samples[:320*104*4]))
-    for name in ('dc-alpha.direct.png','dc-alpha.procedure.png','dc-alpha.datum.png'):
-        (directory/name).write_bytes(png(48,32,d.alpha_oracle_rgba()))
-    for name in ('dc-primitives.skia.png', 'dc-primitives.racket.png'):
-        (directory/name).write_bytes(image)
+    demo = png(460, 320, samples)
+    alpha = png(48, 32, d.alpha_oracle_rgba())
+    return (('dc-oracle.png', png(48,40,d.oracle_rgba())),
+            ('dc-compat-oracle.png', png(64,48,d.compatibility_oracle_rgba())),
+            ('dc-text.skia.png', png(320,104,samples[:320*104*4])),
+            ('dc-alpha.direct.png', alpha), ('dc-alpha.procedure.png', alpha),
+            ('dc-alpha.datum.png', alpha), ('dc-primitives.skia.png', demo),
+            ('dc-primitives.racket.png', demo))
+
+
+def evidence(directory):
+    write_consumer_fixture(directory)
+    d.write_json(directory/'dc.diagnostic.json', report(directory))
+    for name, data in base_capture_bytes():
+        (directory/name).write_bytes(data)
 
 
 class PNG(unittest.TestCase):
@@ -172,6 +183,27 @@ class Inspector(unittest.TestCase):
     def test_review_disclaims_equality(self):
         d.write_review(self.directory,d.inspect_directory(self.directory))
         self.assertIn('not certified',(self.directory/'dc.review.html').read_text())
+    def test_consumer_report_is_required_by_parent_gate(self):
+        (self.directory/'dc-consumers.json').unlink()
+        with self.assertRaisesRegex(ValueError,'consumer report'):
+            d.inspect_directory(self.directory)
+    def test_consumer_failure_blocks_parent_gate(self):
+        path=self.directory/'dc-consumers.json'
+        raw=d.read_json(path); raw['native_failures']=1; d.write_json(path,raw)
+        with self.assertRaisesRegex(ValueError,'consumer test evidence'):
+            d.inspect_directory(self.directory)
+    def test_consumer_identity_must_match_parent_without_runner(self):
+        path=self.directory/'dc-consumers.json'
+        raw=d.read_json(path); raw['racket_version']='8.18'; d.write_json(path,raw)
+        with self.assertRaisesRegex(ValueError,'foreign consumer interpreter'):
+            d.inspect_directory(self.directory)
+    def test_consumer_images_appear_in_review(self):
+        out=d.inspect_directory(self.directory)
+        self.assertEqual(len(out['consumers']['captures']),8)
+        d.write_review(self.directory,out)
+        text=(self.directory/'dc.review.html').read_text()
+        self.assertIn('dc-consumer-pict.direct.png',text)
+        self.assertIn('dc-consumer-plot.reference.png',text)
     def test_failed_review_refused(self):
         with self.assertRaises(ValueError): d.write_review(self.directory,dict(status='failed'))
 
@@ -184,7 +216,7 @@ for name in ('gpu_execution_verified','gui_initialized','full_drop_in_compatibil
 
 
 class Orchestration(unittest.TestCase):
-    def simulate(self, fail=None, mutate=False, manifest_only=False):
+    def simulate(self, fail=None, mutate=False, manifest_only=False, consumer_failure=False):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t)/'source'; root.mkdir(); directory=Path(t)/'evidence'; directory.mkdir()
             for name in d.SOURCE_PATHS:
@@ -199,6 +231,10 @@ class Orchestration(unittest.TestCase):
                         return json.dumps(dict(os='unix',architecture='x86_64',version='9.3',pointer_bytes=8,vm='chez-scheme'))
                     if a[1].endswith('dc-doctor.rkt'):
                         evidence(directory)
+                        if consumer_failure:
+                            child=d.read_json(directory/'dc-consumers.json')
+                            child['native_failures']=1
+                            d.write_json(directory/'dc-consumers.json',child)
                         if mutate: (root/'dc.rkt').write_text('; changed by test')
                     return ''
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
@@ -218,6 +254,13 @@ class Orchestration(unittest.TestCase):
         self.assertNotIn('native_dc_and_pixels',raw['checks']); self.assertNotIn('validation.json',names)
     def test_native_failure(self):
         code,_,raw,names=self.simulate(fail='dc-doctor.rkt'); self.assertEqual(code,1)
+        self.assertNotIn('dc.inspection.json',names)
+    def test_consumer_inspection_failure_blocks_runner_success(self):
+        code,_,raw,names=self.simulate(consumer_failure=True)
+        self.assertEqual(code,1)
+        self.assertIn('consumer',raw['error'])
+        self.assertIn('dc-consumers.json',names)
+        self.assertNotIn('validation.json',names)
         self.assertNotIn('dc.inspection.json',names)
     def test_identity_failure(self): self.assertEqual(self.simulate(fail='ci-identity.rkt')[0],1)
     def test_manifest_failure(self): self.assertEqual(self.simulate(fail='update-source-sums.py')[0],1)
@@ -321,15 +364,15 @@ class Integration(unittest.TestCase):
         self.assertIn("'tools/test-dc.py'",(HERE/'validate-gpu.py').read_text())
     def test_version_assertions_all_updated(self):
         metadata=(ROOT/'info.rkt').read_text()
-        self.assertIn('(define version "0.55")',metadata)
+        self.assertIn('(define version "0.56")',metadata)
         self.assertIn('("base" #:version "8.18")',metadata)
         self.assertIn('("draw-lib" #:version "1.22")',metadata)
         matrix=json.loads((HERE/'ci-matrix.json').read_text())
         self.assertEqual([r['racket'] for r in matrix['cpu'] if r['id']=='minimum-racket'],['8.18'])
         for name in ('test-ci.py','test-gpu-interop.py','test-metal-interop.py','test-gpu-parity.py','test-dxgi.py'):
             text=(HERE/name).read_text()
-            self.assertIn('(define version "0.55")',text)
-            for obsolete in ('0.52','0.53','0.54'):
+            self.assertIn('(define version "0.56")',text)
+            for obsolete in ('0.52','0.53','0.54','0.55'):
                 self.assertNotIn('(define version "'+obsolete+'")',text)
     def test_pin_and_gpu_workflow_preserved(self):
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')

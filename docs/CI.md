@@ -1,6 +1,21 @@
 # GitHub Actions CI — 0.46
 
-## Current DC replay/alpha gate — 0.55
+## Current real-consumer gate — 0.56
+
+The existing installed-package DC gate additionally requires sixteen native
+consumer cases and eight pict/plot captures. Its complete coverage is now
+124 pure + 109 native DC cases, plus the existing controller subchecks.
+Every new capture has semantic probes. Same-recording procedure/datum images
+are compared within two channel units; direct/reference images are retained
+for review, not certified pixel-identical. See [DC-CONSUMERS.md](DC-CONSUMERS.md).
+
+Missing/failed child reports, changed identities, incomplete captures and
+failed consumer inspection block the parent DC gate. All sixteen old/new PNGs
+and logs remain in the existing dc-foundation artifact directory. The source
+lane runs the consumer inspector regressions through test-dc.py. The minimum
+Racket version, workflow jobs, native pins and GPU workloads are unchanged.
+
+## DC replay/alpha gate introduced in 0.55
 
 The required minimum remains Racket CS 8.18 / draw-lib 1.22. The existing
 installed-package `validate-dc.py` gate now runs 124 pure and 93 native cases,

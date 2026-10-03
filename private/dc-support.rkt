@@ -9,9 +9,9 @@
          (struct-out dc-clip) (struct-out dc-clip-path) dc-scale-clip)
 
 (struct exn:fail:skia-dc:unsupported exn:fail:contract (method feature stage) #:transparent)
-(define (dc-unsupported who feature [stage "0.56"])
+(define (dc-unsupported who feature [stage "0.57"])
   (raise (exn:fail:skia-dc:unsupported
-          (format "~a: ~a is outside skia-dc% 0.55; planned compatibility stage ~a"
+          (format "~a: ~a is outside skia-dc% 0.56; planned compatibility stage ~a"
                   who feature stage)
           (current-continuation-marks) who feature stage)))
 (define (dc-real who v)
@@ -104,7 +104,7 @@
 (struct dc-ink (rgba stroke? width cap join dashes) #:transparent)
 (struct dc-draw (commands rule matrix clip ink antialias?) #:transparent)
 (define (dc-capabilities)
-  (hasheq 'schema 1 'stage "0.55" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
+  (hasheq 'schema 1 'stage "0.56" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
           'storage "persistent-cpu-raster" 'native_probe_performed #f
           'full_drop_in_compatibility #f 'gui_initialized #f
           'drawing '(draw-arc draw-ellipse draw-line draw-lines draw-path draw-point

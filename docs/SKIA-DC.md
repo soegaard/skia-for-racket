@@ -1,4 +1,14 @@
-# Skia drawing contexts — 0.55
+# Skia drawing contexts — 0.56
+
+## Direct consumer coverage in 0.56
+
+This narrowly scoped stage adds a required corpus of actual `pict` and
+`plot/no-gui` clients using the already implemented drawing subset. It does not
+add gradients, stipples, hatches, general alignment, region utility emulation,
+or GUI canvases. See [the consumer guide](DC-CONSUMERS.md) for tested operations,
+font/layout boundaries and the native acceptance gate. Package installation
+now also supplies `pict-lib` and `plot-lib` for the installed validation modules;
+merely requiring `skia/dc` does not import those clients or initialize a GUI.
 
 ## Scope and requirements
 
@@ -270,7 +280,7 @@ adapters; a change in upstream private protocols requires review.
 `is-empty?` on a nonempty associated region, ask their DC for a Cairo context.
 The Skia DC does not manufacture one. Such utility queries are not promised by
 this stage even though the region can be installed and clipped correctly. Full
-associated-region utility compatibility belongs to 0.56.
+associated-region utility compatibility belongs to 0.57.
 
 ## Direct recorded drawing
 
@@ -367,11 +377,11 @@ The exception `exn:fail:skia-dc:unsupported` extends `exn:fail:contract` and car
 
 | Deferred area | Operations |
 |---|---|
-| 0.56 styles | Gradients, stipples, hatches, XOR/hilite pens/brushes and monochrome XOR |
-| 0.56 real-consumer compatibility | `pict`, `plot/dc`, path ink bounds, full alignment and associated-region utility queries |
-| 0.56 text edge cases | Combined tabs/hard breaks and Pango font-description interpretation |
-| 0.57 GUI | Persistent raster `skia-canvas%`, exposure, resize and presentation |
-| 0.58 GPU facade | GPU-backed `skia-canvas%` with frame-scoped `dc<%>` lifetime |
+| 0.57 styles | Gradients, stipples, hatches, XOR/hilite pens/brushes and monochrome XOR |
+| 0.57 remaining DC compatibility | Path ink bounds, full alignment, associated-region utility queries and consumers outside the tested subset |
+| 0.57 text edge cases | Combined tabs/hard breaks and Pango font-description interpretation |
+| 0.58 GUI | Persistent raster `skia-canvas%`, exposure, resize and presentation |
+| 0.59 GPU facade | GPU-backed `skia-canvas%` with frame-scoped `dc<%>` lifetime |
 
 The replay suite deliberately does not add `pict`, plotting, gradients or new
 styles to 0.55's acceptance criteria. Interface membership is not evidence of
@@ -380,7 +390,7 @@ universal drop-in compatibility. No new native pins or backend expansions occur.
 ## Validation and evidence
 
 Run `python3 tools/validate-dc.py --racket "$RACKET"`. The required sequence
-compiles the modules and executes all six RackUnit suites:
+compiles the modules and executes all seven RackUnit suites:
 
 | Suite | Cases |
 |---|---:|
@@ -390,8 +400,9 @@ compiles the modules and executes all six RackUnit suites:
 | Text/bitmap/region native | 34 |
 | Replay/locking/alpha pure | 28 |
 | Replay/locking/alpha native | 28 |
+| Real pict/plot consumers and replay | 16 |
 
-Thus the DC gate requires **124 pure and 93 native cases**. The replay pure suite
+Thus the DC gate requires **124 pure and 109 native cases**. The replay pure suite
 also invokes 24 standalone production alpha-controller cases using a recording
 renderer; those 24 cases are not claimed as native pixel tests. Run them alone
 with `racket tests/dc-alpha-test.rkt` without Skia or `racket/draw`.
@@ -404,37 +415,30 @@ a maximum error of **2 per 8-bit channel** to accommodate alpha quantization in
 nested compositing. Agreement between the three implementations alone is not a
 pass. No tolerance is added to either existing exact oracle.
 
-Eight PNGs are retained: the two exact oracles, those three alpha captures,
+The eight existing PNGs are retained: the two exact oracles, those three alpha captures,
 the existing 460x320 Skia/Racket geometry examples, and a 320x104 colored text
 sample. The large examples remain manual-review material; the text image does
 not independently prove glyph shape or Cairo/Pango equivalence. Native replay
 tests separately require actual colored text ink and a known bitmap pixel.
 Every retained Skia snapshot is encoded after its DC closes.
 
+Eight additional 320x240 consumer PNGs show direct, recorded-procedure,
+recorded-datum and Racket reference drawing for each of `pict` and `plot/dc`.
+Each image must pass semantic pixel probes; matching empty images cannot pass.
+The two replay forms of the same recording are compared within two channel
+units. Direct/reference image differences are retained for manual inspection,
+not subjected to an invented universal text/raster tolerance.
+
 All existing CPU CI lanes, including required Racket 8.18, invoke this validator
 from the isolated installed package. The artifact directory remains
-`dc-foundation`. Both new suites are also wired into `run-tests.rkt`, with pure
-replay running before native installation. Missing captures, reduced counts,
+`dc-foundation`. The 0.55 suites remain wired into `run-tests.rkt`, with pure
+replay running before native installation. The new 0.56 consumer suite is
+mandatory inside this installed-package DC gate. Missing captures, reduced counts,
 failed commands, wrong pixels, or stale/mismatched evidence fail the gate.
 Existing GPU jobs, workloads, dependencies and pins are unchanged.
 
-The implementation baseline is `f4dedd03d0f8d0fdb79fcb9f5706b218a78183c5`,
-which adds two GPU examples after accepted 0.54. Both examples are preserved.
-Its source manifest omitted those two tracked example paths; the delivery's
-baseline-checked manifest repair includes them when it regenerates the manifest
-last. This repairs inventory; it does not waive the source checker.
-
-0.55 is a host-validation candidate. Consult the delivery's `VALIDATION.md` for
-what was actually executed during authoring; the presence of tests or advertised
-case counts is not evidence that native rendering or the full CI matrix passed.
-
-## Reference contracts
-
-- Racket dc<%>: <https://docs.racket-lang.org/draw/dc___.html>
-- Racket font%: <https://docs.racket-lang.org/draw/font_.html>
-- Racket bitmap%: <https://docs.racket-lang.org/draw/bitmap_.html>
-- Racket region%: <https://docs.racket-lang.org/draw/region_.html>
-- Racket 8.18 draw interface: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/dc-intf.rkt>
-- Default implementations (draw-lib 1.22): <https://github.com/racket/draw/commit/55819da32ae19b9c900bb2c64edb8600dd8c720d>
-- Isolated region adapter reference: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/region.rkt>
-- Replay and locking reference: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/record-dc.rkt>
+The 0.56 source baseline is `f1568cf68e57b0358ac27e4c5eeb1e0e33e6de8a`,
+accepted by the maintainer after the 0.55 Mac gate and CI passed. The two GPU
+demos and here-string checker fix are preserved. 0.56 acceptance requires its
+own actual native/consumer and minimum-version CI results; source reading and
+synthetic Python inspector tests alone do not establish that acceptance.

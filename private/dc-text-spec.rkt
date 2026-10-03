@@ -25,7 +25,7 @@
   ;; Font-name-directory can return a Pango font description, not a family.
   ;; Do not silently hand that description to Skia as if it were one family.
   (when (regexp-match? #rx"," family)
-    (dc-unsupported who 'pango-font-description "0.56 (select an explicit font face)"))
+    (dc-unsupported who 'pango-font-description "0.57 (select an explicit font face)"))
   (define weight (send f get-weight))
   (define features
     (for/list ([tag (in-list (sort (hash-keys (send f get-feature-settings)) string<?))])
@@ -55,7 +55,7 @@
   ;; platform-dependent Pango behavior; keep that unsupported rather than
   ;; silently invoking this library's multiline paragraph layout.
   (when (and combine (regexp-match? #rx"[\t\r\n\u0085\u2028\u2029]" text))
-    (dc-unsupported who 'combined-text-tabs-or-hard-breaks "0.56"))
+    (dc-unsupported who 'combined-text-tabs-or-hard-breaks "0.57"))
   (define units
     (case mode
       [(characters)

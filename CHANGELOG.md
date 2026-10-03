@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.56.0 — Real consumers on the existing DC subset
+
+- Added direct public pict/plot/no-gui fixtures with text, geometry, bitmap,
+  nested group opacity, a labeled function, point markers, axes and legend.
+- Added 16 native cases covering direct consumers, both upstream replay forms,
+  state/clip preservation, HiDPI and snapshots encoded after DC close.
+- Required eight new consumer captures through the existing installed-package
+  DC gate. Every capture has semantic probes; same-recording procedure/datum
+  images have a two-channel-unit bound. Direct/reference differences are
+  retained for review rather than represented as universal pixel identity.
+- Added explicit pict-lib/plot-lib dependencies without importing them from
+  skia/dc. Kept Racket 8.18 / draw-lib 1.22 and the production renderer unchanged.
+- Retained all 0.55 suites/oracles, GPU demos, native pins and GPU workloads.
+- Split the remaining roadmap into 0.57 styles/completeness, 0.58 raster canvas
+  and 0.59 GPU-backed canvas. Deferred features remain explicit rejections.
+- Source baseline: f1568cf68e57b0358ac27e4c5eeb1e0e33e6de8a. Host and complete CI
+  execution are acceptance gates, not claims made by synthetic inspector tests.
+
 ## 0.55.0 — Recorded drawing and raster alpha groups
 
 - Added direct upstream recorded-procedure and recorded-datum replay using the

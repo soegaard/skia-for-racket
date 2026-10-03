@@ -1,6 +1,27 @@
-# Racket Skia — 0.55.0
+# Racket Skia — 0.56.0
 
-## Recorded drawing and nested raster alpha groups
+## Real consumers on the existing drawing subset
+
+This narrowed stage adds actual `pict` and `plot/no-gui` consumers to the
+required installed-package DC gate. It tests direct drawing, both upstream
+replay forms, state/clip preservation, 2x backing and post-close snapshots.
+No new gradient, stipple, hatch, alignment or GUI implementation is added.
+
+The minimum remains **Racket 8.18 / draw-lib 1.22**; `pict-lib` and `plot-lib`
+are declared dependencies for the installed validation and examples. The DC
+renderer, native pins, GPU demos and all GPU workloads are unchanged.
+
+The gate runs 124 pure + 109 native DC cases and retains sixteen PNGs. The
+new consumer images have independent semantic probes; procedure/datum forms
+of the same recording agree within two channel units. Direct/reference text
+and antialiasing are reviewed, not required to be pixel-identical.
+
+See [consumer scope, examples and evidence](docs/DC-CONSUMERS.md). This is a
+host/CI validation candidate based on `f1568cf68e57b0358ac27e4c5eeb1e0e33e6de8a`.
+The roadmap is now **0.57 styles/completeness**, **0.58 raster skia-canvas%**,
+and **0.59 GPU-backed skia-canvas%**.
+
+## Recorded drawing and nested raster alpha groups (0.55 history)
 
 `skia/dc` supports direct upstream `record-dc%` procedure replay and
 `recorded-datum->procedure`, with the private replay identities isolated in a

@@ -37,7 +37,7 @@
     [(not (send source ok?)) #f]
     [else
      (define mono? (not (send source is-color?)))
-     (when (and mono? (eq? style 'xor)) (dc-unsupported who 'monochrome-xor "0.56"))
+     (when (and mono? (eq? style 'xor)) (dc-unsupported who 'monochrome-xor "0.57"))
      (define-values (w h b) (physical who source))
      (define-values (mw mh mb) (if mask (physical who mask) (values 0 0 1.0)))
      ;; Include all temporary pixel buffers in the limit, not just the result.
