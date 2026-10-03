@@ -52,6 +52,9 @@
 (define-native sk_region_iterator_next (_fun _pointer -> _void))
 (define-native sk_region_iterator_rect (_fun _pointer _sk-irect-pointer -> _void))
 (define-native sk_paint_get_style (_fun _pointer -> _int))
+;; m119: paint, source, destination, nullable cull rect, explicit query matrix.
+(define-native sk_paint_get_fill_path
+  (_fun _pointer _pointer _pointer _pointer _pointer -> _stdbool))
 (define-native sk_vertices_make_copy
   (_fun _int _int _pointer _pointer _pointer _int _pointer -> _pointer))
 (define-native sk_vertices_unref (_fun _pointer -> _void))

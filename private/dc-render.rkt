@@ -2,7 +2,8 @@
 ;; The only production renderer for skia/dc: existing CPU Skia operations.
 ;; There is no Cairo rendering adapter and no GPU or GUI initialization.
 (require (prefix-in sk: "../main.rkt") "dc-support.rkt" "dc-bitmap.rkt"
-         "dc-geometry.rkt" "dc-native-util.rkt" "dc-text.rkt")
+         "dc-geometry.rkt" "dc-native-util.rkt" "dc-text.rkt"
+         "dc-style-render.rkt" "dc-path-bounds.rkt")
 (provide skia-dc-renderer)
 (define (draw! surface command)
   (define c (sk:surface-canvas surface))
@@ -13,19 +14,8 @@
       (set-matrix! c (dc-draw-matrix command))
       (call-with-path (dc-draw-commands command) (dc-draw-rule command)
         (lambda (p)
-          (sk:with-skia ([paint (sk:make-paint #:color (native-color (dc-ink-rgba ink))
-                                             #:style (if (dc-ink-stroke? ink) 'stroke 'fill)
-                                             #:stroke-width (dc-ink-width ink)
-                                             #:antialias? (dc-draw-antialias? command))])
-            (sk:paint-set-cap! paint (dc-ink-cap ink))
-            (sk:paint-set-join! paint (dc-ink-join ink))
-            ;; Racket/Cairo uses a miter limit of 10, not Skia's default of 4.
-            (sk:paint-set-miter-limit! paint 10)
-            (if (pair? (dc-ink-dashes ink))
-                (sk:with-skia ([effect (sk:make-dash-path-effect (dc-ink-dashes ink))])
-                  (sk:paint-set-path-effect! paint effect)
-                  (sk:draw-path c p paint))
-                (sk:draw-path c p paint))))))))
+          (call-with-dc-paint ink (dc-draw-antialias? command)
+            (lambda (paint) (sk:draw-path c p paint))))))))
 (define (clear! surface clip rgba erase?)
   (define c (sk:surface-canvas surface))
   (sk:call-with-canvas-state c
@@ -84,9 +74,9 @@
         (sk:draw-image c image 0 0 #:paint paint))))
   (void))
 (define skia-dc-renderer
-  (dc-renderer/alpha
+  (dc-renderer/styles
    (lambda (w h) (sk:make-surface w h #:background 'transparent))
    sk:skia-close! draw! clear! sk:surface-snapshot
    (lambda (s p?) (sk:surface->rgba-bytes s #:premultiplied? p?))
    sk:surface->png-bytes
-   dc-measure-text dc-render-text! dc-glyph-exists? bitmap! copy! composite!))
+   dc-measure-text dc-render-text! dc-glyph-exists? bitmap! copy! composite! dc-path-ink-bounds))

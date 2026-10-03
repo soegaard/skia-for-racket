@@ -1,24 +1,29 @@
 #lang racket/base
 ;; Isolated region dependency; replay/style member identities are isolated in
-;; dc-replay-adapter.rkt. Neither adapter creates a Cairo drawing context.
-;; No Cairo pointer, rendering, or private pen/brush protocol crosses this file.
+;; dc-replay-adapter.rkt. A separate query-only scratch Cairo context supports
+;; upstream region% utilities; it is never a drawing fallback or pixel bridge.
 (require racket/class racket/list
          (only-in ffi/unsafe register-finalizer)
          (only-in ffi/unsafe/atomic call-as-atomic)
          (prefix-in rd: racket/draw)
          (only-in racket/draw/private/region get-paths)
          (only-in racket/draw/private/local lock-region
-                  [get-clipping-matrix private-get-clipping-matrix])
-         "dc-support.rkt" "dc-geometry.rkt")
+                  [get-clipping-matrix private-get-clipping-matrix]
+                  [in-cairo-context private-in-cairo-context])
+         "dc-support.rkt" "dc-geometry.rkt" "dc-region-query.rkt")
 (provide dc-region-mixin dc-region-snapshot make-dc-region-lease dc-region-install!
-         dc-region-select!)
+         dc-region-select! dc-region-query-info)
+(define-local-member-name dc-region-query-info)
 (define (dc-region-mixin %)
   (class %
     (super-new)
     ;; region%'s constructor uses a local-member identity, not the symbol
     ;; 'get-clipping-matrix. Implement the exact identity in this adapter.
     (define/public (private-get-clipping-matrix)
-      (dc-effective (send this get-transformation)))))
+      (dc-effective (send this get-transformation)))
+    (define/public (private-in-cairo-context proc)
+      (define-values (w h m clip) (send this dc-region-query-info))
+      (call-with-dc-region-query w h m clip proc))))
 ;; The finalizer holds only a weak region reference, never a region -> DC
 ;; cycle. An externally retained unassociated region is unlocked if its DC is
 ;; collected without explicit close. Native surface finalization stays separate.

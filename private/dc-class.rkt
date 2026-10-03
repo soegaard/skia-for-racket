@@ -2,7 +2,7 @@
 (require racket/class racket/future racket/list racket/math racket/vector
          (prefix-in rd: racket/draw) "dc-support.rkt" "dc-geometry.rkt"
          "dc-region-adapter.rkt" "dc-text-spec.rkt" "dc-bitmap.rkt"
-         "dc-replay-adapter.rkt" "dc-alpha.rkt"
+         "dc-replay-adapter.rkt" "dc-alpha.rkt" "dc-styles.rkt" "dc-style-math.rkt"
          (only-in "check.rkt" current-skia-byte-limit))
 (provide make-skia-dc-class)
 (define-local-member-name dc-push-layer! dc-pop-layer!)
@@ -20,34 +20,11 @@
 (define (with-opacity rgba alpha)
   (vector-immutable (vector-ref rgba 0) (vector-ref rgba 1) (vector-ref rgba 2)
                     (* (vector-ref rgba 3) alpha)))
-(define (check-pen p)
-  (unless (is-a? p rd:pen%) (raise-argument-error 'set-pen "pen% object" p))
-  (unless (memq (send p get-style) '(solid transparent dot long-dash short-dash dot-dash))
-    (dc-unsupported 'set-pen (send p get-style) "0.57"))
-  (when (send p get-stipple) (dc-unsupported 'set-pen 'stipple "0.57"))
-  (dc-extent 'set-pen (send p get-width))
-  (color-value 'set-pen (send p get-color))
-  p)
-(define (check-brush b)
-  (unless (is-a? b rd:brush%) (raise-argument-error 'set-brush "brush% object" b))
-  (unless (memq (send b get-style) '(solid transparent))
-    (dc-unsupported 'set-brush (send b get-style) "0.57"))
-  (when (or (send b get-stipple) (send b get-gradient) (send b get-handle))
-    (dc-unsupported 'set-brush 'stipple-gradient-or-native-handle "0.57"))
-  (color-value 'set-brush (send b get-color))
-  b)
+(define check-pen dc-check-pen)
+(define check-brush dc-check-brush)
 (define (smoothing-value s)
   (unless (memq s '(unsmoothed smoothed aligned))
     (raise-argument-error 'set-smoothing "'unsmoothed, 'smoothed, or 'aligned" s)) s)
-(define (dash-pattern p)
-  (define w (send p get-width))
-  (define style (send p get-style))
-  (define wide? (> w 1))
-  (define gap (if wide? 2.0 4.0))
-  (define base (case style [(dot) (list 1.0 gap)] [(long-dash) (list 4.0 gap)]
-                     [(short-dash) (list 2.0 gap)] [(dot-dash) (list 1.0 gap 4.0 gap)]
-                     [else '()]))
-  (map (lambda (n) (* n (if wide? w 1))) base))
 
 (define (make-skia-dc-class renderer)
   (unless (dc-renderer? renderer) (raise-argument-error 'make-skia-dc-class "private DC renderer" renderer))
@@ -134,25 +111,7 @@
         (define v (vector-copy transform-state))
         (for ([i (in-list indices)] [value (in-list values-list)]) (vector-set! v i value)) v)
       (define/private (aligners who)
-        (define m (effective))
-        (cond
-          [(eq? smoothing-state 'smoothed) (values values values 0.0 0.0)]
-          [else
-           ;; Do not imply Cairo's full alignment behavior under arbitrary
-           ;; affine maps. The smoothed path supports those transformations.
-           (unless (and (zero? (vector-ref m 1)) (zero? (vector-ref m 2))
-                        (> (vector-ref m 0) 0) (> (vector-ref m 3) 0))
-             (dc-unsupported who 'aligned-rotation-shear-or-reflection "0.57 (use smoothed now)"))
-           (define sx (* alignment (vector-ref m 0)))
-           (define sy (* alignment (vector-ref m 3)))
-           (define ox (* alignment (vector-ref m 4)))
-           (define oy (* alignment (vector-ref m 5)))
-           (define pw (send pen-state get-width))
-           (define (delta scale)
-             (if (odd? (inexact->exact (max 1 (floor (* pw scale))))) 0.5 0.0))
-           (values (lambda (x) (/ (- (+ (floor (+ (* x sx) ox)) (delta sx)) ox) sx))
-                   (lambda (y) (/ (- (+ (floor (+ (* y sy) oy)) (delta sy)) oy) sy))
-                   (/ 1.0 sx) (/ 1.0 sy))]))
+        (dc-alignment-functions who (effective) alignment (send pen-state get-width) smoothing-state))
       (define/private (ink stroke?)
         (define obj (if stroke? pen-state brush-state))
         (define col (with-opacity (color-value 'skia-dc% (send obj get-color)) alpha-state))
@@ -163,11 +122,12 @@
           (cond [(not stroke?) 0.0]
                 [(eq? smoothing-state 'smoothed) (if (= width 0) (/ 1.0 axis-scale) width)]
                 [else (/ (max 1.0 (floor (* width axis-scale))) axis-scale)]))
-        (dc-ink col stroke? actual-width
-                (if (and stroke? (<= (* width axis-scale) 1)) 'round
-                    (if stroke? (case (send pen-state get-cap) [(projecting) 'square] [else (send pen-state get-cap)]) 'round))
-                (if stroke? (send pen-state get-join) 'round)
-                (if stroke? (dash-pattern pen-state) '())))
+        (dc-style-ink obj stroke?
+          (dc-ink col stroke? actual-width
+                  (if (and stroke? (<= (* width axis-scale) 1)) 'round
+                      (if stroke? (case (send pen-state get-cap) [(projecting) 'square] [else (send pen-state get-cap)]) 'round))
+                  (if stroke? (send pen-state get-join) 'round) '())
+          (color-object background-state) alpha-state m))
       (define/private (emit! who fill-commands stroke-commands [rule 'winding])
         (check! who)
         (unless (memq rule '(winding odd-even)) (raise-argument-error who "'winding or 'odd-even" rule))
@@ -458,7 +418,34 @@
         (when (and (> width 0) (> height 0) (not (dc-singular? (effective))))
           ((dc-renderer+-copy renderer) target (backed (effective)) (physical-clip) x y width height x2 y2))
         (void))
-      (define/public (get-path-bounding-box path kind) (check! 'get-path-bounding-box) (dc-unsupported 'get-path-bounding-box 'path-ink-bounds "0.57"))))
+      (define/public (get-path-bounding-box path kind)
+        (check! 'get-path-bounding-box)
+        (unless (memq kind '(path fill stroke))
+          (raise-argument-error 'get-path-bounding-box "'path, 'fill, or 'stroke" kind))
+        (define commands (dc-path-commands 'get-path-bounding-box path))
+        (unless (dc-renderer/styles? renderer)
+          (dc-unsupported 'get-path-bounding-box 'renderer-without-path-bounds "private test renderer"))
+        (cond
+          [(or (dc-singular? (effective)) (null? commands)
+               (and (eq? kind 'stroke) (zero? (send pen-state get-width))))
+           (values 0.0 0.0 0.0 0.0)]
+          [else
+           (define-values (ax ay _x _y) (aligners 'get-path-bounding-box))
+           (define snapped (dc-path-map commands (lambda (x y) (values (ax x) (ay y)))))
+           ;; Bounds do not inspect the brush/stipple, allocate a target, or
+           ;; use the current clip. They describe geometric ink only.
+           (define w (send pen-state get-width))
+           (define-values (sx sy) (dc-axis-scales (effective) alignment))
+           (define-values (dashes phase) (dc-dash-spec (send pen-state get-style) w (send pen-state get-stipple)))
+           (define width (if (eq? smoothing-state 'smoothed) w (/ (max 1.0 (floor (* w sx))) sx)))
+           (define cap (if (<= (* w sx) 1) 'round
+                           (case (send pen-state get-cap) [(projecting) 'square] [else (send pen-state get-cap)])))
+           ((dc-renderer/styles-path-bounds renderer) snapped kind
+             (dc-ink/style '#(0 0 0 1.0) #t width cap (send pen-state get-join) dashes #f phase))]))
+      (define/public (dc-region-query-info)
+        (check! 'region-query)
+        (values (/ pixel-w backing) (/ pixel-h backing) (effective)
+                (dc-scale-clip (physical-clip) (/ 1.0 backing))))))
   (dc-replay-mixin
    (dc-region-mixin
     (class* implementation% (rd:dc<%>)

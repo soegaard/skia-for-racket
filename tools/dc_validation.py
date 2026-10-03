@@ -1,4 +1,4 @@
-"""Independent validation for the 0.56 raster DC evidence (stdlib only).
+"""Independent validation for the 0.57 raster DC evidence (stdlib only).
 
 The tiny oracle is specified here, not derived from either renderer's pixels.
 The larger Racket/Skia comparison is a manual review, not a pixel-equality gate.
@@ -12,7 +12,7 @@ from pathlib import Path
 import struct
 import zlib
 
-STAGE = '0.56'
+STAGE = '0.57'
 PURE_CASES = 60
 NATIVE_CASES = 31
 COMPAT_PURE_CASES = 36
@@ -36,7 +36,13 @@ SOURCE_PATHS = ('dc.rkt', 'private/dc-support.rkt', 'private/dc-class.rkt',
                 'tests/dc-replay-native-test.rkt', 'examples/dc-replay.rkt',
                 'tests/dc-consumer-fixtures.rkt', 'tests/dc-consumer-native-test.rkt',
                 'tools/dc-consumer-doctor.rkt', 'tools/dc_consumer_validation.py',
-                'examples/dc-consumers.rkt')
+                'examples/dc-consumers.rkt', 'private/native.rkt',
+                'private/dc-style-math.rkt', 'private/dc-styles.rkt',
+                'private/dc-style-render.rkt', 'private/dc-path-bounds.rkt',
+                'private/dc-region-query.rkt', 'tests/dc-style-math-test.rkt',
+                'tests/dc-style-pure-test.rkt', 'tests/dc-style-native-test.rkt',
+                'tests/dc-style-fixtures.rkt', 'tools/dc-style-doctor.rkt',
+                'tools/dc_style_validation.py', 'examples/dc-styles.rkt')
 
 
 def require(condition, message):
@@ -297,7 +303,11 @@ def inspect_directory(directory, *, identity=None):
     from dc_consumer_validation import inspect_consumers
     consumers = inspect_consumers(directory, identity=(identity if identity is not None else
                     dict(os=raw['os'], architecture=raw['architecture'], version=raw['racket_version'])))
-    return dict(consumers=consumers, schema=1, stage=STAGE, status='passed', validation_run=directory.name,
+    require(raw.get('style_report') == 'dc-styles.json', 'missing style evidence link')
+    from dc_style_validation import inspect_styles
+    styles = inspect_styles(directory, identity=(identity if identity is not None else
+                dict(os=raw['os'], architecture=raw['architecture'], version=raw['racket_version'])))
+    return dict(styles=styles, consumers=consumers, schema=1, stage=STAGE, status='passed', validation_run=directory.name,
                 storage='persistent-cpu-raster', pure_cases=PURE_CASES, native_cases=NATIVE_CASES,
                 compat_pure_cases=COMPAT_PURE_CASES, compat_native_cases=COMPAT_NATIVE_CASES,
                 replay_pure_cases=REPLAY_PURE_CASES, replay_native_cases=REPLAY_NATIVE_CASES,
@@ -314,8 +324,8 @@ def write_review(directory, report):
     directory = Path(directory)
     require(report.get('status') == 'passed', 'no success review for a failed report')
     title = html.escape(directory.name)
-    body = ['<!doctype html><meta charset="utf-8"><title>Skia DC 0.56 review</title>',
-            '<h1>Skia DC 0.56</h1><p>' + title + '</p>',
+    body = ['<!doctype html><meta charset="utf-8"><title>Skia DC 0.57 review</title>',
+            '<h1>Skia DC 0.57</h1><p>' + title + '</p>',
             '<p>The 48×40 oracle is checked exactly. The larger images are for manual comparison; '
             'Font pixels are reviewed manually; the 64×48 bitmap/region/copy oracle is checked exactly. '
             'The three 48×32 alpha captures are independently checked with a fixed two-unit channel tolerance, '
@@ -325,7 +335,11 @@ def write_review(directory, report):
                 'Procedure/datum replay of the same recording is compared within two channel units. '
                 'Direct/reference differences are reported without an equality threshold; '
                 'text metrics and antialiasing are not required to match.</p>')
-    for item in report['captures'] + report['consumers']['captures']:
+    body.append('<p>0.57: four style captures must pass independent color/pattern probes, including '
+                'the reference capture. Three Skia replay paths agree within two channel units. '
+                'General Cairo/Skia edge equality is not claimed. Region utilities use an isolated '
+                'query-only Cairo recording context, never the Skia pixels or drawing surface.</p>')
+    for item in report['captures'] + report['consumers']['captures'] + report['styles']['captures']:
         name = html.escape(item['file'], quote=True)
         body.append(f'<h2>{name}</h2><img src="{name}" alt="{name}"><p>SHA-256: {item["sha256"]}</p>')
     (directory / 'dc.review.html').write_text('\n'.join(body) + '\n', encoding='utf-8')

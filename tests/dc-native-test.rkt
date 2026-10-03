@@ -128,7 +128,10 @@
                                                  (check-equal? (pixel dc 2 3) '(255 0 0 255))))))
    (test-case "unsupported method leaves real pixels unchanged"
      (using-dc (lambda (dc) (send dc clear) (define before (send dc get-rgba-bytes))
-                 (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc set-brush "red" 'cross-hatch)))
+                 ;; Hatch brushes are supported starting in 0.57. Keep this
+                 ;; foundation invariant pinned to an operation that remains
+                 ;; deliberately unsupported.
+                 (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc draw-text "x\ty" 1 1 #t)))
                  (check-equal? (send dc get-rgba-bytes) before))))
    (test-case "integer rectangles agree with bitmap-dc%"
      (compare-with-racket (lambda (dc) (fill-mode dc) (send dc draw-rectangle 2 3 7 8)) 0))

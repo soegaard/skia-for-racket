@@ -1,4 +1,4 @@
-# Skia drawing contexts — 0.56
+# Skia drawing contexts — 0.57
 
 ## Direct consumer coverage in 0.56
 
@@ -9,6 +9,15 @@ or GUI canvases. See [the consumer guide](DC-CONSUMERS.md) for tested operations
 font/layout boundaries and the native acceptance gate. Package installation
 now also supplies `pict-lib` and `plot-lib` for the installed validation modules;
 merely requiring `skia/dc` does not import those clients or initialize a GUI.
+
+## 0.57 current compatibility additions
+
+See [DC styles, geometry queries and their limits](DC-STYLES.md) for gradients,
+stipple pens/brushes, six hatches, legacy aliases, affine alignment and path bounds.
+Associated-region utilities now have an isolated query-only Cairo context. It is
+never given the Skia backing and is never used as a drawing fallback. Native
+Cairo-handle brushes remain unsupported. Earlier stage descriptions below are
+historical where explicitly superseded by this 0.57 contract.
 
 ## Scope and requirements
 
@@ -101,8 +110,8 @@ Ordinary primitives are `draw-line`, `draw-lines`, `draw-point`, `draw-polygon`,
 winding/odd-even fill rules. Closed shapes fill before stroking; lines and
 splines do not accidentally use the brush.
 
-Solid/transparent brushes and solid/transparent/dot/long-dash/short-dash/dot-dash
-pens are supported, with caps, joins and hairlines. **0.55 changes selection
+Ordinary and extended styles are supported as described in DC-STYLES.md,
+including gradients, stipples, hatches and the pinned legacy aliases. **0.55 changes selection
 semantics:** `set-pen` / `set-brush` retain and lock the supplied object instead
 of installing an immutable copy. `get-pen` / `get-brush` return that same object.
 A mutable selection cannot be changed until every selecting DC has released it.
@@ -114,14 +123,13 @@ Validation occurs before replacing the current selection, and validation,
 locking, and installation are atomic with respect to Racket thread scheduling.
 An unsupported candidate leaves the previous object selected and locked. A
 weak-reference finalizer releases locks when a DC is collected; deterministic
-`close` remains the intended lifetime boundary. Locking does not make unsupported
-stipple or gradient styles available in this release.
+`close` remains the intended lifetime boundary. 0.57 supports public stipple and
+gradient sources; their separately mutable data is copied for every draw.
 
-`'smoothed` supports general affine geometry. The foundation's `'unsmoothed`
-and `'aligned` snapping supports positive axis-aligned transforms only; rotated,
-sheared or reflected aligned geometry remains an explicit unsupported case.
-Use `'smoothed` for that geometry. This release does not claim complete Cairo
-pixel-alignment, hairline or dash-phase equivalence.
+`'smoothed` supports general affine geometry. As of 0.57, `'aligned` and
+`'unsmoothed` also accept nonsingular finite affine transforms, using upstream
+effective row-norm snapping. Complete Cairo edge/hairline/dash identity is not
+claimed. See DC-STYLES.md for geometric path-bound queries.
 
 `clear` paints the background with current DC alpha; `erase` clears to
 transparency independently of alpha. Both respect the installed clip and
@@ -218,7 +226,7 @@ clip source and destination together instead of stretching the remaining image.
 Color sources preserve their color/alpha and ignore monochrome style/tint.
 For monochrome sources, `'solid` draws black bits with the supplied color and
 leaves white bits transparent; `'opaque` uses the DC background for white bits.
-Monochrome `'xor` remains explicitly unsupported. Smoothing selects nearest
+Monochrome `'xor` uses the legacy solid semantics in 0.57. Smoothing selects nearest
 sampling for `'unsmoothed`, linear otherwise; the smooth-section method always
 uses linear sampling without changing the caller's DC state.
 
@@ -271,16 +279,16 @@ Private Racket dependencies are isolated in two adapters:
 `private/dc-region-adapter.rkt` consumes checked region paths and the private
 clipping-matrix identity, while `private/dc-replay-adapter.rkt` imports the exact
 `do-set-pen!` / `do-set-brush!` identities from `racket/draw/private/dc` and
-`adjust-lock` from `racket/draw/private/local`. Neither adapter constructs a
-Cairo drawing context or reroutes Skia rendering through Cairo. Other DC modules
-use public Racket drawing types. Minimum/current-version CI must exercise these
+`adjust-lock` from `racket/draw/private/local`. The region adapter delegates
+utility queries to `dc-region-query.rkt`, which owns a temporary query-only
+Cairo recording context. It receives no Skia pixels; no drawing is rerouted.
+Other DC modules use public Racket drawing types. Minimum/current-version CI must exercise these
 adapters; a change in upstream private protocols requires review.
 
-**Remaining region limit:** some built-in region utility operations, notably
-`is-empty?` on a nonempty associated region, ask their DC for a Cairo context.
-The Skia DC does not manufacture one. Such utility queries are not promised by
-this stage even though the region can be installed and clipped correctly. Full
-associated-region utility compatibility belongs to 0.57.
+**Region utilities in 0.57:** the private query callback is supplied by an
+isolated scratch Cairo recording context. It receives no Skia pixels, and its
+contents are never rendered to the output. Upstream utility approximations and
+caching remain. See DC-STYLES.md for the query-only boundary and cleanup rules.
 
 ## Direct recorded drawing
 
@@ -377,9 +385,9 @@ The exception `exn:fail:skia-dc:unsupported` extends `exn:fail:contract` and car
 
 | Deferred area | Operations |
 |---|---|
-| 0.57 styles | Gradients, stipples, hatches, XOR/hilite pens/brushes and monochrome XOR |
-| 0.57 remaining DC compatibility | Path ink bounds, full alignment, associated-region utility queries and consumers outside the tested subset |
-| 0.57 text edge cases | Combined tabs/hard breaks and Pango font-description interpretation |
+| Still deferred | Native Cairo-handle brushes; arbitrary platform-specific native pattern sources |
+| Not universally certified | Exact Cairo edge/metric equivalence and consumers outside the tested subset |
+| Deferred text edge cases | Combined tabs/hard breaks and Pango font-description interpretation |
 | 0.58 GUI | Persistent raster `skia-canvas%`, exposure, resize and presentation |
 | 0.59 GPU facade | GPU-backed `skia-canvas%` with frame-scoped `dc<%>` lifetime |
 
@@ -442,3 +450,8 @@ accepted by the maintainer after the 0.55 Mac gate and CI passed. The two GPU
 demos and here-string checker fix are preserved. 0.56 acceptance requires its
 own actual native/consumer and minimum-version CI results; source reading and
 synthetic Python inspector tests alone do not establish that acceptance.
+
+## 0.57 acceptance
+
+The required DC validator now adds style suites and four semantic style captures.
+See DC-STYLES.md for counts, limits and the remaining 0.58/0.59 GUI roadmap.

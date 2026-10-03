@@ -19,6 +19,7 @@ import zlib
 from functools import lru_cache
 import dc_validation as d
 from test_dc_consumers import ConsumerInspector, write_consumer_fixture
+from test_dc_styles import StyleInspector, write_style_fixture
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -51,13 +52,13 @@ def png(width, height, pixels, *, channels=4, filter_type=0, compression_tail=b'
 
 
 def report(directory):
-    return dict(schema=1, stage='0.56', status='passed', validation_run=directory.name,
+    return dict(schema=1, stage='0.57', status='passed', validation_run=directory.name,
                 storage='persistent-cpu-raster', native_package='3.119.1', native_version='119.0',
                 pure_cases=60, pure_failures=0, native_cases=31, native_failures=0,
                 compat_pure_cases=36, compat_pure_failures=0, compat_native_cases=34, compat_native_failures=0,
                 compat_oracle="dc-compat-oracle.png", text_sample="dc-text.skia.png",
                 replay_pure_cases=28, replay_pure_failures=0, replay_native_cases=28, replay_native_failures=0,
-                consumer_report="dc-consumers.json", alpha_controller_cases=24, alpha_direct="dc-alpha.direct.png",
+                consumer_report="dc-consumers.json", style_report="dc-styles.json", alpha_controller_cases=24, alpha_direct="dc-alpha.direct.png",
                 alpha_procedure="dc-alpha.procedure.png", alpha_datum="dc-alpha.datum.png",
                 gpu_execution_verified=False, gui_initialized=False, full_drop_in_compatibility=False,
                 universal_pixel_identity_claimed=False, demo_pixel_equivalence_verified=False,
@@ -82,6 +83,7 @@ def base_capture_bytes():
 
 def evidence(directory):
     write_consumer_fixture(directory)
+    write_style_fixture(directory)
     d.write_json(directory/'dc.diagnostic.json', report(directory))
     for name, data in base_capture_bytes():
         (directory/name).write_bytes(data)
@@ -352,6 +354,8 @@ class Integration(unittest.TestCase):
         self.assertIn('(run-tests dc-replay-pure-tests)',text)
         self.assertIn('"tests/dc-replay-native-test.rkt"',text)
         self.assertIn("(dynamic-require dc-replay-native-tests-file 'dc-replay-native-tests)",text)
+        self.assertIn('(run-tests dc-style-pure-tests)',text)
+        self.assertIn("(dynamic-require dc-style-native-tests-file 'dc-style-native-tests)",text)
     def test_native_free_import_smoke(self): self.assertIn('skia/dc',(HERE/'ci-import-smoke.rkt').read_text())
     def test_required_installed_package_pixel_gate(self):
         text=(HERE/'ci.py').read_text()
@@ -364,14 +368,14 @@ class Integration(unittest.TestCase):
         self.assertIn("'tools/test-dc.py'",(HERE/'validate-gpu.py').read_text())
     def test_version_assertions_all_updated(self):
         metadata=(ROOT/'info.rkt').read_text()
-        self.assertIn('(define version "0.56")',metadata)
+        self.assertIn('(define version "0.57")',metadata)
         self.assertIn('("base" #:version "8.18")',metadata)
         self.assertIn('("draw-lib" #:version "1.22")',metadata)
         matrix=json.loads((HERE/'ci-matrix.json').read_text())
         self.assertEqual([r['racket'] for r in matrix['cpu'] if r['id']=='minimum-racket'],['8.18'])
         for name in ('test-ci.py','test-gpu-interop.py','test-metal-interop.py','test-gpu-parity.py','test-dxgi.py'):
             text=(HERE/name).read_text()
-            self.assertIn('(define version "0.56")',text)
+            self.assertIn('(define version "0.57")',text)
             for obsolete in ('0.52','0.53','0.54','0.55'):
                 self.assertNotIn('(define version "'+obsolete+'")',text)
     def test_pin_and_gpu_workflow_preserved(self):
@@ -459,6 +463,60 @@ class Compatibility(unittest.TestCase):
         for path in ('tests/dc-compat-pure-test.rkt','tests/dc-compat-native-test.rkt','examples/dc-compatibility.rkt'):
             self.assertTrue(any(c.endswith(path) for c in compile))
 
+
+
+class StyleGate(unittest.TestCase):
+    def test_style_failure_reaches_parent_gate(self):
+        with tempfile.TemporaryDirectory() as t:
+            directory=Path(t); evidence(directory)
+            raw=d.read_json(directory/'dc-styles.json');raw['native_failures']=1
+            d.write_json(directory/'dc-styles.json',raw)
+            with self.assertRaisesRegex(ValueError,'native_failures'): d.inspect_directory(directory)
+    def test_style_missing_report_reaches_parent_gate(self):
+        with tempfile.TemporaryDirectory() as t:
+            directory=Path(t);evidence(directory);(directory/'dc-styles.json').unlink()
+            with self.assertRaises(ValueError):d.inspect_directory(directory)
+    def test_style_missing_link_reaches_parent_gate(self):
+        with tempfile.TemporaryDirectory() as t:
+            directory=Path(t);evidence(directory);raw=report(directory);raw.pop('style_report')
+            d.write_json(directory/'dc.diagnostic.json',raw)
+            with self.assertRaises(ValueError):d.inspect_directory(directory)
+    def test_style_source_fingerprints(self):
+        for name in ('private/native.rkt','private/dc-style-math.rkt','private/dc-styles.rkt',
+                     'private/dc-style-render.rkt','private/dc-path-bounds.rkt',
+                     'private/dc-region-query.rkt','tests/dc-style-fixtures.rkt',
+                     'tests/dc-style-pure-test.rkt','tests/dc-style-native-test.rkt',
+                     'tests/dc-style-math-test.rkt','tools/dc-style-doctor.rkt'):
+            self.assertIn(name,d.SOURCE_PATHS)
+    def test_style_suites_and_counts(self):
+        for kind,n in [('pure',24),('native',40)]:
+            text=(ROOT/f'tests/dc-style-{kind}-test.rkt').read_text()
+            self.assertIn(f'(define dc-style-{kind}-test-count {n})',text)
+            self.assertEqual(len(re.findall(r'\(test-case\s',text)),n)
+        text=(HERE/'dc-style-doctor.rkt').read_text()
+        self.assertIn('(run-tests dc-style-pure-tests)',text)
+        self.assertIn('(run-tests dc-style-native-tests)',text)
+        self.assertIn('(dc-style-doctor! directory)',(HERE/'dc-doctor.rkt').read_text())
+    def test_style_renderer_is_skia_not_cairo(self):
+        text=(ROOT/'private/dc-style-render.rkt').read_text()
+        for api in ('sk:make-linear-gradient-shader','sk:make-two-point-conical-gradient-shader',
+                    'sk:make-image-shader','sk:shader-with-local-matrix','sk:make-dash-path-effect'):
+            self.assertIn(api,text)
+        self.assertNotIn('unsafe/cairo',text)
+        query=(ROOT/'private/dc-region-query.rkt').read_text()
+        self.assertNotIn('cairo_paint',query);self.assertNotIn('surface->rgba',query)
+        self.assertIn('call-with-continuation-barrier',query)
+    def test_style_runner_compiles_new_modules(self):
+        code,calls,_,_=Orchestration().simulate();self.assertEqual(code,0)
+        compile=next(c for c in calls if 'make' in c)
+        for name in ('dc-style-doctor.rkt','dc-style-pure-test.rkt','dc-style-native-test.rkt',
+                     'dc-style-math-test.rkt','dc-styles.rkt'):
+            self.assertTrue(any(str(p).endswith('/'+name) for p in compile),name)
+    def test_style_review_contains_twenty_captures(self):
+        with tempfile.TemporaryDirectory() as t:
+            directory=Path(t);evidence(directory)
+            d.write_review(directory,d.inspect_directory(directory))
+            self.assertEqual((directory/'dc.review.html').read_text().count('<img '),20)
 
 
 class ReplayAlpha(unittest.TestCase):

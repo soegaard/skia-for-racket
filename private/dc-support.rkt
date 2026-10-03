@@ -5,13 +5,13 @@
          dc-unsupported dc-real dc-unit dc-extent dc-matrix dc-transformation
          dc-identity dc-multiply dc-effective dc-point dc-singular?
          dc-physical-size dc-path-map dc-capabilities
-         (struct-out dc-renderer) (struct-out dc-renderer+) (struct-out dc-renderer/alpha) (struct-out dc-ink) (struct-out dc-draw)
+         (struct-out dc-renderer) (struct-out dc-renderer+) (struct-out dc-renderer/alpha) (struct-out dc-renderer/styles) (struct-out dc-ink) (struct-out dc-ink/style) (struct-out dc-paint-source) (struct-out dc-draw)
          (struct-out dc-clip) (struct-out dc-clip-path) dc-scale-clip)
 
 (struct exn:fail:skia-dc:unsupported exn:fail:contract (method feature stage) #:transparent)
-(define (dc-unsupported who feature [stage "0.57"])
+(define (dc-unsupported who feature [stage "deferred"])
   (raise (exn:fail:skia-dc:unsupported
-          (format "~a: ~a is outside skia-dc% 0.56; planned compatibility stage ~a"
+          (format "~a: ~a is outside skia-dc% 0.57; compatibility boundary ~a"
                   who feature stage)
           (current-continuation-marks) who feature stage)))
 (define (dc-real who v)
@@ -90,6 +90,7 @@
 (struct dc-renderer (create close draw clear snapshot rgba png) #:transparent)
 (struct dc-renderer+ dc-renderer (measure-text draw-text glyph-exists? draw-bitmap copy) #:transparent)
 (struct dc-renderer/alpha dc-renderer+ (composite) #:transparent)
+(struct dc-renderer/styles dc-renderer/alpha (path-bounds) #:transparent)
 (struct dc-clip (paths) #:transparent)
 (struct dc-clip-path (commands rule) #:transparent)
 (define (dc-scale-clip clip backing)
@@ -102,23 +103,29 @@
                                               (dc-real 'skia-dc-clip (* backing y)))))
            (dc-clip-path-rule p))))))
 (struct dc-ink (rgba stroke? width cap join dashes) #:transparent)
+(struct dc-ink/style dc-ink (source phase) #:transparent)
+(struct dc-paint-source (kind data matrix) #:transparent)
 (struct dc-draw (commands rule matrix clip ink antialias?) #:transparent)
 (define (dc-capabilities)
-  (hasheq 'schema 1 'stage "0.56" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
+  (hasheq 'schema 1 'stage "0.57" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
           'storage "persistent-cpu-raster" 'native_probe_performed #f
           'full_drop_in_compatibility #f 'gui_initialized #f
           'drawing '(draw-arc draw-ellipse draw-line draw-lines draw-path draw-point
                               draw-polygon draw-rectangle draw-rounded-rectangle draw-spline clear erase
                               draw-text draw-bitmap draw-bitmap-section copy)
-          'pen_styles '(solid transparent dot long-dash short-dash dot-dash)
-          'brush_styles '(solid transparent)
+          'pen_styles '(solid transparent xor hilite dot long-dash short-dash dot-dash
+                              xor-dot xor-long-dash xor-short-dash xor-dot-dash)
+          'brush_styles '(solid transparent opaque xor hilite panel horizontal-hatch vertical-hatch
+                                cross-hatch bdiagonal-hatch fdiagonal-hatch crossdiag-hatch)
+          'gradients '(linear radial) 'stipple_brushes #t 'stipple_pens #t
           'smoothing '(unsmoothed smoothed aligned)
-          'alignment "0.53 snaps positive axis-aligned transforms; use smoothed for rotation/shear/reflection"
+          'alignment "finite affine row-norm snapping; no universal Cairo edge identity"
           'selection_semantics "selected pen/brush identity and locking; release on replacement/close"
           'clipping "region% paths and intersections; construction/install transforms; selected region locking"
           'text "Skia/HarfBuzz; characters, graphemes, combined; single-line"
           'minimum_racket "8.18" 'minimum_draw_lib "1.22"
           'recorded_procedure_replay #t 'recorded_datum_replay #t
           'alpha_groups "nested isolated raster groups; parent clip at merge; root-only snapshots"
-          'deferred '(gradients stipples
-                           hatches xor hilite path-ink-bounds gui gpu)))
+          'path_bounds '(path fill stroke)
+          'region_queries "upstream utilities with isolated query-only Cairo context; no Skia pixels"
+          'deferred '(native-handle-brushes arbitrary-combined-text-breaks gui gpu)))

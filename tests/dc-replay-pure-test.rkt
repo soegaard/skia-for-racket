@@ -109,8 +109,10 @@
    (test-case "rejected selection preserves old lock and leaves candidate unlocked"
      (with-fresh (dc e)
        (define p (rd:make-pen #:immutable? #f)) (send dc set-pen p)
-       (define bad (rd:make-pen #:style 'xor #:immutable? #f))
-       (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc set-pen bad)))
+       (define bad (new (class rd:pen%
+                         (super-new)
+                         (define/override (get-width) +nan.0))))
+       (check-exn exn:fail? (lambda () (send dc set-pen bad)))
        (check-eq? p (send dc get-pen)) (check-not-exn (lambda () (send bad set-width 3)))
        (check-exn exn:fail? (lambda () (send p set-width 4)))))
    (test-case "wrong-thread alpha call is rejected before allocation"
@@ -172,11 +174,12 @@
        (check-= (send dc get-alpha) 0.25 0) (simple dc)
        (check-equal? (second (car (events-of e 'path))) 1)
        (check-equal? (events-of e 'close) '((close 2)))) (lambda () (send dc close))))
-   (test-case "unsupported recorded styles raise instead of falling back"
+   (test-case "new hatch style restores state through both replay forms"
      (with-fresh (dc e)
        (define-values (proc datum) (make-dc-recording (lambda (d) (send d set-brush "red" 'cross-hatch))))
-       (check-exn exn:fail:skia-dc:unsupported? (lambda () (proc dc)))
-       (check-exn exn:fail:skia-dc:unsupported? (lambda () (datum dc)))))
+       (define before (send dc get-brush))
+       (check-not-exn (lambda () (proc dc) (datum dc)))
+       (check-eq? before (send dc get-brush))))
    (test-case "repeated replay does not lose destination identity or locks"
      (with-fresh (dc e)
        (define p (rd:make-pen #:immutable? #f)) (send dc set-pen p)

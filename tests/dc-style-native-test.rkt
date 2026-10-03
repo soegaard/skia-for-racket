@@ -1,0 +1,233 @@
+#lang racket/base
+(require rackunit racket/class racket/list
+         (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
+         (only-in racket/draw/private/local in-cairo-context)
+         "dc-style-fixtures.rkt" "../examples/dc-replay.rkt")
+(provide dc-style-native-tests dc-style-native-test-count)
+(define (using proc)
+  (define dc (new skia-dc% [width 64] [height 64] [smoothing 'unsmoothed]))
+  (dynamic-wind void (lambda () (proc dc)) (lambda () (send dc close))))
+(define (render draw) (using (lambda (dc) (draw dc) (send dc get-rgba-bytes #:premultiplied? #t))))
+(define (pixel dc x y)
+  (define b (send dc get-rgba-bytes #:premultiplied? #t))
+  (bytes->list (subbytes b (* 4 (+ x (* y 64))) (* 4 (+ 1 x (* y 64))))))
+(define (near actual expected [tolerance 2])
+  (check-equal? (length actual) (length expected))
+  (for ([a actual] [e expected]) (check-true (<= (abs (- a e)) tolerance) (format "~s versus ~s" actual expected))))
+(define (near-bytes a b tolerance)
+  (check-equal? (bytes-length a) (bytes-length b))
+  (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) tolerance))))
+(define (near-values thunk expected) (near (call-with-values thunk list) expected 0.01))
+(define (rectangle-path) (define p (new rd:dc-path%)) (send p rectangle 2 3 10 8) p)
+(define dc-style-native-test-count 40)
+(define dc-style-native-tests
+ (test-suite "DC native styles and compatibility queries"
+  (test-case "linear gradient paints its spatial endpoints"
+   (using (lambda (dc)
+  (fill-with dc (rd:make-brush #:gradient (linear)) 0 0 16 16)
+  (near (pixel dc 0 8) '(247 0 8 255) 3)
+  (near (pixel dc 15 8) '(8 0 247 255) 3))))
+  (test-case "unsorted gradient stops give the same image"
+   (define g (linear (list (list 1 (color 0 0 255)) (list 0 (color 255 0 0)))))
+(check-equal? (render (lambda (dc) (fill-with dc (rd:make-brush #:gradient (linear)) 0 0 16 16)))
+              (render (lambda (dc) (fill-with dc (rd:make-brush #:gradient g) 0 0 16 16)))))
+  (test-case "empty gradient paints nothing"
+   (using (lambda (dc) (fill-with dc (rd:make-brush #:gradient (linear '())) 0 0 16 16)
+  (near (pixel dc 5 5) '(0 0 0 0) 0))))
+  (test-case "one stop gradient is a constant color"
+   (using (lambda (dc)
+  (define g (linear (list (list 0.3 (color 12 34 56)))))
+  (fill-with dc (rd:make-brush #:gradient g) 0 0 16 16)
+  (near (pixel dc 5 5) '(12 34 56 255) 0))))
+  (test-case "radial gradient uses the two supplied circles"
+   (using (lambda (dc)
+  (fill-with dc (rd:make-brush #:gradient (radial)) 0 16 16 16)
+  (near (pixel dc 8 24) '(232 0 23 255) 4)
+  (near (pixel dc 0 16) '(0 0 255 255) 1))))
+  (test-case "explicit brush transformation replaces drawing transform"
+   (using (lambda (dc)
+  (send dc set-origin 16 0)
+  (fill-with dc (rd:make-brush #:gradient (linear)
+    #:transformation '#(#(1 0 0 1 0 0) 0 0 1 1 0)) 0 0 16 16)
+  (near (pixel dc 20 4) '(0 0 255 255) 1))))
+  (test-case "implicit brush coordinates follow drawing origin"
+   (using (lambda (dc)
+  (send dc set-origin 16 0) (fill-with dc (rd:make-brush #:gradient (linear)) 0 0 16 16)
+  (near (pixel dc 16 4) '(247 0 8 255) 3))))
+  (test-case "color stipple repeats in both directions"
+   (using (lambda (dc)
+  (fill-with dc (rd:make-brush #:stipple (tile)) 0 0 16 16)
+  (near (pixel dc 4 4) '(255 0 0 255) 0)
+  (near (pixel dc 5 4) '(0 255 0 255) 0)
+  (near (pixel dc 4 5) '(0 0 255 255) 0))))
+  (test-case "high resolution stipple retains logical period"
+   (using (lambda (dc)
+  (fill-with dc (rd:make-brush #:stipple (tile 2)) 0 0 16 16)
+  (near (pixel dc 4 4) '(255 0 0 255) 0)
+  (near (pixel dc 5 4) '(0 255 0 255) 0))))
+  (test-case "stipple mutation is visible on next draw"
+   (using (lambda (dc)
+  (define b (tile)) (define brush (rd:make-brush #:stipple b))
+  (fill-with dc brush 0 0 8 8)
+  (send b set-argb-pixels 0 0 1 1 (bytes 255 10 20 30))
+  (fill-with dc brush 8 0 8 8)
+  (near (pixel dc 2 2) '(255 0 0 255) 0)
+  (near (pixel dc 10 2) '(10 20 30 255) 0))))
+  (test-case "monochrome solid stipple leaves white bits transparent"
+   (using (lambda (dc)
+  (fill-with dc (rd:make-brush #:color "red" #:stipple (mono-tile)) 0 0 8 8)
+  (near (pixel dc 2 2) '(255 0 0 255) 0)
+  (near (pixel dc 3 2) '(0 0 0 0) 0))))
+  (test-case "monochrome opaque stipple uses current background"
+   (using (lambda (dc)
+  (send dc set-background "blue")
+  (fill-with dc (rd:make-brush #:color "red" #:stipple (mono-tile) #:style 'opaque) 0 0 8 8)
+  (near (pixel dc 3 2) '(0 0 255 255) 0))))
+  (test-case "legacy xor brush is a solid alias"
+   (check-equal? (render (lambda (dc) (fill-with dc (rd:make-brush #:color "red" #:style 'xor) 0 0 8 8)))
+  (render (lambda (dc) (fill-with dc (rd:make-brush #:color "red") 0 0 8 8)))))
+  (test-case "hilite paints black with 0.3 alpha"
+   (using (lambda (dc)
+  (send dc clear) (fill-with dc (rd:make-brush #:color "red" #:style 'hilite) 0 0 8 8)
+  (near (pixel dc 3 3) '(178 178 178 255) 2))))
+  (test-case "gradient and DC opacity multiply once"
+   (using (lambda (dc)
+  (send dc set-alpha 0.5)
+  (define g (linear (list (list 0 (color 255 0 0 0.5)) (list 1 (color 255 0 0 0.5)))))
+  (fill-with dc (rd:make-brush #:gradient g) 0 0 16 16)
+  (near (pixel dc 4 4) '(64 0 0 64) 2))))
+  (test-case "hatch and alpha group composite once"
+   (using (lambda (dc)
+  (send dc start-alpha 0.5)
+  (fill-with dc (rd:make-brush #:style 'horizontal-hatch #:color "red") 0 0 16 16)
+  (send dc end-alpha) (near (pixel dc 4 3) '(128 0 0 128) 2)
+  (near (pixel dc 4 4) '(0 0 0 0) 0))))
+  (test-case "horizontal-hatch contains repeated ink and gaps"
+   (using (lambda (dc)
+   (fill-with dc (rd:make-brush #:color "red" #:style 'horizontal-hatch) 0 0 24 24)
+   (define data (send dc get-rgba-bytes))
+   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (check-true (> (count positive? alphas) 20))
+   (check-true (> (count zero? alphas) 20)))))
+  (test-case "vertical-hatch contains repeated ink and gaps"
+   (using (lambda (dc)
+   (fill-with dc (rd:make-brush #:color "red" #:style 'vertical-hatch) 0 0 24 24)
+   (define data (send dc get-rgba-bytes))
+   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (check-true (> (count positive? alphas) 20))
+   (check-true (> (count zero? alphas) 20)))))
+  (test-case "cross-hatch contains repeated ink and gaps"
+   (using (lambda (dc)
+   (fill-with dc (rd:make-brush #:color "red" #:style 'cross-hatch) 0 0 24 24)
+   (define data (send dc get-rgba-bytes))
+   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (check-true (> (count positive? alphas) 20))
+   (check-true (> (count zero? alphas) 20)))))
+  (test-case "bdiagonal-hatch contains repeated ink and gaps"
+   (using (lambda (dc)
+   (fill-with dc (rd:make-brush #:color "red" #:style 'bdiagonal-hatch) 0 0 24 24)
+   (define data (send dc get-rgba-bytes))
+   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (check-true (> (count positive? alphas) 20))
+   (check-true (> (count zero? alphas) 20)))))
+  (test-case "fdiagonal-hatch contains repeated ink and gaps"
+   (using (lambda (dc)
+   (fill-with dc (rd:make-brush #:color "red" #:style 'fdiagonal-hatch) 0 0 24 24)
+   (define data (send dc get-rgba-bytes))
+   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (check-true (> (count positive? alphas) 20))
+   (check-true (> (count zero? alphas) 20)))))
+  (test-case "crossdiag-hatch contains repeated ink and gaps"
+   (using (lambda (dc)
+   (fill-with dc (rd:make-brush #:color "red" #:style 'crossdiag-hatch) 0 0 24 24)
+   (define data (send dc get-rgba-bytes))
+   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (check-true (> (count positive? alphas) 20))
+   (check-true (> (count zero? alphas) 20)))))
+  (test-case "pen stipple keeps dash gaps like the pinned reference"
+   (using (lambda (dc)
+  (send dc set-pen (rd:make-pen #:width 4 #:cap 'butt #:style 'dot #:stipple (tile)))
+  (send dc draw-line 0 8 32 8)
+  (define a (for/list ([x (in-range 2 30)]) (last (pixel dc x 8))))
+  (check-true (ormap zero? a)) (check-true (ormap positive? a)))))
+  (test-case "monochrome bitmap xor equals solid"
+   (define bm (mono-tile))
+(check-equal? (render (lambda (dc) (send dc draw-bitmap bm 2 2 'solid (color 255 0 0))))
+               (render (lambda (dc) (send dc draw-bitmap bm 2 2 'xor (color 255 0 0))))))
+  (test-case "all affine alignment modes draw without unsupported exceptions"
+   (for* ([s '(aligned unsmoothed)] [m (list '#(0 -1 1 0 0 40) '#(-1 0 0 1 40 0) '#(1 0.2 0.3 1 0 0))])
+  (using (lambda (dc) (send dc set-smoothing s) (send dc set-initial-matrix m)
+    (send dc draw-rectangle 5 5 16 16)
+    (check-true (for/or ([b (in-bytes (send dc get-rgba-bytes))]) (positive? b)))))))
+  (test-case "path bounds use curve extrema not control hull"
+   (using (lambda (dc)
+  (send dc set-smoothing 'smoothed)
+  (define path (new rd:dc-path%)) (send path move-to 0 0)
+  (send path curve-to 0 100 100 100 100 0)
+  (near-values (lambda () (send dc get-path-bounding-box path 'path)) '(0 0 100 75)))))
+  (test-case "stroke bounds include width cap and join"
+   (using (lambda (dc)
+  (send dc set-smoothing 'smoothed) (send dc set-pen "red" 4 'solid)
+  (near-values (lambda () (send dc get-path-bounding-box (rectangle-path) 'stroke)) '(0 1 14 12)))))
+  (test-case "zero width stroke query returns empty"
+   (using (lambda (dc) (send dc set-pen "red" 0 'solid)
+  (near-values (lambda () (send dc get-path-bounding-box (rectangle-path) 'stroke)) '(0 0 0 0)))))
+  (test-case "fill bounds resolve an empty line contour"
+   (using (lambda (dc) (send dc set-smoothing 'smoothed)
+  (define p (new rd:dc-path%)) (send p move-to 1 1) (send p line-to 20 20)
+  (near-values (lambda () (send dc get-path-bounding-box p 'fill)) '(0 0 0 0)))))
+  (test-case "path queries ignore DC size and clipping"
+   (using (lambda (dc)
+  (send dc set-smoothing 'smoothed) (send dc set-clipping-rect 0 0 0 0)
+  (near-values (lambda () (send dc get-path-bounding-box (rectangle-path) 'fill)) '(2 3 10 8)))))
+  (test-case "associated region utility sees nonempty geometry"
+   (using (lambda (dc)
+  (define r (new rd:region% [dc dc])) (send r set-rectangle 2 3 10 8)
+  (check-false (send r is-empty?)) (check-true (send r in-region? 4 5)))))
+  (test-case "associated outside region is empty on this target"
+   (using (lambda (dc)
+  (define r (new rd:region% [dc dc])) (send r set-rectangle 80 80 10 8)
+  (check-true (send r is-empty?)))))
+  (test-case "region utility cannot draw on the Skia backing"
+   (using (lambda (dc)
+  (fill-with dc (rd:make-brush #:color "red") 0 0 12 12)
+  (define before (send dc get-rgba-bytes))
+  (define r (new rd:region% [dc dc])) (send r set-ellipse 1 1 10 10)
+  (send r is-empty?) (check-equal? before (send dc get-rgba-bytes)))))
+  (test-case "failed private query retires scratch context"
+   (using (lambda (dc)
+  (check-exn #rx"query-failure" (lambda () (send dc in-cairo-context (lambda (cr) (error "query-failure")))))
+  (define r (new rd:region% [dc dc])) (send r set-rectangle 1 1 2 2)
+  (check-false (send r is-empty?)))))
+  (test-case "style recording procedure and datum agree"
+   (define-values (proc datum) (make-dc-recording style-oracle))
+(check-equal? (render proc) (render datum)))
+  (test-case "direct and replay style captures agree"
+   (define-values (proc datum) (make-dc-recording style-oracle))
+(near-bytes (render style-oracle) (render proc) 2))
+  (test-case "style snapshot survives close"
+   (define dc (new skia-dc% [width 64] [height 64]))
+(fill-with dc (rd:make-brush #:gradient (linear)) 0 0 16 16)
+(define image (send dc snapshot)) (send dc close)
+(sk:with-skia ([im image]) (check-true (> (bytes-length (sk:image->png-bytes im)) 0))))
+  (test-case "pattern allocation limit rejects before drawing"
+   (using (lambda (dc)
+  (define before (send dc get-rgba-bytes))
+  (define b (rd:make-brush #:stipple (rd:make-bitmap 64 64)))
+  (parameterize ([sk:current-skia-byte-limit 1024])
+    (check-exn exn:fail? (lambda () (fill-with dc b 0 0 16 16))))
+  (check-equal? before (send dc get-rgba-bytes)))))
+  (test-case "region query rejects a closed drawing context"
+   (define dc (new skia-dc% [width 16] [height 16]))
+(define r (new rd:region% [dc dc])) (send r set-rectangle 1 1 3 3) (send dc close)
+(check-exn exn:fail? (lambda () (send r is-empty?))))
+  (test-case "legacy style aliases agree with reference interiors"
+   (for ([s '(xor panel hilite)])
+  (define bm (rd:make-bitmap 64 64)) (define ref (new rd:bitmap-dc% [bitmap bm]))
+  (send ref clear) (fill-with ref (rd:make-brush #:color "red" #:style s) 0 0 16 16)
+  (send ref set-bitmap #f)
+  (define argb (make-bytes 4)) (send bm get-argb-pixels 4 4 1 1 argb)
+  (using (lambda (dc) (send dc clear)
+    (fill-with dc (rd:make-brush #:color "red" #:style s) 0 0 16 16)
+    (near (pixel dc 4 4) (list (bytes-ref argb 1) (bytes-ref argb 2) (bytes-ref argb 3) 255) 2)))))
+ ))

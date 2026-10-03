@@ -1,5 +1,19 @@
 # GitHub Actions CI — 0.46
 
+## Current styles/compatibility gate — 0.57
+
+The installed-package DC validator now requires 148 pure and 149 native cases,
+plus the existing 24 alpha-controller and new 45 style-math subchecks. Four new
+64x64 style captures independently check gradients, stipples, hatches, opacity
+and legacy styles; direct/procedure/datum Skia images agree within two channel
+units. Reference edge differences are retained without universal equality claims.
+The consolidated review retains 20 PNGs, including all previous exact oracles.
+Missing/failing style evidence fails the parent gate. Both new RackUnit suites
+also run through run-tests.rkt, with the pure suite before Skia installation.
+Only the private region-utility query bridge creates a scratch Cairo context;
+it has no access to Skia pixels and is not a drawing fallback. Minimum Racket
+8.18, dependency pins and all existing GPU CI workloads remain unchanged.
+
 ## Current real-consumer gate — 0.56
 
 The existing installed-package DC gate additionally requires sixteen native

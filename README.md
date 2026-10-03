@@ -1,6 +1,23 @@
-# Racket Skia — 0.56.0
+# Racket Skia — 0.57.0
 
-## Real consumers on the existing drawing subset
+## Drawing styles and DC compatibility
+
+`skia/dc` now supports public linear/radial gradients, repeating bitmap stipples,
+six hatch brushes, legacy style aliases, finite affine alignment and geometric
+path bounds. Existing alpha/replay and pict/plot validation remain required.
+Associated-region utilities have an isolated query-only Cairo recording context;
+Skia pixels are never given to that context and no Cairo drawing fallback is used.
+Native Cairo-handle brushes and arbitrary combined-text breaks remain deferred.
+
+The expanded installed-package DC gate requires 148 pure and 149 native cases,
+with 24 alpha-controller and 45 style-math subchecks, and retains 20 PNGs. Older
+exact oracles stay exact; new style captures have fixed semantic/replay bounds.
+See [styles and limitations](docs/DC-STYLES.md). This candidate applies after the
+local 0.56 patch; it does not claim that unreviewed 0.56 tests or CI already passed.
+Racket 8.18 / draw-lib 1.22 and all GPU pins/jobs/workloads remain unchanged.
+Next are 0.58 raster skia-canvas% and 0.59 GPU-backed canvas.
+
+## Retained 0.56 consumer coverage
 
 This narrowed stage adds actual `pict` and `plot/no-gui` consumers to the
 required installed-package DC gate. It tests direct drawing, both upstream

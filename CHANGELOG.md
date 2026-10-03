@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.57.0 — Styles and drawing-context compatibility
+
+- Added public gradient/stipple shader sources, six repeating hatches, legacy
+  aliases and native dash phases, with per-call mutable-source snapshots.
+- Added affine alignment, native path/fill/stroke bounds, and a query-only Cairo
+  bridge for upstream associated-region utilities. No Cairo output fallback.
+- Added 24 pure/40 native cases and 45 standalone style-math checks; four new
+  style captures are independently inspected inside the existing DC gate.
+- Preserved all 0.56 consumers, old exact oracles, replay/alpha lifetime rules,
+  native pins and GPU workloads. Native symbol inventory gains only the m119
+  sk_paint_get_fill_path binding; no new layout or public native handle API.
+- Incremental candidate for the locally applied 0.56 patch. Actual host and CI
+  acceptance remain required. GUI stages remain 0.58 and 0.59.
+
 ## 0.56.0 — Real consumers on the existing DC subset
 
 - Added direct public pict/plot/no-gui fixtures with text, geometry, bitmap,

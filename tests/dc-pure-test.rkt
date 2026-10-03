@@ -110,9 +110,9 @@
      (send dc set-smoothing 'smoothed) (send dc set-origin 3 4) (send dc set-scale 2 3)
      (send dc draw-rectangle 1 2 3 4)
      (check-equal? (dc-draw-matrix (car (draws e))) '#(4.0 0.0 0.0 6.0 6.0 8.0)))
-   (test-case "aligned complex transform explicitly deferred"
+   (test-case "aligned complex transform uses finite effective scales"
      (define-values (dc e) (fresh)) (send dc set-rotation 0.25)
-     (fails? (lambda () (send dc draw-rectangle 1 2 3 4))) (check-equal? (draws e) '()))
+     (check-not-exn (lambda () (send dc draw-rectangle 1 2 3 4))) (check-equal? (length (draws e)) 2))
    (test-case "complex transform supported in smoothed mode"
      (define-values (dc e) (fresh)) (send dc set-smoothing 'smoothed)
      (send dc set-initial-matrix '#(-1 0.2 0.3 1 20 0))
@@ -148,12 +148,12 @@
      (check-exn exn:fail? (lambda () (send b set-color "blue")))
      (check-equal? (send (send b get-color) red) 255)
      (send dc close) (check-not-exn (lambda () (send b set-color "green"))))
-   (test-case "deferred pen style does not replace current pen"
+   (test-case "invalid pen argument does not replace current pen"
      (define-values (dc e) (fresh)) (define before (send dc get-pen))
-     (fails? (lambda () (send dc set-pen "blue" 2 'xor))) (check-eq? (send dc get-pen) before))
-   (test-case "deferred brush style does not replace current brush"
+     (check-exn exn:fail? (lambda () (send dc set-pen "blue" +nan.0 'solid))) (check-eq? (send dc get-pen) before))
+   (test-case "invalid brush argument does not replace current brush"
      (define-values (dc e) (fresh)) (define before (send dc get-brush))
-     (fails? (lambda () (send dc set-brush "blue" 'cross-hatch))) (check-eq? (send dc get-brush) before))
+     (check-exn exn:fail? (lambda () (send dc set-brush #f))) (check-eq? (send dc get-brush) before))
    (test-case "font storage and color controls do not measure text"
      (define-values (dc e) (fresh)) (define f (rd:make-font #:size 18 #:family 'modern))
      (send dc set-font f) (check-eq? (send dc get-font) f)

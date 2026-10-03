@@ -7,12 +7,12 @@
          "../tests/dc-compat-pure-test.rkt" "../tests/dc-compat-native-test.rkt"
          "../tests/dc-replay-pure-test.rkt" "../tests/dc-replay-native-test.rkt"
          "../tests/dc-alpha-test.rkt" "../examples/dc-replay.rkt"
-         "dc-consumer-doctor.rkt")
+         "dc-consumer-doctor.rkt" "dc-style-doctor.rkt")
 (provide dc-doctor!)
 (define (dc-doctor! directory)
   (define (file name) (build-path directory name))
   (define base
-    (hasheq 'schema 1 'stage "0.56" 'storage "persistent-cpu-raster"
+    (hasheq 'schema 1 'stage "0.57" 'storage "persistent-cpu-raster"
             'validation_run (path->string (file-name-from-path (simplify-path directory)))
             'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
             'racket_version (version) 'gpu_execution_verified #f 'gui_initialized #f
@@ -31,6 +31,7 @@
                   replay-pure-failures replay-native-failures) 0)
       (error 'dc-doctor "DC regression suite failed"))
     (dc-consumer-doctor! directory)
+    (dc-style-doctor! directory)
     (define (render name width height scale draw)
       (define dc (new skia-dc% [width width] [height height] [backing-scale scale]))
       (define image
@@ -66,7 +67,7 @@
                 'replay_pure_cases dc-replay-pure-test-count 'replay_pure_failures replay-pure-failures
                 'replay_native_cases dc-replay-native-test-count 'replay_native_failures replay-native-failures
                 'alpha_controller_cases dc-alpha-test-count
-                'consumer_report "dc-consumers.json"
+                'consumer_report "dc-consumers.json" 'style_report "dc-styles.json"
                 'alpha_direct "dc-alpha.direct.png" 'alpha_procedure "dc-alpha.procedure.png"
                 'alpha_datum "dc-alpha.datum.png"
 
