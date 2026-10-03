@@ -8,6 +8,7 @@
          "tests/gpu-cache-pure-test.rkt" "tests/gpu-performance-pure-test.rkt")
 
 (require "tests/canvas-dc-pure-test.rkt"
+         "tests/gpu-dc-pure-test.rkt"
          "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
          "tests/gpu-backends-pure-test.rkt" "tests/gpu-interop-pure-test.rkt"
          "tests/gpu-metal-interop-pure-test.rkt" "tests/dc-pure-test.rkt" "tests/dc-compat-pure-test.rkt" "tests/dc-replay-pure-test.rkt" "tests/dc-style-pure-test.rkt")
@@ -57,6 +58,7 @@
    #:args () (void))
   (define failures (+ (run-tests pure-tests) (run-tests lifetime-tests)
                       (run-tests canvas-dc-pure-tests)
+                      (run-tests gpu-dc-pure-tests)
                       (run-tests dc-style-pure-tests)
                       (run-tests native-abi-pure-tests) (run-tests gpu-d3d12-pure-tests) (run-tests gpu-dxgi-pure-tests) (run-tests gpu-backends-pure-tests) (run-tests gpu-interop-pure-tests) (run-tests gpu-metal-interop-pure-tests) (run-tests dc-pure-tests) (run-tests dc-compat-pure-tests) (run-tests dc-replay-pure-tests)
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)

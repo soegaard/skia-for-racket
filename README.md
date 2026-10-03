@@ -1,5 +1,19 @@
 # Racket Skia — 0.58.0
 
+## 0.59: GPU drawing contexts
+
+[`skia/gpu-dc` and `skia/gpu-canvas`](docs/GPU-DC.md) add the existing `dc<%>`
+drawing subset to the OpenGL, Metal and Direct3D paths. Unlike the persistent
+raster DC, a GPU DC is valid only during its callback and is never reactivated.
+Rendering, alpha composition, overlap copy and ordinary presentation use GPU
+surfaces; CPU snapshots/readback are explicit operations. Device scales come
+from the actual X/Y target extents, including HiDPI rounding.
+
+```bash
+python3 tools/validate-gpu-dc.py --racket "$RACKET" --require-gui
+"$RACKET" examples/skia-gpu-canvas.rkt
+```
+
 ## Persistent raster GUI canvas
 
 Import `skia/canvas` explicitly to create `skia-canvas%`, a Racket `canvas%`

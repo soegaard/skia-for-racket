@@ -1,10 +1,11 @@
 #lang racket/base
-;; The only production renderer for skia/dc: existing CPU Skia operations.
-;; There is no Cairo rendering adapter and no GPU or GUI initialization.
+;; Shared native Skia drawing operations. The default renderer stays CPU-only;
+;; the private factory also accepts explicitly supplied same-context GPU storage.
+;; Merely requiring this module initializes neither GPU nor GUI facilities.
 (require (prefix-in sk: "../main.rkt") "dc-support.rkt" "dc-bitmap.rkt"
          "dc-geometry.rkt" "dc-native-util.rkt" "dc-text.rkt"
          "dc-style-render.rkt" "dc-path-bounds.rkt")
-(provide skia-dc-renderer)
+(provide skia-dc-renderer make-surface-dc-renderer)
 (define (draw! surface command)
   (define c (sk:surface-canvas surface))
   (define ink (dc-draw-ink command))
@@ -40,7 +41,7 @@
           (vector-ref rect 4) (vector-ref rect 5) (vector-ref rect 6) (vector-ref rect 7)
           #:sampling sampling #:paint paint))))
   (void))
-(define (copy! surface matrix clip x y width height x2 y2)
+(define (copy! snapshot surface matrix clip x y width height x2 y2)
   ;; Immutable native snapshot prevents overlap feedback. Both source and
   ;; destination are in the same DC coordinate system, hence their physical
   ;; displacement is the linear part of that system applied to (x2-x,y2-y).
@@ -50,7 +51,7 @@
   (define dy (dc-real 'copy (+ (* (vector-ref matrix 1) (- x2 x))
                               (* (vector-ref matrix 3) (- y2 y)))))
   (define c (sk:surface-canvas surface))
-  (sk:with-skia ([image (sk:surface-snapshot surface)]
+  (sk:with-skia ([image (snapshot surface)]
                 [shader (sk:make-image-shader image #:tile-x 'decal #:tile-y 'decal
                                                #:sampling 'nearest)]
                 [paint (sk:make-paint #:shader shader #:blend-mode 'src #:antialias? #f)])
@@ -61,11 +62,11 @@
         (sk:canvas-translate! c dx dy)
         (sk:draw-paint c paint))))
   (void))
-(define (composite! parent child clip opacity)
+(define (composite! snapshot parent child clip opacity)
   ;; The completed child is sampled in physical coordinates. The current DC
   ;; transform and per-draw alpha must not be applied a second time.
   (define c (sk:surface-canvas parent))
-  (sk:with-skia ([image (sk:surface-snapshot child)]
+  (sk:with-skia ([image (snapshot child)]
                 [paint (sk:make-paint #:color (native-color (vector 255 255 255 opacity))
                                        #:blend-mode 'src-over #:antialias? #f)])
     (sk:call-with-canvas-state c
@@ -73,10 +74,19 @@
         (install-clip! c clip)
         (sk:draw-image c image 0 0 #:paint paint))))
   (void))
-(define skia-dc-renderer
+(define (make-surface-dc-renderer create close snapshot rgba png
+                                  #:internal-snapshot [internal-snapshot snapshot])
+  ;; Internal copies and alpha composition must retain native residency.
+  ;; The public snapshot callback may instead perform an explicit CPU transfer.
   (dc-renderer/styles
+   create close draw! clear! snapshot rgba png
+   dc-measure-text dc-render-text! dc-glyph-exists? bitmap!
+   (lambda args (apply copy! internal-snapshot args))
+   (lambda args (apply composite! internal-snapshot args))
+   dc-path-ink-bounds))
+(define skia-dc-renderer
+  (make-surface-dc-renderer
    (lambda (w h) (sk:make-surface w h #:background 'transparent))
-   sk:skia-close! draw! clear! sk:surface-snapshot
+   sk:skia-close! sk:surface-snapshot
    (lambda (s p?) (sk:surface->rgba-bytes s #:premultiplied? p?))
-   sk:surface->png-bytes
-   dc-measure-text dc-render-text! dc-glyph-exists? bitmap! copy! composite! dc-path-ink-bounds))
+   sk:surface->png-bytes))

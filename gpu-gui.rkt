@@ -35,6 +35,10 @@
   timer)
 (define gpu-canvas%
   (class canvas%
+    ;; The GL host belongs to canvas%, not to a DC-oriented subclass. Such a
+    ;; subclass may expose a short-lived drawing DC only in its paint callback.
+    ;; Bypass virtual get-dc dispatch while acquiring the host GL context.
+    (inherit/super get-dc)
     (init parent [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f] [render void] [on-error raise] [background 'white] [automatic? #t]
           [min-width 1] [min-height 1])
     (define space (current-eventspace))
@@ -112,7 +116,7 @@
           (case chosen
             [(opengl)
              ((dynamic-require gl-adapter 'make-gl-presentation-adapter)
-              (send (send this get-dc) get-gl-context) measure-gl post background-value)]
+              (send (super get-dc) get-gl-context) measure-gl post background-value)]
             [(direct3d)
              ((dynamic-require d3d12-adapter 'make-d3d12-presentation-adapter)
               (send this get-client-handle) measure-client post background-value

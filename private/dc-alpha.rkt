@@ -4,7 +4,7 @@
 (provide make-dc-alpha dc-alpha-target dc-alpha-root dc-alpha-root-alpha dc-alpha-depth dc-alpha-clip
          dc-alpha-set-clip! dc-alpha-start! dc-alpha-end! dc-alpha-discard! dc-alpha-close!)
 (struct layer (parent parent-clip old-alpha opacity) #:transparent)
-(struct alpha-state (root [target #:mutable] [clip #:mutable] [layers #:mutable]
+(struct alpha-state ([root #:mutable] [target #:mutable] [clip #:mutable] [layers #:mutable]
                           width height create release composite limit [closed? #:mutable]))
 (define (make-dc-alpha root width height create release composite limit)
   (alpha-state root root #f '() width height create release composite limit #f))
@@ -99,6 +99,9 @@
     (parameterize-break #f
       (define targets (cons (alpha-state-target s) (map layer-parent (alpha-state-layers s))))
       (set-alpha-state-closed?! s #t)
+      ;; A closed frame DC must not retain a still-live borrowed GPU root.
+      ;; The detached local targets list preserves ownership during release.
+      (set-alpha-state-root! s #f)
       (set-alpha-state-target! s #f)
       (set-alpha-state-layers! s '())
       (set-alpha-state-clip! s #f)

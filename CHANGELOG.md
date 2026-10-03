@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.59.0 — Frame-scoped GPU DC and canvas facade
+
+- Add `skia/gpu-dc`: callback-scoped `dc<%>` drawing over an owned frame GPU
+  target or a borrowed same-context GPU surface. Every DC expires on every exit.
+- Add `skia/gpu-canvas`: DC-oriented widgets using the existing OpenGL, Metal
+  and Direct3D presenters, with no implicit CPU-frame rendering/readback.
+- Share native DC drawing callbacks while using GPU snapshots for overlap copy
+  and isolated alpha merges. Public output methods explicitly detach CPU pixels.
+- Preserve logical coordinates and independently scale renderer-bound commands
+  from actual physical/logical X/Y extents. Raster DC semantics are unchanged.
+- Resolve OpenGL host initialization through the toolkit superclass DC rather
+  than a frame-scoped subclass's virtual `get-dc`.
+- Add 33 pure, 15 native offscreen/presenter and 10 required-when-selected GUI
+  cases, a strict validator, an example, a contract and a separate Linux Mesa
+  workflow for Racket 8.18/9.3. Native and GUI execution must be validated on the
+  selected host; this release does not imply hardware or screen certification.
+
 ## 0.58.0 — Persistent raster GUI canvas
 
 - Added explicit `skia/canvas` with `skia-canvas%` and `skia-canvas?`. The

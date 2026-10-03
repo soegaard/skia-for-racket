@@ -1,5 +1,18 @@
 # Testing
 
+## GPU DC and canvas validation (0.59)
+
+Run `python3 tools/test-validate-gpu-dc.py` for the validator's synthetic Python
+regressions. Run `python3 tools/validate-gpu-dc.py --racket "$RACKET" --require-gui`
+on a supported desktop to require the 33 pure, 15 native and 10 real-window GPU
+cases. Omit `--require-gui` only for an explicitly headless native GPU run;
+that result does not count as a GUI pass. Backend/display unavailability fails
+a selected gate. Reports and command logs go to a fresh `output/gpu-dc-0.59-*`
+directory. The additional GPU DC workflow runs Linux Mesa EGL/OpenGL under Xvfb
+on Racket 8.18 and 9.3; it does not modify the existing CI required aggregate.
+See [the GPU DC contract](docs/GPU-DC.md) for actual geometry, lifetime, transfer
+boundaries, backend selection and retained validation limits.
+
 ## Current revision: persistent raster GUI canvas (0.58)
 
 Use the same selected Racket as for the existing native/DC validators. The
