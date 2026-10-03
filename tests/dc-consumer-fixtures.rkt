@@ -57,7 +57,11 @@
                           #:color "red" #:fill-color "red" #:sym 'fullcircle #:size 8))
        dc 0 0 consumer-width consumer-height
        #:x-min -2 #:x-max 2 #:y-min -1.5 #:y-max 1.5
-       #:title "Skia / plot" #:x-label "x" #:y-label "y" #:legend-anchor 'top-right))
+       ;; Keep the real legend, but place it outside the data rectangle.
+       ;; An inside top-right legend can cover the x=1.5/y=.75 curve probe
+       ;; when platform font metrics make the legend slightly taller.
+       #:title "Skia / plot" #:x-label "x" #:y-label "y"
+       #:legend-anchor 'outside-top-right))
     ;; Retain only ordinary coordinates, not the plot area/DC object.
     (define lower (send metrics plot->dc (vector -2 -1.5)))
     (define upper (send metrics plot->dc (vector 2 1.5)))

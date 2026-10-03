@@ -61,6 +61,10 @@ The pict combines colored rectangles, a mutable Racket bitmap, actual text,
 horizontal composition, rotation, scaling, and an overlapping group faded
 with `cellophane #:composite? #t`. The plot calls `plot/dc` directly with a
 labeled blue function, red point markers, title, axes, tick labels, and legend.
+The legend is anchored outside the data rectangle. This is intentional:
+platform font metrics can change an inside legend's size enough to cover a
+known data-coordinate probe even when the plotted curve is correct. The
+consumer corpus tests the legend without allowing it to occlude its data oracle.
 Its coordinate limits and styles are explicit.
 
 Sixteen native RackUnit cases exercise direct rendering, 2x backing scale,

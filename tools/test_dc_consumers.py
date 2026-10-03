@@ -159,6 +159,12 @@ class ConsumerInspector(unittest.TestCase):
             self.assertIn(name,text)
         for name in ('plot:plot-bitmap','plot:plot-pict','racket/gui/base','racket/draw/private'):
             self.assertNotIn(name,text)
+    def test_consumer_legend_does_not_occlude_data_probes(self):
+        root=Path(__file__).resolve().parents[1]
+        text=(root/'tests/dc-consumer-fixtures.rkt').read_text()
+        self.assertIn("#:legend-anchor 'outside-top-right",text)
+        self.assertNotIn("#:legend-anchor 'top-right",text)
+        self.assertIn('platform font metrics',text)
     def test_consumer_count_matches_native_suite(self):
         import re
         text=(Path(__file__).resolve().parents[1]/'tests/dc-consumer-native-test.rkt').read_text()
