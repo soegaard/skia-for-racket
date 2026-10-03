@@ -5,6 +5,7 @@
 (require racket/class racket/future racket/list
          "dc-class.rkt" "dc-support.rkt"
          (submod "dc-class.rkt" canvas)
+         (only-in "dc-region-adapter.rkt" dc-region-query-info)
          (only-in "check.rkt" check-dimensions))
 (provide skia-gpu-dc? skia-gpu-dc-capabilities gpu-dc-scope-active?
          checked-frame-size (struct-out dc-frame-size)

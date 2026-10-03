@@ -414,7 +414,11 @@ class Compatibility(unittest.TestCase):
         self.assertNotIn('unsafe/cairo',adapter)
     def test_copy_uses_immutable_snapshot_and_source_blending(self):
         source=(ROOT/'private/dc-render.rkt').read_text()
-        self.assertIn('(sk:surface-snapshot surface)',source)
+        self.assertIn('(define (copy! snapshot surface',source)
+        self.assertIn('([image (snapshot surface)]',source)
+        self.assertIn('#:internal-snapshot [internal-snapshot snapshot]',source)
+        self.assertIn('(lambda args (apply copy! internal-snapshot args))',source)
+        self.assertIn('sk:skia-close! sk:surface-snapshot',source)
         self.assertIn("#:blend-mode 'src",source)
         self.assertIn("#:tile-x 'decal #:tile-y 'decal",source)
     def test_text_is_skia_harfbuzz_not_reference_dc(self):
