@@ -4,6 +4,7 @@
 (require rackunit racket/class racket/list
          (prefix-in rd: racket/draw)
          "../gpu-dc.rkt" "../private/dc-support.rkt" "../private/gpu-dc-scope.rkt"
+         (only-in "../private/dc-region-adapter.rkt" dc-region-query-info)
          (only-in "../private/check.rkt" current-skia-byte-limit))
 (provide gpu-dc-pure-tests gpu-dc-pure-test-count)
 (struct target (width height [closed? #:mutable]) #:transparent)

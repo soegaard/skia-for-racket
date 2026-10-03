@@ -332,7 +332,7 @@ b6464e0e24c37b2f285ad50d03fe5f805948cd9b76a46ea47dd98f47a5821193  tests/gpu-cach
 e1ef069a3bb3137468b359d9aec0afbde7978877a0be42b1c9e35627b979d5c4  tests/gpu-d3d12-pure-test.rkt
 4b097711587ef87515a0976f13fd6244a47e9ba605ffe7abaea47b61a39480d1  tests/gpu-dc-gui-test.rkt
 a80d4a26f6ac8afbf3e948028f0f598fd8cebeb89468f1d79ebc640d4e7feb86  tests/gpu-dc-native-test.rkt
-58eb7618fe33fedeb9c6ae027140713c2dd4d2c41ddbd6a6d24d099a324e45c8  tests/gpu-dc-pure-test.rkt
+7f17a7cbc989ab78266ad0850735fd866626463e0f11b0542550adeb6de5b626  tests/gpu-dc-pure-test.rkt
 e775d04b7872706f12cba9005a5d9c52f175a49d476563c17a9da99e144b24fa  tests/gpu-dxgi-pure-test.rkt
 1ed086c43a8d472b98dc92fac4ed9cba422c4c92e188fa6173e60ff389891195  tests/gpu-egl-native-test.rkt
 e2d7d683bfacf881d1a8765e01169b969d0c8cc7fb422c7d99427055ffffff2e  tests/gpu-egl-pure-test.rkt
