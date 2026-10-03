@@ -59,7 +59,7 @@ class Runner:
 def execute(root, directory, racket, *, manifest_only=False, runner=None):
     runner = runner or Runner(directory)
     checks = {}
-    state = dict(schema=1, stage='0.54', status='running', validation_run=directory.name,
+    state = dict(schema=1, stage='0.55', status='running', validation_run=directory.name,
                  racket_executable=racket, checks=checks, gpu_execution_verified=False,
                  full_drop_in_compatibility=False)
     try:
@@ -76,7 +76,9 @@ def execute(root, directory, racket, *, manifest_only=False, runner=None):
         modules = ['dc.rkt', 'tools/dc-doctor.rkt', 'examples/dc-primitives.rkt',
                    'tests/dc-pure-test.rkt', 'tests/dc-native-test.rkt',
                    'tests/dc-compat-pure-test.rkt', 'tests/dc-compat-native-test.rkt',
-                   'examples/dc-compatibility.rkt']
+                   'examples/dc-compatibility.rkt', 'examples/dc-replay.rkt',
+                   'tests/dc-alpha-test.rkt', 'tests/dc-replay-pure-test.rkt',
+                   'tests/dc-replay-native-test.rkt']
         runner.run([racket, '-l', 'raco', '--', 'make', *[root/name for name in modules]], cwd=root)
         checks['racket_compilation'] = True
         runner.run([racket, root/'tools/dc-doctor.rkt', '--directory', directory], cwd=root)
@@ -94,7 +96,8 @@ def execute(root, directory, racket, *, manifest_only=False, runner=None):
         print(f'DC foundation passed: {validation.PURE_CASES} pure cases, '
               f'{validation.NATIVE_CASES} native foundation cases; '
               f'{validation.COMPAT_PURE_CASES} pure + {validation.COMPAT_NATIVE_CASES} native compatibility cases; '
-              f'two exact oracles; {directory}')
+              f'{validation.REPLAY_PURE_CASES} pure + {validation.REPLAY_NATIVE_CASES} native replay cases; '
+              f'two exact oracles and three bounded alpha/replay oracles; {directory}')
         return 0
     except (OSError, ValueError, TypeError, KeyError, RuntimeError, subprocess.SubprocessError) as exc:
         state.update(status='failed', error=str(exc))
@@ -136,7 +139,7 @@ def main(argv=None):
             parser.error(f'evidence directory must be new: {exc}')
     else:
         parent = ROOT/'output'; parent.mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix='dc-0.54-', dir=parent))
+        directory = Path(tempfile.mkdtemp(prefix='dc-0.55-', dir=parent))
     return execute(ROOT, directory, str(Path(executable).resolve()), manifest_only=args.manifest_only)
 
 

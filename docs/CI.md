@@ -1,13 +1,21 @@
 # GitHub Actions CI — 0.46
 
-## Current DC compatibility gate — 0.54
+## Current DC replay/alpha gate — 0.55
 
-The declared minimum lane is Racket CS 8.18, with draw-lib 1.22 required by the
-package. The existing installed-package DC gate runs 96 pure and 65 native
-cases, both exact pixel oracles, and retains geometry/text review images under
-`dc-foundation/`. Text images do not certify Cairo/Pango glyph equivalence.
-The source manifest and all established CPU/GPU jobs remain required. A source
-configuration change is not a successful minimum-version runtime result.
+The required minimum remains Racket CS 8.18 / draw-lib 1.22. The existing
+installed-package `validate-dc.py` gate now runs 124 pure and 93 native cases,
+including both replay forms and nested alpha. Its pure suite invokes another
+24 standalone production-controller cases without claiming native execution.
+Both existing exact oracles are unchanged; three new direct/procedure/datum
+alpha captures are checked against independent compositing math with a fixed
+maximum error of two 8-bit channel units. All eight PNGs and command logs are
+retained under `dc-foundation/`, including partial evidence on failure.
+
+The two new RackUnit suites also run in `run-tests.rkt`; pure replay must work
+before Skia installation. Missing images, count reductions and failed commands
+block success. Text samples do not certify Cairo/Pango glyph equivalence.
+The source manifest and all established CPU/GPU jobs/workloads remain required.
+No `pict`, plot, style-expansion, GUI or GPU-facade acceptance is claimed here.
 
 ## Workflow and required result
 

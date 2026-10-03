@@ -9,9 +9,10 @@
 
 (require "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
          "tests/gpu-backends-pure-test.rkt" "tests/gpu-interop-pure-test.rkt"
-         "tests/gpu-metal-interop-pure-test.rkt" "tests/dc-pure-test.rkt" "tests/dc-compat-pure-test.rkt")
+         "tests/gpu-metal-interop-pure-test.rkt" "tests/dc-pure-test.rkt" "tests/dc-compat-pure-test.rkt" "tests/dc-replay-pure-test.rkt")
 (define-runtime-path dc-native-tests-file "tests/dc-native-test.rkt")
 (define-runtime-path dc-compat-native-tests-file "tests/dc-compat-native-test.rkt")
+(define-runtime-path dc-replay-native-tests-file "tests/dc-replay-native-test.rkt")
 (define-runtime-path native-abi-native-tests-file "tests/native-abi-native-test.rkt")
 (define-runtime-path native-tests-file "tests/native-test.rkt")
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
@@ -52,7 +53,7 @@
                  (set! pure-only? #t)]
    #:args () (void))
   (define failures (+ (run-tests pure-tests) (run-tests lifetime-tests)
-                      (run-tests native-abi-pure-tests) (run-tests gpu-d3d12-pure-tests) (run-tests gpu-dxgi-pure-tests) (run-tests gpu-backends-pure-tests) (run-tests gpu-interop-pure-tests) (run-tests gpu-metal-interop-pure-tests) (run-tests dc-pure-tests) (run-tests dc-compat-pure-tests)
+                      (run-tests native-abi-pure-tests) (run-tests gpu-d3d12-pure-tests) (run-tests gpu-dxgi-pure-tests) (run-tests gpu-backends-pure-tests) (run-tests gpu-interop-pure-tests) (run-tests gpu-metal-interop-pure-tests) (run-tests dc-pure-tests) (run-tests dc-compat-pure-tests) (run-tests dc-replay-pure-tests)
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
                       (run-tests svg-pure-tests) (run-tests output-pure-tests)
                       (run-tests path-matrix-pure-tests) (run-tests filter-graph-pure-tests)
@@ -67,6 +68,7 @@
               (run-tests (dynamic-require native-abi-native-tests-file 'native-abi-native-tests))
               (run-tests (dynamic-require dc-native-tests-file 'dc-native-tests))
               (run-tests (dynamic-require dc-compat-native-tests-file 'dc-compat-native-tests))
+              (run-tests (dynamic-require dc-replay-native-tests-file 'dc-replay-native-tests))
               (run-tests (dynamic-require codec-native-tests-file 'codec-native-tests))
               (run-tests (dynamic-require pdf-native-tests-file 'pdf-native-tests))
               (run-tests (dynamic-require svg-native-tests-file 'svg-native-tests))

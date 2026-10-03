@@ -1,8 +1,11 @@
 #lang racket/base
 (require racket/class racket/future racket/list racket/math racket/vector
          (prefix-in rd: racket/draw) "dc-support.rkt" "dc-geometry.rkt"
-         "dc-region-adapter.rkt" "dc-text-spec.rkt" "dc-bitmap.rkt")
+         "dc-region-adapter.rkt" "dc-text-spec.rkt" "dc-bitmap.rkt"
+         "dc-replay-adapter.rkt" "dc-alpha.rkt"
+         (only-in "check.rkt" current-skia-byte-limit))
 (provide make-skia-dc-class)
+(define-local-member-name dc-push-layer! dc-pop-layer!)
 
 (define (color-value who v)
   (define c
@@ -17,23 +20,22 @@
 (define (with-opacity rgba alpha)
   (vector-immutable (vector-ref rgba 0) (vector-ref rgba 1) (vector-ref rgba 2)
                     (* (vector-ref rgba 3) alpha)))
-(define (pen-snapshot p)
+(define (check-pen p)
   (unless (is-a? p rd:pen%) (raise-argument-error 'set-pen "pen% object" p))
-  (define style (send p get-style))
-  (unless (memq style '(solid transparent dot long-dash short-dash dot-dash))
-    (dc-unsupported 'set-pen style "0.55"))
-  (when (send p get-stipple) (dc-unsupported 'set-pen 'stipple "0.55"))
-  (rd:make-pen #:color (color-object (color-value 'set-pen (send p get-color)))
-               #:width (dc-extent 'set-pen (send p get-width)) #:style style
-               #:cap (send p get-cap) #:join (send p get-join) #:immutable? #t))
-(define (brush-snapshot b)
+  (unless (memq (send p get-style) '(solid transparent dot long-dash short-dash dot-dash))
+    (dc-unsupported 'set-pen (send p get-style) "0.56"))
+  (when (send p get-stipple) (dc-unsupported 'set-pen 'stipple "0.56"))
+  (dc-extent 'set-pen (send p get-width))
+  (color-value 'set-pen (send p get-color))
+  p)
+(define (check-brush b)
   (unless (is-a? b rd:brush%) (raise-argument-error 'set-brush "brush% object" b))
   (unless (memq (send b get-style) '(solid transparent))
-    (dc-unsupported 'set-brush (send b get-style) "0.55"))
-  (when (or (send b get-stipple) (send b get-gradient))
-    (dc-unsupported 'set-brush 'stipple-or-gradient "0.55"))
-  (rd:make-brush #:color (color-object (color-value 'set-brush (send b get-color)))
-                 #:style (send b get-style) #:immutable? #t))
+    (dc-unsupported 'set-brush (send b get-style) "0.56"))
+  (when (or (send b get-stipple) (send b get-gradient) (send b get-handle))
+    (dc-unsupported 'set-brush 'stipple-gradient-or-native-handle "0.56"))
+  (color-value 'set-brush (send b get-color))
+  b)
 (define (smoothing-value s)
   (unless (memq s '(unsmoothed smoothed aligned))
     (raise-argument-error 'set-smoothing "'unsmoothed, 'smoothed, or 'aligned" s)) s)
@@ -76,14 +78,23 @@
       (define clip-region #f)
       (define clip-commands #f)
       (define target #f)
+      (define groups #f)
       (define closed? #f)
       (super-new)
       (define region-lease (make-dc-region-lease this))
+      (define style-lease (make-dc-style-lease this))
       ;; Allocate only after every construction argument is validated. Merely
       ;; requiring skia/dc or constructing its class does not load libSkiaSharp.
       (when (current-future) (error 'skia-dc% "construction in a future is not supported"))
       (set! target ((dc-renderer-create renderer) pixel-w pixel-h))
       (unless target (error 'skia-dc% "raster renderer returned no surface"))
+      (set! groups
+        (make-dc-alpha target pixel-w pixel-h
+                       (dc-renderer-create renderer) (dc-renderer-close renderer)
+                       (and (dc-renderer/alpha? renderer) (dc-renderer/alpha-composite renderer))
+                       (lambda () (current-skia-byte-limit))))
+      (dc-style-select! style-lease 0 pen-state check-pen void)
+      (dc-style-select! style-lease 1 brush-state check-brush void)
 
       (define/private (owner! who)
         (unless (and (eq? owner (current-thread)) (not (current-future)))
@@ -94,7 +105,23 @@
       (define/private (compat! who)
         (unless (dc-renderer+? renderer)
           (dc-unsupported who 'recording-renderer-without-compatibility-callbacks "private test renderer")))
-      (define/private (physical-clip) (dc-scale-clip clip-commands backing))
+      (define/private (physical-clip) (dc-alpha-clip groups))
+      (define/public (dc-push-layer! a)
+        (check! 'start-alpha)
+        (unless (dc-renderer/alpha? renderer)
+          (dc-unsupported 'start-alpha 'renderer-without-alpha "private test renderer"))
+        (parameterize-break #f
+          (set! alpha-state (dc-alpha-start! groups (dc-unit 'start-alpha a) alpha-state))
+          (set! target (dc-alpha-target groups)))
+        (void))
+      (define/public (dc-pop-layer!)
+        (check! 'end-alpha)
+        (parameterize-break #f
+          (dynamic-wind
+           void
+           (lambda () (dc-alpha-end! groups (lambda (a) (set! alpha-state a))))
+           (lambda () (set! target (dc-alpha-target groups)))))
+        (void))
       (define/private (effective) (dc-effective transform-state))
       (define/private (backed m) (dc-multiply (vector backing 0 0 backing 0 0) m))
       (define/private (set-transform! who v)
@@ -115,7 +142,7 @@
            ;; affine maps. The smoothed path supports those transformations.
            (unless (and (zero? (vector-ref m 1)) (zero? (vector-ref m 2))
                         (> (vector-ref m 0) 0) (> (vector-ref m 3) 0))
-             (dc-unsupported who 'aligned-rotation-shear-or-reflection "0.55 (use smoothed now)"))
+             (dc-unsupported who 'aligned-rotation-shear-or-reflection "0.56 (use smoothed now)"))
            (define sx (* alignment (vector-ref m 0)))
            (define sy (* alignment (vector-ref m 3)))
            (define ox (* alignment (vector-ref m 4)))
@@ -213,11 +240,15 @@
         (owner! 'close)
         (unless closed?
           (set! closed? #t)
-          (define old target)
           (set! target #f)
-          (dc-region-install! region-lease #f)
-          (set! clip-region #f) (set! clip-commands #f)
-          ((dc-renderer-close renderer) old))
+          (dynamic-wind
+           void
+           (lambda ()
+             (dc-region-install! region-lease #f)
+             (dc-style-release! style-lease)
+             (set! clip-region #f) (set! clip-commands #f)
+             (set! pen-state #f) (set! brush-state #f))
+           (lambda () (dc-alpha-close! groups))))
         (void))
       (define/public (get-size) (check! 'get-size) (values (exact->inexact w) (exact->inexact h)))
       (define/public (get-pixel-size) (check! 'get-pixel-size) (values pixel-w pixel-h))
@@ -226,12 +257,12 @@
       (define/public (get-gl-context) (check! 'get-gl-context) #f)
       (define/public (cache-font-metrics-key) (check! 'cache-font-metrics-key) 0)
       (define/public (get-capabilities) (check! 'get-capabilities) (dc-capabilities))
-      (define/public (snapshot) (check! 'snapshot) ((dc-renderer-snapshot renderer) target))
-      (define/public (get-png-bytes) (check! 'get-png-bytes) ((dc-renderer-png renderer) target))
+      (define/public (snapshot) (check! 'snapshot) ((dc-renderer-snapshot renderer) (dc-alpha-root groups)))
+      (define/public (get-png-bytes) (check! 'get-png-bytes) ((dc-renderer-png renderer) (dc-alpha-root groups)))
       (define/public (get-rgba-bytes #:premultiplied? [premultiplied? #f])
         (check! 'get-rgba-bytes)
         (unless (boolean? premultiplied?) (raise-argument-error 'get-rgba-bytes "boolean?" premultiplied?))
-        ((dc-renderer-rgba renderer) target premultiplied?))
+        ((dc-renderer-rgba renderer) (dc-alpha-root groups) premultiplied?))
       (define/public (get-initial-matrix) (check! 'get-initial-matrix) (vector-ref transform-state 0))
       (define/public (get-transformation) (check! 'get-transformation) transform-state)
       (define/public (get-origin) (check! 'get-origin) (values (vector-ref transform-state 1) (vector-ref transform-state 2)))
@@ -265,15 +296,17 @@
       (define/public (get-pen) (check! 'get-pen) pen-state)
       (define/public set-pen
         (case-lambda
-          [(p) (check! 'set-pen) (set! pen-state (pen-snapshot p)) (void)]
+          [(p) (check! 'set-pen)
+               (dc-style-select! style-lease 0 p check-pen (lambda (v) (set! pen-state v)))]
           [(c width style) (check! 'set-pen)
-                          (set! pen-state (pen-snapshot (rd:make-pen #:color c #:width width #:style style))) (void)]))
+                          (set-pen (rd:make-pen #:color c #:width width #:style style))]))
       (define/public (get-brush) (check! 'get-brush) brush-state)
       (define/public set-brush
         (case-lambda
-          [(b) (check! 'set-brush) (set! brush-state (brush-snapshot b)) (void)]
+          [(b) (check! 'set-brush)
+               (dc-style-select! style-lease 1 b check-brush (lambda (v) (set! brush-state v)))]
           [(c style) (check! 'set-brush)
-                     (set! brush-state (brush-snapshot (rd:make-brush #:color c #:style style))) (void)]))
+                     (set-brush (rd:make-brush #:color c #:style style))]))
       (define/public (get-font) (check! 'get-font) font-state)
       (define/public (set-font f)
         (check! 'set-font)
@@ -297,7 +330,9 @@
       (define/public (set-clipping-region r)
         (check! 'set-clipping-region)
         (dc-region-select! 'set-clipping-region region-lease r this (effective) backing
-          (lambda (data) (set! clip-region r) (set! clip-commands data)))
+          (lambda (data)
+            (set! clip-region r) (set! clip-commands data)
+            (dc-alpha-set-clip! groups (dc-scale-clip data backing))))
         (void))
       (define/public (set-clipping-rect x y width height)
         (check! 'set-clipping-rect)
@@ -423,13 +458,11 @@
         (when (and (> width 0) (> height 0) (not (dc-singular? (effective))))
           ((dc-renderer+-copy renderer) target (backed (effective)) (physical-clip) x y width height x2 y2))
         (void))
-      (define/public (get-path-bounding-box path kind) (check! 'get-path-bounding-box) (dc-unsupported 'get-path-bounding-box 'path-ink-bounds "0.55"))))
-  (dc-region-mixin
-   (class* implementation% (rd:dc<%>)
-    (super-new)
-    ;; Do not call super: on recent Racket the interface's no-op implementation
-    ;; would hide the intentionally unsupported alpha-group operation.
-    (define/override (start-alpha a)
-      (send this get-alpha) (dc-unit 'start-alpha a)
-      (dc-unsupported 'start-alpha 'alpha-groups "0.55"))
-    (define/override (end-alpha) (send this get-alpha) (void)))))
+      (define/public (get-path-bounding-box path kind) (check! 'get-path-bounding-box) (dc-unsupported 'get-path-bounding-box 'path-ink-bounds "0.56"))))
+  (dc-replay-mixin
+   (dc-region-mixin
+    (class* implementation% (rd:dc<%>)
+      (super-new)
+      ;; Override the draw-lib 1.22 interface defaults, never its no-op body.
+      (define/override (start-alpha a) (send this dc-push-layer! a))
+      (define/override (end-alpha) (send this dc-pop-layer!))))))

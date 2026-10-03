@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.55.0 — Recorded drawing and raster alpha groups
+
+- Added direct upstream recorded-procedure and recorded-datum replay using the
+  exact private pen/brush member identities in a dedicated adapter. Successful
+  replay restores destination state; upstream exception rollback is not promised.
+- Replaced immutable pen/brush copies with selected-object identity and locking,
+  atomic validation/selection, shared-selection counts, and release on close.
+- Added nested isolated CPU raster groups, saved/per-draw/group opacity semantics,
+  target-local clipping and identity-coordinate merge without CPU pixel staging.
+- Bounded root plus live layer storage; allocation failure preserves state,
+  failed merges release/pop once, and close discards unfinished layers.
+- Added 28 pure and 28 native replay/alpha cases and 24 standalone production
+  controller cases. Kept all existing DC counts and exact pixel oracles.
+- Added independently checked direct/procedure/datum alpha captures with a fixed
+  two-channel-unit quantization tolerance; no pairwise-only pass or universal
+  raster identity claim. Required installed-package DC CI uses the expanded gate.
+- Preserved Racket 8.18 / draw-lib 1.22, native pins and all GPU jobs/workloads.
+- Preserved the two GPU demos at f4dedd03d0f8d0fdb79fcb9f5706b218a78183c5 and
+  repaired their missing source-manifest inventory entries on that exact baseline.
+- Split the remaining roadmap: 0.56 consumers/styles, 0.57 raster skia-canvas%,
+  0.58 GPU facade. This delivery does not implement those later stages.
+- Host and full CI execution remain acceptance requirements.
+
 ## 0.54.0 — DC text, bitmaps and clipping regions
 
 - Added Skia/HarfBuzz text drawing, shared extents, glyph queries, underline,

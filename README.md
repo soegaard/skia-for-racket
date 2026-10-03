@@ -1,26 +1,30 @@
-# Racket Skia — 0.54.0
+# Racket Skia — 0.55.0
 
-## Skia DC text, bitmaps and clipping regions
+## Recorded drawing and nested raster alpha groups
 
-`skia/dc` now adds text drawing/metrics through Skia and HarfBuzz, distinct
-character/grapheme/combined shaping, public bitmap input with masks and HiDPI
-source pixels, overlap-safe copies, and real region% clipping with selected
-region locking. Its persistent CPU backing and owner-thread lifetime remain.
-No window, GPU context, or hidden Cairo drawing fallback is introduced.
+`skia/dc` supports direct upstream `record-dc%` procedure replay and
+`recorded-datum->procedure`, with the private replay identities isolated in a
+small adapter. Selected pen and brush objects now keep their identity and are
+locked until replacement/close instead of being silently copied.
 
-Require **Racket 8.18 and draw-lib 1.22**. Unlike 8.17, this interface supplies
-the alpha-method defaults overridden by the DC. Alpha-group rendering, extended
-styles, direct record-dc% replay and broad drop-in compatibility remain deferred.
+Nested `start-alpha` / `end-alpha` groups draw into independent CPU Skia
+surfaces and composite once, preserving overlap semantics and saved opacity.
+Allocation is bounded, close discards unfinished groups, and explicit snapshots
+inspect only the root backing. Successful upstream replay restores destination
+state; exceptions are propagated without claiming transactional pixel rollback.
+The established geometry, Skia/HarfBuzz text, bitmap/mask/copy and region APIs
+remain. No Cairo rendering fallback, GUI initialization or GPU expansion occurs.
 
-See [the API and explicit compatibility limits](docs/SKIA-DC.md). The existing
-`tools/validate-dc.py` gate now runs 96 pure and 65 native DC cases, retains the
-foundation oracle, and adds a second independent bitmap/region/copy oracle.
-All CPU lanes, including minimum Racket 8.18, run it from the installed package.
-Text sample images are not proof of Cairo/Pango pixel or metric equivalence.
+The minimum remains **Racket 8.18 and draw-lib 1.22**. The installed-package DC
+gate now requires 124 pure and 93 native RackUnit cases. It preserves the two
+existing exact oracles and independently checks direct/procedure/datum alpha
+captures with a two-channel-unit quantization tolerance. All GPU gates and
+native pins remain unchanged. See [the DC contract and limits](docs/SKIA-DC.md).
 
-This is a validation candidate from `ad31074e2b3a9727a4e830290d0bf2efda031292`.
-Existing Ganesh APIs, required GPU workloads and native pins are unchanged.
-The next direction remains 0.55 compatibility, then 0.56–0.57 skia-canvas%.
+This is a validation candidate from `f4dedd03d0f8d0fdb79fcb9f5706b218a78183c5`;
+it preserves both GPU game demos. Acceptance requires host and CI evidence.
+The split roadmap is **0.56 consumers/styles**, **0.57 raster skia-canvas%**,
+and **0.58 GPU-backed skia-canvas%**. No `pict`/plot/style claims are added in 0.55.
 
 ## Metal interop and Ganesh closeout
 
@@ -741,8 +745,8 @@ actual native load and rendering smoke test.
 
 Racket 8.18+ and draw-lib 1.22+ are required. This version of `dc<%>`
 supplies the alpha-method default implementations overridden by `skia-dc%`;
-8.17 has the methods but not these defaults. Alpha-group rendering remains
-planned for 0.55. Package installation resolves the declared dependencies.
+8.17 has the methods but not these defaults. 0.55 implements alpha-group
+rendering. Package installation resolves the declared dependencies.
 
 ### Linux
 

@@ -134,18 +134,20 @@
    (test-case "returned background is detached"
      (define-values (dc e) (fresh)) (define c (send dc get-background))
      (send c set 0 0 0) (check-equal? (send (send dc get-background) red) 255))
-   (test-case "supplied pen is copied not locked"
+   (test-case "supplied pen retains identity and is locked until release"
      (define-values (dc e) (fresh))
      (define p (rd:make-pen #:color "red" #:width 3 #:immutable? #f))
-     (send dc set-pen p) (send p set-width 8)
-     (check-equal? (send (send dc get-pen) get-width) 3.0)
-     (check-exn exn:fail? (lambda () (send (send dc get-pen) set-width 9))))
-   (test-case "brush snapshot remains immutable"
+     (send dc set-pen p) (check-eq? p (send dc get-pen))
+     (check-exn exn:fail? (lambda () (send p set-width 8)))
+     (check-equal? (send p get-width) 3)
+     (send dc close) (check-not-exn (lambda () (send p set-width 9))))
+   (test-case "supplied brush retains identity and is locked until release"
      (define-values (dc e) (fresh))
      (define b (rd:make-brush #:color "red" #:immutable? #f))
-     (send dc set-brush b) (send b set-color "blue")
-     (check-equal? (send (send (send dc get-brush) get-color) red) 255)
-     (check-exn exn:fail? (lambda () (send (send dc get-brush) set-color "green"))))
+     (send dc set-brush b) (check-eq? b (send dc get-brush))
+     (check-exn exn:fail? (lambda () (send b set-color "blue")))
+     (check-equal? (send (send b get-color) red) 255)
+     (send dc close) (check-not-exn (lambda () (send b set-color "green"))))
    (test-case "deferred pen style does not replace current pen"
      (define-values (dc e) (fresh)) (define before (send dc get-pen))
      (fails? (lambda () (send dc set-pen "blue" 2 'xor))) (check-eq? (send dc get-pen) before))
@@ -274,7 +276,7 @@
      (for ([f (list (lambda () (send dc draw-text "abc" 0 0)) (lambda () (send dc get-text-extent "abc"))
                     (lambda () (send dc get-char-width)) (lambda () (send dc get-char-height))
                     (lambda () (send dc glyph-exists? #\a)))]) (fails? f)))
-   (test-case "minimal renderer copy and deferred alpha groups remain explicit"
+   (test-case "minimal renderer copy and missing alpha callbacks remain explicit"
      (define-values (dc e) (fresh))
      (fails? (lambda () (send dc copy 0 0 1 1 2 2)))
      (fails? (lambda () (send dc start-alpha 0.5)))

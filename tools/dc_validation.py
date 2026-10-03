@@ -1,4 +1,4 @@
-"""Independent validation for the 0.54 raster DC evidence (stdlib only).
+"""Independent validation for the 0.55 raster DC evidence (stdlib only).
 
 The tiny oracle is specified here, not derived from either renderer's pixels.
 The larger Racket/Skia comparison is a manual review, not a pixel-equality gate.
@@ -12,11 +12,15 @@ from pathlib import Path
 import struct
 import zlib
 
-STAGE = '0.54'
+STAGE = '0.55'
 PURE_CASES = 60
 NATIVE_CASES = 31
 COMPAT_PURE_CASES = 36
 COMPAT_NATIVE_CASES = 34
+REPLAY_PURE_CASES = 28
+REPLAY_NATIVE_CASES = 28
+ALPHA_CONTROLLER_CASES = 24
+ALPHA_TOLERANCE = 2
 PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
 SOURCE_PATHS = ('dc.rkt', 'private/dc-support.rkt', 'private/dc-class.rkt',
                 'private/dc-render.rkt', 'private/dc-geometry.rkt',
@@ -26,7 +30,10 @@ SOURCE_PATHS = ('dc.rkt', 'private/dc-support.rkt', 'private/dc-class.rkt',
                 'private/core.rkt', 'private/dc-region-adapter.rkt', 'private/dc-bitmap.rkt',
                 'private/dc-native-util.rkt', 'private/dc-text-spec.rkt', 'private/dc-text.rkt',
                 'tests/dc-compat-pure-test.rkt', 'tests/dc-compat-native-test.rkt',
-                'examples/dc-compatibility.rkt')
+                'examples/dc-compatibility.rkt',
+                'private/dc-alpha.rkt', 'private/dc-replay-adapter.rkt',
+                'tests/dc-alpha-test.rkt', 'tests/dc-replay-pure-test.rkt',
+                'tests/dc-replay-native-test.rkt', 'examples/dc-replay.rkt')
 
 
 def require(condition, message):
@@ -189,6 +196,40 @@ def compatibility_oracle_rgba():
     return bytes(pixels)
 
 
+def alpha_oracle_rgba():
+    """Independent analytical source-over oracle; no renderer input is read.
+
+    All output is opaque. Two channel units cover bounded 8-bit rounding in
+    nested layers, not antialiasing, position drift, or per-draw alpha errors.
+    """
+    data = bytearray()
+    def over(dst, src, a):
+        return tuple(a*s + (1-a)*d for d,s in zip(dst,src))
+    for y in range(32):
+        for x in range(48):
+            value = (255.,255.,255.)
+            if 4 <= y < 14 and 4 <= x < 22:
+                value = over(value, (0,0,255) if x >= 10 else (255,0,0), .5)
+            red = 4 <= x < 20 and 20 <= y < 28
+            blue = 10 <= x < 24 and 18 <= y < 28
+            if red and blue:
+                value = over(value, over((255,0,0),(0,0,255),.5),.5)
+            elif red:
+                value = over(value,(255,0,0),.5)
+            elif blue:
+                value = over(value,(0,0,255),.25)
+            if 34 <= x < 44 and 20 <= y < 28:
+                value = over(value,(0,255,0),.125)
+            if 30 <= x < 35 and 4 <= y < 12:
+                value = over(value,(255,0,0) if x < 32 else (0,0,255),.5)
+            if x < 2 and y < 2:
+                value = (10,20,30)
+            if x >= 46 and y >= 30:
+                value = (20,200,70)
+            data.extend((*[round(c) for c in value],255))
+    return bytes(data)
+
+
 def inspect_directory(directory, *, identity=None):
     directory = Path(directory).resolve()
     raw = read_json(directory / 'dc.diagnostic.json')
@@ -204,7 +245,10 @@ def inspect_directory(directory, *, identity=None):
     for key, expected in [('pure_cases', PURE_CASES), ('native_cases', NATIVE_CASES),
                           ('pure_failures', 0), ('native_failures', 0),
                           ('compat_pure_cases', COMPAT_PURE_CASES), ('compat_native_cases', COMPAT_NATIVE_CASES),
-                          ('compat_pure_failures', 0), ('compat_native_failures', 0)]:
+                          ('compat_pure_failures', 0), ('compat_native_failures', 0),
+                          ('replay_pure_cases', REPLAY_PURE_CASES), ('replay_native_cases', REPLAY_NATIVE_CASES),
+                          ('replay_pure_failures', 0), ('replay_native_failures', 0),
+                          ('alpha_controller_cases', ALPHA_CONTROLLER_CASES)]:
         require(exact(raw.get(key), expected), f'incomplete DC test evidence: {key}')
     require(raw.get('snapshots_encoded_after_dc_close') is True, 'missing post-close image encoding')
     require(raw.get('os') in ('unix', 'windows', 'macosx'), 'missing/unknown execution OS')
@@ -217,7 +261,10 @@ def inspect_directory(directory, *, identity=None):
                 ('skia_demo', 'dc-primitives.skia.png', (460, 320)),
                 ('reference_demo', 'dc-primitives.racket.png', (460, 320)),
                 ('compat_oracle', 'dc-compat-oracle.png', (64,48)),
-                ('text_sample', 'dc-text.skia.png', (320,104))]
+                ('text_sample', 'dc-text.skia.png', (320,104)),
+                ('alpha_direct', 'dc-alpha.direct.png', (48,32)),
+                ('alpha_procedure', 'dc-alpha.procedure.png', (48,32)),
+                ('alpha_datum', 'dc-alpha.datum.png', (48,32))]
     receipts = []
     for key, name, dimensions in captures:
         require(raw.get(key) == name, 'unexpected capture filename')
@@ -228,6 +275,10 @@ def inspect_directory(directory, *, identity=None):
             require(pixels == oracle_rgba(), 'DC pixels differ from independent oracle')
         elif key == 'compat_oracle':
             require(pixels == compatibility_oracle_rgba(), 'bitmap/region/copy pixels differ from independent oracle')
+        elif key.startswith('alpha_'):
+            expected = alpha_oracle_rgba()
+            require(all(abs(a-b) <= ALPHA_TOLERANCE for a,b in zip(pixels,expected)),
+                    'alpha/replay pixels differ from independent oracle')
         elif key == 'text_sample':
             red = sum(pixels[i] > pixels[i+1]+20 and pixels[i] > pixels[i+2]+20
                       for i in range(0,len(pixels),4))
@@ -242,6 +293,9 @@ def inspect_directory(directory, *, identity=None):
     return dict(schema=1, stage=STAGE, status='passed', validation_run=directory.name,
                 storage='persistent-cpu-raster', pure_cases=PURE_CASES, native_cases=NATIVE_CASES,
                 compat_pure_cases=COMPAT_PURE_CASES, compat_native_cases=COMPAT_NATIVE_CASES,
+                replay_pure_cases=REPLAY_PURE_CASES, replay_native_cases=REPLAY_NATIVE_CASES,
+                alpha_controller_cases=ALPHA_CONTROLLER_CASES,
+                alpha_replay_oracle_verified=True, alpha_channel_tolerance=ALPHA_TOLERANCE,
                 compatibility_oracle_pixels_verified=True, text_sample_nonempty_verified=True,
                 exact_oracle_pixels_verified=True, snapshots_encoded_after_dc_close=True,
                 demo_pixel_equivalence_verified=False, manual_demo_review_required=True,
@@ -253,10 +307,12 @@ def write_review(directory, report):
     directory = Path(directory)
     require(report.get('status') == 'passed', 'no success review for a failed report')
     title = html.escape(directory.name)
-    body = ['<!doctype html><meta charset="utf-8"><title>Skia DC 0.54 review</title>',
-            '<h1>Skia DC 0.54</h1><p>' + title + '</p>',
+    body = ['<!doctype html><meta charset="utf-8"><title>Skia DC 0.55 review</title>',
+            '<h1>Skia DC 0.55</h1><p>' + title + '</p>',
             '<p>The 48×40 oracle is checked exactly. The larger images are for manual comparison; '
             'Font pixels are reviewed manually; the 64×48 bitmap/region/copy oracle is checked exactly. '
+            'The three 48×32 alpha captures are independently checked with a fixed two-unit channel tolerance, '
+            'not merely compared to each other. '
             'Universal pixel equivalence and full drop-in compatibility are not certified.</p>']
     for item in report['captures']:
         name = html.escape(item['file'], quote=True)

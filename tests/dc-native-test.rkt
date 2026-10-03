@@ -128,7 +128,7 @@
                                                  (check-equal? (pixel dc 2 3) '(255 0 0 255))))))
    (test-case "unsupported method leaves real pixels unchanged"
      (using-dc (lambda (dc) (send dc clear) (define before (send dc get-rgba-bytes))
-                 (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc start-alpha 0.5)))
+                 (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc set-brush "red" 'cross-hatch)))
                  (check-equal? (send dc get-rgba-bytes) before))))
    (test-case "integer rectangles agree with bitmap-dc%"
      (compare-with-racket (lambda (dc) (fill-mode dc) (send dc draw-rectangle 2 3 7 8)) 0))
@@ -143,7 +143,7 @@
    (test-case "public drawing procedure can replay into a Skia dc"
      ;; Keep the 0.53 replay smoke test strictly on public dc<%> methods.
      ;; Racket's record-dc% closure also sends private local-member methods
-     ;; (`do-set-pen!`/`do-set-brush!`), which is intentionally 0.55 work.
+     ;; (`do-set-pen!`/`do-set-brush!`), covered by the separate 0.55 suite.
      (define (replay dc)
        (fill-mode dc)
        (send dc draw-rectangle 2 3 7 8))

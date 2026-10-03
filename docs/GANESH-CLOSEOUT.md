@@ -2,8 +2,9 @@
 
 0.52 was accepted at `bff9c172b84ecb353a5134ce42abd8d49256815a` after local
 Metal interop validation and all required jobs in run `36782347694` passed.
-The 0.53 delivery adds the [raster DC foundation](SKIA-DC.md); its host and CI
-results are a separate acceptance gate. The remaining roadmap is unchanged.
+0.54 is the accepted text/bitmap/region baseline. The narrowed 0.55 delivery
+adds replay/locking/alpha groups and still requires host/CI acceptance. The
+remaining compatibility work is split as documented in the roadmap below.
 
 The following closeout records the decisions and evidence boundaries of 0.52.
 
@@ -76,9 +77,10 @@ zero-copy behavior follows from accepting this stage.
 |---|---|---|
 | 0.53 | `skia-dc%` foundation | Direct public `dc<%>` implementation over a persistent CPU Skia surface; state, transforms, clipping and ordinary primitives |
 | 0.54 | Text, bitmap and region compatibility | Match Racket-facing semantics; isolate any necessary private region adapter and test supported Racket versions |
-| 0.55 | Real-consumer compatibility | Differential recorded drawing plus `pict`, plotting and other DC clients; semantic correctness with justified pixel tolerances |
-| 0.56 | Explicit `skia-canvas%` | Persistent raster GUI widget; exposure, resize, backing scale, invalidation and presentation |
-| 0.57 | GPU-backed canvas/DC facade | Use the existing GPU presenters; frame-backed DCs expire with their frame and cannot masquerade as persistent raster DCs |
+| 0.55 | Recorded drawing and compositing | Upstream recorded procedure/datum replay, isolated private member identities, pen/brush locking, nested alpha groups and state restoration on successful replay |
+| 0.56 | Real consumers and extended styles | `pict`, `plot/dc`, gradients/stipples/hatches, remaining region/alignment/ink-bounds compatibility and differential rendering |
+| 0.57 | Explicit `skia-canvas%` | Persistent raster GUI widget; exposure, resize, backing scale, invalidation and presentation |
+| 0.58 | GPU-backed canvas/DC facade | Use the existing GPU presenters; frame-backed DCs expire with their frame and cannot masquerade as persistent raster DCs |
 
 `skia-dc%` implements drawing behavior. `skia-canvas%` owns and presents a GUI
 backbuffer. The existing lower-level `gpu-canvas%` remains the scoped GPU-frame

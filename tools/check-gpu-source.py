@@ -29,6 +29,28 @@ def read_forms(text: str):
             if depth: raise ValueError('unterminated block comment')
             continue
         if text.startswith('#;', i): tokens.append('#;'); i += 2; continue
+        # Racket here strings are reader-level string values. The source
+        # checker is intentionally not a complete Racket reader, but GPU
+        # examples use #<<TAG for SkSL programs, whose parentheses and
+        # semicolons must not be tokenized as Racket syntax.
+        if text.startswith('#<<', i):
+            opener_end = text.find('\n', i + 3)
+            if opener_end < 0: raise ValueError('unterminated here-string opener')
+            delimiter = text[i + 3:opener_end]
+            if not delimiter: raise ValueError('empty here-string delimiter')
+            content_start = opener_end + 1
+            line_start = content_start
+            while True:
+                line_end = text.find('\n', line_start)
+                if line_end < 0: line_end = len(text)
+                if text[line_start:line_end] == delimiter:
+                    tokens.append(String(text[content_start:line_start]))
+                    i = line_end + (1 if line_end < len(text) else 0)
+                    break
+                if line_end == len(text):
+                    raise ValueError(f'unterminated here-string {delimiter!r}')
+                line_start = line_end + 1
+            continue
         if text.startswith('#\\', i):
             start = i; i += 2
             if i == len(text): raise ValueError('unfinished character literal')

@@ -71,10 +71,22 @@
         (sk:canvas-translate! c dx dy)
         (sk:draw-paint c paint))))
   (void))
+(define (composite! parent child clip opacity)
+  ;; The completed child is sampled in physical coordinates. The current DC
+  ;; transform and per-draw alpha must not be applied a second time.
+  (define c (sk:surface-canvas parent))
+  (sk:with-skia ([image (sk:surface-snapshot child)]
+                [paint (sk:make-paint #:color (native-color (vector 255 255 255 opacity))
+                                       #:blend-mode 'src-over #:antialias? #f)])
+    (sk:call-with-canvas-state c
+      (lambda ()
+        (install-clip! c clip)
+        (sk:draw-image c image 0 0 #:paint paint))))
+  (void))
 (define skia-dc-renderer
-  (dc-renderer+
+  (dc-renderer/alpha
    (lambda (w h) (sk:make-surface w h #:background 'transparent))
    sk:skia-close! draw! clear! sk:surface-snapshot
    (lambda (s p?) (sk:surface->rgba-bytes s #:premultiplied? p?))
    sk:surface->png-bytes
-   dc-measure-text dc-render-text! dc-glyph-exists? bitmap! copy!))
+   dc-measure-text dc-render-text! dc-glyph-exists? bitmap! copy! composite!))

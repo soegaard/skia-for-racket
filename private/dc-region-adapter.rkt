@@ -1,5 +1,6 @@
 #lang racket/base
-;; The ONLY private racket/draw dependency in the DC implementation.
+;; Isolated region dependency; replay/style member identities are isolated in
+;; dc-replay-adapter.rkt. Neither adapter creates a Cairo drawing context.
 ;; No Cairo pointer, rendering, or private pen/brush protocol crosses this file.
 (require racket/class racket/list
          (only-in ffi/unsafe register-finalizer)

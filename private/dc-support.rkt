@@ -5,13 +5,13 @@
          dc-unsupported dc-real dc-unit dc-extent dc-matrix dc-transformation
          dc-identity dc-multiply dc-effective dc-point dc-singular?
          dc-physical-size dc-path-map dc-capabilities
-         (struct-out dc-renderer) (struct-out dc-renderer+) (struct-out dc-ink) (struct-out dc-draw)
+         (struct-out dc-renderer) (struct-out dc-renderer+) (struct-out dc-renderer/alpha) (struct-out dc-ink) (struct-out dc-draw)
          (struct-out dc-clip) (struct-out dc-clip-path) dc-scale-clip)
 
 (struct exn:fail:skia-dc:unsupported exn:fail:contract (method feature stage) #:transparent)
-(define (dc-unsupported who feature [stage "0.54/0.55"])
+(define (dc-unsupported who feature [stage "0.56"])
   (raise (exn:fail:skia-dc:unsupported
-          (format "~a: ~a is outside skia-dc% 0.54; planned compatibility stage ~a"
+          (format "~a: ~a is outside skia-dc% 0.55; planned compatibility stage ~a"
                   who feature stage)
           (current-continuation-marks) who feature stage)))
 (define (dc-real who v)
@@ -89,6 +89,7 @@
 ;; fallback or pluggable Cairo backend. Public construction always uses Skia.
 (struct dc-renderer (create close draw clear snapshot rgba png) #:transparent)
 (struct dc-renderer+ dc-renderer (measure-text draw-text glyph-exists? draw-bitmap copy) #:transparent)
+(struct dc-renderer/alpha dc-renderer+ (composite) #:transparent)
 (struct dc-clip (paths) #:transparent)
 (struct dc-clip-path (commands rule) #:transparent)
 (define (dc-scale-clip clip backing)
@@ -103,7 +104,7 @@
 (struct dc-ink (rgba stroke? width cap join dashes) #:transparent)
 (struct dc-draw (commands rule matrix clip ink antialias?) #:transparent)
 (define (dc-capabilities)
-  (hasheq 'schema 1 'stage "0.54" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
+  (hasheq 'schema 1 'stage "0.55" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
           'storage "persistent-cpu-raster" 'native_probe_performed #f
           'full_drop_in_compatibility #f 'gui_initialized #f
           'drawing '(draw-arc draw-ellipse draw-line draw-lines draw-path draw-point
@@ -113,9 +114,11 @@
           'brush_styles '(solid transparent)
           'smoothing '(unsmoothed smoothed aligned)
           'alignment "0.53 snaps positive axis-aligned transforms; use smoothed for rotation/shear/reflection"
-          'selection_semantics "immutable pen/brush snapshots; caller objects are not locked"
+          'selection_semantics "selected pen/brush identity and locking; release on replacement/close"
           'clipping "region% paths and intersections; construction/install transforms; selected region locking"
           'text "Skia/HarfBuzz; characters, graphemes, combined; single-line"
           'minimum_racket "8.18" 'minimum_draw_lib "1.22"
+          'recorded_procedure_replay #t 'recorded_datum_replay #t
+          'alpha_groups "nested isolated raster groups; parent clip at merge; root-only snapshots"
           'deferred '(gradients stipples
-                           hatches xor hilite alpha-groups path-ink-bounds gui gpu)))
+                           hatches xor hilite path-ink-bounds gui gpu)))

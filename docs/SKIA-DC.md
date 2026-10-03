@@ -1,4 +1,4 @@
-# Skia drawing contexts — 0.54
+# Skia drawing contexts — 0.55
 
 ## Scope and requirements
 
@@ -11,7 +11,8 @@ nonempty text measurement and drawing normally also require HarfBuzz.
 The minimum is **Racket 8.18 and draw-lib 1.22**. Racket 8.17 introduced the
 alpha methods as required interface members; 8.18 includes their default
 implementations. The final Skia class explicitly overrides those defaults.
-Raising the minimum does not implement alpha-group drawing: that remains 0.55.
+0.55 implements nested alpha groups and both upstream recording replay forms.
+The minimum is unchanged from 0.54; no conditional older-interface class is added.
 The ordinary `skia` module and all Ganesh APIs and native pins are unchanged.
 
 This is a compatibility layer with explicit limits, **not a full drop-in
@@ -91,9 +92,20 @@ winding/odd-even fill rules. Closed shapes fill before stroking; lines and
 splines do not accidentally use the brush.
 
 Solid/transparent brushes and solid/transparent/dot/long-dash/short-dash/dot-dash
-pens are supported, with caps, joins and hairlines. Pen/brush selection still
-installs immutable snapshots rather than locking the caller's objects. Getters
-return the installed immutable objects. Color getters return detached values.
+pens are supported, with caps, joins and hairlines. **0.55 changes selection
+semantics:** `set-pen` / `set-brush` retain and lock the supplied object instead
+of installing an immutable copy. `get-pen` / `get-brush` return that same object.
+A mutable selection cannot be changed until every selecting DC has released it.
+Replacement and explicit close release each DC's lock exactly once; reselection
+of the same object does not add a lock. Cached immutable objects remain immutable
+when released. Color getters still return detached values.
+
+Validation occurs before replacing the current selection, and validation,
+locking, and installation are atomic with respect to Racket thread scheduling.
+An unsupported candidate leaves the previous object selected and locked. A
+weak-reference finalizer releases locks when a DC is collected; deterministic
+`close` remains the intended lifetime boundary. Locking does not make unsupported
+stipple or gradient styles available in this release.
 
 `'smoothed` supports general affine geometry. The foundation's `'unsmoothed`
 and `'aligned` snapping supports positive axis-aligned transforms only; rotated,
@@ -245,18 +257,108 @@ it or closing the DC releases that lock. Validation precedes selection changes;
 a rejected region does not discard the old clip. A finalizer provides a weak-
 reference lock-release fallback without retaining an otherwise dead DC.
 
-Only `private/dc-region-adapter.rkt` imports `racket/draw/private/region` and
-`racket/draw/private/local`. It implements the exact private clipping-matrix
-member identity required by region construction, checks the path representation,
-and exposes only copied commands to the renderer. All other DC modules stay
-on public Racket drawing types. Minimum-version and current-version CI must
-exercise this adapter; private upstream representation changes require review.
+Private Racket dependencies are isolated in two adapters:
+`private/dc-region-adapter.rkt` consumes checked region paths and the private
+clipping-matrix identity, while `private/dc-replay-adapter.rkt` imports the exact
+`do-set-pen!` / `do-set-brush!` identities from `racket/draw/private/dc` and
+`adjust-lock` from `racket/draw/private/local`. Neither adapter constructs a
+Cairo drawing context or reroutes Skia rendering through Cairo. Other DC modules
+use public Racket drawing types. Minimum/current-version CI must exercise these
+adapters; a change in upstream private protocols requires review.
 
 **Remaining region limit:** some built-in region utility operations, notably
 `is-empty?` on a nonempty associated region, ask their DC for a Cairo context.
 The Skia DC does not manufacture one. Such utility queries are not promised by
 this stage even though the region can be installed and clipped correctly. Full
-associated-region utility compatibility belongs to 0.55.
+associated-region utility compatibility belongs to 0.56.
+
+## Direct recorded drawing
+
+```racket
+(define recording (new record-dc% [width 640] [height 400]))
+(send recording set-smoothing 'smoothed)
+(send recording set-brush "navy" 'solid)
+(send recording draw-rectangle 10 20 80 40)
+
+((send recording get-recorded-procedure) dc)
+((recorded-datum->procedure (send recording get-recorded-datum)) dc)
+```
+
+Both forms use Racket's own recording interpreter without rewriting the datum
+format or special-casing a recorded program. The adapter implements the actual
+private local-member identities, not public symbols with the same spelling.
+Replay passes through normal Skia DC validation and pen/brush locking.
+
+Supported recorded operations include the established geometry, text, bitmap,
+transform, region, and alpha-group subset. Successful upstream replay restores
+the destination's saved pen and brush **identities**, font, smoothing, text mode
+and colors, background, opacity, transformation, and selected clipping region.
+The recording's transform, opacity, and clip composition remain controlled by
+Racket's upstream replay procedure. A recording using a still-unsupported style
+raises the usual unsupported exception; replay is not an implicit fallback.
+
+**Exception boundary:** upstream `record-dc%` replay restores state after normal
+completion, not through an exception-safe transaction. An exception from a
+recorded operation can leave partially drawn pixels and changed destination
+state, including unfinished alpha groups. This stage does not promise rollback
+for upstream procedures. Explicitly closing the DC releases its locks and
+all unfinished group storage without committing those groups. Balanced valid
+recordings are the supported replay contract, not arbitrary malformed datums.
+
+## Nested alpha groups
+
+```racket
+(send dc set-alpha 0.8)
+(send dc start-alpha 0.5) ; saves 0.8; get-alpha is now 1.0
+(send dc set-brush "red" 'solid)
+(send dc draw-rectangle 10 10 60 40)
+(send dc set-brush "blue" 'solid)
+(send dc draw-rectangle 40 10 60 40)
+(send dc end-alpha)      ; composites once at 0.8 * 0.5; restores 0.8
+```
+
+`start-alpha` requires a finite real in `[0,1]`. Each group has an independent,
+initially transparent CPU Skia raster surface at the DC's physical dimensions.
+Group storage is bounded to those physical dimensions: off-canvas drawing is
+not retained for a later copy back into the canvas. This is not an unbounded
+Cairo recording surface. The group starts with drawing alpha 1.0. Its constituent shapes therefore
+occlude one another normally before the completed group is composited once.
+This is not equivalent to multiplying each constituent draw's alpha.
+
+Groups can nest. `end-alpha` composites into the immediately enclosing target
+using the saved outer alpha multiplied by the group's alpha, and restores that
+saved drawing alpha. Changing alpha inside the group affects its draws, not its
+stored group opacity. An unmatched `end-alpha` is a checked no-op. Transforms and
+backing scale apply to constituent drawing; merging uses physical coordinates
+and does not apply the current drawing transform again.
+
+Clipping follows Racket's separate group-target behavior: the parent's clip at
+entry remains on the parent and is applied at merge. A new group has no inherited
+clip; a `set-clipping-region` / `set-clipping-rect` during the group changes that
+group's clip. Ending the group returns to the parent's saved clip. Other drawing
+state is not pushed by `start-alpha`; in particular, the global selected region
+object still records the most recent selection. Reselect it after `end-alpha`
+when the intent is to install it on the parent too. This distinction prevents
+applying the parent's clip both to every child draw and again to the whole group.
+
+Text, bitmap drawing, clear, erase, and copy use the active target. A copy inside
+a group sees that group's contents, not the root or parent. `snapshot`,
+`get-rgba-bytes`, and `get-png-bytes` are explicit extensions that inspect the
+**root backing only**: an unfinished group is not implicitly merged or exposed
+as an independent external target. Existing snapshots remain independent.
+
+Before allocating a layer, the controller checks the aggregate full-sized RGBA
+storage for the root and all live group surfaces against
+`current-skia-byte-limit`. Allocation failure leaves the parent and alpha state
+unchanged. This is a surface-storage budget, not a bound on all allocator memory,
+retained client snapshots, or native temporary storage. No GPU readback or CPU
+pixel round trip is used to merge these CPU-native surfaces.
+
+A failed merge is propagated. The group is already popped, the parent/alpha are
+restored, and the child is released; retrying `end-alpha` cannot repeat that merge.
+As with any failed native drawing operation, pixel rollback is not promised.
+`close` discards unbalanced groups rather than silently compositing them and
+attempts to release every owned target even when an individual release fails.
 
 ## Remaining unsupported operations
 
@@ -265,21 +367,20 @@ The exception `exn:fail:skia-dc:unsupported` extends `exn:fail:contract` and car
 
 | Deferred area | Operations |
 |---|---|
-| 0.55 styles and grouping | Gradients, stipples, hatches, XOR/hilite pens/brushes, alpha groups |
-| 0.55 broader compatibility | Path ink bounds, complete alignment and object-lock semantics, associated-region utility queries, direct record-dc% replay |
-| 0.56–0.57 GUI | skia-canvas%, persistent GUI management, scoped GPU-frame facade |
+| 0.56 styles | Gradients, stipples, hatches, XOR/hilite pens/brushes and monochrome XOR |
+| 0.56 real-consumer compatibility | `pict`, `plot/dc`, path ink bounds, full alignment and associated-region utility queries |
+| 0.56 text edge cases | Combined tabs/hard breaks and Pango font-description interpretation |
+| 0.57 GUI | Persistent raster `skia-canvas%`, exposure, resize and presentation |
+| 0.58 GPU facade | GPU-backed `skia-canvas%` with frame-scoped `dc<%>` lifetime |
 
-`start-alpha` still raises; `end-alpha` with no active group is a no-op.
-Direct `record-dc%` replay remains deferred: current Racket recordings use
-internal replay helpers such as `do-set-pen!` and `do-set-brush!`, beyond the
-public DC method boundary. Ordinary user procedures using supported public
-methods can draw directly. This distinction is not erased by satisfying the
-`dc<%>` interface.
+The replay suite deliberately does not add `pict`, plotting, gradients or new
+styles to 0.55's acceptance criteria. Interface membership is not evidence of
+universal drop-in compatibility. No new native pins or backend expansions occur.
 
 ## Validation and evidence
 
 Run `python3 tools/validate-dc.py --racket "$RACKET"`. The required sequence
-compiles the modules and executes all four suites:
+compiles the modules and executes all six RackUnit suites:
 
 | Suite | Cases |
 |---|---:|
@@ -287,30 +388,45 @@ compiles the modules and executes all four suites:
 | Foundation native | 31 |
 | Text/bitmap/region pure | 36 |
 | Text/bitmap/region native | 34 |
+| Replay/locking/alpha pure | 28 |
+| Replay/locking/alpha native | 28 |
 
-Thus the DC gate executes **96 pure and 65 native cases**. Foundation case
-counts and the 48x40 independent exact oracle are retained. A second independent
-64x48 exact oracle covers bitmap pixels/masks, HiDPI source sampling, copy,
-region holes/intersections and construction/installation transforms.
+Thus the DC gate requires **124 pure and 93 native cases**. The replay pure suite
+also invokes 24 standalone production alpha-controller cases using a recording
+renderer; those 24 cases are not claimed as native pixel tests. Run them alone
+with `racket tests/dc-alpha-test.rkt` without Skia or `racket/draw`.
 
-Five PNGs are retained: both exact oracles, the existing 460x320 Skia/Racket
-geometry examples, and a 320x104 colored Skia text sample. The large examples
-remain manual-review material. The text-sample inspector requires nonempty
-colored ink; it does not independently prove glyph shape or text equivalence.
-Native tests separately exercise text measurement/drawing consistency and the
-supported mode/lifetime behavior. Snapshots are encoded after the DCs close.
+The original 48x40 foundation oracle and 64x48 bitmap/region/copy oracle remain
+**exact**. Three new 48x32 captures render the alpha corpus directly, through an
+upstream recorded procedure, and through an upstream recorded datum. Each is
+checked against an independently calculated analytical compositing oracle with
+a maximum error of **2 per 8-bit channel** to accommodate alpha quantization in
+nested compositing. Agreement between the three implementations alone is not a
+pass. No tolerance is added to either existing exact oracle.
 
-All CPU CI lanes, including the required Racket 8.18 lane, use the same validator
-from an isolated installed package. The artifact subdirectory remains
-`dc-foundation` for compatibility with CI report consumers. Missing captures,
-wrong pixels, reduced counts, old interpreters and failed commands are errors,
-not optional skips. Existing GPU gates, workloads and pins are unchanged.
+Eight PNGs are retained: the two exact oracles, those three alpha captures,
+the existing 460x320 Skia/Racket geometry examples, and a 320x104 colored text
+sample. The large examples remain manual-review material; the text image does
+not independently prove glyph shape or Cairo/Pango equivalence. Native replay
+tests separately require actual colored text ink and a known bitmap pixel.
+Every retained Skia snapshot is encoded after its DC closes.
 
-The source baseline for this candidate is
-`ad31074e2b3a9727a4e830290d0bf2efda031292`. Delivery checks and source inspection
-are not runtime acceptance; review the resulting host and CI evidence before
-accepting 0.54. The candidate does not retroactively turn earlier 8.7/8.17
-failures into successful runs.
+All existing CPU CI lanes, including required Racket 8.18, invoke this validator
+from the isolated installed package. The artifact directory remains
+`dc-foundation`. Both new suites are also wired into `run-tests.rkt`, with pure
+replay running before native installation. Missing captures, reduced counts,
+failed commands, wrong pixels, or stale/mismatched evidence fail the gate.
+Existing GPU jobs, workloads, dependencies and pins are unchanged.
+
+The implementation baseline is `f4dedd03d0f8d0fdb79fcb9f5706b218a78183c5`,
+which adds two GPU examples after accepted 0.54. Both examples are preserved.
+Its source manifest omitted those two tracked example paths; the delivery's
+baseline-checked manifest repair includes them when it regenerates the manifest
+last. This repairs inventory; it does not waive the source checker.
+
+0.55 is a host-validation candidate. Consult the delivery's `VALIDATION.md` for
+what was actually executed during authoring; the presence of tests or advertised
+case counts is not evidence that native rendering or the full CI matrix passed.
 
 ## Reference contracts
 
@@ -321,3 +437,4 @@ failures into successful runs.
 - Racket 8.18 draw interface: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/dc-intf.rkt>
 - Default implementations (draw-lib 1.22): <https://github.com/racket/draw/commit/55819da32ae19b9c900bb2c64edb8600dd8c720d>
 - Isolated region adapter reference: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/region.rkt>
+- Replay and locking reference: <https://github.com/racket/draw/blob/v8.18/draw-lib/racket/draw/private/record-dc.rkt>

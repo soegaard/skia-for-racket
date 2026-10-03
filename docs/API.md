@@ -1,15 +1,16 @@
 # API reference
 
-## 0.54 persistent raster drawing context
+## 0.55 persistent raster drawing context
 
-Import `skia/dc` explicitly for `skia-dc%`, `skia-dc?`,
-`skia-dc-capabilities`, and `exn:fail:skia-dc:unsupported`.
-The DC supports ordinary geometry, Skia/HarfBuzz text and metrics, bitmap input
-and masks, overlap-safe copying and region% clipping. Require Racket 8.18 and
-draw-lib 1.22. Alpha groups and complete drop-in compatibility remain deferred.
-See [the API and compatibility limits](SKIA-DC.md) for signatures, lifetimes,
-font and bitmap semantics, the isolated private region adapter and evidence.
-The ordinary `skia` module and existing GPU APIs are unchanged.
+Import `skia/dc` for `skia-dc%`, `skia-dc?`, `skia-dc-capabilities`, and
+`exn:fail:skia-dc:unsupported`. Geometry, text, bitmap/mask/copy and region
+support are joined by direct Racket recorded-procedure/datum replay, selected
+pen/brush identity and locking, and nested `start-alpha` / `end-alpha` groups.
+The minimum stays Racket 8.18 / draw-lib 1.22. Snapshots inspect the root backing;
+close discards unfinished alpha targets. Success-only upstream state restoration
+and still-unsupported styles are explicit limits, not hidden Cairo fallbacks.
+See [the DC contract](SKIA-DC.md) for signatures, ownership and evidence.
+The ordinary `skia` module and all existing GPU APIs are unchanged.
 
 ## Historical 0.46 validation notes
 
