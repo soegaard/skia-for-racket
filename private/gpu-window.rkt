@@ -4,6 +4,7 @@
 (require ffi/unsafe ffi/unsafe/atomic
          "gpu-gl-system.rkt" "gpu-surface-util.rkt" "gpu-surface-native.rkt"
          "gpu-domain.rkt" "gpu-context.rkt" "gpu-types.rkt" "types.rkt"
+         "lifetime.rkt"
          "core.rkt" (submod "core.rkt" gpu-surface-internals)
          (prefix-in n: "gpu-native.rkt"))
 (provide make-window-gl-access call-with-window-target draw-gpu-target-to-window!)
@@ -99,7 +100,8 @@
     (lambda ()
       (when (hash-ref description 'srgb)
         (set! space (make-srgb-color-space))
-        (set! colorspace (call-with-skia-resource space values)))
+        (set! colorspace
+          (call-with-owned 'gpu-window (list (color-space-h 'gpu-window space)) values)))
       (call-as-atomic
        (lambda ()
          (define info
