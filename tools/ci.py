@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""0.46 CI driver: source checks, isolated installed CPU tests, required Mesa EGL.
+"""CI driver: source checks, isolated CPU tests, required EGL and raster GUI.
 
 All Racket commands use one resolved interpreter. No checkout/user native
 libraries are copied into the installed package. No package/compiled/native
@@ -38,6 +38,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
+    'test-validate-skia-canvas.py',
     'test-dc.py',
     'test-metal-interop.py',
     'test-gpu-interop.py',
@@ -197,6 +198,36 @@ def validate_headless(directory: Path, surface: str) -> dict:
             'gate': 'EGL + surfaces + images + interop + documents + cache/release stress'}
 
 
+def validate_canvas(directory: Path) -> dict:
+    """A headless canvas pass cannot satisfy the separately required GUI lane."""
+    result = json.loads((directory / 'validation.json').read_text(encoding='utf-8'))
+    require(result.get('status') == 'passed' and result.get('stage') == '0.58',
+            'raster canvas stage validation did not pass')
+    checks = result.get('checks', {})
+    for name in ('pure_lifecycle', 'native_pixels_and_bitmap_bridge', 'required_gui', 'text_load_orders'):
+        require(checks.get(name) is True, 'missing required raster canvas check: ' + name)
+    gui = result.get('gui', {})
+    require(gui.get('required') is True and gui.get('executed') is True and
+            gui.get('status') == 'passed', 'raster canvas GUI checks were absent, skipped or failed')
+    require(type(gui.get('cases')) is int and gui['cases'] > 0,
+            'raster canvas GUI report has no executed cases')
+    orders = gui.get('text_load_orders')
+    require(isinstance(orders, list) and len(orders) == 2 and
+            all(isinstance(order, dict) for order in orders),
+            'raster canvas GUI report is missing fresh-process text load orders')
+    require({r.get('load_order') for r in orders} == {'gtk-first', 'skia-first'},
+            'raster canvas GUI text load orders are missing or duplicated')
+    for outcome in orders:
+        require(outcome.get('status') == 'passed' and outcome.get('gui_initialized') is True and
+                type(outcome.get('skia_text_checks')) is int and outcome['skia_text_checks'] == 2 and
+                type(outcome.get('racket_text_checks')) is int and outcome['racket_text_checks'] == 2,
+                'raster canvas GUI text coexistence checks did not pass')
+    return {'status': 'passed', 'stage': '0.58', 'gui': gui,
+            'renderer': 'cpu-skia-raster', 'display_server': 'Xvfb',
+            'physical_display_pixels_verified': False,
+            'hardware_backing_scale_verified': False}
+
+
 class Runner:
     """Persist each subprocess log, including on timeout, and retain the actual exit status."""
     def __init__(self, output: Path, env: dict[str, str], timeout: int = 1200):
@@ -353,7 +384,22 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                     report['native_abi_candidate'] = candidate
                     report['checks']['candidate_abi_rejection'] = True
                 report['gpu'] = {'status': 'not-run', 'reason': 'CPU/native/package lane; no hosted GPU availability assumed'}
+            elif profile == 'canvas':
+                require(sys.platform.startswith('linux'), 'the raster GUI CI lane requires Linux')
+                # Start Xvfb only around the actual GUI gate. Earlier import,
+                # pure and native-package setup remain display-server-free;
+                # existing CPU and EGL profiles never run this command.
+                canvas_output = runner.output / 'skia-canvas'
+                runner.run(['xvfb-run', '--auto-servernum',
+                            '--server-args=-screen 0 1280x960x24',
+                            sys.executable, installed / 'tools/validate-skia-canvas.py',
+                            '--racket', racket, '--manifest-only', '--require-gui',
+                            '--output', canvas_output], cwd=away)
+                report['canvas'] = validate_canvas(canvas_output)
+                report['checks']['raster_canvas_required_gui'] = True
+                report['gpu'] = {'status': 'not-run', 'reason': 'CPU raster GUI canvas; no GPU execution'}
             else:
+                require(profile == 'egl', 'unknown installed-package CI profile')
                 require(sys.platform.startswith('linux'), 'EGL CI lane requires Linux')
                 env.update(LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe',
                            SKIA_EGL_PLATFORM='surfaceless', SKIA_EGL_DEVICE_INDEX='0',
@@ -391,8 +437,9 @@ def source_checks(runner: Runner, root: Path, report: dict) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--profile', choices=('source', 'cpu', 'egl'), required=True)
-    parser.add_argument('--id', required=True, help='exact id from tools/ci-matrix.json, or source')
+    parser.add_argument('--profile', choices=('source', 'cpu', 'egl', 'canvas'), required=True)
+    parser.add_argument('--id', required=True,
+                        help='exact matrix id, source, or canvas-linux-x64 for the raster GUI lane')
     parser.add_argument('--timeout', type=int, default=1200, help='per-command seconds; failure is never skipped')
     args = parser.parse_args(argv)
     require(re.fullmatch(r'[a-z][a-z0-9-]{0,47}', args.id) is not None, 'unsafe CI lane id')
@@ -400,7 +447,8 @@ def main(argv: list[str] | None = None) -> int:
     output = ROOT / 'output' / ('ci-' + args.id)
     output.mkdir(parents=True, exist_ok=False)  # reruns must not reuse stale success
     runner = Runner(output, clean_environment(os.environ), args.timeout)
-    report = {'schema_version': 1, 'stage': '0.46', 'profile': args.profile, 'id': args.id,
+    report = {'schema_version': 1, 'stage': '0.58' if args.profile == 'canvas' else '0.46',
+              'profile': args.profile, 'id': args.id,
               'status': 'running', 'checks': {}, 'commands': runner.commands,
               'host': {'system': platform.system(), 'machine': platform.machine(), 'python': sys.version,
                        'platform': platform.platform(), 'libc': platform.libc_ver(),
@@ -414,6 +462,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.profile == 'source':
             require(args.id == 'source', 'source lane id must be source')
             row = None
+        elif args.profile == 'canvas':
+            require(args.id == 'canvas-linux-x64', 'raster canvas lane id must be canvas-linux-x64')
+            rows = [r for r in data['cpu'] if r['id'] == 'linux-x64']
+            require(len(rows) == 1, 'raster canvas lane requires the pinned linux-x64 matrix identity')
+            row = rows[0]
+            report['matrix'] = row
         else:
             rows = [r for r in data[args.profile] if r['id'] == args.id]
             require(len(rows) == 1, 'unknown id for this CI profile')

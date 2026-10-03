@@ -7,13 +7,15 @@
          "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt" "tests/canvas-pure-test.rkt" "tests/geometry-pure-test.rkt" "tests/projective-pure-test.rkt" "tests/picture-pure-test.rkt" "tests/output-group-pure-test.rkt" "tests/portable-pure-test.rkt" "tests/color-filter-pure-test.rkt" "tests/raster-buffer-pure-test.rkt" "tests/gpu-pure-test.rkt" "tests/gpu-surface-pure-test.rkt" "tests/gpu-image-pure-test.rkt" "tests/gpu-metal-pure-test.rkt" "tests/gpu-presenter-pure-test.rkt" "tests/gpu-egl-pure-test.rkt" "tests/gpu-output-pure-test.rkt"
          "tests/gpu-cache-pure-test.rkt" "tests/gpu-performance-pure-test.rkt")
 
-(require "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
+(require "tests/canvas-dc-pure-test.rkt"
+         "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
          "tests/gpu-backends-pure-test.rkt" "tests/gpu-interop-pure-test.rkt"
          "tests/gpu-metal-interop-pure-test.rkt" "tests/dc-pure-test.rkt" "tests/dc-compat-pure-test.rkt" "tests/dc-replay-pure-test.rkt" "tests/dc-style-pure-test.rkt")
 (define-runtime-path dc-native-tests-file "tests/dc-native-test.rkt")
 (define-runtime-path dc-compat-native-tests-file "tests/dc-compat-native-test.rkt")
 (define-runtime-path dc-replay-native-tests-file "tests/dc-replay-native-test.rkt")
 (define-runtime-path dc-style-native-tests-file "tests/dc-style-native-test.rkt")
+(define-runtime-path canvas-dc-native-tests-file "tests/canvas-dc-native-test.rkt")
 (define-runtime-path native-abi-native-tests-file "tests/native-abi-native-test.rkt")
 (define-runtime-path native-tests-file "tests/native-test.rkt")
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
@@ -54,6 +56,7 @@
                  (set! pure-only? #t)]
    #:args () (void))
   (define failures (+ (run-tests pure-tests) (run-tests lifetime-tests)
+                      (run-tests canvas-dc-pure-tests)
                       (run-tests dc-style-pure-tests)
                       (run-tests native-abi-pure-tests) (run-tests gpu-d3d12-pure-tests) (run-tests gpu-dxgi-pure-tests) (run-tests gpu-backends-pure-tests) (run-tests gpu-interop-pure-tests) (run-tests gpu-metal-interop-pure-tests) (run-tests dc-pure-tests) (run-tests dc-compat-pure-tests) (run-tests dc-replay-pure-tests)
                       (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
@@ -72,6 +75,7 @@
               (run-tests (dynamic-require dc-compat-native-tests-file 'dc-compat-native-tests))
               (run-tests (dynamic-require dc-replay-native-tests-file 'dc-replay-native-tests))
               (run-tests (dynamic-require dc-style-native-tests-file 'dc-style-native-tests))
+              (run-tests (dynamic-require canvas-dc-native-tests-file 'canvas-dc-native-tests))
               (run-tests (dynamic-require codec-native-tests-file 'codec-native-tests))
               (run-tests (dynamic-require pdf-native-tests-file 'pdf-native-tests))
               (run-tests (dynamic-require svg-native-tests-file 'svg-native-tests))

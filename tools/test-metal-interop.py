@@ -270,7 +270,7 @@ class Source(unittest.TestCase):
 
 class Integration(unittest.TestCase):
     def test_version_pin_and_registry(self):
-        self.assertIn('(define version "0.57")',(ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.58")',(ROOT/'info.rkt').read_text())
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
         data=json.loads((ROOT/'private/gpu-backends.json').read_text())
         self.assertTrue(all(b['features']['external_resource_interop'] for b in data['backends']))
@@ -287,7 +287,7 @@ class Integration(unittest.TestCase):
         self.assertIn("if: runner.os == 'macOS'",cpu)
         self.assertIn('check-metal-interop-sdk.py',cpu)
         self.assertNotIn('validate-metal-interop.py',cpu) # SDK is not GPU evidence
-        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]',s)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]',s)
     def test_shared_cleanup_reused_by_d3d12(self):
         self.assertIn('(require "gpu-interop-cleanup.rkt")',(ROOT/'private/gpu-d3d12-interop-policy.rkt').read_text())
     def test_roadmap_targets_dc_not_new_backends(self):

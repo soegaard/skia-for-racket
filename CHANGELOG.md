@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.58.0 — Persistent raster GUI canvas
+
+- Added explicit `skia/canvas` with `skia-canvas%` and `skia-canvas?`. The
+  canvas owns one persistent CPU Skia DC, supports ordinary paint callbacks,
+  exposure, coalesced refresh, synchronous refresh-now and explicit present.
+- Preserved DC identity, selected drawing objects and transforms when resize
+  or monitor backing scale replaces its transparent raster backing. Empty
+  client extents defer allocation/painting; old pixels are not preserved.
+- Added direct premultiplied RGBA-to-ARGB transfer into a reusable toolkit
+  bitmap and byte buffer. The toolkit blits completed Skia pixels; repainting
+  does not encode PNGs or route drawing through a Cairo renderer.
+- Added owner-eventspace-thread, re-entry and explicit close boundaries.
+  Unfinished alpha groups are discarded at paint entry/exit, including error
+  paths. Synchronous errors propagate; hiding a canvas does not release it.
+- Corrected Linux HarfBuzz loading after GTK/Pango initialization with local,
+  deeply bound symbol resolution. This also fixes existing standalone Skia DC
+  text in GUI processes. Restart Racket/DrRacket after upgrading to apply the
+  loader policy to a fresh process; the pinned library versions are unchanged.
+- Added headless lifecycle/transfer suites to run-tests.rkt and a separate
+  actual-GUI validator. Required Linux Xvfb CI validates an independently
+  installed source package and retains its reports; CPU/EGL lanes stay headless.
+- Retained the existing 0.57 DC contract, its validator/oracles, Racket 8.18 /
+  draw-lib 1.22, all GPU workloads and both native package pins. No new
+  Skia/HarfBuzz symbols or layouts. The next stage is the 0.59 GPU-backed
+  canvas/DC facade.
+- Baseline: 6c7ad1ff8c6b108abce4fd6e35cc1152ff726bd6. Its 0.57 CI run
+  37146060599 completed successfully; the new 0.58 GitHub Actions run and
+  physical-display review remain separate acceptance gates.
+
 ## 0.57.0 — Styles and drawing-context compatibility
 
 - Added public gradient/stipple shader sources, six repeating hatches, legacy

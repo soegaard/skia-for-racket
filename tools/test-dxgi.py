@@ -381,7 +381,7 @@ class Integration(unittest.TestCase):
     """These tests require the real complete source checkout; do not silently skip."""
     def test_required_job_aggregate(self):
         text=(HERE.parent/'.github/workflows/ci.yml').read_text()
-        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]',text)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]',text)
         self.assertIn('DXGI_RESULT: ${{ needs.dxgi.result }}',text)
         self.assertIn('test "$DXGI_RESULT" = success',text)
         self.assertIn('run: python tools/ci-d3d12.py',text); self.assertIn('run: python tools/ci-dxgi.py',text)
@@ -410,7 +410,7 @@ class Integration(unittest.TestCase):
         text=(HERE.parent/'private/gpu-presenter.rkt').read_text()
         self.assertIn("[(eq? outcome 'occluded) (set! result 'skipped)]",text)
     def test_version_and_docs(self):
-        self.assertIn('(define version "0.57")',(HERE.parent/'info.rkt').read_text())
+        self.assertIn('(define version "0.58")',(HERE.parent/'info.rkt').read_text())
         text=(HERE.parent/'docs/GPU-DXGI.md').read_text()
         for name in ('sync-interval','gpu-window%','gpu-canvas%','WARP','buffer-reuse','visible'):
             self.assertIn(name,text)

@@ -368,7 +368,7 @@ class IntegrationTests(unittest.TestCase):
             s=(HERE/name).read_text();self.assertIn('"--adapter"',s);self.assertIn('"--adapter-index"',s)
     def test_required_matrix_unchanged(self):
         s=(ROOT/'.github/workflows/ci.yml').read_text()
-        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]',s)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]',s)
         self.assertNotIn('continue-on-error',s)
     def test_source_ci_runs_this_suite(self):self.assertIn("'test-gpu-parity.py'",(HERE/'ci.py').read_text())
     def test_required_hooks_not_only_configuration(self):
@@ -378,7 +378,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertIn('extra_checks='+hook,s)
             self.assertIn("report['checks'].get('required_backend_parity_"+scope+"') is True",s)
     def test_version_and_pin(self):
-        self.assertIn('(define version "0.57")',(ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.58")',(ROOT/'info.rkt').read_text())
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
     def test_no_native_probe_in_declaration(self):
         s=(ROOT/'private/gpu-backends.rkt').read_text()

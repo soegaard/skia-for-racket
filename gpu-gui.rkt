@@ -1,5 +1,5 @@
 #lang racket/base
-;; Import explicitly: this is the only public module that starts racket/gui.
+;; Import explicitly: GUI entry point for the GPU widgets.
 (require racket/class racket/gui/base racket/runtime-path racket/future
          (only-in racket/draw gl-config%)
          "gpu.rkt" "private/gpu-provider.rkt"

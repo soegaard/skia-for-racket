@@ -1,5 +1,29 @@
 # API reference
 
+## 0.58 persistent raster GUI canvas
+
+Import `skia/canvas` explicitly for `skia-canvas%` and `skia-canvas?`. Construct
+on the parent eventspace handler thread with `[parent ...]` and optionally
+`[paint-callback (lambda (canvas dc) ...)]`, `[background "white"]`,
+`[smoothing 'unsmoothed]`, supported style flags and ordinary basic layout
+arguments. This is the GUI entry point; `skia/dc` remains GUI-free.
+
+`get-dc` returns the same persistent CPU Skia DC across paint and resize.
+`refresh` requests a coalesced repaint; `refresh-now` paints synchronously,
+optionally using a one-argument DC callback and `#:flush?` flag. `present`
+displays the current root backing without invoking the callback. Close with
+`close-skia` (or `close`) on the handler thread. `closed?` and `get-skia-info`
+report lifetime and geometry/counter diagnostics. `set-canvas-background`
+updates the toolkit underlay and Skia clear background.
+
+Resize replaces transparent storage and preserves DC state, but does not retain
+old pixels. Backing scale comes from the GUI's compatible bitmap. Presentation
+copies premultiplied pixels into a reusable toolkit bitmap without PNG encoding.
+Unfinished alpha groups are discarded at managed paint boundaries, including
+exceptions. No GPU backing is selected in this stage. See
+[the complete canvas contract](SKIA-CANVAS.md), including subclass, alpha,
+zero-extent, eventspace, close and validation boundaries.
+
 ## 0.55 persistent raster drawing context
 
 Import `skia/dc` for `skia-dc%`, `skia-dc?`, `skia-dc-capabilities`, and

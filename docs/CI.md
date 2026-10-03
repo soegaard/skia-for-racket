@@ -1,6 +1,40 @@
-# GitHub Actions CI — 0.46
+# GitHub Actions CI
 
-## Current styles/compatibility gate — 0.57
+## Required raster canvas GUI gate — 0.58
+
+The new `canvas` job runs `tools/ci.py --profile canvas --id canvas-linux-x64`
+on the pinned Linux x64 / Racket 9.3 identity. It uses the same isolated source
+ZIP installation, dependency setup, fresh native installers, ABI checks and
+pre-native GUI-free imports as the established package jobs. Only the final
+`validate-skia-canvas.py --require-gui --manifest-only` command runs under an
+Xvfb display created for that subprocess. Existing CPU and EGL profiles retain
+their display-free environment and do not start Xvfb.
+
+The canvas validator requires 38 pure lifecycle cases, 14 native backing/bitmap
+transfer cases and 15 actual GUI/eventspace cases. Fresh subprocesses also
+verify GTK-first and Skia-first loading, with both Skia and ordinary Racket
+text rendering required in each process. The headless suites also run
+through `run-tests.rkt`; the pure suite runs before native installation. The
+GUI suite, load-order probes and `skia/canvas` are explicitly omitted from
+headless `raco test` discovery. `tools/test-validate-skia-canvas.py` and the CI-driver regressions
+check required-GUI/failure reporting without treating mocks as GUI execution.
+
+`CI required` includes the `canvas` result. A headless-only validator pass,
+missing GUI report, zero case count, failed native bridge, failed text
+coexistence probe or failed GUI process cannot satisfy the lane. Reports and logs are retained under
+`output/ci-canvas-linux-x64/skia-canvas/`, together with installation, identity,
+source and native-provenance evidence in the parent artifact. Partial evidence
+is kept on failure. Xvfb validates tested widget/eventspace behavior at its
+reported scale; it does not certify physical screen pixels or macOS Retina
+monitor transitions. Run the [host review](SKIA-CANVAS.md#validation-and-acceptance)
+for those properties.
+
+The existing 0.57 DC gate, 20 retained DC PNGs, all native pins and all GPU
+jobs/workloads remain unchanged. Its validator and capabilities continue to
+report the 0.57 drawing contract. A successful new 0.58 run is required;
+adding the workflow is not itself acceptance.
+
+## Retained styles/compatibility gate — 0.57
 
 The installed-package DC validator now requires 148 pure and 149 native cases,
 plus the existing 24 alpha-controller and new 45 style-math subchecks. Four new
@@ -14,7 +48,7 @@ Only the private region-utility query bridge creates a scratch Cairo context;
 it has no access to Skia pixels and is not a drawing fallback. Minimum Racket
 8.18, dependency pins and all existing GPU CI workloads remain unchanged.
 
-## Current real-consumer gate — 0.56
+## Real-consumer gate introduced in 0.56
 
 The existing installed-package DC gate additionally requires sixteen native
 consumer cases and eight pict/plot captures. Its complete coverage is now
@@ -52,7 +86,8 @@ No `pict`, plot, style-expansion, GUI or GPU-facade acceptance is claimed here.
 starting with `v`, and manual dispatch. The source lane publishes the validated
 matrix from `tools/ci-matrix.json`; five CPU lanes and two EGL lanes then run
 without fail-fast cancellation between matrix entries. `CI required` runs even
-when a prerequisite fails. It accepts only `success` for all three job groups;
+when a prerequisite fails. It accepts only `success` for all six groups: source, CPU, EGL, D3D12, DXGI
+and raster canvas;
 `skipped` and `cancelled` do not count as passes.
 
 After the first successful workflow, select **CI required** as the required

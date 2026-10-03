@@ -3,9 +3,22 @@
          (prefix-in rd: racket/draw) "dc-support.rkt" "dc-geometry.rkt"
          "dc-region-adapter.rkt" "dc-text-spec.rkt" "dc-bitmap.rkt"
          "dc-replay-adapter.rkt" "dc-alpha.rkt" "dc-styles.rkt" "dc-style-math.rkt"
-         (only-in "check.rkt" current-skia-byte-limit))
+         (only-in "check.rkt" check-dimensions current-skia-byte-limit))
 (provide make-skia-dc-class)
-(define-local-member-name dc-push-layer! dc-pop-layer!)
+(define-local-member-name dc-push-layer! dc-pop-layer!
+                          dc-replace-backing! dc-paint-scope dc-clear-root!)
+
+;; The canvas bridge can resize and scope the same DC without adding ordinary
+;; public method names to dc<%>. A program importing skia/dc cannot accidentally
+;; dispatch these operations using a symbol with the same spelling.
+(module* canvas #f
+  (provide dc-resize-backing! call-with-dc-canvas-paint dc-clear-backing!)
+  (define (dc-resize-backing! dc width height backing-scale)
+    (send dc dc-replace-backing! width height backing-scale))
+  (define (call-with-dc-canvas-paint dc thunk)
+    (send dc dc-paint-scope thunk))
+  (define (dc-clear-backing! dc)
+    (send dc dc-clear-root!)))
 
 (define (color-value who v)
   (define c
@@ -57,6 +70,9 @@
       (define target #f)
       (define groups #f)
       (define closed? #f)
+      ;; Drawing is allowed during the callback, but retirement/allocation
+      ;; callbacks cannot reenter the DC while its backing is being changed.
+      (define backing-operation #f)
       (super-new)
       (define region-lease (make-dc-region-lease this))
       (define style-lease (make-dc-style-lease this))
@@ -78,7 +94,120 @@
           (error who "skia-dc% belongs to another Racket thread; futures are not supported")))
       (define/private (check! who)
         (owner! who)
-        (when closed? (error who "skia-dc% is closed")))
+        (when closed? (error who "skia-dc% is closed"))
+        (when (and backing-operation (not (eq? backing-operation 'paint)))
+          (error who "skia-dc% backing is busy with ~a" backing-operation)))
+      (define/private (idle-backing! who)
+        (check! who)
+        (when backing-operation
+          (error who "skia-dc% paint callback is already active")))
+      (define/private (discard-layers!)
+        (dynamic-wind
+         void
+         (lambda () (dc-alpha-discard! groups (lambda (a) (set! alpha-state a))))
+         (lambda () (set! target (dc-alpha-target groups)))))
+      (define/public (dc-replace-backing! width height requested-scale)
+        (idle-backing! 'dc-resize-backing!)
+        (define-values (next-pixel-w next-pixel-h next-backing)
+          (dc-physical-size 'dc-resize-backing! width height requested-scale))
+        (cond
+          [(and (= width w) (= height h) (= next-backing backing)) #f]
+          [else
+           ;; Validate the new physical transform and selected logical clip
+           ;; before allocating or modifying any state. The selection remains
+           ;; frozen in logical device coordinates across backing changes.
+           (dc-multiply (vector next-backing 0 0 next-backing 0 0) (effective))
+           (define next-clip (dc-scale-clip clip-commands next-backing))
+           (define next-alpha (dc-alpha-root-alpha groups alpha-state))
+           (define next-bytes (check-dimensions 'dc-resize-backing! next-pixel-w next-pixel-h))
+           (define required-bytes
+             (+ next-bytes (* 4 pixel-w pixel-h (add1 (dc-alpha-depth groups)))))
+           (when (> required-bytes (current-skia-byte-limit))
+             (raise-arguments-error 'dc-resize-backing!
+               "current and replacement backings exceed current-skia-byte-limit"
+               "required RGBA bytes" required-bytes "limit" (current-skia-byte-limit)))
+           (call-with-continuation-barrier
+            (lambda ()
+              (parameterize-break #f
+                (define replacement #f)
+                (define next-groups #f)
+                (define committed? #f)
+                (dynamic-wind
+                 (lambda () (set! backing-operation 'resize))
+                 (lambda ()
+                   (set! replacement ((dc-renderer-create renderer) next-pixel-w next-pixel-h))
+                   (unless replacement (error 'dc-resize-backing! "raster renderer returned no surface"))
+                   (set! next-groups
+                     (make-dc-alpha replacement next-pixel-w next-pixel-h
+                       (dc-renderer-create renderer) (dc-renderer-close renderer)
+                       (and (dc-renderer/alpha? renderer) (dc-renderer/alpha-composite renderer))
+                       (lambda () (current-skia-byte-limit))))
+                   (dc-alpha-set-clip! next-groups next-clip)
+                   (define previous-groups groups)
+                   ;; Commit only after complete allocation and validation.
+                   ;; Discarding a child also restores the root's saved
+                   ;; per-draw alpha. At depth zero it remains unchanged.
+                   (set! groups next-groups)
+                   (set! target replacement)
+                   (set! w width) (set! h height)
+                   (set! pixel-w next-pixel-w) (set! pixel-h next-pixel-h)
+                   (set! backing next-backing)
+                   (set! alpha-state next-alpha)
+                   (set! committed? #t)
+                   ;; Old root and children are detached before retirement.
+                   ;; If release fails, the new backing stays usable; every
+                   ;; old target is still attempted exactly once.
+                   (dc-alpha-close! previous-groups)
+                   #t)
+                 (lambda ()
+                   (dynamic-wind
+                    void
+                    (lambda ()
+                      (unless committed?
+                        (cond [next-groups (dc-alpha-close! next-groups)]
+                              [replacement ((dc-renderer-close renderer) replacement)])))
+                    (lambda () (set! backing-operation #f))))))))]))
+      (define/public (dc-paint-scope thunk)
+        (idle-backing! 'call-with-dc-canvas-paint)
+        (unless (and (procedure? thunk) (procedure-arity-includes? thunk 0))
+          (raise-argument-error 'call-with-dc-canvas-paint "procedure accepting zero arguments" thunk))
+        (call-with-continuation-barrier
+         (lambda ()
+           (define entered? #f)
+           (dynamic-wind
+            (lambda ()
+              (when entered? (error 'call-with-dc-canvas-paint "paint callback cannot be reentered"))
+              (set! entered? #t)
+              (set! backing-operation 'cleanup))
+            (lambda ()
+              ;; A callback always starts at the root, including after direct
+              ;; get-dc drawing left an unfinished group between GUI paints.
+              (discard-layers!)
+              (set! backing-operation 'paint)
+              (thunk))
+            (lambda ()
+              (parameterize-break #f
+                (set! backing-operation 'cleanup)
+                (dynamic-wind
+                 void
+                 (lambda () (discard-layers!))
+                 (lambda () (set! backing-operation #f)))))))))
+      (define/public (dc-clear-root!)
+        (check! 'dc-clear-backing!)
+        (unless (zero? (dc-alpha-depth groups))
+          (error 'dc-clear-backing! "cannot clear the root with unfinished alpha groups"))
+        (define previous-operation backing-operation)
+        (call-with-continuation-barrier
+         (lambda ()
+           (parameterize-break #f
+             (dynamic-wind
+              (lambda () (set! backing-operation 'clear))
+              (lambda ()
+                (define root (dc-alpha-root groups))
+                ((dc-renderer-clear renderer) root #f '#(0 0 0 0.0) #t)
+                ((dc-renderer-clear renderer) root #f background-state #f)
+                (void))
+              (lambda () (set! backing-operation previous-operation)))))))
       (define/private (compat! who)
         (unless (dc-renderer+? renderer)
           (dc-unsupported who 'recording-renderer-without-compatibility-callbacks "private test renderer")))
@@ -198,6 +327,8 @@
       (define/public (ok?) (and (not closed?) (eq? owner (current-thread)) (not (current-future)) #t))
       (define/public (close)
         (owner! 'close)
+        (when (and (not closed?) backing-operation)
+          (error 'close "cannot close skia-dc% during backing ~a" backing-operation))
         (unless closed?
           (set! closed? #t)
           (set! target #f)

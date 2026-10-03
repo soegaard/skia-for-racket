@@ -1,6 +1,41 @@
 # Testing
 
-## Current revision: CI and portability matrix (0.46)
+## Current revision: persistent raster GUI canvas (0.58)
+
+Use the same selected Racket as for the existing native/DC validators. The
+minimum remains Racket 8.18 / draw-lib 1.22; native pins and existing GPU gates
+are unchanged. Ordinary `run-tests.rkt --pure` now includes the 38 pure canvas
+cases and `run-tests.rkt` also runs 14 native backing/transfer cases, without
+initializing a GUI. Keep the existing `tools/validate-dc.py` gate for its 0.57
+drawing contract and all 20 retained DC captures.
+
+The new GUI acceptance command requires a usable display and creates actual
+canvas widgets on their eventspace handler thread:
+
+```bash
+python3 tools/validate-skia-canvas.py --racket "$RACKET" \
+  --require-gui --output output/skia-canvas-0.58
+"$RACKET" examples/skia-canvas.rkt
+```
+
+Use a fresh output directory for each validator run. The required-GUI gate adds
+15 GUI cases and requires fresh GTK-first/Skia-first text coexistence probes;
+unavailable display initialization is a failure. Without
+`--require-gui`, the same validator runs its headless checks and explicitly
+reports GUI as not run. The dedicated installed-package Linux CI job starts
+Xvfb for the required GUI command. CPU and EGL jobs remain headless, and all
+existing required jobs remain in the aggregate.
+
+For host review, inspect colors/orientation, exposure, rapid resize,
+minimize/restore, multiple independent windows and moves between displays with
+different backing scales. Close each canvas explicitly through its window's
+close handler; hiding alone retains its resources. See
+[the canvas contract and evidence limits](docs/SKIA-CANVAS.md) and
+[CI operation and artifacts](docs/CI.md). Regenerate source sums last after all
+selected host checks; CI only checks them. This stage does not add a GPU facade;
+that remains the 0.59 roadmap step.
+
+## Historical revision: CI and portability matrix (0.46)
 
 Baseline: `92f6119af3846966075ced0034ceb740e916bdee` (0.45). The accepted
 macOS runs include the two benchmark-report corrections. Rendering APIs and

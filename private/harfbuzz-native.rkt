@@ -1,8 +1,10 @@
 #lang racket/base
 (require ffi/unsafe
+         racket/list
          racket/promise
          racket/runtime-path
          racket/path
+         (only-in setup/dirs get-lib-search-dirs)
          "native-platform.rkt"
          "harfbuzz-types.rkt")
 (provide harfbuzz-package-version harfbuzz-platform harfbuzz-filename
@@ -17,6 +19,74 @@
 
 (define (harfbuzz-filename)
   (native-library-name 'harfbuzz (system-type 'os)))
+
+(define linux-loader
+  (delay/sync
+    (vector (get-ffi-obj 'dlopen #f (_fun _path _int -> _pointer))
+            (get-ffi-obj 'dlclose #f (_fun _pointer -> _int))
+            (get-ffi-obj 'dlerror #f (_fun -> _string/utf-8)))))
+
+(define (linux-library-candidates candidate)
+  ;; Preserve ffi-lib's default, versionless search: configured Racket library
+  ;; directories, OS loader search, then the current directory. Explicit
+  ;; overrides and the bundled candidate are already absolute paths.
+  (define original (path->string (cleanse-path candidate)))
+  (define names
+    (remove-duplicates
+     (list (if (regexp-match? #rx"[.]so$" original) original
+               (string-append original ".so"))
+           original)))
+  (remove-duplicates
+   (append
+    (if (absolute-path? candidate) '()
+        (for*/list ([directory (in-list (get-lib-search-dirs))]
+                    [name (in-list names)])
+          (path->string (build-path directory name))))
+    names
+    (for/list ([name (in-list names)])
+      (path->string (path->complete-path name))))))
+
+(define (load-harfbuzz-library candidate)
+  (cond
+    [(eq? (system-type 'os*) 'linux)
+     ;; GTK/Pango may already have loaded another HarfBuzz globally. Linux
+     ;; loader traces show this binary's internal hb_* relocations otherwise
+     ;; resolving to that copy while get-ffi-obj resolves to this one, mixing
+     ;; incompatible objects. Local visibility alone does not prevent that
+     ;; interposition: DEEPBIND keeps internal calls within this ABI.
+     ;; Keep the resulting library local so the reverse load order cannot
+     ;; redirect GTK/Pango into HarfBuzzSharp either.
+     (define loader (force linux-loader))
+     (define open-library (vector-ref loader 0))
+     (define close-library (vector-ref loader 1))
+     (define loader-error (vector-ref loader 2))
+     (define failures '())
+     (or
+      (for/or ([filename (in-list (linux-library-candidates candidate))])
+        (parameterize-break #f
+          (call-with-continuation-barrier
+           (lambda ()
+             ;; Linux RTLD_NOW=2, RTLD_DEEPBIND=8, RTLD_LOCAL=0.
+             (define temporary (open-library filename #xA))
+             (cond
+               [temporary
+                (dynamic-wind
+                 void
+                 (lambda ()
+                   ;; Acquire Racket's independently retained library
+                   ;; reference to exactly the name successfully opened.
+                   (ffi-lib filename '() #:get-lib-dirs (lambda () '()) #:global? #f))
+                 (lambda ()
+                   (unless (zero? (close-library temporary))
+                     (error 'harfbuzz "could not release temporary loader reference for ~a: ~a"
+                            filename (or (loader-error) "unknown dlclose error")))))]
+               [else
+                (set! failures
+                  (cons (format "~a: ~a" filename (or (loader-error) "unknown dlopen error")) failures))
+                #f])))))
+      ;; Never retry without isolation after a Linux loader failure.
+      (error 'harfbuzz "could not load isolated HarfBuzzSharp: ~a" (reverse failures)))]
+    [else (ffi-lib candidate #:global? #f)]))
 
 (define hb-library
   (delay/sync
@@ -39,7 +109,7 @@
                          (lambda (e)
                            (set! failures (cons (exn-message e) failures))
                            #f)])
-          (define lib (ffi-lib candidate))
+          (define lib (load-harfbuzz-library candidate))
           (define version-fn
             (get-ffi-obj "hb_version" lib
                          (_fun _pointer _pointer _pointer -> _void)))

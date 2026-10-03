@@ -140,6 +140,43 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  canvas:
+    name: Required raster Skia canvas / Linux Xvfb
+    needs: source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Raster GUI runtime, fonts and virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            unzip curl cmake build-essential fontconfig fonts-dejavu-core \
+            fonts-liberation fonts-noto-core fonts-noto-cjk libcairo2 libpango-1.0-0 \
+            libpangocairo-1.0-0 libgtk-3-0t64 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri \
+            xvfb xauth
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Required installed-package raster GUI canvas validation
+        run: python tools/ci.py --profile canvas --id canvas-linux-x64
+      - name: Keep raster canvas GUI reports and command logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-canvas-linux-x64-${{ github.run_attempt }}
+          path: output/ci-canvas-linux-x64/
+          if-no-files-found: warn
+          retention-days: 14
+
   d3d12:
     name: Required D3D12 WARP / Windows x64 / Racket 9.3
     needs: source
@@ -212,7 +249,7 @@ jobs:
   required:
     name: CI required
     if: always()
-    needs: [source, cpu, egl, d3d12, dxgi]
+    needs: [source, cpu, egl, d3d12, dxgi, canvas]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -223,9 +260,11 @@ jobs:
           EGL_RESULT: ${{ needs.egl.result }}
           D3D12_RESULT: ${{ needs.d3d12.result }}
           DXGI_RESULT: ${{ needs.dxgi.result }}
+          CANVAS_RESULT: ${{ needs.canvas.result }}
         run: |
           test "$SOURCE_RESULT" = success &&
           test "$CPU_RESULT" = success &&
           test "$EGL_RESULT" = success &&
           test "$D3D12_RESULT" = success &&
-          test "$DXGI_RESULT" = success
+          test "$DXGI_RESULT" = success &&
+          test "$CANVAS_RESULT" = success

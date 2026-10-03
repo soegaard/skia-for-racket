@@ -67,6 +67,20 @@ def headless_fixture(root: Path, surface='surfaceless'):
     return report, lifecycle
 
 
+def canvas_fixture(root: Path):
+    root.mkdir(parents=True, exist_ok=True)
+    report = dict(status='passed', stage='0.58',
+                  checks=dict(pure_lifecycle=True, native_pixels_and_bitmap_bridge=True,
+                              required_gui=True, text_load_orders=True),
+                  gui=dict(required=True, executed=True, status='passed', cases=15,
+                           text_load_orders=[dict(load_order=order, status='passed',
+                                                skia_text_checks=2, racket_text_checks=2,
+                                                gui_initialized=True)
+                                             for order in ('gtk-first', 'skia-first')]))
+    ci.write_json(root / 'validation.json', report)
+    return report
+
+
 class Matrix(unittest.TestCase):
     def bad(self, change):
         data = copy.deepcopy(ci_matrix.load_matrix()); change(data)
@@ -243,6 +257,43 @@ class Evidence(unittest.TestCase):
         with self.assertRaises(OSError): ci.validate_headless(self.root, 'surfaceless')
 
 
+class RasterCanvasEvidence(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / 'skia-canvas'; canvas_fixture(self.root)
+    def modify(self, change):
+        report = json.loads((self.root / 'validation.json').read_text())
+        change(report); ci.write_json(self.root / 'validation.json', report)
+        with self.assertRaises((ValueError, KeyError)): ci.validate_canvas(self.root)
+    def test_requires_real_gui_evidence(self):
+        result = ci.validate_canvas(self.root)
+        self.assertEqual(result['status'], 'passed')
+        self.assertFalse(result['physical_display_pixels_verified'])
+        self.assertFalse(result['hardware_backing_scale_verified'])
+    def test_headless_pass_is_insufficient(self):
+        self.modify(lambda r: r['gui'].update(required=False, executed=False, status='not-run'))
+    def test_failed_gui_blocks_success(self):
+        self.modify(lambda r: r['gui'].update(status='failed'))
+    def test_missing_gui_check_blocks_success(self):
+        self.modify(lambda r: r['checks'].pop('required_gui'))
+    def test_failed_native_bridge_blocks_success(self):
+        self.modify(lambda r: r['checks'].update(native_pixels_and_bitmap_bridge=False))
+    def test_zero_cases_blocks_success(self):
+        self.modify(lambda r: r['gui'].update(cases=0))
+    def test_boolean_is_not_a_case_count(self):
+        self.modify(lambda r: r['gui'].update(cases=True))
+    def test_wrong_stage_blocks_success(self):
+        self.modify(lambda r: r.update(stage='0.57'))
+    def test_missing_text_load_orders_blocks_success(self):
+        self.modify(lambda r: r['gui'].update(text_load_orders=[]))
+    def test_duplicate_text_load_order_blocks_success(self):
+        self.modify(lambda r: r['gui']['text_load_orders'][1].update(load_order='gtk-first'))
+    def test_racket_text_failure_blocks_success(self):
+        self.modify(lambda r: r['gui']['text_load_orders'][0].update(racket_text_checks=0))
+    def test_failed_text_load_order_blocks_success(self):
+        self.modify(lambda r: r['gui']['text_load_orders'][1].update(status='failed'))
+
+
 class EnvironmentAndIdentity(unittest.TestCase):
     def test_overrides_are_removed(self):
         dirty = {k: 'dangerous' for k in (*ci.OVERRIDE_KEYS, *ci.DISPLAY_KEYS)}
@@ -323,14 +374,14 @@ class WorkflowAndIntegration(unittest.TestCase):
         uses = re.findall(r'^\s*- uses: (\S+)', s, re.M) + re.findall(r'^\s*uses: (\S+)', s, re.M)
         self.assertTrue(uses)
         for action in uses: self.assertRegex(action, r'^[\w.-]+/[\w.-]+@[0-9a-f]{40}$')
-        self.assertIn('contents: read', s); self.assertEqual(s.count('persist-credentials: false'), 5)
+        self.assertIn('contents: read', s); self.assertEqual(s.count('persist-credentials: false'), 6)
         uncommented = '\n'.join(l for l in s.splitlines() if not l.lstrip().startswith('#'))
-        for bad in ('pull_request_target:', 'self-hosted', 'continue-on-error:', 'secrets.', 'xvfb-run', 'actions/cache'):
+        for bad in ('pull_request_target:', 'self-hosted', 'continue-on-error:', 'secrets.', 'actions/cache'):
             self.assertNotIn(bad, uncommented)
     def test_required_aggregate_and_retained_artifacts(self):
         s = (HERE.parent / '.github/workflows/ci.yml').read_text()
-        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]', s); self.assertIn('name: CI required\n    if: always()', s)
-        for group in ('SOURCE', 'CPU', 'EGL', 'D3D12', 'DXGI'): self.assertIn(f'test "${group}_RESULT" = success', s)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]', s); self.assertIn('name: CI required\n    if: always()', s)
+        for group in ('SOURCE', 'CPU', 'EGL', 'D3D12', 'DXGI', 'CANVAS'): self.assertIn(f'test "${group}_RESULT" = success', s)
         uploads = len(re.findall(r'^\s*uses: actions/upload-artifact@', s, re.M))
         self.assertGreaterEqual(uploads, 1)
         self.assertEqual(s.count('if: always()'), uploads + 1)
@@ -341,7 +392,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
-        self.assertIn('(define version "0.57")', text)
+        self.assertIn('(define version "0.58")', text)
         self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22") "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):
@@ -381,7 +432,26 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertNotIn('skiasharp.nativeassets.linux.nodependencies', text)
         workflow = (HERE.parent / '.github/workflows/ci.yml').read_text()
         self.assertIn('fontconfig fonts-dejavu-core', workflow)
-        self.assertEqual(workflow.count('fonts-noto-cjk'), 2)
+        self.assertEqual(workflow.count('fonts-noto-cjk'), 3)
+    def test_virtual_display_is_confined_to_raster_gui_job(self):
+        workflow = (HERE.parent / '.github/workflows/ci.yml').read_text()
+        jobs = dict(re.findall(r'^  ([a-z0-9_-]+):\n(.*?)(?=^  [a-z0-9_-]+:\n|\Z)', workflow, re.M | re.S))
+        self.assertIn('xvfb xauth', jobs['canvas'])
+        self.assertIn('--profile canvas --id canvas-linux-x64', jobs['canvas'])
+        for name in ('source', 'cpu', 'egl', 'd3d12', 'dxgi'):
+            self.assertNotIn('xvfb', jobs[name].lower())
+            self.assertNotIn('--profile canvas', jobs[name])
+    def test_gui_modules_are_explicitly_omitted_from_headless_tests(self):
+        info = (HERE.parent / 'info.rkt').read_text()
+        omit = next(line for line in info.splitlines() if line.startswith('(define test-omit-paths '))
+        self.assertIn('"canvas.rkt"', omit)
+        self.assertIn('"tests/canvas-gui-test.rkt"', omit)
+        self.assertIn('"tests/canvas-text-load-order.rkt"', omit)
+        tests = (HERE.parent / 'run-tests.rkt').read_text()
+        self.assertIn('tests/canvas-dc-pure-test.rkt', tests)
+        self.assertIn('tests/canvas-dc-native-test.rkt', tests)
+        self.assertNotIn('tests/canvas-gui-test.rkt', tests)
+        self.assertNotIn('tests/canvas-text-load-order.rkt', tests)
     def test_stage_reports_do_not_claim_global_linux_ci_acceptance(self):
         for name in ('gpu-performance-doctor.rkt', 'gpu-output-doctor.rkt',
                      'inspect-gpu-output.py', 'inspect-gpu-performance.py'):
@@ -417,7 +487,8 @@ class Orchestration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             temp = Path(t); root = fixture(temp / 'checkout'); output = temp / 'artifact'; output.mkdir()
             calls = []; saved_envs = []; seen_installed = []; report = {'checks': {}}
-            row = next(r for r in ci_matrix.load_matrix()[profile] if r['id'] == lane)
+            row_profile, row_id = ('cpu', 'linux-x64') if profile == 'canvas' else (profile, lane)
+            row = next(r for r in ci_matrix.load_matrix()[row_profile] if r['id'] == row_id)
             identity = dict(os=row['os'], architecture=row['racket_arch'], vm='chez-scheme', version=row['racket'], pointer_bytes=8)
             class Fake:
                 env = ci.clean_environment(dict(os.environ))
@@ -450,6 +521,8 @@ class Orchestration(unittest.TestCase):
                                       dict(status='passed-investigation-candidate-rejected'))
                     if a[1].endswith('validate-gpu-headless.py'):
                         headless_fixture(seen_installed[0] / 'output/gpu-0.46-headless-mock', row['surface'])
+                    if any(v.endswith('validate-skia-canvas.py') for v in a):
+                        canvas_fixture(Path(a[a.index('--output') + 1]))
                     return ''
             fake = Fake(); fake.output = output
             with patch.object(ci.shutil, 'which', return_value=str(temp / 'selected Racket/racket')), patch.object(ci.sys, 'platform', 'linux'):
@@ -511,6 +584,33 @@ class Orchestration(unittest.TestCase):
     def test_egl_failure_not_skipped(self):
         _, _, r, e, _ = self.simulate('egl', 'egl-surfaceless', fail='validate-gpu-headless.py')
         self.assertIsNotNone(e); self.assertNotIn('gpu', r)
+    def test_canvas_gui_uses_fresh_installed_package_under_xvfb(self):
+        calls, envs, report, error, names = self.simulate('canvas', 'canvas-linux-x64')
+        self.assertIsNone(error)
+        ix = next(i for i, a in enumerate(calls) if a[0] == 'xvfb-run')
+        command = calls[ix]
+        validator = next(a for a in command if a.endswith('validate-skia-canvas.py'))
+        self.assertIn('addon', validator)
+        self.assertIn('--require-gui', command); self.assertIn('--manifest-only', command)
+        self.assertEqual(command[command.index('--racket') + 1], report['racket_executable'])
+        for env in envs:
+            for key in ci.DISPLAY_KEYS: self.assertNotIn(key, env)
+        self.assertTrue(report['checks']['fresh_native_install'])
+        self.assertTrue(report['checks']['raster_canvas_required_gui'])
+        self.assertEqual(report['canvas']['gui']['status'], 'passed')
+        self.assertEqual(report['gpu']['status'], 'not-run')
+        self.assertIn('validation.json', names)
+        self.assertFalse(any(a[1].endswith('validate-gpu-headless.py') for a in calls))
+    def test_canvas_gui_failure_blocks_success(self):
+        _, _, report, error, _ = self.simulate('canvas', 'canvas-linux-x64', fail='validate-skia-canvas.py')
+        self.assertIsNotNone(error)
+        self.assertNotIn('raster_canvas_required_gui', report['checks'])
+        self.assertNotIn('canvas', report)
+    def test_existing_cpu_and_egl_profiles_do_not_start_xvfb(self):
+        for profile, lane in (('cpu', 'linux-x64'), ('egl', 'egl-pbuffer')):
+            calls, _, _, error, _ = self.simulate(profile, lane)
+            self.assertIsNone(error)
+            self.assertFalse(any('xvfb' in part for a in calls for part in a))
     def test_windows_uses_msvc_and_skips_unix_nm_only(self):
         c, _, r, e, _ = self.simulate('cpu', 'windows-x64'); self.assertIsNone(e)
         self.assertTrue(any('-A' in a and 'x64' in a for a in c))

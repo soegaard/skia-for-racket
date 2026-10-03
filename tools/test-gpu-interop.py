@@ -373,7 +373,7 @@ class Integration(unittest.TestCase):
         self.assertIn('python tools/ci-d3d12-interop.py', d3d)
         self.assertLess(d3d.index('python tools/ci-d3d12.py'), d3d.index('python tools/ci-d3d12-interop.py'))
         self.assertNotIn('continue-on-error', d3d)
-        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi]', s)
+        self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]', s)
     def test_failure_artifacts_retained(self):
         s = (ROOT/'.github/workflows/ci.yml').read_text()
         self.assertIn('path: output/ci-d3d12-interop/', s)
@@ -388,7 +388,7 @@ class Integration(unittest.TestCase):
         s = (HERE/'ci-import-smoke.rkt').read_text()
         self.assertIn('skia/gpu-interop', s); self.assertIn('skia/unsafe/gpu-d3d12', s)
     def test_stage_and_native_pin(self):
-        self.assertIn('(define version "0.57")', (ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.58")', (ROOT/'info.rkt').read_text())
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(), '3.119.1')
     def test_registry_includes_completed_metal_wrapper(self):
         data = json.loads((ROOT/'private/gpu-backends.json').read_text())

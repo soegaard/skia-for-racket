@@ -1,8 +1,8 @@
 #lang racket/base
 ;; Pure ownership/opacity controller for persistent raster alpha groups.
 ;; The production renderer supplies synchronous CPU allocation/compositing.
-(provide make-dc-alpha dc-alpha-target dc-alpha-root dc-alpha-depth dc-alpha-clip
-         dc-alpha-set-clip! dc-alpha-start! dc-alpha-end! dc-alpha-close!)
+(provide make-dc-alpha dc-alpha-target dc-alpha-root dc-alpha-root-alpha dc-alpha-depth dc-alpha-clip
+         dc-alpha-set-clip! dc-alpha-start! dc-alpha-end! dc-alpha-discard! dc-alpha-close!)
 (struct layer (parent parent-clip old-alpha opacity) #:transparent)
 (struct alpha-state (root [target #:mutable] [clip #:mutable] [layers #:mutable]
                           width height create release composite limit [closed? #:mutable]))
@@ -12,6 +12,10 @@
   (when (alpha-state-closed? s) (error who "alpha target is closed")))
 (define (dc-alpha-root s) (live! 'snapshot s) (alpha-state-root s))
 (define (dc-alpha-target s) (live! 'draw s) (alpha-state-target s))
+(define (dc-alpha-root-alpha s current-alpha)
+  (live! 'root-alpha s)
+  (if (null? (alpha-state-layers s)) current-alpha
+      (layer-old-alpha (car (reverse (alpha-state-layers s))))))
 (define (dc-alpha-depth s) (length (alpha-state-layers s)))
 (define (dc-alpha-clip s) (live! 'clip s) (alpha-state-clip s))
 (define (dc-alpha-set-clip! s clip)
@@ -61,6 +65,35 @@
           (layer-parent-clip frame) (* (layer-old-alpha frame) (layer-opacity frame))))
        (lambda () ((alpha-state-release s) child)))))
   (void))
+(define (release-targets! s targets)
+  ;; Detach targets before calling this helper. Every release is attempted,
+  ;; even when a renderer reports a failure, and none can be retried later.
+  (define failures '())
+  (for ([target (in-list targets)])
+    (with-handlers ([(lambda (_) #t) (lambda (e) (set! failures (cons e failures)))])
+      ((alpha-state-release s) target)))
+  (unless (null? failures) (raise (car (reverse failures)))))
+(define (dc-alpha-discard! s restore-alpha!)
+  (live! 'discard-alpha s)
+  (unless (null? (alpha-state-layers s))
+    (parameterize-break #f
+      (define frames (alpha-state-layers s))
+      (define outer (car (reverse frames)))
+      ;; The last parent is the root, which remains owned and usable. Retire
+      ;; only child surfaces, from the innermost layer outwards.
+      (define targets
+        (let loop ([target (alpha-state-target s)] [frames frames])
+          (cons target
+                (if (null? (cdr frames)) '()
+                    (loop (layer-parent (car frames)) (cdr frames))))))
+      (set-alpha-state-layers! s '())
+      (set-alpha-state-target! s (alpha-state-root s))
+      (set-alpha-state-clip! s (layer-parent-clip outer))
+      (dynamic-wind
+       void
+       (lambda () (restore-alpha! (layer-old-alpha outer)))
+       (lambda () (release-targets! s targets)))))
+  (void))
 (define (dc-alpha-close! s)
   (unless (alpha-state-closed? s)
     (parameterize-break #f
@@ -70,10 +103,5 @@
       (set-alpha-state-layers! s '())
       (set-alpha-state-clip! s #f)
       ;; Discard unfinished groups; closing is never an implicit end-alpha.
-      ;; Try every release even if one fails, then propagate the first failure.
-      (define failures '())
-      (for ([target (in-list targets)])
-        (with-handlers ([(lambda (_) #t) (lambda (e) (set! failures (cons e failures)))])
-          ((alpha-state-release s) target)))
-      (unless (null? failures) (raise (car (reverse failures))))))
+      (release-targets! s targets)))
   (void))

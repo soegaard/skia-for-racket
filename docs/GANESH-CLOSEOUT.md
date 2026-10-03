@@ -2,11 +2,14 @@
 
 0.52 was accepted at `bff9c172b84ecb353a5134ce42abd8d49256815a` after local
 Metal interop validation and all required jobs in run `36782347694` passed.
-0.55 is the accepted replay/locking/alpha baseline at
-`f1568cf68e57b0358ac27e4c5eeb1e0e33e6de8a`. The narrowed 0.56 delivery adds
-[real-consumer validation](DC-CONSUMERS.md) over the existing drawing subset;
-its host and required CI results remain a separate acceptance gate. The
-remaining compatibility work is split as documented in the roadmap below.
+The current 0.58 implementation starts from the updated 0.57 repository commit
+`6c7ad1ff8c6b108abce4fd6e35cc1152ff726bd6`, whose
+[CI run 37146060599](https://github.com/soegaard/skia-for-racket/actions/runs/37146060599)
+completed successfully. It adds the
+[persistent raster GUI canvas](SKIA-CANVAS.md) on top of the existing 0.57
+styles/geometry and earlier consumer, replay, text and bitmap contracts.
+Its required GUI CI and host display review are separate 0.58 acceptance gates.
+The next planned feature stage is 0.59, the GPU-backed canvas/DC facade.
 
 The following closeout records the decisions and evidence boundaries of 0.52.
 
@@ -82,11 +85,14 @@ zero-copy behavior follows from accepting this stage.
 | 0.55 | Recorded drawing and compositing | Upstream recorded procedure/datum replay, isolated private member identities, pen/brush locking, nested alpha groups and state restoration on successful replay |
 | 0.56 | Real consumers, existing drawing subset | Direct public `pict` and `plot/dc`, procedure/datum replay regressions, semantic pixel probes and reference review; no new styles |
 | 0.57 | Extended styles and remaining DC compatibility | Gradients, stipples, hatches, legacy-style decisions, remaining region/ink-bounds queries and alignment edge cases |
-| 0.58 | Explicit `skia-canvas%` | Persistent raster GUI widget; exposure, resize, backing scale, invalidation and presentation |
+| 0.58 | Explicit `skia-canvas%` (implemented; validation candidate) | Persistent raster GUI widget; exposure, retained DC/state across resize, actual backing scale, invalidation, direct bitmap presentation and explicit owner-thread close |
 | 0.59 | GPU-backed canvas/DC facade | Use the existing GPU presenters; frame-backed DCs expire with their frame and cannot masquerade as persistent raster DCs |
 
-`skia-dc%` implements drawing behavior. `skia-canvas%` owns and presents a GUI
-backbuffer. The existing lower-level `gpu-canvas%` remains the scoped GPU-frame
+`skia-dc%` implements drawing behavior. The 0.58 `skia-canvas%` owns and
+presents a replaceable CPU raster backing while preserving the DC identity.
+Its managed callback path clears/repaints/presents and discards unfinished alpha
+groups at paint boundaries. Resize does not preserve pixels; hiding does not
+close the canvas. The existing lower-level `gpu-canvas%` remains the scoped GPU-frame
 widget; it is not itself a compatibility replacement for Racket `canvas%`.
 The initial DC should not inherit Cairo-specific drawing machinery or require
 a GPU merely to support existing programs that consume a `dc<%>`.

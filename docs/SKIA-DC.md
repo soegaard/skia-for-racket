@@ -1,4 +1,14 @@
-# Skia drawing contexts — 0.57
+# Skia drawing contexts — 0.57 drawing contract
+
+## Canvas ownership added in 0.58
+
+The GUI-only `skia/canvas` module now exposes this persistent raster DC through
+`skia-canvas%`. Its DC keeps its identity and drawing state while resize/backing
+scale changes replace the private raster storage. See
+[the canvas contract](SKIA-CANVAS.md) for callbacks, presentation, resize,
+explicit handler-thread close and the separate required GUI gate. Requiring
+`skia/dc` still does not initialize the GUI. The existing DC capabilities and
+0.57 validator report retain their 0.57 version and drawing scope.
 
 ## Direct consumer coverage in 0.56
 
@@ -388,7 +398,6 @@ The exception `exn:fail:skia-dc:unsupported` extends `exn:fail:contract` and car
 | Still deferred | Native Cairo-handle brushes; arbitrary platform-specific native pattern sources |
 | Not universally certified | Exact Cairo edge/metric equivalence and consumers outside the tested subset |
 | Deferred text edge cases | Combined tabs/hard breaks and Pango font-description interpretation |
-| 0.58 GUI | Persistent raster `skia-canvas%`, exposure, resize and presentation |
 | 0.59 GPU facade | GPU-backed `skia-canvas%` with frame-scoped `dc<%>` lifetime |
 
 The replay suite deliberately does not add `pict`, plotting, gradients or new
@@ -454,4 +463,5 @@ synthetic Python inspector tests alone do not establish that acceptance.
 ## 0.57 acceptance
 
 The required DC validator now adds style suites and four semantic style captures.
-See DC-STYLES.md for counts, limits and the remaining 0.58/0.59 GUI roadmap.
+See DC-STYLES.md for counts and drawing limits. The raster canvas is added in
+[0.58](SKIA-CANVAS.md); the remaining GUI roadmap stage is the 0.59 GPU facade.

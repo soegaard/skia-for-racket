@@ -1,6 +1,39 @@
-# Racket Skia — 0.57.0
+# Racket Skia — 0.58.0
 
-## Drawing styles and DC compatibility
+## Persistent raster GUI canvas
+
+Import `skia/canvas` explicitly to create `skia-canvas%`, a Racket `canvas%`
+whose persistent `get-dc` result is a CPU Skia `skia-dc%`. Ordinary
+`[paint-callback (lambda (canvas dc) ...)]` drawing, exposure repainting,
+coalesced `refresh`, synchronous `refresh-now`, and explicit `present` all
+use the same drawing context. Existing text, styles, recording replay and
+alpha groups remain available through that DC.
+
+Resizing replaces the transparent backing while preserving the DC's identity,
+selected objects, transforms and other drawing state. Repaint callbacks redraw
+the new extent. Actual GUI bitmap backing scale controls physical dimensions;
+zero-sized clients defer work. Presentation transfers premultiplied pixels
+straight into a reusable toolkit bitmap and blits it, without PNG encoding.
+Skia renders the scene; the GUI toolkit displays the completed bitmap.
+
+Call `close-skia` (or `close`) explicitly on the owning eventspace handler
+thread when the canvas is no longer needed. Hiding a frame does not close its
+canvas. The raster canvas has no GPU selection or silent rendering fallback.
+The next stage is **0.59: a GPU-backed canvas/DC facade with explicit frame
+lifetime**. The existing `gpu-canvas%` API and native pins are unchanged.
+
+Run the [GUI example](examples/skia-canvas.rkt) and see
+[the canvas contract and validation](docs/SKIA-CANVAS.md). The new required
+Linux GUI CI job uses an isolated installed package under Xvfb; existing CPU
+and EGL jobs retain their headless contracts. GUI CI establishes tested widget
+behavior and pixel transfer, while physical display/Retina review remains a
+host check. This implementation starts from
+`6c7ad1ff8c6b108abce4fd6e35cc1152ff726bd6`. Its 0.57 baseline
+[CI run 37146060599](https://github.com/soegaard/skia-for-racket/actions/runs/37146060599)
+completed successfully. The new 0.58 GitHub Actions run and physical-display
+review remain acceptance gates.
+
+## Retained 0.57 drawing styles and DC compatibility
 
 `skia/dc` now supports public linear/radial gradients, repeating bitmap stipples,
 six hatch brushes, legacy style aliases, finite affine alignment and geometric
@@ -12,10 +45,9 @@ Native Cairo-handle brushes and arbitrary combined-text breaks remain deferred.
 The expanded installed-package DC gate requires 148 pure and 149 native cases,
 with 24 alpha-controller and 45 style-math subchecks, and retains 20 PNGs. Older
 exact oracles stay exact; new style captures have fixed semantic/replay bounds.
-See [styles and limitations](docs/DC-STYLES.md). This candidate applies after the
-local 0.56 patch; it does not claim that unreviewed 0.56 tests or CI already passed.
-Racket 8.18 / draw-lib 1.22 and all GPU pins/jobs/workloads remain unchanged.
-Next are 0.58 raster skia-canvas% and 0.59 GPU-backed canvas.
+See [styles and limitations](docs/DC-STYLES.md). Racket 8.18 / draw-lib 1.22 and
+all GPU pins/jobs/workloads remain unchanged.
+The 0.58 canvas uses this drawing subset; 0.59 is the remaining GPU-facade stage.
 
 ## Retained 0.56 consumer coverage
 
@@ -35,8 +67,8 @@ and antialiasing are reviewed, not required to be pixel-identical.
 
 See [consumer scope, examples and evidence](docs/DC-CONSUMERS.md). This is a
 host/CI validation candidate based on `f1568cf68e57b0358ac27e4c5eeb1e0e33e6de8a`.
-The roadmap is now **0.57 styles/completeness**, **0.58 raster skia-canvas%**,
-and **0.59 GPU-backed skia-canvas%**.
+The subsequent stages are recorded in the current
+[compatibility roadmap](docs/GANESH-CLOSEOUT.md#revised-implementation-roadmap).
 
 ## Recorded drawing and nested raster alpha groups (0.55 history)
 
@@ -61,8 +93,8 @@ native pins remain unchanged. See [the DC contract and limits](docs/SKIA-DC.md).
 
 This is a validation candidate from `f4dedd03d0f8d0fdb79fcb9f5706b218a78183c5`;
 it preserves both GPU game demos. Acceptance requires host and CI evidence.
-The split roadmap is **0.56 consumers/styles**, **0.57 raster skia-canvas%**,
-and **0.58 GPU-backed skia-canvas%**. No `pict`/plot/style claims are added in 0.55.
+The roadmap was subsequently refined into 0.56 consumers, 0.57 styles,
+0.58 raster canvas and 0.59 GPU facade. No `pict`/plot/style claims were added in 0.55.
 
 ## Metal interop and Ganesh closeout
 
