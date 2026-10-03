@@ -46,14 +46,20 @@
      (check-exn exn:fail? (lambda () (gpu-transfer-shape! 'test 8 9 9 8))))
    (test-case "RGBA8 framebuffer format from actual encoding"
      (check-equal? (gpu-presentation-format 8 8 8 8 #x2601 #x8C17) #x8058)
-     (check-equal? (gpu-presentation-format 8 8 8 8 #x8C40 #x8C17) #x8C43))
+     (check-equal? (gpu-presentation-format 8 8 8 8 #x8C40 #x8C17) #x8C43)
+     (check-false (gpu-presentation-srgb? #x2601))
+     (check-true (gpu-presentation-srgb? #x8C40)))
    (test-case "RGB8 framebuffer has an opaque format"
-     (check-equal? (gpu-presentation-format 8 8 8 0 #x2601 #x8C17) #x8051))
+     (check-equal? (gpu-presentation-format 8 8 8 0 #x2601 #x8C17) #x8051)
+     ;; Pinned Skia's GLWindowContext describes framebuffer 0 as RGBA8.
+     (check-equal? (gpu-window-wrap-format 0 #x8051) #x8058)
+     (check-equal? (gpu-window-wrap-format 7 #x8051) #x8051))
    (test-case "HDR and unsupported host layouts reject"
      (check-exn exn:fail? (lambda () (gpu-presentation-format 10 10 10 2 #x2601 #x8C17)))
      (check-exn exn:fail? (lambda () (gpu-presentation-format 8 8 8 8 #x2601 #x1406))))
    (test-case "unknown host encoding rejects"
-     (check-exn exn:fail? (lambda () (gpu-presentation-format 8 8 8 8 0 #x8C17))))
+     (check-exn exn:fail? (lambda () (gpu-presentation-format 8 8 8 8 0 #x8C17)))
+     (check-exn exn:fail? (lambda () (gpu-presentation-srgb? 0))))
    (test-case "lease requires an active scope"
      (call-with-mock
       (lambda (d p driver log a)

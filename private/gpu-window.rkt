@@ -58,7 +58,10 @@
     (define alpha (attachment color-attachment #x8215))
     (define encoding (attachment color-attachment #x8210))
     (define component-type (attachment color-attachment #x8211))
-    (define format (gpu-presentation-format red green blue alpha encoding component-type))
+    (define queried-format
+      (gpu-presentation-format red green blue alpha encoding component-type))
+    (define default-window? (zero? host-fbo))
+    (define format (gpu-window-wrap-format host-fbo queried-format))
     (define stencil
       (if (zero? (attachment stencil-attachment #x8CD0)) 0
           (attachment stencil-attachment #x8217)))
@@ -66,7 +69,8 @@
             'draw_buffer draw-buffer 'double_buffered double-buffered?
             'color_bits (list red green blue alpha) 'color_encoding encoding
             'component_type component-type 'format format
-            'color_type (if (zero? alpha) 5 rgba-8888)
+            'color_type (if default-window? rgba-8888 (if (zero? alpha) 5 rgba-8888))
+            'srgb (gpu-presentation-srgb? encoding)
             'actual_sample_count (integer #x80A9) 'stencil_bits stencil
             'origin "bottom-left"))
   (define (with-target width height proc)
@@ -88,9 +92,14 @@
   (gpu-surface-native-check! #t)
   (define descriptor #f)
   (define handle #f)
+  (define space #f)
+  (define colorspace #f)
   (dynamic-wind
     void
     (lambda ()
+      (when (hash-ref description 'srgb)
+        (set! space (make-srgb-color-space))
+        (set! colorspace (call-with-skia-resource space values)))
       (call-as-atomic
        (lambda ()
          (define info
@@ -105,14 +114,14 @@
            (domain-new-resource d 'window-surface
              (lambda ()
                (wrap-backend-target/native p descriptor gr-bottom-left
-                                           (hash-ref description 'color_type) #f #f))
+                                           (hash-ref description 'color_type) colorspace #f))
              n:sk_surface_unref))))
       ;; A host bind invalidates Skia's cached framebuffer state, not its
       ;; intended drawing transform or the host's external GL state.
       (n:gr_direct_context_reset_context p #xffffffff)
       (define surface
         (make-gpu-surface-record handle (hash-ref description 'width) (hash-ref description 'height)
-          '() context d #f
+          '() context d colorspace
           (hash-set* description 'target_kind "host-framebuffer" 'storage "gpu"
                      'backend "opengl" 'context_generation (domain-generation d)
                      'render_path "sk_surface_new_backend_render_target")))
@@ -122,7 +131,8 @@
       ;; the actual host FBO. All native cleanup is in this current GL scope.
       (parameterize-break #f
         (when handle (domain-resource-close! handle) (domain-drain! d))
-        (when descriptor (delete-backend-target/native descriptor))))))
+        (when descriptor (delete-backend-target/native descriptor))
+        (when space (skia-close! space))))))
 (define (draw-gpu-target-to-window! source destination)
   (unless (and (gpu-surface? source) (gpu-surface? destination))
     (error 'gpu-window "expected two GPU surfaces"))
