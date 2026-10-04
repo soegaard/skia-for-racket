@@ -292,7 +292,13 @@ class Sources(unittest.TestCase):
         expected = {"pango_font_description_" + n for n in
                     ("from_string", "free", "get_family", "get_weight", "get_style", "get_stretch", "get_variant", "get_set_fields")}
         self.assertEqual(functions, expected)
-        self.assertIn('racket/draw/unsafe/pango-lib', text)
+        self.assertIn("(dynamic-require 'racket/draw/unsafe/pango-lib 'pango-lib)", text)
+        self.assertNotIn("(only-in racket/draw/unsafe/pango-lib", text)
+        self.assertIn("exn:fail:filesystem:missing-module?", text)
+        for name in ("libpango-1.0", "libpango-1.0.0.dylib", "libpango-1.0-0.dll",
+                     "libfribidi.0.dylib", "libfribidi-0.dll"):
+            self.assertIn(name, text)
+        self.assertIn("legacy-pango-dependencies", text)
         self.assertIn('(or cairo-lock-name "pango-lock")', text)
         self.assertIn('(lambda () (free-description description))', text)
         self.assertIn('parameterize-break #f', text)

@@ -1,11 +1,39 @@
 #lang racket/base
 ;; Private, parsing-only Pango bridge. No font map, layout, Cairo context,
 ;; drawing, system font lookup, or Skia library is initialized here.
-;; Reuse the exact Pango library and named FFI lock used by racket/draw.
+;; Reuse the public Pango library handle when draw-lib provides it. Racket
+;; 8.18/9.3 (draw-lib 1.22-1.24) keep that handle private inside unsafe/pango,
+;; so reproduce only their platform library-loading rule in that case.
 (require ffi/unsafe
-         (only-in racket/draw/unsafe/pango-lib pango-lib)
          (only-in racket/draw/unsafe/cairo cairo-lock-name))
 (provide parse-font-description)
+
+(define legacy-pango-dependencies '())
+(define (retain-legacy-lib! lib)
+  ;; Match racket/draw's old preload ordering and keep the dependency handle
+  ;; reachable for this module's lifetime.
+  (set! legacy-pango-dependencies (cons lib legacy-pango-dependencies))
+  lib)
+(define (legacy-pango-lib)
+  (case (system-type)
+    [(unix)
+     (ffi-lib "libpango-1.0" '("0" ""))]
+    [(macosx)
+     (retain-legacy-lib! (ffi-lib "libfribidi.0.dylib"))
+     (ffi-lib "libpango-1.0.0.dylib")]
+    [(windows)
+     (retain-legacy-lib! (ffi-lib "libfribidi-0.dll"))
+     (ffi-lib "libpango-1.0-0.dll")]
+    [else
+     (error 'dc-font-description "unsupported platform for Racket Pango library")]))
+
+(define pango-lib
+  (with-handlers ([exn:fail:filesystem:missing-module?
+                   (lambda (_e) (legacy-pango-lib))])
+    ;; Added by draw-lib 1.25. Keep this dynamic so compiling against the
+    ;; supported 1.22-1.24 releases does not require a nonexistent module.
+    (dynamic-require 'racket/draw/unsafe/pango-lib 'pango-lib)))
+
 (define-syntax-rule (_pfun spec ...)
   (_fun #:lock-name (or cairo-lock-name "pango-lock") spec ...))
 (define from-string
