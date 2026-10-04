@@ -2,7 +2,7 @@
 ;; Interactive review, not a timing benchmark or an automated screen oracle.
 (require racket/class racket/cmdline (prefix-in gui: racket/gui/base)
          "../gpu-canvas.rkt" "../tests/gpu-dc-consumer-fixtures.rkt")
-(define backend 'auto)
+(define backend (make-parameter 'auto))
 (define (make-window)
   (define workloads (make-consumer-workloads))
   (define selected 0)
@@ -20,12 +20,12 @@
        [callback (lambda (choice _event) (set! selected (send choice get-selection))
                     (when canvas (send canvas refresh)))])
   (set! canvas
-    (new skia-gpu-canvas% [parent panel] [backend backend] [min-width 320] [min-height 240]
+    (new skia-gpu-canvas% [parent panel] [backend (backend)] [min-width 320] [min-height 240]
          [paint-callback (lambda (_canvas dc) (exercise-consumer! (list-ref workloads selected) dc))]))
   (send window show #t)
   (void))
 (module+ main
   (command-line #:once-each
-    [("--backend") name "auto, opengl, metal or direct3d" (set! backend (string->symbol name))]
+    [("--backend") name "auto, opengl, metal or direct3d" (backend (string->symbol name))]
     #:args () (void))
   (gui:queue-callback make-window))

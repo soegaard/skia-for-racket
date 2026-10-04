@@ -373,6 +373,10 @@ class SourceContracts(unittest.TestCase):
         self.assertNotIn('continue-on-error:', source)
     def test_example_is_dispatched_to_handler(self):
         source = (HERE.parent / "examples/gpu-dc-consumers.rkt").read_text()
+        self.assertIn("(define backend (make-parameter 'auto))", source)
+        self.assertIn("[backend (backend)]", source)
+        self.assertIn("(backend (string->symbol name))", source)
+        self.assertNotIn("(set! backend", source)
         self.assertIn('(gui:queue-callback make-window)', source)
         self.assertNotIn('get-rgba-bytes', source)
 
