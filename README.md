@@ -1,4 +1,22 @@
-# Racket Skia — 0.62.0
+# Racket Skia — 0.63.0
+
+## Shared DC authoring for PDF and SVG
+
+`skia/dc-output` connects the tested `dc<%>` authoring subset to the existing
+output-page, PDF/SVG, text-mode and audit facilities. Geometry and ordinary
+text remain native where supported; isolated alpha/pattern fallbacks are
+reported. `draw-dc-raster-group` is the explicit bounded boundary for pixel
+operations such as `copy`. No automatic whole-page screenshot is taken.
+
+See [API, limitations and acceptance](docs/DC-OUTPUT.md). The document gate
+checks actual PDF content streams, SVG elements, text and annotations; its
+full mode also renders the files independently with Poppler and librsvg.
+
+```bash
+python3 -m pip install -r tools/dc-output-requirements.txt
+python3 tools/validate-dc-output.py --racket "$RACKET" --require-renderers
+"$RACKET" examples/dc-output.rkt
+```
 
 ## GPU staging reuse
 

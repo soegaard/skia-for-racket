@@ -1,0 +1,61 @@
+name: DC document output
+"on":
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  documents:
+    name: PDF and SVG / Linux / Racket ${{ matrix.racket }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        racket: ['8.18', '9.3']
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install font runtime and independent PDF/SVG renderers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            unzip curl fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk \
+            libcairo2 libpango-1.0-0 libpangocairo-1.0-0 poppler-utils librsvg2-bin
+          python -m pip install -r tools/dc-output-requirements.txt
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+        with:
+          version: ${{ matrix.racket }}
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Source contracts, example compilation and pure regression
+        run: |
+          python tools/update-source-sums.py --check
+          python tools/test-dc-output.py
+          racket -l raco -- make dc-output.rkt tools/dc-output-doctor.rkt examples/dc-output.rkt
+          racket run-tests.rkt --pure
+      - name: Install pinned Skia and HarfBuzz
+        run: |
+          bash tools/install-native.sh
+          bash tools/install-harfbuzz.sh
+      - name: Require native documents and independent rendered pixels
+        run: |
+          python tools/validate-dc-output.py --racket "$(command -v racket)" \
+            --require-renderers --directory output/dc-output-ci
+      - name: Retain native documents, rendered pixels, receipts and command logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: dc-output-linux-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/dc-output-ci/
+          if-no-files-found: warn
+          retention-days: 14

@@ -64,6 +64,11 @@
     [else
      (with-source-shader source antialias?
        (lambda (shader)
-         (sk:with-skia ([mapped (sk:shader-with-local-matrix shader
-                                 (apply sk:make-matrix (vector->list (dc-paint-source-matrix source))))])
-           (paint mapped))))]))
+         ;; Do not add an identity shader wrapper: it changes provenance from
+         ;; a native linear gradient into a generic transformed shader in the
+         ;; conservative PDF/SVG policy, without changing any pixels.
+         (if (equal? (dc-paint-source-matrix source) dc-identity)
+             (paint shader)
+             (sk:with-skia ([mapped (sk:shader-with-local-matrix shader
+                                     (apply sk:make-matrix (vector->list (dc-paint-source-matrix source))))])
+               (paint mapped)))))]))

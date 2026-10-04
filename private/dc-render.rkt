@@ -6,8 +6,13 @@
          "dc-geometry.rkt" "dc-native-util.rkt" "dc-text.rkt"
          "dc-style-render.rkt" "dc-path-bounds.rkt")
 (provide skia-dc-renderer make-surface-dc-renderer)
+;; Private canvas entry points let document recording reuse native geometry
+;; and bitmap handling. Existing surface callbacks and GPU copies are unchanged.
+(module* canvas-internals #f
+  (provide draw-on-canvas! bitmap-on-canvas!))
 (define (draw! surface command)
-  (define c (sk:surface-canvas surface))
+  (draw-on-canvas! (sk:surface-canvas surface) command))
+(define (draw-on-canvas! c command)
   (define ink (dc-draw-ink command))
   (sk:call-with-canvas-state c
     (lambda ()
@@ -27,7 +32,8 @@
                                          #:antialias? #f)])
         (sk:draw-paint c paint)))))
 (define (bitmap! surface data rect matrix clip opacity sampling)
-  (define c (sk:surface-canvas surface))
+  (bitmap-on-canvas! (sk:surface-canvas surface) data rect matrix clip opacity sampling))
+(define (bitmap-on-canvas! c data rect matrix clip opacity sampling)
   (sk:with-skia ([image (sk:rgba-bytes->image
                         (dc-bitmap-data-width data) (dc-bitmap-data-height data)
                         (dc-bitmap-data-pixels data) #:premultiplied? #t)]

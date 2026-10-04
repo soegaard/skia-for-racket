@@ -75,12 +75,15 @@
                       (+ ascent descent leading) descent leading))))
       (call-with-text request (lambda (_units extent _sh _fm _baseline _metrics)
                                (apply values (vector->list extent))))))
+(module* canvas-internals #f (provide dc-render-text-on-canvas!))
 (define (dc-render-text! surface request matrix clip x y angle foreground background solid?)
+  (dc-render-text-on-canvas! (sk:surface-canvas surface) request matrix clip
+                           x y angle foreground background solid?))
+(define (dc-render-text-on-canvas! c request matrix clip x y angle foreground background solid?)
   (call-with-text
    request
    (lambda (units extent _sh _fm baseline metrics)
      (unless (null? units)
-       (define c (sk:surface-canvas surface))
        (sk:call-with-canvas-state c
          (lambda ()
            (install-clip! c clip)

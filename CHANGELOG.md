@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.63.0 — DC authoring for PDF and SVG
+
+- Add `skia/dc-output`: scoped production DC command capture, closed before
+  replay into PDF/SVG or an explicit CPU preview. User authoring runs once.
+- Reuse native path, text and bitmap drawing callbacks. Preserve receiver
+  units, margins and affine transforms through bounded output-group replay.
+- Preserve supported vector geometry and native/outlined text. Use the
+  existing conservative output policy for alpha groups and patterned paints.
+  Native text/annotation loss is rejected rather than silently flattened.
+- Add explicit isolated raster DC groups for `copy`/`erase`, and URL/named
+  destination helpers that use the actual document annotation scope.
+- Add 34 pure capture/lifetime cases, 22 native cases, 24 real document
+  fixtures and strict structure/text/link/pixel inspection. A selected Linux
+  workflow requires both Poppler and librsvg on Racket 8.18 and 9.3.
+- Keep native pins, CPU/GPU canvas lifetimes and GPU staging reuse unchanged.
+  Skip only an identity shader-map wrapper, avoiding needless SVG fallback.
+
 ## 0.62.0 — Per-presenter GPU staging reuse
 
 - Retain at most one compatible staging-surface wrapper per presenter/context.
