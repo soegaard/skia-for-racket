@@ -1,0 +1,33 @@
+{
+  "artifact_id": 11313574053,
+  "artifact_sha256": "9cbf0052b29e7098c9072708483c9eb0b0ce6ad96aa7dacc3a72b041291c11ae",
+  "audit_log": "Library: /tmp/skia CI isolated 7q937iuz/user home/addon/9.3/pkgs/skia-for-racket/native/linux-x64/libSkiaSharp.so\nRequired define-native symbols: 393\nExported symbols: 811\nMissing required symbols: 0\nNative symbol audit passed.\n",
+  "full_native_inventory_this_stage": "Run --native-library on each installed platform; historical aggregate is not a per-symbol result.",
+  "identity": {
+    "architecture": "x86_64",
+    "os": "unix",
+    "pointer_bytes": 8,
+    "version": "9.3",
+    "vm": "chez-scheme"
+  },
+  "library": {
+    "bytes": 9030712,
+    "file": "native/linux-x64/libSkiaSharp.so",
+    "library": "skia",
+    "sha256": "60d85e06fe74c61db577c2a58311b1567d2b9cba137510d22795bffdc7766e8a"
+  },
+  "native_version": "119.0",
+  "new_rendering_executed": false,
+  "per_symbol_export_list_retained": false,
+  "rendering_claim_for_inventory_features": false,
+  "rendering_evidence": "Historical CI reports CPU regression success; no feature-level pass is inferred for new inventory rows.",
+  "required_cpu_symbol_count": 393,
+  "required_cpu_symbols_resolved": true,
+  "schema": 1,
+  "scope": "historical baseline CPU job; not 0.65 feature execution",
+  "source_commit": "9d832d3ec9a8fe6b93298d6ac03783ee57ab7f36",
+  "source_files_verified": 621,
+  "source_manifest_sha256": "0b0b74e85a5f46a25d894021e03100fe27fe0a12dd97412f0510315df904de3d",
+  "total_exported_symbols_reported": 811,
+  "workflow_run": 37231291434
+}

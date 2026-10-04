@@ -1,0 +1,71 @@
+name: API inventory
+"on":
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    name: Pinned capability sources / Linux / Racket ${{ matrix.racket }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        racket: ['8.18', '9.3']
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: ${{ matrix.racket }}
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Verify inventory and source contracts before network/native setup
+        run: |
+          python tools/update-source-sums.py --check
+          python tools/test-api-inventory.py
+          python tools/api-inventory.py --check
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: mono/skia
+          ref: 40f75dc0051d141913c07c20d4c19590c7da0cb7
+          path: output/api-upstream/skia
+          sparse-checkout: include/c
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: mono/SkiaSharp
+          ref: cc78b5933d23e6383db5d246e70db915770d55d6
+          path: output/api-upstream/skiasharp
+          sparse-checkout: binding/SkiaSharp
+          persist-credentials: false
+      - name: Install pinned Skia library and loader dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends unzip curl fontconfig libfontconfig1
+          bash tools/install-native.sh
+      - name: Require pinned source verification and isolated native symbol observation
+        run: |
+          python tools/validate-api-inventory.py \
+            --skia-source output/api-upstream/skia \
+            --skiasharp-source output/api-upstream/skiasharp \
+            --native-library native/linux-x64/libSkiaSharp.so \
+            --directory output/api-inventory-ci
+      - name: Retain source hashes, symbol observations and gate result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-inventory-linux-racket-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/api-inventory-ci/
+          if-no-files-found: warn
+          retention-days: 14

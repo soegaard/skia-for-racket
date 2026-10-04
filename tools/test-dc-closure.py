@@ -359,7 +359,7 @@ class Sources(unittest.TestCase):
         self.assertIn("output-page->image", text)
     def test_version_and_minimum(self):
         text = self.source("info.rkt")
-        self.assertIn('(define version "0.64")', text)
+        self.assertIn('(define version "0.65")', text)
         self.assertIn('("base" #:version "8.18")', text)
         self.assertIn('("draw-lib" #:version "1.22")', text)
     def test_explicit_documented_exclusions(self):

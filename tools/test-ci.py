@@ -392,7 +392,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
-        self.assertIn('(define version "0.64")', text)
+        self.assertIn('(define version "0.65")', text)
         self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22") "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):

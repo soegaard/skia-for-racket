@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.65.0 — Pinned capability inventory and API decisions
+
+- Add reviewed capability-family/C-declaration dispositions, managed-source
+  crosswalks, public anchors, test references and explicit future stages.
+- Audit all nine CPU/GPU binding registries, including Metal/D3D interop;
+  reconcile existing path iteration, rounded clipping and GPU image operations.
+- Add deterministic report generation, strict complete-checkout drift checks,
+  exact pinned-upstream source validation and isolated m119 symbol resolution.
+- Preserve historical aggregate evidence without inventing feature-level
+  rendering results or confusing m153 candidate probes with the m119 default.
+- Decide additive image-info/color-space/float-color/lease/transfer contracts.
+  These are future design decisions, not newly exported runtime APIs.
+- Add source regressions and a separate API inventory CI workflow. Existing
+  rendering semantics, package minimums and native pins remain unchanged.
+
 ## 0.64.0 — Bounded font and DC compatibility closure
 
 - Parse single-family comma/Pango descriptions using Racket's own Pango library:

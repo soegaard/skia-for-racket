@@ -1,4 +1,22 @@
-# Racket Skia — 0.64.0
+# Racket Skia — 0.65.0
+
+## Pinned capability inventory and additive API decisions
+
+0.65 adds a checked [SkiaSharp gap inventory](docs/SKIASHARP-GAPS.md), covering
+all nine native binding registries and a finite m119 C/managed-source scope.
+Source declarations, native symbol resolution and executed rendering are
+separate evidence. [API decisions](docs/API-DESIGN-DECISIONS.md) define the
+additive pixel/color/ownership direction; no new rendering APIs are exported.
+
+```bash
+python3 tools/test-api-inventory.py
+python3 tools/api-inventory.py --check
+python3 tools/validate-api-inventory.py
+```
+
+See [inventory maintenance and optional upstream/native gates](api/README.md).
+Existing rendering and package validators remain mandatory. Missing effects
+and shader composition are the next implementation stage, 0.66.
 
 ## Checked DC compatibility boundary
 
