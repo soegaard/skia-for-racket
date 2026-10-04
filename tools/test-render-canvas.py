@@ -134,7 +134,7 @@ class Completion(unittest.TestCase):
         code, result, commands = simulate(["--require-gpu"])
         self.assertEqual(code, 0)
         self.assertEqual([x["requested_renderer"] for x in result["completed_renderers"]], ["raster", "gpu", "auto"])
-        self.assertTrue(any("make" in c and any(x.endswith("examples/render-canvas.rkt") for x in c) for c in commands))
+        self.assertTrue(any("make" in c and any(x.replace("\\", "/").endswith("examples/render-canvas.rkt") for x in c) for c in commands))
         self.assertTrue(all(c[0] == "/selected/racket" for c in commands if len(c)>1 and c[1].endswith(".rkt")))
     def test_explicit_backend_does_not_override_auto_worker(self):
         code, result, commands = simulate(["--require-gpu", "--backend", "egl"])

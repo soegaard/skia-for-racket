@@ -7,7 +7,8 @@
          "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt" "tests/canvas-pure-test.rkt" "tests/geometry-pure-test.rkt" "tests/projective-pure-test.rkt" "tests/picture-pure-test.rkt" "tests/output-group-pure-test.rkt" "tests/portable-pure-test.rkt" "tests/color-filter-pure-test.rkt" "tests/raster-buffer-pure-test.rkt" "tests/gpu-pure-test.rkt" "tests/gpu-surface-pure-test.rkt" "tests/gpu-image-pure-test.rkt" "tests/gpu-metal-pure-test.rkt" "tests/gpu-presenter-pure-test.rkt" "tests/gpu-egl-pure-test.rkt" "tests/gpu-output-pure-test.rkt"
          "tests/gpu-cache-pure-test.rkt" "tests/gpu-performance-pure-test.rkt")
 
-(require "tests/render-canvas-pure-test.rkt"
+(require "tests/gpu-frame-target-pure-test.rkt"
+         "tests/render-canvas-pure-test.rkt"
          "tests/canvas-dc-pure-test.rkt"
          "tests/gpu-dc-pure-test.rkt"
          "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
@@ -58,6 +59,7 @@
                  (set! pure-only? #t)]
    #:args () (void))
   (define failures (+ (run-tests pure-tests) (run-tests lifetime-tests)
+                      (run-tests gpu-frame-target-pure-tests)
                       (run-tests render-canvas-pure-tests)
                       (run-tests canvas-dc-pure-tests)
                       (run-tests gpu-dc-pure-tests)

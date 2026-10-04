@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.62.0 — Per-presenter GPU staging reuse
+
+- Retain at most one compatible staging-surface wrapper per presenter/context.
+  Physical resize replaces it; rotating drawable identities and logical-only
+  scale changes do not. Fresh DC state and full root clearing remain mandatory.
+- Preserve the transactional GPU snapshot/copy and explicit readback semantics.
+  Failed or escaped DC scopes discard staging. No new normal-frame GPU wait.
+- Retire cache contents before adapter/context teardown, including the existing
+  deferred/finalizer/custodian path. Expired frames drop their cache reference.
+- Report detached constructor/reuse/retirement counts in presenter diagnostics.
+  A private fresh-allocation reference supports comparative acceptance, not a
+  public renderer switch or claim about driver allocations or frame latency.
+- Add 32 pure cache cases and 14 selected native cases, including 32-frame
+  constructor counts, real consumer pixel comparisons, resize and failure
+  recovery. Require the prior 0.60/0.61 gates and ordinary GUI reuse ledgers.
+- Extend the existing render-canvas workflow and source checks. Fix the 0.61
+  Windows source test's path-separator assumption. Native pins and public
+  canvas/DC APIs remain unchanged.
+
 ## 0.61.0 — Unified callback-oriented render canvases
 
 - Add `skia/render-canvas` with `make-skia-render-canvas`, a common interface,

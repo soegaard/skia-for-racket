@@ -1,4 +1,20 @@
-# Racket Skia — 0.61.0
+# Racket Skia — 0.62.0
+
+## GPU staging reuse
+
+A GPU presenter retains one compatible offscreen staging surface across frames.
+Every paint callback still receives a fresh, expiring DC; the existing snapshot
+and GPU-to-GPU commit remain. Resize replaces the staging wrapper, failed DC
+scopes discard it, and presenter shutdown retires it before context closure.
+This reduces wrapper-level surface construction, not a promise of zero driver
+allocations, zero-copy presentation or a measured speedup.
+
+See [ownership, diagnostics and acceptance](docs/GPU-FRAME-REUSE.md). Run the
+expanded gate, which also requires the prior common-canvas and consumer gates:
+
+```bash
+python3 tools/validate-gpu-frame-reuse.py --racket "$RACKET" --require-gui
+```
 
 ## Unified callback-oriented canvases
 

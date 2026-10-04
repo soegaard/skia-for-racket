@@ -3,7 +3,8 @@
 ;; facilities. Adapters own target acquisition/cleanup; frames never expose a
 ;; closeable surface, drawable, framebuffer, command buffer or raw pointer.
 (require ffi/unsafe/atomic ffi/unsafe/custodian racket/list racket/future
-         "gpu-provider.rkt" (submod "gpu-domain.rkt" presentation-internals))
+         "gpu-provider.rkt" "gpu-frame-target-cache.rkt"
+         (submod "gpu-domain.rkt" presentation-internals))
 (provide gpu-presenter? gpu-presenter-backend gpu-presenter-context
          gpu-presenter-state gpu-presenter-info gpu-presenter-render!
          gpu-presenter-request-render! gpu-presenter-set-render! gpu-presenter-close!
@@ -12,7 +13,8 @@
          gpu-frame-width gpu-frame-height gpu-frame-logical-width gpu-frame-logical-height
          gpu-frame-scale-x gpu-frame-scale-y gpu-frame-generation gpu-frame-index)
 (module* adapter-internals #f
-  (provide (struct-out presentation-adapter) make-presenter presentation-metrics presentation-active?))
+  (provide (struct-out presentation-adapter) make-presenter presentation-metrics presentation-active?
+           call-with-gpu-frame-target))
 ;; call-target(metrics, receive) calls receive(canvas, description, present!)
 ;; exactly once, or returns #f if no drawable is available. It must retire its
 ;; target on EVERY exit. post queues (never invokes inline) on the owner thread.
@@ -22,8 +24,10 @@
            [dirty? #:mutable] [ticket #:mutable] [queued? #:mutable]
            [generation #:mutable] [signature #:mutable] [index #:mutable]
            [presented #:mutable] [skipped #:mutable] [cancelled #:mutable]
-           [last #:mutable] [error #:mutable] [requested? #:mutable] [cleanup-posted? #:mutable] [unregister #:mutable]))
-(struct gpu-frame (owner [canvas-value #:mutable] [context-value #:mutable] info [live? #:mutable]))
+           [last #:mutable] [error #:mutable] [requested? #:mutable] [cleanup-posted? #:mutable] [unregister #:mutable]
+           targets))
+(struct gpu-frame (owner [canvas-value #:mutable] [context-value #:mutable] info [live? #:mutable]
+                         [targets #:mutable]))
 (define pending-cleanup (make-hasheq)) ; only requested cleanup, never all live presenters
 (define active-presenter (make-parameter #f))
 (define (presentation-active?) (or (and (active-presenter) #t) (domain-execution-active?)))
@@ -75,6 +79,7 @@
           'presents_requested (gpu-presenter-presented p) 'frames_skipped (gpu-presenter-skipped p)
           'frames_cancelled (gpu-presenter-cancelled p) 'redraw_queued (gpu-presenter-queued? p) 'shutdown_requested (gpu-presenter-requested? p)
           'last_frame (gpu-presenter-last p) 'last_error (gpu-presenter-error p)
+          'frame_target_cache (frame-target-cache-info (gpu-presenter-targets p))
           'adapter ((presentation-adapter-describe (gpu-presenter-adapter p)))
           'visible_pixels_verified #f 'performance_measured #f))
 (define (gpu-frame-expired? f)
@@ -90,6 +95,14 @@
 (define (gpu-frame-context f)
   (gpu-frame-canvas f) ; identical owner/expiration checks
   (gpu-frame-context-value f))
+;; The cache is an implementation resource of THIS presenter/context. A frame
+;; may borrow it only while live; invalidate its reference along with the canvas
+;; so retaining expired public frames cannot keep GPU staging storage alive.
+(define (call-with-gpu-frame-target f width height create dispose proc)
+  (gpu-frame-canvas f)
+  (unless (and (= width (gpu-frame-width f)) (= height (gpu-frame-height f)))
+    (error 'gpu-frame-target "staging extent differs from the live frame"))
+  (call-with-frame-target (gpu-frame-targets f) width height create dispose proc))
 (define (gpu-frame-width f) (hash-ref (gpu-frame-info f) 'pixel_width))
 (define (gpu-frame-height f) (hash-ref (gpu-frame-info f) 'pixel_height))
 (define (gpu-frame-logical-width f) (hash-ref (gpu-frame-info f) 'logical_width))
@@ -147,7 +160,7 @@
   (procedure! 'make-presenter (presentation-adapter-call-target adapter) 2)
   (procedure! 'make-presenter (presentation-adapter-post adapter) 1)
   (define p (gpu-presenter adapter (current-thread) render on-error 'ready #f #f 0 #f
-                           0 #f 0 0 0 0 #f #f #f #f #f))
+                           0 #f 0 0 0 0 #f #f #f #f #f (make-frame-target-cache)))
   (register-finalizer-and-custodian-shutdown
    p request-cleanup!
    #:custodian-available
@@ -214,6 +227,10 @@
                        (lambda (e)
                          (set-gpu-presenter-error! p (error-text e))
                          (hash-set! pending-cleanup p #t) (raise e))])
+        ;; Retire the staging wrapper before the adapter closes its context.
+        ;; skia-close! queues GPU unrefs; the existing context close drains them.
+        ;; Deferred close/finalizer/custodian paths all converge here.
+        (close-frame-target-cache! (gpu-presenter-targets p))
         ((presentation-adapter-close (gpu-presenter-adapter p)))
         (set-gpu-presenter-state! p 'closed)
         (hash-remove! pending-cleanup p)
@@ -291,7 +308,8 @@
                      (hash-set* m 'backend (symbol->string (presentation-adapter-backend a))
                                   'target_generation (gpu-presenter-generation p)
                                   'frame_index (gpu-presenter-index p) 'target target))
-                   (define f (gpu-frame (current-thread) canvas (presentation-adapter-context a) info #t))
+                   (define f (gpu-frame (current-thread) canvas (presentation-adapter-context a) info #t
+                                        (gpu-presenter-targets p)))
                    (set-gpu-presenter-last! p (hash-set info 'result "acquired"))
                    (dynamic-wind
                      void
@@ -321,7 +339,8 @@
                      (lambda ()
                        (set-gpu-frame-live?! f #f)
                        (set-gpu-frame-canvas-value! f #f)
-                       (set-gpu-frame-context-value! f #f)))))]))
+                       (set-gpu-frame-context-value! f #f)
+                       (set-gpu-frame-targets! f #f)))))]))
            (when (eq? result 'skipped)
              (set-gpu-presenter-signature! p #f)
              (set-gpu-presenter-skipped! p (add1 (gpu-presenter-skipped p))))

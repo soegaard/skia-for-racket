@@ -1,6 +1,7 @@
 #lang racket/base
 (require (prefix-in sk: "../main.rkt") (prefix-in gpu: "../gpu.rkt")
-         "dc-render.rkt" "dc-native-util.rkt" "gpu-dc-scope.rkt")
+         "dc-render.rkt" "dc-native-util.rkt" "gpu-dc-scope.rkt"
+         (only-in (submod "gpu-presenter.rkt" adapter-internals) call-with-gpu-frame-target))
 (provide call-with-gpu-frame-dc/native call-with-gpu-surface-dc/native)
 
 (define (gpu-renderer context [borrowed-root #f])
@@ -36,19 +37,32 @@
   (define extent
     (checked-frame-size (gpu:gpu-frame-width frame) (gpu:gpu-frame-height frame)
                         (gpu:gpu-frame-logical-width frame) (gpu:gpu-frame-logical-height frame)))
-  (call-with-frame-dc/renderer
-   (gpu-renderer context) extent proc
-   (lambda (root)
-     ;; Recheck the frame before touching its drawable. This is a GPU-to-GPU
-     ;; composition, not a CPU bitmap bridge, PNG roundtrip, or zero-copy claim.
-     (gpu:gpu-frame-canvas frame)
-     (sk:with-skia ([image (gpu:gpu-surface-snapshot root)]
-                   [paint (sk:make-paint #:blend-mode 'src #:antialias? #f)])
-       (sk:call-with-canvas-state canvas
-         (lambda ()
-           (set-matrix! canvas '#(1.0 0.0 0.0 1.0 0.0 0.0))
-           (sk:draw-image canvas image 0 0 #:paint paint)))))
-   #:background background #:smoothing smoothing #:clear? #t))
+  ;; Retain one compatible staging surface, but NEVER the callback DC or a
+  ;; borrowed frame canvas. A fresh DC clears the root and owns its own state
+  ;; and alpha stack each time. Failed/escaped DC scopes discard this target.
+  (call-with-gpu-frame-target frame
+   (dc-frame-size-pixel-width extent) (dc-frame-size-pixel-height extent)
+   (lambda ()
+     (gpu:make-gpu-surface context (dc-frame-size-pixel-width extent)
+                           (dc-frame-size-pixel-height extent) #:background 'transparent))
+   sk:skia-close!
+   (lambda (staging)
+     (unless (= 1 (sk:canvas-save-count (sk:surface-canvas staging)))
+       (error 'call-with-gpu-frame-dc "cached staging surface has an unbalanced canvas stack"))
+     (call-with-frame-dc/renderer
+      (gpu-renderer context staging) extent proc
+      (lambda (root)
+        ;; Transactional commit remains GPU-to-GPU. Keeping this boundary
+        ;; preserves explicit snapshots and prevents partial callback drawing
+        ;; from reaching the presenter target on a user exception or escape.
+        (gpu:gpu-frame-canvas frame)
+        (sk:with-skia ([image (gpu:gpu-surface-snapshot root)]
+                      [paint (sk:make-paint #:blend-mode 'src #:antialias? #f)])
+          (sk:call-with-canvas-state canvas
+            (lambda ()
+              (set-matrix! canvas '#(1.0 0.0 0.0 1.0 0.0 0.0))
+              (sk:draw-image canvas image 0 0 #:paint paint)))))
+      #:background background #:smoothing smoothing #:clear? #t))))
 
 (define (call-with-gpu-surface-dc/native surface proc lw lh background smoothing clear?)
   (unless (gpu:gpu-surface? surface)

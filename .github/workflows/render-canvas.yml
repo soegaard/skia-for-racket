@@ -41,16 +41,17 @@ jobs:
         run: |
           python tools/update-source-sums.py --check
           python tools/test-render-canvas.py
+          python tools/test-gpu-frame-reuse.py
           racket -l raco -- make render-canvas.rkt examples/render-canvas.rkt examples/gpu-dc-consumers.rkt
           racket run-tests.rkt --pure
       - name: Install pinned native libraries
         run: |
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
-      - name: Require raster, GPU and auto through the common API
+      - name: Require common API and staging reuse
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' \
-            python tools/validate-render-canvas.py --racket "$(command -v racket)" \
+            python tools/validate-gpu-frame-reuse.py --racket "$(command -v racket)" \
             --require-gpu --backend egl --directory output/render-canvas-ci
       - name: Retain all logs, receipt checks and backing pixels
         if: always()
@@ -87,6 +88,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test-render-canvas.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test-gpu-frame-reuse.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           racket -l raco -- make render-canvas.rkt examples/render-canvas.rkt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install pinned native libraries
@@ -94,10 +97,10 @@ jobs:
         run: |
           ./tools/install-native-windows.ps1 -Racket racket -Python python
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require raster, GPU and auto using explicit WARP
+      - name: Require common API and staging reuse using explicit WARP
         shell: pwsh
         run: |
-          python tools/validate-render-canvas.py --racket racket --require-gpu --backend direct3d --adapter warp --directory output/render-canvas-ci
+          python tools/validate-gpu-frame-reuse.py --racket racket --require-gpu --backend direct3d --adapter warp --directory output/render-canvas-ci
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain all logs, receipt checks and backing pixels
         if: always()
