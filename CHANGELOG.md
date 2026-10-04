@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.60.0 — GPU DC real-consumer acceptance
+
+- Exercise actual pict, plot/no-gui, style and geometry workloads directly,
+  through recorded procedures, and through serialized/read-back recorded datums.
+- Add 144 CPU/GPU-surface/final-frame captures across ordinary, HiDPI,
+  asymmetric and fractional extents, with independent semantic pixel probes.
+- Bound same-path procedure/datum and GPU surface/final-frame differences;
+  do not require universal CPU/GPU byte identity or font-metric parity.
+- Verify retained DC expiration, state restoration and explicit capture I/O.
+  Add 48 real-window/CPU captures at two sizes, with separate complete normal
+  no-readback presentation frames and explicit inspection frames.
+- Add a strict run-tagged inspector, review images, regression tests and an
+  interactive consumer example. The new validator retains the selected 0.59 gate.
+- Extend Linux Mesa/Xvfb CI and add native D3D12 WARP consumer validation.
+  Preserve existing required CI aggregation, native pins and public ownership.
+- See [GPU DC consumer acceptance](docs/GPU-DC-CONSUMERS.md) for the exact
+  assertions, limitations and validation commands.
+
 ## 0.59.0 — Frame-scoped GPU DC and canvas facade
 
 - Add `skia/gpu-dc`: callback-scoped `dc<%>` drawing over an owned frame GPU

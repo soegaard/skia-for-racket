@@ -41,6 +41,7 @@ jobs:
         run: |
           python tools/update-source-sums.py --check
           python tools/test-validate-gpu-dc.py
+          python tools/test-gpu-dc-consumers.py
       - name: Install pinned native libraries
         run: |
           bash tools/install-native.sh
@@ -49,10 +50,10 @@ jobs:
         run: |
           racket -l raco -- make dc.rkt gpu-dc.rkt
           racket run-tests.rkt
-      - name: Require native EGL and real-window OpenGL DC validation
+      - name: Require GPU DC baseline and consumer validation
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' \
-            python tools/validate-gpu-dc.py --racket "$(command -v racket)" \
+            python tools/validate-gpu-dc-consumers.py --racket "$(command -v racket)" \
             --backend egl --require-gui --directory output/gpu-dc-ci
       - name: Retain validation results and command logs
         if: always()
@@ -60,5 +61,48 @@ jobs:
         with:
           name: gpu-dc-linux-racket-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/gpu-dc-ci/
+          if-no-files-found: warn
+          retention-days: 14
+
+  gpu-dc-warp:
+    name: GPU DC consumers / D3D12 WARP / Racket 9.3
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Check source manifest and inspector contracts
+        run: |
+          python tools/update-source-sums.py --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test-gpu-dc-consumers.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install pinned Skia and HarfBuzz libraries
+        run: |
+          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native consumer parity through D3D12 WARP
+        run: |
+          python tools/validate-gpu-dc-consumers.py --racket (Get-Command racket).Source --backend direct3d --adapter warp --directory output/gpu-dc-consumers-warp
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain WARP captures, checks and logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gpu-dc-consumers-warp-${{ github.run_attempt }}
+          path: output/gpu-dc-consumers-warp/
           if-no-files-found: warn
           retention-days: 14
