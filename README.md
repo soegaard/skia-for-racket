@@ -1,4 +1,37 @@
-# Racket Skia — 0.58.0
+# Racket Skia — 0.61.0
+
+## Unified callback-oriented canvases
+
+`skia/render-canvas` provides `make-skia-render-canvas`: the same paint callback
+can use an explicit raster renderer or a platform GPU, without replacing either
+existing concrete canvas class. The factory returns an actual `canvas%` object.
+`get-dc` is callback-only; `get-raster-dc` is explicit persistent raster access.
+Actual raster and GPU DC lifetimes remain distinct and are reported by the API.
+
+```racket
+(require racket/gui/base skia/render-canvas)
+(queue-callback
+ (lambda ()
+   (define frame (new skia-render-window%
+                      [label "Unified Skia canvas"] [renderer 'auto]
+                      [paint-callback
+                       (lambda (_canvas dc)
+                         (send dc set-pen "navy" 2 'solid)
+                         (send dc set-brush "lightblue" 'solid)
+                         (send dc draw-ellipse 20 20 160 100))]))
+   (send frame show #t)))
+```
+
+`auto` selects Metal on macOS, Direct3D on Windows x64 and OpenGL on Unix.
+Selection is not a driver probe: GPU initialization failures are reported, not
+silently replaced by raster rendering. See the [API contract, renderer choices,
+examples and acceptance limits](docs/RENDER-CANVAS.md).
+
+```bash
+python3 tools/validate-render-canvas.py --racket "$RACKET" --require-gpu
+"$RACKET" examples/render-canvas.rkt --renderer raster
+"$RACKET" examples/render-canvas.rkt --renderer gpu
+```
 
 ## 0.59: GPU drawing contexts
 

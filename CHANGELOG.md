@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.61.0 — Unified callback-oriented render canvases
+
+- Add `skia/render-canvas` with `make-skia-render-canvas`, a common interface,
+  renderer predicate and `skia-render-window%`. The factory returns a real
+  `canvas%` subclass; the existing concrete raster and GPU classes are unchanged.
+- Select raster or platform GPU explicitly, with reported `auto` selection and
+  no runtime GPU-to-raster fallback. Load only the selected concrete class.
+- Make `get-dc` callback-only in the common API, with explicit `get-raster-dc`
+  access for persistent raster state. Preserve actual raster/GPU DC lifetimes.
+- Share owner-thread, callback replacement, one-shot repaint, reentry, error and
+  close contracts. Guard the toolkit's pre-callback raster DC handoff.
+- Add 33 headless cases and 20 selected real-window cases per renderer. Validate
+  raster, GPU and automatic selection with 72 backing captures, separate normal
+  frame I/O ledgers and the existing 0.60 pict/plot/style/geometry pixel oracles.
+- Require the prior raster GUI and GPU consumer gates before the expanded GUI
+  acceptance. Add a separate Linux 8.18/9.3 and Windows WARP workflow; keep the
+  existing required-CI aggregate and native ABI/library pins unchanged.
+
 ## 0.60.0 — GPU DC real-consumer acceptance
 
 - Exercise actual pict, plot/no-gui, style and geometry workloads directly,
