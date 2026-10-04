@@ -1,4 +1,22 @@
-# Racket Skia — 0.63.0
+# Racket Skia — 0.64.0
+
+## Checked DC compatibility boundary
+
+Single-family comma/Pango font descriptions now preserve weight, slant and
+stretch while keeping the public font% size/override rules. Explicit font faces
+honour font-name-directory mappings. Pango parses descriptions only; Skia and
+HarfBuzz still draw and shape all text. Richer description fields are rejected.
+
+`(skia-dc-compatibility 'raster)` (also `gpu`, `pdf`, `svg`) declares every
+`dc<%>` method/arity, lifetime and remaining exclusion without probing a backend.
+See [the compatibility contract](docs/DC-COMPATIBILITY.md). The new native/pure
+cases and described-font consumer fixtures run through the existing CI gates.
+
+```bash
+python3 tools/validate-dc-closure.py --racket "$RACKET" --require-renderers
+"$RACKET" examples/dc-closure.rkt
+```
+
 
 ## Shared DC authoring for PDF and SVG
 

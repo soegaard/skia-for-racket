@@ -1,5 +1,16 @@
 # Skia drawing contexts — 0.57 drawing contract
 
+## Compatibility closure in 0.64
+
+[The current compatibility boundary](DC-COMPATIBILITY.md) supersedes the older
+font-description rejection below: single-family comma descriptions now support
+weight, slant and stretch, and explicit faces honour font-directory overrides.
+Combined tabs/hard breaks and richer font-description semantics remain explicit
+exclusions; VT/FF are included in the separator guard. The additive
+`skia-dc-compatibility` query accounts for the full installed DC method contract.
+The historical 0.57 capability report and existing raster/GPU/document lifetimes
+remain unchanged. Earlier stage descriptions below retain their historical scope.
+
 ## Canvas ownership added in 0.58
 
 The GUI-only `skia/canvas` module now exposes this persistent raster DC through

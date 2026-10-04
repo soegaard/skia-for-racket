@@ -41,15 +41,16 @@ jobs:
         run: |
           python tools/update-source-sums.py --check
           python tools/test-dc-output.py
-          racket -l raco -- make dc-output.rkt tools/dc-output-doctor.rkt examples/dc-output.rkt
+          python tools/test-dc-closure.py
+          racket -l raco -- make dc-output.rkt tools/dc-output-doctor.rkt examples/dc-output.rkt examples/dc-closure.rkt
           racket run-tests.rkt --pure
       - name: Install pinned Skia and HarfBuzz
         run: |
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
-      - name: Require native documents and independent rendered pixels
+      - name: Require DC compatibility, native documents and independent rendered pixels
         run: |
-          python tools/validate-dc-output.py --racket "$(command -v racket)" \
+          python tools/validate-dc-closure.py --racket "$(command -v racket)" \
             --require-renderers --directory output/dc-output-ci
       - name: Retain native documents, rendered pixels, receipts and command logs
         if: always()

@@ -17,7 +17,8 @@
 (define (call-with-fonts f proc)
   (sk:with-skia ([fm (sk:make-font-manager)]
                 [tf (sk:typeface-from-family (dc-font-spec-family f)
-                      #:weight (dc-font-spec-weight f) #:slant (dc-font-spec-slant f))]
+                      #:weight (dc-font-spec-weight f) #:width (dc-font-request-width f)
+                      #:slant (dc-font-spec-slant f))]
                 [font (font-options f tf)])
     (proc fm font)))
 (define (call-with-text request proc)
@@ -115,7 +116,8 @@
      (or (positive? (sk:font-char->glyph font character))
          (let ([tf (sk:font-manager-match-character fm character
                      #:family (dc-font-spec-family spec)
-                     #:weight (dc-font-spec-weight spec) #:slant (dc-font-spec-slant spec))])
+                     #:weight (dc-font-spec-weight spec) #:width (dc-font-request-width spec)
+                     #:slant (dc-font-spec-slant spec))])
            (and tf
                 (sk:with-skia ([face tf] [fallback (font-options spec face)])
                   (positive? (sk:font-char->glyph fallback character)))))))))

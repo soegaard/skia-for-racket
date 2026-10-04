@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.64.0 — Bounded font and DC compatibility closure
+
+- Parse single-family comma/Pango descriptions using Racket's own Pango library:
+  weight, slant and width are retained, with font% size/explicit overrides.
+  The private parser owns/frees a description; it never lays out or draws text.
+- Honour font-name-directory mappings for explicit face requests, and pass
+  width to both primary and fallback typeface selection.
+- Reject family cascades, non-normal variants, gravity/axes and future fields
+  instead of dropping semantics. Complete the combined/grapheme separator guard
+  with VT/FF; character-mode and NUL/offset behavior remain unchanged.
+- Add skia-dc-compatibility declarations, 35 pure and 22 native acceptance cases,
+  exact installed-interface/arity accounting, a headless example, and a strict
+  wrapper around existing document and optional GPU/GUI validation.
+- Run described-font pict content through all existing consumer paths. Preserve
+  native pins, public raster/GPU lifetimes, document auditing and byte limits.
+- Declare remaining compatibility exclusions for 1.0 rather than claiming full
+  bitmap-dc%/Cairo/Pango equivalence. API/package stabilization is next.
+
 ## 0.63.0 — DC authoring for PDF and SVG
 
 - Add `skia/dc-output`: scoped production DC command capture, closed before

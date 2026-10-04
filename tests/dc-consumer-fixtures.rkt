@@ -26,8 +26,17 @@
       (p:cellophane
        (p:pin-over (p:colorize (p:filled-rectangle 36 24) "red") 12 0 blue)
        0.5 #:composite? #t))
+    ;; 0.64: the exact same family/style, expressed with comma-description
+    ;; syntax. Existing raster, GPU, replay and document consumer gates now
+    ;; exercise the new parser without changing the scene or its pixel probes.
+    (define ordinary-font (rd:make-font #:family 'swiss #:size 16))
+    (define mapped-name
+      (send rd:the-font-name-directory get-screen-name
+            (send ordinary-font get-font-id) 'normal 'normal))
+    (define described-font
+      (rd:make-font #:face (string-append mapped-name ",") #:family 'swiss #:size 16))
     (define label
-      (p:colorize (p:text "Skia / pict" (rd:make-font #:family 'swiss #:size 16)) "navy"))
+      (p:colorize (p:text "Skia / pict" described-font) "navy"))
     (for/fold ([scene (p:blank consumer-width consumer-height)])
               ([entry (in-list
                        (list (list 12 12 red)
