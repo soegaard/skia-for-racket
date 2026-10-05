@@ -375,7 +375,7 @@ class Integration(unittest.TestCase):
         self.assertEqual([r['racket'] for r in matrix['cpu'] if r['id']=='minimum-racket'],['8.18'])
         for name in ('test-ci.py','test-gpu-interop.py','test-metal-interop.py','test-gpu-parity.py','test-dxgi.py'):
             text=(HERE/name).read_text()
-            self.assertIn('(define version "0.65")',text)
+            self.assertIn('(define version "0.66")',text)
             for obsolete in ('0.52','0.53','0.54','0.55'):
                 self.assertNotIn('(define version "'+obsolete+'")',text)
     def test_pin_and_gpu_workflow_preserved(self):
