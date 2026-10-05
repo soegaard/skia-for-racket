@@ -38,6 +38,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
+    'test-typefaces.py',
     'test-effects.py', 'test-geometry-completion.py',
     'test-api-inventory.py',
     'test-dc-closure.py',

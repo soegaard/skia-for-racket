@@ -1,4 +1,12 @@
-# Racket Skia — 0.67.0
+# Racket Skia — 0.68a (package 0.68.1)
+
+## Typeface resources and metadata
+
+[0.68a typefaces](docs/TYPEFACES.md) adds copied-byte/TTC loading, owned style sets,
+detached metadata and font tables, design-unit pair kerning, and copied raw-font
+export. Existing font options and shaper snapshots are unchanged; those APIs
+remain in 0.68b. The new acceptance gate uses procedural fixtures and native PDF /
+outlined SVG output. Native host/CI acceptance is required.
 
 ## Geometry completion
 

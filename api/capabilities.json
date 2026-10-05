@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "91db8bdac2431588806e128914698c354c65b260",
+  "baseline_commit": "c109682387c80df81f35ecb9bc310a37845ae59c",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -13,6 +13,7 @@
         "sk_data_unref",
         "sk_document_unref",
         "sk_fontmgr_unref",
+        "sk_fontstyleset_unref",
         "sk_image_unref",
         "sk_imagefilter_unref",
         "sk_maskfilter_unref",
@@ -99,7 +100,6 @@
         "sk_blender_ref",
         "sk_data_ref",
         "sk_drawable_unref",
-        "sk_fontstyleset_unref",
         "sk_image_ref",
         "sk_maskfilter_ref",
         "sk_nvrefcnt_get_ref_count",
@@ -2319,13 +2319,22 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU font resources on the pinned native build; this query does not initialize a GPU or GUI. Native availability is separately tested.",
+      "bindings_expected": [
+        "sk_fontmgr_create_from_data",
+        "sk_typeface_create_from_data"
+      ],
+      "document_behavior": "Resource queries do not draw. The existing simple-text/shaping/outline authoring paths are exercised with copied fixtures in PDF/SVG; no document policy or fallback is bypassed.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.bytes",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "typefaces.rkt",
+        "private/typeface-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt"
+      ],
+      "limitations": "Copies caller bytes before constructing an owned SkData/typeface. Collection index is a nonnegative signed int32. Invalid/unrecognized native data raises. This is not live-stream input.",
       "managed_sources": [
         "binding/SkiaSharp/SKTypeface.cs",
         "binding/SkiaSharp/SKFontManager.cs"
@@ -2335,15 +2344,27 @@
         "sk_typeface_create_from_data"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-from-bytes"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "font-manager-typeface-from-bytes"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/typeface-pure-test.rkt",
+        "tests/typeface-native-test.rkt",
+        "tests/typeface-fixtures.rkt",
+        "tools/test-typefaces.py",
+        "tools/typeface-doctor.rkt"
+      ],
       "title": "Typeface from copied data and collection index",
-      "unbound_declarations": [
-        "sk_fontmgr_create_from_data",
-        "sk_typeface_create_from_data"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
@@ -2373,13 +2394,27 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU font resources on the pinned native build; this query does not initialize a GPU or GUI. Native availability is separately tested.",
+      "bindings_expected": [
+        "sk_fontmgr_create_styleset",
+        "sk_fontmgr_match_family",
+        "sk_fontstyleset_create_empty",
+        "sk_fontstyleset_create_typeface",
+        "sk_fontstyleset_get_count",
+        "sk_fontstyleset_get_style",
+        "sk_fontstyleset_match_style"
+      ],
+      "document_behavior": "Resource queries do not draw. The existing simple-text/shaping/outline authoring paths are exercised with copied fixtures in PDF/SVG; no document policy or fallback is bypassed.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.styles",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "typefaces.rkt",
+        "private/typeface-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt"
+      ],
+      "limitations": "Owned, thread-affine style sets use the ordinary resource protocol. Entries are detached immutable values; empty sets match to #f, invalid indices raise. System family enumeration/order/names remain platform dependent.",
       "managed_sources": [
         "binding/SkiaSharp/SKFontStyleSet.cs",
         "binding/SkiaSharp/SKFontManager.cs"
@@ -2394,29 +2429,72 @@
         "sk_fontstyleset_match_style"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "typefaces.rkt",
+          "name": "font-manager-style-set"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "font-manager-style-set-ref"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "make-empty-font-style-set"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "font-style-set-ref"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "font-style-set-styles"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "font-style-set-typeface"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "font-style-set-match"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/typeface-pure-test.rkt",
+        "tests/typeface-native-test.rkt",
+        "tests/typeface-fixtures.rkt",
+        "tools/test-typefaces.py",
+        "tools/typeface-doctor.rkt"
+      ],
       "title": "Style-set enumeration and typeface selection",
-      "unbound_declarations": [
-        "sk_fontmgr_create_styleset",
-        "sk_fontmgr_match_family",
-        "sk_fontstyleset_create_empty",
-        "sk_fontstyleset_create_typeface",
-        "sk_fontstyleset_get_count",
-        "sk_fontstyleset_get_style",
-        "sk_fontstyleset_match_style"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU font resources on the pinned native build; this query does not initialize a GPU or GUI. Native availability is separately tested.",
+      "bindings_expected": [
+        "sk_typeface_copy_table_data",
+        "sk_typeface_count_glyphs",
+        "sk_typeface_count_tables",
+        "sk_typeface_get_kerning_pair_adjustments",
+        "sk_typeface_get_post_script_name",
+        "sk_typeface_get_table_data",
+        "sk_typeface_get_table_size",
+        "sk_typeface_get_table_tags",
+        "sk_typeface_is_fixed_pitch"
+      ],
+      "document_behavior": "Resource queries do not draw. The existing simple-text/shaping/outline authoring paths are exercised with copied fixtures in PDF/SVG; no document policy or fallback is bypassed.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.tables-metadata",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "typefaces.rkt",
+        "private/typeface-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt"
+      ],
+      "limitations": "Table tags are uint32 values; bounded byte slices are copied. Missing tables/names or unsupported native pair kerning return #f, never guessed zeros. Kerning is in design units and must not be reapplied after HarfBuzz shaping. No OpenType MATH interpretation or variable-font instantiation is added.",
       "managed_sources": [
         "binding/SkiaSharp/SKTypeface.cs"
       ],
@@ -2432,36 +2510,65 @@
         "sk_typeface_is_fixed_pitch"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-postscript-name"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-fixed-pitch?"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-glyph-count"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-table-tags"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-table-size"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-table-bytes"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-kerning-pair-adjustments"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/typeface-pure-test.rkt",
+        "tests/typeface-native-test.rkt",
+        "tests/typeface-fixtures.rkt",
+        "tools/test-typefaces.py",
+        "tools/typeface-doctor.rkt"
+      ],
       "title": "Font table access and missing metadata/kerning queries",
-      "unbound_declarations": [
-        "sk_typeface_copy_table_data",
-        "sk_typeface_count_glyphs",
-        "sk_typeface_count_tables",
-        "sk_typeface_get_kerning_pair_adjustments",
-        "sk_typeface_get_post_script_name",
-        "sk_typeface_get_table_data",
-        "sk_typeface_get_table_size",
-        "sk_typeface_get_table_tags",
-        "sk_typeface_is_fixed_pitch"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
+      "backend_scope": "CPU font resources on the pinned native build; this query does not initialize a GPU or GUI. Native availability is separately tested.",
       "bindings_expected": [
         "sk_typeface_get_units_per_em",
         "sk_typeface_open_stream"
       ],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Resource queries do not draw. The existing simple-text/shaping/outline authoring paths are exercised with copied fixtures in PDF/SVG; no document policy or fallback is bypassed.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.units-and-stream",
       "implementation_files": [
-        "private/core.rkt"
+        "typefaces.rkt",
+        "private/typeface-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt"
       ],
-      "limitations": "Bound for shaping/font data access; public metadata/raw-font export remains to be added.",
+      "limitations": "Units-per-em is a positive integer or #f. Raw extraction returns copied immutable bytes and the accompanying collection index, or raises if the backend cannot expose a bounded stream. The data/index pair may be reconstructed by the backend and need not equal the original input bytes; no live Racket port is exposed.",
       "managed_sources": [
         "binding/SkiaSharp/SKTypeface.cs"
       ],
@@ -2470,25 +2577,44 @@
         "sk_typeface_open_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
-      "public_equivalents": [],
-      "status": "bound-not-public",
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-units-per-em"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface->font-bytes"
+        }
+      ],
+      "status": "supported-with-limits",
       "test_sources": [
-        "tests/native-test.rkt"
+        "tests/typeface-pure-test.rkt",
+        "tests/typeface-native-test.rkt",
+        "tests/typeface-fixtures.rkt",
+        "tools/test-typefaces.py",
+        "tools/typeface-doctor.rkt"
       ],
       "title": "Units-per-em and raw font stream used internally",
       "unbound_declarations": []
     },
     {
       "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
-      "bindings_expected": [],
+      "bindings_expected": [
+        "sk_fontstyle_get_slant",
+        "sk_fontstyle_get_weight",
+        "sk_fontstyle_get_width"
+      ],
       "document_behavior": "Not a drawing operation.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.style-introspection",
       "implementation_files": [
-        "private/core.rkt"
+        "private/core.rkt",
+        "typefaces.rkt",
+        "private/typeface-util.rkt"
       ],
-      "limitations": "Detached scalar style values replace a separate mutable native font-style object.",
+      "limitations": "Immutable style values replace native style pointers. Native weight/width/slant getters are used only to copy style-set entries; typeface-style composes existing typeface queries.",
       "managed_sources": [
         "binding/SkiaSharp/SKFontStyle.cs",
         "binding/SkiaSharp/SKTypeface.cs"
@@ -2513,17 +2639,23 @@
         {
           "module": "main.rkt",
           "name": "typeface-slant"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "typeface-style"
+        },
+        {
+          "module": "typefaces.rkt",
+          "name": "make-font-style"
         }
       ],
       "status": "racket-equivalent",
       "test_sources": [
-        "tests/native-test.rkt"
+        "tests/native-test.rkt",
+        "tests/typeface-native-test.rkt"
       ],
       "title": "Standalone style objects and typeface style convenience",
       "unbound_declarations": [
-        "sk_fontstyle_get_slant",
-        "sk_fontstyle_get_weight",
-        "sk_fontstyle_get_width",
         "sk_typeface_get_fontstyle"
       ]
     },
@@ -2698,7 +2830,7 @@
         "sk_font_set_force_auto_hinting"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
+      "planned_stage": "0.68b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -2730,7 +2862,7 @@
         "sk_font_get_xpos"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
+      "planned_stage": "0.68b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -2757,7 +2889,7 @@
         "sk_font_break_text"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
+      "planned_stage": "0.68b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -2851,7 +2983,7 @@
         "sk_font_set_typeface"
       ],
       "origin": "m119",
-      "planned_stage": "0.68",
+      "planned_stage": "0.68b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -6634,11 +6766,12 @@
     "raster-buffers.rkt",
     "render-canvas.rkt",
     "runtime-effects.rkt",
+    "typefaces.rkt",
     "unsafe/gpu-d3d12.rkt",
     "unsafe/gpu-metal.rkt"
   ],
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.67"
+  "stage": "0.68a"
 }

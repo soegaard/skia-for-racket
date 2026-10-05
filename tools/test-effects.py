@@ -25,9 +25,9 @@ class Sources(unittest.TestCase):
         self.assertTrue(NEW_SYMBOLS<=declared)
     def test_exact_catalog_delta(self):
         c=inv.load_catalog(ROOT);s=inv.validate_catalog(c)
-        self.assertEqual(s['distinct_bound_symbols'],514)
-        self.assertEqual(s['cpu_bound_symbols'],463)
-        self.assertEqual(s['dispositions']['missing-available-abi'],46)
+        self.assertEqual(s['distinct_bound_symbols'],536)
+        self.assertEqual(s['cpu_bound_symbols'],485)
+        self.assertEqual(s['dispositions']['missing-available-abi'],43)
         self.assertNotIn('0.66',s['next_stages'])
     def test_only_shader_masks_inherit_gpu_affinity(self):
         source=self.text('private/lifetime.rkt')
@@ -88,7 +88,7 @@ class Sources(unittest.TestCase):
                         s.index('(call-with-gpu-context ctx'))
     def test_no_native_version_migration(self):
         s=self.text('info.rkt')
-        for term in ('(define version "0.67")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
+        for term in ('(define version "0.68.1")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
             self.assertIn(term,s)
     def test_workflow_selects_real_gpu_and_independent_renderers(self):
         s=self.text('.github/workflows/effects.yml')

@@ -1,0 +1,101 @@
+name: Typeface resources
+"on":
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  typefaces-linux:
+    name: Typeface resources / Linux / Racket ${{ matrix.racket }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        racket: ['8.18', '9.3']
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install fonts, loaders and independent document renderers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends unzip curl fontconfig \
+            fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk \
+            libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri poppler-utils librsvg2-bin
+          python -m pip install -r tools/dc-output-requirements.txt
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+        with:
+          version: ${{ matrix.racket }}
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Check source and install pinned native libraries
+        run: |
+          python tools/update-source-sums.py --check
+          python tools/test-typefaces.py
+          bash tools/install-native.sh
+          bash tools/install-harfbuzz.sh
+      - name: Require typeface resources and independent PDF/SVG rendering
+        run: |
+          python tools/validate-typefaces.py --racket "$(command -v racket)" \
+            --require-renderers --directory output/typefaces-ci
+      - name: Retain typeface evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: typefaces-linux-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/typefaces-ci/
+          if-no-files-found: warn
+          retention-days: 14
+  typefaces-windows:
+    name: Typeface resources / Windows / Racket 9.3
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Check source and install inspector dependencies
+        run: |
+          python tools/update-source-sums.py --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test-typefaces.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -r tools/dc-output-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install pinned native libraries
+        run: |
+          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require typeface resources and document structure
+        run: |
+          python tools/validate-typefaces.py --racket (Get-Command racket).Source --directory output/typefaces-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain Windows evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: typefaces-windows-${{ github.run_attempt }}
+          path: output/typefaces-windows/
+          if-no-files-found: warn
+          retention-days: 14

@@ -2,6 +2,13 @@
 (require "gpu-domain.rkt") ; pure lifecycle code; no GPU/GUI/native initialization
 (require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt"
          "annotation-util.rkt" "audit-trace.rkt")
+;; Owned style sets integrate with the ordinary resource lifecycle. Metadata
+;; entries returned by the public module are detached, not native views.
+(struct font-style-set-resource (handle) #:constructor-name make-font-style-set-record)
+(module* typeface-internals #f
+  (provide font-style-set-resource? font-style-set-resource-handle make-font-style-set-record
+           font-manager-h typeface-h make-typeface-record copy-sk-string copy-native-data
+           typeface-font-bytes call-with-native-temporary))
 ;; Private bridge for additive effects; no public native handles.
 (module* effects-internals #f
   (provide path-h shader-h color-filter-h new-shader new-path-effect
@@ -328,7 +335,7 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
+  (or (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
@@ -338,6 +345,7 @@
 
 (define (resource-handle who v)
   (cond [(raster-buffer-resource? v) (raster-buffer-resource-handle v)]
+        [(font-style-set-resource? v) (font-style-set-resource-handle v)]
         [(region-resource? v) (region-resource-handle v)]
         [(vertices-resource? v) (vertices-resource-handle v)]
         [(runtime-effect-resource? v) (runtime-effect-resource-handle v)]

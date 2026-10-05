@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.68a — Typeface resources (package version 0.68.1)
+
+- Add copied-byte/TTC typeface construction, manager-specific construction and
+  owned style-set enumeration/matching with generic resource cleanup.
+- Add detached style/metadata, checked table tags and bounded immutable table
+  copies, optional design-unit kerning, and raw font bytes with their reload index.
+- Preserve native pins, package minimums and SkFont/shaper state. Split the four
+  remaining font option/glyph-query capabilities into 0.68b.
+- Add original procedural font fixtures, pure/native ownership tests, six vector /
+  native-text PDF/SVG documents, inspection tests and a dedicated acceptance gate.
+- Reconcile the four capability groups and binding inventory without asserting
+  execution evidence until host and CI validation run.
+
 ## 0.67.0 — Geometry completion
 
 - Add checked endpoint/oval/tangent arcs, explicit shape starts, polygon and

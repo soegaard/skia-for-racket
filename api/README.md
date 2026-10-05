@@ -1,4 +1,4 @@
-# Capability inventory maintenance — 0.67
+# Capability inventory maintenance — 0.68a
 
 0.67 updates expected bindings and public anchors on the accepted 0.66 baseline.
 Historical execution evidence stays pinned to its original commit; it is not
@@ -134,3 +134,15 @@ fifth workflow must also pass before accepting 0.65; adding it does not modify
 GitHub branch-protection rules.
 
 0.67 adds 55 native declarations across geometry families. Four low-level iterator/empty-value declarations remain unbound with explicit safe Racket equivalents; inventory rows retain that distinction.
+
+## 0.68 split
+
+Stage 0.68a (package version 0.68.1) covers typeface resources and metadata.
+The four font-state/glyph-query groups remain explicitly assigned to 0.68b;
+0.69 and subsequent stages are unchanged. Declaration coverage is not an
+execution claim. See `docs/TYPEFACES.md`.
+
+Current 0.68a inventory: 536 distinct bindings (485 CPU), 38 public modules,
+43 available-ABI groups still missing and one bound-but-not-public group.
+The four remaining SkFont-related groups are planned for 0.68b. The four
+typeface groups implemented here are documented in [TYPEFACES](../docs/TYPEFACES.md).

@@ -598,6 +598,32 @@
 
 ;; Font manager, typeface, font, and text-blob primitives -------------------
 
+;; 0.68a typeface resources. Factories return one owned reference; SkData
+;; inputs are retained by native typefaces. Style/string/data outputs are owned.
+;; Kerning writes count-1 int32 values only when its boolean result is true.
+(define-native sk_typeface_create_from_data (_fun _pointer _int -> _pointer))
+(define-native sk_fontmgr_create_from_data (_fun _pointer _pointer _int -> _pointer))
+(define-native sk_fontmgr_create_styleset (_fun _pointer _int -> _pointer))
+(define-native sk_fontmgr_match_family (_fun _pointer _bytes -> _pointer))
+(define-native sk_fontstyleset_create_empty (_fun -> _pointer))
+(define-native sk_fontstyleset_unref (_fun _pointer -> _void))
+(define-native sk_fontstyleset_get_count (_fun _pointer -> _int))
+(define-native sk_fontstyleset_get_style (_fun _pointer _int _pointer _pointer -> _void))
+(define-native sk_fontstyleset_create_typeface (_fun _pointer _int -> _pointer))
+(define-native sk_fontstyleset_match_style (_fun _pointer _pointer -> _pointer))
+(define-native sk_fontstyle_get_weight (_fun _pointer -> _int))
+(define-native sk_fontstyle_get_width (_fun _pointer -> _int))
+(define-native sk_fontstyle_get_slant (_fun _pointer -> _int))
+(define-native sk_typeface_is_fixed_pitch (_fun _pointer -> _stdbool))
+(define-native sk_typeface_count_glyphs (_fun _pointer -> _int))
+(define-native sk_typeface_count_tables (_fun _pointer -> _int))
+(define-native sk_typeface_get_table_tags (_fun _pointer _pointer -> _int))
+(define-native sk_typeface_get_table_size (_fun _pointer _uint32 -> _size))
+(define-native sk_typeface_get_table_data (_fun _pointer _uint32 _size _size _bytes -> _size))
+(define-native sk_typeface_copy_table_data (_fun _pointer _uint32 -> _pointer))
+(define-native sk_typeface_get_post_script_name (_fun _pointer -> _pointer))
+(define-native sk_typeface_get_kerning_pair_adjustments (_fun _pointer _pointer _int _pointer -> _stdbool))
+
 (define-native sk_fontmgr_create_default (_fun -> _pointer))
 (define-native sk_fontmgr_ref_default (_fun -> _pointer))
 (define-native sk_fontmgr_unref (_fun _pointer -> _void))
