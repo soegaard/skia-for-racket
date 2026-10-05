@@ -157,7 +157,9 @@
                 (define ps (font-glyph-positions f input))
                 (vector-set! input 0 1) (font-set-size! f 40) (skia-close! f)
                 (near-list (vector->list ws) '(12 12))
-                (check-equal? ps '#((0.0 0.0) (12.0 0.0))))))
+                (check-equal? (vector-length ps) 2)
+                (near-list (vector-ref ps 0) '(0.0 0.0))
+                (near-list (vector-ref ps 1) '(12.0 0.0))))))
    (test-case "batch glyph outlines apply the native scale and skew matrices"
      (fixture (lambda (f _)
                 (font-set-size! f 31) (font-set-scale-x! f 1.5) (font-set-skew-x! f 0.25)
