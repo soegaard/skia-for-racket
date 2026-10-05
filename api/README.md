@@ -1,3 +1,9 @@
+## 0.68b inventory update
+
+Current source inventory: four SkFont capability groups are now public. Exact
+counts and dispositions are generated in `docs/SKIASHARP-GAPS.md`; execution
+evidence remains separate. See `docs/FONT-QUERIES.md`.
+
 # Capability inventory maintenance — 0.68a
 
 0.67 updates expected bindings and public anchors on the accepted 0.66 baseline.

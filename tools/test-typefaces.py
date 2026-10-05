@@ -45,20 +45,19 @@ class Sources(unittest.TestCase):
             for child in value: walk(child)
         walk(inv.forms(self.text('typefaces.rkt')))
     def test_numeric_package_version_and_distinct_stage(self):
-        self.assertIn('(define version "0.68.1")', self.text('info.rkt'))
-        self.assertEqual(inv.STAGE, '0.68a')
+        self.assertIn('(define version "0.68.2")', self.text('info.rkt'))
+        self.assertEqual(inv.STAGE, '0.68b')
         self.assertIn('("base" #:version "8.18")', self.text('info.rkt'))
         self.assertIn('("draw-lib" #:version "1.22")', self.text('info.rkt'))
         self.assertEqual(inv.load_catalog(ROOT)['upstream']['package_version'], '3.119.1')
-    def test_catalog_four_groups_closed_and_four_deferred(self):
-        c = inv.load_catalog(ROOT); summary = inv.validate_catalog(c)
-        self.assertEqual(summary['distinct_bound_symbols'], 536)
-        self.assertEqual(summary['cpu_bound_symbols'], 485)
-        self.assertEqual(summary['dispositions']['missing-available-abi'], 43)
-        self.assertEqual(summary['dispositions']['bound-not-public'], 1)
-        self.assertEqual(summary['next_stages']['0.68b'], 4)
-        self.assertNotIn('0.68', summary['next_stages'])
-        self.assertEqual(summary['public_modules'], 38)
+    def test_typeface_capabilities_keep_public_source_anchors(self):
+        c = inv.load_catalog(ROOT); inv.validate_catalog(c)
+        rows = {row['id']:row for row in c['features']['capabilities']}
+        for name in ('fonts.bytes', 'fonts.styles', 'fonts.tables-metadata', 'fonts.units-and-stream'):
+            self.assertEqual(rows[name]['status'], 'supported-with-limits')
+            self.assertIsNone(rows[name]['planned_stage'])
+            self.assertTrue(rows[name]['public_equivalents'])
+            self.assertEqual(rows[name]['execution_evidence'], inv.EVIDENCE_SCOPE)
     def test_native_additions_are_declared_in_existing_registry(self):
         declarations = [f for f in inv.forms(self.text('private/native.rkt'))
                         if isinstance(f, list) and f and f[0] == 'define-native']

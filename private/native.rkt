@@ -763,3 +763,17 @@
 (define (skia-native-library-path)
   (skia-check!)
   (cdr (force native-library)))
+
+;; 0.68b SkFont controls/queries; synchronous checked private buffers.
+(define-native sk_font_is_force_auto_hinting (_fun _pointer -> _stdbool))
+(define-native sk_font_set_force_auto_hinting (_fun _pointer _stdbool -> _void))
+(define-native sk_font_is_embedded_bitmaps (_fun _pointer -> _stdbool))
+(define-native sk_font_set_embedded_bitmaps (_fun _pointer _stdbool -> _void))
+(define-native sk_font_is_baseline_snap (_fun _pointer -> _stdbool))
+(define-native sk_font_set_baseline_snap (_fun _pointer _stdbool -> _void))
+(define-native sk_font_set_typeface (_fun _pointer _pointer -> _void))
+(define-native sk_font_get_widths_bounds (_fun _pointer _pointer _int _pointer _pointer _pointer -> _void))
+(define-native sk_font_get_pos (_fun _pointer _pointer _int _pointer _pointer -> _void))
+(define-native sk_font_get_xpos (_fun _pointer _pointer _int _pointer _float -> _void))
+(define-native sk_font_get_paths (_fun _pointer _pointer _int _fpointer _pointer -> _void))
+(define-native sk_font_break_text (_fun _pointer _bytes _size _int _float _pointer _pointer -> _size))

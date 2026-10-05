@@ -1,11 +1,16 @@
-# Racket Skia — 0.68a (package 0.68.1)
+# Racket Skia — 0.68b (package 0.68.2)
+
+## Font options and glyph queries
+
+[0.68b font queries](docs/FONT-QUERIES.md) adds font controls, retained typeface replacement,
+immutable measurements, owned batch outlines and simple prefix fitting. Snapshot
+configuration is preserved. Native host/CI acceptance must be run separately.
 
 ## Typeface resources and metadata
 
 [0.68a typefaces](docs/TYPEFACES.md) adds copied-byte/TTC loading, owned style sets,
 detached metadata and font tables, design-unit pair kerning, and copied raw-font
-export. Existing font options and shaper snapshots are unchanged; those APIs
-remain in 0.68b. The new acceptance gate uses procedural fixtures and native PDF /
+export. The 0.68a resource APIs remain available; 0.68b adds SkFont controls and glyph queries. The new acceptance gate uses procedural fixtures and native PDF /
 outlined SVG output. Native host/CI acceptance is required.
 
 ## Geometry completion

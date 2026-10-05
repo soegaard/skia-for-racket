@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.68b — Font options and glyph queries (package version 0.68.2)
+
+- Add embedded-bitmap, forced-auto-hinting and baseline-snap controls while preserving pinned defaults.
+- Preserve the new flags in shaper, text-blob and fallback font snapshots.
+- Add owned font-typeface queries and reference-retaining replacement without resetting font options.
+- Add bounded immutable glyph widths/bounds/positions, copied transformed batch outlines, and simple UTF-8 prefix fitting returning Racket scalar counts.
+- Keep callback failures inside Racket until the native call returns; pin callback input buffers and clean up partial results.
+- Add pure/native tests, six PDF/SVG documents, GPU scene/transfer validation and a dedicated acceptance workflow.
+- Reconcile the four remaining 0.68 capability families without inventing execution evidence.
+
 ## 0.68a — Typeface resources (package version 0.68.1)
 
 - Add copied-byte/TTC typeface construction, manager-specific construction and

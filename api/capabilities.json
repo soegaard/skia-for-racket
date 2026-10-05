@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "c109682387c80df81f35ecb9bc310a37845ae59c",
+  "baseline_commit": "6f8c5d25e3532f37304b55c3ead5255ae3f37317",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -2811,13 +2811,25 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU font queries; unchanged backend-specific hinting/bitmap restrictions. GPU drawing and independent PDF/SVG gates require execution.",
+      "bindings_expected": [
+        "sk_font_is_baseline_snap",
+        "sk_font_is_embedded_bitmaps",
+        "sk_font_is_force_auto_hinting",
+        "sk_font_set_baseline_snap",
+        "sk_font_set_embedded_bitmaps",
+        "sk_font_set_force_auto_hinting"
+      ],
+      "document_behavior": "Uses existing native PDF text / outlined SVG policy. Controlled document and GPU tests are source references, not asserted execution evidence. No silent raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.options",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "fonts.rkt",
+        "private/font-query-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Backend-dependent SkFont flags; pinned defaults preserved. Shaper, blob and fallback snapshots copy the flags. No promise of identical hinting or bitmap availability across backends.",
       "managed_sources": [
         "binding/SkiaSharp/SKFont.cs"
       ],
@@ -2830,28 +2842,62 @@
         "sk_font_set_force_auto_hinting"
       ],
       "origin": "m119",
-      "planned_stage": "0.68b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "fonts.rkt",
+          "name": "font-embedded-bitmaps?"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-set-embedded-bitmaps!"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-force-auto-hinting?"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-set-force-auto-hinting!"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-baseline-snap?"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-set-baseline-snap!"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/font-query-pure-test.rkt",
+        "tests/font-query-native-test.rkt",
+        "tests/font-query-gpu-test.rkt",
+        "tools/test-font-queries.py",
+        "tools/font-query-doctor.rkt"
+      ],
       "title": "Embedded bitmap, forced auto-hinting and baseline-snap controls",
-      "unbound_declarations": [
-        "sk_font_is_baseline_snap",
-        "sk_font_is_embedded_bitmaps",
-        "sk_font_is_force_auto_hinting",
-        "sk_font_set_baseline_snap",
-        "sk_font_set_embedded_bitmaps",
-        "sk_font_set_force_auto_hinting"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU font queries; unchanged backend-specific hinting/bitmap restrictions. GPU drawing and independent PDF/SVG gates require execution.",
+      "bindings_expected": [
+        "sk_font_get_paths",
+        "sk_font_get_pos",
+        "sk_font_get_widths_bounds",
+        "sk_font_get_xpos"
+      ],
+      "document_behavior": "Uses existing native PDF text / outlined SVG policy. Controlled document and GPU tests are source references, not asserted execution evidence. No silent raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.glyph-queries",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "fonts.rkt",
+        "private/font-query-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Unshaped glyph-ID queries, checked against the current typeface. Detached immutable measurements; each batch outline is separately owned or #f. Native callback transforms are applied before return; exceptions are deferred and partial copies cleaned up. Wrapper byte limits are not native cache quotas.",
       "managed_sources": [
         "binding/SkiaSharp/SKFont.cs"
       ],
@@ -2862,26 +2908,59 @@
         "sk_font_get_xpos"
       ],
       "origin": "m119",
-      "planned_stage": "0.68b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "fonts.rkt",
+          "name": "font-glyph-widths"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-glyph-bounds"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-glyph-widths+bounds"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-glyph-positions"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-glyph-x-positions"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-glyph-paths"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/font-query-pure-test.rkt",
+        "tests/font-query-native-test.rkt",
+        "tests/font-query-gpu-test.rkt",
+        "tools/test-font-queries.py",
+        "tools/font-query-doctor.rkt"
+      ],
       "title": "Glyph widths/bounds/positions and batch outline callbacks",
-      "unbound_declarations": [
-        "sk_font_get_paths",
-        "sk_font_get_pos",
-        "sk_font_get_widths_bounds",
-        "sk_font_get_xpos"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU font queries; unchanged backend-specific hinting/bitmap restrictions. GPU drawing and independent PDF/SVG gates require execution.",
+      "bindings_expected": [
+        "sk_font_break_text"
+      ],
+      "document_behavior": "Uses existing native PDF text / outlined SVG policy. Controlled document and GPU tests are source references, not asserted execution evidence. No silent raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.break-text",
-      "implementation_files": [],
-      "limitations": "Simple width fitting is not paragraph layout; do not add kerning twice after HarfBuzz shaping.",
+      "implementation_files": [
+        "fonts.rkt",
+        "private/font-query-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Simple native prefix fitting, not grapheme/word/bidi/line-break/shaping-safe layout. Strict UTF-8 byte-count conversion returns a Racket scalar count and native width. Does not replace paragraph layout or reapply HarfBuzz kerning.",
       "managed_sources": [
         "binding/SkiaSharp/SKFont.cs"
       ],
@@ -2889,14 +2968,23 @@
         "sk_font_break_text"
       ],
       "origin": "m119",
-      "planned_stage": "0.68b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "fonts.rkt",
+          "name": "font-break-text"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/font-query-pure-test.rkt",
+        "tests/font-query-native-test.rkt",
+        "tests/font-query-gpu-test.rkt",
+        "tools/test-font-queries.py",
+        "tools/font-query-doctor.rkt"
+      ],
       "title": "Simple font break-text convenience",
-      "unbound_declarations": [
-        "sk_font_break_text"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
@@ -2969,13 +3057,20 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU font queries; unchanged backend-specific hinting/bitmap restrictions. GPU drawing and independent PDF/SVG gates require execution.",
+      "bindings_expected": [
+        "sk_font_set_typeface"
+      ],
+      "document_behavior": "Uses existing native PDF text / outlined SVG policy. Controlled document and GPU tests are source references, not asserted execution evidence. No silent raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.mutable-typeface",
-      "implementation_files": [],
-      "limitations": "Recreate a font currently; any new mutation must preserve captured text/blob font state.",
+      "implementation_files": [
+        "fonts.rkt",
+        "private/font-query-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Getter returns an owned reference. Setter requires a live non-null typeface and retains its own native reference without resetting options. Existing shapers/blobs stay on their original snapshots; old glyph IDs are not remapped.",
       "managed_sources": [
         "binding/SkiaSharp/SKFont.cs"
       ],
@@ -2983,14 +3078,27 @@
         "sk_font_set_typeface"
       ],
       "origin": "m119",
-      "planned_stage": "0.68b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "fonts.rkt",
+          "name": "font-typeface"
+        },
+        {
+          "module": "fonts.rkt",
+          "name": "font-set-typeface!"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/font-query-pure-test.rkt",
+        "tests/font-query-native-test.rkt",
+        "tests/font-query-gpu-test.rkt",
+        "tools/test-font-queries.py",
+        "tools/font-query-doctor.rkt"
+      ],
       "title": "Changing the typeface of an existing native font",
-      "unbound_declarations": [
-        "sk_font_set_typeface"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
@@ -6742,6 +6850,7 @@
     "dc-output.rkt",
     "dc.rkt",
     "effects.rkt",
+    "fonts.rkt",
     "geometry-primitives.rkt",
     "geometry.rkt",
     "gpu-canvas.rkt",
@@ -6773,5 +6882,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.68a"
+  "stage": "0.68b"
 }

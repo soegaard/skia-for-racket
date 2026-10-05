@@ -1,4 +1,9 @@
 #lang racket/base
+;; 0.68b private bridge: no native pointers are re-exported by main.rkt.
+(module* font-query-internals #f
+  (provide font-h typeface-h make-typeface-record font-owner set-font-owner!
+           font-native-get font-native-set! call-with-font+paint path-h
+           call-with-native-temporary shaper-font text-blob-font))
 (require "gpu-domain.rkt") ; pure lifecycle code; no GPU/GUI/native initialization
 (require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt"
          "annotation-util.rkt" "audit-trace.rkt")
@@ -302,7 +307,7 @@
 (struct typeface (handle) #:constructor-name make-typeface-record)
 ;; owner keeps an implicitly-created default typeface reachable for at least
 ;; as long as the font wrapper. SkFont itself also retains its typeface.
-(struct font (handle owner) #:constructor-name make-font-record)
+(struct font (handle [owner #:mutable]) #:constructor-name make-font-record)
 ;; A private font snapshot and immutable positions allow exact outline replay
 ;; after the caller mutates/closes the font used to construct this blob.
 (struct text-blob (handle font glyphs positions) #:constructor-name make-text-blob-record)
@@ -2786,7 +2791,10 @@
                    #:hinting [hinting 'normal]
                    #:subpixel? [subpixel? #f]
                    #:linear-metrics? [linear-metrics? #f]
-                   #:embolden? [embolden? #f])
+                   #:embolden? [embolden? #f]
+                   #:embedded-bitmaps? [embedded-bitmaps? #f]
+                   #:force-auto-hinting? [force-auto-hinting? #f]
+                   #:baseline-snap? [baseline-snap? #t])
   (define who 'make-font)
   (unless (or (not tf) (typeface? tf))
     (raise-argument-error who "(or/c #f typeface?)" tf))
@@ -2798,6 +2806,9 @@
   (define sub? (boolean who subpixel?))
   (define linear? (boolean who linear-metrics?))
   (define bold? (boolean who embolden?))
+  (define bitmap? (boolean who embedded-bitmaps?))
+  (define auto-hint? (boolean who force-auto-hinting?))
+  (define snap? (boolean who baseline-snap?))
   (skia-check!)
   (define implicit-typeface (and (not tf) (make-typeface)))
   (define use-typeface (or tf implicit-typeface))
@@ -2823,6 +2834,9 @@
           (sk_font_set_hinting fp hint)
           (sk_font_set_subpixel fp sub?)
           (sk_font_set_linear_metrics fp linear?)
+          (sk_font_set_embedded_bitmaps fp bitmap?)
+          (sk_font_set_force_auto_hinting fp auto-hint?)
+          (sk_font_set_baseline_snap fp snap?)
           (sk_font_set_embolden fp bold?)))))))
 
 (define (font-native-get who f getter)
@@ -3146,6 +3160,9 @@
        (sk_font_set_hinting fp (sk_font_get_hinting font-ptr))
        (sk_font_set_subpixel fp (sk_font_is_subpixel font-ptr))
        (sk_font_set_linear_metrics fp (sk_font_is_linear_metrics font-ptr))
+       (sk_font_set_embedded_bitmaps fp (sk_font_is_embedded_bitmaps font-ptr))
+       (sk_font_set_force_auto_hinting fp (sk_font_is_force_auto_hinting font-ptr))
+       (sk_font_set_baseline_snap fp (sk_font_is_baseline_snap font-ptr))
        (sk_font_set_embolden fp (sk_font_is_embolden font-ptr))))
     result))
 
@@ -4199,6 +4216,9 @@
              #:hinting (font-hinting base-font)
              #:subpixel? (font-subpixel? base-font)
              #:linear-metrics? (font-linear-metrics? base-font)
+             #:embedded-bitmaps? (font-native-get 'fallback-font base-font sk_font_is_embedded_bitmaps)
+             #:force-auto-hinting? (font-native-get 'fallback-font base-font sk_font_is_force_auto_hinting)
+             #:baseline-snap? (font-native-get 'fallback-font base-font sk_font_is_baseline_snap)
              #:embolden? (font-embolden? base-font)))
 
 (define (call-with-choice-shaper who base-shaper fm choice proc)

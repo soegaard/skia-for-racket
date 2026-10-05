@@ -2609,3 +2609,8 @@ offsets are remapped to that logical UTF-8 text. The package does not ship
 a Southeast Asian dictionary or language-specific hyphenator; emergency
 breaking and language/font-specific kashida ranking or `jalt` policy remain
 outside this stage.
+
+## Font controls and glyph queries (0.68b)
+
+See [FONT-QUERIES.md](FONT-QUERIES.md) for the additive font/typeface, glyph
+measurement, batch outline and prefix-fitting APIs, ownership and limitations.
