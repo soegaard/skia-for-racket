@@ -1,0 +1,71 @@
+#lang racket/base
+;; Pure checks shared by the geometry APIs and their native-free tests.
+(require racket/list racket/vector "check.rkt" "filter-util.rkt" "types.rkt"
+         "geometry-util.rkt" "../matrix.rkt")
+(provide geometry-float geometry-positive geometry-nonnegative geometry-matrix
+         geometry-start-index geometry-point-list geometry-conic-parameters
+         geometry-span-range current-path-operation-limit geometry-operation-list)
+(define geometry-float filter-float)
+(define (geometry-positive who v)
+  (define f (geometry-float who v))
+  (unless (> f 0) (raise-argument-error who "positive finite C float after rounding" v))
+  f)
+(define (geometry-nonnegative who v)
+  (define f (geometry-float who v))
+  (unless (>= f 0) (raise-argument-error who "nonnegative finite C float" v))
+  f)
+(define (geometry-matrix who m)
+  (unless (matrix? m) (raise-argument-error who "matrix? (2D affine)" m))
+  ;; Singular affine matrices are meaningful for paths. RRect transform itself
+  ;; reports whether its more restrictive representation can hold the result.
+  (apply make-sk-matrix
+         (map (lambda (v) (geometry-float who v))
+              (list (matrix-xx m) (matrix-xy m) (matrix-x0 m)
+                    (matrix-yx m) (matrix-yy m) (matrix-y0 m) 0 0 1))))
+(define (geometry-start-index who index size)
+  (unless (and (exact-integer? index) (<= 0 index) (< index size))
+    (raise-arguments-error who "start index outside shape's vertex range"
+                           "index" index "vertex count" size))
+  index)
+(define (geometry-point-list who points [expected #f])
+  (define xs (geometry-list who points))
+  (geometry-budget who (length xs) (* 8 (length xs)))
+  (when (and expected (not (= (length xs) expected)))
+    (raise-arguments-error who "wrong point count" "expected" expected "given" (length xs)))
+  (for/list ([p (in-list xs)])
+    (define xy (geometry-list who p))
+    (unless (= 2 (length xy)) (raise-argument-error who "two-element point" p))
+    (map (lambda (v) (geometry-float who v)) xy)))
+(define (geometry-conic-parameters who p0 p1 p2 weight power)
+  ;; Deliberately limit subdivision powers to 0..5; bound the buffer before FFI.
+  (unless (and (exact-integer? power) (<= 0 power 5))
+    (raise-argument-error who "exact integer from 0 through 5" power))
+  (define points (geometry-point-list who (list p0 p1 p2) 3))
+  (define w (geometry-positive who weight))
+  (define capacity (add1 (* 2 (arithmetic-shift 1 power))))
+  (geometry-budget who capacity (* 8 capacity))
+  (values points w capacity))
+(define current-path-operation-limit
+  (make-parameter 4096
+    (lambda (v)
+      (unless (and (exact-integer? v) (<= 1 v #x7fffffff))
+        (raise-argument-error 'current-path-operation-limit "positive int32 operation count" v))
+      v)))
+(define (geometry-operation-list who operations)
+  (define xs (geometry-list who operations))
+  (unless (<= (length xs) (current-path-operation-limit))
+    (raise-arguments-error who "too many path operations"
+                           "count" (length xs) "limit" (current-path-operation-limit)))
+  (geometry-budget who (length xs) (* 16 (length xs)))
+  (for/list ([entry (in-list xs)])
+    (define pair (geometry-list who entry))
+    (unless (= 2 (length pair))
+      (raise-argument-error who "(operation path) pairs" entry))
+    (choice who (car pair) path-op-values)
+    pair))
+(define (geometry-span-range who y left right)
+  (define iy (geometry-int who y))
+  (define il (geometry-int who left))
+  (define ir (geometry-int who right))
+  (unless (<= il ir) (raise-arguments-error who "left must not exceed right" "left" left "right" right))
+  (values iy il ir))

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.67.0 — Geometry completion
+
+- Add checked endpoint/oval/tangent arcs, explicit shape starts, polygon and
+  matrix append, detached recognition, conic conversion and bounded native
+  path-operation batches. Preserve the existing raw/normal snapshot APIs.
+- Add paint scalar queries, explicit SrcOver-fallback blend inspection,
+  dithering, native reset and owned path expansion with a separate fillable flag.
+- Clear paint provenance and GPU child slots only after a successful reset;
+  independently retained children remain associated with their original context.
+- Add sentinel-safe region clipping/spans and sufficient-test quick predicates;
+  add detached native-normalized rounded rectangle operations.
+- Reconcile nine capability groups, adding 55 native declarations. Four low-level
+  iterator/empty-value declarations remain covered through Racket equivalents.
+- Add native-free/native/GPU suites, 14 strictly vector PDF/SVG fixtures and
+  independent document inspection. Add the Geometry completion workflow.
+- Implementation candidate: host/CI Racket and native validation is required.
+
 ## 0.66.0 — Effects and shader composition
 
 - Add native 1D/2D path effects, coverage lookup/gamma/clip masks, shader masks,

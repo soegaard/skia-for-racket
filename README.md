@@ -1,4 +1,13 @@
-# Racket Skia — 0.66.0
+# Racket Skia — 0.67.0
+
+## Geometry completion
+
+[0.67 geometry](docs/GEOMETRY-COMPLETION.md) adds arc authoring, shape recognition,
+ordered path-operation batches, conic conversion, paint inspection/reset and
+geometric stroke expansion, region spans/clipping, and normalized rounded-rectangle
+operations. Existing path snapshots and ownership rules are preserved. New
+PDF/SVG fixtures require actual vector geometry; the GPU gate verifies reset
+clears stale context dependencies. Native host/CI acceptance remains required.
 
 ## Additional effects and shader composition
 

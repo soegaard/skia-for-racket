@@ -39,6 +39,7 @@
     (shader-composition native-expansion    needs-raster         "Composite shader serialization is backend dependent; SVG requires an explicit raster group.")
     (shader-local-matrix native-expansion   needs-raster         "Local shader transforms are not generally preserved by the pinned SVG writer.")
     (runtime-shader needs-raster         needs-raster         "Arbitrary SkSL has no promised PDF/SVG vector representation. Rasterize explicitly.")
+    (dither needs-raster needs-raster "Dithering is a raster quantization request, not a promised vector document representation; rasterize explicitly.")
     (perlin-noise needs-raster needs-raster "Procedural noise requires explicit bounded PDF/SVG rasterization; seed stability is backend-local.")
     (empty-shader needs-raster needs-raster "An empty shader is not a transparent paint color; preserve native behavior inside a bounded raster group.")
     (arithmetic-blender needs-raster needs-raster "Arithmetic blending needs an isolated raster group containing its required backdrop.")

@@ -1,10 +1,12 @@
-# Capability inventory maintenance — 0.66
+# Capability inventory maintenance — 0.67
 
-0.66 updates the expected candidate bindings and public anchors on the 0.65
-base commit. Historical execution evidence stays pinned to its original commit;
-it is not rewritten into new effect-execution evidence. The package and observer
-stage now read 0.66. All eight effect groups are `supported-with-limits` with
-separate acceptance requirements; see [effects](../docs/EFFECTS.md).
+0.67 updates expected bindings and public anchors on the accepted 0.66 baseline.
+Historical execution evidence stays pinned to its original commit; it is not
+rewritten into new geometry-execution evidence. All nine planned 0.67 groups
+are `supported-with-limits`; see [geometry](../docs/GEOMETRY-COMPLETION.md).
+There are 514 distinct bindings (463 CPU), 37 public modules and 46 remaining
+`missing-available-abi` capability groups. These are inventory counts, not a
+percentage of functionality or a claim that new native tests have already passed.
 
 
 This directory is the reviewed input to `tools/api-inventory.py`. It does not
@@ -56,7 +58,7 @@ A change to an anchored public declaration or discovered module must be reviewed
 `validate-api-inventory.py` requires a real complete Git checkout and verifies the
 source manifest before and after. It hashes audited source files and publishes a
 success receipt only after all selected gates pass. Its output is a fresh
-`output/api-inventory-0.65-*` directory. It never silently treats a fragment fixture
+`output/api-inventory-0.67-*` directory. It never silently treats a fragment fixture
 as a complete checkout. Keep the existing full Racket and rendering validators.
 
 ## Exact pinned upstream verification
@@ -130,3 +132,5 @@ observes the installed Linux m119 library on Racket 8.18 and 9.3. Existing four
 rendering/package workflows and their required aggregate are unchanged. This
 fifth workflow must also pass before accepting 0.65; adding it does not modify
 GitHub branch-protection rules.
+
+0.67 adds 55 native declarations across geometry families. Four low-level iterator/empty-value declarations remain unbound with explicit safe Racket equivalents; inventory rows retain that distinction.

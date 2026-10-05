@@ -222,6 +222,13 @@
      (unless (and (owned? h) (eq? (owned-kind h) 'paint) (or (not p) child))
        (error name "untracked paint/child at the safe native ownership boundary"))
      (set-slot/native name h slot (and child (binding child)) thunk)]
+    [(eq? name 'sk_paint_reset)
+     (define h (handle-for (car args)))
+     (unless (and (owned? h) (eq? (owned-kind h) 'paint))
+       (error name "untracked paint at the safe native reset boundary"))
+     (begin0 (thunk)
+       (set-owned-slots! h empty-slots)
+       (install-binding! name h #f))]
     [(eq? name 'sk_paint_set_blendmode)
      (define h (handle-for (car args)))
      (unless (and (owned? h) (eq? (owned-kind h) 'paint))

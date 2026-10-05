@@ -7,7 +7,8 @@
          "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt" "tests/canvas-pure-test.rkt" "tests/geometry-pure-test.rkt" "tests/projective-pure-test.rkt" "tests/picture-pure-test.rkt" "tests/output-group-pure-test.rkt" "tests/portable-pure-test.rkt" "tests/color-filter-pure-test.rkt" "tests/raster-buffer-pure-test.rkt" "tests/gpu-pure-test.rkt" "tests/gpu-surface-pure-test.rkt" "tests/gpu-image-pure-test.rkt" "tests/gpu-metal-pure-test.rkt" "tests/gpu-presenter-pure-test.rkt" "tests/gpu-egl-pure-test.rkt" "tests/gpu-output-pure-test.rkt"
          "tests/gpu-cache-pure-test.rkt" "tests/gpu-performance-pure-test.rkt")
 
-(require "tests/effects-pure-test.rkt"
+(require "tests/geometry-completion-pure-test.rkt"
+         "tests/effects-pure-test.rkt"
          "tests/dc-closure-pure-test.rkt"
          "tests/dc-output-pure-test.rkt"
          "tests/gpu-frame-target-pure-test.rkt"
@@ -17,6 +18,7 @@
          "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
          "tests/gpu-backends-pure-test.rkt" "tests/gpu-interop-pure-test.rkt"
          "tests/gpu-metal-interop-pure-test.rkt" "tests/dc-pure-test.rkt" "tests/dc-compat-pure-test.rkt" "tests/dc-replay-pure-test.rkt" "tests/dc-style-pure-test.rkt")
+(define-runtime-path geometry-completion-native-tests-file "tests/geometry-completion-native-test.rkt")
 (define-runtime-path effects-native-tests-file "tests/effects-native-test.rkt")
 (define-runtime-path dc-closure-native-tests-file "tests/dc-closure-native-test.rkt")
 (define-runtime-path dc-output-native-tests-file "tests/dc-output-native-test.rkt")
@@ -64,7 +66,7 @@
    [("--pure") "Run only tests that do not load libSkiaSharp"
                  (set! pure-only? #t)]
    #:args () (void))
-  (define failures (+ (run-tests effects-pure-tests) (run-tests dc-closure-pure-tests) (run-tests dc-output-pure-tests) (run-tests pure-tests) (run-tests lifetime-tests)
+  (define failures (+ (run-tests geometry-completion-pure-tests) (run-tests effects-pure-tests) (run-tests dc-closure-pure-tests) (run-tests dc-output-pure-tests) (run-tests pure-tests) (run-tests lifetime-tests)
                       (run-tests gpu-frame-target-pure-tests)
                       (run-tests render-canvas-pure-tests)
                       (run-tests canvas-dc-pure-tests)
@@ -81,7 +83,8 @@
      ;; A missing/incompatible library is a failure, not a silently skipped test.
      (skia-check!)
      (set! failures
-           (+ failures (run-tests (dynamic-require effects-native-tests-file 'effects-native-tests))
+           (+ failures (run-tests (dynamic-require geometry-completion-native-tests-file 'geometry-completion-native-tests))
+              (run-tests (dynamic-require effects-native-tests-file 'effects-native-tests))
               (run-tests (dynamic-require dc-closure-native-tests-file 'dc-closure-native-tests))
               (run-tests (dynamic-require dc-output-native-tests-file 'dc-output-native-tests))
               (run-tests (dynamic-require native-tests-file 'native-tests))

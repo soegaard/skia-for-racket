@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "763b8cbb9b8308a99d52dfb7e47693769b027e51",
+  "baseline_commit": "91db8bdac2431588806e128914698c354c65b260",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -679,13 +679,23 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_path_add_arc",
+        "sk_path_arc_to",
+        "sk_path_arc_to_with_oval",
+        "sk_path_arc_to_with_points",
+        "sk_path_rarc_to"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paths.arc-authoring",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Finite nonnegative radii, explicit large-arc/direction choices, and degrees; zero radii retain native degenerate behavior. Relative endpoints are checked after C-float rounding.",
       "managed_sources": [
         "binding/SkiaSharp/SKPath.cs"
       ],
@@ -697,27 +707,57 @@
         "sk_path_rarc_to"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "path-arc-to!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-rarc-to!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-arc-to-oval!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-tangent-arc-to!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-add-arc!"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Arc-to and add-arc variants",
-      "unbound_declarations": [
-        "sk_path_add_arc",
-        "sk_path_arc_to",
-        "sk_path_arc_to_with_oval",
-        "sk_path_arc_to_with_points",
-        "sk_path_rarc_to"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_path_is_line",
+        "sk_path_is_oval",
+        "sk_path_is_rect",
+        "sk_path_is_rrect"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paths.recognition",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Native representation recognition, not symbolic geometric equivalence. Failure returns #f. Rectangles include closed/direction metadata; all results are detached.",
       "managed_sources": [
         "binding/SkiaSharp/SKPath.cs"
       ],
@@ -728,26 +768,53 @@
         "sk_path_is_rrect"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "path-as-line"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-as-oval"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-as-rectangle"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-as-rounded-rect"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Line/rect/oval/rounded-rect recognition",
-      "unbound_declarations": [
-        "sk_path_is_line",
-        "sk_path_is_oval",
-        "sk_path_is_rect",
-        "sk_path_is_rrect"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_opbuilder_add",
+        "sk_opbuilder_destroy",
+        "sk_opbuilder_new",
+        "sk_opbuilder_resolve"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paths.operation-builder",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "One synchronous ordered batch from an empty accumulator. Inputs remain live/unchanged; operation count and copied control payload are bounded, not a promise about total native memory or algorithmic complexity. Failure returns no partial path.",
       "managed_sources": [
         "binding/SkiaSharp/SKPath.cs"
       ],
@@ -758,26 +825,42 @@
         "sk_opbuilder_resolve"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "path-combine"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "current-path-operation-limit"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Bounded multi-operation path builder",
-      "unbound_declarations": [
-        "sk_opbuilder_add",
-        "sk_opbuilder_destroy",
-        "sk_opbuilder_new",
-        "sk_opbuilder_resolve"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_path_convert_conic_to_quads"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paths.conics",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Positive finite weight and subdivision exponent 0..5. Returns detached quadratic triples using the actual native count; not a user-space approximation or an adaptive error-tolerance API.",
       "managed_sources": [
         "binding/SkiaSharp/SKPath.cs"
       ],
@@ -785,23 +868,44 @@
         "sk_path_convert_conic_to_quads"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "conic->quadratics"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Conic-to-quadratics conversion helper",
-      "unbound_declarations": [
-        "sk_path_convert_conic_to_quads"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_path_add_path_matrix",
+        "sk_path_add_poly",
+        "sk_path_add_rect_start",
+        "sk_path_add_rrect_start",
+        "sk_path_get_segment_masks",
+        "sk_path_rewind",
+        "sk_pathop_tight_bounds"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paths.remaining-convenience",
-      "implementation_files": [],
-      "limitations": "Some geometry can already be composed from existing operations. Native convenience/memory behavior is not promised.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Additive authoring names preserve existing APIs. Existing raw path snapshots provide replayable/peekable sequences and existing path-contours reports closure; no live raw iterator is exposed. Path-ops tight bounds is distinct from control-point bounds.",
       "managed_sources": [
         "binding/SkiaSharp/SKPath.cs"
       ],
@@ -817,26 +921,64 @@
         "sk_pathop_tight_bounds"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "path-add-rect-start!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-add-rrect!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-add-polygon!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-add-transformed!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-rewind!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-verbs"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-segment-kinds"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "path-fill-bounds"
+        },
+        {
+          "module": "main.rkt",
+          "name": "path-contours"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Additional shape starts, matrix-add and storage/query helpers",
       "unbound_declarations": [
-        "sk_path_add_path_matrix",
-        "sk_path_add_poly",
-        "sk_path_add_rect_start",
-        "sk_path_add_rrect_start",
-        "sk_path_get_segment_masks",
         "sk_path_iter_is_closed_contour",
-        "sk_path_rawiter_peek",
-        "sk_path_rewind",
-        "sk_pathop_tight_bounds"
+        "sk_path_rawiter_peek"
       ]
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
-      "bindings_expected": [],
+      "bindings_expected": [
+        "sk_path_count_verbs"
+      ],
       "document_behavior": "Not a drawing operation.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paths.point-snapshots",
@@ -870,7 +1012,6 @@
       ],
       "title": "Point and verb snapshots without raw iterator lifetime",
       "unbound_declarations": [
-        "sk_path_count_verbs",
         "sk_path_get_points"
       ]
     },
@@ -1264,18 +1405,19 @@
       ]
     },
     {
-      "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
       "bindings_expected": [
         "sk_paint_get_fill_path"
       ],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paint.fill-query",
       "implementation_files": [
-        "private/dc-path-bounds.rkt",
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
         "private/native.rkt"
       ],
-      "limitations": "Bound and used internally; no standalone general public paint-to-path operation.",
+      "limitations": "Returns two values: owned path and fillable?; false preserves a valid hairline result. Stroke/path effects are baked, not shader/color/image/mask-filter/blend state. Matrix controls precision and does not transform output coordinates.",
       "managed_sources": [
         "binding/SkiaSharp/SKPaint.cs"
       ],
@@ -1283,23 +1425,49 @@
         "sk_paint_get_fill_path"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "bound-not-public",
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "paint->fill-path"
+        }
+      ],
+      "status": "supported-with-limits",
       "test_sources": [
-        "tests/dc-style-native-test.rkt"
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
       ],
       "title": "Native paint-to-fill-path query exposed only through DC internals",
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_paint_get_blendmode",
+        "sk_paint_get_stroke_cap",
+        "sk_paint_get_stroke_join",
+        "sk_paint_get_stroke_miter",
+        "sk_paint_get_stroke_width",
+        "sk_paint_is_antialias",
+        "sk_paint_is_dither",
+        "sk_paint_reset",
+        "sk_paint_set_dither"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paint.introspection",
-      "implementation_files": [],
-      "limitations": "Review optional getters/reset against existing immutable metadata and recreation before adding APIs.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "Reset means native SkPaint defaults, not wrapper constructor defaults; child provenance and GPU-affinity slots clear only after native success. Blend getter explicitly falls back to SrcOver for custom blenders. Dither has conservative document policy.",
       "managed_sources": [
         "binding/SkiaSharp/SKPaint.cs"
       ],
@@ -1315,22 +1483,59 @@
         "sk_paint_set_dither"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "paint-style"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-stroke-width"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-cap"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-join"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-miter-limit"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-antialias?"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-dither?"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-set-dither!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-reset!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "paint-blend-mode-or-src-over"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Additional paint getters, reset and dithering",
-      "unbound_declarations": [
-        "sk_paint_get_blendmode",
-        "sk_paint_get_stroke_cap",
-        "sk_paint_get_stroke_join",
-        "sk_paint_get_stroke_miter",
-        "sk_paint_get_stroke_width",
-        "sk_paint_is_antialias",
-        "sk_paint_is_dither",
-        "sk_paint_reset",
-        "sk_paint_set_dither"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -3889,13 +4094,33 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_region_cliperator_delete",
+        "sk_region_cliperator_done",
+        "sk_region_cliperator_new",
+        "sk_region_cliperator_next",
+        "sk_region_cliperator_rect",
+        "sk_region_intersects_rect",
+        "sk_region_op_rect",
+        "sk_region_quick_contains",
+        "sk_region_quick_reject",
+        "sk_region_quick_reject_rect",
+        "sk_region_set_empty",
+        "sk_region_set_rect",
+        "sk_region_spanerator_delete",
+        "sk_region_spanerator_new",
+        "sk_region_spanerator_next"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "geometry.regions-extra",
-      "implementation_files": [],
-      "limitations": "Existing region rectangles and boolean ops cover common work; optimized native iterator behavior remains absent.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Half-open integer coordinates keep the existing sentinel-safe range. Native iterators are temporary; copied sequences can be traversed repeatedly instead of exposing rewind. Quick predicates are sufficient tests, not exact converses. Empty boolean result is not allocation failure.",
       "managed_sources": [
         "binding/SkiaSharp/SKRegion.cs"
       ],
@@ -3918,28 +4143,68 @@
         "sk_region_spanerator_next"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "region-spans"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "in-region-spans"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-clipped-rectangles"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "in-region-clipped-rectangles"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-intersects-rect?"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-quick-contains-rect?"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-quick-reject-rect?"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-quick-reject?"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-clear!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-set-rect!"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "region-op-rect"
+        },
+        {
+          "module": "main.rkt",
+          "name": "in-region-rectangles"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Region spans, clipped iteration and remaining queries",
       "unbound_declarations": [
-        "sk_region_cliperator_delete",
-        "sk_region_cliperator_done",
-        "sk_region_cliperator_new",
-        "sk_region_cliperator_next",
-        "sk_region_cliperator_rect",
-        "sk_region_intersects_rect",
-        "sk_region_iterator_rewind",
-        "sk_region_op_rect",
-        "sk_region_quick_contains",
-        "sk_region_quick_reject",
-        "sk_region_quick_reject_rect",
-        "sk_region_set_empty",
-        "sk_region_set_rect",
-        "sk_region_spanerator_delete",
-        "sk_region_spanerator_new",
-        "sk_region_spanerator_next"
+        "sk_region_iterator_rewind"
       ]
     },
     {
@@ -4021,7 +4286,11 @@
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
-      "bindings_expected": [],
+      "bindings_expected": [
+        "sk_rrect_get_radii",
+        "sk_rrect_get_rect",
+        "sk_rrect_is_valid"
+      ],
       "document_behavior": "Not a drawing operation.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "geometry.rrect-values",
@@ -4066,10 +4335,7 @@
       "title": "Rounded-rectangle scalar inspection and value constructors",
       "unbound_declarations": [
         "sk_rrect_get_height",
-        "sk_rrect_get_radii",
-        "sk_rrect_get_rect",
         "sk_rrect_get_width",
-        "sk_rrect_is_valid",
         "sk_rrect_new_copy",
         "sk_rrect_set_oval",
         "sk_rrect_set_rect",
@@ -4077,13 +4343,24 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.",
+      "bindings_expected": [
+        "sk_rrect_get_type",
+        "sk_rrect_inset",
+        "sk_rrect_offset",
+        "sk_rrect_outset",
+        "sk_rrect_set_nine_patch",
+        "sk_rrect_transform"
+      ],
+      "document_behavior": "Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "geometry.rrect-extra",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "geometry.rkt",
+        "private/geometry-completion-util.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Immutable rounded-rectangle specs remain the public model. New results copy native-normalized radii. Unsupported transforms return #f; shear is not silently approximated. Pure empty construction replaces native setEmpty. Native RRect layout is never exposed.",
       "managed_sources": [
         "binding/SkiaSharp/SKRoundRect.cs"
       ],
@@ -4097,19 +4374,52 @@
         "sk_rrect_transform"
       ],
       "origin": "m119",
-      "planned_stage": "0.67",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "geometry.rkt",
+          "name": "make-empty-rounded-rect"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "make-nine-patch-rounded-rect"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "rounded-rect-normalize"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "rounded-rect-type"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "rounded-rect-inset"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "rounded-rect-outset"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "rounded-rect-offset"
+        },
+        {
+          "module": "geometry.rkt",
+          "name": "rounded-rect-transform"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/geometry-completion-pure-test.rkt",
+        "tests/geometry-completion-native-test.rkt",
+        "tests/geometry-completion-gpu-test.rkt",
+        "tools/geometry-completion-doctor.rkt",
+        "tools/test-geometry-completion.py"
+      ],
       "title": "Rounded-rectangle transform, inset/outset and specialized shape cases",
       "unbound_declarations": [
-        "sk_rrect_get_type",
-        "sk_rrect_inset",
-        "sk_rrect_offset",
-        "sk_rrect_outset",
-        "sk_rrect_set_empty",
-        "sk_rrect_set_nine_patch",
-        "sk_rrect_transform"
+        "sk_rrect_set_empty"
       ]
     },
     {
@@ -6301,6 +6611,7 @@
     "dc.rkt",
     "effects.rkt",
     "geometry-primitives.rkt",
+    "geometry.rkt",
     "gpu-canvas.rkt",
     "gpu-dc.rkt",
     "gpu-egl.rkt",
@@ -6329,5 +6640,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.66"
+  "stage": "0.67"
 }

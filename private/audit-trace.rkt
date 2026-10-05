@@ -278,6 +278,12 @@
     [(eq? name 'sk_blender_new_mode)
      (define a (allocating))
      (when a (set-box! (allocation-special a) (if (= (car args) 3) '() '(blend-mode))))]
+    [(eq? name 'sk_paint_set_dither)
+     (define h (handle-for (car args)))
+     (when h (put-slot! h 'dither (if (cadr args) '(dither) '())))]
+    [(eq? name 'sk_paint_reset)
+     (define h (handle-for (car args)))
+     (when h (hash-set! resources h (provenance 'paint '() empty-slots)))]
     [(eq? name 'sk_path_set_filltype)
      (define h (handle-for (car args)))
      (when h (hash-set! resources h
