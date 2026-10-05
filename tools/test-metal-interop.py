@@ -270,7 +270,7 @@ class Source(unittest.TestCase):
 
 class Integration(unittest.TestCase):
     def test_version_pin_and_registry(self):
-        self.assertIn('(define version "0.65")',(ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.66")',(ROOT/'info.rkt').read_text())
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
         data=json.loads((ROOT/'private/gpu-backends.json').read_text())
         self.assertTrue(all(b['features']['external_resource_interop'] for b in data['backends']))

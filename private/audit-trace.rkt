@@ -68,7 +68,9 @@
        [(make-color-shader) '(solid-shader)]
        [(make-image-shader) '(image-shader)]
        [(make-picture-shader) '(picture-shader)]
-       [(make-blend-shader) '(shader-composition)]
+       [(make-blend-shader make-blender-shader shader-with-color-filter) '(shader-composition)]
+       [(make-fractal-noise-shader make-turbulence-shader) '(perlin-noise)]
+       [(make-empty-shader) '(empty-shader)]
        [(shader-with-local-matrix) '(shader-local-matrix)]
        [(runtime-effect->shader) '(runtime-shader)]
        [else '(unknown-resource)])]
@@ -76,7 +78,11 @@
                         '(runtime-color-filter) '(color-filter))]
     [(image-filter) '(image-filter)] [(mask-filter) '(mask-filter)]
     [(path-effect) (if (eq? who 'make-dash-path-effect) '(dash-effect) '(path-effect))]
-    [(blender) (if (eq? who 'make-blend-mode-blender) '(blend-mode) '(runtime-blender))]
+    [(blender)
+     (case who
+       [(make-blend-mode-blender) '(blend-mode)]
+       [(make-arithmetic-blender) '(arithmetic-blender)]
+       [else '(runtime-blender)])]
     [(image raster-image) '(image)]
     [(picture) (if (memq who '(picture-from-bytes picture-from-file))
                    '(picture deserialized-picture) '(picture))]

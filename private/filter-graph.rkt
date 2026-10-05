@@ -177,12 +177,17 @@
   (define cr (optional-filter-crop who crop))
   (graph-filter who (list sh) (lambda (sp) (sk_imagefilter_new_shader sp dither? cr))))
 
-(define (make-picture-image-filter picture #:crop [crop #f])
+(define (make-picture-image-filter picture #:target [target #f] #:crop [crop #f])
   (define who 'make-picture-image-filter)
   (define ph (picture-h who picture))
+  (define tr (and target (filter-rectangle who target #:positive? #t)))
   (define cr (optional-filter-crop who crop))
   (graph-filter who (list ph)
-    (lambda (pp) (crop-result who cr (lambda () (sk_imagefilter_new_picture pp))))))
+    (lambda (pp)
+      (crop-result who cr
+        (lambda ()
+          (if tr (sk_imagefilter_new_picture_with_rect pp tr)
+              (sk_imagefilter_new_picture pp)))))))
 
 (define (make-tile-image-filter source destination #:input [input #f] #:crop [crop #f])
   (define who 'make-tile-image-filter)

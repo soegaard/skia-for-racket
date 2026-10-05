@@ -50,7 +50,7 @@
       (and (not (eq? f 'annotation)) (eq? (status 'raster f) 'discarded))))
   ;; Groups have no access to the receiving backdrop. Any potentially
   ;; destination-dependent operation uses a transparent isolated surface.
-  (define isolation? (ormap (lambda (f) (memq f '(source-replace blend-mode runtime-blender))) features))
+  (define isolation? (ormap (lambda (f) (memq f '(source-replace blend-mode runtime-blender arithmetic-blender))) features))
   (define native-ok?
     (and (not isolation?)
          (or (eq? backend 'raster)

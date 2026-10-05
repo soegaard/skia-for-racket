@@ -1,4 +1,11 @@
-# Capability inventory maintenance — 0.65
+# Capability inventory maintenance — 0.66
+
+0.66 updates the expected candidate bindings and public anchors on the 0.65
+base commit. Historical execution evidence stays pinned to its original commit;
+it is not rewritten into new effect-execution evidence. The package and observer
+stage now read 0.66. All eight effect groups are `supported-with-limits` with
+separate acceptance requirements; see [effects](../docs/EFFECTS.md).
+
 
 This directory is the reviewed input to `tools/api-inventory.py`. It does not
 initialize a renderer or replace the runtime API. The user's private/local

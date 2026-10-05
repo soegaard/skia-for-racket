@@ -1,4 +1,12 @@
-# Racket Skia — 0.65.0
+# Racket Skia — 0.66.0
+
+## Additional effects and shader composition
+
+[0.66 effects](docs/EFFECTS.md) adds path stamping, coverage/shader masks,
+Perlin shaders, arithmetic/custom-blender composition and explicit picture-filter
+target bounds. GPU-dependent masks retain context affinity; document fallback
+remains explicit and bounded. The capability inventory is reconciled with the
+new factories. Native acceptance is required before adopting this candidate.
 
 ## Pinned capability inventory and additive API decisions
 

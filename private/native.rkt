@@ -28,6 +28,23 @@
 (define-native sk_version_get_milestone (_fun -> _int))
 (define-native sk_version_get_increment (_fun -> _int))
 
+;; 0.66 m119 factories. Inputs are copied or synchronously ref-counted.
+(define-native sk_path_effect_create_1d_path (_fun _pointer _float _float _int -> _pointer))
+(define-native sk_path_effect_create_2d_line (_fun _float _pointer -> _pointer))
+(define-native sk_path_effect_create_2d_path (_fun _pointer _pointer -> _pointer))
+(define-native sk_maskfilter_new_table (_fun _bytes -> _pointer))
+(define-native sk_maskfilter_new_gamma (_fun _float -> _pointer))
+(define-native sk_maskfilter_new_clip (_fun _uint8 _uint8 -> _pointer))
+(define-native sk_maskfilter_new_shader (_fun _pointer -> _pointer))
+(define-native sk_shader_new_perlin_noise_fractal_noise (_fun _float _float _int _float _pointer -> _pointer))
+(define-native sk_shader_new_perlin_noise_turbulence (_fun _float _float _int _float _pointer -> _pointer))
+(define-native sk_shader_new_empty (_fun  -> _pointer))
+(define-native sk_shader_with_color_filter (_fun _pointer _pointer -> _pointer))
+(define-native sk_shader_new_blender (_fun _pointer _pointer _pointer -> _pointer))
+(define-native sk_blender_new_arithmetic (_fun _float _float _float _float _stdbool -> _pointer))
+(define-native sk_imagefilter_new_blender (_fun _pointer _pointer _pointer _pointer -> _pointer))
+(define-native sk_imagefilter_new_picture_with_rect (_fun _pointer _pointer -> _pointer))
+
 ;; Structured geometry. Vertex arrays are copied by Skia. Lattice/atlas/patch
 ;; arrays remain alive for the complete synchronous canvas call.
 (define-native sk_region_new (_fun -> _pointer))

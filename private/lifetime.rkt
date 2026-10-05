@@ -55,7 +55,12 @@
     path-measure codec encoded-data native-string data raster-buffer pixmap
     runtime-uniform-data runtime-name sksl-source sksl-diagnostic rtree-factory))
 (define (collect! a handles)
-  (unless (memq (allocation-kind a) independent-kinds)
+  ;; Only shader masks (and retained mask getters) can inherit GPU content.
+  ;; Plain blur/table masks remain independent even in an ambient GPU scope.
+  (unless (and (memq (allocation-kind a) independent-kinds)
+               (not (and (eq? (allocation-kind a) 'mask-filter)
+                         (memq (allocation-who a)
+                               '(make-shader-mask-filter paint-mask-filter)))))
     (for ([h (in-list handles)])
       ;; Destination surfaces are not dependencies of objects created while
       ;; drawing; their textures are exposed only by explicit snapshot APIs.

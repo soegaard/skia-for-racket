@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "9d832d3ec9a8fe6b93298d6ac03783ee57ab7f36",
+  "baseline_commit": "763b8cbb9b8308a99d52dfb7e47693769b027e51",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -1137,13 +1137,24 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_path_effect_create_1d_path",
+        "sk_path_effect_create_2d_line",
+        "sk_path_effect_create_2d_path"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "paths.stamping-effects",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds.",
       "managed_sources": [
         "binding/SkiaSharp/SKPathEffect.cs"
       ],
@@ -1153,16 +1164,31 @@
         "sk_path_effect_create_2d_path"
       ],
       "origin": "m119",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "effects.rkt",
+          "name": "make-1d-path-effect"
+        },
+        {
+          "module": "effects.rkt",
+          "name": "make-2d-line-path-effect"
+        },
+        {
+          "module": "effects.rkt",
+          "name": "make-2d-path-effect"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "1D path and 2D line/path effects",
-      "unbound_declarations": [
-        "sk_path_effect_create_1d_path",
-        "sk_path_effect_create_2d_line",
-        "sk_path_effect_create_2d_path"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -1431,13 +1457,23 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_shader_new_perlin_noise_fractal_noise",
+        "sk_shader_new_perlin_noise_turbulence"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "shaders.noise",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds.",
       "managed_sources": [
         "binding/SkiaSharp/SKShader.cs"
       ],
@@ -1446,24 +1482,47 @@
         "sk_shader_new_perlin_noise_turbulence"
       ],
       "origin": "m119",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "effects.rkt",
+          "name": "make-fractal-noise-shader"
+        },
+        {
+          "module": "effects.rkt",
+          "name": "make-turbulence-shader"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "Perlin fractal noise and turbulence",
-      "unbound_declarations": [
-        "sk_shader_new_perlin_noise_fractal_noise",
-        "sk_shader_new_perlin_noise_turbulence"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_shader_new_blender",
+        "sk_shader_new_empty",
+        "sk_shader_with_color_filter"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "shaders.composition",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds.",
       "managed_sources": [
         "binding/SkiaSharp/SKShader.cs"
       ],
@@ -1473,16 +1532,31 @@
         "sk_shader_with_color_filter"
       ],
       "origin": "m119",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "effects.rkt",
+          "name": "make-empty-shader"
+        },
+        {
+          "module": "effects.rkt",
+          "name": "shader-with-color-filter"
+        },
+        {
+          "module": "effects.rkt",
+          "name": "make-blender-shader"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "Empty shader, color-filter wrapping and custom blender composition",
-      "unbound_declarations": [
-        "sk_shader_new_blender",
-        "sk_shader_new_empty",
-        "sk_shader_with_color_filter"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -1535,13 +1609,22 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_blender_new_arithmetic"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "blenders.arithmetic",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds.",
       "managed_sources": [
         "binding/SkiaSharp/SKBlender.cs"
       ],
@@ -1549,14 +1632,23 @@
         "sk_blender_new_arithmetic"
       ],
       "origin": "m119",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "effects.rkt",
+          "name": "make-arithmetic-blender"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "Arithmetic blender",
-      "unbound_declarations": [
-        "sk_blender_new_arithmetic"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -1652,13 +1744,24 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_maskfilter_new_clip",
+        "sk_maskfilter_new_gamma",
+        "sk_maskfilter_new_table"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "filters.mask-extra",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds.",
       "managed_sources": [
         "binding/SkiaSharp/SKMaskFilter.cs"
       ],
@@ -1668,38 +1771,71 @@
         "sk_maskfilter_new_table"
       ],
       "origin": "m119",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "effects.rkt",
+          "name": "make-table-mask-filter"
+        },
+        {
+          "module": "effects.rkt",
+          "name": "make-gamma-mask-filter"
+        },
+        {
+          "module": "effects.rkt",
+          "name": "make-clip-mask-filter"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "Gamma, clip and lookup-table mask filters",
-      "unbound_declarations": [
-        "sk_maskfilter_new_clip",
-        "sk_maskfilter_new_gamma",
-        "sk_maskfilter_new_table"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_maskfilter_new_shader"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "filters.shader-mask",
-      "implementation_files": [],
-      "limitations": "Present in the pinned C API, not a factory in the pinned managed SKMaskFilter class.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds. C-shim-only API, not a managed SkiaSharp mask factory. Shader and retained paint-mask getters inherit GPU context affinity.",
       "managed_sources": [],
       "native_symbols": [
         "sk_maskfilter_new_shader"
       ],
       "origin": "c-shim-only",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "effects.rkt",
+          "name": "make-shader-mask-filter"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "Shader-based mask filtering (C shim extension)",
-      "unbound_declarations": [
-        "sk_maskfilter_new_shader"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -1768,13 +1904,22 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_imagefilter_new_blender"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "filters.custom-blender",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds.",
       "managed_sources": [
         "binding/SkiaSharp/SKImageFilter.cs"
       ],
@@ -1782,23 +1927,42 @@
         "sk_imagefilter_new_blender"
       ],
       "origin": "m119",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "effects.rkt",
+          "name": "make-blender-image-filter"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "Image-filter composition with a custom blender",
-      "unbound_declarations": [
-        "sk_imagefilter_new_blender"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU raster and selected OpenGL/Metal/Direct3D GPU tests provided; no cross-backend bitwise noise equality or physical display claim.",
+      "bindings_expected": [
+        "sk_imagefilter_new_picture_with_rect"
+      ],
+      "document_behavior": "Conservative audited bounded raster fallback for these effects; require-vector rejects incompatible groups. Needed backdrop must be inside the group; annotations remain outside.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "filters.picture-crop",
-      "implementation_files": [],
-      "limitations": "Existing picture source plus explicit crop can cover some uses; dedicated factory must define cull/crop semantics.",
+      "implementation_files": [
+        "effects.rkt",
+        "private/effects-util.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/audit-trace.rkt",
+        "output-policy.rkt",
+        "private/filter-graph.rkt"
+      ],
+      "limitations": "0.66 implementation candidate; runtime acceptance is separate. Checked finite C-float arguments; existing owner-thread, close and GPU-affinity rules apply. Wrapper payload limits are not total native-heap bounds. #:target clips in picture coordinates together with the cull rect; it does not scale the picture. #:crop remains independent.",
       "managed_sources": [
         "binding/SkiaSharp/SKImageFilter.cs"
       ],
@@ -1806,14 +1970,23 @@
         "sk_imagefilter_new_picture_with_rect"
       ],
       "origin": "m119",
-      "planned_stage": "0.66",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "main.rkt",
+          "name": "make-picture-image-filter"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/effects-pure-test.rkt",
+        "tests/effects-native-test.rkt",
+        "tests/effects-gpu-test.rkt",
+        "tests/effects-fixtures.rkt",
+        "tools/test-effects.py"
+      ],
       "title": "Picture-source filter with explicit native crop rectangle",
-      "unbound_declarations": [
-        "sk_imagefilter_new_picture_with_rect"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -6126,6 +6299,7 @@
     "color.rkt",
     "dc-output.rkt",
     "dc.rkt",
+    "effects.rkt",
     "geometry-primitives.rkt",
     "gpu-canvas.rkt",
     "gpu-dc.rkt",
@@ -6155,5 +6329,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.65"
+  "stage": "0.66"
 }

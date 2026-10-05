@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.66.0 — Effects and shader composition
+
+- Add native 1D/2D path effects, coverage lookup/gamma/clip masks, shader masks,
+  Perlin noise, empty/filter-wrapped/composed shaders, arithmetic blenders,
+  custom-blender image filters, and picture-filter target bounds.
+- Preserve GPU affinity through shader masks and retained paint-mask getters;
+  leave ordinary masks independent of ambient GPU resources.
+- Integrate provenance and conservative bounded PDF/SVG fallback policies.
+- Reconcile all eight 0.66 capability families and 15 additional native symbols.
+- Add pure/native/GPU tests, 32-document acceptance, independent renderer checks,
+  an example, and the selected Linux/Windows Effects workflow.
+- Rebuilt delivery candidate; actual Racket/native host and CI validation required.
+
 ## 0.65.0 — Pinned capability inventory and API decisions
 
 - Add reviewed capability-family/C-declaration dispositions, managed-source

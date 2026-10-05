@@ -2,6 +2,11 @@
 (require "gpu-domain.rkt") ; pure lifecycle code; no GPU/GUI/native initialization
 (require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt"
          "annotation-util.rkt" "audit-trace.rkt")
+;; Private bridge for additive effects; no public native handles.
+(module* effects-internals #f
+  (provide path-h shader-h color-filter-h new-shader new-path-effect
+           new-mask-filter new-image-filter optional-image-filter-h
+           call-with-native-temporary))
 ;; Private ownership bridge, not re-exported by main.rkt or annotations.rkt.
 (module* annotation-internals #f
   (provide call-on-canvas canvas-owner pdf-page? pdf-page-document
