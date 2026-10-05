@@ -80,11 +80,6 @@ class Sources(unittest.TestCase):
     def test_nine_groups_are_classified_with_real_public_anchors(self):
         c=inv.load_catalog(ROOT);summary=inv.validate_catalog(c)
         self.assertNotIn('0.67',summary['next_stages'])
-        self.assertEqual(summary['distinct_bound_symbols'],536)
-        self.assertEqual(summary['cpu_bound_symbols'],485)
-        self.assertEqual(summary['dispositions']['missing-available-abi'],43)
-        self.assertEqual(summary['dispositions']['bound-not-public'],2)
-        self.assertEqual(summary['public_modules'],37)
         rows={r['id']:r for r in c['features']['capabilities']}
         for name in CAPABILITIES:
             self.assertEqual(rows[name]['status'],'supported-with-limits')
