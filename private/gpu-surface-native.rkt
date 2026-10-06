@@ -106,7 +106,9 @@
                 (and (backend-target-valid?/native ptr)
                      (= width (target-width/native ptr)) (= height (target-height/native ptr))
                      (= 0 (target-backend/native ptr))
-                     (= (target-samples/native ptr) (list-ref args 2))
+                     ;; GrBackendRenderTarget reports at least one sample even
+                     ;; when GL's single-sample framebuffer is described with 0.
+                     (= (target-samples/native ptr) (max 1 (list-ref args 2)))
                      (= (target-stencils/native ptr) (list-ref args 3))
                      (same-gl-info? name target-gl-info/native ptr (list-ref args 4) 2))
                 (and (texture-valid?/native ptr)

@@ -54,9 +54,14 @@ that diagnostic still uses a Racket GL window and is not a Metal presenter.
                   #:budgeted? [budgeted? #t])
 (gpu-surface? value)
 (gpu-surface-info surface)
+(gpu-surface-format-info gpu color-type)
+(gpu-surface->image-info surface)
 (surface-backend surface)
 (canvas-execution-backend canvas)
 ```
+
+0.73 adds typed GPU formats and detached surface-property metadata. The full
+format/property contract is in [GPU-FORMATS.md](GPU-FORMATS.md).
 
 Construction requires the matching active `call-with-gpu-context` scope. The
 result is both `gpu-surface?` and `surface?`, and an ordinary `skia-resource?`.
@@ -70,15 +75,19 @@ limit and this context's reported maximum render-target size. The RGBA-sized
 allocation/readback budget is checked against `current-skia-byte-limit`.
 This is not a bound on total driver, Skia cache, MSAA or VRAM memory.
 
-Storage is RGBA8888, premultiplied alpha by default. `#:opaque? #t` requests an
-opaque target and requires an opaque background; it does not preserve meaningful
-alpha after arbitrary drawing. Background pixels are initialized explicitly.
-`#:color-space` is an optional live color space, retained independently of its
-original wrapper. Without it the target is untagged. The canvas remains top-left,
-y-down. No floating-point/HDR target or automatic Metal selection is exposed.
+RGBA8888 with premultiplied alpha remains the default. 0.73 additionally supports
+the reviewed typed GPU targets described in [GPU-FORMATS.md](GPU-FORMATS.md),
+including F16/F32 where the active backend reports and successfully allocates
+them. `#:opaque? #t` requests an opaque target and requires an opaque background;
+it does not preserve meaningful alpha after arbitrary drawing. Background pixels
+are initialized explicitly. `#:color-space` is an optional live color space,
+retained independently of its original wrapper. Without it the target is
+untagged. The canvas remains top-left, y-down. Float offscreen storage is not an
+HDR-window-presentation claim.
 
 `#:sample-count` is an exact integer from 0 through 64 and must not exceed the
-native RGBA capability. Skia can round a request to a supported sample count.
+native capability for the requested color type. Skia can round a request to a
+supported sample count.
 For a Skia-owned offscreen target this C ABI has no actual-sample-count getter;
 `gpu-surface-info` therefore reports `actual_sample_count` as `#f`, not as a
 fabricated zero or the requested value. A request above the capability fails;
@@ -147,6 +156,9 @@ Racket callback is passed to a native render worker.
 ## Explicit CPU readback
 
 ```racket
+(gpu-surface-read-pixmap! surface destination-pixmap)
+(gpu-surface->raster-buffer surface #:info [info #f] #:row-bytes [row-bytes #f])
+
 (gpu-surface->rgba-bytes surface
                          #:premultiplied? [premultiplied? #f]
                          #:color-space [destination-space #f])
@@ -154,7 +166,12 @@ Racket callback is passed to a native render worker.
 (gpu-surface-read-raster-buffer! surface buffer)
 ```
 
-All three require a live active surface and a balanced native save/layer stack.
+The 0.73 typed entry points preserve the selected GPU format by default or perform
+an explicitly requested destination conversion. Their transactional staging,
+float and padding rules are documented in [GPU-FORMATS.md](GPU-FORMATS.md).
+
+All readback operations require a live active surface and a balanced native
+save/layer stack.
 Finish any `with-canvas-state`/layer scope before reading. Readback flushes and
 waits for completion; it is not an asynchronous transfer. Source dimensions and
 `current-skia-byte-limit` are checked before allocating output staging.

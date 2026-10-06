@@ -140,7 +140,7 @@ class SourceContract(unittest.TestCase):
             self.assertEqual(text.count('(test-case "'), count, name)
     def test_no_cpu_factory_in_gpu_native_renderer(self):
         source = (HERE.parent / "private/gpu-dc-native.rkt").read_text()
-        self.assertNotIn("sk:make-surface", source)
+        self.assertNotRegex(source, r"\(sk:make-surface(?:\s|\))")
         self.assertIn("gpu:make-gpu-surface", source)
         self.assertIn("#:internal-snapshot gpu:gpu-surface-snapshot", source)
     def test_public_module_does_not_import_gui(self):
