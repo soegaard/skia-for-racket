@@ -88,6 +88,9 @@ ordinary temporary CPU allocations may already have occurred.
 ## Explicit CPU transfers
 
 ```racket
+(gpu-image->raster-buffer image
+                          #:info [destination-info #f]
+                          #:row-bytes [row-bytes #f])
 (gpu-image->rgba-bytes image
                        #:premultiplied? [premultiplied? #f]
                        #:color-space [color-space-or-false #f])
@@ -96,7 +99,14 @@ ordinary temporary CPU allocations may already have occurred.
 ```
 
 These operations require the owning activation and perform a synchronous
-transfer. Returned bytes do not alias Skia memory. The CPU `image?` returned by
+transfer. The 0.73 `gpu-image->raster-buffer` path preserves the image's selected
+integer/F16/F32 storage by default, or performs an explicitly requested
+destination conversion through `#:info`; `#:row-bytes` selects checked
+destination stride. It stages through a same-context GPU surface and returns
+independent CPU storage. Full typed-transfer, float, padding and color-space
+rules are documented in [GPU-FORMATS.md](GPU-FORMATS.md).
+
+Returned bytes do not alias Skia memory. The CPU `image?` returned by
 `gpu-image->raster-image` is independent of the GPU image and context, retains
 its color-space metadata, and remains usable for encoding, CPU/PDF/SVG drawing,
 or uploading into another context after the original GPU context is closed.
