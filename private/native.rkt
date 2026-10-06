@@ -788,3 +788,6 @@
 (define-native sk_textblob_builder_alloc_run_text_rsxform (_fun _pointer _pointer _int _int _pointer _pointer -> _void))
 (define-native sk_textblob_get_intercepts (_fun _pointer _pointer _pointer _pointer -> _int))
 (define-native sk_text_utils_get_pos_path (_fun _pointer _size _int _pointer _pointer _pointer -> _void))
+
+;; 0.70: checked opaque-pixel inspection; no native pointer escapes.
+(define-native sk_pixmap_compute_is_opaque (_fun _pointer -> _stdbool))

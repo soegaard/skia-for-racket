@@ -2619,3 +2619,8 @@ measurement, batch outline and prefix-fitting APIs, ownership and limitations.
 
 See [TEXT-BLOBS.md](TEXT-BLOBS.md) for builders, per-run snapshots, intercept
 restrictions, transformed glyphs, UTF-8 clusters and shaped text-on-path.
+
+## General integer pixel storage (0.70)
+
+See [INTEGER-PIXELS.md](INTEGER-PIXELS.md) for detached image information,
+format-aware buffers, raw sample precision, conversion and explicit GPU limits.

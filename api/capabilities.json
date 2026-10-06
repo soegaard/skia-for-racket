@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "b843cd4cd286fb041d8791b2d4fa611d09a3c825",
+  "baseline_commit": "8130568dda31e43326884312113ffd5010e04a6d",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -3431,13 +3431,20 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
+      "backend_scope": "Seven reviewed CPU integer formats. Raster targets reject unpremultiplied alpha. GPU acceptance uses explicit RGBA conversion/upload and existing RGBA targets; non-RGBA GPU buffer readback rejects. This is a source contract, not per-backend execution evidence.",
       "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Explicit immutable images and raster storage; ordinary PDF/SVG image representation keeps surrounding vector markers and links. The acceptance documents explicitly convert/scale to RGBA before export. No unreported full-page raster fallback or universal raw-format encoder claim.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "pixels.bitmap-alpha",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "image-info.rkt",
+        "raster-buffers.rkt",
+        "private/integer-pixel-util.rkt",
+        "private/image-info-native.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Plain alpha-channel extraction into independent untagged Alpha8 storage, using exact integer sample precision. Opaque formats yield 255; two-bit alpha expands by 85. This is not the SKBitmap paint/mask-filter overload: mask-filter growth and nonzero placement offsets are not supported or silently emulated.",
       "managed_sources": [
         "binding/SkiaSharp/SKBitmap.cs"
       ],
@@ -3445,10 +3452,21 @@
         "sk_bitmap_extract_alpha"
       ],
       "origin": "m119",
-      "planned_stage": "0.70",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "raster-buffers.rkt",
+          "name": "raster-buffer-extract-alpha"
+        }
+      ],
+      "status": "racket-equivalent",
+      "test_sources": [
+        "tests/integer-pixel-pure-test.rkt",
+        "tests/integer-pixel-native-test.rkt",
+        "tests/integer-pixel-gpu-test.rkt",
+        "tools/test-integer-pixels.py",
+        "tools/integer-pixel-doctor.rkt"
+      ],
       "title": "Alpha extraction into a new buffer",
       "unbound_declarations": [
         "sk_bitmap_extract_alpha"
@@ -3494,15 +3512,20 @@
       ]
     },
     {
-      "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
+      "backend_scope": "Seven reviewed CPU integer formats. Raster targets reject unpremultiplied alpha. GPU acceptance uses explicit RGBA conversion/upload and existing RGBA targets; non-RGBA GPU buffer readback rejects. This is a source contract, not per-backend execution evidence.",
       "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Explicit immutable images and raster storage; ordinary PDF/SVG image representation keeps surrounding vector markers and links. The acceptance documents explicitly convert/scale to RGBA before export. No unreported full-page raster fallback or universal raw-format encoder claim.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "pixels.bitmap-general",
       "implementation_files": [
-        "raster-buffers.rkt"
+        "image-info.rkt",
+        "raster-buffers.rkt",
+        "private/integer-pixel-util.rkt",
+        "private/image-info-native.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
       ],
-      "limitations": "RGBA-oriented safe buffer alternative exists; arbitrary SKColorType/alpha combinations, allocation flags and immutable aliases are not equivalent.",
+      "limitations": "Initialized owned storage for seven reviewed integer formats with explicit alpha/color semantics. Raw samples preserve packed precision. Full allocations include final-row padding; view copies are tight. Immutable native images are explicit copies, not mutable-buffer aliases. Arbitrary SKBitmap allocation flags, raw-pointer ownership, ARGB4444, other integer enums and floating formats are not provided.",
       "managed_sources": [
         "binding/SkiaSharp/SKBitmap.cs",
         "binding/SkiaSharp/SKImageInfo.cs"
@@ -3527,20 +3550,52 @@
         "sk_bitmap_try_alloc_pixels_with_flags"
       ],
       "origin": "m119",
-      "planned_stage": "0.70",
+      "planned_stage": null,
       "public_equivalents": [
         {
           "module": "raster-buffers.rkt",
-          "name": "make-raster-buffer"
+          "name": "make-raster-buffer-from-info"
         },
         {
           "module": "raster-buffers.rkt",
-          "name": "pixmap-subset"
+          "name": "raster-buffer-image-info"
+        },
+        {
+          "module": "raster-buffers.rkt",
+          "name": "raster-buffer-write-storage!"
+        },
+        {
+          "module": "raster-buffers.rkt",
+          "name": "pixmap-sample"
+        },
+        {
+          "module": "raster-buffers.rkt",
+          "name": "pixmap-set-sample!"
+        },
+        {
+          "module": "raster-buffers.rkt",
+          "name": "raster-buffer-convert"
+        },
+        {
+          "module": "image-info.rkt",
+          "name": "make-image-info"
+        },
+        {
+          "module": "image-info.rkt",
+          "name": "image-info-storage-layout"
+        },
+        {
+          "module": "image-info.rkt",
+          "name": "image-info-supports?"
         }
       ],
       "status": "supported-with-limits",
       "test_sources": [
-        "tests/raster-buffer-native-test.rkt"
+        "tests/integer-pixel-pure-test.rkt",
+        "tests/integer-pixel-native-test.rkt",
+        "tests/integer-pixel-gpu-test.rkt",
+        "tools/test-integer-pixels.py",
+        "tools/integer-pixel-doctor.rkt"
       ],
       "title": "General bitmap formats and allocation/conversion semantics",
       "unbound_declarations": [
@@ -3593,13 +3648,22 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Seven reviewed CPU integer formats. Raster targets reject unpremultiplied alpha. GPU acceptance uses explicit RGBA conversion/upload and existing RGBA targets; non-RGBA GPU buffer readback rejects. This is a source contract, not per-backend execution evidence.",
+      "bindings_expected": [
+        "sk_pixmap_compute_is_opaque"
+      ],
+      "document_behavior": "Explicit immutable images and raster storage; ordinary PDF/SVG image representation keeps surrounding vector markers and links. The acceptance documents explicitly convert/scale to RGBA before export. No unreported full-page raster fallback or universal raw-format encoder claim.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "pixels.opacity",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "image-info.rkt",
+        "raster-buffers.rkt",
+        "private/integer-pixel-util.rkt",
+        "private/image-info-native.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Pinned native opaque-pixel inspection under a live exclusive lease. Opaque-format semantics and selected alpha types follow the published integer-format contract. This does not measure drawn coverage or transparency after paint/filter compositing.",
       "managed_sources": [
         "binding/SkiaSharp/SKPixmap.cs"
       ],
@@ -3607,14 +3671,27 @@
         "sk_pixmap_compute_is_opaque"
       ],
       "origin": "m119",
-      "planned_stage": "0.70",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "raster-buffers.rkt",
+          "name": "pixmap-opaque?"
+        },
+        {
+          "module": "raster-buffers.rkt",
+          "name": "raster-buffer-opaque?"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/integer-pixel-pure-test.rkt",
+        "tests/integer-pixel-native-test.rkt",
+        "tests/integer-pixel-gpu-test.rkt",
+        "tools/test-integer-pixels.py",
+        "tools/integer-pixel-doctor.rkt"
+      ],
       "title": "Pixmap opaque-pixel query",
-      "unbound_declarations": [
-        "sk_pixmap_compute_is_opaque"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
@@ -3697,15 +3774,20 @@
       ]
     },
     {
-      "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
+      "backend_scope": "Seven reviewed CPU integer formats. Raster targets reject unpremultiplied alpha. GPU acceptance uses explicit RGBA conversion/upload and existing RGBA targets; non-RGBA GPU buffer readback rejects. This is a source contract, not per-backend execution evidence.",
       "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Explicit immutable images and raster storage; ordinary PDF/SVG image representation keeps surrounding vector markers and links. The acceptance documents explicitly convert/scale to RGBA before export. No unreported full-page raster fallback or universal raw-format encoder claim.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "pixels.pixmap-info",
       "implementation_files": [
-        "raster-buffers.rkt"
+        "image-info.rkt",
+        "raster-buffers.rkt",
+        "private/integer-pixel-util.rkt",
+        "private/image-info-native.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
       ],
-      "limitations": "Extent/stride/subsets use wrapper metadata and leases. General format/alpha/color-space description is the 0.70 extension.",
+      "limitations": "Detached immutable dimensions, color/alpha type and named/copied-ICC descriptor. Views retain checked subset/stride and lease expiry. Native color-space to descriptor conversion is explicit and fallible; no borrowed native pointer is returned.",
       "managed_sources": [
         "binding/SkiaSharp/SKPixmap.cs"
       ],
@@ -3716,8 +3798,16 @@
         "sk_pixmap_get_row_bytes"
       ],
       "origin": "m119",
-      "planned_stage": "0.70",
+      "planned_stage": null,
       "public_equivalents": [
+        {
+          "module": "raster-buffers.rkt",
+          "name": "raster-buffer-image-info"
+        },
+        {
+          "module": "raster-buffers.rkt",
+          "name": "pixmap-image-info"
+        },
         {
           "module": "raster-buffers.rkt",
           "name": "pixmap-subset"
@@ -3729,7 +3819,11 @@
       ],
       "status": "racket-equivalent",
       "test_sources": [
-        "tests/raster-buffer-native-test.rkt"
+        "tests/integer-pixel-pure-test.rkt",
+        "tests/integer-pixel-native-test.rkt",
+        "tests/integer-pixel-gpu-test.rkt",
+        "tools/test-integer-pixels.py",
+        "tools/integer-pixel-doctor.rkt"
       ],
       "title": "Pixmap metadata, color-space and subset views",
       "unbound_declarations": [
@@ -4024,16 +4118,20 @@
       ]
     },
     {
-      "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
+      "backend_scope": "Seven reviewed CPU integer formats. Raster targets reject unpremultiplied alpha. GPU acceptance uses explicit RGBA conversion/upload and existing RGBA targets; non-RGBA GPU buffer readback rejects. This is a source contract, not per-backend execution evidence.",
       "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Explicit immutable images and raster storage; ordinary PDF/SVG image representation keeps surrounding vector markers and links. The acceptance documents explicitly convert/scale to RGBA before export. No unreported full-page raster fallback or universal raw-format encoder claim.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.bitmap-copy",
       "implementation_files": [
+        "image-info.rkt",
         "raster-buffers.rkt",
-        "private/core.rkt"
+        "private/integer-pixel-util.rkt",
+        "private/image-info-native.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
       ],
-      "limitations": "Existing RGBA copies are explicit. General source formats need 0.70.",
+      "limitations": "Explicit native raster copy preserves selected integer color/alpha type and retains independent color-space ownership. It never aliases mutable storage. Image descriptions reject formats outside the current seven-format scope rather than converting or relabeling them.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4042,20 +4140,24 @@
         "sk_image_new_raster_copy_with_pixmap"
       ],
       "origin": "m119",
-      "planned_stage": "0.70",
+      "planned_stage": null,
       "public_equivalents": [
         {
           "module": "raster-buffers.rkt",
           "name": "raster-buffer->image"
         },
         {
-          "module": "main.rkt",
-          "name": "rgba-bytes->image"
+          "module": "raster-buffers.rkt",
+          "name": "image->image-info"
         }
       ],
       "status": "racket-equivalent",
       "test_sources": [
-        "tests/raster-buffer-native-test.rkt"
+        "tests/integer-pixel-pure-test.rkt",
+        "tests/integer-pixel-native-test.rkt",
+        "tests/integer-pixel-gpu-test.rkt",
+        "tools/test-integer-pixels.py",
+        "tools/integer-pixel-doctor.rkt"
       ],
       "title": "Bitmap/pixmap copy factories",
       "unbound_declarations": [
@@ -4372,7 +4474,7 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "CPU raster storage; not a GPU surface or document target. Conversion/transfer is explicit.",
+      "backend_scope": "Seven reviewed CPU integer formats. Raster targets reject unpremultiplied alpha. GPU acceptance uses explicit RGBA conversion/upload and existing RGBA targets; non-RGBA GPU buffer readback rejects. This is a source contract, not per-backend execution evidence.",
       "bindings_expected": [
         "sk_surface_get_canvas",
         "sk_surface_new_image_snapshot",
@@ -4381,14 +4483,18 @@
         "sk_surface_peek_pixels",
         "sk_surface_read_pixels"
       ],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Explicit immutable images and raster storage; ordinary PDF/SVG image representation keeps surrounding vector markers and links. The acceptance documents explicitly convert/scale to RGBA before export. No unreported full-page raster fallback or universal raw-format encoder claim.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "surfaces.raster",
       "implementation_files": [
+        "image-info.rkt",
+        "raster-buffers.rkt",
+        "private/integer-pixel-util.rkt",
+        "private/image-info-native.rkt",
         "private/core.rkt",
-        "raster-buffers.rkt"
+        "private/native.rkt"
       ],
-      "limitations": "Safe RGBA storage with explicit color space; not arbitrary ImageInfo parity.",
+      "limitations": "Checked initialized raster surfaces and scoped buffer-backed canvases for selected premultiplied/opaque integer formats. Unpremultiplied targets reject. Existing make-surface and RGBA constructors stay unchanged. Generalized GPU surface formats remain stage 0.73; GPU buffer readback is guarded to RGBA8888 premultiplied storage.",
       "managed_sources": [
         "binding/SkiaSharp/SKSurface.cs",
         "binding/SkiaSharp/SKImageInfo.cs"
@@ -4402,11 +4508,11 @@
         "sk_surface_read_pixels"
       ],
       "origin": "m119",
-      "planned_stage": "0.70",
+      "planned_stage": null,
       "public_equivalents": [
         {
-          "module": "main.rkt",
-          "name": "make-surface"
+          "module": "raster-buffers.rkt",
+          "name": "make-surface-from-info"
         },
         {
           "module": "raster-buffers.rkt",
@@ -4415,7 +4521,11 @@
       ],
       "status": "supported-with-limits",
       "test_sources": [
-        "tests/raster-buffer-native-test.rkt"
+        "tests/integer-pixel-pure-test.rkt",
+        "tests/integer-pixel-native-test.rkt",
+        "tests/integer-pixel-gpu-test.rkt",
+        "tools/test-integer-pixels.py",
+        "tools/integer-pixel-doctor.rkt"
       ],
       "title": "Owned and buffer-backed raster surfaces",
       "unbound_declarations": []
@@ -6949,6 +7059,7 @@
     "gpu-output.rkt",
     "gpu-racket-gl.rkt",
     "gpu.rkt",
+    "image-info.rkt",
     "main.rkt",
     "matrix.rkt",
     "native-capabilities.rkt",
@@ -6970,5 +7081,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.69"
+  "stage": "0.70"
 }

@@ -1,3 +1,9 @@
+## 0.70 inventory update
+
+Six integer-storage families now have reviewed public routes and explicit limits.
+Counts come from `docs/SKIASHARP-GAPS.md`; historical execution evidence remains
+unchanged. See `docs/INTEGER-PIXELS.md` for raw storage, alpha and GPU restrictions.
+
 ## 0.69 inventory update
 
 The three planned text/glyph-position families are now public. Current counts

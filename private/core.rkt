@@ -33,13 +33,16 @@
 
 ;; Native RGBA memory has exclusive canvas/pixmap borrows. The state box
 ;; protects explicit close; a scope also keeps the allocation reachable.
-(struct raster-buffer-resource (handle width height row-bytes colorspace state)
+(struct raster-buffer-resource
+  (handle width height row-bytes colorspace state [description #:auto #:mutable])
+  #:auto-value #f
   #:constructor-name make-raster-buffer-record)
 (module* raster-buffer-internals #f
   (provide raster-buffer-resource? make-raster-buffer-record
            raster-buffer-resource-handle raster-buffer-resource-width
            raster-buffer-resource-height raster-buffer-resource-row-bytes
            raster-buffer-resource-colorspace raster-buffer-resource-state
+           raster-buffer-resource-description set-raster-buffer-resource-description!
            make-surface-record make-image-record color-space-h
            call-with-native-temporary))
 

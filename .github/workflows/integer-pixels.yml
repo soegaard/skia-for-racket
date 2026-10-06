@@ -1,0 +1,103 @@
+name: Integer pixel storage
+"on":
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pixels-linux:
+    name: Integer pixel storage / Linux Mesa / Racket ${{ matrix.racket }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        racket: ['8.18', '9.3']
+    env:
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install fonts, loaders, Mesa and independent renderers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends unzip curl fontconfig \
+            fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk \
+            libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri \
+            poppler-utils librsvg2-bin
+          python -m pip install -r tools/dc-output-requirements.txt
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+        with:
+          version: ${{ matrix.racket }}
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Check source and install pinned native libraries
+        run: |
+          python tools/update-source-sums.py --check
+          python tools/test-integer-pixels.py
+          bash tools/install-native.sh
+          bash tools/install-harfbuzz.sh
+      - name: Require full regressions, GPU pixels and independent PDF/SVG rendering
+        run: |
+          python tools/validate-integer-pixels.py --racket "$(command -v racket)" \
+            --require-gpu --backend egl --require-renderers --directory output/integer-pixels-linux
+      - name: Retain integer pixel evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: integer-pixels-linux-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/integer-pixels-linux/
+          if-no-files-found: warn
+          retention-days: 14
+  pixels-windows:
+    name: Integer pixel storage / Windows WARP / Racket 9.3
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Check source and install document inspector dependencies
+        run: |
+          python tools/update-source-sums.py --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test-integer-pixels.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -r tools/dc-output-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install pinned native libraries
+        run: |
+          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require full regressions, WARP pixels and document structure
+        run: |
+          python tools/validate-integer-pixels.py --racket (Get-Command racket).Source --require-gpu --backend direct3d --adapter warp --directory output/integer-pixels-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain Windows evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: integer-pixels-windows-${{ github.run_attempt }}
+          path: output/integer-pixels-windows/
+          if-no-files-found: warn
+          retention-days: 14

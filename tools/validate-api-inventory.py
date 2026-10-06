@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""0.69 fail-closed inventory gate with optional pinned sources/native observation.
+"""0.70 fail-closed inventory gate with optional pinned sources/native observation.
 
 Default gate checks the complete project checkout and generated report, without
 native initialization. --native-library probes the explicitly selected binary in
@@ -47,8 +47,8 @@ def main(argv=None, *, root=inventory.ROOT):
         out = args.directory.resolve()
     else:
         (root / "output").mkdir(exist_ok=True)
-        out = Path(tempfile.mkdtemp(prefix="api-inventory-0.69-", dir=root / "output"))
-    report = {"schema": 1, "stage": "0.69", "status": "failed", "run_token": uuid.uuid4().hex,
+        out = Path(tempfile.mkdtemp(prefix="api-inventory-0.70-", dir=root / "output"))
+    report = {"schema": 1, "stage": "0.70", "status": "failed", "run_token": uuid.uuid4().hex,
               "catalog_passed": False, "source_passed": False, "upstream_required": bool(args.skia_source),
               "upstream_passed": False, "native_required": bool(args.native_library), "native_observed": False,
               "rendering_executed": False, "backend_created": False, "hardware_verified": False}

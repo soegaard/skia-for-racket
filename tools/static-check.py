@@ -145,7 +145,7 @@ for form in sexps((R/'color-filters.rkt').read_text()):
         assert not [x for x in public if x not in color_filter_api], public
 subprocess.run(['bash','-n',str(R/'tools/validate-color-filters.sh')],check=True)
 # Raster storage keeps its public ownership/borrow contract in its own guide.
-raster_buffer_api=(R/'docs/RASTER-BUFFERS.md').read_text()
+raster_buffer_api=(R/'docs/RASTER-BUFFERS.md').read_text()+(R/'docs/INTEGER-PIXELS.md').read_text()
 for form in sexps((R/'raster-buffers.rkt').read_text()):
     if isinstance(form,list) and form and form[0]=='provide':
         public=[x for x in form[1:] if isinstance(x,str)]

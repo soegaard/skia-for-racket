@@ -227,3 +227,9 @@ Vulkan, native migration, variable fonts, Graphite and HDR remain explicit track
   `private/gpu-domain.rkt`, `private/gpu-images.rkt`, `private/gpu-frame-target-cache.rkt`.
 - Existing document policy: `output-policy.rkt`, `output-audit.rkt`,
   `docs/DC-OUTPUT.md`, `docs/DC-COMPATIBILITY.md`.
+
+## 0.70 implementation checkpoint
+
+D1–D3 and D5 now have the additive implementation described in
+[INTEGER-PIXELS.md](INTEGER-PIXELS.md). Floating formats and generalized GPU
+targets remain separate stages; this note does not assert native execution.

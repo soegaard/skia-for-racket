@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.70.0 — General image information and integer raster storage
+
+- Add detached immutable image-info and named/copied-ICC color-space descriptions.
+- Add RGBA8888, BGRA8888, RGBX8888, Alpha8, Gray8, RGB565 and RGBA1010102 storage with checked alpha semantics and exact integer samples.
+- Preserve legacy RGBA constructor, byte-order and premultiplication behavior; add explicit raw storage, staged conversion, opacity and plain alpha extraction.
+- Retain exclusive/expired pixmap leases, transactional validated writes, padding canaries, independent image copies and initialized raster targets.
+- Guard legacy GPU readback against incompatible layouts; generalized GPU targets remain 0.73.
+- Add pure/native tests, fourteen PDF/SVG documents and seven explicit-RGBA GPU captures with independent inspectors and required acceptance lanes.
+- Reconcile six 0.70 families without treating source declarations as native execution evidence.
+
 ## 0.69.0 — Multi-run text blobs and shaped text-on-path
 
 - Add single-use owned builders for default, horizontal, XY and RSXform runs, copied optional UTF-8/clusters, and retained per-run font snapshots.

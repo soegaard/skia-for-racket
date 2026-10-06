@@ -1,4 +1,11 @@
-# Racket Skia — 0.69.0
+# Racket Skia — 0.70.0
+
+## Integer pixel storage and image information
+
+[0.70 integer pixels](docs/INTEGER-PIXELS.md) adds detached image metadata,
+seven integer formats, raw samples, explicit conversions and scoped raster targets.
+The existing RGBA APIs retain their original meaning. Native/GPU/document acceptance
+is selected explicitly; generalized GPU targets and floating formats remain later stages.
 
 ## Multi-run text and shaped text-on-path
 
