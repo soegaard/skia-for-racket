@@ -17,7 +17,7 @@ require = shared.require
 NAMES = ('upload-reuse', 'snapshot-graph')
 IMAGE_SYMBOLS = {'sk_image_make_texture_image', 'sk_surface_new_image_snapshot',
                  'sk_image_make_subset', 'sk_image_is_texture_backed', 'sk_image_is_valid',
-                 'sk_image_get_unique_id', 'sk_image_unref'}
+                 'sk_image_get_unique_id', 'sk_image_unref', 'sk_image_make_with_filter'}
 NATIVE_TEST_CASES = 42
 
 
