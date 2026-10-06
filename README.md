@@ -1,11 +1,11 @@
-# Racket Skia — 0.70.0
+# Racket Skia — 0.71
 
 ## Integer pixel storage and image information
 
 [0.70 integer pixels](docs/INTEGER-PIXELS.md) adds detached image metadata,
 seven integer formats, raw samples, explicit conversions and scoped raster targets.
 The existing RGBA APIs retain their original meaning. Native/GPU/document acceptance
-is selected explicitly; generalized GPU targets and floating formats remain later stages.
+is selected explicitly; generalized GPU targets remain a later stage; floating formats are added below.
 
 ## Multi-run text and shaped text-on-path
 
@@ -1612,3 +1612,7 @@ and copied RGBA images accept `#:color-space`; snapshots retain that tag.
 color space, so Skia converts pixels during CPU readback instead of merely
 relabeling the channel bytes. Encoded-output ICC injection and arbitrary RGB
 transfer/matrix construction are not part of this stage.
+
+## Floating-point pixels (0.71)
+
+See [FLOAT-PIXELS.md](docs/FLOAT-PIXELS.md) for Color4f values, F16/F32 storage, source-space gradients and explicit output quantization.

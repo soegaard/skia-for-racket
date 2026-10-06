@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""0.69 acceptance: full regressions, native PDF/SVG, optional required GPU/viewers."""
+"""0.71 acceptance: full regressions, native PDF/SVG, optional required GPU/viewers."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -14,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
-from text_blob_validation import inspect_documents, inspect_gpu
+from float_pixel_validation import inspect_documents, inspect_gpu
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -25,8 +25,8 @@ def compile_targets(root):
     for name in dynamic:
         if any(p in ('','.','..') for p in name.split('/')) or '\\' in name or ':' in name:
             raise ValueError('unsafe compile target')
-    return [root/p for p in dict.fromkeys(('main.rkt','text-blobs.rkt','run-tests.rkt',*dynamic,
-                                         'tests/text-blob-gpu-test.rkt','tools/text-blob-doctor.rkt','examples/text-blobs-advanced.rkt'))]
+    return [root/p for p in dict.fromkeys(('main.rkt','color4f.rkt','float-colors.rkt','image-info.rkt','raster-buffers.rkt','run-tests.rkt',*dynamic,
+                                         'tests/float-pixel-gpu-test.rkt','tools/float-pixel-doctor.rkt','examples/float-pixels.rkt'))]
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
@@ -50,9 +50,9 @@ def main(argv=None):
         args.directory.mkdir(parents=True);out=args.directory.resolve()
     else:
         (ROOT/'output').mkdir(exist_ok=True)
-        out=Path(tempfile.mkdtemp(prefix='text-blobs-0.69-',dir=ROOT/'output'))
+        out=Path(tempfile.mkdtemp(prefix='float-pixels-0.71-',dir=ROOT/'output'))
     (out/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
-    report=dict(schema=1,stage='0.69',package_version='0.71',status='failed',run_token=token,
+    report=dict(schema=1,stage='0.71',package_version='0.71',status='failed',run_token=token,
                 regressions_passed=False,documents_passed=False,rendering_executed=False,rendering_attempted=False,
                 gpu_required=args.require_gpu,gpu_attempted=False,gpu_executed=False,gpu_passed=False,
                 independent_renderers_required=args.require_renderers,independent_renderers_attempted=False,independent_renderers_executed=False,
@@ -71,12 +71,12 @@ def main(argv=None):
         run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
         before=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest();report['manifest_before']=before
         run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
-        run([sys.executable,ROOT/'tools/test-text-blobs.py'])
-        run([sys.executable,ROOT/'tools/test-text-blob-documents.py'])
+        run([sys.executable,ROOT/'tools/test-float-pixels.py'])
+        run([sys.executable,ROOT/'tools/test-float-pixel-documents.py'])
         run([racket,'-l','raco','--','make',*compile_targets(ROOT)])
         run([racket,ROOT/'run-tests.rkt']);report['regressions_passed']=True
         report['rendering_attempted']=True
-        run([racket,ROOT/'tools/text-blob-doctor.rkt','--directory',out/'documents','--token',token])
+        run([racket,ROOT/'tools/float-pixel-doctor.rkt','--directory',out/'documents','--token',token])
         report['rendering_executed']=True
         render=None
         if args.require_renderers:
@@ -87,7 +87,7 @@ def main(argv=None):
                 report['independent_renderers_attempted']=True
                 png=out/'rendered'/(path.name+'.png')
                 if fmt=='pdf':run([poppler,'-singlefile','-r','72','-png',path,png.with_suffix('')])
-                else:run([rsvg,'--width','192','--height','128','--output',png,path])
+                else:run([rsvg,'--width','96','--height','64','--output',png,path])
                 return png
         result=inspect_documents(out/'documents',token,render=render)
         (out/'inspection.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
@@ -95,8 +95,9 @@ def main(argv=None):
                       independent_renderers_passed=args.require_renderers)
         if args.require_gpu:
             report['gpu_attempted']=True
-            run([racket,ROOT/'tests/text-blob-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
-                 '--directory',out/'gpu','--token',token])
+            (out/'gpu').mkdir()
+            run([racket,ROOT/'tests/float-pixel-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
+                 '--report',out/'gpu/gpu.json','--token',token])
             report['gpu_executed']=True
             gpu=inspect_gpu(out/'gpu',token,backend,args.adapter)
             (out/'gpu-inspection.json').write_text(json.dumps(gpu,indent=2)+'\n',encoding='utf-8')
@@ -107,12 +108,18 @@ def main(argv=None):
         report.update(manifest_after=after,status='passed')
     except Exception as error:
         report['error']=type(error).__name__+': '+str(error)
-        print('Text blobs FAILED: '+report['error'],file=sys.stderr)
+        print('Float pixels FAILED: '+report['error'],file=sys.stderr)
     finally:
         for name,value in (('commands.json',commands),('validation.json',report)):
             (out/name).write_text(json.dumps(value,indent=2)+'\n',encoding='utf-8')
         print('Evidence: '+str(out))
-        if report.get('failed_log'):print('Failed command log: '+report['failed_log'])
+        if report.get('failed_log'):
+            print('Failed command log: '+report['failed_log'])
+            try:
+                tail=Path(report['failed_log']).read_bytes()[-24000:].decode('utf-8',errors='replace')
+                print('--- failed command log tail ---',file=sys.stderr)
+                print(tail,file=sys.stderr)
+            except OSError as error:print('Cannot read failure log: '+str(error),file=sys.stderr)
     return 0 if report['status']=='passed' else 1
 
 if __name__=='__main__':raise SystemExit(main())

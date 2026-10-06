@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.71 — Floating-point pixels and colors
+
+- Add F16/F32 raster storage and exact half-float sample encoding without changing seven integer-format APIs.
+- Add finite extended Color4f values, explicit packed-color conversion, source-space paint/solid/gradient factories, by-value canvas clear and blend operations, and native float pixmap reads/fills.
+- Preserve raw stored premultiplication and detached metadata; validate nonfinite/overflowing input before mutation and retain copied color-space ownership.
+- Track float precision in paint/image/shader provenance. Document export requires an explicit raster/quantization boundary, not implicit eight-bit loss.
+- Add ABI, precision, conversion, lifetime, policy and native-rendering tests with independent document/GPU pixel inspectors. HDR presentation and generalized GPU formats remain later stages.
+
 ## 0.70.0 — General image information and integer raster storage
 
 - Add detached immutable image-info and named/copied-ICC color-space descriptions.

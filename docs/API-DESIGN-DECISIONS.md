@@ -233,3 +233,7 @@ Vulkan, native migration, variable fonts, Graphite and HDR remain explicit track
 D1–D3 and D5 now have the additive implementation described in
 [INTEGER-PIXELS.md](INTEGER-PIXELS.md). Floating formats and generalized GPU
 targets remain separate stages; this note does not assert native execution.
+
+## 0.71 implementation checkpoint
+
+F16/F32 storage and Color4f values now implement D4 together with the existing D1–D3/D5 foundations. See [FLOAT-PIXELS.md](FLOAT-PIXELS.md) for precision, color interpretation, lease, and quantization contracts. HDR and generalized GPU formats remain separate work.

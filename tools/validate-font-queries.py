@@ -60,7 +60,7 @@ def main(argv=None):
     (out/'logs').mkdir()
     token = uuid.uuid4().hex
     commands = []
-    report = dict(schema=1, stage='0.68b', package_version='0.70.0', run_token=token, status='failed',
+    report = dict(schema=1, stage='0.68b', package_version='0.71', run_token=token, status='failed',
                   regressions_passed=False, documents_passed=False, rendering_executed=False,
                   independent_renderers_required=args.require_renderers, independent_renderers_passed=False,
                   gpu_required=args.require_gpu, gpu_executed=False, gpu_passed=False,

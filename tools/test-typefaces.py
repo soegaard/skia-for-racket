@@ -45,8 +45,8 @@ class Sources(unittest.TestCase):
             for child in value: walk(child)
         walk(inv.forms(self.text('typefaces.rkt')))
     def test_numeric_package_version_and_distinct_stage(self):
-        self.assertIn('(define version "0.70.0")', self.text('info.rkt'))
-        self.assertEqual(inv.STAGE, '0.70')
+        self.assertIn('(define version "0.71")', self.text('info.rkt'))
+        self.assertEqual(inv.STAGE, '0.71')
         self.assertIn('("base" #:version "8.18")', self.text('info.rkt'))
         self.assertIn('("draw-lib" #:version "1.22")', self.text('info.rkt'))
         self.assertEqual(inv.load_catalog(ROOT)['upstream']['package_version'], '3.119.1')

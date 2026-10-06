@@ -38,7 +38,8 @@
         "jpeg_options": 40,
         "webp_options": 24,
         "sampling": 24,
-        "font_metrics": 64
+        "font_metrics": 64,
+        "color4f": 16
       },
       "contracts": {
         "canvas_matrix_storage": "column-major-m44",

@@ -30,7 +30,7 @@
                                 (= (exn:fail:native-abi-pointer-bytes e) 8)))
                 (lambda () (native-abi-require! 153 0 8))))
    (test-case "supported requirement" (check-equal? (native-abi-require! 119 0 8) profile))
-   (test-case "complete layout catalog" (check-equal? (hash-count layouts) 26))
+   (test-case "complete layout catalog" (check-equal? (hash-count layouts) 27))
    (test-case "matching layouts" (check-not-exn (lambda () (native-abi-check-layouts! profile layouts))))
    (test-case "missing layout" (check-exn exn:fail? (lambda () (native-abi-check-layouts! profile (hash-remove layouts 'sampling)))))
    (test-case "extra layout" (check-exn exn:fail? (lambda () (native-abi-check-layouts! profile (hash-set layouts 'other 8)))))

@@ -4,7 +4,7 @@
 ;; This is a measurement of our Racket declarations, not reflection on an
 ;; arbitrary shared library. C layout mirrors and live tests remain required.
 (define (native-layout-sizes)
-  (hasheq 'lattice (ctype-sizeof _sk-lattice) 'rsxform (ctype-sizeof _sk-rsxform)
+  (hasheq 'color4f (ctype-sizeof _sk-color4f) 'lattice (ctype-sizeof _sk-lattice) 'rsxform (ctype-sizeof _sk-rsxform)
           'runtime_uniform (ctype-sizeof _sk-runtime-uniform)
           'runtime_child (ctype-sizeof _sk-runtime-child)
           'transfer (ctype-sizeof _sk-transfer) 'xyz (ctype-sizeof _sk-xyz)

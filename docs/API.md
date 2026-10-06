@@ -2624,3 +2624,7 @@ restrictions, transformed glyphs, UTF-8 clusters and shaped text-on-path.
 
 See [INTEGER-PIXELS.md](INTEGER-PIXELS.md) for detached image information,
 format-aware buffers, raw sample precision, conversion and explicit GPU limits.
+
+## Floating-point pixels (0.71)
+
+See [FLOAT-PIXELS.md](FLOAT-PIXELS.md) for Color4f values, F16/F32 storage, source-space gradients and explicit output quantization.

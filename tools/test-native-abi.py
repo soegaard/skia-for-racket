@@ -35,7 +35,7 @@ class PolicyTests(unittest.TestCase):
     def test_ambiguous_profiles(self):
         data = abi.catalog(); data['profiles'] *= 2
         with self.assertRaises(ValueError): abi.profile_for(data, 119, 0, 8)
-    def test_layout_count(self): self.assertEqual(len(abi.catalog()['profiles'][0]['layout_sizes']), 26)
+    def test_layout_count(self): self.assertEqual(len(abi.catalog()['profiles'][0]['layout_sizes']), 27)
     def test_direct3d_wrapper_and_no_graphite(self):
         contracts = abi.catalog()['profiles'][0]['contracts']
         self.assertFalse(contracts['graphite_wrapper']); self.assertTrue(contracts['direct3d_wrapper'])

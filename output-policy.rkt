@@ -29,6 +29,8 @@
     (recorded-color-fill vector          needs-raster         "An unbounded color fill recorded in a picture depends on the receiving clip/replay matrix. Use finite geometry or explicit rasterization for portable SVG replay.")
     (layer          native-expansion     needs-raster         "A compositing layer can expand/rasterize in PDF and is not generally preserved by SVG. Supply conservative content bounds: m119 may restrict the layer to them. Layer-contained annotations may be lost.")
     (native-text    vector               viewer-dependent     "SVG native glyph-to-text output depends on viewer fonts and may lose shaped glyphs; use outlines for portable geometry.")
+    (float-color needs-raster needs-raster "Float colors and source-space gradients require explicit rasterization or explicit integer-color conversion for document publication.")
+    (float-pixels needs-raster needs-raster "F16/F32 images require explicit conversion to a reviewed integer image before document embedding, or a declared raster group.")
     (image          embedded-raster      embedded-raster       "An existing raster image is embedded; this is not vector geometry or an ICC/font fidelity check.")
     (linear-gradient vector              vector               "Native linear-gradient serialization; resource composition is assessed separately.")
     (radial-gradient vector              needs-raster         "The pinned SVG serializer does not generally preserve radial-gradient shaders; rasterize the bounded group.")

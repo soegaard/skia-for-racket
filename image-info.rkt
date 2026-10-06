@@ -5,12 +5,14 @@
          image-info-color-type image-info-alpha-type image-info-color-space
          image-info-bytes-per-pixel image-info-channel-bits image-info-byte-order
          image-info-min-row-bytes image-info-storage-layout image-info-with-dimensions
-         integer-pixel-formats image-info-supports? color-space-descriptor?)
+         integer-pixel-formats float-pixel-formats pixel-formats image-info-sample-type image-info-supports? color-space-descriptor?)
 
 (struct image-info (width height color-type alpha-type color-space)
   #:transparent #:constructor-name make-image-info-record)
 (define integer-pixel-formats
   '#(rgba-8888 bgra-8888 rgb-888x alpha-8 gray-8 rgb-565 rgba-1010102))
+(define float-pixel-formats '#(rgba-f16 rgba-f32))
+(define pixel-formats (vector->immutable-vector (vector-append integer-pixel-formats float-pixel-formats)))
 ;; Native enum, bytes/pixel, logical sample channel bits, alpha-bearing?
 (define formats
   (hasheq 'rgba-8888 '#(4 4 #(8 8 8 8) #t)
@@ -19,13 +21,15 @@
           'alpha-8 '#(1 1 #(8) #t)
           'gray-8 '#(13 1 #(8) #f)
           'rgb-565 '#(2 2 #(5 6 5) #f)
-          'rgba-1010102 '#(7 4 #(10 10 10 2) #t)))
+          'rgba-1010102 '#(7 4 #(10 10 10 2) #t)
+          'rgba-f16 '#(15 8 #(16 16 16 16) #t)
+          'rgba-f32 '#(16 16 #(32 32 32 32) #t)))
 (define (check-info who info)
   (unless (image-info? info) (raise-argument-error who "image-info?" info))
   info)
 (define (format-data who color)
   (hash-ref formats color
-            (lambda () (raise-argument-error who "supported integer pixel format" color))))
+            (lambda () (raise-argument-error who "supported integer or floating-point pixel format" color))))
 (define (color-space-descriptor? v)
   (or (not v) (eq? v 'srgb) (eq? v 'linear-srgb)
       (and (bytes? v) (immutable? v) (>= (bytes-length v) 128)
@@ -70,9 +74,12 @@
 (define (image-info-channel-bits info)
   (vector-ref (format-data 'image-info-channel-bits
                           (image-info-color-type (check-info 'image-info-channel-bits info))) 2))
+(define (image-info-sample-type info)
+  (check-info 'image-info-sample-type info)
+  (if (memq (image-info-color-type info) '(rgba-f16 rgba-f32)) 'float 'unsigned-integer))
 (define (image-info-byte-order info)
   (check-info 'image-info-byte-order info)
-  (if (memq (image-info-color-type info) '(rgb-565 rgba-1010102))
+  (if (memq (image-info-color-type info) '(rgb-565 rgba-1010102 rgba-f16 rgba-f32))
       (if (system-big-endian?) 'big-endian 'little-endian) 'byte-channels))
 (define (image-info-min-row-bytes info)
   (* (image-info-width (check-info 'image-info-min-row-bytes info)) (image-info-bytes-per-pixel info)))

@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/list racket/string
          "../output-policy.rkt" (submod "../output-policy.rkt" internals))
-(provide audit-allocate audit-use audit-native-call audit-on-canvas
+(provide audit-mark-float-pixels! audit-allocate audit-use audit-native-call audit-on-canvas
          audit-page-index audit-labels call-with-audit-collector
          call-with-audit-raster audit-raster-annotation!
          current-output-audit-event-limit call-with-audit-matrix
@@ -61,6 +61,9 @@
   (case kind
     [(shader)
      (case who
+       [(make-color4f-shader make-linear-gradient-color4f-shader
+         make-radial-gradient-color4f-shader make-sweep-gradient-color4f-shader
+         make-two-point-conical-gradient-color4f-shader) '(float-color)]
        [(make-linear-gradient-shader) '(linear-gradient)]
        [(make-radial-gradient-shader) '(radial-gradient)]
        [(make-sweep-gradient-shader) '(sweep-gradient)]
@@ -120,7 +123,15 @@
                  #:when (memq (handle-kind h)
                               '(shader color-filter image-filter mask-filter path-effect blender picture picture-recorder path)))
         (features h)))
-    (set-box! (allocation-deps a) (apply union (unbox (allocation-deps a)) dependencies))))
+    (set-box! (allocation-deps a) (apply union (unbox (allocation-deps a)) dependencies)))
+  ;; Precision requirements survive image snapshots/subsets and image shaders.
+  ;; rgba-bytes->image is an explicit eight-bit materialization boundary.
+  (when (and a (memq (allocation-kind a) '(image raster-image shader))
+             (not (eq? (allocation-who a) 'rgba-bytes->image))
+             (for/or ([h (in-list hs)])
+               (and (memq (handle-kind h) '(image raster-image surface))
+                    (memq 'float-pixels (features h)))))
+    (set-box! (allocation-deps a) (union (unbox (allocation-deps a)) '(float-pixels)))))
 (define (audit-use hs ps thunk)
   (collect-dependencies! hs)
   (parameterize ([uses (append (map cons hs ps) (uses))]) (thunk)))
@@ -225,6 +236,7 @@
       sk_canvas_draw_circle sk_canvas_draw_oval sk_canvas_draw_path
       sk_canvas_draw_arc sk_canvas_draw_rrect sk_canvas_draw_drrect) '(geometry)]
     [(sk_canvas_clear) '(geometry source-replace)]
+    [(sk_canvas_clear_color4f) '(geometry source-replace float-color)]
     [(sk_canvas_draw_region) '(geometry)]
     [(sk_canvas_draw_vertices) '(vertices)]
     [(sk_canvas_draw_patch) '(coons-patch)]
@@ -235,8 +247,9 @@
              (if (= (list-ref args 2) 0) '(clip-difference) '(clip-intersect)))]
     [(sk_canvas_draw_point) '(point-sprites)]
     [(sk_canvas_draw_points) (if (= (cadr args) 0) '(point-sprites) '(geometry))]
-    [(sk_canvas_draw_color)
-     (append (if (= (list-ref args 2) 3) '(geometry) '(geometry blend-mode))
+    [(sk_canvas_draw_color sk_canvas_draw_color4f)
+     (append (if (eq? name 'sk_canvas_draw_color4f) '(float-color) '())
+             (if (= (list-ref args 2) 3) '(geometry) '(geometry blend-mode))
              (if (and (canvas) (eq? (canvas-context-backend (canvas)) 'recording))
                  '(recorded-color-fill) '()))]
     [(sk_canvas_save_layer) '(layer)]
@@ -253,7 +266,7 @@
     [else
      (and (string-prefix? (symbol->string name) "sk_canvas_draw_") '(unknown-operation))]))
 (define (drawable? name)
-  (and (or (eq? name 'sk_canvas_clear)
+  (and (or (memq name '(sk_canvas_clear sk_canvas_clear_color4f))
            (string-prefix? (symbol->string name) "sk_canvas_draw_"))
        (not (memq name '(sk_canvas_draw_url_annotation sk_canvas_draw_named_destination_annotation
                         sk_canvas_draw_link_destination_annotation)))))
@@ -278,6 +291,9 @@
     [(eq? name 'sk_blender_new_mode)
      (define a (allocating))
      (when a (set-box! (allocation-special a) (if (= (car args) 3) '() '(blend-mode))))]
+    [(memq name '(sk_paint_set_color sk_paint_set_color4f))
+     (define h (handle-for (car args)))
+     (when h (put-slot! h 'float-color (if (eq? name 'sk_paint_set_color4f) '(float-color) '())))]
     [(eq? name 'sk_paint_set_dither)
      (define h (handle-for (car args)))
      (when h (put-slot! h 'dither (if (cadr args) '(dither) '())))]
@@ -308,7 +324,7 @@
     (and fs
          (apply union fs
                 (for/list ([h (in-list (canvas-context-others cx))]
-                           #:when (memq (handle-kind h) '(paint picture path unknown)))
+                           #:when (memq (handle-kind h) '(paint picture path image raster-image unknown)))
                   (features h)))))
   (when (and all (eq? (canvas-context-backend cx) 'raster))
     (retain-raster-losses! all))
@@ -375,3 +391,13 @@
 ;; inferred merely from a symbol table. A failed export returns no report/bytes.
 (define (audit-output-group-execution! backend details)
   (emit! 'execute-output-group backend '(raster-group) details))
+
+;; Private precision tag, installed while the new resource is still owned.
+;; Native buffers stay F16/F32; direct PDF/SVG encoding must not silently
+;; quantize them. Explicit conversion to an integer image ends this requirement.
+(define (audit-mark-float-pixels! handle)
+  (define old (summary handle))
+  (hash-set! resources handle
+    (provenance (provenance-kind old)
+                (union (provenance-features old) '(float-pixels))
+                (provenance-slots old))))

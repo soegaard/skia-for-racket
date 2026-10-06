@@ -2,7 +2,9 @@
 (require ffi/unsafe
          "color.rkt" "image-info.rkt" "private/core.rkt" "private/native.rkt"
          "private/check.rkt" "private/types.rkt" "private/lifetime.rkt"
-         "private/raster-buffer-util.rkt" "private/integer-pixel-util.rkt"
+         "private/raster-buffer-util.rkt" "private/pixel-sample-util.rkt" "private/float-pixel-util.rkt"
+         "color4f.rkt" "private/float-color-native.rkt"
+         (only-in "private/audit-trace.rkt" audit-mark-float-pixels!)
          "private/image-info-native.rkt"
          (submod "image-info.rkt" internals)
          (submod "private/core.rkt" raster-buffer-internals))
@@ -19,7 +21,8 @@
          pixmap-sample pixmap-set-sample! pixmap-opaque? raster-buffer-opaque?
          pixmap-convert! raster-buffer-convert raster-buffer-extract-alpha
          make-surface-from-info image->image-info
-         color-space->descriptor descriptor->color-space)
+         color-space->descriptor descriptor->color-space
+         pixmap-color4f pixmap-alphaf pixmap-fill-color4f! pixmap-set-color4f!)
 
 (define raster-buffer? raster-buffer-resource?)
 (define (buffer-h who b)
@@ -82,7 +85,7 @@
     (when (and description
                (or (eq? (image-info-alpha-type description) 'opaque)
                    (eq? (image-info-color-type description) 'rgb-888x)))
-      (define sample (integer-sample->bytes who description (integer-black-sample description)))
+      (define sample (pixel-sample->bytes who description (pixel-black-sample description)))
       (define bpp (bytes-length sample))
       (define row (make-bytes (* w bpp)))
       (for ([x (in-range w)]) (bytes-copy! row (* x bpp) sample))
@@ -166,8 +169,10 @@
 (define (pixmap-pixel v x y)
   (view-owner 'pixmap-pixel v)
   (raster-point 'pixmap-pixel x y (pixmap-width-value v) (pixmap-height-value v))
-  (call-view 'pixmap-pixel v
-    (lambda (pm address rb b) (color->rgba (sk_pixmap_get_pixel_color pm x y)))))
+  (if (float-info? (view-format-info v))
+      (color4f->rgba (pixmap-color4f v x y) #:out-of-range 'clip)
+      (call-view 'pixmap-pixel v
+        (lambda (pm address rb b) (color->rgba (sk_pixmap_get_pixel_color pm x y))))))
 (define (pixmap-fill! v color)
   (define who 'pixmap-fill!)
   (define argb (color->argb color))
@@ -196,12 +201,12 @@
     (lambda (_pm address rb _b)
       (define bytes (make-bytes bpp))
       (memcpy bytes (ptr-add address (+ (* y rb) (* x bpp))) bpp)
-      (integer-bytes->sample who info bytes))))
+      (pixel-bytes->sample who info bytes))))
 (define (pixmap-set-sample! v x y sample)
   (define who 'pixmap-set-sample!)
   (define b (view-owner who v #t))
   (raster-point who x y (pixmap-width-value v) (pixmap-height-value v))
-  (define data (integer-sample->bytes who (buffer-format-info b) sample))
+  (define data (pixel-sample->bytes who (buffer-format-info b) sample))
   (call-view who v
     (lambda (_pm address rb _b)
       (memcpy (ptr-add address (+ (* y rb) (* x (bytes-length data)))) data (bytes-length data))
@@ -225,7 +230,7 @@
   (view-owner who v #t)
   (define info (view-format-info v))
   (define-values (rb _min _alloc) (image-info-storage-layout info #:row-bytes row-bytes))
-  (define input (integer-tight-input who info data rb))
+  (define input (pixel-tight-input who info data rb))
   (copy-tight-to-view! who v input))
 (define (copy-tight-to-view! who v input)
   (define w (pixmap-width-value v)) (define h (pixmap-height-value v))
@@ -240,7 +245,7 @@
   (define who 'raster-buffer-write-storage!)
   (call-buffer who b
     (lambda (p)
-      (define input (integer-storage-input who (buffer-format-info b) data
+      (define input (pixel-storage-input who (buffer-format-info b) data
                                             (raster-buffer-resource-row-bytes b) #:full? #t))
       (memcpy p input (bytes-length input))
       (void/reference-sink input)))
@@ -268,7 +273,7 @@
      (boolean who premultiplied?)
      (define src-info (make-image-info w h #:alpha-type (if premultiplied? 'premul 'unpremul)))
      (define-values (rb _m _n) (image-info-storage-layout src-info #:row-bytes row-bytes))
-     (define input (integer-tight-input who src-info data rb))
+     (define input (pixel-tight-input who src-info data rb))
      (define tight (* w (buffer-bpp owner)))
      (define out (make-bytes (* tight h)))
      (call-view who v
@@ -317,6 +322,9 @@
           (unless (sk_pixmap_read_pixels sp (buffer-native-info db (image-info-width info) (image-info-height info))
                                          staging tight 0 0)
             (error who "native pixel conversion failed"))) #:write? #t)))
+  ;; A conversion that overflows its destination float format must not publish
+  ;; nonfinite pixels or modify the destination before validation completes.
+  (when (float-info? info) (pixel-storage-input who info staging tight))
   (copy-tight-to-view! who destination staging))
 (define (pixmap-scale! destination source #:sampling [mode 'linear])
   (define who 'pixmap-scale!) (define sm (sampling who mode))
@@ -384,7 +392,7 @@
     (define alpha (make-bytes (* width height)))
     (for* ([y (in-range height)] [x (in-range width)])
       (bytes-set! alpha (+ x (* y width))
-                  (integer-sample-alpha info (integer-bytes->sample who info pixels (+ (* y rb) (* x bpp))))))
+                  (pixel-sample-alpha/8 info (pixel-bytes->sample who info pixels (+ (* y rb) (* x bpp))))))
     (raster-buffer-write-storage! result alpha)
     result))
 (define (raster-buffer->image b)
@@ -396,11 +404,11 @@
     (lambda (p)
       (define w (raster-buffer-resource-width b)) (define h (raster-buffer-resource-height b))
       (define info (buffer-native-info b w h))
-      (begin0
-        (make-image-record
-         (new-owned who 'image (lambda () (sk_image_new_raster_copy info pixels (raster-buffer-resource-row-bytes b)))
-                    sk_image_unref) w h)
-        (void/reference-sink pixels)))))
+      (define handle
+        (new-owned who 'image (lambda () (sk_image_new_raster_copy info pixels (raster-buffer-resource-row-bytes b)))
+                   sk_image_unref))
+      (when (float-info? (buffer-format-info b)) (audit-mark-float-pixels! handle))
+      (begin0 (make-image-record handle w h) (void/reference-sink pixels)))))
 (define (image->image-info image)
   (unless (image? image) (raise-argument-error 'image->image-info "image?" image))
   (define space (image-color-space image))
@@ -420,9 +428,9 @@
   (skia-check!)
   (call-with-image-info-native who info
     (lambda (native _cp)
-      (define result
-        (make-surface-record (new-owned who 'surface (lambda () (sk_surface_new_raster native rb #f)) sk_surface_unref)
-                              (image-info-width info) (image-info-height info) '()))
+      (define handle (new-owned who 'surface (lambda () (sk_surface_new_raster native rb #f)) sk_surface_unref))
+      (when (float-info? info) (audit-mark-float-pixels! handle))
+      (define result (make-surface-record handle (image-info-width info) (image-info-height info) '()))
       (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! result) (raise e))])
         (canvas-clear! (surface-canvas result) clear)
         result))))
@@ -440,11 +448,12 @@
             (lambda (pixels)
               (define w (raster-buffer-resource-width b)) (define h (raster-buffer-resource-height b))
               (define info (buffer-native-info b w h))
-              (set! surface
-                (make-surface-record
-                  (new-owned who 'surface
-                    (lambda () (sk_surface_new_raster_direct info pixels (raster-buffer-resource-row-bytes b) #f #f #f))
-                    sk_surface_unref) w h '()))) #:idle? #f)
+              (define handle
+                (new-owned who 'surface
+                  (lambda () (sk_surface_new_raster_direct info pixels (raster-buffer-resource-row-bytes b) #f #f #f))
+                  sk_surface_unref))
+              (when (float-info? (buffer-format-info b)) (audit-mark-float-pixels! handle))
+              (set! surface (make-surface-record handle w h '()))) #:idle? #f)
           (define c (surface-canvas surface))
           (with-canvas-state c (proc c)))
         (lambda () (when surface (skia-close! surface)))))))
@@ -465,3 +474,61 @@
           (proc p (raster-buffer-resource-width b) (raster-buffer-resource-height b)
                 (raster-buffer-resource-row-bytes b) (raster-buffer-resource-colorspace b))
           (void/reference-sink b))))))
+
+
+;; Float color reads return unpremultiplied values in the PIXMAP's color space,
+;; without converting them to sRGB. Raw pixmap-sample instead returns stored
+;; (possibly premultiplied) channels and preserves binary16 subnormals exactly.
+(define (pixmap-color4f v x y)
+  (define who 'pixmap-color4f)
+  (view-owner who v)
+  (raster-point who x y (pixmap-width-value v) (pixmap-height-value v))
+  (define out (make-sk-color4f 0.0 0.0 0.0 0.0))
+  (call-view who v (lambda (pm _a _rb _b) (sk_pixmap_get_pixel_color4f pm x y out)))
+  (native->color4f out))
+(define (pixmap-alphaf v x y)
+  (define who 'pixmap-alphaf)
+  (view-owner who v)
+  (raster-point who x y (pixmap-width-value v) (pixmap-height-value v))
+  (define a (call-view who v (lambda (pm _a _rb _b) (sk_pixmap_get_pixel_alphaf pm x y))))
+  (unless (and (real? a) (<= 0 a 1)) (error who "native alpha is not finite/in [0,1]"))
+  a)
+(define (pixmap-fill-color4f! v color)
+  (define who 'pixmap-fill-color4f!)
+  (define native (color4f-native who color))
+  (define b (view-owner who v #t))
+  (define info (buffer-format-info b))
+  (when (and (eq? (image-info-alpha-type info) 'opaque) (not (= (color4f-alpha color) 1)))
+    (error who "opaque storage requires an opaque fill color"))
+  (call-view who v
+    (lambda (_pm address rb owner)
+      (define bpp (buffer-bpp owner))
+      (define scratch (malloc bpp 'raw))
+      (unless scratch (error who "temporary sample allocation failed"))
+      (dynamic-wind void
+        (lambda ()
+          (memset scratch 0 bpp)
+          ;; Pinned SkPixmap::erase converts UNPREMULTIPLIED sRGB into the
+          ;; destination space. It is not a raw local-space sample write.
+          ;; Stage one native pixel first so overflow/invalid converted samples
+          ;; reject before any destination mutation (including late failures).
+          (call-with-native-temporary who 'pixmap
+            (lambda () (sk_pixmap_new_with_params (buffer-native-info owner 1 1) scratch bpp))
+            sk_pixmap_destructor
+            (lambda (sp)
+              (unless (sk_pixmap_erase_color4f sp native #f) (error who "native float fill failed"))))
+          (define data (make-bytes bpp))
+          (memcpy data scratch bpp)
+          (define sample (pixel-bytes->sample who info data))
+          (pixel-sample->bytes who info sample) ; validate integer alpha semantics too
+          (define row (make-bytes (* bpp (pixmap-width-value v))))
+          (for ([x (in-range (pixmap-width-value v))]) (bytes-copy! row (* x bpp) data))
+          (for ([y (in-range (pixmap-height-value v))])
+            (memcpy (ptr-add address (* y rb)) row (bytes-length row)))
+          (void/reference-sink row data native))
+        (lambda () (free scratch)))) #:write? #t)
+  (void))
+(define (pixmap-set-color4f! v x y color)
+  (view-owner 'pixmap-set-color4f! v #t)
+  (raster-point 'pixmap-set-color4f! x y (pixmap-width-value v) (pixmap-height-value v))
+  (pixmap-fill-color4f! (pixmap-subset v x y 1 1) color))

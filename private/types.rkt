@@ -2,6 +2,9 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;; m119 sk_color4f_t: RGBA, four floats, passed by VALUE by canvas clear/draw.
+(define-cstruct _sk-color4f ([r _float] [g _float] [b _float] [a _float]))
+
 ;; The m119 C shim reinterprets this record as SkCanvas::Lattice. RectTypes
 ;; *elements* must be uint8_t (the C++ enum), NOT the C header's int-sized enum.
 (define-cstruct _sk-lattice

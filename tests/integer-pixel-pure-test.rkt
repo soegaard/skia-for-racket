@@ -27,8 +27,8 @@
    (test-case "negative fractional boolean and oversized dimensions reject"
      (for ([v (in-list '(-1 1/2 32769 #f #t 1.0))])
        (bad (lambda () (make-image-info v 1))) (bad (lambda () (make-image-info 1 v)))))
-   (test-case "unknown and future float formats reject explicitly"
-     (for ([f (in-list '(unknown rgba-f16 rgba-f32 argb-4444 invented))])
+   (test-case "unknown and unsupported formats reject explicitly"
+     (for ([f (in-list '(unknown rgba-f16-norm rg-f16 argb-4444 invented))])
        (bad (lambda () (make-image-info 2 2 #:color-type f)))))
    (test-case "alpha-free formats require opaque metadata"
      (for ([f (in-list '(rgb-565 gray-8 rgb-888x))])

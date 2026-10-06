@@ -791,3 +791,18 @@
 
 ;; 0.70: checked opaque-pixel inspection; no native pointer escapes.
 (define-native sk_pixmap_compute_is_opaque (_fun _pointer -> _stdbool))
+
+;; 0.71 pinned m119 Color4f ABI. Canvas takes a struct BY VALUE; other
+;; Color4f arguments below are pointers to synchronous sixteen-byte records.
+(define-native sk_canvas_clear_color4f (_fun _pointer _sk-color4f -> _void))
+(define-native sk_canvas_draw_color4f (_fun _pointer _sk-color4f _int -> _void))
+(define-native sk_paint_get_color4f (_fun _pointer _sk-color4f-pointer -> _void))
+(define-native sk_paint_set_color4f (_fun _pointer _sk-color4f-pointer _pointer -> _void))
+(define-native sk_shader_new_color4f (_fun _sk-color4f-pointer _pointer -> _pointer))
+(define-native sk_shader_new_linear_gradient_color4f (_fun _pointer _pointer _pointer _pointer _int _int _pointer -> _pointer))
+(define-native sk_shader_new_radial_gradient_color4f (_fun _pointer _float _pointer _pointer _pointer _int _int _pointer -> _pointer))
+(define-native sk_shader_new_sweep_gradient_color4f (_fun _pointer _pointer _pointer _pointer _int _int _float _float _pointer -> _pointer))
+(define-native sk_shader_new_two_point_conical_gradient_color4f (_fun _pointer _float _pointer _float _pointer _pointer _pointer _int _int _pointer -> _pointer))
+(define-native sk_pixmap_get_pixel_color4f (_fun _pointer _int _int _sk-color4f-pointer -> _void))
+(define-native sk_pixmap_get_pixel_alphaf (_fun _pointer _int _int -> _float))
+(define-native sk_pixmap_erase_color4f (_fun _pointer _sk-color4f-pointer _pointer -> _stdbool))

@@ -1,3 +1,7 @@
+# Current inventory: 0.71
+
+Four float-color/pixmap families are now public. F16/F32 storage extends the reviewed pixel model; native/document execution remains separate evidence.
+
 ## 0.70 inventory update
 
 Six integer-storage families now have reviewed public routes and explicit limits.

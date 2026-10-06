@@ -14,6 +14,8 @@
   (provide font-style-set-resource? font-style-set-resource-handle make-font-style-set-record
            font-manager-h typeface-h make-typeface-record copy-sk-string copy-native-data
            typeface-font-bytes call-with-native-temporary))
+;; Private Color4f drawing bridge. No handle enters the public API.
+(module* float-color-internals #f (provide paint-h call-on-canvas new-shader))
 ;; Private bridge for additive effects; no public native handles.
 (module* effects-internals #f
   (provide path-h shader-h color-filter-h new-shader new-path-effect
@@ -84,6 +86,9 @@
 (define (image-convert-color-space im destination #:source-color-space [source #f])
   (define who 'image-convert-color-space)
   (define ih (image-h who im))
+  ;; The legacy image conversion path stages RGBA8888; reject float precision loss.
+  (when (memq (image-color-type im) '(rgba-f16 rgba-f32))
+    (error who "float images require raster-buffer-convert before creating the image snapshot"))
   (define dh (color-space-h who destination))
   (define sh (optional-color-space-h who source))
   (call-with-owned who (append (list ih dh) (if sh (list sh) '())) (lambda ignored (void)))

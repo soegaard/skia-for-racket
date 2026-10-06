@@ -80,7 +80,7 @@ class Sources(unittest.TestCase):
         self.assertIn('(lambda () (free memory))',s)
     def test_raw_validation_precedes_destination_memcpy(self):
         s=self.text('raster-buffers.rkt');s=s[s.index('(define (raster-buffer-write-storage!'):s.index('(define (pixmap->rgba-bytes')]
-        self.assertLess(s.index('integer-storage-input'),s.index('(memcpy p input'))
+        self.assertLess(s.index('pixel-storage-input'),s.index('(memcpy p input'))
     def test_no_pointer_ingress_or_uninitialized_allocation_api(self):
         s=self.text('image-info.rkt')+self.text('raster-buffers.rkt')
         self.assertNotIn('get-ffi-obj',s)
@@ -93,7 +93,7 @@ class Sources(unittest.TestCase):
         self.assertIn("'test-integer-pixels.py'",self.text('tools/ci.py'))
         self.assertIn('tests/integer-pixel-gpu-test.rkt',self.text('info.rkt'))
     def test_pins_and_package_minimums_unchanged(self):
-        for clause in ('(define version "0.70.0")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
+        for clause in ('(define version "0.71")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
             self.assertIn(clause,self.text('info.rkt'))
         self.assertEqual(self.text('private/native-default-version.txt').strip(),'3.119.1')
     def test_metadata_module_never_loads_skia(self):
