@@ -16,6 +16,9 @@
            typeface-font-bytes call-with-native-temporary))
 ;; Private Color4f drawing bridge. No handle enters the public API.
 (module* float-color-internals #f (provide paint-h call-on-canvas new-shader))
+;; Direct image operations reuse ownership without exposing raw handles.
+(module* image-operation-internals #f
+  (provide image-h image-filter-h new-shader make-image-record call-with-native-temporary))
 ;; Private bridge for additive effects; no public native handles.
 (module* effects-internals #f
   (provide path-h shader-h color-filter-h new-shader new-path-effect

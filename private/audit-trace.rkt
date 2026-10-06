@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/list racket/string
          "../output-policy.rkt" (submod "../output-policy.rkt" internals))
-(provide audit-mark-float-pixels! audit-allocate audit-use audit-native-call audit-on-canvas
+(provide audit-inherit-image-precision! audit-mark-float-pixels! audit-allocate audit-use audit-native-call audit-on-canvas
          audit-page-index audit-labels call-with-audit-collector
          call-with-audit-raster audit-raster-annotation!
          current-output-audit-event-limit call-with-audit-matrix
@@ -70,6 +70,7 @@
        [(make-two-point-conical-gradient-shader) '(conical-gradient)]
        [(make-color-shader) '(solid-shader)]
        [(make-image-shader) '(image-shader)]
+       [(make-raw-image-shader) '(raw-image-shader)]
        [(make-picture-shader) '(picture-shader)]
        [(make-blend-shader make-blender-shader shader-with-color-filter) '(shader-composition)]
        [(make-fractal-noise-shader make-turbulence-shader) '(perlin-noise)]
@@ -401,3 +402,11 @@
     (provenance (provenance-kind old)
                 (union (provenance-features old) '(float-pixels))
                 (provenance-slots old))))
+
+
+;; Precision requirements survive explicit filter evaluation and owned aliases.
+;; Integer pixel conversion is still the explicitly authorized loss boundary.
+(define (audit-inherit-image-precision! target sources)
+  (when (for/or ([source (in-list sources)])
+          (or (memq 'float-pixels (features source)) (memq 'float-color (features source))))
+    (audit-mark-float-pixels! target)))

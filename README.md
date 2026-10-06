@@ -1,4 +1,4 @@
-# Racket Skia — 0.71
+# Racket Skia — 0.72
 
 ## Integer pixel storage and image information
 
@@ -1616,3 +1616,7 @@ transfer/matrix construction are not part of this stage.
 ## Floating-point pixels (0.71)
 
 See [FLOAT-PIXELS.md](docs/FLOAT-PIXELS.md) for Color4f values, F16/F32 storage, source-space gradients and explicit output quantization.
+
+## Direct image operations (0.72)
+
+See [IMAGE-OPERATIONS.md](docs/IMAGE-OPERATIONS.md) for CPU/GPU filter results, preserved offsets, image reads/scales, materialization and raw shader semantics.

@@ -368,14 +368,14 @@ class Integration(unittest.TestCase):
         self.assertIn("'tools/test-dc.py'",(HERE/'validate-gpu.py').read_text())
     def test_version_assertions_all_updated(self):
         metadata=(ROOT/'info.rkt').read_text()
-        self.assertIn('(define version "0.71")',metadata)
+        self.assertIn('(define version "0.72")',metadata)
         self.assertIn('("base" #:version "8.18")',metadata)
         self.assertIn('("draw-lib" #:version "1.22")',metadata)
         matrix=json.loads((HERE/'ci-matrix.json').read_text())
         self.assertEqual([r['racket'] for r in matrix['cpu'] if r['id']=='minimum-racket'],['8.18'])
         for name in ('test-ci.py','test-gpu-interop.py','test-metal-interop.py','test-gpu-parity.py','test-dxgi.py'):
             text=(HERE/name).read_text()
-            self.assertIn('(define version "0.71")',text)
+            self.assertIn('(define version "0.72")',text)
             for obsolete in ('0.52','0.53','0.54','0.55'):
                 self.assertNotIn('(define version "'+obsolete+'")',text)
     def test_pin_and_gpu_workflow_preserved(self):

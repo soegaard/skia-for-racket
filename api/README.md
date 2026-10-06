@@ -1,3 +1,7 @@
+# Current inventory: 0.72
+
+Seven image capability families are reconciled against direct image operations. Source declarations remain separate from runtime/CI evidence. Historical outstanding non-image work is not silently reclassified.
+
 # Current inventory: 0.71
 
 Four float-color/pixmap families are now public. F16/F32 storage extends the reviewed pixel model; native/document execution remains separate evidence.

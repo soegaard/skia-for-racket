@@ -54,7 +54,7 @@ def main(argv=None):
     (out/'logs').mkdir()
     token = uuid.uuid4().hex
     commands = []
-    report = dict(schema=1, stage='0.68a', package_version='0.71', run_token=token, status='failed',
+    report = dict(schema=1, stage='0.68a', package_version='0.72', run_token=token, status='failed',
                   regressions_passed=False, documents_passed=False, native_generation_passed=False,
                   independent_renderers_required=args.require_renderers, independent_renderers_passed=False,
                   rendering_executed=False, gui_executed=False, gpu_executed=False)

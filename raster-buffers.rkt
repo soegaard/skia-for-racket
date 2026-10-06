@@ -532,3 +532,37 @@
   (view-owner 'pixmap-set-color4f! v #t)
   (raster-point 'pixmap-set-color4f! x y (pixmap-width-value v) (pixmap-height-value v))
   (pixmap-fill-color4f! (pixmap-subset v x y 1 1) color))
+
+
+;; Internal image read/scale transaction. The callback is library-authored,
+;; synchronous, and never exposed as an application callback. The destination
+;; lease is checked before allocation and remains checked throughout the copy.
+(module* image-operation-internals #f
+  (provide view-owner call-with-pixmap-write-staging)
+  (define (call-with-pixmap-write-staging who destination proc)
+    (view-owner who destination #t)
+    (define info (view-format-info destination))
+    (define-values (tight _minimum size) (image-info-storage-layout info))
+    (call-view who destination
+      (lambda (_dp address rb owner)
+        ;; Native SkPixmap retains an address between calls. Use immobile raw
+        ;; storage, not a pointer into a movable Racket byte string.
+        (define memory (malloc size 'raw))
+        (unless memory (error who "image staging allocation failed"))
+        (dynamic-wind void
+          (lambda ()
+            (memset memory 0 size)
+            (define native (buffer-native-info owner (image-info-width info) (image-info-height info)))
+            (call-with-native-temporary who 'pixmap
+              (lambda () (sk_pixmap_new_with_params native memory tight)) sk_pixmap_destructor
+              (lambda (pm) (proc pm native)))
+            ;; No destination byte changes on a failed native call or invalid
+            ;; float/premultiplied/opaque result. Padding is never committed.
+            (define observed (make-bytes size))
+            (memcpy observed memory size)
+            (pixel-storage-input who info observed tight)
+            (for ([y (in-range (image-info-height info))])
+              (memcpy (ptr-add address (* y rb)) (ptr-add memory (* y tight)) tight))
+            (void/reference-sink observed native))
+          (lambda () (free memory)))) #:write? #t)
+    (void)))

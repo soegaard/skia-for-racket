@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.72 — Direct image operations
+
+- Add CPU and explicit same-context GPU filter application returning an owned image, valid backing subset and geometric offset. Require a finite clip and reject float precision narrowing.
+- Add transactional format-aware reads/scales into leased pixmaps and independent raster-buffer conversion without an implicit eight-bit staging step.
+- Add native identity, alpha-only, lazy, texture, validity and directly available pixel queries, plus independently owned non-texture/raster image references.
+- Add raw image shaders with retained ownership, explicit color interpretation and conservative document policy.
+- Preserve float provenance, padding, exclusive lease and GPU transfer contracts. Add native, document, GPU and canonical package-version acceptance.
+
 ## 0.71 — Floating-point pixels and colors
 
 - Add F16/F32 raster storage and exact half-float sample encoding without changing seven integer-format APIs.

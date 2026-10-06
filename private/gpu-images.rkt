@@ -156,3 +156,6 @@
     (error who "source image and destination buffer dimensions must match"))
   (call-with-image-staging who im
     (lambda (s) (gpu-surface-read-raster-buffer! s buffer))))
+
+(module* image-operation-internals #f
+  (provide gpu-h context-pointer))

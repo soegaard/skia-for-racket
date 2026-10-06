@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "1b1d2c3fc2225f657547c2b2913608b13b44ee59",
+  "baseline_commit": "aa3dec2ba2fd461940757e5288ca81a3916a4282",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -4106,13 +4106,28 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU image operations and explicit same-context Ganesh GPU filtering. CPU materialization/read/scale functions reject GPU images. GPU targets remain the existing formats; no silent CPU fallback or generalized float-GPU/HDR claim. Source tests are not execution receipts.",
+      "bindings_expected": [
+        "sk_image_make_with_filter",
+        "sk_image_make_with_filter_raster"
+      ],
+      "document_behavior": "Materialized integer filter/read results are intentional embedded raster images, not vector geometry. Preserve float precision provenance until explicit conversion/rasterization. Raw image shaders require explicit bounded rasterization for PDF/SVG. Document acceptance checks one image, surrounding vectors, hyperlinks, valid dimensions and geometric placement independently.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.filter-application",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "image-operations.rkt",
+        "private/image-operation-util.rkt",
+        "private/gpu-image-operations.rkt",
+        "private/core.rkt",
+        "raster-buffers.rkt",
+        "private/gpu-images.rkt",
+        "private/native.rkt",
+        "private/gpu-image-native.rkt",
+        "private/audit-trace.rkt",
+        "private/lifetime.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "Required explicit finite clip; CPU and explicit same-context GPU entry points return an independently owned image, valid backing subset and geometric offset. Null native results raise without reading output parameters. Float storage narrowing, invalid extents and cross-context inputs reject. Wrapper byte caps do not bound every transient native filter allocation.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4121,24 +4136,52 @@
         "sk_image_make_with_filter_raster"
       ],
       "origin": "m119",
-      "planned_stage": "0.72",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "image-operations.rkt",
+          "name": "image-apply-filter"
+        },
+        {
+          "module": "gpu.rkt",
+          "name": "gpu-image-apply-filter"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/image-operation-pure-test.rkt",
+        "tests/image-operation-native-test.rkt",
+        "tests/image-operation-gpu-test.rkt",
+        "tools/test-image-operations.py",
+        "tools/test-image-operation-documents.py",
+        "tools/image-operation-doctor.rkt"
+      ],
       "title": "Filter an image, preserving result subset and placement offset",
-      "unbound_declarations": [
-        "sk_image_make_with_filter",
-        "sk_image_make_with_filter_raster"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU image operations and explicit same-context Ganesh GPU filtering. CPU materialization/read/scale functions reject GPU images. GPU targets remain the existing formats; no silent CPU fallback or generalized float-GPU/HDR claim. Source tests are not execution receipts.",
+      "bindings_expected": [
+        "sk_image_is_alpha_only",
+        "sk_image_is_lazy_generated"
+      ],
+      "document_behavior": "Materialized integer filter/read results are intentional embedded raster images, not vector geometry. Preserve float precision provenance until explicit conversion/rasterization. Raw image shaders require explicit bounded rasterization for PDF/SVG. Document acceptance checks one image, surrounding vectors, hyperlinks, valid dimensions and geometric placement independently.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.extra-inspection",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "image-operations.rkt",
+        "private/image-operation-util.rkt",
+        "private/gpu-image-operations.rkt",
+        "private/core.rkt",
+        "raster-buffers.rkt",
+        "private/gpu-images.rkt",
+        "private/native.rkt",
+        "private/gpu-image-native.rkt",
+        "private/audit-trace.rkt",
+        "private/lifetime.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "Native scalar inspection and non-materializing pixel availability. Lazy generation, CPU wrapper ownership, native texture backing and actual immediately available pixels are distinct properties. No borrowed pixmap/address escapes.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4147,31 +4190,57 @@
         "sk_image_is_lazy_generated"
       ],
       "origin": "m119",
-      "planned_stage": "0.72",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "image-operations.rkt",
+          "name": "image-alpha-only?"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image-lazy-generated?"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image-pixels-available?"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/image-operation-pure-test.rkt",
+        "tests/image-operation-native-test.rkt",
+        "tests/image-operation-gpu-test.rkt",
+        "tools/test-image-operations.py",
+        "tools/test-image-operation-documents.py",
+        "tools/image-operation-doctor.rkt"
+      ],
       "title": "Lazy generation and alpha-only queries",
-      "unbound_declarations": [
-        "sk_image_is_alpha_only",
-        "sk_image_is_lazy_generated"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "OpenGL, Metal and Direct3D wrapper routes, with owner/context affinity and explicit transfers. No Vulkan/Graphite route; no hardware or per-feature runtime assertion.",
+      "backend_scope": "CPU image operations and explicit same-context Ganesh GPU filtering. CPU materialization/read/scale functions reject GPU images. GPU targets remain the existing formats; no silent CPU fallback or generalized float-GPU/HDR claim. Source tests are not execution receipts.",
       "bindings_expected": [
         "sk_image_get_unique_id",
         "sk_image_is_texture_backed",
         "sk_image_is_valid"
       ],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Materialized integer filter/read results are intentional embedded raster images, not vector geometry. Preserve float precision provenance until explicit conversion/rasterization. Raw image shaders require explicit bounded rasterization for PDF/SVG. Document acceptance checks one image, surrounding vectors, hyperlinks, valid dimensions and geometric placement independently.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.residency",
       "implementation_files": [
+        "image-operations.rkt",
+        "private/image-operation-util.rkt",
+        "private/gpu-image-operations.rkt",
+        "private/core.rkt",
+        "raster-buffers.rkt",
         "private/gpu-images.rkt",
-        "private/gpu-image-native.rkt"
+        "private/native.rkt",
+        "private/gpu-image-native.rkt",
+        "private/audit-trace.rkt",
+        "private/lifetime.rkt",
+        "output-policy.rkt"
       ],
-      "limitations": "Existing GPU info uses these bindings; a generic CPU-image metadata facade remains incomplete. Not falsely unbound.",
+      "limitations": "Native identity and texture/validity queries complement existing gpu:image-residency and gpu:gpu-image-info; these are not synonymous. Owned GPU context scope and thread checks still apply; a closed wrapper raises rather than returning a misleading native validity value.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4181,8 +4250,24 @@
         "sk_image_is_valid"
       ],
       "origin": "m119",
-      "planned_stage": "0.72",
+      "planned_stage": null,
       "public_equivalents": [
+        {
+          "module": "image-operations.rkt",
+          "name": "image-unique-id"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image-texture-backed?"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image-valid?"
+        },
+        {
+          "module": "gpu.rkt",
+          "name": "image-residency"
+        },
         {
           "module": "gpu.rkt",
           "name": "gpu-image-info"
@@ -4190,19 +4275,38 @@
       ],
       "status": "supported-with-limits",
       "test_sources": [
-        "tests/gpu-image-native-test.rkt"
+        "tests/image-operation-pure-test.rkt",
+        "tests/image-operation-native-test.rkt",
+        "tests/image-operation-gpu-test.rkt",
+        "tools/test-image-operations.py",
+        "tools/test-image-operation-documents.py",
+        "tools/image-operation-doctor.rkt"
       ],
       "title": "Image identity/residency/validity queries through GPU image info",
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU image operations and explicit same-context Ganesh GPU filtering. CPU materialization/read/scale functions reject GPU images. GPU targets remain the existing formats; no silent CPU fallback or generalized float-GPU/HDR claim. Source tests are not execution receipts.",
+      "bindings_expected": [
+        "sk_image_make_raw_shader"
+      ],
+      "document_behavior": "Materialized integer filter/read results are intentional embedded raster images, not vector geometry. Preserve float precision provenance until explicit conversion/rasterization. Raw image shaders require explicit bounded rasterization for PDF/SVG. Document acceptance checks one image, surrounding vectors, hyperlinks, valid dimensions and geometric placement independently.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.raw-shader",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "image-operations.rkt",
+        "private/image-operation-util.rkt",
+        "private/gpu-image-operations.rkt",
+        "private/core.rkt",
+        "raster-buffers.rkt",
+        "private/gpu-images.rkt",
+        "private/native.rkt",
+        "private/gpu-image-native.rkt",
+        "private/audit-trace.rkt",
+        "private/lifetime.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "Native raw numeric image shader, copied invertible affine local matrix and nearest/linear sampling. Raw sampling deliberately bypasses ordinary color conversion and unpremultiplication; it is not an ordinary color-managed image shader. CPU/GPU dependencies remain retained after source closure.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4210,23 +4314,48 @@
         "sk_image_make_raw_shader"
       ],
       "origin": "m119",
-      "planned_stage": "0.72",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "image-operations.rkt",
+          "name": "make-raw-image-shader"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/image-operation-pure-test.rkt",
+        "tests/image-operation-native-test.rkt",
+        "tests/image-operation-gpu-test.rkt",
+        "tools/test-image-operations.py",
+        "tools/test-image-operation-documents.py",
+        "tools/image-operation-doctor.rkt"
+      ],
       "title": "Raw image shaders without ordinary color conversion",
-      "unbound_declarations": [
-        "sk_image_make_raw_shader"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU image operations and explicit same-context Ganesh GPU filtering. CPU materialization/read/scale functions reject GPU images. GPU targets remain the existing formats; no silent CPU fallback or generalized float-GPU/HDR claim. Source tests are not execution receipts.",
+      "bindings_expected": [
+        "sk_image_read_pixels_into_pixmap",
+        "sk_image_scale_pixels"
+      ],
+      "document_behavior": "Materialized integer filter/read results are intentional embedded raster images, not vector geometry. Preserve float precision provenance until explicit conversion/rasterization. Raw image shaders require explicit bounded rasterization for PDF/SVG. Document acceptance checks one image, surrounding vectors, hyperlinks, valid dimensions and geometric placement independently.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.direct-scale",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "image-operations.rkt",
+        "private/image-operation-util.rkt",
+        "private/gpu-image-operations.rkt",
+        "private/core.rkt",
+        "raster-buffers.rkt",
+        "private/gpu-images.rkt",
+        "private/native.rkt",
+        "private/gpu-image-native.rkt",
+        "private/audit-trace.rkt",
+        "private/lifetime.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "CPU image reads and scaling into compatible leased integer/F16/F32 pixmaps, with validated staging before destination mutation. Reads cover the full destination and require in-bounds source extents. Explicit destination metadata authorizes conversion/quantization; tag/untagged changes reject. No implicit GPU readback or eight-bit intermediate. Native format-pair restrictions may still reject.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4235,15 +4364,32 @@
         "sk_image_scale_pixels"
       ],
       "origin": "m119",
-      "planned_stage": "0.72",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "image-operations.rkt",
+          "name": "image-read-pixmap!"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image-scale-pixmap!"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image->raster-buffer"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/image-operation-pure-test.rkt",
+        "tests/image-operation-native-test.rkt",
+        "tests/image-operation-gpu-test.rkt",
+        "tools/test-image-operations.py",
+        "tools/test-image-operation-documents.py",
+        "tools/image-operation-doctor.rkt"
+      ],
       "title": "Scale/read an image directly into a format-aware pixmap",
-      "unbound_declarations": [
-        "sk_image_read_pixels_into_pixmap",
-        "sk_image_scale_pixels"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
@@ -4392,13 +4538,27 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU image operations and explicit same-context Ganesh GPU filtering. CPU materialization/read/scale functions reject GPU images. GPU targets remain the existing formats; no silent CPU fallback or generalized float-GPU/HDR claim. Source tests are not execution receipts.",
+      "bindings_expected": [
+        "sk_image_make_non_texture_image"
+      ],
+      "document_behavior": "Materialized integer filter/read results are intentional embedded raster images, not vector geometry. Preserve float precision provenance until explicit conversion/rasterization. Raw image shaders require explicit bounded rasterization for PDF/SVG. Document acceptance checks one image, surrounding vectors, hyperlinks, valid dimensions and geometric placement independently.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.nontexture",
-      "implementation_files": [],
-      "limitations": "A non-texture image may still be lazy; do not rename it as completed CPU pixel materialization.",
+      "implementation_files": [
+        "image-operations.rkt",
+        "private/image-operation-util.rkt",
+        "private/gpu-image-operations.rkt",
+        "private/core.rkt",
+        "raster-buffers.rkt",
+        "private/gpu-images.rkt",
+        "private/native.rkt",
+        "private/gpu-image-native.rkt",
+        "private/audit-trace.rkt",
+        "private/lifetime.rkt",
+        "output-policy.rkt"
+      ],
+      "limitations": "CPU-only independently owned native references: non-texture can remain lazy, raster materialization requires directly available pixels. Existing gpu-image->raster-image remains the explicit GPU transfer. Returning an independent reference does not necessarily copy already immutable native pixels.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4406,14 +4566,28 @@
         "sk_image_make_non_texture_image"
       ],
       "origin": "m119",
-      "planned_stage": "0.72",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "image-operations.rkt",
+          "name": "image->non-texture-image"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image->raster-image"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/image-operation-pure-test.rkt",
+        "tests/image-operation-native-test.rkt",
+        "tests/image-operation-gpu-test.rkt",
+        "tools/test-image-operations.py",
+        "tools/test-image-operation-documents.py",
+        "tools/image-operation-doctor.rkt"
+      ],
       "title": "Non-texture versus fully materialized raster image",
-      "unbound_declarations": [
-        "sk_image_make_non_texture_image"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "OpenGL, Metal and Direct3D wrapper routes, with owner/context affinity and explicit transfers. No Vulkan/Graphite route; no hardware or per-feature runtime assertion.",
@@ -4462,7 +4636,7 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
+      "backend_scope": "CPU image operations and explicit same-context Ganesh GPU filtering. CPU materialization/read/scale functions reject GPU images. GPU targets remain the existing formats; no silent CPU fallback or generalized float-GPU/HDR claim. Source tests are not execution receipts.",
       "bindings_expected": [
         "sk_image_get_alpha_type",
         "sk_image_get_color_type",
@@ -4478,13 +4652,23 @@
         "sk_image_read_pixels",
         "sk_image_ref_encoded"
       ],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Materialized integer filter/read results are intentional embedded raster images, not vector geometry. Preserve float precision provenance until explicit conversion/rasterization. Raw image shaders require explicit bounded rasterization for PDF/SVG. Document acceptance checks one image, surrounding vectors, hyperlinks, valid dimensions and geometric placement independently.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.raster-core",
       "implementation_files": [
-        "private/core.rkt"
+        "image-operations.rkt",
+        "private/image-operation-util.rkt",
+        "private/gpu-image-operations.rkt",
+        "private/core.rkt",
+        "raster-buffers.rkt",
+        "private/gpu-images.rkt",
+        "private/native.rkt",
+        "private/gpu-image-native.rkt",
+        "private/audit-trace.rkt",
+        "private/lifetime.rkt",
+        "output-policy.rkt"
       ],
-      "limitations": "Generic wrappers remain RGBA-oriented; no promise that a color enum implies supported drawing storage.",
+      "limitations": "Existing encoded/one-shot/subset APIs are preserved. Direct reads/materialization now expose explicit format-aware paths and detached buffers; existing eight-bit convenience operations retain their names and behavior. Picture-to-image convenience already exists and is not duplicated.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4504,8 +4688,16 @@
         "sk_image_ref_encoded"
       ],
       "origin": "m119",
-      "planned_stage": "0.72",
+      "planned_stage": null,
       "public_equivalents": [
+        {
+          "module": "image-operations.rkt",
+          "name": "image->raster-buffer"
+        },
+        {
+          "module": "image-operations.rkt",
+          "name": "image->raster-image"
+        },
         {
           "module": "main.rkt",
           "name": "image-from-bytes"
@@ -4517,11 +4709,20 @@
         {
           "module": "main.rkt",
           "name": "image->rgba-bytes"
+        },
+        {
+          "module": "main.rkt",
+          "name": "picture->image"
         }
       ],
       "status": "supported-with-limits",
       "test_sources": [
-        "tests/codec-native-test.rkt"
+        "tests/image-operation-pure-test.rkt",
+        "tests/image-operation-native-test.rkt",
+        "tests/image-operation-gpu-test.rkt",
+        "tools/test-image-operations.py",
+        "tools/test-image-operation-documents.py",
+        "tools/image-operation-doctor.rkt"
       ],
       "title": "Encoded images, RGBA copies, snapshots, subsets and color inspection",
       "unbound_declarations": []
@@ -7302,6 +7503,7 @@
     "gpu-racket-gl.rkt",
     "gpu.rkt",
     "image-info.rkt",
+    "image-operations.rkt",
     "main.rkt",
     "matrix.rkt",
     "native-capabilities.rkt",
@@ -7323,5 +7525,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.71"
+  "stage": "0.72"
 }

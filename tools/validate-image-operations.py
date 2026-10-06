@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""0.71 acceptance: full regressions, native PDF/SVG, optional required GPU/viewers."""
+"""0.72 acceptance: full regressions, native PDF/SVG, optional required GPU/viewers."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -14,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
-from float_pixel_validation import inspect_documents, inspect_gpu
+from image_operation_validation import inspect_documents, inspect_gpu
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -25,8 +25,8 @@ def compile_targets(root):
     for name in dynamic:
         if any(p in ('','.','..') for p in name.split('/')) or '\\' in name or ':' in name:
             raise ValueError('unsafe compile target')
-    return [root/p for p in dict.fromkeys(('main.rkt','color4f.rkt','float-colors.rkt','image-info.rkt','raster-buffers.rkt','run-tests.rkt',*dynamic,
-                                         'tests/float-pixel-gpu-test.rkt','tools/float-pixel-doctor.rkt','examples/float-pixels.rkt'))]
+    return [root/p for p in dict.fromkeys(('main.rkt','image-operations.rkt','gpu.rkt','run-tests.rkt',*dynamic,
+                                         'tests/image-operation-gpu-test.rkt','tools/image-operation-doctor.rkt','examples/image-operations.rkt'))]
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
@@ -50,9 +50,9 @@ def main(argv=None):
         args.directory.mkdir(parents=True);out=args.directory.resolve()
     else:
         (ROOT/'output').mkdir(exist_ok=True)
-        out=Path(tempfile.mkdtemp(prefix='float-pixels-0.71-',dir=ROOT/'output'))
+        out=Path(tempfile.mkdtemp(prefix='image-operations-0.72-',dir=ROOT/'output'))
     (out/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
-    report=dict(schema=1,stage='0.71',package_version='0.72',status='failed',run_token=token,
+    report=dict(schema=1,stage='0.72',package_version='0.72',status='failed',run_token=token,
                 regressions_passed=False,documents_passed=False,rendering_executed=False,rendering_attempted=False,
                 gpu_required=args.require_gpu,gpu_attempted=False,gpu_executed=False,gpu_passed=False,
                 independent_renderers_required=args.require_renderers,independent_renderers_attempted=False,independent_renderers_executed=False,
@@ -71,12 +71,13 @@ def main(argv=None):
         run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
         before=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest();report['manifest_before']=before
         run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
-        run([sys.executable,ROOT/'tools/test-float-pixels.py'])
-        run([sys.executable,ROOT/'tools/test-float-pixel-documents.py'])
+        run([sys.executable,ROOT/'tools/test-image-operations.py'])
+        run([sys.executable,ROOT/'tools/test-image-operation-documents.py'])
+        run([racket,ROOT/'tools/check-package-version.rkt'])
         run([racket,'-l','raco','--','make',*compile_targets(ROOT)])
         run([racket,ROOT/'run-tests.rkt']);report['regressions_passed']=True
         report['rendering_attempted']=True
-        run([racket,ROOT/'tools/float-pixel-doctor.rkt','--directory',out/'documents','--token',token])
+        run([racket,ROOT/'tools/image-operation-doctor.rkt','--directory',out/'documents','--token',token])
         report['rendering_executed']=True
         render=None
         if args.require_renderers:
@@ -96,7 +97,7 @@ def main(argv=None):
         if args.require_gpu:
             report['gpu_attempted']=True
             (out/'gpu').mkdir()
-            run([racket,ROOT/'tests/float-pixel-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
+            run([racket,ROOT/'tests/image-operation-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
                  '--report',out/'gpu/gpu.json','--token',token])
             report['gpu_executed']=True
             gpu=inspect_gpu(out/'gpu',token,backend,args.adapter)
@@ -108,7 +109,7 @@ def main(argv=None):
         report.update(manifest_after=after,status='passed')
     except Exception as error:
         report['error']=type(error).__name__+': '+str(error)
-        print('Float pixels FAILED: '+report['error'],file=sys.stderr)
+        print('Image operations FAILED: '+report['error'],file=sys.stderr)
     finally:
         for name,value in (('commands.json',commands),('validation.json',report)):
             (out/name).write_text(json.dumps(value,indent=2)+'\n',encoding='utf-8')

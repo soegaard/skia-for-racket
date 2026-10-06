@@ -141,7 +141,9 @@
 (define cpu-only-operations
   '(image->rgba-bytes image->png-bytes image->jpeg-bytes image->webp-bytes
     image->encoded-bytes image-convert-color-space image-original-encoded-bytes
-    image-subset picture->bytes picture->image))
+    image-subset picture->bytes picture->image
+    image->non-texture-image image->raster-image image-read-pixmap!
+    image-scale-pixmap! image->raster-buffer image-apply-filter))
 (define (call-with-owned who handles proc)
   (call-as-atomic
    (lambda ()

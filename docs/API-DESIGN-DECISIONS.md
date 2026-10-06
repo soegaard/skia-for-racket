@@ -237,3 +237,7 @@ targets remain separate stages; this note does not assert native execution.
 ## 0.71 implementation checkpoint
 
 F16/F32 storage and Color4f values now implement D4 together with the existing D1–D3/D5 foundations. See [FLOAT-PIXELS.md](FLOAT-PIXELS.md) for precision, color interpretation, lease, and quantization contracts. HDR and generalized GPU formats remain separate work.
+
+## 0.72 implementation checkpoint
+
+Direct image operations implement D6 with explicit CPU/GPU entry points, and retain D3–D5 precision and exclusive leases. Filter results preserve image, valid subset and world placement offset. Reads/scales stage and validate before destination mutation. Raw numeric image shaders require an explicit document rasterization boundary. See [IMAGE-OPERATIONS.md](IMAGE-OPERATIONS.md).

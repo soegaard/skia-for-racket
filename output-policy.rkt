@@ -37,6 +37,7 @@
     (sweep-gradient vector               needs-raster         "SVG does not preserve this Skia gradient family; use an explicit raster group.")
     (conical-gradient vector             needs-raster         "SVG does not preserve this Skia gradient family; use an explicit raster group.")
     (solid-shader   native-expansion         needs-raster         "A shader resource is not a plain paint color. Use a plain color or an explicit raster group for portable output.")
+    (raw-image-shader needs-raster needs-raster "Raw image shaders interpret numeric samples without ordinary color management or unpremultiplication; use explicit bounded rasterization for PDF/SVG.")
     (image-shader   native-expansion         needs-raster         "Image shader tiling/sampling is not promised as portable SVG vector output.")
     (shader-composition native-expansion    needs-raster         "Composite shader serialization is backend dependent; SVG requires an explicit raster group.")
     (shader-local-matrix native-expansion   needs-raster         "Local shader transforms are not generally preserved by the pinned SVG writer.")

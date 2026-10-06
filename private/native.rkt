@@ -806,3 +806,21 @@
 (define-native sk_pixmap_get_pixel_color4f (_fun _pointer _int _int _sk-color4f-pointer -> _void))
 (define-native sk_pixmap_get_pixel_alphaf (_fun _pointer _int _int -> _float))
 (define-native sk_pixmap_erase_color4f (_fun _pointer _sk-color4f-pointer _pointer -> _stdbool))
+
+;; 0.72 image queries and CPU operations: pinned m119 signatures.
+;; Three metadata symbols also have existing GPU registry entries. The combined
+;; inventory counts them once; their CPU declarations are intentional.
+(define-native sk_image_get_unique_id (_fun _pointer -> _uint32))
+(define-native sk_image_is_alpha_only (_fun _pointer -> _stdbool))
+(define-native sk_image_is_lazy_generated (_fun _pointer -> _stdbool))
+(define-native sk_image_is_texture_backed (_fun _pointer -> _stdbool))
+(define-native sk_image_is_valid (_fun _pointer _pointer -> _stdbool))
+(define-native sk_image_make_non_texture_image (_fun _pointer -> _pointer))
+(define-native sk_image_make_raw_shader
+  (_fun _pointer _int _int _sk-sampling-pointer _pointer -> _pointer))
+(define-native sk_image_read_pixels_into_pixmap
+  (_fun _pointer _pointer _int _int _int -> _stdbool))
+(define-native sk_image_scale_pixels
+  (_fun _pointer _pointer _sk-sampling-pointer _int -> _stdbool))
+(define-native sk_image_make_with_filter_raster
+  (_fun _pointer _pointer _sk-irect-pointer _sk-irect-pointer _sk-irect-pointer _sk-ipoint-pointer -> _pointer))

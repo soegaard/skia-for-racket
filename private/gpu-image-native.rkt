@@ -41,3 +41,7 @@
                                   "~a: ~a" (car entry) (exn-message e)))])
       (force (cdr entry))))
   (void))
+
+;; 0.72: explicit same-context filtering, not part of CPU-required symbols.
+(define-image-native filter-image/native sk_image_make_with_filter
+  (_fun _pointer _pointer _pointer _pointer _pointer _pointer _pointer -> _pointer))
