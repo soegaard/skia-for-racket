@@ -1,7 +1,6 @@
 name: Floating-point pixels and colors
 "on":
-  push:
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

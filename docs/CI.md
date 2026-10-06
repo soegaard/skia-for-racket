@@ -90,6 +90,20 @@ when a prerequisite fails. It accepts only `success` for all six groups: source,
 and raster canvas;
 `skipped` and `cancelled` do not count as passes.
 
+Automatic stage acceptance is grouped under `.github/workflows/acceptance.yml`
+instead of giving every historical stage its own push/pull-request run. A normal
+push to `main`, a `v*` tag push, or a pull request therefore creates three
+top-level workflows: `CI`, `API inventory`, and `Acceptance`. The stage-specific
+workflow files remain individually dispatchable and reusable: they expose
+`workflow_call` plus `workflow_dispatch`, while the `Acceptance` workflow calls
+all eleven and publishes `Acceptance required`. No stage-specific acceptance
+workflow has its own `push` or `pull_request` trigger.
+
+This changes orchestration only. The called workflows keep their existing
+Linux/Windows matrices, native setup, validators, retained artifacts, and failure
+semantics; grouping them does not count as new execution evidence or reduce the
+accepted backend coverage.
+
 After the first successful workflow, select **CI required** as the required
 status check in the repository's branch protection/ruleset. This delivery does
 not change repository settings. A workflow file cannot enable branch protection

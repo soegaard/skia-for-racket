@@ -1,0 +1,81 @@
+name: Acceptance
+
+"on":
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dc-output:
+    name: DC document output
+    uses: ./.github/workflows/dc-output.yml
+  effects:
+    name: Effects
+    uses: ./.github/workflows/effects.yml
+  float-pixels:
+    name: Floating-point pixels and colors
+    uses: ./.github/workflows/float-pixels.yml
+  font-queries:
+    name: Font options and glyph queries
+    uses: ./.github/workflows/font-queries.yml
+  geometry-completion:
+    name: Geometry completion
+    uses: ./.github/workflows/geometry-completion.yml
+  gpu-dc:
+    name: GPU DC
+    uses: ./.github/workflows/gpu-dc.yml
+  image-operations:
+    name: Direct image operations
+    uses: ./.github/workflows/image-operations.yml
+  integer-pixels:
+    name: Integer pixel storage
+    uses: ./.github/workflows/integer-pixels.yml
+  render-canvas:
+    name: Unified render canvas
+    uses: ./.github/workflows/render-canvas.yml
+  text-blobs:
+    name: Multi-run text blobs
+    uses: ./.github/workflows/text-blobs.yml
+  typefaces:
+    name: Typeface resources
+    uses: ./.github/workflows/typefaces.yml
+
+  required:
+    name: Acceptance required
+    if: always()
+    needs: [dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every acceptance workflow
+        env:
+          DC_OUTPUT_RESULT: ${{ needs.dc-output.result }}
+          EFFECTS_RESULT: ${{ needs.effects.result }}
+          FLOAT_PIXELS_RESULT: ${{ needs.float-pixels.result }}
+          FONT_QUERIES_RESULT: ${{ needs.font-queries.result }}
+          GEOMETRY_COMPLETION_RESULT: ${{ needs.geometry-completion.result }}
+          GPU_DC_RESULT: ${{ needs.gpu-dc.result }}
+          IMAGE_OPERATIONS_RESULT: ${{ needs.image-operations.result }}
+          INTEGER_PIXELS_RESULT: ${{ needs.integer-pixels.result }}
+          RENDER_CANVAS_RESULT: ${{ needs.render-canvas.result }}
+          TEXT_BLOBS_RESULT: ${{ needs.text-blobs.result }}
+          TYPEFACES_RESULT: ${{ needs.typefaces.result }}
+        run: |
+          test "$DC_OUTPUT_RESULT" = success
+          test "$EFFECTS_RESULT" = success
+          test "$FLOAT_PIXELS_RESULT" = success
+          test "$FONT_QUERIES_RESULT" = success
+          test "$GEOMETRY_COMPLETION_RESULT" = success
+          test "$GPU_DC_RESULT" = success
+          test "$IMAGE_OPERATIONS_RESULT" = success
+          test "$INTEGER_PIXELS_RESULT" = success
+          test "$RENDER_CANVAS_RESULT" = success
+          test "$TEXT_BLOBS_RESULT" = success
+          test "$TYPEFACES_RESULT" = success

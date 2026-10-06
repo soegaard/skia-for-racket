@@ -378,6 +378,28 @@ class WorkflowAndIntegration(unittest.TestCase):
         uncommented = '\n'.join(l for l in s.splitlines() if not l.lstrip().startswith('#'))
         for bad in ('pull_request_target:', 'self-hosted', 'continue-on-error:', 'secrets.', 'actions/cache'):
             self.assertNotIn(bad, uncommented)
+    def test_acceptance_groups_stage_workflows(self):
+        workflows = HERE.parent / '.github/workflows'
+        reusable = ('dc-output.yml', 'effects.yml', 'float-pixels.yml', 'font-queries.yml',
+                    'geometry-completion.yml', 'gpu-dc.yml', 'image-operations.yml',
+                    'integer-pixels.yml', 'render-canvas.yml', 'text-blobs.yml',
+                    'typefaces.yml')
+        acceptance = (workflows / 'acceptance.yml').read_text()
+        auto = {p.name for p in workflows.glob('*.yml')
+                if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
+        self.assertEqual(auto, {'acceptance.yml', 'api-inventory.yml', 'ci.yml'})
+        self.assertIn('name: Acceptance required\n    if: always()', acceptance)
+        self.assertIn('contents: read', acceptance)
+        self.assertNotIn('pull_request_target:', acceptance)
+        self.assertNotIn('continue-on-error:', acceptance)
+        for name in reusable:
+            source = (workflows / name).read_text()
+            self.assertIn('workflow_call:', source)
+            self.assertIn('workflow_dispatch:', source)
+            self.assertNotIn('\n  push:', source)
+            self.assertNotIn('\n  pull_request:', source)
+            self.assertEqual(acceptance.count(f'uses: ./.github/workflows/{name}'), 1)
+        self.assertEqual(acceptance.count('uses: ./.github/workflows/'), len(reusable))
     def test_required_aggregate_and_retained_artifacts(self):
         s = (HERE.parent / '.github/workflows/ci.yml').read_text()
         self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]', s); self.assertIn('name: CI required\n    if: always()', s)
