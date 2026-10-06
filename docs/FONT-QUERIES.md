@@ -204,3 +204,8 @@ Pinned C declarations and ownership/callback implementation:
 `include/c/sk_font.h`, `src/c/sk_font.cpp`, and `src/core/SkFont.cpp`.
 Racket FFI callback lifetime/atomicity follows the *Function Types* chapter of
 the Racket Foreign Interface manual. Header checks are not runtime ABI proof.
+
+## Subsequent text support
+
+Stage 0.69 now provides the multi-run and path-text APIs described in
+[TEXT-BLOBS.md](TEXT-BLOBS.md), retaining the font-query contracts above.

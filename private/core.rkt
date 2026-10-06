@@ -311,6 +311,17 @@
 ;; A private font snapshot and immutable positions allow exact outline replay
 ;; after the caller mutates/closes the font used to construct this blob.
 (struct text-blob (handle font glyphs positions) #:constructor-name make-text-blob-record)
+;; 0.69 private ownership bridge. No handles are re-exported by main.rkt.
+(require "text-run-data.rkt" "text-run-util.rkt")
+(struct multi-text-blob text-blob (runs) #:constructor-name make-multi-text-blob-record)
+(struct text-blob-builder-resource (handle runs cost) #:constructor-name make-text-blob-builder-record)
+(module* text-blob-internals #f
+  (provide multi-text-blob? multi-text-blob-runs make-multi-text-blob-record
+           text-blob-builder-resource? text-blob-builder-resource-handle
+           text-blob-builder-resource-runs text-blob-builder-resource-cost make-text-blob-builder-record
+           text-blob-h text-blob-font text-blob-glyphs text-blob-positions
+           font-h shaper-h shaper-font paint-h path-h call-on-canvas
+           copy-font-for-shaper call-with-native-temporary path-native-verb-count))
 (struct shaper (handle font) #:constructor-name make-shaper-record)
 (struct shaped-run (glyphs clusters positions advance-x advance-y) #:transparent)
 (struct layout-break-opportunity (index insert)
@@ -340,7 +351,7 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
+  (or (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
@@ -350,6 +361,7 @@
 
 (define (resource-handle who v)
   (cond [(raster-buffer-resource? v) (raster-buffer-resource-handle v)]
+        [(text-blob-builder-resource? v) (text-blob-builder-resource-handle v)]
         [(font-style-set-resource? v) (font-style-set-resource-handle v)]
         [(region-resource? v) (region-resource-handle v)]
         [(vertices-resource? v) (vertices-resource-handle v)]
@@ -406,8 +418,15 @@
     (skia-close! (shaper-font v)))
   ;; A blob's snapshot is independent of the native blob's retained typeface.
   ;; Each has its own GC fallback; explicit close releases both immediately.
-  (when (text-blob? v)
-    (skia-close! (text-blob-font v))))
+  (when (text-blob-builder-resource? v)
+    (define runs (unbox (text-blob-builder-resource-runs v)))
+    (set-box! (text-blob-builder-resource-runs v) '())
+    (set-box! (text-blob-builder-resource-cost v) 0)
+    (for ([run (in-list runs)]) (skia-close! (retained-text-run-font run))))
+  (cond
+    [(multi-text-blob? v)
+     (for ([run (in-list (multi-text-blob-runs v))]) (skia-close! (retained-text-run-font run)))]
+    [(text-blob? v) (skia-close! (text-blob-font v))]))
 
 (define (call-with-skia-resource v proc)
   (resource-handle 'call-with-skia-resource v)
@@ -3111,6 +3130,9 @@
                    sk_textblob_get_unique_id))
 
 (define (text-blob->path blob)
+  (if (multi-text-blob? blob) (multi-text-blob->path blob) (legacy-text-blob->path blob)))
+
+(define (legacy-text-blob->path blob)
   (define who 'text-blob->path)
   (call-with-owned who (list (text-blob-h who blob)) (lambda (_) (void)))
   (define out (make-path))
@@ -5409,3 +5431,53 @@
   (with-skia ([surface (make-surface width height #:background background)])
     (draw-picture (surface-canvas surface) pic #:width width #:height height)
     (surface-snapshot surface)))
+
+;; 0.69: retained multi-run replay. The legacy single-run route stays unchanged.
+(define (path-native-verb-count p)
+  (call-with-owned 'path-native-verb-count (list (path-h 'path-native-verb-count p)) sk_path_count_verbs))
+(define (glyph-has-visible-bounds? who f glyph)
+  (call-with-owned who (list (font-h who f))
+    (lambda (fp)
+      (define gid (malloc _uint16 'atomic))
+      (ptr-set! gid _uint16 glyph)
+      (define bounds (make-sk-rect 0.0 0.0 0.0 0.0))
+      (sk_font_get_widths_bounds fp gid 1 #f bounds #f)
+      (begin0
+        (and (< (sk-rect-left bounds) (sk-rect-right bounds))
+             (< (sk-rect-top bounds) (sk-rect-bottom bounds)))
+        (void/reference-sink gid bounds)))))
+(define (multi-text-blob->path blob)
+  (define who 'text-blob->path)
+  (call-with-owned who (list (text-blob-h who blob))
+    (lambda (_)
+      (define result (make-path))
+      (define charged 0)
+      (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! result) (raise e))])
+        (for ([run (in-list (multi-text-blob-runs blob))])
+          (define f (retained-text-run-font run))
+          (define info (retained-text-run-info run))
+          (define transforms (text-run-info-transforms info))
+          (for ([glyph (in-vector (text-run-info-glyphs info))] [i (in-naturals)])
+            (define outline (font-glyph-path f glyph))
+            (cond
+              [outline
+               (call-with-skia-resource outline
+                 (lambda (p)
+                   (set! charged (+ charged (* 8 (path-point-count p)) (path-native-verb-count p)))
+                   (text-run-budget who charged)
+                   (cond
+                     [transforms
+                      (define cs (vector-ref transforms i))
+                      (define scos (car cs)) (define ssin (cadr cs))
+                      (define m (make-sk-matrix scos (- ssin) (caddr cs)
+                                                ssin scos (cadddr cs) 0.0 0.0 1.0))
+                      (call-with-owned who (list (path-h who p))
+                        (lambda (pp) (sk_path_transform pp m)))
+                      (path-add-path! result p)]
+                     [else
+                      (define pos (vector-ref (text-run-info-positions info) i))
+                      (path-add-path! result p #:dx (car pos) #:dy (cadr pos))])))]
+              [(glyph-has-visible-bounds? who f glyph)
+               (error who "glyph ~a has visible bounds but no monochrome outline; explicit raster output is required" glyph)]
+              [else (void)])))
+        result))))

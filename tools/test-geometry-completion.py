@@ -142,7 +142,7 @@ class Sources(unittest.TestCase):
         self.assertIn('tests/geometry-completion-gpu-test.rkt',self.text('info.rkt'))
     def test_version_and_native_pins(self):
         s=self.text('info.rkt')
-        for text in ('(define version "0.68.2")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
+        for text in ('(define version "0.69.0")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
             self.assertIn(text,s)
         self.assertEqual(inv.load_catalog(ROOT)['upstream']['package_version'],'3.119.1')
     def test_no_stale_current_package_assertion(self):

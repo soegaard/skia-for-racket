@@ -51,7 +51,7 @@
 ;; color-space getter is CPU-independent even when queried on a GPU image.
 (define independent-kinds
   '(surface image raster-image color-space path path-effect mask-filter
-    region vertices runtime-effect font-manager font-style-set typeface font text-blob shaper
+    region vertices runtime-effect font-manager font-style-set typeface font text-blob text-blob-builder shaper shaper-font
     path-measure codec encoded-data native-string data raster-buffer pixmap
     runtime-uniform-data runtime-name sksl-source sksl-diagnostic rtree-factory))
 (define (collect! a handles)

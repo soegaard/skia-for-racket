@@ -1,0 +1,72 @@
+#lang racket/base
+;; Original procedural fixture extension: add a Unicode cmap and fi ligature.
+;; It uses the existing four original glyph shapes; no installed font is copied.
+(require racket/list "typeface-fixtures.rkt")
+(provide text-blob-fixture-font-bytes)
+(define (u16 n) (integer->integer-bytes n 2 #f #t))
+(define (u32 n) (integer->integer-bytes n 4 #f #t))
+(define (us xs) (apply bytes-append (map u16 xs)))
+(define (pad bs) (bytes-append bs (make-bytes (modulo (- (bytes-length bs)) 4))))
+;; A distinct family/PostScript identity avoids sharing a native font-cache
+;; identity with the simpler 0.68a fixture that has no Unicode/GSUB extension.
+(define (text-fixture-name-table)
+  (define fields
+    '((1 . "Skia Racket Text Fixture") (2 . "Regular")
+      (3 . "SkiaRacketTextFixture-1-Regular") (4 . "Skia Racket Text Fixture Regular")
+      (5 . "Version 1.0") (6 . "SkiaRacketTextFixture-Regular")
+      (16 . "Skia Racket Text Fixture") (17 . "Regular")))
+  (define offset 0) (define strings '())
+  (define records
+    (for/list ([field (in-list fields)])
+      (define data (apply bytes-append (for/list ([c (in-string (cdr field))]) (u16 (char->integer c)))))
+      (define record (us (list 3 1 #x409 (car field) (bytes-length data) offset)))
+      (set! offset (+ offset (bytes-length data)))
+      (set! strings (cons data strings))
+      record))
+  (bytes-append (us (list 0 (length fields) (+ 6 (* 12 (length fields)))))
+                (apply bytes-append records) (apply bytes-append (reverse strings))))
+(define (text-blob-fixture-font-bytes)
+  (define base (fixture-font-bytes))
+  (define (read16 at) (integer-bytes->integer base #f #t at (+ at 2)))
+  (define (read32 at) (integer-bytes->integer base #f #t at (+ at 4)))
+  (define tables
+    (for/hash ([i (in-range (read16 4))])
+      (define at (+ 12 (* 16 i)))
+      (define pos (read32 (+ at 8))) (define len (read32 (+ at 12)))
+      (values (bytes->string/latin-1 base #f at (+ at 4)) (subbytes base pos (+ pos len)))))
+  (define mappings '((32 1) (65 2) (86 3) (102 2) (105 3) (769 1) (1488 2) (1489 3) (119070 2)))
+  (define cmap12
+    (bytes-append (us '(12 0)) (u32 (+ 16 (* 12 (length mappings)))) (u32 0) (u32 (length mappings))
+                  (apply bytes-append (for/list ([m (in-list mappings)])
+                                       (bytes-append (u32 (car m)) (u32 (car m)) (u32 (cadr m)))))))
+  (define cmap (bytes-append (us '(0 1 3 10)) (u32 12) cmap12))
+  (define scripts (bytes-append (u16 1) #"DFLT" (u16 8) (us '(4 0 0 65535 1 0))))
+  (define features (bytes-append (u16 1) #"liga" (u16 8) (us '(0 1 0))))
+  ;; Lookup type 4: glyph 2 followed by glyph 3 is replaced by glyph 2.
+  (define lookup (us '(1 4 4 0 1 8 1 18 1 8 1 4 2 2 3 1 1 2)))
+  (unless (and (= (bytes-length scripts) 20) (= (bytes-length features) 14) (= (bytes-length lookup) 36))
+    (error 'text-blob-fixture "invalid OpenType layout table lengths"))
+  (define gsub (bytes-append (u32 #x10000) (us '(10 30 44)) scripts features lookup))
+  (define head (bytes-copy (hash-ref tables "head")))
+  (bytes-copy! head 8 #"\0\0\0\0")
+  (define selected
+    (hash-set (hash-set (hash-set (hash-set tables "head" head) "cmap" cmap)
+                        "name" (text-fixture-name-table)) "GSUB" gsub))
+  (define tags (sort (hash-keys selected) string<?))
+  (define n (length tags)) (define power (sub1 (integer-length n)))
+  (define search (* 16 (arithmetic-shift 1 power)))
+  (define offset (+ 12 (* 16 n))) (define head-offset #f) (define payload '())
+  (define directory
+    (for/list ([tag (in-list tags)])
+      (define data (hash-ref selected tag))
+      (when (equal? tag "head") (set! head-offset offset))
+      (define entry (bytes-append (string->bytes/latin-1 tag) (u32 (fixture-checksum data))
+                                  (u32 offset) (u32 (bytes-length data))))
+      (set! offset (+ offset (bytes-length (pad data))))
+      (set! payload (cons (pad data) payload))
+      entry))
+  (define result
+    (bytes-append (u32 #x10000) (us (list n search power (- (* 16 n) search)))
+                  (apply bytes-append directory) (apply bytes-append (reverse payload))))
+  (bytes-copy! result (+ head-offset 8) (u32 (bitwise-and #xffffffff (- #xb1b0afba (fixture-checksum result)))))
+  result)

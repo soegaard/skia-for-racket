@@ -2614,3 +2614,8 @@ outside this stage.
 
 See [FONT-QUERIES.md](FONT-QUERIES.md) for the additive font/typeface, glyph
 measurement, batch outline and prefix-fitting APIs, ownership and limitations.
+
+## Multi-run text blobs (0.69)
+
+See [TEXT-BLOBS.md](TEXT-BLOBS.md) for builders, per-run snapshots, intercept
+restrictions, transformed glyphs, UTF-8 clusters and shaped text-on-path.

@@ -777,3 +777,14 @@
 (define-native sk_font_get_xpos (_fun _pointer _pointer _int _pointer _float -> _void))
 (define-native sk_font_get_paths (_fun _pointer _pointer _int _fpointer _pointer -> _void))
 (define-native sk_font_break_text (_fun _pointer _bytes _size _int _float _pointer _pointer -> _size))
+
+;; 0.69 multi-run text; all native buffers remain private and synchronous.
+(define-native sk_textblob_builder_alloc_run (_fun _pointer _pointer _int _float _float _pointer _pointer -> _void))
+(define-native sk_textblob_builder_alloc_run_pos_h (_fun _pointer _pointer _int _float _pointer _pointer -> _void))
+(define-native sk_textblob_builder_alloc_run_rsxform (_fun _pointer _pointer _int _pointer _pointer -> _void))
+(define-native sk_textblob_builder_alloc_run_text (_fun _pointer _pointer _int _float _float _int _pointer _pointer -> _void))
+(define-native sk_textblob_builder_alloc_run_text_pos_h (_fun _pointer _pointer _int _float _int _pointer _pointer -> _void))
+(define-native sk_textblob_builder_alloc_run_text_pos (_fun _pointer _pointer _int _int _pointer _pointer -> _void))
+(define-native sk_textblob_builder_alloc_run_text_rsxform (_fun _pointer _pointer _int _int _pointer _pointer -> _void))
+(define-native sk_textblob_get_intercepts (_fun _pointer _pointer _pointer _pointer -> _int))
+(define-native sk_text_utils_get_pos_path (_fun _pointer _size _int _pointer _pointer _pointer -> _void))

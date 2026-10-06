@@ -1,3 +1,9 @@
+## 0.69 inventory update
+
+The three planned text/glyph-position families are now public. Current counts
+are generated in `docs/SKIASHARP-GAPS.md`; historical execution evidence is
+unchanged. See `docs/TEXT-BLOBS.md` for explicit backend and outline limits.
+
 ## 0.68b inventory update
 
 Current source inventory: four SkFont capability groups are now public. Exact

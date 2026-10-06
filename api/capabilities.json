@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "6f8c5d25e3532f37304b55c3ead5255ae3f37317",
+  "baseline_commit": "b843cd4cd286fb041d8791b2d4fa611d09a3c825",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -2987,13 +2987,21 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Raster and existing OpenGL/Metal/Direct3D routes; CPU-independent snapshots. Fresh native, GPU and independent PDF/SVG execution is required separately.",
+      "bindings_expected": [
+        "sk_text_utils_get_pos_path"
+      ],
+      "document_behavior": "Native PDF text preservation is tested for ordinary multi-font runs with valid text/cluster mappings. RSXform/path-text vector export uses explicit outlines; it is not promised searchable. New blob outline conversion rejects visibly bounded glyphs lacking outlines. No hidden raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.path-position",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "text-blobs.rkt",
+        "private/text-run-data.rkt",
+        "private/text-run-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Checked glyph IDs and explicit XY positions feed the pinned glyph-ID SkTextUtils route. The returned path is independently owned and contains available monochrome outlines only; missing bitmap/color-only outlines are not reconstructed. This unshaped utility is separate from shaped text-on-path.",
       "managed_sources": [
         "binding/SkiaSharp/SKFont.cs",
         "binding/SkiaSharp/SKTextBlob.cs"
@@ -3002,14 +3010,23 @@
         "sk_text_utils_get_pos_path"
       ],
       "origin": "m119",
-      "planned_stage": "0.69",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "text-blobs.rkt",
+          "name": "positioned-glyphs->path"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/text-blob-pure-test.rkt",
+        "tests/text-blob-native-test.rkt",
+        "tests/text-blob-gpu-test.rkt",
+        "tools/test-text-blobs.py",
+        "tools/text-blob-doctor.rkt"
+      ],
       "title": "Path-positioned glyph outlines",
-      "unbound_declarations": [
-        "sk_text_utils_get_pos_path"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
@@ -3190,13 +3207,27 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Raster and existing OpenGL/Metal/Direct3D routes; CPU-independent snapshots. Fresh native, GPU and independent PDF/SVG execution is required separately.",
+      "bindings_expected": [
+        "sk_textblob_builder_alloc_run",
+        "sk_textblob_builder_alloc_run_pos_h",
+        "sk_textblob_builder_alloc_run_rsxform",
+        "sk_textblob_builder_alloc_run_text",
+        "sk_textblob_builder_alloc_run_text_pos",
+        "sk_textblob_builder_alloc_run_text_pos_h",
+        "sk_textblob_builder_alloc_run_text_rsxform"
+      ],
+      "document_behavior": "Native PDF text preservation is tested for ordinary multi-font runs with valid text/cluster mappings. RSXform/path-text vector export uses explicit outlines; it is not promised searchable. New blob outline conversion rejects visibly bounded glyphs lacking outlines. No hidden raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "text.blob-runs",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "text-blobs.rkt",
+        "private/text-run-data.rkt",
+        "private/text-run-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Single-use owned builder; default, horizontal, XY and RSXform runs retain private font snapshots. Input glyphs, placements and optional UTF-8/scalar-start byte clusters are copied. Empty runs validate then add nothing; empty finish returns #f. Appends become terminal on native allocation/fill failure. Path text samples one explicitly selected contour using shaped positions, without rekerning, character-to-glyph assumptions, clipping or wrapping. Original shaped-run/shaper identity remains the caller responsibility.",
       "managed_sources": [
         "binding/SkiaSharp/SKTextBlob.cs",
         "binding/SkiaSharp/SKRunBuffer.cs",
@@ -3212,29 +3243,76 @@
         "sk_textblob_builder_alloc_run_text_rsxform"
       ],
       "origin": "m119",
-      "planned_stage": "0.69",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "text-blobs.rkt",
+          "name": "make-text-blob-builder"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-builder-add-run!"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-builder-add-horizontal-run!"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-builder-add-positioned-run!"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-builder-add-transformed-run!"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-builder-add-shaped-run!"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-builder-finish!"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-runs"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-run-font"
+        },
+        {
+          "module": "text-blobs.rkt",
+          "name": "shaped-run->text-blob/on-path"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/text-blob-pure-test.rkt",
+        "tests/text-blob-native-test.rkt",
+        "tests/text-blob-gpu-test.rkt",
+        "tools/test-text-blobs.py",
+        "tools/text-blob-doctor.rkt"
+      ],
       "title": "Multi-run, horizontal, RSXform and text/cluster blob builders",
-      "unbound_declarations": [
-        "sk_textblob_builder_alloc_run",
-        "sk_textblob_builder_alloc_run_pos_h",
-        "sk_textblob_builder_alloc_run_rsxform",
-        "sk_textblob_builder_alloc_run_text",
-        "sk_textblob_builder_alloc_run_text_pos",
-        "sk_textblob_builder_alloc_run_text_pos_h",
-        "sk_textblob_builder_alloc_run_text_rsxform"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Raster and existing OpenGL/Metal/Direct3D routes; CPU-independent snapshots. Fresh native, GPU and independent PDF/SVG execution is required separately.",
+      "bindings_expected": [
+        "sk_textblob_get_intercepts"
+      ],
+      "document_behavior": "Native PDF text preservation is tested for ordinary multi-font runs with valid text/cluster mappings. RSXform/path-text vector export uses explicit outlines; it is not promised searchable. New blob outline conversion rejects visibly bounded glyphs lacking outlines. No hidden raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "text.intercepts",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "text-blobs.rkt",
+        "private/text-run-data.rkt",
+        "private/text-run-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt"
+      ],
+      "limitations": "Native geometric intercept intervals for a finite top<bottom band; immutable detached pairs in native order, not a merged union or rendered-alpha bounds. Blobs containing RSXform runs reject because m119 silently ignores those runs. Paint semantics are native Skia semantics; this is not a filter/bitmap-coverage query.",
       "managed_sources": [
         "binding/SkiaSharp/SKTextBlob.cs"
       ],
@@ -3242,14 +3320,23 @@
         "sk_textblob_get_intercepts"
       ],
       "origin": "m119",
-      "planned_stage": "0.69",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "text-blobs.rkt",
+          "name": "text-blob-intercepts"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/text-blob-pure-test.rkt",
+        "tests/text-blob-native-test.rkt",
+        "tests/text-blob-gpu-test.rkt",
+        "tools/test-text-blobs.py",
+        "tools/text-blob-doctor.rkt"
+      ],
       "title": "Text blob glyph-intercept queries",
-      "unbound_declarations": [
-        "sk_textblob_get_intercepts"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -3261,7 +3348,7 @@
         "sk_textblob_get_bounds",
         "sk_textblob_get_unique_id"
       ],
-      "document_behavior": "Preserves captured font for drawing and outlines; multi-run/RSXform not yet exposed.",
+      "document_behavior": "Legacy positioned blobs remain supported; 0.69 adds multi-run/RSXform builders and retained outline replay. Native text versus outlines remains explicit.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "text.positioned-blobs",
       "implementation_files": [
@@ -6875,6 +6962,7 @@
     "raster-buffers.rkt",
     "render-canvas.rkt",
     "runtime-effects.rkt",
+    "text-blobs.rkt",
     "typefaces.rkt",
     "unsafe/gpu-d3d12.rkt",
     "unsafe/gpu-metal.rkt"
@@ -6882,5 +6970,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.68b"
+  "stage": "0.69"
 }

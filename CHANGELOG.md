@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.69.0 — Multi-run text blobs and shaped text-on-path
+
+- Add single-use owned builders for default, horizontal, XY and RSXform runs, copied optional UTF-8/clusters, and retained per-run font snapshots.
+- Add detached run inspection, independently owned run-font copies, geometric intercepts, and positioned glyph outlines.
+- Reject intercepts on RSXform blobs rather than accepting m119's silently incomplete results.
+- Place shaped glyph origins and normal offsets on an explicit contour without rekerning, character/glyph conflation or silent clamping.
+- Preserve legacy positioned blobs; replay new transformed outlines with captured fonts and explicit missing-outline errors.
+- Add original Unicode/GSUB fixtures, pure/native regressions, seven PDF/SVG documents, six GPU captures and independent geometric/pixel inspectors.
+- Update the three 0.69 capability groups; execution evidence remains separate from source declarations.
+
 ## 0.68b — Font options and glyph queries (package version 0.68.2)
 
 - Add embedded-bitmap, forced-auto-hinting and baseline-snap controls while preserving pinned defaults.

@@ -122,7 +122,7 @@ class Sources(unittest.TestCase):
         self.assertNotIn('continue-on-error', source)
     def test_native_pins_and_minimums_unchanged(self):
         source = self.text('info.rkt')
-        for clause in ('(define version "0.68.2")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
+        for clause in ('(define version "0.69.0")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
             self.assertIn(clause, source)
         self.assertEqual(self.text('private/native-default-version.txt').strip(), '3.119.1')
 

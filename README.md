@@ -1,4 +1,10 @@
-# Racket Skia — 0.68b (package 0.68.2)
+# Racket Skia — 0.69.0
+
+## Multi-run text and shaped text-on-path
+
+[0.69 text blobs](docs/TEXT-BLOBS.md) adds retained multi-font and transformed runs,
+UTF-8 cluster data, geometric intercepts and path placement. Font snapshots remain
+independent of source mutation/closure. Run the selected native/GPU/document gates.
 
 ## Font options and glyph queries
 
