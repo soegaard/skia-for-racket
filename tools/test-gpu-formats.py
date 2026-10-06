@@ -192,6 +192,13 @@ class Sources(unittest.TestCase):
         s=self.text('private/gpu-surfaces.rkt')
         for term in ('call-with-pixmap-write-staging','call-with-gpu-image-info','destination unchanged','read-pixels/native'):self.assertIn(term,s)
         self.assertIn('pixel-storage-input',self.text('raster-buffers.rkt'))
+    def test_typed_readback_ledger_precedes_completion_boundary(self):
+        s=self.text('private/gpu-surfaces.rkt')
+        start=s.index('(define (gpu-surface-read-pixmap!')
+        end=s.index('(define (gpu-surface->raster-buffer',start)
+        body=s[start:end]
+        self.assertIn('(image-info-storage-layout (r:pixmap-image-info destination))',body)
+        self.assertLess(body.index('(record-gpu-io!'),body.index('(gpu-wait!'))
     def test_float_upload_does_not_ignore_reduced_precision(self):
         s=self.text('private/gpu-images.rkt')
         self.assertIn('operation-precision-compatible?',s)

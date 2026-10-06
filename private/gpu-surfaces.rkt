@@ -261,11 +261,20 @@
   (gpu-transfer-shape! who (surface-width s) (surface-height s)
                       (r:pixmap-width destination) (r:pixmap-height destination))
   (define sp (ready-for-read! who s))
-  ;; Flush/wait occurs before borrowing any temporary Racket cstruct. During
-  ;; the blocking read both descriptor and pixel memory are immobile raw memory.
+  ;; Keep the long-standing I/O-ledger contract: record the intended readback
+  ;; before its explicit flush/submit completion boundary. Derive the native
+  ;; staging stride from detached destination metadata, without borrowing a
+  ;; temporary native pixmap across the wait.
+  (define-values (staging-row-bytes _minimum _size)
+    (image-info-storage-layout (r:pixmap-image-info destination)))
+  (record-gpu-io! (hasheq 'kind "readback" 'width (surface-width s)
+                          'height (surface-height s) 'row_bytes staging-row-bytes
+                          'format_aware #t))
   (gpu-wait! (gpu-surface-context s))
   (call-with-pixmap-write-staging who destination
     (lambda (_pm info memory row-bytes)
+      (unless (= row-bytes staging-row-bytes)
+        (error who "typed readback staging stride changed unexpectedly"))
       (unless (eq? (and (gpu-surface-colorspace s) #t)
                    (and (sk-image-info-colorspace info) #t))
         (error who "tagged/untagged readback needs explicit source interpretation"))
@@ -273,9 +282,6 @@
         (sk-image-info-width info) (sk-image-info-height info)
         (sk-image-info-color-type info) (sk-image-info-alpha-type info)
         (lambda (raw-info)
-          (record-gpu-io! (hasheq 'kind "readback" 'width (surface-width s)
-                          'height (surface-height s) 'row_bytes row-bytes
-                          'format_aware #t))
           (unless (read-pixels/native sp raw-info memory row-bytes 0 0)
             (error who "GPU readback/conversion failed; destination unchanged"))))))
   (void/reference-sink s)
