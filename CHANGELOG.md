@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.73 — GPU formats and surface properties
+
+- Add immutable surface properties and checked native roundtrips, retaining unknown pixel geometry by default.
+- Add reviewed integer/F16/F32 GPU requests with context-specific capability limits and no CPU/format fallback.
+- Add transactional format-aware pixmap readback and independent raster buffers; preserve float formats through image staging and detachment.
+- Retain legacy RGBA-only buffer transfer behavior, explicit quantization and native ownership rules.
+- Include full staging configuration in reuse and preserve precision in DC alpha intermediates.
+- Verify native backend descriptor scalars at scoped creation. Integrate source/native/GPU/SDR-document evidence into the existing Acceptance workflow.
+
 ## 0.72 — Direct image operations
 
 - Add CPU and explicit same-context GPU filter application returning an owned image, valid backing subset and geometric offset. Require a finite clip and reject float precision narrowing.

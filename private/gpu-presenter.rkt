@@ -98,11 +98,12 @@
 ;; The cache is an implementation resource of THIS presenter/context. A frame
 ;; may borrow it only while live; invalidate its reference along with the canvas
 ;; so retaining expired public frames cannot keep GPU staging storage alive.
-(define (call-with-gpu-frame-target f width height create dispose proc)
+(define (call-with-gpu-frame-target f width height create dispose proc #:configuration [configuration #f])
   (gpu-frame-canvas f)
   (unless (and (= width (gpu-frame-width f)) (= height (gpu-frame-height f)))
     (error 'gpu-frame-target "staging extent differs from the live frame"))
-  (call-with-frame-target (gpu-frame-targets f) width height create dispose proc))
+  (call-with-frame-target (gpu-frame-targets f) width height create dispose proc
+                          #:configuration configuration))
 (define (gpu-frame-width f) (hash-ref (gpu-frame-info f) 'pixel_width))
 (define (gpu-frame-height f) (hash-ref (gpu-frame-info f) 'pixel_height))
 (define (gpu-frame-logical-width f) (hash-ref (gpu-frame-info f) 'logical_width))

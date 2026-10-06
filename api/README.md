@@ -1,3 +1,7 @@
+# Current inventory: 0.73
+
+GPU surfaces/properties and checked backend descriptors are implemented with explicit limits. Source declarations are not native execution receipts.
+
 # Current inventory: 0.72
 
 Seven image capability families are reconciled against direct image operations. Source declarations remain separate from runtime/CI evidence. Historical outstanding non-image work is not silently reclassified.

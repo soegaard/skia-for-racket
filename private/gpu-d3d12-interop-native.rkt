@@ -1,4 +1,5 @@
 #lang racket/base
+(require (only-in "gpu-surface-native.rkt" checked-backend-resource/native))
 ;; Optional, lazy m119 C symbols. Not added to the CPU native registry.
 (require ffi/unsafe racket/promise
          (only-in "native.rkt" skia-native-library-handle)
@@ -11,7 +12,7 @@
     (provide name)
     (define promise (delay/sync (get-ffi-obj 'name (force library) type)))
     (set! bindings (cons (cons 'name promise) bindings))
-    (define (name . args) (call-with-gpu-native-scope (lambda () (apply (force promise) args))))))
+    (define (name . args) (call-with-gpu-native-scope (lambda () (checked-backend-resource/native 'name args (lambda () (apply (force promise) args))))))))
 (bind gr_backendtexture_new_direct3d (_fun _int _int _gr-d3d-texture-info-pointer -> _pointer))
 (bind gr_backendtexture_delete (_fun _pointer -> _void))
 (bind gr_backendtexture_is_valid (_fun _pointer -> _stdbool))

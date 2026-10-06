@@ -1,4 +1,5 @@
 #lang racket/base
+(require (only-in "gpu-surface-native.rkt" checked-backend-resource/native))
 (require ffi/unsafe racket/promise "gpu-provider.rkt" "gpu-native-scope.rkt"
          (only-in "native.rkt" skia-native-library-handle))
 (provide gl-interop-native-check! gl-interop-native-inventory)
@@ -11,7 +12,7 @@
     (define pending (delay/sync (get-ffi-obj 'native (force library) type)))
     (set! bindings (cons (list 'native pending) bindings))
     (define (safe . args)
-      (call-with-gpu-native-scope (lambda () (apply (force pending) args))))))
+      (call-with-gpu-native-scope (lambda () (checked-backend-resource/native 'native args (lambda () (apply (force pending) args))))))))
 (define-interop-native borrowed-texture-descriptor/native gr_backendtexture_new_gl
   (_fun _int _int _stdbool _pointer -> _pointer))
 (define-interop-native delete-texture-descriptor/native gr_backendtexture_delete

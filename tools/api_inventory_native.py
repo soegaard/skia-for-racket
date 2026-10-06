@@ -71,7 +71,7 @@ def _worker(input_path, output_path):
         except AttributeError:
             observed[name] = False
     _check(_sha(path) == spec["sha256"], "library changed during probe")
-    result = {"schema": 1, "stage": "0.72", "status": "observed", "token": spec["token"],
+    result = {"schema": 1, "stage": "0.73", "status": "observed", "token": spec["token"],
               "library": str(path), "library_sha256": spec["sha256"], "library_bytes": path.stat().st_size,
               "abi": "119.0", "system": platform.system(), "machine": platform.machine(),
               "pointer_bytes": ctypes.sizeof(ctypes.c_void_p), "symbols": observed,
@@ -83,7 +83,7 @@ def _worker(input_path, output_path):
 
 
 def validate_observation(result, *, token, library, sha256, symbols, required=()):
-    _check(type(result.get("schema")) is int and result["schema"] == 1 and result.get("stage") == "0.72", "invalid observation schema")
+    _check(type(result.get("schema")) is int and result["schema"] == 1 and result.get("stage") == "0.73", "invalid observation schema")
     _check(result.get("status") == "observed" and result.get("token") == token, "stale/incomplete native observation")
     _check(result.get("library") == str(library) and result.get("library_sha256") == sha256, "foreign native observation")
     _check(result.get("abi") == "119.0" and result.get("pointer_bytes") == 8, "wrong native ABI/platform")

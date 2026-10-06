@@ -1,4 +1,7 @@
 #lang racket/base
+(require (only-in "native.rkt" sk_image_get_color_type)
+         "image-operation-util.rkt"
+         (prefix-in r: "../raster-buffers.rkt"))
 (require ffi/unsafe ffi/unsafe/atomic
          "core.rkt" "types.rkt" "check.rkt" "lifetime.rkt"
          "gpu-domain.rkt" "gpu-context.rkt" "gpu-surfaces.rkt"
@@ -7,7 +10,7 @@
          (submod "core.rkt" gpu-surface-internals)
          (only-in "gpu-native.rkt" gr_direct_context_is_abandoned)
          (only-in "../raster-buffers.rkt" raster-buffer? raster-buffer-width raster-buffer-height))
-(provide gpu-image? image-residency skia-resource-gpu-context
+(provide gpu-image->raster-buffer gpu-image? image-residency skia-resource-gpu-context
          gpu-upload-image gpu-surface-snapshot gpu-image-subset gpu-image-info
          gpu-image->rgba-bytes gpu-image->raster-image gpu-image-read-raster-buffer!)
 
@@ -66,6 +69,12 @@
       (define out
         (adopt-image who context w h
           (lambda () (texture-image/native ip cp mipmapped? budgeted?))))
+      (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! out) (raise e))])
+        (call-with-owned who (list (image-h who out))
+          (lambda (op)
+            (unless (operation-precision-compatible? (sk_image_get_color_type ip)
+                                                       (sk_image_get_color_type op))
+              (error who "GPU upload reduced float storage precision; convert explicitly first")))))
       (record-gpu-io!
        (hasheq 'kind (if (gpu-image? im) "gpu-image-reuse" "upload")
                'width w 'height h 'mipmapped_requested mipmapped? 'budgeted_requested budgeted?))
@@ -134,7 +143,10 @@
     void
     (lambda ()
       (with-skia ([s (make-gpu-surface context (image-width im) (image-height im)
-                                      #:color-space space)]
+                                      #:color-space space
+                                      #:color-type (image-color-type im)
+                                      #:alpha-type (if (eq? (image-alpha-type im) 'opaque) 'opaque 'premul)
+                                      #:background (if (eq? (image-alpha-type im) 'opaque) 'black 'transparent))]
                   [paint (make-paint #:blend-mode 'src #:antialias? #f)])
         (draw-image (surface-canvas s) im 0 0 #:sampling 'nearest #:paint paint)
         (proc s)))
@@ -145,8 +157,13 @@
   (when space (call-with-owned who (list (color-space-h who space)) void))
   (call-with-image-staging who im
     (lambda (s) (gpu-surface->rgba-bytes s #:premultiplied? premultiplied? #:color-space space))))
+(define (gpu-image->raster-buffer im #:info [info #f] #:row-bytes [row-bytes #f])
+  (gpu-h 'gpu-image->raster-buffer im)
+  (define requested (or info (r:image->image-info im)))
+  (call-with-image-staging 'gpu-image->raster-buffer im
+    (lambda (s) (gpu-surface->raster-buffer s #:info requested #:row-bytes row-bytes))))
 (define (gpu-image->raster-image im)
-  (call-with-image-staging 'gpu-image->raster-image im gpu-surface->raster-image))
+  (with-skia ([buffer (gpu-image->raster-buffer im)]) (r:raster-buffer->image buffer)))
 (define (gpu-image-read-raster-buffer! im buffer)
   (define who 'gpu-image-read-raster-buffer!)
   (gpu-h who im)

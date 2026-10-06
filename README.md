@@ -1,4 +1,4 @@
-# Racket Skia — 0.72
+# Racket Skia — 0.73
 
 ## Integer pixel storage and image information
 
@@ -1620,3 +1620,7 @@ See [FLOAT-PIXELS.md](docs/FLOAT-PIXELS.md) for Color4f values, F16/F32 storage,
 ## Direct image operations (0.72)
 
 See [IMAGE-OPERATIONS.md](docs/IMAGE-OPERATIONS.md) for CPU/GPU filter results, preserved offsets, image reads/scales, materialization and raw shader semantics.
+
+## GPU formats and surface properties (0.73)
+
+See [GPU-FORMATS.md](docs/GPU-FORMATS.md) for typed GPU targets, detached properties, explicit format-aware readback and configuration-aware staging.

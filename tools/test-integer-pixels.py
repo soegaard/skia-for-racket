@@ -93,7 +93,7 @@ class Sources(unittest.TestCase):
         self.assertIn("'test-integer-pixels.py'",self.text('tools/ci.py'))
         self.assertIn('tests/integer-pixel-gpu-test.rkt',self.text('info.rkt'))
     def test_pins_and_package_minimums_unchanged(self):
-        for clause in ('(define version "0.72")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
+        for clause in ('(define version "0.73")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
             self.assertIn(clause,self.text('info.rkt'))
         self.assertEqual(self.text('private/native-default-version.txt').strip(),'3.119.1')
     def test_metadata_module_never_loads_skia(self):

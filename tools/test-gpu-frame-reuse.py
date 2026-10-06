@@ -210,7 +210,7 @@ class SourceContracts(unittest.TestCase):
     def source(self, name): return (HERE.parent / name).read_text()
     def test_private_pool_keeps_no_canvas_or_dc(self):
         source = self.source("private/gpu-frame-target-cache.rkt")
-        self.assertIn("(struct target-entry (width height value dispose))", source)
+        self.assertIn("(struct target-entry (width height configuration value dispose))", source)
         self.assertNotIn("make-hash", source)
         self.assertIn("(check-dimensions who width height)", source)
     def test_expired_frame_drops_cache(self):
@@ -223,7 +223,7 @@ class SourceContracts(unittest.TestCase):
                         source.index("((presentation-adapter-close (gpu-presenter-adapter p)))"))
     def test_native_staging_is_borrowed_and_still_committed(self):
         source = self.source("private/gpu-dc-native.rkt")
-        self.assertIn("(gpu-renderer context staging)", source)
+        self.assertIn("(gpu-renderer context staging color-type space samples properties)", source)
         self.assertIn("(gpu:gpu-surface-snapshot root)", source)
         self.assertIn("#:clear? #t", source)
         self.assertIn("cached staging surface has an unbalanced canvas stack", source)

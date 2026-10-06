@@ -2,7 +2,7 @@
 ;; One private staging target per presenter, not a cache of drawing contexts.
 ;; No GUI/native initialization. Factories own the native implementation;
 ;; disposal queues retirement through the existing GPU-domain lifetime layer.
-(require racket/future "check.rkt" "gpu-io-trace.rkt")
+(require racket/future "check.rkt" "gpu-io-trace.rkt" "gpu-format-util.rkt")
 (provide make-frame-target-cache call-with-frame-target
          close-frame-target-cache! frame-target-cache-info
          current-frame-target-reuse?)
@@ -14,7 +14,7 @@
     (lambda (v)
       (unless (boolean? v) (raise-argument-error 'current-frame-target-reuse? "boolean?" v))
       v)))
-(struct target-entry (width height value dispose))
+(struct target-entry (width height configuration value dispose))
 (struct frame-target-cache
   (owner [entry #:mutable] [busy? #:mutable] [closed? #:mutable] [quarantined? #:mutable]
          [creations #:mutable] [reuses #:mutable] [retirements #:mutable]))
@@ -68,7 +68,8 @@
       (retire! cache "presenter-close")
       (set-frame-target-cache-closed?! cache #t)))
   (void))
-(define (call-with-frame-target cache width height create dispose proc)
+(define (call-with-frame-target cache width height create dispose proc
+                                #:configuration [configuration #f])
   (define who 'gpu-frame-target)
   (idle! who cache)
   (when (frame-target-cache-closed? cache) (error who "staging target cache is closed"))
@@ -77,6 +78,9 @@
   (for ([p (in-list (list create dispose proc))] [arity '(0 1 1)])
     (unless (and (procedure? p) (procedure-arity-includes? p arity))
       (raise-argument-error who (format "procedure accepting ~a argument(s)" arity) p)))
+  (unless (gpu-config-value? configuration)
+    (raise-argument-error who "detached immutable configuration" configuration))
+  (gpu-cache-budget! who configuration width height)
   (define reuse? (current-frame-target-reuse?))
   (define entered? #f)
   (define completed? #f)
@@ -91,14 +95,17 @@
       (lambda ()
         (define entry (frame-target-cache-entry cache))
         (unless (and reuse? entry (= width (target-entry-width entry))
-                     (= height (target-entry-height entry)))
+                     (= height (target-entry-height entry))
+                     (equal? configuration (target-entry-configuration entry)))
           ;; Drop the old wrapper first. Domain retirement may remain queued
           ;; until the normal owner/context boundary; no GPU wait is introduced.
-          (when entry (retire! cache (if reuse? "resize" "fresh-reference")))
+          (when entry (retire! cache (if reuse? (if (and (= width (target-entry-width entry))
+                                       (= height (target-entry-height entry)))
+                                  "configuration-change" "resize") "fresh-reference")))
           (parameterize-break #f
             (define value (create))
             (unless value (error who "staging target allocation returned false"))
-            (set! entry (target-entry width height value dispose))
+            (set! entry (target-entry width height configuration value dispose))
             (set-frame-target-cache-entry! cache entry)
             (set-frame-target-cache-creations! cache (add1 (frame-target-cache-creations cache))))
           (event! entry "create" (if reuse? "cache-miss" "fresh-reference"))

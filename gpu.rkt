@@ -6,6 +6,7 @@
          "private/gpu-surfaces.rkt" "private/gpu-images.rkt" "private/gpu-image-operations.rkt" "private/gpu-cache.rkt")
 (provide gpu-backends gpu-backend? gpu-backend-capabilities
          (all-from-out "private/gpu-images.rkt" "private/gpu-image-operations.rkt" "private/gpu-presenter.rkt" "private/gpu-cache.rkt")
+         gpu-surface-format-info gpu-surface->image-info gpu-surface->raster-buffer gpu-surface-read-pixmap!
          make-gpu-surface gpu-surface? gpu-surface-info
          gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
          gpu-surface->rgba-bytes gpu-surface->raster-image gpu-surface-read-raster-buffer!

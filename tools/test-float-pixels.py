@@ -74,7 +74,7 @@ class Sources(unittest.TestCase):
             self.assertEqual(rows[name]['execution_evidence'],inv.EVIDENCE_SCOPE)
     def test_pins_and_minimums_stay_unchanged(self):
         info=self.text('info.rkt')
-        self.assertIn('(define version "0.72")',info)
+        self.assertIn('(define version "0.73")',info)
         for s in ('("base" #:version "8.18")','("draw-lib" #:version "1.22")'):self.assertIn(s,info)
         self.assertEqual(self.text('private/native-default-version.txt').strip(),'3.119.1')
     def test_runner_and_source_ci_register_new_suites(self):

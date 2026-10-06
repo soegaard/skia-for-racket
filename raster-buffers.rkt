@@ -555,7 +555,14 @@
             (define native (buffer-native-info owner (image-info-width info) (image-info-height info)))
             (call-with-native-temporary who 'pixmap
               (lambda () (sk_pixmap_new_with_params native memory tight)) sk_pixmap_destructor
-              (lambda (pm) (proc pm native)))
+              (lambda (pm)
+                (cond
+                  [(procedure-arity-includes? proc 4) (proc pm native memory tight)]
+                  [(procedure-arity-includes? proc 2) (proc pm native)]
+                  [else
+                   (raise-arguments-error who
+                     "staging callback must accept two or four arguments"
+                     "callback" proc)])))
             ;; No destination byte changes on a failed native call or invalid
             ;; float/premultiplied/opaque result. Padding is never committed.
             (define observed (make-bytes size))

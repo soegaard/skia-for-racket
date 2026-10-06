@@ -1,7 +1,7 @@
 #lang racket/base
 ;; Explicit, headless-safe entry point. Native GPU code is loaded on first use,
 ;; never by importing this module or querying its declaration/predicate.
-(require racket/runtime-path
+(require racket/runtime-path "surface-properties.rkt" "private/gpu-format-util.rkt"
          "private/gpu-dc-scope.rkt"
          (only-in "private/gpu-presenter.rkt" gpu-frame? gpu-frame-canvas))
 (provide call-with-gpu-frame-dc call-with-gpu-surface-dc
@@ -13,12 +13,16 @@
   (when (gpu-dc-scope-active?) (error who "nested GPU DC scopes are not supported")))
 (define (call-with-gpu-frame-dc frame proc
                                #:background [background "white"]
-                               #:smoothing [smoothing 'smoothed])
+                               #:smoothing [smoothing 'smoothed]
+                               #:color-type [color-type 'rgba-8888]
+                               #:color-space [descriptor #f]
+                               #:sample-count [samples 0]
+                               #:surface-properties [properties (make-surface-properties)])
   (check-callback 'call-with-gpu-frame-dc proc)
   (unless (gpu-frame? frame) (raise-argument-error 'call-with-gpu-frame-dc "gpu-frame?" frame))
   (gpu-frame-canvas frame) ; owner/expiry rejection before loading native code
   ((dynamic-require native-module 'call-with-gpu-frame-dc/native)
-   frame proc background smoothing))
+   frame proc background smoothing color-type descriptor samples properties))
 (define (call-with-gpu-surface-dc surface proc
                                  #:logical-width [logical-width #f]
                                  #:logical-height [logical-height #f]

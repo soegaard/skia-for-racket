@@ -52,7 +52,7 @@ def main(argv=None):
         (ROOT/'output').mkdir(exist_ok=True)
         out=Path(tempfile.mkdtemp(prefix='text-blobs-0.69-',dir=ROOT/'output'))
     (out/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
-    report=dict(schema=1,stage='0.69',package_version='0.72',status='failed',run_token=token,
+    report=dict(schema=1,stage='0.69',package_version='0.73',status='failed',run_token=token,
                 regressions_passed=False,documents_passed=False,rendering_executed=False,rendering_attempted=False,
                 gpu_required=args.require_gpu,gpu_attempted=False,gpu_executed=False,gpu_passed=False,
                 independent_renderers_required=args.require_renderers,independent_renderers_attempted=False,independent_renderers_executed=False,

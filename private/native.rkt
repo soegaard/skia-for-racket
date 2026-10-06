@@ -824,3 +824,10 @@
   (_fun _pointer _pointer _sk-sampling-pointer _int -> _stdbool))
 (define-native sk_image_make_with_filter_raster
   (_fun _pointer _pointer _sk-irect-pointer _sk-irect-pointer _sk-irect-pointer _sk-ipoint-pointer -> _pointer))
+
+;; 0.73: SkSurfaceProps is opaque; getters are scalar, get_props is borrowed.
+(define-native sk_surfaceprops_new (_fun _uint32 _int -> _pointer))
+(define-native sk_surfaceprops_delete (_fun _pointer -> _void))
+(define-native sk_surfaceprops_get_flags (_fun _pointer -> _uint32))
+(define-native sk_surfaceprops_get_pixel_geometry (_fun _pointer -> _int))
+(define-native sk_surface_get_props (_fun _pointer -> _pointer))

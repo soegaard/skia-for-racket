@@ -170,3 +170,7 @@ also corrects the baseline Windows Python path-separator assertion.
 Execution records, not the presence of a workflow or test file, establish a
 backend pass. The delivery's `VALIDATION.md` states which checks were actually
 run. Native and GUI results must come from the selected Racket installation.
+
+## 0.73 configuration extension
+
+The key now also compares the staging color/alpha format, copied color-space descriptor, requested samples and surface properties. The presenter/context remains the owner. Same-size configuration changes retire before replacement; no width/height-only cache hit is allowed for newly configured frame DCs. See [GPU-FORMATS.md](GPU-FORMATS.md).

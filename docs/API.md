@@ -2632,3 +2632,7 @@ See [FLOAT-PIXELS.md](FLOAT-PIXELS.md) for Color4f values, F16/F32 storage, sour
 ## Direct image operations (0.72)
 
 See [IMAGE-OPERATIONS.md](IMAGE-OPERATIONS.md) for CPU/GPU filter results, preserved offsets, image reads/scales, materialization and raw shader semantics.
+
+## GPU formats and surface properties (0.73)
+
+See [GPU-FORMATS.md](GPU-FORMATS.md) for typed GPU targets, detached properties, explicit format-aware readback and configuration-aware staging.

@@ -1,4 +1,5 @@
 #lang racket/base
+(require (only-in "gpu-surface-native.rkt" checked-backend-resource/native))
 (require ffi/unsafe racket/promise "gpu-types.rkt" "gpu-provider.rkt" "gpu-native-scope.rkt"
          (only-in "native.rkt" skia-native-library-handle))
 (provide metal-interop-native-check! metal-interop-native-inventory)
@@ -11,7 +12,7 @@
     (set! bindings (cons (cons 'name p) bindings))
     (define (name . args)
       (define f (force p))
-      (call-with-gpu-native-scope (lambda () (apply f args))))))
+      (call-with-gpu-native-scope (lambda () (checked-backend-resource/native 'name args (lambda () (apply f args))))))))
 (define-interop-native gr_backendtexture_new_metal
   (_fun _int _int _stdbool _gr-mtl-texture-info-pointer -> _pointer))
 (define-interop-native gr_backendtexture_delete (_fun _pointer -> _void))

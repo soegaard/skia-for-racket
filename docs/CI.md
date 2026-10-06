@@ -96,7 +96,7 @@ push to `main`, a `v*` tag push, or a pull request therefore creates three
 top-level workflows: `CI`, `API inventory`, and `Acceptance`. The stage-specific
 workflow files remain individually dispatchable and reusable: they expose
 `workflow_call` plus `workflow_dispatch`, while the `Acceptance` workflow calls
-all eleven and publishes `Acceptance required`. No stage-specific acceptance
+all twelve and publishes `Acceptance required`. No stage-specific acceptance
 workflow has its own `push` or `pull_request` trigger.
 
 This changes orchestration only. The called workflows keep their existing
@@ -270,3 +270,5 @@ requires refreshing the source manifest before the update can pass CI.
 
 A pinned action does not freeze hosted OS images, NuGet infrastructure or distro
 packages. Preserve run metadata when comparing later results.
+
+GPU format/property acceptance (0.73) is a reusable child of Acceptance, not a new push-triggered run. It requires native format/precision checks on Linux Mesa and Windows WARP; Metal remains available through the same local validator.
