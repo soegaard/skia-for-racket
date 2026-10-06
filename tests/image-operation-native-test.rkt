@@ -224,11 +224,27 @@
          (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit page kind #:policy 'error))))))
    (test-case "float filtering cannot erase the source precision requirement"
      (with-skia ([source (make-operation-float-source)] [filter (make-offset-image-filter 0 0)])
-       (define-values (im subset offset) (image-apply-filter source filter #:clip '(0 0 4 3)))
-       (with-skia ([out im])
-         (check-eq? (image-color-type out) 'rgba-f32)
-         (define page (make-output-page 8 8 (lambda (c) (draw-image c out 0 0))))
-         (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit page 'pdf #:policy 'error))))))
+       ;; m119 may either preserve F32 for this filter path or return a
+       ;; narrower native result. The wrapper must never silently publish the
+       ;; latter. Accept both portable outcomes: an explicit precision
+       ;; rejection, or an F32 result that retains strict document provenance.
+       (define outcome
+         (with-handlers ([exn:fail?
+                          (lambda (e)
+                            (check-true
+                             (regexp-match? #rx"reduced float storage precision"
+                                            (exn-message e)))
+                            'rejected)])
+           (define-values (im subset offset)
+             (image-apply-filter source filter #:clip '(0 0 4 3)))
+           (with-skia ([out im])
+             (check-eq? (image-color-type out) 'rgba-f32)
+             (define page (make-output-page 8 8 (lambda (c) (draw-image c out 0 0))))
+             (check-exn exn:fail:output-audit?
+                        (lambda () (output->bytes/audit page 'pdf #:policy 'error)))
+             'preserved)))
+       (check-not-false (memq outcome '(rejected preserved)))
+       (check-true (image-valid? source))))
    (test-case "closed resources reject before new native work"
      (with-skia ([source (make-operation-source)] [filter (make-offset-image-filter 0 0)])
        (skia-close! filter)
