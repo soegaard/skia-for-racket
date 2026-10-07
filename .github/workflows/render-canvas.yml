@@ -1,7 +1,19 @@
 name: Unified render canvas
 "on":
   workflow_call:
+    inputs:
+      regressions:
+        description: Global regression scope; feature acceptance always runs.
+        type: string
+        required: false
+        default: 'full'
   workflow_dispatch:
+    inputs:
+      regressions:
+        description: Global regression scope; none is feature acceptance only.
+        type: choice
+        options: ['full', 'none']
+        default: 'full'
 permissions:
   contents: read
 jobs:
@@ -42,7 +54,9 @@ jobs:
           python tools/test-render-canvas.py
           python tools/test-gpu-frame-reuse.py
           racket -l raco -- make render-canvas.rkt examples/render-canvas.rkt examples/gpu-dc-consumers.rkt
-          racket run-tests.rkt --pure
+      - name: Global pure regressions (standalone mode)
+        if: inputs.regressions != 'none'
+        run: racket run-tests.rkt --pure
       - name: Install pinned native libraries
         run: |
           bash tools/install-native.sh

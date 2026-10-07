@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""0.68a typeface acceptance: full regressions and controlled PDF/SVG output."""
+"""0.68a typeface acceptance: optional full regressions and controlled PDF/SVG output."""
 from __future__ import annotations
+from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
 import json
@@ -18,7 +19,15 @@ from typeface_validation import inspect_documents
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def compile_targets(root: Path):
+def compile_targets(root, regressions='full'):
+    if checked_mode(regressions) == 'none':
+        # Compile feature roots only; do not traverse unrelated regression suites.
+        return [root / p for p in (
+            'main.rkt',
+            'typefaces.rkt',
+            'tools/typeface-doctor.rkt',
+            'examples/typefaces.rkt',
+        )]
     text = (root/'run-tests.rkt').read_text(encoding='utf-8')
     dynamic = sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)', text)))
     if not dynamic:
@@ -32,6 +41,7 @@ def compile_targets(root: Path):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
+    add_regression_argument(p)
     p.add_argument('--racket', default='racket')
     p.add_argument('--directory', type=Path)
     p.add_argument('--require-renderers', action='store_true')
@@ -71,6 +81,7 @@ def main(argv=None):
             except (OSError, subprocess.SubprocessError):
                 report.update(failed_command=command, failed_log=str(log))
                 raise
+    regressions = RegressionGate(args.regressions, report)
     try:
         run([sys.executable, ROOT/'tools/update-source-sums.py', '--check'])
         before = hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
@@ -78,9 +89,8 @@ def main(argv=None):
         run([sys.executable, ROOT/'tools/api-inventory.py', '--check'])
         run([sys.executable, ROOT/'tools/test-typefaces.py'])
         run([sys.executable, ROOT/'tools/test-typeface-document-inspector.py'])
-        run([racket, '-l', 'raco', '--', 'make', *compile_targets(ROOT)])
-        run([racket, ROOT/'run-tests.rkt'])
-        report['regressions_passed'] = True
+        run([racket, '-l', 'raco', '--', 'make', *compile_targets(ROOT, args.regressions)])
+        regressions.run(lambda: run([racket, ROOT/'run-tests.rkt']))
         run([racket, ROOT/'tools/typeface-doctor.rkt', '--directory', out/'documents', '--token', token])
         report.update(native_generation_passed=True, rendering_executed=True)
         render = None

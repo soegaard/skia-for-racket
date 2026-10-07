@@ -25,12 +25,16 @@ def summary(name):
     return f"{n} success(es) 0 failure(s) 0 error(s) {n} test(s) run\n{name}: {n} cases, 0 failures\n"
 
 
-def document_report(racket="selected", rendered=False, identity=None):
+def document_report(racket="selected", rendered=False, identity=None, regressions="full"):
+    full = regressions == "full"
     return dict(schema=1, stage="0.63", status="passed", identity=identity or IDENTITY,
                 racket_executable=racket, compiled=True, baseline_passed=True,
                 native_tests_passed=True, structure_passed=True, document_count=24,
                 suites={"dc-output-pure": 34, "dc-output-native": 22},
                 renderers_required=rendered, independent_pixels_verified=rendered,
+                regressions_mode=regressions, regressions_requested=full,
+                regressions_attempted=full, regressions_completed=full, regressions_passed=full,
+                regressions_status="passed" if full else "not-run",
                 physical_display_verified=False)
 
 
@@ -68,7 +72,8 @@ def simulate(options=(), *, fail=None, missing=False, identity=None, bad_suite=N
             if script in ("validate-dc-output.py", "validate-gpu-frame-reuse.py"):
                 directory = Path(c[c.index("--directory") + 1]); directory.mkdir()
                 if script == "validate-dc-output.py":
-                    result = document_report(selected, "--require-renderers" in c, ident)
+                    result = document_report(selected, "--require-renderers" in c, ident,
+                                             regressions=c[c.index("--regressions") + 1])
                     if bad_document:
                         bad_document(result)
                 else:

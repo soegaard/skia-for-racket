@@ -5,6 +5,7 @@ Default: native Racket tests plus parsed PDF/SVG structure, text and annotations
 --require-renderers also requires independent Poppler/librsvg pixel acceptance.
 """
 from __future__ import annotations
+from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
 import importlib.util
@@ -117,6 +118,7 @@ def dependencies():
 
 def main(argv=None, *, root=ROOT):
     parser = argparse.ArgumentParser(description=__doc__)
+    add_regression_argument(parser)
     parser.add_argument("--racket", default=os.environ.get("RACKET", "racket"))
     parser.add_argument("--directory", type=Path)
     parser.add_argument("--timeout", type=float, default=900)
@@ -138,6 +140,7 @@ def main(argv=None, *, root=ROOT):
                   baseline_passed=False, native_tests_passed=False, structure_passed=False,
                   physical_display_verified=False, pdfa_certified=False, color_fidelity_certified=False,
                   commands=runner.commands)
+    regressions = RegressionGate(args.regressions, result)
     try:
         result["inspector_versions"] = dependencies()
         executable = shutil.which(args.racket)
@@ -160,9 +163,9 @@ def main(argv=None, *, root=ROOT):
                    "tools/dc-output-doctor.rkt", "examples/dc-output.rkt"]
         runner.run([racket, "-l", "raco", "--", "make", *[root/p for p in modules]], root)
         result["compiled"] = True
-        # Production baseline and all shared DC paths remain mandatory. Existing
-        # GPU workflows independently exercise the unchanged surface adapters.
-        runner.run([racket, root/"run-tests.rkt"], root)
+        # Only the global suite is optional. The DC-specific baseline and all
+        # document suites/inspectors below remain mandatory in both modes.
+        regressions.run(lambda: runner.run([racket, root/"run-tests.rkt"], root))
         runner.run([sys.executable, root/"tools/validate-dc.py", "--racket", racket], root)
         result["baseline_passed"] = True
         for name in COUNTS:

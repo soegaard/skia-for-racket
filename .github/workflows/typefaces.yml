@@ -1,9 +1,23 @@
 name: Typeface resources
 "on":
   workflow_call:
+    inputs:
+      regressions:
+        description: Global regression scope; feature acceptance always runs.
+        type: string
+        required: false
+        default: 'full'
   workflow_dispatch:
+    inputs:
+      regressions:
+        description: Global regression scope; none is feature acceptance only.
+        type: choice
+        options: ['full', 'none']
+        default: 'full'
 permissions:
   contents: read
+env:
+  SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}
 jobs:
   typefaces-linux:
     name: Typeface resources / Linux / Racket ${{ matrix.racket }}
@@ -44,7 +58,7 @@ jobs:
           bash tools/install-harfbuzz.sh
       - name: Require typeface resources and independent PDF/SVG rendering
         run: |
-          python tools/validate-typefaces.py --racket "$(command -v racket)" \
+          python tools/validate-typefaces.py --regressions "$SKIA_REGRESSIONS_MODE" --racket "$(command -v racket)" \
             --require-renderers --directory output/typefaces-ci
       - name: Retain typeface evidence
         if: always()
@@ -88,7 +102,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require typeface resources and document structure
         run: |
-          python tools/validate-typefaces.py --racket (Get-Command racket).Source --directory output/typefaces-windows
+          python tools/validate-typefaces.py --regressions "$env:SKIA_REGRESSIONS_MODE" --racket (Get-Command racket).Source --directory output/typefaces-windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain Windows evidence
         if: always()

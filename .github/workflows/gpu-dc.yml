@@ -1,7 +1,19 @@
 name: GPU DC
 "on":
   workflow_call:
+    inputs:
+      regressions:
+        description: Global regression scope; feature acceptance always runs.
+        type: string
+        required: false
+        default: 'full'
   workflow_dispatch:
+    inputs:
+      regressions:
+        description: Global regression scope; none is feature acceptance only.
+        type: choice
+        options: ['full', 'none']
+        default: 'full'
 permissions:
   contents: read
 jobs:
@@ -45,10 +57,11 @@ jobs:
         run: |
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
-      - name: Compile and run baseline regression suite
-        run: |
-          racket -l raco -- make dc.rkt gpu-dc.rkt
-          racket run-tests.rkt
+      - name: Compile GPU DC feature modules
+        run: racket -l raco -- make dc.rkt gpu-dc.rkt
+      - name: Global regression suite (standalone mode)
+        if: inputs.regressions != 'none'
+        run: racket run-tests.rkt
       - name: Require GPU DC baseline and consumer validation
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' \

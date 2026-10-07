@@ -4,6 +4,12 @@ name: Acceptance
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      regressions:
+        description: Global regression scope; none requires a separate green CI run.
+        type: choice
+        options: ['full', 'none']
+        default: 'full'
 
 permissions:
   contents: read
@@ -12,56 +18,115 @@ concurrency:
   group: acceptance-${{ github.ref }}
   cancel-in-progress: true
 
+# Central CI owns full regressions on PRs, main pushes and v* tags.
+# Standalone dispatch and other pushes keep full regressions by default.
+# Acceptance success alone does not certify the separate CI required gate.
 jobs:
+  regression-scope:
+    name: Select regression scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      regressions: ${{ steps.scope.outputs.regressions }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Match the central CI triggers
+        id: scope
+        env:
+          SKIA_REQUESTED_REGRESSIONS: ${{ inputs.regressions }}
+        run: python3 tools/validation_regressions.py --github-output
+
   advanced-canvases:
     name: Advanced layers and canvases
+    needs: regression-scope
     uses: ./.github/workflows/advanced-canvases.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   gpu-formats:
     name: GPU formats and surface properties
+    needs: regression-scope
     uses: ./.github/workflows/gpu-formats.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   dc-output:
     name: DC document output
+    needs: regression-scope
     uses: ./.github/workflows/dc-output.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   effects:
     name: Effects
+    needs: regression-scope
     uses: ./.github/workflows/effects.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   float-pixels:
     name: Floating-point pixels and colors
+    needs: regression-scope
     uses: ./.github/workflows/float-pixels.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   font-queries:
     name: Font options and glyph queries
+    needs: regression-scope
     uses: ./.github/workflows/font-queries.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   geometry-completion:
     name: Geometry completion
+    needs: regression-scope
     uses: ./.github/workflows/geometry-completion.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   gpu-dc:
     name: GPU DC
+    needs: regression-scope
     uses: ./.github/workflows/gpu-dc.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   image-operations:
     name: Direct image operations
+    needs: regression-scope
     uses: ./.github/workflows/image-operations.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   integer-pixels:
     name: Integer pixel storage
+    needs: regression-scope
     uses: ./.github/workflows/integer-pixels.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   render-canvas:
     name: Unified render canvas
+    needs: regression-scope
     uses: ./.github/workflows/render-canvas.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   text-blobs:
     name: Multi-run text blobs
+    needs: regression-scope
     uses: ./.github/workflows/text-blobs.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   typefaces:
     name: Typeface resources
+    needs: regression-scope
     uses: ./.github/workflows/typefaces.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
 
   required:
     name: Acceptance required
     if: always()
-    needs: [advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces]
+    needs: [regression-scope, advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every acceptance workflow
         env:
+          REGRESSION_SCOPE_RESULT: ${{ needs.regression-scope.result }}
           ADVANCED_CANVASES_RESULT: ${{ needs.advanced-canvases.result }}
           GPU_FORMATS_RESULT: ${{ needs.gpu-formats.result }}
           DC_OUTPUT_RESULT: ${{ needs.dc-output.result }}
@@ -76,6 +141,7 @@ jobs:
           TEXT_BLOBS_RESULT: ${{ needs.text-blobs.result }}
           TYPEFACES_RESULT: ${{ needs.typefaces.result }}
         run: |
+          test "$REGRESSION_SCOPE_RESULT" = success
           test "$ADVANCED_CANVASES_RESULT" = success
           test "$GPU_FORMATS_RESULT" = success
           test "$DC_OUTPUT_RESULT" = success

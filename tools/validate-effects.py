@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.66 effect gate: regressions, real document capture, optional GPU and independent renderers."""
 from __future__ import annotations
+from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
 import json
@@ -19,6 +20,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
+    add_regression_argument(parser)
     parser.add_argument('--racket',default='racket')
     parser.add_argument('--directory',type=Path)
     parser.add_argument('--require-gpu',action='store_true')
@@ -53,27 +55,31 @@ def main(argv=None):
             f.write('$ '+repr(command)+'\n');f.flush()
             subprocess.run(command,cwd=ROOT,check=True,stdout=f,stderr=subprocess.STDOUT,
                            timeout=args.timeout,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
+    regressions = RegressionGate(args.regressions, report)
     try:
         run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
         manifest=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
         report['manifest_before']=manifest
         run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
         run([sys.executable,ROOT/'tools/test-effects.py'])
-        # Recompile the complete regression graph before running it. Pure tests
-        # are reached transitively from run-tests.rkt; native suites are loaded
-        # dynamically, so compile every define-runtime-path test target too.
-        # This prevents stale .zo linklets after an implementation module changes
-        # without deleting compiled directories or hiding real compile failures.
-        run_tests=ROOT/'run-tests.rkt'
-        dynamic_targets=sorted(set(re.findall(
-            r'\(define-runtime-path\s+\S+\s+"(tests/[^"]+\.rkt)"\)',
-            run_tests.read_text(encoding='utf-8'))))
-        modules=[ROOT/'main.rkt',ROOT/'effects.rkt',run_tests,
-                 *[ROOT/name for name in dynamic_targets],
-                 ROOT/'tests/effects-gpu-test.rkt',ROOT/'tools/effects-doctor.rkt',ROOT/'examples/effects.rkt']
+        if args.regressions == 'full':
+            # Recompile the complete regression graph before running it. Pure tests
+            # are reached transitively from run-tests.rkt; native suites are loaded
+            # dynamically, so compile every define-runtime-path test target too.
+            # This prevents stale .zo linklets after an implementation module changes
+            # without deleting compiled directories or hiding real compile failures.
+            run_tests=ROOT/'run-tests.rkt'
+            dynamic_targets=sorted(set(re.findall(
+                r'\(define-runtime-path\s+\S+\s+"(tests/[^"]+\.rkt)"\)',
+                run_tests.read_text(encoding='utf-8'))))
+            modules=[ROOT/'main.rkt',ROOT/'effects.rkt',run_tests,
+                     *[ROOT/name for name in dynamic_targets],
+                     ROOT/'tests/effects-gpu-test.rkt',ROOT/'tools/effects-doctor.rkt',ROOT/'examples/effects.rkt']
+        else:
+            modules = [ROOT/'main.rkt', ROOT/'effects.rkt', ROOT/'tests/effects-gpu-test.rkt',
+                       ROOT/'tools/effects-doctor.rkt', ROOT/'examples/effects.rkt']
         run([racket,'-l','raco','--','make',*modules])
-        run([racket,ROOT/'run-tests.rkt'])
-        report['regressions_passed']=True
+        regressions.run(lambda: run([racket,ROOT/'run-tests.rkt']))
         run([racket,ROOT/'tools/effects-doctor.rkt','--directory',out/'documents','--token',token])
         render=None
         if args.require_renderers:

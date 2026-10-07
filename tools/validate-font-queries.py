@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""0.68b acceptance: full regressions, font snapshot documents, optional required GPU/viewers."""
+"""0.68b acceptance: optional full regressions, font snapshot documents, optional required GPU/viewers."""
 from __future__ import annotations
+from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
 import json
@@ -18,7 +19,16 @@ import font_query_validation as fv
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def compile_targets(root):
+def compile_targets(root, regressions='full'):
+    if checked_mode(regressions) == 'none':
+        # Compile feature roots only; do not traverse unrelated regression suites.
+        return [root / p for p in (
+            'main.rkt',
+            'fonts.rkt',
+            'tests/font-query-gpu-test.rkt',
+            'tools/font-query-doctor.rkt',
+            'examples/font-queries.rkt',
+        )]
     text = (root/'run-tests.rkt').read_text(encoding='utf-8')
     dynamic = sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)', text)))
     if not dynamic:
@@ -32,6 +42,7 @@ def compile_targets(root):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    add_regression_argument(parser)
     parser.add_argument('--racket', default='racket')
     parser.add_argument('--directory', type=Path)
     parser.add_argument('--require-renderers', action='store_true')
@@ -77,6 +88,7 @@ def main(argv=None):
                                env={**os.environ, 'PYTHONDONTWRITEBYTECODE':'1', 'PYTHONUTF8':'1'})
             except (OSError, subprocess.SubprocessError):
                 report.update(failed_command=command, failed_log=str(log)); raise
+    regressions = RegressionGate(args.regressions, report)
     try:
         run([sys.executable, ROOT/'tools/update-source-sums.py', '--check'])
         before = hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
@@ -84,9 +96,8 @@ def main(argv=None):
         run([sys.executable, ROOT/'tools/api-inventory.py', '--check'])
         run([sys.executable, ROOT/'tools/test-font-queries.py'])
         run([sys.executable, ROOT/'tools/test-font-query-documents.py'])
-        run([racket, '-l', 'raco', '--', 'make', *compile_targets(ROOT)])
-        run([racket, ROOT/'run-tests.rkt'])
-        report['regressions_passed'] = True
+        run([racket, '-l', 'raco', '--', 'make', *compile_targets(ROOT, args.regressions)])
+        regressions.run(lambda: run([racket, ROOT/'run-tests.rkt']))
         run([racket, ROOT/'tools/font-query-doctor.rkt', '--directory', out/'documents', '--token', token])
         report['rendering_executed'] = True
         render = None

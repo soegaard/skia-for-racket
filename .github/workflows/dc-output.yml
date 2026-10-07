@@ -1,9 +1,23 @@
 name: DC document output
 "on":
   workflow_call:
+    inputs:
+      regressions:
+        description: Global regression scope; feature acceptance always runs.
+        type: string
+        required: false
+        default: 'full'
   workflow_dispatch:
+    inputs:
+      regressions:
+        description: Global regression scope; none is feature acceptance only.
+        type: choice
+        options: ['full', 'none']
+        default: 'full'
 permissions:
   contents: read
+env:
+  SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}
 jobs:
   documents:
     name: PDF and SVG / Linux / Racket ${{ matrix.racket }}
@@ -36,20 +50,22 @@ jobs:
           architecture: x64
           distribution: full
           variant: CS
-      - name: Source contracts, example compilation and pure regression
+      - name: Source contracts and example compilation
         run: |
           python tools/update-source-sums.py --check
           python tools/test-dc-output.py
           python tools/test-dc-closure.py
           racket -l raco -- make dc-output.rkt tools/dc-output-doctor.rkt examples/dc-output.rkt examples/dc-closure.rkt
-          racket run-tests.rkt --pure
+      - name: Global pure regressions (standalone mode)
+        if: inputs.regressions != 'none'
+        run: racket run-tests.rkt --pure
       - name: Install pinned Skia and HarfBuzz
         run: |
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
       - name: Require DC compatibility, native documents and independent rendered pixels
         run: |
-          python tools/validate-dc-closure.py --racket "$(command -v racket)" \
+          python tools/validate-dc-closure.py --regressions "$SKIA_REGRESSIONS_MODE" --racket "$(command -v racket)" \
             --require-renderers --directory output/dc-output-ci
       - name: Retain native documents, rendered pixels, receipts and command logs
         if: always()

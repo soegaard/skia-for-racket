@@ -1,9 +1,23 @@
 name: Effects
 "on":
   workflow_call:
+    inputs:
+      regressions:
+        description: Global regression scope; feature acceptance always runs.
+        type: string
+        required: false
+        default: 'full'
   workflow_dispatch:
+    inputs:
+      regressions:
+        description: Global regression scope; none is feature acceptance only.
+        type: choice
+        options: ['full', 'none']
+        default: 'full'
 permissions:
   contents: read
+env:
+  SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}
 jobs:
   effects-linux:
     name: Effects / Linux Mesa / Racket ${{ matrix.racket }}
@@ -44,9 +58,9 @@ jobs:
           python tools/test-effects.py
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
-      - name: Require regression, GPU effects and independent PDF/SVG pixels
+      - name: Require selected regressions, GPU effects and independent PDF/SVG pixels
         run: |
-          python tools/validate-effects.py --racket "$(command -v racket)" \
+          python tools/validate-effects.py --regressions "$SKIA_REGRESSIONS_MODE" --racket "$(command -v racket)" \
             --require-gpu --backend egl --require-renderers --directory output/effects-ci
       - name: Retain effect captures and evidence
         if: always()
@@ -90,7 +104,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require D3D12 effect pixels, affinity and document structure
         run: |
-          python tools/validate-effects.py --racket (Get-Command racket).Source --require-gpu --backend direct3d --adapter warp --directory output/effects-warp
+          python tools/validate-effects.py --regressions "$env:SKIA_REGRESSIONS_MODE" --racket (Get-Command racket).Source --require-gpu --backend direct3d --adapter warp --directory output/effects-warp
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain WARP evidence
         if: always()

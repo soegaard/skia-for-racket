@@ -6,6 +6,7 @@
 All Racket commands use one resolved interpreter. Selected gates cannot skip.
 """
 from __future__ import annotations
+from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
 import importlib.util
@@ -92,6 +93,7 @@ def validate_gui_baseline(report: dict, identity: dict, racket: str, backend: st
 
 def parser():
     p = argparse.ArgumentParser(description=__doc__)
+    add_regression_argument(p)
     p.add_argument("--racket", default=os.environ.get("RACKET", "racket"))
     p.add_argument("--require-renderers", action="store_true")
     p.add_argument("--require-gui", action="store_true")
@@ -121,6 +123,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
                   gui_required=args.require_gui, renderers_required=args.require_renderers,
                   independent_pixels_verified=False, physical_display_verified=False,
                   full_drop_in_compatibility=False, commands=runner.commands)
+    regressions = RegressionGate(args.regressions, result)
     try:
         executable = shutil.which(args.racket)
         require(executable is not None, "selected Racket executable not found")
@@ -143,11 +146,14 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         # resource checks, and independent oracles; they are not reimplemented.
         runner.timeout = args.timeout * 32
         command = [sys.executable, root / "tools/validate-dc-output.py", "--racket", racket,
-                   "--directory", directory / "documents", "--timeout", args.timeout]
+                   "--directory", directory / "documents", "--timeout", args.timeout,
+                   "--regressions", args.regressions]
         if args.require_renderers:
             command.append("--require-renderers")
         runner.run(command, root)
-        validate_document_baseline(read_report(directory / "documents/validation.json"), identity, racket, args.require_renderers)
+        document_report = read_report(directory / "documents/validation.json")
+        validate_document_baseline(document_report, identity, racket, args.require_renderers)
+        regressions.inherit(document_report)
         result["document_baseline_passed"] = True
         result["independent_pixels_verified"] = args.require_renderers
         if args.require_gui:

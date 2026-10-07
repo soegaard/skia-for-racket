@@ -4,6 +4,7 @@ Pixel oracles below are independent of the Racket drawing implementation. All
 file reads are bounded, local, and reject ambiguous or stale evidence.
 """
 from __future__ import annotations
+from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 
 import argparse
 import base64
@@ -380,6 +381,7 @@ class Runner:
 
 def arguments(argv=None):
     parser = argparse.ArgumentParser(description='0.74 real advanced canvas acceptance')
+    add_regression_argument(parser)
     parser.add_argument('--racket', default='racket')
     parser.add_argument('--require-gpu', action='store_true')
     parser.add_argument('--backend', choices=('auto', *BACKENDS), default='auto')
@@ -408,6 +410,7 @@ def main(argv=None, *, root=ROOT):
     report = {'schema': 1, 'stage': STAGE, 'run_token': token, 'status': 'failed',
               'regressions_passed': False, 'gpu_executed': False, 'documents_checked': False,
               'independent_renderers_executed': False, 'hdr_verified': False, 'physical_display_verified': False}
+    regressions = RegressionGate(args.regressions, report)
     try:
         selected = shutil.which(args.racket)
         need(selected is not None, 'selected Racket executable not found')
@@ -421,14 +424,12 @@ def main(argv=None, *, root=ROOT):
                               ('test-advanced-canvases.py', []), ('test-advanced-canvas-documents.py', [])):
             runner.run([sys.executable, root/'tools'/name, *options])
         runner.run([selected, root/'tools/check-package-version.rkt'])
-        sources = (root/'run-tests.rkt').read_text(encoding='utf-8')
-        native = sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)', sources)))
-        need(bool(native), 'empty native compilation graph')
-        targets = ['main.rkt', 'gpu.rkt', 'run-tests.rkt', *native, 'tests/advanced-canvas-gpu-test.rkt',
-                   'tools/advanced-canvas-doctor.rkt', 'examples/advanced-canvases.rkt']
-        runner.run([selected, '-l', 'raco', '--', 'make', *[root/p for p in targets]])
-        runner.run([selected, root/'run-tests.rkt'])
-        report['regressions_passed'] = True
+        targets = [root/p for p in ('main.rkt', 'gpu.rkt', 'tests/advanced-canvas-gpu-test.rkt',
+                   'tools/advanced-canvas-doctor.rkt', 'examples/advanced-canvases.rkt')]
+        if args.regressions == 'full':
+            targets += global_compile_targets(root)
+        runner.run([selected, '-l', 'raco', '--', 'make', *targets])
+        regressions.run(lambda: runner.run([selected, root/'run-tests.rkt']))
         source = 'cpu'
         capture = []
         if args.require_gpu:

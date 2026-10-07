@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.67 geometry gate: regression graph, vector documents, optional GPU and independent viewers."""
 from __future__ import annotations
+from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
 import json
@@ -17,7 +18,16 @@ from geometry_completion_validation import inspect_documents, gpu_receipt
 
 ROOT=Path(__file__).resolve().parents[1]
 
-def compile_targets(root: Path):
+def compile_targets(root, regressions='full'):
+    if checked_mode(regressions) == 'none':
+        # Compile feature roots only; do not traverse unrelated regression suites.
+        return [root / p for p in (
+            'main.rkt',
+            'geometry.rkt',
+            'tests/geometry-completion-gpu-test.rkt',
+            'tools/geometry-completion-doctor.rkt',
+            'examples/geometry.rkt',
+        )]
     runner=root/'run-tests.rkt'
     dynamic=sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"]+\.rkt)"\)', runner.read_text(encoding='utf-8'))))
     if not dynamic:raise ValueError('no dynamically required regression suites discovered')
@@ -27,6 +37,7 @@ def compile_targets(root: Path):
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
+    add_regression_argument(p)
     p.add_argument('--racket',default='racket');p.add_argument('--directory',type=Path)
     p.add_argument('--require-gpu',action='store_true');p.add_argument('--require-renderers',action='store_true')
     p.add_argument('--backend',choices=('auto','egl','metal','direct3d'),default='auto')
@@ -60,14 +71,15 @@ def main(argv=None):
             except (OSError,subprocess.SubprocessError):
                 report['failed_command']=command;report['failed_log']=str(log)
                 raise
+    regressions = RegressionGate(args.regressions, report)
     try:
         run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
         before=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest();report['manifest_before']=before
         run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
         run([sys.executable,ROOT/'tools/test-geometry-completion.py'])
         run([sys.executable,ROOT/'tools/test-geometry-document-inspector.py'])
-        run([racket,'-l','raco','--','make',*compile_targets(ROOT)])
-        run([racket,ROOT/'run-tests.rkt']);report['regressions_passed']=True
+        run([racket,'-l','raco','--','make',*compile_targets(ROOT, args.regressions)])
+        regressions.run(lambda: run([racket,ROOT/'run-tests.rkt']))
         run([racket,ROOT/'tools/geometry-completion-doctor.rkt','--directory',out/'documents','--token',token])
         render=None
         if args.require_renderers:
