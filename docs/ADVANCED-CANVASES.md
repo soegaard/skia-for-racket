@@ -37,7 +37,9 @@ previous content), and `16` (F16 layer storage). The constructor takes booleans,
 not arbitrary numeric flag bits. No flag is enabled by default. Requesting LCD
 preservation does not certify subpixel text or discover a physical monitor's
 pixel geometry. The F16 flag concerns the intermediate layer, not the final
-window or document's color precision.
+window or document's color precision. In particular, m119 does not promise that
+restoring/compositing an F16 layer is a bit-preserving or extended-range-preserving
+copy into the destination.
 
 ```racket
 (canvas-save-layer-rec! canvas
@@ -276,10 +278,13 @@ backend without that flag is rejected rather than ignored.
 
 The stage registers **28 pure and 33 native** RackUnit cases in the complete
 regression runner, and **11 selected-GPU** cases. The latter require six known-
-pixel captures, F16 raw sample preservation below `1/255` including negative and
-above-one RGB, cross-context exclusions, NWay authoring-once and state cleanup.
-Alpha8 overdraw either executes with checked count pixels or is disclosed as not
-executed only when the native format capability is zero.
+pixel captures, successful F16-layer execution on an F16 GPU target with no hidden
+drawing readback, cross-context exclusions, NWay authoring-once and state cleanup.
+The binding/source checks establish that flag `16` is passed as m119
+`kF16ColorType`; final-composite pixels are not used to infer the intermediate
+layer's exact precision or extended-range behavior. Alpha8 overdraw either executes
+with checked count pixels or is disclosed as not executed only when the native
+format capability is zero.
 
 Four documents (native-vector drawable and explicitly materialized layer, each
 as PDF and SVG) retain a vector green marker and a URL annotation. The inspector

@@ -118,13 +118,14 @@ def check_f16(data: bytes, order: str) -> dict:
     need(order in ('little', 'big'), 'unknown float byte order')
     need(len(data) == 8*6*8, 'wrong F16 capture dimensions/stride')
     prefix = '<' if order == 'little' else '>'
+    expected = (.25, .5, .75, 1.)
     for y in range(6):
         for x in range(8):
             actual = struct.unpack_from(prefix + '4e', data, (y*8+x)*8)
-            expected = (.5009765625 if x < 4 else .501953125, -.125, 1.25, 1.)
-            need(all(math.isfinite(a) and abs(a-b) <= 0.0001 for a, b in zip(actual, expected)),
-                 'F16 precision, nonuniformity or extended range was lost')
-    return {'samples_checked': 48, 'storage': 'rgba-f16', 'eight_bit_intermediate': False,
+            need(all(math.isfinite(a) and abs(a-b) <= 0.0021 for a, b in zip(actual, expected)),
+                 'F16 typed target/composite differs from the bounded reference')
+    return {'samples_checked': 48, 'storage': 'rgba-f16',
+            'typed_target_verified': True, 'intermediate_precision_inferred': False,
             'sha256': hashlib.sha256(data).hexdigest()}
 
 

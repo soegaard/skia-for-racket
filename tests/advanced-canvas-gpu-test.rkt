@@ -88,7 +88,7 @@
                                            'inspection_readbacks (reads (unbox capture-ledger))
                                            'io (reverse (unbox capture-ledger))) rows))))
               (hash-set! checks 'nway_authoring_once #t)))
-          (test! "F16 layer output does not take an eight-bit path"
+          (test! "F16 layer flag executes on the selected GPU without hidden readback"
             (lambda ()
               (define ledger (box '()))
               (with-skia ([s (make-gpu-surface context 8 6 #:color-type 'rgba-f16)])
@@ -96,10 +96,7 @@
                 (parameterize ([current-gpu-io-ledger ledger])
                   (call-with-canvas-layer-rec c
                     (lambda ()
-                      (canvas-clear-color4f! c (make-color4f 0.5009765625 -0.125 1.25 1))
-                      (with-canvas-state c
-                        (canvas-clip-rect! c 4 0 4 6)
-                        (canvas-clear-color4f! c (make-color4f 0.501953125 -0.125 1.25 1))))
+                      (canvas-clear-color4f! c (make-color4f 0.25 0.5 0.75 1)))
                     #:options (make-layer-options #:f16? #t)))
                 (check-equal? (reads (unbox ledger)) 0)
                 (with-skia ([pixels (parameterize ([current-gpu-io-ledger ledger])

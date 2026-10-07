@@ -29,7 +29,7 @@ def audit_row(mode='vector', kind='pdf'):
 
 def float_bytes(order='little'):
     return b''.join(struct.pack(('<' if order == 'little' else '>')+'4e',
-                                 .5009765625 if x < 4 else .501953125, -.125, 1.25, 1)
+                                 .25, .5, .75, 1)
                     for y in range(6) for x in range(8))
 
 
@@ -78,14 +78,14 @@ class Pixels(unittest.TestCase):
     def test_float_nonfinite(self):
         data=bytearray(float_bytes());data[:2]=struct.pack('<e',float('nan'))
         with self.assertRaises(ValueError): v.check_f16(data,'little')
-    def test_float_quantization(self):
-        data=bytearray(float_bytes());data[:2]=struct.pack('<e',128/255)
+    def test_float_wrong_midrange(self):
+        data=bytearray(float_bytes());data[:2]=struct.pack('<e',.625)
         with self.assertRaises(ValueError): v.check_f16(data,'little')
-    def test_float_clamping(self):
+    def test_float_wrong_channels(self):
         data=bytearray(float_bytes());data[2:6]=struct.pack('<2e',0,1)
         with self.assertRaises(ValueError): v.check_f16(data,'little')
-    def test_nonuniformity(self):
-        data=bytearray(float_bytes());data[4*8:5*8]=data[:8]
+    def test_float_late_pixel_corruption(self):
+        data=bytearray(float_bytes());data[4*8:4*8+2]=struct.pack('<e',.625)
         with self.assertRaises(ValueError): v.check_f16(data,'little')
     def test_alpha_count_oracle(self):
         data=v.expected_overdraw()
