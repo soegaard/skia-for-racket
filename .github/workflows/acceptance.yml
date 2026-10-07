@@ -13,6 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  advanced-canvases:
+    name: Advanced layers and canvases
+    uses: ./.github/workflows/advanced-canvases.yml
   gpu-formats:
     name: GPU formats and surface properties
     uses: ./.github/workflows/gpu-formats.yml
@@ -53,12 +56,13 @@ jobs:
   required:
     name: Acceptance required
     if: always()
-    needs: [gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces]
+    needs: [advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every acceptance workflow
         env:
+          ADVANCED_CANVASES_RESULT: ${{ needs.advanced-canvases.result }}
           GPU_FORMATS_RESULT: ${{ needs.gpu-formats.result }}
           DC_OUTPUT_RESULT: ${{ needs.dc-output.result }}
           EFFECTS_RESULT: ${{ needs.effects.result }}
@@ -72,6 +76,7 @@ jobs:
           TEXT_BLOBS_RESULT: ${{ needs.text-blobs.result }}
           TYPEFACES_RESULT: ${{ needs.typefaces.result }}
         run: |
+          test "$ADVANCED_CANVASES_RESULT" = success
           test "$GPU_FORMATS_RESULT" = success
           test "$DC_OUTPUT_RESULT" = success
           test "$EFFECTS_RESULT" = success

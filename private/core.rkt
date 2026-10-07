@@ -283,7 +283,8 @@
   (define owner (canvas-owner 'canvas-execution-backend c))
   (call-on-canvas 'canvas-execution-backend c '()
     (lambda ignored
-      (cond [(surface? owner) (surface-backend owner)]
+      (cond [(specialized-canvas-owner? owner) (specialized-canvas-owner-execution owner)]
+            [(surface? owner) (surface-backend owner)]
             [(picture-recorder? owner) 'recording]
             [(pdf-page? owner) 'pdf]
             [else 'svg]))))
@@ -362,7 +363,7 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
+  (or (recorded-drawable? v) (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
@@ -371,7 +372,9 @@
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
-  (cond [(raster-buffer-resource? v) (raster-buffer-resource-handle v)]
+  (cond [(recorded-drawable? v) (recorded-drawable-handle v)]
+        [(specialized-canvas-owner? v) (specialized-canvas-owner-handle v)]
+        [(raster-buffer-resource? v) (raster-buffer-resource-handle v)]
         [(text-blob-builder-resource? v) (text-blob-builder-resource-handle v)]
         [(font-style-set-resource? v) (font-style-set-resource-handle v)]
         [(region-resource? v) (region-resource-handle v)]
@@ -404,6 +407,10 @@
 
 (define (skia-closed? v)
   (cond
+    [(and (canvas? v) (specialized-canvas-owner? (canvas-resource v)))
+     (define owner (canvas-resource v))
+     (or (not (specialized-canvas-owner-live? owner))
+         (owned-closed? (specialized-canvas-owner-handle owner)))]
     [(and (gpu-canvas? v) (domain-lease-expired? (gpu-canvas-lease v))) #t]
     [else
      (define owner (if (canvas? v) (canvas-owner 'skia-closed? v) v))
@@ -412,6 +419,7 @@
            [else (owned-closed? (resource-handle 'skia-closed? owner))])]))
 
 (define (skia-close! v)
+  (check-canvas-close-pin! 'skia-close! v)
   (when (and (gpu-surface? v) (pair? (surface-floors v)))
     (error 'skia-close! "cannot close a GPU surface inside a protected canvas-state scope"))
   (when (and (raster-buffer-resource? v) (unbox (raster-buffer-resource-state v)))
@@ -455,7 +463,10 @@
 (define (typed-handle who v pred accessor description)
   (unless (pred v) (raise-argument-error who description v))
   (accessor v))
-(define (surface-h who v) (typed-handle who v surface? surface-handle "surface?"))
+(define (surface-h who v)
+  (define handle (typed-handle who v surface? surface-handle "surface?"))
+  (check-unborrowed-target! who v)
+  handle)
 (define (paint-h who v) (typed-handle who v paint? paint-handle "paint?"))
 (define (shader-h who v) (typed-handle who v shader? shader-handle "shader?"))
 (define (path-effect-h who v)
@@ -486,20 +497,27 @@
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
   (when (gpu-canvas? c) (domain-check-lease! who (gpu-canvas-lease c)))
   (define owner (canvas-resource c))
-  (unless (or (surface? owner) (picture-recorder? owner) (pdf-page? owner)
+  (when (specialized-canvas-owner? owner)
+    (unless (specialized-canvas-owner-live? owner)
+      (error who "specialized canvas lease has expired"))
+    (for ([parent (in-list (specialized-canvas-owner-dependencies owner))])
+      (canvas-owner who parent)))
+  (unless (or (specialized-canvas-owner? owner) (surface? owner) (picture-recorder? owner) (pdf-page? owner)
               (svg-document? owner))
     (error who "canvas owner is corrupted"))
   owner)
 
 (define (owner-floors owner)
-  (cond [(surface? owner) (surface-floors owner)]
+  (cond [(specialized-canvas-owner? owner) (specialized-canvas-owner-floors owner)]
+        [(surface? owner) (surface-floors owner)]
         [(picture-recorder? owner) (picture-recorder-floors owner)]
         [(pdf-page? owner) (pdf-page-floors owner)]
         [(svg-document? owner) (svg-document-floors owner)]
         [else (error 'owner-floors "unsupported owner")]))
 
 (define (set-owner-floors! owner floors)
-  (cond [(surface? owner) (set-surface-floors! owner floors)]
+  (cond [(specialized-canvas-owner? owner) (set-specialized-canvas-owner-floors! owner floors)]
+        [(surface? owner) (set-surface-floors! owner floors)]
         [(picture-recorder? owner) (set-picture-recorder-floors! owner floors)]
         [(pdf-page? owner) (set-pdf-page-floors! owner floors)]
         [(svg-document? owner) (set-svg-document-floors! owner floors)]
@@ -507,11 +525,22 @@
 
 (define (call-on-canvas who c others proc)
   (define owner (canvas-owner who c))
+  (check-unborrowed-target! who owner)
+  ;; m119 Overdraw's text implementation does not support every transformed
+  ;; glyph run. Restrict the safe diagnostic surface to direct primitives;
+  ;; pictures/drawables could otherwise hide such runs from this boundary.
+  (when (and (specialized-canvas-owner? owner)
+             (eq? (specialized-canvas-owner-kind owner) 'overdraw)
+             (memq who '(draw-simple-text draw-text-blob draw-picture draw-drawable
+                          canvas-save-layer! call-with-canvas-layer
+                          canvas-save-layer-rec! call-with-canvas-layer-rec)))
+    (error who "overdraw diagnostics support direct primitives, not text, recorded content, or layers"))
   (call-with-owned
    who (cons (resource-handle who owner) others)
    (lambda (op . ps)
      (define cp
        (cond
+         [(specialized-canvas-owner? owner) op]
          [(surface? owner)
           (define ptr (sk_surface_get_canvas op))
           (unless ptr (error who "native surface returned a null canvas"))
@@ -529,7 +558,8 @@
        ;; GPU execution is not CPU raster execution. The document auditor has
        ;; no GPU execution policy in this release; GPU targets never masquerade
        ;; as its explicit CPU fallback surfaces.
-       (cond [(gpu-surface? owner) 'gpu]
+       (cond [(specialized-canvas-owner? owner) (specialized-canvas-owner-backend owner)]
+             [(gpu-surface? owner) 'gpu]
              [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
              [(pdf-page? owner) 'pdf] [else 'svg]))
      (call-with-owned-canvas who (resource-handle who owner) backend others
@@ -542,7 +572,9 @@
   (define (output-group-canvas-backend who c)
     (define owner (canvas-owner who c))
     (call-on-canvas who c '() (lambda ignored (void)))
-    (cond [(gpu-surface? owner) 'gpu]
+    (cond [(specialized-canvas-owner? owner)
+           (error who "output groups require an ordinary target, not a diagnostic canvas")]
+          [(gpu-surface? owner) 'gpu]
           [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
           [(pdf-page? owner) 'pdf] [else 'svg]))
   (define (output-group-canvas-recording-handle who c)
@@ -5492,3 +5524,38 @@
                (error who "glyph ~a has visible bounds but no monochrome outline; explicit raster output is required" glyph)]
               [else (void)])))
         result))))
+
+;; 0.74 internal owners. No constructor, native handle, or lifetime token is
+;; exported by main.rkt. A special canvas always expires at callback exit.
+(struct recorded-drawable (handle width height) #:constructor-name make-drawable-record)
+(struct specialized-canvas-owner
+  (handle kind backend execution [dependencies #:mutable] [floors #:mutable] [live? #:mutable]))
+(define canvas-target-borrows (make-weak-hasheq))
+(define canvas-close-pins (make-weak-hasheq))
+(define (check-unborrowed-target! who owner)
+  (when (hash-ref canvas-target-borrows owner #f)
+    (error who "surface is exclusively borrowed by a specialized canvas")))
+(define (check-canvas-close-pin! who owner)
+  (when (or (hash-ref canvas-target-borrows owner #f)
+            (positive? (hash-ref canvas-close-pins owner 0)))
+    (error who "resource is pinned by an active canvas scope")))
+(define (canvas-pin-root owner)
+  (if (pdf-page? owner) (pdf-page-document owner) owner))
+(define (pin-canvas-owner! owner)
+  (define root (canvas-pin-root owner))
+  (hash-set! canvas-close-pins root (add1 (hash-ref canvas-close-pins root 0))))
+(define (unpin-canvas-owner! owner)
+  (define root (canvas-pin-root owner))
+  (define next (sub1 (hash-ref canvas-close-pins root)))
+  (if (zero? next) (hash-remove! canvas-close-pins root)
+      (hash-set! canvas-close-pins root next)))
+(module* advanced-canvas-internals #f
+  (provide call-on-canvas canvas-owner owner-floors set-owner-floors!
+           resource-handle paint-h image-filter-h picture-h surface-h
+           make-picture-record call-with-native-temporary
+           recorded-drawable? recorded-drawable-handle recorded-drawable-width
+           recorded-drawable-height make-drawable-record
+           specialized-canvas-owner specialized-canvas-owner? specialized-canvas-owner-handle
+           set-specialized-canvas-owner-live?! set-specialized-canvas-owner-dependencies! make-canvas-record
+           canvas-target-borrows check-unborrowed-target!
+           pin-canvas-owner! unpin-canvas-owner!))

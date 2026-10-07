@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/list racket/string
          "../output-policy.rkt" (submod "../output-policy.rkt" internals))
-(provide audit-inherit-image-precision! audit-mark-float-pixels! audit-allocate audit-use audit-native-call audit-on-canvas
+(provide call-with-audit-layer-rec audit-specialized-scope! audit-inherit-image-precision! audit-mark-float-pixels! audit-allocate audit-use audit-native-call audit-on-canvas
          audit-page-index audit-labels call-with-audit-collector
          call-with-audit-raster audit-raster-annotation!
          current-output-audit-event-limit call-with-audit-matrix
@@ -90,6 +90,7 @@
     [(image raster-image) '(image)]
     [(picture) (if (memq who '(picture-from-bytes picture-from-file))
                    '(picture deserialized-picture) '(picture))]
+    [(drawable) '(drawable)]
     [(paint picture-recorder) '()]
     [else '()]))
 (define (audit-allocate who kind thunk)
@@ -118,11 +119,11 @@
   h)
 (define (collect-dependencies! hs)
   (define a (allocating))
-  (when (and a (memq (allocation-kind a) '(shader color-filter image-filter mask-filter path-effect blender picture path)))
+  (when (and a (memq (allocation-kind a) '(shader color-filter image-filter mask-filter path-effect blender picture drawable path)))
     (define dependencies
       (for/list ([h (in-list hs)]
                  #:when (memq (handle-kind h)
-                              '(shader color-filter image-filter mask-filter path-effect blender picture picture-recorder path)))
+                              '(shader color-filter image-filter mask-filter path-effect blender picture drawable picture-recorder path)))
         (features h)))
     (set-box! (allocation-deps a) (apply union (unbox (allocation-deps a)) dependencies)))
   ;; Precision requirements survive image snapshots/subsets and image shaders.
@@ -254,6 +255,9 @@
              (if (and (canvas) (eq? (canvas-context-backend (canvas)) 'recording))
                  '(recorded-color-fill) '()))]
     [(sk_canvas_save_layer) '(layer)]
+    [(sk_canvas_save_layer_rec) (cons 'layer (layer-rec-features))]
+    [(sk_canvas_discard) '(discard-content)]
+    [(sk_canvas_draw_drawable sk_drawable_draw) '(drawable)]
     [(sk_canvas_draw_simple_text sk_canvas_draw_text_blob) '(native-text)]
     [(sk_canvas_draw_image sk_canvas_draw_image_rect) '(image)]
     [(sk_canvas_draw_picture) '(picture)]
@@ -267,7 +271,7 @@
     [else
      (and (string-prefix? (symbol->string name) "sk_canvas_draw_") '(unknown-operation))]))
 (define (drawable? name)
-  (and (or (memq name '(sk_canvas_clear sk_canvas_clear_color4f))
+  (and (or (memq name '(sk_canvas_clear sk_canvas_clear_color4f sk_drawable_draw))
            (string-prefix? (symbol->string name) "sk_canvas_draw_"))
        (not (memq name '(sk_canvas_draw_url_annotation sk_canvas_draw_named_destination_annotation
                         sk_canvas_draw_link_destination_annotation)))))
@@ -325,7 +329,7 @@
     (and fs
          (apply union fs
                 (for/list ([h (in-list (canvas-context-others cx))]
-                           #:when (memq (handle-kind h) '(paint picture path image raster-image unknown)))
+                           #:when (memq (handle-kind h) '(paint picture drawable image-filter path image raster-image unknown)))
                   (features h)))))
   (when (and all (eq? (canvas-context-backend cx) 'raster))
     (retain-raster-losses! all))
@@ -410,3 +414,22 @@
   (when (for/or ([source (in-list sources)])
           (or (memq 'float-pixels (features source)) (memq 'float-color (features source))))
     (audit-mark-float-pixels! target)))
+
+
+;; Dynamic options cover just the immediate native call, not application code.
+(define layer-rec-features (make-parameter '()))
+(define (call-with-audit-layer-rec flags backdrop? thunk)
+  (unless (and (exact-nonnegative-integer? flags) (= 0 (bitwise-and flags (bitwise-not 22)))
+               (boolean? backdrop?))
+    (error 'call-with-audit-layer-rec "invalid layer flag contract"))
+  (parameterize ([layer-rec-features
+                 (append (if backdrop? '(layer-backdrop) '())
+                         (if (zero? (bitwise-and flags 4)) '() '(layer-initialization))
+                         (if (zero? (bitwise-and flags 2)) '() '(layer-lcd-text))
+                         (if (zero? (bitwise-and flags 16)) '() '(float-pixels)))])
+    (thunk)))
+(define (audit-specialized-scope!)
+  ;; A native multi-sink wrapper is not the exact bounded raster target named
+  ;; by the output policy. It must not inherit that target's fallback authority.
+  (when (or (pair? (raster-groups)) (gpu-raster-target))
+    (error 'specialized-canvas "diagnostic canvases cannot replace a bounded output raster target")))

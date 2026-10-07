@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.74 — Advanced layers, drawables and specialized canvases
+
+- Add immutable layer options and the pinned SaveLayerRec ABI, protected scoped layers, explicit clipping and discard hints.
+- Add real native recorded drawables, picture snapshots, generation/size queries and retained/immediate drawing. No native Racket replay callbacks.
+- Add callback-scoped NoDraw and exclusive same-backend NWay/Alpha8 Overdraw canvases with owner locks and exceptional state cleanup.
+- Preserve GPU-affinity and document provenance through advanced layer backdrops and drawable graphs.
+- Keep backdrop/initialization/LCD/float document requirements explicit, and reject diagnostic canvases as replacement output-raster authorities.
+- Add pure/native/GPU and independent PDF/SVG acceptance under the existing three-workflow organization.
+
 ## 0.73 — GPU formats and surface properties
 
 - Add immutable surface properties and checked native roundtrips, retaining unknown pixel geometry by default.

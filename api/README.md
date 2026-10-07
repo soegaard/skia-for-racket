@@ -1,3 +1,7 @@
+# Current inventory: 0.74
+
+Advanced layers, native recorded drawables, and scoped diagnostic canvases have explicit restrictions. Source coverage is not execution evidence.
+
 # Current inventory: 0.73
 
 GPU surfaces/properties and checked backend descriptors are implemented with explicit limits. Source declarations are not native execution receipts.

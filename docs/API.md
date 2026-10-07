@@ -2636,3 +2636,7 @@ See [IMAGE-OPERATIONS.md](IMAGE-OPERATIONS.md) for CPU/GPU filter results, prese
 ## GPU formats and surface properties (0.73)
 
 See [GPU-FORMATS.md](GPU-FORMATS.md) for typed GPU targets, detached properties, explicit format-aware readback and configuration-aware staging.
+
+## Advanced layers and canvases (0.74)
+
+See [ADVANCED-CANVASES.md](ADVANCED-CANVASES.md) for checked layer records, captured native drawables, scoped NoDraw/NWay/Overdraw canvases, and their output/ownership restrictions.

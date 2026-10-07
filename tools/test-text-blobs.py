@@ -125,7 +125,7 @@ class Sources(unittest.TestCase):
         for forbidden in ('base64','file->bytes','ffi/unsafe'):self.assertNotIn(forbidden,source)
     def test_native_pins_and_minimums_are_unchanged(self):
         info=self.text('info.rkt')
-        for clause in ('(define version "0.73")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):self.assertIn(clause,info)
+        for clause in ('(define version "0.74")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):self.assertIn(clause,info)
         self.assertEqual(self.text('private/native-default-version.txt').strip(),'3.119.1')
     def test_workflow_requires_GPU_and_independent_Linux_viewers(self):
         source=self.text('.github/workflows/text-blobs.yml')

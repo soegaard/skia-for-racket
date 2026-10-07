@@ -1,4 +1,4 @@
-# Racket Skia — 0.73
+# Racket Skia — 0.74
 
 ## Integer pixel storage and image information
 
@@ -1624,3 +1624,7 @@ See [IMAGE-OPERATIONS.md](docs/IMAGE-OPERATIONS.md) for CPU/GPU filter results, 
 ## GPU formats and surface properties (0.73)
 
 See [GPU-FORMATS.md](docs/GPU-FORMATS.md) for typed GPU targets, detached properties, explicit format-aware readback and configuration-aware staging.
+
+## Advanced layers and canvases (0.74)
+
+See [ADVANCED-CANVASES.md](docs/ADVANCED-CANVASES.md) for checked layer records, captured native drawables, scoped NoDraw/NWay/Overdraw canvases, and their output/ownership restrictions.

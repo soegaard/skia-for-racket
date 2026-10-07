@@ -74,7 +74,7 @@ class Sources(unittest.TestCase):
             self.assertEqual(rows[name]['execution_evidence'],inv.EVIDENCE_SCOPE)
     def test_pins_and_minimums_stay_unchanged(self):
         info=self.text('info.rkt')
-        self.assertIn('(define version "0.73")',info)
+        self.assertIn('(define version "0.74")',info)
         for s in ('("base" #:version "8.18")','("draw-lib" #:version "1.22")'):self.assertIn(s,info)
         self.assertEqual(self.text('private/native-default-version.txt').strip(),'3.119.1')
     def test_runner_and_source_ci_register_new_suites(self):
@@ -86,9 +86,9 @@ class Sources(unittest.TestCase):
     def test_float_precision_provenance_survives_recordings_and_replacement(self):
         audit=self.text('private/audit-trace.rkt')
         for term in ('audit-mark-float-pixels!',"'(image raster-image surface)",
-                     "'(paint picture path image raster-image unknown)",
+                     "'(paint picture drawable image-filter path image raster-image unknown)",
                      "'(sk_paint_set_color sk_paint_set_color4f)",
-                     "'(sk_canvas_clear sk_canvas_clear_color4f)"):
+                     "'(sk_canvas_clear sk_canvas_clear_color4f sk_drawable_draw)"):
             self.assertIn(term,audit)
         policy=self.text('output-policy.rkt')
         self.assertIn('(float-color needs-raster needs-raster',policy)

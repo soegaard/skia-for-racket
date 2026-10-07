@@ -50,7 +50,7 @@
 ;; These native objects cannot retain GPU content. In particular, a retained
 ;; color-space getter is CPU-independent even when queried on a GPU image.
 (define independent-kinds
-  '(surface-properties surface image raster-image color-space path path-effect mask-filter
+  '(specialized-canvas surface-properties surface image raster-image color-space path path-effect mask-filter
     region vertices runtime-effect font-manager font-style-set typeface font text-blob text-blob-builder shaper shaper-font
     path-measure codec encoded-data native-string data raster-buffer pixmap
     runtime-uniform-data runtime-name sksl-source sksl-diagnostic rtree-factory))
@@ -238,7 +238,7 @@
      (set-slot/native name h 'blend #f thunk)]
     [(and cx (eq? (canvas-use-backend cx) 'recording)
           (or (string-prefix? (symbol->string name) "sk_canvas_draw_")
-              (eq? name 'sk_canvas_save_layer)))
+              (memq name '(sk_canvas_save_layer sk_canvas_save_layer_rec sk_drawable_draw))))
      (define h (canvas-use-handle cx))
      (define next (apply join name (binding h) (map binding (canvas-use-others cx))))
      (install-binding! name h next)

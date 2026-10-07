@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "bdb1aef4440cd31b2fdf4950069db29a2ed2b2c0",
+  "baseline_commit": "e9c91df2be2e305bde4d38d0643a6b98669968ba",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -12,6 +12,7 @@
         "sk_colorspace_unref",
         "sk_data_unref",
         "sk_document_unref",
+        "sk_drawable_unref",
         "sk_fontmgr_unref",
         "sk_fontstyleset_unref",
         "sk_image_unref",
@@ -99,7 +100,6 @@
       "unbound_declarations": [
         "sk_blender_ref",
         "sk_data_ref",
-        "sk_drawable_unref",
         "sk_image_ref",
         "sk_maskfilter_ref",
         "sk_nvrefcnt_get_ref_count",
@@ -301,13 +301,26 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Ordinary raster and same-domain Ganesh OpenGL/Metal/Direct3D drawing. NWay requires same-backend owned targets; Alpha8 overdraw needs native format support. NoDraw has no output pixels. Source references are not execution receipts; selected backend acceptance is separate from physical display/HDR verification.",
+      "bindings_expected": [
+        "sk_canvas_save_layer_rec"
+      ],
+      "document_behavior": "Plain recorded drawables preserve native vector replay and retained dependency features. Advanced backdrop/initialization/LCD/F16 layers require explicit rasterization including needed backdrop; discard is classified as semantic loss. Diagnostic wrappers are not PDF/SVG targets or substitute raster-group authority.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "canvas.layer-record",
-      "implementation_files": [],
-      "limitations": "Layer bounds are allocation hints, not clipping. Audit backend-specific backdrop behavior.",
+      "implementation_files": [
+        "advanced-layers.rkt",
+        "drawables.rkt",
+        "layer-options.rkt",
+        "output-policy.rkt",
+        "private/advanced-canvas-types.rkt",
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "specialized-canvases.rkt"
+      ],
+      "limitations": "Checked pinned SaveLayerRec bounds, paint, backdrop and LCD/initialize-previous/F16 flags. Options are detached; paint/backdrop ownership is validated at use. The scoped helper pins its owner, protects restore floors and installs an optional real clip. Bounds remain native allocation/content hints, not a reliable clipping API. Exceptions restore state and composite existing layer content; no pixel rollback.",
       "managed_sources": [
         "binding/SkiaSharp/SKCanvas.cs",
         "binding/SkiaSharp/Definitions.cs"
@@ -316,14 +329,32 @@
         "sk_canvas_save_layer_rec"
       ],
       "origin": "m119",
-      "planned_stage": "0.74",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "advanced-layers.rkt",
+          "name": "canvas-save-layer-rec!"
+        },
+        {
+          "module": "advanced-layers.rkt",
+          "name": "call-with-canvas-layer-rec"
+        },
+        {
+          "module": "layer-options.rkt",
+          "name": "make-layer-options"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/advanced-canvas-pure-test.rkt",
+        "tests/advanced-canvas-native-test.rkt",
+        "tests/advanced-canvas-gpu-test.rkt",
+        "tools/test-advanced-canvases.py",
+        "tools/test-advanced-canvas-documents.py",
+        "tools/validate-advanced-canvases.py"
+      ],
       "title": "Full layer record / backdrop control",
-      "unbound_declarations": [
-        "sk_canvas_save_layer_rec"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -359,13 +390,26 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Ordinary raster and same-domain Ganesh OpenGL/Metal/Direct3D drawing. NWay requires same-backend owned targets; Alpha8 overdraw needs native format support. NoDraw has no output pixels. Source references are not execution receipts; selected backend acceptance is separate from physical display/HDR verification.",
+      "bindings_expected": [
+        "sk_canvas_discard"
+      ],
+      "document_behavior": "Plain recorded drawables preserve native vector replay and retained dependency features. Advanced backdrop/initialization/LCD/F16 layers require explicit rasterization including needed backdrop; discard is classified as semantic loss. Diagnostic wrappers are not PDF/SVG targets or substitute raster-group authority.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "canvas.discard",
-      "implementation_files": [],
-      "limitations": "Cannot turn undefined discarded pixels into preserved content.",
+      "implementation_files": [
+        "advanced-layers.rkt",
+        "drawables.rkt",
+        "layer-options.rkt",
+        "output-policy.rkt",
+        "private/advanced-canvas-types.rkt",
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "specialized-canvases.rkt"
+      ],
+      "limitations": "Explicit native destination-content discard hint. No clearing, deterministic previous pixels or document equivalence is promised. Callers must overwrite discarded content before observing or reusing it.",
       "managed_sources": [
         "binding/SkiaSharp/SKCanvas.cs"
       ],
@@ -373,14 +417,24 @@
         "sk_canvas_discard"
       ],
       "origin": "m119",
-      "planned_stage": "0.74",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "advanced-layers.rkt",
+          "name": "canvas-discard!"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/advanced-canvas-pure-test.rkt",
+        "tests/advanced-canvas-native-test.rkt",
+        "tests/advanced-canvas-gpu-test.rkt",
+        "tools/test-advanced-canvases.py",
+        "tools/test-advanced-canvas-documents.py",
+        "tools/validate-advanced-canvases.py"
+      ],
       "title": "Discard destination-content hint",
-      "unbound_declarations": [
-        "sk_canvas_discard"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -489,13 +543,34 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Ordinary raster and same-domain Ganesh OpenGL/Metal/Direct3D drawing. NWay requires same-backend owned targets; Alpha8 overdraw needs native format support. NoDraw has no output pixels. Source references are not execution receipts; selected backend acceptance is separate from physical display/HDR verification.",
+      "bindings_expected": [
+        "sk_nodraw_canvas_destroy",
+        "sk_nodraw_canvas_new",
+        "sk_nway_canvas_add_canvas",
+        "sk_nway_canvas_destroy",
+        "sk_nway_canvas_new",
+        "sk_nway_canvas_remove_all",
+        "sk_nway_canvas_remove_canvas",
+        "sk_overdraw_canvas_destroy",
+        "sk_overdraw_canvas_new"
+      ],
+      "document_behavior": "Plain recorded drawables preserve native vector replay and retained dependency features. Advanced backdrop/initialization/LCD/F16 layers require explicit rasterization including needed backdrop; discard is classified as semantic loss. Diagnostic wrappers are not PDF/SVG targets or substitute raster-group authority.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "canvas.specialized",
-      "implementation_files": [],
-      "limitations": "Fan-out must define ownership and callback execution count; diagnostics are not visible-pixel evidence.",
+      "implementation_files": [
+        "advanced-layers.rkt",
+        "drawables.rkt",
+        "layer-options.rkt",
+        "output-policy.rkt",
+        "private/advanced-canvas-types.rkt",
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "specialized-canvases.rkt"
+      ],
+      "limitations": "Callback-scoped native canvases. NWay accepts 1..64 distinct same-sized owned surfaces with compatible root state and the same execution backend/domain; original targets are exclusively borrowed. No arbitrary borrowed document/recording canvas fan-out. Overdraw requires Alpha8 and direct primitives; text, pictures/drawables and layers reject rather than reaching unsupported native transformed-text paths. Counts are native approximations, not hardware fragment statistics. No diagnostic canvas can replace an audited bounded raster target.",
       "managed_sources": [
         "binding/SkiaSharp/SKNoDrawCanvas.cs",
         "binding/SkiaSharp/SKNWayCanvas.cs",
@@ -513,31 +588,61 @@
         "sk_overdraw_canvas_new"
       ],
       "origin": "m119",
-      "planned_stage": "0.74",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "specialized-canvases.rkt",
+          "name": "call-with-nodraw-canvas"
+        },
+        {
+          "module": "specialized-canvases.rkt",
+          "name": "call-with-nway-canvas"
+        },
+        {
+          "module": "specialized-canvases.rkt",
+          "name": "call-with-overdraw-canvas"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/advanced-canvas-pure-test.rkt",
+        "tests/advanced-canvas-native-test.rkt",
+        "tests/advanced-canvas-gpu-test.rkt",
+        "tools/test-advanced-canvases.py",
+        "tools/test-advanced-canvas-documents.py",
+        "tools/validate-advanced-canvases.py"
+      ],
       "title": "No-draw, N-way and overdraw canvases",
-      "unbound_declarations": [
-        "sk_nodraw_canvas_destroy",
-        "sk_nodraw_canvas_new",
-        "sk_nway_canvas_add_canvas",
-        "sk_nway_canvas_destroy",
-        "sk_nway_canvas_new",
-        "sk_nway_canvas_remove_all",
-        "sk_nway_canvas_remove_canvas",
-        "sk_overdraw_canvas_destroy",
-        "sk_overdraw_canvas_new"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Ordinary raster and same-domain Ganesh OpenGL/Metal/Direct3D drawing. NWay requires same-backend owned targets; Alpha8 overdraw needs native format support. NoDraw has no output pixels. Source references are not execution receipts; selected backend acceptance is separate from physical display/HDR verification.",
+      "bindings_expected": [
+        "sk_canvas_draw_drawable",
+        "sk_drawable_approximate_bytes_used",
+        "sk_drawable_draw",
+        "sk_drawable_get_bounds",
+        "sk_drawable_get_generation_id",
+        "sk_drawable_new_picture_snapshot",
+        "sk_drawable_notify_drawing_changed",
+        "sk_picture_recorder_end_recording_as_drawable"
+      ],
+      "document_behavior": "Plain recorded drawables preserve native vector replay and retained dependency features. Advanced backdrop/initialization/LCD/F16 layers require explicit rasterization including needed backdrop; discard is classified as semantic loss. Diagnostic wrappers are not PDF/SVG targets or substitute raster-group authority.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "pictures.drawables",
-      "implementation_files": [],
-      "limitations": "Custom callbacks need a separate lifetime/reentry protocol; static pictures are not mutable drawables.",
+      "implementation_files": [
+        "advanced-layers.rkt",
+        "drawables.rkt",
+        "layer-options.rkt",
+        "output-policy.rkt",
+        "private/advanced-canvas-types.rkt",
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "specialized-canvases.rkt"
+      ],
+      "limitations": "Real native SkRecordedDrawable creation from an immutable captured picture, retained/immediate placement, detached bounds/size/generation metadata and native picture snapshots. Authoring executes once. Generation invalidation is not command mutation. User callback-backed or externally mutable native drawables are not exposed; no Racket callback crosses native replay frames. Retained GPU affinity and output features survive source closure and snapshot conversion.",
       "managed_sources": [
         "binding/SkiaSharp/SKDrawable.cs",
         "binding/SkiaSharp/DelegateProxies.drawable.cs",
@@ -554,21 +659,52 @@
         "sk_picture_recorder_end_recording_as_drawable"
       ],
       "origin": "m119",
-      "planned_stage": "0.74",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "drawables.rkt",
+          "name": "picture->drawable"
+        },
+        {
+          "module": "drawables.rkt",
+          "name": "call-with-drawable"
+        },
+        {
+          "module": "drawables.rkt",
+          "name": "draw-drawable"
+        },
+        {
+          "module": "drawables.rkt",
+          "name": "drawable->picture"
+        },
+        {
+          "module": "drawables.rkt",
+          "name": "drawable-bounds"
+        },
+        {
+          "module": "drawables.rkt",
+          "name": "drawable-generation-id"
+        },
+        {
+          "module": "drawables.rkt",
+          "name": "drawable-approximate-bytes-used"
+        },
+        {
+          "module": "drawables.rkt",
+          "name": "drawable-notify-drawing-changed!"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/advanced-canvas-pure-test.rkt",
+        "tests/advanced-canvas-native-test.rkt",
+        "tests/advanced-canvas-gpu-test.rkt",
+        "tools/test-advanced-canvases.py",
+        "tools/test-advanced-canvas-documents.py",
+        "tools/validate-advanced-canvases.py"
+      ],
       "title": "Retained drawable objects and canvas placement",
-      "unbound_declarations": [
-        "sk_canvas_draw_drawable",
-        "sk_drawable_approximate_bytes_used",
-        "sk_drawable_draw",
-        "sk_drawable_get_bounds",
-        "sk_drawable_get_generation_id",
-        "sk_drawable_new_picture_snapshot",
-        "sk_drawable_notify_drawing_changed",
-        "sk_picture_recorder_end_recording_as_drawable"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Values/resources are usable by existing raster, OpenGL, Metal and Direct3D drawing routes, subject to retained GPU context affinity. PDF/SVG follow the document policy below; this is not a per-backend execution receipt.",
@@ -7586,6 +7722,7 @@
     ]
   },
   "public_modules": [
+    "advanced-layers.rkt",
     "annotations.rkt",
     "bitmap.rkt",
     "canvas-matrix.rkt",
@@ -7597,6 +7734,7 @@
     "color4f.rkt",
     "dc-output.rkt",
     "dc.rkt",
+    "drawables.rkt",
     "effects.rkt",
     "float-colors.rkt",
     "fonts.rkt",
@@ -7613,6 +7751,7 @@
     "gpu.rkt",
     "image-info.rkt",
     "image-operations.rkt",
+    "layer-options.rkt",
     "main.rkt",
     "matrix.rkt",
     "native-capabilities.rkt",
@@ -7626,6 +7765,7 @@
     "raster-buffers.rkt",
     "render-canvas.rkt",
     "runtime-effects.rkt",
+    "specialized-canvases.rkt",
     "surface-properties.rkt",
     "text-blobs.rkt",
     "typefaces.rkt",
@@ -7635,5 +7775,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.73"
+  "stage": "0.74"
 }

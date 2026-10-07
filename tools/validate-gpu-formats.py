@@ -51,7 +51,7 @@ def main(argv=None):
         (ROOT/'output').mkdir(exist_ok=True)
         out=Path(tempfile.mkdtemp(prefix='gpu-formats-0.73-',dir=ROOT/'output'))
     (out/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
-    report=dict(schema=1,stage='0.73',package_version='0.73',run_token=token,status='failed',
+    report=dict(schema=1,stage='0.73',package_version='0.74',run_token=token,status='failed',
        regressions_passed=False,gpu_required=args.require_gpu,gpu_attempted=False,gpu_executed=False,gpu_passed=False,
        documents_passed=False,independent_renderers_required=args.require_renderers,
        independent_renderers_executed=False,physical_display_verified=False,hdr_verified=False)
