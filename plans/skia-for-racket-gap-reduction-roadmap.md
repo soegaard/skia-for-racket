@@ -147,15 +147,44 @@ Then add retained drawables and NoDraw/NWay/Overdraw canvas equivalents. Prefer 
 
 **Acceptance:** nested restore and exceptional exits preserve state; retained children live long enough; closed targets reject; fan-out does not rerun application authoring unexpectedly. Keep diagnostic counters distinct from evidence of visible rendering. Document export follows the existing audit policy, including rejection where a backdrop cannot be represented faithfully.
 
-## 0.75 — Streams and ports
+## 0.75a — Native streams and explicitly buffered ports
 
-**Goal:** provide streaming capability while keeping the user-facing interface idiomatic Racket.
+**Package version:** `0.75` (the stage suffix is not a Racket package version).
 
-Implement native file/memory streams and the necessary managed stream bridge to Racket ports. Support port-based codecs, image encoding, font input, and picture/document output where the native path supports them. Expose buffering behavior and whether an operation needs seek, rewind, or duplication.
+Provide owned native memory/file input streams and dynamic-memory output with
+length, position, bounded reads/peek/skip/seek, duplicate/fork, copied SkData and
+output detachment. Integrate streams with the existing thread-affine `with-skia`
+lifecycle. Codec and typeface constructors consume a private native duplicate,
+never the caller's stream; trusted picture input borrows a private duplicate and
+preserves opaque imported-picture audit provenance.
 
-Define port ownership, callback thread/reentry rules, cancellation, allocation limits, partial writes, and exception transport across FFI boundaries. Do not allow an exception to unwind through native frames unsafely. Use deferred errors or supported callback protocols.
+Provide explicitly named `/buffered` Racket-port adapters. They finish bounded
+port I/O outside native calls, handle short reads/writes, EOF and cancellation,
+and state borrowing/closing and partial-output rules. Native file input is live
+file I/O, not an immutable file snapshot; callers keep the backing file stable.
+A read-all-bytes adapter is not counted as a live Racket-port bridge.
 
-**Acceptance:** test seekable and non-seekable inputs, short reads/writes, EOF, cancellation, closing owners, and backend-retained input lifetime. A read-all-bytes adapter is useful but must be labeled buffered, not counted as live streaming. Streamed publication may leave partial output on failure; atomic publication remains a separate buffered/temporary-file policy.
+**Acceptance:** native stream lifecycle and cursor tests, constructor failure and
+retained-input lifetime, file/memory input, independent codec pixels and font
+metadata, pure seekable/nonseekable buffered port tests and cancellation/error
+propagation. Full regressions remain the standalone default; feature-only CI
+always runs focused pure/native stream tests and inspected native evidence.
+
+## 0.75b — Live port bridge and streamed publication
+
+Complete native output consumers and file output: image encoding, picture output,
+and PDF/SVG document publication through supported native stream paths. Implement
+the managed live Racket-port bridge without arbitrary exceptions unwinding across
+native frames. Define callback thread/reentry rules, retained bridge lifetime,
+short I/O, cancellation, allocation limits, and deferred error transport before
+exposing live callback-backed resources.
+
+**Acceptance:** use real retained consumers, nonseekable/chunked ports and partial
+writes; test callbacks during normal document drawing, cleanup, cancellation and
+failure. Preserve GPU affinity and output auditing. Streamed publication may leave
+partial output; buffered/temporary-file atomic publication remains a separate
+policy. Do not count 0.75a's complete-input buffering as live streaming. Together
+0.75a and 0.75b replace the original 0.75 streams/ports milestone.
 
 ## 0.76 — Advanced codecs
 

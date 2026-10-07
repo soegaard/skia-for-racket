@@ -1,4 +1,5 @@
 #lang racket/base
+(require "stream-resource.rkt")
 ;; 0.68b private bridge: no native pointers are re-exported by main.rkt.
 (module* font-query-internals #f
   (provide font-h typeface-h make-typeface-record font-owner set-font-owner!
@@ -363,7 +364,7 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (recorded-drawable? v) (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
+  (or (native-stream? v) (recorded-drawable? v) (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
@@ -372,7 +373,8 @@
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
-  (cond [(recorded-drawable? v) (recorded-drawable-handle v)]
+  (cond [(native-stream? v) (native-stream-handle v)]
+        [(recorded-drawable? v) (recorded-drawable-handle v)]
         [(specialized-canvas-owner? v) (specialized-canvas-owner-handle v)]
         [(raster-buffer-resource? v) (raster-buffer-resource-handle v)]
         [(text-blob-builder-resource? v) (text-blob-builder-resource-handle v)]
@@ -5559,3 +5561,15 @@
            set-specialized-canvas-owner-live?! set-specialized-canvas-owner-dependencies! make-canvas-record
            canvas-target-borrows check-unborrowed-target!
            pin-canvas-owner! unpin-canvas-owner!))
+
+;; 0.75a private stream consumer bridge. No raw pointer ingress is public.
+(module* stream-input-internals #f
+  (provide make-codec-record make-typeface-record make-picture-record stream-picture-bounds)
+  (define (stream-picture-bounds who ptr)
+    (define r (make-sk-rect 0.0 0.0 0.0 0.0))
+    (sk_picture_get_cull_rect ptr r)
+    (define x (scalar who (sk-rect-left r)))
+    (define y (scalar who (sk-rect-top r)))
+    (vector-immutable x y
+      (nonnegative-scalar who (- (scalar who (sk-rect-right r)) x))
+      (nonnegative-scalar who (- (scalar who (sk-rect-bottom r)) y)))))

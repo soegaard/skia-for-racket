@@ -98,7 +98,7 @@ class Sources(unittest.TestCase):
         self.assertIn("'test-image-operations.py'",self.text('tools/ci.py'))
         self.assertIn('tests/image-operation-gpu-test.rkt',self.text('info.rkt'))
     def test_real_Racket_version_guard_and_pins(self):
-        self.assertIn('(define version "0.74")',self.text('info.rkt'))
+        self.assertIn('(define version "0.75")',self.text('info.rkt'))
         self.assertIn('(valid-version? value)',self.text('tools/check-package-version.rkt'))
         self.assertIn('tools/check-package-version.rkt',self.text('tools/validate-image-operations.py'))
         self.assertIn('("base" #:version "8.18")',self.text('info.rkt'))

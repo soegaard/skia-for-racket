@@ -1,4 +1,10 @@
-# Current inventory: 0.74
+# Current inventory: 0.75 (stage 0.75a)
+
+Native stream foundations and buffered port adapters have source anchors.
+Live port bridging and remaining stream consumers stay planned for 0.75b.
+Source declarations and test references are not execution evidence.
+
+## Previous inventory note: 0.74
 
 Advanced layers, native recorded drawables, and scoped diagnostic canvases have explicit restrictions. Source coverage is not execution evidence.
 

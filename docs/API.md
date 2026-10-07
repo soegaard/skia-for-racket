@@ -2640,3 +2640,10 @@ See [GPU-FORMATS.md](GPU-FORMATS.md) for typed GPU targets, detached properties,
 ## Advanced layers and canvases (0.74)
 
 See [ADVANCED-CANVASES.md](ADVANCED-CANVASES.md) for checked layer records, captured native drawables, scoped NoDraw/NWay/Overdraw canvases, and their output/ownership restrictions.
+
+## Native streams and buffered ports (0.75a)
+
+Package version `0.75` adds native memory/file input, dynamic-memory output,
+owned codec/typeface/trusted-picture input and explicitly buffered Racket
+port adapters. The live callback/streamed-publication bridge remains 0.75b.
+See [STREAMS.md](STREAMS.md).

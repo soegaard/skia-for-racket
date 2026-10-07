@@ -38,6 +38,12 @@ jobs:
           SKIA_REQUESTED_REGRESSIONS: ${{ inputs.regressions }}
         run: python3 tools/validation_regressions.py --github-output
 
+  streams:
+    name: Native streams and buffered ports
+    needs: regression-scope
+    uses: ./.github/workflows/streams.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
   advanced-canvases:
     name: Advanced layers and canvases
     needs: regression-scope
@@ -120,13 +126,14 @@ jobs:
   required:
     name: Acceptance required
     if: always()
-    needs: [regression-scope, advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces]
+    needs: [regression-scope, streams, advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every acceptance workflow
         env:
           REGRESSION_SCOPE_RESULT: ${{ needs.regression-scope.result }}
+          STREAMS_RESULT: ${{ needs.streams.result }}
           ADVANCED_CANVASES_RESULT: ${{ needs.advanced-canvases.result }}
           GPU_FORMATS_RESULT: ${{ needs.gpu-formats.result }}
           DC_OUTPUT_RESULT: ${{ needs.dc-output.result }}
@@ -142,6 +149,7 @@ jobs:
           TYPEFACES_RESULT: ${{ needs.typefaces.result }}
         run: |
           test "$REGRESSION_SCOPE_RESULT" = success
+          test "$STREAMS_RESULT" = success
           test "$ADVANCED_CANVASES_RESULT" = success
           test "$GPU_FORMATS_RESULT" = success
           test "$DC_OUTPUT_RESULT" = success

@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "e9c91df2be2e305bde4d38d0643a6b98669968ba",
+  "baseline_commit": "32e1cf036e58b9dbbc131be4905c80c09366a828",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -2618,13 +2618,24 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU native resources on the pinned platform builds; no GPU/GUI initialization, implicit GPU readback or native callback bridge. Source/test anchors are not execution evidence. File-backed consumers require a stable backing file.",
+      "bindings_expected": [
+        "sk_typeface_create_from_stream"
+      ],
+      "document_behavior": "No streamed document publication is added in 0.75a. Existing buffered PDF/SVG exporters and audit policy are unchanged; pictures deserialized from streams retain opaque imported provenance. Port write failure can leave a partial buffered prefix, not an atomic publication guarantee.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "fonts.streams",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "private/stream-buffer.rkt",
+        "private/stream-resource.rkt",
+        "stream-inputs.rkt",
+        "streams.rkt"
+      ],
+      "limitations": "0.75a typeface input consumes a private native duplicate starting at zero and retains its needed storage independently of the original wrapper. TTC indices are checked. The named port path is fully buffered, not a live callback stream. Prior family limits: No general promise of byte-identical output across platforms or backends.",
       "managed_sources": [
         "binding/SkiaSharp/SKTypeface.cs",
         "binding/SkiaSharp/SKFontManager.cs"
@@ -2634,14 +2645,28 @@
         "sk_typeface_create_from_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.75",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": "0.75b",
+      "public_equivalents": [
+        {
+          "module": "stream-inputs.rkt",
+          "name": "typeface-from-stream"
+        },
+        {
+          "module": "stream-inputs.rkt",
+          "name": "typeface-from-port/buffered"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/stream-native-test.rkt",
+        "tests/stream-pure-test.rkt",
+        "tools/stream-doctor.rkt",
+        "tools/test-streams.py",
+        "tools/validate-streams.py"
+      ],
       "title": "Typeface live-stream construction",
       "unbound_declarations": [
-        "sk_fontmgr_create_from_stream",
-        "sk_typeface_create_from_stream"
+        "sk_fontmgr_create_from_stream"
       ]
     },
     {
@@ -5650,13 +5675,24 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU native resources on the pinned platform builds; no GPU/GUI initialization, implicit GPU readback or native callback bridge. Source/test anchors are not execution evidence. File-backed consumers require a stable backing file.",
+      "bindings_expected": [
+        "sk_picture_deserialize_from_stream"
+      ],
+      "document_behavior": "No streamed document publication is added in 0.75a. Existing buffered PDF/SVG exporters and audit policy are unchanged; pictures deserialized from streams retain opaque imported provenance. Port write failure can leave a partial buffered prefix, not an atomic publication guarantee.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "pictures.streams",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "private/stream-buffer.rkt",
+        "private/stream-resource.rkt",
+        "stream-inputs.rkt",
+        "streams.rkt"
+      ],
+      "limitations": "0.75a picture input synchronously borrows a private duplicate, keeps trust/header checks and unknown imported-SKP audit provenance, and returns an independent picture. It adds no mutable/callback-backed drawable or streamed output. Prior family limits: No general promise of byte-identical output across platforms or backends.",
       "managed_sources": [
         "binding/SkiaSharp/SKPicture.cs"
       ],
@@ -5665,13 +5701,27 @@
         "sk_picture_serialize_to_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.75",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": "0.75b",
+      "public_equivalents": [
+        {
+          "module": "stream-inputs.rkt",
+          "name": "picture-from-stream"
+        },
+        {
+          "module": "stream-inputs.rkt",
+          "name": "picture-from-port/buffered"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/stream-native-test.rkt",
+        "tests/stream-pure-test.rkt",
+        "tools/stream-doctor.rkt",
+        "tools/test-streams.py",
+        "tools/validate-streams.py"
+      ],
       "title": "Picture serialization through native streams",
       "unbound_declarations": [
-        "sk_picture_deserialize_from_stream",
         "sk_picture_serialize_to_stream"
       ]
     },
@@ -6302,13 +6352,24 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU native resources on the pinned platform builds; no GPU/GUI initialization, implicit GPU readback or native callback bridge. Source/test anchors are not execution evidence. File-backed consumers require a stable backing file.",
+      "bindings_expected": [
+        "sk_data_new_from_stream"
+      ],
+      "document_behavior": "No streamed document publication is added in 0.75a. Existing buffered PDF/SVG exporters and audit policy are unchanged; pictures deserialized from streams retain opaque imported provenance. Port write failure can leave a partial buffered prefix, not an atomic publication guarantee.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "data.stream-input",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "private/stream-buffer.rkt",
+        "private/stream-resource.rkt",
+        "stream-inputs.rkt",
+        "streams.rkt"
+      ],
+      "limitations": "0.75a copies remaining native-stream bytes through SkData, preserving caller ownership but advancing its cursor. Empty data is handled without a native read; a short exact read fails. This returns copied bytes, not an exposed SkData handle. Prior family limits: No general promise of byte-identical output across platforms or backends.",
       "managed_sources": [
         "binding/SkiaSharp/SKData.cs"
       ],
@@ -6316,14 +6377,23 @@
         "sk_data_new_from_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.75",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "streams.rkt",
+          "name": "input-stream->bytes"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/stream-native-test.rkt",
+        "tests/stream-pure-test.rkt",
+        "tools/stream-doctor.rkt",
+        "tools/test-streams.py",
+        "tools/validate-streams.py"
+      ],
       "title": "Data construction from a native stream",
-      "unbound_declarations": [
-        "sk_data_new_from_stream"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
@@ -6444,13 +6514,42 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU native resources on the pinned platform builds; no GPU/GUI initialization, implicit GPU readback or native callback bridge. Source/test anchors are not execution evidence. File-backed consumers require a stable backing file.",
+      "bindings_expected": [
+        "sk_dynamicmemorywstream_copy_to",
+        "sk_dynamicmemorywstream_detach_as_stream",
+        "sk_filestream_is_valid",
+        "sk_filestream_new",
+        "sk_memorystream_new_with_data",
+        "sk_stream_destroy",
+        "sk_stream_duplicate",
+        "sk_stream_fork",
+        "sk_stream_get_position",
+        "sk_stream_has_length",
+        "sk_stream_has_position",
+        "sk_stream_is_at_end",
+        "sk_stream_move",
+        "sk_stream_peek",
+        "sk_stream_rewind",
+        "sk_stream_seek",
+        "sk_stream_skip",
+        "sk_wstream_bytes_written",
+        "sk_wstream_write"
+      ],
+      "document_behavior": "No streamed document publication is added in 0.75a. Existing buffered PDF/SVG exporters and audit policy are unchanged; pictures deserialized from streams retain opaque imported provenance. Port write failure can leave a partial buffered prefix, not an atomic publication guarantee.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "streams.native-ports",
-      "implementation_files": [],
-      "limitations": "Whole-input snapshots and memory-stream output do not constitute live port streaming.",
+      "implementation_files": [
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "private/stream-buffer.rkt",
+        "private/stream-resource.rkt",
+        "stream-inputs.rkt",
+        "streams.rkt"
+      ],
+      "limitations": "0.75a exposes bounded owned native memory/file input and dynamic-memory output, position/length/read/peek/skip/seek/duplicate/fork and copied/detached storage. Native file input is not a snapshot: callers keep the backing file stable, and filesystem calls are synchronous. Named buffered port adapters finish Racket I/O outside native calls and retain no Racket port or callback. Whole-input buffering is not live port streaming. Native file output, encoder/picture/document streaming and the safe managed live-port bridge remain 0.75b. Logical byte quotas do not bound aggregate process/native memory.",
       "managed_sources": [
         "binding/SkiaSharp/SKStream.cs",
         "binding/SkiaSharp/SKAbstractManagedStream.cs",
@@ -6517,37 +6616,86 @@
         "sk_wstream_write_text"
       ],
       "origin": "m119",
-      "planned_stage": "0.75",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": "0.75b",
+      "public_equivalents": [
+        {
+          "module": "streams.rkt",
+          "name": "make-memory-input-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "make-file-input-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "make-memory-output-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-read-bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-peek-bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-seek!"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-duplicate"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-fork"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream->bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream-write-bytes!"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream->bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream-detach-input!"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "buffered-port->input-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream-write-port/buffered"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/stream-native-test.rkt",
+        "tests/stream-pure-test.rkt",
+        "tools/stream-doctor.rkt",
+        "tools/test-streams.py",
+        "tools/validate-streams.py"
+      ],
       "title": "Live native streams and Racket port adapters",
       "unbound_declarations": [
-        "sk_dynamicmemorywstream_copy_to",
-        "sk_dynamicmemorywstream_detach_as_stream",
         "sk_dynamicmemorywstream_write_to_stream",
         "sk_filestream_destroy",
-        "sk_filestream_is_valid",
-        "sk_filestream_new",
         "sk_filewstream_destroy",
         "sk_filewstream_is_valid",
         "sk_filewstream_new",
         "sk_memorystream_destroy",
         "sk_memorystream_new",
-        "sk_memorystream_new_with_data",
         "sk_memorystream_new_with_length",
         "sk_memorystream_new_with_skdata",
         "sk_memorystream_set_memory",
-        "sk_stream_destroy",
-        "sk_stream_duplicate",
-        "sk_stream_fork",
         "sk_stream_get_memory_base",
-        "sk_stream_get_position",
-        "sk_stream_has_length",
-        "sk_stream_has_position",
-        "sk_stream_is_at_end",
-        "sk_stream_move",
-        "sk_stream_peek",
         "sk_stream_read_bool",
         "sk_stream_read_s16",
         "sk_stream_read_s32",
@@ -6555,14 +6703,9 @@
         "sk_stream_read_u16",
         "sk_stream_read_u32",
         "sk_stream_read_u8",
-        "sk_stream_rewind",
-        "sk_stream_seek",
-        "sk_stream_skip",
-        "sk_wstream_bytes_written",
         "sk_wstream_flush",
         "sk_wstream_get_size_of_packed_uint",
         "sk_wstream_newline",
-        "sk_wstream_write",
         "sk_wstream_write_16",
         "sk_wstream_write_32",
         "sk_wstream_write_8",
@@ -6578,7 +6721,7 @@
       ]
     },
     {
-      "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
+      "backend_scope": "CPU native resources on the pinned platform builds; no GPU/GUI initialization, implicit GPU readback or native callback bridge. Source/test anchors are not execution evidence. File-backed consumers require a stable backing file.",
       "bindings_expected": [
         "sk_dynamicmemorywstream_destroy",
         "sk_dynamicmemorywstream_detach_as_data",
@@ -6587,13 +6730,20 @@
         "sk_stream_get_length",
         "sk_stream_read"
       ],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "No streamed document publication is added in 0.75a. Existing buffered PDF/SVG exporters and audit policy are unchanged; pictures deserialized from streams retain opaque imported provenance. Port write failure can leave a partial buffered prefix, not an atomic publication guarantee.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "streams.internal",
       "implementation_files": [
-        "private/core.rkt"
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "private/stream-buffer.rkt",
+        "private/stream-resource.rkt",
+        "stream-inputs.rkt",
+        "streams.rkt"
       ],
-      "limitations": "Bound for output buffers/font shaping. No public general native-stream owner.",
+      "limitations": "0.75a exposes bounded owned native memory/file input and dynamic-memory output, position/length/read/peek/skip/seek/duplicate/fork and copied/detached storage. Native file input is not a snapshot: callers keep the backing file stable, and filesystem calls are synchronous. Named buffered port adapters finish Racket I/O outside native calls and retain no Racket port or callback. Whole-input buffering is not live port streaming. Native file output, encoder/picture/document streaming and the safe managed live-port bridge remain 0.75b. Logical byte quotas do not bound aggregate process/native memory.",
       "managed_sources": [
         "binding/SkiaSharp/SKStream.cs"
       ],
@@ -6606,11 +6756,73 @@
         "sk_stream_read"
       ],
       "origin": "m119",
-      "planned_stage": "0.75",
-      "public_equivalents": [],
-      "status": "bound-not-public",
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "streams.rkt",
+          "name": "make-memory-input-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "make-file-input-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "make-memory-output-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-read-bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-peek-bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-seek!"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-duplicate"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream-fork"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "input-stream->bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream-write-bytes!"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream->bytes"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream-detach-input!"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "buffered-port->input-stream"
+        },
+        {
+          "module": "streams.rkt",
+          "name": "output-stream-write-port/buffered"
+        }
+      ],
+      "status": "supported-with-limits",
       "test_sources": [
-        "tests/native-test.rkt"
+        "tests/native-test.rkt",
+        "tests/stream-native-test.rkt",
+        "tests/stream-pure-test.rkt",
+        "tools/stream-doctor.rkt",
+        "tools/test-streams.py",
+        "tools/validate-streams.py"
       ],
       "title": "Memory streams and font-data reads used internally",
       "unbound_declarations": []
@@ -6702,13 +6914,24 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "CPU native resources on the pinned platform builds; no GPU/GUI initialization, implicit GPU readback or native callback bridge. Source/test anchors are not execution evidence. File-backed consumers require a stable backing file.",
+      "bindings_expected": [
+        "sk_codec_new_from_stream"
+      ],
+      "document_behavior": "No streamed document publication is added in 0.75a. Existing buffered PDF/SVG exporters and audit policy are unchanged; pictures deserialized from streams retain opaque imported provenance. Port write failure can leave a partial buffered prefix, not an atomic publication guarantee.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "codecs.stream",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "private/audit-trace.rkt",
+        "private/core.rkt",
+        "private/lifetime.rkt",
+        "private/native.rkt",
+        "private/stream-buffer.rkt",
+        "private/stream-resource.rkt",
+        "stream-inputs.rkt",
+        "streams.rkt"
+      ],
+      "limitations": "0.75a native codec input consumes a private duplicate starting at zero, including on failure; the caller stream and cursor remain intact. Native storage is retained by the codec. The named port adapter buffers before construction. Scanline and incremental sessions remain 0.76. Prior family limits: No general promise of byte-identical output across platforms or backends.",
       "managed_sources": [
         "binding/SkiaSharp/SKCodec.cs"
       ],
@@ -6717,14 +6940,28 @@
         "sk_codec_new_from_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.75",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": "0.75b",
+      "public_equivalents": [
+        {
+          "module": "stream-inputs.rkt",
+          "name": "codec-from-stream"
+        },
+        {
+          "module": "stream-inputs.rkt",
+          "name": "codec-from-port/buffered"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/stream-native-test.rkt",
+        "tests/stream-pure-test.rkt",
+        "tools/stream-doctor.rkt",
+        "tools/test-streams.py",
+        "tools/validate-streams.py"
+      ],
       "title": "Codec stream input and buffering requirements",
       "unbound_declarations": [
-        "sk_codec_min_buffered_bytes_needed",
-        "sk_codec_new_from_stream"
+        "sk_codec_min_buffered_bytes_needed"
       ]
     },
     {
@@ -7766,6 +8003,8 @@
     "render-canvas.rkt",
     "runtime-effects.rkt",
     "specialized-canvases.rkt",
+    "stream-inputs.rkt",
+    "streams.rkt",
     "surface-properties.rkt",
     "text-blobs.rkt",
     "typefaces.rkt",
@@ -7775,5 +8014,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.74"
+  "stage": "0.75"
 }

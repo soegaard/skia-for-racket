@@ -1,4 +1,4 @@
-# Racket Skia — 0.74
+# Racket Skia — 0.75
 
 ## Integer pixel storage and image information
 
@@ -1628,3 +1628,10 @@ See [GPU-FORMATS.md](docs/GPU-FORMATS.md) for typed GPU targets, detached proper
 ## Advanced layers and canvases (0.74)
 
 See [ADVANCED-CANVASES.md](docs/ADVANCED-CANVASES.md) for checked layer records, captured native drawables, scoped NoDraw/NWay/Overdraw canvases, and their output/ownership restrictions.
+
+## Native streams and buffered ports (0.75a)
+
+Package version `0.75` adds native memory/file input, dynamic-memory output,
+owned codec/typeface/trusted-picture input and explicitly buffered Racket
+port adapters. The live callback/streamed-publication bridge remains 0.75b.
+See [STREAMS.md](docs/STREAMS.md).

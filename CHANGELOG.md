@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.75a — Native streams and buffered ports (package 0.75)
+
+Owned native memory/file input and dynamic-memory output; safe duplicate
+ownership for codec/typeface input; trusted stream picture loading with
+opaque audit provenance; explicitly buffered ports with limits, cancellation
+and ownership rules. Live port callbacks and streamed output remain 0.75b.
+Includes focused acceptance and central regression integration.
+
 ## 0.74 — Advanced layers, drawables and specialized canvases
 
 - Add immutable layer options and the pinned SaveLayerRec ABI, protected scoped layers, explicit clipping and discard hints.
