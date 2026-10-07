@@ -341,7 +341,13 @@ def inspect_documents(directory: Path, token: str, source: str, *, render: bool,
             if kind == 'pdf':
                 command = ['pdftoppm', '-singlefile', '-r', '72', '-png', str(path), str(image_path.with_suffix(''))]
             else:
-                command = ['rsvg-convert', '--output', str(image_path), str(path)]
+                # Skia's SVG canvas expresses physical document sizes in points.
+                # librsvg otherwise rasterizes those at its CSS 96-DPI default,
+                # yielding 85x64 for a 64pt x 48pt document. Pin the acceptance
+                # raster to the same 64x48 pixel reference used by the 72-DPI
+                # PDF renderer.
+                command = ['rsvg-convert', '--width', str(SIZE[0]), '--height', str(SIZE[1]),
+                           '--output', str(image_path), str(path)]
             if runner:
                 runner.run(command)
             else:

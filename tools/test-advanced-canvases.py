@@ -268,6 +268,9 @@ class Sources(unittest.TestCase):
         text=self.source('private/advanced-canvas-types.rkt')
         for value in ('[bounds _pointer]','[paint _pointer]','[backdrop _pointer]','[flags _int]'):
             self.assertIn(value,text)
+    def test_independent_svg_renderer_has_explicit_pixel_size(self):
+        text=self.source('tools/advanced_canvas_validation.py')
+        self.assertIn("['rsvg-convert', '--width', str(SIZE[0]), '--height', str(SIZE[1])",text)
     def test_three_workflows_remain(self):
         paths=ROOT/'.github/workflows'
         automatic={p.name for p in paths.glob('*.yml')
