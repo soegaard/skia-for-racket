@@ -237,13 +237,35 @@ inspection, stream/source lifetime, thread rejection and explicit unsupported
 PNG mode. The existing codec workflow runs focused scanline checks after its
 query gate; global regressions are never repeated in the same job.
 
-## 0.76c — Incremental decoding
+## 0.76c — Retained incremental decoding
 
-Add incremental sessions with explicit progress, incomplete-input state,
-cooperative cancellation and retained destination-storage ownership. Keep the
-destination alive and exclusively leased while native decoding retains its
-address. Test real supported fixtures and repeated progress/completion; do not
-manufacture success by buffering everything and using one-shot decoding.
+**Package version:** `0.76`. Feed copied byte chunks into an owned session,
+advance the native incremental decoder, and obtain detached snapshots with
+explicit initialized-row and completion status. The decoder and its exclusive,
+zero-initialized pixel allocation survive between incomplete native calls.
+Cancellation/close destroy the codec before releasing retained pixels.
+
+PNG prefixes are exposed at complete chunk boundaries, as required by the pinned
+libpng-backed Skia decoder's resumption loop. Arbitrary feed sizes are accepted,
+but a PNG with one large IDAT cannot show intermediate pixels before that chunk
+arrives. Header construction may retry; after successful incremental start the
+same codec and destination are retained. No one-shot decode, resampling or
+reconstruction fallback is used. Sealed inputs in other formats still require
+native incremental support; unsupported native modes are explicit failures.
+
+**Limits:** first frame, full-size encoded coordinates, RGBA8888/BGRA8888,
+explicit premul/unpremul and detached color-space descriptors. Input and pixel
+storage are bounded separately, not constant-memory. Native initialized-row
+counts do not certify completed rows in interlaced images. Pixel completion is
+not whole-container/trailing-data validation. Cancellation is observed between
+synchronous memory-only native calls, not inside native computation. No retained
+user port callback, new callback table, compiler or native helper is added.
+
+**Acceptance:** staged normal/interlaced PNGs with partial snapshots before
+completion, stable decoder/allocation counts, arbitrary fragment boundaries,
+padding, final truncation, corrupt data, unsupported modes, GC, thread affinity,
+independent snapshots, cancellation and coexistence with the live-port provider.
+The existing codec workflow retains full/none scope and adds a focused gate.
 
 ## 0.77 — Caches, diagnostics, and context options
 

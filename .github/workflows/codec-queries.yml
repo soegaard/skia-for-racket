@@ -62,6 +62,16 @@ jobs:
           path: output/codec-scanlines-linux/
           if-no-files-found: warn
           retention-days: 14
+      - name: Require retained incremental decoding and independent progress evidence
+        run: python tools/validate-codec-incremental.py --regressions none --racket "$(command -v racket)" --directory output/codec-incremental-linux
+      - name: Retain complete incremental evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: codec-incremental-linux-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/codec-incremental-linux/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Retain complete query evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -111,6 +121,18 @@ jobs:
         with:
           name: codec-scanlines-windows-${{ github.run_attempt }}
           path: output/codec-scanlines-windows/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Require retained incremental decoding and independent progress evidence
+        run: |
+          python tools/validate-codec-incremental.py --regressions none --racket (Get-Command racket).Source --directory output/codec-incremental-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain complete incremental evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: codec-incremental-windows-${{ github.run_attempt }}
+          path: output/codec-incremental-windows/
           if-no-files-found: warn
           retention-days: 14
       - name: Retain complete query evidence

@@ -900,3 +900,11 @@
 (define-native sk_codec_get_scanline_order (_fun _pointer -> _int))
 (define-native sk_codec_next_scanline (_fun _pointer -> _int))
 (define-native sk_codec_output_scanline (_fun _pointer _int -> _int))
+
+;; 0.76c retained pixel destination. Input callbacks only access bounded memory;
+;; they do not run user procedures or port I/O. All C-facing descriptors and
+;; result cells in codec-incremental.rkt use immobile storage.
+(define-native sk_codec_start_incremental_decode
+  (_fun _pointer _pointer _pointer _size _pointer -> _int))
+(define-native sk_codec_incremental_decode
+  (_fun _pointer _pointer -> _int))

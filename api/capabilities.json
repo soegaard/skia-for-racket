@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "ee0ec00971785b372eab7437eebd32ea73182c3d",
+  "baseline_commit": "b60bc26f15cbaee0a3b267a16f1ab3c9f6ddec1a",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -6850,13 +6850,26 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "64-bit Racket CS with OS threads and the existing single process/place managed-callback provider. Input callbacks share that provider via registered non-null contexts and perform bounded memory-only work; ordinary live-port callbacks remain unchanged. Session access is Racket-thread-affine. No new native library, C/C++ compiler or GPU execution. Unsupported native incremental modes return explicit failure states.",
+      "bindings_expected": [
+        "sk_codec_incremental_decode",
+        "sk_codec_start_incremental_decode"
+      ],
+      "document_behavior": "Detached snapshot-to-raster conversion can feed the existing CPU image and document paths, including deliberately partial snapshots. No direct PDF/SVG publication, annotation, audit policy or GPU-affinity change.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "codecs.incremental",
-      "implementation_files": [],
-      "limitations": "Retained destination storage and partial-input support are format-specific.",
+      "implementation_files": [
+        "codec-incremental.rkt",
+        "private/codec-incremental-state.rkt",
+        "private/codec-incremental-util.rkt",
+        "private/codec-incremental-input.rkt",
+        "private/codec-incremental-source.rkt",
+        "private/live-port-native.rkt",
+        "private/core.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt"
+      ],
+      "limitations": "Owned byte-fed native incremental sessions; first frame and full-size encoded coordinates. RGBA8888/BGRA8888 premul/unpremul destinations, initialized completely before native retention. Feed input is copied and retained within a captured/current byte limit; destination has a separate bound under the same limit. PNG exposure is gated at complete chunk boundaries to match the pinned decoder resumption loop, so a single large IDAT delays progress. Other formats require sealed input and successful native incremental start. Header creation may retry until enough input exists; no complete-decode, scanline, crop, resampling or re-encoding fallback after start. Initialized-row counts on incomplete results do not certify complete rows for interlaced formats. Native pixel success does not validate all trailers or container integrity. Immutable snapshots copy the private destination; cancellation/close destroy the codec before freeing pixels. Cancellation is polled between synchronous memory-only native steps. No live retained user-port callbacks, scaling, subsets, animation, or float destinations in this first session API.",
       "managed_sources": [
         "binding/SkiaSharp/SKCodec.cs"
       ],
@@ -6865,15 +6878,54 @@
         "sk_codec_start_incremental_decode"
       ],
       "origin": "m119",
-      "planned_stage": "0.76c",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "codec-incremental.rkt",
+          "name": "make-codec-incremental"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "codec-incremental-feed!"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "codec-incremental-step!"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "codec-incremental-cancel!"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "codec-incremental-info"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "codec-incremental-origin"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "codec-incremental-statistics"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "codec-incremental-snapshot"
+        },
+        {
+          "module": "codec-incremental.rkt",
+          "name": "incremental-snapshot->raster-buffer"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/codec-incremental-pure-test.rkt",
+        "tests/codec-incremental-native-test.rkt",
+        "tools/codec-incremental-doctor.rkt",
+        "tools/test-codec-incremental.py"
+      ],
       "title": "Incremental decode sessions",
-      "unbound_declarations": [
-        "sk_codec_incremental_decode",
-        "sk_codec_start_incremental_decode"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Pinned CPU native codec builds on existing Linux/macOS/Windows lanes. Optional color conversions and decode modes require native success. Native input streams are privately duplicated; source cursor and wrappers remain independent. No new compiler, callback broker, native library or GPU transfer.",
@@ -8057,6 +8109,7 @@
     "canvas-matrix.rkt",
     "canvas-primitives.rkt",
     "canvas.rkt",
+    "codec-incremental.rkt",
     "codec-queries.rkt",
     "codec-scanlines.rkt",
     "color-filters.rkt",
@@ -8110,5 +8163,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.76b"
+  "stage": "0.76c"
 }

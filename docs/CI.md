@@ -315,3 +315,11 @@ row evidence. Both evidence directories are retained even on failure. Central CI
 also runs scanline regressions in its isolated installed-package matrix. No new
 top-level workflow, additional compiler, GPU lane or Python dependency is added.
 The source job retains its existing inspector-requirements installation.
+
+## 0.76c incremental acceptance
+
+Existing codec jobs run `validate-codec-incremental.py --regressions none`
+after their query/scanline gates. The query gate continues to own any selected
+global regressions. Independent progress/pixel evidence is retained separately.
+Central installed-package CI also runs the pure/native incremental suites.
+No matrix, automatic workflow, native compiler or inspector dependency is added.

@@ -18,3 +18,6 @@
 
 (require "codec-scanlines.rkt")
 (provide (all-from-out "codec-scanlines.rkt"))
+
+(require "codec-incremental.rkt")
+(provide (all-from-out "codec-incremental.rkt"))

@@ -1160,3 +1160,12 @@ passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
 - Add BMP/JPEG/native failure tests and independent row/padding/state inspection.
 - Extend the codec workflow without new automatic workflows or repeated global
   regressions. No compiler or new native library is required.
+
+## 0.76c — Retained incremental decoding (package 0.76)
+
+- Bind native incremental start/advance; retain one decoder and initialized
+  destination until completion, cancellation or close.
+- Add PNG chunk-aware feed storage, explicit final-input semantics, optional
+  initialized-row progress, and independently owned snapshots.
+- Reuse the existing managed callback provider without another C/C++ library.
+- Add staged normal/Adam7 PNG acceptance and a focused codec workflow gate.

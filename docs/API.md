@@ -2662,3 +2662,10 @@ apply EXIF orientation. See [CODEC-QUERIES.md](CODEC-QUERIES.md).
 `codec-scanline-read!` returns detached row batches; `codec-scanline-skip!` skips
 native rows. See [CODEC-SCANLINES.md](CODEC-SCANLINES.md) for state, scaling,
 row order, partial input, ownership, and the full public API.
+
+## Retained incremental decoding (0.76c)
+
+`make-codec-incremental`, `codec-incremental-feed!`, `codec-incremental-step!`,
+`codec-incremental-cancel!`, and `codec-incremental-snapshot` expose an owned
+resumable session. See [CODEC-INCREMENTAL.md](CODEC-INCREMENTAL.md) for the
+complete API, native result states and snapshot validity.

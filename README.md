@@ -1660,3 +1660,10 @@ fallback. Native JPEG scaling, explicit row mapping, detached typed batches and
 terminal partial-input reporting are documented in
 [CODEC-SCANLINES.md](docs/CODEC-SCANLINES.md). The native-stream and compiler-free
 installation model is unchanged. Incremental decoding remains stage 0.76c.
+
+### Retained incremental decoding (0.76c)
+
+Owned byte-fed sessions retain their native decoder and initialized destination
+between steps. See [CODEC-INCREMENTAL.md](docs/CODEC-INCREMENTAL.md) for PNG
+chunk framing, partial-snapshot semantics, limits, and cancellation. No new
+compiler, native helper or retained user-port callback is needed.

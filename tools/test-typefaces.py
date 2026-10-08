@@ -46,7 +46,7 @@ class Sources(unittest.TestCase):
         walk(inv.forms(self.text('typefaces.rkt')))
     def test_numeric_package_version_and_distinct_stage(self):
         self.assertIn('(define version "0.76")', self.text('info.rkt'))
-        self.assertEqual(inv.STAGE, '0.76b')
+        self.assertEqual(inv.STAGE, '0.76c')
         self.assertIn('("base" #:version "8.18")', self.text('info.rkt'))
         self.assertIn('("draw-lib" #:version "1.22")', self.text('info.rkt'))
         self.assertEqual(inv.load_catalog(ROOT)['upstream']['package_version'], '3.119.1')

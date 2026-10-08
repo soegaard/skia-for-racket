@@ -253,3 +253,12 @@ inventory and 6 explicitly attributed Xamarin managed-stream exports. The main
 inventory includes the standard imports and leaves the extensions separate;
 `tools/live_stream_ffi.py` rejects signature or symbol-set drift. Declaration
 coverage is not native execution evidence.
+
+## Incremental memory sources (0.76c)
+
+The same managed input callback table now distinguishes live-port operations
+(null context) from private byte-fed incremental sources (registered non-null
+context). Incremental callbacks perform bounded memory-only work synchronously;
+they neither enter the live service nor execute user port code. The existing
+process/provider/place restriction is unchanged. See
+[CODEC-INCREMENTAL.md](CODEC-INCREMENTAL.md).

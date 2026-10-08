@@ -20,8 +20,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = 1
-STAGE = "0.76b"
-BASELINE = "ee0ec00971785b372eab7437eebd32ea73182c3d"
+STAGE = "0.76c"
+BASELINE = "b60bc26f15cbaee0a3b267a16f1ab3c9f6ddec1a"
 HISTORICAL_BASELINE = "9d832d3ec9a8fe6b93298d6ac03783ee57ab7f36"
 SKIA_COMMIT = "40f75dc0051d141913c07c20d4c19590c7da0cb7"
 SHARP_COMMIT = "cc78b5933d23e6383db5d246e70db915770d55d6"
