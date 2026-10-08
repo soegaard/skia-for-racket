@@ -42,6 +42,8 @@ jobs:
       - name: Validate and publish the matrix
         id: matrix
         run: python tools/ci_matrix.py --github-output
+      - name: Install source inspector dependencies
+        run: python -m pip install -r tools/dc-output-requirements.txt
       - name: Source, inspector, installer, and CI regressions
         run: python tools/ci.py --profile source --id source
       - name: Keep source-check evidence
