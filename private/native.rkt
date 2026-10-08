@@ -891,3 +891,12 @@
 ;; existing checked layouts; no address is retained by the native query.
 (define-native sk_codec_get_scaled_dimensions (_fun _pointer _float _pointer -> _void))
 (define-native sk_codec_get_valid_subset (_fun _pointer _pointer -> _stdbool))
+
+;; 0.76b: native scanline sessions. getScanlines borrows dst synchronously;
+;; unlike incremental decode, it does not retain the caller's pixel address.
+(define-native sk_codec_start_scanline_decode (_fun _pointer _sk-image-info-pointer _pointer -> _int))
+(define-native sk_codec_get_scanlines (_fun _pointer _pointer _int _size -> _int))
+(define-native sk_codec_skip_scanlines (_fun _pointer _int -> _stdbool))
+(define-native sk_codec_get_scanline_order (_fun _pointer -> _int))
+(define-native sk_codec_next_scanline (_fun _pointer -> _int))
+(define-native sk_codec_output_scanline (_fun _pointer _int -> _int))

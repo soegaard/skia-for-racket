@@ -1650,5 +1650,13 @@ Earlier compiler-dependent 0.75b delivery bundles are superseded.
 `codec-scaled-dimensions` and `codec-supported-subset` expose native encoded-pixel
 negotiation without decoding or a crop/resampling fallback. See
 [Codec queries](docs/CODEC-QUERIES.md) for native rounding, unsupported subsets,
-EXIF coordinates, lifetime rules and validation. Scanline and incremental sessions
-remain stages 0.76b and 0.76c.
+EXIF coordinates, lifetime rules and validation. Native scanline sessions are available in 0.76b; incremental sessions
+remain stage 0.76c.
+
+### Native scanline decoding (0.76b)
+
+Owned scanline sessions read or skip native decoder rows without a full-decode
+fallback. Native JPEG scaling, explicit row mapping, detached typed batches and
+terminal partial-input reporting are documented in
+[CODEC-SCANLINES.md](docs/CODEC-SCANLINES.md). The native-stream and compiler-free
+installation model is unchanged. Incremental decoding remains stage 0.76c.

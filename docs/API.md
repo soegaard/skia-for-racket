@@ -2654,3 +2654,11 @@ See [STREAMS.md](STREAMS.md).
 dimensions. `(codec-supported-subset codec x y width height)` returns `#f` or an
 immutable actual suggested rectangle. These queries do not decode/crop pixels or
 apply EXIF orientation. See [CODEC-QUERIES.md](CODEC-QUERIES.md).
+
+## Native scanline decoding (0.76b)
+
+`codec-scanline-from-bytes`, `codec-scanline-from-stream`, and
+`codec-scanline-from-port/buffered` create independently owned scanline sessions.
+`codec-scanline-read!` returns detached row batches; `codec-scanline-skip!` skips
+native rows. See [CODEC-SCANLINES.md](CODEC-SCANLINES.md) for state, scaling,
+row order, partial input, ownership, and the full public API.

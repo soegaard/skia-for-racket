@@ -52,6 +52,16 @@ jobs:
           python -m pip install -r tools/dc-output-requirements.txt
       - name: Require native query negotiation and independent evidence
         run: python tools/validate-codec-queries.py --regressions "$SKIA_REGRESSIONS_MODE" --racket "$(command -v racket)" --directory output/codec-queries-linux
+      - name: Require native scanline decoding and independent row evidence
+        run: python tools/validate-codec-scanlines.py --regressions none --racket "$(command -v racket)" --directory output/codec-scanlines-linux
+      - name: Retain complete scanline evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: codec-scanlines-linux-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/codec-scanlines-linux/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Retain complete query evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -91,6 +101,18 @@ jobs:
         run: |
           python tools/validate-codec-queries.py --regressions "$env:SKIA_REGRESSIONS_MODE" --racket (Get-Command racket).Source --directory output/codec-queries-windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native scanline decoding and independent row evidence
+        run: |
+          python tools/validate-codec-scanlines.py --regressions none --racket (Get-Command racket).Source --directory output/codec-scanlines-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain complete scanline evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: codec-scanlines-windows-${{ github.run_attempt }}
+          path: output/codec-scanlines-windows/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Retain complete query evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

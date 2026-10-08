@@ -1,4 +1,5 @@
 #lang racket/base
+(require "codec-scanline-state.rkt")
 (require "stream-resource.rkt")
 ;; 0.68b private bridge: no native pointers are re-exported by main.rkt.
 (module* font-query-internals #f
@@ -364,7 +365,7 @@
   #:transparent)
 
 (define (skia-resource? v)
-  (or (native-stream? v) (recorded-drawable? v) (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
+  (or (scanline-session-record? v) (native-stream? v) (recorded-drawable? v) (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
@@ -373,7 +374,8 @@
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
 (define (resource-handle who v)
-  (cond [(native-stream? v) (native-stream-handle v)]
+  (cond [(scanline-session-record? v) (scanline-session-record-handle v)]
+        [(native-stream? v) (native-stream-handle v)]
         [(recorded-drawable? v) (recorded-drawable-handle v)]
         [(specialized-canvas-owner? v) (specialized-canvas-owner-handle v)]
         [(raster-buffer-resource? v) (raster-buffer-resource-handle v)]

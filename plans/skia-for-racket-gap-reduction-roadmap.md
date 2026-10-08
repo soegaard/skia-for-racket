@@ -208,13 +208,34 @@ explicit unsupported results, EXIF-independent coordinates, detached metadata,
 stream lifetime, unchanged full decoding, and independent evidence inspection.
 No GPU or document-renderer requirement. Full/none regression scope is retained.
 
-## 0.76b — Scanline decoding
+## 0.76b — Native scanline sessions
 
-Add native scanline sessions, skipping and row ordering using the negotiated
-options only where the decoder supports them. Distinguish session state from
-ordinary immutable images and existing one-shot codec operations. Test actual
-rows, truncation/corruption, unsupported modes and top/bottom ordering. No hidden
-complete-decode fallback.
+**Package version:** `0.76`. Owned private codecs accept copied bytes or an
+independently duplicated native input stream; the explicitly buffered port
+adapter does not install retained live-port callbacks. Native scanline start,
+read, skip, order, next-row and output-row queries are exposed without using a
+complete-decode/crop/resampling fallback. Optional native scale negotiation and
+checked destination color/alpha/color-space descriptions are supported.
+
+Batches are detached immutable bytes in increasing logical-Y order, with explicit
+first-row and decoded/requested counts. On a short read, native default-fill rows
+are discarded (including the leading fill of bottom-up batches). The session
+becomes terminal incomplete; skip failure becomes terminal failed. EOF does not
+call the out-of-range native nextScanline query. No native destination pointer is
+retained between calls. Session close uses the ordinary resource lifecycle.
+
+**Limits:** first frame, full-width encoded-pixel coordinates, native supported
+scanline modes only; EXIF orientation is metadata, not a row reorder. Horizontal
+native subset decoding is not exposed in this stage. Vertical selection uses
+explicit skipping. Scaled bottom-up rows are rejected if their native coordinate
+height differs. Incremental sessions and live-port-backed retained decoders remain
+0.76c or future work, not a claim of this API.
+
+**Acceptance:** real top/down and bottom/up BMPs, native JPEG scaling, padded
+batches, truncation/empty partial batches, skip failure, independent row/byte
+inspection, stream/source lifetime, thread rejection and explicit unsupported
+PNG mode. The existing codec workflow runs focused scanline checks after its
+query gate; global regressions are never repeated in the same job.
 
 ## 0.76c — Incremental decoding
 

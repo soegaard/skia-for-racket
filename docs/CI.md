@@ -304,3 +304,14 @@ requires Linux 8.18/9.3 and Windows 9.3 query tests and independent fixture
 inspection. Central CI runs the new pure/native suites in installed-package
 regressions, including macOS. Only CI, API inventory and Acceptance retain
 automatic top-level triggers. No compiler or GPU dependency is added.
+
+## 0.76b scanline acceptance
+
+The existing `codec-queries.yml` jobs additionally run
+`validate-codec-scanlines.py --regressions none` after the query validator succeeds.
+The query validator owns the job's selected full/none global-regression gate;
+the scanline validator always runs focused pure/native suites and independent
+row evidence. Both evidence directories are retained even on failure. Central CI
+also runs scanline regressions in its isolated installed-package matrix. No new
+top-level workflow, additional compiler, GPU lane or Python dependency is added.
+The source job retains its existing inspector-requirements installation.

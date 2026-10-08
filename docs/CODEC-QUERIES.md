@@ -96,9 +96,10 @@ color type, and decode mode is supported.
 0.76a does **not** expose scaled/subset pixel decoding, scanline sessions,
 progressive/incremental sessions, retained destination storage, or new live-port
 codec lifetimes. It does not silently simulate any of them by complete decoding,
-resampling, or cropping. Scanline work is stage **0.76b**; incremental work is
-**0.76c**. They will consume negotiated options subject to each native mode's own
-restrictions. Existing one-shot and animation behavior is preserved.
+resampling, or cropping. Native scanline sessions are now documented in
+[CODEC-SCANLINES.md](CODEC-SCANLINES.md). Incremental work remains **0.76c**.
+Each mode separately checks native support. Existing one-shot and animation
+behavior is preserved.
 
 ## Validation
 
@@ -132,3 +133,11 @@ No additional automatically triggered top-level workflow is introduced.
   `40f75dc0051d141913c07c20d4c19590c7da0cb7`: C call signatures and direct delegation.
 * [SkCodec.h at the pinned revision](https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/include/codec/SkCodec.h): positive scales, no upscaling, encoded bounds and undefined subset output on false.
 * [SkWebpCodec.cpp at the pinned revision](https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/src/codec/SkWebpCodec.cpp): even-origin subset negotiation.
+
+## Using query results with scanlines
+
+0.76b adds [native scanline sessions](CODEC-SCANLINES.md). Their `#:scale` uses
+`codec-scaled-dimensions`, then requires successful native scanline start; a
+suggested size is not proof that every decode mode supports it. The query APIs
+remain read-only. Horizontal subset queries are not a claim of subset decoding
+support in the scanline wrapper.

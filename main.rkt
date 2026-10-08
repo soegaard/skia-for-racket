@@ -15,3 +15,6 @@
 
 (require "codec-queries.rkt")
 (provide (all-from-out "codec-queries.rkt"))
+
+(require "codec-scanlines.rkt")
+(provide (all-from-out "codec-scanlines.rkt"))

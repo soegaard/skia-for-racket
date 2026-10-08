@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "588ff41e037a3dae04e7968d41a247e85b1dd290",
+  "baseline_commit": "ee0ec00971785b372eab7437eebd32ea73182c3d",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -6876,13 +6876,28 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Pinned CPU native codec builds on existing Linux/macOS/Windows lanes. Optional color conversions and decode modes require native success. Native input streams are privately duplicated; source cursor and wrappers remain independent. No new compiler, callback broker, native library or GPU transfer.",
+      "bindings_expected": [
+        "sk_codec_get_scanline_order",
+        "sk_codec_get_scanlines",
+        "sk_codec_next_scanline",
+        "sk_codec_output_scanline",
+        "sk_codec_skip_scanlines",
+        "sk_codec_start_scanline_decode"
+      ],
+      "document_behavior": "Decoded CPU pixels can use existing raster-image/document paths. No direct PDF/SVG, annotation, output-audit, or GPU-affinity policy change.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "codecs.scanline",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "codec-scanlines.rkt",
+        "private/codec-scanline-state.rkt",
+        "private/codec-scanline-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt",
+        "private/image-info-native.rkt"
+      ],
+      "limitations": "Privately owned, thread-affine native codec sessions; first frame and full-width encoded-pixel rows only. Native negotiated scaling and checked image-info destination formats are attempted; unsupported modes/conversions fail explicitly with native result codes. No complete-decode, crop or resampling fallback. EXIF remains metadata; no orientation normalization. Scaled bottom-up height changes are rejected. Horizontal native subsets and incremental/live-port retained sessions are not exposed. Each detached immutable batch contains only actually decoded rows, in increasing logical Y order, excluding native default-fill. Short reads are terminal incomplete; skip failure is terminal failed. Native cursor advances by requested count. Per-call scratch storage is not retained by Skia; input codec storage and native internal allocations are not claimed to be constant-memory.",
       "managed_sources": [
         "binding/SkiaSharp/SKCodec.cs"
       ],
@@ -6895,19 +6910,54 @@
         "sk_codec_start_scanline_decode"
       ],
       "origin": "m119",
-      "planned_stage": "0.76b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-from-bytes"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-from-stream"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-from-port/buffered"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-read!"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-skip!"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-order"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-next-row"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "codec-scanline-output-row"
+        },
+        {
+          "module": "codec-scanlines.rkt",
+          "name": "scanline-batch->raster-buffer"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/codec-scanline-pure-test.rkt",
+        "tests/codec-scanline-native-test.rkt",
+        "tools/codec-scanline-doctor.rkt",
+        "tools/test-codec-scanlines.py"
+      ],
       "title": "Scanline decode, skipping and ordering",
-      "unbound_declarations": [
-        "sk_codec_get_scanline_order",
-        "sk_codec_get_scanlines",
-        "sk_codec_next_scanline",
-        "sk_codec_output_scanline",
-        "sk_codec_skip_scanlines",
-        "sk_codec_start_scanline_decode"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Existing CPU native codecs on the pinned builds; native memory/file-stream ownership is unchanged. No GPU calls, callback broker, or additional compiler/native helper.",
@@ -8008,6 +8058,7 @@
     "canvas-primitives.rkt",
     "canvas.rkt",
     "codec-queries.rkt",
+    "codec-scanlines.rkt",
     "color-filters.rkt",
     "color-space.rkt",
     "color.rkt",
@@ -8059,5 +8110,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.76a"
+  "stage": "0.76b"
 }

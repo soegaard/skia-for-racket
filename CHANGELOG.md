@@ -1150,3 +1150,13 @@ passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
 - Add pure/native regressions and independent PNG/JPEG/WebP negotiation evidence.
 - Retain compiler-free installation and consolidated feature-only Acceptance.
 - Split remaining codec work into 0.76b scanline and 0.76c incremental sessions.
+
+## 0.76b — Native scanline decoding (package 0.76)
+
+- Bind six native scanline entry points and add privately owned first-frame
+  sessions for bytes/native streams and explicitly buffered ports.
+- Preserve native negotiated scaling, target formats, row order and cursor
+  semantics; exclude default-filled rows from detached partial batches.
+- Add BMP/JPEG/native failure tests and independent row/padding/state inspection.
+- Extend the codec workflow without new automatic workflows or repeated global
+  regressions. No compiler or new native library is required.
