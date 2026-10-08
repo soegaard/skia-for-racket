@@ -210,6 +210,15 @@ class Sources(unittest.TestCase):
         self.assertIn('(lambda () (unless transferred? (sk_stream_destroy duplicate)))',source)
         self.assertIn('(sk_codec_new_from_stream ptr result)',source)
         self.assertIn('(sk_typeface_create_from_stream ptr index)',source)
+    def test_macos_ttc_stream_reuses_reviewed_sfnt_conversion(self):
+        source=self.text('stream-inputs.rkt')
+        self.assertIn('"typefaces.rkt"',source)
+        self.assertIn("(eq? (system-type 'os) 'macosx)",source)
+        self.assertIn('(input-stream-duplicate stream)',source)
+        self.assertIn('(input-stream-read-bytes probe 4)',source)
+        self.assertIn('(input-stream-rewind! probe)',source)
+        self.assertIn('(typeface-from-bytes (input-stream->bytes probe) #:index index)',source)
+        self.assertIn('(sk_typeface_create_from_stream ptr index)',source)
     def test_picture_import_keeps_unknown_provenance(self):
         self.assertIn('picture-from-bytes picture-from-file picture-from-stream',self.text('private/audit-trace.rkt'))
     def test_suite_and_python_registration(self):

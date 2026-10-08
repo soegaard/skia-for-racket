@@ -143,6 +143,12 @@ image/font/picture, use a buffered adapter below.
 
 The codec and typeface C constructors consume their private duplicate, including
 on failure. The returned native resource retains whatever input storage it needs.
+On macOS, the pinned m119 CoreText native stream loader rejects TTC collection
+member selection. For TTC input only, `typeface-from-stream` therefore reads a
+bounded independent duplicate and delegates to the existing `typeface-from-bytes`
+TTC-to-standalone-SFNT conversion. That case is **buffered**, not a native stream
+through the final font constructor; ordinary SFNT fonts use the native stream
+path on every platform. The caller's input position and ownership are unchanged.
 Closing the original input wrapper is safe; for native files this does not remove
 the caller's obligation to keep the backing file stable. The codec works with the
 existing metadata, animation and one-shot decode APIs. Scanline and incremental

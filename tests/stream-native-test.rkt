@@ -197,7 +197,22 @@
         (check-exn exn:fail? (lambda () (typeface-from-stream s)))
         (check-equal? (input-stream-position s) 0)))
     (test-case "buffered TTC face index"
-      (with-skia ([tf (typeface-from-port/buffered (open-input-bytes (fixture-collection-bytes)) #:index 1)])
+      (define collection (fixture-collection-bytes))
+      ;; The caller's cursor and lifetime stay independent of the face. In
+      ;; particular, CoreText uses the reviewed TTC-to-SFNT byte fallback.
+      (with-skia ([source (make-memory-input-stream collection)])
+        (input-stream-seek! source 9)
+        (with-skia ([tf (typeface-from-stream source #:index 1)])
+          (check-equal? (input-stream-position source) 9)
+          (skia-close! source)
+          (check-equal? (typeface-weight tf) 700)))
+      ;; Also exercise native file-stream duplication, not just memory input.
+      (with-file collection
+        (lambda (path)
+          (with-skia ([source (make-file-input-stream path)])
+            (with-skia ([tf (typeface-from-stream source #:index 1)])
+              (check-equal? (typeface-weight tf) 700)))))
+      (with-skia ([tf (typeface-from-port/buffered (open-input-bytes collection) #:index 1)])
         (check-equal? (typeface-weight tf) 700)))
     (test-case "invalid font index rejected before reading port"
       (define in (open-input-bytes #"abc"))

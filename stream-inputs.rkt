@@ -1,6 +1,7 @@
 #lang racket/base
 (require ffi/unsafe
          "streams.rkt" (submod "streams.rkt" internals)
+         "typefaces.rkt"
          "private/core.rkt" "private/native.rkt" "private/lifetime.rkt"
          "private/stream-buffer.rkt" "private/picture-util.rkt"
          (prefix-in raw: (submod "private/core.rkt" stream-input-internals)))
@@ -56,9 +57,24 @@
 (define (typeface-from-stream stream #:index [index 0])
   (define who 'typeface-from-stream)
   (checked-index who index)
-  (raw:make-typeface-record
-   (consume-private-duplicate who 'typeface stream
-     (lambda (ptr) (sk_typeface_create_from_stream ptr index)) sk_typeface_unref)))
+  (define (native-face)
+    (raw:make-typeface-record
+     (consume-private-duplicate who 'typeface stream
+       (lambda (ptr) (sk_typeface_create_from_stream ptr index)) sk_typeface_unref)))
+  ;; The pinned m119 CoreText host rejects TTC member selection through its
+  ;; native stream loader. The established typeface-from-bytes path extracts
+  ;; that member to a standalone SFNT on macOS. Probe a private duplicate at
+  ;; byte zero: even when the caller's cursor is advanced, it is not touched.
+  ;; Ordinary SFNT fonts and all other platforms retain native stream input.
+  (if (eq? (system-type 'os) 'macosx)
+      (with-skia ([probe (input-stream-duplicate stream)])
+        (define magic (input-stream-read-bytes probe 4))
+        (if (and (bytes? magic) (bytes=? magic #"ttcf"))
+            (begin
+              (input-stream-rewind! probe)
+              (typeface-from-bytes (input-stream->bytes probe) #:index index))
+            (native-face)))
+      (native-face)))
 
 (define (picture-from-stream stream #:trusted? [trusted? #f]
                              #:width [width #f] #:height [height #f])
