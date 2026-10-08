@@ -55,10 +55,13 @@ def synthetic_tree(root: Path):
             lines.append(f"({macro} {params} {symbol} (_fun -> _void))")
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     # Real declaration text only; this is still a synthetic source tree.
+    shutil.copyfile(ROOT / "private/graphics-trace-native.rkt", root / "private/graphics-trace-native.rkt")
+    shutil.copyfile(ROOT / "api/global-cache-ffi.json", root / "api/global-cache-ffi.json")
+    shutil.copyfile(ROOT / "tools/global_cache_ffi.py", root / "tools/global_cache_ffi.py")
     shutil.copyfile(ROOT / "private/live-port-native.rkt", root / "private/live-port-native.rkt")
     shutil.copyfile(ROOT / "api/live-stream-ffi.json", root / "api/live-stream-ffi.json")
     (root / "private/native-default-version.txt").write_text("3.119.1\n")
-    (root / "info.rkt").write_text('#lang info\n(define version "0.76")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
+    (root / "info.rkt").write_text('#lang info\n(define version "0.77")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
     inv.check_report(root, CATALOG, write=True)
     (root / "tools").mkdir(exist_ok=True)
     # The real manifest validator is independently tested in existing source CI.
@@ -78,8 +81,8 @@ class Catalog(unittest.TestCase):
         result = inv.validate_catalog(CATALOG)
         self.assertEqual(result["c_function_declarations"], 849)
         self.assertEqual(result["managed_source_files"], 86)
-        self.assertEqual(result["distinct_bound_symbols"], 649)
-        self.assertEqual(result["cpu_bound_symbols"], 591)
+        self.assertEqual(result["distinct_bound_symbols"], 665)
+        self.assertEqual(result["cpu_bound_symbols"], 607)
     def test_every_symbol_has_exactly_one_primary_disposition(self):
         assigned = [s for f in CATALOG["features"]["capabilities"] for s in f["native_symbols"]]
         self.assertEqual(len(assigned), len(set(assigned)))
@@ -244,7 +247,7 @@ class Sources(unittest.TestCase):
     def tearDown(self): self.temp.cleanup()
     def test_synthetic_complete_scope(self):
         r=inv.validate_sources(self.root,CATALOG)
-        self.assertEqual(len(r['binding_locations']),649);self.assertEqual(r['registry_count'],9)
+        self.assertEqual(len(r['binding_locations']),665);self.assertEqual(r['registry_count'],9)
         self.assertFalse(r['rendering_executed'])
     def test_missing_registry_fails(self):
         (self.root/'private/gpu-metal-interop-native.rkt').unlink()

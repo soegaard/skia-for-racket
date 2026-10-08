@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "b60bc26f15cbaee0a3b267a16f1ab3c9f6ddec1a",
+  "baseline_commit": "702ecdd21299ec2255a9706efc2dbf170aa56b6d",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -117,13 +117,37 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Pinned m119 global caches through the existing precompiled Skia library. Sixteen include/c graphics functions plus three separately inventoried Xamarin trace-adapter declarations. No additional compiled helper, GPU context, device, or native build step. Ordinary Racket threads share cache controls; dumps are serialized locally and process-global provider collisions fail explicitly.",
+      "bindings_expected": [
+        "sk_graphics_dump_memory_statistics",
+        "sk_graphics_get_font_cache_count_limit",
+        "sk_graphics_get_font_cache_count_used",
+        "sk_graphics_get_font_cache_limit",
+        "sk_graphics_get_font_cache_used",
+        "sk_graphics_get_resource_cache_single_allocation_byte_limit",
+        "sk_graphics_get_resource_cache_total_byte_limit",
+        "sk_graphics_get_resource_cache_total_bytes_used",
+        "sk_graphics_init",
+        "sk_graphics_purge_all_caches",
+        "sk_graphics_purge_font_cache",
+        "sk_graphics_purge_resource_cache",
+        "sk_graphics_set_font_cache_count_limit",
+        "sk_graphics_set_font_cache_limit",
+        "sk_graphics_set_resource_cache_single_allocation_byte_limit",
+        "sk_graphics_set_resource_cache_total_byte_limit"
+      ],
+      "document_behavior": "Rendering semantics and output-audit policy are unchanged. Cache controls may change reuse/performance, not establish PDF/SVG fidelity. Reported cache usage is neither process RSS nor GPU driver memory.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "graphics.globals",
-      "implementation_files": [],
-      "limitations": "Process-global mutations must be explicit. Cache usage is not process or driver memory.",
+      "implementation_files": [
+        "graphics.rkt",
+        "private/graphics-data.rkt",
+        "private/graphics-trace-native.rkt",
+        "private/native.rkt",
+        "api/global-cache-ffi.json",
+        "tools/global_cache_ffi.py"
+      ],
+      "limitations": "Explicit global font/resource cache limits and usage. Native setters return the prior setting. Zero per-allocation resource limit means no separate per-entry ceiling. Purges attempt eviction without freeing live objects or guaranteeing zero usage/RSS reduction; they do not purge context-local GPU caches. No import-time native initialization or policy changes. Counter groups and memory dumps are not atomic joint snapshots. The bounded numeric/string dump omits entire records at configured limits and explicitly reports truncation/dropped counts. Does not sum potentially overlapping statistics or expose memory-backing/ownership edges. Collector-only synchronous callbacks never call user code or block; callback errors are raised only after native dump cleanup. One process-global Xamarin trace provider/module/place; independent of existing managed-stream tables. Third-party replacement of the trace callback table is unsupported. Live-port callback reentry and global native cache calls during an active live operation are rejected. Settings are process-shared; applications must coordinate concurrent policy mutations.",
       "managed_sources": [
         "binding/SkiaSharp/SKGraphics.cs",
         "binding/SkiaSharp/SKTraceMemoryDump.cs",
@@ -148,29 +172,87 @@
         "sk_graphics_set_resource_cache_total_byte_limit"
       ],
       "origin": "m119",
-      "planned_stage": "0.77",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "graphics.rkt",
+          "name": "skia-initialize!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-font-cache-used"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-font-cache-limit"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-font-cache-count-used"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-font-cache-count-limit"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-resource-cache-used"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-resource-cache-limit"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-resource-cache-single-allocation-limit"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-set-font-cache-limit!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-set-font-cache-count-limit!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-set-resource-cache-limit!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-set-resource-cache-single-allocation-limit!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-purge-font-cache!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-purge-resource-cache!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-purge-all-caches!"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-cache-statistics"
+        },
+        {
+          "module": "graphics.rkt",
+          "name": "skia-memory-statistics"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/global-cache-pure-test.rkt",
+        "tests/global-cache-native-test.rkt",
+        "tests/global-cache-support.rkt",
+        "tools/global-cache-doctor.rkt",
+        "tools/test-global-caches.py"
+      ],
       "title": "Global font/resource caches and memory statistics",
-      "unbound_declarations": [
-        "sk_graphics_dump_memory_statistics",
-        "sk_graphics_get_font_cache_count_limit",
-        "sk_graphics_get_font_cache_count_used",
-        "sk_graphics_get_font_cache_limit",
-        "sk_graphics_get_font_cache_used",
-        "sk_graphics_get_resource_cache_single_allocation_byte_limit",
-        "sk_graphics_get_resource_cache_total_byte_limit",
-        "sk_graphics_get_resource_cache_total_bytes_used",
-        "sk_graphics_init",
-        "sk_graphics_purge_all_caches",
-        "sk_graphics_purge_font_cache",
-        "sk_graphics_purge_resource_cache",
-        "sk_graphics_set_font_cache_count_limit",
-        "sk_graphics_set_font_cache_limit",
-        "sk_graphics_set_resource_cache_single_allocation_byte_limit",
-        "sk_graphics_set_resource_cache_total_byte_limit"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "CPU/native-resource or Racket-value operation; it does not create a GPU backend. Its results can feed existing rendering routes where documented.",
@@ -7258,7 +7340,7 @@
         "gr_direct_context_make_metal_with_options"
       ],
       "origin": "m119",
-      "planned_stage": "0.77",
+      "planned_stage": "0.77b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -7285,7 +7367,7 @@
         "gr_direct_context_dump_memory_statistics"
       ],
       "origin": "m119",
-      "planned_stage": "0.77",
+      "planned_stage": "0.77c",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -7312,7 +7394,7 @@
         "gr_glinterface_has_extension"
       ],
       "origin": "m119",
-      "planned_stage": "0.77",
+      "planned_stage": "0.77c",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -7409,7 +7491,7 @@
         "gr_direct_context_release_resources_and_abandon_context"
       ],
       "origin": "m119",
-      "planned_stage": "0.77",
+      "planned_stage": "0.77b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -8134,6 +8216,7 @@
     "gpu-output.rkt",
     "gpu-racket-gl.rkt",
     "gpu.rkt",
+    "graphics.rkt",
     "image-info.rkt",
     "image-operations.rkt",
     "layer-options.rkt",
@@ -8163,5 +8246,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.76c"
+  "stage": "0.77a"
 }

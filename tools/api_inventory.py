@@ -20,8 +20,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = 1
-STAGE = "0.76c"
-BASELINE = "b60bc26f15cbaee0a3b267a16f1ab3c9f6ddec1a"
+STAGE = "0.77a"
+BASELINE = "702ecdd21299ec2255a9706efc2dbf170aa56b6d"
 HISTORICAL_BASELINE = "9d832d3ec9a8fe6b93298d6ac03783ee57ab7f36"
 SKIA_COMMIT = "40f75dc0051d141913c07c20d4c19590c7da0cb7"
 SHARP_COMMIT = "cc78b5933d23e6383db5d246e70db915770d55d6"
@@ -30,7 +30,7 @@ IDENTIFIER = re.compile(r"[a-z][a-z0-9.-]*\Z")
 STATUSES = frozenset(("supported", "supported-with-limits", "racket-equivalent",
                       "bound-not-public", "missing-available-abi",
                       "unavailable-pinned-abi", "intentionally-excluded"))
-STAGES = frozenset(f"0.{n}" for n in range(66, 79)) | {"0.68a", "0.68b", "0.75a", "0.75b", "0.76a", "0.76b", "0.76c", "G1", "G2", "U1", "U2", "U3", "H1", "X1"}
+STAGES = frozenset(f"0.{n}" for n in range(66, 79)) | {"0.68a", "0.68b", "0.75a", "0.75b", "0.76a", "0.76b", "0.76c", "0.77a", "0.77b", "0.77c", "G1", "G2", "U1", "U2", "U3", "H1", "X1"}
 ORIGINS = frozenset(("m119", "c-shim-only", "future-extension"))
 EVIDENCE_SCOPE = "not-asserted; test-source references and baseline CI evidence are separate"
 CATALOG_FILES = ("api/upstream-m119.json", "api/bindings-baseline.json",
@@ -311,6 +311,12 @@ def scan_bindings(root: Path) -> dict:
         source = path.read_text(encoding="utf-8")
         source_hashes[rel] = digest(path)
         nodes = forms(source)
+        if rel == "private/graphics-trace-native.rkt":
+            from global_cache_ffi import checked_imports as checked_trace_imports
+            checked_trace_imports(root, forms, String)
+            # These three Xamarin declarations are outside include/c. They are
+            # validated exactly, not silently counted as additional C coverage.
+            continue
         if rel == "private/live-port-native.rkt":
             from live_stream_ffi import checked_imports
             standard, extensions = checked_imports(root, forms, String)
@@ -400,6 +406,7 @@ def validate_sources(root: Path, catalog: dict) -> dict:
     require(public == set(d["public_modules"]), "public module inventory drift: " + repr(sorted(public ^ set(d["public_modules"]))))
     exports: dict = {}
     required = set(CATALOG_FILES)
+    required.update(("api/global-cache-ffi.json", "tools/global_cache_ffi.py"))
     anchors = []
     for f in d["capabilities"]:
         for field in ("implementation_files", "test_sources"):
@@ -410,7 +417,7 @@ def validate_sources(root: Path, catalog: dict) -> dict:
             require(ref["name"] in names, f"public declaration not found: {ref['module']}:{ref['name']} ({f['id']})")
             anchors.append(ref)
     info = safe_file(root, "info.rkt").read_text()
-    for term in ('(define version "0.76")', '("base" #:version "8.18")', '("draw-lib" #:version "1.22")'):
+    for term in ('(define version "0.77")', '("base" #:version "8.18")', '("draw-lib" #:version "1.22")'):
         require(term in info, "package version/minimum mismatch: " + term)
     require(safe_file(root, "private/native-default-version.txt").read_text().strip() == "3.119.1", "native pin changed without inventory review")
     required.update(("info.rkt", "private/native-default-version.txt"))

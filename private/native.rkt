@@ -908,3 +908,21 @@
   (_fun _pointer _pointer _pointer _size _pointer -> _int))
 (define-native sk_codec_incremental_decode
   (_fun _pointer _pointer -> _int))
+
+;; 0.77a: explicit process-global cache controls; no import-time mutations.
+(define-native sk_graphics_init (_fun -> _void))
+(define-native sk_graphics_purge_font_cache (_fun -> _void))
+(define-native sk_graphics_purge_resource_cache (_fun -> _void))
+(define-native sk_graphics_purge_all_caches (_fun -> _void))
+(define-native sk_graphics_get_font_cache_used (_fun -> _size))
+(define-native sk_graphics_get_font_cache_limit (_fun -> _size))
+(define-native sk_graphics_set_font_cache_limit (_fun _size -> _size))
+(define-native sk_graphics_get_font_cache_count_used (_fun -> _int))
+(define-native sk_graphics_get_font_cache_count_limit (_fun -> _int))
+(define-native sk_graphics_set_font_cache_count_limit (_fun _int -> _int))
+(define-native sk_graphics_get_resource_cache_total_bytes_used (_fun -> _size))
+(define-native sk_graphics_get_resource_cache_total_byte_limit (_fun -> _size))
+(define-native sk_graphics_set_resource_cache_total_byte_limit (_fun _size -> _size))
+(define-native sk_graphics_get_resource_cache_single_allocation_byte_limit (_fun -> _size))
+(define-native sk_graphics_set_resource_cache_single_allocation_byte_limit (_fun _size -> _size))
+(define-native sk_graphics_dump_memory_statistics (_fun _pointer -> _void))

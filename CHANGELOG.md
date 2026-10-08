@@ -1169,3 +1169,13 @@ passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
   initialized-row progress, and independently owned snapshots.
 - Reuse the existing managed callback provider without another C/C++ library.
 - Add staged normal/Adam7 PNG acceptance and a focused codec workflow gate.
+
+## 0.77a — Global caches and memory statistics (package 0.77)
+
+- Bind all 16 pinned global graphics/cache functions and separately inventory
+  the three Xamarin trace-adapter functions.
+- Add checked global cache getters/setters (returning prior settings), explicit
+  initialization and purges, and bounded immutable native dump records.
+- Keep cache configuration, usage, GPU memory and process memory distinct.
+- Keep diagnostic callbacks memory-only and defer any errors until native cleanup.
+- Add restoration/pixel/measurement tests and focused compiler-free Acceptance.

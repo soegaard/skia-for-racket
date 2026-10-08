@@ -130,16 +130,24 @@ jobs:
     with:
       regressions: ${{ needs.regression-scope.outputs.regressions }}
 
+  global-caches:
+    name: Global caches and memory statistics
+    needs: regression-scope
+    uses: ./.github/workflows/global-caches.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
+
   required:
     name: Acceptance required
     if: always()
-    needs: [regression-scope, streams, advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces, codec-queries]
+    needs: [regression-scope, streams, advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces, codec-queries, global-caches]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every acceptance workflow
         env:
           CODEC_QUERIES_RESULT: ${{ needs.codec-queries.result }}
+          GLOBAL_CACHES_RESULT: ${{ needs.global-caches.result }}
           REGRESSION_SCOPE_RESULT: ${{ needs.regression-scope.result }}
           STREAMS_RESULT: ${{ needs.streams.result }}
           ADVANCED_CANVASES_RESULT: ${{ needs.advanced-canvases.result }}
@@ -157,6 +165,7 @@ jobs:
           TYPEFACES_RESULT: ${{ needs.typefaces.result }}
         run: |
           test "$CODEC_QUERIES_RESULT" = success
+          test "$GLOBAL_CACHES_RESULT" = success
           test "$REGRESSION_SCOPE_RESULT" = success
           test "$STREAMS_RESULT" = success
           test "$ADVANCED_CANVASES_RESULT" = success

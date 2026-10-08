@@ -165,7 +165,7 @@ class Sources(unittest.TestCase):
     """Complete checkout checks; absence is a failure, never a synthetic pass."""
     def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
     def test_canonical_version_and_pins(self):
-        self.assertIn('(define version "0.76")',self.text('info.rkt'))
+        self.assertIn('(define version "0.77")',self.text('info.rkt'))
         for s in ('("base" #:version "8.18")','("draw-lib" #:version "1.22")'):self.assertIn(s,self.text('info.rkt'))
         self.assertEqual(self.text('private/native-default-version.txt').strip(),'3.119.1')
     def test_public_properties_are_detached(self):

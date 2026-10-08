@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "stage": "0.77a",
+  "skia_revision": "40f75dc0051d141913c07c20d4c19590c7da0cb7",
+  "header": "include/xamarin/sk_managedtracememorydump.h",
+  "header_git_blob": "cabc6297dbb3cb6a3e9936139bc2b56ee0c91e9b",
+  "scope": "Xamarin trace adapter only; not additional include/c feature coverage",
+  "module": "private/graphics-trace-native.rkt",
+  "macro": "define-trace",
+  "signatures": {
+    "sk_managedtracememorydump_new": "(_fun _stdbool _stdbool _pointer -> _pointer)",
+    "sk_managedtracememorydump_delete": "(_fun _pointer -> _void)",
+    "sk_managedtracememorydump_set_procs": "(_fun _trace-procs -> _void)"
+  },
+  "callbacks": {
+    "numeric": "(_fun #:atomic? #t _pointer _pointer _pointer _pointer _pointer _uint64 -> _void)",
+    "string": "(_fun #:atomic? #t _pointer _pointer _pointer _pointer _pointer -> _void)"
+  },
+  "table_fields": [
+    "numeric",
+    "string"
+  ],
+  "execution_evidence": "not asserted by declarations"
+}

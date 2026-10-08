@@ -245,6 +245,6 @@ class Sources(unittest.TestCase):
         for name in inv.source_exports(ROOT,'codec-scanlines.rkt'):self.assertIn(name,docs)
     def test_incremental_remains_separate(self):
         self.assertIn('## 0.76c',self.source('plans/skia-for-racket-gap-reduction-roadmap.md'))
-        self.assertIn('(define version "0.76")',self.source('info.rkt'))
+        self.assertIn('(define version "0.77")',self.source('info.rkt'))
 
 if __name__=='__main__':unittest.main(verbosity=2)

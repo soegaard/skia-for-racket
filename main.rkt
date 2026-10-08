@@ -21,3 +21,6 @@
 
 (require "codec-incremental.rkt")
 (provide (all-from-out "codec-incremental.rkt"))
+
+(require "graphics.rkt")
+(provide (all-from-out "graphics.rkt"))

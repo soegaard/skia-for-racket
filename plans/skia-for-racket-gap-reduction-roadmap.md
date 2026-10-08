@@ -267,15 +267,42 @@ padding, final truncation, corrupt data, unsupported modes, GC, thread affinity,
 independent snapshots, cancellation and coexistence with the live-port provider.
 The existing codec workflow retains full/none scope and adds a focused gate.
 
-## 0.77 — Caches, diagnostics, and context options
+## 0.77a — Global caches and bounded memory statistics
 
-**Goal:** expose useful runtime controls without confusing them with memory guarantees.
+**Package version:** `0.77`. Expose native font/resource cache byte limits,
+font entry limits, usage and purge operations; setters return the prior setting.
+Initialization is explicit and import never changes native cache policy. These
+are global Skia caches, not GPU context caches or process/driver memory budgets.
+A zero single-allocation limit means no separate per-entry ceiling.
 
-Add missing process-global Skia font/resource cache queries and controls; bounded detached memory-statistics snapshots; and supported immutable GPU context options passed at construction. Keep process-global controls separate from existing context-local GPU cache APIs.
+Return detached, bounded numeric/string statistics from the native global dump.
+The synchronous private callbacks only copy memory: no user callbacks, ports,
+blocking I/O, nested Skia calls, or exception unwinding across native frames.
+Whole records omitted by count/string/byte limits are disclosed as truncated.
+The trace adapter is independently inventoried under the pinned Xamarin header;
+one provider/module/place may claim its global table. It does not replace the
+existing managed stream callback tables. No new compiler/native helper is needed.
 
-No cache policy changes occur simply by requiring a module. Tests must restore global settings where possible and avoid contaminating concurrent rendering tests. Validate callback-based tracing before offering user callbacks directly.
+**Acceptance:** prior-value setter/getter round trips, restoration of all changed
+limits even on failure, unchanged known pixels under reduced limits and purges,
+named native glyph-cache measurements matched against scalar getters, bounded
+snapshot output, GC, thread use, deferred callback errors, and coexistence with
+live ports and incremental decoders. Focused Acceptance and global CI remain
+separate. Native dump output is not a total-allocation or heap-ownership graph.
 
-**Acceptance:** test getter/setter roundtrips, process versus context scope, closed-context rejection, supported option fields, and rendering under changed limits. Distinguish requested cache limits, reported Skia cache usage, total native memory, driver allocations, and process memory.
+## 0.77b — GPU context options and targeted resource operations
+
+Expose supported immutable options at context construction. Add reviewed
+image/surface flush and release/abandon operations without confusing flushing,
+submission or CPU completion, and without hidden readbacks. Preserve backend
+context affinity, resource lifetime and closed-context rejection.
+
+## 0.77c — GPU diagnostics and interface helpers
+
+Add context-local memory tracing and useful GL/GLES interface/extension helpers
+where native build support is present. Reuse bounded private trace collection
+rather than arbitrary user callbacks, with separate backend-specific execution
+evidence. Global 0.77a cache measurements do not count as GPU memory evidence.
 
 ## 0.78 — Reconcile remaining gaps and stabilize
 

@@ -1667,3 +1667,9 @@ Owned byte-fed sessions retain their native decoder and initialized destination
 between steps. See [CODEC-INCREMENTAL.md](docs/CODEC-INCREMENTAL.md) for PNG
 chunk framing, partial-snapshot semantics, limits, and cancellation. No new
 compiler, native helper or retained user-port callback is needed.
+
+### Global caches and memory statistics (0.77a)
+
+`graphics.rkt` exposes explicit global cache limits, usage, purges, and bounded
+detached memory snapshots. See [GLOBAL-CACHES.md](docs/GLOBAL-CACHES.md). No
+cache policy is changed by import, and no compiler/native helper is added.

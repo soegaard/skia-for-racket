@@ -323,3 +323,13 @@ after their query/scanline gates. The query gate continues to own any selected
 global regressions. Independent progress/pixel evidence is retained separately.
 Central installed-package CI also runs the pure/native incremental suites.
 No matrix, automatic workflow, native compiler or inspector dependency is added.
+
+## Global cache acceptance (0.77a)
+
+The reusable `global-caches.yml` child inherits Acceptance regression scope and
+checks Linux 8.18/9.3 plus Windows 9.3. It always runs focused pure/native tests
+and inspects measured cache values, restored settings, snapshots and raw pixels.
+Central installed-package CI includes these tests on macOS as well. No GPU or
+document renderer is required. Inspector code uses only the Python standard
+library. All new checks feed `Acceptance required`; three automatic workflows
+remain. Tests restore limits, but cannot restore previously evicted cache contents.

@@ -2669,3 +2669,10 @@ row order, partial input, ownership, and the full public API.
 `codec-incremental-cancel!`, and `codec-incremental-snapshot` expose an owned
 resumable session. See [CODEC-INCREMENTAL.md](CODEC-INCREMENTAL.md) for the
 complete API, native result states and snapshot validity.
+
+## Global caches and diagnostics (0.77a)
+
+`skia-cache-statistics`, `skia-memory-statistics`, explicit font/resource cache
+getters/setters, and purge operations are exported by `graphics.rkt` and
+`main.rkt`. See [GLOBAL-CACHES.md](GLOBAL-CACHES.md) for the complete names,
+prior-value setter contract, global scope, callback limits and memory caveats.
