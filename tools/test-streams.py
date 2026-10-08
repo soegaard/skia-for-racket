@@ -20,6 +20,13 @@ ROOT = Path(__file__).resolve().parents[1]
 TOKEN = 'synthetic-only'
 
 
+def compiled_test_present(command, test_name):
+    # The validator builds native Path objects. Their string representation
+    # uses backslashes on Windows and forward slashes on Unix.
+    suffix = '/tests/' + test_name
+    return any(str(arg).replace('\\', '/').endswith(suffix) for arg in command)
+
+
 def receipt():
     return dict(schema=1, stage='0.75a', run_token=TOKEN, status='passed', native_version='119.0',
                 length=4096, source_position=7, file_roundtrip=True, family='Skia Racket Fixture',
@@ -33,6 +40,15 @@ def fixtures(root, token=TOKEN):
     data = bytes(range(256))*16
     for name, content in (('stream.bin', data), ('tail.bin', data[7:]), ('decoded.rgba', v.PIXELS)):
         (root/name).write_bytes(content)
+
+
+class CompilePathPortability(unittest.TestCase):
+    def test_unix_and_windows_compile_paths(self):
+        for value in ('/tmp/skia/tests/stream-native-test.rkt',
+                      'D:\\a\\skia\\tests\\stream-native-test.rkt'):
+            command = ['racket', '-l', 'raco', '--', 'make', value]
+            self.assertTrue(compiled_test_present(command, 'stream-native-test.rkt'))
+            self.assertFalse(compiled_test_present(command, 'unrelated-native-test.rkt'))
 
 
 class Completion(unittest.TestCase):
@@ -141,10 +157,10 @@ class Orchestration(unittest.TestCase):
     def test_none_compile_graph_has_only_feature_roots(self):
         _,_,commands=self.invoke('none');compile=next(c for c in commands if 'make' in c)
         self.assertFalse(any('unrelated' in n or n.endswith('run-tests.rkt') for n in compile))
-        self.assertTrue(any(n.endswith('tests/stream-native-test.rkt') for n in compile))
+        self.assertTrue(compiled_test_present(compile, 'stream-native-test.rkt'))
     def test_full_compile_includes_dynamic_graph(self):
         _,_,commands=self.invoke();compile=next(c for c in commands if 'make' in c)
-        self.assertTrue(any(n.endswith('tests/unrelated-native-test.rkt') for n in compile))
+        self.assertTrue(compiled_test_present(compile, 'unrelated-native-test.rkt'))
     def test_feature_commands_survive_split(self):
         _,_,full=self.invoke('full');_,_,focused=self.invoke('none')
         def select(commands):return [Path(c[1]).name for c in commands if c[1]!='-l' and not c[1].endswith('run-tests.rkt')]
