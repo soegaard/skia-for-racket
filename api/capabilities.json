@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "b07cddd379efe17aa729e4c68b14f842a8d7cc7f",
+  "baseline_commit": "588ff41e037a3dae04e7968d41a247e85b1dd290",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -6865,7 +6865,7 @@
         "sk_codec_start_incremental_decode"
       ],
       "origin": "m119",
-      "planned_stage": "0.76",
+      "planned_stage": "0.76c",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -6895,7 +6895,7 @@
         "sk_codec_start_scanline_decode"
       ],
       "origin": "m119",
-      "planned_stage": "0.76",
+      "planned_stage": "0.76b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -6910,13 +6910,22 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Existing CPU native codecs on the pinned builds; native memory/file-stream ownership is unchanged. No GPU calls, callback broker, or additional compiler/native helper.",
+      "bindings_expected": [
+        "sk_codec_get_scaled_dimensions",
+        "sk_codec_get_valid_subset"
+      ],
+      "document_behavior": "Read-only codec metadata; no PDF/SVG behavior, hidden decoding, rasterization, or output-audit policy changes.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "codecs.scaled-subset",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "codec-queries.rkt",
+        "private/codec-query-util.rkt",
+        "private/core.rkt",
+        "private/native.rkt",
+        "private/lifetime.rkt"
+      ],
+      "limitations": "Native negotiation only, not scaled/subset decoding or a resampling/crop fallback. Scale must round to a positive finite nonzero C float. Scale >= 1 yields original dimensions; other scales return native suggestions. Subsets are nonempty, in-bounds signed-32-bit encoded-pixel rectangles; unsupported is #f, supported results are actual detached immutable suggestions. Query coordinates are before EXIF orientation. Native outputs on failed subset negotiation are never read. Existing codec thread/lifetime rules apply. The query does not allocate or budget a decoded pixel buffer. Combined scale/subset/frame/decode-mode support is not inferred.",
       "managed_sources": [
         "binding/SkiaSharp/SKCodec.cs"
       ],
@@ -6925,15 +6934,26 @@
         "sk_codec_get_valid_subset"
       ],
       "origin": "m119",
-      "planned_stage": "0.76",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "codec-queries.rkt",
+          "name": "codec-scaled-dimensions"
+        },
+        {
+          "module": "codec-queries.rkt",
+          "name": "codec-supported-subset"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/codec-query-pure-test.rkt",
+        "tests/codec-query-native-test.rkt",
+        "tools/codec-query-doctor.rkt",
+        "tools/test-codec-queries.py"
+      ],
       "title": "Scaled dimension and valid-subset negotiation",
-      "unbound_declarations": [
-        "sk_codec_get_scaled_dimensions",
-        "sk_codec_get_valid_subset"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "CPU native resources on the pinned platform builds; no GPU/GUI initialization, implicit GPU readback or native callback bridge. Source/test anchors are not execution evidence. File-backed consumers require a stable backing file.",
@@ -7987,6 +8007,7 @@
     "canvas-matrix.rkt",
     "canvas-primitives.rkt",
     "canvas.rkt",
+    "codec-queries.rkt",
     "color-filters.rkt",
     "color-space.rkt",
     "color.rkt",
@@ -8038,5 +8059,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.75b"
+  "stage": "0.76a"
 }

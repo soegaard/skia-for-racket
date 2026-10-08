@@ -237,7 +237,7 @@ class Sources(unittest.TestCase):
         documentation=self.text('docs/STREAMS.md')
         for module in ('streams.rkt','stream-inputs.rkt'):
             for name in inv.source_exports(ROOT,module):self.assertIn(name,documentation)
-    def test_canonical_numeric_package_version(self):self.assertIn('(define version "0.75")',self.text('info.rkt'))
+    def test_canonical_numeric_package_version(self):self.assertIn('(define version "0.76")',self.text('info.rkt'))
     def test_split_remains_visible(self):
         source=self.text('plans/skia-for-racket-gap-reduction-roadmap.md')
         self.assertIn('## 0.75a',source);self.assertIn('## 0.75b',source)

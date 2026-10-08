@@ -378,7 +378,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertIn('extra_checks='+hook,s)
             self.assertIn("report['checks'].get('required_backend_parity_"+scope+"') is True",s)
     def test_version_and_pin(self):
-        self.assertIn('(define version "0.75")',(ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.76")',(ROOT/'info.rkt').read_text())
         self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
     def test_no_native_probe_in_declaration(self):
         s=(ROOT/'private/gpu-backends.rkt').read_text()

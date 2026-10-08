@@ -1142,3 +1142,11 @@ passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
 - Keep independent native references and lease/poison mutable native output.
 - Capture and audit document authoring once; preserve GPU and imported-SKP rules.
 - Extend existing stream acceptance with native probe and integration evidence.
+
+## 0.76a — Codec size and subset queries (package 0.76)
+
+- Add two native query bindings with checked float/integer inputs, detached
+  results, explicit unsupported subsets and existing codec lifetime protection.
+- Add pure/native regressions and independent PNG/JPEG/WebP negotiation evidence.
+- Retain compiler-free installation and consolidated feature-only Acceptance.
+- Split remaining codec work into 0.76b scanline and 0.76c incremental sessions.

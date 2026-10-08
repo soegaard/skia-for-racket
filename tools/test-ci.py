@@ -380,7 +380,7 @@ class WorkflowAndIntegration(unittest.TestCase):
             self.assertNotIn(bad, uncommented)
     def test_acceptance_groups_stage_workflows(self):
         workflows = HERE.parent / '.github/workflows'
-        reusable = ('streams.yml', 'advanced-canvases.yml', 'gpu-formats.yml', 'dc-output.yml', 'effects.yml', 'float-pixels.yml', 'font-queries.yml',
+        reusable = ('codec-queries.yml', 'streams.yml', 'advanced-canvases.yml', 'gpu-formats.yml', 'dc-output.yml', 'effects.yml', 'float-pixels.yml', 'font-queries.yml',
                     'geometry-completion.yml', 'gpu-dc.yml', 'image-operations.yml',
                     'integer-pixels.yml', 'render-canvas.yml', 'text-blobs.yml',
                     'typefaces.yml')
@@ -414,7 +414,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
-        self.assertIn('(define version "0.75")', text)
+        self.assertIn('(define version "0.76")', text)
         self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22") "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):

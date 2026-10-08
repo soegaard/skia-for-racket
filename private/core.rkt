@@ -5585,3 +5585,7 @@
     (vector-immutable x y
       (nonnegative-scalar who (- (scalar who (sk-rect-right r)) x))
       (nonnegative-scalar who (- (scalar who (sk-rect-bottom r)) y)))))
+
+;; 0.76a private typed-handle access; no public native pointer ingress.
+(module* codec-query-internals #f
+  (provide codec-h))

@@ -886,3 +886,8 @@
 (define-native sk_filewstream_destroy (_fun _pointer -> _void))
 (define-native sk_filewstream_is_valid (_fun _pointer -> _stdbool))
 (define-native sk_wstream_flush (_fun _pointer -> _void))
+
+;; 0.76a: synchronous encoded-coordinate codec negotiation. Both outputs use
+;; existing checked layouts; no address is retained by the native query.
+(define-native sk_codec_get_scaled_dimensions (_fun _pointer _float _pointer -> _void))
+(define-native sk_codec_get_valid_subset (_fun _pointer _pointer -> _stdbool))

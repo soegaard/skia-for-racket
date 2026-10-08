@@ -296,3 +296,11 @@ pure-FFI probe in a separate Racket process. Linux requires independent Poppler
 and librsvg rendering; Windows records missing renderers as not run. No compiler,
 CMake, bridge binary, new automatic workflow, or duplicate global regression run
 is added by this stage. The usual three top-level gates still apply.
+
+## 0.76a codec query acceptance
+
+The reusable `codec-queries.yml` child inherits Acceptance regression scope and
+requires Linux 8.18/9.3 and Windows 9.3 query tests and independent fixture
+inspection. Central CI runs the new pure/native suites in installed-package
+regressions, including macOS. Only CI, API inventory and Acceptance retain
+automatic top-level triggers. No compiler or GPU dependency is added.

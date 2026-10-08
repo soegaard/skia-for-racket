@@ -12,3 +12,6 @@
          skia-native-library-path native-package-version
          harfbuzz-check! harfbuzz-available? harfbuzz-native-version
          harfbuzz-native-library-path harfbuzz-package-version)
+
+(require "codec-queries.rkt")
+(provide (all-from-out "codec-queries.rkt"))

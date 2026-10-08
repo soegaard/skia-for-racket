@@ -2647,3 +2647,10 @@ Package version `0.75` adds native memory/file input, dynamic-memory output,
 owned codec/typeface/trusted-picture input and explicitly buffered Racket
 port adapters. The live callback/streamed-publication bridge remains 0.75b.
 See [STREAMS.md](STREAMS.md).
+
+## Codec size and subset queries (0.76a)
+
+`(codec-scaled-dimensions codec scale)` returns two native suggested encoded-pixel
+dimensions. `(codec-supported-subset codec x y width height)` returns `#f` or an
+immutable actual suggested rectangle. These queries do not decode/crop pixels or
+apply EXIF orientation. See [CODEC-QUERIES.md](CODEC-QUERIES.md).

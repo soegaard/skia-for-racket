@@ -194,15 +194,35 @@ PDF/SVG rendering and full/none regression reporting without a new workflow.
 The user's macOS probe pass is prior evidence, not a substitute for these new
 integrated Linux/Windows/macOS runs.
 
-## 0.76 — Advanced codecs
+## 0.76a — Scaled-dimension and subset negotiation
 
-**Goal:** reduce the remaining codec capability gap using the new storage and input foundations.
+**Package version:** `0.76`. Query only: `codec-scaled-dimensions` returns two
+native suggested encoded-pixel dimensions; `codec-supported-subset` returns an
+immutable actual suggested rectangle or `#f`. Validate positive nonzero C-float
+scales, integer bounds, closed/thread-affine resources, and native results.
+No scaled/subset decoding, resampling, cropping, session or destination lease is
+introduced here. Full-image/animation decoding remains unchanged.
 
-Add scaled-dimension queries, supported subset negotiation, scanline sessions with ordering/skipping, and incremental decode sessions with progress and cancellation. These operations are explicitly present in the pinned codec header. [S10]
+**Acceptance:** PNG/JPEG/WebP native suggestions, WebP even-origin adjustment,
+explicit unsupported results, EXIF-independent coordinates, detached metadata,
+stream lifetime, unchanged full decoding, and independent evidence inspection.
+No GPU or document-renderer requirement. Full/none regression scope is retained.
 
-Separate session state from immutable decoded images. Keep destination storage alive and exclusively leased while native decoding retains its address. Preserve current one-shot and animation APIs. A sequential animation cache is an optional follow-on, not required to expose scanline/incremental decoding.
+## 0.76b — Scanline decoding
 
-**Acceptance:** use real supported-format fixtures; test chunked/truncated/corrupt input, unsupported decoder modes, top/bottom scanline order, partial completion, cancellation, and origin normalization. Do not manufacture incremental success by secretly falling back to a complete decode.
+Add native scanline sessions, skipping and row ordering using the negotiated
+options only where the decoder supports them. Distinguish session state from
+ordinary immutable images and existing one-shot codec operations. Test actual
+rows, truncation/corruption, unsupported modes and top/bottom ordering. No hidden
+complete-decode fallback.
+
+## 0.76c — Incremental decoding
+
+Add incremental sessions with explicit progress, incomplete-input state,
+cooperative cancellation and retained destination-storage ownership. Keep the
+destination alive and exclusively leased while native decoding retains its
+address. Test real supported fixtures and repeated progress/completion; do not
+manufacture success by buffering everything and using one-shot decoding.
 
 ## 0.77 — Caches, diagnostics, and context options
 

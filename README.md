@@ -1644,3 +1644,11 @@ No extra native library or compiler is required. It uses 64-bit Racket CS with
 OS-thread support; live operations use a protected Racket callback service thread.
 Run `python tools/validate-live-streams.py --racket /path/to/racket --require-renderers`.
 Earlier compiler-dependent 0.75b delivery bundles are superseded.
+
+### Codec size and subset queries (0.76a)
+
+`codec-scaled-dimensions` and `codec-supported-subset` expose native encoded-pixel
+negotiation without decoding or a crop/resampling fallback. See
+[Codec queries](docs/CODEC-QUERIES.md) for native rounding, unsupported subsets,
+EXIF coordinates, lifetime rules and validation. Scanline and incremental sessions
+remain stages 0.76b and 0.76c.

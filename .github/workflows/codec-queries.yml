@@ -1,0 +1,101 @@
+name: Codec size and subset queries
+"on":
+  workflow_call:
+    inputs:
+      regressions:
+        description: Global regression scope.
+        type: string
+        default: 'full'
+  workflow_dispatch:
+    inputs:
+      regressions:
+        description: Global regression scope; none requires a separate green CI run.
+        type: choice
+        options: ['full', 'none']
+        default: 'full'
+permissions:
+  contents: read
+jobs:
+  linux:
+    name: Codec queries / Linux / Racket ${{ matrix.racket }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        racket: ['8.18', '9.3']
+    env:
+      SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install native runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends unzip curl fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk libcairo2 libpango-1.0-0 libpangocairo-1.0-0
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+        with:
+          version: ${{ matrix.racket }}
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Install pinned native libraries
+        run: |
+          bash tools/install-native.sh
+          bash tools/install-harfbuzz.sh
+          python -m pip install -r tools/dc-output-requirements.txt
+      - name: Require native query negotiation and independent evidence
+        run: python tools/validate-codec-queries.py --regressions "$SKIA_REGRESSIONS_MODE" --racket "$(command -v racket)" --directory output/codec-queries-linux
+      - name: Retain complete query evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: codec-queries-linux-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/codec-queries-linux/
+          if-no-files-found: warn
+          retention-days: 14
+  windows:
+    name: Codec queries / Windows / Racket 9.3
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Install pinned native libraries
+        run: |
+          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -r tools/dc-output-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native query negotiation and independent evidence
+        run: |
+          python tools/validate-codec-queries.py --regressions "$env:SKIA_REGRESSIONS_MODE" --racket (Get-Command racket).Source --directory output/codec-queries-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain complete query evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: codec-queries-windows-${{ github.run_attempt }}
+          path: output/codec-queries-windows/
+          if-no-files-found: warn
+          retention-days: 14

@@ -85,7 +85,7 @@ class Sources(unittest.TestCase):
                         s.index('(call-with-gpu-context ctx'))
     def test_no_native_version_migration(self):
         s=self.text('info.rkt')
-        for term in ('(define version "0.75")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
+        for term in ('(define version "0.76")','("base" #:version "8.18")','("draw-lib" #:version "1.22")'):
             self.assertIn(term,s)
     def test_workflow_selects_real_gpu_and_independent_renderers(self):
         s=self.text('.github/workflows/effects.yml')
