@@ -199,7 +199,12 @@
       n)))
 (define (output-stream-bytes-written stream)
   (with-output 'output-stream-bytes-written stream (lambda (_ptr n) n)))
+(define (memory-output-only who stream)
+  (stream-h who stream #f)
+  (unless (eq? (native-stream-storage stream) 'memory)
+    (error who "operation requires a memory output stream, not file output")))
 (define (output-stream->bytes stream)
+  (memory-output-only 'output-stream->bytes stream)
   (with-output 'output-stream->bytes stream
     (lambda (ptr n)
       (define bytes (make-bytes n))
@@ -207,6 +212,7 @@
       bytes)))
 (define (output-stream-detach-input! stream)
   (define who 'output-stream-detach-input!)
+  (memory-output-only who stream)
   (with-output who stream
     (lambda (ptr _n)
       (wrap-input who 'memory (budget stream)
@@ -223,4 +229,4 @@
   (define bytes (output-stream->bytes stream))
   (write-port-buffered 'output-stream-write-port/buffered bytes out close? cancel))
 
-(module* internals #f (provide with-input budget))
+(module* internals #f (provide with-input budget with-output stream-h))

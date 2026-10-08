@@ -20,8 +20,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = 1
-STAGE = "0.75"
-BASELINE = "32e1cf036e58b9dbbc131be4905c80c09366a828"
+STAGE = "0.75b"
+BASELINE = "b07cddd379efe17aa729e4c68b14f842a8d7cc7f"
 HISTORICAL_BASELINE = "9d832d3ec9a8fe6b93298d6ac03783ee57ab7f36"
 SKIA_COMMIT = "40f75dc0051d141913c07c20d4c19590c7da0cb7"
 SHARP_COMMIT = "cc78b5933d23e6383db5d246e70db915770d55d6"
@@ -311,6 +311,12 @@ def scan_bindings(root: Path) -> dict:
         source = path.read_text(encoding="utf-8")
         source_hashes[rel] = digest(path)
         nodes = forms(source)
+        if rel == "private/live-port-native.rkt":
+            from live_stream_ffi import checked_imports
+            standard, extensions = checked_imports(root, forms, String)
+            for name in standard:
+                locations.setdefault(name, []).append(dict(file=rel, registry="live-stream-worker", macro="define-raw"))
+            continue
         spec = registries.get(rel)
         found: set[str] = set()
         for form in nodes:

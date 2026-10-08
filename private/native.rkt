@@ -880,3 +880,9 @@
 (define-native sk_codec_new_from_stream (_fun _pointer _pointer -> _pointer))
 (define-native sk_typeface_create_from_stream (_fun _pointer _int -> _pointer))
 (define-native sk_picture_deserialize_from_stream (_fun _pointer -> _pointer))
+
+;; 0.75b native file output. Live callbacks have a separately checked private registry.
+(define-native sk_filewstream_new (_fun _bytes -> _pointer))
+(define-native sk_filewstream_destroy (_fun _pointer -> _void))
+(define-native sk_filewstream_is_valid (_fun _pointer -> _stdbool))
+(define-native sk_wstream_flush (_fun _pointer -> _void))

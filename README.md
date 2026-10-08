@@ -1635,3 +1635,12 @@ Package version `0.75` adds native memory/file input, dynamic-memory output,
 owned codec/typeface/trusted-picture input and explicitly buffered Racket
 port adapters. The live callback/streamed-publication bridge remains 0.75b.
 See [STREAMS.md](docs/STREAMS.md).
+
+## Compiler-free live ports (0.75b)
+
+[Live streams](docs/LIVE-STREAMS.md) provides one-shot input and streamed output
+through ordinary Racket ports using the existing precompiled SkiaSharp library.
+No extra native library or compiler is required. It uses 64-bit Racket CS with
+OS-thread support; live operations use a protected Racket callback service thread.
+Run `python tools/validate-live-streams.py --racket /path/to/racket --require-renderers`.
+Earlier compiler-dependent 0.75b delivery bundles are superseded.

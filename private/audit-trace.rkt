@@ -88,7 +88,7 @@
        [(make-arithmetic-blender) '(arithmetic-blender)]
        [else '(runtime-blender)])]
     [(image raster-image) '(image)]
-    [(picture) (if (memq who '(picture-from-bytes picture-from-file picture-from-stream))
+    [(picture) (if (memq who '(picture-from-bytes picture-from-file picture-from-stream picture-from-port))
                    '(picture deserialized-picture) '(picture))]
     [(drawable) '(drawable)]
     [(paint picture-recorder) '()]

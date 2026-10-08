@@ -38,7 +38,7 @@ jobs:
       - name: Install native runtime dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends unzip curl fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk libcairo2 libpango-1.0-0 libpangocairo-1.0-0
+          sudo apt-get install -y --no-install-recommends unzip curl fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk libcairo2 libpango-1.0-0 libpangocairo-1.0-0 poppler-utils librsvg2-bin
       - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
         with:
           version: ${{ matrix.racket }}
@@ -49,9 +49,11 @@ jobs:
         run: |
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
+          python -m pip install -r tools/dc-output-requirements.txt
       - name: Require stream ownership, buffered ports and native byte oracles
         run: |
           python tools/validate-streams.py --regressions "$SKIA_REGRESSIONS_MODE" --racket "$(command -v racket)" --directory output/streams-linux
+          python tools/validate-live-streams.py --regressions none --racket "$(command -v racket)" --directory output/streams-linux/live --require-renderers
       - name: Retain native bytes and complete command logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -85,9 +87,13 @@ jobs:
         run: |
           ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -r tools/dc-output-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require stream ownership, buffered ports and native byte oracles
         run: |
           python tools/validate-streams.py --regressions "$env:SKIA_REGRESSIONS_MODE" --racket (Get-Command racket).Source --directory output/streams-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/validate-live-streams.py --regressions none --racket (Get-Command racket).Source --directory output/streams-windows/live
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain native bytes and complete command logs
         if: always()

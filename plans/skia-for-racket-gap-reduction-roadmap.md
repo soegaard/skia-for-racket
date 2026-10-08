@@ -170,21 +170,29 @@ metadata, pure seekable/nonseekable buffered port tests and cancellation/error
 propagation. Full regressions remain the standalone default; feature-only CI
 always runs focused pure/native stream tests and inspected native evidence.
 
-## 0.75b — Live port bridge and streamed publication
+## 0.75b — Compiler-free live port operations and publication
 
-Complete native output consumers and file output: image encoding, picture output,
-and PDF/SVG document publication through supported native stream paths. Implement
-the managed live Racket-port bridge without arbitrary exceptions unwinding across
-native frames. Define callback thread/reentry rules, retained bridge lifetime,
-short I/O, cancellation, allocation limits, and deferred error transport before
-exposing live callback-backed resources.
+**Implementation:** operation-scoped pure Racket FFI using call-in-os-thread,
+async-apply and OS-asynchronous channels. The protected Racket service thread
+performs port I/O outside atomic mode. Independent immutable native references
+and exclusive mutable-output leases preserve ownership. No additional compiled
+helper is required. Whole-input buffering is not used for live image/SKP input.
 
-**Acceptance:** use real retained consumers, nonseekable/chunked ports and partial
-writes; test callbacks during normal document drawing, cleanup, cancellation and
-failure. Preserve GPU affinity and output auditing. Streamed publication may leave
-partial output; buffered/temporary-file atomic publication remains a separate
-policy. Do not count 0.75a's complete-input buffering as live streaming. Together
-0.75a and 0.75b replace the original 0.75 streams/ports milestone.
+Image encoding, native picture output and audited PDF/SVG publication stream
+native output as it is generated. Document authoring is recorded once before
+preflight/publication. Native file output extends the 0.75a native stream API.
+
+**Limits:** 64-bit Racket CS with OS threads; one live operation at a time per
+process; one managed-callback provider/place. Cancellation is cooperative, and
+partial publication is possible. Retained live-port codecs/typefaces remain out
+of scope; use native streams or explicitly buffered adapters. Recording-canvas
+annotation restrictions and existing document audit/GPU rules remain in force.
+
+**Acceptance:** the unchanged-in-scope 25-case real native probe plus integrated
+ownership/port/codec/picture/document tests. Retain required independent Linux
+PDF/SVG rendering and full/none regression reporting without a new workflow.
+The user's macOS probe pass is prior evidence, not a substitute for these new
+integrated Linux/Windows/macOS runs.
 
 ## 0.76 — Advanced codecs
 

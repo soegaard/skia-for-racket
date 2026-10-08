@@ -237,3 +237,13 @@ passes its selected regression scope and requires all Linux 8.18/9.3 and Windows
 runner also covers stream tests in the central portability lanes, including
 macOS. A feature-only green Acceptance run still needs a separate green central
 CI run. 0.75a has no GPU/display claim and no new document renderer matrix.
+
+## Compiler-free 0.75b additions
+
+See [LIVE-STREAMS.md](LIVE-STREAMS.md) for operation-scoped live Racket ports,
+native file output and audited image/SKP/PDF/SVG publication. The bridge uses
+Racket CS OS-thread/asynchronous-callback facilities, not a locally compiled
+helper. The 0.75a APIs, Windows path fix and macOS TTC handling remain unchanged.
+Memory snapshots/detach reject file output streams. Mutable output streams are
+exclusively leased during encoding and poisoned on publication failure; explicit
+close remains available afterward. No retained live-port codec/font object escapes.

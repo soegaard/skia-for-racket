@@ -1,5 +1,5 @@
 #lang racket/base
-(require ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic
+(require "live-native-lease.rkt" ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic
          racket/list racket/string "audit-trace.rkt" "gpu-domain.rkt" "gpu-native-scope.rkt")
 (provide owned? new-owned new-gpu-owned owned-closed? owned-close!
          call-with-owned call-with-scoped-resource
@@ -132,6 +132,7 @@
   (if (domain-resource? h) (domain-resource-closed? h) (not (owned-ptr h))))
 (define release-explicitly! ((deallocator) release-owned!))
 (define (owned-close! who h)
+  (check-live-pin! who h)
   (cond [(domain-resource? h) (domain-resource-close! h)]
         [else (check-thread who h) (release-explicitly! h)])
   (void))
@@ -147,6 +148,7 @@
 (define (call-with-owned who handles proc)
   (call-as-atomic
    (lambda ()
+     (for ([h (in-list handles)]) (check-live-pin! who h) (check-live-fault! who h))
      (define combined (apply join who (map binding handles)))
      (when (and combined (memq who cpu-only-operations))
        (error who "GPU-dependent input: detach explicitly with gpu-image->raster-image (or render the picture to a GPU surface first)"))

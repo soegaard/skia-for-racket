@@ -286,3 +286,13 @@ or duplicated full regression is added. Local command:
 ```sh
 python tools/validate-streams.py --racket /path/to/racket --regressions full
 ```
+
+## Compiler-free 0.75b gate
+
+Central CI runs the integrated live-stream pure/native suites through the
+installed package. The existing streams.yml child runs 0.75a acceptance and then
+0.75b feature-only acceptance. The latter also runs the retained 25-case real-Skia
+pure-FFI probe in a separate Racket process. Linux requires independent Poppler
+and librsvg rendering; Windows records missing renderers as not run. No compiler,
+CMake, bridge binary, new automatic workflow, or duplicate global regression run
+is added by this stage. The usual three top-level gates still apply.

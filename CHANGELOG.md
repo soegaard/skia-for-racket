@@ -1134,3 +1134,11 @@ installer/doctor, documentation, and tests.
 The 0.1.0 baseline was subsequently validated on macOS/aarch64 with Racket
 9.3.0.2 and the pinned native asset: doctor passed, all 57 source test cases
 passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
+
+## 0.75b — Compiler-free live streaming (package 0.75)
+
+- Promote the macOS-tested pure-FFI callback pump without a compiler dependency.
+- Add operation-scoped live image/SKP input and image/SKP/PDF/SVG publication.
+- Keep independent native references and lease/poison mutable native output.
+- Capture and audit document authoring once; preserve GPU and imported-SKP rules.
+- Extend existing stream acceptance with native probe and integration evidence.

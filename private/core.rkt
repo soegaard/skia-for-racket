@@ -5573,3 +5573,15 @@
     (vector-immutable x y
       (nonnegative-scalar who (- (scalar who (sk-rect-right r)) x))
       (nonnegative-scalar who (- (scalar who (sk-rect-bottom r)) y)))))
+
+;; 0.75b: private result adoption; no native pointers are exported by main.rkt.
+(module* live-stream-internals #f
+  (provide image-h picture-h make-image-record make-picture-record stream-picture-bounds)
+  (define (stream-picture-bounds who ptr)
+    (define r (make-sk-rect 0.0 0.0 0.0 0.0))
+    (sk_picture_get_cull_rect ptr r)
+    (define x (scalar who (sk-rect-left r)))
+    (define y (scalar who (sk-rect-top r)))
+    (vector-immutable x y
+      (nonnegative-scalar who (- (scalar who (sk-rect-right r)) x))
+      (nonnegative-scalar who (- (scalar who (sk-rect-bottom r)) y)))))
