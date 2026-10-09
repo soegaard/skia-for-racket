@@ -2676,3 +2676,10 @@ complete API, native result states and snapshot validity.
 getters/setters, and purge operations are exported by `graphics.rkt` and
 `main.rkt`. See [GLOBAL-CACHES.md](GLOBAL-CACHES.md) for the complete names,
 prior-value setter contract, global scope, callback limits and memory caveats.
+
+## GPU context control (0.77b)
+
+`make-gpu-context-options`, `gpu-context-options->jsexpr`, `gpu-flush-surface!`,
+`gpu-flush-image!`, and `gpu-context-release-and-abandon!` are exported by
+`gpu.rkt`. See [GPU-CONTEXT-CONTROLS.md](GPU-CONTEXT-CONTROLS.md) for all accessors,
+factory keywords, and the ownership/flush/completion distinctions.

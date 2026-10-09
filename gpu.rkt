@@ -21,8 +21,10 @@
 (define-runtime-path metal-driver-module "private/gpu-driver-metal.rkt")
 (define-runtime-path d3d12-driver-module "private/gpu-driver-d3d12.rkt")
 (define (make-gpu-context [provider #f] #:backend [requested #f]
-                          #:adapter [adapter #f] #:adapter-index [index #f])
+                          #:adapter [adapter #f] #:adapter-index [index #f]
+                          #:options [options #f])
   (define who 'make-gpu-context)
+  (check-optional-context-options who options)
   (unless (or (not provider) (gpu-provider? provider))
     (raise-argument-error who "#f or gpu-provider?" provider))
   (when requested (check-gpu-backend! who requested))
@@ -40,17 +42,17 @@
        (gpu-unavailable 'd3d12-provider "external Direct3D providers are not supported in 0.48"))
      (define-values (host driver)
        ((dynamic-require d3d12-driver-module 'make-owned-d3d12-components)
-        (or adapter 'hardware) (or index 0)))
+        (or adapter 'hardware) (or index 0) #:options options))
      (wrap-gpu-domain (make-gpu-domain host driver))]
     [(opengl)
      (unless provider (raise-arguments-error who "OpenGL requires an explicit host provider"))
-     (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider))
+     (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider #:options options))
      (wrap-gpu-domain (make-gpu-domain provider driver))]
     [(metal)
      (when provider
        (gpu-unavailable 'metal-provider "external Metal providers are not supported; omit the provider to create an owned device/queue"))
      (define-values (host driver)
-       ((dynamic-require metal-driver-module 'make-owned-metal-components)))
+       ((dynamic-require metal-driver-module 'make-owned-metal-components) #:options options))
      (wrap-gpu-domain (make-gpu-domain host driver))]))
 (define (call-with-gpu-context context thunk)
   (begin0 (domain-call (context-domain 'call-with-gpu-context context) thunk)
@@ -74,3 +76,9 @@
   ;; Retained 0.38 fixed diagnostic, independent of the general surface API.
   ((dynamic-require smoke-module 'run-gpu-smoke)
    (context-domain 'gpu-smoke-test context)))
+
+;; 0.77b: pure configuration and checked GPU resource operations.
+(require "gpu-context-options.rkt"
+         (submod "gpu-context-options.rkt" internals)
+         "private/gpu-context-control.rkt")
+(provide (all-from-out "gpu-context-options.rkt" "private/gpu-context-control.rkt"))

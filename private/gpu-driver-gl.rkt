@@ -3,7 +3,8 @@
          "gpu-types.rkt" (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-gl-driver)
-(define (make-gl-driver provider)
+(define (make-gl-driver provider #:options [options #f])
+  (check-optional-context-options 'make-gl-driver options)
   (gpu-native-check! 'opengl)
   (define interface-kind (box #f))
   (gpu-driver
@@ -30,7 +31,11 @@
        (lambda ()
          (unless (gr_glinterface_validate interface)
            (gpu-unavailable 'gl-interface-validation "Skia rejected the current GL interface"))
-         (define p (gr_direct_context_make_gl interface))
+         (define p
+           (if options
+               (call-with-native-context-options 'make-gpu-context options
+                 (lambda (record) (gr_direct_context_make_gl_with_options interface record)))
+               (gr_direct_context_make_gl interface)))
          (unless p (gpu-unavailable 'ganesh-context "Ganesh GL context creation returned null"))
          p)
        (lambda () (gr_glinterface_unref interface))))
@@ -49,7 +54,7 @@
      (define count (malloc _int 'atomic))
      (define size (malloc _size 'atomic))
      (gr_direct_context_get_resource_cache_usage p count size)
-     (hash-set* details
+     (hash-set* (add-context-options-diagnostics details options 'opengl)
                 'binding_package native-package-version
                 'native_version (skia-native-version)
                 'native_library_candidate (format "~a" (skia-native-library-path))
@@ -62,3 +67,5 @@
                 'cache_limit_bytes (gr_direct_context_get_resource_cache_limit p)
                 'initial_cache_resources (ptr-ref count _int)
                 'initial_cache_bytes (ptr-ref size _size)))))
+(require "gpu-context-options-native.rkt"
+         (submod "../gpu-context-options.rkt" internals))

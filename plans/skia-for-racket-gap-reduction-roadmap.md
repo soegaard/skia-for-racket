@@ -292,10 +292,27 @@ separate. Native dump output is not a total-allocation or heap-ownership graph.
 
 ## 0.77b — GPU context options and targeted resource operations
 
-Expose supported immutable options at context construction. Add reviewed
-image/surface flush and release/abandon operations without confusing flushing,
-submission or CPU completion, and without hidden readbacks. Preserve backend
-context affinity, resource lifetime and closed-context rejection.
+**Package version:** `0.77`. Six immutable m119 options feed GL, Metal and
+Direct3D context construction; EGL forwards the same options. Omitted options
+keep existing native-default factories. Metadata records requests, not effective
+settings: the pinned ABI supplies no option readback.
+
+Targeted surface/image flush requires a matching active context and live GPU
+resource; surfaces also require a balanced save/layer stack. It requests neither
+submission nor CPU completion and performs no hidden upload/readback. Flush may
+include dependent work; existing submit/wait APIs retain their separate roles.
+
+Healthy-host release-and-abandon runs outside user GPU scopes on the owner,
+activates the provider, drains pending releases, then invalidates native children
+for use. Their wrappers still require retirement before final context close.
+Indeterminate native teardown is quarantined and never retried. Existing
+lost-context abandonment remains nonactivating. 0.77a user changes are preserved.
+
+**Acceptance:** option values and exact ABI, old versus with-options factories,
+selected-backend pixels, targeted I/O ledgers, affinity/stack rejection, and
+healthy versus lost-host lifecycle tests. Linux 8.18/9.3 and Windows WARP run
+under Acceptance; local Metal is explicitly selected. No new compiler or native
+helper. GPU diagnostics and interface helpers remain 0.77c.
 
 ## 0.77c — GPU diagnostics and interface helpers
 

@@ -6,7 +6,9 @@
          (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-owned-d3d12-components)
-(define (make-owned-d3d12-components selection index #:receive-handles [receive void])
+(define (make-owned-d3d12-components selection index #:receive-handles [receive void]
+                                      #:options [options #f])
+  (check-optional-context-options 'make-owned-d3d12-components options)
   (unless (and (procedure? receive) (procedure-arity-includes? receive 3))
     (raise-argument-error 'make-owned-d3d12-components "three-argument private handle receiver" receive))
   (d3d12-selection! selection index)
@@ -16,8 +18,12 @@
    platform
    (d3d12-context-ops
     (lambda (adapter device queue)
-      (define context (gr_direct_context_make_direct3d
-                        (make-gr-d3d-backend-context adapter device queue #f #f)))
+      (define descriptor (make-gr-d3d-backend-context adapter device queue #f #f))
+      (define context
+        (if options
+            (call-with-native-context-options 'make-gpu-context options
+              (lambda (record) (gr_direct_context_make_direct3d_with_options descriptor record)))
+            (gr_direct_context_make_direct3d descriptor)))
       (when context
         (with-handlers ([(lambda (_) #t)
                          (lambda (e) (forget-d3d12-handles! context) (gr_recording_context_unref context) (raise e))])
@@ -32,7 +38,7 @@
     (lambda (p details)
       (unless (= (gr_recording_context_get_backend p) gr-direct3d)
         (error 'make-gpu-context "native context did not select Direct3D"))
-      (hash-set* details
+      (hash-set* (add-context-options-diagnostics details options 'direct3d)
                  'binding_package native-package-version
                  'native_version (skia-native-version)
                  'native_library_candidate (format "~a" (skia-native-library-path))
@@ -42,3 +48,5 @@
                  'max_rgba_sample_count (gr_recording_context_get_max_surface_sample_count_for_color_type p rgba-8888)
                  'cache_limit_bytes (gr_direct_context_get_resource_cache_limit p))))
    selection index))
+(require "gpu-context-options-native.rkt"
+         (submod "../gpu-context-options.rkt" internals))

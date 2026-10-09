@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "702ecdd21299ec2255a9706efc2dbf170aa56b6d",
+  "baseline_commit": "242a1b71081e6e76d3209c115ab11ff4c09a3eb2",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -7323,13 +7323,27 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Reviewed 64-bit m119 GL, Metal and Direct3D constructors; owned EGL forwards to GL. Symbol resolution alone is not backend execution evidence. No added native library or compiler.",
+      "bindings_expected": [
+        "gr_direct_context_make_direct3d_with_options",
+        "gr_direct_context_make_gl_with_options",
+        "gr_direct_context_make_metal_with_options"
+      ],
+      "document_behavior": "No document API or audit policy changes. Existing bounded GPU document execution can use explicitly configured contexts. No implicit CPU readback or raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "gpu.context-options",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "gpu-context-options.rkt",
+        "private/gpu-context-options-native.rkt",
+        "gpu.rkt",
+        "gpu-egl.rkt",
+        "private/gpu-driver-gl.rkt",
+        "private/gpu-driver-metal.rkt",
+        "private/gpu-driver-d3d12.rkt",
+        "private/gpu-driver-egl.rkt",
+        "private/gpu-native.rkt"
+      ],
+      "limitations": "Six immutable gr_context_options_t fields. Program-cache entry count and glyph texture budget must be positive; buffer-map threshold is -1 or nonnegative. Omitted options retain existing native-default factories. Explicit options are synchronously copied by with_options factories. Metadata records requested settings, not effective native values; driver/backend hints may differ and m119 has no option readback. Existing convenience presenters retain their own default context construction. No C++ persistent-cache callbacks or larger native context structure are exposed.",
       "managed_sources": [
         "binding/SkiaSharp/GRContext.cs",
         "binding/SkiaSharp/GRContextOptions.cs"
@@ -7340,16 +7354,30 @@
         "gr_direct_context_make_metal_with_options"
       ],
       "origin": "m119",
-      "planned_stage": "0.77b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "gpu-context-options.rkt",
+          "name": "make-gpu-context-options"
+        },
+        {
+          "module": "gpu.rkt",
+          "name": "make-gpu-context"
+        },
+        {
+          "module": "gpu-egl.rkt",
+          "name": "make-egl-gpu-context"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/gpu-context-control-pure-test.rkt",
+        "tests/gpu-context-control-native-test.rkt",
+        "tests/gpu-context-control-gpu-test.rkt",
+        "tools/test-gpu-context-controls.py"
+      ],
       "title": "Options at GPU context construction",
-      "unbound_declarations": [
-        "gr_direct_context_make_direct3d_with_options",
-        "gr_direct_context_make_gl_with_options",
-        "gr_direct_context_make_metal_with_options"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
@@ -7474,13 +7502,23 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Existing GL/Metal/Direct3D owner-thread/generation/provider domains. Selected-backend native acceptance; no extra worker or native helper.",
+      "bindings_expected": [
+        "gr_direct_context_flush_image",
+        "gr_direct_context_flush_surface",
+        "gr_direct_context_release_resources_and_abandon_context"
+      ],
+      "document_behavior": "CPU/PDF/SVG resources are rejected by targeted GPU flush. Existing explicit document transfers, audit semantics and completion boundaries are unchanged.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "gpu.special-flush",
-      "implementation_files": [],
-      "limitations": "Require explicit context affinity and completion semantics; do not reinterpret a flush as CPU completion.",
+      "implementation_files": [
+        "gpu.rkt",
+        "private/gpu-context-control.rkt",
+        "private/gpu-context-control-native.rkt",
+        "private/gpu-domain.rkt",
+        "private/gpu-native.rkt"
+      ],
+      "limitations": "Targeted flush requires matching active context and live GPU-resident resource; surfaces require a balanced save/layer stack. A flush may include dependent work; it requests neither submission nor CPU completion. No hidden upload/readback. Healthy-host release-and-abandon activates its provider outside user scopes, drains pending releases and invalidates children for use. Child wrappers must retire before final context close. Indeterminate native teardown is quarantined and not retried, including via loss abandonment. Existing nonactivating lost-host abandonment is preserved. No fence export or completion guarantee.",
       "managed_sources": [
         "binding/SkiaSharp/GRContext.cs",
         "binding/SkiaSharp/GRRecordingContext.cs"
@@ -7491,16 +7529,30 @@
         "gr_direct_context_release_resources_and_abandon_context"
       ],
       "origin": "m119",
-      "planned_stage": "0.77b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "gpu.rkt",
+          "name": "gpu-flush-surface!"
+        },
+        {
+          "module": "gpu.rkt",
+          "name": "gpu-flush-image!"
+        },
+        {
+          "module": "gpu.rkt",
+          "name": "gpu-context-release-and-abandon!"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/gpu-context-control-pure-test.rkt",
+        "tests/gpu-context-control-native-test.rkt",
+        "tests/gpu-context-control-gpu-test.rkt",
+        "tools/test-gpu-context-controls.py"
+      ],
       "title": "Specialized image/surface flush and release/abandon helpers",
-      "unbound_declarations": [
-        "gr_direct_context_flush_image",
-        "gr_direct_context_flush_surface",
-        "gr_direct_context_release_resources_and_abandon_context"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "OpenGL, Metal and Direct3D wrapper routes, with owner/context affinity and explicit transfers. No Vulkan/Graphite route; no hardware or per-feature runtime assertion.",
@@ -8208,6 +8260,7 @@
     "geometry-primitives.rkt",
     "geometry.rkt",
     "gpu-canvas.rkt",
+    "gpu-context-options.rkt",
     "gpu-dc.rkt",
     "gpu-egl.rkt",
     "gpu-gl-interop.rkt",
@@ -8246,5 +8299,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.77a"
+  "stage": "0.77b"
 }

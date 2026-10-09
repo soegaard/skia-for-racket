@@ -92,3 +92,18 @@
     (gpu-unavailable 'native-symbols "missing optional GPU bindings: ~a"
                      (map (lambda (row) (hash-ref row 'name)) missing)))
   (void))
+
+;; 0.77b: the complete six-field m119 context-options descriptor is borrowed
+;; synchronously. D3D's existing backend descriptor remains passed BY VALUE.
+(define-gpu-native opengl gr_direct_context_make_gl_with_options
+  (_fun _pointer _pointer -> _pointer))
+(define-gpu-native metal gr_direct_context_make_metal_with_options
+  (_fun _pointer _pointer _pointer -> _pointer))
+(define-gpu-native direct3d gr_direct_context_make_direct3d_with_options
+  (_fun _gr-d3d-backend-context _pointer -> _pointer))
+(define-gpu-native common gr_direct_context_flush_surface
+  (_fun #:blocking? #t _pointer _pointer -> _void))
+(define-gpu-native common gr_direct_context_flush_image
+  (_fun #:blocking? #t _pointer _pointer -> _void))
+(define-gpu-native common gr_direct_context_release_resources_and_abandon_context
+  (_fun #:blocking? #t _pointer -> _void))

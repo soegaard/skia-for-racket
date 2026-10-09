@@ -333,3 +333,11 @@ Central installed-package CI includes these tests on macOS as well. No GPU or
 document renderer is required. Inspector code uses only the Python standard
 library. All new checks feed `Acceptance required`; three automatic workflows
 remain. Tests restore limits, but cannot restore previously evicted cache contents.
+
+## GPU context control acceptance (0.77b)
+
+`gpu-context-controls.yml` requires selected Linux EGL and Windows WARP execution
+and feeds `Acceptance required`. Local Metal uses
+`validate-gpu-context-controls.py --backend metal --require-gpu`. The full/none
+regression split is retained. No independent document renderer is required, and
+existing PDF/SVG acceptance is unchanged.

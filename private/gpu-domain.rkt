@@ -313,6 +313,8 @@
     (error who "context teardown is not allowed inside a GPU execution scope")))
 (define (domain-abandon! d)
   (inactive! 'gpu-context-abandon! d)
+  (when (eq? (domain-state d) 'release-failed)
+    (error 'gpu-context-abandon! "native release/abandon outcome is indeterminate; domain is quarantined"))
   (unless (memq (domain-state d) '(abandoned closed))
     (unless (gpu-domain-pointer d) (error 'gpu-context-abandon! "no native context"))
     ;; A private driver contract: this is the loss operation, NOT
@@ -423,3 +425,45 @@
     (or (gpu-provider-resolve (gpu-domain-provider d))
         (error 'gpu-gl-interop
                "provider needs #:get-proc-address for explicit GL interoperation"))))
+
+(provide domain-release-and-abandon!)
+;; Healthy-host teardown: unlike domain-abandon!, this MUST activate the host.
+;; Native context lifetime is retained until children retire and domain-close!.
+(define (domain-release-and-abandon! d release-and-abandon)
+  (define who 'gpu-context-release-and-abandon!)
+  (inactive! who d)
+  (usable! who d)
+  (unless (and (procedure? release-and-abandon) (procedure-arity-includes? release-and-abandon 1))
+    (raise-argument-error who "private one-argument native teardown operation" release-and-abandon))
+  (dynamic-wind void
+    (lambda ()
+      (parameterize-break #f
+        (provider-call (gpu-domain-provider d)
+          (lambda ()
+            (define lease (activation d (domain-generation d) #t))
+            (parameterize ([active lease])
+              (dynamic-wind void
+                (lambda ()
+                  ;; Provider activation can run Racket code; revalidate before
+                  ;; reading the context pointer or doing native work.
+                  (usable! who d)
+                  (current! who d)
+                  (define cp (domain-pointer d))
+                  ((gpu-driver-reset (gpu-domain-driver d)) cp)
+                  (drain! d)
+                  (usable! who d)
+                  (current! who d)
+                  (unless (null? (gpu-domain-failed d))
+                    (error who "indeterminate native releases are quarantined"))
+                  (set-gpu-domain-state! d 'releasing)
+                  (with-handlers ([(lambda (_) #t)
+                                   (lambda (e)
+                                     (set-gpu-domain-state! d 'release-failed)
+                                     (domain-request-shutdown! d)
+                                     (raise e))])
+                    (release-and-abandon cp)
+                    (set-gpu-domain-state! d 'abandoned))
+                  (drain! d))
+                (lambda () (set-activation-live?! lease #f))))))))
+    (lambda () (notify-domain-idle!)))
+  (void))

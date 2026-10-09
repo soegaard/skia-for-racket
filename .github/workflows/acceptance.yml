@@ -137,10 +137,17 @@ jobs:
     with:
       regressions: ${{ needs.regression-scope.outputs.regressions }}
 
+  gpu-context-controls:
+    name: GPU context options and resource control
+    needs: regression-scope
+    uses: ./.github/workflows/gpu-context-controls.yml
+    with:
+      regressions: ${{ needs.regression-scope.outputs.regressions }}
+
   required:
     name: Acceptance required
     if: always()
-    needs: [regression-scope, streams, advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces, codec-queries, global-caches]
+    needs: [regression-scope, streams, advanced-canvases, gpu-formats, dc-output, effects, float-pixels, font-queries, geometry-completion, gpu-dc, image-operations, integer-pixels, render-canvas, text-blobs, typefaces, codec-queries, global-caches, gpu-context-controls]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -148,6 +155,7 @@ jobs:
         env:
           CODEC_QUERIES_RESULT: ${{ needs.codec-queries.result }}
           GLOBAL_CACHES_RESULT: ${{ needs.global-caches.result }}
+          GPU_CONTEXT_CONTROLS_RESULT: ${{ needs.gpu-context-controls.result }}
           REGRESSION_SCOPE_RESULT: ${{ needs.regression-scope.result }}
           STREAMS_RESULT: ${{ needs.streams.result }}
           ADVANCED_CANVASES_RESULT: ${{ needs.advanced-canvases.result }}
@@ -166,6 +174,7 @@ jobs:
         run: |
           test "$CODEC_QUERIES_RESULT" = success
           test "$GLOBAL_CACHES_RESULT" = success
+          test "$GPU_CONTEXT_CONTROLS_RESULT" = success
           test "$REGRESSION_SCOPE_RESULT" = success
           test "$STREAMS_RESULT" = success
           test "$ADVANCED_CANVASES_RESULT" = success

@@ -380,7 +380,7 @@ class WorkflowAndIntegration(unittest.TestCase):
             self.assertNotIn(bad, uncommented)
     def test_acceptance_groups_stage_workflows(self):
         workflows = HERE.parent / '.github/workflows'
-        reusable = ('global-caches.yml', 'codec-queries.yml', 'streams.yml', 'advanced-canvases.yml', 'gpu-formats.yml', 'dc-output.yml', 'effects.yml', 'float-pixels.yml', 'font-queries.yml',
+        reusable = ('gpu-context-controls.yml', 'global-caches.yml', 'codec-queries.yml', 'streams.yml', 'advanced-canvases.yml', 'gpu-formats.yml', 'dc-output.yml', 'effects.yml', 'float-pixels.yml', 'font-queries.yml',
                     'geometry-completion.yml', 'gpu-dc.yml', 'image-operations.yml',
                     'integer-pixels.yml', 'render-canvas.yml', 'text-blobs.yml',
                     'typefaces.yml')

@@ -1179,3 +1179,12 @@ passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
 - Keep cache configuration, usage, GPU memory and process memory distinct.
 - Keep diagnostic callbacks memory-only and defer any errors until native cleanup.
 - Add restoration/pixel/measurement tests and focused compiler-free Acceptance.
+
+## 0.77b — GPU context options and resource control
+
+- Add six detached construction options for GL, Metal, Direct3D and EGL.
+- Preserve native defaults and label request metadata without native-readback claims.
+- Add checked surface/image flush, separate from submit/wait/readback.
+- Add healthy-host release-and-abandon with provider activation, child invalidation,
+  and quarantine of indeterminate teardown. Existing loss abandonment is unchanged.
+- Preserve accepted 0.77a code and compiler-free installation.

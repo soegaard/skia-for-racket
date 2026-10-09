@@ -134,3 +134,9 @@ The process registry uses Racket's
 See [headless and interop validation](GPU-HEADLESS-TESTING.md). A complete gate
 requires actual Racket/Ganesh rendering with `DISPLAY` and `WAYLAND_DISPLAY`
 absent, not merely a native EGL initialization probe.
+
+## Context options (0.77b)
+
+`make-egl-gpu-context` accepts `#:options` as `#f` (native defaults) or a
+`make-gpu-context-options` value, forwarded to its GL constructor. See
+[GPU-CONTEXT-CONTROLS.md](GPU-CONTEXT-CONTROLS.md).

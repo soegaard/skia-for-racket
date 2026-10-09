@@ -1673,3 +1673,9 @@ compiler, native helper or retained user-port callback is needed.
 `graphics.rkt` exposes explicit global cache limits, usage, purges, and bounded
 detached memory snapshots. See [GLOBAL-CACHES.md](docs/GLOBAL-CACHES.md). No
 cache policy is changed by import, and no compiler/native helper is added.
+
+### GPU context options and targeted control (0.77b)
+
+`gpu.rkt` exposes immutable native context options, targeted surface/image flush,
+and healthy-host release-and-abandon. See [GPU-CONTEXT-CONTROLS.md](docs/GPU-CONTEXT-CONTROLS.md).
+Existing calls retain native defaults; no new compiler/native helper is needed.

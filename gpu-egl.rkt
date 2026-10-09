@@ -7,10 +7,13 @@
 (define-runtime-path driver-module "private/gpu-driver-egl.rkt")
 (define (make-egl-gpu-context #:platform [platform 'surfaceless]
                               #:device-index [index 0]
-                              #:surface [surface 'surfaceless])
+                              #:surface [surface 'surfaceless]
+                              #:options [options #f])
+  (check-optional-context-options 'make-egl-gpu-context options)
   (check-egl-options 'make-egl-gpu-context platform index surface)
   (define-values (provider driver)
-    ((dynamic-require driver-module 'make-owned-egl-components) platform index surface))
+    ((dynamic-require driver-module 'make-owned-egl-components) platform index surface #:options options))
   (wrap-gpu-domain (make-gpu-domain provider driver)))
 (define (make-current-egl-gpu-provider)
   ((dynamic-require driver-module 'make-current-egl-provider)))
+(require (submod "gpu-context-options.rkt" internals))
