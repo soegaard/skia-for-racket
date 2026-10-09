@@ -1576,7 +1576,7 @@
     "tests/picture-native-test.rkt": "ffc834f4babf1c6436477db0b1ae1af38d58f1ec1cfb79af4765dbe8751ae6fe",
     "tests/projective-pure-test.rkt": "8084ac3e86645c6875a20392378156d2d48902f0c8f934031f78d3c1299689df",
     "tests/public-api-fixture.rkt": "e16a508d192d1068a8d1e7d4ebe92b9bb40571a775111384248e01c488d32510",
-    "tests/public-api-pure-test.rkt": "1f9e4158de459d66e4f244945a37fdb9037737f06a2d1944b36e2ac6426bcf28",
+    "tests/public-api-pure-test.rkt": "696394c79e4c7520af73958cc2b2f9255e77baf8da08f88cfa1698b7ed21bffd",
     "tests/pure-test.rkt": "5da8003338d6d064d1ad05dd14d2097fda80f41acc581951a03bce3cbc30ed61",
     "tests/raster-buffer-native-test.rkt": "2441a3374b621db78c0f351baf7b21186e38e1fecf81f73ff84c361d1a63c4d7",
     "tests/release-scope-pure-test.rkt": "5f0a13e412d7e8b6f4a4ae0a8f5fc37c4a1763f0f3b3a81c6a6dcb7caed56c14",

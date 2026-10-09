@@ -3,7 +3,7 @@
          "../tools/public-api-reflect.rkt")
 (provide public-api-pure-tests public-api-pure-test-count)
 (define-runtime-path fixture "public-api-fixture.rkt")
-(define (exports) (hash-ref (reflect-public-module fixture "tests/public-api-fixture.rkt") 'exports))
+(define (exports) (hash-ref (reflect-public-module fixture "public-api-fixture.rkt") 'exports))
 (define (entry name [phase "0"])
   (or (for/first ([row (in-list (exports))]
                  #:when (and (equal? name (hash-ref row 'name))
