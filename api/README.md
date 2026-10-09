@@ -186,3 +186,17 @@ Current 0.68a inventory: 536 distinct bindings (485 CPU), 38 public modules,
 43 available-ABI groups still missing and one bound-but-not-public group.
 The four remaining SkFont-related groups are planned for 0.68b. The four
 typeface groups implemented here are documented in [TYPEFACES](../docs/TYPEFACES.md).
+
+## Release-scope review (0.78a)
+
+`release-scope-policy.json` records explicit residual/deferral/exclusion decisions.
+`release-scope.json` freezes all capability records and the source graph reviewed
+at the stated GitHub commit. Run `python tools/validate-release-scope.py` for the
+complete source audit, and add `--racket /path/to/racket` to execute the focused
+pure-equivalence suite. The existing upstream/native inventory gate is unchanged.
+
+`--write` updates only `docs/RELEASE-SCOPE.md`, and refuses stale review inputs.
+It never rewrites the reviewed decisions or makes an unimplemented family pass.
+`--require-no-open-gaps` is a separate, stricter scope-closure check, not a 1.0
+release-approval switch. See `docs/RELEASE-SCOPE-REVIEW.md` for intentional review
+updates and the distinction between declaration, source and execution evidence.

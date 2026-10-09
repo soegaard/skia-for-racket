@@ -1,0 +1,146 @@
+{
+  "comparison": {
+    "minimum_draw_lib": "1.22",
+    "minimum_racket": "8.18",
+    "package": "3.119.1",
+    "skia_revision": "40f75dc0051d141913c07c20d4c19590c7da0cb7",
+    "skiasharp_revision": "cc78b5933d23e6383db5d246e70db915770d55d6"
+  },
+  "decisions": {
+    "canvas.arbitrary-annotations": {
+      "acceptance": "Keep explicit format-specific annotation policies; review any new payload schema and its PDF/SVG behavior before inclusion.",
+      "reason": "Unrestricted native annotation payloads have no agreed portable public contract. Reviewed URL/destination annotations remain the supported interface.",
+      "resolution": "excluded",
+      "target": null
+    },
+    "codecs.scaled-subset": {
+      "acceptance": "Retain the exact documented scope and existing public/source/test anchors. The release audit must not promote a query, buffered operation or retained native stream into a stronger live-decoding contract.",
+      "reason": "The public capability supplies scaled-dimension and supported-subset negotiation. It does not promise arbitrary subset pixel decoding or a silent full-decode/crop fallback.",
+      "resolution": "limited",
+      "target": null
+    },
+    "codecs.stream": {
+      "acceptance": "Retain the exact documented scope and existing public/source/test anchors. The release audit must not promote a query, buffered operation or retained native stream into a stronger live-decoding contract.",
+      "reason": "Private native stream ownership and explicitly buffered retained codecs are supported. The one-shot live image decoder is not a retained live-port codec session.",
+      "resolution": "limited",
+      "target": null
+    },
+    "colors.float": {
+      "acceptance": "Preserve unpremultiplied channels, alpha, ARGB byte order, explicit out-of-range handling, and exhaustive per-channel byte roundtrips. Run tests/release-scope-pure-test.rkt on supported Racket versions; native color-space conversion and tone mapping are not inferred.",
+      "reason": "The existing color->color4f accepts packed ARGB through color->rgba; color4f->rgba plus color->argb supplies the reverse user operation. Extended RGB requires an explicit clipping policy. This is an idiomatic Racket equivalent, not two new bindings or a claim of binary32/rounding bit parity with every native edge case.",
+      "resolution": "equivalent",
+      "target": null
+    },
+    "colors.hdr-transfer": {
+      "acceptance": "Test PQ/HLG numerical conventions and domains separately from tone mapping, display negotiation and physical HDR presentation.",
+      "reason": "PQ/HLG transfer representations are deferred with the HDR workstream. SDR transfer helpers and float storage do not establish HDR transfer or display behavior.",
+      "resolution": "deferred",
+      "target": "H1"
+    },
+    "colors.xyz-ops": {
+      "acceptance": "Provide typed/detached XYZ concatenation and inversion, or demonstrate an existing color-matrix equivalent with executable ordering, singularity, finite-value and dimensionality tests. No color conversion is inferred merely from matrix multiplication.",
+      "reason": "sk_colorspace_xyz_concat and sk_colorspace_xyz_invert remain unbound. Generic geometric matrices are not automatically a reviewed replacement for the color-space XYZ-D50 representation.",
+      "resolution": "pending",
+      "target": "0.78b"
+    },
+    "data.unsafe-memory": {
+      "acceptance": "Retain checked copied bytes and native-stream contracts; uninitialized public storage requires a separate explicit safety design.",
+      "reason": "Raw uninitialized/no-copy SKData construction and arbitrary ownership callbacks are internal implementation concerns, not a safe public byte API.",
+      "resolution": "excluded",
+      "target": null
+    },
+    "documents.xps": {
+      "acceptance": "Before implementation, establish a concrete consumer and native Windows build support, then page/stream lifetime and independent XPS inspection.",
+      "reason": "XPS is a separately prioritized output format, not part of the proposed PDF/SVG-focused core release. PDF is not classified as an XPS equivalent.",
+      "resolution": "deferred",
+      "target": "X1"
+    },
+    "fonts.streams": {
+      "acceptance": "Retain the exact documented scope and existing public/source/test anchors. The release audit must not promote a query, buffered operation or retained native stream into a stronger live-decoding contract.",
+      "reason": "Native-stream and explicitly buffered font constructors are supported. This does not create a long-lived typeface backed by live Racket-port callbacks.",
+      "resolution": "limited",
+      "target": null
+    },
+    "future.graphite": {
+      "acceptance": "Require native build/API support, recorder/context lifetime, submission/readback completion and shared consumer integration.",
+      "reason": "Graphite is a different execution/recording model outside the frozen Ganesh m119 core release.",
+      "resolution": "deferred",
+      "target": "U3"
+    },
+    "future.hdr-presentation": {
+      "acceptance": "Test presentation formats, transfer functions, display negotiation and SDR fallback; separate machine-testable metadata from real-display evidence.",
+      "reason": "Physical HDR/wide-gamut presentation is outside this release scope. F16 buffers and extended numerical colors do not establish it.",
+      "resolution": "deferred",
+      "target": "H1"
+    },
+    "future.variable-fonts": {
+      "acceptance": "Complete U1 ABI review or approved shim decision, then axis/palette discovery, clone lifetime, shaping and outline tests with known fonts.",
+      "reason": "Variable axes/palette cloning require an appropriate newer ABI or separately approved maintained shim. This is not a missing ordinary binding in the pinned comparison.",
+      "resolution": "deferred",
+      "target": "U2"
+    },
+    "gpu.interface-variants": {
+      "acceptance": "Preserve the actual retained interface and its teardown, default factory behavior, explicit-standard rejection without silent fallback, public/source/test anchors and all additional native bindings. Retain desktop execution and backend-specific rejection checks; do not turn symbol presence into positive GLES/WebGL/browser rendering evidence.",
+      "reason": "The selected GitHub baseline includes the 0.77c auto/desktop/GLES/WebGL interface selection and retained-interface extension queries. An explicit mode requires a matching supplied host and native build support. Owned EGL remains desktop; a WebGL factory may be a stub. Source availability and extension membership do not certify GLES/browser execution or extension usability.",
+      "resolution": "limited",
+      "target": null
+    },
+    "gpu.trace": {
+      "acceptance": "Preserve the accepted implementation, source/public/test anchors and native declaration. Keep owner/current/ready/abandonment checks, detached bounded records, explicit truncation, callback cleanup and deferred errors, and no diagnostic flush, submit, wait or readback. Continue selected-backend native acceptance separately from this source audit.",
+      "reason": "The selected GitHub baseline includes the 0.77c context-local GPU memory-statistics implementation and its native binding. It reuses the bounded private collector with a distinct GPU-context scope; global cache reports and context-local reports remain different. Source support does not claim total VRAM/process memory or independently verified execution on every backend.",
+      "resolution": "limited",
+      "target": null
+    },
+    "gpu.vulkan": {
+      "acceptance": "Require actual offscreen Vulkan pixels, transfers and teardown on exercised native builds before presentation/interop G2.",
+      "reason": "Vulkan backend ownership, synchronization and rendering remain an explicit backend expansion. Pinned declarations do not establish shipped build/device support.",
+      "resolution": "deferred",
+      "target": "G1"
+    },
+    "images.adopt-texture": {
+      "acceptance": "Use reviewed interop descriptors/ownership and transfers; a new adoption contract needs backend-specific lifetime and producer/consumer evidence.",
+      "reason": "Arbitrary adopted textures introduce external deletion and synchronization obligations beyond the explicit GPU import/handoff API.",
+      "resolution": "excluded",
+      "target": null
+    },
+    "images.raw-storage": {
+      "acceptance": "Use copies or scoped owned buffers; review threading, callback rooting and release order before exposing any narrower zero-copy route.",
+      "reason": "Unrestricted no-copy image storage and application release callbacks are excluded from the safe API.",
+      "resolution": "excluded",
+      "target": null
+    },
+    "managed.helpers": {
+      "acceptance": "Preserve equivalent public behavior through Racket ownership/dispatch where needed; do not count absence of a C# helper class as a graphics gap.",
+      "reason": "Managed .NET dispatch, dictionaries and platform glue are not user capabilities that must be duplicated in Racket.",
+      "resolution": "excluded",
+      "target": null
+    },
+    "pictures.streams": {
+      "acceptance": "Retain the exact documented scope and existing public/source/test anchors. The release audit must not promote a query, buffered operation or retained native stream into a stronger live-decoding contract.",
+      "reason": "Retain the accepted native stream picture contract and its trust/audit restrictions. Other picture publication entry points remain described by their own checked public anchors.",
+      "resolution": "limited",
+      "target": null
+    },
+    "pixels.bitmap-aliasing": {
+      "acceptance": "Keep arbitrary pointer aliases out of the public API; any future zero-copy route must supply storage ownership, invalidation and native callback tests.",
+      "reason": "Raw SKBitmap install/reset/alias operations bypass the owned raster-buffer and scoped pixmap lifecycle.",
+      "resolution": "excluded",
+      "target": null
+    },
+    "pixels.raw-pixmap": {
+      "acceptance": "Retain detached metadata and guarded pixmap views; do not add pointer access merely to close a native-symbol count.",
+      "reason": "Raw pixel addresses and descriptor reset can escape the validated scoped-borrow contract.",
+      "resolution": "excluded",
+      "target": null
+    },
+    "surfaces.null": {
+      "acceptance": "Implement and test a safe null-surface contract, or explicitly exclude the surface factory with a reviewed rationale and documented no-draw alternative. Check zero/invalid extents, closure, borrowed canvases and snapshot limitations.",
+      "reason": "The pinned sk_surface_new_null declaration remains unbound. A scoped no-draw canvas already exists, but it does not establish a null surface with the same ownership, sizing, or snapshot behavior. Do not erase this gap using a canvas synonym.",
+      "resolution": "pending",
+      "target": "0.78b"
+    }
+  },
+  "reviewed_commit": "3d908fd83ff0f9e2bb2855f538235e6e46e432fd",
+  "schema": 1,
+  "stage": "0.78a"
+}

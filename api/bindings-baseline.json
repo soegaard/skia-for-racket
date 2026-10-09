@@ -610,7 +610,7 @@
   ],
   "schema": 1,
   "scope": "Expected 0.66 candidate declarations applied to source_commit; not a claim that the base commit already contains them.",
-  "source_commit": "3730aab83cd89b218adc751f34da2811838fe060",
+  "source_commit": "3d908fd83ff0f9e2bb2855f538235e6e46e432fd",
   "symbols": [
     "gr_backendrendertarget_delete",
     "gr_backendrendertarget_get_backend",

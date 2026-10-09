@@ -343,15 +343,44 @@ tests, selected GPU allocation/dump/pixel evidence, bounded/truncated reports,
 no hidden transfers, and constructor/abandon/close cleanup. Existing GPU control
 jobs run diagnostics feature-only; central CI owns full regressions.
 
-## 0.78 — Reconcile remaining gaps and stabilize
+## 0.78a — Source inventory and release-scope reconciliation
 
-**Goal:** reach a defensible API-freeze checkpoint after the capability work.
+**Library package version:** `0.77` remains unchanged: this audit introduces no
+public rendering API. The inventory/review milestone is `0.78a`.
 
-Regenerate the complete inventory and resolve residual getters, conversions, and convenience operations. Require each remaining gap to be implemented, documented as a supported equivalent, assigned an explicit restriction, or linked to the extended roadmap.
+Freeze a decision for every capability family against the actual GitHub
+baseline and the pinned SkiaSharp 3.119.1 / m119 scope. Reconcile the existing
+Color4f/packed-color Racket equivalent without inventing native bindings.
+Keep null-surface and XYZ helper decisions open for 0.78b. The selected
+baseline contains 0.77c; preserve its GPU diagnostics and retained GL interface
+implementation, bindings, tests, and documented backend restrictions. These two
+families are supported-with-limits, not pending and not unrestricted support.
 
-Consolidate canonical API/lifetime/output documentation; snapshot exports; unify errors; verify isolated installation and minimum-version support; and run end-to-end raster, GPU, PDF/SVG, and real-consumer acceptance. All added required lanes must feed an authoritative release gate rather than leaving critical tests outside the release decision.
+**Acceptance:** complete existing declaration/anchor checks; exact review/source
+fingerprints; deterministic reports; no unknown/duplicate/unclassified family;
+explicit excluded/deferred rationale and closure gates; pure color conversion
+tests. A green audit certifies classification, not feature completion or release
+readiness. `--require-no-open-gaps` fails until the in-scope backlog is closed.
 
-**Acceptance:** no unclassified item in the frozen upstream scope; all in-scope missing supported-ABI features closed or explicitly justified; executable examples use public APIs only; no silent regression of ownership, transfers, or document policies. This is the proposed 1.0 readiness checkpoint—not a claim of complete Skia/Cairo equivalence.
+## 0.78b — Close or explicitly justify the small remaining gaps
+
+Review the current open ledger before implementation. Resolve null-surface
+semantics and XYZ-D50 convenience operations with real native/pure evidence,
+or an explicit justified exclusion. Do not add pointer-level convenience APIs
+solely to increase a binding count. Refresh reviewed decisions deliberately.
+
+## 0.78c — Public API and documentation stabilization
+
+Snapshot supported public exports/signatures; distinguish stable, experimental
+and private interfaces; unify documented ownership, errors and output rules.
+Examples must use public APIs. Source availability is not runtime evidence.
+
+## 0.78d — Release candidate validation
+
+Require current isolated installation, minimum Racket/platform support,
+CPU/GPU/document and real-consumer acceptance, plus the authoritative release
+gate. No mandatory lane may be skipped or left outside that decision. Zero
+unclassified families is necessary, not sufficient for a 1.0 release candidate.
 
 ## Dependency order
 
@@ -415,7 +444,11 @@ Success means that users can perform the important missing tasks, not that every
 
 ## Recommended next implementation
 
-Start with **0.65: a reconciled, machine-checked gap inventory and the additive pixel/ownership design decisions**. Then implement **0.66 effects**. Keep the format, stream, GPU, and document contracts explicit throughout so feature additions do not require an incompatible redesign immediately after 1.0.
+Use the release-scope ledger rather than the superseded 0.65 starting point.
+The selected baseline includes 0.77c. Preserve that accepted implementation and
+resolve the two reviewed 0.78b families: null surfaces and XYZ-D50 helpers.
+API stabilization and the full release gate remain 0.78c and 0.78d. Source
+classification is not a replacement for backend execution evidence.
 
 ## Sources
 

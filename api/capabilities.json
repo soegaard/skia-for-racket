@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "3730aab83cd89b218adc751f34da2811838fe060",
+  "baseline_commit": "3d908fd83ff0f9e2bb2855f538235e6e46e432fd",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -2727,7 +2727,7 @@
         "sk_typeface_create_from_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.75b",
+      "planned_stage": null,
       "public_equivalents": [
         {
           "module": "stream-inputs.rkt",
@@ -2746,7 +2746,7 @@
         "tools/test-streams.py",
         "tools/validate-streams.py"
       ],
-      "title": "Typeface live-stream construction",
+      "title": "Typeface input from native streams or explicitly buffered ports",
       "unbound_declarations": [
         "sk_fontmgr_create_from_stream"
       ]
@@ -5081,7 +5081,7 @@
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "surfaces.null",
       "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "limitations": "The native null-surface factory remains unbound. call-with-nodraw-canvas is an existing no-output canvas path, not a demonstrated equivalent for surface ownership, sizing, and snapshot behavior. Resolve or explicitly exclude in 0.78b.",
       "managed_sources": [
         "binding/SkiaSharp/SKSurface.cs",
         "binding/SkiaSharp/SKNoDrawCanvas.cs"
@@ -5090,7 +5090,7 @@
         "sk_surface_new_null"
       ],
       "origin": "m119",
-      "planned_stage": "0.74",
+      "planned_stage": "0.78b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -5784,7 +5784,7 @@
         "sk_picture_serialize_to_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.75b",
+      "planned_stage": null,
       "public_equivalents": [
         {
           "module": "stream-inputs.rkt",
@@ -6188,13 +6188,16 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
+      "backend_scope": "Backend-neutral detached Racket values; no Skia initialization or native execution is needed.",
       "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "Pure value conversion; no drawing, GPU transfer, document quantization policy, or PDF/SVG fidelity is established by these helpers.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "colors.float",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "color4f.rkt",
+        "color.rkt"
+      ],
+      "limitations": "Existing pure-Racket color->color4f accepts packed ARGB colors; color4f->rgba plus color->argb supplies the reverse operation. Channels remain unpremultiplied, including RGB at zero alpha. Extended RGB requires explicit clipping. This is numerical normalization/quantization, not color-space conversion, HDR tone mapping, or a promise of native binary32 bit/rounding parity. The two native convenience declarations remain unbound.",
       "managed_sources": [
         "binding/SkiaSharp/SKColorF.cs",
         "binding/SkiaSharp/SKColor.cs"
@@ -6204,11 +6207,31 @@
         "sk_color4f_to_color"
       ],
       "origin": "m119",
-      "planned_stage": "0.71",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
-      "title": "Color4f values and packed conversion",
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "color4f.rkt",
+          "name": "make-color4f"
+        },
+        {
+          "module": "color4f.rkt",
+          "name": "color->color4f"
+        },
+        {
+          "module": "color4f.rkt",
+          "name": "color4f->rgba"
+        },
+        {
+          "module": "color.rkt",
+          "name": "color->argb"
+        }
+      ],
+      "status": "racket-equivalent",
+      "test_sources": [
+        "tests/release-scope-pure-test.rkt",
+        "tests/float-pixel-pure-test.rkt"
+      ],
+      "title": "Unpremultiplied Color4f values and explicit packed-color conversion",
       "unbound_declarations": [
         "sk_color4f_from_color",
         "sk_color4f_to_color"
@@ -6324,7 +6347,7 @@
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "colors.xyz-ops",
       "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "limitations": "The pinned XYZ-D50 concatenation/inversion helpers remain unbound. Generic geometric matrix helpers do not establish the color-matrix representation, multiplication order, or singularity contract. Resolve or demonstrate a tested equivalent in 0.78b.",
       "managed_sources": [
         "binding/SkiaSharp/SKColorSpaceStructs.cs"
       ],
@@ -6333,7 +6356,7 @@
         "sk_colorspace_xyz_invert"
       ],
       "origin": "m119",
-      "planned_stage": "0.71",
+      "planned_stage": "0.78b",
       "public_equivalents": [],
       "status": "missing-available-abi",
       "test_sources": [],
@@ -7166,7 +7189,7 @@
         "sk_codec_new_from_stream"
       ],
       "origin": "m119",
-      "planned_stage": "0.75b",
+      "planned_stage": null,
       "public_equivalents": [
         {
           "module": "stream-inputs.rkt",
@@ -8347,5 +8370,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.77c"
+  "stage": "0.78a"
 }
