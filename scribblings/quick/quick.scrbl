@@ -518,6 +518,16 @@ drawing operations as vector content.
 The Guide will discuss document output, text policies, raster fallbacks, and
 output auditing in more detail.
 
+@section{Try It}
+
+The finished picture is a good place to experiment. Try moving the moon by
+changing its center from @tt{(650, 90)} to another point. Use the coordinate
+grid to predict where the moon will appear before you run the program.
+
+Try changing the moon radius, changing one of the colors, or adding another
+call to @racket[draw-tree-at]. These changes use only the ideas from this
+tutorial.
+
 @section{Where to Go From Here}
 
 This tutorial used only a small part of Skia.
