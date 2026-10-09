@@ -1540,7 +1540,7 @@
     "tests/gpu-context-control-native-test.rkt": "aa87a01231b0bad95f4af005da33796f5115085fc9b2bb3e2711da1e30ab6503",
     "tests/gpu-context-control-pure-test.rkt": "2f130501bbefc249955e3a9fab1534049578b4c4390e108947d5512e9df1a06e",
     "tests/gpu-dc-gui-test.rkt": "4b097711587ef87515a0976f13fd6244a47e9ba605ffe7abaea47b61a39480d1",
-    "tests/gpu-diagnostics-gpu-test.rkt": "ff13cbf01b1b8965e1347cb5f3841d1a1f2d47de0a77da405c4380fd439f00e7",
+    "tests/gpu-diagnostics-gpu-test.rkt": "3914c39dea4c8f852e9de121a64789571051be33027d71e86b4658544d55d0db",
     "tests/gpu-diagnostics-native-test.rkt": "4c57e7a210af24b97bbd0190bdcf281879487b6b0d96adf288df55adae419b02",
     "tests/gpu-diagnostics-pure-test.rkt": "2b5e506293277c8ee12eac5923052c2a6d0f354d0efd85c9e1ecce293b5c9b90",
     "tests/gpu-format-gpu-test.rkt": "6a7051e894b6a1c6ccc51a05bf079121d5ddce83dcd307797f05a9aa3de928dc",
