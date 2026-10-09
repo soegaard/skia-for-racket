@@ -195,7 +195,23 @@ def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -
              'docs/RELEASE-SCOPE-REVIEW.md', 'tests/release-scope-pure-test.rkt',
              'docs/SMALL-GAPS.md', 'tools/small_gap_validation.py',
              'tools/test-small-gaps.py', 'tools/validate-small-gaps.py',
-             'examples/small-gaps.rkt'}
+             'examples/small-gaps.rkt',
+             'api/public-api-policy.json',
+             'api/public-api-headless.json',
+             'api/public-api-gui.json',
+             'api/public-api-capture.json',
+             'docs/API-CONTRACTS.md',
+             'docs/PUBLIC-API.md',
+             'tools/public_api.py',
+             'tools/public-api-reflect.rkt',
+             'tools/public-api-probe.rkt',
+             'tools/validate-public-api.py',
+             'tools/test-public-api.py',
+             'tests/public-api-pure-test.rkt',
+             'tests/public-api-fixture.rkt',
+             'examples/public/value-basics.rkt',
+             'examples/public/raster-lifetime.rkt',
+             }
     for cap in catalog['features']['capabilities']:
         names.update(cap['test_sources'])
     for name in sorted(names):
@@ -270,7 +286,7 @@ def validate_review(catalog: dict, hashes: dict, review: dict, policy: dict) -> 
                 release_dispositions=dict(sorted(Counter(r['resolution'] for r in rows).items())),
                 reviewed_source_files=len(hashes), open_in_scope=pending,
                 in_scope_gaps_closed=not pending, release_ready=False,
-                remaining_release_gates=['0.78c API/documentation stabilization', '0.78d end-to-end release gate'],
+                remaining_release_gates=['0.78c current API check (tools/validate-public-api.py)', '0.78d end-to-end release gate'],
                 native_symbols_probed=False, rendering_executed=False,
                 per_capability_runtime_verified=False)
 

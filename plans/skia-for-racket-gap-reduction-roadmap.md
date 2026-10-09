@@ -374,6 +374,11 @@ solely to increase a binding count. Refresh reviewed decisions deliberately.
 
 ## 0.78c — Public API and documentation stabilization
 
+Implementation: explicit stable/experimental module policy, frozen runtime-reflected
+exports/arities/keywords, headless and GUI checks, consolidated contracts and
+public examples. See `docs/API-CONTRACTS.md` and `docs/PUBLIC-API.md`.
+The current API gate and cross-platform CI must pass before acceptance.
+
 Snapshot supported public exports/signatures; distinguish stable, experimental
 and private interfaces; unify documented ownership, errors and output rules.
 Examples must use public APIs. Source availability is not runtime evidence.
@@ -447,12 +452,12 @@ Success means that users can perform the important missing tasks, not that every
 
 ## Recommended next implementation
 
-0.78b adds native XYZ-D50 composition/inversion and explicitly excludes the
-null-surface factory, retaining scoped no-draw as a non-equivalent alternative.
-After its required source/native CI passes, proceed to 0.78c public API and
-documentation stabilization, then 0.78d release validation. Preserve the
-accepted 0.77c GPU implementation and owned-EGL CI fix. Source-policy closure
-does not replace execution evidence or mean a release is ready.
+After accepting 0.78c API/documentation stabilization, implement 0.78d
+release-candidate validation. Retain exact public-signature checks and the
+0.78b closed scope (XYZ-D50 helpers and the explicit null-surface exclusion).
+The final gate must combine current isolated installation, minimum-version,
+CPU/GPU/document and real-consumer evidence. A source audit or an assumed
+green earlier baseline is not a release approval.
 
 ## Sources
 

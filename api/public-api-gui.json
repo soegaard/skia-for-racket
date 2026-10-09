@@ -1,0 +1,132 @@
+{
+  "baseline_commit": "cc6e63c3e14a9059b326f515ee01fd2b582c123f",
+  "group": "gui",
+  "modules": [
+    {
+      "exports": [
+        {
+          "export_kind": "value",
+          "kind": "class",
+          "name": "skia-canvas%",
+          "phase": "0"
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "skia-canvas?",
+          "phase": "0",
+          "required_keywords": []
+        }
+      ],
+      "path": "canvas.rkt"
+    },
+    {
+      "exports": [
+        {
+          "export_kind": "value",
+          "kind": "class",
+          "name": "skia-gpu-canvas%",
+          "phase": "0"
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "skia-gpu-canvas?",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "export_kind": "value",
+          "kind": "class",
+          "name": "skia-gpu-window%",
+          "phase": "0"
+        }
+      ],
+      "path": "gpu-canvas.rkt"
+    },
+    {
+      "exports": [
+        {
+          "export_kind": "value",
+          "kind": "class",
+          "name": "gpu-canvas%",
+          "phase": "0"
+        },
+        {
+          "export_kind": "value",
+          "kind": "class",
+          "name": "gpu-window%",
+          "phase": "0"
+        }
+      ],
+      "path": "gpu-gui.rkt"
+    },
+    {
+      "exports": [
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "make-racket-gl-provider",
+          "phase": "0",
+          "required_keywords": []
+        }
+      ],
+      "path": "gpu-racket-gl.rkt"
+    },
+    {
+      "exports": [
+        {
+          "allowed_keywords": [
+            "adapter",
+            "adapter-index",
+            "backend",
+            "background",
+            "min-height",
+            "min-width",
+            "on-error",
+            "paint-callback",
+            "renderer",
+            "smoothing",
+            "sync-interval"
+          ],
+          "arity_mask": "2",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "make-skia-render-canvas",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "export_kind": "value",
+          "kind": "interface",
+          "name": "skia-render-canvas<%>",
+          "phase": "0"
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "skia-render-canvas?",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "export_kind": "value",
+          "kind": "class",
+          "name": "skia-render-window%",
+          "phase": "0"
+        }
+      ],
+      "path": "render-canvas.rkt"
+    }
+  ],
+  "schema": 1,
+  "stage": "0.78c"
+}

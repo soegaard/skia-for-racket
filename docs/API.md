@@ -2692,3 +2692,7 @@ factory keywords, and the ownership/flush/completion distinctions.
 ## XYZ-D50 arithmetic (0.78b)
 
 `xyz-d50-concat` and `xyz-d50-invert` operate on detached row-major nine-coefficient values. Concatenation is a*b; inverse failure returns `#f`. See [SMALL-GAPS.md](SMALL-GAPS.md) for binary32, finite-result, color-conversion and null-surface exclusion contracts. No native pointer enters the public API.
+
+## Public API baseline (0.78c)
+
+[API-CONTRACTS.md](API-CONTRACTS.md) consolidates stability, ownership, errors and output rules. [PUBLIC-API.md](PUBLIC-API.md) lists reflected exports and procedure call boundaries, including keywords. Macro grammars and class method/initialization contracts are not guessed from reflection.

@@ -37,6 +37,7 @@ jobs:
           python tools/api-inventory.py --check
           python tools/test-release-scope.py
           python tools/test-small-gaps.py
+          python tools/test-public-api.py
           python tools/validate-release-scope.py --require-no-open-gaps --racket "$(command -v racket)" --directory output/release-scope-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -52,6 +53,12 @@ jobs:
           path: output/api-upstream/skiasharp
           sparse-checkout: binding/SkiaSharp
           persist-credentials: false
+      - name: Install graphical-session support for signature-only imports
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth libgtk-3-0 libgl1 libegl1 libfontconfig1
+      - name: Require public API signatures and aggregate pure execution
+        run: xvfb-run -a python tools/validate-public-api.py --racket "$(command -v racket)" --directory output/public-api-ci
       - name: Install pinned Skia library and loader dependencies
         run: |
           sudo apt-get update
@@ -66,6 +73,8 @@ jobs:
             --directory output/api-inventory-ci
       - name: Require XYZ-D50 and native no-draw acceptance
         run: python tools/validate-small-gaps.py --racket "$(command -v racket)" --directory output/small-gaps-ci
+      - name: Require public raster lifetime example
+        run: racket examples/public/raster-lifetime.rkt
       - name: Retain source hashes, symbol observations and gate result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -75,5 +84,6 @@ jobs:
             output/api-inventory-ci/
             output/release-scope-ci/
             output/small-gaps-ci/
+            output/public-api-ci/
           if-no-files-found: warn
           retention-days: 14

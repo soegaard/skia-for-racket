@@ -1199,3 +1199,7 @@ passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
 ## 0.78b — Small gaps (package 0.78)
 
 Add native-backed detached XYZ-D50 composition/inversion and focused argument, numerical, lifetime, and no-draw tests. Explicitly exclude the storage-less null-surface factory without misclassifying the scoped no-draw alternative. Update the deliberate release review, generated inventories, version assertions, and required source/native gates. Preserve the accepted GPU implementation and both preceding CI fixes.
+
+## 0.78c — Public API and documentation stabilization (package 0.78)
+
+Add an explicit module stability/import policy and exact runtime-reflected public API snapshots. Add fail-closed observation/compatibility checks, reflection fixtures, aggregate-runner compilation, public examples, and consolidated ownership/error/output contracts. Run headless and GUI reflection under required Linux Racket 8.18/9.3 API inventory lanes. Retain the 0.78b capability decisions, native bindings, package version, and accepted GPU/CPU behavior. Signature validation is not a 1.0 release approval.

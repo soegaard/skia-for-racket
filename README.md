@@ -1689,3 +1689,7 @@ accept `#:gl-interface`; defaults are preserved. See [GPU-DIAGNOSTICS.md](docs/G
 ## 0.78b — Small remaining gaps
 
 Native-backed `xyz-d50-concat` and `xyz-d50-invert` are public through `skia`. The null-surface factory is deliberately excluded; the existing scoped no-draw canvas remains the diagnostic alternative. See [contracts and acceptance](docs/SMALL-GAPS.md). No-open-gaps source policy is not 1.0 release approval.
+
+## 0.78c — Public API stabilization
+
+See [the API contract](docs/API-CONTRACTS.md) and [generated export/signature index](docs/PUBLIC-API.md). The policy distinguishes stable, experimental and private interfaces without changing existing exports. Runtime reflection is checked separately from native/rendering evidence; 0.78d release validation remains outstanding.

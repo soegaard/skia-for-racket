@@ -1,0 +1,365 @@
+{
+  "baseline_commit": "cc6e63c3e14a9059b326f515ee01fd2b582c123f",
+  "comparison": "exact-export-and-call-boundary",
+  "contract_document": "docs/API-CONTRACTS.md",
+  "minimum_racket": "8.18",
+  "modules": [
+    {
+      "load_group": "headless",
+      "path": "advanced-layers.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "annotations.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "bitmap.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "canvas-matrix.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "canvas-primitives.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "gui",
+      "path": "canvas.rkt",
+      "reason": "Experimental GUI integration: owner/eventspace and callback-scoped lifetimes remain mandatory; import requires a graphical session.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "codec-incremental.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "codec-queries.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "codec-scanlines.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "color-filters.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "color-space.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "color.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "color4f.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "dc-output.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "dc.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "drawables.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "effects.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "file-streams.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "float-colors.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "fonts.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "geometry-primitives.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "geometry.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "gui",
+      "path": "gpu-canvas.rkt",
+      "reason": "Experimental GUI integration: owner/eventspace and callback-scoped lifetimes remain mandatory; import requires a graphical session.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu-context-options.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu-dc.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu-diagnostics.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu-egl.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu-gl-interop.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "gui",
+      "path": "gpu-gui.rkt",
+      "reason": "Experimental GUI integration: owner/eventspace and callback-scoped lifetimes remain mandatory; import requires a graphical session.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu-interop.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu-output.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "gui",
+      "path": "gpu-racket-gl.rkt",
+      "reason": "Experimental GUI integration: owner/eventspace and callback-scoped lifetimes remain mandatory; import requires a graphical session.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "gpu.rkt",
+      "reason": "Experimental optional execution/integration API; existing backend, owner-thread and document restrictions remain unchanged.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "graphics.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "image-info.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "image-operations.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "layer-options.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "live-streams.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "main.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "matrix.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "native-capabilities.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "output-audit.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "output-groups.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "output-policy.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "output.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "pictures.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "portable-drawing.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "projective-matrix.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "raster-buffers.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "gui",
+      "path": "render-canvas.rkt",
+      "reason": "Experimental GUI integration: owner/eventspace and callback-scoped lifetimes remain mandatory; import requires a graphical session.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "runtime-effects.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "specialized-canvases.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "stream-inputs.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "streams.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "surface-properties.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "text-blobs.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "typefaces.rkt",
+      "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
+      "path": "unsafe/gpu-d3d12.rkt",
+      "reason": "Unsafe external-resource entry point: caller-supplied native object validity and lifetime remain caller obligations.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
+      "path": "unsafe/gpu-metal.rkt",
+      "reason": "Unsafe external-resource entry point: caller-supplied native object validity and lifetime remain caller obligations.",
+      "stability": "experimental"
+    }
+  ],
+  "package_version": "0.78",
+  "schema": 1,
+  "stage": "0.78c"
+}
