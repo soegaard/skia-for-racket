@@ -424,7 +424,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertEqual(match[1].strip(),
                          "  push:\n    branches: [main]\n    tags: ['v*']\n"
-                         "  pull_request:\n  workflow_dispatch:".strip())
+                         "  pull_request:\n  workflow_dispatch:\n  workflow_call:".strip())
     def test_scope_job_uses_checked_selector(self):
         text = (ROOT/'.github/workflows/acceptance.yml').read_text()
         self.assertIn('run: python3 tools/validation_regressions.py --github-output', text)

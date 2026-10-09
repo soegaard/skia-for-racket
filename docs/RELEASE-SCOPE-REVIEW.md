@@ -109,3 +109,7 @@ change, physical HDR verification, or complete Skia/Cairo parity is claimed.
 ## 0.78c integration — public API stability
 
 The separate 0.78c public API baseline starts from `cc6e63c3e14a9059b326f515ee01fd2b582c123f`. The maintainer supplied an all-green-CI assumption for that implementation baseline. No production drawing/binding module or capability-family decision is changed. The source/capability catalogue keeps its 0.78b identity; the public API policy and real reflected snapshots carry their own 0.78c identity. The snapshots, checker, fixtures, examples and contract documents are added to this frozen review input set deliberately. A current `tools/validate-public-api.py --racket ...` full pass is required, not inferred by this source-only ledger. Release readiness remains the independent 0.78d decision.
+
+## 0.78d integration — one current execution gate
+
+The candidate coordinator starts from `705a090d287a8a2887eb2cb4f33b43961626c6e4`, accepted under the maintainer’s all-green assumption. It changes no Racket implementation, public signature snapshot or capability-family decision. Its explicit exhaustive workflow policy, checker, tests and documentation are new frozen review inputs. The 0.78b and 0.78c audit identities remain intact. Only a fresh complete **Release candidate** run can validate this candidate; the source ledger continues to report `release_ready: false`. No publication permission is implied.

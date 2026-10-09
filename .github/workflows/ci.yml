@@ -6,6 +6,7 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 # Pull-request code runs only on fresh GitHub-hosted runners, with no secrets
 # or write token. In particular, never change this to pull_request_target.

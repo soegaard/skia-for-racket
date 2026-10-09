@@ -1693,3 +1693,7 @@ Native-backed `xyz-d50-concat` and `xyz-d50-invert` are public through `skia`. T
 ## 0.78c — Public API stabilization
 
 See [the API contract](docs/API-CONTRACTS.md) and [generated export/signature index](docs/PUBLIC-API.md). The policy distinguishes stable, experimental and private interfaces without changing existing exports. Runtime reflection is checked separately from native/rendering evidence; 0.78d release validation remains outstanding.
+
+## 0.78d — Release candidate validation
+
+The manual **Release candidate** workflow runs CI, full Acceptance and API inventory at one commit. Its final gate requires every reviewed matrix job/step and hashed evidence ZIP from the same attempt, then builds a deterministic source archive. See [release validation](docs/RELEASE-CANDIDATE.md). No tag, publication or 1.0 approval is automatic.

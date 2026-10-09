@@ -1,0 +1,3447 @@
+{
+  "artifact_names": [
+    "advanced-canvases-linux-8.18-{attempt}",
+    "advanced-canvases-linux-9.3-{attempt}",
+    "advanced-canvases-windows-{attempt}",
+    "api-inventory-linux-racket-8.18-{attempt}",
+    "api-inventory-linux-racket-9.3-{attempt}",
+    "ci-canvas-linux-x64-{attempt}",
+    "ci-d3d12-interop-{attempt}",
+    "ci-d3d12-warp-{attempt}",
+    "ci-dxgi-warp-{attempt}",
+    "ci-egl-pbuffer-{attempt}",
+    "ci-egl-surfaceless-{attempt}",
+    "ci-linux-x64-{attempt}",
+    "ci-macos-arm64-{attempt}",
+    "ci-macos-x64-{attempt}",
+    "ci-minimum-racket-{attempt}",
+    "ci-source-{attempt}",
+    "ci-windows-x64-{attempt}",
+    "codec-incremental-linux-8.18-{attempt}",
+    "codec-incremental-linux-9.3-{attempt}",
+    "codec-incremental-windows-{attempt}",
+    "codec-queries-linux-8.18-{attempt}",
+    "codec-queries-linux-9.3-{attempt}",
+    "codec-queries-windows-{attempt}",
+    "codec-scanlines-linux-8.18-{attempt}",
+    "codec-scanlines-linux-9.3-{attempt}",
+    "codec-scanlines-windows-{attempt}",
+    "dc-output-linux-8.18-{attempt}",
+    "dc-output-linux-9.3-{attempt}",
+    "effects-linux-8.18-{attempt}",
+    "effects-linux-9.3-{attempt}",
+    "effects-warp-{attempt}",
+    "float-pixels-linux-8.18-{attempt}",
+    "float-pixels-linux-9.3-{attempt}",
+    "float-pixels-windows-{attempt}",
+    "font-queries-linux-8.18-{attempt}",
+    "font-queries-linux-9.3-{attempt}",
+    "font-queries-windows-{attempt}",
+    "geometry-linux-8.18-{attempt}",
+    "geometry-linux-9.3-{attempt}",
+    "geometry-warp-{attempt}",
+    "global-caches-linux-8.18-{attempt}",
+    "global-caches-linux-9.3-{attempt}",
+    "global-caches-windows-{attempt}",
+    "gpu-context-controls-linux-8.18-{attempt}",
+    "gpu-context-controls-linux-9.3-{attempt}",
+    "gpu-context-controls-windows-{attempt}",
+    "gpu-dc-consumers-warp-{attempt}",
+    "gpu-dc-linux-racket-8.18-{attempt}",
+    "gpu-dc-linux-racket-9.3-{attempt}",
+    "gpu-diagnostics-linux-8.18-{attempt}",
+    "gpu-diagnostics-linux-9.3-{attempt}",
+    "gpu-diagnostics-windows-{attempt}",
+    "gpu-formats-linux-8.18-{attempt}",
+    "gpu-formats-linux-9.3-{attempt}",
+    "gpu-formats-windows-{attempt}",
+    "image-operations-linux-8.18-{attempt}",
+    "image-operations-linux-9.3-{attempt}",
+    "image-operations-windows-{attempt}",
+    "integer-pixels-linux-8.18-{attempt}",
+    "integer-pixels-linux-9.3-{attempt}",
+    "integer-pixels-windows-{attempt}",
+    "render-canvas-linux-8.18-{attempt}",
+    "render-canvas-linux-9.3-{attempt}",
+    "render-canvas-windows-warp-{attempt}",
+    "streams-linux-8.18-{attempt}",
+    "streams-linux-9.3-{attempt}",
+    "streams-windows-{attempt}",
+    "text-blobs-linux-8.18-{attempt}",
+    "text-blobs-linux-9.3-{attempt}",
+    "text-blobs-windows-{attempt}",
+    "typefaces-linux-8.18-{attempt}",
+    "typefaces-linux-9.3-{attempt}",
+    "typefaces-windows-{attempt}"
+  ],
+  "baseline_commit": "705a090d287a8a2887eb2cb4f33b43961626c6e4",
+  "evidence_basis": "same-run-attempt-job-step-and-artifact-evidence",
+  "jobs": [
+    {
+      "artifacts": [
+        "api-inventory-linux-racket-8.18-{attempt}"
+      ],
+      "job_id": "inventory",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "API inventory / Pinned capability sources / Linux / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install release graph parser",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Verify inventory and source contracts before network/native setup",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Install graphical-session support for signature-only imports",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Require public API signatures and aggregate pure execution",
+          "number": 10
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned Skia library and loader dependencies",
+          "number": 11
+        },
+        {
+          "expected": "success",
+          "name": "Require pinned source verification and isolated native symbol observation",
+          "number": 12
+        },
+        {
+          "expected": "success",
+          "name": "Require XYZ-D50 and native no-draw acceptance",
+          "number": 13
+        },
+        {
+          "expected": "success",
+          "name": "Require public raster lifetime example",
+          "number": 14
+        },
+        {
+          "expected": "success",
+          "name": "Retain source hashes, symbol observations and gate result",
+          "number": 15
+        }
+      ],
+      "workflow": ".github/workflows/api-inventory.yml"
+    },
+    {
+      "artifacts": [
+        "api-inventory-linux-racket-9.3-{attempt}"
+      ],
+      "job_id": "inventory",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "API inventory / Pinned capability sources / Linux / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install release graph parser",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Verify inventory and source contracts before network/native setup",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Install graphical-session support for signature-only imports",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Require public API signatures and aggregate pure execution",
+          "number": 10
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned Skia library and loader dependencies",
+          "number": 11
+        },
+        {
+          "expected": "success",
+          "name": "Require pinned source verification and isolated native symbol observation",
+          "number": 12
+        },
+        {
+          "expected": "success",
+          "name": "Require XYZ-D50 and native no-draw acceptance",
+          "number": 13
+        },
+        {
+          "expected": "success",
+          "name": "Require public raster lifetime example",
+          "number": 14
+        },
+        {
+          "expected": "success",
+          "name": "Retain source hashes, symbol observations and gate result",
+          "number": 15
+        }
+      ],
+      "workflow": ".github/workflows/api-inventory.yml"
+    },
+    {
+      "artifacts": [],
+      "job_id": "required",
+      "matrix": {},
+      "name": "Acceptance / Acceptance required",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": "Require every acceptance workflow",
+          "number": 2
+        }
+      ],
+      "workflow": ".github/workflows/acceptance.yml"
+    },
+    {
+      "artifacts": [
+        "advanced-canvases-linux-8.18-{attempt}"
+      ],
+      "job_id": "canvases-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Advanced layers and canvases / Advanced layers and canvases / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain canvas and document evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/advanced-canvases.yml"
+    },
+    {
+      "artifacts": [
+        "advanced-canvases-linux-9.3-{attempt}"
+      ],
+      "job_id": "canvases-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Advanced layers and canvases / Advanced layers and canvases / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain canvas and document evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/advanced-canvases.yml"
+    },
+    {
+      "artifacts": [
+        "advanced-canvases-windows-{attempt}"
+      ],
+      "job_id": "canvases-windows",
+      "matrix": {},
+      "name": "Acceptance / Advanced layers and canvases / Advanced layers and canvases / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install document inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, WARP pixels and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/advanced-canvases.yml"
+    },
+    {
+      "artifacts": [
+        "codec-incremental-linux-8.18-{attempt}",
+        "codec-queries-linux-8.18-{attempt}",
+        "codec-scanlines-linux-8.18-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Codec size and subset queries / Codec queries / Linux / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install native runtime dependencies",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require native query negotiation and independent evidence",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Require native scanline decoding and independent row evidence",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete scanline evidence",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Require retained incremental decoding and independent progress evidence",
+          "number": 10
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete incremental evidence",
+          "number": 11
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete query evidence",
+          "number": 12
+        }
+      ],
+      "workflow": ".github/workflows/codec-queries.yml"
+    },
+    {
+      "artifacts": [
+        "codec-incremental-linux-9.3-{attempt}",
+        "codec-queries-linux-9.3-{attempt}",
+        "codec-scanlines-linux-9.3-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Codec size and subset queries / Codec queries / Linux / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install native runtime dependencies",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require native query negotiation and independent evidence",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Require native scanline decoding and independent row evidence",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete scanline evidence",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Require retained incremental decoding and independent progress evidence",
+          "number": 10
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete incremental evidence",
+          "number": 11
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete query evidence",
+          "number": 12
+        }
+      ],
+      "workflow": ".github/workflows/codec-queries.yml"
+    },
+    {
+      "artifacts": [
+        "codec-incremental-windows-{attempt}",
+        "codec-queries-windows-{attempt}",
+        "codec-scanlines-windows-{attempt}"
+      ],
+      "job_id": "windows",
+      "matrix": {},
+      "name": "Acceptance / Codec size and subset queries / Codec queries / Windows / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Require native query negotiation and independent evidence",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require native scanline decoding and independent row evidence",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete scanline evidence",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Require retained incremental decoding and independent progress evidence",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete incremental evidence",
+          "number": 10
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete query evidence",
+          "number": 11
+        }
+      ],
+      "workflow": ".github/workflows/codec-queries.yml"
+    },
+    {
+      "artifacts": [
+        "dc-output-linux-8.18-{attempt}"
+      ],
+      "job_id": "documents",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / DC document output / PDF and SVG / Linux / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install font runtime and independent PDF/SVG renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Source contracts and example compilation",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Global pure regressions (standalone mode)",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned Skia and HarfBuzz",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Require DC compatibility, native documents and independent rendered pixels",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Retain native documents, rendered pixels, receipts and command logs",
+          "number": 10
+        }
+      ],
+      "workflow": ".github/workflows/dc-output.yml"
+    },
+    {
+      "artifacts": [
+        "dc-output-linux-9.3-{attempt}"
+      ],
+      "job_id": "documents",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / DC document output / PDF and SVG / Linux / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install font runtime and independent PDF/SVG renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Source contracts and example compilation",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Global pure regressions (standalone mode)",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned Skia and HarfBuzz",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Require DC compatibility, native documents and independent rendered pixels",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Retain native documents, rendered pixels, receipts and command logs",
+          "number": 10
+        }
+      ],
+      "workflow": ".github/workflows/dc-output.yml"
+    },
+    {
+      "artifacts": [
+        "image-operations-linux-8.18-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Direct image operations / Direct image operations / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain direct image evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/image-operations.yml"
+    },
+    {
+      "artifacts": [
+        "image-operations-linux-9.3-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Direct image operations / Direct image operations / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain direct image evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/image-operations.yml"
+    },
+    {
+      "artifacts": [
+        "image-operations-windows-{attempt}"
+      ],
+      "job_id": "pixels-windows",
+      "matrix": {},
+      "name": "Acceptance / Direct image operations / Direct image operations / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install document inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, WARP pixels and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/image-operations.yml"
+    },
+    {
+      "artifacts": [
+        "effects-warp-{attempt}"
+      ],
+      "job_id": "effects-warp",
+      "matrix": {},
+      "name": "Acceptance / Effects / Effects / D3D12 WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require D3D12 effect pixels, affinity and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain WARP evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/effects.yml"
+    },
+    {
+      "artifacts": [
+        "effects-linux-8.18-{attempt}"
+      ],
+      "job_id": "effects-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Effects / Effects / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent document renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU effects and independent PDF/SVG pixels",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain effect captures and evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/effects.yml"
+    },
+    {
+      "artifacts": [
+        "effects-linux-9.3-{attempt}"
+      ],
+      "job_id": "effects-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Effects / Effects / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent document renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU effects and independent PDF/SVG pixels",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain effect captures and evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/effects.yml"
+    },
+    {
+      "artifacts": [
+        "float-pixels-linux-8.18-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Floating-point pixels and colors / Floating-point pixels and colors / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain float pixel evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/float-pixels.yml"
+    },
+    {
+      "artifacts": [
+        "float-pixels-linux-9.3-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Floating-point pixels and colors / Floating-point pixels and colors / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain float pixel evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/float-pixels.yml"
+    },
+    {
+      "artifacts": [
+        "float-pixels-windows-{attempt}"
+      ],
+      "job_id": "pixels-windows",
+      "matrix": {},
+      "name": "Acceptance / Floating-point pixels and colors / Floating-point pixels and colors / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install document inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, WARP pixels and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/float-pixels.yml"
+    },
+    {
+      "artifacts": [
+        "font-queries-linux-8.18-{attempt}"
+      ],
+      "job_id": "fonts-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Font options and glyph queries / Font queries / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain font query evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/font-queries.yml"
+    },
+    {
+      "artifacts": [
+        "font-queries-linux-9.3-{attempt}"
+      ],
+      "job_id": "fonts-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Font options and glyph queries / Font queries / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain font query evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/font-queries.yml"
+    },
+    {
+      "artifacts": [
+        "font-queries-windows-{attempt}"
+      ],
+      "job_id": "fonts-windows",
+      "matrix": {},
+      "name": "Acceptance / Font options and glyph queries / Font queries / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install document inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, WARP pixels and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/font-queries.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-dc-linux-racket-8.18-{attempt}"
+      ],
+      "job_id": "gpu-dc",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / GPU DC / GPU DC / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install Mesa, GUI dependencies, fonts and virtual display",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check committed source manifest and validator unit tests",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Compile GPU DC feature modules",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Global regression suite (standalone mode)",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Require GPU DC baseline and consumer validation",
+          "number": 10
+        },
+        {
+          "expected": "success",
+          "name": "Retain validation results and command logs",
+          "number": 11
+        }
+      ],
+      "workflow": ".github/workflows/gpu-dc.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-dc-linux-racket-9.3-{attempt}"
+      ],
+      "job_id": "gpu-dc",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / GPU DC / GPU DC / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install Mesa, GUI dependencies, fonts and virtual display",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check committed source manifest and validator unit tests",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Compile GPU DC feature modules",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Global regression suite (standalone mode)",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Require GPU DC baseline and consumer validation",
+          "number": 10
+        },
+        {
+          "expected": "success",
+          "name": "Retain validation results and command logs",
+          "number": 11
+        }
+      ],
+      "workflow": ".github/workflows/gpu-dc.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-dc-consumers-warp-{attempt}"
+      ],
+      "job_id": "gpu-dc-warp",
+      "matrix": {},
+      "name": "Acceptance / GPU DC / GPU DC consumers / D3D12 WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source manifest and inspector contracts",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned Skia and HarfBuzz libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require native consumer parity through D3D12 WARP",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain WARP captures, checks and logs",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/gpu-dc.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-context-controls-linux-8.18-{attempt}",
+        "gpu-diagnostics-linux-8.18-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / GPU context options and resource control / GPU context controls / Linux EGL / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned-runtime system dependencies and Mesa",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Verify source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Required context options and targeted lifecycle execution",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Require GPU diagnostics and retained-interface evidence",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Keep complete GPU evidence and command logs",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Keep GPU diagnostics evidence",
+          "number": 10
+        }
+      ],
+      "workflow": ".github/workflows/gpu-context-controls.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-context-controls-linux-9.3-{attempt}",
+        "gpu-diagnostics-linux-9.3-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / GPU context options and resource control / GPU context controls / Linux EGL / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned-runtime system dependencies and Mesa",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Verify source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Required context options and targeted lifecycle execution",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Require GPU diagnostics and retained-interface evidence",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Keep complete GPU evidence and command logs",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Keep GPU diagnostics evidence",
+          "number": 10
+        }
+      ],
+      "workflow": ".github/workflows/gpu-context-controls.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-context-controls-windows-{attempt}",
+        "gpu-diagnostics-windows-{attempt}"
+      ],
+      "job_id": "windows",
+      "matrix": {},
+      "name": "Acceptance / GPU context options and resource control / GPU context controls / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Verify source and install pinned native libraries",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Required context options and targeted lifecycle execution",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require GPU diagnostics and non-GL rejection",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep complete GPU evidence and command logs",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Keep GPU diagnostics evidence",
+          "number": 9
+        }
+      ],
+      "workflow": ".github/workflows/gpu-context-controls.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-formats-linux-8.18-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / GPU formats and surface properties / GPU formats and surface properties / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain float pixel evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/gpu-formats.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-formats-linux-9.3-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / GPU formats and surface properties / GPU formats and surface properties / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain float pixel evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/gpu-formats.yml"
+    },
+    {
+      "artifacts": [
+        "gpu-formats-windows-{attempt}"
+      ],
+      "job_id": "pixels-windows",
+      "matrix": {},
+      "name": "Acceptance / GPU formats and surface properties / GPU formats and surface properties / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install document inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, WARP pixels and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/gpu-formats.yml"
+    },
+    {
+      "artifacts": [
+        "geometry-warp-{attempt}"
+      ],
+      "job_id": "geometry-warp",
+      "matrix": {},
+      "name": "Acceptance / Geometry completion / Geometry completion / D3D12 WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require D3D12 geometry pixels, affinity and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain WARP evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/geometry-completion.yml"
+    },
+    {
+      "artifacts": [
+        "geometry-linux-8.18-{attempt}"
+      ],
+      "job_id": "geometry-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Geometry completion / Geometry completion / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent document renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU geometry and independent PDF/SVG pixels",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain geometry captures and evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/geometry-completion.yml"
+    },
+    {
+      "artifacts": [
+        "geometry-linux-9.3-{attempt}"
+      ],
+      "job_id": "geometry-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Geometry completion / Geometry completion / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent document renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU geometry and independent PDF/SVG pixels",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain geometry captures and evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/geometry-completion.yml"
+    },
+    {
+      "artifacts": [
+        "global-caches-linux-8.18-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Global caches and memory statistics / Global caches / Linux / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install native runtime dependencies",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require native cache controls and independent evidence",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete cache evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/global-caches.yml"
+    },
+    {
+      "artifacts": [
+        "global-caches-linux-9.3-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Global caches and memory statistics / Global caches / Linux / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install native runtime dependencies",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require native cache controls and independent evidence",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete cache evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/global-caches.yml"
+    },
+    {
+      "artifacts": [
+        "global-caches-windows-{attempt}"
+      ],
+      "job_id": "windows",
+      "matrix": {},
+      "name": "Acceptance / Global caches and memory statistics / Global caches / Windows / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Require native cache controls and independent evidence",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Retain complete cache evidence",
+          "number": 7
+        }
+      ],
+      "workflow": ".github/workflows/global-caches.yml"
+    },
+    {
+      "artifacts": [
+        "integer-pixels-linux-8.18-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Integer pixel storage / Integer pixel storage / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain integer pixel evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/integer-pixels.yml"
+    },
+    {
+      "artifacts": [
+        "integer-pixels-linux-9.3-{attempt}"
+      ],
+      "job_id": "pixels-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Integer pixel storage / Integer pixel storage / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain integer pixel evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/integer-pixels.yml"
+    },
+    {
+      "artifacts": [
+        "integer-pixels-windows-{attempt}"
+      ],
+      "job_id": "pixels-windows",
+      "matrix": {},
+      "name": "Acceptance / Integer pixel storage / Integer pixel storage / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install document inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, WARP pixels and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/integer-pixels.yml"
+    },
+    {
+      "artifacts": [
+        "text-blobs-linux-8.18-{attempt}"
+      ],
+      "job_id": "text-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Multi-run text blobs / Text blobs / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain text blob evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/text-blobs.yml"
+    },
+    {
+      "artifacts": [
+        "text-blobs-linux-9.3-{attempt}"
+      ],
+      "job_id": "text-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Multi-run text blobs / Text blobs / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders, Mesa and independent renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, GPU pixels and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain text blob evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/text-blobs.yml"
+    },
+    {
+      "artifacts": [
+        "text-blobs-windows-{attempt}"
+      ],
+      "job_id": "text-windows",
+      "matrix": {},
+      "name": "Acceptance / Multi-run text blobs / Text blobs / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install document inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require selected regressions, WARP pixels and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/text-blobs.yml"
+    },
+    {
+      "artifacts": [
+        "streams-linux-8.18-{attempt}"
+      ],
+      "job_id": "streams-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Native streams and buffered ports / Native streams / Linux / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install native runtime dependencies",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require stream ownership, buffered ports and native byte oracles",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain native bytes and complete command logs",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/streams.yml"
+    },
+    {
+      "artifacts": [
+        "streams-linux-9.3-{attempt}"
+      ],
+      "job_id": "streams-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Native streams and buffered ports / Native streams / Linux / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install native runtime dependencies",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require stream ownership, buffered ports and native byte oracles",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain native bytes and complete command logs",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/streams.yml"
+    },
+    {
+      "artifacts": [
+        "streams-windows-{attempt}"
+      ],
+      "job_id": "streams-windows",
+      "matrix": {},
+      "name": "Acceptance / Native streams and buffered ports / Native streams / Windows / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Require stream ownership, buffered ports and native byte oracles",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Retain native bytes and complete command logs",
+          "number": 7
+        }
+      ],
+      "workflow": ".github/workflows/streams.yml"
+    },
+    {
+      "artifacts": [],
+      "job_id": "regression-scope",
+      "matrix": {},
+      "name": "Acceptance / Select regression scope",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": "Match the central CI triggers",
+          "number": 3
+        }
+      ],
+      "workflow": ".github/workflows/acceptance.yml"
+    },
+    {
+      "artifacts": [
+        "typefaces-linux-8.18-{attempt}"
+      ],
+      "job_id": "typefaces-linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Typeface resources / Typeface resources / Linux / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders and independent document renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require typeface resources and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain typeface evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/typefaces.yml"
+    },
+    {
+      "artifacts": [
+        "typefaces-linux-9.3-{attempt}"
+      ],
+      "job_id": "typefaces-linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Typeface resources / Typeface resources / Linux / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install fonts, loaders and independent document renderers",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require typeface resources and independent PDF/SVG rendering",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain typeface evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/typefaces.yml"
+    },
+    {
+      "artifacts": [
+        "typefaces-windows-{attempt}"
+      ],
+      "job_id": "typefaces-windows",
+      "matrix": {},
+      "name": "Acceptance / Typeface resources / Typeface resources / Windows / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Check source and install inspector dependencies",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require typeface resources and document structure",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain Windows evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/typefaces.yml"
+    },
+    {
+      "artifacts": [
+        "render-canvas-linux-8.18-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "8.18"
+      },
+      "name": "Acceptance / Unified render canvas / Render canvas / Linux Mesa / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install Mesa, GUI runtime, fonts and virtual display",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Source contracts and actual example compilation",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Global pure regressions (standalone mode)",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Require common API and staging reuse",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Retain all logs, receipt checks and backing pixels",
+          "number": 10
+        }
+      ],
+      "workflow": ".github/workflows/render-canvas.yml"
+    },
+    {
+      "artifacts": [
+        "render-canvas-linux-9.3-{attempt}"
+      ],
+      "job_id": "linux",
+      "matrix": {
+        "racket": "9.3"
+      },
+      "name": "Acceptance / Unified render canvas / Render canvas / Linux Mesa / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install Mesa, GUI runtime, fonts and virtual display",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Source contracts and actual example compilation",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Global pure regressions (standalone mode)",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 8
+        },
+        {
+          "expected": "success",
+          "name": "Require common API and staging reuse",
+          "number": 9
+        },
+        {
+          "expected": "success",
+          "name": "Retain all logs, receipt checks and backing pixels",
+          "number": 10
+        }
+      ],
+      "workflow": ".github/workflows/render-canvas.yml"
+    },
+    {
+      "artifacts": [
+        "render-canvas-windows-warp-{attempt}"
+      ],
+      "job_id": "windows",
+      "matrix": {},
+      "name": "Acceptance / Unified render canvas / Render canvas / Windows WARP / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Source contracts",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install pinned native libraries",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Require common API and staging reuse using explicit WARP",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Retain all logs, receipt checks and backing pixels",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/render-canvas.yml"
+    },
+    {
+      "artifacts": [],
+      "job_id": "required",
+      "matrix": {},
+      "name": "CI / CI required",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": "Require every lane (skipped and cancelled are not passes)",
+          "number": 2
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-linux-x64-{attempt}"
+      ],
+      "job_id": "cpu",
+      "matrix": {
+        "architecture": "x64",
+        "id": "linux-x64",
+        "os": "unix",
+        "racket": "9.3",
+        "racket_arch": "x86_64",
+        "runner": "ubuntu-24.04"
+      },
+      "name": "CI / CPU linux-x64 / Racket 9.3",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Linux runtime libraries and fonts",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Test an isolated installed source package",
+          "number": 6
+        },
+        {
+          "expected": "skipped",
+          "name": "Compile and verify Metal interop Apple SDK ABI",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep CPU/native/package evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-macos-arm64-{attempt}"
+      ],
+      "job_id": "cpu",
+      "matrix": {
+        "architecture": "arm64",
+        "id": "macos-arm64",
+        "os": "macosx",
+        "racket": "9.3",
+        "racket_arch": "aarch64",
+        "runner": "macos-15"
+      },
+      "name": "CI / CPU macos-arm64 / Racket 9.3",
+      "runner": "macos-15",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "skipped",
+          "name": "Linux runtime libraries and fonts",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Test an isolated installed source package",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Compile and verify Metal interop Apple SDK ABI",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep CPU/native/package evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-macos-x64-{attempt}"
+      ],
+      "job_id": "cpu",
+      "matrix": {
+        "architecture": "x64",
+        "id": "macos-x64",
+        "os": "macosx",
+        "racket": "9.3",
+        "racket_arch": "x86_64",
+        "runner": "macos-15-intel"
+      },
+      "name": "CI / CPU macos-x64 / Racket 9.3",
+      "runner": "macos-15-intel",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "skipped",
+          "name": "Linux runtime libraries and fonts",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Test an isolated installed source package",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Compile and verify Metal interop Apple SDK ABI",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep CPU/native/package evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-minimum-racket-{attempt}"
+      ],
+      "job_id": "cpu",
+      "matrix": {
+        "architecture": "x64",
+        "id": "minimum-racket",
+        "os": "unix",
+        "racket": "8.18",
+        "racket_arch": "x86_64",
+        "runner": "ubuntu-24.04"
+      },
+      "name": "CI / CPU minimum-racket / Racket 8.18",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Linux runtime libraries and fonts",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Test an isolated installed source package",
+          "number": 6
+        },
+        {
+          "expected": "skipped",
+          "name": "Compile and verify Metal interop Apple SDK ABI",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep CPU/native/package evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-windows-x64-{attempt}"
+      ],
+      "job_id": "cpu",
+      "matrix": {
+        "architecture": "x64",
+        "id": "windows-x64",
+        "os": "windows",
+        "racket": "9.3",
+        "racket_arch": "x86_64",
+        "runner": "windows-2022"
+      },
+      "name": "CI / CPU windows-x64 / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "skipped",
+          "name": "Linux runtime libraries and fonts",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Test an isolated installed source package",
+          "number": 6
+        },
+        {
+          "expected": "skipped",
+          "name": "Compile and verify Metal interop Apple SDK ABI",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep CPU/native/package evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-d3d12-interop-{attempt}",
+        "ci-d3d12-warp-{attempt}"
+      ],
+      "job_id": "d3d12",
+      "matrix": {},
+      "name": "CI / Required D3D12 WARP / Windows x64 / Racket 9.3",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Required installed-package D3D12 WARP sequence",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Required independent D3D12 interop producer and consumer",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Keep D3D12 reports, pixels and command logs, including failures",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep Direct3D interop reports and independent consumer pixels",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-dxgi-warp-{attempt}"
+      ],
+      "job_id": "dxgi",
+      "matrix": {},
+      "name": "CI / Required DXGI presentation / D3D12 WARP",
+      "runner": "windows-2022",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Required installed-package WARP swap-chain validation",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Keep DXGI reports, real back-buffer pixels and command logs",
+          "number": 6
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-egl-pbuffer-{attempt}"
+      ],
+      "job_id": "egl",
+      "matrix": {
+        "architecture": "x64",
+        "id": "egl-pbuffer",
+        "os": "unix",
+        "racket": "9.3",
+        "racket_arch": "x86_64",
+        "runner": "ubuntu-24.04",
+        "surface": "pbuffer"
+      },
+      "name": "CI / Required EGL pbuffer / llvmpipe",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install Mesa and CPU runtime dependencies (no display server)",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Required installed-package EGL/Ganesh sequence",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Keep EGL reports and actual visual outputs, including failures",
+          "number": 7
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-egl-surfaceless-{attempt}"
+      ],
+      "job_id": "egl",
+      "matrix": {
+        "architecture": "x64",
+        "id": "egl-surfaceless",
+        "os": "unix",
+        "racket": "9.3",
+        "racket_arch": "x86_64",
+        "runner": "ubuntu-24.04",
+        "surface": "surfaceless"
+      },
+      "name": "CI / Required EGL surfaceless / llvmpipe",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Install Mesa and CPU runtime dependencies (no display server)",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Required installed-package EGL/Ganesh sequence",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Keep EGL reports and actual visual outputs, including failures",
+          "number": 7
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-canvas-linux-x64-{attempt}"
+      ],
+      "job_id": "canvas",
+      "matrix": {},
+      "name": "CI / Required raster Skia canvas / Linux Xvfb",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Raster GUI runtime, fonts and virtual display",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Required installed-package raster GUI canvas validation",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Keep raster canvas GUI reports and command logs",
+          "number": 7
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    },
+    {
+      "artifacts": [
+        "ci-source-{attempt}"
+      ],
+      "job_id": "source",
+      "matrix": {},
+      "name": "CI / Source and CI contracts",
+      "runner": "ubuntu-24.04",
+      "steps": [
+        {
+          "expected": "success",
+          "name": null,
+          "number": 2
+        },
+        {
+          "expected": "success",
+          "name": null,
+          "number": 3
+        },
+        {
+          "expected": "success",
+          "name": "Source-check system tools",
+          "number": 4
+        },
+        {
+          "expected": "success",
+          "name": "Validate and publish the matrix",
+          "number": 5
+        },
+        {
+          "expected": "success",
+          "name": "Install source inspector dependencies",
+          "number": 6
+        },
+        {
+          "expected": "success",
+          "name": "Source, inspector, installer, and CI regressions",
+          "number": 7
+        },
+        {
+          "expected": "success",
+          "name": "Keep source-check evidence",
+          "number": 8
+        }
+      ],
+      "workflow": ".github/workflows/ci.yml"
+    }
+  ],
+  "needs": [
+    "acceptance",
+    "ci",
+    "inventory"
+  ],
+  "package_version": "0.78",
+  "release_ready": false,
+  "schema": 1,
+  "self_job": "Release candidate required",
+  "stage": "0.78d",
+  "workflow": ".github/workflows/release-candidate.yml",
+  "workflow_sources": {
+    ".github/workflows/acceptance.yml": "92d8dcbfd57cfac73744f07fa29665012824e81dbbcd22a0969bec5b40182f4f",
+    ".github/workflows/advanced-canvases.yml": "57bba9fb5e3eae3e1644e64fa420d5c059f35fec7942e0ef711a89f181540c34",
+    ".github/workflows/api-inventory.yml": "13b047298149e92a2ef7e6c5bd8102b05bb09d659b7eadec4072f7055cc19335",
+    ".github/workflows/ci.yml": "59718bff94928d5e521a52c9fa36576bc5496f08c806c60b60037dc6697530df",
+    ".github/workflows/codec-queries.yml": "9d1c55901a2ca349effa67410e172fd5929a87801e5f846f7bd89a7c928a8d79",
+    ".github/workflows/dc-output.yml": "34c848fb5646644cf740ee49093685d22a3f3b70ede0f0494432aeea008c1f5d",
+    ".github/workflows/effects.yml": "0cd2eba4af8257d6d3a2a72ac976de410e79c16494bd2629579ded472503fa84",
+    ".github/workflows/float-pixels.yml": "1cabd34cb8264a373a9e2c8d20553a7c6d335a6e896872fad599ab2536ab9a0f",
+    ".github/workflows/font-queries.yml": "13f5997097bb248852853667e0fa34fa413a1b9dde7d18955479ece1bc60e232",
+    ".github/workflows/geometry-completion.yml": "829fd45a2d51e3d2196d281b70b5e63850bd44c307e46c5395d4f436aeb9d00a",
+    ".github/workflows/global-caches.yml": "786a7c0283c5a9836559e01cd6fc1b90869c26f070239e7b6e0d8918ede483f9",
+    ".github/workflows/gpu-context-controls.yml": "5785db1d6457ec2a3cbfb77059c5a19f56fb3a84784639dfef2c4d6fcfb17605",
+    ".github/workflows/gpu-dc.yml": "b745321a3942b296f86a4c125eaf54a264b8b91051e1f6cddfed1ee523a829df",
+    ".github/workflows/gpu-formats.yml": "07064220263e4778a507318adad9f3aef168c89cb06b6b13f464ab27649cc4bc",
+    ".github/workflows/image-operations.yml": "fcca1f456ca9d6440d99aa33d5215f56431d6fd177b430ba20e92a8c7d63513c",
+    ".github/workflows/integer-pixels.yml": "b10df7ed7bd4c6d039d69239b96c5dc3934089500320f3193bb92a5f569b7cba",
+    ".github/workflows/release-candidate.yml": "ee0b2e8a78248e07ffc1c25a95d1ca5c834f3dbf1a2a600bc5bb24971a475251",
+    ".github/workflows/render-canvas.yml": "d414afcdc2e0494ebeccf4dc753f4b1e551bd363047877090393473f49f5850c",
+    ".github/workflows/streams.yml": "e752477496427754ae2cdbdb64b8e20aa6b80140ce4ef5f9f8d32b227e6a741e",
+    ".github/workflows/text-blobs.yml": "074a1b2ccaa66be1dee820a723436bfe2a24dd7bf606ecec842cc395efd77892",
+    ".github/workflows/typefaces.yml": "50df5dfe8897327cb073d69b7fc0ff4e249211db962254d7a1d09d773e531df4",
+    "tools/ci-matrix.json": "b3e7f9298c6694337234d39eae47a66217d056ff97dc38b8b6d2ba5cdf7771e9",
+    "tools/ci_matrix.py": "d799db9446dd27784a58a8f6e101ff6bc63d702a793b351b5e31cc510ee25044",
+    "tools/validation_regressions.py": "f6aaef346fe50b0fa9900d22bea79007b3540180f2c89a3f18bf64f3622b3634"
+  }
+}

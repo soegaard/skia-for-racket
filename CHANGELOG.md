@@ -1203,3 +1203,7 @@ Add native-backed detached XYZ-D50 composition/inversion and focused argument, n
 ## 0.78c — Public API and documentation stabilization (package 0.78)
 
 Add an explicit module stability/import policy and exact runtime-reflected public API snapshots. Add fail-closed observation/compatibility checks, reflection fixtures, aggregate-runner compilation, public examples, and consolidated ownership/error/output contracts. Run headless and GUI reflection under required Linux Racket 8.18/9.3 API inventory lanes. Retain the 0.78b capability decisions, native bindings, package version, and accepted GPU/CPU behavior. Signature validation is not a 1.0 release approval.
+
+## 0.78d — Release candidate validation (package 0.78)
+
+Add a manual same-commit reusable-workflow coordinator, frozen exhaustive workflow/matrix policy, same-attempt job/step and artifact verification, bounded credential-safe evidence retrieval, and deterministic source packaging. Preserve every Racket file, API snapshot, native binding, capability decision and existing acceptance lane. Source-only validation remains distinct from executed release-candidate acceptance; publication and version 1.0 approval remain separate.

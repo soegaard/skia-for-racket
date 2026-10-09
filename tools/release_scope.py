@@ -212,6 +212,19 @@ def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -
              'examples/public/value-basics.rkt',
              'examples/public/raster-lifetime.rkt',
              }
+    names.update({
+        'api/release-candidate-policy.json',
+        'docs/RELEASE-CANDIDATE.md',
+        'docs/RELEASE-CANDIDATE-MATRIX.md',
+        '.github/workflows/release-candidate.yml',
+        'tools/release_graph.py',
+        'tools/release_candidate.py',
+        'tools/validate-release-candidate.py',
+        'tools/test-release-candidate.py',
+        'tools/release-requirements.txt',
+        'tools/dc-output-requirements.txt',
+        'tools/test-validation-regressions.py',
+    })
     for cap in catalog['features']['capabilities']:
         names.update(cap['test_sources'])
     for name in sorted(names):

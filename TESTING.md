@@ -724,3 +724,7 @@ Color management passed; sRGB/linear tagging, ICC round-trip, and conversion ver
 
 Version 0.19 requires **237 Skia** symbols and **27 HarfBuzz** symbols, both
 with zero missing. It adds no native ABI structs.
+
+## 0.78d candidate gate
+
+Run `python3 tools/test-release-candidate.py` and `python3 tools/validate-release-candidate.py --source-only` for source policy checks. They do not certify runtime acceptance. Dispatch **Release candidate** for fresh isolated CPU/GPU/document/consumer and API validation in one workflow attempt. Use Re-run all jobs, not a mixed-attempt rerun. See [the release contract](docs/RELEASE-CANDIDATE.md).

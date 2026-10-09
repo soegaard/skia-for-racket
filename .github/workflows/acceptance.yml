@@ -3,6 +3,11 @@ name: Acceptance
 "on":
   push:
   pull_request:
+  workflow_call:
+    inputs:
+      regressions:
+        type: string
+        default: 'full'
   workflow_dispatch:
     inputs:
       regressions:
@@ -15,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: acceptance-${{ github.ref }}
+  group: acceptance-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 # Central CI owns full regressions on PRs, main pushes and v* tags.

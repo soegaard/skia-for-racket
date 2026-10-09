@@ -385,6 +385,12 @@ Examples must use public APIs. Source availability is not runtime evidence.
 
 ## 0.78d — Release candidate validation
 
+Implementation: the manual Release candidate coordinator calls the same-commit CI,
+full Acceptance and API inventory workflows. A frozen expanded job/step/artifact
+policy rejects incomplete or mixed-attempt evidence. Verified evidence and a
+deterministic source ZIP are retained. See `docs/RELEASE-CANDIDATE.md`.
+Implementation is not acceptance: require a successful fresh candidate run.
+
 Require current isolated installation, minimum Racket/platform support,
 CPU/GPU/document and real-consumer acceptance, plus the authoritative release
 gate. No mandatory lane may be skipped or left outside that decision. Zero
@@ -452,12 +458,11 @@ Success means that users can perform the important missing tasks, not that every
 
 ## Recommended next implementation
 
-After accepting 0.78c API/documentation stabilization, implement 0.78d
-release-candidate validation. Retain exact public-signature checks and the
-0.78b closed scope (XYZ-D50 helpers and the explicit null-surface exclusion).
-The final gate must combine current isolated installation, minimum-version,
-CPU/GPU/document and real-consumer evidence. A source audit or an assumed
-green earlier baseline is not a release approval.
+Run and accept the implemented 0.78d release-candidate gate before claiming
+candidate readiness. Review the exact source archive and execution evidence;
+publishing or changing the package version is a separate decision. Then select
+a named extended workstream (G1/G2, U1/U2/U3, H1 or X1) according to priorities,
+without silently broadening the accepted m119/PDF/SVG-focused scope.
 
 ## Sources
 

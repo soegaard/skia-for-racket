@@ -1,3 +1,4 @@
 # Inspector-only dependencies. The Racket library has no Python dependency.
 pypdf==5.9.0
 Pillow>=11,<13
+-r release-requirements.txt

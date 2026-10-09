@@ -1,0 +1,2 @@
+# Workflow parsing only. This adds no Racket/native runtime dependency.
+PyYAML==6.0.3

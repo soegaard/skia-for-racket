@@ -3,6 +3,7 @@ name: API inventory
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:
@@ -24,6 +25,8 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Install release graph parser
+        run: python -m pip install -r tools/release-requirements.txt
       - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
         with:
           version: ${{ matrix.racket }}
@@ -38,6 +41,7 @@ jobs:
           python tools/test-release-scope.py
           python tools/test-small-gaps.py
           python tools/test-public-api.py
+          python tools/test-release-candidate.py
           python tools/validate-release-scope.py --require-no-open-gaps --racket "$(command -v racket)" --directory output/release-scope-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
