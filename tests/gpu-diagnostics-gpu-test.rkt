@@ -3,7 +3,6 @@
 (require racket/cmdline racket/file racket/path racket/list json rackunit rackunit/text-ui
          ffi/unsafe
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../private/gpu-io-trace.rkt"
-         (only-in "../private/gpu-provider.rkt" gpu-provider-resolve)
          (only-in "../private/gpu-gl-interface.rkt" create-gl-interface/native)
          (only-in "../private/gpu-native.rkt" gr_glinterface_unref)
          (only-in "../private/live-port-runtime.rkt" in-port-service?))
@@ -25,11 +24,23 @@
   (define result (make-bytes n))
   (unless (zero? n) (memcpy result pointer n))
   (bytes->string/utf-8 result #f))
+(define (host-gl-resolver)
+  ;; Look up host GL symbols without borrowing an already-owned EGL context.
+  ;; This is not a GPU provider and never creates a second Ganesh wrapper.
+  (define egl (ffi-lib "libEGL.so.1"))
+  (define get-proc-address
+    (get-ffi-obj "eglGetProcAddress" egl (_fun _string/utf-8 -> _pointer)))
+  (define gl
+    (or (ffi-lib "libOpenGL.so.0" #:fail (lambda () #f))
+        (ffi-lib "libGL.so.1" #:fail (lambda () #f))))
+  (lambda (name)
+    (or (get-proc-address name)
+        (get-ffi-obj name egl _fpointer (lambda () #f))
+        (and gl (get-ffi-obj name gl _fpointer (lambda () #f))))))
 (define (first-host-extension)
-  ;; Independent driver query, not another call to the implementation under test.
+  ;; Independently query the active native driver rather than the Skia interface.
   ;; Required Linux EGL uses a desktop context with indexed GL extensions.
-  (define p (make-current-egl-gpu-provider))
-  (define resolve (gpu-provider-resolve p))
+  (define resolve (host-gl-resolver))
   (define get-int-p (resolve "glGetIntegerv"))
   (define get-string-p (resolve "glGetStringi"))
   (unless (and get-int-p get-string-p) (error 'gpu-diagnostics-test "indexed GL extensions unavailable"))
@@ -39,7 +50,7 @@
   (get-int #x821d count) ; GL_NUM_EXTENSIONS
   (unless (positive? (ptr-ref count _int)) (error 'gpu-diagnostics-test "host reports no GL extensions"))
   (define result (native-string (get-string #x1f03 0) 255))
-  (void/reference-sink p resolve get-int get-string)
+  (void/reference-sink resolve get-int get-string)
   result)
 (module+ main
   (define backend 'auto) (define adapter 'hardware) (define report-path #f) (define token #f)
@@ -182,6 +193,11 @@
         (lambda ()
           (if (eq? backend 'egl)
               (active (lambda ()
+                ;; Capturing the already-owned context as another provider is forbidden.
+                (check-exn
+                  (lambda (e) (and (exn:fail:gpu:unavailable? e)
+                                   (eq? (exn:fail:gpu:unavailable-step e) 'egl-current-ownership)))
+                  (lambda () (make-current-egl-gpu-provider)))
                 (set! extension (first-host-extension))
                 (define info (trace! "gl-info" (lambda () (gpu-gl-interface-info c))))
                 (check-equal? (hash-ref info 'factory) "assembled-desktop-gl")
@@ -214,7 +230,15 @@
         (lambda ()
           (when (eq? backend 'egl)
             (active (lambda ()
-              (define provider (make-current-egl-gpu-provider))
+              ;; Resolver-only probe. It cannot activate or wrap the owned EGL context.
+              (define provider
+                (make-gpu-provider
+                  #:name 'gl-diagnostics-probe #:backend 'opengl
+                  #:key (gensym 'gl-diagnostics-probe)
+                  #:call-as-current
+                  (lambda (_) (error 'gl-diagnostics-probe "not a GPU activation provider"))
+                  #:current? (lambda () #f)
+                  #:get-proc-address (host-gl-resolver)))
               (for ([mode '(gles webgl)])
                 (check-exn
                   (lambda (e) (and (exn:fail:gpu:unavailable? e)
