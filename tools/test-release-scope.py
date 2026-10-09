@@ -20,6 +20,14 @@ from unittest.mock import patch
 import release_scope as r
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = r.read_json(ROOT / r.POLICY)
+# These are hypothetical pending scenarios, not the current repository status.
+# Keeping them exercises rejection/closure gates after real 0.78b closure.
+POLICY = copy.deepcopy(POLICY)
+for _fixture_id in ('colors.xyz-ops', 'surfaces.null'):
+    POLICY['decisions'][_fixture_id] = dict(
+        resolution='pending', target='0.78b',
+        reason='Synthetic pending-family scenario; not current source support.',
+        acceptance='Synthetic closure gate; not native execution evidence.')
 
 
 def synthetic_catalog():
@@ -330,7 +338,7 @@ class RepositoryIntegration(unittest.TestCase):
     def test_required_ci_and_no_new_automatic_workflow(self):
         ci=(ROOT/'tools/ci.py').read_text(encoding='utf-8');self.assertIn("'test-release-scope.py'",ci)
         workflow=(ROOT/'.github/workflows/api-inventory.yml').read_text(encoding='utf-8')
-        self.assertIn('python tools/validate-release-scope.py --racket',workflow)
+        self.assertIn('python tools/validate-release-scope.py --require-no-open-gaps --racket',workflow)
         self.assertIn('output/release-scope-ci/',workflow)
         self.assertNotIn('continue-on-error:',workflow)
         auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}

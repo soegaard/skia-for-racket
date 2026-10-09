@@ -137,3 +137,42 @@
     (lambda (cp)
       (define m (blank-xyz))
       (and (sk_colorspace_to_xyzd50 cp m) (xyz-value m)))))
+
+;; 0.78b: detached XYZ-D50 matrix arithmetic. These are color-space matrices,
+;; not geometric/projective matrices and not an encoded-pixel conversion API.
+(provide xyz-d50-concat xyz-d50-invert)
+
+(define (xyz-finite? v)
+  (for/and ([x (in-vector v)]) (< -inf.0 x +inf.0)))
+
+(define (xyz-d50-concat a b)
+  (define who 'xyz-d50-concat)
+  ;; Unlike a gamut accepted by make-rgb-color-space, a matrix participating in
+  ;; arithmetic may be singular. Validate and copy BOTH inputs before native
+  ;; loading; no caller-owned vector or in-place native output is borrowed.
+  (define av (color-sequence who a 9 "nine finite row-major XYZ-D50 coefficients"))
+  (define bv (color-sequence who b 9 "nine finite row-major XYZ-D50 coefficients"))
+  (skia-check!)
+  (define an (apply make-sk-xyz (vector->list av)))
+  (define bn (apply make-sk-xyz (vector->list bv)))
+  (define out (blank-xyz))
+  ;; skcms computes a*b: with column samples, b is applied first.
+  (sk_colorspace_xyz_concat an bn out)
+  (define result (xyz-value out))
+  (void/reference-sink an bn out av bv)
+  (unless (xyz-finite? result)
+    (error who "native XYZ-D50 concatenation produced a nonfinite binary32 result"))
+  result)
+
+(define (xyz-d50-invert matrix)
+  (define who 'xyz-d50-invert)
+  (define v (color-sequence who matrix 9 "nine finite row-major XYZ-D50 coefficients"))
+  (skia-check!)
+  (define src (apply make-sk-xyz (vector->list v)))
+  ;; skcms explicitly forbids aliasing the inversion input and output.
+  (define out (blank-xyz))
+  (define result
+    (and (sk_colorspace_xyz_invert src out)
+         (let ([value (xyz-value out)]) (and (xyz-finite? value) value))))
+  (void/reference-sink src out v)
+  result)

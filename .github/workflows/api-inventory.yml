@@ -36,7 +36,8 @@ jobs:
           python tools/test-api-inventory.py
           python tools/api-inventory.py --check
           python tools/test-release-scope.py
-          python tools/validate-release-scope.py --racket "$(command -v racket)" --directory output/release-scope-ci
+          python tools/test-small-gaps.py
+          python tools/validate-release-scope.py --require-no-open-gaps --racket "$(command -v racket)" --directory output/release-scope-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: mono/skia
@@ -63,6 +64,8 @@ jobs:
             --skiasharp-source output/api-upstream/skiasharp \
             --native-library native/linux-x64/libSkiaSharp.so \
             --directory output/api-inventory-ci
+      - name: Require XYZ-D50 and native no-draw acceptance
+        run: python tools/validate-small-gaps.py --racket "$(command -v racket)" --directory output/small-gaps-ci
       - name: Retain source hashes, symbol observations and gate result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -71,5 +74,6 @@ jobs:
           path: |
             output/api-inventory-ci/
             output/release-scope-ci/
+            output/small-gaps-ci/
           if-no-files-found: warn
           retention-days: 14

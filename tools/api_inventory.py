@@ -20,8 +20,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = 1
-STAGE = "0.78a"
-BASELINE = "3d908fd83ff0f9e2bb2855f538235e6e46e432fd"
+STAGE = "0.78b"
+BASELINE = "4a6082274e06456aa385fa9337c31528f2f44a4a"
 HISTORICAL_BASELINE = "9d832d3ec9a8fe6b93298d6ac03783ee57ab7f36"
 SKIA_COMMIT = "40f75dc0051d141913c07c20d4c19590c7da0cb7"
 SHARP_COMMIT = "cc78b5933d23e6383db5d246e70db915770d55d6"
@@ -417,7 +417,7 @@ def validate_sources(root: Path, catalog: dict) -> dict:
             require(ref["name"] in names, f"public declaration not found: {ref['module']}:{ref['name']} ({f['id']})")
             anchors.append(ref)
     info = safe_file(root, "info.rkt").read_text()
-    for term in ('(define version "0.77")', '("base" #:version "8.18")', '("draw-lib" #:version "1.22")'):
+    for term in ('(define version "0.78")', '("base" #:version "8.18")', '("draw-lib" #:version "1.22")'):
         require(term in info, "package version/minimum mismatch: " + term)
     require(safe_file(root, "private/native-default-version.txt").read_text().strip() == "3.119.1", "native pin changed without inventory review")
     required.update(("info.rkt", "private/native-default-version.txt"))

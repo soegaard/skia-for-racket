@@ -61,7 +61,7 @@ def synthetic_tree(root: Path):
     shutil.copyfile(ROOT / "private/live-port-native.rkt", root / "private/live-port-native.rkt")
     shutil.copyfile(ROOT / "api/live-stream-ffi.json", root / "api/live-stream-ffi.json")
     (root / "private/native-default-version.txt").write_text("3.119.1\n")
-    (root / "info.rkt").write_text('#lang info\n(define version "0.77")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
+    (root / "info.rkt").write_text('#lang info\n(define version "0.78")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
     inv.check_report(root, CATALOG, write=True)
     (root / "tools").mkdir(exist_ok=True)
     # The real manifest validator is independently tested in existing source CI.
@@ -81,8 +81,8 @@ class Catalog(unittest.TestCase):
         result = inv.validate_catalog(CATALOG)
         self.assertEqual(result["c_function_declarations"], 849)
         self.assertEqual(result["managed_source_files"], 86)
-        self.assertEqual(result["distinct_bound_symbols"], 676)
-        self.assertEqual(result["cpu_bound_symbols"], 607)
+        self.assertEqual(result["distinct_bound_symbols"], 678)
+        self.assertEqual(result["cpu_bound_symbols"], 609)
     def test_every_symbol_has_exactly_one_primary_disposition(self):
         assigned = [s for f in CATALOG["features"]["capabilities"] for s in f["native_symbols"]]
         self.assertEqual(len(assigned), len(set(assigned)))
@@ -141,8 +141,8 @@ changes = {
  'invented_pass': lambda c: c['features']['capabilities'][0].update(execution_evidence='passed'),
  'missing_limit': lambda c: c['features']['capabilities'][0].update(limitations=''),
  'bad_binding_claim': lambda c: c['features']['capabilities'][0].update(bindings_expected=[]),
- 'bad_unbound_claim': lambda c: mutate_cap(c,'colors.xyz-ops','unbound_declarations',[]),
- 'unplanned_missing': lambda c: mutate_cap(c,'colors.xyz-ops','planned_stage',None),
+ 'bad_unbound_claim': lambda c: mutate_cap(c,'colors.xyz-ops','unbound_declarations',['sk_colorspace_xyz_concat']),
+ 'unplanned_missing': lambda c: mutate_cap(c,'gpu.vulkan','planned_stage',None),
  'future_as_m119': lambda c: mutate_cap(c,'future.variable-fonts','origin','m119'),
  'binding_only_public': lambda c: (mutate_cap(c,'streams.internal','status','bound-not-public'), mutate_cap(c,'streams.internal','public_equivalents',[{'module':'main.rkt','name':'make-font'}])),
  'supported_without_anchor': lambda c: mutate_cap(c,'paths.iteration','public_equivalents',[]),
@@ -247,7 +247,7 @@ class Sources(unittest.TestCase):
     def tearDown(self): self.temp.cleanup()
     def test_synthetic_complete_scope(self):
         r=inv.validate_sources(self.root,CATALOG)
-        self.assertEqual(len(r['binding_locations']),676);self.assertEqual(r['registry_count'],9)
+        self.assertEqual(len(r['binding_locations']),678);self.assertEqual(r['registry_count'],9)
         self.assertFalse(r['rendering_executed'])
     def test_missing_registry_fails(self):
         (self.root/'private/gpu-metal-interop-native.rkt').unlink()

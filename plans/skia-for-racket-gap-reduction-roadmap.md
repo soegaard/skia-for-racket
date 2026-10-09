@@ -364,6 +364,9 @@ readiness. `--require-no-open-gaps` fails until the in-scope backlog is closed.
 
 ## 0.78b — Close or explicitly justify the small remaining gaps
 
+Implementation: native XYZ-D50 helpers plus a reviewed null-surface exclusion;
+see `docs/SMALL-GAPS.md`. Acceptance still requires the new native suites.
+
 Review the current open ledger before implementation. Resolve null-surface
 semantics and XYZ-D50 convenience operations with real native/pure evidence,
 or an explicit justified exclusion. Do not add pointer-level convenience APIs
@@ -444,11 +447,12 @@ Success means that users can perform the important missing tasks, not that every
 
 ## Recommended next implementation
 
-Use the release-scope ledger rather than the superseded 0.65 starting point.
-The selected baseline includes 0.77c. Preserve that accepted implementation and
-resolve the two reviewed 0.78b families: null surfaces and XYZ-D50 helpers.
-API stabilization and the full release gate remain 0.78c and 0.78d. Source
-classification is not a replacement for backend execution evidence.
+0.78b adds native XYZ-D50 composition/inversion and explicitly excludes the
+null-surface factory, retaining scoped no-draw as a non-equivalent alternative.
+After its required source/native CI passes, proceed to 0.78c public API and
+documentation stabilization, then 0.78d release validation. Preserve the
+accepted 0.77c GPU implementation and owned-EGL CI fix. Source-policy closure
+does not replace execution evidence or mean a release is ready.
 
 ## Sources
 

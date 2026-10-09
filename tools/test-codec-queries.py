@@ -191,7 +191,7 @@ class Sources(unittest.TestCase):
         self.assertIn('test "$CODEC_QUERIES_RESULT" = success',self.text('.github/workflows/acceptance.yml'))
     def test_query_docs_and_numeric_version(self):
         for name in ('codec-scaled-dimensions','codec-supported-subset'):self.assertIn(name,self.text('docs/CODEC-QUERIES.md'))
-        self.assertIn('(define version "0.77")',self.text('info.rkt'))
+        self.assertIn('(define version "0.78")',self.text('info.rkt'))
     def test_split_visible(self):
         s=self.text('plans/skia-for-racket-gap-reduction-roadmap.md')
         for stage in ('0.76a','0.76b','0.76c'):self.assertIn('## '+stage,s)

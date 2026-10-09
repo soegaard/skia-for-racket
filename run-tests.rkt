@@ -1,4 +1,6 @@
 #lang racket/base
+(require "tests/small-gap-pure-test.rkt")
+(define-runtime-path small-gap-native-tests-file "tests/small-gap-native-test.rkt")
 (require "tests/release-scope-pure-test.rkt")
 (require racket/runtime-path "tests/gpu-diagnostics-pure-test.rkt")
 (define-runtime-path gpu-diagnostics-native-tests-file "tests/gpu-diagnostics-native-test.rkt")
@@ -103,7 +105,7 @@
    [("--pure") "Run only tests that do not load libSkiaSharp"
                  (set! pure-only? #t)]
    #:args () (void))
-  (define failures (+ (run-tests release-scope-pure-tests) (run-tests global-cache-pure-tests) (run-tests codec-incremental-pure-tests) (run-tests codec-scanline-pure-tests) (run-tests codec-query-pure-tests) (run-tests live-stream-pure-tests) (run-tests stream-pure-tests) (run-tests advanced-canvas-pure-tests) (run-tests gpu-format-pure-tests) (run-tests image-operation-pure-tests) (run-tests float-pixel-pure-tests) (run-tests integer-pixel-pure-tests) (run-tests text-blob-pure-tests) (run-tests font-query-pure-tests) (run-tests typeface-pure-tests) (run-tests geometry-completion-pure-tests) (run-tests effects-pure-tests) (run-tests dc-closure-pure-tests) (run-tests dc-output-pure-tests) (+ (+ (run-tests pure-tests) (run-tests gpu-diagnostics-pure-tests)) (run-tests gpu-context-control-pure-tests)) (run-tests lifetime-tests)
+  (define failures (+ (run-tests small-gap-pure-tests) (run-tests release-scope-pure-tests) (run-tests global-cache-pure-tests) (run-tests codec-incremental-pure-tests) (run-tests codec-scanline-pure-tests) (run-tests codec-query-pure-tests) (run-tests live-stream-pure-tests) (run-tests stream-pure-tests) (run-tests advanced-canvas-pure-tests) (run-tests gpu-format-pure-tests) (run-tests image-operation-pure-tests) (run-tests float-pixel-pure-tests) (run-tests integer-pixel-pure-tests) (run-tests text-blob-pure-tests) (run-tests font-query-pure-tests) (run-tests typeface-pure-tests) (run-tests geometry-completion-pure-tests) (run-tests effects-pure-tests) (run-tests dc-closure-pure-tests) (run-tests dc-output-pure-tests) (+ (+ (run-tests pure-tests) (run-tests gpu-diagnostics-pure-tests)) (run-tests gpu-context-control-pure-tests)) (run-tests lifetime-tests)
                       (run-tests gpu-frame-target-pure-tests)
                       (run-tests render-canvas-pure-tests)
                       (run-tests canvas-dc-pure-tests)
@@ -120,7 +122,7 @@
      ;; A missing/incompatible library is a failure, not a silently skipped test.
      (skia-check!)
      (set! failures
-           (+ failures (+ (+ (run-tests (dynamic-require global-cache-native-tests-file 'global-cache-native-tests)) (run-tests (dynamic-require gpu-diagnostics-native-tests-file 'gpu-diagnostics-native-tests))) (run-tests (dynamic-require gpu-context-control-native-tests-file 'gpu-context-control-native-tests))) (run-tests (dynamic-require codec-incremental-native-tests-file 'codec-incremental-native-tests)) (run-tests (dynamic-require codec-scanline-native-tests-file 'codec-scanline-native-tests)) (run-tests (dynamic-require codec-query-native-tests-file 'codec-query-native-tests)) (run-tests (dynamic-require live-stream-native-tests-file 'live-stream-native-tests))
+           (+ failures (+ (+ (run-tests (dynamic-require small-gap-native-tests-file 'small-gap-native-tests)) (run-tests (dynamic-require global-cache-native-tests-file 'global-cache-native-tests)) (run-tests (dynamic-require gpu-diagnostics-native-tests-file 'gpu-diagnostics-native-tests))) (run-tests (dynamic-require gpu-context-control-native-tests-file 'gpu-context-control-native-tests))) (run-tests (dynamic-require codec-incremental-native-tests-file 'codec-incremental-native-tests)) (run-tests (dynamic-require codec-scanline-native-tests-file 'codec-scanline-native-tests)) (run-tests (dynamic-require codec-query-native-tests-file 'codec-query-native-tests)) (run-tests (dynamic-require live-stream-native-tests-file 'live-stream-native-tests))
               (run-tests (dynamic-require stream-native-tests-file 'stream-native-tests))
               (run-tests (dynamic-require advanced-canvas-native-tests-file 'advanced-canvas-native-tests))
               (run-tests (dynamic-require gpu-format-native-tests-file 'gpu-format-native-tests))

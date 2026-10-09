@@ -38,10 +38,10 @@
       "target": "H1"
     },
     "colors.xyz-ops": {
-      "acceptance": "Provide typed/detached XYZ concatenation and inversion, or demonstrate an existing color-matrix equivalent with executable ordering, singularity, finite-value and dimensionality tests. No color conversion is inferred merely from matrix multiplication.",
-      "reason": "sk_colorspace_xyz_concat and sk_colorspace_xyz_invert remain unbound. Generic geometric matrices are not automatically a reviewed replacement for the color-space XYZ-D50 representation.",
-      "resolution": "pending",
-      "target": "0.78b"
+      "acceptance": "Require pure input/rounding and real native matrix-order, inverse, singular/overflow, detached-lifetime and RGB-space integration tests. Preserve no implicit encoded-pixel conversion and no raw-pointer exports.",
+      "reason": "Native-backed XYZ-D50 concatenation and inversion over detached immutable row-major nine-element vectors. Inputs are copied/rounded to binary32 and validated before native loading. Concatenation is a*b, applying b first to column samples; singular products are allowed and nonfinite results raise. Inversion returns #f on native failure or nonfinite output, including singularity after binary32 rounding. It does not certify conditioning. Input/output buffers never alias. This is matrix arithmetic, not transfer-function, alpha, ICC-intent, tone-mapping, metadata, or encoded-pixel conversion.",
+      "resolution": "limited",
+      "target": null
     },
     "data.unsafe-memory": {
       "acceptance": "Retain checked copied bytes and native-stream contracts; uninitialized public storage requires a separate explicit safety design.",
@@ -134,13 +134,13 @@
       "target": null
     },
     "surfaces.null": {
-      "acceptance": "Implement and test a safe null-surface contract, or explicitly exclude the surface factory with a reviewed rationale and documented no-draw alternative. Check zero/invalid extents, closure, borrowed canvases and snapshot limitations.",
-      "reason": "The pinned sk_surface_new_null declaration remains unbound. A scoped no-draw canvas already exists, but it does not establish a null surface with the same ownership, sizing, or snapshot behavior. Do not erase this gap using a canvas synonym.",
-      "resolution": "pending",
-      "target": "0.78b"
+      "acceptance": "Reconsider only for a concrete persistent-null-surface consumer with a reviewed storage-less surface kind, ownership, extents, borrowed-canvas closure, snapshot/readback/encoding rejection and output-audit/backend behavior. Retain actual native no-draw alternative tests without classifying them as null-surface implementation.",
+      "reason": "Intentionally exclude the native null-surface factory: the pinned surface has unknown image info and no image snapshot. No persistent-null-surface consumer is identified. The existing call-with-nodraw-canvas is a scoped diagnostic authoring alternative, not an implementation or equivalence claim for null-surface ownership/snapshots. Its borrowed canvas is not a surface, expires on return/error, and reports nodraw. No pixel readback/encoding or raster/GPU/document output is promised; conservative existing dimension and byte-limit gates are retained. See docs/SMALL-GAPS.md for reconsideration criteria.",
+      "resolution": "excluded",
+      "target": null
     }
   },
-  "reviewed_commit": "3d908fd83ff0f9e2bb2855f538235e6e46e432fd",
+  "reviewed_commit": "4a6082274e06456aa385fa9337c31528f2f44a4a",
   "schema": 1,
-  "stage": "0.78a"
+  "stage": "0.78b"
 }

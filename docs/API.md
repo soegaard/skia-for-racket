@@ -2688,3 +2688,7 @@ factory keywords, and the ownership/flush/completion distinctions.
 
 `gpu.rkt` re-exports `gpu-memory-statistics`, `gpu-gl-interface-info`, and
 `gpu-gl-has-extension?` from `gpu-diagnostics.rkt`. See [GPU-DIAGNOSTICS.md](GPU-DIAGNOSTICS.md).
+
+## XYZ-D50 arithmetic (0.78b)
+
+`xyz-d50-concat` and `xyz-d50-invert` operate on detached row-major nine-coefficient values. Concatenation is a*b; inverse failure returns `#f`. See [SMALL-GAPS.md](SMALL-GAPS.md) for binary32, finite-result, color-conversion and null-surface exclusion contracts. No native pointer enters the public API.

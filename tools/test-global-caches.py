@@ -183,7 +183,7 @@ class Sources(unittest.TestCase):
         self.assertIn('(run-tests global-cache-pure-tests)',self.text('run-tests.rkt'))
         self.assertIn("dynamic-require global-cache-native-tests-file 'global-cache-native-tests",self.text('run-tests.rkt'))
         self.assertIn("'test-global-caches.py'",self.text('tools/ci.py'))
-    def test_current_version(self):self.assertIn('(define version "0.77")',self.text('info.rkt'))
+    def test_current_version(self):self.assertIn('(define version "0.78")',self.text('info.rkt'))
     def test_workflow_wiring(self):
         self.assertIn('test "$GLOBAL_CACHES_RESULT" = success',self.text('.github/workflows/acceptance.yml'))
         child=self.text('.github/workflows/global-caches.yml')

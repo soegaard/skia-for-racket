@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "3d908fd83ff0f9e2bb2855f538235e6e46e432fd",
+  "baseline_commit": "4a6082274e06456aa385fa9337c31528f2f44a4a",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -5075,13 +5075,13 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
+      "backend_scope": "Native null-surface factory remains unbound. Existing diagnostic canvas reports nodraw, never raster or GPU.",
       "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "document_behavior": "No null-surface output/snapshot is provided. The scoped no-draw alternative is not a PDF/SVG target or bounded raster fallback.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "surfaces.null",
       "implementation_files": [],
-      "limitations": "The native null-surface factory remains unbound. call-with-nodraw-canvas is an existing no-output canvas path, not a demonstrated equivalent for surface ownership, sizing, and snapshot behavior. Resolve or explicitly exclude in 0.78b.",
+      "limitations": "Intentionally exclude the native null-surface factory: the pinned surface has unknown image info and no image snapshot. No persistent-null-surface consumer is identified. The existing call-with-nodraw-canvas is a scoped diagnostic authoring alternative, not an implementation or equivalence claim for null-surface ownership/snapshots. Its borrowed canvas is not a surface, expires on return/error, and reports nodraw. No pixel readback/encoding or raster/GPU/document output is promised; conservative existing dimension and byte-limit gates are retained. See docs/SMALL-GAPS.md for reconsideration criteria.",
       "managed_sources": [
         "binding/SkiaSharp/SKSurface.cs",
         "binding/SkiaSharp/SKNoDrawCanvas.cs"
@@ -5090,10 +5090,13 @@
         "sk_surface_new_null"
       ],
       "origin": "m119",
-      "planned_stage": "0.78b",
+      "planned_stage": null,
       "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "status": "intentionally-excluded",
+      "test_sources": [
+        "tests/small-gap-pure-test.rkt",
+        "tests/small-gap-native-test.rkt"
+      ],
       "title": "Null surface / no-draw target",
       "unbound_declarations": [
         "sk_surface_new_null"
@@ -6341,13 +6344,20 @@
       ]
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Native CPU-side matrix arithmetic over detached values; no GPU context required or GPU execution claimed.",
+      "bindings_expected": [
+        "sk_colorspace_xyz_concat",
+        "sk_colorspace_xyz_invert"
+      ],
+      "document_behavior": "Not a drawing operation or implicit sample conversion. Composed valid gamut values may feed existing explicit color-space construction.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "colors.xyz-ops",
-      "implementation_files": [],
-      "limitations": "The pinned XYZ-D50 concatenation/inversion helpers remain unbound. Generic geometric matrix helpers do not establish the color-matrix representation, multiplication order, or singularity contract. Resolve or demonstrate a tested equivalent in 0.78b.",
+      "implementation_files": [
+        "color-space.rkt",
+        "private/native.rkt",
+        "private/color-output-util.rkt"
+      ],
+      "limitations": "Native-backed XYZ-D50 concatenation and inversion over detached immutable row-major nine-element vectors. Inputs are copied/rounded to binary32 and validated before native loading. Concatenation is a*b, applying b first to column samples; singular products are allowed and nonfinite results raise. Inversion returns #f on native failure or nonfinite output, including singularity after binary32 rounding. It does not certify conditioning. Input/output buffers never alias. This is matrix arithmetic, not transfer-function, alpha, ICC-intent, tone-mapping, metadata, or encoded-pixel conversion.",
       "managed_sources": [
         "binding/SkiaSharp/SKColorSpaceStructs.cs"
       ],
@@ -6356,15 +6366,24 @@
         "sk_colorspace_xyz_invert"
       ],
       "origin": "m119",
-      "planned_stage": "0.78b",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "color-space.rkt",
+          "name": "xyz-d50-concat"
+        },
+        {
+          "module": "color-space.rkt",
+          "name": "xyz-d50-invert"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/small-gap-pure-test.rkt",
+        "tests/small-gap-native-test.rkt"
+      ],
       "title": "XYZ matrix convenience operations",
-      "unbound_declarations": [
-        "sk_colorspace_xyz_concat",
-        "sk_colorspace_xyz_invert"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -8370,5 +8389,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.78a"
+  "stage": "0.78b"
 }

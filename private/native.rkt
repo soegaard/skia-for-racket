@@ -926,3 +926,8 @@
 (define-native sk_graphics_get_resource_cache_single_allocation_byte_limit (_fun -> _size))
 (define-native sk_graphics_set_resource_cache_single_allocation_byte_limit (_fun _size -> _size))
 (define-native sk_graphics_dump_memory_statistics (_fun _pointer -> _void))
+
+;; 0.78b: existing 36-byte row-major sk_colorspace_xyz_t storage, no new layout.
+;; Output buffers are distinct from inputs and live for the synchronous call.
+(define-native sk_colorspace_xyz_concat (_fun _pointer _pointer _pointer -> _void))
+(define-native sk_colorspace_xyz_invert (_fun _pointer _pointer -> _stdbool))

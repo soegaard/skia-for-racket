@@ -226,7 +226,7 @@ class Sources(unittest.TestCase):
     """Require real integrated files. The bundle verifier runs other classes only."""
     def source(self,name):return (ROOT/name).read_text(encoding='utf-8')
     def test_version_and_registration(self):
-        self.assertIn('(define version "0.77")',self.source('info.rkt'))
+        self.assertIn('(define version "0.78")',self.source('info.rkt'))
         self.assertIn("'test-advanced-canvases.py'",self.source('tools/ci.py'))
         self.assertIn('advanced-canvas-native-tests-file',self.source('run-tests.rkt'))
     def test_actual_suite_counts(self):

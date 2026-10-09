@@ -290,6 +290,6 @@ class RepositorySources(unittest.TestCase):
         for name in ('gpu-memory-statistics','gpu-gl-interface-info','gpu-gl-has-extension?','#:gl-interface'):self.assertIn(name,s)
         self.assertIn('process-global-skia-caches',(ROOT/'private/graphics-data.rkt').read_text())
         self.assertIn('gpu-context-skia-resources',(ROOT/'private/graphics-data.rkt').read_text())
-        self.assertIn('(define version "0.77")',(ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.78")',(ROOT/'info.rkt').read_text())
 
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -1685,3 +1685,7 @@ Existing calls retain native defaults; no new compiler/native helper is needed.
 `gpu-memory-statistics`, `gpu-gl-interface-info`, and `gpu-gl-has-extension?`
 return bounded detached diagnostics from a matching active context. GL factories
 accept `#:gl-interface`; defaults are preserved. See [GPU-DIAGNOSTICS.md](docs/GPU-DIAGNOSTICS.md).
+
+## 0.78b — Small remaining gaps
+
+Native-backed `xyz-d50-concat` and `xyz-d50-invert` are public through `skia`. The null-surface factory is deliberately excluded; the existing scoped no-draw canvas remains the diagnostic alternative. See [contracts and acceptance](docs/SMALL-GAPS.md). No-open-gaps source policy is not 1.0 release approval.

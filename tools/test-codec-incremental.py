@@ -299,7 +299,7 @@ class Sources(unittest.TestCase):
         doc=self.text('docs/CODEC-INCREMENTAL.md')
         for name in inv.source_exports(ROOT,'codec-incremental.rkt'):self.assertIn(name,doc)
     def test_version_and_scope(self):
-        self.assertIn('(define version "0.77")',self.text('info.rkt'))
+        self.assertIn('(define version "0.78")',self.text('info.rkt'))
         self.assertIn('## 0.76c',self.text('plans/skia-for-racket-gap-reduction-roadmap.md'))
 
 
