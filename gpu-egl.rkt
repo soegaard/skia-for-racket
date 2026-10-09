@@ -8,12 +8,15 @@
 (define (make-egl-gpu-context #:platform [platform 'surfaceless]
                               #:device-index [index 0]
                               #:surface [surface 'surfaceless]
-                              #:options [options #f])
+                              #:options [options #f]
+                              #:gl-interface [interface-mode 'default])
+  (check-owned-egl-interface-mode 'make-egl-gpu-context interface-mode)
   (check-optional-context-options 'make-egl-gpu-context options)
   (check-egl-options 'make-egl-gpu-context platform index surface)
   (define-values (provider driver)
-    ((dynamic-require driver-module 'make-owned-egl-components) platform index surface #:options options))
+    ((dynamic-require driver-module 'make-owned-egl-components) platform index surface #:options options #:interface interface-mode))
   (wrap-gpu-domain (make-gpu-domain provider driver)))
 (define (make-current-egl-gpu-provider)
   ((dynamic-require driver-module 'make-current-egl-provider)))
 (require (submod "gpu-context-options.rkt" internals))
+(require "private/gpu-diagnostic-util.rkt")

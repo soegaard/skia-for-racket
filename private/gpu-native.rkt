@@ -107,3 +107,16 @@
   (_fun #:blocking? #t _pointer _pointer -> _void))
 (define-gpu-native common gr_direct_context_release_resources_and_abandon_context
   (_fun #:blocking? #t _pointer -> _void))
+
+;; 0.77c: synchronous memory-only trace callbacks and GL interface helpers.
+;; Deliberately not #:blocking?: these callbacks run synchronously on the owner.
+(define-gpu-native common gr_direct_context_dump_memory_statistics
+  (_fun _pointer _pointer -> _void))
+(define-gpu-native opengl gr_glinterface_assemble_interface
+  (_fun _pointer _get-gl-proc -> _pointer))
+(define-gpu-native opengl gr_glinterface_assemble_gles_interface
+  (_fun _pointer _get-gl-proc -> _pointer))
+(define-gpu-native opengl gr_glinterface_assemble_webgl_interface
+  (_fun _pointer _get-gl-proc -> _pointer))
+(define-gpu-native opengl gr_glinterface_has_extension
+  (_fun _pointer _string/utf-8 -> _stdbool))

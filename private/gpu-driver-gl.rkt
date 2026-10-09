@@ -3,29 +3,16 @@
          "gpu-types.rkt" (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-gl-driver)
-(define (make-gl-driver provider #:options [options #f])
+(define (make-gl-driver provider #:options [options #f] #:interface [interface-mode 'default])
+  (check-gl-interface-mode 'make-gl-driver interface-mode)
   (check-optional-context-options 'make-gl-driver options)
   (gpu-native-check! 'opengl)
   (define interface-kind (box #f))
   (gpu-driver
    (lambda ()
-     ;; The native factory can select GLX on Linux. An EGL provider must use
-     ;; its EGL resolver even when the native factory happens to succeed.
-     (define egl? (memq (gpu-provider-name provider) '(egl-owned egl-current)))
-     (define interface (and (not egl?) (gr_glinterface_create_native_interface)))
-     (set-box! interface-kind "native")
-     (define resolve (gpu-provider-resolve provider))
-     (when (and (not interface) resolve)
-       (define callback
-         (lambda (_ name)
-           ;; Do not allow a Racket exception to cross the native builder.
-           (with-handlers ([(lambda (_) #t) (lambda (_) #f)])
-             (define p (resolve name))
-             (and (cpointer? p) p))))
-       (set! interface (gr_glinterface_assemble_gl_interface #f callback))
-       (void/reference-sink callback resolve)
-       (set-box! interface-kind "assembled-desktop-gl"))
-     (unless interface (gpu-unavailable 'gl-interface "native and assembled GL interfaces are unavailable"))
+     (define-values (interface factory) (create-gl-interface/native provider interface-mode))
+     (define retained? #f)
+     (set-box! interface-kind factory)
      (dynamic-wind
        void
        (lambda ()
@@ -37,9 +24,15 @@
                  (lambda (record) (gr_direct_context_make_gl_with_options interface record)))
                (gr_direct_context_make_gl interface)))
          (unless p (gpu-unavailable 'ganesh-context "Ganesh GL context creation returned null"))
+         (with-handlers ([(lambda (_) #t)
+                          (lambda (e) (gr_recording_context_unref p) (raise e))])
+           (register-gl-interface! p interface interface-mode factory)
+           (set! retained? #t))
          p)
-       (lambda () (gr_glinterface_unref interface))))
-   gr_recording_context_unref
+       (lambda () (unless retained? (gr_glinterface_unref interface)))))
+   (lambda (p)
+     (gr_recording_context_unref p)
+     (release-gl-interface! p))
    gr_direct_context_abandon_context
    (lambda (p)
      (when (gr_direct_context_is_abandoned p)
@@ -58,6 +51,7 @@
                 'binding_package native-package-version
                 'native_version (skia-native-version)
                 'native_library_candidate (format "~a" (skia-native-library-path))
+                'gl_interface_requested (symbol->string interface-mode)
                 'interface_factory (unbox interface-kind)
                 'interface_validated #t
                 'native_backend gr-opengl
@@ -69,3 +63,4 @@
                 'initial_cache_bytes (ptr-ref size _size)))))
 (require "gpu-context-options-native.rkt"
          (submod "../gpu-context-options.rkt" internals))
+(require "gpu-gl-interface.rkt" "gpu-diagnostic-util.rkt")

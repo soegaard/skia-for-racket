@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "242a1b71081e6e76d3209c115ab11ff4c09a3eb2",
+  "baseline_commit": "3730aab83cd89b218adc751f34da2811838fe060",
   "capabilities": [
     {
       "backend_scope": "Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.",
@@ -7380,13 +7380,21 @@
       "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "Ganesh OpenGL/Metal/Direct3D contexts. Required selected-backend native evidence, not inferred from symbol resolution. Uses existing pure Racket FFI and no new helper library or worker.",
+      "bindings_expected": [
+        "gr_direct_context_dump_memory_statistics"
+      ],
+      "document_behavior": "No document API, authoring or output-policy change. No hidden CPU transfer for diagnostic capture; report inspection after detachment needs no live resource.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "gpu.trace",
-      "implementation_files": [],
-      "limitations": "No general promise of byte-identical output across platforms or backends.",
+      "implementation_files": [
+        "gpu-diagnostics.rkt",
+        "private/gpu-diagnostics-native.rkt",
+        "private/gpu-native.rkt",
+        "private/graphics-trace-native.rkt",
+        "private/graphics-data.rkt"
+      ],
+      "limitations": "Bounded synchronous memory-only callbacks reuse the accepted global trace provider. Requires owner-thread active non-abandoned GPU context; rejects live-port callbacks/active live operations. Whole records are omitted with explicit truncation at entry/string/byte limits. No application callbacks, implicit flush/submit/wait/readback, joint atomic memory snapshot, driver allocation measurement or process RSS. GPU and global scopes are distinct. Reported size and purgeable_size may overlap and are not added into a total. Managed shim exposes numeric/string fields only, not full native backing graphs. One trace provider/module/place per process; foreign replacement of callback tables is unsupported.",
       "managed_sources": [
         "binding/SkiaSharp/GRContext.cs",
         "binding/SkiaSharp/SKTraceMemoryDump.cs"
@@ -7395,23 +7403,45 @@
         "gr_direct_context_dump_memory_statistics"
       ],
       "origin": "m119",
-      "planned_stage": "0.77c",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "gpu-diagnostics.rkt",
+          "name": "gpu-memory-statistics"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/gpu-diagnostics-pure-test.rkt",
+        "tests/gpu-diagnostics-native-test.rkt",
+        "tests/gpu-diagnostics-gpu-test.rkt",
+        "tools/test-gpu-diagnostics.py"
+      ],
       "title": "GPU memory-statistics callback bridge",
-      "unbound_declarations": [
-        "gr_direct_context_dump_memory_statistics"
-      ]
+      "unbound_declarations": []
     },
     {
-      "backend_scope": "No implemented public route asserted for this capability. Native build/platform support and the planned stage require separate acceptance.",
-      "bindings_expected": [],
-      "document_behavior": "Not a drawing operation.",
+      "backend_scope": "OpenGL provider path only. Linux required EGL renders default, auto and desktop interfaces; Metal/Direct3D reject GL-only queries. Additional constructors bind the pinned API but do not create an EGL ES or browser host.",
+      "bindings_expected": [
+        "gr_glinterface_assemble_gles_interface",
+        "gr_glinterface_assemble_interface",
+        "gr_glinterface_assemble_webgl_interface",
+        "gr_glinterface_has_extension"
+      ],
+      "document_behavior": "Preserves context options, resource ownership, submission and output audit contracts. Extension queries have no pixel-transfer or document side effects.",
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "gpu.interface-variants",
-      "implementation_files": [],
-      "limitations": "No browser WebGL runtime is promised by a native interface constructor.",
+      "implementation_files": [
+        "gpu.rkt",
+        "gpu-egl.rkt",
+        "gpu-diagnostics.rkt",
+        "private/gpu-driver-gl.rkt",
+        "private/gpu-driver-egl.rkt",
+        "private/gpu-gl-interface.rkt",
+        "private/gpu-diagnostic-util.rkt",
+        "private/gpu-native.rkt"
+      ],
+      "limitations": "Explicit default/auto/desktop/gles/webgl assembly selection requires an already-current matching host provider/resolver. Default native-first and EGL desktop paths remain unchanged; explicit failures never fall back to a different GL standard. Bounded GL_VERSION classification rejects incompatible GLES/WebGL hosts before assembly. Callback errors, including raised #f, are deferred until native builder return. The actual validated input interface is retained until context release for extension membership queries. Membership is discovery in that interface, not proof Skia internally enables every extension path. Owned EGL remains desktop only. No positive GLES host or browser/WebGL rendering claim in this stage; generic matching-provider routes are supplied with explicit native build/host restrictions.",
       "managed_sources": [
         "binding/SkiaSharp/GRGlInterface.cs"
       ],
@@ -7422,17 +7452,34 @@
         "gr_glinterface_has_extension"
       ],
       "origin": "m119",
-      "planned_stage": "0.77c",
-      "public_equivalents": [],
-      "status": "missing-available-abi",
-      "test_sources": [],
+      "planned_stage": null,
+      "public_equivalents": [
+        {
+          "module": "gpu.rkt",
+          "name": "make-gpu-context"
+        },
+        {
+          "module": "gpu-egl.rkt",
+          "name": "make-egl-gpu-context"
+        },
+        {
+          "module": "gpu-diagnostics.rkt",
+          "name": "gpu-gl-interface-info"
+        },
+        {
+          "module": "gpu-diagnostics.rkt",
+          "name": "gpu-gl-has-extension?"
+        }
+      ],
+      "status": "supported-with-limits",
+      "test_sources": [
+        "tests/gpu-diagnostics-pure-test.rkt",
+        "tests/gpu-diagnostics-native-test.rkt",
+        "tests/gpu-diagnostics-gpu-test.rkt",
+        "tools/test-gpu-diagnostics.py"
+      ],
       "title": "Additional GLES/WebGL and extension interface helpers",
-      "unbound_declarations": [
-        "gr_glinterface_assemble_gles_interface",
-        "gr_glinterface_assemble_interface",
-        "gr_glinterface_assemble_webgl_interface",
-        "gr_glinterface_has_extension"
-      ]
+      "unbound_declarations": []
     },
     {
       "backend_scope": "Pinned Ganesh OpenGL, Metal and Direct3D capability requests; runtime unsupported formats reject. Source references are not execution receipts. Selected acceptance requires RGBA8888/BGRA8888/F16 drawing and per-format observations; physical displays/HDR are not verified.",
@@ -8262,6 +8309,7 @@
     "gpu-canvas.rkt",
     "gpu-context-options.rkt",
     "gpu-dc.rkt",
+    "gpu-diagnostics.rkt",
     "gpu-egl.rkt",
     "gpu-gl-interop.rkt",
     "gpu-gui.rkt",
@@ -8299,5 +8347,5 @@
   "review_granularity": "Capability families plus an explicit disposition for every core C function declaration; managed sources are covered as source families, not every overload or property.",
   "schema": 1,
   "source_evidence_scope": "Declaration and source-anchor checks; no rendering pass is inferred.",
-  "stage": "0.77b"
+  "stage": "0.77c"
 }

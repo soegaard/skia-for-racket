@@ -4,7 +4,8 @@
 (require ffi/unsafe ffi/unsafe/atomic ffi/unsafe/global racket/promise
          "native.rkt" "graphics-data.rkt"
          (only-in "live-port-runtime.rkt" in-port-service? active-operation-count))
-(provide global-memory-statistics/native call-global-cache-native trace-binding-count)
+(provide global-memory-statistics/native collect-memory-statistics/native
+         call-global-cache-native trace-binding-count)
 (define-cstruct _trace-procs ([numeric _fpointer] [string _fpointer])
   #:malloc-mode 'atomic-interior)
 ;; Reviewed Xamarin declarations, inventoried separately from include/c.
@@ -95,7 +96,15 @@
     (set! roots (list numeric-callback string-callback numeric string table))
     (set-procs table)))
 (define (global-memory-statistics/native detailed? wrapped? max-entries string-limit byte-limit)
-  (check-global-cache-idle! 'skia-memory-statistics)
+  (collect-memory-statistics/native 'skia-memory-statistics 'process-global-skia-caches
+    sk_graphics_dump_memory_statistics detailed? wrapped? max-entries string-limit byte-limit))
+;; Private native caller only. Never accepts an application callback through a
+;; public API. GPU and global dumps share provider roots, limits and cleanup.
+(define (collect-memory-statistics/native who scope invoke detailed? wrapped? max-entries string-limit byte-limit)
+  (memory-options who detailed? wrapped? max-entries string-limit byte-limit)
+  (unless (memq scope '(process-global-skia-caches gpu-context-skia-resources))
+    (raise-argument-error who "known memory-statistics scope" scope))
+  (check-global-cache-idle! who)
   (skia-check!)
   ;; Keep asynchronous breaks out of the foreign callback/cleanup boundary.
   ;; No locks spanning arbitrary Racket user work are introduced.
@@ -104,8 +113,8 @@
     (parameterize-break #f
      (call-as-atomic
      (lambda ()
-       (check-global-cache-idle! 'skia-memory-statistics)
-       (when active (error 'skia-memory-statistics "reentrant native memory dump"))
+       (check-global-cache-idle! who)
+       (when active (error who "reentrant native memory dump"))
        (initialize-provider!)
        (define state (capture (make-memory-collector max-entries byte-limit detailed? wrapped?)
                               string-limit provider-marker #f no-error))
@@ -113,16 +122,16 @@
          (lambda () (set! active state))
          (lambda ()
            (define dump ((force sk_managedtracememorydump_new) detailed? wrapped? provider-marker))
-           (unless dump (error 'skia-memory-statistics "native trace allocation failed"))
+           (unless dump (error who "native trace allocation failed"))
            (set-capture-dump! state dump)
            (dynamic-wind void
-             (lambda () (sk_graphics_dump_memory_statistics dump))
+             (lambda () (invoke dump))
              (lambda () ((force sk_managedtracememorydump_delete) dump)
                         (set-capture-dump! state #f))))
          (lambda () (set! active #f)))
        ;; No native frame/object is live when a deferred callback error escapes.
        (unless (eq? (capture-error state) no-error) (raise (capture-error state)))
-       (collector-finish (capture-collector state))))))))
+       (collector-finish (capture-collector state) #:scope scope)))))))
 
 (define (set-active-for-test! state) (set! active state))
 (module+ test-support

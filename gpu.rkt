@@ -22,8 +22,10 @@
 (define-runtime-path d3d12-driver-module "private/gpu-driver-d3d12.rkt")
 (define (make-gpu-context [provider #f] #:backend [requested #f]
                           #:adapter [adapter #f] #:adapter-index [index #f]
-                          #:options [options #f])
+                          #:options [options #f]
+                          #:gl-interface [interface-mode 'default])
   (define who 'make-gpu-context)
+  (check-gl-interface-mode who interface-mode)
   (check-optional-context-options who options)
   (unless (or (not provider) (gpu-provider? provider))
     (raise-argument-error who "#f or gpu-provider?" provider))
@@ -34,6 +36,7 @@
   (when (and provider (not (eq? backend (gpu-provider-backend provider))))
     (raise-arguments-error who "requested backend disagrees with the supplied provider"
                            "backend" backend "provider backend" (gpu-provider-backend provider)))
+  (check-gl-interface-backend who backend interface-mode)
   (when (and (or adapter index) (not (eq? backend 'direct3d)))
     (raise-arguments-error who "adapter selection is only supported for Direct3D"))
   (case backend
@@ -46,7 +49,7 @@
      (wrap-gpu-domain (make-gpu-domain host driver))]
     [(opengl)
      (unless provider (raise-arguments-error who "OpenGL requires an explicit host provider"))
-     (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider #:options options))
+     (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider #:options options #:interface interface-mode))
      (wrap-gpu-domain (make-gpu-domain provider driver))]
     [(metal)
      (when provider
@@ -82,3 +85,7 @@
          (submod "gpu-context-options.rkt" internals)
          "private/gpu-context-control.rkt")
 (provide (all-from-out "gpu-context-options.rkt" "private/gpu-context-control.rkt"))
+
+;; 0.77c: no GPU/GL/native initialization on import.
+(require "private/gpu-diagnostic-util.rkt" "gpu-diagnostics.rkt")
+(provide (all-from-out "gpu-diagnostics.rkt"))

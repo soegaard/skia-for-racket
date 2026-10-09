@@ -341,3 +341,10 @@ and feeds `Acceptance required`. Local Metal uses
 `validate-gpu-context-controls.py --backend metal --require-gpu`. The full/none
 regression split is retained. No independent document renderer is required, and
 existing PDF/SVG acceptance is unchanged.
+
+## GPU diagnostics acceptance (0.77c)
+
+The existing `gpu-context-controls.yml` runs focused diagnostics after control
+validation and retains both evidence directories. Diagnostics never repeats
+global regressions inside this job. Required Linux default/auto/desktop GL paths
+and Windows WARP dumps are separate from local selected Metal evidence.

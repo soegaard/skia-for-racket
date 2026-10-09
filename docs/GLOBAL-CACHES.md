@@ -249,3 +249,11 @@ signatures are checked separately by `api/global-cache-ffi.json` and
 `tools/global_cache_ffi.py`; they do not inflate `include/c` coverage.
 GPU options/targeted resource operations remain **0.77b**; GPU memory tracing and
 interface helpers remain **0.77c**.
+
+## Shared GPU collector (0.77c)
+
+`gpu-memory-statistics` uses the same bounded collector and report accessors,
+but `memory-statistics-scope` returns `gpu-context-skia-resources`. Global calls
+retain `process-global-skia-caches`. Neither scope is process RSS or driver
+allocation accounting; do not add overlapping records into a total. See
+[GPU-DIAGNOSTICS.md](GPU-DIAGNOSTICS.md).

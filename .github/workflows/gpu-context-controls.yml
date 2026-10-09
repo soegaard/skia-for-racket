@@ -55,12 +55,26 @@ jobs:
         env:
           SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}
         run: python tools/validate-gpu-context-controls.py --racket "$(command -v racket)" --regressions "$SKIA_REGRESSIONS_MODE" --require-gpu --backend egl --directory output/gpu-context-controls-linux
+      - name: Require GPU diagnostics and retained-interface evidence
+        run: >-
+          python tools/validate-gpu-diagnostics.py
+          --racket "$(command -v racket)" --regressions none
+          --require-gpu --backend egl --directory output/gpu-diagnostics-linux
       - name: Keep complete GPU evidence and command logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gpu-context-controls-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/gpu-context-controls-linux/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Keep GPU diagnostics evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: gpu-diagnostics-linux-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/gpu-diagnostics-linux/
           if-no-files-found: warn
           retention-days: 14
   windows:
@@ -89,11 +103,25 @@ jobs:
         env:
           SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}
         run: python tools/validate-gpu-context-controls.py --racket (Get-Command racket).Source --regressions "$env:SKIA_REGRESSIONS_MODE" --require-gpu --backend direct3d --adapter warp --directory output/gpu-context-controls-windows
+      - name: Require GPU diagnostics and non-GL rejection
+        run: >-
+          python tools/validate-gpu-diagnostics.py
+          --racket (Get-Command racket).Source --regressions none
+          --require-gpu --backend direct3d --adapter warp --directory output/gpu-diagnostics-windows
       - name: Keep complete GPU evidence and command logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gpu-context-controls-windows-${{ github.run_attempt }}
           path: output/gpu-context-controls-windows/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Keep GPU diagnostics evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: gpu-diagnostics-windows-${{ github.run_attempt }}
+          path: output/gpu-diagnostics-windows/
           if-no-files-found: warn
           retention-days: 14

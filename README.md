@@ -1679,3 +1679,9 @@ cache policy is changed by import, and no compiler/native helper is added.
 `gpu.rkt` exposes immutable native context options, targeted surface/image flush,
 and healthy-host release-and-abandon. See [GPU-CONTEXT-CONTROLS.md](docs/GPU-CONTEXT-CONTROLS.md).
 Existing calls retain native defaults; no new compiler/native helper is needed.
+
+### GPU diagnostics and interface selection (0.77c)
+
+`gpu-memory-statistics`, `gpu-gl-interface-info`, and `gpu-gl-has-extension?`
+return bounded detached diagnostics from a matching active context. GL factories
+accept `#:gl-interface`; defaults are preserved. See [GPU-DIAGNOSTICS.md](docs/GPU-DIAGNOSTICS.md).

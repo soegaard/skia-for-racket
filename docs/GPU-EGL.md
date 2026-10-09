@@ -140,3 +140,10 @@ absent, not merely a native EGL initialization probe.
 `make-egl-gpu-context` accepts `#:options` as `#f` (native defaults) or a
 `make-gpu-context-options` value, forwarded to its GL constructor. See
 [GPU-CONTEXT-CONTROLS.md](GPU-CONTEXT-CONTROLS.md).
+
+## GL interface selection (0.77c)
+
+`make-egl-gpu-context` accepts `#:gl-interface` as `default`, `auto`, or `desktop`.
+Omitting it preserves the existing assembled-desktop path. Owned EGL still
+creates desktop OpenGL; GLES/WebGL factories require a caller-supplied matching
+provider through `make-gpu-context`. See [GPU-DIAGNOSTICS.md](GPU-DIAGNOSTICS.md).

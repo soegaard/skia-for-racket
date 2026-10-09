@@ -1188,3 +1188,10 @@ passed, and the circle, gallery, and bitmap-bridge examples rendered correctly.
 - Add healthy-host release-and-abandon with provider activation, child invalidation,
   and quarantine of indeterminate teardown. Existing loss abandonment is unchanged.
 - Preserve accepted 0.77a code and compiler-free installation.
+
+## 0.77c — GPU diagnostics and GL interfaces
+
+- Add bounded, context-scoped native memory snapshots using the existing collector.
+- Retain the actual GL interface for extension queries and explicit interface selection.
+- Preserve 0.77b options and teardown behavior; add no implicit transfer/completion.
+- Extend existing acceptance jobs without a compiler, native helper or new top-level workflow.

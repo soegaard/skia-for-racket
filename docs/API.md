@@ -2683,3 +2683,8 @@ prior-value setter contract, global scope, callback limits and memory caveats.
 `gpu-flush-image!`, and `gpu-context-release-and-abandon!` are exported by
 `gpu.rkt`. See [GPU-CONTEXT-CONTROLS.md](GPU-CONTEXT-CONTROLS.md) for all accessors,
 factory keywords, and the ownership/flush/completion distinctions.
+
+## GPU diagnostics (0.77c)
+
+`gpu.rkt` re-exports `gpu-memory-statistics`, `gpu-gl-interface-info`, and
+`gpu-gl-has-extension?` from `gpu-diagnostics.rkt`. See [GPU-DIAGNOSTICS.md](GPU-DIAGNOSTICS.md).

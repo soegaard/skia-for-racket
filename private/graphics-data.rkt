@@ -33,10 +33,15 @@
 (struct memory-statistic (kind name value-name units value) #:transparent)
 (struct memory-statistics (entries detailed? dump-wrapped? truncated? dropped-count string-bytes)
   #:transparent)
+;; Preserve the existing global report shape. The subtype carries only a
+;; detached scope tag; parent predicates/accessors work for both report kinds.
+(struct scoped-memory-statistics memory-statistics (scope) #:transparent)
 (define (memory-statistics-scope report)
   (unless (memory-statistics? report)
     (raise-argument-error 'memory-statistics-scope "memory-statistics?" report))
-  'process-global-skia-caches)
+  (if (scoped-memory-statistics? report)
+      (scoped-memory-statistics-scope report)
+      'process-global-skia-caches))
 (struct memory-collector (limit byte-limit detailed? wrapped? [rows #:mutable]
                                 [count #:mutable] [bytes #:mutable] [dropped #:mutable]))
 (define (make-memory-collector limit byte-limit detailed? wrapped?)
@@ -64,15 +69,22 @@
          (set-memory-collector-count! c (add1 (memory-collector-count c)))
          (set-memory-collector-bytes! c (+ n (memory-collector-bytes c)))])
   (void))
-(define (collector-finish c)
-  (memory-statistics (vector->immutable-vector (list->vector (reverse (memory-collector-rows c))))
+(define (collector-finish c #:scope [scope 'process-global-skia-caches])
+  (unless (memq scope '(process-global-skia-caches gpu-context-skia-resources))
+    (raise-argument-error 'collector-finish "known native memory-statistics scope" scope))
+  (define constructor
+    (if (eq? scope 'process-global-skia-caches)
+        memory-statistics
+        (lambda (entries detailed? wrapped? truncated? dropped bytes)
+          (scoped-memory-statistics entries detailed? wrapped? truncated? dropped bytes scope))))
+  (constructor (vector->immutable-vector (list->vector (reverse (memory-collector-rows c))))
                      (memory-collector-detailed? c) (memory-collector-wrapped? c)
                      (positive? (memory-collector-dropped c)) (memory-collector-dropped c)
                      (memory-collector-bytes c)))
 (define (memory-statistics->jsexpr report)
   (unless (memory-statistics? report)
     (raise-argument-error 'memory-statistics->jsexpr "memory-statistics?" report))
-  (hasheq 'scope "process-global-skia-caches" 'atomic #f
+  (hasheq 'scope (symbol->string (memory-statistics-scope report)) 'atomic #f
           'detailed (memory-statistics-detailed? report)
           'dump_wrapped (memory-statistics-dump-wrapped? report)
           'truncated (memory-statistics-truncated? report)

@@ -81,7 +81,7 @@ class Catalog(unittest.TestCase):
         result = inv.validate_catalog(CATALOG)
         self.assertEqual(result["c_function_declarations"], 849)
         self.assertEqual(result["managed_source_files"], 86)
-        self.assertEqual(result["distinct_bound_symbols"], 671)
+        self.assertEqual(result["distinct_bound_symbols"], 676)
         self.assertEqual(result["cpu_bound_symbols"], 607)
     def test_every_symbol_has_exactly_one_primary_disposition(self):
         assigned = [s for f in CATALOG["features"]["capabilities"] for s in f["native_symbols"]]
@@ -247,7 +247,7 @@ class Sources(unittest.TestCase):
     def tearDown(self): self.temp.cleanup()
     def test_synthetic_complete_scope(self):
         r=inv.validate_sources(self.root,CATALOG)
-        self.assertEqual(len(r['binding_locations']),671);self.assertEqual(r['registry_count'],9)
+        self.assertEqual(len(r['binding_locations']),676);self.assertEqual(r['registry_count'],9)
         self.assertFalse(r['rendering_executed'])
     def test_missing_registry_fails(self):
         (self.root/'private/gpu-metal-interop-native.rkt').unlink()

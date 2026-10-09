@@ -314,12 +314,34 @@ healthy versus lost-host lifecycle tests. Linux 8.18/9.3 and Windows WARP run
 under Acceptance; local Metal is explicitly selected. No new compiler or native
 helper. GPU diagnostics and interface helpers remain 0.77c.
 
-## 0.77c — GPU diagnostics and interface helpers
+## 0.77c — GPU memory diagnostics and retained GL interfaces
 
-Add context-local memory tracing and useful GL/GLES interface/extension helpers
-where native build support is present. Reuse bounded private trace collection
-rather than arbitrary user callbacks, with separate backend-specific execution
-evidence. Global 0.77a cache measurements do not count as GPU memory evidence.
+**Package version:** `0.77`. `gpu-memory-statistics` reuses 0.77a's bounded,
+synchronous native-only collector and returns detached reports with a distinct
+GPU-context scope. No cache limit changes, flush, submit, wait, upload or readback
+are introduced by diagnostics. Owner/current/ready/native-abandoned checks run
+before capture; callback errors are raised only after native object cleanup.
+
+`#:gl-interface` selects preserved defaults, auto-detected assembly, desktop GL,
+GLES or WebGL on an explicit OpenGL provider. Owned EGL remains desktop and
+accepts default/auto/desktop only. Each GL context retains its actual selected
+interface for validated `gpu-gl-interface-info` and `gpu-gl-has-extension?`
+queries, releasing it at context teardown, including constructor failure.
+Explicit factory failure never falls back to another standard. Interface mode is
+not a request to create a host context or a guarantee of extension usability.
+
+**Limits:** memory dumps are Skia's reported context resources, not driver/process
+memory and not an additive global total. Native adapter backing/ownership hooks
+not exported by m119 are not invented. Existing single-provider/place and
+live-operation restrictions apply to the shared collector. Matching GLES/WebGL
+hosts must be supplied externally; required CI exercises desktop default/auto/GL
+routes, resolver/mismatch failures and Direct3D dumps. Metal uses a separate
+selected-backend local gate. Browser or GLES presentation is not certified. No compiler/native helper is introduced.
+
+**Acceptance:** focused native-free ownership/argument tests, real callback/ABI
+tests, selected GPU allocation/dump/pixel evidence, bounded/truncated reports,
+no hidden transfers, and constructor/abandon/close cleanup. Existing GPU control
+jobs run diagnostics feature-only; central CI owns full regressions.
 
 ## 0.78 — Reconcile remaining gaps and stabilize
 
