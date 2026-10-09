@@ -2,6 +2,7 @@ compiled/
 **/compiled/
 output/
 downloads/
+/html/
 native/*/
 *.nupkg
 .DS_Store
