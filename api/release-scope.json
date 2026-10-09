@@ -1498,7 +1498,7 @@
     "projective-matrix.rkt": "101abff382f06e54f4a5671ab0825c9efb982b9dc1da1857aacf2c3dd426cd1a",
     "raster-buffers.rkt": "80ed6f92fc82af27df9ddc58619824276d6e94c30bad9420869d83393f4f43d6",
     "render-canvas.rkt": "aa670489126aeaf3c60cd8e3392e5391c8c8bbe56c228945a7ba6b4ca37572de",
-    "run-tests.rkt": "23af618436529f7a427b4e5f03d5b84e36958905c3128172bcd8b6b2556b7e30",
+    "run-tests.rkt": "4a68da13a8972e9cb2409dcace6f52fe3b99ea5ba27da6dbbd6b00cb9bde4ff1",
     "runtime-effects.rkt": "676debf13000eeef96752b4329d6d761681f148fc87220210d4f0749b26b8cb4",
     "specialized-canvases.rkt": "90939ae2ffed86667f28c443bfb4575ae862008d958163fc2b763de9897b2150",
     "stream-inputs.rkt": "d0506abc33dc6a41ce636ec64b2e89625887cbc58cc3c94186436cfb061ab6fa",

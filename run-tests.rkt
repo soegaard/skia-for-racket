@@ -1,5 +1,5 @@
 #lang racket/base
-(require "tests/small-gap-pure-test.rkt")
+(require racket/runtime-path "tests/small-gap-pure-test.rkt")
 (define-runtime-path small-gap-native-tests-file "tests/small-gap-native-test.rkt")
 (require "tests/release-scope-pure-test.rkt")
 (require racket/runtime-path "tests/gpu-diagnostics-pure-test.rkt")
