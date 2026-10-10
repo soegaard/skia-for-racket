@@ -89,14 +89,20 @@ small dots for the vertices:
     (draw-circle canvas (first position) (second position) 1.35 point)))
 ]
 
-Here is the construction without page decorations. The figure is a raster
-preview of the Skia drawing, scaled down for the manual.
+Here is the construction without page decorations. For this close-up, a
+translation moves the same drawing upward so the circles fill more of the
+figure. The finished page still uses the original coordinates.
 
 @printable-image[
 (printable-page-pict
- (make-output-page content-width 202 draw-construction
-                   #:unit 'mm #:background 'white)
- #:dpi 84 #:scale 0.72)
+ (make-output-page
+  content-width 145
+  (lambda (canvas)
+    (with-canvas-state canvas
+      (canvas-translate! canvas 0 -55)
+      (draw-construction canvas)))
+  #:unit 'mm #:background 'white)
+ #:dpi 84 #:scale 0.78)
 ]
 
 Notice that the stroke widths are also in the drawing's millimetres. The
@@ -218,20 +224,25 @@ subtracting the margins:
 (call-with-values (lambda () (output-page-content-size page)) list)
 ]
 
-The result is 178 by 265 mm. Here is the A4 page with a red frame added only
-to show the content area and a red dot marking its local origin:
+The result is 178 by 265 mm. The red horizontal rules and short corner
+marks below show the exact content boundaries. Unlike a full border, they do
+not cross the heading or caption. The red dot marks the local origin.
 
 @printable-racketblock+eval[
 (define (draw-content-guide canvas)
-  (define frame
+  (define content-height (- page-height (* 2 page-margin)))
+  (define guide
     (make-paint #:color "#CC5544"
                 #:style 'stroke
                 #:stroke-width 0.55))
   (define origin
     (make-paint #:color "#CC5544"))
   (draw-diagram canvas)
-  (draw-rect canvas 0 0 content-width
-             (- page-height (* 2 page-margin)) frame)
+  (for ([y (list 0 content-height)])
+    (draw-line canvas 0 y content-width y guide))
+  (for ([x (list 0 content-width)])
+    (draw-line canvas x 0 x 5 guide)
+    (draw-line canvas x (- content-height 5) x content-height guide))
   (draw-circle canvas 0 0 1.6 origin))
 
 (define guided-page
@@ -244,9 +255,10 @@ to show the content area and a red dot marking its local origin:
 (printable-page-pict guided-page #:dpi 84 #:scale 0.54)
 ]
 
-The red frame is a teaching guide. The real @racket[page] still uses
-@racket[draw-diagram] and does not contain it. Margins describe where content
-starts; they do not require adding 16 to all the coordinates in the drawing.
+The red rules and corner marks are teaching guides. The real @racket[page]
+still uses @racket[draw-diagram] and does not contain them. Margins describe
+where content starts; they do not require adding 16 to all the coordinates in
+the drawing.
 
 @section{Save the Page as PDF}
 
