@@ -12,10 +12,11 @@
 (define second-color "#C94F3D")
 
 (define (draw-clock-face canvas)
-  (with-skia ([fill (make-paint #:color face-color)]
-              [rim (make-paint #:color ink-color
-                               #:style 'stroke
-                               #:stroke-width 5)])
+  (let ()
+    (define fill (make-paint #:color face-color))
+    (define rim (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 5))
     (draw-circle canvas 0 0 face-radius fill)
     (draw-circle canvas 0 0 face-radius rim)))
 
@@ -26,14 +27,15 @@
   (draw-line canvas 0 -198 0 -210 paint))
 
 (define (draw-ticks canvas)
-  (with-skia ([hour-paint (make-paint #:color ink-color
-                                      #:style 'stroke
-                                      #:stroke-width 6
-                                      #:cap 'round)]
-              [minute-paint (make-paint #:color ink-color
-                                        #:style 'stroke
-                                        #:stroke-width 2
-                                        #:cap 'round)])
+  (let ()
+    (define hour-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 6
+      #:cap 'round))
+    (define minute-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 2
+      #:cap 'round))
     (for ([minute (in-range 60)])
       (with-canvas-state canvas
         (canvas-rotate! canvas (* minute 6))
@@ -53,18 +55,19 @@
     (+ (* minute 6)
        (/ second 10)))
   (define second-angle (* second 6))
-  (with-skia ([hour-paint (make-paint #:color ink-color
-                                      #:style 'stroke
-                                      #:stroke-width 11
-                                      #:cap 'round)]
-              [minute-paint (make-paint #:color ink-color
-                                        #:style 'stroke
-                                        #:stroke-width 7
-                                        #:cap 'round)]
-              [second-paint (make-paint #:color second-color
-                                        #:style 'stroke
-                                        #:stroke-width 3
-                                        #:cap 'round)])
+  (let ()
+    (define hour-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 11
+      #:cap 'round))
+    (define minute-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 7
+      #:cap 'round))
+    (define second-paint (make-paint #:color second-color
+      #:style 'stroke
+      #:stroke-width 3
+      #:cap 'round))
     (with-canvas-state canvas
       (canvas-rotate! canvas hour-angle)
       (draw-hand canvas 120 16 hour-paint))
@@ -76,8 +79,9 @@
       (draw-hand canvas 185 28 second-paint))))
 
 (define (draw-center-pin canvas)
-  (with-skia ([outer (make-paint #:color ink-color)]
-              [inner (make-paint #:color second-color)])
+  (let ()
+    (define outer (make-paint #:color ink-color))
+    (define inner (make-paint #:color second-color))
     (draw-circle canvas 0 0 11 outer)
     (draw-circle canvas 0 0 5 inner)))
 
@@ -97,7 +101,8 @@
   (draw-clock-at canvas center center 1 hour minute second))
 
 (module+ main
-  (with-skia ([surface (make-surface size size
-                                    #:background background-color)])
+  (let ()
+    (define surface (make-surface size size
+      #:background background-color))
     (draw-clock (surface-canvas surface) 10 10 30)
     (save-png surface "clock.png" #:exists 'replace)))

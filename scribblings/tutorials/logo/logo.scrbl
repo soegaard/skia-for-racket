@@ -50,8 +50,9 @@ The @racket[make-path] function turns the command list into a path:
 
 @logo-racketblock+eval[
 (define (draw-polygon-logo canvas)
-  (with-skia ([path (make-path polygon-commands)]
-              [paint (make-paint #:color fill-color)])
+  (let ()
+    (define path (make-path polygon-commands))
+    (define paint (make-paint #:color fill-color))
     (draw-path canvas path paint)))
 ]
 
@@ -69,12 +70,13 @@ change.
 
 @logo-racketblock+eval[
 (define (draw-filled-and-stroked-logo canvas)
-  (with-skia ([path (make-path polygon-commands)]
-              [fill (make-paint #:color fill-color)]
-              [outline (make-paint #:color outline-color
-                                   #:style 'stroke
-                                   #:stroke-width 5
-                                   #:join 'round)])
+  (let ()
+    (define path (make-path polygon-commands))
+    (define fill (make-paint #:color fill-color))
+    (define outline (make-paint #:color outline-color
+      #:style 'stroke
+      #:stroke-width 5
+      #:join 'round))
     (draw-path canvas path fill)
     (draw-path canvas path outline)))
 ]
@@ -130,11 +132,12 @@ The next path uses four quadratic curves:
     (close)))
 
 (define (draw-quadratic-logo canvas)
-  (with-skia ([path (make-path quadratic-commands)]
-              [fill (make-paint #:color fill-color)]
-              [outline (make-paint #:color outline-color
-                                   #:style 'stroke
-                                   #:stroke-width 5)])
+  (let ()
+    (define path (make-path quadratic-commands))
+    (define fill (make-paint #:color fill-color))
+    (define outline (make-paint #:color outline-color
+      #:style 'stroke
+      #:stroke-width 5))
     (draw-path canvas path fill)
     (draw-path canvas path outline)))
 ]
@@ -169,11 +172,12 @@ The final outer contour needs only two cubic curves:
     (close)))
 
 (define (draw-outer-logo canvas)
-  (with-skia ([path (make-path outer-logo-commands)]
-              [fill (make-paint #:color fill-color)]
-              [outline (make-paint #:color outline-color
-                                   #:style 'stroke
-                                   #:stroke-width 5)])
+  (let ()
+    (define path (make-path outer-logo-commands))
+    (define fill (make-paint #:color fill-color))
+    (define outline (make-paint #:color outline-color
+      #:style 'stroke
+      #:stroke-width 5))
     (draw-path canvas path fill)
     (draw-path canvas path outline)))
 ]
@@ -234,12 +238,13 @@ depending on the direction of that contour.
   (make-path logo-commands #:fill-rule 'even-odd))
 
 (define (draw-logo canvas)
-  (with-skia ([path (make-logo-path)]
-              [fill (make-paint #:color fill-color)]
-              [outline (make-paint #:color outline-color
-                                   #:style 'stroke
-                                   #:stroke-width 5
-                                   #:join 'round)])
+  (let ()
+    (define path (make-logo-path))
+    (define fill (make-paint #:color fill-color))
+    (define outline (make-paint #:color outline-color
+      #:style 'stroke
+      #:stroke-width 5
+      #:join 'round))
     (draw-path canvas path fill)
     (draw-path canvas path outline)))
 ]
@@ -259,8 +264,9 @@ The same drawing function can be used for raster and vector output.
 The PNG version uses an ordinary raster surface:
 
 @racketblock[
-(with-skia ([surface (make-surface size size
-                                  #:background background-color)])
+(let ()
+  (define surface (make-surface size size
+    #:background background-color))
   (draw-logo (surface-canvas surface))
   (save-png surface "logo.png" #:exists 'replace))
 ]

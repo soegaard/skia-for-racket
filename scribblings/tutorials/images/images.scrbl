@@ -41,9 +41,9 @@ The @racket[image-from-file] function decodes an image file and returns an
 owned Skia image.
 
 @images-interaction[
-(with-skia ([image
-             (image-from-file
-              (tutorial-fixture "mountains.jpg"))])
+(let ()
+  (define image (image-from-file
+    (tutorial-fixture "mountains.jpg")))
   (list (image-width image)
         (image-height image)))
 ]
@@ -51,7 +51,10 @@ owned Skia image.
 The @racket[image-width] and @racket[image-height] functions report the image
 dimensions in pixels.
 
-The @racket[with-skia] form closes the image after the body finishes.
+The example uses an ordinary Racket binding. This CPU image has fallback
+cleanup and can be reclaimed after it becomes unreachable. Use
+@racket[with-skia] when prompt release matters, for example when processing many
+large images in a loop.
 
 @section{Draw at the Natural Size}
 
@@ -59,9 +62,9 @@ The @racket[draw-image] function places an image at its natural size.
 
 @images-racketblock+eval[
 (define (draw-natural-size canvas)
-  (with-skia ([image
-               (image-from-file
-                (tutorial-fixture "mountains.jpg"))])
+  (let ()
+    (define image (image-from-file
+      (tutorial-fixture "mountains.jpg")))
     (draw-image canvas image 80 40)))
 ]
 
@@ -81,9 +84,9 @@ The following example puts the portrait image into a wide rectangle:
 
 @images-racketblock+eval[
 (define (draw-stretched-image canvas)
-  (with-skia ([image
-               (image-from-file
-                (tutorial-fixture "flower.png"))])
+  (let ()
+    (define image (image-from-file
+      (tutorial-fixture "flower.png")))
     (draw-image-rect canvas image
                      70 55 380 180
                      #:sampling 'linear)))
@@ -120,9 +123,9 @@ the destination rectangle.
 
 @images-racketblock+eval[
 (define (draw-fitted-image canvas)
-  (with-skia ([image
-               (image-from-file
-                (tutorial-fixture "flower.png"))])
+  (let ()
+    (define image (image-from-file
+      (tutorial-fixture "flower.png")))
     (draw-image-fit canvas image
                     70 55 380 180)))
 ]
@@ -144,11 +147,11 @@ The difference is easy to see with the 24 by 24 pixel-art image:
 
 @images-racketblock+eval[
 (define (draw-sampling-demo canvas)
-  (with-skia ([image
-               (image-from-file
-                (tutorial-fixture "pixel-art.png"))]
-              [font (make-font #:size 18)]
-              [text (make-paint #:color "#26333D")])
+  (let ()
+    (define image (image-from-file
+      (tutorial-fixture "pixel-art.png")))
+    (define font (make-font #:size 18))
+    (define text (make-paint #:color "#26333D"))
     (draw-image-rect canvas image
                      35 45 220 220
                      #:sampling 'nearest)
@@ -178,12 +181,11 @@ source image.
 
 @images-racketblock+eval[
 (define (draw-crop-demo canvas)
-  (with-skia ([image
-               (image-from-file
-                (tutorial-fixture "mountains.jpg"))]
-              [crop
-               (image-subset image
-                             120 45 150 135)])
+  (let ()
+    (define image (image-from-file
+      (tutorial-fixture "mountains.jpg")))
+    (define crop (image-subset image
+      120 45 150 135))
     (draw-image-fit canvas image
                     25 35 300 210)
     (draw-image-fit canvas crop
@@ -194,8 +196,9 @@ source image.
 (images-render-pict 560 280 draw-crop-demo)
 ]
 
-The crop is a separate Skia resource, so the example lists it in
-@racket[with-skia] together with the source image.
+The crop is a separate owned Skia image. Both the source and the crop use
+ordinary Racket bindings here. Each can be reclaimed after it becomes
+unreachable.
 
 @section{Build One Cell}
 
@@ -209,12 +212,13 @@ contains a card, one fitted image, and a label.
 
 (define (draw-cell canvas image label x y
                    #:sampling [sampling 'linear])
-  (with-skia ([card (make-paint #:color card-color)]
-              [frame (make-paint #:color frame-color
-                                 #:style 'stroke
-                                 #:stroke-width 2)]
-              [text (make-paint #:color text-color)]
-              [font (make-font #:size 16)])
+  (let ()
+    (define card (make-paint #:color card-color))
+    (define frame (make-paint #:color frame-color
+      #:style 'stroke
+      #:stroke-width 2))
+    (define text (make-paint #:color text-color))
+    (define font (make-font #:size 16))
     (draw-rounded-rect canvas x y 260 250 14 14 card)
     (draw-rounded-rect canvas x y 260 250 14 14 frame)
     (draw-image-fit canvas image
@@ -248,24 +252,19 @@ The final sheet uses four complete images and two crops.
 
 @images-racketblock+eval[
 (define (draw-complete-sheet canvas)
-  (with-skia ([mountains
-               (image-from-file
-                (tutorial-fixture "mountains.jpg"))]
-              [flower
-               (image-from-file
-                (tutorial-fixture "flower.png"))]
-              [pattern
-               (image-from-file
-                (tutorial-fixture "pattern.webp"))]
-              [pixels
-               (image-from-file
-                (tutorial-fixture "pixel-art.png"))]
-              [mountain-crop
-               (image-subset mountains
-                             120 45 150 135)]
-              [flower-crop
-               (image-subset flower
-                             45 35 150 150)])
+  (let ()
+    (define mountains (image-from-file
+      (tutorial-fixture "mountains.jpg")))
+    (define flower (image-from-file
+      (tutorial-fixture "flower.png")))
+    (define pattern (image-from-file
+      (tutorial-fixture "pattern.webp")))
+    (define pixels (image-from-file
+      (tutorial-fixture "pixel-art.png")))
+    (define mountain-crop (image-subset mountains
+      120 45 150 135))
+    (define flower-crop (image-subset flower
+      45 35 150 150))
     (draw-contact-sheet canvas
                         mountains flower pattern pixels
                         mountain-crop flower-crop)))
@@ -275,8 +274,9 @@ The final sheet uses four complete images and two crops.
 (images-render-pict 900 600 draw-complete-sheet)
 ]
 
-The source images and crops remain live for the whole drawing operation. The
-@racket[with-skia] form closes them after the contact sheet has been drawn.
+The source images and crops remain reachable for the whole drawing operation.
+After the drawing function returns, ordinary garbage collection can reclaim
+them when they are no longer referenced.
 
 @section{Save the Result}
 
@@ -284,9 +284,9 @@ The finished contact sheet is a raster surface, so @racket[save-png] can save
 it directly:
 
 @racketblock[
-(with-skia ([surface
-             (make-surface 900 600
-                           #:background "#ECE8DF")])
+(let ()
+  (define surface (make-surface 900 600
+    #:background "#ECE8DF"))
   (draw-complete-sheet (surface-canvas surface))
   (save-png surface "contact-sheet.png"
             #:exists 'replace))
@@ -296,8 +296,8 @@ The @racket[save-image] function is useful when you already have an image
 instead of a surface. It can encode PNG, JPEG, or WebP:
 
 @racketblock[
-(with-skia ([image
-             (image-from-file "photo.png")])
+(let ()
+  (define image (image-from-file "photo.png"))
   (save-image image "photo.webp" 'webp
               #:exists 'replace))
 ]

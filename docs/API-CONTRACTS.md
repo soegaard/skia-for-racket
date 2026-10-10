@@ -60,11 +60,15 @@ The current snapshot has these deliberate boundaries:
 
 ### Owned resources and detached values
 
-Owned native resources use the established resource protocol. Prefer `with-skia`
-or `call-with-skia-resource` for deterministic release. An ordinary resource's
-`skia-close!` is idempotent, but close can still be rejected while an exclusive
-borrow or protected use is active. Do not swallow such a failure and then reuse
-the resource as if it had closed successfully.
+Ordinary CPU-owned native resources use the established resource protocol and
+have automatic fallback cleanup when they become unreachable. Normal Racket
+bindings are therefore valid when the exact release time does not matter. Use
+`with-skia`, `call-with-skia-resource`, or `skia-close!` when prompt,
+deterministic release matters. Explicit release cancels the fallback cleanup.
+An ordinary resource's `skia-close!` is idempotent, but close can still be
+rejected while an exclusive borrow or protected use is active. Do not swallow
+such a failure and then reuse the resource as if it had closed successfully.
+See [resource lifetimes](RESOURCE-LIFETIMES.md) for the public lifetime policy.
 
 Detached values do not become native resources merely because they describe
 native data. Colors, copied XYZ-D50 coefficients, image descriptions and bounded

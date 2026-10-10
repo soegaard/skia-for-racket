@@ -33,12 +33,13 @@
 
 (define (draw-cell canvas image label x y
                    #:sampling [sampling 'linear])
-  (with-skia ([card (make-paint #:color card-color)]
-              [frame (make-paint #:color frame-color
-                                 #:style 'stroke
-                                 #:stroke-width 2)]
-              [text (make-paint #:color text-color)]
-              [font (make-font #:size 16)])
+  (let ()
+    (define card (make-paint #:color card-color))
+    (define frame (make-paint #:color frame-color
+      #:style 'stroke
+      #:stroke-width 2))
+    (define text (make-paint #:color text-color))
+    (define font (make-font #:size 16))
     (draw-rounded-rect canvas x y 260 250 14 14 card)
     (draw-rounded-rect canvas x y 260 250 14 14 frame)
     (draw-image-fit canvas image
@@ -61,21 +62,15 @@
   (draw-cell canvas flower-crop "flower crop" 610 320))
 
 (define (save-contact-sheet filename)
-  (with-skia ([mountains
-               (image-from-file (fixture "mountains.jpg"))]
-              [flower
-               (image-from-file (fixture "flower.png"))]
-              [pattern
-               (image-from-file (fixture "pattern.webp"))]
-              [pixels
-               (image-from-file (fixture "pixel-art.png"))]
-              [mountain-crop
-               (image-subset mountains 120 45 150 135)]
-              [flower-crop
-               (image-subset flower 45 35 150 150)]
-              [surface
-               (make-surface width height
-                             #:background background-color)])
+  (let ()
+    (define mountains (image-from-file (fixture "mountains.jpg")))
+    (define flower (image-from-file (fixture "flower.png")))
+    (define pattern (image-from-file (fixture "pattern.webp")))
+    (define pixels (image-from-file (fixture "pixel-art.png")))
+    (define mountain-crop (image-subset mountains 120 45 150 135))
+    (define flower-crop (image-subset flower 45 35 150 150))
+    (define surface (make-surface width height
+      #:background background-color))
     (draw-contact-sheet (surface-canvas surface)
                         mountains flower pattern pixels
                         mountain-crop flower-crop)

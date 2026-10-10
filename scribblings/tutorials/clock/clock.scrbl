@@ -37,10 +37,11 @@ The clock face is centered around the point @tt{(0, 0)}:
 
 @clock-racketblock+eval[
 (define (draw-clock-face canvas)
-  (with-skia ([fill (make-paint #:color face-color)]
-              [rim (make-paint #:color ink-color
-                               #:style 'stroke
-                               #:stroke-width 5)])
+  (let ()
+    (define fill (make-paint #:color face-color))
+    (define rim (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 5))
     (draw-circle canvas 0 0 face-radius fill)
     (draw-circle canvas 0 0 face-radius rim)))
 ]
@@ -115,10 +116,11 @@ mark above the clock center.
    (with-canvas-state canvas
      (canvas-translate! canvas center center)
      (draw-clock-face canvas)
-     (with-skia ([paint (make-paint #:color ink-color
-                                    #:style 'stroke
-                                    #:stroke-width 6
-                                    #:cap 'round)])
+     (let ()
+       (define paint (make-paint #:color ink-color
+         #:style 'stroke
+         #:stroke-width 6
+         #:cap 'round))
        (draw-hour-tick canvas paint)))))
 ]
 
@@ -146,10 +148,11 @@ because the y axis points downward.
    (with-canvas-state canvas
      (canvas-translate! canvas center center)
      (draw-clock-face canvas)
-     (with-skia ([paint (make-paint #:color ink-color
-                                    #:style 'stroke
-                                    #:stroke-width 6
-                                    #:cap 'round)])
+     (let ()
+       (define paint (make-paint #:color ink-color
+         #:style 'stroke
+         #:stroke-width 6
+         #:cap 'round))
        (draw-hour-tick canvas paint)
        (with-canvas-state canvas
          (canvas-rotate! canvas 30)
@@ -194,10 +197,11 @@ at 90 degrees instead of 60 degrees.
    (with-canvas-state canvas
      (canvas-translate! canvas center center)
      (draw-clock-face canvas)
-     (with-skia ([paint (make-paint #:color ink-color
-                                    #:style 'stroke
-                                    #:stroke-width 6
-                                    #:cap 'round)])
+     (let ()
+       (define paint (make-paint #:color ink-color
+         #:style 'stroke
+         #:stroke-width 6
+         #:cap 'round))
        (for ([hour (in-range 12)])
          (canvas-rotate! canvas (* hour 30))
          (draw-hour-tick canvas paint))))))
@@ -212,10 +216,11 @@ coordinate system:
 
 @clock-racketblock+eval[
 (define (draw-hour-ticks canvas)
-  (with-skia ([paint (make-paint #:color ink-color
-                                 #:style 'stroke
-                                 #:stroke-width 6
-                                 #:cap 'round)])
+  (let ()
+    (define paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 6
+      #:cap 'round))
     (for ([hour (in-range 12)])
       (with-canvas-state canvas
         (canvas-rotate! canvas (* hour 30))
@@ -240,14 +245,15 @@ six degrees apart:
   (draw-line canvas 0 -198 0 -210 paint))
 
 (define (draw-ticks canvas)
-  (with-skia ([hour-paint (make-paint #:color ink-color
-                                      #:style 'stroke
-                                      #:stroke-width 6
-                                      #:cap 'round)]
-              [minute-paint (make-paint #:color ink-color
-                                        #:style 'stroke
-                                        #:stroke-width 2
-                                        #:cap 'round)])
+  (let ()
+    (define hour-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 6
+      #:cap 'round))
+    (define minute-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 2
+      #:cap 'round))
     (for ([minute (in-range 60)])
       (with-canvas-state canvas
         (canvas-rotate! canvas (* minute 6))
@@ -291,18 +297,19 @@ The hour, minute, and second values determine three rotation angles:
     (+ (* minute 6)
        (/ second 10)))
   (define second-angle (* second 6))
-  (with-skia ([hour-paint (make-paint #:color ink-color
-                                      #:style 'stroke
-                                      #:stroke-width 11
-                                      #:cap 'round)]
-              [minute-paint (make-paint #:color ink-color
-                                        #:style 'stroke
-                                        #:stroke-width 7
-                                        #:cap 'round)]
-              [second-paint (make-paint #:color second-color
-                                        #:style 'stroke
-                                        #:stroke-width 3
-                                        #:cap 'round)])
+  (let ()
+    (define hour-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 11
+      #:cap 'round))
+    (define minute-paint (make-paint #:color ink-color
+      #:style 'stroke
+      #:stroke-width 7
+      #:cap 'round))
+    (define second-paint (make-paint #:color second-color
+      #:style 'stroke
+      #:stroke-width 3
+      #:cap 'round))
     (with-canvas-state canvas
       (canvas-rotate! canvas hour-angle)
       (draw-hand canvas 120 16 hour-paint))
@@ -322,8 +329,9 @@ A small center pin finishes the mechanism:
 
 @clock-racketblock+eval[
 (define (draw-center-pin canvas)
-  (with-skia ([outer (make-paint #:color ink-color)]
-              [inner (make-paint #:color second-color)])
+  (let ()
+    (define outer (make-paint #:color ink-color))
+    (define inner (make-paint #:color second-color))
     (draw-circle canvas 0 0 11 outer)
     (draw-circle canvas 0 0 5 inner)))
 
@@ -373,11 +381,12 @@ the surface.
 (clock-render-pict
  size size
  (lambda (canvas)
-   (with-skia ([guide (make-paint #:color "#8A94A3")]
-               [hand (make-paint #:color second-color
-                                 #:style 'stroke
-                                 #:stroke-width 6
-                                 #:cap 'round)])
+   (let ()
+     (define guide (make-paint #:color "#8A94A3"))
+     (define hand (make-paint #:color second-color
+       #:style 'stroke
+       #:stroke-width 6
+       #:cap 'round))
      (draw-circle canvas center center 7 guide)
      (with-canvas-state canvas
        (canvas-translate! canvas center center)
@@ -390,11 +399,12 @@ the surface.
 (clock-render-pict
  size size
  (lambda (canvas)
-   (with-skia ([guide (make-paint #:color "#8A94A3")]
-               [hand (make-paint #:color second-color
-                                 #:style 'stroke
-                                 #:stroke-width 6
-                                 #:cap 'round)])
+   (let ()
+     (define guide (make-paint #:color "#8A94A3"))
+     (define hand (make-paint #:color second-color
+       #:style 'stroke
+       #:stroke-width 6
+       #:cap 'round))
      (draw-circle canvas center center 7 guide)
      (with-canvas-state canvas
        (canvas-rotate! canvas 45)
@@ -434,8 +444,9 @@ therefore scale together.
 The complete 600 by 600 clock can now be drawn with one call:
 
 @racketblock[
-(with-skia ([surface (make-surface size size
-                                  #:background background-color)])
+(let ()
+  (define surface (make-surface size size
+    #:background background-color))
   (draw-clock-at (surface-canvas surface)
                  center center 1
                  10 10 30)

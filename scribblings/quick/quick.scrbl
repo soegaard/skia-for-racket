@@ -52,7 +52,8 @@ First, fill the picture with a dark blue rectangle:
 (define flat-sky-color "#101936")
 
 (define (draw-flat-sky canvas)
-  (with-skia ([paint (make-paint #:color flat-sky-color)])
+  (let ()
+    (define paint (make-paint #:color flat-sky-color))
     (draw-rect canvas 0 0 width height paint)))
 ]
 
@@ -67,7 +68,8 @@ A complete raster program can create a surface, draw through its canvas, and
 save the surface as a PNG file:
 
 @racketblock[
-(with-skia ([surface (make-surface width height)])
+(let ()
+  (define surface (make-surface width height))
   (define canvas (surface-canvas surface))
 
   (draw-flat-sky canvas)
@@ -76,9 +78,15 @@ save the surface as a PNG file:
             #:exists 'replace))
 ]
 
-The @racket[with-skia] form manages the resources listed in its bindings. The
-form closes those resources when the body finishes, including when an exception
-is raised. The canvas borrows the lifetime of the surface.
+The surface and paints are ordinary owned CPU resources. Racket can reclaim
+their native storage after they become unreachable, so ordinary Racket bindings
+are enough here. The canvas borrows the lifetime of the surface and must not
+outlive it.
+
+The @racket[with-skia] form remains useful when native storage should be
+released at a known point, such as for a large resource or resources created
+repeatedly. The resource-lifetime documentation explains that choice in more
+detail.
 
 @skia-image[
 (quick-render-pict width height draw-flat-sky)
@@ -104,7 +112,8 @@ The moon is a filled circle:
 (define moon-color "#F6E7B0")
 
 (define (draw-moon canvas)
-  (with-skia ([paint (make-paint #:color moon-color)])
+  (let ()
+    (define paint (make-paint #:color moon-color))
     (draw-circle canvas 650 90 42 paint)))
 ]
 
@@ -129,7 +138,8 @@ Small circles can also serve as stars:
     (375 185 2)))
 
 (define (draw-stars canvas)
-  (with-skia ([paint (make-paint #:color star-color)])
+  (let ()
+    (define paint (make-paint #:color star-color))
     (for ([star (in-list stars)])
       (draw-circle canvas
                    (first star)
@@ -199,10 +209,11 @@ A second, darker range sits in front of the first one:
     (close)))
 
 (define (draw-mountains canvas)
-  (with-skia ([back-path (make-path back-mountains)]
-              [back-paint (make-paint #:color back-mountain-color)]
-              [front-path (make-path front-mountains)]
-              [front-paint (make-paint #:color front-mountain-color)])
+  (let ()
+    (define back-path (make-path back-mountains))
+    (define back-paint (make-paint #:color back-mountain-color))
+    (define front-path (make-path front-mountains))
+    (define front-paint (make-paint #:color front-mountain-color))
     (draw-path canvas back-path back-paint)
     (draw-path canvas front-path front-paint)))
 ]
@@ -231,11 +242,11 @@ and another color near the horizon.
 (define sky-bottom "#344A78")
 
 (define (draw-sky canvas)
-  (with-skia ([shader
-               (make-linear-gradient-shader
-                0 0 0 lake-top
-                (list sky-top sky-bottom))]
-              [paint (make-paint #:shader shader)])
+  (let ()
+    (define shader (make-linear-gradient-shader
+      0 0 0 lake-top
+      (list sky-top sky-bottom)))
+    (define paint (make-paint #:shader shader))
     (draw-rect canvas 0 0 width height paint)))
 ]
 
@@ -249,11 +260,11 @@ The lake is another rectangle with another gradient:
 (define lake-bottom-color "#0D192B")
 
 (define (draw-lake canvas)
-  (with-skia ([shader
-               (make-linear-gradient-shader
-                0 lake-top 0 height
-                (list lake-top-color lake-bottom-color))]
-              [paint (make-paint #:shader shader)])
+  (let ()
+    (define shader (make-linear-gradient-shader
+      0 lake-top 0 height
+      (list lake-top-color lake-bottom-color)))
+    (define paint (make-paint #:shader shader))
     (draw-rect canvas
                0 lake-top
                width (- height lake-top)
@@ -286,10 +297,11 @@ drawing operations, so it is useful to put them in one function.
 (define window-color "#FFD47A")
 
 (define (draw-cabin canvas x y)
-  (with-skia ([body-paint (make-paint #:color cabin-color)]
-              [roof-paint (make-paint #:color roof-color)]
-              [window-paint (make-paint #:color window-color)]
-              [door-paint (make-paint #:color door-color)])
+  (let ()
+    (define body-paint (make-paint #:color cabin-color))
+    (define roof-paint (make-paint #:color roof-color))
+    (define window-paint (make-paint #:color window-color))
+    (define door-paint (make-paint #:color door-color))
     (draw-rect canvas x y 95 60 body-paint)
     (draw-polygon canvas
                   (list (list (- x 13) (+ y 4))
@@ -323,7 +335,8 @@ The tree is easier to define around its own origin:
 (define tree-color "#182A31")
 
 (define (draw-tree canvas)
-  (with-skia ([paint (make-paint #:color tree-color)])
+  (let ()
+    (define paint (make-paint #:color tree-color))
     (draw-rect canvas -3 -18 6 18 paint)
     (draw-polygon canvas '((-18 -12) (0 -50) (18 -12)) paint)
     (draw-polygon canvas '((-15 -32) (0 -65) (15 -32)) paint)
@@ -389,8 +402,8 @@ drawing can affect the canvas.
     (canvas-clip-rect! canvas
                        0 lake-top
                        width (- height lake-top))
-    (with-skia ([paint
-                 (make-paint #:color (rgba 246 231 176 55))])
+    (let ()
+      (define paint (make-paint #:color (rgba 246 231 176 55)))
       (for ([streak (in-list reflection-streaks)])
         (define y (first streak))
         (define w (second streak))
@@ -427,9 +440,10 @@ The simplest text API needs a font, a paint, and a baseline position.
 (define text-color "#E8ECF5")
 
 (define (draw-title canvas)
-  (with-skia ([title-font (make-font #:size 36)]
-              [small-font (make-font #:size 15)]
-              [paint (make-paint #:color text-color)])
+  (let ()
+    (define title-font (make-font #:size 36))
+    (define small-font (make-font #:size 15))
+    (define paint (make-paint #:color text-color))
     (draw-simple-text canvas
                       "MOONLIGHT"
                       45 445
@@ -483,7 +497,8 @@ know what kind of output lies behind that canvas.
 Raster output can use the function directly:
 
 @racketblock[
-(with-skia ([surface (make-surface width height)])
+(let ()
+  (define surface (make-surface width height))
   (draw-moonlight (surface-canvas surface))
   (save-png surface "moonlight.png"
             #:exists 'replace))
