@@ -52,9 +52,8 @@ First, fill the picture with a dark blue rectangle:
 (define flat-sky-color "#101936")
 
 (define (draw-flat-sky canvas)
-  (let ()
-    (define paint (make-paint #:color flat-sky-color))
-    (draw-rect canvas 0 0 width height paint)))
+  (define paint (make-paint #:color flat-sky-color))
+  (draw-rect canvas 0 0 width height paint))
 ]
 
 The @racket[make-paint] function creates a paint. A paint describes how Skia
@@ -68,14 +67,13 @@ A complete raster program can create a surface, draw through its canvas, and
 save the surface as a PNG file:
 
 @racketblock[
-(let ()
-  (define surface (make-surface width height))
-  (define canvas (surface-canvas surface))
+(define surface (make-surface width height))
+(define canvas (surface-canvas surface))
 
-  (draw-flat-sky canvas)
+(draw-flat-sky canvas)
 
-  (save-png surface "moonlight.png"
-            #:exists 'replace))
+(save-png surface "moonlight.png"
+          #:exists 'replace)
 ]
 
 The surface and paints are ordinary owned CPU resources. Racket can reclaim
@@ -112,9 +110,8 @@ The moon is a filled circle:
 (define moon-color "#F6E7B0")
 
 (define (draw-moon canvas)
-  (let ()
-    (define paint (make-paint #:color moon-color))
-    (draw-circle canvas 650 90 42 paint)))
+  (define paint (make-paint #:color moon-color))
+  (draw-circle canvas 650 90 42 paint))
 ]
 
 The numbers @racket[650] and @racket[90] give the center of the circle. The
@@ -138,14 +135,13 @@ Small circles can also serve as stars:
     (375 185 2)))
 
 (define (draw-stars canvas)
-  (let ()
-    (define paint (make-paint #:color star-color))
-    (for ([star (in-list stars)])
-      (draw-circle canvas
-                   (first star)
-                   (second star)
-                   (third star)
-                   paint))))
+  (define paint (make-paint #:color star-color))
+  (for ([star (in-list stars)])
+    (draw-circle canvas
+                 (first star)
+                 (second star)
+                 (third star)
+                 paint)))
 ]
 
 The list fixes the star positions. The picture therefore looks the same each
@@ -209,13 +205,12 @@ A second, darker range sits in front of the first one:
     (close)))
 
 (define (draw-mountains canvas)
-  (let ()
-    (define back-path (make-path back-mountains))
-    (define back-paint (make-paint #:color back-mountain-color))
-    (define front-path (make-path front-mountains))
-    (define front-paint (make-paint #:color front-mountain-color))
-    (draw-path canvas back-path back-paint)
-    (draw-path canvas front-path front-paint)))
+  (define back-path (make-path back-mountains))
+  (define back-paint (make-paint #:color back-mountain-color))
+  (define front-path (make-path front-mountains))
+  (define front-paint (make-paint #:color front-mountain-color))
+  (draw-path canvas back-path back-paint)
+  (draw-path canvas front-path front-paint))
 ]
 
 Later drawing normally appears on top of earlier drawing. The darker range is
@@ -242,12 +237,11 @@ and another color near the horizon.
 (define sky-bottom "#344A78")
 
 (define (draw-sky canvas)
-  (let ()
-    (define shader (make-linear-gradient-shader
-      0 0 0 lake-top
-      (list sky-top sky-bottom)))
-    (define paint (make-paint #:shader shader))
-    (draw-rect canvas 0 0 width height paint)))
+  (define shader (make-linear-gradient-shader
+    0 0 0 lake-top
+    (list sky-top sky-bottom)))
+  (define paint (make-paint #:shader shader))
+  (draw-rect canvas 0 0 width height paint))
 ]
 
 The rectangle has not changed. The paint now uses a shader instead of one
@@ -260,15 +254,14 @@ The lake is another rectangle with another gradient:
 (define lake-bottom-color "#0D192B")
 
 (define (draw-lake canvas)
-  (let ()
-    (define shader (make-linear-gradient-shader
-      0 lake-top 0 height
-      (list lake-top-color lake-bottom-color)))
-    (define paint (make-paint #:shader shader))
-    (draw-rect canvas
-               0 lake-top
-               width (- height lake-top)
-               paint)))
+  (define shader (make-linear-gradient-shader
+    0 lake-top 0 height
+    (list lake-top-color lake-bottom-color)))
+  (define paint (make-paint #:shader shader))
+  (draw-rect canvas
+             0 lake-top
+             width (- height lake-top)
+             paint))
 ]
 
 The value @racket[lake-top] marks the shoreline. The same value will also help
@@ -297,19 +290,18 @@ drawing operations, so it is useful to put them in one function.
 (define window-color "#FFD47A")
 
 (define (draw-cabin canvas x y)
-  (let ()
-    (define body-paint (make-paint #:color cabin-color))
-    (define roof-paint (make-paint #:color roof-color))
-    (define window-paint (make-paint #:color window-color))
-    (define door-paint (make-paint #:color door-color))
-    (draw-rect canvas x y 95 60 body-paint)
-    (draw-polygon canvas
-                  (list (list (- x 13) (+ y 4))
-                        (list (+ x 47) (- y 38))
-                        (list (+ x 107) (+ y 4)))
-                  roof-paint)
-    (draw-rect canvas (+ x 20) (+ y 17) 25 20 window-paint)
-    (draw-rect canvas (+ x 63) (+ y 32) 20 28 door-paint)))
+  (define body-paint (make-paint #:color cabin-color))
+  (define roof-paint (make-paint #:color roof-color))
+  (define window-paint (make-paint #:color window-color))
+  (define door-paint (make-paint #:color door-color))
+  (draw-rect canvas x y 95 60 body-paint)
+  (draw-polygon canvas
+                (list (list (- x 13) (+ y 4))
+                      (list (+ x 47) (- y 38))
+                      (list (+ x 107) (+ y 4)))
+                roof-paint)
+  (draw-rect canvas (+ x 20) (+ y 17) 25 20 window-paint)
+  (draw-rect canvas (+ x 63) (+ y 32) 20 28 door-paint))
 ]
 
 The @racket[draw-polygon] function joins the given points and closes the shape.
@@ -335,12 +327,11 @@ The tree is easier to define around its own origin:
 (define tree-color "#182A31")
 
 (define (draw-tree canvas)
-  (let ()
-    (define paint (make-paint #:color tree-color))
-    (draw-rect canvas -3 -18 6 18 paint)
-    (draw-polygon canvas '((-18 -12) (0 -50) (18 -12)) paint)
-    (draw-polygon canvas '((-15 -32) (0 -65) (15 -32)) paint)
-    (draw-polygon canvas '((-12 -50) (0 -80) (12 -50)) paint)))
+  (define paint (make-paint #:color tree-color))
+  (draw-rect canvas -3 -18 6 18 paint)
+  (draw-polygon canvas '((-18 -12) (0 -50) (18 -12)) paint)
+  (draw-polygon canvas '((-15 -32) (0 -65) (15 -32)) paint)
+  (draw-polygon canvas '((-12 -50) (0 -80) (12 -50)) paint))
 ]
 
 The @racket[canvas-translate!] function changes the current coordinate system.
@@ -440,18 +431,17 @@ The simplest text API needs a font, a paint, and a baseline position.
 (define text-color "#E8ECF5")
 
 (define (draw-title canvas)
-  (let ()
-    (define title-font (make-font #:size 36))
-    (define small-font (make-font #:size 15))
-    (define paint (make-paint #:color text-color))
-    (draw-simple-text canvas
-                      "MOONLIGHT"
-                      45 445
-                      title-font paint)
-    (draw-simple-text canvas
-                      "A quiet night by the lake"
-                      47 474
-                      small-font paint)))
+  (define title-font (make-font #:size 36))
+  (define small-font (make-font #:size 15))
+  (define paint (make-paint #:color text-color))
+  (draw-simple-text canvas
+                    "MOONLIGHT"
+                    45 445
+                    title-font paint)
+  (draw-simple-text canvas
+                    "A quiet night by the lake"
+                    47 474
+                    small-font paint))
 ]
 
 The y coordinate in @racket[draw-simple-text] gives the text baseline. Skia also
@@ -497,11 +487,10 @@ know what kind of output lies behind that canvas.
 Raster output can use the function directly:
 
 @racketblock[
-(let ()
-  (define surface (make-surface width height))
-  (draw-moonlight (surface-canvas surface))
-  (save-png surface "moonlight.png"
-            #:exists 'replace))
+(define surface (make-surface width height))
+(draw-moonlight (surface-canvas surface))
+(save-png surface "moonlight.png"
+          #:exists 'replace)
 ]
 
 @section{Save PDF and SVG}

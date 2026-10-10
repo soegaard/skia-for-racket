@@ -41,11 +41,10 @@ The @racket[image-from-file] function decodes an image file and returns an
 owned Skia image.
 
 @images-interaction[
-(let ()
-  (define image (image-from-file
-    (tutorial-fixture "mountains.jpg")))
-  (list (image-width image)
-        (image-height image)))
+(define image (image-from-file
+  (tutorial-fixture "mountains.jpg")))
+(list (image-width image)
+      (image-height image))
 ]
 
 The @racket[image-width] and @racket[image-height] functions report the image
@@ -62,10 +61,9 @@ The @racket[draw-image] function places an image at its natural size.
 
 @images-racketblock+eval[
 (define (draw-natural-size canvas)
-  (let ()
-    (define image (image-from-file
-      (tutorial-fixture "mountains.jpg")))
-    (draw-image canvas image 80 40)))
+  (define image (image-from-file
+    (tutorial-fixture "mountains.jpg")))
+  (draw-image canvas image 80 40))
 ]
 
 @images-image[
@@ -84,12 +82,11 @@ The following example puts the portrait image into a wide rectangle:
 
 @images-racketblock+eval[
 (define (draw-stretched-image canvas)
-  (let ()
-    (define image (image-from-file
-      (tutorial-fixture "flower.png")))
-    (draw-image-rect canvas image
-                     70 55 380 180
-                     #:sampling 'linear)))
+  (define image (image-from-file
+    (tutorial-fixture "flower.png")))
+  (draw-image-rect canvas image
+                   70 55 380 180
+                   #:sampling 'linear))
 ]
 
 @images-image[
@@ -123,11 +120,10 @@ the destination rectangle.
 
 @images-racketblock+eval[
 (define (draw-fitted-image canvas)
-  (let ()
-    (define image (image-from-file
-      (tutorial-fixture "flower.png")))
-    (draw-image-fit canvas image
-                    70 55 380 180)))
+  (define image (image-from-file
+    (tutorial-fixture "flower.png")))
+  (draw-image-fit canvas image
+                  70 55 380 180))
 ]
 
 @images-image[
@@ -147,21 +143,20 @@ The difference is easy to see with the 24 by 24 pixel-art image:
 
 @images-racketblock+eval[
 (define (draw-sampling-demo canvas)
-  (let ()
-    (define image (image-from-file
-      (tutorial-fixture "pixel-art.png")))
-    (define font (make-font #:size 18))
-    (define text (make-paint #:color "#26333D"))
-    (draw-image-rect canvas image
-                     35 45 220 220
-                     #:sampling 'nearest)
-    (draw-image-rect canvas image
-                     285 45 220 220
-                     #:sampling 'linear)
-    (draw-simple-text canvas "'nearest"
-                      105 292 font text)
-    (draw-simple-text canvas "'linear"
-                      360 292 font text)))
+  (define image (image-from-file
+    (tutorial-fixture "pixel-art.png")))
+  (define font (make-font #:size 18))
+  (define text (make-paint #:color "#26333D"))
+  (draw-image-rect canvas image
+                   35 45 220 220
+                   #:sampling 'nearest)
+  (draw-image-rect canvas image
+                   285 45 220 220
+                   #:sampling 'linear)
+  (draw-simple-text canvas "'nearest"
+                    105 292 font text)
+  (draw-simple-text canvas "'linear"
+                    360 292 font text))
 ]
 
 @images-image[
@@ -181,15 +176,14 @@ source image.
 
 @images-racketblock+eval[
 (define (draw-crop-demo canvas)
-  (let ()
-    (define image (image-from-file
-      (tutorial-fixture "mountains.jpg")))
-    (define crop (image-subset image
-      120 45 150 135))
-    (draw-image-fit canvas image
-                    25 35 300 210)
-    (draw-image-fit canvas crop
-                    355 35 180 210)))
+  (define image (image-from-file
+    (tutorial-fixture "mountains.jpg")))
+  (define crop (image-subset image
+    120 45 150 135))
+  (draw-image-fit canvas image
+                  25 35 300 210)
+  (draw-image-fit canvas crop
+                  355 35 180 210))
 ]
 
 @images-image[
@@ -212,22 +206,21 @@ contains a card, one fitted image, and a label.
 
 (define (draw-cell canvas image label x y
                    #:sampling [sampling 'linear])
-  (let ()
-    (define card (make-paint #:color card-color))
-    (define frame (make-paint #:color frame-color
-      #:style 'stroke
-      #:stroke-width 2))
-    (define text (make-paint #:color text-color))
-    (define font (make-font #:size 16))
-    (draw-rounded-rect canvas x y 260 250 14 14 card)
-    (draw-rounded-rect canvas x y 260 250 14 14 frame)
-    (draw-image-fit canvas image
-                    (+ x 15) (+ y 15)
-                    230 185
-                    #:sampling sampling)
-    (draw-simple-text canvas label
-                      (+ x 16) (+ y 229)
-                      font text)))
+  (define card (make-paint #:color card-color))
+  (define frame (make-paint #:color frame-color
+    #:style 'stroke
+    #:stroke-width 2))
+  (define text (make-paint #:color text-color))
+  (define font (make-font #:size 16))
+  (draw-rounded-rect canvas x y 260 250 14 14 card)
+  (draw-rounded-rect canvas x y 260 250 14 14 frame)
+  (draw-image-fit canvas image
+                  (+ x 15) (+ y 15)
+                  230 185
+                  #:sampling sampling)
+  (draw-simple-text canvas label
+                    (+ x 16) (+ y 229)
+                    font text))
 ]
 
 The function receives an image. It does not need to know which file produced
@@ -252,22 +245,21 @@ The final sheet uses four complete images and two crops.
 
 @images-racketblock+eval[
 (define (draw-complete-sheet canvas)
-  (let ()
-    (define mountains (image-from-file
-      (tutorial-fixture "mountains.jpg")))
-    (define flower (image-from-file
-      (tutorial-fixture "flower.png")))
-    (define pattern (image-from-file
-      (tutorial-fixture "pattern.webp")))
-    (define pixels (image-from-file
-      (tutorial-fixture "pixel-art.png")))
-    (define mountain-crop (image-subset mountains
-      120 45 150 135))
-    (define flower-crop (image-subset flower
-      45 35 150 150))
-    (draw-contact-sheet canvas
-                        mountains flower pattern pixels
-                        mountain-crop flower-crop)))
+  (define mountains (image-from-file
+    (tutorial-fixture "mountains.jpg")))
+  (define flower (image-from-file
+    (tutorial-fixture "flower.png")))
+  (define pattern (image-from-file
+    (tutorial-fixture "pattern.webp")))
+  (define pixels (image-from-file
+    (tutorial-fixture "pixel-art.png")))
+  (define mountain-crop (image-subset mountains
+    120 45 150 135))
+  (define flower-crop (image-subset flower
+    45 35 150 150))
+  (draw-contact-sheet canvas
+                      mountains flower pattern pixels
+                      mountain-crop flower-crop))
 ]
 
 @images-image[
@@ -284,22 +276,20 @@ The finished contact sheet is a raster surface, so @racket[save-png] can save
 it directly:
 
 @racketblock[
-(let ()
-  (define surface (make-surface 900 600
-    #:background "#ECE8DF"))
-  (draw-complete-sheet (surface-canvas surface))
-  (save-png surface "contact-sheet.png"
-            #:exists 'replace))
+(define surface (make-surface 900 600
+  #:background "#ECE8DF"))
+(draw-complete-sheet (surface-canvas surface))
+(save-png surface "contact-sheet.png"
+          #:exists 'replace)
 ]
 
 The @racket[save-image] function is useful when you already have an image
 instead of a surface. It can encode PNG, JPEG, or WebP:
 
 @racketblock[
-(let ()
-  (define image (image-from-file "photo.png"))
-  (save-image image "photo.webp" 'webp
-              #:exists 'replace))
+(define image (image-from-file "photo.png"))
+(save-image image "photo.webp" 'webp
+            #:exists 'replace)
 ]
 
 Encoding options such as JPEG quality, WebP lossless mode, and color-space

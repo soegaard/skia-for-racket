@@ -23,22 +23,20 @@
   (make-path logo-commands #:fill-rule 'even-odd))
 
 (define (draw-logo canvas)
-  (let ()
-    (define path (make-logo-path))
-    (define fill (make-paint #:color fill-color))
-    (define outline (make-paint #:color outline-color
-      #:style 'stroke
-      #:stroke-width 5
-      #:join 'round))
-    (draw-path canvas path fill)
-    (draw-path canvas path outline)))
+  (define path (make-logo-path))
+  (define fill (make-paint #:color fill-color))
+  (define outline (make-paint #:color outline-color
+    #:style 'stroke
+    #:stroke-width 5
+    #:join 'round))
+  (draw-path canvas path fill)
+  (draw-path canvas path outline))
 
 (define (save-raster filename)
-  (let ()
-    (define surface (make-surface size size
-      #:background background-color))
-    (draw-logo (surface-canvas surface))
-    (save-png surface filename #:exists 'replace)))
+  (define surface (make-surface size size
+    #:background background-color))
+  (draw-logo (surface-canvas surface))
+  (save-png surface filename #:exists 'replace))
 
 (define (save-vector filename)
   (define page

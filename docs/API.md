@@ -1527,10 +1527,12 @@ color; there is no separate normalized-alpha API.
 (make-blend-shader blend-mode destination-shader source-shader)
 ```
 
-A shader is an owned, reference-counted Skia resource. Close it explicitly or
-manage it with `with-skia`. Native paints, image shaders, and blend shaders
-retain the native references they need; there is no requirement to keep the
-Racket wrappers for their inputs alive after construction.
+A shader is an owned, reference-counted Skia resource. Ordinary CPU shaders
+have automatic fallback cleanup when they become unreachable. Use `with-skia`
+or `skia-close!` when prompt deterministic release matters. Native paints,
+image shaders, and blend shaders retain the native references they need; there
+is no requirement to keep the Racket wrappers for their inputs alive after
+construction.
 
 `colors` is a list or vector containing at least two values accepted by
 `color?`. `positions` is `#f` for evenly distributed stops, or a list/vector of
