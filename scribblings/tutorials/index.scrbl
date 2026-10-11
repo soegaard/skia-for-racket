@@ -62,7 +62,9 @@ reference alongside them.
 
 @itemlist[
  @item{@hyperlink["../gpu/gpu.html"]{GPU: Render One Scene on CPU and Metal} —
-       keep scene drawing backend-neutral while making GPU contexts, lifetimes, submission, and readback explicit.}
+       reuse one drawing function for CPU and Metal, and return a CPU-owned image after GPU readback.}
+ @item{@hyperlink["../animation/animation.html"]{Animation: Orbiting Lights in a Window} —
+       draw frames from elapsed time, schedule redraws, pause, and select CPU or GPU presentation.}
 ]
 
 @section{Choosing a Path}
@@ -70,8 +72,8 @@ reference alongside them.
 If you are new to Skia, read Quick, Clock, and Logo first. Follow with Images
 and Poster for everyday drawing work. Choose the Text sequence when your work
 contains writing, and the document tutorials when you need PDF or SVG output.
-The GPU tutorial builds on ordinary raster drawing and is most useful once a
-CPU rendering path already works.
+The GPU tutorial explains rendering a single image on a GPU. Animation then
+shows why maintaining a renderer across successive window frames is useful.
 
 The repository's @filepath{docs/TUTORIAL-GUIDELINES.md} describes the
 conventions shared by these examples, including runnable documentation,
