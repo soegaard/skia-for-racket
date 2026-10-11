@@ -69,6 +69,21 @@ reference alongside them.
        select and drag control points, update a path, and redraw with CPU or GPU rendering.}
 ]
 
+@section{Further Explorations}
+
+@itemlist[
+ @item{@hyperlink["../navigation/navigation.html"]{Zoom and Pan: Navigate an Interactive Canvas} —
+       transform the view, invert pointer coordinates, and keep hit targets usable at every zoom.}
+ @item{@hyperlink["../shaders/shaders.html"]{Runtime Shaders: Paint Contour Waves} —
+       compile SkSL, supply uniforms, and compute colors from local coordinates.}
+ @item{@hyperlink["../pixels/pixels.html"]{Working with Pixels: Build a Two-Ink Image Processor} —
+       distinguish mutable buffers, row strides, borrowed views, and independent snapshots.}
+ @item{@hyperlink["../color-spaces/color-spaces.html"]{Color Spaces: Give Pixel Values Their Meaning} —
+       declare sample meaning, convert between encodings, and save matching ICC metadata.}
+ @item{@hyperlink["../path-ops/path-ops.html"]{Path Operations: Construct a Cutout Badge} —
+       combine filled geometry with union, intersection, difference, exclusive-or, and simplification.}
+]
+
 @section{Choosing a Path}
 
 If you are new to Skia, read Quick, Clock, and Logo first. Follow with Images
