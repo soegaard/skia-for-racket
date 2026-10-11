@@ -489,3 +489,38 @@ The following documents are useful when writing or reviewing a tutorial:
 The Racket Quick tutorial is especially useful as a model for pacing:
 introduce a small idea, execute it, show the result, and then reuse it in the
 next step.
+
+## 18. Metal Reference Image for Tutorial 13 (Maintainers)
+
+The GPU tutorial must render as a Scribble manual on systems without Metal.
+The evaluator in `scribblings/tutorials/gpu/eval.rkt` renders the CPU side of
+the comparison with Skia during the documentation build. The Metal side is the
+actual PNG generated separately on macOS, committed at
+`scribblings/tutorials/gpu/figures/metal-reference.png`.
+
+To regenerate the Metal reference, run these commands from the repository root
+on a system where the Metal backend works:
+
+```bash
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+
+"$RACKET" scribblings/tutorials/gpu/gpu-offscreen.rkt \
+  scribblings/tutorials/gpu/figures/metal-reference.png
+
+python3 tools/update-source-sums.py
+python3 tools/update-source-sums.py --check
+```
+
+The generator uses `render-gpu->raster-image` with the shared `draw-scene`
+function from `scene.rkt`. It requires actual Metal rendering and does not
+fall back to CPU output. The returned image is a detached CPU image, so the
+PNG encoder does not need an active GPU context.
+
+Whenever `scene.rkt` changes, regenerate the Metal PNG as well as the CPU
+figure, then inspect the two results together. The CPU half updates during
+the Scribble build, but a committed Metal PNG does not update automatically.
+The placeholder image is only a development aid; it should not be presented
+as an actual Metal result in a published tutorial.
+
+The final documentation build may run without Metal, but a changed GPU scene
+should be validated on macOS before committing its revised reference image.

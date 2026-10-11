@@ -1,5 +1,11 @@
 # Offscreen GPU surfaces
 
+For a single CPU image rendered on the GPU, use
+`render-gpu->raster-image` from `skia/gpu`. It owns context creation,
+activation, surface lifetime, synchronous readback, and teardown. See
+[one-shot GPU rendering](GPU-RENDER.md) for the short example and exact contract.
+The lower-level API below remains useful for persistent contexts and targets.
+
 The OpenGL and Metal backends use the pinned SkiaSharp 3.119.1 / Skia m119
 Ganesh C ABI.
 Require `skia` for drawing and `skia/gpu` for explicit GPU resource operations.

@@ -2,64 +2,70 @@
 
 @title{GPU Rendering — Render the Same Scene on the GPU}
 
-@(require "eval.rkt"
+@(require racket/file
+          racket/runtime-path
+          "eval.rkt"
           (for-label racket
                      skia
-                     skia/gpu))
+                     skia/gpu
+                     skia/gpu-egl
+                     skia/gpu-racket-gl))
+
+@(define-runtime-path scene-source "scene.rkt")
 
 @section{The Finished Comparison}
 
 @(gpu-comparison-pict)
 
-The two pictures use the same @racket[draw-scene] function. The left picture is
-rendered on a normal CPU surface while the documentation is built. The right
-picture is a checked-in PNG produced by the offscreen Metal renderer on macOS.
+Both pictures come from the same @racket[draw-scene] function. The left picture
+uses a CPU raster surface. The right one was rendered with Metal on macOS and
+read back into an ordinary image. Both are 760 by 420 pixels before display
+scaling.
 
-If @filepath{metal-reference.png} has not been generated yet, the right side
-shows an explicit placeholder instead.
+They are supposed to look alike. Different backends can produce small pixel
+differences; this comparison is not a test of byte-for-byte equality or speed.
 
-The main idea is:
+@centered{@bold{Keep the drawing function. Change the surface backing.}}
 
-@centered{@bold{The drawing API can stay the same while the surface changes
-from CPU-backed to GPU-backed. GPU execution and CPU readback remain explicit.}}
+@section{Why Use the GPU?}
 
-The two routes are:
+For a small diagram or an occasional PNG, CPU rendering is usually simpler.
+Creating a GPU context and transferring its output back to the CPU takes work.
+The one-shot helper used here performs both operations for every image, so it
+is not automatically faster than drawing on the CPU.
+
+A GPU becomes more useful when an application draws repeatedly, displays
+frames in a GPU-backed window, or reuses GPU-resident images, shaders, and
+effects without reading intermediate results back into CPU memory. A complex
+scene may also benefit, depending on the hardware and workload.
 
 @verbatim{
-CPU:
-  make-surface
-      -> surface-canvas
-      -> draw-scene
-      -> CPU pixels
+One-off PNG:
+  CPU:       draw -> encode
+  GPU:       create context -> draw -> read back -> encode
 
-Metal:
-  make-gpu-context
-      -> call-with-gpu-context
-      -> make-gpu-surface
-      -> surface-canvas
-      -> draw-scene
-      -> gpu-surface->raster-image
-      -> CPU image
+Repeated frames:
+  GPU:       create context once -> draw / present many frames -> close
 }
 
-Most of the drawing code is shared. The GPU route adds context activation,
-GPU-target lifetime rules, and an explicit transfer when pixels must return to
-the CPU.
+For a static PNG, start with the CPU. For sustained rendering, consider a
+persistent GPU context and measure the complete workflow, including any
+readbacks. If the goal is a vector PDF or SVG, use the document-output API
+from the preceding tutorial: a GPU-rendered image is still raster content.
 
-@section{Keep the Scene Backend-Neutral}
+@section{Keep the Drawing Function}
 
-The scene in @filepath{scene.rkt} requires only @racketmodname[skia]. It does
-not import @racketmodname[skia/gpu].
-
-The scene is 760 by 420 drawing units:
+The shared @filepath{scene.rkt} file requires only @racketmodname[skia]. It
+draws a background, a grid, an orbit, and three glowing nodes. Load it with
+the drawing API and the GPU helper:
 
 @racketblock[
-(define scene-width 760)
-(define scene-height 420)
-(define scene-background "#0B1024")
+(require skia
+         skia/gpu
+         "scene.rkt")
 ]
 
-Its top-level drawing function receives only a canvas:
+Inside @filepath{scene.rkt}, the drawing function has this shape:
 
 @racketblock[
 (define (draw-scene canvas)
@@ -70,381 +76,224 @@ Its top-level drawing function receives only a canvas:
   (draw-center canvas))
 ]
 
-The helpers use ordinary gradients, paths, lines, ovals, and circles. Nothing in
-@racket[draw-scene] asks how the canvas is backed.
+The file already provides @racket[draw-scene]; the definition above is an
+excerpt, not another definition to paste after the @racket[require] form.
+The complete source appears at the end of this tutorial.
 
-That is the reuse boundary for this tutorial.
+A canvas carries drawing state. The function does not need to know whether
+the surface behind it is backed by CPU or GPU storage.
 
-@section{Render the CPU Route}
+@section{Render the Scene on the CPU}
 
-An ordinary surface gives us the CPU version:
+First, create an ordinary surface and draw into its canvas:
 
 @gpu-racketblock+eval[
 (define cpu-surface
-  (make-surface
-   scene-width scene-height
+  (make-surface scene-width scene-height
+                #:background scene-background))
+(draw-scene (surface-canvas cpu-surface))
+]
+
+The surface reports its execution backing:
+
+@gpu-interaction[(surface-backend cpu-surface)]
+
+The result is @racket['raster]. Make an image snapshot of the CPU surface:
+
+@gpu-racketblock+eval[
+(define cpu-image (surface-snapshot cpu-surface))
+]
+
+The normal image encoder can then save it as a PNG:
+
+@racketblock[
+(save-image cpu-image "scene-cpu.png" 'png #:exists 'replace)
+]
+
+@section{Choosing a Backend on Your Platform}
+
+The same drawing function can use different GPU backends. The examples below
+all use @racket[scene-width], @racket[scene-height], @racket[scene-background],
+and @racket[draw-scene] from @filepath{scene.rkt}.
+
+@subsection{macOS: Metal}
+
+On macOS, the one-shot helper can create its own Metal context. Only the
+rendering call changes:
+
+@racketblock[
+(define metal-image
+  (render-gpu->raster-image
+   scene-width scene-height draw-scene
+   #:backend 'metal
+   #:background scene-background))
+]
+
+@(gpu-metal-reference-pict #:scale 0.72)
+
+The figure is the Metal result, displayed at 72 percent of its natural size.
+The helper returns a CPU-owned image; it has already closed the GPU surface
+and context. Save the result with the ordinary image encoder:
+
+@racketblock[
+(save-image metal-image "scene-metal.png" 'png #:exists 'replace)
+]
+
+No separate GPU activation or submission is needed for this one-shot call.
+An unavailable Metal backend raises an exception; it does not silently switch
+to CPU rendering.
+
+@subsection{Windows: Direct3D}
+
+On Windows, the same helper uses Direct3D 12:
+
+@racketblock[
+(define windows-image
+  (render-gpu->raster-image
+   scene-width scene-height draw-scene
+   #:backend 'direct3d
+   #:background scene-background))
+]
+
+The default adapter selection is @racket['hardware]. For a deliberately
+software-rendered Direct3D test, add @racket[#:adapter 'warp]. WARP is not
+hardware acceleration, and the helper never falls back to it automatically.
+
+@subsection{Linux: OpenGL}
+
+On Linux, choose @racket['opengl], but the one-shot helper needs an existing
+OpenGL @emph{provider}. Unlike the Metal and Direct3D paths, it cannot create
+an OpenGL host by itself. The complete runnable GUI example in
+@secref["linux-opengl-host"] shows how a Racket @racket[canvas%] provides a
+live context and how @racket[make-racket-gl-provider] wraps it.
+
+A headless Linux application can instead create an owned OpenGL context using
+@racket[make-egl-gpu-context] from @racketmodname[skia/gpu-egl]. That is a
+@racket[gpu-context?], not a provider accepted by this one-shot helper. Use
+the lower-level GPU drawing/readback API for that route; see
+@filepath{docs/GPU-EGL.md} and @filepath{examples/gpu-headless.rkt}.
+
+@section{What the Helper Manages}
+
+The @racket[render-gpu->raster-image] function carries out one complete render:
+
+@verbatim{
+Create a GPU context
+    -> activate it and create a GPU surface
+    -> call draw-scene with the surface's canvas
+    -> synchronously read back the pixels
+    -> close the GPU surface and context
+    -> return an independent CPU image
+}
+
+The drawing function receives a borrowed canvas. Use it during the callback;
+do not save it for later. The helper handles activation, cleanup, and readback.
+Readback already completes the GPU work required for the CPU image, so there
+is no need to call @racket[gpu-flush-and-submit!] before it.
+
+The returned image can be saved again without involving a GPU. If drawing or
+readback fails, the helper does not return a partial image. GPU setup and
+teardown errors are reported instead of becoming successful CPU fallbacks.
+
+@section{When One Shot Is Not Enough}
+
+The helper is a convenient way to render an occasional GPU image. Calling it
+for every animation frame repeatedly creates and closes contexts and copies
+pixels back to the CPU. That often defeats the point of GPU rendering.
+
+For repeated rendering, create a context once with @racket[make-gpu-context],
+activate it with @racket[call-with-gpu-context], and reuse GPU surfaces and
+images across frames. The @racket[gpu-surface-snapshot] function can keep an
+image GPU-resident for later drawing. The lower-level
+@racket[gpu-surface->raster-image] function is available when a CPU copy is
+actually needed. Their lifetime rules are covered in the Guide.
+
+@section[#:tag "linux-opengl-host"]{Linux: A Complete OpenGL Host Example}
+
+Place this code in a @racketmodname[racket] file alongside @filepath{scene.rkt}.
+It runs in a Linux graphical session with a working OpenGL/GLX context. The
+small Racket GUI window supplies the OpenGL host; Skia draws into a separate
+760-by-420 offscreen GPU surface.
+
+@racketmod[
+racket
+(require racket/class
+         racket/gui/base
+         (only-in racket/draw gl-config%)
+         skia
+         skia/gpu
+         skia/gpu-racket-gl
+         "scene.rkt")
+
+(define gl-config (new gl-config%))
+(send gl-config set-legacy? #f)
+
+(define gl-frame
+  (new frame% [label "OpenGL host"]
+       [width 320] [height 240]))
+(define gl-canvas
+  (new canvas% [parent gl-frame]
+       [style '(gl no-autoclear)]
+       [gl-config gl-config]
+       [paint-callback (lambda (_canvas _dc) (void))]))
+(send gl-frame show #t)
+(sleep/yield 0.08)
+
+(define gl-context
+  (send (send gl-canvas get-dc) get-gl-context))
+(unless (and gl-context (send gl-context ok?))
+  (error 'linux-gpu-example "OpenGL context unavailable"))
+(define gl-provider
+  (make-racket-gl-provider gl-context))
+
+(define linux-image
+  (render-gpu->raster-image
+   scene-width scene-height draw-scene
+   #:backend 'opengl
+   #:provider gl-provider
    #:background scene-background))
 
-(define cpu-canvas
-  (surface-canvas cpu-surface))
-
-(draw-scene cpu-canvas)
+(save-image linux-image "scene-opengl.png" 'png #:exists 'replace)
+(send gl-frame show #f)
 ]
 
-The surface reports its backing kind:
-
-@gpu-interaction[
-(surface-backend cpu-surface)
-]
-
-The result is @racket['raster].
-
-The left side of the opening comparison is generated from this route every time
-the manual is built. It is executable documentation rather than a screenshot.
-
-@section{Import the GPU Operations}
-
-The Metal route needs the GPU resource API:
-
-@racketblock[
-(require skia
-         skia/gpu)
-]
-
-The ordinary drawing functions still come from @racketmodname[skia]. The GPU
-module adds context, activation, GPU-surface, submission, and transfer
-operations.
-
-Requiring @racketmodname[skia/gpu] does not create a GPU context or a window.
-
-@section{Create and Activate a Metal Context}
-
-On compatible 64-bit macOS systems, an owned offscreen Metal context is created
-with:
-
-@racketblock[
-(define context
-  (make-gpu-context #:backend 'metal))
-]
-
-The constructor does not silently fall back to OpenGL or CPU rendering.
-Unsupported Metal configuration raises an exception.
-
-GPU work then runs inside a matching activation:
-
-@racketblock[
-(call-with-gpu-context
- context
- (lambda ()
-   ...))
-]
-
-The context is an execution domain. It is not a second set of drawing
-functions.
-
-@section{Change the Surface, Not the Scene}
-
-Inside the activation, create a GPU-backed surface and obtain its canvas:
-
-@racketblock[
-(with-skia
-    ([surface
-      (make-gpu-surface
-       context
-       scene-width scene-height
-       #:background scene-background)])
-  (define canvas
-    (surface-canvas surface))
-
-  (draw-scene canvas)
-
-  ...)
-]
-
-The important line is still:
-
-@racketblock[
-(draw-scene canvas)
-]
-
-The GPU surface is deterministic-lifetime code. It must be closed before its
-context is closed, so @racket[with-skia] is appropriate here.
-
-A GPU canvas is also activation-scoped. Do not save @racket[canvas] and use it
-after @racket[call-with-gpu-context] returns. Obtain a fresh canvas in a later
-activation.
-
-@section{Verify the Execution Backend}
-
-The standalone generator checks more than the requested constructor.
-
-The context itself must report Metal:
-
-@racketblock[
-(eq? (gpu-context-backend context)
-     'metal)
-]
-
-Inside the active scope, both the surface backing and the live canvas execution
-backend must also report Metal:
-
-@racketblock[
-(and
- (eq? (surface-backend surface)
-      'metal)
- (eq? (canvas-execution-backend canvas)
-      'metal))
-]
-
-The generator raises an exception if those checks fail. This makes the static
-reference image harder to confuse with a CPU rendering produced by the same
-scene.
-
-The checks establish which Skia backend was used for the target. They are not
-a benchmark or a claim about a particular physical GPU model.
-
-@section{Submission and Readback Are Different}
-
-A GPU application does not have to bring pixels back to the CPU after every
-draw.
-
-When later work will remain on the GPU, pending commands can be flushed and
-submitted explicitly:
-
-@racketblock[
-(gpu-flush-and-submit! context)
-]
-
-That is a GPU execution boundary. It does not create a CPU image.
-
-This tutorial needs a PNG file, so it uses a different operation:
-
-@racketblock[
-(define image
-  (gpu-surface->raster-image surface))
-]
-
-The @racket[gpu-surface->raster-image] function performs an explicit
-synchronous readback and returns a CPU-owned image.
-
-The distinction is:
-
-@verbatim{
-stay on GPU:
-  GPU surface
-      -> flush / submit
-      -> later GPU work
-
-return to CPU:
-  GPU surface
-      -> gpu-surface->raster-image
-      -> detached CPU image
-      -> ordinary image encoder
-}
-
-Readback already waits for the required GPU work. The complete example does not
-need a separate @racket[gpu-flush-and-submit!] immediately before the transfer.
-
-@section{Detach Before Closing the Context}
-
-The CPU image returned by @racket[gpu-surface->raster-image] no longer depends
-on the GPU context.
-
-The complete renderer therefore uses this lifetime order:
-
-@itemlist[
- @item{Create the GPU context.}
- @item{Activate the context.}
- @item{Create and draw the GPU surface.}
- @item{Read the surface back into a detached CPU image.}
- @item{Close the GPU surface before leaving the activation.}
- @item{Close the GPU context.}
- @item{Encode the detached CPU image.}
-]
-
-The context is protected with @racket[dynamic-wind] so teardown also happens
-when drawing or readback raises an exception:
-
-@racketblock[
-(define context
-  (make-gpu-context #:backend 'metal))
-
-(define detached-image
-  (dynamic-wind
-    void
-    (lambda ()
-      (call-with-gpu-context
-       context
-       (lambda ()
-         (with-skia
-             ([surface
-               (make-gpu-surface
-                context
-                scene-width scene-height
-                #:background scene-background)])
-           (define canvas
-             (surface-canvas surface))
-           (draw-scene canvas)
-           (gpu-surface->raster-image
-            surface)))))
-    (lambda ()
-      (gpu-context-close! context))))
-]
-
-A GPU context uses @racket[gpu-context-close!], not @racket[skia-close!].
-
-After the context has closed, the detached image can use the ordinary encoder:
-
-@racketblock[
-(save-image detached-image
-            "gpu-metal.png"
-            'png
-            #:exists 'replace)
-]
-
-@section{Keep the Manual Portable}
-
-The manual should build on systems that do not provide Metal. The Scribble
-evaluator therefore runs only the CPU route.
-
-The Metal result is generated separately on macOS and checked into the
-repository as:
-
-@filepath{scribblings/tutorials/gpu/figures/metal-reference.png}
-
-From the repository root, generate it with:
-
-@verbatim{
-RACKET="/Applications/Racket v9.3.0.2/bin/racket"
-
-"$RACKET" scribblings/tutorials/gpu/gpu-offscreen.rkt \
-  scribblings/tutorials/gpu/figures/metal-reference.png
-
-python3 tools/update-source-sums.py
-python3 tools/update-source-sums.py --check
-}
-
-The generation program uses the same @racket[draw-scene] function and verifies
-that its context, surface, and live canvas all report the Metal backend.
-
-Once the PNG is checked in, Linux and Windows documentation builds can display
-that actual Metal result without initializing Metal themselves.
-
-The placeholder exists only so the source manual remains buildable before the
-reference image has been generated.
-
-@section{GPU Snapshot or CPU Detachment?}
-
-A GPU surface has two useful image routes.
-
-The @racket[gpu-surface-snapshot] function returns a GPU-resident image:
-
-@racketblock[
-(define gpu-image
-  (gpu-surface-snapshot surface))
-]
-
-That image remains tied to the same GPU context. It is useful when later
-shaders, filters, or drawings continue on that context.
-
-The @racket[gpu-surface->raster-image] function instead returns an independent
-CPU image:
-
-@racketblock[
-(define cpu-image
-  (gpu-surface->raster-image surface))
-]
-
-The difference is:
-
-@verbatim{
-gpu-surface-snapshot
-    -> GPU image
-    -> stays context-bound
-
-gpu-surface->raster-image
-    -> CPU image
-    -> can outlive the GPU context
-}
-
-The tutorial chooses CPU detachment because its final artifact is a PNG file.
-
-@section{The Complete Renderer}
-
-The complete @filepath{gpu-offscreen.rkt} file combines the pieces:
-
-@racketblock[
-(define (render-metal-scene output-path)
-  (define context
-    (make-gpu-context #:backend 'metal))
-
-  (define detached-image
-    (dynamic-wind
-      void
-      (lambda ()
-        (call-with-gpu-context
-         context
-         (lambda ()
-           (with-skia
-               ([surface
-                 (make-gpu-surface
-                  context
-                  scene-width scene-height
-                  #:background scene-background)])
-             (define canvas
-               (surface-canvas surface))
-             (draw-scene canvas)
-             (gpu-surface->raster-image
-              surface)))))
-      (lambda ()
-        (gpu-context-close! context))))
-
-  (save-image detached-image
-              output-path
-              'png
-              #:exists 'replace))
-]
-
-The actual standalone file also normalizes the output path, creates its parent
-directory, and verifies the Metal backend before publishing the image.
-
-@section{What the Comparison Does Not Prove}
-
-The opening comparison demonstrates that the same scene can be drawn through
-two different surface backings.
-
-It does not establish that GPU rendering is faster. A tutorial-sized scene is
-not a benchmark.
-
-It also does not promise universal pixel-for-pixel identity across every
-driver, color configuration, sample count, or GPU backend. The project's GPU
-validation suites are the appropriate place for controlled parity, lifetime,
-and synchronization checks.
+The @racket[gl-provider] value borrows @racket[gl-context]; it cannot create
+an OpenGL context on its own. Keep the frame, canvas, and context alive until
+after @racket[render-gpu->raster-image] returns. The helper closes its Skia
+context but does not destroy the GUI host. The short @racket[sleep/yield]
+allows a GUI event cycle before the context check; the check still fails
+explicitly if an OpenGL host is unavailable.
+
+This particular route requires a graphical session with GLX (for example, X11
+or XWayland). It is not a portable headless Linux recipe. Drivers, extensions,
+and usable GPU support must be checked at runtime.
 
 @section{Try It}
 
-Try moving one of the nodes in @filepath{scene.rkt}. Rebuild the manual to
-regenerate the CPU side, then rerun the Metal command to update the static
-reference image.
+Try moving one of the glowing nodes in @filepath{scene.rkt}. Render the scene
+on the CPU and GPU again. The two images should reflect the same change.
 
-Try changing the background gradient. The edit should affect both routes
-because both use @racket[draw-scene].
+Try adding a rectangle to @racket[draw-scene]. Nothing in the drawing function
+should need to change between CPU and GPU execution.
 
-Try replacing the immediate CPU detachment with
-@racket[gpu-surface-snapshot]. Use that GPU image in a second drawing on the
-same context before performing one final readback.
-
-Try adding @racket[gpu-flush-and-submit!] before another GPU-only operation.
-Keep the final readback separate and observe the two different boundaries.
+Try saving @racket[metal-image] a second time. The encoder uses CPU pixels;
+there is no new GPU context or readback.
 
 @section{Where to Go From Here}
 
-This tutorial reused one drawing function across CPU and Metal surfaces. It
-introduced GPU context activation, activation-scoped canvases, explicit
-submission, explicit CPU detachment, and deterministic GPU teardown.
+The examples used the same drawing function with different backends and
+returned a normal CPU image from a GPU render. For animated or persistent GPU
+work, see the Guide's discussions of context lifetimes, GPU-resident images,
+window presentation, and performance measurement.
 
-Window presentation, redraw scheduling, GPU-resident image graphs, backend
-interop, cache controls, and performance measurement belong in the Guide.
+The complete Metal generator is @filepath{gpu-offscreen.rkt}. It uses the same
+@racket[draw-scene] function and the one-shot helper.
 
-The complete @filepath{scene.rkt} and @filepath{gpu-offscreen.rkt} files contain
-the shared scene and the offscreen Metal renderer.
+@section{The Complete Scene}
+
+Here is the full @filepath{scene.rkt} program. It requires only
+@racketmodname[skia], so the CPU and GPU examples use exactly these functions.
+The listing is read directly from the source file rather than copied into the
+tutorial.
+
+@codeblock[(file->string scene-source)]

@@ -1,5 +1,9 @@
 # API reference
 
+The `skia/gpu` module also provides `render-gpu->raster-image` for one-shot
+GPU drawing with a detached CPU image result. See the
+[one-shot rendering contract](GPU-RENDER.md) for arguments, ownership, and errors.
+
 ## 0.58 persistent raster GUI canvas
 
 Import `skia/canvas` explicitly for `skia-canvas%` and `skia-canvas?`. Construct

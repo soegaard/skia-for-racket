@@ -1,0 +1,40 @@
+{
+  "base_commit": "f8cc4bef5a1a481b7b3823d52e703a9a8c7fd932",
+  "edits": {
+    "docs/API.md": [
+      [
+        "# API reference\n\n",
+        "# API reference\n\nThe `skia/gpu` module also provides `render-gpu->raster-image` for one-shot\nGPU drawing with a detached CPU image result. See the\n[one-shot rendering contract](GPU-RENDER.md) for arguments, ownership, and errors.\n\n"
+      ]
+    ],
+    "docs/GPU-OFFSCREEN.md": [
+      [
+        "# Offscreen GPU surfaces\n\n",
+        "# Offscreen GPU surfaces\n\nFor a single CPU image rendered on the GPU, use\n`render-gpu->raster-image` from `skia/gpu`. It owns context creation,\nactivation, surface lifetime, synchronous readback, and teardown. See\n[one-shot GPU rendering](GPU-RENDER.md) for the short example and exact contract.\nThe lower-level API below remains useful for persistent contexts and targets.\n\n"
+      ]
+    ],
+    "run-tests.rkt": [
+      [
+        "(require \"tests/public-api-pure-test.rkt\")\n",
+        "(require \"tests/public-api-pure-test.rkt\")\n(require \"tests/gpu-render-pure-test.rkt\")\n"
+      ],
+      [
+        "                      (run-tests gpu-frame-target-pure-tests)\n",
+        "                      (run-tests gpu-render-pure-tests)\n                      (run-tests gpu-frame-target-pure-tests)\n"
+      ]
+    ]
+  },
+  "schema": 1,
+  "source_hashes": {
+    "docs/GPU-RENDER.md": "5cd2379fd7f7a2a2b9798742933e8524c99cb91e8d444763891259085cdbcf45",
+    "gpu.rkt": "2a453248ed1845a7976f0daa31d18b99c105b58ba38b9de6680d3a158cb95a7f",
+    "private/gpu-render.rkt": "2ae0315bd1357abfd6b73d4b632e7984eab3e90588f6c1359ac5e6857d9e4137",
+    "scribblings/tutorials/gpu/gpu-offscreen.rkt": "c0cdcab08e865925da57c3098dd2d3a01a8273868c1b8eca6e059b78b57f1b17",
+    "scribblings/tutorials/gpu/gpu.scrbl": "4e05314198e8f0b534758a5dc784dfb15a71d0a6ef2ea6b71694baa5a44c2430",
+    "tests/gpu-render-native-test.rkt": "a80ed7b1e8c4ca0c0d08c3596e4ab5fd840db5a9746c780f51ebfd95762dd77a",
+    "tests/gpu-render-pure-test.rkt": "3d833bd2365df3760e5d925017f10731d3d60d9ec7e684a27aa375de41f34fd1",
+    "tools/accept-gpu-render-api.py": "518c6dbf23bce155f7210fada226c44f52bb3bc66edb558ba2358da1e2b65f60",
+    "tools/gpu-render-doctor.rkt": "70fa31efc11797213b9505ceeccb5d4ca828f953ef6f1abc9f43148981f3a193",
+    "tools/test-gpu-render-api.py": "feb5085d852dac8df08d5f7bba8c46932c044985ec222c6a0bcd7cc9f30b26dc"
+  }
+}

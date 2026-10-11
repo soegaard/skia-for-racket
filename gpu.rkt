@@ -3,10 +3,13 @@
 (require racket/runtime-path (only-in ffi/unsafe void/reference-sink)
          "private/gpu-context.rkt" "private/gpu-presenter.rkt"
          "private/gpu-domain.rkt" "private/gpu-provider.rkt"
-         "private/gpu-surfaces.rkt" "private/gpu-images.rkt" "private/gpu-image-operations.rkt" "private/gpu-cache.rkt")
+         "private/gpu-surfaces.rkt" "private/gpu-images.rkt"
+         "private/gpu-image-operations.rkt" "private/gpu-cache.rkt")
 (provide gpu-backends gpu-backend? gpu-backend-capabilities
-         (all-from-out "private/gpu-images.rkt" "private/gpu-image-operations.rkt" "private/gpu-presenter.rkt" "private/gpu-cache.rkt")
-         gpu-surface-format-info gpu-surface->image-info gpu-surface->raster-buffer gpu-surface-read-pixmap!
+         (all-from-out "private/gpu-images.rkt" "private/gpu-image-operations.rkt"
+                       "private/gpu-presenter.rkt" "private/gpu-cache.rkt")
+         gpu-surface-format-info gpu-surface->image-info
+         gpu-surface->raster-buffer gpu-surface-read-pixmap!
          make-gpu-surface gpu-surface? gpu-surface-info
          gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
          gpu-surface->rgba-bytes gpu-surface->raster-image gpu-surface-read-raster-buffer!
@@ -32,7 +35,8 @@
   (when requested (check-gpu-backend! who requested))
   (define backend (or requested (and provider (gpu-provider-backend provider))))
   (unless backend
-    (raise-arguments-error who "provide an OpenGL host or explicitly request an owned Metal/Direct3D context"))
+    (raise-arguments-error
+     who "provide an OpenGL host or explicitly request an owned Metal/Direct3D context"))
   (when (and provider (not (eq? backend (gpu-provider-backend provider))))
     (raise-arguments-error who "requested backend disagrees with the supplied provider"
                            "backend" backend "provider backend" (gpu-provider-backend provider)))
@@ -49,11 +53,16 @@
      (wrap-gpu-domain (make-gpu-domain host driver))]
     [(opengl)
      (unless provider (raise-arguments-error who "OpenGL requires an explicit host provider"))
-     (define driver ((dynamic-require gl-driver-module 'make-gl-driver) provider #:options options #:interface interface-mode))
+     (define driver
+       ((dynamic-require gl-driver-module 'make-gl-driver)
+        provider #:options options #:interface interface-mode))
      (wrap-gpu-domain (make-gpu-domain provider driver))]
     [(metal)
      (when provider
-       (gpu-unavailable 'metal-provider "external Metal providers are not supported; omit the provider to create an owned device/queue"))
+       (gpu-unavailable
+        'metal-provider
+        (string-append "external Metal providers are not supported; "
+                       "omit the provider to create an owned device/queue")))
      (define-values (host driver)
        ((dynamic-require metal-driver-module 'make-owned-metal-components) #:options options))
      (wrap-gpu-domain (make-gpu-domain host driver))]))
@@ -89,3 +98,61 @@
 ;; 0.77c: no GPU/GL/native initialization on import.
 (require "private/gpu-diagnostic-util.rkt" "gpu-diagnostics.rkt")
 (provide (all-from-out "gpu-diagnostics.rkt"))
+
+;; One-shot rendering. Imports remain native/GUI-lazy; construction is explicit.
+(require (only-in "private/check.rkt" check-dimensions)
+         (only-in "private/gpu-d3d12-util.rkt" d3d12-selection!)
+         (only-in "private/core.rkt" surface-canvas surface-backend
+                  canvas-execution-backend skia-close!)
+         (only-in "color.rkt" color->rgba)
+         "private/gpu-render.rkt")
+(provide render-gpu->raster-image)
+
+(define (render-gpu->raster-image width height draw
+                                 #:backend backend
+                                 #:background [background 'transparent]
+                                 #:provider [provider #f]
+                                 #:adapter [adapter #f]
+                                 #:adapter-index [index #f])
+  (define who 'render-gpu->raster-image)
+  (define color (color->rgba background))
+  ;; Reject malformed requests before creating a context or loading a driver.
+  (check-dimensions who width height)
+  (unless (and (procedure? draw)
+               (procedure-arity-includes? draw 1)
+               (let-values ([(required allowed) (procedure-keywords draw)])
+                 (null? required)))
+    (raise-argument-error who "function accepting one argument and no required keywords" draw))
+  (check-gpu-backend! who backend)
+  (unless (or (not provider) (gpu-provider? provider))
+    (raise-argument-error who "#f or gpu-provider?" provider))
+  (cond
+    [(eq? backend 'opengl)
+     (unless (and provider (eq? (gpu-provider-backend provider) 'opengl))
+       (raise-arguments-error who "OpenGL requires an explicit OpenGL host provider"
+                              "provider" provider))]
+    [provider
+     (raise-arguments-error who "a provider is only accepted for OpenGL"
+                            "backend" backend)])
+  (cond
+    [(eq? backend 'direct3d) (d3d12-selection! (or adapter 'hardware) (or index 0))]
+    [(or adapter index)
+     (raise-arguments-error who "adapter selection is only supported for Direct3D"
+                            "backend" backend)])
+  (call-with-rendered-gpu-image
+   (lambda ()
+     (make-gpu-context provider #:backend backend #:adapter adapter #:adapter-index index))
+   call-with-gpu-context
+   (lambda (context)
+     (unless (eq? (gpu-context-backend context) backend)
+       (error who "context did not use the requested backend"))
+     (make-gpu-surface context width height #:background color))
+   (lambda (context surface)
+     (define canvas (surface-canvas surface))
+     (unless (and (eq? (surface-backend surface) backend)
+                  (eq? (canvas-execution-backend canvas) backend))
+       (error who "drawing target did not use the requested backend"))
+     (draw canvas))
+   gpu-surface->raster-image
+   skia-close!
+   gpu-context-close!))
