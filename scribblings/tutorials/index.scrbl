@@ -58,13 +58,15 @@ reference alongside them.
        distinguish vector operations, embedded images, and deliberate bounded raster fallbacks.}
 ]
 
-@section{GPU Rendering}
+@section{GPU Rendering and Interaction}
 
 @itemlist[
  @item{@hyperlink["../gpu/gpu.html"]{GPU: Render One Scene on CPU and Metal} —
        reuse one drawing function for CPU and Metal, and return a CPU-owned image after GPU readback.}
  @item{@hyperlink["../animation/animation.html"]{Animation: Orbiting Lights in a Window} —
        draw frames from elapsed time, schedule redraws, pause, and select CPU or GPU presentation.}
+ @item{@hyperlink["../interaction/interaction.html"]{Interactive Paths: Drag Bézier Control Points} —
+       select and drag control points, update a path, and redraw with CPU or GPU rendering.}
 ]
 
 @section{Choosing a Path}
@@ -74,6 +76,8 @@ and Poster for everyday drawing work. Choose the Text sequence when your work
 contains writing, and the document tutorials when you need PDF or SVG output.
 The GPU tutorial explains rendering a single image on a GPU. Animation then
 shows why maintaining a renderer across successive window frames is useful.
+Interactive Paths builds on those window callbacks to introduce mouse input,
+hit testing, and an editable drawing model.
 
 The repository's @filepath{docs/TUTORIAL-GUIDELINES.md} describes the
 conventions shared by these examples, including runnable documentation,
