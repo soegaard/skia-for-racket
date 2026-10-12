@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia))
 @(define-runtime-path program-source "badge.rkt")
@@ -18,9 +20,11 @@ operands: the disk, cross, outer boundary, inner rim boundary, and central hole.
 
 @centered{@bold{Combine filled regions first. Draw the resulting geometry afterward.}}
 
-The earlier path tutorial constructed contours command by command. This one
+The @tutorial-link["logo"] lesson constructed contours command by command. This one
 builds new contours by taking unions, intersections, differences, and exclusive
 regions. Save the complete @filepath{badge.rkt} file at the end to use its helpers.
+
+@tutorial-entry["path-ops"]
 
 @section{Start with Two Filled Shapes}
 
@@ -108,7 +112,7 @@ body remains:
 
 The query tests filled containment. It is not a distance-to-stroke test and
 does not automatically apply the canvas transform. Convert input coordinates
-before querying a transformed drawing, just as in the zoom tutorial.
+before querying a transformed drawing, as shown in @tutorial-link["navigation"].
 
 @section{Add a Rim with Exclusive Regions}
 
@@ -198,20 +202,7 @@ The construction is performed before drawing the comparison sheet. In a
 repeatedly rendered application, reuse a result until an operand changes rather
 than recomputing the Boolean operations for every repaint.
 
-@section{The Complete Program}
-
-Run the example with @tt{racket badge.rkt}. It writes @filepath{cutout-badge.png}.
-The result can also use the PDF/SVG drawing routes from earlier tutorials;
-there is no new export API to learn here.
-
-@codeblock[(file->string program-source)]
-
-The intermediate paths are ordinary owned CPU resources. A Boolean operation
-can change the number and order of contours while preserving the intended
-filled region. Use the resulting geometry without assuming that its point
-sequence mirrors the way the operands were constructed.
-
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Increase the hole radius from 38 to 55. Then change the inner rim radius from
 108 to 100. One edit changes the central opening; the other changes the rim's
@@ -222,10 +213,25 @@ Predict which overlapping parts disappear before rendering. Then restore the
 union and move one operand in path coordinates rather than translating the
 receiving canvas.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-The example combined filled areas. A stroke-to-path conversion can turn a
-painted outline into an operand when a construction needs the outline's actual
-area. The Guide covers that conversion, path transforms, inverse fills, bounds,
-and failure behavior. Skia raises an error when a path operation fails; a failed
-operation is not an empty but valid result.
+The operations combine filled areas. A stroke-to-path conversion can turn a painted
+outline into an operand. The @api-link[] covers that conversion and operation failures.
+A failed operation raises an error; it is not an empty but valid result.
+
+@tutorial-next["path-ops"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["path-ops"]
+
+Run the example with @tt{racket badge.rkt}. It writes @filepath{cutout-badge.png}.
+The result can also use the drawing routes from @tutorial-link["pdf-svg"];
+there is no new export API to learn here.
+
+@codeblock[(file->string program-source)]
+
+The intermediate paths are ordinary owned CPU resources. A Boolean operation
+can change the number and order of contours while preserving the intended
+filled region. Use the resulting geometry without assuming that its point
+sequence mirrors the way the operands were constructed.

@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia))
 @(define-runtime-path program-source "color-study.rkt")
@@ -21,6 +23,8 @@ Write a profile that describes the result.}}
 This tutorial builds the comparison and saves a tagged PNG. It does not attempt
 to calibrate a monitor or make every display look identical. Save the complete
 @filepath{color-study.rkt} file from the end to use the helpers below.
+
+@tutorial-entry["color-spaces"]
 
 @section{Keep the Numbers Separate from Their Meaning}
 
@@ -161,8 +165,8 @@ is about 0.216, not one half. Conversely, starting with a linear sample near
 one half required an encoded sRGB value near 188. The spaces agree about black
 and white but encode intermediate light levels differently.
 
-This is why averaging encoded channels, as in the preceding artistic image
-processor, is not the same as averaging light. The space used for a computation
+This is why averaging encoded channels, as in
+@tutorial-link["pixels"], is not the same as averaging light. The space used for a computation
 and the encoding used to store its result are separate choices. The eight-bit
 linear example also loses precision through quantization; repeated conversions
 are not guaranteed to recover every original byte.
@@ -257,13 +261,7 @@ The numerical labels are read from the actual converted pixels. They are not
 independent color constants. The finished program also writes the small
 @filepath{converted-gray.png} and a @filepath{study-srgb.icc} profile.
 
-@section{The Complete Program}
-
-Run the example with @tt{racket color-study.rkt}:
-
-@codeblock[(file->string program-source)]
-
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Change the @racket[(make-color-study)] call in @racket[save-color-study] to
 @racket[(make-color-study 64)]. The swatches and their numerical labels will
@@ -275,13 +273,19 @@ Try a colored rather than neutral sample. Check that only RGB passes through
 the transfer function; alpha has a different meaning. Work with opaque samples
 first to avoid confusing color conversion with low-alpha quantization.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-The example stays within eight-bit SDR RGB. Other gamuts, such as Display P3,
-change more than the transfer curve. Converting out-of-gamut colors may clamp
-values; neither this example nor the profile override performs perceptual gamut
-mapping, HDR tone mapping, or display calibration.
-
-The Guide covers custom RGB spaces and encoder restrictions. The upstream
-@hyperlink["https://skia.org/docs/user/color/"]{Skia color-management overview}
+The example stays within eight-bit SDR RGB. Other gamuts change more than the transfer curve.
+It does not perform perceptual gamut mapping, HDR tone mapping, or display calibration.
+The upstream @hyperlink["https://skia.org/docs/user/color/"]{Skia color-management overview}
 provides background on tagged images and destination color spaces.
+
+@tutorial-next["color-spaces"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["color-spaces"]
+
+Run the example with @tt{racket color-study.rkt}:
+
+@codeblock[(file->string program-source)]

@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{PDF and SVG — Make a Printable Diagram}
 
 @(require "eval.rkt"
@@ -24,8 +26,10 @@ The main idea is:
 @centered{@bold{One drawing function describes the content. An output page
 adds physical size and margins; the exporters write PDF or SVG.}}
 
-The examples build this result in stages. You only need the basic drawing and
-text functions from the earlier tutorials.
+The examples build this result in stages. The caption uses single-font paragraph
+wrapping as well as the basic drawing and text functions.
+
+@tutorial-entry["pdf-svg"]
 
 @section{Draw a Construction}
 
@@ -112,8 +116,9 @@ raster preview.
 @section{Add the Printable Details}
 
 Now add a heading, the names of the three points, and a short explanation.
-The example uses the same text and paragraph functions as the earlier text
-tutorials. We can keep these helpers separate from the construction itself.
+The example uses text placement from @tutorial-link["text"]
+and single-font wrapping from @tutorial-link["paragraph"].
+These helpers remain separate from the construction itself.
 
 The font helper disables pixel-rounded metrics and enables subpixel placement.
 This is useful when small millimetre-sized fonts are scaled to PDF points or
@@ -315,8 +320,8 @@ can still scale either document when displaying or printing it.
 
 By default, the shared exporter outlines SVG text. Outlined letters preserve
 their available glyph shapes without relying on the viewer having the same
-font. They are no longer searchable or editable as ordinary text. The Guide
-covers the choice between native and outlined text in more detail.
+font. They are no longer searchable or editable as ordinary text.
+The @api-link[] documents native and outlined text policies.
 
 @section{Make a Raster Preview}
 
@@ -360,7 +365,7 @@ Run @filepath{geometry-diagram.rkt} to create
 @filepath{equilateral-triangle.png} in the current directory. The program
 exports one page three times, creating a fresh rendering for each output.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try increasing @racket[page-margin] from 16 to 20. The content area will
 become 170 mm wide, while the right circle still reaches x = 176. Notice
@@ -370,12 +375,13 @@ Try changing the diagram's line widths or its title. Compare the PDF and SVG
 at different zoom levels, then compare them with the finite-resolution PNG
 preview.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used one canvas drawing function for PDF and SVG, introduced
-physical page units and margins, and distinguished vector output from a raster
-preview.
+You can now give one drawing physical page dimensions and export PDF and SVG.
+A PNG preview is a separate raster rendering, not a test of the exported document.
 
-It left multipage documents, detailed text extraction, document annotations,
-output auditing, and raster fallbacks for the Guide and later tutorials. The
-next tutorial will use effects and image filters to make a card with shadows.
+@tutorial-next["pdf-svg"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["pdf-svg"]

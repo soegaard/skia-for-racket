@@ -1,0 +1,614 @@
+{
+  "schema_version": 1,
+  "tutorials": [
+    {
+      "id": "quick",
+      "title": "Quick: An Introduction to Skia with Pictures",
+      "manual": "scribblings/quick/quick.scrbl",
+      "goal": "Draw a moonlit lake from shapes, paints, and a shared drawing function.",
+      "prerequisites": [],
+      "next": [
+        "clock",
+        "logo"
+      ],
+      "entry": "quick/moonlight.rkt",
+      "files": [
+        "quick/moonlight.rkt"
+      ],
+      "commands": [
+        "racket quick/moonlight.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required. The example writes PNG, PDF, and SVG files."
+      ]
+    },
+    {
+      "id": "clock",
+      "title": "Transforms and Coordinate Systems — Build a Clock",
+      "manual": "scribblings/tutorials/clock/clock.scrbl",
+      "goal": "Place repeated geometry by translating, rotating, and scaling the canvas.",
+      "prerequisites": [
+        "quick"
+      ],
+      "next": [
+        "logo",
+        "animation"
+      ],
+      "entry": "clock/clock.rkt",
+      "files": [
+        "clock/clock.rkt"
+      ],
+      "commands": [
+        "racket clock/clock.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "logo",
+      "title": "Paths and Geometry — Draw a Logo",
+      "manual": "scribblings/tutorials/logo/logo.scrbl",
+      "goal": "Construct contours from lines and curves, then fill and stroke them.",
+      "prerequisites": [
+        "quick"
+      ],
+      "next": [
+        "path-ops",
+        "pictures"
+      ],
+      "entry": "logo/logo.rkt",
+      "files": [
+        "logo/logo.rkt"
+      ],
+      "commands": [
+        "racket logo/logo.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "images",
+      "title": "Images — Build a Contact Sheet",
+      "manual": "scribblings/tutorials/images/images.scrbl",
+      "goal": "Decode, crop, sample, and fit images into a contact sheet.",
+      "prerequisites": [
+        "quick"
+      ],
+      "next": [
+        "poster",
+        "pixels"
+      ],
+      "entry": "images/contact-sheet.rkt",
+      "files": [
+        "images/contact-sheet.rkt",
+        "images/fixtures/mountains.jpg",
+        "images/fixtures/flower.png",
+        "images/fixtures/pattern.webp",
+        "images/fixtures/pixel-art.png"
+      ],
+      "commands": [
+        "racket images/contact-sheet.rkt"
+      ],
+      "requirements": [
+        "The four image fixtures are copied with the program. No image download is needed."
+      ]
+    },
+    {
+      "id": "poster",
+      "title": "Paints, Gradients, and Shaders — Make a Poster",
+      "manual": "scribblings/tutorials/poster/poster.scrbl",
+      "goal": "Combine paints, gradients, transparency, and image shaders.",
+      "prerequisites": [
+        "quick"
+      ],
+      "next": [
+        "effects",
+        "shaders"
+      ],
+      "entry": "poster/poster.rkt",
+      "files": [
+        "poster/poster.rkt"
+      ],
+      "commands": [
+        "racket poster/poster.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "text",
+      "title": "Text and Typography — Make a Type Specimen",
+      "manual": "scribblings/tutorials/text/text.scrbl",
+      "goal": "Position simple text using baselines, advances, ink bounds, and font metrics.",
+      "prerequisites": [
+        "quick"
+      ],
+      "next": [
+        "shaping"
+      ],
+      "entry": "text/type-specimen.rkt",
+      "files": [
+        "text/type-specimen.rkt"
+      ],
+      "commands": [
+        "racket text/type-specimen.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "shaping",
+      "title": "Shaping and Multilingual Text — Make a Language Sampler",
+      "manual": "scribblings/tutorials/shaping/shaping.scrbl",
+      "goal": "Select script fonts and shape individual runs into positioned glyphs.",
+      "prerequisites": [
+        "text"
+      ],
+      "next": [
+        "paragraph"
+      ],
+      "entry": "shaping/language-sampler.rkt",
+      "files": [
+        "shaping/language-sampler.rkt"
+      ],
+      "commands": [
+        "racket shaping/language-sampler.rkt"
+      ],
+      "requirements": [
+        "HarfBuzz and fonts covering the complete Arabic and Hebrew samples are required. A",
+        "missing script font produces an error with installation guidance."
+      ]
+    },
+    {
+      "id": "paragraph",
+      "title": "Paragraph Layout — Make a Multilingual Article Card",
+      "manual": "scribblings/tutorials/paragraph/paragraph.scrbl",
+      "goal": "Wrap and align text, then resolve font and direction changes in paragraphs.",
+      "prerequisites": [
+        "shaping"
+      ],
+      "next": [
+        "pdf-svg"
+      ],
+      "entry": "paragraph/article-card.rkt",
+      "files": [
+        "paragraph/article-card.rkt"
+      ],
+      "commands": [
+        "racket paragraph/article-card.rkt"
+      ],
+      "requirements": [
+        "HarfBuzz and fonts covering the mixed Arabic, Hebrew, and Latin text are required."
+      ]
+    },
+    {
+      "id": "pdf-svg",
+      "title": "PDF and SVG — Make a Printable Diagram",
+      "manual": "scribblings/tutorials/pdf-svg/pdf-svg.scrbl",
+      "goal": "Give a drawing physical dimensions and export PDF, SVG, and a PNG preview.",
+      "prerequisites": [
+        "quick",
+        "text",
+        "paragraph"
+      ],
+      "next": [
+        "effects",
+        "vector-raster"
+      ],
+      "entry": "pdf-svg/geometry-diagram.rkt",
+      "files": [
+        "pdf-svg/geometry-diagram.rkt"
+      ],
+      "commands": [
+        "racket pdf-svg/geometry-diagram.rkt"
+      ],
+      "requirements": [
+        "HarfBuzz is needed for the caption. Only the single-font wrapping sections of Paragraph",
+        "Layout are prerequisites; the mixed-script sections are optional."
+      ]
+    },
+    {
+      "id": "effects",
+      "title": "Effects and Filters — Make a Card with Shadows",
+      "manual": "scribblings/tutorials/effects/effects.scrbl",
+      "goal": "Compare shadows, mask blur, and image blur while keeping geometry unchanged.",
+      "prerequisites": [
+        "poster"
+      ],
+      "next": [
+        "pictures",
+        "vector-raster"
+      ],
+      "entry": "effects/card-with-shadows.rkt",
+      "files": [
+        "effects/card-with-shadows.rkt"
+      ],
+      "commands": [
+        "racket effects/card-with-shadows.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "pictures",
+      "title": "Reusable Drawings — Record and Replay a Picture",
+      "manual": "scribblings/tutorials/pictures/pictures.scrbl",
+      "goal": "Record a drawing and replay it with different positions, sizes, and angles.",
+      "prerequisites": [
+        "clock"
+      ],
+      "next": [
+        "vector-raster"
+      ],
+      "entry": "pictures/pattern-sheet.rkt",
+      "files": [
+        "pictures/pattern-sheet.rkt"
+      ],
+      "commands": [
+        "racket pictures/pattern-sheet.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "vector-raster",
+      "title": "Vector Output and Raster Fallbacks — What Stays Vector?",
+      "manual": "scribblings/tutorials/vector-raster/vector-raster.scrbl",
+      "goal": "Distinguish vector operations, source pixels, and bounded raster fallbacks.",
+      "prerequisites": [
+        "pdf-svg",
+        "effects"
+      ],
+      "next": [
+        "gpu"
+      ],
+      "entry": "vector-raster/vector-raster.rkt",
+      "files": [
+        "vector-raster/vector-raster.rkt"
+      ],
+      "commands": [
+        "racket vector-raster/vector-raster.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "gpu",
+      "title": "GPU Rendering — Render the Same Scene on the GPU",
+      "manual": "scribblings/tutorials/gpu/gpu.scrbl",
+      "goal": "Use one drawing function with CPU and platform-specific GPU backends.",
+      "prerequisites": [
+        "quick"
+      ],
+      "next": [
+        "animation"
+      ],
+      "entry": "gpu/render-scene.rkt",
+      "files": [
+        "gpu/render-scene.rkt",
+        "gpu/scene.rkt",
+        "gpu/gpu-offscreen.rkt",
+        "gpu/linux-opengl.rkt"
+      ],
+      "commands": [
+        "racket gpu/render-scene.rkt",
+        "racket gpu/render-scene.rkt --backend metal",
+        "racket gpu/render-scene.rkt --backend direct3d",
+        "racket gpu/linux-opengl.rkt"
+      ],
+      "requirements": [
+        "The default command uses the CPU. Metal requires macOS; Direct3D requires Windows x64.",
+        "The Linux OpenGL example needs a graphical session with a usable GLX context."
+      ]
+    },
+    {
+      "id": "animation",
+      "title": "Animation — Orbiting Lights in a Window",
+      "manual": "scribblings/tutorials/animation/animation.scrbl",
+      "goal": "Animate elapsed time, schedule frames, and manage a CPU or GPU window.",
+      "prerequisites": [
+        "clock",
+        "gpu"
+      ],
+      "next": [
+        "interaction",
+        "sprites"
+      ],
+      "entry": "animation/orbiting-lights.rkt",
+      "files": [
+        "animation/orbiting-lights.rkt",
+        "animation/scene.rkt"
+      ],
+      "commands": [
+        "racket animation/orbiting-lights.rkt --renderer raster",
+        "racket animation/orbiting-lights.rkt --renderer gpu"
+      ],
+      "requirements": [
+        "Both renderers need a graphical session. GPU mode also needs a supported native backend."
+      ]
+    },
+    {
+      "id": "interaction",
+      "title": "Interactive Paths — Drag Bézier Control Points",
+      "manual": "scribblings/tutorials/interaction/interaction.scrbl",
+      "goal": "Edit a curve with mouse input, hit testing, and redraw requests.",
+      "prerequisites": [
+        "logo",
+        "animation"
+      ],
+      "next": [
+        "navigation"
+      ],
+      "entry": "interaction/bezier-editor.rkt",
+      "files": [
+        "interaction/bezier-editor.rkt",
+        "interaction/scene.rkt"
+      ],
+      "commands": [
+        "racket interaction/bezier-editor.rkt --renderer raster",
+        "racket interaction/bezier-editor.rkt --renderer gpu"
+      ],
+      "requirements": [
+        "Both renderers need a graphical session. GPU mode also needs a supported native backend."
+      ]
+    },
+    {
+      "id": "navigation",
+      "title": "Zoom and Pan — Navigate an Interactive Canvas",
+      "manual": "scribblings/tutorials/navigation/navigation.scrbl",
+      "goal": "Pan and zoom a view while mapping pointer positions back into model space.",
+      "prerequisites": [
+        "interaction",
+        "clock"
+      ],
+      "next": [
+        "path-ops"
+      ],
+      "entry": "navigation/navigate.rkt",
+      "files": [
+        "navigation/navigate.rkt",
+        "navigation/model.rkt",
+        "navigation/scene.rkt"
+      ],
+      "commands": [
+        "racket navigation/navigate.rkt --renderer raster",
+        "racket navigation/navigate.rkt --renderer gpu"
+      ],
+      "requirements": [
+        "Both renderers need a graphical session. GPU mode also needs a supported native backend."
+      ]
+    },
+    {
+      "id": "shaders",
+      "title": "Runtime Shaders — Animate Prismatic Waves in a Window",
+      "manual": "scribblings/tutorials/shaders/shaders.scrbl",
+      "goal": "Animate a compiled SkSL effect by changing uniforms, not the drawing API.",
+      "prerequisites": [
+        "poster",
+        "animation"
+      ],
+      "next": [
+        "pixels"
+      ],
+      "entry": "shaders/waves-window.rkt",
+      "files": [
+        "shaders/waves-window.rkt",
+        "shaders/waves.rkt"
+      ],
+      "commands": [
+        "racket shaders/waves-window.rkt --renderer raster",
+        "racket shaders/waves-window.rkt --renderer gpu"
+      ],
+      "requirements": [
+        "The window needs a graphical session. Running waves.rkt alone saves a CPU still image."
+      ]
+    },
+    {
+      "id": "pixels",
+      "title": "Working with Pixels — Build a Two-Ink Image Processor",
+      "manual": "scribblings/tutorials/pixels/pixels.scrbl",
+      "goal": "Edit CPU pixels while distinguishing buffers, borrowed views, and snapshots.",
+      "prerequisites": [
+        "images"
+      ],
+      "next": [
+        "color-spaces"
+      ],
+      "entry": "pixels/pixel-lab.rkt",
+      "files": [
+        "pixels/pixel-lab.rkt"
+      ],
+      "commands": [
+        "racket pixels/pixel-lab.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "color-spaces",
+      "title": "Color Spaces — Give Pixel Values Their Meaning",
+      "manual": "scribblings/tutorials/color-spaces/color-spaces.scrbl",
+      "goal": "Give samples a color-space interpretation and save matching profile metadata.",
+      "prerequisites": [
+        "pixels"
+      ],
+      "next": [
+        "pdf-svg"
+      ],
+      "entry": "color-spaces/color-study.rkt",
+      "files": [
+        "color-spaces/color-study.rkt"
+      ],
+      "commands": [
+        "racket color-spaces/color-study.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "path-ops",
+      "title": "Path Operations — Construct a Cutout Badge",
+      "manual": "scribblings/tutorials/path-ops/path-ops.scrbl",
+      "goal": "Combine filled regions to construct a badge with genuine holes.",
+      "prerequisites": [
+        "logo"
+      ],
+      "next": [
+        "pictures",
+        "interaction"
+      ],
+      "entry": "path-ops/badge.rkt",
+      "files": [
+        "path-ops/badge.rkt"
+      ],
+      "commands": [
+        "racket path-ops/badge.rkt"
+      ],
+      "requirements": [
+        "Skia and its native library are required; no GPU is needed."
+      ]
+    },
+    {
+      "id": "sprites",
+      "title": "Sprite Atlases — Animate Bouncing Balls on the GPU",
+      "manual": "scribblings/tutorials/sprites/sprites.scrbl",
+      "goal": "Retain one atlas across GPU frames and change only its sprite placements.",
+      "prerequisites": [
+        "images",
+        "animation"
+      ],
+      "next": [
+        "squadron"
+      ],
+      "entry": "sprites/balls.rkt",
+      "files": [
+        "sprites/balls.rkt",
+        "sprites/atlas.rkt",
+        "sprites/model.rkt",
+        "sprites/scene.rkt",
+        "support/sprite-assets.rkt",
+        "support/sprite-window.rkt",
+        "support/sprite-math.rkt"
+      ],
+      "commands": [
+        "racket sprites/balls.rkt --renderer raster",
+        "racket sprites/balls.rkt --renderer gpu",
+        "racket sprites/balls.rkt --snapshot balls.png"
+      ],
+      "requirements": [
+        "The window needs a graphical session. The atlas is generated locally. The snapshot",
+        "command uses the CPU without opening a window."
+      ]
+    },
+    {
+      "id": "squadron",
+      "title": "Star Squadron — Build a Galaga-Inspired Arcade Game",
+      "manual": "scribblings/tutorials/squadron/squadron.scrbl",
+      "goal": "Combine a fixed-step game simulation with animated atlas sprites.",
+      "prerequisites": [
+        "sprites"
+      ],
+      "next": [
+        "navigation",
+        "shaders"
+      ],
+      "entry": "squadron/squadron.rkt",
+      "files": [
+        "squadron/squadron.rkt",
+        "squadron/atlas.rkt",
+        "squadron/model.rkt",
+        "squadron/scene.rkt",
+        "support/sprite-assets.rkt",
+        "support/sprite-window.rkt",
+        "support/sprite-math.rkt"
+      ],
+      "commands": [
+        "racket squadron/squadron.rkt --renderer raster",
+        "racket squadron/squadron.rkt --renderer gpu",
+        "racket squadron/squadron.rkt --snapshot squadron.png"
+      ],
+      "requirements": [
+        "The window needs a graphical session. Artwork and shared support files are included. The",
+        "snapshot command uses the CPU without opening a window."
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "title": "Start with drawing",
+      "lessons": [
+        "quick",
+        "clock",
+        "logo",
+        "images",
+        "poster"
+      ]
+    },
+    {
+      "title": "Text and printable documents",
+      "lessons": [
+        "text",
+        "shaping",
+        "paragraph",
+        "pdf-svg"
+      ]
+    },
+    {
+      "title": "Effects and reusable drawings",
+      "lessons": [
+        "effects",
+        "pictures",
+        "vector-raster"
+      ]
+    },
+    {
+      "title": "Windows and interactive drawings",
+      "lessons": [
+        "gpu",
+        "animation",
+        "interaction",
+        "navigation"
+      ]
+    },
+    {
+      "title": "Pixels and color",
+      "lessons": [
+        "images",
+        "pixels",
+        "color-spaces"
+      ]
+    },
+    {
+      "title": "Programmable paints",
+      "lessons": [
+        "poster",
+        "shaders"
+      ]
+    },
+    {
+      "title": "Constructed geometry",
+      "lessons": [
+        "logo",
+        "path-ops"
+      ]
+    },
+    {
+      "title": "Sprite animation and games",
+      "lessons": [
+        "images",
+        "animation",
+        "sprites",
+        "squadron"
+      ]
+    }
+  ]
+}

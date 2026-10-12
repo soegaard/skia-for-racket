@@ -1,130 +1,151 @@
 #lang scribble/manual
 
-@(require (for-label skia))
+@(require "support/reader.rkt")
 
 @title{Skia Tutorials}
 
-These tutorials are a practical introduction to @racketmodname[skia]. Each one
-builds a small, complete result while introducing one main idea. Start with
-Quick, then follow the groups below in order or choose the subject that fits
-the drawing you want to make.
+Skia lets Racket programs draw shapes, text, and images on CPU surfaces, GPU
+frames, and documents. Each tutorial builds a complete result around one main
+idea. Begin with @tutorial-link["quick"], then choose a route for the work you
+want to do. The routes are suggestions, not one mandatory sequence of 22 lessons.
 
-The tutorials assume basic familiarity with Racket. They teach Skia concepts
-through runnable examples and link to complete standalone programs where
-appropriate. For exhaustive contracts and API details, use the Guide and API
-reference alongside them.
+The tutorials assume basic Racket knowledge: function calls, definitions, and
+module imports. Each lesson names the drawing concepts it needs and links to
+the lessons that introduce them. Skip a prerequisite when you already know
+those concepts. Complete source files and the required fixtures are available
+in every lesson's Complete Example section.
 
-@section{Start Here}
+@section{Start with Drawing}
 
-@itemlist[
- @item{@seclink[#:doc '(lib "skia/scribblings/quick/quick.scrbl")
-          "top"]{Quick: An Introduction to Skia with Pictures} —
-       create a surface, draw simple geometry, use paints, and save an image.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/clock/clock.scrbl")
-          "top"]{Transforms and Coordinate Systems — Build a Clock} —
-       translate, rotate, scale, and scope canvas state.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/logo/logo.scrbl")
-          "top"]{Paths and Geometry — Draw a Logo} —
-       construct paths from lines and curves, then fill and stroke them.}
-]
+The foundation route introduces surfaces and paints, then coordinates, paths,
+images, and shaders. Clock and Logo both build on Quick; neither requires the other.
 
-@section{Paint, Images, and Composition}
+@tutorial-route['("quick" "clock" "logo" "images" "poster")]
 
-@itemlist[
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/images/images.scrbl")
-          "top"]{Images — Build a Contact Sheet} —
-       decode images, inspect their dimensions, crop, scale, and sample them.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/poster/poster.scrbl")
-          "top"]{Paints, Gradients, and Shaders — Make a Poster} —
-       combine colors, transparency, gradients, image shaders, and blend shaders.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/effects/effects.scrbl")
-          "top"]{Effects and Filters — Make a Card with Shadows} —
-       compare drop shadows, image blur, and mask blur while keeping geometry clear.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/pictures/pictures.scrbl")
-          "top"]{Reusable Drawings — Record and Replay a Picture} —
-       record drawing operations once and replay them with different placements and transforms.}
-]
+@section{Text and Printable Documents}
 
-@section{Text}
+Start with Quick's drawing basics. The text route proceeds from simple text to
+single shaped runs and then paragraphs. The printable diagram uses text placement
+and single-font paragraph wrapping; its caption does not require mixed-script layout.
 
-@itemlist[
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/text/text.scrbl")
-          "top"]{Text and Typography — Make a Type Specimen} —
-       position simple text from an origin on a baseline and use measurements and metrics.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/shaping/shaping.scrbl")
-          "top"]{Shaping and Multilingual Text — Make a Language Sampler} —
-       shape text, choose font fallback, handle right-to-left runs, and inspect glyph placement.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/paragraph/paragraph.scrbl")
-          "top"]{Paragraph Layout — Make a Multilingual Article Card} —
-       wrap mixed-direction text into measured lines with paragraph-level layout.}
-]
+@tutorial-route['("text" "shaping" "paragraph" "pdf-svg")]
 
-@section{Documents and Rendering Boundaries}
+@section{Effects and Reusable Drawings}
 
-@itemlist[
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/pdf-svg/pdf-svg.scrbl")
-          "top"]{PDF and SVG — Make a Printable Diagram} —
-       draw in physical units, add page margins, and export the same drawing to vector documents.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/vector-raster/vector-raster.scrbl")
-          "top"]{Vector Output and Raster Fallbacks — What Stays Vector?} —
-       distinguish vector operations, embedded images, and deliberate bounded raster fallbacks.}
-]
+Effects builds on Poster's paints. Pictures uses Clock's transforms to place
+recorded drawings. Vector Output combines the document and effects lessons.
 
-@section{GPU Rendering and Interaction}
+@tutorial-route['("effects" "pictures" "vector-raster")]
 
-@itemlist[
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/gpu/gpu.scrbl")
-          "top"]{GPU Rendering — Render the Same Scene on the GPU} —
-       reuse one drawing function for CPU and Metal, and return a CPU-owned image after GPU readback.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/animation/animation.scrbl")
-          "top"]{Animation — Orbiting Lights in a Window} —
-       draw frames from elapsed time, schedule redraws, pause, and select CPU or GPU presentation.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/interaction/interaction.scrbl")
-          "top"]{Interactive Paths — Drag Bézier Control Points} —
-       select and drag control points, update a path, and redraw with CPU or GPU rendering.}
-]
+@section{Windows and Interactive Drawings}
 
-@section{Further Explorations}
+Use Quick's drawing basics and Clock's coordinate transforms. GPU Rendering
+first draws one image; Animation retains a renderer across window frames.
+The editors then add pointer input and a transformed view.
 
-@itemlist[
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/navigation/navigation.scrbl")
-          "top"]{Zoom and Pan — Navigate an Interactive Canvas} —
-       transform the view, invert pointer coordinates, and keep hit targets usable at every zoom.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/shaders/shaders.scrbl")
-          "top"]{Runtime Shaders — Animate Prismatic Waves in a Window} —
-       compile SkSL once, change a phase uniform over time, and display moving bands.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/pixels/pixels.scrbl")
-          "top"]{Working with Pixels — Build a Two-Ink Image Processor} —
-       distinguish mutable buffers, row strides, borrowed views, and independent snapshots.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/color-spaces/color-spaces.scrbl")
-          "top"]{Color Spaces — Give Pixel Values Their Meaning} —
-       declare sample meaning, convert between encodings, and save matching ICC metadata.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/path-ops/path-ops.scrbl")
-          "top"]{Path Operations — Construct a Cutout Badge} —
-       combine filled geometry with union, intersection, difference, exclusive-or, and simplification.}
-]
+@tutorial-route['("gpu" "animation" "interaction" "navigation")]
 
-@section{Sprite Atlases and Games}
+@section{Pixels and Color}
 
-@itemlist[
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/sprites/sprites.scrbl")
-          "top"]{Sprite Atlases — Animate Bouncing Balls on the GPU} —
-       upload a generated atlas once, retain it across frames, and batch sprite placements.}
- @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
-          "top"]{Star Squadron — Build a Galaga-Inspired Arcade Game} —
-       combine sprite animation, fixed-step simulation, diving enemies, collisions, and scoring.}
-]
+Use Images to learn image dimensions and sampling. Working with Pixels then
+introduces mutable storage; Color Spaces explains what the sample values mean.
 
-@section{Choosing a Path}
+@tutorial-route['("images" "pixels" "color-spaces")]
 
-If you are new to Skia, read Quick, Clock, and Logo first. Follow with Images
-and Poster for everyday drawing work. Choose the Text sequence when your work
-contains writing, and the document tutorials when you need PDF or SVG output.
-The GPU tutorial explains rendering a single image on a GPU. Animation then
-shows why maintaining a renderer across successive window frames is useful.
-Interactive Paths builds on those window callbacks to introduce mouse input,
-hit testing, and an editable drawing model.
+@section{Programmable Paints}
 
-The repository's @filepath{docs/TUTORIAL-GUIDELINES.md} describes the
-conventions shared by these examples, including runnable documentation,
-resource-lifetime style, and figure generation.
+Use Poster for shader coordinates and Animation for the window and timer.
+Runtime Shaders combines those ideas in an animated, adjustable SkSL effect.
+
+@tutorial-route['("poster" "shaders")]
+
+@section{Constructed Geometry}
+
+Use Logo to understand paths and fill rules. Path Operations combines filled
+regions instead of placing each contour command by command.
+
+@tutorial-route['("logo" "path-ops")]
+
+@section{Sprite Animation and Games}
+
+Use Images for source rectangles and sampling, and Animation for frame scheduling.
+Sprite Atlases adds a retained GPU image; Star Squadron reuses that ownership
+model for a playable game. The game does not require the editor or pixel lessons.
+
+@tutorial-route['("images" "animation" "sprites" "squadron")]
+
+@section[#:tag "running-examples"]{Running the Examples}
+
+Install Skia and its native libraries before running the drawing programs. The
+repository's @hyperlink["https://github.com/soegaard/skia-for-racket#readme"]{installation
+instructions} describe the supported platforms and native-library setup. Shaped
+text also needs HarfBuzz and suitable system fonts. Each lesson identifies extra
+requirements such as a graphical session or a platform-specific GPU backend.
+
+@subsection{From an Installed Package}
+
+Use the example copier to create an editable directory containing the complete
+program and its dependencies. For example, copy the contact sheet and its four
+image fixtures:
+
+@verbatim{
+raco skia-examples images my-images
+cd my-images
+racket images/contact-sheet.rkt
+}
+
+The destination must not already exist. The copier preserves subdirectories
+and writes a @filepath{README.txt} with the appropriate run commands. List all
+available example names with @command-text["raco skia-examples --list"].
+
+The copy contains example sources and fixtures, not a second Skia installation,
+native libraries, or fonts. Keep Skia installed. Generated output files are
+written relative to the directory from which you run the program, except where
+a program accepts an explicit output path.
+
+The Complete Example section of each lesson also links to every source file.
+Those links are useful for inspecting individual files. When saving them by
+hand, preserve the displayed directory names, especially @filepath{fixtures/}
+and the @filepath{support/} directory shared by the two sprite examples.
+
+@subsection{From a Repository Checkout}
+
+Install or link the checkout as the Skia package using the repository's
+installation instructions. From the repository root, the copier can also run
+directly without waiting for the new @command-text["raco skia-examples"] command
+to be indexed:
+
+@verbatim{
+racket tools/copy-tutorial-examples.rkt images ../my-images
+cd ../my-images
+racket images/contact-sheet.rkt
+}
+
+Create copies outside the checkout to keep generated images and edited examples
+separate from the package sources. Repository-root commands shown inside a
+lesson refer to the checkout, not to a copied example directory.
+
+@subsection{Follow the Snippets}
+
+To assemble a program from the teaching snippets, create a @tt{#lang racket}
+file that requires @tt{skia}. Keep it in the copied example's own subdirectory
+when a snippet imports a local file such as @filepath{scene.rkt}. Add other
+imports where the lesson introduces them. An excerpt from a local GUI callback
+is not a standalone program; the complete file provides its enclosing state.
+
+@subsection{Choose a Renderer}
+
+A CPU image example needs no graphical session. A CPU window still needs one.
+The window examples accept @command-text["--renderer raster"] and
+@command-text["--renderer gpu"]. GPU mode selects a platform backend; it is not
+a promise that the hardware or driver is available, and it does not silently
+retry a failed draw on the CPU.
+
+Use @tutorial-link["gpu"] for the platform-specific image routes and
+@tutorial-link["animation"] for window presentation and cleanup.
+
+@section{Look Up an API}
+
+The tutorials explain selected concepts through examples. The existing
+@api-link[] provides function contracts and options. Follow a named tutorial above
+to learn a concept, or consult that reference for the details of a particular operation.

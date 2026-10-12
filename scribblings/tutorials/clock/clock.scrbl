@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Transforms and Coordinate Systems — Build a Clock}
 
 @(require "eval.rkt"
@@ -10,13 +12,10 @@ This tutorial builds a simple analog clock. The shapes are simple. The
 interesting part is how we place them. The clock gives us a useful reason to
 change the coordinate system.
 
-The tutorial assumes that you know the basics from
-@italic{Quick: An Introduction to Skia with Pictures}. In particular, you
-should know how to create a surface, get its canvas, create a paint, and save a
-PNG file.
-
 The finished clock shows the fixed time 10:10:30. A fixed time keeps every
 example in this tutorial the same each time the documentation is built.
+
+@tutorial-entry["clock"]
 
 @section{The Clock Face}
 
@@ -445,7 +444,7 @@ The complete 600 by 600 clock can now be drawn with one call:
 (save-png surface "clock.png" #:exists 'replace)
 ]
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try changing the fixed time. Predict the hand angles before you run the
 program.
@@ -456,11 +455,12 @@ or three clocks on the same surface at different sizes.
 Try making the clock run counterclockwise by using negative rotation angles.
 Predict the result before you run the program.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used three canvas transforms: translation, rotation, and scaling.
-The Guide will cover transformation matrices, concatenation, skew, path
-transforms, and projective transforms in more detail.
+You can now place the same geometry at different origins, angles, and sizes.
 
-The complete @filepath{clock.rkt} example contains the finished program from
-this tutorial.
+@tutorial-next["clock"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["clock"]

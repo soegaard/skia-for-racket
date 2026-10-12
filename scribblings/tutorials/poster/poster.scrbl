@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Paints, Gradients, and Shaders — Make a Poster}
 
 @(require "eval.rkt"
@@ -9,14 +11,12 @@
 This tutorial builds a geometric poster. The shapes stay simple. Most of the
 visual character comes from the paints and shaders used to draw them.
 
-The tutorial assumes that you know the basics from
-@italic{Quick: An Introduction to Skia with Pictures}. The clock, logo, and
-images tutorials are useful background, but they are not required.
-
 The main idea is:
 
 @centered{@bold{Geometry says where to draw. A paint says how to draw it.
 A shader can make the paint vary across coordinates.}}
+
+@tutorial-entry["poster"]
 
 @section{Start with a Paint}
 
@@ -312,7 +312,7 @@ blend mode. Its first shader is the destination and its second shader is the
 source. The @racket['screen] mode produces a lightening combination that works
 well for this panel.
 
-The Guide will cover the complete set of blend modes in more detail.
+The @api-link[] lists the accepted blend modes.
 
 @poster-image[
 (poster-render-pict
@@ -326,7 +326,7 @@ The Guide will cover the complete set of blend modes in more detail.
 
 @section{Add the Text}
 
-The poster uses the simple text API from the Quick tutorial:
+The poster uses the simple text API introduced in @tutorial-link["quick"]:
 
 @poster-racketblock+eval[
 (define (draw-copy canvas)
@@ -351,8 +351,8 @@ The poster uses the simple text API from the Quick tutorial:
                     subtitle-font quiet-paint))
 ]
 
-Text is not the subject of this tutorial. A later tutorial will cover
-measurement, typefaces, shaping, and paragraph layout.
+Continue with @tutorial-link["text"] to measure text and choose typefaces.
+The text route then introduces shaping and paragraph layout.
 
 @poster-image[
 (poster-render-pict
@@ -406,7 +406,7 @@ Ordinary CPU resources use the normal Racket lifetime style shown in the
 earlier tutorials. Use @racket[with-skia] when prompt deterministic release is
 important.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try moving the middle background stop from @racket[3/5] to @racket[1/3].
 Predict how the background will change before you run the program.
@@ -423,15 +423,12 @@ Compare the result with the original.
 Try changing the final radial-gradient color from transparent hot pink to an
 opaque color. Notice what happens at the edge of the orb.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used solid paints, alpha, linear gradients, radial gradients,
-explicit stop positions, tile modes, image shaders, and shader composition.
+You can now keep geometry fixed while changing its paints, gradients, and shaders.
 
-The Guide will cover sweep and conical gradients, shader-local transforms,
-blend modes, color spaces, and more advanced shader composition.
+@tutorial-next["poster"]
 
-The next tutorial will focus on text and typography.
+@section[#:tag "example-source"]{The Complete Example}
 
-The complete @filepath{poster.rkt} example contains the finished program from
-this tutorial.
+@tutorial-sources["poster"]

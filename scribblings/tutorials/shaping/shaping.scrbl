@@ -1,12 +1,15 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Shaping and Multilingual Text — Make a Language Sampler}
 
 @(require "eval.rkt"
           (for-label racket
                      skia))
 
-The previous text tutorial used Skia's simple text API. That works when each
+The @tutorial-link["text"] lesson used Skia's simple text API.
+That works when each
 character can be mapped and drawn without context-dependent typography.
 
 This tutorial adds HarfBuzz shaping. It shapes Latin text with an OpenType
@@ -17,6 +20,8 @@ The main idea is:
 
 @centered{@bold{Shaping turns text into positioned glyphs. Drawing places that
 shaped run on the canvas.}}
+
+@tutorial-entry["shaping"]
 
 @section{Create a Shaper}
 
@@ -585,7 +590,7 @@ The sampler is an ordinary raster drawing:
           #:exists 'replace)
 ]
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try changing @racket["liga=0"] to @racket["liga=1"]. Compare the glyph count
 and visible result for the selected typeface.
@@ -604,14 +609,13 @@ are UTF-8 byte offsets into the original input, not Racket character indices.
 Try asking @racket[font-manager-match-character] for another script installed on
 your system, then create a font and shaper from the returned typeface.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used HarfBuzz shapers, shaped runs, glyph positions, advances,
-OpenType features, font selection, and explicit right-to-left single runs.
+You can now choose a script font and draw a shaped run. A mixed-direction paragraph
+needs paragraph layout, not just a right-to-left setting on one shaper.
 
-The next tutorial will move from individual runs to paragraph layout: mixed
-scripts, automatic font fallback, bidi resolution, line breaking, wrapping,
-and alignment.
+@tutorial-next["shaping"]
 
-The complete @filepath{language-sampler.rkt} example contains the finished
-program from this tutorial.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["shaping"]

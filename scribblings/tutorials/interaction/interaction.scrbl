@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Interactive Paths — Drag Bézier Control Points}
 
 @(require racket/file
@@ -28,6 +30,8 @@ modes.
 
 @centered{@bold{Draw the current points. Let mouse events change the points.
 Then request a new frame.}}
+
+@tutorial-entry["interaction"]
 
 @section{Draw a Cubic Curve}
 
@@ -233,7 +237,7 @@ The @racket[refresh] and @racket[request-gpu-render] methods request a later
 drawing callback. Repeated requests can be combined. A mouse event should not
 try to draw directly or keep a canvas from an earlier frame.
 
-This also explains the difference from Tutorial 14: animation requests frames
+This also explains the difference from @tutorial-link["animation"]: animation requests frames
 as time passes. This editor requests them when its points change, or when the
 window needs repainting. It needs no animation timer.
 
@@ -254,7 +258,7 @@ The drawing is still done with @racket[surface-canvas]:
 
 The Racket GUI drawing context copies the finished bitmap to the window;
 it is not used to draw the curve. This is the same separation used in
-Tutorial 14. The @racket[with-skia] form promptly releases the per-frame
+@tutorial-link["animation"]. The @racket[with-skia] form promptly releases the per-frame
 surface after its pixels have been copied.
 
 @section{Draw Directly into a GPU Frame}
@@ -310,20 +314,7 @@ drag. The curve should follow the pointer. The coordinates stay logical on
 both renderers, so dragging should behave the same at different display
 scales. Small rendering differences between CPU and GPU are possible.
 
-@section{The Complete Programs}
-
-The @filepath{bezier-editor.rkt} file contains the GUI, mouse events, CPU/GPU
-presentation, Reset button, and window cleanup:
-
-@codeblock[(file->string editor-source)]
-
-The @filepath{scene.rkt} file contains the data model, hit testing, cubic
-curve, paints, and the actual drawing functions. It also saves a static
-@filepath{bezier-editor.png} when run directly:
-
-@codeblock[(file->string scene-source)]
-
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try dragging @tt{P1} and @tt{P2} to opposite sides of the straight
 line between the endpoints. Can you make an S-shaped cubic? Try moving an
@@ -337,13 +328,23 @@ choices.
 Try the editor with both renderers and resize the window. The point positions
 remain logical coordinates; only the available drawing area changes.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial combined Skia paths, a small data model, hit testing, GUI mouse
-events, and redraw requests. No new drawing API was needed to make a path
-interactive.
+You can now reshape a curve by changing a small model and requesting a redraw.
 
-The next natural step is zooming and panning. That requires mapping mouse
-positions between window coordinates and a transformed drawing coordinate
-system. Keyboard controls, undo/redo, snapping, and multi-segment paths also
-belong in more advanced editors.
+@tutorial-next["interaction"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["interaction"]
+
+The @filepath{bezier-editor.rkt} file contains the GUI, mouse events, CPU/GPU
+presentation, Reset button, and window cleanup:
+
+@codeblock[(file->string editor-source)]
+
+The @filepath{scene.rkt} file contains the data model, hit testing, cubic
+curve, paints, and the actual drawing functions. It also saves a static
+@filepath{bezier-editor.png} when run directly:
+
+@codeblock[(file->string scene-source)]

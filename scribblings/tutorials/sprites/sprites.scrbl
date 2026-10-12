@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia skia/gpu))
 @(define-runtime-path atlas-source "atlas.rkt")
@@ -34,15 +36,15 @@ racket scribblings/tutorials/sprites/balls.rkt --renderer gpu
 
 The window includes Pause, Restart, and Close controls. The status line shows
 how many times this program has called the atlas upload function. Restart
-resets the balls without uploading again. Use @tt{--renderer raster} for the
-explicit CPU version, or add @tt{--count 300} to draw more balls.
+resets the balls without uploading again. Use @command-text["--renderer raster"] for the
+explicit CPU version, or add @command-text["--count 300"] to draw more balls.
 
 If GPU drawing is new to you, the
-@seclink[#:doc '(lib "skia/scribblings/tutorials/gpu/gpu.scrbl")
-          "top"]{GPU Rendering — Render the Same Scene on the GPU}
+@tutorial-link["gpu"]
 tutorial introduces GPU canvases. For frame scheduling and GUI controls, see
-@seclink[#:doc '(lib "skia/scribblings/tutorials/animation/animation.scrbl")
-          "top"]{Animation: Orbiting Lights in a Window}.
+@tutorial-link["animation"].
+
+@tutorial-entry["sprites"]
 
 @section{Look Inside the Atlas}
 
@@ -144,8 +146,7 @@ would defeat reuse. The borrowed canvas, in contrast, is used only during
 its frame callback and must not be retained.
 
 The following helper retains the uploaded image across frames and is also used
-by @seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
-          "top"]{Star Squadron}:
+by @tutorial-link["squadron"]:
 
 @codeblock[(source-definition assets-source 'sprite-texture-for-frame!)]
 
@@ -236,7 +237,7 @@ GPU backing scale is applied separately from that scene-to-window transform.
 
 GPU mode selects Metal on macOS, Direct3D 12 on Windows x64, and OpenGL on
 Linux with a suitable graphical session. It does not promise GPU availability
-on every machine and never silently falls back. Run with @tt{--renderer raster}
+on every machine and never silently falls back. Run with @command-text["--renderer raster"]
 when a CPU window is required.
 
 @section{Close in Ownership Order}
@@ -253,7 +254,26 @@ The upload counter should read one after the first GPU frame, remain one during
 animation and Restart, and read zero throughout a raster run. The counter is
 an application diagnostic; it does not count driver-internal allocations.
 
-@section{The Complete Programs}
+@section[#:tag "try-it"]{Try It}
+
+Try 30, 300, and 1000 balls. Watch the upload counter as the count and number
+of placements change. Do not interpret a smooth-looking animation as a
+benchmark; the scene, window size, driver, and machine all matter.
+
+Try selecting the same cell for every ball. Then set all spins to zero, or
+replace one atlas drawing with a different shape. A change to the artwork
+requires a new atlas; changing a placement does not.
+
+@section[#:tag "next-steps"]{Where to Go From Here}
+
+You can now retain one atlas across frames and change its placements without uploading it again.
+The game lesson adds simulation and input while keeping that ownership model.
+
+@tutorial-next["sprites"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["sprites"]
 
 Run @filepath{balls.rkt} from the repository or installed collection. Its
 relative imports include the shared helpers in @filepath{../support/}; keep
@@ -284,28 +304,8 @@ racket scribblings/tutorials/sprites/balls.rkt --snapshot balls.png
 
 @subsection{The Shared Window}
 
-The @seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
-          "top"]{Star Squadron} game reuses this
+The @tutorial-link["squadron"] game reuses this
 window host. Its construction, input, timing, and teardown are separate from
 the application's drawing and simulation.
 
 @codeblock[(file->string host-source)]
-
-@section{Try It}
-
-Try 30, 300, and 1000 balls. Watch the upload counter as the count and number
-of placements change. Do not interpret a smooth-looking animation as a
-benchmark; the scene, window size, driver, and machine all matter.
-
-Try selecting the same cell for every ball. Then set all spins to zero, or
-replace one atlas drawing with a different shape. A change to the artwork
-requires a new atlas; changing a placement does not.
-
-@section{Where to Go From Here}
-
-The @seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
-          "top"]{Star Squadron} game reuses the same
-atlas lifetime and batching approach in a playable arcade shooter.
-It changes the game model and the source rectangles, not the texture-management
-strategy. Atlas packing tools, mipmap-safe borders, texture streaming, and
-performance profiling belong in the Guide.

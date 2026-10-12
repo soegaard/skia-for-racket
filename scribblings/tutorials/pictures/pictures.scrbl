@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Reusable Drawings — Record and Replay a Picture}
 
 @(require "eval.rkt"
@@ -22,6 +24,8 @@ The main idea is:
 
 @centered{@bold{A picture records drawing operations once so the same drawing
 can be replayed on other canvases.}}
+
+@tutorial-entry["pictures"]
 
 @section{Draw One Emblem}
 
@@ -318,7 +322,7 @@ resources such as surfaces, paints, and pictures, normal Racket bindings are
 appropriate when exact release time does not matter. Use deterministic cleanup
 when prompt release is important.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try changing the number of columns or rows in the pattern. Adjust the spacing
 so all the emblems stay inside the page.
@@ -330,16 +334,12 @@ Try making the raster image 24 by 24 instead of 48 by 48 in the comparison.
 Keep its displayed size unchanged and predict how the nearest-neighbor result
 will change.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial introduced recording one drawing, replaying pictures, changing
-placement and scale, using transforms with recorded drawings, and explicitly
-converting a picture into pixels.
+You can now record one drawing and reuse it with different placements and transforms.
 
-The Guide will cover lower-level picture recorders, serialization to SKP,
-trusted file loading, optional spatial indexes, and picture shaders. The next
-tutorial will explore which drawing operations remain vectors in PDF and SVG,
-and which ones need raster fallbacks.
+@tutorial-next["pictures"]
 
-The complete @filepath{pattern-sheet.rkt} example contains the finished
-program from this tutorial.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["pictures"]

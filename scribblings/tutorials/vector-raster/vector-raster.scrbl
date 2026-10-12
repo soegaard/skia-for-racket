@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Vector Output and Raster Fallbacks — What Stays Vector?}
 
 @(require "eval.rkt"
@@ -25,6 +27,8 @@ The main idea is:
 @centered{@bold{A vector document can contain both drawing operations and
 pixels. Choose a bounded raster fallback when an effect cannot be preserved
 reliably by a document backend.}}
+
+@tutorial-entry["vector-raster"]
 
 @section{Draw Geometry That Can Stay Vector}
 
@@ -142,7 +146,8 @@ the stored pixels.
 
 @section{Recognize an Effect That Needs Special Care}
 
-The previous tutorial introduced image filters. Here, the same kind of filter
+The @tutorial-link["effects"] lesson introduced image filters.
+Here, the same kind of filter
 will provide a soft shadow for a small badge:
 
 @vector-racketblock+eval[
@@ -308,7 +313,7 @@ regions for the output audit. They do not change what Skia draws.
 
 @section{Check the Output Policy}
 
-As in the previous PDF and SVG tutorial, one output page can describe the
+As in @tutorial-link["pdf-svg"], one output page can describe the
 finished drawing:
 
 @vector-racketblock+eval[
@@ -435,7 +440,7 @@ be enlarged as vector content, while the pixel tile and the rasterized badge
 keep their finite source resolution. The separate PNG provides a visual
 reference, but it is not evidence of the representation inside either document.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try changing @racket[#:scale 2] in @racket[draw-fallback-art] to a smaller
 value. Export the SVG again and examine the badge at high zoom. The rest of
@@ -449,15 +454,13 @@ Try removing the explicit raster group and drawing the filtered badge directly
 into SVG. Use @racket[analyze-output-page] to inspect the policy warnings
 before exporting; do not assume the backend will make an equivalent image.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial distinguished vector drawing, embedded raster images, and
-bounded raster fallbacks. It also introduced conservative output auditing as
-a way to catch known representation risks before publication.
+You can now distinguish vector drawing, embedded images, and bounded raster fallbacks.
+Output auditing catches known representation risks; it does not certify visual identity.
 
-The Guide covers complex filters, native expansion, padding, raster density,
-font and color policies, and detailed PDF/SVG inspection. The next tutorial
-will render a shared scene with a GPU backend.
+@tutorial-next["vector-raster"]
 
-The complete @filepath{vector-raster.rkt} program contains the finished
-comparison sheet.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["vector-raster"]

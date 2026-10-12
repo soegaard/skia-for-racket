@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Paths and Geometry — Draw a Logo}
 
 @(require "eval.rkt"
@@ -9,13 +11,11 @@
 This tutorial builds a small geometric logo. The logo starts as a polygon and
 gradually becomes a smooth leaf with a curved cut-out.
 
-The tutorial assumes that you know the basics from
-@italic{Quick: An Introduction to Skia with Pictures}. The clock tutorial is
-not required.
-
 The main idea is simple:
 
 @centered{@bold{A path describes geometry. A paint describes how Skia draws that geometry.}}
+
+@tutorial-entry["logo"]
 
 @section{One Closed Shape}
 
@@ -279,7 +279,7 @@ The SVG version uses an output page:
 The drawing function is unchanged. The SVG can preserve the path geometry as
 vector content.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try moving one control point in the outer contour. Predict which part of the
 curve will change before you run the program.
@@ -295,14 +295,12 @@ Try changing @racket[#:join] from @racket['round] to @racket['miter] or
 
 Try drawing only the outline by removing the filled @racket[draw-path] call.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used straight segments, quadratic curves, cubic curves, multiple
-contours, fill and stroke paints, and an even-odd fill rule.
+You can now build contours from straight and curved segments and choose how they are filled.
 
-The Guide will cover path inspection, bounds, path transforms, shape
-recognition, path operations, arcs, conics, and other geometry tools in more
-detail.
+@tutorial-next["logo"]
 
-The complete @filepath{logo.rkt} example contains the finished program from
-this tutorial.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["logo"]

@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia skia/gpu))
 @(define-runtime-path atlas-source "atlas.rkt")
@@ -37,11 +39,11 @@ after game over. Click the playfield to return keyboard focus after using a
 control. The Close button and the window's close control both exit the game.
 
 The game builds on the sprite-atlas techniques in
-@seclink[#:doc '(lib "skia/scribblings/tutorials/sprites/sprites.scrbl")
-          "top"]{Sprite Atlases: Animate Bouncing Balls on the GPU}.
+@tutorial-link["sprites"].
 If drawing into a window and scheduling animation frames are new to you, start
-with @seclink[#:doc '(lib "skia/scribblings/tutorials/animation/animation.scrbl")
-          "top"]{Animation: Orbiting Lights in a Window}.
+with @tutorial-link["animation"].
+
+@tutorial-entry["squadron"]
 
 @section{Give Every Object a Cell}
 
@@ -302,30 +304,7 @@ change the simulation's coordinates or recreate the atlas.
 A selected but unavailable GPU raises an error rather than silently switching
 to CPU rendering. Both modes still require a graphical session to open a window.
 
-@section{The Complete Game}
-
-The entry point, simulation, artwork, and renderer are separate files. The
-window and GPU texture helpers under @filepath{../support/} are shared with
-the @seclink[#:doc '(lib "skia/scribblings/tutorials/sprites/sprites.scrbl")
-          "top"]{Bouncing Balls} example. They are
-example support code, not part of the Skia API.
-
-The @tt{--snapshot picture.png} option saves one game frame as a PNG without
-opening a window. Snapshot rendering uses the CPU.
-
-@subsection{The Entry Point}
-@codeblock[(file->string program-source)]
-
-@subsection{The Atlas Artwork}
-@codeblock[(file->string atlas-source)]
-
-@subsection{The Game Model}
-@codeblock[(file->string model-source)]
-
-@subsection{The Renderer}
-@codeblock[(file->string drawing-source)]
-
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try moving the player after an enemy launches its dive. The captured target
 should remain unchanged. Then pause, resize the window, and resume: none of
@@ -339,14 +318,35 @@ Try replacing one sprite drawing while keeping its anchor and source rectangle.
 The movement and collision code should not need to change. A next experiment
 could use the spare star cell for a collectible bonus.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This example combines input, bounded fixed-step simulation, atlas animation,
-batched drawing, and GPU ownership. It is not a general game engine. Sound,
-replay recording, level scripting, spatial collision indexes, controller input,
-and a complete Galaga feature set are deliberately left out.
+The game combines input, bounded fixed-step simulation, atlas animation, and batched drawing.
+It is not a general game engine. Sound, replay recording, level scripting, and controller input
+are possible extensions. Keep the same resource rule: upload for a context, reuse across its
+frames, and release the atlas before closing that context.
 
-The Guide is the place for deeper treatment of texture sampling, retained GPU
-resources, presentation lifetimes, and performance measurement. The central
-resource rule remains the one learned with bouncing balls: upload for a context,
-reuse across its frames, and release the atlas before closing that context.
+@tutorial-next["squadron"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["squadron"]
+
+The entry point, simulation, artwork, and renderer are separate files. The
+window and GPU texture helpers under @filepath{../support/} are shared with
+the @tutorial-link["sprites"] example. They are
+example support code, not part of the Skia API.
+
+The @command-text["--snapshot picture.png"] option saves one game frame as a PNG without
+opening a window. Snapshot rendering uses the CPU.
+
+@subsection{The Entry Point}
+@codeblock[(file->string program-source)]
+
+@subsection{The Atlas Artwork}
+@codeblock[(file->string atlas-source)]
+
+@subsection{The Game Model}
+@codeblock[(file->string model-source)]
+
+@subsection{The Renderer}
+@codeblock[(file->string drawing-source)]

@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @(require racket/file racket/runtime-path "eval.rkt" "waves.rkt"
           "../support/source.rkt" (for-label racket skia skia/gpu))
 @(define-runtime-path program-source "waves.rkt")
@@ -24,13 +26,15 @@ You can run the complete animated window now, from the repository root:
 racket scribblings/tutorials/shaders/waves-window.rkt --renderer gpu
 }
 
-If the machine has no supported GPU backend, choose @tt{--renderer raster}.
+If the machine has no supported GPU backend, choose @command-text["--renderer raster"].
 The following sections explain how the shader and window work.
 
 @centered{@bold{Compile the SkSL program once. Change uniforms to animate the shader.}}
 
 A runtime shader is a small SkSL program. Skia compiles it into an effect and
 then creates shader instances by supplying uniform values.
+
+@tutorial-entry["shaders"]
 
 @section{Start with a Constant Color}
 
@@ -264,33 +268,20 @@ control stop the timer and retire the renderer.
 
 The application does not perform rendering in the timer callback. It requests a
 later frame, preserving the separation between state changes and drawing that
-we introduced in Tutorial 14.
+we introduced in @tutorial-link["animation"].
 
 @section{Choose CPU or GPU}
 
-The @tt{--renderer gpu} mode selects Metal on macOS, Direct3D 12 on Windows
+The @command-text["--renderer gpu"] mode selects Metal on macOS, Direct3D 12 on Windows
 x64, and OpenGL on Linux with a suitable graphical desktop. It does not
 silently fall back if a native GPU backend is unavailable. Use
-@tt{--renderer raster} to draw the same scene on the CPU.
+@command-text["--renderer raster"] to draw the same scene on the CPU.
 
 Both modes use Skia's runtime shader implementation. A GPU is not automatically
 faster for a small scene; persistent drawing and avoiding readback are the
 reasons to consider it here, not a performance claim.
 
-@section{The Complete Programs}
-
-The @filepath{waves.rkt} file contains the shader sources, the uniform helper,
-and the backend-neutral drawing function. Running it alone saves
-@filepath{wave-frame.png}, a still frame at time zero:
-
-@codeblock[(file->string program-source)]
-
-The @filepath{waves-window.rkt} file creates the CPU/GPU window, sliders,
-Pause/Resume and Close controls. Save it beside @filepath{waves.rkt}:
-
-@codeblock[(file->string window-source)]
-
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try raising the frequency and then the bend while the animation is running.
 They modify different parts of the pattern. Pause and use the sliders to
@@ -303,12 +294,26 @@ A different hue rotates the same color wheel without changing the geometry.
 Try reducing @racket[#:bend] to zero. The bands become straight, but their
 colors still move because phase still appears in the angle expression.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-Runtime effects are compiled application code, not a sandbox for untrusted
-shader source. Compilation can fail, and complex programs can be expensive to
-render. The Guide covers diagnostics, child shaders, runtime color filters,
-and custom blenders.
-
-The upstream @hyperlink["https://skia.org/docs/user/sksl/"]{SkSL and Runtime Effects}
+Runtime effects are compiled application code, not a sandbox for untrusted shader source.
+Compilation can fail, and complex programs can be expensive to render. The upstream
+@hyperlink["https://skia.org/docs/user/sksl/"]{SkSL and Runtime Effects}
 guide explains how runtime shaders fit into Skia's drawing pipeline.
+
+@tutorial-next["shaders"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["shaders"]
+
+The @filepath{waves.rkt} file contains the shader sources, the uniform helper,
+and the backend-neutral drawing function. Running it alone saves
+@filepath{wave-frame.png}, a still frame at time zero:
+
+@codeblock[(file->string program-source)]
+
+The @filepath{waves-window.rkt} file creates the CPU/GPU window, sliders,
+Pause/Resume and Close controls. Save it beside @filepath{waves.rkt}:
+
+@codeblock[(file->string window-source)]

@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../tutorials/support/reader.rkt")
+
 @title{Quick: An Introduction to Skia with Pictures}
 
 @(require "eval.rkt"
@@ -15,6 +17,8 @@ know how to call a function, define a value, define a function, and use
 
 The definitions build on one another. The complete program appears in
 @filepath{moonlight.rkt}.
+
+@tutorial-entry["quick"]
 
 @section{Ready...}
 
@@ -83,8 +87,7 @@ outlive it.
 
 The @racket[with-skia] form remains useful when native storage should be
 released at a known point, such as for a large resource or resources created
-repeatedly. The resource-lifetime documentation explains that choice in more
-detail.
+repeatedly. The @api-link[] describes resource ownership and explicit cleanup.
 
 @skia-image[
 (quick-render-pict width height draw-flat-sky)
@@ -444,9 +447,9 @@ The simplest text API needs a font, a paint, and a baseline position.
                     small-font paint))
 ]
 
-The y coordinate in @racket[draw-simple-text] gives the text baseline. Skia also
-supports shaping, positioned glyphs, text blobs, and paragraph layout. The Guide
-will cover those subjects later.
+The y coordinate in @racket[draw-simple-text] gives the text baseline.
+Continue with @tutorial-link["text"]
+for text placement and measurements, or @tutorial-link["shaping"] for shaped runs.
 
 @skia-image[
 (quick-render-pict
@@ -519,10 +522,10 @@ The @racket[#:unit 'px] option keeps the page coordinates on the same 800 by
 The PNG file contains raster pixels. The PDF and SVG files can keep supported
 drawing operations as vector content.
 
-The Guide will discuss document output, text policies, raster fallbacks, and
-output auditing in more detail.
+Continue with @tutorial-link["pdf-svg"] for physical page sizes
+and @tutorial-link["vector-raster"] for output policies and raster fallbacks.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 The finished picture is a good place to experiment. Try moving the moon by
 changing its center from @tt{(650, 90)} to another point. Use the coordinate
@@ -532,13 +535,12 @@ Try changing the moon radius, changing one of the colors, or adding another
 call to @racket[draw-tree-at]. These changes use only the ideas from this
 tutorial.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used only a small part of Skia.
+You can now separate a drawing function from the surface or document that receives it.
 
-The Guide will cover resource management, paths, transforms, text, images,
-color, document output, and GPU rendering in more detail. The Reference will
-give exact contracts for the public functions and forms.
+@tutorial-next["quick"]
 
-The complete @filepath{moonlight.rkt} example contains the finished program
-from this tutorial.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["quick"]

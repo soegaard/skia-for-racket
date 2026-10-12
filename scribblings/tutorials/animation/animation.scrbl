@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Animation — Orbiting Lights in a Window}
 
 @(require racket/file
@@ -28,10 +30,12 @@ the animation. They are still frames, not screenshots of a running window.
 @centered{@bold{Describe one frame with Skia drawing functions. Change time,
 then request another frame.}}
 
+@tutorial-entry["animation"]
+
 @section{Draw a Frame with Skia}
 
 The @filepath{scene.rkt} file uses the familiar @racketmodname[skia] API from
-the earlier tutorials. Its drawing function receives an ordinary Skia canvas:
+@tutorial-link["quick"]. Its drawing function receives an ordinary Skia canvas:
 
 @racketblock[
 (draw-scene canvas seconds width height)
@@ -61,7 +65,7 @@ The background is cleared with @racket[canvas-clear!]. The grid uses
 @racket[draw-simple-text]. The paints and fonts are defined once in
 @filepath{scene.rkt} and reused by every frame.
 
-This is the same style of drawing used throughout the earlier tutorials.
+This is the same style of drawing introduced in @tutorial-link["quick"].
 Animation will change the @racket[seconds] argument, not the drawing API.
 
 @section{Make the Lights Move}
@@ -258,7 +262,7 @@ checks for @racket[#f] before creating the GPU widget.
 This is @emph{platform selection}, not GPU detection. Even on a supported
 platform, a missing driver or unusable GPU may cause initialization to fail,
 possibly after the window is shown. The program does not automatically replay
-failed GPU drawing on the CPU; use @tt{--renderer raster} to run the same scene
+failed GPU drawing on the CPU; use @command-text["--renderer raster"] to run the same scene
 through Skia's CPU surface. A reliable automatic fallback would need to close
 the failed GPU widget and construct a fresh CPU widget outside its render
 callback, without treating arbitrary drawing errors as GPU failures.
@@ -307,7 +311,7 @@ without downloading each complete frame to CPU memory.
 
 @section{Choose CPU or GPU}
 
-The finished program accepts @tt{--renderer raster} or @tt{--renderer gpu}.
+The finished program accepts @command-text["--renderer raster"] or @command-text["--renderer gpu"].
 The drawing function stays unchanged; only the window and presentation change:
 
 @verbatim{
@@ -317,7 +321,7 @@ GPU:  GPU frame     -> draw-scene -> GPU presentation -> GUI window
 
 The CPU version uses ordinary Skia raster drawing. The GPU version draws
 through the same Skia commands into a GPU-backed frame, keeping its presenter
-and context between frames. Unlike the one-shot helper in Tutorial 13, it does
+and context between frames. Unlike the one-shot helper in @tutorial-link["gpu"], it does
 not construct and destroy a GPU context for every animation frame.
 
 Run the CPU version from the repository root:
@@ -338,7 +342,7 @@ The same program supports macOS, Windows x64, and Linux with a compatible
 graphical desktop. GPU mode selects Metal, Direct3D 12, or OpenGL respectively.
 This is backend selection, not a guarantee that a GPU is usable: missing native
 libraries or drivers can still cause an error. It never quietly falls back to
-CPU rendering. Run with @tt{--renderer raster} when GPU mode is unavailable.
+CPU rendering. Run with @command-text["--renderer raster"] when GPU mode is unavailable.
 
 CPU mode needs no GPU driver but still needs a window system. A GPU is not
 necessarily faster for this small scene; repeated drawing without CPU
@@ -365,21 +369,7 @@ is released promptly by @racket[with-skia]. The GPU presenter, in contrast,
 owns a live context and must be closed when the animation ends. Neither
 renderer permits using a borrowed canvas after its drawing callback finishes.
 
-@section{The Complete Programs}
-
-The @filepath{orbiting-lights.rkt} file contains the window, timer, Pause/Resume
-and Close buttons, and the CPU/GPU adapters. It includes the physical-to-logical
-GPU scaling shown above. Save this file alongside @filepath{scene.rkt} to run it:
-
-@codeblock[(file->string animation-source)]
-
-The @filepath{scene.rkt} file contains the Skia paints, orbital calculations,
-and drawing functions. This is the only scene implementation used for the
-still frames, CPU window, and GPU window:
-
-@codeblock[(file->string scene-source)]
-
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try increasing the blue light's angular speed from 0.85 to 1.6. Then reverse
 the violet light's direction by changing its -1.15 speed to 1.15. The paths
@@ -394,13 +384,24 @@ On a high-density display, the GPU uses the frame's backing scale so orbit
 positions remain in the same logical coordinates as CPU mode. Exact pixels
 can still differ across renderers and drivers.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial reused Skia canvases, paints, and drawing functions from the
-previous tutorials. It added elapsed-time animation, redraw requests, and
-window presentation without changing how the scene itself is drawn.
+You can now draw a frame from elapsed time, request another frame, and stop the renderer cleanly.
 
-The Guide covers GPU-resident resources, more sophisticated redraw scheduling,
-input handling, presentation lifetimes, and benchmarking. The separate
-@tt{skia/render-canvas} interface is useful when you want to
-draw with Racket's @tt{dc<%>} methods instead of Skia's canvas API.
+@tutorial-next["animation"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["animation"]
+
+The @filepath{orbiting-lights.rkt} file contains the window, timer, Pause/Resume
+and Close buttons, and the CPU/GPU adapters. It includes the physical-to-logical
+GPU scaling shown above. Save this file alongside @filepath{scene.rkt} to run it:
+
+@codeblock[(file->string animation-source)]
+
+The @filepath{scene.rkt} file contains the Skia paints, orbital calculations,
+and drawing functions. This is the only scene implementation used for the
+still frames, CPU window, and GPU window:
+
+@codeblock[(file->string scene-source)]

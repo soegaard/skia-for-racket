@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{GPU Rendering — Render the Same Scene on the GPU}
 
 @(require racket/file
@@ -29,6 +31,8 @@ differences; this comparison is not a test of byte-for-byte equality or speed.
 
 @centered{@bold{Keep the drawing function. Change the surface backing.}}
 
+@tutorial-entry["gpu"]
+
 @section{Why Use the GPU?}
 
 For a small diagram or an occasional PNG, CPU rendering is usually simpler.
@@ -53,7 +57,7 @@ Repeated frames:
 For a static PNG, start with the CPU. For sustained rendering, consider a
 persistent GPU context and measure the complete workflow, including any
 readbacks. If the goal is a vector PDF or SVG, use the document-output API
-from the preceding tutorial: a GPU-rendered image is still raster content.
+from @tutorial-link["pdf-svg"]: a GPU-rendered image is still raster content.
 
 @section{Keep the Drawing Function}
 
@@ -208,7 +212,7 @@ activate it with @racket[call-with-gpu-context], and reuse GPU surfaces and
 images across frames. The @racket[gpu-surface-snapshot] function can keep an
 image GPU-resident for later drawing. The lower-level
 @racket[gpu-surface->raster-image] function is available when a CPU copy is
-actually needed. Their lifetime rules are covered in the Guide.
+actually needed. The @api-link[] specifies the corresponding resource lifetimes.
 
 @section[#:tag "linux-opengl-host"]{Linux: A Complete OpenGL Host Example}
 
@@ -231,7 +235,7 @@ This particular route requires a graphical session with GLX (for example, X11
 or XWayland). It is not a portable headless Linux recipe. Drivers, extensions,
 and usable GPU support must be checked at runtime.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try moving one of the glowing nodes in @filepath{scene.rkt}. Render the scene
 on the CPU and GPU again. The two images should reflect the same change.
@@ -242,21 +246,19 @@ should need to change between CPU and GPU execution.
 Try saving @racket[metal-image] a second time. The encoder uses CPU pixels;
 there is no new GPU context or readback.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-The examples used the same drawing function with different backends and
-returned a normal CPU image from a GPU render. For animated or persistent GPU
-work, see the Guide's discussions of context lifetimes, GPU-resident images,
-window presentation, and performance measurement.
+You can now use one drawing function with CPU and GPU surfaces and keep a CPU image
+after GPU readback. A window that draws repeatedly should retain its renderer across frames.
 
-The complete Metal generator is @filepath{gpu-offscreen.rkt}. It uses the same
-@racket[draw-scene] function and the one-shot helper.
+@tutorial-next["gpu"]
 
-@section{The Complete Scene}
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["gpu"]
 
 Here is the full @filepath{scene.rkt} program. It requires only
 @racketmodname[skia], so the CPU and GPU examples use exactly these functions.
-The listing is read directly from the source file rather than copied into the
-tutorial.
+
 
 @codeblock[(file->string scene-source)]

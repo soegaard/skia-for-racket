@@ -1,12 +1,15 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Paragraph Layout — Make a Multilingual Article Card}
 
 @(require "eval.rkt"
           (for-label racket
                      skia))
 
-The previous tutorial shaped one font run at a time. This tutorial gives text
+The @tutorial-link["shaping"] lesson shaped one font run at a time.
+This tutorial gives text
 an available width, lets Skia choose lines and baselines, and then combines
 English with Arabic and Hebrew in a compact article card.
 
@@ -16,6 +19,8 @@ The main idea is:
 width. Mixed layout also handles directional runs and font fallback.}}
 
 The complete example is in @filepath{article-card.rkt}.
+
+@tutorial-entry["paragraph"]
 
 @section{Start with One Long Line}
 
@@ -127,7 +132,7 @@ rules use @racket[text-layout-line-baseline], so they track the chosen font's
 metrics. The text is drawn over those rules at the layout box origin.
 
 A line's baseline is not the layout origin. This distinction is the same one
-we made between text origins and baselines in the typography tutorial.
+introduced in @tutorial-link["text"].
 
 @section{Align Lines Inside the Width}
 
@@ -267,7 +272,7 @@ comes last in the source string. Bidirectional layout determines the visual
 order; the program does not reverse the string.
 
 This is paragraph-level bidirectional layout. The @racket[shape-text]
-function from the previous tutorial only shapes a run with a direction; it
+function from @tutorial-link["shaping"] only shapes a run with a direction; it
 does not reorder a mixed-direction paragraph.
 
 @section{Build the Article Card}
@@ -301,7 +306,7 @@ Run @filepath{article-card.rkt} with Racket to write @filepath{article-card.png}
 in the current directory. The surface is an ordinary owned CPU resource; no
 special cleanup form is required when prompt release is unimportant.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try reducing the introduction width in @filepath{article-card.rkt}. Watch how
 the line count and total height change. Keep the other elements far enough
@@ -314,15 +319,12 @@ Try changing the default typeface, or inspecting
 @racket[mixed-text-run-family] on another computer. Compare the actual font
 choices rather than expecting identical fallback families.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial introduced width-based wrapping, layout-box coordinates, line
-baselines, alignment, mixed-script fallback, and paragraph-level bidi.
+You can now wrap text into measured lines and use mixed layout for directional and font runs.
 
-It deliberately left custom line-break providers, justification, dictionary
-segmentation, advanced bidi controls, and typography beyond basic paragraphs
-to the Guide.
+@tutorial-next["paragraph"]
 
-The next tutorial will use Skia's PDF and SVG output to make a printable
-diagram. The complete @filepath{article-card.rkt} example contains the
-finished card.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["paragraph"]

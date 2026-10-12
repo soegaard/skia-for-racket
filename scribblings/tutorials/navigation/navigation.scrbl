@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @(require racket/file racket/runtime-path "eval.rkt" "model.rkt"
           "../support/source.rkt"
           (for-label racket skia skia/bitmap skia/gpu
@@ -21,10 +23,12 @@ The Reset view button restores the view without undoing edits to the curve.
 
 @centered{@bold{Change the view, not the geometry. Convert input back into model coordinates.}}
 
-The drawing uses the same Skia paths, paints, and canvases as the preceding
-editor. This example is self-contained. Save @filepath{model.rkt}, @filepath{scene.rkt},
+The drawing uses the same Skia paths, paints, and canvases as @tutorial-link["interaction"].
+This example is self-contained. Save @filepath{model.rkt}, @filepath{scene.rkt},
 and @filepath{navigate.rkt}, listed at the end, in the same directory. The default CPU
-version runs with @tt{racket navigate.rkt}; add @tt{--renderer gpu} for GPU drawing.
+version runs with @tt{racket navigate.rkt}; add @command-text["--renderer gpu"] for GPU drawing.
+
+@tutorial-entry["navigation"]
 
 @section{Separate Model Coordinates from Window Coordinates}
 
@@ -233,7 +237,7 @@ geometry, not a guarantee of identical pixels.
 
 The program selects Metal on macOS, Direct3D on Windows x64, and OpenGL on a
 compatible Linux desktop. A selected but unavailable GPU raises an error;
-@tt{--renderer raster} selects the CPU route explicitly. Both window modes still
+@command-text["--renderer raster"] selects the CPU route explicitly. Both window modes still
 require a working graphical session. Run either mode from the directory holding
 the three source files:
 
@@ -245,7 +249,26 @@ racket navigate.rkt --renderer gpu
 No animation timer is needed: edits and
 view changes request redraws, while normal window exposure can redraw too.
 
-@section{The Complete Programs}
+@section[#:tag "try-it"]{Try It}
+
+Zoom to the maximum, then drag both a handle and the background. The two gestures
+should still track the pointer. Reset the view and check that your point edit
+remains. Then reset the curve and check that this operation does not reset the view.
+
+Try changing the maximum zoom to 8. The handle size and hit radius should remain
+unchanged on screen. A useful next exercise is a Fit to Window command that
+calculates a view from the control-point bounds.
+
+@section[#:tag "next-steps"]{Where to Go From Here}
+
+This editor used translation and one uniform scale. A rotated or sheared view
+needs a general inverse matrix, but the principle is unchanged: invert the view mapping for input.
+
+@tutorial-next["navigation"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["navigation"]
 
 @subsection{The Model: model.rkt}
 
@@ -265,20 +288,3 @@ model transform:
 The window contains the input handlers, CPU/GPU adapters, and cleanup:
 
 @codeblock[(file->string window-source)]
-
-@section{Try It}
-
-Zoom to the maximum, then drag both a handle and the background. The two gestures
-should still track the pointer. Reset the view and check that your point edit
-remains. Then reset the curve and check that this operation does not reset the view.
-
-Try changing the maximum zoom to 8. The handle size and hit radius should remain
-unchanged on screen. A useful next exercise is a Fit to Window command that
-calculates a view from the control-point bounds.
-
-@section{Where to Go From Here}
-
-This editor used a translation and one uniform scale. A rotated or sheared view
-needs a general inverse matrix, but the principle is unchanged: transform the
-view for drawing and invert that mapping for input. More extensive editor
-policies, touch gestures, and undo belong in the Guide rather than this example.

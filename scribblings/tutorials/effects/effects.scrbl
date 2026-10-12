@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Effects and Filters — Make a Card with Shadows}
 
 @(require "eval.rkt"
@@ -23,6 +25,8 @@ The main idea is:
 its geometry. Different filters change different parts of the result.}}
 
 The complete program will save @filepath{card-with-shadows.png}.
+
+@tutorial-entry["effects"]
 
 @section{Begin with a Flat Card}
 
@@ -318,7 +322,7 @@ their native storage when they are no longer reachable. The
 @racket[with-skia] form is useful when prompt deterministic cleanup matters,
 but it is not required around every paint and filter.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try changing only the vertical shadow offset in @racket[draw-shadowed-card]
 from 14 to 24. The source rectangle will stay put. Which part of the result
@@ -330,17 +334,13 @@ values unchanged for the first comparison, then make the colors opaque.
 These are two separate adjustments: one changes softness, and the other
 changes how much of the underlying white shows through.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used one unchanged source shape to study drop shadows and their
-parameters, compared two kinds of blur, and built a card from separately
-filtered and unfiltered drawing operations.
+You can now attach shadows and blur to selected paints without changing the geometry.
+An effect may need raster content in PDF or SVG; the output lesson explains that boundary.
 
-Effects do not necessarily remain vector graphics in PDF or SVG. Some effects
-need rasterization, depending on the exporter and the drawing operation.
-The later tutorial on vector output and raster fallbacks will examine that
-boundary in detail. More complex filter graphs, color matrices, and custom
-effects belong in the Guide.
+@tutorial-next["effects"]
 
-The complete @filepath{card-with-shadows.rkt} file contains the finished
-program. The next tutorial will record and replay drawings as pictures.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["effects"]

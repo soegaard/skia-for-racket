@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Text and Typography — Make a Type Specimen}
 
 @(require "eval.rkt"
@@ -10,13 +12,12 @@ This tutorial builds a small type specimen. The examples use Skia's simple
 text API to draw a typeface at several sizes, place text from an origin on a
 baseline, measure its advance, inspect its ink bounds, and use font metrics.
 
-The tutorial assumes that you know the basics from
-@italic{Quick: An Introduction to Skia with Pictures}.
-
 The main idea is:
 
 @centered{@bold{Simple text starts at an origin on a baseline. Advance, bounds,
 and font metrics describe different parts of its geometry.}}
+
+@tutorial-entry["text"]
 
 @section{Choose a Typeface and a Font}
 
@@ -341,7 +342,8 @@ than the font-wide metrics suggest.
 
 The @racket[font-metrics-spacing] function reports the native spacing value
 for the font. This tutorial does not turn that value into paragraph layout.
-Later tutorials will cover shaping, line breaking, and multi-line text.
+Continue with @tutorial-link["shaping"] for single runs
+and @tutorial-link["paragraph"] for wrapping and mixed-direction paragraphs.
 
 @section{Simple Text Has Limits}
 
@@ -356,7 +358,8 @@ Simple Latin examples such as the ones in this tutorial are appropriate.
 Arabic, many Indic scripts, mixed-direction text, and other text that requires
 contextual shaping need the shaping and layout APIs.
 
-The next tutorial will introduce that layer.
+The @tutorial-link["shaping"] lesson introduces single-run shaping.
+The @tutorial-link["paragraph"] lesson adds paragraph-level bidirectional layout.
 
 @section{Build the Type Specimen}
 
@@ -575,7 +578,7 @@ The finished specimen is an ordinary raster drawing:
           #:exists 'replace)
 ]
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try changing the font sizes in @racket[draw-size-scale]. Keep the baselines
 fixed and observe how the glyphs grow around them.
@@ -593,14 +596,13 @@ Try replacing @racket[make-typeface] with @racket[typeface-from-family] for a
 family installed on your machine. Use @racket[typeface-family-name] to inspect
 the face that Skia selected.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used typefaces, fonts, text origins, baselines, font sizes,
-advance measurement, simple-text bounds, and font metrics.
+You can now distinguish a text origin, its baseline, the advance, and the visible ink bounds.
+Single-run shaping and paragraph-level bidirectional layout are separate next steps.
 
-The next tutorial will use HarfBuzz shaping for ligatures, script-sensitive
-glyph selection, bidirectional text, and multilingual runs. Paragraph layout
-will follow after that.
+@tutorial-next["text"]
 
-The complete @filepath{type-specimen.rkt} example contains the finished program
-from this tutorial.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["text"]

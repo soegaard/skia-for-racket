@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @title{Images — Build a Contact Sheet}
 
 @(require "eval.rkt"
@@ -10,13 +12,12 @@ This tutorial builds a contact sheet from several image files. The examples
 load images, draw them at different sizes, compare sampling modes, crop images,
 and arrange the results in a grid.
 
-The tutorial assumes that you know the basics from
-@italic{Quick: An Introduction to Skia with Pictures}.
-
 The main idea is simple:
 
 @centered{@bold{An image stores pixels. Drawing an image decides where and how
 those pixels appear on a canvas.}}
+
+@tutorial-entry["images"]
 
 @section{The Image Files}
 
@@ -29,11 +30,19 @@ This tutorial includes four small image files:
  @item{@filepath{pixel-art.png} is a 24 by 24 PNG.}
 ]
 
-The files are bundled with the documentation, so the examples do not need a
-network connection.
+The complete example includes these files in its @filepath{fixtures} directory.
+To follow the snippets, save your Racket file beside @filepath{contact-sheet.rkt}
+and define this locator before loading an image:
 
-The examples use @racket[tutorial-fixture] only to locate those bundled files.
-In an ordinary program, pass your own path to @racket[image-from-file].
+@racketblock[
+(require racket/runtime-path)
+(define-runtime-path fixture-directory "fixtures")
+(define (tutorial-fixture name)
+  (build-path fixture-directory name))
+]
+
+The locator resolves names relative to your source file, not the process's
+working directory. In another program, pass your own path to @racket[image-from-file].
 
 @section{Load an Image}
 
@@ -292,10 +301,9 @@ instead of a surface. It can encode PNG, JPEG, or WebP:
             #:exists 'replace)
 ]
 
-Encoding options such as JPEG quality, WebP lossless mode, and color-space
-metadata belong in the Guide.
+The @api-link[] lists JPEG quality, WebP encoding, and color-metadata options.
 
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Try replacing one bundled fixture with one of your own image files.
 
@@ -308,15 +316,12 @@ inside the source image.
 Try changing @racket[draw-image-fit] so that an image fills the destination
 rectangle completely, even when part of the image must be cropped.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This tutorial used file decoding, image dimensions, natural-size drawing,
-destination rectangles, aspect-ratio-preserving fitting, sampling, cropping,
-and raster output.
+You can now decode images, fit or crop them, and select a sampling mode for the result.
 
-The Guide will cover image metadata, encoded formats, orientation, direct
-subrect drawing, pixel access, raster buffers, color spaces, animated images,
-and GPU images in more detail.
+@tutorial-next["images"]
 
-The complete @filepath{contact-sheet.rkt} example contains the finished
-program from this tutorial.
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["images"]

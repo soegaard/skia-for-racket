@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require "../support/reader.rkt")
+
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia))
 @(define-runtime-path program-source "pixel-lab.rkt")
@@ -23,6 +25,8 @@ The example deliberately uses one format: eight-bit RGBA with premultiplied
 storage. The goal is to understand ownership and layout, not enumerate every
 pixel format. Save the complete @filepath{pixel-lab.rkt} file from the end to use
 its helpers below.
+
+@tutorial-entry["pixels"]
 
 @section{Draw into a Pixel Buffer}
 
@@ -144,8 +148,8 @@ interpolates between navy and gold. It preserves the alpha byte:
 @codeblock[(source-definition program-source 'duotone-rgba)]
 
 This average is an artistic control, not a calculation of physical luminance.
-The next tutorial will distinguish encoded sRGB values from linear-light
-values. Here the purpose is to follow one concrete byte-processing algorithm.
+The @tutorial-link["color-spaces"] lesson distinguishes encoded sRGB
+values from linear-light values. Here the purpose is to follow one concrete byte-processing algorithm.
 
 A one-pixel example makes alpha preservation visible without an image:
 
@@ -231,13 +235,7 @@ The buffer, snapshots, and paints are ordinary owned CPU resources. Ordinary
 Racket bindings are appropriate when exact release time is unimportant. The
 pixmap and canvas borrows still need their explicit scopes.
 
-@section{The Complete Program}
-
-Run the file with @tt{racket pixel-lab.rkt}:
-
-@codeblock[(file->string program-source)]
-
-@section{Try It}
+@section[#:tag "try-it"]{Try It}
 
 Change the two inks while leaving alpha unchanged. Then change the padded row
 stride from 800 to 832. The image should look the same, even though the storage
@@ -247,10 +245,18 @@ Try stamping a different rectangle. Its bounds must fit inside the buffer;
 @racket[pixmap-subset] does not silently clip an out-of-range request. Compare a
 new snapshot with an older one to confirm that only the new snapshot changes.
 
-@section{Where to Go From Here}
+@section[#:tag "next-steps"]{Where to Go From Here}
 
-This is a transparent implementation of a small CPU image processor, not a
-benchmark or a recommendation to write every image effect as a Racket loop.
-Built-in color filters and GPU effects may be more suitable for other workloads.
-The Guide covers typed pixel formats, image conversion, bulk scaling, and GPU
-transfers. A GPU image requires explicit readback before this CPU-buffer path.
+The example follows a small CPU image-processing algorithm, not a performance benchmark.
+Built-in filters and GPU effects may suit other workloads. A GPU image needs explicit
+readback before it can use this CPU-buffer route.
+
+@tutorial-next["pixels"]
+
+@section[#:tag "example-source"]{The Complete Example}
+
+@tutorial-sources["pixels"]
+
+Run the file with @tt{racket pixel-lab.rkt}:
+
+@codeblock[(file->string program-source)]

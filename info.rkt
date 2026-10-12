@@ -39,3 +39,7 @@
     ("scribblings/tutorials/path-ops/path-ops.scrbl" () (omit-start) "skia-tutorial-path-ops")
     ("scribblings/tutorials/sprites/sprites.scrbl" () (omit-start) "skia-tutorial-sprites")
     ("scribblings/tutorials/squadron/squadron.scrbl" () (omit-start) "skia-tutorial-squadron")))
+
+(define raco-commands
+  '(("skia-examples" skia/tools/copy-tutorial-examples
+     "copy a complete Skia tutorial example" #f)))
