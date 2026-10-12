@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Vector Output and Raster Fallbacks — What Stays Vector?}
 
@@ -8,9 +9,13 @@
           (for-label racket
                      skia))
 
-@section{The Finished Comparison Sheet}
+@section[#:tag "finished-result"]{The Finished Comparison Sheet}
 
-@(vector-finished-pict #:scale 0.64)
+@(tutorial-figure
+ (string-append
+  "Three panels compare vector geometry, a raster tile, and a bounded raster effect with "
+  "vector details.")
+ (vector-finished-pict #:scale 0.64))
 
 This tutorial builds the comparison sheet shown above. The three panels look
 like parts of one drawing, but they are not stored in the same way by PDF and
@@ -18,9 +23,8 @@ SVG. The left panel uses vector shapes and a linear gradient. The middle panel
 contains an image made of pixels. The right panel keeps only a filtered region
 as an embedded image, while its border and labels remain vector geometry.
 
-The figure is a separate raster rendering of the finished page, generated from
-the @racket[draw-study] function in @filepath{vector-raster.rkt}. It is not a
-screenshot or a rendering of either exported document.
+The preview redraws the page on a raster surface. Inspect the exported PDF or
+SVG separately to check its appearance and embedded content.
 
 The main idea is:
 
@@ -66,7 +70,11 @@ accent dot:
   (draw-circle canvas 100 89 10 dot))
 ]
 
-@vector-image[
+@(tutorial-figure
+ (string-append
+  "A rounded rectangle with a linear gradient, concentric rings, and a center dot forms the "
+  "vector motif.")
+ (vector-image
 (vector-render-pict
  240 215
  (lambda (canvas)
@@ -74,7 +82,7 @@ accent dot:
      (canvas-translate! canvas 20 16)
      (draw-vector-art canvas)))
  #:scale 0.90)
-]
+))
 
 The @racket[draw-rounded-rect], @racket[draw-circle], and @racket[draw-line]
 functions describe geometry. The linear gradient is a supported native vector
@@ -112,9 +120,13 @@ Here is the actual 32 by 32 image, displayed at four times its natural size.
 The enlargement uses nearest-neighbor sampling so the source pixels remain
 visible:
 
-@vector-image[
+@(tutorial-figure
+ (string-append
+  "The 32 by 32 source tile has a checker pattern and central square, shown four times "
+  "larger.")
+ (vector-image
 (vector-source-tile-pict (make-pixel-tile))
-]
+))
 
 Now place that same kind of image on a canvas at six times its original size:
 
@@ -125,7 +137,11 @@ Now place that same kind of image on a canvas at six times its original size:
                    #:sampling 'nearest))
 ]
 
-@vector-image[
+@(tutorial-figure
+ (string-append
+  "The same 32 by 32 tile is drawn at 192 by 192 with nearest sampling, preserving visible "
+  "pixel blocks.")
+ (vector-image
 (vector-render-pict
  230 222
  (lambda (canvas)
@@ -133,12 +149,11 @@ Now place that same kind of image on a canvas at six times its original size:
      (canvas-translate! canvas 17 12)
      (draw-pixel-art canvas)))
  #:scale 0.90)
-]
+))
 
 The image has exactly 32 by 32 source pixels. The figure displays it at
 192 by 192 drawing units, with @racket[#:sampling 'nearest] so that individual
-pixels remain visible. The illustrated image is the actual snapshot returned
-by @racket[make-pixel-tile], not a second version redrawn for the manual.
+pixels remain visible.
 
 When this image is drawn into PDF or SVG, it is embedded as raster content.
 Saving the containing page as SVG does not reconstruct vector rectangles from
@@ -161,10 +176,12 @@ will provide a soft shadow for a small badge:
   (draw-rounded-rect canvas 26 18 146 116 24 24 fill))
 ]
 
-@vector-image[
+@(tutorial-figure
+ "A rounded badge casts a soft drop shadow on a raster surface."
+ (vector-image
 (vector-render-pict
  225 188 draw-filtered-badge #:scale 0.98)
-]
+))
 
 The figure above comes from a raster surface, where the filter produces the
 expected shadow. That does not establish that a native SVG exporter can express
@@ -211,7 +228,11 @@ border and center dot @italic{outside} the raster group:
     (draw-circle canvas 99 76 15 center)))
 ]
 
-@vector-image[
+@(tutorial-figure
+ (string-append
+  "A rectangle marks the 206 by 180 raster bounds; the crisp badge border and dot are drawn "
+  "separately.")
+ (vector-image
 (vector-render-pict
  245 220
  (lambda (canvas)
@@ -224,7 +245,7 @@ border and center dot @italic{outside} the raster group:
      (draw-fallback-art canvas)
      (draw-rect canvas 0 0 206 180 boundary)))
  #:scale 0.92)
-]
+))
 
 The red rectangle in this figure marks the raster group's actual bounds.
 It is a presentation guide, not part of the finished drawing. The group is
@@ -299,9 +320,13 @@ The frame, captions, and footer are also drawn outside the raster group:
                     50 593 small-font muted))
 ]
 
-@vector-image[
+@(tutorial-figure
+ (string-append
+  "The assembled sheet places the vector motif, pixel tile, and local raster fallback in "
+  "labeled panels.")
+ (vector-image
 (vector-render-pict sheet-width sheet-height draw-study #:scale 0.64)
-]
+))
 
 The first panel remains authored as geometry and a gradient. The middle panel
 draws an immutable image captured from a surface. Only the shadowed area of
@@ -337,9 +362,8 @@ backend. Ask it to inspect the SVG and PDF versions:
 ]
 
 Both pages intentionally include embedded images, so neither is vector-only.
-The completed SVG drawing has no known blocking operations. That is not a
-promise of visual equivalence: the audit reports observed wrapper operations,
-not the exact rendered output.
+The completed SVG drawing has no known blocking operations. The audit reports
+observed drawing operations; it does not certify the exported document's appearance.
 
 We can also inspect the recorded status of each labeled region:
 
@@ -373,8 +397,8 @@ An audited export can reject known unsupported operations while still allowing
 intentional embedded images. The @racket['error] policy permits explicit raster
 groups; it does not require the entire document to be vector-only.
 
-The following expressions exercise both exporters during the documentation
-build, without writing files:
+The @racket[output->bytes/audit] function returns document bytes and an audit
+report. Export both formats without writing files:
 
 @vector-interaction[
 (define-values (svg-bytes svg-export-report)
@@ -391,11 +415,9 @@ build, without writing files:
 (regexp-match? #rx#"<image" svg-bytes)
 ]
 
-The final two checks inspect the actual SVG bytes, confirming that the
-serializer emitted a linear gradient and at least one embedded image. They
-do not establish how a browser or PDF viewer renders the result. The audit
-explains @italic{why} a raster image appears; the markup check confirms
-that SVG data was emitted.
+The final two checks find a linear gradient and an embedded image in the SVG
+bytes. These elements confirm the two representations in the serialized data;
+the audit labels explain which parts of the drawing use them.
 
 The complete program uses @racket[save-output/audit] to write the two documents:
 
@@ -411,25 +433,26 @@ The complete program uses @racket[save-output/audit] to write the two documents:
                    #:exists 'replace)
 ]
 
-The @racket['error] policy blocks known operations that need an explicit
-raster boundary; it does not certify visual identity. The stricter
-@racket['vector-only] policy would reject this page, because the two kinds of
-embedded raster content are deliberate.
+The stricter @racket['vector-only] policy would reject this page because it
+contains deliberate embedded raster content.
 
 @section{Make a Raster Preview}
 
-We can also render the same callback to a raster image. The
-@racket[output-page->image] function produces a new image from the page
-callback; it does not rasterize the saved PDF or SVG file.
+The @racket[output-page->image] function makes the separate raster preview
+shown at the start by drawing the page callback into an image:
 
 @vector-racketblock+eval[
 (define preview
   (output-page->image page #:dpi 96 #:text-mode 'outline))
 ]
 
-@vector-image[
+@(tutorial-figure
+ (string-append
+  "A separate raster preview redraws the whole sheet; it does not render the saved PDF or "
+  "SVG.")
+ (vector-image
 (vector-image-pict preview #:scale 0.64)
-]
+))
 
 The complete @filepath{vector-raster.rkt} file saves this result as
 @filepath{what-stays-vector.png}, alongside
@@ -437,8 +460,8 @@ The complete @filepath{vector-raster.rkt} file saves this result as
 
 Open the actual PDF and SVG and zoom in. The geometric lines and outlines can
 be enlarged as vector content, while the pixel tile and the rasterized badge
-keep their finite source resolution. The separate PNG provides a visual
-reference, but it is not evidence of the representation inside either document.
+keep their finite source resolution. Compare their appearance with the PNG
+preview and inspect the SVG's image elements.
 
 @section[#:tag "try-it"]{Try It}
 

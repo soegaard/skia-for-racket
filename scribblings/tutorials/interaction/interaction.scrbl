@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Interactive Paths — Drag Bézier Control Points}
 
@@ -15,18 +16,20 @@
 @(define-runtime-path scene-source "scene.rkt")
 @(define-runtime-path editor-source "bezier-editor.rkt")
 
-@section{The Finished Editor}
+@section[#:tag "finished-result"]{The Finished Editor}
 
-@(editor-frame-pict #:scale 0.72)
+@(tutorial-figure
+ (string-append
+  "The editor displays a cubic curve, its control polygon, endpoints P0 and P3, and handles "
+  "P1 and P2.")
+ (editor-frame-pict #:scale 0.72))
 
 This tutorial builds a small interactive editor for one cubic Bézier curve.
 The two amber points are its endpoints, and the two cyan points control how
 it bends. Drag any point to reshape the curve. The Reset button restores the
 original shape, and the Close button ends the session.
 
-The figure is rendered by Skia using the actual @racket[draw-editor] function.
-The interactive window uses that same drawing function in both CPU and GPU
-modes.
+Both CPU and GPU modes use the same drawing function and control-point model.
 
 @centered{@bold{Draw the current points. Let mouse events change the points.
 Then request a new frame.}}
@@ -56,10 +59,11 @@ points followed by the end point. Start with one fixed curve:
 (save-png surface "bezier-curve.png" #:exists 'replace)
 ]
 
-@(editor-stage-pict 'curve #:scale 0.60)
+@(tutorial-figure
+ "A cubic runs from (120, 320) to (665, 324), bending toward two off-curve control points."
+ (editor-stage-pict 'curve #:scale 0.60))
 
-This picture uses the same curve geometry and paint as the code above. The
-curve runs from (120, 320) to (665, 324). The other two points at (195, 94)
+The curve runs from (120, 320) to (665, 324). The control points at (195, 94)
 and (548, 108) guide its shape; they do not normally lie on the curve itself.
 
 To make the curve editable, the editor must rebuild its path from the current
@@ -83,9 +87,7 @@ structure and keeps four of them in a list:
 ]
 
 The @racket[draw-editor] function accepts the entire list and draws the curve,
-its straight control polygon, and four draggable markers. Its curve helper
-builds a path from the current values, using the same @racket['move] and
-@racket['cubic] commands as above.
+its straight control polygon, and four draggable markers.
 
 Instead of mutating a native path, we can replace one point in the list:
 
@@ -111,7 +113,9 @@ It helps us see which points influence the curve. The geometry and colored
 point markers come from the @racket[draw-guides], @racket[draw-curve], and
 @racket[draw-points] helpers in @filepath{scene.rkt}:
 
-@(editor-stage-pict 'guides #:scale 0.60)
+@(tutorial-figure
+ "Straight guides connect P0 to P1 to P2 to P3 while the cubic bends between the endpoints."
+ (editor-stage-pict 'guides #:scale 0.60))
 
 The editor stores the latest list in @racket[points]. The drawing function
 reads it; it does not own or modify it. The full editor adds the heading and
@@ -128,7 +132,11 @@ than the 10-unit visible marker. The diagram enlarges both radii by a factor
 of three so you can compare them. The outer ring is explanatory: it does not
 appear in the interactive editor.
 
-@(editor-hit-area-pict #:scale 0.92)
+@(tutorial-figure
+ (string-append
+  "An 18-unit hit radius surrounds the 10-unit visible marker; the diagram enlarges both "
+  "three times.")
+ (editor-hit-area-pict #:scale 0.92))
 
 We can compare squared distances instead of taking square roots:
 
@@ -152,7 +160,7 @@ index, or @racket[#f] when no point is close enough:
         (values chosen nearest))))
 ]
 
-The following calls exercise the actual helper from @filepath{scene.rkt}:
+Check which point, if any, is selected at each position:
 
 @interaction-interaction[
 (hit-control-point initial-control-points 120 320)
@@ -214,11 +222,14 @@ selected point gets a bright outline so the drag is visible. A mouse-down
 chooses an index, mouse motion replaces that point in the model, and mouse-up
 clears the index.
 
-@(editor-before-and-after-pict)
+@(tutorial-figure
+ (string-append
+  "Only P1 moves from (195, 94) to (302, 150); the curve changes while the other three "
+  "points stay fixed.")
+ (editor-before-and-after-pict))
 
-The two illustrations are produced by @racket[draw-editor]. Only @tt{P1}
-moved, from (195, 94) to (302, 150). The endpoints, other handle, control
-polygon, and visible curve are then drawn again from the new list.
+Only @tt{P1} moved, from (195, 94) to (302, 150). The endpoints and the other
+handle stay put; the control polygon and curve are rebuilt from the new list.
 
 @section{Request Another Frame}
 
@@ -284,11 +295,9 @@ use logical dimensions. Scaling the canvas makes the same point coordinates
 work on ordinary and Retina displays. The @racket[draw-editor] function
 remains unchanged.
 
-The complete program chooses Metal on macOS, Direct3D 12 on Windows x64, and
-OpenGL on Linux. The choice determines the backend, not whether that backend
-will work on a particular computer. To run without GPU support, select
-@racket['raster] explicitly; drawing failures are not silently retried on
-the CPU.
+The editor uses the backend selection from @tutorial-link["animation"]:
+Metal on macOS, Direct3D 12 on Windows x64, and desktop OpenGL on Linux.
+Its GPU canvas is borrowed for the current frame only; do not retain it.
 
 @section{Reset, Close, and Run the Editor}
 
@@ -309,6 +318,9 @@ For a supported GPU backend, use:
 racket scribblings/tutorials/interaction/bezier-editor.rkt --renderer gpu
 }
 
+When GPU initialization fails, choose @command-text["--renderer raster"];
+the editor does not silently retry failed GPU drawing on the CPU.
+
 Click near one of the four colored points, hold the left mouse button, and
 drag. The curve should follow the pointer. The coordinates stay logical on
 both renderers, so dragging should behave the same at different display
@@ -325,8 +337,10 @@ about selecting a point? Then change the marker radius while leaving the hit
 radius unchanged. The displayed marker and clickable region are separate
 choices.
 
-Try the editor with both renderers and resize the window. The point positions
-remain logical coordinates; only the available drawing area changes.
+Try the editor with both renderers and resize the window. Drag each point to
+all four edges, then try a narrow and a short window. Labels should stay inside
+the available label area; a label is hidden when the window is too small to
+contain it. The point positions remain logical coordinates.
 
 @section[#:tag "next-steps"]{Where to Go From Here}
 
@@ -344,7 +358,7 @@ presentation, Reset button, and window cleanup:
 @codeblock[(file->string editor-source)]
 
 The @filepath{scene.rkt} file contains the data model, hit testing, cubic
-curve, paints, and the actual drawing functions. It also saves a static
+curve, paints, and drawing functions. It also saves a static
 @filepath{bezier-editor.png} when run directly:
 
 @codeblock[(file->string scene-source)]

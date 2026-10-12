@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{GPU Rendering — Render the Same Scene on the GPU}
 
@@ -17,17 +18,21 @@
 @(define-runtime-path scene-source "scene.rkt")
 @(define-runtime-path linux-source "linux-opengl.rkt")
 
-@section{The Finished Comparison}
+@section[#:tag "finished-result"]{The Finished Comparison}
 
-@(gpu-comparison-pict)
+@(tutorial-figure
+ (string-append
+  "The same 760 by 420 scene appears on the CPU at left and after Metal rendering and "
+  "readback at right.")
+ (gpu-comparison-pict))
 
 Both pictures come from the same @racket[draw-scene] function. The left picture
 uses a CPU raster surface. The right one was rendered with Metal on macOS and
 read back into an ordinary image. Both are 760 by 420 pixels before display
 scaling.
 
-They are supposed to look alike. Different backends can produce small pixel
-differences; this comparison is not a test of byte-for-byte equality or speed.
+The geometry should match, although backends can differ in individual pixels.
+The comparison shows appearance, not rendering speed.
 
 @centered{@bold{Keep the drawing function. Change the surface backing.}}
 
@@ -54,10 +59,9 @@ Repeated frames:
   GPU:       create context once -> draw / present many frames -> close
 }
 
-For a static PNG, start with the CPU. For sustained rendering, consider a
-persistent GPU context and measure the complete workflow, including any
-readbacks. If the goal is a vector PDF or SVG, use the document-output API
-from @tutorial-link["pdf-svg"]: a GPU-rendered image is still raster content.
+Measure the complete workflow, including readbacks, when choosing a renderer.
+For vector PDF or SVG, use @tutorial-link["pdf-svg"] instead: a GPU-rendered image
+is still raster content.
 
 @section{Keep the Drawing Function}
 
@@ -135,7 +139,9 @@ rendering call changes:
    #:background scene-background))
 ]
 
-@(gpu-metal-reference-pict #:scale 0.72)
+@(tutorial-figure
+ "The Metal-rendered scene after CPU readback, displayed at 72 percent of its natural size."
+ (gpu-metal-reference-pict #:scale 0.72))
 
 The figure is the Metal result, displayed at 72 percent of its natural size.
 The helper returns a CPU-owned image; it has already closed the GPU surface
@@ -146,8 +152,6 @@ and context. Save the result with the ordinary image encoder:
 ]
 
 No separate GPU activation or submission is needed for this one-shot call.
-An unavailable Metal backend raises an exception; it does not silently switch
-to CPU rendering.
 
 @subsection{Windows: Direct3D}
 
@@ -173,11 +177,11 @@ an OpenGL host by itself. The complete runnable GUI example in
 @secref["linux-opengl-host"] shows how a Racket @racket[canvas%] provides a
 live context and how @racket[make-racket-gl-provider] wraps it.
 
-A headless Linux application can instead create an owned OpenGL context using
-@racket[make-egl-gpu-context] from @racketmodname[skia/gpu-egl]. That is a
-@racket[gpu-context?], not a provider accepted by this one-shot helper. Use
-the lower-level GPU drawing/readback API for that route; see
-@filepath{docs/GPU-EGL.md} and @filepath{examples/gpu-headless.rkt}.
+A headless Linux application can instead call @racket[make-egl-gpu-context]
+from @racketmodname[skia/gpu-egl]. It returns an owned GPU context, recognized by
+@racket[gpu-context?], not an OpenGL provider for this one-shot helper. The
+@api-link[] describes the lower-level drawing and readback operations for an
+owned context.
 
 @section{What the Helper Manages}
 
@@ -203,9 +207,8 @@ teardown errors are reported instead of becoming successful CPU fallbacks.
 
 @section{When One Shot Is Not Enough}
 
-The helper is a convenient way to render an occasional GPU image. Calling it
-for every animation frame repeatedly creates and closes contexts and copies
-pixels back to the CPU. That often defeats the point of GPU rendering.
+For an animation, keep the GPU context and images between frames rather than
+calling the one-shot helper for each frame.
 
 For repeated rendering, create a context once with @racket[make-gpu-context],
 activate it with @racket[call-with-gpu-context], and reuse GPU surfaces and
@@ -217,9 +220,9 @@ actually needed. The @api-link[] specifies the corresponding resource lifetimes.
 @section[#:tag "linux-opengl-host"]{Linux: A Complete OpenGL Host Example}
 
 Save this program as @filepath{linux-opengl.rkt} alongside @filepath{scene.rkt}.
-It runs in a Linux graphical session with a working OpenGL/GLX context. The
-small Racket GUI window supplies the OpenGL host; Skia draws into a separate
-760-by-420 offscreen GPU surface.
+It needs a Linux graphical session with OpenGL/GLX, such as X11 or XWayland;
+this is not a headless recipe. The small window supplies the OpenGL host, while
+Skia draws into a separate 760-by-420 offscreen GPU surface.
 
 @codeblock[(file->string linux-source)]
 
@@ -231,10 +234,6 @@ when rendering finishes or raises an exception. The short @racket[sleep/yield]
 allows a GUI event cycle before the context check; the check still fails
 explicitly if an OpenGL host is unavailable.
 
-This particular route requires a graphical session with GLX (for example, X11
-or XWayland). It is not a portable headless Linux recipe. Drivers, extensions,
-and usable GPU support must be checked at runtime.
-
 @section[#:tag "try-it"]{Try It}
 
 Try moving one of the glowing nodes in @filepath{scene.rkt}. Render the scene
@@ -243,8 +242,18 @@ on the CPU and GPU again. The two images should reflect the same change.
 Try adding a rectangle to @racket[draw-scene]. Nothing in the drawing function
 should need to change between CPU and GPU execution.
 
-Try saving @racket[metal-image] a second time. The encoder uses CPU pixels;
-there is no new GPU context or readback.
+Try saving the CPU-owned image returned by your chosen backend a second time.
+In the platform snippets, use @racket[metal-image] on macOS or
+@racket[windows-image] on Windows. In @filepath{linux-opengl.rkt}, add another
+save immediately after the existing @racket[save-image] call, while
+@racket[linux-image] is in scope. For example, the Linux call is:
+
+@racketblock[
+(save-image linux-image "scene-opengl-again.png" 'png #:exists 'replace)
+]
+
+Each additional save uses the already returned CPU pixels. It creates no new
+GPU context and performs no further readback.
 
 @section[#:tag "next-steps"]{Where to Go From Here}
 
@@ -259,6 +268,5 @@ after GPU readback. A window that draws repeatedly should retain its renderer ac
 
 Here is the full @filepath{scene.rkt} program. It requires only
 @racketmodname[skia], so the CPU and GPU examples use exactly these functions.
-
 
 @codeblock[(file->string scene-source)]

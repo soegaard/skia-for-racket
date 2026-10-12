@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Effects and Filters — Make a Card with Shadows}
 
@@ -8,16 +9,17 @@
           (for-label racket
                      skia))
 
-@section{The Finished Card}
+@section[#:tag "finished-result"]{The Finished Card}
 
-@(effects-finished-pict #:scale 0.65)
+@(tutorial-figure
+ (string-append
+  "The finished card combines a drop shadow, soft colored accents, sharp rings, and readable "
+  "labels.")
+ (effects-finished-pict #:scale 0.65))
 
 This tutorial builds the card shown above. Its shapes are familiar: rounded
 rectangles, circles, lines, and text. The new part is how filters change those
 shapes after they are drawn.
-
-The figure is rendered with Skia from @filepath{card-with-shadows.rkt} during
-the documentation build. It is not a separately designed illustration.
 
 The main idea is:
 
@@ -58,10 +60,12 @@ The @racket[draw-flat-card] function draws an ordinary rounded rectangle.
 The flat shape is the starting point: its geometry will stay exactly the same
 when we add the shadow.
 
-@effects-image[
+@(tutorial-figure
+ "The starting card is a flat white rounded rectangle without a shadow."
+ (effects-image
 (effects-render-pict card-image-width card-image-height draw-flat-card
                      #:scale 0.64)
-]
+))
 
 @section{Give the Card a Shadow}
 
@@ -91,10 +95,12 @@ The @racket[#:image-filter] argument attaches the filter to the paint. The
 @racket[draw-rounded-rect] call still uses the same dimensions and radii;
 the filtered drawing now includes a shadow beyond the original rectangle.
 
-@effects-image[
+@(tutorial-figure
+ "The same card casts a soft shadow below its unchanged white face."
+ (effects-image
 (effects-render-pict card-image-width card-image-height draw-shadowed-card
                      #:scale 0.64)
-]
+))
 
 The drop-shadow image filter draws both the original white card and its
 shadow. The filter does not become part of the canvas state and does not
@@ -130,9 +136,13 @@ The values appear in the figure so you can compare them directly.
     (draw-rounded-rect canvas x y 230 118 18 18 white)))
 ]
 
-@effects-image[
+@(tutorial-figure
+ (string-append
+  "Four shadows: the top row changes offset from 4 to 22; the bottom changes sigma from 4 to "
+  "18.")
+ (effects-image
 (effects-render-pict 730 535 draw-shadow-variants #:scale 0.84)
-]
+))
 
 The first two shadows are equally soft but land at different distances below
 the card. The last two have the same displacement, but the larger sigma makes
@@ -166,10 +176,12 @@ which spreads their colors gently into the white card.
   (draw-soft-accents canvas))
 ]
 
-@effects-image[
+@(tutorial-figure
+ "Two blurred circles add soft colored areas inside the shadowed white card."
+ (effects-image
 (effects-render-pict card-image-width card-image-height draw-card-with-accents
                      #:scale 0.64)
-]
+))
 
 The colors now fade gradually rather than ending at a sharp circular edge.
 The shadow remains attached only to the card rectangle. Because the two
@@ -211,9 +223,13 @@ its teal and orange halves meet at a hard edge.
     (draw-rounded-rect canvas 48 95 240 110 16 16 image-paint)))
 ]
 
-@effects-image[
+@(tutorial-figure
+ (string-append
+  "Mask blur softens only the outer coverage; image blur also softens the internal color "
+  "boundary.")
+ (effects-image
 (effects-render-pict 700 260 draw-blur-comparison #:scale 0.86)
-]
+))
 
 On the left, the mask filter blurs the coverage at the outer edge, but the
 teal-to-orange boundary stays sharp. On the right, the image filter also blurs
@@ -251,14 +267,17 @@ now add ordinary strokes and filled dots. These paints do not have filters.
   (draw-ring-motif canvas))
 ]
 
-@effects-image[
+@(tutorial-figure
+ (string-append
+  "Sharp rings, crosshairs, and dots sit above the blurred accents without inheriting their "
+  "filters.")
+ (effects-image
 (effects-render-pict card-image-width card-image-height draw-card-with-rings
                      #:scale 0.64)
-]
+))
 
 The geometry is drawn after the filtered accents, so its edges remain crisp.
-The image filter from a previous paint does not carry over to these new
-paints, and the rings do not inherit the card's drop shadow.
+The ring paints have no filters, so their strokes stay sharp.
 
 @section{Add the Labels}
 
@@ -300,10 +319,11 @@ rectangle, the blurred accents, sharp geometry, and labels. Later drawing
 appears over earlier drawing. The selected default typeface may differ across
 platforms, but the drawing order and filter behavior are the same.
 
-@(effects-finished-pict #:scale 0.65)
-
-This final figure calls the actual @racket[draw-card] function from the
-standalone example, just like the figure at the beginning.
+@(tutorial-figure
+ (string-append
+  "The complete card adds a heading and labels above the shadow, blurred accents, and sharp "
+  "rings.")
+ (effects-finished-pict #:scale 0.65))
 
 @section{Save the Card}
 
