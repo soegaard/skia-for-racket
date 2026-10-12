@@ -1,14 +1,19 @@
 #lang racket
 
 (require skia)
-(provide solid-source coordinate-source wave-source make-wave-shader
-         draw-wave-panel draw-wave-poster poster-width poster-height)
+(provide solid-source coordinate-source bands-source wave-source
+         scene-width scene-height phase-speed phase-at
+         make-wave-shader draw-wave-panel draw-wave-scene)
 
-(define poster-width 760)
-(define poster-height 460)
+(define scene-width 760)
+(define scene-height 460)
+(define phase-speed 2.0)
+
+(define (phase-at seconds)
+  (* phase-speed seconds))
 
 (define solid-source
-  "half4 main(float2 p) { return half4(0.08, 0.65, 0.72, 1.0); }")
+  "half4 main(float2 p) { return half4(0.18, 0.74, 0.90, 1.0); }")
 
 (define coordinate-source
   #<<SKSL
@@ -20,65 +25,98 @@ half4 main(float2 p) {
 SKSL
   )
 
+(define bands-source
+  #<<SKSL
+uniform float2 extent;
+uniform float frequency;
+
+half4 main(float2 p) {
+  float2 q = (p - 0.5 * extent) / min(extent.x, extent.y);
+  float gray = 0.5 + 0.5 * sin(6.2831853 * frequency * q.x);
+  return half4(gray, gray, gray, 1.0);
+}
+SKSL
+  )
+
 (define wave-source
   #<<SKSL
 uniform float2 extent;
 uniform float frequency;
 uniform float bend;
 uniform float phase;
-layout(color) uniform half4 dark;
-layout(color) uniform half4 light;
+uniform float hue;
+uniform float glow;
 
 half4 main(float2 p) {
-  // Normalize both axes by the same length to preserve the wave's proportions.
   float2 q = (p - 0.5 * extent) / min(extent.x, extent.y);
-  float field = q.x + bend * sin(3.5 * q.y + phase);
-  float wave = 0.5 + 0.5 * sin(6.2831853 * frequency * field);
-  float band = smoothstep(0.25, 0.75, wave);
-  half4 color = mix(dark, light, half(band));
-  return half4(color.rgb * color.a, color.a);
+
+  float field = q.x + bend * (
+      sin(4.7 * q.y + 0.55 * phase)
+    + 0.30 * sin(7.0 * q.x - 3.0 * q.y - 0.35 * phase));
+
+  float angle = 6.2831853 * (frequency * field - 0.22 * phase + hue);
+  float3 rainbow = 0.5 + 0.5 * cos(
+      angle + float3(0.0, 2.0943951, 4.1887902));
+
+  float light = 0.58 + 0.42 * (0.5 + 0.5 * sin(0.5 * angle + 0.7));
+  float crest = pow(max(0.0, sin(angle)), 16.0);
+  float vignette = clamp(1.13 - 0.42 * length(q), 0.45, 1.0);
+  float3 color = vignette * light * (0.10 + 0.88 * rainbow);
+  color += 0.24 * glow * crest * float3(0.9, 0.95, 1.0);
+
+  return half4(half3(clamp(color, 0.0, 1.0)), 1.0);
 }
 SKSL
   )
 
 (define (make-wave-shader effect width height
-                           #:frequency [frequency 5]
-                           #:bend [bend 0.28]
-                           #:phase [phase 0]
-                           #:dark [dark '(0.035 0.09 0.19 1)]
-                           #:light [light '(0.22 0.84 0.80 1)])
+                          #:frequency [frequency 5]
+                          #:bend [bend 0.30]
+                          #:phase [phase 0]
+                          #:hue [hue 0.08]
+                          #:glow [glow 1.0])
   (runtime-effect->shader
    effect
    #:uniforms (hash 'extent (list width height)
-                    'frequency frequency 'bend bend 'phase phase
-                    'dark dark 'light light)))
+                    'frequency frequency
+                    'bend bend
+                    'phase phase
+                    'hue hue
+                    'glow glow)))
 
 (define (draw-wave-panel canvas effect x y width height
-                         #:frequency [frequency 5] #:bend [bend 0.28] #:phase [phase 0])
-  (define shader
-    (make-wave-shader effect width height
-                      #:frequency frequency #:bend bend #:phase phase))
-  (define paint (make-paint #:shader shader))
-  ;; Translate the drawing origin as well as setting the size uniform.
-  (with-canvas-state canvas
-    (canvas-translate! canvas x y)
-    (draw-rounded-rect canvas 0 0 width height 18 18 paint)))
+                         #:frequency [frequency 5]
+                         #:bend [bend 0.30]
+                         #:phase [phase 0]
+                         #:hue [hue 0.08]
+                         #:glow [glow 1.0])
+  (with-skia ([shader (make-wave-shader effect width height
+                                        #:frequency frequency
+                                        #:bend bend
+                                        #:phase phase
+                                        #:hue hue
+                                        #:glow glow)]
+              [paint (make-paint #:shader shader)])
+    (with-canvas-state canvas
+      (canvas-translate! canvas x y)
+      (draw-rounded-rect canvas 0 0 width height 20 20 paint))))
 
-(define (draw-wave-poster canvas effect)
-  (define ink (make-paint #:color "#EAF6F9"))
-  (define muted (make-paint #:color "#A6C4CE"))
-  (define title-font (make-font #:size 30))
-  (define caption-font (make-font #:size 14))
-  (canvas-clear! canvas "#0A1527")
-  (draw-simple-text canvas "CONTOUR WAVES" 32 50 title-font ink)
-  (draw-simple-text canvas "A short program supplies the paint's color." 34 80
-                    caption-font muted)
-  (draw-wave-panel canvas effect 32 106 696 284)
-  (draw-simple-text canvas "COORDINATES  /  UNIFORMS  /  COLOR" 34 428 caption-font muted))
+(define (draw-wave-scene canvas effect seconds width height
+                         #:frequency [frequency 5]
+                         #:bend [bend 0.30]
+                         #:hue [hue 0.08])
+  (define margin 14)
+  (define panel-width (max 1 (- width (* 2 margin))))
+  (define panel-height (max 1 (- height (* 2 margin))))
+  (canvas-clear! canvas "#070D21")
+  (draw-wave-panel canvas effect margin margin panel-width panel-height
+                   #:frequency frequency
+                   #:bend bend
+                   #:phase (phase-at seconds)
+                   #:hue hue))
 
 (module+ main
-  ;; Compilation happens once, not once per rectangle or pixel.
-  (define effect (make-runtime-effect wave-source))
-  (define surface (make-surface poster-width poster-height))
-  (draw-wave-poster (surface-canvas surface) effect)
-  (save-png surface "contour-waves.png" #:exists 'replace))
+  (with-skia ([effect (make-runtime-effect wave-source)]
+              [surface (make-surface scene-width scene-height)])
+    (draw-wave-scene (surface-canvas surface) effect 0 scene-width scene-height)
+    (save-png surface "wave-frame.png" #:exists 'replace)))

@@ -15,7 +15,7 @@ declared to be sRGB; the right source was declared to be linear sRGB. The right
 source was then converted to sRGB so the two could be displayed consistently.
 The same initial numbers did not represent the same color.
 
-@centered{@bold{Declare what samples mean. Convert samples when that meaning changes.
+@centered{@bold{Declare the source space. Convert to preserve the color.
 Write a profile that describes the result.}}
 
 This tutorial builds the comparison and saves a tagged PNG. It does not attempt
@@ -75,7 +75,8 @@ with the destination space. Alpha remains 255.
 
 @(gray-pair-pict)
 
-These are the actual one-pixel images, enlarged with nearest sampling. Both
+These are the actual one-pixel images, enlarged to 140 by 140 logical display
+units with nearest sampling. Both
 previews use sRGB samples: the right one uses the converted image. The visual
 difference is not created by painting a second, hand-chosen gray.
 
@@ -83,6 +84,40 @@ Conversion aims to preserve the represented color by changing its numerical
 encoding. Attaching a different tag to unchanged samples instead changes their
 interpretation. These are different operations, even when the same two color
 spaces are involved.
+
+Skia can also convert a tagged source while drawing into a tagged destination.
+Explicitly converting every image in advance is not mandatory. Here is the
+same linear source drawn directly into a one-pixel sRGB surface:
+
+@colors-racketblock+eval[
+(define preview (make-surface 1 1 #:color-space srgb))
+(draw-image (surface-canvas preview) linear-gray 0 0)
+]
+@colors-interaction[(bytes->list (surface->rgba-bytes preview))]
+
+The surface contains approximately 188 in each RGB channel, just like the
+explicitly converted image. The source image still contains linear samples of
+128. Drawing performed the conversion without modifying the source.
+
+For comparison, deliberately attach the wrong tag to the original bytes:
+
+@colors-racketblock+eval[
+(define wrong-tag
+  (rgba-bytes->image 1 1 (image->rgba-bytes linear-gray) #:color-space srgb))
+]
+
+@(conversion-pict)
+
+All three panels are drawn into sRGB surfaces. The first uses the tagged linear
+source and lets drawing perform the conversion. The second uses the explicitly
+converted image; it represents the same gray. The third takes the original
+linear bytes and incorrectly declares them to be sRGB. It is darker because
+changing a tag was substituted for converting the samples.
+
+The captions identify the source samples and tags, not just the output route.
+All three receiving surfaces are sRGB. The two valid routes should agree
+visually, allowing for rounding differences, despite their different source
+bytes. Conversion preserves the intended color; it is not a brightness effect.
 
 @section{Compare Two Gray Ramps}
 
@@ -102,15 +137,35 @@ copy before displaying it:
 
 @(ramp-pair-pict)
 
-Each source is 256 by 1 pixel. The previews stretch it into a readable strip
-with nearest sampling. The second ramp has equal steps in its original
+Each source is 256 by 1 pixel, stretched to a 560-by-42 strip with nearest
+sampling. The coral tick marks source sample 128 in each ramp. Its labels read
+the actual output bytes, rather than assuming a hard-coded midpoint: @colors-interaction[
+(bytes->list (subbytes (image->rgba-bytes encoded-ramp) (* 4 128) (* 4 129)))
+(bytes->list (subbytes (image->rgba-bytes converted-ramp) (* 4 128) (* 4 129)))
+]
+
+The second ramp has equal steps in its original
 linear-light samples; converting those samples to sRGB produces unequal steps
 in the encoded output.
 
-This is also why averaging encoded RGB channels, as in the preceding artistic
-image processor, is not the same as averaging light. A physically motivated
-blend generally needs the appropriate linear-light values. That is a choice
-about the computation, separate from how its output is encoded for storage.
+The reverse conversion helps explain what the darker swatch means. Convert
+the original sRGB sample of 128 into linear sRGB:
+
+@colors-racketblock+eval[
+(define linear-version (image-convert-color-space encoded-gray linear))
+]
+@colors-interaction[(bytes->list (image->rgba-bytes linear-version))]
+
+The linear RGB bytes are approximately 55. As an eight-bit fraction, 55/255
+is about 0.216, not one half. Conversely, starting with a linear sample near
+one half required an encoded sRGB value near 188. The spaces agree about black
+and white but encode intermediate light levels differently.
+
+This is why averaging encoded channels, as in the preceding artistic image
+processor, is not the same as averaging light. The space used for a computation
+and the encoding used to store its result are separate choices. The eight-bit
+linear example also loses precision through quantization; repeated conversions
+are not guaranteed to recover every original byte.
 
 @section{Do Not Guess an Untagged Source}
 
@@ -119,6 +174,14 @@ something else. The conversion function refuses to guess:
 
 @colors-racketblock+eval[
 (define untagged (rgba-bytes->image 1 1 (bytes 128 128 128 255)))
+]
+
+An attempted conversion without a source declaration fails before producing
+an image:
+
+@colors-interaction[
+(with-handlers ([exn:fail? (lambda (_exception) 'source-space-required)])
+  (image-convert-color-space untagged srgb))
 ]
 
 Because we created these bytes ourselves and know they are linear, we can make
@@ -202,8 +265,10 @@ Run the example with @tt{racket color-study.rkt}:
 
 @section{Try It}
 
-Replace the initial 128 with 64. Predict whether conversion from linear sRGB
-will increase or decrease the encoded sRGB value, then inspect the readback.
+Change the @racket[(make-color-study)] call in @racket[save-color-study] to
+@racket[(make-color-study 64)]. The swatches and their numerical labels will
+both follow the new sample. Predict whether conversion from linear sRGB will
+increase or decrease its encoded sRGB value, then inspect the readback.
 Keep the source image unchanged and compare its bytes afterward.
 
 Try a colored rather than neutral sample. Check that only RGB passes through

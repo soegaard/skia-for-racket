@@ -59,6 +59,7 @@
     (draw-path canvas (hash-ref parts 'disk) faint)
     (draw-path canvas (hash-ref parts 'cross) faint)
     (draw-path canvas (hash-ref parts 'boundary) faint)
+    (draw-path canvas (hash-ref parts 'rim-inside) faint)
     (draw-path canvas (hash-ref parts 'hole) faint))
   (with-canvas-state canvas
     (canvas-translate! canvas 372 98)

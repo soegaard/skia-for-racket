@@ -43,6 +43,27 @@
     (check-true (path-contains? result 160 160))
     (skia-close! result)
     (skia-close! left))
+  (test-case "the same hole reveals either receiving background"
+    (for ([background (list (rgb 23 54 101) (rgb 246 214 132))])
+      (with-skia ([surface (make-surface 320 320 #:background background)])
+        (define before (surface->rgba-bytes surface))
+        (draw-shape (surface-canvas surface) (hash-ref parts 'badge))
+        (define after (surface->rgba-bytes surface))
+        (define offset (* 4 (+ 160 (* 320 160))))
+        (check-equal? (subbytes before offset (+ offset 4))
+                      (subbytes after offset (+ offset 4))))))
+  (test-case "overlapping-circle xor keeps both outer sides but subtraction keeps only A"
+    (with-skia ([left (make-path)] [right (make-path)])
+      (path-add-circle! left 80 100 62)
+      (path-add-circle! right 140 100 62)
+      (with-skia ([difference (path-difference left right)]
+                  [exclusive (path-xor left right)])
+        (check-true (path-contains? difference 40 100))
+        (check-false (path-contains? difference 180 100))
+        (check-true (path-contains? exclusive 40 100))
+        (check-true (path-contains? exclusive 180 100))
+        (check-false (path-contains? difference 110 100))
+        (check-false (path-contains? exclusive 110 100)))))
   (test-case "drawing the cutout leaves the center transparent"
     (with-skia ([surface (make-surface 320 320)] [paint (make-paint #:color "#23796F")])
       (draw-path (surface-canvas surface) (hash-ref parts 'badge) paint)

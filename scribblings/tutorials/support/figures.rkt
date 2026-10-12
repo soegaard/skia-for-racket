@@ -21,12 +21,14 @@
      scale)))
 
 ;; Magnification happens in Skia, not in the HTML/CSS image scaler.
-(define (image-pict image factor #:sampling [sampling 'nearest])
+(define (image-pict image factor #:sampling [sampling 'nearest]
+                    #:color-space [color-space #f])
   (define width (* factor (image-width image)))
   (define height (* factor (image-height image)))
   (render-pict width height
                (lambda (canvas)
-                 (draw-image-rect canvas image 0 0 width height #:sampling sampling))))
+                 (draw-image-rect canvas image 0 0 width height #:sampling sampling))
+               #:color-space color-space))
 
 (define (captioned-pict caption picture)
   (pict:vc-append 8 picture (pict:text caption)))

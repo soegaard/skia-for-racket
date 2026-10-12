@@ -26,11 +26,16 @@ TOPICS = (
 
 EXPECTED_PNGS = {
     "navigation": {"navigation.png": [800, 500]},
-    "shaders": {"contour-waves.png": [760, 460]},
+    "shaders": {"wave-frame.png": [760, 460]},
     "pixels": {"pixel-study.png": [780, 360], "duotone.png": [192, 128]},
     "color-spaces": {"color-study.png": [740, 490], "converted-gray.png": [1, 1]},
     "path-ops": {"cutout-badge.png": [720, 468]},
 }
+
+
+# Count placements, not unique PNG files: Scribble may reuse an identical image.
+EXPECTED_FIGURES = {"navigation": 6, "shaders": 12, "pixels": 7,
+                    "color-spaces": 5, "path-ops": 10}
 
 
 def hashes():
@@ -45,15 +50,22 @@ class Images(HTMLParser):
     def __init__(self):
         super().__init__()
         self.sources = []
+        self.local_document_links = 0
+        self.unresolved_references = 0
 
     def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "a" and urlsplit(attrs.get("href", "")).scheme == "file":
+            self.local_document_links += 1
+        if "badlink" in attrs.get("class", "").split():
+            self.unresolved_references += 1
         if tag == "img":
-            source = dict(attrs).get("src")
+            source = attrs.get("src")
             if source:
                 self.sources.append(source)
 
 
-def check_html(directory):
+def check_html(directory, expected_images=None):
     pages = list(directory.glob("*.html"))
     if not pages:
         raise RuntimeError("Scribble produced no HTML: " + str(directory))
@@ -69,7 +81,21 @@ def check_html(directory):
                 count += 1
     if count == 0:
         raise RuntimeError("the tutorial contains no local image references")
+    if expected_images is not None and count != expected_images:
+        raise RuntimeError(
+            f"expected {expected_images} figure placements, found {count}: {directory}")
     return count
+
+
+def link_diagnostics(directory):
+    local, unresolved = 0, 0
+    for page in directory.glob("*.html"):
+        parsed = Images()
+        parsed.feed(page.read_text(encoding="utf-8"))
+        local += parsed.local_document_links
+        unresolved += parsed.unresolved_references
+    return dict(local_document_links=local, unresolved_references=unresolved,
+                cross_references_verified=False)
 
 
 def png_sizes(directory):
@@ -89,6 +115,8 @@ def main():
     parser.add_argument("--racket", required=True, help="Racket executable; inherits PLTCOLLECTS")
     parser.add_argument("--directory", type=Path,
                         help="new output directory, outside tutorial sources")
+    parser.add_argument("--online-doc-links", action="store_true",
+                        help="redirect known installation-doc links to docs.racket-lang.org")
     args = parser.parse_args()
     racket = shutil.which(args.racket)
     if racket is None:
@@ -98,7 +126,8 @@ def main():
     if directory == TUTORIALS.resolve() or TUTORIALS.resolve() in directory.parents:
         parser.error("output must not be inside the tutorial source tree")
     directory.mkdir(parents=True, exist_ok=False)
-    report = dict(status="running", commands=[], pngs={}, html_images={},
+    report = dict(status="running", commands=[], pngs={}, html_images={}, html_links={},
+                  online_doc_links=args.online_doc_links,
                   gui_executed=False, gpu_executed=False,
                   note="CPU examples and docs only; inspect GUI controls and figures separately.")
     before = hashes()
@@ -132,9 +161,12 @@ def main():
                 raise RuntimeError("unexpected PNG files or dimensions: " + topic)
             html = output / "html"
             html.mkdir()
-            run(topic + "-scribble", ["-l", "raco", "--", "scribble", "--html",
-                                      "--dest", html, TUTORIALS / topic / document])
-            report["html_images"][topic] = check_html(html)
+            scribble = ["-l", "raco", "--", "scribble", "--html", "--dest", html]
+            if args.online_doc_links:
+                scribble += ["--redirect-main", "https://docs.racket-lang.org/"]
+            run(topic + "-scribble", [*scribble, TUTORIALS / topic / document])
+            report["html_images"][topic] = check_html(html, EXPECTED_FIGURES[topic])
+            report["html_links"][topic] = link_diagnostics(html)
         if hashes() != before:
             raise RuntimeError("a tutorial source changed during validation")
         report["status"] = "passed"

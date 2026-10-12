@@ -74,8 +74,8 @@ reference alongside them.
 @itemlist[
  @item{@hyperlink["../navigation/navigation.html"]{Zoom and Pan: Navigate an Interactive Canvas} —
        transform the view, invert pointer coordinates, and keep hit targets usable at every zoom.}
- @item{@hyperlink["../shaders/shaders.html"]{Runtime Shaders: Paint Contour Waves} —
-       compile SkSL, supply uniforms, and compute colors from local coordinates.}
+ @item{@hyperlink["../shaders/shaders.html"]{Runtime Shaders: Animate Prismatic Waves in a Window} —
+       compile SkSL once, change a phase uniform over time, and display moving bands.}
  @item{@hyperlink["../pixels/pixels.html"]{Working with Pixels: Build a Two-Ink Image Processor} —
        distinguish mutable buffers, row strides, borrowed views, and independent snapshots.}
  @item{@hyperlink["../color-spaces/color-spaces.html"]{Color Spaces: Give Pixel Values Their Meaning} —

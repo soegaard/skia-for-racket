@@ -13,7 +13,8 @@
 The badge on the right is one path, assembled from circles and rectangles.
 Its center and surrounding gaps are genuinely empty. The checkerboard shows
 through because those regions are not part of the filled path, not because we
-painted them in a matching background color.
+painted them in a matching background color. The left diagram shows all five
+operands: the disk, cross, outer boundary, inner rim boundary, and central hole.
 
 @centered{@bold{Combine filled regions first. Draw the resulting geometry afterward.}}
 
@@ -74,7 +75,7 @@ the region contained in both the joined shape and that circle:
 (define trimmed (path-intersect joined boundary))
 ]
 
-@(shape-pict 'trimmed)
+@(trim-pair)
 
 The tips of the tabs now follow the circular boundary. This is not a temporary
 canvas clip: @racket[trimmed] is a new path that can be filled, stroked, inspected,
@@ -89,12 +90,13 @@ Subtract a small circle from the trimmed shape:
 (define cutout (path-difference trimmed hole))
 ]
 
-@(shape-pict 'cutout)
+@(difference-pair)
 
 The first operand is the region to keep; the second is the region to remove.
 Reversing them is a different operation. Here the small circle lies entirely
 inside the trimmed badge, so subtracting the badge from the small circle would
-leave no filled region.
+leave no filled region. The right panel actually draws that empty result; its
+checkerboard is unobstructed.
 
 A containment query confirms that the center is absent while a point in the
 body remains:
@@ -123,9 +125,29 @@ For nested circles, that leaves a ring:
 Both circles contain the center, so it is excluded. Only the larger circle
 contains a point near the outside edge, so that part remains. For two crossing
 shapes, exclusive-or would keep both non-overlapping portions instead; it is
-not generally the same as subtraction.
+not generally the same as subtraction. For these nested circles,
+@racket[(path-difference boundary rim-inside)] would happen to produce the
+same ring: the smaller operand has no area outside the larger one.
 
-Join this rim to the cutout body:
+The distinction becomes visible when neither circle contains the other:
+
+@paths-racketblock+eval[
+(define left-circle (make-path))
+(define right-circle (make-path))
+(path-add-circle! left-circle 80 100 62)
+(path-add-circle! right-circle 140 100 62)
+(define one-sided (path-difference left-circle right-circle))
+(define both-sides (path-xor left-circle right-circle))
+]
+
+@(xor-comparison)
+
+The middle panel keeps only the part of A outside B. The right panel also
+keeps the part of B outside A. Both exclude the shared lens. The badge uses
+the nested-circle case, but exclusive-or is not a synonym for cutting one
+shape out of another.
+
+Return to the badge and join its rim to the cutout body:
 
 @paths-racketblock+eval[
 (define badge (path-union cutout rim))
@@ -165,11 +187,12 @@ outline only when drawing:
 
 @codeblock[(source-definition program-source 'draw-shape)]
 
-@(badge-pict)
+@(backgrounds-pict)
 
-The checkerboard is drawn first, then the badge. No background-colored circles
-are painted over it. This matters when the background is a photograph, a
-gradient, or another drawing: true holes reveal whatever is already there.
+Both panels draw the same completed badge path. Only the background changes.
+The stripes continue through the center and outer gaps, while the other panel
+reveals the gradient through those same regions. No background-colored circles
+are painted over the badge. True holes reveal whatever was drawn underneath.
 
 The construction is performed before drawing the comparison sheet. In a
 repeatedly rendered application, reuse a result until an operand changes rather
@@ -183,10 +206,10 @@ there is no new export API to learn here.
 
 @codeblock[(file->string program-source)]
 
-The intermediate paths are ordinary owned CPU resources. Exact contour counts,
-point order, and fill-rule normalization in a result are not part of this
-example's assumptions. Tests should compare the intended filled geometry rather
-than require a particular serialization of Skia's output path.
+The intermediate paths are ordinary owned CPU resources. A Boolean operation
+can change the number and order of contours while preserving the intended
+filled region. Use the resulting geometry without assuming that its point
+sequence mirrors the way the operands were constructed.
 
 @section{Try It}
 

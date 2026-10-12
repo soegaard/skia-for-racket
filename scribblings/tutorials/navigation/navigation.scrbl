@@ -22,21 +22,25 @@ The Reset view button restores the view without undoing edits to the curve.
 @centered{@bold{Change the view, not the geometry. Convert input back into model coordinates.}}
 
 The drawing uses the same Skia paths, paints, and canvases as the preceding
-editor. This example is self-contained; it does not import Tutorial 15's files.
-Save the three complete files at the end in one directory. The default CPU
+editor. This example is self-contained. Save @filepath{model.rkt}, @filepath{scene.rkt},
+and @filepath{navigate.rkt}, listed at the end, in the same directory. The default CPU
 version runs with @tt{racket navigate.rkt}; add @tt{--renderer gpu} for GPU drawing.
 
 @section{Separate Model Coordinates from Window Coordinates}
 
 The control points belong to the drawing, so they are stored in @emph{model
 coordinates}. Mouse positions and the editor's controls use @emph{logical window
-coordinates}. The view maps one system to the other:
+coordinates}. Here, window coordinates mean the GUI canvas's client area,
+not the desktop or the outer frame. Mouse events report positions relative to
+that receiving widget. The view maps model coordinates into this space:
 
 @verbatim{
 window-x = pan-x + zoom * model-x
 window-y = pan-y + zoom * model-y
 }
 
+The @hyperlink["https://docs.racket-lang.org/gui/mouse-event_.html"]{mouse event reference}
+describes the client-area coordinates returned by the x and y accessors.
 The pan offset is measured in logical window units. The zoom is a positive
 scale factor. At zoom 2, a distance of 40 model units occupies 80 logical window
 units. Moving the view does not alter either endpoint of that model distance.
@@ -62,17 +66,25 @@ For a zoom of 2 and pan offset (40, -30), the model point (120, 150) appears at
 (call-with-values (lambda () (screen->model view 280 270)) list)
 ]
 
+@(navigation-coordinate-pict)
+
+The two grids show that same point in the two coordinate systems. Neighboring
+grid lines are 50 units apart; the view calculation changes the point's displayed
+coordinates. The right-hand coordinates are the ones a mouse event supplies.
+The inverse calculation tells the editor which model position that event refers to.
+
 @section{Move the View}
 
-Dragging the background changes the pan offset. The movement is already in
-window coordinates, so it must not be multiplied by the zoom:
+Holding Shift while dragging the drawing region changes the pan offset. The
+movement is already in window coordinates, so it must not be multiplied by the
+zoom. A 40-unit pointer movement pans by 40 window units even at zoom 2:
 
 @codeblock[(source-definition model-source 'pan-view)]
 
-The following view moves the drawing 90 units right and 30 units down. The title
+The following view moves the drawing 50 units right and 30 units down. The title
 and instructions remain fixed, while the grid and curve move together:
 
-@(navigation-pict (pan-view home-view 90 30) #:scale 0.7)
+@(navigation-pict (pan-view home-view 50 30) #:scale 0.7)
 
 The renderer clips the drawing below the header and above the footer. That keeps
 point labels and curve fragments out of the instructions, even after a large pan.
@@ -94,8 +106,9 @@ the receiving canvas when drawing finishes.
 
 @(navigation-views)
 
-The left image shows translation alone. The right image scales around the
-window origin, so the drawing grows and part of it moves out of view. Zooming
+The left image uses the original view. The right image changes only the zoom
+from 1 to 1.5, keeping the pan at zero. The drawing grows around the window
+origin, so part of it intentionally moves outside the drawing region. Zooming
 around the pointer will be more convenient.
 
 @section{Keep the Point under the Pointer Fixed}
@@ -119,14 +132,19 @@ quarter to four times the model size.
 
 @(navigation-anchor-pair)
 
-The cross marks the same window position in both images. The model point beneath
-it is unchanged, even though the surrounding drawing becomes larger:
+The coral ring marks the pointer at P1. The point and ring stay together at
+(240, 150) in both images; the curve and neighboring grid lines move away from
+them. Compare this with zooming around (0, 0) in the previous section:
 
 @navigation-interaction[
-(define zoomed (zoom-at home-view 400 270 2))
+(define zoomed (zoom-at home-view 240 150 2))
 zoomed
-(call-with-values (lambda () (screen->model zoomed 400 270)) list)
+(call-with-values (lambda () (screen->model zoomed 240 150)) list)
 ]
+
+The new pan is (-240, -150). Multiplying P1's model position by 2 would put it
+at (480, 300); adding that pan brings it back to (240, 150). The zoom changes
+without changing either P1's model position or the pointer's window position.
 
 @section{Keep Handles Easy to Click}
 
@@ -134,6 +152,14 @@ A handle should not become a tiny target when zoomed out or a huge target when
 zoomed in. This editor draws its markers and labels @emph{after} leaving the
 model transform. Their positions are transformed, but their sizes remain in
 logical window units.
+
+@(navigation-handle-sizes)
+
+These are equal-sized crops around P1 at zoom 1/2, 1, and 2, shown without further
+magnification. The cyan marker still has radius 10, and the coral guide still
+has radius 18. The grid spacing and control-point distances change, while the curve's
+model-space stroke grows with the zoom. The guide strokes stay thin.
+The coral hit-radius guide is explanatory; the editor does not draw it.
 
 Hit testing uses the inverse mapping. An 18-unit clickable radius in the window
 corresponds to @racket[(/ 18 zoom)] model units:
@@ -165,6 +191,11 @@ The press handler remembers where inside the marker the user grabbed it. Adding
 that model-space offset prevents a small jump on the first movement. Control
 points are not clamped to the window: panning can reveal points that lie outside
 the current view.
+
+The excerpts in this section are local functions from @filepath{navigate.rkt}.
+They use that window's @racket[points], @racket[view], and drag state; they are
+not standalone programs. The complete window listing below includes the press
+handler that initializes those bindings.
 
 The same small class extension attaches event handling to either GUI widget:
 
@@ -203,19 +234,33 @@ geometry, not a guarantee of identical pixels.
 The program selects Metal on macOS, Direct3D on Windows x64, and OpenGL on a
 compatible Linux desktop. A selected but unavailable GPU raises an error;
 @tt{--renderer raster} selects the CPU route explicitly. Both window modes still
-require a working graphical session. No animation timer is needed: edits and
+require a working graphical session. Run either mode from the directory holding
+the three source files:
+
+@verbatim{
+racket navigate.rkt --renderer raster
+racket navigate.rkt --renderer gpu
+}
+
+No animation timer is needed: edits and
 view changes request redraws, while normal window exposure can redraw too.
 
 @section{The Complete Programs}
+
+@subsection{The Model: model.rkt}
 
 The model contains the coordinate arithmetic and editable points:
 
 @codeblock[(file->string model-source)]
 
+@subsection{The Drawing: scene.rkt}
+
 The scene uses ordinary Skia drawing and keeps interface labels outside the
 model transform:
 
 @codeblock[(file->string scene-source)]
+
+@subsection{The Window: navigate.rkt}
 
 The window contains the input handlers, CPU/GPU adapters, and cleanup:
 

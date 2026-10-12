@@ -11,8 +11,10 @@
 @(pixel-study-pict)
 
 This program draws a small source image, maps its colors between two inks, and
-stamps a rectangle directly into a selected pixel region. The three images are
-snapshots taken at successive stages. The checkerboard behind them reveals
+stamps a rectangle directly into a selected pixel region. Here, the two inks
+are palette endpoints: intermediate colors are allowed, not just two possible
+pixel colors. The three images are snapshots taken at successive stages.
+The checkerboard behind them reveals
 transparency; it is not part of their stored pixels.
 
 @centered{@bold{A buffer owns mutable pixels. A view borrows them. An image preserves a copy.}}
@@ -36,8 +38,9 @@ functions draw into that memory:
 @(source-pict)
 
 The source is 192 by 128 pixels, shown here at twice its size with nearest
-sampling and a white background. The lower orange strip is translucent, and
-the gap above it is transparent. These are real alpha values.
+sampling over a checkerboard. The lower orange strip is translucent, and
+the gap above it is transparent. In the gap, the checkerboard is unchanged;
+under the orange strip, it is tinted. The checkerboard is not stored in the image.
 
 Here is the source constructor:
 
@@ -57,23 +60,22 @@ larger than the active pixels in a row.
 The following tiny example has three pixels per row, but reserves 16 bytes for
 each row: 12 active bytes and four padding bytes.
 
-@pixels-racketblock+eval[
-(define tiny (make-raster-buffer 3 2 #:row-bytes 16))
-(raster-buffer-write-rgba!
- tiny (bytes 255 0 0 255  0 255 0 255  0 0 255 255
-             255 255 0 255  0 255 255 255  255 0 255 255))
-]
+@codeblock[(source-definition program-source 'make-tiny-buffer)]
+
+@pixels-racketblock+eval[(define tiny (make-tiny-buffer))]
 
 @(tiny-pixel-pict)
 
-The actual six-pixel image is enlarged 48 times with nearest sampling. Its
-storage layout is:
+The actual six-pixel image is enlarged 48 times with nearest sampling. The
+constructor's input contains two tight 12-byte rows; the upload's
+@racket[#:row-bytes 12] describes that input, not the destination buffer.
+Skia copies the pixels into the buffer's 16-byte rows and leaves the padding alone.
 
-@verbatim{
-row 0: [R G B A] [R G B A] [R G B A] [0 0 0 0]
-row 1: [R G B A] [R G B A] [R G B A] [0 0 0 0]
-        12 active bytes             4 padding bytes
-}
+@(tiny-layout-pict)
+
+Each cell shows one byte read from the actual buffer storage. The second row
+starts at byte 16, not byte 12. The four gold cells in each row are padding,
+not pixels in the six-pixel image.
 
 The padding is not another pixel. A pixel's storage offset is
 @racket[(+ (* y row-bytes) (* 4 x))]. This differs from the offset into a tightly
@@ -97,14 +99,37 @@ The default RGBA readback returns a detached, tightly packed byte string with
 (define source-pixels (raster-buffer->rgba-bytes buffer))
 ]
 
-Changing this byte string does not change the buffer. The upload at a later
-step will make the modification explicit.
+Changing this byte string does not change the buffer. A separate copy of the
+tiny example makes that distinction testable:
 
-Stored RGB channels are multiplied by alpha. For example, straight red
-@racket[(bytes 255 0 0 128)] becomes approximately
-@racket[(bytes 128 0 0 128)] in premultiplied storage. Alpha is still 128.
-Our processor works on straight channels so it can recolor a translucent pixel
-without treating that premultiplication as a darker source color.
+@pixels-racketblock+eval[
+(define detached-copy (raster-buffer->rgba-bytes tiny))
+(bytes-fill! detached-copy 0)
+]
+@pixels-interaction[
+(bytes->list (subbytes (raster-buffer->rgba-bytes tiny) 0 4))
+]
+
+The buffer's first pixel is still opaque red. The upload at a later step will
+make our processed byte string affect the buffer explicitly.
+
+Stored RGB channels are multiplied by alpha. Check both representations of
+one half-transparent red pixel using the real buffer operations:
+
+@pixels-racketblock+eval[
+(define alpha-sample (make-raster-buffer 1 1))
+(raster-buffer-write-rgba! alpha-sample (bytes 255 0 0 128))
+]
+@pixels-interaction[
+(bytes->list (raster-buffer->rgba-bytes alpha-sample))
+(bytes->list (raster-buffer->storage-bytes alpha-sample))
+]
+
+The straight readback contains red 255, while stored red is 128. Alpha is 128
+in both. These are two representations of the same pixel, not two different
+levels of transparency. Our processor works on straight channels so it can
+recolor a translucent pixel without treating premultiplication as a darker
+source color.
 
 Use @racket[#:premultiplied? #t] only when an algorithm deliberately operates on
 stored premultiplied channels. The storage-byte function always includes that
@@ -143,8 +168,9 @@ The upload replaces active pixels without treating source data as padded rows:
 
 @(processed-pict)
 
-This snapshot is shown at twice its pixel size over white. The upload uses
-straight RGBA input by default and premultiplies it once for storage. It does
+This snapshot is shown at twice its pixel size over the same checkerboard.
+The transparent gap and translucent strip remain visible after recoloring.
+The upload uses straight RGBA input by default and premultiplies it once for storage. It does
 not fill or expose writable row padding. The @racket[process-buffer!] helper
 combines this read-transform-write sequence:
 
@@ -179,9 +205,13 @@ request a writable borrow:
 
 @(stamped-pict)
 
-The cyan rectangle replaces the selected region. All other pixels retain their
-processed values. The view and its subsets expire when the callback returns;
-keep the resulting image, not the pixmap, for later use.
+The cyan rectangle replaces the selected pixels; it is not a translucent
+paint composited over the previous image. The @racket[pixmap-fill!] function
+writes the supplied color into the region. The coral outline marks its
+exact bounds: source (145, 100) through (177, 120), excluding the right and bottom
+edges. It is a figure guide, not a mark in the stored image. All other pixels
+retain their processed values. The view and its subsets expire when the
+callback returns; keep the resulting image, not the pixmap, for later use.
 
 Only one borrow of a particular buffer can be active. Take snapshots after the
 scope, not inside it. A scope restores lifetime safety, not pixel contents:

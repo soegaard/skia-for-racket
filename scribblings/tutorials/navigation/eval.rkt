@@ -2,7 +2,8 @@
 
 (require racket/runtime-path scribble/eval skia
          "model.rkt" "scene.rkt" "../support/figures.rkt")
-(provide navigation-interaction navigation-pict navigation-views navigation-anchor-pair)
+(provide navigation-interaction navigation-pict navigation-views navigation-anchor-pair
+         navigation-handle-sizes navigation-coordinate-pict)
 (define-runtime-path model-source "model.rkt")
 (define navigation-eval (make-base-eval))
 (navigation-eval '(require racket))
@@ -14,23 +15,93 @@
                  (draw-editor canvas initial-points view editor-width editor-height))
                #:scale scale))
 
+(define (navigation-coordinate-pict)
+  (define view (view-state 2 40 -30))
+  (define model-x 120)
+  (define model-y 150)
+  (define-values (window-x window-y) (model->screen view model-x model-y))
+  (render-pict 684 390
+               (lambda (canvas)
+                 (define grid
+                   (make-paint #:color "#DFE6ED" #:style 'stroke #:stroke-width 1))
+                 (define axis
+                   (make-paint #:color "#8192A4" #:style 'stroke #:stroke-width 1.5))
+                 (define guide
+                   (make-paint #:color "#25A5B6" #:style 'stroke #:stroke-width 1.5))
+                 (define dot (make-paint #:color "#167F91"))
+                 (define ink (make-paint #:color "#203653"))
+                 (define font (make-font #:size 14))
+                 (define title (make-font #:size 16))
+                 (define (chart left label x y)
+                   (define origin-x (+ left 16))
+                   (define origin-y 52)
+                   (define point-x (+ origin-x x))
+                   (define point-y (+ origin-y y))
+                   (draw-simple-text canvas label left 25 title ink)
+                   (for ([step (in-range 50 301 50)])
+                     (draw-line canvas (+ origin-x step) origin-y
+                                (+ origin-x step) (+ origin-y 300) grid)
+                     (draw-line canvas origin-x (+ origin-y step)
+                                (+ origin-x 300) (+ origin-y step) grid))
+                   (draw-line canvas origin-x origin-y (+ origin-x 300) origin-y axis)
+                   (draw-line canvas origin-x origin-y origin-x (+ origin-y 300) axis)
+                   (draw-simple-text canvas "(0, 0)" origin-x 44 font ink)
+                   (draw-line canvas origin-x point-y point-x point-y guide)
+                   (draw-line canvas point-x origin-y point-x point-y guide)
+                   (draw-circle canvas point-x point-y 6 dot)
+                   (draw-simple-text canvas (format "(~a, ~a)" x y)
+                                     (+ point-x (if (> x 200) -100 12))
+                                     (- point-y 12) font ink))
+                 (chart 12 "Model coordinates" model-x model-y)
+                 (chart 354 "Logical window coordinates" window-x window-y)
+                 (draw-simple-text
+                  canvas
+                  (format "Zoom 2, pan (40, -30): (~a, ~a) maps to (~a, ~a)."
+                          model-x model-y window-x window-y)
+                  12 377 font ink))))
+
 (define (navigation-views)
   (figure-row
-   (captioned-pict "Pan: (+90, +30)" (navigation-pict (pan-view home-view 90 30) #:scale 0.39))
-   (captioned-pict "Zoom: 1.5 at the origin" (navigation-pict (view-state 1.5 0 0) #:scale 0.39))))
+   (captioned-pict "Before: zoom 1" (navigation-pict home-view #:scale 0.39))
+   (captioned-pict "After: zoom 1.5 at (0, 0)"
+                   (navigation-pict (view-state 1.5 0 0) #:scale 0.39))))
 
 (define (navigation-anchor-pair)
+  ;; Anchor a visible model point, not an unmarked position in empty space.
+  (define point (cadr initial-points))
+  (define x (control-point-x point))
+  (define y (control-point-y point))
   (define (one view)
     (render-pict editor-width editor-height
                  (lambda (canvas)
-                   (define marker (make-paint #:color "#EE786A" #:style 'stroke #:stroke-width 2))
+                   (define marker
+                     (make-paint #:color "#EE786A" #:style 'stroke #:stroke-width 2))
                    (draw-editor canvas initial-points view editor-width editor-height)
-                   (draw-line canvas 386 270 414 270 marker)
-                   (draw-line canvas 400 256 400 284 marker))
+                   (draw-circle canvas x y 22 marker))
                  #:scale 0.39))
   (figure-row
-   (captioned-pict "Before: anchor at (400, 270)" (one home-view))
-   (captioned-pict "After: zoom 2 at the same anchor" (one (zoom-at home-view 400 270 2)))))
+   (captioned-pict "Before: pointer on P1 (240, 150)" (one home-view))
+   (captioned-pict "After: zoom 2, P1 stays put" (one (zoom-at home-view x y 2)))))
+
+(define (navigation-handle-sizes)
+  (define point (cadr initial-points))
+  (define (one zoom)
+    ;; Put the actual P1 at (400, 250), then crop a 200-by-140 window around it.
+    ;; The same draw-editor function draws the curve, marker, and label.
+    (define view
+      (view-state zoom (- 400 (* zoom (control-point-x point)))
+                       (- 250 (* zoom (control-point-y point)))))
+    (render-pict 200 140
+                 (lambda (canvas)
+                   (define hit-ring
+                     (make-paint #:color "#EE786A" #:style 'stroke #:stroke-width 1))
+                   (with-canvas-state canvas
+                     (canvas-translate! canvas -300 -180)
+                     (draw-editor canvas initial-points view editor-width editor-height)
+                     (draw-circle canvas 400 250 18 hit-ring)))))
+  (apply figure-row
+         (for/list ([zoom '(1/2 1 2)])
+           (captioned-pict (format "Zoom ~a / hit radius 18" zoom) (one zoom)))))
 
 (define-syntax-rule (navigation-interaction expression ...)
   (interaction #:eval navigation-eval expression ...))

@@ -47,6 +47,39 @@
       (call-with-raster-buffer-pixmap
        buffer (lambda (_view)
                 (check-exn exn:fail? (lambda () (raster-buffer->image buffer)))))))
+  (test-case "the tiny layout diagram reads padded storage rather than invented cells"
+    (with-skia ([buffer (make-tiny-buffer)])
+      (define storage (raster-buffer->storage-bytes buffer))
+      (check-equal? (subbytes storage 0 12)
+                    (bytes 255 0 0 255 0 255 0 255 0 0 255 255))
+      (check-equal? (subbytes storage 12 16) (make-bytes 4))
+      (check-equal? (subbytes storage 16 28)
+                    (bytes 255 255 0 255 0 255 255 255 255 0 255 255))
+      (check-equal? (subbytes storage 28 32) (make-bytes 4))))
+  (test-case "processing preserves transparent gaps and the translucent strip"
+    (with-skia ([buffer (make-source-buffer)])
+      (define before (raster-buffer->rgba-bytes buffer))
+      (process-buffer! buffer)
+      (define after (raster-buffer->rgba-bytes buffer))
+      (for ([i (in-range 3 (bytes-length before) 4)])
+        (check-equal? (bytes-ref after i) (bytes-ref before i)))
+      (check-equal? (bytes-ref after (+ (* 4 (+ 20 (* 96 pixel-width))) 3)) 0)
+      (check-equal? (bytes-ref after (+ (* 4 (+ 20 (* 110 pixel-width))) 3)) 128)))
+  (test-case "straight and stored readbacks describe the same half-transparent red"
+    (with-skia ([buffer (make-raster-buffer 1 1)])
+      (raster-buffer-write-rgba! buffer (bytes 255 0 0 128))
+      (check-equal? (raster-buffer->rgba-bytes buffer) (bytes 255 0 0 128))
+      (check-equal? (raster-buffer->storage-bytes buffer) (bytes 128 0 0 128))))
+  (test-case "pixmap fill replaces pixels instead of compositing over the old color"
+    (with-skia ([buffer (make-raster-buffer 2 1)])
+      (raster-buffer-write-rgba! buffer (bytes 0 0 255 255 0 0 255 255))
+      (call-with-raster-buffer-pixmap
+       buffer
+       (lambda (view)
+         (pixmap-fill! (pixmap-subset view 0 0 1 1) (rgba 255 0 0 128)))
+       #:writable? #t)
+      (check-equal? (raster-buffer->rgba-bytes buffer)
+                    (bytes 255 0 0 128 0 0 255 255))))
   (test-case "the writable subregion replaces exactly the requested interior pixel"
     (with-skia ([buffer (make-source-buffer)])
       (stamp-region! buffer)

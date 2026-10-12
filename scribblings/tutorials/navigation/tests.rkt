@@ -33,6 +33,25 @@
     (check-equal? (second moved) (control-point -25 600))
     (check-equal? (first moved) (first initial-points))
     (check-equal? (second initial-points) (control-point 240 150)))
+  (test-case "the figure anchor stays attached to P1"
+    (define point (second initial-points))
+    (define next (zoom-at home-view 240 150 2))
+    (check-equal? (call-with-values
+                  (lambda () (model->screen next (control-point-x point)
+                                                  (control-point-y point))) list)
+                  '(240 150)))
+  (test-case "P3 stays inside the translated introductory figure"
+    (define next (pan-view home-view 50 30))
+    (define point (fourth initial-points))
+    (define-values (x y) (model->screen next (control-point-x point) (control-point-y point)))
+    ;; Leave room for the right-hand label, not just the marker center.
+    (check-true (< (+ x 60) 800))
+    (check-true (< y 462)))
+  (test-case "the coordinate diagram uses the forward mapping and its inverse"
+    (define view (view-state 2 40 -30))
+    (define-values (x y) (model->screen view 120 150))
+    (check-equal? (list x y) '(280 270))
+    (check-equal? (call-with-values (lambda () (screen->model view x y)) list) '(120 150)))
   (test-case "invalid zoom factors are rejected"
     (for ([factor (list 0 -1 +inf.0 +nan.0 'large)])
       (check-exn exn:fail:contract? (lambda () (zoom-at home-view 0 0 factor))))))

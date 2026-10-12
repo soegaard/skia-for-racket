@@ -2,8 +2,8 @@
 
 (require skia)
 (provide pixel-width pixel-height padded-row-bytes
-         make-source-buffer duotone-rgba process-buffer! stamp-region!
-         make-study-images draw-pixel-study)
+         make-source-buffer make-tiny-buffer duotone-rgba process-buffer! stamp-region!
+         make-study-images draw-checker draw-pixel-study)
 
 (define pixel-width 192)
 (define pixel-height 128)
@@ -26,6 +26,15 @@
      (draw-rounded-rect canvas 100 20 65 50 8 8 dark)
      ;; The strip has real transparency, not a checkerboard baked into its pixels.
      (draw-rect canvas 0 102 pixel-width 26 translucent)))
+  buffer)
+
+(define (make-tiny-buffer)
+  (define buffer (make-raster-buffer 3 2 #:row-bytes 16))
+  ;; The input has tight 12-byte rows; the destination has padded 16-byte rows.
+  (raster-buffer-write-rgba!
+   buffer (bytes 255 0 0 255  0 255 0 255  0 0 255 255
+                 255 255 0 255  0 255 255 255  255 0 255 255)
+   #:row-bytes 12)
   buffer)
 
 (define (duotone-rgba source)
@@ -85,9 +94,9 @@
   (draw-simple-text canvas "Copy samples. Transform them. Publish independent images."
                     30 76 font ink)
   (for ([image (in-list images)] [x '(28 276 524)]
-        [caption '("Original snapshot" "Duotone snapshot" "Writable subregion")])
-    (draw-checker canvas x 106 224 150)
-    (draw-image-rect canvas image x 106 224 150 #:sampling 'nearest)
+        [caption '("Original snapshot" "Duotone snapshot" "After region write")])
+    (draw-checker canvas x 106 225 150)
+    (draw-image-rect canvas image x 106 225 150 #:sampling 'nearest)
     (draw-simple-text canvas caption x 284 font ink))
   (draw-simple-text canvas "The checkerboard is behind the images; alpha remains in their pixels."
                     30 329 font ink))
