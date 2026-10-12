@@ -1,0 +1,64 @@
+#lang racket
+
+(require racket/runtime-path scribble/eval skia "atlas.rkt" "model.rkt" "scene.rkt"
+         "../support/figures.rkt" "../support/sprite-figures.rkt" "../support/sprite-math.rkt")
+(provide sprites-interaction balls-pict balls-motion ball-atlas-pict one-ball-pict placements-pict)
+(define-runtime-path model-source "model.rkt")
+(define-runtime-path math-source "../support/sprite-math.rkt")
+(define evaluator (make-base-eval))
+(evaluator `(require racket (file ,(path->string model-source))
+                      (file ,(path->string math-source))))
+
+(define (balls-pict [steps 0] #:scale [scale 0.8])
+  (define world (make-ball-world 30))
+  (for ([_ (in-range steps)]) (step-balls! world fixed-step void))
+  (with-skia ([atlas (make-ball-atlas)])
+    (render-pict scene-width scene-height
+                 (lambda (canvas) (draw-balls canvas atlas world)) #:scale scale)))
+
+(define (balls-motion)
+  (figure-row (captioned-pict "t = 0 seconds" (balls-pict 0 #:scale 0.4))
+              (captioned-pict "t = 1 second" (balls-pict 120 #:scale 0.4))))
+
+(define (ball-atlas-pict)
+  (with-skia ([atlas (make-ball-atlas)]) (atlas-pict atlas 8)))
+
+(define (one-ball-pict)
+  (with-skia ([atlas (make-ball-atlas)])
+    (render-pict
+     280 170
+     (lambda (canvas)
+       (draw-checker canvas 280 170)
+       (draw-atlas canvas atlas
+                   (list (make-atlas-transform 140 76 #:anchor sprite-anchor #:scale 2))
+                   (list (sprite-source 2)) #:sampling 'linear)
+       (with-skia ([ink (make-paint #:color "#20364B")]
+                   [mark (make-paint #:color "#07172A" #:style 'stroke
+                                     #:stroke-width 1.7)]
+                   [font (make-font #:size 14)])
+         ;; The cross marks the transformed anchor, not the atlas cell origin.
+         (draw-circle canvas 140 76 6 mark)
+         (draw-line canvas 129 76 151 76 mark)
+         (draw-line canvas 140 65 140 87 mark)
+         (draw-simple-text canvas "cell 2 / anchor at (140, 76)" 42 152 font ink))))))
+
+(define (placements-pict)
+  (with-skia ([atlas (make-ball-atlas)])
+    (render-pict
+     600 174
+     (lambda (canvas)
+       (canvas-clear! canvas "#091426")
+       (draw-atlas canvas atlas
+                   (list (make-atlas-transform 100 76 #:anchor sprite-anchor)
+                         (make-atlas-transform 300 76 #:anchor sprite-anchor
+                                               #:scale 1.5 #:rotation 40)
+                         (make-atlas-transform 500 76 #:anchor sprite-anchor
+                                               #:scale 2 #:rotation -35))
+                   (make-list 3 (sprite-source 0)) #:sampling 'linear)
+       (with-skia ([ink (make-paint #:color "#EAF5FF")]
+                   [font (make-font #:size 14)])
+         (for ([x '(40 228 420)] [text '("1x / 0 degrees" "1.5x / 40 degrees" "2x / -35 degrees")])
+           (draw-simple-text canvas text x 152 font ink)))))))
+
+(define-syntax-rule (sprites-interaction expression ...)
+  (interaction #:eval evaluator expression ...))

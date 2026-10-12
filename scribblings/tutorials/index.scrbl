@@ -84,6 +84,15 @@ reference alongside them.
        combine filled geometry with union, intersection, difference, exclusive-or, and simplification.}
 ]
 
+@section{Sprite Atlases and Games}
+
+@itemlist[
+ @item{@hyperlink["../sprites/sprites.html"]{Sprite Atlases: Animate Bouncing Balls on the GPU} —
+       upload a generated atlas once, retain it across frames, and batch sprite placements.}
+ @item{@hyperlink["../squadron/squadron.html"]{Star Squadron: Build a Galaga-Inspired Arcade Game} —
+       combine sprite animation, fixed-step simulation, diving enemies, collisions, and scoring.}
+]
+
 @section{Choosing a Path}
 
 If you are new to Skia, read Quick, Clock, and Logo first. Follow with Images

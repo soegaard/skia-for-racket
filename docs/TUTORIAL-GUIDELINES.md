@@ -79,6 +79,17 @@ Use simple English, but do not make the prose simplistic.
 Prefer precise technical language when it helps. The reader should learn the
 correct concepts and terminology.
 
+Write for the reader rather than the tutorial author or maintainer.
+Explain what an image teaches, not whether it was reproduced from the drawing
+function, generated during the documentation build, or captured from a window.
+Mention the origin of an image only when it affects the reader's understanding
+or the correctness of the comparison. Put figure-generation and test procedures
+in developer notes instead.
+
+When referring to another tutorial, name and link its subject rather than
+using only a number such as "Tutorial 14". State the prerequisite concept when
+it helps the reader decide whether to follow that link.
+
 Follow the terminology conventions in
 [How to Program Racket: a Style Guide](https://docs.racket-lang.org/style/),
 especially its
@@ -446,6 +457,8 @@ Before considering a tutorial finished, check the following.
 - Is Racket terminology correct?
 - Are platform-dependent claims qualified?
 - Are important conceptual distinctions stated explicitly?
+- Is prose about documentation generation or test machinery kept out of the tutorial?
+- Are related tutorials identified by title, with links and useful prerequisites?
 
 ### Code
 
