@@ -56,6 +56,18 @@ jobs:
           doc_dir="$GITHUB_WORKSPACE/doc"
           mkdir -p "$SITE"
           cp scribblings/tutorials/pages-index.html "$SITE/index.html"
+          for asset in \
+            scribble.css \
+            manual-style.css \
+            manual-racket.css \
+            doc-site.css \
+            scribble-common.js \
+            manual-racket.js \
+            doc-site.js
+          do
+            test -f "$doc_dir/$asset"
+            cp "$doc_dir/$asset" "$SITE/$asset"
+          done
           for manual in \
             skia-tutorials \
             skia-tutorial-quick \
@@ -84,6 +96,12 @@ jobs:
             test -f "$doc_dir/$manual/index.html"
             cp -a "$doc_dir/$manual" "$SITE/$manual"
           done
+          # Scribble uses its local-redirect service for links between
+          # installed manuals. A GitHub Pages visitor has no local Racket
+          # documentation tree, so make links among our own manuals local.
+          find "$SITE" -type f -name '*.html' -exec \
+            perl -0pi -e 's{https://download\.racket-lang\.org/releases/[^"?]+/doc/local-redirect/index\.html\?doc=(skia-tutorial(?:s|-[^&"]+))&amp;rel=([^&"]+)&amp;version=[^"<]+}{../$1/$2}g' \
+            {} +
           test -f "$SITE/skia-tutorials/index.html"
           test -z "$(find "$SITE" -type l -print -quit)"
       - name: Upload the GitHub Pages artifact
