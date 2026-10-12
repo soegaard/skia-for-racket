@@ -1,0 +1,106 @@
+name: Publish tutorials
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build tutorial site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Racket and native runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            curl unzip fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core \
+            fonts-noto-cjk libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+            libgtk-3-0t64 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Verify the checked-in source inventory
+        run: python3 tools/update-source-sums.py --check
+      - name: Install pinned Skia and HarfBuzz libraries
+        run: |
+          bash tools/install-native.sh
+          bash tools/install-harfbuzz.sh
+      - name: Build registered Scribble manuals
+        env:
+          PLTUSERHOME: ${{ runner.temp }}/racket-user
+        run: |
+          raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
+          raco setup --no-zo --pkgs skia-for-racket
+      - name: Collect the static site
+        env:
+          SITE: ${{ runner.temp }}/skia-for-racket-pages
+        run: |
+          set -euo pipefail
+          doc_dir="$GITHUB_WORKSPACE/doc"
+          mkdir -p "$SITE"
+          cp scribblings/tutorials/pages-index.html "$SITE/index.html"
+          for manual in \
+            skia-tutorials \
+            skia-tutorial-quick \
+            skia-tutorial-clock \
+            skia-tutorial-logo \
+            skia-tutorial-images \
+            skia-tutorial-poster \
+            skia-tutorial-text \
+            skia-tutorial-shaping \
+            skia-tutorial-paragraph \
+            skia-tutorial-pdf-svg \
+            skia-tutorial-effects \
+            skia-tutorial-pictures \
+            skia-tutorial-vector-raster \
+            skia-tutorial-gpu \
+            skia-tutorial-animation \
+            skia-tutorial-interaction \
+            skia-tutorial-navigation \
+            skia-tutorial-shaders \
+            skia-tutorial-pixels \
+            skia-tutorial-color-spaces \
+            skia-tutorial-path-ops \
+            skia-tutorial-sprites \
+            skia-tutorial-squadron
+          do
+            test -f "$doc_dir/$manual/index.html"
+            cp -a "$doc_dir/$manual" "$SITE/$manual"
+          done
+          test -f "$SITE/skia-tutorials/index.html"
+          test -z "$(find "$SITE" -type l -print -quit)"
+      - name: Upload the GitHub Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: ${{ runner.temp }}/skia-for-racket-pages
+
+  deploy:
+    name: Deploy tutorial site
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - name: Deploy the Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
