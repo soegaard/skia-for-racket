@@ -22,6 +22,7 @@ class Images(HTMLParser):
     def __init__(self):
         super().__init__()
         self.sources = []
+        self.described = []
         self.unresolved_markers = 0
         self.evaluation_error_markers = 0
 
@@ -32,6 +33,7 @@ class Images(HTMLParser):
         self.evaluation_error_markers += int('RktErr' in classes)
         if tag == 'img':
             self.sources.append(attributes.get('src', ''))
+            self.described.append('skia-tutorial-figure' in classes)
 
 
 def png_size(path: Path) -> tuple[int, int]:
@@ -49,14 +51,14 @@ def inspect_html(path: Path, expected: int) -> dict:
     if not parser.sources:
         raise ValueError(f'no images: {path}')
     figures = []
-    for url in parser.sources:
+    for url, described in zip(parser.sources, parser.described):
         parts = urlsplit(url)
         if parts.scheme or parts.netloc:
             continue
         image = path.parent / unquote(parts.path)
         if not image.is_file():
             raise ValueError(f'missing image: {image}')
-        if re.fullmatch(r'pict(?:_\d+)?\.png', image.name):
+        if described or re.fullmatch(r'pict(?:_\d+)?\.png', image.name):
             width, height = png_size(image)
             if width <= 0 or height <= 0:
                 raise ValueError(f'empty image: {image}')

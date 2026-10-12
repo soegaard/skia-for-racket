@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "model.rkt"
           "../support/source.rkt"
@@ -12,9 +12,13 @@
 
 @title{Zoom and Pan — Navigate an Interactive Canvas}
 
-@section{The Finished Editor}
+@section[#:tag "finished-result"]{The Finished Editor}
 
-@(navigation-pict)
+@(tutorial-figure
+   (string-append
+    "A cubic curve with two endpoints and two control handles appears over a grid. The "
+    "heading and footer stay outside the movable drawing region.")
+   (navigation-pict))
 
 This editor lets you move around a Bézier drawing without changing its control
 points. Drag a point to reshape the curve. Hold Shift while dragging to move the
@@ -23,10 +27,9 @@ The Reset view button restores the view without undoing edits to the curve.
 
 @centered{@bold{Change the view, not the geometry. Convert input back into model coordinates.}}
 
-The drawing uses the same Skia paths, paints, and canvases as @tutorial-link["interaction"].
-This example is self-contained. Save @filepath{model.rkt}, @filepath{scene.rkt},
-and @filepath{navigate.rkt}, listed at the end, in the same directory. The default CPU
-version runs with @tt{racket navigate.rkt}; add @command-text["--renderer gpu"] for GPU drawing.
+The drawing uses the same Skia paths, paints, and canvases as
+@tutorial-link["interaction"]. The model, drawing, and window are separate files
+in this example; the complete source set includes all three.
 
 @tutorial-entry["navigation"]
 
@@ -70,7 +73,11 @@ For a zoom of 2 and pan offset (40, -30), the model point (120, 150) appears at
 (call-with-values (lambda () (screen->model view 280 270)) list)
 ]
 
-@(navigation-coordinate-pict)
+@(tutorial-figure
+   (string-append
+    "The model point (120, 150) maps to logical window point (280, 270) with zoom 2 and "
+    "pan (40, -30). The inverse mapping recovers the original point.")
+   (navigation-coordinate-pict))
 
 The two grids show that same point in the two coordinate systems. Neighboring
 grid lines are 50 units apart; the view calculation changes the point's displayed
@@ -88,7 +95,11 @@ zoom. A 40-unit pointer movement pans by 40 window units even at zoom 2:
 The following view moves the drawing 50 units right and 30 units down. The title
 and instructions remain fixed, while the grid and curve move together:
 
-@(navigation-pict (pan-view home-view 50 30) #:scale 0.7)
+@(tutorial-figure
+   (string-append
+    "The grid, curve, and handles move 50 logical units right and 30 down. The heading "
+    "and instructions stay fixed.")
+   (navigation-pict (pan-view home-view 50 30) #:scale 0.7))
 
 The renderer clips the drawing below the header and above the footer. That keeps
 point labels and curve fragments out of the instructions, even after a large pan.
@@ -108,7 +119,11 @@ This composes the model-to-window mapping shown above. Reversing the two calls
 would scale the pan offset as well. The @racket[with-canvas-state] form restores
 the receiving canvas when drawing finishes.
 
-@(navigation-views)
+@(tutorial-figure
+   (string-append
+    "At zoom 1 the complete curve is visible. At zoom 1.5 around the window origin, the "
+    "curve grows and extends beyond the drawing region.")
+   (navigation-views))
 
 The left image uses the original view. The right image changes only the zoom
 from 1 to 1.5, keeping the pan at zero. The drawing grows around the window
@@ -134,7 +149,11 @@ The zoom is clamped before calculating the new pan. Otherwise the anchor could
 move when the user reaches a zoom limit. This editor allows zoom from one
 quarter to four times the model size.
 
-@(navigation-anchor-pair)
+@(tutorial-figure
+   (string-append
+    "Zooming from 1 to 2 around P1 keeps that point at (240, 150). The curve and grid "
+    "expand away from the stationary pointer ring.")
+   (navigation-anchor-pair))
 
 The coral ring marks the pointer at P1. The point and ring stay together at
 (240, 150) in both images; the curve and neighboring grid lines move away from
@@ -157,7 +176,11 @@ zoomed in. This editor draws its markers and labels @emph{after} leaving the
 model transform. Their positions are transformed, but their sizes remain in
 logical window units.
 
-@(navigation-handle-sizes)
+@(tutorial-figure
+   (string-append
+    "Crops around P1 at zoom 1/2, 1, and 2 show the same marker radius of 10 and hit "
+    "radius of 18. Grid spacing and the curve stroke change with zoom.")
+   (navigation-handle-sizes))
 
 These are equal-sized crops around P1 at zoom 1/2, 1, and 2, shown without further
 magnification. The cyan marker still has radius 10, and the coral guide still

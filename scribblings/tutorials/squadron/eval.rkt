@@ -42,6 +42,7 @@
                    #:sampling 'linear)))))
 
 (define (dive-pict)
+  (define diagram-scale 0.66)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
      640 620
@@ -50,22 +51,26 @@
        (with-skia ([line (make-paint #:color "#547A9A" #:style 'stroke #:stroke-width 2)]
                    [ink (make-paint #:color "#DCF4FF")]
                    [font (make-font #:size 16)])
-         (for ([side '(-1 1)] [start-x '(175 465)])
-           (define (sample age) (dive age start-x 80 320 side))
-           (define points
-             (for/list ([age (in-range 0 289 6)])
-               (define-values (x y) (dive-point (sample age)))
-               (list x (* y 0.66))))
-           (draw-polygon canvas points line #:closed? #f)
-           (for ([age '(0 84 168 252)])
-             (define attack (sample age))
-             (define sprite (enemy 7 'scout 1 attack))
-             (define-values (x y) (dive-point attack))
-             (draw-atlas canvas atlas
-                         (list (make-atlas-transform x (* y 0.66)
-                                                     #:anchor sprite-anchor
-                                                     #:rotation (enemy-angle sprite 0)))
-                         (list (sprite-source 2)) #:sampling 'linear)))
+         ;; Transform paths and sprites together so visible tangents match headings.
+         (with-canvas-state canvas
+           (canvas-translate! canvas (/ (* 640 (- 1 diagram-scale)) 2) 0)
+           (canvas-scale! canvas diagram-scale diagram-scale)
+           (for ([side '(-1 1)] [start-x '(175 465)])
+             (define (sample age) (dive age start-x 80 320 side))
+             (define points
+               (for/list ([age (in-range 0 289 6)])
+                 (define-values (x y) (dive-point (sample age)))
+                 (list x y)))
+             (draw-polygon canvas points line #:closed? #f)
+             (for ([age '(0 84 168 252)])
+               (define attack (sample age))
+               (define sprite (enemy 7 'scout 1 attack))
+               (define-values (x y) (dive-point attack))
+               (draw-atlas canvas atlas
+                           (list (make-atlas-transform x y
+                                                       #:anchor sprite-anchor
+                                                       #:rotation (enemy-angle sprite 0)))
+                           (list (sprite-source 2)) #:sampling 'linear))))
          (draw-simple-text canvas "Two mirrored dives; target chosen at launch" 138 584 font ink)))
      #:scale 0.75)))
 

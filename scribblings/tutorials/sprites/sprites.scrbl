@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia skia/gpu))
@@ -14,9 +14,13 @@
 
 @title[#:tag "sprite-atlases"]{Sprite Atlases — Animate Bouncing Balls on the GPU}
 
-@section{The Finished Animation}
+@section[#:tag "finished-result"]{The Finished Animation}
 
-@(balls-pict)
+@(tutorial-figure
+   (string-append
+    "Thirty colored balls of different sizes appear inside a bounded playfield. Each "
+    "moving ball selects a cell from the same atlas.")
+   (balls-pict))
 
 Thirty colored balls move, spin, and bounce inside a window. Each ball is a
 placement of one small image from a shared @emph{sprite atlas}. A sprite atlas
@@ -48,10 +52,14 @@ tutorial introduces GPU canvases. For frame scheduling and GUI controls, see
 
 @section{Look Inside the Atlas}
 
-@(ball-atlas-pict)
+@(tutorial-figure
+   (string-append
+    "Eight ball sprites occupy four columns and two rows in a 224-by-112 atlas. The cell "
+    "numbers, outlines, and checkerboard are guides outside the stored artwork.")
+   (ball-atlas-pict))
 
-This is the actual image returned by @racket[make-ball-atlas], shown at twice
-its natural size with nearest-neighbor sampling. The numbered frames and
+The atlas is shown at twice its natural size with nearest-neighbor sampling.
+The numbered frames and
 checkerboard are explanatory overlays; they are not baked into the atlas.
 The checkerboard reveals its transparent pixels.
 
@@ -86,8 +94,7 @@ surface contents. That image survives the deterministic release of the
 construction surface. No surface is created for an individual moving ball.
 The CPU image can also be saved as PNG or used by the raster version.
 
-The artwork belongs to this example and is generated entirely by Skia.
-There is no external sprite-sheet download or texture-packing step.
+The program generates the artwork with Skia; no external sprite sheet is needed.
 
 @section{Place One Sprite}
 
@@ -103,7 +110,11 @@ image, and a transform that places that rectangle on the canvas.
             #:sampling 'linear)
 ]
 
-@(one-ball-pict)
+@(tutorial-figure
+   (string-append
+    "Cell 2 is placed at scale 2 with its local center (24, 24) mapped to canvas point "
+    "(140, 76). The cross marks this fixed anchor.")
+   (one-ball-pict))
 
 Here, @racket[canvas] is the current Skia canvas and @racket[atlas] is the image
 being drawn. The complete image-producing and window programs appear below.
@@ -116,7 +127,12 @@ they do not move its canvas position.
 
 @section{Reuse a Sprite at Different Sizes and Angles}
 
-@(placements-pict)
+@(tutorial-figure
+   (string-append
+    "Three placements use cell zero at scale 1 and zero degrees, scale 1.5 and 40 "
+    "degrees, and scale 2 and minus 35 degrees. The off-center highlight makes rotation "
+    "visible.")
+   (placements-pict))
 
 All three placements select cell zero. Only their transforms differ. Positive
 rotation angles are clockwise in the default downward-y coordinate system.
@@ -154,9 +170,8 @@ Its first call stores the GPU image and owning context. Later calls return the
 same image. A different context is rejected; even another window on the same
 physical GPU needs its own upload. The helper does not silently migrate textures.
 
-The upload returns a GPU-bound image reference. This is a resource-ownership
-contract, not a guarantee about physical hardware, driver caching, or permanent
-VRAM residency. A software graphics driver can implement the same GPU API.
+The image is bound to its GPU context. A software graphics driver can implement
+the same API, so this ownership rule does not imply hardware acceleration.
 
 @section{Submit a Batch}
 
@@ -193,21 +208,31 @@ Racket data. It contains no surfaces, canvases, or GPU handles.
 (struct ball-world (balls ticks) #:mutable #:transparent)
 ]
 
-The reflection helper folds an unfolded position back into the allowed
-interval. It preserves the overshoot instead of stopping the ball at the wall:
-
-@codeblock[(source-definition model-source 'reflect-axis)]
+Consider a ball at position 9 moving right at 4 units per second inside the
+interval from 0 to 10. After one second it has reached the wall and traveled
+3 units back, ending at 7 with velocity -4. The supplied motion helper returns
+that position and velocity:
 
 @sprites-interaction[
 (call-with-values (lambda () (reflect-axis 9 4 0 10 1)) list)
 ]
 
-The ball travels to 13, crosses the wall at 10, and ends at 7 with velocity -4.
-The same calculation handles a longer update that crosses several walls.
+@subsection{The Supplied Motion Helper}
+
+The helper preserves travel beyond a wall instead of stopping at the boundary.
+Its formula also handles an update that crosses several walls. Atlas placement
+only needs the resulting positions; deriving this formula is not a prerequisite
+for drawing the sprites.
+
+@codeblock[(source-definition model-source 'reflect-axis)]
 
 @codeblock[(source-definition model-source 'step-balls!)]
 
-@(balls-motion)
+@(tutorial-figure
+   (string-append
+    "The balls at simulation time zero and one second have different positions and "
+    "angles. Their cell selections and atlas pixels are unchanged.")
+   (balls-motion))
 
 The two images are exactly 120 simulation steps apart. The ball cell indices
 stay the same. The radius used for wall tests covers each circular sprite,
@@ -235,10 +260,9 @@ pixel readback. The CPU route copies the completed surface for presentation.
 Both use the same simulated scene and preserve its aspect ratio when resized.
 GPU backing scale is applied separately from that scene-to-window transform.
 
-GPU mode selects Metal on macOS, Direct3D 12 on Windows x64, and OpenGL on
-Linux with a suitable graphical session. It does not promise GPU availability
-on every machine and never silently falls back. Run with @command-text["--renderer raster"]
-when a CPU window is required.
+Both window modes need a graphical session. GPU initialization errors are
+reported rather than retried on the CPU. Select @command-text["--renderer raster"]
+to use the CPU explicitly.
 
 @section{Close in Ownership Order}
 

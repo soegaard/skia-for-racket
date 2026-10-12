@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia skia/gpu))
@@ -12,9 +12,13 @@
 
 @title[#:tag "star-squadron"]{Star Squadron — Build a Galaga-Inspired Arcade Game}
 
-@section{The Finished Game}
+@section[#:tag "finished-result"]{The Finished Game}
 
-@(game-pict)
+@(tutorial-figure
+   (string-append
+    "An arcade playfield shows an enemy formation, diving ships, projectiles, and the "
+    "player below. The header displays score, wave number, and remaining lives.")
+   (game-pict))
 
 An enemy formation moves across the top of the screen. Individual ships break
 away, dive toward the player, fire, and return to the formation. The player
@@ -47,7 +51,12 @@ with @tutorial-link["animation"].
 
 @section{Give Every Object a Cell}
 
-@(game-atlas-pict)
+@(tutorial-figure
+   (string-append
+    "A four-by-four atlas contains two player frames, two scout frames, two guard frames, "
+    "two projectiles, six explosion frames, a shield, and a star. Numbered cells and "
+    "checkerboard are guides.")
+   (game-atlas-pict))
 
 The atlas is 224 by 224 pixels, displayed here at 2x with nearest sampling.
 As before, each 48-by-48 source rectangle is surrounded by a four-pixel gutter.
@@ -86,7 +95,11 @@ stops simulation without replacing the current game mode.
 
 @section{Move the Player and Fire}
 
-@(ship-pict)
+@(tutorial-figure
+   (string-append
+    "Two player frames at twice their source size differ in their flame shapes. The "
+    "projectile on the right is shown at its natural size.")
+   (ship-pict))
 
 The figure shows the two player frames at 2x, followed by the projectile at
 its natural atlas size. The flame changes shape while the ship keeps the same
@@ -115,7 +128,11 @@ velocity, and which side fired it. It has no image of its own.
 
 @section{Build and Animate a Formation}
 
-@(fleet-pict)
+@(tutorial-figure
+   (string-append
+    "The formation contains three rows of seven ships. Armored guards occupy the top row, "
+    "and scouts occupy the lower two rows.")
+   (fleet-pict))
 
 The fleet has three rows of seven ships. The upper row contains armored guards;
 the lower rows contain scouts. A guard requires two hits and awards 200 points.
@@ -139,13 +156,16 @@ formation's motion. Pausing simulation freezes both.
 
 @section{Let an Enemy Dive}
 
-@(dive-pict)
+@(tutorial-figure
+   (string-append
+    "Two mirrored dive paths and their sampled ships share a uniform scale. Each ship "
+    "points along the displayed direction of motion toward the target selected at launch.")
+   (dive-pict))
 
-These are two mirrored attack paths evaluated by the same @racket[dive-point]
-function used during play. The vertical coordinates are compressed to 66 percent
-for this diagram. The sampled sprites face along their actual, uncompressed
-motion, just as they do in the game. Their angles are measured from the
-downward-facing enemy artwork: zero degrees points down, and 180 points up.
+The two attack paths are mirror images. A single uniform scale reduces the
+paths and sprites together, so each ship points along the displayed direction
+of travel. The @racket[enemy-angle] function measures rotation from the
+downward-facing artwork: zero degrees points down, and 180 points up.
 
 When a dive begins, it captures the enemy's current position and the player's
 current horizontal position. The target does not follow later player movement,
@@ -195,7 +215,12 @@ scheduling; a replay system would need to record inputs against simulation ticks
 
 @section{Hit Objects, Not Pixels}
 
-@(collision-pict)
+@(tutorial-figure
+   (string-append
+    "The left projectile segment crosses an enemy hit circle. The right segment passes 45 "
+    "illustration units from its center and misses the 38-unit circle. Collision bounds "
+    "need not match opaque sprite pixels.")
+   (collision-pict))
 
 The left cyan segment crosses the hit circle; the right segment passes
 45 illustration units from its center, outside the 38-unit radius. Both
@@ -229,7 +254,11 @@ while that shield is active.
 
 @section{Animate an Explosion Without Changing the Texture}
 
-@(explosion-pict)
+@(tutorial-figure
+   (string-append
+    "Six explosion cells appear in playback order. A growing ring and fading sparks "
+    "progress across the atlas frames without modifying the texture during play.")
+   (explosion-pict))
 
 The six explosion cells are shown in playback order at 1.5x with nearest
 sampling. The growing ring and fading sparks were rendered into the atlas
@@ -257,10 +286,8 @@ controls which sprites appear on top.
 
 @codeblock[(source-definition drawing-source 'draw-game)]
 
-The starfield, score panel, and text are separate Skia drawings. One atlas call
-for the sprites does not mean one draw call for the entire scene, nor does it
-promise exactly one hardware draw call. The point is to reuse one image and
-submit sprite placements together.
+The starfield, score panel, and text are separate Skia drawings. The atlas call
+batches the sprites; it does not determine the driver's hardware draw-call count.
 
 @section{Keep Score, Clear Waves, and Restart}
 
@@ -273,10 +300,14 @@ After the last life is lost, @racket['game-over] freezes simulation and displays
 a restart prompt. The game displays these messages between waves and after
 losing the last life:
 
-@(game-states-pict)
+@(tutorial-figure
+   (string-append
+    "The wave-clear message announces an incoming squadron. The game-over message asks "
+    "the player to press R or click Restart after the last life is lost.")
+   (game-states-pict))
 
-The shared Restart control creates a new world. The GPU atlas and presenter
-are deliberately not recreated; the upload counter remains one.
+Restart creates a new world while retaining the atlas and presenter. The upload
+counter remains one.
 
 The complete update function makes those state transitions explicit:
 

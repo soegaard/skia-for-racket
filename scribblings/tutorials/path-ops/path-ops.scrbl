@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia))
@@ -8,9 +8,14 @@
 
 @title{Path Operations — Construct a Cutout Badge}
 
-@section{The Finished Badge}
+@section[#:tag "finished-result"]{The Finished Badge}
 
-@(badge-pict)
+@(tutorial-figure
+   (string-append
+    "The left diagram shows the disk, cross, outer boundary, inner rim boundary, and "
+    "central hole. The completed badge on the right has a central opening and four gaps "
+    "revealing the checkerboard.")
+   (badge-pict))
 
 The badge on the right is one path, assembled from circles and rectangles.
 Its center and surrounding gaps are genuinely empty. The checkerboard shows
@@ -41,7 +46,11 @@ Create the initial operands:
 (define cross (cross-path))
 ]
 
-@(operands-pict)
+@(tutorial-figure
+   (string-append
+    "A disk and a cross share the same model coordinates. The cross consists of two "
+    "overlapping rectangle contours whose shared region is filled.")
+   (operands-pict))
 
 All coordinates are in the same model space, centered at (160, 160). The cross
 has two contours with the default winding fill. Their overlap is filled.
@@ -60,7 +69,11 @@ The union keeps every point contained in either operand:
 (define joined (path-union disk cross))
 ]
 
-@(shape-pict 'joined)
+@(tutorial-figure
+   (string-append
+    "The union of the disk and cross has one outer boundary with four tabs. The internal "
+    "edges of the original rectangles are absent.")
+   (shape-pict 'joined))
 
 The rectangles extend beyond the disk to make four tabs. The union constructs
 new boundary geometry; painting the two inputs separately would not remove the
@@ -79,7 +92,11 @@ the region contained in both the joined shape and that circle:
 (define trimmed (path-intersect joined boundary))
 ]
 
-@(trim-pair)
+@(tutorial-figure
+   (string-append
+    "The left panel overlays the joined shape and its circular limit. The right panel "
+    "keeps their intersection, trimming the four tab tips to the circle.")
+   (trim-pair))
 
 The tips of the tabs now follow the circular boundary. This is not a temporary
 canvas clip: @racket[trimmed] is a new path that can be filled, stroked, inspected,
@@ -94,13 +111,16 @@ Subtract a small circle from the trimmed shape:
 (define cutout (path-difference trimmed hole))
 ]
 
-@(difference-pair)
+@(tutorial-figure
+   (string-append
+    "Subtracting the inner circle from the body makes a hole. Subtracting the body from "
+    "that inner circle leaves no filled region, so the right panel is only checkerboard.")
+   (difference-pair))
 
 The first operand is the region to keep; the second is the region to remove.
 Reversing them is a different operation. Here the small circle lies entirely
 inside the trimmed badge, so subtracting the badge from the small circle would
-leave no filled region. The right panel actually draws that empty result; its
-checkerboard is unobstructed.
+leave no filled region. The right panel shows the empty result over an unobstructed checkerboard.
 
 A containment query confirms that the center is absent while a point in the
 body remains:
@@ -124,7 +144,11 @@ For nested circles, that leaves a ring:
 (define rim (path-xor boundary rim-inside))
 ]
 
-@(shape-pict 'rim)
+@(tutorial-figure
+   (string-append
+    "Exclusive-or of two nested circles produces a thin rim. The shared central region is "
+    "excluded.")
+   (shape-pict 'rim))
 
 Both circles contain the center, so it is excluded. Only the larger circle
 contains a point near the outside edge, so that part remains. For two crossing
@@ -144,7 +168,11 @@ The distinction becomes visible when neither circle contains the other:
 (define both-sides (path-xor left-circle right-circle))
 ]
 
-@(xor-comparison)
+@(tutorial-figure
+   (string-append
+    "Overlapping circles A and B are followed by A minus B, which keeps one crescent, and "
+    "A exclusive-or B, which keeps both outer crescents but excludes their overlap.")
+   (xor-comparison))
 
 The middle panel keeps only the part of A outside B. The right panel also
 keeps the part of B outside A. Both exclude the shared lens. The badge uses
@@ -157,7 +185,11 @@ Return to the badge and join its rim to the cutout body:
 (define badge (path-union cutout rim))
 ]
 
-@(shape-pict 'badge)
+@(tutorial-figure
+   (string-append
+    "The final union connects the rim to the body at four tabs. The central hole and four "
+    "gaps remain empty.")
+   (shape-pict 'badge))
 
 The final union connects the rim to the tabs. It still leaves the central hole
 and the four gaps between the disk and rim. A single @racket[draw-path] call can
@@ -173,7 +205,11 @@ fill rule:
 (define simplified-cross (path-simplify cross))
 ]
 
-@(simplify-pict)
+@(tutorial-figure
+   (string-append
+    "The original cross shows the internal rectangle seams when stroked. Simplifying its "
+    "winding-filled region removes those seams without changing the filled area.")
+   (simplify-pict))
 
 The filled cross is the same, but stroking the simplified boundary does not
 show the internal rectangle seams. This operation is not a request to flatten
@@ -191,7 +227,11 @@ outline only when drawing:
 
 @codeblock[(source-definition program-source 'draw-shape)]
 
-@(backgrounds-pict)
+@(tutorial-figure
+   (string-append
+    "The same badge is drawn over a gradient and over horizontal stripes. Both "
+    "backgrounds show through its central hole and four outer gaps.")
+   (backgrounds-pict))
 
 Both panels draw the same completed badge path. Only the background changes.
 The stripes continue through the center and outer gaps, while the other panel

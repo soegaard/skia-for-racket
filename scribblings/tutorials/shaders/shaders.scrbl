@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "waves.rkt"
           "../support/source.rkt" (for-label racket skia skia/gpu))
@@ -9,16 +9,17 @@
 
 @title{Runtime Shaders — Animate Prismatic Waves in a Window}
 
-@section{The Finished Animation}
+@section[#:tag "finished-result"]{The Finished Animation}
 
-@(wave-animation-strip)
+@(tutorial-figure
+   (string-append
+    "Three frames at 0, 0.75, and 1.5 seconds show curved rainbow bands changing position "
+    "and shape as phase advances.")
+   (wave-animation-strip))
 
 The three pictures show the same animated shader at 0, 0.75, and 1.5 seconds.
 The complete program opens a window, animates the waves, and lets you adjust
 frequency, bend, and hue while the animation is running.
-
-The pictures are real Skia renderings of three moments in the animation, not
-screenshots of the window. The application reuses the same drawing function.
 
 You can run the complete animated window now, from the repository root:
 
@@ -29,10 +30,11 @@ racket scribblings/tutorials/shaders/waves-window.rkt --renderer gpu
 If the machine has no supported GPU backend, choose @command-text["--renderer raster"].
 The following sections explain how the shader and window work.
 
-@centered{@bold{Compile the SkSL program once. Change uniforms to animate the shader.}}
+@centered{@bold{Compile the shader program once. Change uniforms to animate the shader.}}
 
-A runtime shader is a small SkSL program. Skia compiles it into an effect and
-then creates shader instances by supplying uniform values.
+SkSL is Skia's shading language. A runtime shader is a small SkSL program that
+computes colors. Skia compiles the program into an effect, then creates shader
+instances by supplying values for its inputs, called uniforms.
 
 @tutorial-entry["shaders"]
 
@@ -48,7 +50,28 @@ in the shape that uses it. The smallest possible shader ignores its input:
 (define solid-shader (runtime-effect->shader solid-effect #:uniforms (hash)))
 ]
 
-@(shader-pict solid-source (hash))
+The shader supplies colors to a paint. Use that paint to fill a rectangle on
+a raster surface:
+
+@shaders-racketblock+eval[
+(define solid-surface (make-surface 320 180))
+(define solid-paint (make-paint #:shader solid-shader))
+(draw-rect (surface-canvas solid-surface) 0 0 320 180 solid-paint)
+]
+
+The rectangle supplies the geometry; the shader supplies the color at each
+point. The same paint can draw on a borrowed GPU canvas during its frame
+callback. An ordinary image file can be saved from this CPU surface:
+
+@racketblock[
+(save-png solid-surface "solid-shader.png" #:exists 'replace)
+]
+
+@(tutorial-figure
+   (string-append
+    "A rectangle is filled with one cyan color. The constant shader returns the same "
+    "color at every point.")
+   (shader-pict solid-source (hash)))
 
 The result is one flat color because the SkSL program returns the same value
 for every point.
@@ -67,7 +90,11 @@ that point into a visible color gradient:
                           #:uniforms (hash 'extent '(320 180))))
 ]
 
-@(shader-pict coordinate-source (hash 'extent '(320 180)))
+@(tutorial-figure
+   (string-append
+    "The red channel increases from left to right and green from top to bottom, producing "
+    "a coordinate-dependent gradient across the rectangle.")
+   (shader-pict coordinate-source (hash 'extent '(320 180))))
 
 The red channel increases from left to right; the green channel increases from
 top to bottom. The @tt{extent} uniform tells the shader how large the panel is,
@@ -75,13 +102,20 @@ so that @tt{p / extent} can normalize the coordinates to the 0–1 range.
 
 @section{Make Repeating Bands}
 
-Begin with a simpler shader that draws grayscale stripes. The sine function
-produces repeating values between 0 and 1 as its input changes:
+Begin with a shader that draws grayscale stripes. The sine function ranges
+from -1 to 1. Multiplying by 0.5 and adding 0.5 maps that range to 0 through 1,
+which can be used as a grayscale channel value:
 
 @codeblock[(source-definition program-source 'bands-source)]
 
-@(bands-pict)
+@(tutorial-figure
+   (string-append
+    "Vertical grayscale bands alternate smoothly between black and white. Scaling and "
+    "offsetting sine maps its values into the zero-to-one channel range.")
+   (bands-pict))
 
+The expression @tt{0.5 + 0.5 * sin(...)} supplies the grayscale value:
+the sine values -1, 0, and 1 become 0, 0.5, and 1 respectively.
 The factor 6.2831853 is approximately two pi. The @tt{frequency} uniform
 controls how many cycles appear across the normalized field. There is no
 animation or rainbow yet: changing the shader coordinates changes the gray
@@ -95,13 +129,21 @@ For its first variation, set @tt{bend} to zero so that the stripes stay straight
 (define straight-shader (make-wave-shader effect 480 210 #:bend 0))
 ]
 
-@(waves-pict #:bend 0)
+@(tutorial-figure
+   (string-append
+    "With bend zero, the colorful bands are straight. The rainbow palette and highlights "
+    "still vary across the rectangle.")
+   (waves-pict #:bend 0))
 
 The shader uses the smaller panel dimension to scale both axes equally.
 Frequency counts cycles per that normalized distance, so the visible number of
 bands depends on both frequency and the panel's proportions.
 
-@(frequency-variants)
+@(tutorial-figure
+   (string-append
+    "Panels with frequencies 3, 5, and 8 have the same dimensions and zero bend. Higher "
+    "frequency puts more bands in the panel.")
+   (frequency-variants))
 
 These three panels use the same dimensions, bend, hue, and phase. Only frequency
 changes. The colorful source is assembled in the following sections.
@@ -119,7 +161,11 @@ float field = q.x + bend * (
 The next examples change only @tt{bend}. They all use instances of the same
 compiled effect:
 
-@(wave-variants)
+@(tutorial-figure
+   (string-append
+    "Panels with bend 0, 0.15, and 0.35 change from straight stripes to increasingly "
+    "curved bands while the other inputs stay fixed.")
+   (wave-variants))
 
 The Racket helper supplies the complete set of uniforms:
 
@@ -141,8 +187,14 @@ float3 rainbow = 0.5 + 0.5 * cos(
 This produces a smooth rainbow palette without a table of explicit color stops.
 The @tt{hue} uniform is measured in turns, not radians: adding 0.5 moves
 halfway around the color wheel. The wave field stays fixed while hue changes.
+The lighting also uses this angle, so Hue shifts the highlights as well as the
+palette. It is not a color-only adjustment.
 
-@(hue-pair)
+@(tutorial-figure
+   (string-append
+    "The same wave field uses hue 0.08 on the left and 0.58 on the right. Colors and "
+    "angle-dependent highlights shift; the field is unchanged.")
+   (hue-pair))
 
 Both panels use the same geometry and phase. Only @tt{hue} changes, from
 0.08 to 0.58. Notice how different colors occupy the same bends.
@@ -153,7 +205,11 @@ The SkSL source uses @tt{phase} in more than one place. It changes the shape
 of the bent field and it also shifts the color pattern. A new phase therefore
 produces a new frame without recompiling the shader.
 
-@(phase-pair)
+@(tutorial-figure
+   (string-append
+    "At phase 0 and phase 1, frequency remains 5 and bend remains 0.30. Advancing phase "
+    "changes both the bent field and its color pattern.")
+   (phase-pair))
 
 Both panels keep frequency at 5 and bend at 0.30. Only phase changes. The
 animation derives phase from elapsed seconds:
@@ -172,7 +228,11 @@ instance for the current frame:
 
 @codeblock[(source-definition program-source 'draw-wave-scene)]
 
-@(wave-scene-pict 1.2 #:scale 0.73)
+@(tutorial-figure
+   (string-append
+    "The complete shader panel at 1.2 seconds contains curved rainbow bands, narrow crest "
+    "highlights, and darkened edges.")
+   (wave-scene-pict 1.2 #:scale 0.73))
 
 The animation does not move old pixels. Every frame draws a new result from
 the current time. Frame rates can vary, but elapsed time makes the motion
@@ -188,7 +248,11 @@ float crest = pow(max(0.0, sin(angle)), 16.0);
 color += 0.24 * glow * crest * float3(0.9, 0.95, 1.0);
 }
 
-@(glow-pair)
+@(tutorial-figure
+   (string-append
+    "With glow zero the crest highlights are absent. With glow one narrow bright "
+    "highlights appear on the same colored bands.")
+   (glow-pair))
 
 The two panels use the same wave geometry, phase, frequency, and hue. The
 left panel sets @tt{glow} to zero, removing only the crest highlights; the
@@ -213,15 +277,18 @@ The compiled effect is reused; the instance is new for that frame.
 
 This function closes the temporary shader and paint promptly through
 @racket[with-skia]. That matters in an animation, where every frame creates
-new native resources. Changing an input hash after instance creation cannot
-change an existing shader, because Skia copies the uniform values.
+new native resources. The compiled effect remains available for the next frame.
 
 @section{Pay Attention to Local Coordinates}
 
 The animated pattern begins at the local origin of its rounded rectangle.
 Moving only a rectangle and moving the canvas origin are different operations:
 
-@(origin-pair)
+@(tutorial-figure
+   (string-append
+    "Both rectangles start at (48, 32). On the left only the geometry moved; on the right "
+    "the canvas origin moved too, changing the sampled portion of the pattern.")
+   (origin-pair))
 
 Both panels use identical uniforms and a rectangle beginning at (48, 32). The
 right-hand panel translates the canvas first, so the shader samples the pattern
@@ -255,7 +322,8 @@ bringing every finished frame back to CPU memory.
 @section{Change Uniforms While It Runs}
 
 The window has three sliders. @bold{Frequency} changes the number of bands.
-@bold{Bend} changes their curvature. @bold{Hue} rotates the rainbow palette.
+The @bold{Bend} slider changes their curvature. The @bold{Hue} slider shifts
+the palette and angle-dependent lighting without changing the wave field.
 Moving any slider requests a redraw using the existing compiled effect. The
 timer changes only elapsed time. The crest glow is fixed at one; it is an
 optional shader parameter rather than a fourth window control.
@@ -289,7 +357,7 @@ compare two frames without the time changing.
 
 Try changing @racket[phase-speed] from 2 to 0.5 or reversing its sign. The
 waves will travel more slowly or reverse direction. Then try changing the hue.
-A different hue rotates the same color wheel without changing the geometry.
+A different hue shifts colors and highlights along the same wave field.
 
 Try reducing @racket[#:bend] to zero. The bands become straight, but their
 colors still move because phase still appears in the angle expression.

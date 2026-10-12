@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia))
@@ -8,9 +8,14 @@
 
 @title{Working with Pixels — Build a Two-Ink Image Processor}
 
-@section{The Finished Image Study}
+@section[#:tag "finished-result"]{The Finished Image Study}
 
-@(pixel-study-pict)
+@(tutorial-figure
+   (string-append
+    "Three snapshots show the source image, its navy-to-gold recoloring, and a cyan "
+    "rectangle written into the recolored image. The background checkerboard reveals "
+    "preserved transparency.")
+   (pixel-study-pict))
 
 This program draws a small source image, maps its colors between two inks, and
 stamps a rectangle directly into a selected pixel region. Here, the two inks
@@ -39,7 +44,11 @@ functions draw into that memory:
 (define original (raster-buffer->image buffer))
 ]
 
-@(source-pict)
+@(tutorial-figure
+   (string-append
+    "The source image has a gradient, a white circle, and a dark rounded rectangle. A "
+    "transparent gap separates the main image from a translucent orange strip.")
+   (source-pict))
 
 The source is 192 by 128 pixels, shown here at twice its size with nearest
 sampling over a checkerboard. The lower orange strip is translucent, and
@@ -68,14 +77,22 @@ each row: 12 active bytes and four padding bytes.
 
 @pixels-racketblock+eval[(define tiny (make-tiny-buffer))]
 
-@(tiny-pixel-pict)
+@(tutorial-figure
+   (string-append
+    "Six enlarged pixels form two rows: red, green, blue, then yellow, cyan, magenta. "
+    "Nearest sampling preserves each pixel as a solid square.")
+   (tiny-pixel-pict))
 
 The actual six-pixel image is enlarged 48 times with nearest sampling. The
-constructor's input contains two tight 12-byte rows; the upload's
+constructor's input contains two tight 12-byte rows; the write's
 @racket[#:row-bytes 12] describes that input, not the destination buffer.
 Skia copies the pixels into the buffer's 16-byte rows and leaves the padding alone.
 
-@(tiny-layout-pict)
+@(tutorial-figure
+   (string-append
+    "Each storage row has three RGBA pixels occupying 12 bytes followed by four padding "
+    "bytes. Row starts are byte 0 and byte 16; padding is not a fourth pixel.")
+   (tiny-layout-pict))
 
 Each cell shows one byte read from the actual buffer storage. The second row
 starts at byte 16, not byte 12. The four gold cells in each row are padding,
@@ -114,7 +131,7 @@ tiny example makes that distinction testable:
 (bytes->list (subbytes (raster-buffer->rgba-bytes tiny) 0 4))
 ]
 
-The buffer's first pixel is still opaque red. The upload at a later step will
+The buffer's first pixel is still opaque red. A later write will
 make our processed byte string affect the buffer explicitly.
 
 Stored RGB channels are multiplied by alpha. Check both representations of
@@ -162,7 +179,7 @@ function returns new bytes and leaves its input unchanged.
 
 @section{Write the Result Back}
 
-The upload replaces active pixels without treating source data as padded rows:
+The write copies the new samples into the CPU buffer, replacing its active pixels:
 
 @pixels-racketblock+eval[
 (define transformed-pixels (duotone-rgba source-pixels))
@@ -170,12 +187,16 @@ The upload replaces active pixels without treating source data as padded rows:
 (define processed (raster-buffer->image buffer))
 ]
 
-@(processed-pict)
+@(tutorial-figure
+   (string-append
+    "The processed image maps source colors between navy and gold. The transparent gap "
+    "and translucent bottom strip remain visible over the checkerboard.")
+   (processed-pict))
 
 This snapshot is shown at twice its pixel size over the same checkerboard.
 The transparent gap and translucent strip remain visible after recoloring.
-The upload uses straight RGBA input by default and premultiplies it once for storage. It does
-not fill or expose writable row padding. The @racket[process-buffer!] helper
+The write accepts straight RGBA input by default and premultiplies it once for
+storage. It leaves row padding unchanged. The @racket[process-buffer!] helper
 combines this read-transform-write sequence:
 
 @codeblock[(source-definition program-source 'process-buffer!)]
@@ -207,7 +228,12 @@ request a writable borrow:
 (define stamped (raster-buffer->image buffer))
 ]
 
-@(stamped-pict)
+@(tutorial-figure
+   (string-append
+    "A cyan rectangle replaces source pixels from (145, 100) to (177, 120), excluding the "
+    "right and bottom edges. The surrounding outline marks the region; other pixels keep "
+    "their processed colors.")
+   (stamped-pict))
 
 The cyan rectangle replaces the selected pixels; it is not a translucent
 paint composited over the previous image. The @racket[pixmap-fill!] function
@@ -225,7 +251,11 @@ writes already performed are not rolled back when a callback raises an error.
 
 The finished study places three independent snapshots side by side:
 
-@(pixel-study-pict)
+@(tutorial-figure
+   (string-append
+    "The original, recolored, and stamped snapshots remain distinct after later writes. "
+    "The checkerboard is drawn behind the images and is not stored in their pixels.")
+   (pixel-study-pict))
 
 The complete program saves @filepath{pixel-study.png} and the processed
 @filepath{duotone.png}. The duotone file retains its alpha channel; the checkerboard
@@ -247,9 +277,8 @@ new snapshot with an older one to confirm that only the new snapshot changes.
 
 @section[#:tag "next-steps"]{Where to Go From Here}
 
-The example follows a small CPU image-processing algorithm, not a performance benchmark.
-Built-in filters and GPU effects may suit other workloads. A GPU image needs explicit
-readback before it can use this CPU-buffer route.
+Built-in color filters and GPU effects are alternatives to a CPU pixel loop.
+A GPU image needs an explicit readback before this CPU-buffer processing step.
 
 @tutorial-next["pixels"]
 

@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
           (for-label racket skia))
@@ -8,9 +8,14 @@
 
 @title{Color Spaces — Give Pixel Values Their Meaning}
 
-@section{The Finished Color Study}
+@section[#:tag "finished-result"]{The Finished Color Study}
 
-@(color-study-pict)
+@(tutorial-figure
+   (string-append
+    "The same RGB sample 128 is interpreted as sRGB on the left and linear sRGB on the "
+    "right. After conversion for display, the right swatch is lighter. The ramps compare "
+    "equal encoded and equal linear-light steps.")
+   (color-study-pict))
 
 Both large swatches started with RGB bytes (128, 128, 128). The left source was
 declared to be sRGB; the right source was declared to be linear sRGB. The right
@@ -28,10 +33,15 @@ to calibrate a monitor or make every display look identical. Save the complete
 
 @section{Keep the Numbers Separate from Their Meaning}
 
-A color space supplies an interpretation for RGB numbers. Linear sRGB and sRGB
-use the same primaries, but different transfer functions. Linear values describe
-relative light intensity; ordinary sRGB samples use a nonlinear encoding.
-Half the encoded range is therefore not half the linear-light intensity.
+A color space supplies an interpretation for RGB numbers. Its @emph{primaries}
+are the reference red, green, and blue colors. A @emph{transfer function} maps
+between stored channel values and linear-light values. A @emph{tagged image}
+carries color-space information that identifies how to interpret its samples.
+
+Linear sRGB and sRGB use the same primaries but different transfer functions.
+Linear values describe relative light intensity; ordinary sRGB samples use a
+nonlinear encoding. Half the encoded range is therefore not half the
+linear-light intensity.
 
 Create one space of each kind:
 
@@ -77,12 +87,15 @@ The converted RGB channels are approximately 188 rather than 128. The source
 image is unchanged, and the converted image is independently owned and tagged
 with the destination space. Alpha remains 255.
 
-@(gray-pair-pict)
+@(tutorial-figure
+   (string-append
+    "The sRGB sample remains near 128. The linear sample converted to sRGB is near 188, "
+    "giving a lighter gray although the source numbers were identical.")
+   (gray-pair-pict))
 
-These are the actual one-pixel images, enlarged to 140 by 140 logical display
-units with nearest sampling. Both
-previews use sRGB samples: the right one uses the converted image. The visual
-difference is not created by painting a second, hand-chosen gray.
+The one-pixel images are enlarged to 140 by 140 logical display units with
+nearest sampling. Both previews use sRGB samples; the right one uses the
+converted image.
 
 Conversion aims to preserve the represented color by changing its numerical
 encoding. Attaching a different tag to unchanged samples instead changes their
@@ -110,7 +123,12 @@ For comparison, deliberately attach the wrong tag to the original bytes:
   (rgba-bytes->image 1 1 (image->rgba-bytes linear-gray) #:color-space srgb))
 ]
 
-@(conversion-pict)
+@(tutorial-figure
+   (string-append
+    "Automatic conversion during drawing and explicit conversion give the same lighter "
+    "gray. Mislabeling the unchanged linear samples as sRGB gives the darker third "
+    "swatch.")
+   (conversion-pict))
 
 All three panels are drawn into sRGB surfaces. The first uses the tagged linear
 source and lets drawing perform the conversion. The second uses the explicitly
@@ -118,10 +136,8 @@ converted image; it represents the same gray. The third takes the original
 linear bytes and incorrectly declares them to be sRGB. It is darker because
 changing a tag was substituted for converting the samples.
 
-The captions identify the source samples and tags, not just the output route.
-All three receiving surfaces are sRGB. The two valid routes should agree
-visually, allowing for rounding differences, despite their different source
-bytes. Conversion preserves the intended color; it is not a brightness effect.
+The two valid routes should agree visually, allowing for rounding differences.
+Conversion preserves the intended color; it is not a brightness effect.
 
 @section{Compare Two Gray Ramps}
 
@@ -139,11 +155,17 @@ copy before displaying it:
 (define converted-ramp (image-convert-color-space linear-ramp srgb))
 ]
 
-@(ramp-pair-pict)
+@(tutorial-figure
+   (string-append
+    "Both ramps mark source sample 128. It remains 128 in the encoded ramp but converts "
+    "to about 188 in the linear-light ramp, whose stored sRGB steps are unequal.")
+   (ramp-pair-pict))
 
 Each source is 256 by 1 pixel, stretched to a 560-by-42 strip with nearest
-sampling. The coral tick marks source sample 128 in each ramp. Its labels read
-the actual output bytes, rather than assuming a hard-coded midpoint: @colors-interaction[
+sampling. The coral tick marks source sample 128 in each ramp. Inspect the
+output bytes at that position:
+
+@colors-interaction[
 (bytes->list (subbytes (image->rgba-bytes encoded-ramp) (* 4 128) (* 4 129)))
 (bytes->list (subbytes (image->rgba-bytes converted-ramp) (* 4 128) (* 4 129)))
 ]
@@ -255,10 +277,14 @@ have already been normalized to that same space:
           #:exists 'replace)
 ]
 
-@(color-study-pict)
+@(tutorial-figure
+   (string-append
+    "The finished color study pairs the two gray interpretations with their channel "
+    "labels and gray ramps. A matching color-space profile describes the converted "
+    "samples.")
+   (color-study-pict))
 
-The numerical labels are read from the actual converted pixels. They are not
-independent color constants. The finished program also writes the small
+The labels show the converted channel values. The finished program also writes the small
 @filepath{converted-gray.png} and a @filepath{study-srgb.icc} profile.
 
 @section[#:tag "try-it"]{Try It}
