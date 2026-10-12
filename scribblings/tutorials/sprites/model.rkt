@@ -12,17 +12,31 @@
 (define (make-ball-world [count 30])
   (unless (and (exact-positive-integer? count) (<= count 2000))
     (raise-argument-error 'make-ball-world "integer from 1 through 2000" count))
+  ;; Keep an already-valid position unchanged, including its exactness.
+  (define (fit-position position low high)
+    (cond
+      [(< position low) low]
+      [(> position high) high]
+      [else position]))
   ;; Reproducible arithmetic gives each ball a different position and velocity.
   (ball-world
    (for/list ([index (in-range count)])
-     (ball (+ 60 (modulo (* index 137) 680))
-           (+ 104 (modulo (* index 89) 320))
+     (define scale (+ 0.65 (* 0.1 (modulo index 7))))
+     (define radius (* 24 scale))
+     ;; Preserve the original layout where it already fits the collision envelope.
+     (define x
+       (fit-position (+ 60 (modulo (* index 137) 680))
+                     (+ 18 radius) (- scene-width 18 radius)))
+     (define y
+       (fit-position (+ 104 (modulo (* index 89) 320))
+                     (+ 78 radius) (- scene-height 18 radius)))
+     (ball x y
            (* (if (even? index) 1 -1) (+ 72 (modulo (* index 31) 110)))
            (* (if (zero? (modulo index 3)) -1 1) (+ 55 (modulo (* index 47) 90)))
            (modulo (* index 37) 360)
            (- (modulo (* index 71) 150) 75)
            (modulo index 8)
-           (+ 0.65 (* 0.1 (modulo index 7)))))
+           scale))
    0))
 
 ;; Reflect the unfolded position into the interval. This also handles an update

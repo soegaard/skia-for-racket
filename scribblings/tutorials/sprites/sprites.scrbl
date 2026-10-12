@@ -38,9 +38,11 @@ resets the balls without uploading again. Use @tt{--renderer raster} for the
 explicit CPU version, or add @tt{--count 300} to draw more balls.
 
 If GPU drawing is new to you, the
-@hyperlink["../gpu/gpu.html"]{GPU: Render One Scene on CPU and Metal}
+@seclink[#:doc '(lib "skia/scribblings/tutorials/gpu/gpu.scrbl")
+          "top"]{GPU Rendering — Render the Same Scene on the GPU}
 tutorial introduces GPU canvases. For frame scheduling and GUI controls, see
-@hyperlink["../animation/animation.html"]{Animation: Orbiting Lights in a Window}.
+@seclink[#:doc '(lib "skia/scribblings/tutorials/animation/animation.scrbl")
+          "top"]{Animation: Orbiting Lights in a Window}.
 
 @section{Look Inside the Atlas}
 
@@ -142,7 +144,8 @@ would defeat reuse. The borrowed canvas, in contrast, is used only during
 its frame callback and must not be retained.
 
 The following helper retains the uploaded image across frames and is also used
-by @hyperlink["../squadron/squadron.html"]{Star Squadron}:
+by @seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
+          "top"]{Star Squadron}:
 
 @codeblock[(source-definition assets-source 'sprite-texture-for-frame!)]
 
@@ -281,7 +284,8 @@ racket scribblings/tutorials/sprites/balls.rkt --snapshot balls.png
 
 @subsection{The Shared Window}
 
-The @hyperlink["../squadron/squadron.html"]{Star Squadron} game reuses this
+The @seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
+          "top"]{Star Squadron} game reuses this
 window host. Its construction, input, timing, and teardown are separate from
 the application's drawing and simulation.
 
@@ -299,7 +303,8 @@ requires a new atlas; changing a placement does not.
 
 @section{Where to Go From Here}
 
-The @hyperlink["../squadron/squadron.html"]{Star Squadron} game reuses the same
+The @seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
+          "top"]{Star Squadron} game reuses the same
 atlas lifetime and batching approach in a playable arcade shooter.
 It changes the game model and the source rectangles, not the texture-management
 strategy. Atlas packing tools, mipmap-safe borders, texture streaming, and

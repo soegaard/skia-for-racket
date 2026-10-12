@@ -99,24 +99,43 @@
     [(2) (values (- x 46) (+ y 30))]
     [else (values (+ x 15) (- y 15))]))
 
-(define (draw-points canvas points selected)
+;; Bounds are the measured ink offsets and size relative to a text baseline.
+;; Reserve space for the fixed header (through y = 88) and the footer.
+;; A client area too small for a complete label returns #f, #f instead of clipping it.
+(define (fit-label-origin x y bx by bw bh width height)
+  (define left 8)
+  (define right (- width 8))
+  (define top 88)
+  (define bottom (- height 40))
+  (cond
+    [(or (> bw (- right left)) (> bh (- bottom top))) (values #f #f)]
+    [else
+     (values (min (- right bx bw) (max (- left bx) x))
+             (min (- bottom by bh) (max (- top by) y)))]))
+
+(define (draw-points canvas points selected
+                     [width editor-width] [height editor-height])
   (for ([point (in-list points)] [index (in-naturals)])
     (define x (control-point-x point))
     (define y (control-point-y point))
     (define endpoint? (or (= index 0) (= index 3)))
-    (define-values (label-x label-y)
+    (define label (format "P~a" index))
+    (define-values (preferred-x preferred-y)
       (control-point-label-position point index))
+    (define-values (bx by bw bh) (simple-text-bounds label-font label))
+    (define-values (label-x label-y)
+      (fit-label-origin preferred-x preferred-y bx by bw bh width height))
     (when (equal? selected index)
       (draw-circle canvas x y 15 selected-paint))
     (draw-circle canvas x y marker-radius (if endpoint? endpoint-paint handle-paint))
-    (draw-simple-text canvas (format "P~a" index)
-                      label-x label-y label-font title-paint)))
+    (when label-x
+      (draw-simple-text canvas label label-x label-y label-font title-paint))))
 
 (define (draw-editor canvas points width height [selected #f])
   (draw-background canvas width height)
   (draw-guides canvas points)
   (draw-curve canvas points)
-  (draw-points canvas points selected)
+  (draw-points canvas points selected width height)
   (draw-simple-text canvas "BEZIER WORKSHOP" 28 42 title-font title-paint)
   (draw-simple-text canvas "Amber: endpoints   /   Cyan: control handles"
                     29 74 label-font muted-paint)
@@ -160,3 +179,48 @@
    '(502 138))
   (check-equal? (hit-control-point initial-control-points 213 94) 1)
   (check-false (hit-control-point initial-control-points 214 94)))
+
+(module+ test
+  (for* ([size '((760 480) (320 240) (80 170) (24 110))]
+         [index (in-range 4)]
+         [x (list 16 (- (first size) 16))]
+         [y (list 16 (- (second size) 16))])
+    (define point (control-point x y))
+    (define-values (preferred-x preferred-y) (control-point-label-position point index))
+    (define-values (bx by bw bh) (simple-text-bounds label-font (format "P~a" index)))
+    (define-values (label-x label-y)
+      (fit-label-origin preferred-x preferred-y bx by bw bh (first size) (second size)))
+    (when label-x
+      (check-true (<= 8 (+ label-x bx)))
+      (check-true (<= (+ label-x bx bw) (- (first size) 8)))
+      (check-true (<= 88 (+ label-y by)))
+      (check-true (<= (+ label-y by bh) (- (second size) 40))))))
+
+(module+ test
+  (require rackunit)
+  ;; Preserve a preferred baseline when all of its ink already fits.
+  (check-equal?
+   (call-with-values (lambda () (fit-label-origin 210 124 1 -12 19 15 760 480)) list)
+   '(210 124))
+  ;; The two audited edge cases, with representative (not native) text bounds.
+  (check-equal?
+   (call-with-values (lambda () (fit-label-origin -30 138 1 -12 19 15 760 480)) list)
+   '(7 138))
+  (check-equal?
+   (call-with-values (lambda () (fit-label-origin 210 494 1 -12 19 15 760 480)) list)
+   '(210 437))
+  (for* ([width '(24 80 320 760)] [height '(110 170 240 480)]
+         [x '(-30 16 135 502 900)] [y '(-15 30 124 494)]
+         [bounds '((1 -12 19 15) (-3 -16 25 20) (0 0 20 20))])
+    (define bx (car bounds))
+    (define by (cadr bounds))
+    (define bw (caddr bounds))
+    (define bh (cadddr bounds))
+    (define-values (label-x label-y) (fit-label-origin x y bx by bw bh width height))
+    (cond
+      [(and (<= bw (- width 16)) (<= bh (- height 128)))
+       (check-not-false label-x)
+       (check-not-false label-y)
+       (check-true (<= 8 (+ label-x bx) (+ label-x bx bw) (- width 8)))
+       (check-true (<= 88 (+ label-y by) (+ label-y by bh) (- height 40)))]
+      [else (check-false label-x) (check-false label-y)])))

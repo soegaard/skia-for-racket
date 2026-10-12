@@ -22,10 +22,16 @@ class Images(HTMLParser):
     def __init__(self):
         super().__init__()
         self.sources = []
+        self.unresolved_markers = 0
+        self.evaluation_error_markers = 0
 
     def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        classes = set((attributes.get('class') or '').split())
+        self.unresolved_markers += int('badlink' in classes)
+        self.evaluation_error_markers += int('RktErr' in classes)
         if tag == 'img':
-            self.sources.append(dict(attrs).get('src', ''))
+            self.sources.append(attributes.get('src', ''))
 
 
 def png_size(path: Path) -> tuple[int, int]:
@@ -58,7 +64,8 @@ def inspect_html(path: Path, expected: int) -> dict:
     if len(figures) != expected:
         raise ValueError(f'{path.name}: expected {expected} figure placements, got {len(figures)}')
     return dict(figures=figures, machine_local_links=source.count('file:///'),
-                unresolved_markers=source.count('RktErr'))
+                unresolved_markers=parser.unresolved_markers,
+                evaluation_error_markers=parser.evaluation_error_markers)
 
 
 def main() -> int:
@@ -101,7 +108,8 @@ def main() -> int:
         shared = [TUTORIALS / 'support' / name for name in
                   ('sprite-assets.rkt', 'sprite-window.rkt', 'sprite-figures.rkt', 'sprite-math.rkt')]
         run('compile', [racket, '-l', 'raco', '--', 'make', *modules, *map(str, shared)])
-        tests = [TUTORIALS / 'support/sprite-math.rkt']
+        tests = [TUTORIALS / 'support/sprite-math.rkt',
+                 TUTORIALS / 'sprites/initial-bounds-test.rkt']
         tests += [TUTORIALS / name / 'model-test.rkt' for name in ('sprites', 'squadron')]
         run('pure-tests', [racket, '-l', 'raco', '--', 'test', *map(str, tests)])
         tests = [TUTORIALS / name / 'native-test.rkt' for name in ('sprites', 'squadron')]

@@ -207,18 +207,36 @@ fonts when the selected typeface lacks a character.
 
 For multilingual text, font selection is therefore a separate step.
 
-A font manager can find a typeface containing a particular character:
+A font manager can find a typeface containing a representative character.
+The result can be false, and matching one character does not prove that the
+font covers the complete sample. This helper checks both conditions before
+shaping. A missing font produces a message asking you to install a suitable
+font, rather than silently using an unrelated default face:
+
+@shaping-racketblock+eval[
+(define (require-script-face manager representative sample language
+                             #:match [match font-manager-match-character])
+  (define face (match manager representative #:languages (list language)))
+  (unless face
+    (error 'require-script-face
+           "No font found for language ~a. Install a font covering ~s and restart."
+           language sample))
+  (define font (make-font face))
+  (unless (for/and ([glyph (in-vector (font-text->glyphs font sample))])
+            (positive? glyph))
+    (error 'require-script-face
+           "The selected font lacks characters in ~s. Install a font for language ~a and restart."
+           sample language))
+  face)
+]
 
 @shaping-racketblock+eval[
 (define font-manager
   (default-font-manager))
 
+(define arabic-sample "مرحبا بالعالم")
 (define arabic-face
-  (or (font-manager-match-character
-       font-manager
-       #\م
-       #:languages '("ar"))
-      (make-typeface)))
+  (require-script-face font-manager #\م arabic-sample "ar"))
 
 (define arabic-font
   (make-font arabic-face #:size 54))
@@ -316,12 +334,9 @@ Hebrew uses a different script but the same single-run shaping pattern.
 First select a suitable face and create a shaper:
 
 @shaping-racketblock+eval[
+(define hebrew-sample "שלום עולם")
 (define hebrew-face
-  (or (font-manager-match-character
-       font-manager
-       #\ש
-       #:languages '("he"))
-      (make-typeface)))
+  (require-script-face font-manager #\ש hebrew-sample "he"))
 
 (define hebrew-font
   (make-font hebrew-face #:size 50))
@@ -466,7 +481,7 @@ Each language row shapes its own run:
     (make-paint #:color orange-color))
   (define run
     (shape-text arabic-shaper
-                "مرحبا بالعالم"
+                arabic-sample
                 #:direction 'rtl
                 #:script 'arab
                 #:language "ar"))
@@ -488,7 +503,7 @@ Each language row shapes its own run:
     (make-paint #:color teal-color))
   (define run
     (shape-text hebrew-shaper
-                "שלום עולם"
+                hebrew-sample
                 #:direction 'rtl
                 #:script 'hebr
                 #:language "he"))

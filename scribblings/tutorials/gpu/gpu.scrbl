@@ -9,9 +9,11 @@
                      skia
                      skia/gpu
                      skia/gpu-egl
-                     skia/gpu-racket-gl))
+                     skia/gpu-racket-gl
+                     (only-in racket/gui/base canvas%)))
 
 @(define-runtime-path scene-source "scene.rkt")
+@(define-runtime-path linux-source "linux-opengl.rkt")
 
 @section{The Finished Comparison}
 
@@ -210,57 +212,18 @@ actually needed. Their lifetime rules are covered in the Guide.
 
 @section[#:tag "linux-opengl-host"]{Linux: A Complete OpenGL Host Example}
 
-Place this code in a @racketmodname[racket] file alongside @filepath{scene.rkt}.
+Save this program as @filepath{linux-opengl.rkt} alongside @filepath{scene.rkt}.
 It runs in a Linux graphical session with a working OpenGL/GLX context. The
 small Racket GUI window supplies the OpenGL host; Skia draws into a separate
 760-by-420 offscreen GPU surface.
 
-@racketmod[
-racket
-(require racket/class
-         racket/gui/base
-         (only-in racket/draw gl-config%)
-         skia
-         skia/gpu
-         skia/gpu-racket-gl
-         "scene.rkt")
-
-(define gl-config (new gl-config%))
-(send gl-config set-legacy? #f)
-
-(define gl-frame
-  (new frame% [label "OpenGL host"]
-       [width 320] [height 240]))
-(define gl-canvas
-  (new canvas% [parent gl-frame]
-       [style '(gl no-autoclear)]
-       [gl-config gl-config]
-       [paint-callback (lambda (_canvas _dc) (void))]))
-(send gl-frame show #t)
-(sleep/yield 0.08)
-
-(define gl-context
-  (send (send gl-canvas get-dc) get-gl-context))
-(unless (and gl-context (send gl-context ok?))
-  (error 'linux-gpu-example "OpenGL context unavailable"))
-(define gl-provider
-  (make-racket-gl-provider gl-context))
-
-(define linux-image
-  (render-gpu->raster-image
-   scene-width scene-height draw-scene
-   #:backend 'opengl
-   #:provider gl-provider
-   #:background scene-background))
-
-(save-image linux-image "scene-opengl.png" 'png #:exists 'replace)
-(send gl-frame show #f)
-]
+@codeblock[(file->string linux-source)]
 
 The @racket[gl-provider] value borrows @racket[gl-context]; it cannot create
 an OpenGL context on its own. Keep the frame, canvas, and context alive until
 after @racket[render-gpu->raster-image] returns. The helper closes its Skia
-context but does not destroy the GUI host. The short @racket[sleep/yield]
+context but does not destroy the GUI host. The program hides the host window
+when rendering finishes or raises an exception. The short @racket[sleep/yield]
 allows a GUI event cycle before the context check; the check still fails
 explicitly if an OpenGL host is unavailable.
 

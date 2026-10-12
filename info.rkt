@@ -6,3 +6,36 @@
 (define license 'MIT)
 (define test-omit-paths '("tests/gpu-diagnostics-gpu-test.rkt" "tests/gpu-context-control-gpu-test.rkt" "tests/live-ffi-probe" "tests/advanced-canvas-gpu-test.rkt" "tests/gpu-format-gpu-test.rkt" "tests/image-operation-gpu-test.rkt" "tests/float-pixel-gpu-test.rkt" "tests/integer-pixel-gpu-test.rkt" "tests/text-blob-gpu-test.rkt" "tests/font-query-gpu-test.rkt" "tests/geometry-completion-gpu-test.rkt" "tests/effects-gpu-test.rkt" "tests/gpu-frame-target-native-test.rkt" "render-canvas.rkt" "tests/render-canvas-gui-test.rkt" "examples" "tools" "native" "gpu-gui.rkt" "gpu-canvas.rkt" "tests/gpu-dc-gui-test.rkt" "tests/gpu-dc-native-test.rkt" "canvas.rkt" "tests/canvas-gui-test.rkt" "tests/canvas-text-load-order.rkt"))
 (define compile-omit-paths '("native"))
+
+;; Manuals use Scribble plus reference targets from Racket and the GUI libraries.
+(define build-deps '("scribble-lib" "racket-doc" "draw-doc" "gui-doc"))
+
+;; Keep one single-page manual per tutorial, with globally unique output names.
+;; The landing page appears in the documentation index; individual lessons stay searchable.
+(define scribblings
+  '(("scribblings/tutorials/index.scrbl" () (gui-library) "skia-tutorials")
+    ("scribblings/quick/quick.scrbl" () (omit-start) "skia-tutorial-quick")
+    ("scribblings/tutorials/clock/clock.scrbl" () (omit-start) "skia-tutorial-clock")
+    ("scribblings/tutorials/logo/logo.scrbl" () (omit-start) "skia-tutorial-logo")
+    ("scribblings/tutorials/images/images.scrbl" () (omit-start) "skia-tutorial-images")
+    ("scribblings/tutorials/poster/poster.scrbl" () (omit-start) "skia-tutorial-poster")
+    ("scribblings/tutorials/text/text.scrbl" () (omit-start) "skia-tutorial-text")
+    ("scribblings/tutorials/shaping/shaping.scrbl" () (omit-start) "skia-tutorial-shaping")
+    ("scribblings/tutorials/paragraph/paragraph.scrbl" () (omit-start) "skia-tutorial-paragraph")
+    ("scribblings/tutorials/pdf-svg/pdf-svg.scrbl" () (omit-start) "skia-tutorial-pdf-svg")
+    ("scribblings/tutorials/effects/effects.scrbl" () (omit-start) "skia-tutorial-effects")
+    ("scribblings/tutorials/pictures/pictures.scrbl" () (omit-start) "skia-tutorial-pictures")
+    ("scribblings/tutorials/vector-raster/vector-raster.scrbl"
+     () (omit-start) "skia-tutorial-vector-raster")
+    ("scribblings/tutorials/gpu/gpu.scrbl" () (omit-start) "skia-tutorial-gpu")
+    ("scribblings/tutorials/animation/animation.scrbl" () (omit-start) "skia-tutorial-animation")
+    ("scribblings/tutorials/interaction/interaction.scrbl"
+     () (omit-start) "skia-tutorial-interaction")
+    ("scribblings/tutorials/navigation/navigation.scrbl" () (omit-start) "skia-tutorial-navigation")
+    ("scribblings/tutorials/shaders/shaders.scrbl" () (omit-start) "skia-tutorial-shaders")
+    ("scribblings/tutorials/pixels/pixels.scrbl" () (omit-start) "skia-tutorial-pixels")
+    ("scribblings/tutorials/color-spaces/color-spaces.scrbl"
+     () (omit-start) "skia-tutorial-color-spaces")
+    ("scribblings/tutorials/path-ops/path-ops.scrbl" () (omit-start) "skia-tutorial-path-ops")
+    ("scribblings/tutorials/sprites/sprites.scrbl" () (omit-start) "skia-tutorial-sprites")
+    ("scribblings/tutorials/squadron/squadron.scrbl" () (omit-start) "skia-tutorial-squadron")))

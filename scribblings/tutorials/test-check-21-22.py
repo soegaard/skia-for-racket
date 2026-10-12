@@ -68,7 +68,43 @@ class Checks(unittest.TestCase):
                                                 '<span class="RktErr">x</span>'
                                                 '<img src="pict.png">'), 1)
         self.assertEqual(result['machine_local_links'], 1)
+        self.assertEqual(result['unresolved_markers'], 0)
+        self.assertEqual(result['evaluation_error_markers'], 1)
+
+    def test_unresolved_reference_is_not_an_evaluation_error(self):
+        self.png()
+        result = checker.inspect_html(self.html('<span class="badlink">x</span>'
+                                                '<img src="pict.png">'), 1)
         self.assertEqual(result['unresolved_markers'], 1)
+        self.assertEqual(result['evaluation_error_markers'], 0)
+
+    def test_class_tokens_count_elements_not_substrings(self):
+        self.png()
+        result = checker.inspect_html(self.html(
+            '<span class="other badlink badlink extra">x</span>'
+            '<span class="other RktErr extra">y</span>'
+            '<span class="not-badlink RktErr-like">z</span>'
+            '<!-- badlink RktErr -->'
+            '<script>const text = "badlink RktErr";</script>'
+            '<p>badlink RktErr</p><img src="pict.png">'), 1)
+        self.assertEqual(result['unresolved_markers'], 1)
+        self.assertEqual(result['evaluation_error_markers'], 1)
+
+    def test_both_classes_and_self_closing_elements(self):
+        self.png()
+        result = checker.inspect_html(self.html(
+            '<span class="badlink RktErr"/>'
+            '<span class="badlink">second occurrence</span>'
+            '<img src="pict.png"/>'), 1)
+        self.assertEqual(result['unresolved_markers'], 2)
+        self.assertEqual(result['evaluation_error_markers'], 1)
+
+    def test_missing_or_empty_class(self):
+        self.png()
+        result = checker.inspect_html(self.html(
+            '<span class>x</span><span class="">y</span><img src="pict.png">'), 1)
+        self.assertEqual(result['unresolved_markers'], 0)
+        self.assertEqual(result['evaluation_error_markers'], 0)
 
 
 if __name__ == '__main__':

@@ -17,79 +17,101 @@ reference alongside them.
 @section{Start Here}
 
 @itemlist[
- @item{@hyperlink["../quick/quick.html"]{Quick: An Introduction to Skia with Pictures} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/quick/quick.scrbl")
+          "top"]{Quick: An Introduction to Skia with Pictures} —
        create a surface, draw simple geometry, use paints, and save an image.}
- @item{@hyperlink["../clock/clock.html"]{Transforms: Make an Analog Clock} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/clock/clock.scrbl")
+          "top"]{Transforms and Coordinate Systems — Build a Clock} —
        translate, rotate, scale, and scope canvas state.}
- @item{@hyperlink["../logo/logo.html"]{Paths: Make a Geometric Logo} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/logo/logo.scrbl")
+          "top"]{Paths and Geometry — Draw a Logo} —
        construct paths from lines and curves, then fill and stroke them.}
 ]
 
 @section{Paint, Images, and Composition}
 
 @itemlist[
- @item{@hyperlink["../images/images.html"]{Images: Make a Contact Sheet} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/images/images.scrbl")
+          "top"]{Images — Build a Contact Sheet} —
        decode images, inspect their dimensions, crop, scale, and sample them.}
- @item{@hyperlink["../poster/poster.html"]{Paints, Gradients, and Shaders: Make a Poster} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/poster/poster.scrbl")
+          "top"]{Paints, Gradients, and Shaders — Make a Poster} —
        combine colors, transparency, gradients, image shaders, and blend shaders.}
- @item{@hyperlink["../effects/effects.html"]{Effects and Filters: Make a Card with Shadows} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/effects/effects.scrbl")
+          "top"]{Effects and Filters — Make a Card with Shadows} —
        compare drop shadows, image blur, and mask blur while keeping geometry clear.}
- @item{@hyperlink["../pictures/pictures.html"]{Reusable Drawings: Record and Replay a Picture} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/pictures/pictures.scrbl")
+          "top"]{Reusable Drawings — Record and Replay a Picture} —
        record drawing operations once and replay them with different placements and transforms.}
 ]
 
 @section{Text}
 
 @itemlist[
- @item{@hyperlink["../text/text.html"]{Text and Typography: Make a Type Specimen} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/text/text.scrbl")
+          "top"]{Text and Typography — Make a Type Specimen} —
        position simple text from an origin on a baseline and use measurements and metrics.}
- @item{@hyperlink["../shaping/shaping.html"]{Shaping and Multilingual Text: Make a Language Sampler} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/shaping/shaping.scrbl")
+          "top"]{Shaping and Multilingual Text — Make a Language Sampler} —
        shape text, choose font fallback, handle right-to-left runs, and inspect glyph placement.}
- @item{@hyperlink["../paragraph/paragraph.html"]{Paragraph Layout: Make a Multilingual Article Card} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/paragraph/paragraph.scrbl")
+          "top"]{Paragraph Layout — Make a Multilingual Article Card} —
        wrap mixed-direction text into measured lines with paragraph-level layout.}
 ]
 
 @section{Documents and Rendering Boundaries}
 
 @itemlist[
- @item{@hyperlink["../pdf-svg/pdf-svg.html"]{PDF and SVG: Make a Printable Diagram} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/pdf-svg/pdf-svg.scrbl")
+          "top"]{PDF and SVG — Make a Printable Diagram} —
        draw in physical units, add page margins, and export the same drawing to vector documents.}
- @item{@hyperlink["../vector-raster/vector-raster.html"]{Vector Output and Raster Fallbacks: What Stays Vector?} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/vector-raster/vector-raster.scrbl")
+          "top"]{Vector Output and Raster Fallbacks — What Stays Vector?} —
        distinguish vector operations, embedded images, and deliberate bounded raster fallbacks.}
 ]
 
 @section{GPU Rendering and Interaction}
 
 @itemlist[
- @item{@hyperlink["../gpu/gpu.html"]{GPU: Render One Scene on CPU and Metal} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/gpu/gpu.scrbl")
+          "top"]{GPU Rendering — Render the Same Scene on the GPU} —
        reuse one drawing function for CPU and Metal, and return a CPU-owned image after GPU readback.}
- @item{@hyperlink["../animation/animation.html"]{Animation: Orbiting Lights in a Window} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/animation/animation.scrbl")
+          "top"]{Animation — Orbiting Lights in a Window} —
        draw frames from elapsed time, schedule redraws, pause, and select CPU or GPU presentation.}
- @item{@hyperlink["../interaction/interaction.html"]{Interactive Paths: Drag Bézier Control Points} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/interaction/interaction.scrbl")
+          "top"]{Interactive Paths — Drag Bézier Control Points} —
        select and drag control points, update a path, and redraw with CPU or GPU rendering.}
 ]
 
 @section{Further Explorations}
 
 @itemlist[
- @item{@hyperlink["../navigation/navigation.html"]{Zoom and Pan: Navigate an Interactive Canvas} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/navigation/navigation.scrbl")
+          "top"]{Zoom and Pan — Navigate an Interactive Canvas} —
        transform the view, invert pointer coordinates, and keep hit targets usable at every zoom.}
- @item{@hyperlink["../shaders/shaders.html"]{Runtime Shaders: Animate Prismatic Waves in a Window} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/shaders/shaders.scrbl")
+          "top"]{Runtime Shaders — Animate Prismatic Waves in a Window} —
        compile SkSL once, change a phase uniform over time, and display moving bands.}
- @item{@hyperlink["../pixels/pixels.html"]{Working with Pixels: Build a Two-Ink Image Processor} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/pixels/pixels.scrbl")
+          "top"]{Working with Pixels — Build a Two-Ink Image Processor} —
        distinguish mutable buffers, row strides, borrowed views, and independent snapshots.}
- @item{@hyperlink["../color-spaces/color-spaces.html"]{Color Spaces: Give Pixel Values Their Meaning} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/color-spaces/color-spaces.scrbl")
+          "top"]{Color Spaces — Give Pixel Values Their Meaning} —
        declare sample meaning, convert between encodings, and save matching ICC metadata.}
- @item{@hyperlink["../path-ops/path-ops.html"]{Path Operations: Construct a Cutout Badge} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/path-ops/path-ops.scrbl")
+          "top"]{Path Operations — Construct a Cutout Badge} —
        combine filled geometry with union, intersection, difference, exclusive-or, and simplification.}
 ]
 
 @section{Sprite Atlases and Games}
 
 @itemlist[
- @item{@hyperlink["../sprites/sprites.html"]{Sprite Atlases: Animate Bouncing Balls on the GPU} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/sprites/sprites.scrbl")
+          "top"]{Sprite Atlases — Animate Bouncing Balls on the GPU} —
        upload a generated atlas once, retain it across frames, and batch sprite placements.}
- @item{@hyperlink["../squadron/squadron.html"]{Star Squadron: Build a Galaga-Inspired Arcade Game} —
+ @item{@seclink[#:doc '(lib "skia/scribblings/tutorials/squadron/squadron.scrbl")
+          "top"]{Star Squadron — Build a Galaga-Inspired Arcade Game} —
        combine sprite animation, fixed-step simulation, diving enemies, collisions, and scoring.}
 ]
 

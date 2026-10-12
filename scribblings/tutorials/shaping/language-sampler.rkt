@@ -12,18 +12,29 @@
 (define teal-color "#18A999")
 (define orange-color "#F38C42")
 
+(define (require-script-face manager representative sample language
+                             #:match [match font-manager-match-character])
+  (define face (match manager representative #:languages (list language)))
+  (unless face
+    (error 'require-script-face
+           "No font found for language ~a. Install a font covering ~s and restart."
+           language sample))
+  (define font (make-font face))
+  (unless (for/and ([glyph (in-vector (font-text->glyphs font sample))])
+            (positive? glyph))
+    (error 'require-script-face
+           "The selected font lacks characters in ~s. Install a font for language ~a and restart."
+           sample language))
+  face)
+
+(define arabic-sample "مرحبا بالعالم")
+(define hebrew-sample "שלום עולם")
 (define font-manager (default-font-manager))
 (define latin-face (make-typeface))
 (define arabic-face
-  (or (font-manager-match-character
-       font-manager #\م
-       #:languages '("ar"))
-      (make-typeface)))
+  (require-script-face font-manager #\م arabic-sample "ar"))
 (define hebrew-face
-  (or (font-manager-match-character
-       font-manager #\ש
-       #:languages '("he"))
-      (make-typeface)))
+  (require-script-face font-manager #\ש hebrew-sample "he"))
 
 (define latin-font (make-font latin-face #:size 48))
 (define arabic-font (make-font arabic-face #:size 54))
@@ -84,7 +95,7 @@
   (define paint (make-paint #:color orange-color))
   (define run
     (shape-text arabic-shaper
-                "مرحبا بالعالم"
+                arabic-sample
                 #:direction 'rtl
                 #:script 'arab
                 #:language "ar"))
@@ -102,7 +113,7 @@
   (define paint (make-paint #:color teal-color))
   (define run
     (shape-text hebrew-shaper
-                "שלום עולם"
+                hebrew-sample
                 #:direction 'rtl
                 #:script 'hebr
                 #:language "he"))
@@ -154,3 +165,18 @@
   (save-png surface
             "language-sampler.png"
             #:exists 'replace))
+
+(module+ test
+  (require rackunit)
+  ;; Force a missing match without changing the host's installed fonts.
+  (define (missing-match _manager _representative #:languages _languages) #f)
+  (check-exn
+   #rx"Install a font"
+   (lambda ()
+     (require-script-face font-manager #\م arabic-sample "ar" #:match missing-match)))
+  ;; These checks use the actual selected fonts and the complete strings being drawn.
+  (for ([font (in-list (list arabic-font hebrew-font))]
+        [sample (in-list (list arabic-sample hebrew-sample))])
+    (check-true
+     (for/and ([glyph (in-vector (font-text->glyphs font sample))])
+       (positive? glyph)))))

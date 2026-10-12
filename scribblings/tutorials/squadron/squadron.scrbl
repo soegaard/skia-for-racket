@@ -37,9 +37,11 @@ after game over. Click the playfield to return keyboard focus after using a
 control. The Close button and the window's close control both exit the game.
 
 The game builds on the sprite-atlas techniques in
-@hyperlink["../sprites/sprites.html"]{Sprite Atlases: Animate Bouncing Balls on the GPU}.
+@seclink[#:doc '(lib "skia/scribblings/tutorials/sprites/sprites.scrbl")
+          "top"]{Sprite Atlases: Animate Bouncing Balls on the GPU}.
 If drawing into a window and scheduling animation frames are new to you, start
-with @hyperlink["../animation/animation.html"]{Animation: Orbiting Lights in a Window}.
+with @seclink[#:doc '(lib "skia/scribblings/tutorials/animation/animation.scrbl")
+          "top"]{Animation: Orbiting Lights in a Window}.
 
 @section{Give Every Object a Cell}
 
@@ -304,7 +306,8 @@ to CPU rendering. Both modes still require a graphical session to open a window.
 
 The entry point, simulation, artwork, and renderer are separate files. The
 window and GPU texture helpers under @filepath{../support/} are shared with
-the @hyperlink["../sprites/sprites.html"]{Bouncing Balls} example. They are
+the @seclink[#:doc '(lib "skia/scribblings/tutorials/sprites/sprites.scrbl")
+          "top"]{Bouncing Balls} example. They are
 example support code, not part of the Skia API.
 
 The @tt{--snapshot picture.png} option saves one game frame as a PNG without
