@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Paints, Gradients, and Shaders — Make a Poster}
 
@@ -8,13 +9,17 @@
           (for-label racket
                      skia))
 
-This tutorial builds a geometric poster. The shapes stay simple. Most of the
-visual character comes from the paints and shaders used to draw them.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-The main idea is:
+@section[#:tag "finished-result"]{The Finished Poster}
 
-@centered{@bold{Geometry says where to draw. A paint says how to draw it.
-A shader can make the paint vary across coordinates.}}
+@|finished-preview|
+
+The poster uses simple shapes. Gradients, transparency, an image shader, and
+blended shaders give those shapes their colors and patterns.
+
+Geometry determines where drawing appears. The paint and its shader determine
+how that geometry looks.
 
 @tutorial-entry["poster"]
 
@@ -48,9 +53,11 @@ A paint can supply one solid color:
   (draw-rounded-rect canvas 68 260 190 110 28 28 accent))
 ]
 
-@poster-image[
+@(tutorial-figure
+ "A flat-color circle and rounded rectangle appear on the poster's dark background."
+ (poster-image
 (poster-render-pict draw-solid-base)
-]
+))
 
 The circle and rounded rectangle use different geometry but the same accent
 paint. The paint can be reused because the geometry and its appearance are
@@ -82,9 +89,14 @@ are sampled along that line.
 The @racket[#:positions] argument says where the color stops lie between the
 two endpoints:
 
-@poster-image[
+@(tutorial-figure
+ (string-append
+   "Gradient stops lie at 0, 3/5, and 1 between the endpoints; the middle stop is "
+   "below halfway."
+)
+ (poster-image
 (poster-gradient-domain-pict)
-]
+))
 
 The three guide lines in the diagram mark positions 0, 3/5, and 1. The middle
 color therefore appears three fifths of the way from the first endpoint to the
@@ -94,14 +106,19 @@ The stop positions do not move the gradient endpoints. They only control where
 the colors fall between those endpoints. Without @racket[#:positions], Skia
 distributes the stops evenly.
 
-@poster-image[
+@(tutorial-figure
+ (string-append
+   "The background now uses a three-stop vertical gradient while the solid circle "
+   "is unchanged."
+)
+ (poster-image
 (poster-render-pict
  (lambda (canvas)
    (define accent
      (make-paint #:color warm-color))
    (draw-background canvas)
    (draw-circle canvas 520 190 145 accent)))
-]
+))
 
 The circle geometry has not changed. Only the paint used for the background has
 changed.
@@ -128,12 +145,14 @@ The first two numbers give the center. The third gives the radius. The final
 color has alpha zero, so the gradient fades into the background near its outer
 edge.
 
-@poster-image[
+@(tutorial-figure
+ "A radial-gradient orb fades from an opaque center to transparency at its edge."
+ (poster-image
 (poster-render-pict
  (lambda (canvas)
    (draw-background canvas)
    (draw-orb canvas)))
-]
+))
 
 @section{Add Transparency}
 
@@ -154,13 +173,15 @@ through 255:
   (draw-rounded-rect canvas 68 220 220 180 32 32 cool-paint))
 ]
 
-@poster-image[
+@(tutorial-figure
+ "Overlapping translucent circles and a rounded rectangle blend with the background."
+ (poster-image
 (poster-render-pict
  (lambda (canvas)
    (draw-background canvas)
    (draw-transparent-shapes canvas)
    (draw-orb canvas)))
-]
+))
 
 Later translucent drawing blends with the colors already on the surface.
 
@@ -172,9 +193,14 @@ happens when Skia samples outside that domain.
 The gradient tile modes are @racket['clamp], @racket['repeat],
 @racket['mirror], and @racket['decal]:
 
-@poster-image[
+@(tutorial-figure
+ (string-append
+   "Gradient tile modes: clamp extends, repeat restarts, mirror reflects, and "
+   "decal becomes transparent."
+)
+ (poster-image
 (poster-tile-modes-pict)
-]
+))
 
 The two gray guide lines in each panel mark the original gradient domain.
 The @racket['clamp] mode extends the edge colors. The @racket['repeat] mode
@@ -198,14 +224,16 @@ The poster uses a short repeated gradient to create a band:
   (draw-rounded-rect canvas 60 418 600 96 20 20 paint))
 ]
 
-@poster-image[
+@(tutorial-figure
+ "A short gradient repeats across a long rounded band on the poster."
+ (poster-image
 (poster-render-pict
  (lambda (canvas)
    (draw-background canvas)
    (draw-transparent-shapes canvas)
    (draw-orb canvas)
    (draw-repeat-band canvas)))
-]
+))
 
 The gradient itself spans only 96 units horizontally. The rounded rectangle is
 600 units wide, so the repeated shader becomes visible several times.
@@ -239,14 +267,14 @@ The checker is a 32 by 32 image. It is shown at four times its natural size
 below. The enlargement uses nearest-neighbor sampling so the original pixel
 boundaries stay sharp.
 
-@poster-image[
+@(tutorial-figure
+ "A translucent 32 by 32 checker image is enlarged fourfold with nearest sampling."
+ (poster-image
 (poster-checker-pict (make-checker-image))
-]
+))
 
-The figure above displays the actual image returned by
-@racket[make-checker-image]. The @racket[surface-snapshot] call captures the
-surface contents at that moment and creates a new immutable image. Later
-drawing on the surface would not change that snapshot.
+The @racket[surface-snapshot] call captures the surface contents as an immutable
+image. Later drawing on the surface does not change the snapshot.
 
 The image can therefore be used independently of the temporary surface. In
 this tutorial, it becomes the source image for an image shader.
@@ -269,7 +297,9 @@ The @racket[#:sampling 'nearest] setting preserves the hard boundaries in the
 small checker image. The image shader supplies the color; the rounded rectangle
 still supplies the geometry.
 
-@poster-image[
+@(tutorial-figure
+ "The checker image repeats across a rounded strip, below the repeated gradient band."
+ (poster-image
 (poster-render-pict
  (lambda (canvas)
    (draw-background canvas)
@@ -277,7 +307,7 @@ still supplies the geometry.
    (draw-orb canvas)
    (draw-repeat-band canvas)
    (draw-pattern-strip canvas)))
-]
+))
 
 @section{Blend Two Shaders}
 
@@ -314,7 +344,9 @@ well for this panel.
 
 The @api-link[] lists the accepted blend modes.
 
-@poster-image[
+@(tutorial-figure
+ "A rounded panel combines a linear gradient and radial glow with the screen blend mode."
+ (poster-image
 (poster-render-pict
  (lambda (canvas)
    (draw-background canvas)
@@ -322,7 +354,7 @@ The @api-link[] lists the accepted blend modes.
    (draw-orb canvas)
    (draw-repeat-band canvas)
    (draw-blended-panel canvas)))
-]
+))
 
 @section{Add the Text}
 
@@ -354,7 +386,9 @@ The poster uses the simple text API introduced in @tutorial-link["quick"]:
 Continue with @tutorial-link["text"] to measure text and choose typefaces.
 The text route then introduces shaping and paragraph layout.
 
-@poster-image[
+@(tutorial-figure
+ "The assembled poster gains its NIGHT / SIGNAL title, subtitle, and small heading."
+ (poster-image
 (poster-render-pict
  (lambda (canvas)
    (draw-background canvas)
@@ -364,7 +398,7 @@ The text route then introduces shaping and paragraph layout.
    (draw-blended-panel canvas)
    (draw-pattern-strip canvas)
    (draw-copy canvas)))
-]
+))
 
 @section{Assemble the Poster}
 
@@ -381,9 +415,15 @@ The complete drawing function is now short:
   (draw-copy canvas))
 ]
 
-@poster-image[
+@(finish-figure
+ (tutorial-figure
+ (string-append
+   "The finished NIGHT / SIGNAL poster combines gradients, translucent shapes, a "
+   "checker strip, and text."
+)
+ (poster-image
 (poster-render-pict draw-poster)
-]
+)))
 
 The poster uses the same simple geometry throughout. Most of the visual changes
 come from changing the paint or the shader rather than changing the shapes.

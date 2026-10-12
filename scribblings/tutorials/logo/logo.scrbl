@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Paths and Geometry — Draw a Logo}
 
@@ -8,12 +9,17 @@
           (for-label racket
                      skia))
 
-This tutorial builds a small geometric logo. The logo starts as a polygon and
-gradually becomes a smooth leaf with a curved cut-out.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-The main idea is simple:
+@section[#:tag "finished-result"]{The Finished Logo}
 
-@centered{@bold{A path describes geometry. A paint describes how Skia draws that geometry.}}
+@|finished-preview|
+
+The leaf logo has smooth sides and a curved cutout. Start with a polygon,
+replace its edges with curves, and use a second contour to cut the hole.
+
+A path describes the geometry. A paint determines how that geometry is filled
+or stroked.
 
 @tutorial-entry["logo"]
 
@@ -55,9 +61,11 @@ The @racket[make-path] function turns the command list into a path:
   (draw-path canvas path paint))
 ]
 
-@logo-image[
+@(tutorial-figure
+ "A filled six-sided polygon is the first rough version of the leaf logo."
+ (logo-image
 (logo-render-pict size size draw-polygon-logo)
-]
+))
 
 The path contains the geometry. The paint contains the color and drawing
 style.
@@ -79,9 +87,11 @@ change.
   (draw-path canvas path outline))
 ]
 
-@logo-image[
+@(tutorial-figure
+ "The same polygon has a filled interior and a separate dark outline."
+ (logo-image
 (logo-render-pict size size draw-filled-and-stroked-logo)
-]
+))
 
 The fill covers the inside of the closed path. The stroke follows the path
 itself.
@@ -90,17 +100,27 @@ The @racket[#:style] argument has three choices. The default @racket['fill]
 fills the inside of a path. The @racket['stroke] style draws along the path.
 The @racket['stroke-and-fill] style does both with one paint.
 
-@logo-image[
+@(tutorial-figure
+ (string-append
+   "Three triangle styles: fill covers the interior, stroke follows the boundary, "
+   "and both combine them."
+)
+ (logo-image
 (logo-style-pict)
-]
+))
 
 A stroke also has a join style where two segments meet. The @racket[#:join]
 argument accepts @racket['miter], @racket['round], and @racket['bevel].
 The default is @racket['miter].
 
-@logo-image[
+@(tutorial-figure
+ (string-append
+   "Three joins at a pointed corner: miter extends it, round curves it, and bevel "
+   "cuts it off."
+)
+ (logo-image
 (logo-join-pict)
-]
+))
 
 A miter extends the outer edges until they meet. A round join rounds the
 corner. A bevel join cuts the corner off. The join style affects stroked
@@ -114,9 +134,14 @@ control point to bend a segment.
 The diagram below shows the first quadratic segment used by the next logo.
 The gray lines connect the start point, the control point, and the endpoint.
 
-@logo-image[
+@(tutorial-figure
+ (string-append
+   "Quadratic curve: a start, one control point off the curve, and an endpoint "
+   "joined by guide lines."
+)
+ (logo-image
 (logo-quadratic-control-pict)
-]
+))
 
 The next path uses four quadratic curves:
 
@@ -139,9 +164,11 @@ The next path uses four quadratic curves:
   (draw-path canvas path outline))
 ]
 
-@logo-image[
+@(tutorial-figure
+ "Four quadratic segments replace the polygon's straight edges with curved sides."
+ (logo-image
 (logo-render-pict size size draw-quadratic-logo)
-]
+))
 
 A @racket['quad] command has a control point followed by its endpoint. The
 curve starts at the current point and bends toward the control point before it
@@ -155,9 +182,14 @@ control over the direction of the curve near each endpoint.
 The diagram below shows one cubic segment from the final logo. The gray lines
 connect the start point, the two control points, and the endpoint.
 
-@logo-image[
+@(tutorial-figure
+ (string-append
+   "Cubic curve: two control points guide the direction near the start and end of "
+   "the segment."
+)
+ (logo-image
 (logo-cubic-control-pict)
-]
+))
 
 The final outer contour needs only two cubic curves:
 
@@ -178,14 +210,19 @@ The final outer contour needs only two cubic curves:
   (draw-path canvas path outline))
 ]
 
-@logo-image[
+@(tutorial-figure
+ (string-append
+   "Two cubic segments form the outer leaf contour, from its top point to its "
+   "bottom and back."
+)
+ (logo-image
 (logo-render-pict size size draw-outer-logo)
-]
+))
 
 The first cubic runs from the top point to the bottom point. The second cubic
 returns to the top on the other side.
 
-@section{Add Another Contour}
+@section{Cut a Hole with a Second Contour}
 
 A path can contain more than one contour. A new @racket['move] command starts
 a new contour without connecting it to the previous one.
@@ -206,11 +243,8 @@ The logo will use a second closed contour for the curved cut-out:
     (close)))
 ]
 
-At this point, the command list contains two closed contours.
-
-@section{Cut a Hole}
-
-A fill rule decides which parts of a path count as inside. The
+The command list now contains two closed contours. A fill rule decides which
+parts of their combined geometry count as inside. The
 @racket[#:fill-rule] argument has two choices: @racket['winding] and
 @racket['even-odd]. The default is @racket['winding].
 
@@ -222,9 +256,14 @@ The even-odd rule uses a different test. Each contour crossing switches
 between outside and inside. An odd number of surrounding contours means
 inside, and an even number means outside.
 
-@logo-image[
+@(tutorial-figure
+ (string-append
+   "Nested contours: winding fills equal directions; reversed winding and even-odd "
+   "leave a hole."
+)
+ (logo-image
 (logo-fill-rule-pict)
-]
+))
 
 The logo uses @racket['even-odd], so its inner contour makes a hole without
 depending on the direction of that contour.
@@ -244,9 +283,12 @@ depending on the direction of that contour.
   (draw-path canvas path outline))
 ]
 
-@logo-image[
+@(finish-figure
+ (tutorial-figure
+ "The finished leaf logo has a curved cutout and a dark stroke around both contours."
+ (logo-image
 (logo-render-pict size size draw-logo)
-]
+)))
 
 The path now describes the complete logo. The inner contour is still geometry.
 The fill rule determines how the two contours combine when Skia fills the

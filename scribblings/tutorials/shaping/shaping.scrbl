@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Shaping and Multilingual Text — Make a Language Sampler}
 
@@ -8,18 +9,19 @@
           (for-label racket
                      skia))
 
-The @tutorial-link["text"] lesson used Skia's simple text API.
-That works when each
-character can be mapped and drawn without context-dependent typography.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-This tutorial adds HarfBuzz shaping. It shapes Latin text with an OpenType
-feature, selects suitable faces for Arabic and Hebrew, shapes right-to-left
-runs, and finishes with a small language sampler.
+@section[#:tag "finished-result"]{The Finished Language Sampler}
 
-The main idea is:
+@|finished-preview|
 
-@centered{@bold{Shaping turns text into positioned glyphs. Drawing places that
-shaped run on the canvas.}}
+The sampler combines Latin, Arabic, and Hebrew text. You will select suitable
+fonts, shape individual runs, inspect their glyph positions, and compare an
+OpenType feature.
+
+Shaping turns a string into positioned glyphs. Drawing places that shaped run
+on the canvas. Mixed-direction paragraphs are a separate step in
+@tutorial-link["paragraph"].
 
 @tutorial-entry["shaping"]
 
@@ -40,7 +42,8 @@ is that text now passes through an explicit shaping step before drawing.
 
 @section{Shape, Then Draw}
 
-The @racket[shape-text] function returns a @racket[shaped-run?]:
+The @racket[shape-text] function returns a shaped run. The
+@racket[shaped-run?] predicate recognizes these values:
 
 @shaping-racketblock+eval[
 (define office-run
@@ -65,9 +68,14 @@ The run can be drawn with @racket[draw-shaped-run]:
                    paint))
 ]
 
-@shaping-image[
+@(tutorial-figure
+ (string-append
+   "The shaped word office is placed at an origin on its baseline; glyph selection "
+   "depends on the font."
+)
+ (shaping-image
 (shaping-render-pict 420 160 draw-office)
-]
+))
 
 The x and y arguments give the origin for the shaped run. The glyph positions
 stored inside the run are relative to that origin.
@@ -135,9 +143,14 @@ final advance as a blue line:
              advance-paint))
 ]
 
-@shaping-image[
+@(tutorial-figure
+ (string-append
+   "Each glyph in Skia has a marked origin; a separate horizontal segment shows "
+   "the total advance."
+)
+ (shaping-image
 (shaping-render-pict 520 190 draw-position-demo)
-]
+))
 
 The dots are glyph origins, not character positions. HarfBuzz can change both
 the number of glyphs and their positions.
@@ -198,9 +211,14 @@ The @racket["liga=0"] feature disables standard ligatures.
                     label-font label-paint))
 ]
 
-@shaping-image[
+@(tutorial-figure
+ (string-append
+   "The word office is shaped with default features and with liga=0; the visible "
+   "difference is font-specific."
+)
+ (shaping-image
 (shaping-render-pict 620 165 draw-feature-demo)
-]
+))
 
 Some fonts will show a clear ligature difference. A font without that feature
 can legitimately produce the same visible result for both runs.
@@ -274,8 +292,9 @@ Right-to-left does not by itself tell us the sign of the x advance. HarfBuzz
 runs can use either sign here, depending on the shaped run. The portable rule
 is to inspect @racket[shaped-run-advance-x].
 
-The following helper computes the drawing origin needed to place the visual run
-against a chosen right edge:
+The following helper places the right endpoint of the run's advance interval
+at a chosen edge. That interval lies between the drawing origin @racket[x] and
+@racket[(+ x advance)]. It is not the rectangle occupied by visible ink:
 
 @shaping-racketblock+eval[
 (define (right-aligned-run-x run right-edge)
@@ -286,12 +305,13 @@ against a chosen right edge:
       (- right-edge advance)))
 ]
 
-When the advance is negative, the drawing origin belongs at the right edge.
-When the advance is positive, subtracting the advance moves the origin left by
-the run width.
+When the advance is negative, the origin is the interval's right endpoint;
+@racket[(+ x advance)] lies to its left. When the advance is positive, the
+origin is the left endpoint, so subtracting the advance places the other
+endpoint at the requested right edge. A zero advance gives a zero-width interval.
 
-The Arabic example can therefore be right-aligned without assuming an advance
-direction:
+The Arabic example can therefore align its advance interval without assuming
+the sign of the advance:
 
 @shaping-racketblock+eval[
 (define (draw-arabic-demo canvas)
@@ -323,14 +343,17 @@ direction:
                    paint))
 ]
 
-@shaping-image[
+@(tutorial-figure
+ "An Arabic run has a marked baseline origin and a right-aligned advance interval."
+ (shaping-image
 (shaping-render-pict 640 175 draw-arabic-demo)
-]
+))
 
-The blue dot is the actual drawing origin. The run is positioned so that its
-horizontal advance ends at the chosen right edge. The canvas itself still uses
-its ordinary coordinate system; the RTL behavior is encoded in the shaped
-glyph order and positions.
+The dot marks the drawing origin. The larger of @racket[x] and
+@racket[(+ x advance)] is the chosen right edge. Glyphs can overhang either
+endpoint, so this is advance alignment, not ink alignment or a clipping rule.
+The canvas keeps its ordinary coordinate system; the shaped glyph order and
+positions carry the right-to-left behavior.
 
 @section{Add Another Right-to-Left Script}
 
@@ -371,9 +394,11 @@ First select a suitable face and create a shaper:
                    paint))
 ]
 
-@shaping-image[
+@(tutorial-figure
+ "A Hebrew run is shaped right-to-left and placed using its measured advance."
+ (shaping-image
 (shaping-render-pict 640 155 draw-hebrew-demo)
-]
+))
 
 The explicit script and direction apply to this run only.
 
@@ -566,13 +591,19 @@ The page is assembled in drawing order:
   (draw-feature-row canvas))
 ]
 
-@shaping-image[
+@(finish-figure
+ (tutorial-figure
+ (string-append
+   "A finished language sampler has Latin, Arabic, and Hebrew rows and a "
+   "standard-ligature comparison."
+)
+ (shaping-image
 (shaping-render-pict
  width height
  draw-sampler
  #:background paper-color
  #:scale 0.60)
-]
+)))
 
 @section{Save the Result}
 
@@ -599,9 +630,9 @@ Try changing the Latin sample from @racket["office"] to another word containing
 @racket["fi"] or @racket["ff"]. Remember that ligature availability is
 font-dependent.
 
-Try changing the Arabic @racket[right-edge] value. The helper should keep the
-whole run aligned to that edge without clipping, regardless of the sign of its
-x advance.
+Try changing the Arabic @racket[right-edge] value. Compare the origin with the
+origin plus the advance: the larger coordinate should equal the chosen edge.
+Look separately for ink that extends beyond that advance interval.
 
 Try inspecting @racket[shaped-run-clusters] for one of the runs. Cluster values
 are UTF-8 byte offsets into the original input, not Racket character indices.

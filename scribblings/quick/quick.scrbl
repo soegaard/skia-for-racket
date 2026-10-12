@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../tutorials/support/reader.rkt")
+@(require "../tutorials/support/reader.rkt"
+          "../tutorials/support/accessible-figures.rkt")
 
 @title{Quick: An Introduction to Skia with Pictures}
 
@@ -8,19 +9,21 @@
           (for-label racket
                      skia))
 
-Skia is a graphics library for Racket. This short tutorial builds one picture
-from simple shapes. The finished picture shows a moonlit lake.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-The tutorial assumes that you already know the basics of Racket. You should
-know how to call a function, define a value, define a function, and use
-@racket[require].
+@section[#:tag "finished-result"]{The Finished Picture}
 
-The definitions build on one another. The complete program appears in
-@filepath{moonlight.rkt}.
+@|finished-preview|
+
+Skia is a graphics library for Racket. This tutorial builds the moonlit lake
+shown above from simple shapes, then saves the same drawing as PNG, PDF, and SVG.
+
+The definitions build on one another. Start with one rectangle and add the
+moon, mountains, cabin, trees, reflection, and title.
 
 @tutorial-entry["quick"]
 
-@section{Ready...}
+@section{Ready: Load Skia}
 
 After installing Skia, start a new Racket program:
 
@@ -32,7 +35,7 @@ racket
 
 This tutorial uses only the public @racketmodname[skia] module.
 
-@section{Set...}
+@section{Set: Choose a Surface Size}
 
 The picture will be 800 pixels wide and 500 pixels high:
 
@@ -48,7 +51,7 @@ The drawing state includes the current transform and clip.
 The @racket[make-surface] function creates a raster surface. The
 @racket[surface-canvas] function returns its canvas.
 
-@section{Go!}
+@section{Go: Draw and Save a Rectangle}
 
 First, fill the picture with a dark blue rectangle:
 
@@ -89,9 +92,11 @@ The @racket[with-skia] form remains useful when native storage should be
 released at a known point, such as for a large resource or resources created
 repeatedly. The @api-link[] describes resource ownership and explicit cleanup.
 
-@skia-image[
+@(tutorial-figure
+ "A dark blue rectangle fills the 800 by 500 canvas: the first sky layer."
+ (skia-image
 (quick-render-pict width height draw-flat-sky)
-]
+))
 
 @section{Add the Moon}
 
@@ -103,9 +108,11 @@ The grid below shows the coordinate system for the 800 by 500 surface. Each
 grid line is 100 units from the next one. The point @tt{(650, 90)} will be the
 center of the moon.
 
-@skia-image[
+@(tutorial-figure
+ "Canvas grid: x increases rightward and y downward; the moon center is (650, 90)."
+ (skia-image
 (quick-coordinate-grid-pict width height)
-]
+))
 
 The moon is a filled circle:
 
@@ -150,14 +157,16 @@ Small circles can also serve as stars:
 The list fixes the star positions. The picture therefore looks the same each
 time the program runs.
 
-@skia-image[
+@(tutorial-figure
+ "A pale moon and small stars appear over the flat sky."
+ (skia-image
 (quick-render-pict
  width height
  (lambda (canvas)
    (draw-flat-sky canvas)
    (draw-stars canvas)
    (draw-moon canvas)))
-]
+))
 
 @section{Draw the Mountains}
 
@@ -219,7 +228,9 @@ A second, darker range sits in front of the first one:
 Later drawing normally appears on top of earlier drawing. The darker range is
 therefore visible in front of the lighter range.
 
-@skia-image[
+@(tutorial-figure
+ "Two mountain ranges overlap; the darker foreground is drawn after the lighter range."
+ (skia-image
 (quick-render-pict
  width height
  (lambda (canvas)
@@ -227,7 +238,7 @@ therefore visible in front of the lighter range.
    (draw-stars canvas)
    (draw-moon canvas)
    (draw-mountains canvas)))
-]
+))
 
 @section{Add the Lake}
 
@@ -270,7 +281,9 @@ The lake is another rectangle with another gradient:
 The value @racket[lake-top] marks the shoreline. The same value will also help
 place the cabin and trees.
 
-@skia-image[
+@(tutorial-figure
+ "The sky and lake use vertical gradients, with a shared shoreline at y = 330."
+ (skia-image
 (quick-render-pict
  width height
  (lambda (canvas)
@@ -279,7 +292,7 @@ place the cabin and trees.
    (draw-moon canvas)
    (draw-mountains canvas)
    (draw-lake canvas)))
-]
+))
 
 @section{Build a Cabin}
 
@@ -310,7 +323,9 @@ drawing operations, so it is useful to put them in one function.
 The @racket[draw-polygon] function joins the given points and closes the shape.
 The @racket[x] and @racket[y] arguments choose the cabin position.
 
-@skia-image[
+@(tutorial-figure
+ "A cabin with a triangular roof and lit window sits on the right shore."
+ (skia-image
 (quick-render-pict
  width height
  (lambda (canvas)
@@ -320,7 +335,7 @@ The @racket[x] and @racket[y] arguments choose the cabin position.
    (draw-mountains canvas)
    (draw-lake canvas)
    (draw-cabin canvas 545 270)))
-]
+))
 
 @section{Plant Some Trees}
 
@@ -364,7 +379,9 @@ state when its body finishes.
 Each tree uses the same geometry. Translation changes its position, and scaling
 changes its size.
 
-@skia-image[
+@(tutorial-figure
+ "The same tree geometry appears at six positions and scales along the shore."
+ (skia-image
 (quick-render-pict
  width height
  (lambda (canvas)
@@ -375,7 +392,7 @@ changes its size.
    (draw-lake canvas)
    (draw-cabin canvas 545 270)
    (draw-trees canvas)))
-]
+))
 
 @section{Add the Reflection}
 
@@ -412,7 +429,9 @@ The alpha value @racket[55] makes each reflection streak partly transparent.
 The @racket[with-canvas-state] form restores the previous clip when the body
 finishes.
 
-@skia-image[
+@(tutorial-figure
+ "Translucent horizontal streaks form the moon reflection inside the lake clip."
+ (skia-image
 (quick-render-pict
  width height
  (lambda (canvas)
@@ -424,7 +443,7 @@ finishes.
    (draw-reflection canvas)
    (draw-cabin canvas 545 270)
    (draw-trees canvas)))
-]
+))
 
 @section{Add a Title}
 
@@ -451,7 +470,13 @@ The y coordinate in @racket[draw-simple-text] gives the text baseline.
 Continue with @tutorial-link["text"]
 for text placement and measurements, or @tutorial-link["shaping"] for shaped runs.
 
-@skia-image[
+@(finish-figure
+ (tutorial-figure
+ (string-append
+   "Moonlight: a finished lake scene with stars, mountains, a cabin, trees, "
+   "reflection, and title."
+)
+ (skia-image
 (quick-render-pict
  width height
  (lambda (canvas)
@@ -464,7 +489,7 @@ for text placement and measurements, or @tutorial-link["shaping"] for shaped run
    (draw-cabin canvas 545 270)
    (draw-trees canvas)
    (draw-title canvas)))
-]
+)))
 
 @section{Use the Drawing Again}
 

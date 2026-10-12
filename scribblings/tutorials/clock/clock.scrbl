@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Transforms and Coordinate Systems — Build a Clock}
 
@@ -8,12 +9,15 @@
           (for-label racket
                      skia))
 
-This tutorial builds a simple analog clock. The shapes are simple. The
-interesting part is how we place them. The clock gives us a useful reason to
-change the coordinate system.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-The finished clock shows the fixed time 10:10:30. A fixed time keeps every
-example in this tutorial the same each time the documentation is built.
+@section[#:tag "finished-result"]{The Finished Clock}
+
+@|finished-preview|
+
+The clock shows 10:10:30. This is a static drawing: the program does not read
+the current time or update the hands. Translation, rotation, and scaling place
+simple geometry around a shared center.
 
 @tutorial-entry["clock"]
 
@@ -47,9 +51,14 @@ The clock face is centered around the point @tt{(0, 0)}:
 Drawing the face on an unchanged canvas puts its center at the upper-left
 corner of the surface:
 
-@clock-image[
+@(tutorial-figure
+ (string-append
+   "Intentional partial result: a clock face centered at (0, 0) is mostly outside "
+   "the surface."
+)
+ (clock-image
 (clock-render-pict size size draw-clock-face)
-]
+))
 
 Most of the circle is outside the surface. We could change every coordinate in
 the clock, but a transform gives us a simpler solution.
@@ -74,23 +83,30 @@ The diagram below shows both coordinate systems. The gray axes start at the
 surface origin. The red axes show the local coordinate system after the
 translation.
 
-@clock-image[
+@(tutorial-figure
+ (string-append
+   "Surface and local axes: translating by (300, 300) places the local origin at "
+   "the clock center."
+)
+ (clock-image
 (clock-coordinate-pict)
-]
+))
 
 The local point @tt{(0, 0)} now maps to surface position @tt{(300, 300)}.
 Negative y coordinates move upward from the clock center, and positive y
 coordinates move downward. The red axes are not a second surface. They show the
 local coordinate system that is in effect after the translation.
 
-@clock-image[
+@(tutorial-figure
+ "The translated clock face is fully visible at the center of the 600 by 600 surface."
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
    (with-canvas-state canvas
      (canvas-translate! canvas center center)
      (draw-clock-face canvas))))
-]
+))
 
 The clock functions can now use @tt{(0, 0)} as the clock center. They do not
 need to know where that point lies on the surface.
@@ -107,7 +123,9 @@ The twelve o'clock mark can now be described relative to the local origin:
 Both endpoints have x coordinate zero. Their negative y coordinates put the
 mark above the clock center.
 
-@clock-image[
+@(tutorial-figure
+ "One hour tick points upward from the local origin to the twelve o'clock position."
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
@@ -120,7 +138,7 @@ mark above the clock center.
          #:stroke-width 6
          #:cap 'round))
        (draw-hour-tick canvas paint)))))
-]
+))
 
 @section{Rotate the Tick}
 
@@ -139,7 +157,9 @@ rotation:
 Positive rotation appears clockwise with the default Skia coordinate system
 because the y axis points downward.
 
-@clock-image[
+@(tutorial-figure
+ "The original tick and its 30-degree clockwise copy use identical geometry."
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
@@ -155,16 +175,18 @@ because the y axis points downward.
        (with-canvas-state canvas
          (canvas-rotate! canvas 30)
          (draw-hour-tick canvas paint))))))
-]
+))
 
 The tick geometry did not change. The coordinate system changed before Skia
 drew the second copy.
 
 Most of this tutorial follows the same pattern:
 
-@clock-image[
+@(tutorial-figure
+ "Transform sequence: choose a local origin, transform its axes, then draw the geometry."
+ (clock-image
 (clock-transform-flow-pict)
-]
+))
 
 First, choose a useful local origin. Next, transform the local coordinate
 system. Finally, draw simple geometry in that system.
@@ -188,7 +210,12 @@ The first iteration adds 0 degrees. The second adds 30 degrees. The third then
 adds 60 degrees to the existing 30 degree rotation, so the third mark appears
 at 90 degrees instead of 60 degrees.
 
-@clock-image[
+@(tutorial-figure
+ (string-append
+   "Intentional wrong result: accumulated rotations fail to produce twelve evenly "
+   "spaced ticks."
+)
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
@@ -203,7 +230,7 @@ at 90 degrees instead of 60 degrees.
        (for ([hour (in-range 12)])
          (canvas-rotate! canvas (* hour 30))
          (draw-hour-tick canvas paint))))))
-]
+))
 
 @section{Save and Restore the Drawing State}
 
@@ -224,7 +251,9 @@ coordinate system:
       (draw-hour-tick canvas paint))))
 ]
 
-@clock-image[
+@(tutorial-figure
+ "Twelve hour ticks are evenly spaced because each rotation starts from the saved state."
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
@@ -232,7 +261,7 @@ coordinate system:
      (canvas-translate! canvas center center)
      (draw-clock-face canvas)
      (draw-hour-ticks canvas))))
-]
+))
 
 Minute marks use the same idea. A full turn is 360 degrees, so sixty marks are
 six degrees apart:
@@ -258,7 +287,9 @@ six degrees apart:
           (draw-minute-tick canvas minute-paint)))))
 ]
 
-@clock-image[
+@(tutorial-figure
+ "Sixty ticks surround the face; every fifth tick is longer and thicker."
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
@@ -266,7 +297,7 @@ six degrees apart:
      (canvas-translate! canvas center center)
      (draw-clock-face canvas)
      (draw-ticks canvas))))
-]
+))
 
 The final version uses a longer, thicker mark for each hour and a shorter,
 thinner mark for the other minutes.
@@ -316,9 +347,10 @@ The hour, minute, and second values determine three rotation angles:
     (draw-hand canvas 185 28 second-paint)))
 ]
 
-The hands move continuously. Ten minutes add five degrees to the hour-hand
-angle. Thirty seconds add three degrees to the minute-hand angle and one
-quarter of a degree to the hour-hand angle.
+The angles include fractional hours and minutes for the supplied time. Ten
+minutes add five degrees to the hour hand. Thirty seconds add three degrees to
+the minute hand and one quarter of a degree to the hour hand. These calculations
+position the hands; they do not schedule another drawing.
 
 A small center pin finishes the mechanism:
 
@@ -336,14 +368,20 @@ A small center pin finishes the mechanism:
   (draw-center-pin canvas))
 ]
 
-@clock-image[
+@(finish-figure
+ (tutorial-figure
+ (string-append
+   "A completed static clock at 10:10:30, with hour, minute, and second hands and "
+   "a center pin."
+)
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
    (with-canvas-state canvas
      (canvas-translate! canvas center center)
      (draw-clock-at-origin canvas 10 10 30))))
-]
+)))
 
 The drawing functions use the clock center as their local origin. None of them
 needs to know that the surface center is @tt{(300, 300)}.
@@ -371,24 +409,35 @@ already rotated coordinate system.
 The two pictures below draw the same red hand. The gray dot marks the center of
 the surface.
 
-@clock-image[
-(clock-render-pict
- size size
- (lambda (canvas)
-   (define guide (make-paint #:color "#8A94A3"))
-   (define hand (make-paint #:color second-color
-     #:style 'stroke
-     #:stroke-width 6
-     #:cap 'round))
-   (draw-circle canvas center center 7 guide)
-   (with-canvas-state canvas
-     (canvas-translate! canvas center center)
-     (canvas-rotate! canvas 45)
-     (draw-circle canvas 0 0 7 hand)
-     (draw-hand canvas 150 0 hand))))
-]
+@centered{@bold{Translate, then rotate}}
 
-@clock-image[
+@(tutorial-figure
+ "Translate, then rotate: the hand rotates around the surface center at (300, 300)."
+ (clock-image
+(clock-render-pict
+ size size
+ (lambda (canvas)
+   (define guide (make-paint #:color "#8A94A3"))
+   (define hand (make-paint #:color second-color
+     #:style 'stroke
+     #:stroke-width 6
+     #:cap 'round))
+   (draw-circle canvas center center 7 guide)
+   (with-canvas-state canvas
+     (canvas-translate! canvas center center)
+     (canvas-rotate! canvas 45)
+     (draw-circle canvas 0 0 7 hand)
+     (draw-hand canvas 150 0 hand))))
+))
+
+@centered{@bold{Rotate, then translate}}
+
+@(tutorial-figure
+ (string-append
+   "Rotate, then translate: the hand's origin moves to the left edge, away from "
+   "the center dot."
+)
+ (clock-image
 (clock-render-pict
  size size
  (lambda (canvas)
@@ -403,7 +452,7 @@ the surface.
      (canvas-translate! canvas center center)
      (draw-circle canvas 0 0 7 hand)
      (draw-hand canvas 150 0 hand))))
-]
+))
 
 The two sequences contain the same operations, but they produce different
 coordinate systems. Each transform affects the operations that follow it.
@@ -421,14 +470,16 @@ system. We can use the same clock drawing at different positions and sizes:
     (draw-clock-at-origin canvas hour minute second)))
 ]
 
-@clock-image[
+@(tutorial-figure
+ "Three copies of the same clock have different centers and scales but show the same time."
+ (clock-image
 (clock-render-pict
  900 360
  (lambda (canvas)
    (draw-clock-at canvas 110 180 0.35 10 10 30)
    (draw-clock-at canvas 390 180 0.50 10 10 30)
    (draw-clock-at canvas 735 180 0.65 10 10 30)))
-]
+))
 
 Scaling affects the whole local coordinate system. Distances and stroke widths
 therefore scale together.
@@ -452,8 +503,9 @@ program.
 Try changing the scale or the point passed to @racket[draw-clock-at]. Draw two
 or three clocks on the same surface at different sizes.
 
-Try making the clock run counterclockwise by using negative rotation angles.
-Predict the result before you run the program.
+Try using negative rotation angles for the hands. Predict their positions
+before saving the new drawing. Updating the time repeatedly would require an
+animation loop, as in @tutorial-link["animation"].
 
 @section[#:tag "next-steps"]{Where to Go From Here}
 

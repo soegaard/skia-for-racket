@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Text and Typography — Make a Type Specimen}
 
@@ -8,14 +9,18 @@
           (for-label racket
                      skia))
 
-This tutorial builds a small type specimen. The examples use Skia's simple
-text API to draw a typeface at several sizes, place text from an origin on a
-baseline, measure its advance, inspect its ink bounds, and use font metrics.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-The main idea is:
+@section[#:tag "finished-result"]{The Finished Type Specimen}
 
-@centered{@bold{Simple text starts at an origin on a baseline. Advance, bounds,
-and font metrics describe different parts of its geometry.}}
+@|finished-preview|
+
+The specimen uses simple Latin text to show font sizes, baselines, advances,
+ink bounds, and font metrics. For context-dependent scripts such as Arabic,
+start with @tutorial-link["shaping"] instead.
+
+Text placement uses a baseline origin. The advance describes where a following
+run begins; the ink bounds describe the visible marks.
 
 @tutorial-entry["text"]
 
@@ -93,9 +98,14 @@ The following drawing makes both the baseline and the origin visible:
                     font text-paint))
 ]
 
-@text-image[
+@(tutorial-figure
+ (string-append
+   "The word Baseline starts at a marked origin on the horizontal baseline, not at "
+   "a top-left corner."
+)
+ (text-image
 (text-render-pict 720 220 draw-baseline-demo)
-]
+))
 
 The blue dot marks the text origin. The letters extend above and sometimes
 below the red baseline. Changing the origin moves the whole run without
@@ -131,9 +141,11 @@ The same typeface can be used at different sizes:
                       font paint)))
 ]
 
-@text-image[
+@(tutorial-figure
+ "The same word Skia appears at sizes 24, 40, and 64, each on its own baseline."
+ (text-image
 (text-render-pict 480 270 draw-size-demo)
-]
+))
 
 The small labels show the requested font sizes. The typeface and paint stay
 the same.
@@ -191,9 +203,14 @@ span below the text:
                4 marker))
 ]
 
-@text-image[
+@(tutorial-figure
+ (string-append
+   "A line is centered by its measured advance; equal space remains on each side "
+   "of that span."
+)
+ (text-image
 (text-render-pict 720 190 draw-centered-demo)
-]
+))
 
 The gray line marks the center of the available width. The blue line shows the
 measured advance. Centering subtracts that advance from the available width and
@@ -257,9 +274,14 @@ The next example shows the origin, baseline, advance, and bounds together:
              bounds-paint))
 ]
 
-@text-image[
+@(tutorial-figure
+ (string-append
+   "Typography: the baseline origin, advance segment, and rectangular ink bounds "
+   "mark different geometry."
+)
+ (text-image
 (text-render-pict 720 230 draw-bounds-demo)
-]
+))
 
 The blue dot is the origin. The blue segment ends at the advance position. The
 red rectangle encloses the measured ink bounds.
@@ -332,9 +354,11 @@ guide positions:
                       label-font ink)))
 ]
 
-@text-image[
+@(tutorial-figure
+ "Font metrics: ascent, baseline, and descent guides surround the sample Ag."
+ (text-image
 (text-render-pict 720 245 draw-metrics-demo)
-]
+))
 
 The ascent and descent are properties of the font, not of the particular
 letters in @racket["Ag"]. A particular string can occupy less vertical space
@@ -554,13 +578,19 @@ The complete drawing function only assembles those pieces:
   (draw-footer canvas))
 ]
 
-@text-image[
+@(finish-figure
+ (tutorial-figure
+ (string-append
+   "A finished type specimen shows the font family, size scale, alphabet, metrics, "
+   "and a centered line."
+)
+ (text-image
 (text-render-pict
  width height
  draw-specimen
  #:background paper-color
  #:scale 0.56)
-]
+)))
 
 @section{Save the Result}
 

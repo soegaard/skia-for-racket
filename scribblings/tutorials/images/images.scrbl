@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Images — Build a Contact Sheet}
 
@@ -8,14 +9,15 @@
           (for-label racket
                      skia))
 
-This tutorial builds a contact sheet from several image files. The examples
-load images, draw them at different sizes, compare sampling modes, crop images,
-and arrange the results in a grid.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-The main idea is simple:
+@section[#:tag "finished-result"]{The Finished Contact Sheet}
 
-@centered{@bold{An image stores pixels. Drawing an image decides where and how
-those pixels appear on a canvas.}}
+@|finished-preview|
+
+The contact sheet combines four image files and two crops. You will load the
+images, compare sampling modes, preserve their proportions, and arrange them
+in a grid.
 
 @tutorial-entry["images"]
 
@@ -75,9 +77,11 @@ The @racket[draw-image] function places an image at its natural size.
   (draw-image canvas image 80 40))
 ]
 
-@images-image[
+@(tutorial-figure
+ "The 360 by 240 mountain image is placed without resizing, at canvas position (80, 40)."
+ (images-image
 (images-render-pict 520 320 draw-natural-size)
-]
+))
 
 The position gives the upper-left corner of the image. The image itself is
 still 360 pixels wide and 240 pixels high.
@@ -98,9 +102,11 @@ The following example puts the portrait image into a wide rectangle:
                    #:sampling 'linear))
 ]
 
-@images-image[
+@(tutorial-figure
+ "The portrait flower image is stretched sideways to fill a 380 by 180 rectangle."
+ (images-image
 (images-render-pict 520 290 draw-stretched-image)
-]
+))
 
 The source image is 240 by 320, but the destination rectangle is 380 by 180.
 The different aspect ratio stretches the image.
@@ -135,9 +141,11 @@ the destination rectangle.
                   70 55 380 180))
 ]
 
-@images-image[
+@(tutorial-figure
+ "The flower keeps its aspect ratio and is centered inside the same wide rectangle."
+ (images-image
 (images-render-pict 520 290 draw-fitted-image)
-]
+))
 
 @section{Sampling Matters}
 
@@ -168,9 +176,14 @@ The difference is easy to see with the 24 by 24 pixel-art image:
                     360 292 font text))
 ]
 
-@images-image[
+@(tutorial-figure
+ (string-append
+   "Two pixel-art enlargements: nearest sampling preserves blocks; linear sampling "
+   "blends their edges."
+)
+ (images-image
 (images-render-pict 540 320 draw-sampling-demo)
-]
+))
 
 The default sampling mode for @racket[draw-image-rect] is @racket['linear].
 The default for @racket[draw-image] is @racket['nearest].
@@ -195,13 +208,17 @@ source image.
                   355 35 180 210))
 ]
 
-@images-image[
+@(tutorial-figure
+ (string-append
+   "The complete mountain image appears on the left and a selected rectangular "
+   "crop on the right."
+)
+ (images-image
 (images-render-pict 560 280 draw-crop-demo)
-]
+))
 
-The crop is a separate owned Skia image. Both the source and the crop use
-ordinary Racket bindings here. Each can be reclaimed after it becomes
-unreachable.
+The crop is a new image with its own dimensions. Drawing the crop does not
+change the source image.
 
 @section{Build One Cell}
 
@@ -271,13 +288,15 @@ The final sheet uses four complete images and two crops.
                       mountain-crop flower-crop))
 ]
 
-@images-image[
+@(finish-figure
+ (tutorial-figure
+ "A finished six-cell contact sheet contains four source images and two labeled crops."
+ (images-image
 (images-render-pict 900 600 draw-complete-sheet)
-]
+)))
 
-The source images and crops remain reachable for the whole drawing operation.
-After the drawing function returns, ordinary garbage collection can reclaim
-them when they are no longer referenced.
+The drawing function creates the four images and two crops, then passes them
+to the same cell-drawing helper.
 
 @section{Save the Result}
 

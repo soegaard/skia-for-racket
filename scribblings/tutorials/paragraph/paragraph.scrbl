@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require "../support/reader.rkt")
+@(require "../support/reader.rkt"
+          "../support/accessible-figures.rkt")
 
 @title{Paragraph Layout — Make a Multilingual Article Card}
 
@@ -8,17 +9,17 @@
           (for-label racket
                      skia))
 
-The @tutorial-link["shaping"] lesson shaped one font run at a time.
-This tutorial gives text
-an available width, lets Skia choose lines and baselines, and then combines
-English with Arabic and Hebrew in a compact article card.
+@(define-values (finished-preview finish-figure) (make-figure-preview))
 
-The main idea is:
+@section[#:tag "finished-result"]{The Finished Article Card}
 
-@centered{@bold{A paragraph layout turns text into positioned lines inside a
-width. Mixed layout also handles directional runs and font fallback.}}
+@|finished-preview|
 
-The complete example is in @filepath{article-card.rkt}.
+The article card combines a wrapped introduction, a mixed-script paragraph,
+and a right-to-left callout. You will give text an available width and draw
+each layout from the upper-left corner of its box.
+
+Mixed layout also resolves directional runs and selects fallback fonts.
 
 @tutorial-entry["paragraph"]
 
@@ -40,18 +41,20 @@ platform's default typeface:
   (layout-text shaper sample-text))
 ]
 
-Without a width, the @racket[layout-text] function lays out the text as one
-line. The @racket[draw-text-layout] function draws it at the upper-left corner
-of the layout box, rather than at a text baseline:
+Without a width, this sample occupies one line. The @racket[draw-text-layout]
+function positions the upper-left corner of the layout box, rather than a text
+baseline:
 
 @paragraph-racketblock+eval[
 (define (draw-unwrapped canvas)
   (draw-text-layout canvas unwrapped 40 32 text-paint))
 ]
 
-@paragraph-image[
+@(tutorial-figure
+ "The sample sentence occupies one long line when no wrapping width is supplied."
+ (paragraph-image
 (paragraph-render-pict 1180 100 draw-unwrapped #:scale 0.64)
-]
+))
 
 The typeface family and the exact text measurements can differ across
 platforms. This tutorial relies on layout measurements instead of assuming
@@ -88,9 +91,11 @@ Draw the wrapped layout on a smaller surface:
   (draw-text-layout canvas wrapped 44 32 text-paint))
 ]
 
-@paragraph-image[
+@(tutorial-figure
+ "The same sentence wraps into several lines at a requested width of 380."
+ (paragraph-image
 (paragraph-render-pict 500 165 draw-wrapped-plain #:scale 0.9)
-]
+))
 
 The original sentence now occupies several baselines without any manual line
 splitting or separate drawing call for each line.
@@ -123,16 +128,21 @@ those actual measurements to draw guides behind the paragraph:
   (draw-wrapped-plain canvas))
 ]
 
-@paragraph-image[
+@(tutorial-figure
+ "A rectangle marks the layout box and horizontal rules mark its line-baseline offsets."
+ (paragraph-image
 (paragraph-render-pict 500 165 draw-wrapped #:scale 0.9)
-]
+))
 
 The outer rectangle uses the reported layout width and height. The horizontal
 rules use @racket[text-layout-line-baseline], so they track the chosen font's
 metrics. The text is drawn over those rules at the layout box origin.
 
-A line's baseline is not the layout origin. This distinction is the same one
-introduced in @tutorial-link["text"].
+The two drawing APIs use different origins. The @racket[draw-simple-text]
+function positions an origin on the text baseline. The @racket[draw-text-layout]
+function positions the layout box's upper-left corner. Each line's baseline is
+an offset below that corner, so its canvas y coordinate is the box y coordinate
+plus @racket[text-layout-line-baseline].
 
 @section{Align Lines Inside the Width}
 
@@ -160,9 +170,11 @@ Use the same width and text with three alignments:
     (draw-text-layout canvas layout x 66 text-paint)))
 ]
 
-@paragraph-image[
+@(tutorial-figure
+ "The same text uses start, center, and end alignment in three equal-width boxes."
+ (paragraph-image
 (paragraph-render-pict 990 170 draw-alignments #:scale 0.78)
-]
+))
 
 For a left-to-right paragraph, @racket['start] aligns at the left edge,
 @racket['center] centers each line, and @racket['end] aligns at the right edge.
@@ -203,9 +215,14 @@ manager for fallback typefaces when the base font lacks characters.
   (draw-mixed-text-layout canvas mixed-layout 48 38 text-paint))
 ]
 
-@paragraph-image[
+@(tutorial-figure
+ (string-append
+   "English, Arabic, Hebrew, and a number share a paragraph with left-to-right "
+   "base direction."
+)
+ (paragraph-image
 (paragraph-render-pict 770 140 draw-mixed-example #:scale 0.83)
-]
+))
 
 The text now contains Latin, Arabic, and Hebrew runs. An explicit
 @racket[#:direction 'ltr] chooses the left-to-right paragraph base direction.
@@ -258,9 +275,14 @@ Hebrew-first sentence that contains Arabic, English, and a number:
   (draw-mixed-text-layout canvas right-to-left-layout 48 38 text-paint))
 ]
 
-@paragraph-image[
+@(tutorial-figure
+ (string-append
+   "A Hebrew-first paragraph starts at the right; embedded Latin text and numbers "
+   "keep their directions."
+)
+ (paragraph-image
 (paragraph-render-pict 770 135 draw-right-to-left #:scale 0.83)
-]
+))
 
 With @racket[#:direction 'auto], the first strong directional character
 selects the paragraph's base direction. Here, the initial Hebrew text makes
@@ -282,12 +304,36 @@ The finished card uses three paragraphs. Its introduction uses
 @racket[layout-mixed-text]. Each paragraph is drawn from the upper-left
 corner of its own layout box.
 
-The card adds a heading, separators, and a callout around those same ideas.
-The complete @filepath{article-card.rkt} file contains the
-@racket[draw-article-card] function. The figure below is generated by calling
-that very function during the documentation build:
+Inside @racket[draw-article-card], a 26-unit body font supplies the shaper for
+all three layouts. The @racket[introduction] uses @racket[layout-text] with a
+width of 744. The @racket[multilingual-text] layout also has width 744, with a
+left-to-right base direction. The @racket[right-to-left-text] layout has width
+690, automatic base direction, and start alignment.
 
-@(paragraph-article-pict)
+The following excerpt places those layouts below the heading and inside the
+callout. The canvas, paint, and layouts are local bindings of the complete
+function. Here @racket[right-to-left-text] names a layout, not the earlier
+sample string:
+
+@racketblock[
+(draw-text-layout canvas introduction 88 222 ink)
+(draw-mixed-text-layout canvas multilingual-text 88 376 ink)
+(draw-mixed-text-layout canvas right-to-left-text 108 562 ink)
+]
+
+These coordinates place layout-box corners, not baselines. The heading and
+separators are drawn around the first two paragraphs. A rounded background and
+a label frame the right-to-left callout. The
+@seclink["example-source"]{complete example} includes that decoration and the
+three layout constructors.
+
+@(finish-figure
+ (tutorial-figure
+ (string-append
+   "A finished article card has a heading, wrapped introduction, mixed-script "
+   "paragraph, and right-to-left callout."
+)
+ (paragraph-article-pict)))
 
 @section{Save the Card}
 
