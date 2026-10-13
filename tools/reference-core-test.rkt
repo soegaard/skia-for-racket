@@ -107,6 +107,142 @@
       (check-equal? (subbytes png 0 8) #"\211PNG\r\n\32\n")
       (check-exn exn:fail? (lambda () (image->encoded-bytes image 'gif)))
       (check-exn exn:fail? (lambda () (image->png-bytes image #:compression 10)))))
+
+  (test-case "normal iteration exposes a closing line; raw iteration exposes stored verbs"
+    (with-skia ([path (make-path '((move 10 20) (line 40 20) (line 40 50) (close)))])
+      (define before (path->commands path))
+      (define (describe mode)
+        (for/list ([segment (in-list (path-segments path #:mode mode))])
+          (list (path-segment-verb segment) (path-segment-closing-line? segment))))
+      (check-equal? (describe 'normal)
+                    '((move #f) (line #f) (line #f) (line #t) (close #f)))
+      (check-equal? (describe 'raw) '((move #f) (line #f) (line #f) (close #f)))
+      (check-equal? (path->commands path) before)))
+  (test-case "omitting the initial move on an extracted path changes its geometry"
+    (with-skia ([path (make-path '((move 10 20) (line 90 20)))]
+                [measure (make-path-measure path)]
+                [moved (path-measure-segment measure 20 40)]
+                [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)])
+      (check-equal? (path->commands moved) '((move 30.0 20.0) (line 50.0 20.0)))
+      (check-equal? (path->commands unmoved) '((move 0.0 0.0) (line 50.0 20.0)))))
+  (test-case "native reset does not restore make-paint defaults"
+    (with-skia ([paint (make-paint)])
+      (define constructed (list (paint-stroke-width paint) (paint-antialias? paint)))
+      (paint-reset! paint)
+      (check-equal? constructed '(1.0 #t))
+      (check-equal? (list (paint-stroke-width paint) (paint-antialias? paint)) '(0.0 #f))
+      (check-false (skia-closed? paint))))
+  (test-case "standard color spaces are independently owned and compared by description"
+    (with-skia ([srgb (make-srgb-color-space)]
+                [another (make-srgb-color-space)]
+                [linear (make-linear-srgb-color-space)])
+      (check-false (eq? srgb another))
+      (check-equal?
+       (list (color-space=? srgb another) (color-space=? srgb linear)
+             (color-space-srgb? srgb) (color-space-srgb? linear)
+             (color-space-linear-gamma? srgb) (color-space-linear-gamma? linear))
+       '(#t #f #t #f #f #t))
+      (skia-close! srgb)
+      (check-true (color-space? srgb))
+      (check-false (skia-closed? another))
+      (check-true (color-space-srgb? another))
+      (check-exn exn:fail? (lambda () (color-space=? srgb another)))
+      (check-exn exn:fail? (lambda () (color-space-srgb? srgb)))
+      (check-exn exn:fail? (lambda () (color-space-linear-gamma? srgb)))))
+  (test-case "equal RGB bytes in sRGB and linear sRGB represent different colors"
+    (define samples (bytes 128 128 128 255))
+    (with-skia ([srgb (make-srgb-color-space)]
+                [linear (make-linear-srgb-color-space)]
+                [encoded (rgba-bytes->image 1 1 samples #:color-space srgb)]
+                [light (rgba-bytes->image 1 1 samples #:color-space linear)]
+                [surface (make-surface 2 1 #:color-space srgb)])
+      (define canvas (surface-canvas surface))
+      (draw-image canvas encoded 0 0)
+      (draw-image canvas light 1 0)
+      (define output (surface->rgba-bytes surface #:color-space srgb))
+      (check-equal? (subbytes output 0 4) samples)
+      (for ([i '(4 5 6)]) (check-= (bytes-ref output i) 188 1))
+      (check-equal? (bytes-ref output 7) 255)
+      (check-equal? (image->rgba-bytes encoded) samples)
+      (check-equal? (image->rgba-bytes light) samples)))
+  (test-case "dispatcher options are conditional for both bytes and file output"
+    (define directory (make-temporary-file "skia-reference-encoding-~a" 'directory))
+    (define filename (build-path directory "result.bin"))
+    (define sentinel #"existing output survives a validation failure")
+    (define (reset-file!)
+      (call-with-output-file filename #:exists 'truncate/replace #:mode 'binary
+        (lambda (out) (write-bytes sentinel out))))
+    (define (dispatch image format file? options)
+      (define entries
+        (sort (if file? (cons (cons '#:exists 'replace) options) options)
+              keyword<? #:key car))
+      (define result
+        (keyword-apply (if file? save-image image->encoded-bytes)
+                       (map car entries) (map cdr entries)
+                       (if file? (list image filename format) (list image format))))
+      (if file?
+          (begin (check-true (void? result)) (file->bytes filename))
+          result))
+    (define (check-format format encoded)
+      (check-true (bytes? encoded))
+      (case format
+        [(png) (check-equal? (subbytes encoded 0 8) #"\211PNG\r\n\32\n")]
+        [(jpeg) (check-equal? (subbytes encoded 0 2) #"\377\330")]
+        [(webp)
+         (check-equal? (subbytes encoded 0 4) #"RIFF")
+         (check-equal? (subbytes encoded 8 12) #"WEBP")]))
+    (define cases
+      '((#:quality jpeg webp)
+        (#:png-compression png)
+        (#:jpeg-downsample jpeg)
+        (#:jpeg-alpha jpeg)
+        (#:webp-lossless? webp)))
+    (dynamic-wind
+      void
+      (lambda ()
+        (with-skia ([image (rgba-bytes->image 1 1 (bytes 50 109 230 255))])
+          ;; Every format-specific keyword is tried in every format, for both dispatchers.
+          (for* ([format '(png jpeg webp)] [file? '(#f #t)] [entry (in-list cases)])
+            (define option (car entry))
+            (define active? (memq format (cdr entry)))
+            (define (call) (dispatch image format file? (list (cons option 'unused))))
+            (when file? (reset-file!))
+            (with-check-info (['format format] ['file-output? file?] ['keyword option])
+              (if active?
+                  (begin
+                    (check-exn exn:fail? call)
+                    (when file? (check-equal? (file->bytes filename) sentinel)))
+                  (check-format format (call)))))
+          ;; JPEG requires an exact integer; WebP accepts fractional quality.
+          (for* ([format '(png jpeg webp)] [file? '(#f #t)])
+            (define (call) (dispatch image format file? (list (cons '#:quality 87.5))))
+            (when file? (reset-file!))
+            (with-check-info (['format format] ['file-output? file?])
+              (if (eq? format 'jpeg)
+                  (begin
+                    (check-exn exn:fail? call)
+                    (when file? (check-equal? (file->bytes filename) sentinel)))
+                  (check-format format (call)))))
+          ;; Color-management arguments are common, not ignored in any of these formats.
+          (for* ([format '(png jpeg webp)] [file? '(#f #t)]
+                 [option '(#:color-space #:icc-profile #:icc-description)])
+            (when file? (reset-file!))
+            (with-check-info (['format format] ['file-output? file?] ['keyword option])
+              (check-exn exn:fail?
+                         (lambda ()
+                           (dispatch image format file? (list (cons option 'unused)))))
+              (when file? (check-equal? (file->bytes filename) sentinel))))
+          ;; Valid active settings still reach all three encoders.
+          (for* ([format '(png jpeg webp)] [file? '(#f #t)])
+            (define options
+              (case format
+                [(png) (list (cons '#:png-compression 0))]
+                [(jpeg) (list (cons '#:quality 87) (cons '#:jpeg-downsample 'yuv-444)
+                              (cons '#:jpeg-alpha 'blend-on-black))]
+                [(webp) (list (cons '#:quality 87.5) (cons '#:webp-lossless? #t))]))
+            (check-format format (dispatch image format file? options)))))
+      (lambda () (delete-directory/files directory))))
+
   (test-case "gradient positions and radii are checked"
     (check-exn exn:fail? (lambda () (make-linear-gradient-shader 0 0 0 0 '(red blue))))
     (check-exn exn:fail?

@@ -400,10 +400,46 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
                 and str(doc[1][1]).startswith('skia/scribblings/tutorials/')):
                 found_links.add((str(doc[1][1]), str(header[0])))
     need(found_links == tutorial_keys, 'tutorial link/source coverage mismatch')
+    section_links = manifest.get('section_links', [])
+    section_keys = set()
+    for link in section_links:
+        chapter, tag = link['chapter'], link['tag']
+        need(chapter in chapters, 'section link points outside the Reference')
+        need(isinstance(tag, str) and tag and link['label'].strip(), 'invalid section link')
+        need(re.fullmatch(r'skia-[a-z-]+[.]html', link['filename']),
+             'invalid section filename')
+        key = (chapter, tag)
+        need(key not in section_keys, 'duplicate section link declaration')
+        section_keys.add(key)
+        titles = [header for form, header, _ in
+                  commands(safe_file(root, chapter).read_text(encoding='utf-8'))
+                  if form == 'title']
+        need(len(titles) == 1 and '#:tag' in titles[0], 'section needs explicit title tags')
+        tags = titles[0][titles[0].index('#:tag') + 1]
+        if isinstance(tags, list) and len(tags) == 2 and tags[0] == 'quote':
+            tags = tags[1]
+        tags = [tags] if isinstance(tags, String) else tags
+        need(isinstance(tags, list) and tags and all(isinstance(t, String) for t in tags),
+             'unsupported section title tags')
+        need(tag in tags, 'section link tag is not declared by its chapter')
+        need(str(tags[0]) + '.html' == link['filename'],
+             'first chapter tag must preserve the published filename')
+    aliases = set()
+    for chapter in chapters:
+        for form, header, _ in commands(safe_file(root, chapter).read_text(encoding='utf-8')):
+            if form != 'title' or not header or '#:tag' not in header:
+                continue
+            tags = header[header.index('#:tag') + 1]
+            if isinstance(tags, list) and len(tags) == 2 and tags[0] == 'quote':
+                need(isinstance(tags[1], list) and all(isinstance(t, String) for t in tags[1]),
+                     'unsupported chapter aliases')
+                if len(tags[1]) > 1:
+                    aliases.update((chapter, str(tag)) for tag in tags[1])
+    need(aliases <= section_keys, 'chapter aliases are missing from the section-link manifest')
     info = (root / 'info.rkt').read_text(encoding='utf-8')
     need('"scribblings/reference/reference.scrbl" (multi-page)' in info, 'manual not registered')
     return dict(status='passed', documents_only=documents_only, definitions=specs,
-                tutorial_links=tutorial_links, chapters=sorted(chapters),
+                tutorial_links=tutorial_links, section_links=section_links, chapters=sorted(chapters),
                 documented_exports=len(claimed), deferred=deferred,
                 inventory_checked=exports is not None,
                 inventory_exports=len(exports) if exports is not None else None,
@@ -488,6 +524,12 @@ def check_evidence(source, evidence, *, installed=False):
     actual = {tuple(row.get(k) for k in fields) for row in found}
     need(expected == actual and len(expected) == len(found),
          'runtime tutorial target inventory differs from source mapping')
+    fields = ('chapter', 'filename', 'tag', 'label')
+    expected = {tuple(row[k] for k in fields) for row in source.get('section_links', [])}
+    found = evidence.get('section_targets', [])
+    actual = {tuple(row.get(k) for k in fields) for row in found}
+    need(expected == actual and len(expected) == len(found),
+         'runtime section target inventory differs from source mapping')
 
 
 def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None):
@@ -554,8 +596,28 @@ def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None):
                 count += 1
         need(count, f'missing tutorial link: {row["label"]}')
         tutorial_counts[row['directory']] = count
+    section_counts = {}
+    for row in evidence.get('section_targets', []):
+        need(row['relative_path'] == row['filename'], 'section filename changed')
+        target = safe_file(site, 'skia-reference/' + row['relative_path'])
+        anchor = unquote(row['anchor'])
+        parsed_target = read(target)
+        need(not anchor or parsed_target.anchors[anchor] == 1,
+             'missing/duplicate section anchor')
+        count = 0
+        if smoke:
+            for href, text in read(smoke).links:
+                if ' '.join(text.split()) != row['label']:
+                    continue
+                destination = link_destination(smoke, href, site)
+                need(destination is not None
+                     and (destination[0].resolve(), destination[1]) == (target.resolve(), anchor),
+                     f'wrong section link for {row["tag"]}: {href}')
+                count += 1
+            need(count, f'missing section link: {row["tag"]}')
+        section_counts[row['tag']] = dict(filename=row['filename'], anchor=anchor, links=count)
     return dict(status='passed', definition_anchors=len(evidence['targets']), links=counts,
-                tutorial_links=tutorial_counts)
+                tutorial_links=tutorial_counts, section_links=section_counts)
 
 
 def prepare_site(site: Path, *, source_root: Path | None = None):

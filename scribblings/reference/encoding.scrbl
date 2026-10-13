@@ -2,7 +2,7 @@
 
 @(require (for-label racket/base racket/contract skia))
 
-@title[#:tag "skia-png"]{Image Encoding}
+@title[#:tag '("skia-png" "skia-encoding")]{Image Encoding}
 
 @defproc[(save-png [surface surface?] [filename path-string?]
                    [#:exists exists (or/c 'error 'replace) 'error]
@@ -129,37 +129,79 @@ Color conversion and ICC options follow @racket[save-png].
 }
 
 @defproc[(image->encoded-bytes [image image?] [format (or/c 'png 'jpeg 'webp)]
-                              [#:quality quality (real-in 0 100) 90]
-                              [#:png-compression compression (integer-in 0 9) 6]
-                              [#:jpeg-downsample downsample
-                               (or/c 'yuv-420 'yuv-422 'yuv-444) 'yuv-420]
-                              [#:jpeg-alpha alpha (or/c 'ignore 'blend-on-black) 'ignore]
-                              [#:webp-lossless? lossless? boolean? #f]
+                              [#:quality quality any/c 90]
+                              [#:png-compression compression any/c 6]
+                              [#:jpeg-downsample downsample any/c 'yuv-420]
+                              [#:jpeg-alpha alpha any/c 'ignore]
+                              [#:webp-lossless? lossless? any/c #f]
                               [#:color-space space (or/c color-space? #f) #f]
                               [#:icc-profile profile (or/c bytes? #f) #f]
                               [#:icc-description description (or/c string? #f) #f]) bytes?]{
-Dispatches to the PNG, JPEG, or WebP encoder according to @racket[format]. The
-quality argument must be an exact integer for JPEG; WebP accepts a real quality.
-PNG uses the PNG-compression setting instead. Format-specific options are passed
-only to the selected encoder; unused options do not affect the result and are
-not validated by another encoder.
+Dispatches to @racket[image->png-bytes], @racket[image->jpeg-bytes], or
+@racket[image->webp-bytes] according to @racket[format].
+
+The contracts of the format-specific options depend on @racket[format], as shown
+below. An option marked Ignored is not inspected by the selected encoder and
+may have any value. The @racket[any/c] contracts in the signature do not relax
+the restrictions on an option used by the selected format.
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Keyword} @bold{PNG} @bold{JPEG} @bold{WebP})
+  (list @racket[#:quality] "Ignored"
+        @racket[(integer-in 0 100)] @racket[(real-in 0 100)])
+  (list @racket[#:png-compression] @racket[(integer-in 0 9)] "Ignored" "Ignored")
+  (list @racket[#:jpeg-downsample] "Ignored"
+        @racket[(or/c 'yuv-420 'yuv-422 'yuv-444)] "Ignored")
+  (list @racket[#:jpeg-alpha] "Ignored"
+        @racket[(or/c 'ignore 'blend-on-black)] "Ignored")
+  (list @racket[#:webp-lossless?] "Ignored" "Ignored" @racket[boolean?]))]
+
+For PNG, @racket[#:png-compression] supplies the encoder's @racket[#:compression]
+argument. For JPEG, @racket[#:jpeg-downsample] and @racket[#:jpeg-alpha] supply
+@racket[#:downsample] and @racket[#:alpha]. For WebP, @racket[#:webp-lossless?]
+supplies @racket[#:lossless?]. Their meanings and defaults are those of the
+corresponding encoder.
+
+The common @racket[#:color-space], @racket[#:icc-profile], and
+@racket[#:icc-description] options apply to all three formats. Their contracts
+and restrictions remain those specified by @racket[save-png].
+
+For example, PNG accepts arbitrary values for the options of the other formats:
+
+@racketblock[
+(with-skia ([image (rgba-bytes->image 1 1 (bytes 50 109 230 255))])
+  (define encoded
+    (image->encoded-bytes image 'png
+                         #:quality 'unused
+                         #:jpeg-downsample 'unused
+                         #:jpeg-alpha 'unused
+                         #:webp-lossless? 'unused))
+  (subbytes encoded 0 8))
+]
+
+The result is the PNG signature. In contrast, an invalid
+@racket[#:png-compression] value is rejected for this call.
 }
 
 @section{Writing Encoded Images}
 
 @defproc[(save-image [image image?] [filename path-string?] [format (or/c 'png 'jpeg 'webp)]
                      [#:exists exists (or/c 'error 'replace) 'error]
-                     [#:quality quality (real-in 0 100) 90]
-                     [#:png-compression compression (integer-in 0 9) 6]
-                     [#:jpeg-downsample downsample (or/c 'yuv-420 'yuv-422 'yuv-444) 'yuv-420]
-                     [#:jpeg-alpha alpha (or/c 'ignore 'blend-on-black) 'ignore]
-                     [#:webp-lossless? lossless? boolean? #f]
+                     [#:quality quality any/c 90]
+                     [#:png-compression compression any/c 6]
+                     [#:jpeg-downsample downsample any/c 'yuv-420]
+                     [#:jpeg-alpha alpha any/c 'ignore]
+                     [#:webp-lossless? lossless? any/c #f]
                      [#:color-space space (or/c color-space? #f) #f]
                      [#:icc-profile profile (or/c bytes? #f) #f]
                      [#:icc-description description (or/c string? #f) #f]) void?]{
 Encodes with @racket[image->encoded-bytes] and writes the completed bytes to
 @racket[filename]. The format argument, not the filename extension, chooses the
-encoder. The exists modes and encode-before-open behavior match @racket[save-png].
+encoder. The format-specific option contracts, defaults, and ignored values
+follow the table in @racket[image->encoded-bytes]. Common color-management options
+apply to every format. The exists modes and encode-before-open behavior match
+@racket[save-png].
 An existing parent directory is required. The image remains open; a write error
 can still leave a partial output file.
 }

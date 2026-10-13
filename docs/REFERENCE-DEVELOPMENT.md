@@ -1,10 +1,10 @@
-# Skia Reference development: R2 core drawing
+# Skia Reference development: R2.1 core corrections
 
 The Reference is one registered multi-page manual assembled from
-`scribblings/reference/reference.scrbl`. R2 extends the delivered Revision 2.1
-foundation. It documents 209 bindings through 252 public export paths in twelve
-conceptual chapters. The additional 178 bindings have real Scribble definitions,
-not placeholder targets. The work does not change library behavior.
+`scribblings/reference/reference.scrbl`. R2.1 refines the R2 core reference.
+It documents 214 bindings through 257 public export paths in twelve conceptual
+chapters. The five additions are standard color-space constructors and queries.
+The work does not change library behavior.
 
 ## Scope and chapter ownership
 
@@ -14,9 +14,9 @@ not placeholder targets. The work does not change library behavior.
 | Resources and Lifetimes | 6 | Existing lifetime protocol and byte limit. |
 | Surfaces and Canvases | 11 | Construction, backing, dimensions, snapshots, pixel copies. |
 | Canvas State | 19 | Save/restore, affine transforms, clipping and backend queries. |
-| Color Specifications | 12 | Existing byte colors and the color-space predicate. |
-| Paints | 38 | Construction, copy, getters/setters, reset, blending and stroke expansion. |
-| Shaders and Gradients | 8 | Basic gradients, image and composite shaders, local matrices. |
+| Color Specifications | 17 | Byte colors and standard color-space construction and queries. |
+| Paints | 37 | Construction, copy, getters/setters, reset, blending and stroke expansion. |
+| Shaders and Gradients | 9 | Basic gradients, image and composite shaders, local matrices. |
 | Drawing | 8 | Paint, line, rectangle, rounded rectangle, oval, circle, path and polygon. |
 | Paths | 64 | Commands, geometry, iteration, filled-region operations and measurement. |
 | Affine Matrices | 21 | Detached six-coefficient transforms, composition, inversion and mapping. |
@@ -24,23 +24,32 @@ not placeholder targets. The work does not change library behavior.
 | Image Encoding | 7 | PNG/JPEG/WebP byte encoders and file writing. |
 
 Resources and byte-color coverage is retained from the foundation. Image
-Encoding retains the `skia-png` tag, so existing links remain meaningful.
-The original definition headers retain their contracts and defaults.
+Encoding declares both `skia-png` and `skia-encoding`, keeping `skia-png` first
+to preserve the published `skia-png.html` filename. Both section targets are
+resolved through real Scribble xrefs and checked in the link probe and review ZIP.
+
+The dispatcher procedures `image->encoded-bytes` and `save-image` now use `any/c`
+for five format-dependent keywords. The selected format's restrictions are
+specified in one options table. Inactive options are ignored; common color
+options remain checked for every format. The individual encoders keep precise
+contracts. Defaults and accepted keyword spellings are unchanged.
+The `shader?` entry is colocated with shader construction and operations.
 
 This is a bounded core reference, not complete coverage of every export in a
 module whose file name mentions geometry, images, or surfaces. The remaining
 scope includes extended geometry (arcs, rounded-rectangle records, regions,
 shape recognition and batch operations), projective matrices, specialized
 canvases and layer protocols, raster buffers and additional pixel formats,
-image-operation extensions, codecs and incremental sessions, color management,
+image-operation extensions, codecs and incremental sessions, further color management,
 text, filters, recorded pictures, documents, streams, caches, GPU and GUI/DC
 integration. The subsequent stages must add their own semantic entries. No
 unwritten entries are hidden behind artificial anchors or counted as complete.
 
 ## Authoritative source checks
 
-Implementation baseline: `ba19990ce41cbddd326598ef8d69b3b7495967c7`.
-The following source blobs were inspected while writing R2. The public paths,
+R2.1 repository baseline: `f20b68d866f6c1b92de94c19c62754978a8e9a0d`.
+The upstream `for-label` and module-declaration corrections are preserved.
+The following implementation blobs supplied the R2 specifications. The public paths,
 not private implementation modules, are the documented import paths.
 
 | Implementation file | Git blob |
@@ -98,6 +107,33 @@ from arity reflection. The test-only inventories in `test-reference.py` are
 synthetic regression fixtures, not live API captures or substitutes for those
 full-snapshot checks.
 
+## R2.1 semantic and compatibility checks
+
+The native core test includes a format/option matrix for both dispatcher
+procedures. It covers all five format-specific keywords in all three formats,
+fractional JPEG/WebP quality, the three common color options, and valid active
+settings. Invalid active options must fail without truncating an existing file.
+Python checks inspect the dispatcher declarations and unchanged individual
+encoder contracts; they do not simulate or certify native encoder behavior.
+
+The three focused examples compare normal/raw path iteration, independently
+extracted paths with and without an initial move, and constructor/native-reset
+paint settings. Separate native cases assert their results. Two displayed
+color-space examples exercise standard spaces, equivalence and conversion.
+None of the added examples is evaluated by the documentation build.
+
+The section-link manifest covers both encoding tags. Source checks reject an
+omitted alias or a tag reorder that changes the legacy page name. Runtime checks
+resolve the actual tags through Scribble. HTML checks validate those destinations,
+their anchors when present, and both links from the probe. Review packaging
+rechecks the extracted alias destinations. No replacement HTML anchors are invented.
+
+The path extraction example was also checked against `chrome/m119`
+`src/core/SkContourMeasure.cpp`, Git blob
+`f34840069df89814e4effc171ff16aee19628ba3`: `getSegment` omits the initial move
+when requested, and line extraction then calls `lineTo` with the segment endpoint.
+The previously inspected `SkPath.cpp` supplies the implicit move for an empty path.
+
 ## Running the checks
 
 Keep generated output outside the repository so it does not enter the source
@@ -106,10 +142,10 @@ manifest. The `skia` collection must resolve to the revised checkout.
 ```sh
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 python3 -B tools/test-reference.py
-python3 -B tools/check-reference.py --output ../reference-r2-source
+python3 -B tools/check-reference.py --output ../reference-r2.1-source
 "$RACKET" -l raco -- test tools/reference-matrix-test.rkt
 python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
-  --output ../reference-r2-check --review-zip ../skia-reference-r2-review.zip
+  --output ../reference-r2.1-check --review-zip ../skia-reference-r2.1-review.zip
 ```
 
 Use fresh output paths. The matrix test needs only the public `skia/matrix`
@@ -121,7 +157,7 @@ Native examples are displayed as code and run only by explicit acceptance tests.
 The render driver retains Revision 2.1's module-based root prefixes and `top`
 tags. It builds a Reference seed, the three linked companion manuals, and then
 the final Reference with their cross-reference information. The final Reference,
-not the seed, must pass. The probe covers all 252 export paths, including matrix
+not the seed, must pass. The probe covers all 257 export paths, including matrix
 constants and geometry aliases. The Quick check still targets its six original
 foundation identifiers; it is not full tutorial-site acceptance.
 
@@ -131,7 +167,7 @@ creates a GPU context. The first reads every displayed `racketblock` example fro
 the actual chapters and runs each twice in a fresh namespace and temporary
 working directory. The second checks state restoration, clipping, paint copies,
 retained getters, native paint defaults, path snapshots, curve bounds, conic
-reductions, path measurement, independent images and selected encoder options.
+reductions, path measurement, independent images, standard color spaces and encoder options.
 
 The review ZIP gate checks the final HTML, sources and resources, then checks
 an extracted copy. It refuses bad links, stale source hashes, missing assets or
@@ -147,9 +183,9 @@ Use the actual installed package name. With the existing repository convention:
 ```sh
 "$RACKET" -l raco -- setup --no-zo --pkgs skia-for-racket
 python3 -B tools/check-reference.py --installed "$PWD/doc" --racket "$RACKET" \
-  --output ../reference-r2-installed
+  --output ../reference-r2.1-installed
 python3 -B tools/check-reference.py --site ../site --site-source "$PWD/doc" \
-  --targets ../reference-r2-installed/runtime.json --output ../reference-r2-site
+  --targets ../reference-r2.1-installed/runtime.json --output ../reference-r2.1-site
 ```
 
 The installed check uses the real collection xref and requires the resolved

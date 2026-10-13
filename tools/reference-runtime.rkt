@@ -297,12 +297,33 @@
                   'anchor (or anchor "")))
       '()))
 
+
+;; Resolve both current and compatibility tags through Scribble, not guessed anchors.
+(define section-targets
+  (if xref
+      (for/list ([link (in-list (hash-ref source-report 'section_links '()))])
+        (define tag
+          (link-element-tag
+           (seclink (hash-ref link 'tag)
+                    #:doc '(lib "skia/scribblings/reference/reference.scrbl")
+                    (hash-ref link 'label))))
+        (define-values (path anchor) (xref-tag->path+anchor xref tag))
+        (need (and path (file-exists? path))
+              "unresolved Reference section: ~a" (hash-ref link 'tag))
+        (define relative (find-relative-path (absolute reference-directory) (absolute path)))
+        (define name (regexp-replace* #rx"\\\\" (path->string relative) "/"))
+        (need (equal? name (hash-ref link 'filename))
+              "published Reference filename changed: ~a" path)
+        (hash-set (hash-set link 'relative_path name) 'anchor (or anchor "")))
+      '()))
+
 (call-with-output-file output-file #:exists 'error
   (lambda (out)
     (write-json (hasheq 'status "passed" 'racket_version (version)
                         'definitions (length specifications) 'binding_identity_checked #t
                         'xref_checked (and xref #t) 'installed_xref installed?
-                        'targets targets 'tutorial_targets tutorial-targets) out)
+                        'targets targets 'tutorial_targets tutorial-targets
+                        'section_targets section-targets) out)
     (newline out)))
 (printf "Reference runtime checks passed for ~a definitions; xref: ~a\n"
         (length specifications) (and xref #t))

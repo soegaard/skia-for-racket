@@ -325,6 +325,19 @@ a close verb. Raw mode follows the stored verbs and does not mark closing lines.
 The @racket[force-closed?] option closes open contours for normal iteration
 without modifying the source. Combining raw mode with forced closure raises
 an exception.
+
+@racketblock[
+(with-skia ([path (make-path '((move 10 20) (line 40 20) (line 40 50) (close)))])
+  (for/list ([mode '(normal raw)])
+    (for/list ([segment (in-list (path-segments path #:mode mode))])
+      (list (path-segment-verb segment)
+            (path-segment-closing-line? segment)))))
+]
+
+Normal iteration reports three line segments: the third returns to the contour's
+starting point and has a true closing-line flag. Raw iteration reports the two
+stored line segments followed by @racket['close]; it reports no closing-line
+flag. Neither snapshot changes the source path.
 }
 
 @defproc[(in-path-segments [path skia-path?]
@@ -498,8 +511,22 @@ Returns a new owned path for the portion between @racket[start] and
 exception. A native extraction with no resulting segment returns @racket[#f].
 
 The default starts the result with a move to the segment's starting point.
-Passing @racket[#f] asks Skia to start by connecting with a line; this binding
-still creates a new result path rather than appending to a caller-supplied path.
+Passing @racket[#f] omits that move. This binding always creates a new result
+path, so Skia inserts an implicit move to the origin before its first segment.
+The result does not connect to the source path's current point.
+
+@racketblock[
+(with-skia ([path (make-path '((move 10 20) (line 90 20)))]
+            [measure (make-path-measure path)]
+            [moved (path-measure-segment measure 20 40)]
+            [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)])
+  (list (path->commands moved) (path->commands unmoved)))
+]
+
+The first result starts at coordinates 30 and 20 and draws a line to coordinates
+50 and 20. The second starts at coordinates 0 and 0 and draws a line to coordinates
+50 and 20. Omitting the move therefore changes the geometry; it does not simply
+remove a redundant command from the independently returned path.
 }
 
 @defproc[(path-measure-matrix [measure path-measure?]

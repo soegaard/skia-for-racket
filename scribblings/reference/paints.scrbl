@@ -14,10 +14,6 @@ not indicate whether the paint is open or whether it retains GPU-dependent
 content.
 }
 
-@defproc[(shader? [v any/c]) boolean?]{
-Returns @racket[#t] for a shader resource and @racket[#f] otherwise. A shader
-supplies colors as a function of drawing coordinates.
-}
 @defproc[(path-effect? [v any/c]) boolean?]{
 Returns @racket[#t] for a path-effect resource and @racket[#f] otherwise. A path
 effect changes geometry used by a drawing operation without mutating its input
@@ -418,6 +414,18 @@ with limit four, source-over blending, and disabled antialiasing and dithering.
 These are not exactly the defaults of @racket[make-paint], which explicitly
 selects stroke width one and enables antialiasing. Resetting a paint therefore
 is not interchangeable with constructing a paint using no arguments.
+
+@racketblock[
+(with-skia ([paint (make-paint)])
+  (define constructed
+    (list (paint-stroke-width paint) (paint-antialias? paint)))
+  (paint-reset! paint)
+  (list constructed
+        (list (paint-stroke-width paint) (paint-antialias? paint))))
+]
+
+The first list contains a stroke width of 1 and @racket[#t]; the second
+contains a stroke width of 0 and @racket[#f].
 }
 
 @defproc[(paint->fill-path [paint paint?] [path skia-path?]

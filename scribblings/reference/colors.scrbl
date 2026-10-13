@@ -104,13 +104,88 @@ not multiplied by alpha. This operation does not convert between color spaces.
 
 @(declare-exporting skia)
 
-A color space describes how color samples are interpreted. A color-space
+A @deftech{color space} describes how color samples are interpreted. A color-space
 resource is different from a @tech{color specification}: it supplies the
 interpretation, not the channel values. The @racket[color-space?] predicate is
-provided by @racketmodname[skia], not @racketmodname[skia/color].
+provided by @racketmodname[skia], not @racketmodname[skia/color]. The constructors
+and queries below are also provided by @racketmodname[skia].
+
+An omitted or @racket[#f] color-space argument does not mean sRGB. Its meaning
+depends on the operation; for @racket[make-surface] and @racket[rgba-bytes->image],
+it creates an untagged result rather than selecting a default profile.
 
 @defproc[(color-space? [v any/c]) boolean?]{
 Returns @racket[#t] for a Skia color-space resource and @racket[#f] otherwise.
 A closed color-space wrapper still satisfies this predicate but cannot be used
 for native operations.
+}
+
+@defproc[(make-srgb-color-space) color-space?]{
+Returns a new owned color-space reference describing sRGB, with its standard
+RGB primaries and nonlinear transfer function. The result has an independent
+wrapper lifetime even when Skia shares the underlying native color space.
+Creating the reference does not convert any image or surface samples.
+}
+
+@defproc[(make-linear-srgb-color-space) color-space?]{
+Returns a new owned color-space reference with the same RGB primaries as sRGB
+and a linear transfer function. Samples in this space represent relative
+linear-light channel values rather than sRGB-encoded values. The result follows
+the same ownership rules as @racket[make-srgb-color-space].
+
+The two spaces can be used with the image and surface constructors:
+
+@racketblock[
+(with-skia ([srgb (make-srgb-color-space)]
+            [linear (make-linear-srgb-color-space)]
+            [encoded (rgba-bytes->image 1 1 (bytes 128 128 128 255)
+                                        #:color-space srgb)]
+            [light (rgba-bytes->image 1 1 (bytes 128 128 128 255)
+                                      #:color-space linear)]
+            [surface (make-surface 2 1 #:color-space srgb)])
+  (define canvas (surface-canvas surface))
+  (draw-image canvas encoded 0 0)
+  (draw-image canvas light 1 0)
+  (bytes->list (surface->rgba-bytes surface #:color-space srgb)))
+]
+
+Both source images contain the same channel bytes, but those bytes describe
+different colors. The sRGB source produces RGB values of 128; the linear source
+produces approximately 188 in the sRGB destination. Alpha remains 255. The
+@racket[#:color-space] arguments to @racket[rgba-bytes->image] declare the input
+bytes' meaning; drawing into the tagged destination performs the conversion.
+}
+
+@defproc[(color-space=? [a color-space?] [b color-space?]) boolean?]{
+Returns @racket[#t] when Skia considers @racket[a] and @racket[b] equivalent
+color spaces, and @racket[#f] otherwise. This compares the color-space
+descriptions, not Racket wrapper identity or image pixels. Both arguments must
+be open resources used on their owning thread.
+}
+
+@defproc[(color-space-srgb? [space color-space?]) boolean?]{
+Returns @racket[#t] when Skia recognizes @racket[space] as sRGB, and @racket[#f]
+otherwise. The space must be open and used on its owning thread. Linear sRGB
+does not satisfy this predicate merely because it has the same RGB primaries.
+}
+
+@defproc[(color-space-linear-gamma? [space color-space?]) boolean?]{
+Returns @racket[#t] when @racket[space] has a linear transfer function, and
+@racket[#f] otherwise. The space must be open and used on its owning thread.
+The result does not identify the RGB primaries or verify the meaning of any
+pixel samples.
+
+@racketblock[
+(with-skia ([srgb (make-srgb-color-space)]
+            [another-srgb (make-srgb-color-space)]
+            [linear (make-linear-srgb-color-space)])
+  (list (color-space=? srgb another-srgb)
+        (color-space=? srgb linear)
+        (color-space-srgb? srgb)
+        (color-space-srgb? linear)
+        (color-space-linear-gamma? srgb)
+        (color-space-linear-gamma? linear)))
+]
+
+The result is @racket['(#t #f #t #f #f #t)].
 }

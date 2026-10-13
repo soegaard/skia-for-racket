@@ -134,6 +134,13 @@ PROCEDURES.update({
     'save-image': (8, sorted([*ENCODING_OPTIONS, 'exists'])),
 })
 
+# Standard-space constructors and queries added by R2.1.
+PROCEDURES.update({
+    'make-srgb-color-space': (1, []), 'make-linear-srgb-color-space': (1, []),
+    'color-space=?': (4, []), 'color-space-srgb?': (2, []),
+    'color-space-linear-gamma?': (2, []),
+})
+
 
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
@@ -191,8 +198,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 209)
-        self.assertEqual(result['documented_exports'], 252)
+        self.assertEqual(len(result['definitions']), 214)
+        self.assertEqual(result['documented_exports'], 257)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -311,12 +318,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 209)
+        self.assertEqual(len(self.check()['definitions']), 214)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 209)
+        self.assertEqual(len(self.check()['definitions']), 214)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -814,9 +821,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 209)
-        self.assertEqual(result['documented_exports'], 252)
-        self.assertEqual(len(result['chapters']), 13)  # Root plus seven chapters.
+        self.assertEqual(len(result['definitions']), 214)
+        self.assertEqual(result['documented_exports'], 257)
+        self.assertEqual(len(result['chapters']), 13)  # Root plus twelve chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -857,8 +864,14 @@ class ReviewArchiveTests(unittest.TestCase):
         self.index.write_text('<link rel="stylesheet" href="../manual-style.css">' + ''.join(links))
         (self.site / 'manual-style.css').write_text('body { margin: 2em; }')
         (self.site / 'reference-seed.sxref').write_text('Not for publication')
+        section_targets = [dict(link, relative_path=link['filename'], anchor=link['tag'])
+                           for link in self.source['section_links']]
+        for filename in {row['filename'] for row in section_targets}:
+            (self.reference / filename).write_text(''.join(
+                f'<span id="{row["anchor"]}"></span>' for row in section_targets
+                if row['filename'] == filename))
         self.evidence = dict(status='passed', xref_checked=True, targets=targets,
-                             tutorial_targets=tutorial_targets)
+                             tutorial_targets=tutorial_targets, section_targets=section_targets)
 
     def package(self):
         return review.package_review(self.root, self.site, self.source, self.evidence,
@@ -1174,6 +1187,265 @@ class R2ProseTests(unittest.TestCase):
                      'geometry:paint->fill-path'):
             self.assertIn('@racket[' + name + ']', text)
 
+
+class R21SourceTests(unittest.TestCase):
+    """Contract declarations and compatibility metadata, not native execution."""
+    def setUp(self):
+        self.fixture = Fixtures()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+
+    def header(self, name):
+        text = (self.fixture.root / checks.REFERENCE / 'encoding.scrbl').read_text()
+        return next(header for form, header, _ in checks.commands(text)
+                    if form == 'defproc' and header[0][0] == name)
+
+    def test_five_new_color_space_entries_have_independent_call_shapes(self):
+        result = self.fixture.check()
+        entries = {row['name']: row for row in result['definitions']}
+        for name, mask in (('make-srgb-color-space', '1'), ('make-linear-srgb-color-space', '1'),
+                           ('color-space=?', '4'), ('color-space-srgb?', '2'),
+                           ('color-space-linear-gamma?', '2')):
+            with self.subTest(name=name):
+                self.assertEqual(entries[name]['arity_mask'], mask)
+                self.assertEqual(entries[name]['exports'], ['skia'])
+                self.assertEqual(entries[name]['chapter'], 'scribblings/reference/colors.scrbl')
+
+    def test_shader_predicate_has_one_definition_in_shaders(self):
+        entries = [row for row in self.fixture.check()['definitions'] if row['name'] == 'shader?']
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]['chapter'], 'scribblings/reference/shaders.scrbl')
+
+    def test_dispatcher_keywords_use_conditional_contracts_and_keep_defaults(self):
+        expected = {
+            '#:quality': '90', '#:png-compression': '6',
+            '#:jpeg-downsample': ['quote', 'yuv-420'], '#:jpeg-alpha': ['quote', 'ignore'],
+            '#:webp-lossless?': '#f',
+        }
+        for name in ('image->encoded-bytes', 'save-image'):
+            fields = {field[0]: field for field in self.header(name)[0][1:]}
+            for keyword, default in expected.items():
+                with self.subTest(name=name, keyword=keyword):
+                    self.assertEqual(fields[keyword][2:], ['any/c', default])
+
+    def test_straight_encoder_contracts_are_not_weakened(self):
+        expected = {
+            'image->png-bytes': {'#:compression': ['integer-in', '0', '9']},
+            'image->jpeg-bytes': {
+                '#:quality': ['integer-in', '0', '100'],
+                '#:downsample': ['or/c', ['quote', 'yuv-420'], ['quote', 'yuv-422'],
+                                ['quote', 'yuv-444']],
+                '#:alpha': ['or/c', ['quote', 'ignore'], ['quote', 'blend-on-black']]},
+            'image->webp-bytes': {'#:quality': ['real-in', '0', '100'], '#:lossless?': 'boolean?'},
+        }
+        for name, fields in expected.items():
+            actual = {field[0]: field[2] for field in self.header(name)[0][1:]
+                      if str(field[0]).startswith('#:')}
+            for keyword, contract in fields.items():
+                with self.subTest(name=name, keyword=keyword):
+                    self.assertEqual(actual[keyword], contract)
+
+    def test_common_encoding_contracts_remain_precise(self):
+        for name in ('image->encoded-bytes', 'save-image'):
+            fields = {field[0]: field for field in self.header(name)[0][1:]}
+            for keyword, predicate in (('#:color-space', 'color-space?'),
+                                       ('#:icc-profile', 'bytes?'),
+                                       ('#:icc-description', 'string?')):
+                with self.subTest(name=name, keyword=keyword):
+                    self.assertEqual(fields[keyword][2], ['or/c', predicate, '#f'])
+        fields = {field[0]: field for field in self.header('save-image')[0][1:]}
+        self.assertEqual(fields['#:exists'][2],
+                         ['or/c', ['quote', 'error'], ['quote', 'replace']])
+
+    def test_format_options_table_is_shared_not_duplicated(self):
+        text = (self.fixture.root / checks.REFERENCE / 'encoding.scrbl').read_text()
+        self.assertEqual(text.count('@bold{Keyword} @bold{PNG} @bold{JPEG} @bold{WebP}'), 1)
+        self.assertIn('may have any value', text)
+        self.assertIn('follow the table in @racket[image->encoded-bytes]', text)
+        for keyword in ('quality', 'png-compression', 'jpeg-downsample', 'jpeg-alpha',
+                         'webp-lossless?'):
+            self.assertIn('(list @racket[#:' + keyword + ']', text)
+
+    def test_paint_module_declaration_from_upstream_is_preserved(self):
+        text = (self.fixture.root / checks.REFERENCE / 'paints.scrbl').read_text()
+        self.assertIn('@defmodule[skia/geometry #:no-declare]', text)
+        self.assertIn('(for-label racket/base racket/contract skia skia/geometry)', text)
+
+    def test_new_color_examples_are_not_evaluated_during_the_build(self):
+        text = (self.fixture.root / checks.REFERENCE / 'colors.scrbl').read_text()
+        text = text[text.index('@section[#:tag "skia-color-spaces"]'):]
+        forms = [form for form, _, _ in checks.commands(text, recursive=True)]
+        self.assertEqual(forms.count('racketblock'), 2)
+        self.assertNotIn('examples', forms)
+        self.assertIn('does not mean sRGB', text)
+
+    def test_behavioral_examples_are_displayed_at_the_relevant_entries(self):
+        for chapter, identifier, expression in (
+            ('paints.scrbl', 'paint-reset!', '(paint-reset! paint)'),
+            ('paths.scrbl', 'path-segments', "[mode '(normal raw)]"),
+            ('paths.scrbl', 'path-measure-segment', '#:start-with-move-to? #f'),
+        ):
+            text = (self.fixture.root / checks.REFERENCE / chapter).read_text()
+            start = text.index('@defproc[(' + identifier + ' ')
+            end = text.find('@defproc', start + 1)
+            entry = text[start:end if end >= 0 else len(text)]
+            with self.subTest(name=identifier):
+                self.assertIn('@racketblock[', entry)
+                self.assertIn(expression, entry)
+                self.assertNotIn('@examples', entry)
+
+    def test_encoding_aliases_keep_legacy_filename(self):
+        links = self.fixture.check()['section_links']
+        self.assertEqual([row['tag'] for row in links], ['skia-png', 'skia-encoding'])
+        self.assertEqual({row['filename'] for row in links}, {'skia-png.html'})
+
+    def test_missing_current_alias_is_rejected(self):
+        self.fixture.change('encoding.scrbl', '\'("skia-png" "skia-encoding")', '"skia-png"')
+        with self.assertRaisesRegex(checks.CheckError, 'tag is not declared'):
+            self.fixture.check()
+
+    def test_reordered_aliases_do_not_silently_change_page_address(self):
+        self.fixture.change('encoding.scrbl', '\'("skia-png" "skia-encoding")',
+                             '\'("skia-encoding" "skia-png")')
+        with self.assertRaisesRegex(checks.CheckError, 'published filename'):
+            self.fixture.check()
+
+    def test_alias_manifest_cannot_omit_the_current_tag(self):
+        self.fixture.manifest['section_links'].pop()
+        self.fixture.write_manifest()
+        with self.assertRaisesRegex(checks.CheckError, 'missing from the section-link manifest'):
+            self.fixture.check()
+
+    def test_duplicate_section_manifest_entry_is_rejected(self):
+        self.fixture.manifest['section_links'].append(self.fixture.manifest['section_links'][0])
+        self.fixture.write_manifest()
+        with self.assertRaisesRegex(checks.CheckError, 'duplicate section'):
+            self.fixture.check()
+
+    def test_section_filename_cannot_escape_the_reference(self):
+        self.fixture.manifest['section_links'][0]['filename'] = '../skia-png.html'
+        self.fixture.write_manifest()
+        with self.assertRaisesRegex(checks.CheckError, 'invalid section filename'):
+            self.fixture.check()
+
+    def test_section_cannot_claim_a_tag_in_another_chapter(self):
+        self.fixture.manifest['section_links'][0]['chapter'] = 'scribblings/reference/shaders.scrbl'
+        self.fixture.write_manifest()
+        with self.assertRaisesRegex(checks.CheckError, 'tag is not declared'):
+            self.fixture.check()
+
+
+class R21HtmlTests(unittest.TestCase):
+    """Synthetic sections exercise the checker; these are not rendered manuals."""
+    def setUp(self):
+        self.fixture = HtmlTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.site = self.fixture.site
+        self.page = self.fixture.reference / 'skia-png.html'
+        self.page.write_text('<a id="legacy"></a><a id="current"></a>')
+        self.sections = [
+            dict(tag='skia-png', label='Image Encoding (legacy tag)', anchor='legacy',
+                 chapter='scribblings/reference/encoding.scrbl',
+                 relative_path='skia-png.html', filename='skia-png.html'),
+            dict(tag='skia-encoding', label='Image Encoding (current tag)', anchor='current',
+                 chapter='scribblings/reference/encoding.scrbl',
+                 relative_path='skia-png.html', filename='skia-png.html'),
+        ]
+        self.evidence = dict(self.fixture.evidence, section_targets=self.sections,
+                             status='passed', xref_checked=True)
+        self.probe = self.site / 'probe.html'
+        bindings = ''.join(
+            f'<a href="skia-reference/entry.html#{quote(t["anchor"])}">{escape(t["name"])}</a>'
+            for t in self.fixture.targets)
+        self.probe.write_text(bindings + ''.join(
+            f'<a href="skia-reference/skia-png.html#{row["anchor"]}">{row["label"]}</a>'
+            for row in self.sections))
+
+    def check(self):
+        return checks.check_targets(self.site, self.evidence, smoke=self.probe)
+
+    def test_both_aliases_are_checked_in_real_destination_shape(self):
+        self.assertEqual(set(self.check()['section_links']), {'skia-png', 'skia-encoding'})
+
+    def test_missing_legacy_anchor_is_rejected(self):
+        self.page.write_text('<a id="current"></a>')
+        with self.assertRaisesRegex(checks.CheckError, 'section anchor'):
+            self.check()
+
+    def test_missing_current_anchor_is_rejected(self):
+        self.page.write_text('<a id="legacy"></a>')
+        with self.assertRaisesRegex(checks.CheckError, 'section anchor'):
+            self.check()
+
+    def test_duplicate_alias_anchor_is_rejected(self):
+        self.page.write_text(self.page.read_text() + '<a id="current"></a>')
+        with self.assertRaisesRegex(checks.CheckError, 'section anchor'):
+            self.check()
+
+    def test_plain_text_in_probe_is_not_an_alias_link(self):
+        text = self.probe.read_text()
+        self.probe.write_text(text.replace(
+            '<a href="skia-reference/skia-png.html#current">Image Encoding (current tag)</a>',
+            'Image Encoding (current tag)'))
+        with self.assertRaisesRegex(checks.CheckError, 'missing section link'):
+            self.check()
+
+    def test_wrong_but_existing_alias_target_is_rejected(self):
+        self.probe.write_text(self.probe.read_text().replace(
+            'skia-png.html#current', 'skia-png.html#legacy'))
+        with self.assertRaisesRegex(checks.CheckError, 'wrong section link'):
+            self.check()
+
+    def test_two_tags_may_share_the_same_resolved_anchor(self):
+        self.sections[1]['anchor'] = 'legacy'
+        self.probe.write_text(self.probe.read_text().replace(
+            'skia-png.html#current', 'skia-png.html#legacy'))
+        self.assertEqual(self.check()['status'], 'passed')
+
+    def test_top_of_page_section_is_valid(self):
+        self.sections[0]['anchor'] = ''
+        self.probe.write_text(self.probe.read_text().replace('skia-png.html#legacy', 'skia-png.html'))
+        self.assertEqual(self.check()['status'], 'passed')
+
+    def test_top_of_page_section_still_requires_a_real_file(self):
+        for row in self.sections:
+            row['anchor'] = ''
+        self.page.unlink()
+        with self.assertRaisesRegex(checks.CheckError, 'missing HTML'):
+            self.check()
+
+    def test_new_filename_in_runtime_evidence_is_rejected(self):
+        self.sections[1]['relative_path'] = 'skia-encoding.html'
+        with self.assertRaisesRegex(checks.CheckError, 'section filename changed'):
+            self.check()
+
+    def test_alias_evidence_cannot_be_silently_dropped(self):
+        source = dict(definitions=[], tutorial_links=[], section_links=[
+            {key: row[key] for key in ('chapter', 'tag', 'label', 'filename')}
+            for row in self.sections])
+        evidence = dict(status='passed', xref_checked=True, targets=[],
+                        tutorial_targets=[], section_targets=self.sections[:1])
+        with self.assertRaisesRegex(checks.CheckError, 'section target inventory'):
+            checks.check_evidence(source, evidence)
+
+
+class R21ReviewTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture = ReviewArchiveTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+
+    def test_review_zip_includes_the_legacy_named_encoding_page(self):
+        self.fixture.package()
+        with zipfile.ZipFile(self.fixture.archive) as archive:
+            self.assertTrue(any(name.endswith('/skia-png.html') for name in archive.namelist()))
+
+    def test_missing_section_page_prevents_review_publication(self):
+        (self.fixture.reference / 'skia-png.html').unlink()
+        with self.assertRaises(checks.CheckError):
+            self.fixture.package()
+        self.assertFalse(self.fixture.archive.exists())
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,6 +10,12 @@ resources are immutable: a transformed or combined shader is a new owned
 wrapper. Combinations retain their native inputs rather than borrowing the
 caller's wrappers, and preserve any GPU-context dependency.
 
+@defproc[(shader? [v any/c]) boolean?]{
+Returns @racket[#t] for a shader resource and @racket[#f] otherwise. The result
+does not indicate whether the resource is open or whether it depends on a GPU
+context.
+}
+
 @section[#:tag "skia-tile-modes"]{Tile Modes and Gradient Stops}
 
 Tile modes specify values outside a gradient's unit interval or an image's

@@ -105,6 +105,16 @@ The following links exercise the public bindings documented by the Reference.
 
 @racket[color-space?]
 
+@racket[make-srgb-color-space]
+
+@racket[make-linear-srgb-color-space]
+
+@racket[color-space=?]
+
+@racket[color-space-srgb?]
+
+@racket[color-space-linear-gamma?]
+
 @racket[paint?]
 
 @racket[shader?]
@@ -518,3 +528,11 @@ The following links exercise the public bindings documented by the Reference.
 @racket[matrix:matrix-map-vector]
 
 @racket[matrix:matrix-map-rect]
+
+The following links check the current and retained encoding chapter tags.
+
+@seclink["skia-png" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]{
+Image Encoding (legacy tag)}
+
+@seclink["skia-encoding" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]{
+Image Encoding (current tag)}

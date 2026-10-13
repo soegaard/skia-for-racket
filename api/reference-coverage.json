@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R2",
-  "reviewed_repository_commit": "ba19990ce41cbddd326598ef8d69b3b7495967c7",
+  "stage": "R2.1",
+  "reviewed_repository_commit": "f20b68d866f6c1b92de94c19c62754978a8e9a0d",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -509,6 +509,56 @@
       "space": null
     },
     {
+      "name": "make-srgb-color-space",
+      "chapter": "scribblings/reference/colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-linear-srgb-color-space",
+      "chapter": "scribblings/reference/colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space=?",
+      "chapter": "scribblings/reference/colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space-srgb?",
+      "chapter": "scribblings/reference/colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space-linear-gamma?",
+      "chapter": "scribblings/reference/colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
       "name": "paint?",
       "chapter": "scribblings/reference/paints.scrbl",
       "canonical_module": "skia",
@@ -520,7 +570,7 @@
     },
     {
       "name": "shader?",
-      "chapter": "scribblings/reference/paints.scrbl",
+      "chapter": "scribblings/reference/shaders.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -2169,6 +2219,20 @@
       "directory": "skia-tutorial-color-spaces",
       "tag": "top",
       "label": "Color Spaces"
+    }
+  ],
+  "section_links": [
+    {
+      "tag": "skia-png",
+      "label": "Image Encoding (legacy tag)",
+      "chapter": "scribblings/reference/encoding.scrbl",
+      "filename": "skia-png.html"
+    },
+    {
+      "tag": "skia-encoding",
+      "label": "Image Encoding (current tag)",
+      "chapter": "scribblings/reference/encoding.scrbl",
+      "filename": "skia-png.html"
     }
   ]
 }
