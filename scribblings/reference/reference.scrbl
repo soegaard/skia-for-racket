@@ -11,7 +11,8 @@ introduce drawing through complete examples.
 @defmodule[skia]
 
 This manual documents resource management, surfaces, canvas state, colors, paints,
-shaders, geometric drawing, paths, affine matrices, images, and image encoding.
+shaders, geometric drawing, paths, affine matrices, images, image encoding,
+font managers, typefaces, fonts, shaped text, text blobs, and paragraph layout.
 Other interfaces are described in the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{existing API notes}.
 
@@ -19,7 +20,8 @@ The module @racketmodname[skia] provides the bindings documented here. Additiona
 public import paths are identified in the relevant chapters. In particular,
 color operations are available from @racketmodname[skia/color], affine matrices
 from @racketmodname[skia/matrix], and the indicated paint queries from
-@racketmodname[skia/geometry].
+@racketmodname[skia/geometry]. Typeface-data operations are also available from
+@racketmodname[skia/typefaces], and additional glyph queries from @racketmodname[skia/fonts].
 
 @table-of-contents[]
 
@@ -35,5 +37,10 @@ from @racketmodname[skia/matrix], and the indicated paint queries from
 @include-section["matrices.scrbl"]
 @include-section["images.scrbl"]
 @include-section["encoding.scrbl"]
+@include-section["typefaces.scrbl"]
+@include-section["fonts.scrbl"]
+@include-section["shaping.scrbl"]
+@include-section["text-blobs.scrbl"]
+@include-section["text-layout.scrbl"]
 
 @index-section[]

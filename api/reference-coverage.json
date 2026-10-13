@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R2.1",
-  "reviewed_repository_commit": "f20b68d866f6c1b92de94c19c62754978a8e9a0d",
+  "stage": "R3a",
+  "reviewed_repository_commit": "1003a8ca6481b1c98a1240e215853713bb7a1ee3",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3-R4",
-    "reason": "Outside R2 core drawing; see docs/REFERENCE-DEVELOPMENT.md for the remaining scope."
+    "stage": "R3b-R4",
+    "reason": "Outside the core and R3a fonts/text batch; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -2193,6 +2193,1743 @@
     {
       "name": "save-image",
       "chapter": "scribblings/reference/encoding.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager?",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-font-manager",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "default-font-manager",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-family-count",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-family-name",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-families",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-match-family",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-match-character",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface?",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-typeface",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-from-family",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-from-file",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-family-name",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-weight",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-width",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-slant",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style?",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-font-style",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-weight",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-width",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-slant",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-set?",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-empty-font-style-set",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-style-set",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-style-set-ref",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-set-count",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-set-ref",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-set-styles",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-entry?",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-entry-index",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-entry-name",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-entry-style",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-set-typeface",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-style-set-match",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-style",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-from-bytes",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-manager-typeface-from-bytes",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-postscript-name",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-fixed-pitch?",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-glyph-count",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-units-per-em",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-table-tag",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-table-tag->bytes",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-table-tags",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-table-size",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-table-bytes",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-kerning-pair-adjustments",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface->font-bytes",
+      "chapter": "scribblings/reference/typefaces.scrbl",
+      "canonical_module": "skia/typefaces",
+      "exports": [
+        "skia",
+        "skia/typefaces"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-font",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-size",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-size!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-scale-x",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-scale-x!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-skew-x",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-skew-x!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-edging",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-edging!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-hinting",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-hinting!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-subpixel?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-subpixel!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-linear-metrics?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-linear-metrics!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-embolden?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-embolden!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-get-metrics",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-top",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-ascent",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-descent",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-bottom",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-leading",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-average-character-width",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-max-character-width",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-x-min",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-x-max",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-x-height",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-cap-height",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-underline-thickness",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-underline-position",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-strikeout-thickness",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-strikeout-position",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-metrics-spacing",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-simple-text",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "measure-simple-text",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "simple-text-bounds",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-char->glyph",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-text->glyphs",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-glyph-path",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "simple-text-path",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-embedded-bitmaps?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-embedded-bitmaps!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-force-auto-hinting?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-force-auto-hinting!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-baseline-snap?",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-baseline-snap!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-typeface",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-set-typeface!",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-glyph-widths",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-glyph-bounds",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-glyph-widths+bounds",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-glyph-positions",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-glyph-x-positions",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-glyph-paths",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "font-break-text",
+      "chapter": "scribblings/reference/fonts.scrbl",
+      "canonical_module": "skia/fonts",
+      "exports": [
+        "skia",
+        "skia/fonts"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaper?",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-shaper",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shape-text",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run?",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-glyphs",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-clusters",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-positions",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-advance-x",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-advance-y",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-glyph-count",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run->text-blob",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-shaped-run",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-shaped-text",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run->path",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob?",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-positioned-text-blob",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-bounds",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-unique-id",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-text-blob",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob->path",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layout-text",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-text-layout",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout?",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-lines",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-width",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-height",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-height",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-count",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line?",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-text",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-run",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-origin-x",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-baseline",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-width",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-direction",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layout-break-opportunity?",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-layout-break-opportunity",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layout-break-opportunity-index",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layout-break-opportunity-insert",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layout-mixed-text",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-mixed-text-layout",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-layout?",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-layout-lines",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-layout-width",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-layout-height",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-layout-line-height",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-layout-line-count",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line?",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-text",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-runs",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-origin-x",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-baseline",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-width",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-direction",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run?",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-text",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-shaped-run",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-origin-x",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-width",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-direction",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-level",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-script",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-family",
+      "chapter": "scribblings/reference/text-layout.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"

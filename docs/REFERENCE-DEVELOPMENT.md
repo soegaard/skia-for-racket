@@ -1,12 +1,12 @@
-# Skia Reference development: core precision and review bundles
+# Skia Reference development: R3a fonts and text
 
 The Reference is one registered multi-page manual assembled from
-`scribblings/reference/reference.scrbl`. R2.1 refines the R2 core reference.
-It documents 214 bindings through 257 public export paths in twelve conceptual
-chapters. The five additions are standard color-space constructors and queries.
-The preparatory cleanup after R2.1 keeps these counts and does not change library
-behavior. It tightens the two remaining blend-mode signatures, adds a clipping
-comparison, and makes source-review inputs and partial HTML scope explicit.
+`scribblings/reference/reference.scrbl`. R3a adds 169 font and text bindings to
+R2.1 and its preparatory cleanup. It documents 383 bindings through 473 public
+export paths in seventeen conceptual chapters. This is the first bounded R3
+batch, not completion of all higher-level APIs. No library behavior changes.
+The upstream `for-label` fixes, finite blend-mode contracts, clipping example,
+and independent source-review packaging are retained.
 
 ## Scope and chapter ownership
 
@@ -24,6 +24,11 @@ comparison, and makes source-review inputs and partial HTML scope explicit.
 | Affine Matrices | 21 | Detached six-coefficient transforms, composition, inversion and mapping. |
 | Images | 15 | Encoded/raw construction, metadata, pixel copies, subsets and drawing. |
 | Image Encoding | 7 | PNG/JPEG/WebP byte encoders and file writing. |
+| Font Managers and Typefaces | 48 | Lookup, styles, owned faces/sets and copied font data. |
+| Fonts and Text Measurement | 58 | Font controls, metrics, simple text and glyph queries. |
+| Shaped Text | 14 | Captured shapers, glyph clusters, drawing and outline conversion. |
+| Text Blobs | 6 | Positioned single-run blobs, native bounds and drawing. |
+| Text Layout | 43 | Wrapping, alignment, providers, bidi/fallback and line/run metadata. |
 
 Resources and byte-color coverage is retained from the foundation. Image
 Encoding declares both `skia-png` and `skia-encoding`, keeping `skia-png` first
@@ -43,21 +48,26 @@ scope includes extended geometry (arcs, rounded-rectangle records, regions,
 shape recognition and batch operations), projective matrices, specialized
 canvases and layer protocols, raster buffers and additional pixel formats,
 image-operation extensions, codecs and incremental sessions, further color management,
-text, filters, recorded pictures, documents, streams, caches, GPU and GUI/DC
-integration. The subsequent stages must add their own semantic entries. No
+extended multi-run text blobs and builders, text-on-path helpers, filters,
+recorded pictures, documents, streams, caches, GPU and GUI/DC integration.
+The subsequent stages must add their own semantic entries. No
 unwritten entries are hidden behind artificial anchors or counted as complete.
 
 ## Authoritative source checks
 
-Preparatory patch baseline: `3a9c69c3dc71e29f008d577f45de5a926133535f`.
+R3a baseline: `1003a8ca6481b1c98a1240e215853713bb7a1ee3`.
+The preparatory cleanup was based on `3a9c69c3dc71e29f008d577f45de5a926133535f`.
 R2.1 was based on `f20b68d866f6c1b92de94c19c62754978a8e9a0d`.
 The upstream `for-label` and module-declaration corrections are preserved.
-The following implementation blobs supplied the R2 specifications. The public paths,
+The following implementation blobs supplied the core and text specifications. The public paths,
 not private implementation modules, are the documented import paths.
 
 | Implementation file | Git blob |
 |---|---|
 | `private/core.rkt` | `9861b7cf96ea6002c71e7eb904780d2fddff808e` |
+| `typefaces.rkt` | `fef5ba345c0b9470e566af1e9a28049f409ef9b1` |
+| `fonts.rkt` | `5f54ddc7defd245b40072e3ba5df8c8106e0cb49` |
+| `private/typeface-util.rkt` | `4346d4d9993a0c1e0f60fad03203f4d5e0cb2575` |
 | `private/path-matrix.rkt` | `3abcea67c6c0f8a33f96fefec7dced8bbc4fe965` |
 | `matrix.rkt` | `6660a7bf2aa04978787d12f7f47cf7f21338c85a` |
 | `geometry.rkt` | `aed94b5150562bd9d9b2eca6faa8806a4562fd49` |
@@ -73,6 +83,8 @@ rejects excessive position/tangent distances. Preserve that distinction.
 
 Source locations:
 
+- https://github.com/soegaard/skia-for-racket/tree/1003a8ca6481b1c98a1240e215853713bb7a1ee3
+
 - https://github.com/soegaard/skia-for-racket/tree/ba19990ce41cbddd326598ef8d69b3b7495967c7
 - https://github.com/google/skia/blob/chrome/m119/src/core/SkPath.cpp
 - https://api.skia.org/classSkPathMeasure.html
@@ -85,6 +97,8 @@ Source locations:
 `api/reference-coverage.json` assigns a canonical chapter and import paths to
 each binding. Eleven color bindings have aliases in `skia/color`, all twenty-one
 affine bindings in `skia/matrix`, and eleven paint operations in `skia/geometry`.
+R3a covers all 32 exports of `skia/typefaces` and all 15 exports of `skia/fonts`,
+with one definition per binding and probe links for both public import paths.
 Each alias is intended to resolve to the same native Scribble definition target
 as its canonical binding. Equal names alone are not evidence of identity.
 
@@ -108,7 +122,8 @@ report. The `--require-complete` option rejects any deferral. Defaults, result
 contracts, macro grammar, ownership and rendering semantics are not inferred
 from arity reflection. The test-only inventories in `test-reference.py` are
 synthetic regression fixtures, not live API captures or substitutes for those
-full-snapshot checks.
+full-snapshot checks. The R3a expectations are in `tools/reference_text_cases.py`;
+they independently specify call shapes and aliases without parsing the prose.
 
 ## R2.1 semantic and compatibility checks
 
@@ -151,8 +166,54 @@ intersects with or subtracts a second rectangle. Independent canvas-state scopes
 prevent the first clip from affecting the second. Interior sample points show
 that difference clipping does not add pixels outside the original clip. The
 native regression also checks restoration of the save count and the full clip.
-There are now 26 displayed native example blocks; native acceptance executes them
+The preparatory cleanup had 26 displayed native example blocks; acceptance executes them
 separately from documentation rendering. Eleven pure evaluated examples remain.
+
+## R3a semantic scope and acceptance
+
+Typeface entries distinguish design metadata, owned faces/style sets, and
+copied font data. Native font lookup is platform-dependent. No family, glyph ID,
+exact metric, ligature count, or complete Unicode coverage is assumed portable.
+The table-tag conversions have intentionally different domains: `font-table-tag`
+accepts integers, four bytes, or four Latin-1 characters; `font-table-tag->bytes`
+accepts only an unsigned 32-bit integer. Symbols are not table-tag inputs.
+
+Font entries distinguish simple advances from ink bounds, direct glyph mapping
+from shaping, and character counts from UTF-8 byte offsets. Shapers snapshot
+font state, positioned blobs capture their font state, and layouts retain live
+shaper/manager dependencies rather than owning every fallback font permanently.
+The constructors of the internal layout/metrics records are not documented as
+public structure constructors; their exported predicates and accessors are.
+
+Two existing limitations are specified rather than changed. Vertical shaping
+preserves the native signed y advance; it is not automatically converted into
+downward-positive vertical paragraph layout. In single-font `layout-text`, an
+explicit script is normalized to a string for shaping, while the justification
+opportunity checks compare inferred symbol tags. Thus explicit script selection
+does not enable the CJK/Arabic-specific opportunities that script inference can
+supply. These descriptions follow the pinned source; they are not new native
+acceptance results or reasons to change the library in a documentation patch.
+
+The five chapters add 18 displayed blocks, for 44 total. All eleven existing
+pure evaluated blocks are unchanged. Documentation-time evaluation does not
+load fonts or HarfBuzz to run the new examples. The existing native example
+runner reads the real blocks and runs each twice in fresh namespaces.
+
+`tools/reference-text-pure-test.rkt` adds three native-free test cases for style
+normalization, table-tag conversion and break opportunities. It imports the
+public Skia module but does not construct a font or initialize native libraries.
+`tools/reference-text-test.rkt` adds twelve opt-in native CPU/HarfBuzz cases for
+retained and copied ownership, glyph metadata, UTF-8 boundaries, shaper/blob
+snapshots, wrapping, provider validation, and live layout dependencies. The tests
+require a default font with basic Latin characters. Set `SKIA_REFERENCE_TEST_FONT`
+to a local font file to select another face for those semantic tests. Displayed
+examples still use the default face. No font binaries are distributed here.
+
+The Python regressions check 169 independent call shapes, 47 re-export aliases,
+selected full contracts and defaults, rejection of documentation drift, probe
+coverage, and separation of displayed examples from native execution. Their
+small Racket-like reader checks delimiter nesting, not compilation. The two
+Racket suites and rendered examples remain separate acceptance steps.
 
 ## Running the checks
 
@@ -162,10 +223,10 @@ manifest. The `skia` collection must resolve to the revised checkout.
 ```sh
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 python3 -B tools/test-reference.py
-python3 -B tools/check-reference.py --output ../reference-r2.1-source
-"$RACKET" -l raco -- test tools/reference-matrix-test.rkt
+python3 -B tools/check-reference.py --output ../reference-r3a-source
+"$RACKET" -l raco -- test tools/reference-matrix-test.rkt tools/reference-text-pure-test.rkt
 python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
-  --output ../reference-r2.1-check --review-zip ../skia-reference-r2.1-review.zip
+  --output ../reference-r3a-check --review-zip ../skia-reference-r3a-review.zip
 ```
 
 Use fresh output paths. The matrix test needs only the public `skia/matrix`
@@ -177,12 +238,14 @@ Native examples are displayed as code and run only by explicit acceptance tests.
 The render driver retains Revision 2.1's module-based root prefixes and `top`
 tags. It builds a Reference seed, the three linked companion manuals, and then
 the final Reference with their cross-reference information. The final Reference,
-not the seed, must pass. The probe covers all 257 export paths, including matrix
+not the seed, must pass. The probe covers all 473 export paths, including matrix
 constants and geometry aliases. The Quick check still targets its six original
 foundation identifiers; it is not full tutorial-site acceptance.
 
-Companion tutorials use native Skia for their diagrams. Native acceptance adds
-`reference-native-test.rkt` and `reference-core-test.rkt`; neither opens a GUI or
+Companion tutorials use native Skia for their diagrams. Text acceptance also needs HarfBuzz.
+Native acceptance adds
+`reference-native-test.rkt`, `reference-core-test.rkt`, and `reference-text-test.rkt`;
+none opens a GUI or
 creates a GPU context. The first reads every displayed `racketblock` example from
 the actual chapters and runs each twice in a fresh namespace and temporary
 working directory. The second checks state restoration, clipping, paint copies,
@@ -257,9 +320,9 @@ Use the actual installed package name. With the existing repository convention:
 ```sh
 "$RACKET" -l raco -- setup --no-zo --pkgs skia-for-racket
 python3 -B tools/check-reference.py --installed "$PWD/doc" --racket "$RACKET" \
-  --output ../reference-r2.1-installed
+  --output ../reference-r3a-installed
 python3 -B tools/check-reference.py --site ../site --site-source "$PWD/doc" \
-  --targets ../reference-r2.1-installed/runtime.json --output ../reference-r2.1-site
+  --targets ../reference-r3a-installed/runtime.json --output ../reference-r3a-site
 ```
 
 The installed check uses the real collection xref and requires the resolved

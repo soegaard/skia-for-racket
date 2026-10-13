@@ -142,6 +142,11 @@ PROCEDURES.update({
 })
 
 
+from reference_text_cases import FONT_EXPORTS, TYPEFACE_EXPORTS, TEXT_PROCEDURES
+
+PROCEDURES.update(TEXT_PROCEDURES)
+
+
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
                 required_keywords=[], allowed_keywords=keywords)
@@ -164,7 +169,8 @@ def synthetic_inventory():
                                             'rgba', 'rgba?', 'rgba-red', 'rgba-green',
                                             'rgba-blue', 'rgba-alpha', 'struct:rgba', 'rgb')])]),
                       dict(modules=[])]
-    for path, names in (('matrix.rkt', MATRIX_EXPORTS), ('geometry.rkt', GEOMETRY_EXPORTS)):
+    for path, names in (('matrix.rkt', MATRIX_EXPORTS), ('geometry.rkt', GEOMETRY_EXPORTS),
+                        ('typefaces.rkt', TYPEFACE_EXPORTS), ('fonts.rkt', FONT_EXPORTS)):
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
@@ -204,8 +210,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 214)
-        self.assertEqual(result['documented_exports'], 257)
+        self.assertEqual(len(result['definitions']), 383)
+        self.assertEqual(result['documented_exports'], 473)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -324,12 +330,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 214)
+        self.assertEqual(len(self.check()['definitions']), 383)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 214)
+        self.assertEqual(len(self.check()['definitions']), 383)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -833,9 +839,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 214)
-        self.assertEqual(result['documented_exports'], 257)
-        self.assertEqual(len(result['chapters']), 13)  # Root plus twelve chapters.
+        self.assertEqual(len(result['definitions']), 383)
+        self.assertEqual(result['documented_exports'], 473)
+        self.assertEqual(len(result['chapters']), 18)  # Root plus seventeen chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1515,7 +1521,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 26)
+        self.assertEqual(count, 44)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1736,6 +1742,205 @@ class LinkScopeDiagnosticsTests(unittest.TestCase):
             report = json.loads(archive.read('evidence/review.json'))
             self.assertEqual(report['link_scopes']['companions']['status'], 'incomplete')
             self.assertIn('does not certify', archive.read('README.txt').decode())
+
+
+
+class R3TextCoverageTests(unittest.TestCase):
+    """Read authored entries against independent test call shapes, not captured exports."""
+    setUp = Fixtures.setUp
+    write_inventory = Fixtures.write_inventory
+    write_manifest = Fixtures.write_manifest
+    change = Fixtures.change
+    check = Fixtures.check
+
+    def test_text_subset_has_one_definition_per_reviewed_call_shape(self):
+        entries = {row['name']: row for row in self.check()['definitions']}
+        self.assertEqual(len(TEXT_PROCEDURES), 169)
+        for name, (mask, keywords) in TEXT_PROCEDURES.items():
+            with self.subTest(name=name):
+                self.assertEqual(entries[name]['arity_mask'], str(mask))
+                self.assertEqual(entries[name]['allowed_keywords'], sorted(keywords))
+                self.assertEqual(entries[name]['required_keywords'], [])
+
+    def test_new_chapters_have_explicit_ownership(self):
+        entries = self.check()['definitions']
+        for chapter, count in (('typefaces', 48), ('fonts', 58), ('shaping', 14),
+                               ('text-blobs', 6), ('text-layout', 43)):
+            with self.subTest(chapter=chapter):
+                owned = [e for e in entries
+                         if e['chapter'] == f'scribblings/reference/{chapter}.scrbl']
+                self.assertEqual(len(owned), count)
+
+    def test_all_typeface_and_font_aliases_have_one_canonical_entry(self):
+        entries = {row['name']: row for row in self.check()['definitions']}
+        for module, names in (('skia/typefaces', TYPEFACE_EXPORTS), ('skia/fonts', FONT_EXPORTS)):
+            for name in names:
+                with self.subTest(module=module, name=name):
+                    self.assertEqual(set(entries[name]['exports']), {'skia', module})
+                    self.assertEqual(entries[name]['canonical_module'], module)
+
+    def test_missing_font_alias_is_rejected(self):
+        module = next(m for m in self.snapshots[0]['modules'] if m['path'] == 'fonts.rkt')
+        module['exports'] = [e for e in module['exports'] if e['name'] != 'font-typeface']
+        self.write_inventory()
+        with self.assertRaisesRegex(checks.CheckError, 'unknown public export'):
+            self.check()
+
+    def test_disagreeing_typeface_alias_arity_is_rejected(self):
+        module = next(m for m in self.snapshots[0]['modules'] if m['path'] == 'typefaces.rkt')
+        entry = next(e for e in module['exports'] if e['name'] == 'font-table-tag')
+        entry['arity_mask'] = '4'
+        self.write_inventory()
+        with self.assertRaisesRegex(checks.CheckError, 'arity_mask'):
+            self.check()
+
+    def test_changing_optional_face_to_required_is_rejected(self):
+        self.change('fonts.scrbl', '[face (or/c typeface? #f) #f]', '[face (or/c typeface? #f)]')
+        with self.assertRaisesRegex(checks.CheckError, 'arity_mask'):
+            self.check()
+
+    def test_new_shaping_keyword_cannot_escape_inventory_check(self):
+        self.change('shaping.scrbl', "'btt) 'auto]", "'btt) 'auto] [#:invented option any/c #f]")
+        with self.assertRaisesRegex(checks.CheckError, 'allowed_keywords'):
+            self.check()
+
+    def test_every_declared_text_alias_appears_in_the_link_probe(self):
+        text = (self.root / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        for prefix, names in (('typefaces:', TYPEFACE_EXPORTS), ('fonts:', FONT_EXPORTS)):
+            for name in names:
+                self.assertIn('@racket[' + prefix + name + ']', text)
+        for name in TEXT_PROCEDURES:
+            self.assertIn('@racket[' + name + ']', text)
+
+    def test_later_batches_are_not_counted_as_documented(self):
+        names = {e['name'] for e in self.check()['definitions']}
+        for name in ('make-text-blob-builder', 'make-pdf-document', 'make-gpu-context',
+                     'make-blur-image-filter', 'make-raster-buffer'):
+            self.assertNotIn(name, names)
+
+
+class R3TextSemanticsTests(unittest.TestCase):
+    """Check specification details and test wiring; no Racket execution is implied."""
+    chapters = ('typefaces', 'fonts', 'shaping', 'text-blobs', 'text-layout')
+
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def header(self, chapter, name):
+        return next(header for form, header, _ in checks.commands(self.text(chapter))
+                    if form == 'defproc' and header[0][0] == name)
+
+    def test_font_defaults_are_complete_and_match_the_reviewed_constructor(self):
+        fields = self.header('fonts', 'make-font')[0][1:]
+        self.assertEqual(fields[0], ['face', ['or/c', 'typeface?', '#f'], '#f'])
+        actual = {field[0]: field[-1] for field in fields[1:]}
+        self.assertEqual(actual, {
+            '#:size': '12', '#:scale-x': '1', '#:skew-x': '0',
+            '#:edging': ['quote', 'antialias'], '#:hinting': ['quote', 'normal'],
+            '#:subpixel?': '#f', '#:linear-metrics?': '#f', '#:embolden?': '#f',
+            '#:embedded-bitmaps?': '#f', '#:force-auto-hinting?': '#f', '#:baseline-snap?': '#t'})
+
+    def test_table_tag_conversions_have_different_domains(self):
+        forward = self.header('typefaces', 'font-table-tag')[0][1][1]
+        reverse = self.header('typefaces', 'font-table-tag->bytes')[0][1][1]
+        self.assertEqual(forward, ['or/c', ['integer-in', '0', '#xffffffff'], 'bytes?', 'string?'])
+        self.assertEqual(reverse, ['integer-in', '0', '#xffffffff'])
+        self.assertIn('symbols are not accepted', self.text('typefaces'))
+
+    def test_unicode_scalar_contract_excludes_surrogates(self):
+        for chapter, name in (('typefaces', 'font-manager-match-character'),
+                              ('fonts', 'font-char->glyph')):
+            header = self.header(chapter, name)
+            field = next(f for f in header[0][1:] if f[0] == 'character')
+            self.assertEqual(field[1], ['or/c', 'char?', ['integer-in', '0', '#xd7ff'],
+                                       ['integer-in', '#xe000', '#x10ffff']])
+
+    def test_nullable_metrics_do_not_claim_zero_means_false(self):
+        for name in ('underline-thickness', 'underline-position',
+                     'strikeout-thickness', 'strikeout-position'):
+            self.assertEqual(self.header('fonts', 'font-metrics-' + name)[1],
+                             ['or/c', 'real?', '#f'])
+        self.assertEqual(self.header('fonts', 'font-metrics-ascent')[1], 'real?')
+
+    def test_positioned_blob_positions_accept_lists_and_vectors(self):
+        header = self.header('text-blobs', 'make-positioned-text-blob')
+        field = next(f for f in header[0][1:] if f[0] == 'positions')
+        point = ['or/c', ['list/c', 'real?', 'real?'], ['vector/c', 'real?', 'real?']]
+        self.assertEqual(field[1], ['or/c', ['listof', point], ['vectorof', point]])
+        self.assertIn('copies glyphs and positions', self.text('text-blobs'))
+
+    def test_character_counts_and_cluster_bytes_are_distinguished(self):
+        self.assertIn('does not return a byte offset', self.text('fonts'))
+        self.assertIn('A cluster is a UTF-8 byte offset', self.text('shaping'))
+        self.assertIn('not a Racket character', self.text('shaping'))
+        self.assertIn('paragraph-relative Racket character index', self.text('text-layout'))
+
+    def test_layout_requires_live_dependencies_without_claiming_owned_resource(self):
+        text = self.text('text-layout')
+        self.assertIn('ordinary Racket values, not resources', text)
+        self.assertIn('Both the shaper and manager must remain open', text)
+        self.assertIn('does not own a permanent native', text)
+        self.assertIn('Drawing is not transactional', text)
+
+    def test_shape_and_layout_directions_are_not_conflated(self):
+        shaped = self.header('shaping', 'shape-text')[0]
+        layout = self.header('text-layout', 'layout-text')[0]
+        shape_dir = next(f[2] for f in shaped[1:] if f[0] == '#:direction')
+        layout_dir = next(f[2] for f in layout[1:] if f[0] == '#:direction')
+        self.assertEqual(shape_dir, ['or/c'] + [['quote', s] for s in ('auto', 'ltr', 'rtl',
+                                                                 'ttb', 'btt')])
+        self.assertEqual(layout_dir, ['or/c'] + [['quote', s] for s in ('auto', 'ltr', 'rtl')])
+        self.assertIn('signed y advances', self.text('shaping'))
+
+    def test_explicit_script_justification_limit_is_not_hidden(self):
+        self.assertIn('does not enable these script-specific justification opportunities',
+                      self.text('text-layout'))
+        self.assertIn('A break provider is not invoked when wrapping is disabled',
+                      self.text('text-layout'))
+
+    def test_no_native_evaluation_added_to_documentation_build(self):
+        total = 0
+        for chapter in self.chapters:
+            forms = list(checks.commands(self.text(chapter), recursive=True))
+            self.assertFalse(any(form in ('examples', 'interaction', 'interaction-eval')
+                                 for form, _, _ in forms))
+            total += sum(form == 'racketblock' for form, _, _ in forms)
+        self.assertEqual(total, 18)
+
+    def test_new_complete_file_examples_explicitly_allow_replacement(self):
+        for chapter in self.chapters:
+            for form, header, _ in checks.commands(self.text(chapter), recursive=True):
+                if form == 'racketblock' and 'save-png' in str(header):
+                    self.assertIn('with-skia', str(header))
+                    self.assertIn("['quote', 'replace']", str(header))
+
+    def test_native_and_pure_acceptance_are_wired_separately(self):
+        source = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn("run('text-pure-tests'", source)
+        native = source[source.index('if args.native:'):]
+        self.assertIn("ROOT / 'tools/reference-text-test.rkt'", native)
+        self.assertNotIn("ROOT / 'tools/reference-text-pure-test.rkt'", native)
+
+    def test_racket_cases_are_independent_and_inside_test_submodules(self):
+        # Delimiter/structure check only; this small reader does not compile Racket.
+        for filename, expected in (('reference-text-pure-test.rkt', 3),
+                                   ('reference-text-test.rkt', 12)):
+            text = (ROOT / 'tools' / filename).read_text().split('\n', 1)[1]
+            reader, forms = checks.Reader(text), []
+            while True:
+                reader.skip()
+                if reader.position == len(text):
+                    break
+                forms.append(reader.read())
+            modules = [f for f in forms if isinstance(f, list) and f[0] == 'module+']
+            self.assertEqual(len(modules), 1)
+            cases = [f for f in modules[0][2:] if isinstance(f, list) and f[0] == 'test-case']
+            self.assertEqual(len(cases), expected)
+            def count_cases(form):
+                if not isinstance(form, list):
+                    return 0
+                return int(bool(form) and form[0] == 'test-case') + sum(map(count_cases, form))
+            self.assertEqual(count_cases(modules[0]), expected)
 
 if __name__ == '__main__':
     unittest.main()
