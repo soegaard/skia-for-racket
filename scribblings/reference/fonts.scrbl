@@ -432,10 +432,9 @@ Partial results are released if construction fails.
 
 @defproc[(font-break-text [font font?] [text string?] [max-width (and/c real? (>=/c 0))]
                      [#:paint paint (or/c paint? #f) #f]) (values exact-nonnegative-integer? real?)]{
-Returns the number of Racket characters in the leading unshaped prefix
-that fits @racket[max-width], followed by its measured width. The nonnegative
-width must be a drawing scalar. The implementation converts the native UTF-8
-byte count back to a character count; it does not return a byte offset.
+Returns the number of Racket characters in the longest leading unshaped prefix
+that fits @racket[max-width], followed by its measured width. The count is not
+a UTF-8 byte offset. The width must be a nonnegative @tech{drawing scalar}.
 
 The boundary need not be a word or grapheme boundary. This is not Unicode line
 breaking or shaping-aware wrapping. An empty input returns 0 and 0.0.

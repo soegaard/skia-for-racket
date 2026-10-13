@@ -290,9 +290,8 @@ and fit @racket[current-skia-byte-limit]. Later mutation or reclamation of
 @racket[data] does not change the face. The index is zero-based within a font
 collection. Invalid or unsupported font data and native failures raise exceptions.
 
-For TrueType collections on macOS, the selected member is rewrapped as a
-standalone font before loading. This selects that member; it is not fallback to
-a different face. Other platforms use the native collection index.
+For a TrueType collection, @racket[index] selects the requested member, including
+on macOS. The operation does not silently substitute a different face.
 }
 
 @defproc[(font-manager-typeface-from-bytes [manager font-manager?] [data bytes?] [#:index index

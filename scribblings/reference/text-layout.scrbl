@@ -88,6 +88,11 @@ Returns a layout using one shaper and the rules in
 positive drawing scalars. Script, language, and features are interpreted as
 in @racket[shape-text]. A language string must not contain NUL.
 
+For justification, an explicit @racket[#:script] affects shaping but does not
+enable the script-specific CJK or Arabic expansion opportunities. Those
+opportunities can be detected through script inference when @racket[#:script]
+is @racket[#f].
+
 Each line is shaped as a single run. This does not provide font fallback or
 full mixed-direction paragraph layout. With automatic direction, the line's
 alignment direction is inferred from descending cluster offsets; empty and

@@ -6,11 +6,11 @@
 
 @(declare-exporting skia)
 
-@deftech{Shaping} maps text to glyphs and positions using a typeface's layout
-rules. It can combine characters into ligatures, select contextual forms,
-position marks, and apply kerning. A @deftech{shaper} uses HarfBuzz with one
-captured font. A @deftech{shaped run} holds copied glyph IDs, cluster offsets,
-positions, and advances; it does not own a native font.
+The process of @deftech{shaping} maps text to glyphs and positions using a
+typeface's layout rules. It can combine characters into ligatures, select
+contextual forms, position marks, and apply kerning. A @deftech{shaper} uses
+HarfBuzz with one captured font. A @deftech{shaped run} holds copied glyph IDs,
+cluster offsets, positions, and advances; it does not own a native font.
 
 Shaping one run is not paragraph layout. It does not choose fallback fonts,
 split mixed scripts into separate runs, or apply the Unicode bidirectional

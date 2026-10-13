@@ -1,4 +1,4 @@
-# Skia Reference development: R3a fonts and text
+# Skia Reference development: R3a.1 fonts and text
 
 The Reference is one registered multi-page manual assembled from
 `scribblings/reference/reference.scrbl`. R3a adds 169 font and text bindings to
@@ -7,6 +7,26 @@ export paths in seventeen conceptual chapters. This is the first bounded R3
 batch, not completion of all higher-level APIs. No library behavior changes.
 The upstream `for-label` fixes, finite blend-mode contracts, clipping example,
 and independent source-review packaging are retained.
+
+## R3a.1 editorial cleanup
+
+R3a.1 revises the delivered R3a sources without changing any documented binding,
+signature, example, or library behavior. The `layout-text` entry repeats the
+explicit-script justification restriction where readers look up the keyword.
+The `font-break-text` and `typeface-from-bytes` entries describe observable
+results rather than native loading steps. The technical term `shaping` is
+lowercase; its introductory sentence begins with an ordinary word.
+
+The font-data loading mechanism remains an implementation detail. On macOS,
+`typeface-from-bytes` rewraps the requested TrueType collection member as a
+standalone SFNT before native loading. Other platforms submit the collection
+index to the native loader. The public guarantee is selection of the requested
+member without silently substituting another face, not a prescribed mechanism.
+
+Use `--source-zip` or `--review-zip` from a full checkout for the next editorial
+handoff. An incremental patch bundle is not the self-contained source-review
+archive. The generated archive must include both pinned API snapshots and pass
+the ordinary checker after extraction; `--documents-only` is not a substitute.
 
 ## Scope and chapter ownership
 

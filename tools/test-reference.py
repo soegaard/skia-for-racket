@@ -1870,7 +1870,7 @@ class R3TextSemanticsTests(unittest.TestCase):
         self.assertIn('copies glyphs and positions', self.text('text-blobs'))
 
     def test_character_counts_and_cluster_bytes_are_distinguished(self):
-        self.assertIn('does not return a byte offset', self.text('fonts'))
+        self.assertIn('The count is not a UTF-8 byte offset.', ' '.join(self.text('fonts').split()))
         self.assertIn('A cluster is a UTF-8 byte offset', self.text('shaping'))
         self.assertIn('not a Racket character', self.text('shaping'))
         self.assertIn('paragraph-relative Racket character index', self.text('text-layout'))
@@ -1941,6 +1941,58 @@ class R3TextSemanticsTests(unittest.TestCase):
                     return 0
                 return int(bool(form) and form[0] == 'test-case') + sum(map(count_cases, form))
             self.assertEqual(count_cases(modules[0]), expected)
+
+class R3aEditorialCleanupTests(unittest.TestCase):
+    """Check local wording and discoverability, not native implementation behavior."""
+
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def entry(self, chapter, name):
+        text = self.text(chapter)
+        offset = next(at for form, header, at in checks.commands(text)
+                      if form == 'defproc' and header[0][0] == name)
+        reader = checks.Reader(text, offset + len('@defproc'))
+        reader.read()
+        reader.skip()
+        start = reader.position
+        self.assertEqual(text[start], '{')
+        return text[start + 1:checks.brace_end(text, start) - 1]
+
+    def test_layout_keyword_caveat_is_in_the_entry_before_its_example(self):
+        entry = self.entry('text-layout', 'layout-text').split('@racketblock[', 1)[0]
+        prose = ' '.join(entry.split())
+        self.assertIn('explicit @racket[#:script] affects shaping but does not enable', prose)
+        self.assertIn('CJK or Arabic expansion opportunities', prose)
+        self.assertIn('script inference when @racket[#:script] is @racket[#f]', prose)
+        shared = self.text('text-layout').split('@defproc[(layout-text', 1)[0]
+        self.assertIn('does not enable these script-specific justification opportunities', shared)
+
+    def test_break_text_describes_results_and_keeps_boundary_caveats(self):
+        prose = ' '.join(self.entry('fonts', 'font-break-text').split())
+        self.assertIn('longest leading unshaped prefix', prose)
+        self.assertIn('The count is not a UTF-8 byte offset.', prose)
+        self.assertIn('boundary need not be a word or grapheme boundary', prose)
+        self.assertIn('An empty input returns 0 and 0.0.', prose)
+        self.assertNotIn('implementation converts', prose)
+        self.assertIn('(substring text 0 count)', prose)
+
+    def test_typeface_bytes_describes_member_selection_not_loader_steps(self):
+        prose = ' '.join(self.entry('typefaces', 'typeface-from-bytes').split())
+        self.assertIn('@racket[index] selects the requested member, including on macOS', prose)
+        self.assertIn('does not silently substitute a different face', prose)
+        self.assertIn('Invalid or unsupported font data and native failures raise exceptions', prose)
+        self.assertNotIn('rewrapped', prose)
+        self.assertNotIn('Other platforms', prose)
+        notes = (ROOT / 'docs/REFERENCE-DEVELOPMENT.md').read_text()
+        self.assertIn('rewraps the requested TrueType collection member', notes)
+
+    def test_shaping_term_is_lowercase_in_an_ordinary_sentence(self):
+        source = self.text('shaping')
+        self.assertEqual(source.count('@deftech{shaping}'), 1)
+        self.assertNotIn('@deftech{Shaping}', source)
+        self.assertIn('The process of @deftech{shaping} maps text to glyphs and positions', source)
+
 
 if __name__ == '__main__':
     unittest.main()
