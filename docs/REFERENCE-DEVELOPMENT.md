@@ -1,4 +1,131 @@
-# Skia Reference development: R3c effects and filters
+# Skia Reference development: R3d color management
+
+The current Reference declares 538 bindings through 742 public export paths in
+23 conceptual chapters. R3d adds 39 bindings to the delivered R3c sources, moves
+six standard color-space definitions into their conceptual chapter, and retains
+the legacy `skia-color-spaces` subsection target. No library behavior changes.
+
+## R3d scope and baselines
+
+The incremental patch applies after delivered R3c. The cumulative alternative
+includes R3c and applies to `efc279080b375c376fd27793a748bd9e618110d0`, the
+verified repository baseline. Apply only the matching alternative.
+
+| Chapter | Current bindings | R3d work |
+|---|---:|---|
+| Color Specifications | 11 | Byte-color definitions retained; old color-space section links onward. |
+| Color Management | 26 | Six moved definitions plus twenty new definitions. |
+| Floating-Point Colors | 19 | Nine detached color operations and ten drawing operations. |
+
+All thirteen exports of `skia/color-space`, nine of `skia/color4f`, and ten of
+`skia/float-colors` are documented. The descriptor predicate also has its public
+`skia/image-info` alias. The remaining new entries come from `skia` only.
+Definitions are not repeated for re-exports. The coverage manifest retains the
+exact pinned headless and GUI snapshots, rather than inventing new inventories.
+
+The new chapter separates descriptions from samples. Creating a space or changing
+its transfer function does not convert an image. ICC export constructs a new
+matrix/TRC profile with fixed-point quantization, not a byte-preserving copy of an
+imported profile. Its byte string is mutable. Encoder profile overrides retain
+stricter requirements than general native profile import.
+
+The detached descriptor predicate recognizes names or an immutable ICC header;
+it neither parses a profile nor applies the byte limit. Floating-point paint and
+shader factories instead accept copied, possibly mutable ICC input, require an
+explicit description, and reject a live color-space wrapper. Their signatures
+must not use the narrower descriptor predicate as their entire input contract.
+
+Floating RGB values are inexact Racket numbers within the full finite binary32
+magnitude, but construction does not round them to binary32. Alpha is checked
+after conversion to an inexact Racket number. Drawing converts to native floats.
+Gradient stops must be strictly increasing after binary32 rounding, unlike the
+nondecreasing positions of the byte-color gradient interface. Sample conversion
+through `image-convert-color-space` is the existing eight-bit CPU path; it rejects
+floating-point images rather than silently reducing their precision.
+
+### R3c editorial corrections carried forward
+
+The image-filter crop introduction now specifies the output region rather than
+a bound on internal processing. Convolution-specific input-crop semantics stay
+in its own entry. The common Lighting from Alpha section contains shared numeric
+and light-geometry restrictions once, including their pre/post-rounding distinctions.
+All six lighting signatures and defaults remain unchanged. The runtime source and
+uniform-byte results now explicitly include `immutable?` in their contracts.
+
+### Source evidence and execution boundaries
+
+All implementations below were read at the verified repository baseline. Blob
+identities are source evidence, not evidence of native execution.
+
+| Source | Git blob |
+|---|---|
+| `private/core.rkt` | `9861b7cf96ea6002c71e7eb904780d2fddff808e` |
+| `color-space.rkt` | `60f69ce1f8ffc5a682258294aa5c3f731e87767a` |
+| `color4f.rkt` | `0795fed3e8a999465560f3cd7d32f8c48a9713db` |
+| `float-colors.rkt` | `9c29a0cf3f6e6c8b3d948f6990c8f68987fa636e` |
+| `image-info.rkt` | `052e4384c0c3f9e7b2197a011990a74043cc0aae` |
+| `private/color-output-util.rkt` | `9f065abe406042dc2de32f32c0865befa961ce0a` |
+| `private/float-color-native.rkt` | `b1840a229874b7b94dc51813e0e9b43a6591e31f` |
+| `private/check.rkt` | `2f39bb2aaaddf06bd30ee9a914e9ee0fa7ea142d` |
+
+R3d adds six displayed blocks and three evaluated pure color-value blocks.
+The totals are 63 displayed examples and fifteen evaluated blocks. The two
+standard-space examples moved with their definitions and are not new examples.
+Native color-space factories are not evaluated while rendering the Reference.
+
+`reference-color-management-pure-test.rkt` has seven native-free cases for
+floating values, quantization, transfer formulas and descriptor recognition.
+`reference-color-management-test.rkt` has eleven CPU cases for gamma/gamut
+separation, native matrix operations, ICC copying, sample conversion, source
+interpretations, strict stops, clipping, and immutable runtime reflection.
+The latter requires native Skia but no fonts, GUI, or GPU. The full existing
+native acceptance suite still includes text cases and their font/HarfBuzz needs.
+
+`reference_color_cases.py` provides independent call-shape expectations for the
+39 additions; it is not a captured API inventory. Python tests inspect real
+Scribble headers and use explicitly synthetic inventories/HTML for infrastructure
+regressions. A source-only success is not Racket or rendering acceptance.
+
+### Reproduce source and HTML review packages
+
+Use the full checkout, with `skia` resolving to it. Keep outputs outside the
+checkout and select fresh names:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py --output ../reference-r3d-source \
+  --source-zip ../skia-reference-r3d-source-review.zip
+"$RACKET" -l raco -- test tools/reference-color-management-pure-test.rkt
+"$RACKET" -l raco -- test tools/reference-color-management-test.rkt
+python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3d-render --review-zip ../skia-reference-r3d-review.zip
+```
+
+The review command retains the seed/companion/final Reference rendering sequence.
+It checks the actual archive after extraction. No Reference-only ZIP with the
+three unresolved tutorial links is an accepted review handoff. Send the complete
+generated `html/`, `sources/`, and `evidence/` tree, with its archive checksum.
+There is no new workaround or suppression of unresolved references in R3d.
+Only an actual successful run establishes rendered-link acceptance.
+
+A source-level mismatch in the binding probe was also corrected. Its abbreviated
+`blobs:`, `primitives:`, `filters:`, and `runtime:` prefixes did not match the
+module-name prefixes required by `check_targets`. The probe now uses the same
+module-derived prefixes for every public alias, including the new color aliases.
+A regression compares all declared exports with the actual probe's imports and
+references. This removes one concrete obstacle to the normal integrated render;
+it is not evidence that the three tutorial links passed a fresh rendering.
+
+Further work includes picture and document output (R3e), streams and codecs
+(R3f), and remaining CPU operations (R3g), including image-info, integer/float
+raster buffers and their conversions, additional image operations, and extended
+geometry. PDF output-intent entries belong with document output. HDR transfer
+functions and tone mapping are not implied by the SDR transfer representation.
+GPU and GUI/DC integration remain R4. These are explicit remaining scopes, not
+placeholder definitions counted as documented.
+
+## Earlier R3c delivery
 
 The Reference is one registered multi-page manual assembled from
 `scribblings/reference/reference.scrbl`. R3c adds 90 bindings to the committed

@@ -153,10 +153,14 @@ from reference_effect_cases import (EFFECT_EXPORTS, COLOR_FILTER_EXPORTS,
                                     RUNTIME_EXPORTS, EFFECT_PROCEDURES)
 PROCEDURES.update(EFFECT_PROCEDURES)
 
+from reference_color_cases import (COLOR_SPACE_EXPORTS, COLOR4F_EXPORTS, FLOAT_COLOR_EXPORTS,
+                                   DESCRIPTOR_EXPORTS, COLOR_PROCEDURES, COLOR_REQUIRED_KEYWORDS)
+PROCEDURES.update(COLOR_PROCEDURES)
+
 
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
-                required_keywords=[], allowed_keywords=keywords)
+                required_keywords=COLOR_REQUIRED_KEYWORDS.get(name, []), allowed_keywords=keywords)
 
 
 def synthetic_inventory():
@@ -180,7 +184,10 @@ def synthetic_inventory():
                         ('typefaces.rkt', TYPEFACE_EXPORTS), ('fonts.rkt', FONT_EXPORTS),
                         ('text-blobs.rkt', BLOB_EXPORTS), ('geometry-primitives.rkt', ATLAS_EXPORTS),
                         ('effects.rkt', EFFECT_EXPORTS), ('color-filters.rkt', COLOR_FILTER_EXPORTS),
-                        ('runtime-effects.rkt', RUNTIME_EXPORTS)):
+                        ('runtime-effects.rkt', RUNTIME_EXPORTS),
+                        ('color-space.rkt', COLOR_SPACE_EXPORTS),
+                        ('color4f.rkt', COLOR4F_EXPORTS), ('float-colors.rkt', FLOAT_COLOR_EXPORTS),
+                        ('image-info.rkt', DESCRIPTOR_EXPORTS)):
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
@@ -246,8 +253,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 499)
-        self.assertEqual(result['documented_exports'], 670)
+        self.assertEqual(len(result['definitions']), 538)
+        self.assertEqual(result['documented_exports'], 742)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -366,12 +373,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 499)
+        self.assertEqual(len(self.check()['definitions']), 538)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 499)
+        self.assertEqual(len(self.check()['definitions']), 538)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -466,7 +473,7 @@ class Fixtures(unittest.TestCase):
 
     def test_color_space_predicate_is_in_color_chapter(self):
         spec = next(row for row in self.check()['definitions'] if row['name'] == 'color-space?')
-        self.assertEqual(spec['chapter'], 'scribblings/reference/colors.scrbl')
+        self.assertEqual(spec['chapter'], 'scribblings/reference/color-management.scrbl')
         self.assertEqual(spec['exports'], ['skia'])
 
     def test_no_temporary_edition_language(self):
@@ -875,9 +882,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 499)
-        self.assertEqual(result['documented_exports'], 670)
-        self.assertEqual(len(result['chapters']), 22)  # Root plus twenty-one chapters.
+        self.assertEqual(len(result['definitions']), 538)
+        self.assertEqual(result['documented_exports'], 742)
+        self.assertEqual(len(result['chapters']), 24)  # Root plus twenty-three chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1301,7 +1308,8 @@ class R21SourceTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(entries[name]['arity_mask'], mask)
                 self.assertEqual(entries[name]['exports'], ['skia'])
-                self.assertEqual(entries[name]['chapter'], 'scribblings/reference/colors.scrbl')
+                self.assertEqual(entries[name]['chapter'],
+                                 'scribblings/reference/color-management.scrbl')
 
     def test_shader_predicate_has_one_definition_in_shaders(self):
         entries = [row for row in self.fixture.check()['definitions'] if row['name'] == 'shader?']
@@ -1364,8 +1372,8 @@ class R21SourceTests(unittest.TestCase):
         self.assertIn('(for-label racket/base racket/contract skia skia/geometry)', text)
 
     def test_new_color_examples_are_not_evaluated_during_the_build(self):
-        text = (self.fixture.root / checks.REFERENCE / 'colors.scrbl').read_text()
-        text = text[text.index('@section[#:tag "skia-color-spaces"]'):]
+        text = (self.fixture.root / checks.REFERENCE / 'color-management.scrbl').read_text()
+        text = text[:text.index('@section[#:tag "skia-color-gamma"]')]
         forms = [form for form, _, _ in checks.commands(text, recursive=True)]
         self.assertEqual(forms.count('racketblock'), 2)
         self.assertNotIn('examples', forms)
@@ -1580,7 +1588,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 57)
+        self.assertEqual(count, 63)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -2087,12 +2095,12 @@ class R3BlobCoverageTests(unittest.TestCase):
 
     def test_each_new_public_import_path_is_exercised_by_link_probe(self):
         text = (self.root / checks.REFERENCE / 'tests/links.scrbl').read_text()
-        for prefix, names in (('blobs:', BLOB_EXPORTS), ('primitives:', ATLAS_EXPORTS)):
+        for prefix, names in (('text-blobs:', BLOB_EXPORTS), ('geometry-primitives:', ATLAS_EXPORTS)):
             for name in names:
                 self.assertEqual(text.count('@racket[' + name + ']'), 1)
                 self.assertEqual(text.count('@racket[' + prefix + name + ']'), 1)
-        self.assertIn('(prefix-in blobs: skia/text-blobs)', text)
-        self.assertIn('(prefix-in primitives: skia/geometry-primitives)', text)
+        self.assertIn('(prefix-in text-blobs: skia/text-blobs)', text)
+        self.assertIn('(prefix-in geometry-primitives: skia/geometry-primitives)', text)
 
     def test_missing_text_blob_reexport_is_rejected(self):
         module = next(m for m in self.snapshots[0]['modules'] if m['path'] == 'text-blobs.rkt')
@@ -2393,7 +2401,7 @@ class R3EffectsSemanticsTests(unittest.TestCase):
         self.assertIn('two false inputs to a blend node refer to the same source', text)
 
     def test_crop_and_canvas_clip_are_not_conflated(self):
-        self.assertIn('not a\nreplacement for the canvas clip', self.text('image-filters'))
+        self.assertIn('not a\ncanvas clip', self.text('image-filters'))
         self.assertIn('collapse after native rounding are rejected', self.text('image-filters'))
 
     def test_blur_and_convolution_reject_mirror(self):
@@ -2435,7 +2443,8 @@ class R3EffectsSemanticsTests(unittest.TestCase):
             self.assertRegex(self.entry(name, 'runtime-effects'), r'closed|closure')
 
     def test_runtime_packing_returns_bytes_not_a_native_resource(self):
-        self.assertEqual(self.header('runtime-effect-uniform-bytes', 'runtime-effects')[1], 'bytes?')
+        self.assertEqual(self.header('runtime-effect-uniform-bytes', 'runtime-effects')[1],
+                         ['and/c', 'bytes?', 'immutable?'])
         self.assertIn('new immutable byte string', self.text('runtime-effects'))
         self.assertIn('not a portable serialization', self.text('runtime-effects'))
 
@@ -2499,6 +2508,204 @@ class R3EffectsSemanticsTests(unittest.TestCase):
         self.assertNotIn('make-picture-image-filter', {r['name'] for r in manifest['definitions']})
         notes = (ROOT / 'docs/REFERENCE-DEVELOPMENT.md').read_text()
         self.assertIn('make-picture-image-filter', notes)
+
+
+
+class R3dColorSemanticsTests(unittest.TestCase):
+    """Source and call-shape checks; native outcomes are tested separately in Racket."""
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+
+    def test_every_alias_in_the_actual_probe_matches_the_html_validator(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        probe = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        for row in manifest['definitions']:
+            for module in row['exports']:
+                if module == 'skia':
+                    continue
+                prefix = module.removeprefix('skia/').replace('/', '-')
+                with self.subTest(module=module, name=row['name']):
+                    self.assertIn('(prefix-in ' + prefix + ': ' + module + ')', probe)
+                    self.assertEqual(probe.count('@racket[' + prefix + ':' + row['name'] + ']'), 1)
+
+    def header(self, name, chapter):
+        return next(h for form, h, _ in checks.commands(self.text(chapter))
+                    if form == 'defproc' and h[0][0] == name)
+
+    def test_all_new_call_shapes_match_independent_expectations(self):
+        definitions, _ = checks.document_definitions(ROOT)
+        specs = {row['name']: row for row in definitions}
+        for name, (arity, keywords) in COLOR_PROCEDURES.items():
+            with self.subTest(name=name):
+                self.assertEqual(specs[name]['arity_mask'], str(arity))
+                self.assertEqual(specs[name]['allowed_keywords'], keywords)
+                self.assertEqual(specs[name]['required_keywords'],
+                                 COLOR_REQUIRED_KEYWORDS.get(name, []))
+
+    def test_new_public_modules_have_one_canonical_definition_for_each_export(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        for module, names in (('color-space', COLOR_SPACE_EXPORTS), ('color4f', COLOR4F_EXPORTS),
+                              ('float-colors', FLOAT_COLOR_EXPORTS),
+                              ('image-info', DESCRIPTOR_EXPORTS)):
+            actual = [row['name'] for row in manifest['definitions']
+                      if 'skia/' + module in row['exports']]
+            self.assertEqual(sorted(actual), sorted(names))
+            self.assertEqual(len(actual), len(set(actual)))
+        self.assertEqual(len(manifest['definitions']), 538)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 742)
+
+    def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        self.assertEqual({row['file']: row['git_blob'] for row in manifest['snapshots']}, {
+            'api/public-api-headless.json': '2cadbe3212b62c3becfb0e184a1adc119639b750',
+            'api/public-api-gui.json': '1221794e26e099b8ca38110f4a42564f6b38f8f6'})
+
+    def test_standard_space_definitions_move_without_removing_the_legacy_section(self):
+        old = self.text('colors')
+        new = self.text('color-management')
+        self.assertIn('@section[#:tag "skia-color-spaces"]{Color Spaces}', old)
+        self.assertIn('@secref["skia-color-management"]', old)
+        for name in ('color-space?', 'make-srgb-color-space', 'make-linear-srgb-color-space',
+                     'color-space=?', 'color-space-srgb?', 'color-space-linear-gamma?'):
+            self.assertNotIn('@defproc[(' + name, old)
+            self.assertEqual(new.count('@defproc[(' + name + ' ')
+                             + new.count('@defproc[(' + name + ')'), 1)
+
+    def test_float_constructor_descriptors_are_required_and_accept_mutable_bytes(self):
+        expected = ['or/c', ['quote', 'srgb'], ['quote', 'linear-srgb'], 'bytes?']
+        for name in COLOR_REQUIRED_KEYWORDS:
+            fields = {f[0]: f for f in self.header(name, 'float-colors')[0][1:]}
+            self.assertEqual(fields['#:color-space'], ['#:color-space', 'space', expected])
+        self.assertIn('Mutable ICC bytes are accepted by', self.text('float-colors'))
+
+    def test_make_paint_color4f_does_not_advertise_all_make_paint_keywords(self):
+        fields = {f[0] for f in self.header('make-paint/color4f', 'float-colors')[0][1:]}
+        self.assertEqual(fields, {'color', '#:color-space', '#:style', '#:stroke-width',
+                                  '#:antialias?'})
+        self.assertIn("does not accept its complete keyword set", self.text('float-colors'))
+
+    def test_float_gradient_stop_keyword_and_strict_rounding_rule(self):
+        text = ' '.join(self.text('float-colors').split())
+        self.assertIn('strictly increasing after binary32 conversion', text)
+        self.assertIn('two distinct Racket numbers that round to the same stop are rejected', text)
+        for name in FLOAT_COLOR_EXPORTS:
+            if 'gradient' not in name:
+                continue
+            fields = {f[0] for f in self.header(name, 'float-colors')[0][1:]}
+            self.assertIn('#:stops', fields)
+            self.assertNotIn('#:positions', fields)
+
+    def test_extended_RGB_is_not_accidentally_narrowed_to_drawing_scalars(self):
+        h = self.header('make-color4f', 'float-colors')
+        self.assertEqual(h[0][1:], [['red', 'real?'], ['green', 'real?'],
+                                  ['blue', 'real?'], ['alpha', 'real?', '1']])
+        text = ' '.join(self.text('float-colors').split())
+        self.assertIn('does not round the stored RGB to binary32', text)
+        self.assertIn('After conversion to an inexact Racket number, alpha', text)
+        self.assertIn('not multiplied by alpha', text)
+
+    def test_byte_quantization_is_not_color_conversion(self):
+        text = ' '.join(self.text('float-colors').split())
+        self.assertIn('floor(255 v + 0.5)', text)
+        self.assertIn('not a color-space conversion', text)
+        h = self.header('color4f->rgba', 'float-colors')
+        self.assertEqual(h[0][2], ['#:out-of-range', 'policy',
+                                  ['or/c', ['quote', 'error'], ['quote', 'clip']],
+                                  ['quote', 'error']])
+
+    def test_transfer_constructor_and_evaluation_have_distinct_rounding(self):
+        text = ' '.join(self.text('color-management').split())
+        self.assertIn('does not require the two branches to meet continuously', text)
+        self.assertIn('without first rounding @racket[x] to binary32', text)
+        self.assertEqual(self.header('transfer-function-evaluate', 'color-management')[0][2],
+                         ['x', ['real-in', '0', '3.402823e38']])
+
+    def test_named_transfer_and_gamut_domains_are_distinct_finite_sets(self):
+        transfer = self.header('named-transfer-function', 'color-management')[0][1][1]
+        gamut = self.header('named-xyz-d50', 'color-management')[0][1][1]
+        self.assertEqual(transfer, ['or/c', *[['quote', x] for x in
+                                            ('srgb', 'linear', 'gamma-2.2', 'rec2020')]])
+        self.assertEqual(gamut, ['or/c', *[['quote', x] for x in
+                                         ('srgb', 'adobe-rgb', 'display-p3', 'rec2020', 'xyz')]])
+
+    def test_XYZ_is_row_major_and_native_even_for_detached_values(self):
+        text = ' '.join(self.text('color-management').split())
+        self.assertIn('row-major three-by-three', text)
+        self.assertIn('not by an affine drawing matrix', text)
+        self.assertIn('@racket[b] acts first', text)
+        self.assertIn('Singular inputs are permitted for multiplication', text)
+        self.assertIn('Native Skia is required', text)
+
+    def test_chromaticity_tolerance_is_not_hidden_by_a_stricter_header(self):
+        text = self.text('color-management')
+        self.assertIn('x + y <= 1.000001', text)
+        h = self.header('primaries->xyz-d50', 'color-management')
+        for field in h[0][1:]:
+            self.assertEqual(field[1], ['or/c', ['list/c', 'real?', 'real?'],
+                                       ['vector/c', 'real?', 'real?']])
+
+    def test_ICC_export_is_mutable_and_not_a_byte_preserving_round_trip(self):
+        self.assertEqual(self.header('color-space->icc-bytes', 'color-management')[1], 'bytes?')
+        text = ' '.join(self.text('color-management').split())
+        self.assertIn('new mutable byte string containing an ICC v4', text)
+        self.assertIn('not the original imported profile', text)
+        self.assertIn('need not give bit-identical coefficients', text)
+        self.assertIn('additional matrix/TRC restrictions', text)
+
+    def test_descriptor_recognition_is_not_native_ICC_validation(self):
+        text = ' '.join(self.text('color-management').split())
+        self.assertIn('including for mutable ICC bytes and live color-space resources', text)
+        self.assertIn('does not parse tag contents, load native Skia', text)
+        self.assertEqual(self.header('color-space-descriptor?', 'color-management')[0][1],
+                         ['v', 'any/c'])
+
+    def test_image_conversion_documents_source_and_precision_restrictions(self):
+        text = ' '.join(self.text('color-management').split())
+        self.assertIn('untagged input requires an explicit open source color space', text)
+        self.assertIn('Floating-point images are rejected', text)
+        self.assertIn('stages eight-bit unpremultiplied RGBA samples', text)
+        self.assertIn('GPU-dependent input is rejected', text)
+        self.assertEqual(self.header('image-convert-color-space', 'color-management')[0][3],
+                         ['#:source-color-space', 'source', ['or/c', 'color-space?', '#f'], '#f'])
+
+    def test_crop_description_only_promises_an_output_region(self):
+        text = ' '.join(self.text('image-filters').split())
+        self.assertIn("crop constrains the filter node's output region", text)
+        self.assertNotIn("bounds the filter node's processing", text)
+        self.assertIn("Cropping a child before a blur", text)
+
+    def test_lighting_constraints_are_shared_but_each_entry_links_to_them(self):
+        text = self.text('image-filters')
+        self.assertIn('@section[#:tag "skia-lighting-from-alpha"]{Lighting from Alpha}', text)
+        self.assertEqual(text.count('Coefficient must be nonnegative'), 1)
+        self.assertEqual(text.count('@secref["skia-lighting-from-alpha"]'), 6)
+        self.assertIn('ranges apply after single-precision rounding', ' '.join(text.split()))
+
+    def test_two_runtime_result_contracts_express_immutability(self):
+        for name, kind in (('runtime-effect-source', 'string?'),
+                           ('runtime-effect-uniform-bytes', 'bytes?')):
+            self.assertEqual(self.header(name, 'runtime-effects')[1], ['and/c', kind, 'immutable?'])
+
+    def test_pure_examples_use_real_evaluation_and_a_closed_public_module_evaluator(self):
+        text = self.text('float-colors')
+        blocks = [h for form, h, _ in checks.commands(text, recursive=True) if form == 'examples']
+        self.assertEqual(len(blocks), 3)
+        self.assertEqual(text.count('@close-eval[float-color-eval]'), 1)
+        self.assertIn("(float-color-eval '(require skia/color4f skia/color))", text)
+        self.assertNotIn('eval:alts', text)
+        self.assertNotIn('eval:result', text)
+        self.assertFalse(any(form == 'examples' for form, _, _ in
+                             checks.commands(self.text('color-management'), recursive=True)))
+
+    def test_native_acceptance_is_separate_and_wired_into_the_existing_runner(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        for name, cases in (('reference-color-management-pure-test.rkt', 7),
+                            ('reference-color-management-test.rkt', 11)):
+            self.assertIn(name, runner)
+            text = (ROOT / 'tools' / name).read_text()
+            checks.Reader('(' + text.split('\n', 1)[1] + ')').read()
+            self.assertEqual(text.count('(test-case '), cases)
 
 
 if __name__ == '__main__':

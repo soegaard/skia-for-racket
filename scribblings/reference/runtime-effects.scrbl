@@ -68,7 +68,8 @@ Returns the stage for which the effect was compiled. This reads stored
 metadata and remains available after the effect is closed.
 }
 
-@defproc[(runtime-effect-source [effect runtime-effect?]) string?]{
+@defproc[(runtime-effect-source [effect runtime-effect?])
+         (and/c string? immutable?)]{
 Returns the stored immutable source string. This is the submitted program,
 not generated backend code. The query remains available after closure.
 }
@@ -115,7 +116,8 @@ wrappers are not transferred. Closing them after
 successful construction does not invalidate the instance, but GPU-dependent
 children preserve their context, thread, and lifetime restrictions.
 
-@defproc[(runtime-effect-uniform-bytes [effect runtime-effect?] [bindings hash?]) bytes?]{
+@defproc[(runtime-effect-uniform-bytes [effect runtime-effect?] [bindings hash?])
+         (and/c bytes? immutable?)]{
 Returns a new immutable byte string packed according to the stored uniform
 layout and the rules in @secref["skia-runtime-bindings"]. It uses native byte
 order and the reflected offsets, not std140 padding. Its length equals

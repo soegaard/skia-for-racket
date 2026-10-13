@@ -33,11 +33,11 @@ lens, and tile rectangles specifically require positive extents. Coordinates,
 coefficients, and computed edges must be drawing scalars. Positive extents that
 collapse after native rounding are rejected.
 
-The optional crop bounds the filter node's processing and output. It is not a
-replacement for the canvas clip and does not move pixels. Cropping a child
-before a blur can differ from cropping the blur's output. The absence of a
-crop does not imply an infinite pixel allocation. Native bounds, drawing
-clips, memory limits, and output-backend restrictions still apply.
+The optional crop constrains the filter node's output region. It is not a
+canvas clip and does not move pixels. Cropping a child before a blur can produce
+a different result from cropping the blur's output. The absence of a crop does
+not imply an infinite pixel allocation. Native bounds, drawing clips, memory
+limits, and output-backend restrictions still apply.
 
 @defproc[(image-filter? [v any/c]) boolean?]{
 Returns @racket[#t] for an image-filter resource and @racket[#f] otherwise.
@@ -360,17 +360,25 @@ the transition around the magnified content, rather than moving the lens.
 It is nonnegative. The optional crop bounds the result.
 }
 
-@section{Lighting from Alpha}
+@section[#:tag "skia-lighting-from-alpha"]{Lighting from Alpha}
 
 Lighting filters interpret input alpha as a height field, scaled by
 @racket[#:surface-scale], and estimate normals from neighboring samples. They
 compute a lit surface, not the input's original RGB illuminated in place.
 Diffuse output uses Lambert-style lighting; specular output uses a highlight
 exponent. The light color supplies RGB; its alpha is not a surface opacity.
-The direction, location, and target use three drawing-scalar coordinates.
-The current two-dimensional drawing transform does not turn these into a
-three-dimensional scene or camera model. The shininess, spotlight exponent,
-and cutoff-angle ranges below apply after single-precision rounding.
+Surface scale is a signed drawing scalar. Coefficient must be nonnegative
+before conversion. The direction, location, and target use three drawing-scalar
+coordinates. A distant light's direction must be nonzero after native rounding;
+a spotlight's location and target must remain distinct after rounding. The
+current two-dimensional drawing transform does not turn these into a
+three-dimensional scene or camera model.
+
+Specular shininess controls the highlight's concentration and ranges from 1
+through 128. A spotlight's exponent controls angular concentration and ranges
+from 0 through 128; its cutoff angle ranges from 0 through 90 degrees. These
+three ranges apply after single-precision rounding. Input slots and optional
+output crops follow @secref["skia-filter-rectangles"].
 
 @defproc[(make-distant-lit-diffuse-image-filter
           [direction (or/c (list/c real? real? real?) (vector/c real? real? real?))]
@@ -382,8 +390,7 @@ and cutoff-angle ranges below apply after single-precision rounding.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a diffuse lighting filter for a light with a fixed direction.
-The direction must be nonzero after native rounding.
-Surface scale is signed. Coefficient must be nonnegative before conversion.
+The shared constraints are specified in @secref["skia-lighting-from-alpha"].
 }
 
 @defproc[(make-point-lit-diffuse-image-filter
@@ -397,7 +404,7 @@ Surface scale is signed. Coefficient must be nonnegative before conversion.
          image-filter?]{
 Returns a diffuse lighting filter for a point light at the given
 location. The direction to the light varies across the height field.
-Surface scale is signed. Coefficient must be nonnegative before conversion.
+The shared constraints are specified in @secref["skia-lighting-from-alpha"].
 }
 
 @defproc[(make-spot-lit-diffuse-image-filter
@@ -413,10 +420,8 @@ Surface scale is signed. Coefficient must be nonnegative before conversion.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a diffuse lighting filter for a spotlight aimed from location
-to target. The two points must differ after native rounding. Exponent controls
-angular concentration and must be from 0 through 128 after rounding.
-The cutoff angle must be from 0 through 90 degrees after rounding.
-Surface scale is signed. Coefficient must be nonnegative before conversion.
+to target. Its exponent and cutoff angle control the angular falloff.
+The shared constraints are specified in @secref["skia-lighting-from-alpha"].
 }
 
 @defproc[(make-distant-lit-specular-image-filter
@@ -430,9 +435,7 @@ Surface scale is signed. Coefficient must be nonnegative before conversion.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a specular lighting filter for a light with a fixed direction.
-The direction must be nonzero after native rounding.
-Shininess controls the specular lobe and must be from 1 through 128 after rounding.
-Surface scale is signed. Coefficient must be nonnegative before conversion.
+The shared constraints are specified in @secref["skia-lighting-from-alpha"].
 }
 
 @defproc[(make-point-lit-specular-image-filter
@@ -447,8 +450,7 @@ Surface scale is signed. Coefficient must be nonnegative before conversion.
          image-filter?]{
 Returns a specular lighting filter for a point light at the given
 location. The direction to the light varies across the height field.
-Shininess controls the specular lobe and must be from 1 through 128 after rounding.
-Surface scale is signed. Coefficient must be nonnegative before conversion.
+The shared constraints are specified in @secref["skia-lighting-from-alpha"].
 }
 
 @defproc[(make-spot-lit-specular-image-filter
@@ -465,11 +467,8 @@ Surface scale is signed. Coefficient must be nonnegative before conversion.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a specular lighting filter for a spotlight aimed from location
-to target. The two points must differ after native rounding. Exponent controls
-angular concentration and must be from 0 through 128 after rounding.
-The cutoff angle must be from 0 through 90 degrees after rounding.
-Shininess controls the specular lobe and must be from 1 through 128 after rounding.
-Surface scale is signed. Coefficient must be nonnegative before conversion.
+to target. Its exponent and cutoff angle control the angular falloff.
+The shared constraints are specified in @secref["skia-lighting-from-alpha"].
 }
 
 @section{Custom Blending}

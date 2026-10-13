@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "R3c",
+  "stage": "R3d",
   "reviewed_repository_commit": "efc279080b375c376fd27793a748bd9e618110d0",
   "snapshots": [
     {
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3d-R4",
-    "reason": "Outside R3c effects; see docs/REFERENCE-DEVELOPMENT.md for remaining scope."
+    "stage": "R3e-R4",
+    "reason": "Outside R3d color management; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -500,7 +500,7 @@
     },
     {
       "name": "color-space?",
-      "chapter": "scribblings/reference/colors.scrbl",
+      "chapter": "scribblings/reference/color-management.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -510,7 +510,7 @@
     },
     {
       "name": "make-srgb-color-space",
-      "chapter": "scribblings/reference/colors.scrbl",
+      "chapter": "scribblings/reference/color-management.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -520,7 +520,7 @@
     },
     {
       "name": "make-linear-srgb-color-space",
-      "chapter": "scribblings/reference/colors.scrbl",
+      "chapter": "scribblings/reference/color-management.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -530,7 +530,7 @@
     },
     {
       "name": "color-space=?",
-      "chapter": "scribblings/reference/colors.scrbl",
+      "chapter": "scribblings/reference/color-management.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -540,7 +540,7 @@
     },
     {
       "name": "color-space-srgb?",
-      "chapter": "scribblings/reference/colors.scrbl",
+      "chapter": "scribblings/reference/color-management.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -550,7 +550,7 @@
     },
     {
       "name": "color-space-linear-gamma?",
-      "chapter": "scribblings/reference/colors.scrbl",
+      "chapter": "scribblings/reference/color-management.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -5174,6 +5174,429 @@
       "exports": [
         "skia",
         "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space-gamma-close-to-srgb?",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space->linear-gamma",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space->srgb-gamma",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "transfer-function?",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-transfer-function",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "transfer-function-coefficients",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "named-transfer-function",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "transfer-function-evaluate",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "transfer-function-invert",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "named-xyz-d50",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "primaries->xyz-d50",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-rgb-color-space",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space-transfer-function",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space-xyz-d50",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "xyz-d50-concat",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "xyz-d50-invert",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-space"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space-from-icc-bytes",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space->icc-bytes",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space-descriptor?",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-convert-color-space",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color4f?",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-color4f",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color4f-red",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color4f-green",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color4f-blue",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color4f-alpha",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color4f->vector",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color->color4f",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color4f->rgba",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color4f"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-paint/color4f",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "paint-color4f",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "paint-set-color4f!",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-clear-color4f!",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-color4f",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-color4f-shader",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-linear-gradient-color4f-shader",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-radial-gradient-color4f-shader",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-sweep-gradient-color4f-shader",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-two-point-conical-gradient-color4f-shader",
+      "chapter": "scribblings/reference/float-colors.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/float-colors"
       ],
       "phase": "0",
       "space": null

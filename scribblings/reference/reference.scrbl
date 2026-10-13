@@ -10,8 +10,9 @@ introduce drawing through complete examples.
 
 @defmodule[skia]
 
-This manual documents resource management, surfaces, canvas state, colors, paints,
-shaders, geometric drawing, paths, affine matrices, images, image encoding,
+This manual documents resource management, surfaces, canvas state, byte and
+floating-point colors, color management, paints, shaders, geometric drawing,
+paths, affine matrices, images, image encoding,
 font managers, typefaces, fonts, shaped text, text blobs, and paragraph layout.
 Text blobs include multi-run construction, run inspection, and text on paths.
 The effects chapters cover path and mask effects, color and image filters,
@@ -36,6 +37,8 @@ The atlas-transform values used for glyph placement are also exported by
 @include-section["surfaces.scrbl"]
 @include-section["canvases.scrbl"]
 @include-section["colors.scrbl"]
+@include-section["color-management.scrbl"]
+@include-section["float-colors.scrbl"]
 @include-section["paints.scrbl"]
 @include-section["shaders.scrbl"]
 @include-section["path-effects.scrbl"]

@@ -2,15 +2,19 @@
 
 @(require (for-label racket/base skia
                      (prefix-in color: skia/color)
+                     (prefix-in color-space: skia/color-space)
+                     (prefix-in color4f: skia/color4f)
+                     (prefix-in float-colors: skia/float-colors)
+                     (prefix-in image-info: skia/image-info)
                      (prefix-in geometry: skia/geometry)
                      (prefix-in effects: skia/effects)
-                     (prefix-in filters: skia/color-filters)
-                     (prefix-in runtime: skia/runtime-effects)
+                     (prefix-in color-filters: skia/color-filters)
+                     (prefix-in runtime-effects: skia/runtime-effects)
                      (prefix-in matrix: skia/matrix)
                      (prefix-in typefaces: skia/typefaces)
                      (prefix-in fonts: skia/fonts)
-                     (prefix-in blobs: skia/text-blobs)
-                     (prefix-in primitives: skia/geometry-primitives)))
+                     (prefix-in text-blobs: skia/text-blobs)
+                     (prefix-in geometry-primitives: skia/geometry-primitives)))
 
 @title{Reference Binding Links}
 
@@ -980,107 +984,107 @@ The following links cover the font and text interfaces.
 
 @racket[text-blob-builder?]
 
-@racket[blobs:text-blob-builder?]
+@racket[text-blobs:text-blob-builder?]
 
 @racket[make-text-blob-builder]
 
-@racket[blobs:make-text-blob-builder]
+@racket[text-blobs:make-text-blob-builder]
 
 @racket[text-blob-builder-run-count]
 
-@racket[blobs:text-blob-builder-run-count]
+@racket[text-blobs:text-blob-builder-run-count]
 
 @racket[text-blob-builder-add-run!]
 
-@racket[blobs:text-blob-builder-add-run!]
+@racket[text-blobs:text-blob-builder-add-run!]
 
 @racket[text-blob-builder-add-horizontal-run!]
 
-@racket[blobs:text-blob-builder-add-horizontal-run!]
+@racket[text-blobs:text-blob-builder-add-horizontal-run!]
 
 @racket[text-blob-builder-add-positioned-run!]
 
-@racket[blobs:text-blob-builder-add-positioned-run!]
+@racket[text-blobs:text-blob-builder-add-positioned-run!]
 
 @racket[text-blob-builder-add-transformed-run!]
 
-@racket[blobs:text-blob-builder-add-transformed-run!]
+@racket[text-blobs:text-blob-builder-add-transformed-run!]
 
 @racket[text-blob-builder-add-shaped-run!]
 
-@racket[blobs:text-blob-builder-add-shaped-run!]
+@racket[text-blobs:text-blob-builder-add-shaped-run!]
 
 @racket[text-blob-builder-finish!]
 
-@racket[blobs:text-blob-builder-finish!]
+@racket[text-blobs:text-blob-builder-finish!]
 
 @racket[text-blob-run-count]
 
-@racket[blobs:text-blob-run-count]
+@racket[text-blobs:text-blob-run-count]
 
 @racket[text-blob-runs]
 
-@racket[blobs:text-blob-runs]
+@racket[text-blobs:text-blob-runs]
 
 @racket[text-blob-run-font]
 
-@racket[blobs:text-blob-run-font]
+@racket[text-blobs:text-blob-run-font]
 
 @racket[text-blob-intercepts]
 
-@racket[blobs:text-blob-intercepts]
+@racket[text-blobs:text-blob-intercepts]
 
 @racket[text-run-info?]
 
-@racket[blobs:text-run-info?]
+@racket[text-blobs:text-run-info?]
 
 @racket[text-run-info-positioning]
 
-@racket[blobs:text-run-info-positioning]
+@racket[text-blobs:text-run-info-positioning]
 
 @racket[text-run-info-glyphs]
 
-@racket[blobs:text-run-info-glyphs]
+@racket[text-blobs:text-run-info-glyphs]
 
 @racket[text-run-info-positions]
 
-@racket[blobs:text-run-info-positions]
+@racket[text-blobs:text-run-info-positions]
 
 @racket[text-run-info-transforms]
 
-@racket[blobs:text-run-info-transforms]
+@racket[text-blobs:text-run-info-transforms]
 
 @racket[text-run-info-utf8]
 
-@racket[blobs:text-run-info-utf8]
+@racket[text-blobs:text-run-info-utf8]
 
 @racket[text-run-info-clusters]
 
-@racket[blobs:text-run-info-clusters]
+@racket[text-blobs:text-run-info-clusters]
 
 @racket[positioned-glyphs->path]
 
-@racket[blobs:positioned-glyphs->path]
+@racket[text-blobs:positioned-glyphs->path]
 
 @racket[shaped-run->text-blob/on-path]
 
-@racket[blobs:shaped-run->text-blob/on-path]
+@racket[text-blobs:shaped-run->text-blob/on-path]
 
 @racket[draw-shaped-run/on-path]
 
-@racket[blobs:draw-shaped-run/on-path]
+@racket[text-blobs:draw-shaped-run/on-path]
 
 @racket[atlas-transform?]
 
-@racket[primitives:atlas-transform?]
+@racket[geometry-primitives:atlas-transform?]
 
 @racket[make-atlas-transform]
 
-@racket[primitives:make-atlas-transform]
+@racket[geometry-primitives:make-atlas-transform]
 
 @racket[atlas-transform-coefficients]
 
-@racket[primitives:atlas-transform-coefficients]
+@racket[geometry-primitives:atlas-transform-coefficients]
 
 @section{Effects and Filters}
 
@@ -1109,23 +1113,23 @@ The following links cover the font and text interfaces.
 @racket[make-blend-color-filter]
 @racket[make-compose-color-filter]
 @racket[make-hsla-matrix-filter]
-@racket[filters:make-hsla-matrix-filter]
+@racket[color-filters:make-hsla-matrix-filter]
 @racket[make-linear-to-srgb-gamma-color-filter]
-@racket[filters:make-linear-to-srgb-gamma-color-filter]
+@racket[color-filters:make-linear-to-srgb-gamma-color-filter]
 @racket[make-srgb-to-linear-gamma-color-filter]
-@racket[filters:make-srgb-to-linear-gamma-color-filter]
+@racket[color-filters:make-srgb-to-linear-gamma-color-filter]
 @racket[make-lerp-color-filter]
-@racket[filters:make-lerp-color-filter]
+@racket[color-filters:make-lerp-color-filter]
 @racket[make-luma-color-filter]
-@racket[filters:make-luma-color-filter]
+@racket[color-filters:make-luma-color-filter]
 @racket[make-high-contrast-color-filter]
-@racket[filters:make-high-contrast-color-filter]
+@racket[color-filters:make-high-contrast-color-filter]
 @racket[make-table-color-filter]
-@racket[filters:make-table-color-filter]
+@racket[color-filters:make-table-color-filter]
 @racket[make-table-argb-color-filter]
-@racket[filters:make-table-argb-color-filter]
+@racket[color-filters:make-table-argb-color-filter]
 @racket[make-lighting-color-filter]
-@racket[filters:make-lighting-color-filter]
+@racket[color-filters:make-lighting-color-filter]
 @racket[make-blur-image-filter]
 @racket[make-drop-shadow-image-filter]
 @racket[make-drop-shadow-only-image-filter]
@@ -1154,69 +1158,69 @@ The following links cover the font and text interfaces.
 @racket[make-blender-image-filter]
 @racket[effects:make-blender-image-filter]
 @racket[runtime-effect?]
-@racket[runtime:runtime-effect?]
+@racket[runtime-effects:runtime-effect?]
 @racket[make-runtime-effect]
-@racket[runtime:make-runtime-effect]
+@racket[runtime-effects:make-runtime-effect]
 @racket[runtime-effect-kind]
-@racket[runtime:runtime-effect-kind]
+@racket[runtime-effects:runtime-effect-kind]
 @racket[runtime-effect-source]
-@racket[runtime:runtime-effect-source]
+@racket[runtime-effects:runtime-effect-source]
 @racket[runtime-effect-uniform-byte-size]
-@racket[runtime:runtime-effect-uniform-byte-size]
+@racket[runtime-effects:runtime-effect-uniform-byte-size]
 @racket[runtime-effect-uniforms]
-@racket[runtime:runtime-effect-uniforms]
+@racket[runtime-effects:runtime-effect-uniforms]
 @racket[runtime-effect-children]
-@racket[runtime:runtime-effect-children]
+@racket[runtime-effects:runtime-effect-children]
 @racket[runtime-effect-uniform-bytes]
-@racket[runtime:runtime-effect-uniform-bytes]
+@racket[runtime-effects:runtime-effect-uniform-bytes]
 @racket[runtime-effect->shader]
-@racket[runtime:runtime-effect->shader]
+@racket[runtime-effects:runtime-effect->shader]
 @racket[runtime-effect->color-filter]
-@racket[runtime:runtime-effect->color-filter]
+@racket[runtime-effects:runtime-effect->color-filter]
 @racket[runtime-effect->blender]
-@racket[runtime:runtime-effect->blender]
+@racket[runtime-effects:runtime-effect->blender]
 @racket[runtime-uniform?]
-@racket[runtime:runtime-uniform?]
+@racket[runtime-effects:runtime-uniform?]
 @racket[runtime-uniform-name]
-@racket[runtime:runtime-uniform-name]
+@racket[runtime-effects:runtime-uniform-name]
 @racket[runtime-uniform-offset]
-@racket[runtime:runtime-uniform-offset]
+@racket[runtime-effects:runtime-uniform-offset]
 @racket[runtime-uniform-type]
-@racket[runtime:runtime-uniform-type]
+@racket[runtime-effects:runtime-uniform-type]
 @racket[runtime-uniform-count]
-@racket[runtime:runtime-uniform-count]
+@racket[runtime-effects:runtime-uniform-count]
 @racket[runtime-uniform-byte-size]
-@racket[runtime:runtime-uniform-byte-size]
+@racket[runtime-effects:runtime-uniform-byte-size]
 @racket[runtime-uniform-array?]
-@racket[runtime:runtime-uniform-array?]
+@racket[runtime-effects:runtime-uniform-array?]
 @racket[runtime-uniform-color?]
-@racket[runtime:runtime-uniform-color?]
+@racket[runtime-effects:runtime-uniform-color?]
 @racket[runtime-uniform-half-precision?]
-@racket[runtime:runtime-uniform-half-precision?]
+@racket[runtime-effects:runtime-uniform-half-precision?]
 @racket[runtime-child?]
-@racket[runtime:runtime-child?]
+@racket[runtime-effects:runtime-child?]
 @racket[runtime-child-name]
-@racket[runtime:runtime-child-name]
+@racket[runtime-effects:runtime-child-name]
 @racket[runtime-child-kind]
-@racket[runtime:runtime-child-kind]
+@racket[runtime-effects:runtime-child-kind]
 @racket[runtime-child-index]
-@racket[runtime:runtime-child-index]
+@racket[runtime-effects:runtime-child-index]
 @racket[exn:fail:skia-sksl?]
-@racket[runtime:exn:fail:skia-sksl?]
+@racket[runtime-effects:exn:fail:skia-sksl?]
 @racket[exn:fail:skia-sksl-kind]
-@racket[runtime:exn:fail:skia-sksl-kind]
+@racket[runtime-effects:exn:fail:skia-sksl-kind]
 @racket[exn:fail:skia-sksl-source]
-@racket[runtime:exn:fail:skia-sksl-source]
+@racket[runtime-effects:exn:fail:skia-sksl-source]
 @racket[exn:fail:skia-sksl-diagnostics]
-@racket[runtime:exn:fail:skia-sksl-diagnostics]
+@racket[runtime-effects:exn:fail:skia-sksl-diagnostics]
 @racket[blender?]
-@racket[runtime:blender?]
+@racket[runtime-effects:blender?]
 @racket[make-blend-mode-blender]
-@racket[runtime:make-blend-mode-blender]
+@racket[runtime-effects:make-blend-mode-blender]
 @racket[paint-blender]
-@racket[runtime:paint-blender]
+@racket[runtime-effects:paint-blender]
 @racket[paint-set-blender!]
-@racket[runtime:paint-set-blender!]
+@racket[runtime-effects:paint-set-blender!]
 @racket[make-arithmetic-blender]
 @racket[effects:make-arithmetic-blender]
 @racket[make-fractal-noise-shader]
@@ -1229,3 +1233,151 @@ The following links cover the font and text interfaces.
 @racket[effects:shader-with-color-filter]
 @racket[make-blender-shader]
 @racket[effects:make-blender-shader]
+
+@section{Color Management and Floating-Point Colors}
+
+@racket[transfer-function?]
+
+@racket[color-space:transfer-function?]
+
+@racket[transfer-function-coefficients]
+
+@racket[color-space:transfer-function-coefficients]
+
+@racket[named-transfer-function]
+
+@racket[color-space:named-transfer-function]
+
+@racket[transfer-function-invert]
+
+@racket[color-space:transfer-function-invert]
+
+@racket[named-xyz-d50]
+
+@racket[color-space:named-xyz-d50]
+
+@racket[color-space-transfer-function]
+
+@racket[color-space:color-space-transfer-function]
+
+@racket[color-space-xyz-d50]
+
+@racket[color-space:color-space-xyz-d50]
+
+@racket[xyz-d50-invert]
+
+@racket[color-space:xyz-d50-invert]
+
+@racket[color-space-gamma-close-to-srgb?]
+
+@racket[color-space->linear-gamma]
+
+@racket[color-space->srgb-gamma]
+
+@racket[color-space-from-icc-bytes]
+
+@racket[color-space->icc-bytes]
+
+@racket[color-space-descriptor?]
+
+@racket[image-info:color-space-descriptor?]
+
+@racket[color4f?]
+
+@racket[color4f:color4f?]
+
+@racket[color4f-red]
+
+@racket[color4f:color4f-red]
+
+@racket[color4f-green]
+
+@racket[color4f:color4f-green]
+
+@racket[color4f-blue]
+
+@racket[color4f:color4f-blue]
+
+@racket[color4f-alpha]
+
+@racket[color4f:color4f-alpha]
+
+@racket[color4f->vector]
+
+@racket[color4f:color4f->vector]
+
+@racket[color->color4f]
+
+@racket[color4f:color->color4f]
+
+@racket[paint-color4f]
+
+@racket[float-colors:paint-color4f]
+
+@racket[transfer-function-evaluate]
+
+@racket[color-space:transfer-function-evaluate]
+
+@racket[make-rgb-color-space]
+
+@racket[color-space:make-rgb-color-space]
+
+@racket[xyz-d50-concat]
+
+@racket[color-space:xyz-d50-concat]
+
+@racket[canvas-clear-color4f!]
+
+@racket[float-colors:canvas-clear-color4f!]
+
+@racket[primaries->xyz-d50]
+
+@racket[color-space:primaries->xyz-d50]
+
+@racket[make-transfer-function]
+
+@racket[color-space:make-transfer-function]
+
+@racket[make-color4f]
+
+@racket[color4f:make-color4f]
+
+@racket[color4f->rgba]
+
+@racket[color4f:color4f->rgba]
+
+@racket[image-convert-color-space]
+
+@racket[make-paint/color4f]
+
+@racket[float-colors:make-paint/color4f]
+
+@racket[paint-set-color4f!]
+
+@racket[float-colors:paint-set-color4f!]
+
+@racket[draw-color4f]
+
+@racket[float-colors:draw-color4f]
+
+@racket[make-color4f-shader]
+
+@racket[float-colors:make-color4f-shader]
+
+@racket[make-linear-gradient-color4f-shader]
+
+@racket[float-colors:make-linear-gradient-color4f-shader]
+
+@racket[make-radial-gradient-color4f-shader]
+
+@racket[float-colors:make-radial-gradient-color4f-shader]
+
+@racket[make-sweep-gradient-color4f-shader]
+
+@racket[float-colors:make-sweep-gradient-color4f-shader]
+
+@racket[make-two-point-conical-gradient-color4f-shader]
+
+@racket[float-colors:make-two-point-conical-gradient-color4f-shader]
+
+@secref["skia-color-spaces" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
