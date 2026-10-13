@@ -5,7 +5,9 @@
                      (prefix-in geometry: skia/geometry)
                      (prefix-in matrix: skia/matrix)
                      (prefix-in typefaces: skia/typefaces)
-                     (prefix-in fonts: skia/fonts)))
+                     (prefix-in fonts: skia/fonts)
+                     (prefix-in blobs: skia/text-blobs)
+                     (prefix-in primitives: skia/geometry-primitives)))
 
 @title{Reference Binding Links}
 
@@ -972,3 +974,107 @@ The following links cover the font and text interfaces.
 @racket[mixed-text-run-script]
 
 @racket[mixed-text-run-family]
+
+@racket[text-blob-builder?]
+
+@racket[blobs:text-blob-builder?]
+
+@racket[make-text-blob-builder]
+
+@racket[blobs:make-text-blob-builder]
+
+@racket[text-blob-builder-run-count]
+
+@racket[blobs:text-blob-builder-run-count]
+
+@racket[text-blob-builder-add-run!]
+
+@racket[blobs:text-blob-builder-add-run!]
+
+@racket[text-blob-builder-add-horizontal-run!]
+
+@racket[blobs:text-blob-builder-add-horizontal-run!]
+
+@racket[text-blob-builder-add-positioned-run!]
+
+@racket[blobs:text-blob-builder-add-positioned-run!]
+
+@racket[text-blob-builder-add-transformed-run!]
+
+@racket[blobs:text-blob-builder-add-transformed-run!]
+
+@racket[text-blob-builder-add-shaped-run!]
+
+@racket[blobs:text-blob-builder-add-shaped-run!]
+
+@racket[text-blob-builder-finish!]
+
+@racket[blobs:text-blob-builder-finish!]
+
+@racket[text-blob-run-count]
+
+@racket[blobs:text-blob-run-count]
+
+@racket[text-blob-runs]
+
+@racket[blobs:text-blob-runs]
+
+@racket[text-blob-run-font]
+
+@racket[blobs:text-blob-run-font]
+
+@racket[text-blob-intercepts]
+
+@racket[blobs:text-blob-intercepts]
+
+@racket[text-run-info?]
+
+@racket[blobs:text-run-info?]
+
+@racket[text-run-info-positioning]
+
+@racket[blobs:text-run-info-positioning]
+
+@racket[text-run-info-glyphs]
+
+@racket[blobs:text-run-info-glyphs]
+
+@racket[text-run-info-positions]
+
+@racket[blobs:text-run-info-positions]
+
+@racket[text-run-info-transforms]
+
+@racket[blobs:text-run-info-transforms]
+
+@racket[text-run-info-utf8]
+
+@racket[blobs:text-run-info-utf8]
+
+@racket[text-run-info-clusters]
+
+@racket[blobs:text-run-info-clusters]
+
+@racket[positioned-glyphs->path]
+
+@racket[blobs:positioned-glyphs->path]
+
+@racket[shaped-run->text-blob/on-path]
+
+@racket[blobs:shaped-run->text-blob/on-path]
+
+@racket[draw-shaped-run/on-path]
+
+@racket[blobs:draw-shaped-run/on-path]
+
+@racket[atlas-transform?]
+
+@racket[primitives:atlas-transform?]
+
+@racket[make-atlas-transform]
+
+@racket[primitives:make-atlas-transform]
+
+@racket[atlas-transform-coefficients]
+
+@racket[primitives:atlas-transform-coefficients]

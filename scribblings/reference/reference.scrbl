@@ -13,6 +13,7 @@ introduce drawing through complete examples.
 This manual documents resource management, surfaces, canvas state, colors, paints,
 shaders, geometric drawing, paths, affine matrices, images, image encoding,
 font managers, typefaces, fonts, shaped text, text blobs, and paragraph layout.
+Text blobs include multi-run construction, run inspection, and text on paths.
 Other interfaces are described in the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{existing API notes}.
 
@@ -22,6 +23,9 @@ color operations are available from @racketmodname[skia/color], affine matrices
 from @racketmodname[skia/matrix], and the indicated paint queries from
 @racketmodname[skia/geometry]. Typeface-data operations are also available from
 @racketmodname[skia/typefaces], and additional glyph queries from @racketmodname[skia/fonts].
+Multi-run blob operations are available from @racketmodname[skia/text-blobs].
+The atlas-transform values used for glyph placement are also exported by
+@racketmodname[skia/geometry-primitives].
 
 @table-of-contents[]
 

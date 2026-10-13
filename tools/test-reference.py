@@ -144,7 +144,10 @@ PROCEDURES.update({
 
 from reference_text_cases import FONT_EXPORTS, TYPEFACE_EXPORTS, TEXT_PROCEDURES
 
+from reference_blob_cases import ATLAS_EXPORTS, BLOB_EXPORTS, BLOB_PROCEDURES
+
 PROCEDURES.update(TEXT_PROCEDURES)
+PROCEDURES.update(BLOB_PROCEDURES)
 
 
 def row(name, arity, keywords, kind='procedure'):
@@ -170,7 +173,8 @@ def synthetic_inventory():
                                             'rgba-blue', 'rgba-alpha', 'struct:rgba', 'rgb')])]),
                       dict(modules=[])]
     for path, names in (('matrix.rkt', MATRIX_EXPORTS), ('geometry.rkt', GEOMETRY_EXPORTS),
-                        ('typefaces.rkt', TYPEFACE_EXPORTS), ('fonts.rkt', FONT_EXPORTS)):
+                        ('typefaces.rkt', TYPEFACE_EXPORTS), ('fonts.rkt', FONT_EXPORTS),
+                        ('text-blobs.rkt', BLOB_EXPORTS), ('geometry-primitives.rkt', ATLAS_EXPORTS)):
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
@@ -210,8 +214,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 383)
-        self.assertEqual(result['documented_exports'], 473)
+        self.assertEqual(len(result['definitions']), 409)
+        self.assertEqual(result['documented_exports'], 525)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -330,12 +334,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 383)
+        self.assertEqual(len(self.check()['definitions']), 409)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 383)
+        self.assertEqual(len(self.check()['definitions']), 409)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -839,8 +843,8 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 383)
-        self.assertEqual(result['documented_exports'], 473)
+        self.assertEqual(len(result['definitions']), 409)
+        self.assertEqual(result['documented_exports'], 525)
         self.assertEqual(len(result['chapters']), 18)  # Root plus seventeen chapters.
 
 
@@ -1521,7 +1525,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 44)
+        self.assertEqual(count, 50)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1765,7 +1769,7 @@ class R3TextCoverageTests(unittest.TestCase):
     def test_new_chapters_have_explicit_ownership(self):
         entries = self.check()['definitions']
         for chapter, count in (('typefaces', 48), ('fonts', 58), ('shaping', 14),
-                               ('text-blobs', 6), ('text-layout', 43)):
+                               ('text-blobs', 29), ('text-layout', 43)):
             with self.subTest(chapter=chapter):
                 owned = [e for e in entries
                          if e['chapter'] == f'scribblings/reference/{chapter}.scrbl']
@@ -1814,7 +1818,7 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_later_batches_are_not_counted_as_documented(self):
         names = {e['name'] for e in self.check()['definitions']}
-        for name in ('make-text-blob-builder', 'make-pdf-document', 'make-gpu-context',
+        for name in ('make-region', 'make-pdf-document', 'make-gpu-context',
                      'make-blur-image-filter', 'make-raster-buffer'):
             self.assertNotIn(name, names)
 
@@ -1905,7 +1909,7 @@ class R3TextSemanticsTests(unittest.TestCase):
             self.assertFalse(any(form in ('examples', 'interaction', 'interaction-eval')
                                  for form, _, _ in forms))
             total += sum(form == 'racketblock' for form, _, _ in forms)
-        self.assertEqual(total, 18)
+        self.assertEqual(total, 24)
 
     def test_new_complete_file_examples_explicitly_allow_replacement(self):
         for chapter in self.chapters:
@@ -1992,6 +1996,236 @@ class R3aEditorialCleanupTests(unittest.TestCase):
         self.assertEqual(source.count('@deftech{shaping}'), 1)
         self.assertNotIn('@deftech{Shaping}', source)
         self.assertIn('The process of @deftech{shaping} maps text to glyphs and positions', source)
+
+
+
+
+class R3BlobCoverageTests(unittest.TestCase):
+    """Static call shapes and alias coverage; no native execution is implied."""
+    setUp = Fixtures.setUp
+    write_inventory = Fixtures.write_inventory
+    write_manifest = Fixtures.write_manifest
+    change = Fixtures.change
+    check = Fixtures.check
+
+    def test_complete_public_text_blob_family_and_transform_dependencies(self):
+        entries = {row['name']: row for row in self.check()['definitions']}
+        self.assertEqual(len(BLOB_EXPORTS), 23)
+        self.assertEqual(len(ATLAS_EXPORTS), 3)
+        self.assertEqual(set(BLOB_EXPORTS + ATLAS_EXPORTS), set(BLOB_PROCEDURES))
+        for name, (arity, keywords) in BLOB_PROCEDURES.items():
+            with self.subTest(name=name):
+                self.assertEqual(entries[name]['arity_mask'], str(arity))
+                self.assertEqual(entries[name]['allowed_keywords'], sorted(keywords))
+                self.assertEqual(entries[name]['required_keywords'], [])
+
+    def test_new_exports_have_canonical_chapters_and_real_public_aliases(self):
+        entries = {row['name']: row for row in self.check()['definitions']}
+        for module, chapter, names in (('skia/text-blobs', 'text-blobs', BLOB_EXPORTS),
+                                       ('skia/geometry-primitives', 'matrices', ATLAS_EXPORTS)):
+            for name in names:
+                with self.subTest(name=name):
+                    self.assertEqual(entries[name]['canonical_module'], module)
+                    self.assertEqual(entries[name]['exports'], ['skia', module])
+                    self.assertEqual(entries[name]['chapter'],
+                                     f'scribblings/reference/{chapter}.scrbl')
+
+    def test_each_new_public_import_path_is_exercised_by_link_probe(self):
+        text = (self.root / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        for prefix, names in (('blobs:', BLOB_EXPORTS), ('primitives:', ATLAS_EXPORTS)):
+            for name in names:
+                self.assertEqual(text.count('@racket[' + name + ']'), 1)
+                self.assertEqual(text.count('@racket[' + prefix + name + ']'), 1)
+        self.assertIn('(prefix-in blobs: skia/text-blobs)', text)
+        self.assertIn('(prefix-in primitives: skia/geometry-primitives)', text)
+
+    def test_missing_text_blob_reexport_is_rejected(self):
+        module = next(m for m in self.snapshots[0]['modules'] if m['path'] == 'text-blobs.rkt')
+        module['exports'] = [r for r in module['exports'] if r['name'] != 'text-blob-runs']
+        self.write_inventory()
+        with self.assertRaisesRegex(checks.CheckError, 'unknown public export'):
+            self.check()
+
+    def test_disagreeing_builder_alias_arity_is_rejected(self):
+        module = next(m for m in self.snapshots[0]['modules'] if m['path'] == 'text-blobs.rkt')
+        row = next(r for r in module['exports'] if r['name'] == 'text-blob-builder-add-run!')
+        row['arity_mask'] = '16'
+        self.write_inventory()
+        with self.assertRaisesRegex(checks.CheckError, 'arity_mask'):
+            self.check()
+
+    def test_unrecognized_placement_keyword_is_rejected(self):
+        self.change('text-blobs.scrbl', '[#:start-offset start real? 0]',
+                    '[#:start-offset start real? 0] [#:invented option any/c #f]')
+        with self.assertRaisesRegex(checks.CheckError, 'allowed_keywords'):
+            self.check()
+
+    def test_unsupported_transform_alias_is_rejected(self):
+        row = next(r for r in self.manifest['definitions'] if r['name'] == 'make-atlas-transform')
+        row['exports'].append('skia/matrix')
+        self.write_manifest()
+        with self.assertRaisesRegex(checks.CheckError, 'unknown public export'):
+            self.check()
+
+
+class R3BlobSemanticsTests(unittest.TestCase):
+    """Inspect authored contracts and focused regression wiring, not simulated Skia."""
+    def text(self, chapter='text-blobs'):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def header(self, name, chapter='text-blobs'):
+        return next(header for form, header, _ in checks.commands(self.text(chapter))
+                    if form == 'defproc' and header[0][0] == name)
+
+    def test_nullable_finishing_and_path_results_are_explicit(self):
+        for name in ('text-blob-builder-finish!', 'shaped-run->text-blob/on-path'):
+            self.assertEqual(self.header(name)[1], ['or/c', 'text-blob?', '#f'])
+        self.assertEqual(self.header('positioned-glyphs->path')[1], 'skia-path?')
+        self.assertEqual(self.header('draw-shaped-run/on-path')[1], 'void?')
+
+    def test_glyph_append_keywords_preserve_defaults_and_precise_metadata_domains(self):
+        names = ('text-blob-builder-add-run!', 'text-blob-builder-add-horizontal-run!',
+                 'text-blob-builder-add-positioned-run!', 'text-blob-builder-add-transformed-run!')
+        for name in names:
+            fields = {f[0]: f for f in self.header(name)[0][1:]}
+            self.assertEqual(fields['#:text'], ['#:text', 'text',
+                                                ['or/c', 'string?', 'bytes?', '#f'], '#f'])
+            self.assertEqual(fields['#:clusters'][2],
+                             ['or/c', ['listof', 'exact-nonnegative-integer?'],
+                              ['vectorof', 'exact-nonnegative-integer?'], '#f'])
+            self.assertEqual(fields['#:clusters'][-1], '#f')
+            self.assertEqual(self.header(name)[1], 'void?')
+        self.assertEqual(self.header(names[0])[0][4][-1], ['quote', ['0', '0']])
+
+    def test_four_coefficient_transforms_include_atlas_values_lists_and_vectors(self):
+        fields = {f[0]: f for f in self.header('text-blob-builder-add-transformed-run!')[0][1:]}
+        transform = ['or/c', 'atlas-transform?', ['list/c'] + ['real?'] * 4,
+                     ['vector/c'] + ['real?'] * 4]
+        self.assertEqual(fields['transforms'][1],
+                         ['or/c', ['listof', transform], ['vectorof', transform]])
+        self.assertIn('not an affine matrix\'s six coefficients', self.text())
+
+    def test_shaped_append_does_not_offer_caller_supplied_cluster_offsets(self):
+        fields = {f[0]: f for f in self.header('text-blob-builder-add-shaped-run!')[0][1:]}
+        self.assertIn('#:text', fields)
+        self.assertNotIn('#:clusters', fields)
+        self.assertIn("The original string cannot be reconstructed", self.text())
+        self.assertIn('no automatic\nfont-provenance check', self.text())
+
+    def test_input_byte_offsets_are_distinguished_from_character_indices(self):
+        prose = ' '.join(self.text().split())
+        self.assertIn('not a Racket character index or necessarily a grapheme boundary', prose)
+        self.assertIn('Repeated and descending offsets are permitted', prose)
+        self.assertIn('not that semantic correspondence', prose)
+        self.assertIn('malformed byte sequences are rejected', prose)
+
+    def test_builder_lifetime_and_error_boundary_are_local_and_explicit(self):
+        prose = ' '.join(self.text().split())
+        self.assertIn('Finishing consumes the builder', prose)
+        self.assertIn('An empty append still validates its options and resources', prose)
+        self.assertIn('before native run allocation leave the builder available', prose)
+        self.assertIn('failure after native run allocation begins closes the builder', prose)
+        self.assertIn('Both outcomes close the builder', prose)
+        self.assertIn('counts logical appends', prose)
+
+    def test_run_description_contracts_preserve_absence_and_coordinate_representations(self):
+        self.assertEqual(self.header('text-run-info-positioning')[1],
+                         ['or/c'] + [['quote', n] for n in
+                                     ('default', 'horizontal', 'positioned', 'transformed')])
+        self.assertEqual(self.header('text-run-info-positions')[1],
+                         ['vectorof', ['list/c', 'real?', 'real?']])
+        self.assertEqual(self.header('text-run-info-transforms')[1],
+                         ['or/c', ['vectorof', ['list/c'] + ['real?'] * 4], '#f'])
+        self.assertEqual(self.header('text-run-info-utf8')[1], ['or/c', 'bytes?', '#f'])
+        self.assertEqual(self.header('text-run-info-clusters')[1],
+                         ['or/c', ['vectorof', 'exact-nonnegative-integer?'], '#f'])
+
+    def test_run_font_is_owned_and_independent_not_a_borrow(self):
+        prose = ' '.join(self.text().split())
+        self.assertIn('new owned mutable font copied', prose)
+        self.assertIn('Closing the blob does not close the returned font', prose)
+        self.assertIn('remains usable after the blob closes', prose)
+        self.assertIn('A transformed run returns an empty vector here', prose)
+
+    def test_intercepts_reject_partial_answers_for_transformed_runs(self):
+        prose = ' '.join(self.text().split())
+        self.assertIn('Any transformed run causes an exception', prose)
+        self.assertIn('not as a promised sorted, merged union', prose)
+        self.assertIn('not a pixel coverage readback', prose)
+        self.assertEqual(self.header('text-blob-intercepts')[1],
+                         ['vectorof', ['list/c', 'real?', 'real?']])
+
+    def test_text_on_path_uses_origin_distances_and_signed_normal_offsets(self):
+        prose = ' '.join(self.text().split())
+        self.assertIn('@math{start + gx}', prose)
+        self.assertIn('@math{normal + gy}', prose)
+        self.assertIn('@math{(-ty, tx)}', prose)
+        self.assertIn('no fitting, clipping, or wraparound', prose)
+        self.assertIn('origins, not the full visible glyph extents', prose)
+        self.assertIn('Glyphs may extend beyond an endpoint', prose)
+        self.assertIn('empty run returns @racket[#f], but still validates', prose)
+
+    def test_direct_path_drawing_has_no_metadata_keyword_and_validates_empty_input(self):
+        fields = {f[0]: f for f in self.header('draw-shaped-run/on-path')[0][1:]}
+        self.assertNotIn('#:text', fields)
+        self.assertIn('#:text', {f[0]: f for f in
+                                self.header('shaped-run->text-blob/on-path')[0][1:]})
+        self.assertIn('canvas and paint are validated even for an empty run', self.text())
+        self.assertIn('then released, including when drawing raises an', self.text())
+
+    def test_atlas_helpers_have_detached_value_contracts_and_correct_defaults(self):
+        header = self.header('make-atlas-transform', 'matrices')[0]
+        fields = {f[0]: f for f in header[1:]}
+        self.assertEqual(fields['#:scale'][2:], [['and/c', 'real?', ['>=/c', '0']], '1'])
+        self.assertEqual(fields['#:rotation'][2:], ['real?', '0'])
+        self.assertEqual(fields['#:anchor'][-1], ['quote', ['0', '0']])
+        self.assertEqual(self.header('atlas-transform-coefficients', 'matrices')[1],
+                         ['vector/c'] + ['real?'] * 4)
+        self.assertIn('Zero scale is accepted', self.text('matrices'))
+        self.assertIn('anchor is copied', self.text('matrices'))
+
+    def test_six_focused_blob_examples_are_added_without_native_doc_evaluation(self):
+        forms = list(checks.commands(self.text(), recursive=True))
+        self.assertEqual(sum(form == 'racketblock' for form, _, _ in forms), 7)
+        self.assertFalse(any(form in ('examples', 'interaction', 'interaction-eval')
+                             for form, _, _ in forms))
+        # The seventh block is the original R3a positioned-blob example.
+        self.assertIn('(text-blob-builder-finish! builder)', self.text())
+        self.assertIn('#:text text #:clusters', self.text())
+        self.assertIn('(text-blob-intercepts blob 20 25)', self.text())
+
+    def test_new_cases_are_included_in_review_sources(self):
+        paths = review.source_hashes(ROOT)
+        for name in ('reference_blob_cases.py', 'reference-blob-values-test.rkt',
+                     'reference-blobs-test.rkt'):
+            self.assertIn('tools/' + name, paths)
+
+    def test_pure_and_native_acceptance_are_wired_separately(self):
+        source = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn("run('blob-value-tests'", source)
+        native = source[source.index('if args.native:'):]
+        self.assertIn("ROOT / 'tools/reference-blobs-test.rkt'", native)
+        self.assertNotIn("ROOT / 'tools/reference-blob-values-test.rkt'", native)
+
+    def test_new_racket_tests_have_valid_delimiters_and_top_level_cases(self):
+        # This is a delimiter/structure check, not Racket reading or evaluation.
+        for name, count in (('reference-blob-values-test.rkt', 4), ('reference-blobs-test.rkt', 17)):
+            text = (ROOT / 'tools' / name).read_text().split('\n', 1)[1]
+            reader, forms = checks.Reader(text), []
+            while True:
+                reader.skip()
+                if reader.position == len(text):
+                    break
+                forms.append(reader.read())
+            modules = [f for f in forms if isinstance(f, list) and f and f[0] == 'module+']
+            self.assertEqual(len(modules), 1)
+            cases = [f for f in modules[0][2:] if isinstance(f, list) and f and f[0] == 'test-case']
+            self.assertEqual(len(cases), count)
+            def nested_cases(form):
+                if not isinstance(form, list):
+                    return 0
+                return int(bool(form) and form[0] == 'test-case') + sum(map(nested_cases, form))
+            self.assertEqual(nested_cases(modules[0]), count)
 
 
 if __name__ == '__main__':

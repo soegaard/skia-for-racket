@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require scribble/eval
-          (for-label racket/base racket/contract skia skia/matrix))
+          (for-label racket/base racket/contract skia skia/matrix skia/geometry-primitives))
 @(define matrix-eval (make-base-eval))
 @(matrix-eval '(require skia/matrix))
 
@@ -178,3 +178,47 @@ within the accepted range.
 }
 
 @close-eval[matrix-eval]
+
+
+@section[#:tag "skia-atlas-transforms"]{Scaled Rotations and Translations}
+
+@defmodule[skia/geometry-primitives #:no-declare]
+@(declare-exporting skia skia/geometry-primitives #:use-sources (skia/geometry-primitives))
+
+An @deftech{atlas transform} is a detached immutable value representing uniform
+scale, rotation, and translation. It is used for sprite placement and for the
+per-glyph transforms accepted by @racket[text-blob-builder-add-transformed-run!].
+It is not a six-coefficient affine @tech{affine matrix} and contains no native resource.
+
+@defproc[(atlas-transform? [v any/c]) boolean?]{
+Returns @racket[#t] for an atlas transform and @racket[#f] otherwise. A raw
+four-element coefficient vector is not an atlas-transform value.
+}
+
+@defproc[(make-atlas-transform
+          [x real?] [y real?]
+          [#:scale scale (and/c real? (>=/c 0)) 1]
+          [#:rotation degrees real? 0]
+          [#:anchor anchor (or/c (list/c real? real?) (vector/c real? real?)) '(0 0)])
+          atlas-transform?]{
+Returns a transform that maps the local @racket[anchor] to coordinates
+@racket[x] and @racket[y], with uniform @racket[scale] and rotation by
+@racket[degrees]. Positive angles rotate clockwise in downward-positive drawing
+coordinates. Inputs and computed coefficients must be drawing scalars; the
+scale must be nonnegative. Zero scale is accepted and collapses local points
+to the target location. The anchor is copied, not retained as a mutable input.
+
+For angle @math{r} in radians and anchor coordinates @math{ax} and @math{ay},
+the four coefficients are @math{scos = scale cos(r)},
+@math{ssin = scale sin(r)}, @math{tx = x - scos ax + ssin ay}, and
+@math{ty = y - ssin ax - scos ay}. This representation does not support a
+nonuniform scale, general shear, or reflection.
+}
+
+@defproc[(atlas-transform-coefficients [transform atlas-transform?])
+          (vector/c real? real? real? real?)]{
+Returns the immutable vector of coefficients in order @math{scos},
+@math{ssin}, @math{tx}, and @math{ty}. They map a local point to
+@math{(scos x - ssin y + tx, ssin x + scos y + ty)}. The vector is detached;
+no native conversion or allocation occurs in this query.
+}

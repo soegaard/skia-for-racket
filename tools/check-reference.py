@@ -131,6 +131,8 @@ def main(argv=None):
                                         ROOT / 'tools/reference-render.rkt'])
             run('color-tests', [racket, '-l', 'raco', '--', 'test',
                                 ROOT / 'tools/reference-color-test.rkt'])
+            run('blob-value-tests', [racket, '-l', 'raco', '--', 'test',
+                                    ROOT / 'tools/reference-blob-values-test.rkt'])
             run('text-pure-tests', [racket, '-l', 'raco', '--', 'test',
                                     ROOT / 'tools/reference-text-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
@@ -198,7 +200,8 @@ def main(argv=None):
                 run('native-cpu', [racket, '-l', 'raco', '--', 'test',
                                     ROOT / 'tools/reference-native-test.rkt',
                                     ROOT / 'tools/reference-core-test.rkt',
-                                    ROOT / 'tools/reference-text-test.rkt'])
+                                    ROOT / 'tools/reference-text-test.rkt',
+                                    ROOT / 'tools/reference-blobs-test.rkt'])
                 report['native_executed'] = True
         if source_hashes(ROOT, review_inputs=review_inputs) != before:
             raise CheckError('Reference sources changed during validation')

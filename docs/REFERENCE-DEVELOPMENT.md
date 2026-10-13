@@ -1,10 +1,11 @@
-# Skia Reference development: R3a.1 fonts and text
+# Skia Reference development: R3b text blobs
 
 The Reference is one registered multi-page manual assembled from
-`scribblings/reference/reference.scrbl`. R3a adds 169 font and text bindings to
-R2.1 and its preparatory cleanup. It documents 383 bindings through 473 public
-export paths in seventeen conceptual chapters. This is the first bounded R3
-batch, not completion of all higher-level APIs. No library behavior changes.
+`scribblings/reference/reference.scrbl`. R3b extends the delivered R3a.1 sources
+with all 23 exports of `skia/text-blobs` and three supporting atlas-transform
+operations. It documents 409 bindings through 525 public export paths in
+seventeen conceptual chapters. It is a bounded R3 batch, not completion of all
+higher-level APIs. No library behavior changes.
 The upstream `for-label` fixes, finite blend-mode contracts, clipping example,
 and independent source-review packaging are retained.
 
@@ -41,13 +42,13 @@ the ordinary checker after extraction; `--documents-only` is not a substitute.
 | Shaders and Gradients | 9 | Basic gradients, image and composite shaders, local matrices. |
 | Drawing | 8 | Paint, line, rectangle, rounded rectangle, oval, circle, path and polygon. |
 | Paths | 64 | Commands, geometry, iteration, filled-region operations and measurement. |
-| Affine Matrices | 21 | Detached six-coefficient transforms, composition, inversion and mapping. |
+| Affine Matrices | 24 | Affine operations and detached scaled-rotation/translation values. |
 | Images | 15 | Encoded/raw construction, metadata, pixel copies, subsets and drawing. |
 | Image Encoding | 7 | PNG/JPEG/WebP byte encoders and file writing. |
 | Font Managers and Typefaces | 48 | Lookup, styles, owned faces/sets and copied font data. |
 | Fonts and Text Measurement | 58 | Font controls, metrics, simple text and glyph queries. |
 | Shaped Text | 14 | Captured shapers, glyph clusters, drawing and outline conversion. |
-| Text Blobs | 6 | Positioned single-run blobs, native bounds and drawing. |
+| Text Blobs | 29 | Basic blobs, multi-run builders, metadata, intercepts and text on paths. |
 | Text Layout | 43 | Wrapping, alignment, providers, bidi/fallback and line/run metadata. |
 
 Resources and byte-color coverage is retained from the foundation. Image
@@ -68,14 +69,16 @@ scope includes extended geometry (arcs, rounded-rectangle records, regions,
 shape recognition and batch operations), projective matrices, specialized
 canvases and layer protocols, raster buffers and additional pixel formats,
 image-operation extensions, codecs and incremental sessions, further color management,
-extended multi-run text blobs and builders, text-on-path helpers, filters,
-recorded pictures, documents, streams, caches, GPU and GUI/DC integration.
+filters, recorded pictures, documents, streams, caches, GPU and GUI/DC integration.
 The subsequent stages must add their own semantic entries. No
 unwritten entries are hidden behind artificial anchors or counted as complete.
 
 ## Authoritative source checks
 
-R3a baseline: `1003a8ca6481b1c98a1240e215853713bb7a1ee3`.
+R3a and R3b implementation baseline: `1003a8ca6481b1c98a1240e215853713bb7a1ee3`.
+R3b's incremental patch starts from the delivered R3a.1 source state. When the
+upstream branch still lacks R3a, use the cumulative alternative against that
+verified commit. Neither partial fixture is represented as a full clone.
 The preparatory cleanup was based on `3a9c69c3dc71e29f008d577f45de5a926133535f`.
 R2.1 was based on `f20b68d866f6c1b92de94c19c62754978a8e9a0d`.
 The upstream `for-label` and module-declaration corrections are preserved.
@@ -86,6 +89,9 @@ not private implementation modules, are the documented import paths.
 |---|---|
 | `private/core.rkt` | `9861b7cf96ea6002c71e7eb904780d2fddff808e` |
 | `typefaces.rkt` | `fef5ba345c0b9470e566af1e9a28049f409ef9b1` |
+| `text-blobs.rkt` | `d96474626f74cbddd130ce2a66f5ed2c4d470b57` |
+| `private/text-run-util.rkt` | `20e60899f5f2f5ae7fe3ccb45be5d5a18ff8c295` |
+| `geometry-primitives.rkt` | `6f8c6d310281131b5e7ae802d615b0d9804de898` |
 | `fonts.rkt` | `5f54ddc7defd245b40072e3ba5df8c8106e0cb49` |
 | `private/typeface-util.rkt` | `4346d4d9993a0c1e0f60fad03203f4d5e0cb2575` |
 | `private/path-matrix.rkt` | `3abcea67c6c0f8a33f96fefec7dced8bbc4fe965` |
@@ -234,6 +240,79 @@ selected full contracts and defaults, rejection of documentation drift, probe
 coverage, and separation of displayed examples from native execution. Their
 small Racket-like reader checks delimiter nesting, not compilation. The two
 Racket suites and rendered examples remain separate acceptance steps.
+
+## R3b scope and semantic checks
+
+The Text Blobs chapter now owns all 23 exports of `skia/text-blobs`, in addition
+to its six core entries. The Affine Matrices chapter owns the three supporting
+atlas-transform values from `skia/geometry-primitives`. Those helpers make the
+transformed-run contracts usable without an undocumented predicate. The rest of
+`skia/geometry-primitives` is still deferred. Existing chapter tags, signatures,
+examples, and `for-label` corrections are preserved.
+
+The canonical export mapping checks each new binding through both `skia` and
+its narrower public module. The binding-link probe includes both import paths.
+The R3b Python regression expectations are independent transcriptions of the
+pinned public implementations, not live captures or replacements for the complete
+API snapshots. Full inventory validation still requires both pinned JSON files.
+
+The entries specify the builder's single-use lifecycle and failure boundary,
+validation of empty appends, captured fonts, logical runs versus native merging,
+and the exact representations of detached run descriptions. Metadata uses
+UTF-8 scalar-start byte offsets, permits repetitions and descending offsets,
+and is not a proof of correspondence between text and glyphs. A transformed
+run uses four scaled-rotation/translation coefficients, not a general affine
+matrix. Intercept queries reject such runs instead of silently ignoring them.
+
+Text-on-path placement checks glyph origins against one selected measured
+contour. It neither fits nor wraps text, even when measurement forces closure.
+The tangent determines both rotation and the signed normal. Glyph extents may
+cross a contour endpoint even when every checked origin is in range.
+
+R3b adds six focused displayed examples. The manual now contains 50 displayed
+native blocks and eleven pure evaluated blocks. It does not add native examples
+to documentation-time evaluation. `reference-native-test.rkt` reads the actual
+blocks and is configured to execute each twice in fresh namespaces.
+
+`reference-blob-values-test.rkt` contains four native-free cases for atlas values,
+anchors, rotation, zero scale and validation. `reference-blobs-test.rkt` contains
+seventeen native CPU/HarfBuzz cases for empty builders and appends, preallocation
+errors, captured fonts, positioning and copied inputs, metadata, run inspection,
+intercepts, outlines, contour selection, normal orientation, range failures,
+empty drawing, and equivalence of direct versus retained path drawing. Native
+font tests require a face with Latin A/B outlines. `SKIA_REFERENCE_TEST_FONT`
+may select a local font; no font binary is packaged.
+
+A public, deterministic allocation-failure injection hook is not available.
+The post-allocation builder-failure guarantee is checked against the source;
+its out-of-memory path is not claimed to have been exercised by these tests.
+GUI, GPU, screen-reader, installed-site and hosted-site acceptance are separate.
+
+Pinned implementation and native API sources:
+
+- `text-blobs.rkt` at the pinned repository commit above.
+- `private/text-run-util.rkt` at the pinned repository commit above.
+- `geometry-primitives.rkt` at the pinned repository commit above.
+- https://api.skia.org/classSkTextBlob.html
+- https://api.skia.org/classSkTextBlobBuilder.html
+
+Use the R3b checks from the full revised checkout, with fresh output paths:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py --output ../reference-r3b-source \
+  --source-zip ../skia-reference-r3b-source-review.zip
+"$RACKET" -l raco -- test tools/reference-blob-values-test.rkt
+"$RACKET" -l raco -- test tools/reference-blobs-test.rkt
+python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3b-render --review-zip ../skia-reference-r3b-review.zip
+```
+
+An incremental delivery is not the independently checkable source-review ZIP.
+That archive must be generated with the ordinary checker, including the pinned
+inventories, and rechecked after extraction. Do not substitute synthetic test
+inventories or describe a documents-only pass as full export validation.
 
 ## Running the checks
 

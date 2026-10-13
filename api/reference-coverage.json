@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "R3a.1",
+  "stage": "R3b",
   "reviewed_repository_commit": "1003a8ca6481b1c98a1240e215853713bb7a1ee3",
   "snapshots": [
     {
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3b-R4",
-    "reason": "Outside the core and R3a fonts/text batch; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R3c-R4",
+    "reason": "Outside core, fonts, layout, and text blobs; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -3933,6 +3933,292 @@
       "canonical_module": "skia",
       "exports": [
         "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder?",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-text-blob-builder",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder-run-count",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder-add-run!",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder-add-horizontal-run!",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder-add-positioned-run!",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder-add-transformed-run!",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder-add-shaped-run!",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-builder-finish!",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-run-count",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-runs",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-run-font",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-blob-intercepts",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-run-info?",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-run-info-positioning",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-run-info-glyphs",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-run-info-positions",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-run-info-transforms",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-run-info-utf8",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-run-info-clusters",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "positioned-glyphs->path",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run->text-blob/on-path",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-shaped-run/on-path",
+      "chapter": "scribblings/reference/text-blobs.scrbl",
+      "canonical_module": "skia/text-blobs",
+      "exports": [
+        "skia",
+        "skia/text-blobs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "atlas-transform?",
+      "chapter": "scribblings/reference/matrices.scrbl",
+      "canonical_module": "skia/geometry-primitives",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-atlas-transform",
+      "chapter": "scribblings/reference/matrices.scrbl",
+      "canonical_module": "skia/geometry-primitives",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "atlas-transform-coefficients",
+      "chapter": "scribblings/reference/matrices.scrbl",
+      "canonical_module": "skia/geometry-primitives",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
       ],
       "phase": "0",
       "space": null
