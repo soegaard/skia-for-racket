@@ -14,25 +14,6 @@ not indicate whether the paint is open or whether it retains GPU-dependent
 content.
 }
 
-@defproc[(path-effect? [v any/c]) boolean?]{
-Returns @racket[#t] for a path-effect resource and @racket[#f] otherwise. A path
-effect changes geometry used by a drawing operation without mutating its input
-path.
-}
-@defproc[(color-filter? [v any/c]) boolean?]{
-Returns @racket[#t] for a color-filter resource and @racket[#f] otherwise. A
-color filter transforms colors produced by the paint.
-}
-@defproc[(mask-filter? [v any/c]) boolean?]{
-Returns @racket[#t] for a mask-filter resource and @racket[#f] otherwise. A mask
-filter changes the coverage of a drawn shape.
-}
-@defproc[(image-filter? [v any/c]) boolean?]{
-Returns @racket[#t] for an image-filter resource and @racket[#f] otherwise. An
-image filter processes rendered content and may extend beyond its original
-bounds. Like the other resource predicates here, it remains true after closure.
-}
-
 @defproc[(make-paint
           [#:color color color? 'black]
           [#:style style (or/c 'fill 'stroke 'stroke-and-fill) 'fill]

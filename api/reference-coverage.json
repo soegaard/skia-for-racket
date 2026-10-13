@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R3b",
-  "reviewed_repository_commit": "1003a8ca6481b1c98a1240e215853713bb7a1ee3",
+  "stage": "R3c",
+  "reviewed_repository_commit": "efc279080b375c376fd27793a748bd9e618110d0",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3c-R4",
-    "reason": "Outside core, fonts, layout, and text blobs; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R3d-R4",
+    "reason": "Outside R3c effects; see docs/REFERENCE-DEVELOPMENT.md for remaining scope."
   },
   "definitions": [
     {
@@ -580,7 +580,7 @@
     },
     {
       "name": "path-effect?",
-      "chapter": "scribblings/reference/paints.scrbl",
+      "chapter": "scribblings/reference/path-effects.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -590,7 +590,7 @@
     },
     {
       "name": "color-filter?",
-      "chapter": "scribblings/reference/paints.scrbl",
+      "chapter": "scribblings/reference/color-filters.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -600,7 +600,7 @@
     },
     {
       "name": "mask-filter?",
-      "chapter": "scribblings/reference/paints.scrbl",
+      "chapter": "scribblings/reference/path-effects.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -610,7 +610,7 @@
     },
     {
       "name": "image-filter?",
-      "chapter": "scribblings/reference/paints.scrbl",
+      "chapter": "scribblings/reference/image-filters.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia"
@@ -4219,6 +4219,961 @@
       "exports": [
         "skia",
         "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-dash-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-corner-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-discrete-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-trim-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-compose-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-sum-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-1d-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-2d-line-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-2d-path-effect",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-blur-mask-filter",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-table-mask-filter",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-gamma-mask-filter",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-clip-mask-filter",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-shader-mask-filter",
+      "chapter": "scribblings/reference/path-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-color-matrix-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-blend-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-compose-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-hsla-matrix-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-linear-to-srgb-gamma-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-srgb-to-linear-gamma-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-lerp-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-luma-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-high-contrast-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-table-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-table-argb-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-lighting-color-filter",
+      "chapter": "scribblings/reference/color-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/color-filters"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-blur-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-drop-shadow-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-drop-shadow-only-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-color-filter-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-compose-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-crop-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-offset-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-merge-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-blend-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-arithmetic-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-dilate-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-erode-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-displacement-map-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-matrix-convolution-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-matrix-transform-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-image-source-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-shader-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-tile-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-magnifier-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-distant-lit-diffuse-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-point-lit-diffuse-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-spot-lit-diffuse-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-distant-lit-specular-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-point-lit-specular-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-spot-lit-specular-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-blender-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-runtime-effect",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect-kind",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect-source",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect-uniform-byte-size",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect-uniforms",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect-children",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect-uniform-bytes",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect->shader",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect->color-filter",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-effect->blender",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-name",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-offset",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-type",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-count",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-byte-size",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-array?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-color?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-uniform-half-precision?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-child?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-child-name",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-child-kind",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "runtime-child-index",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-sksl?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-sksl-kind",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-sksl-source",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-sksl-diagnostics",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "blender?",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-blend-mode-blender",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "paint-blender",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "paint-set-blender!",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/runtime-effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-arithmetic-blender",
+      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-fractal-noise-shader",
+      "chapter": "scribblings/reference/shaders.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-turbulence-shader",
+      "chapter": "scribblings/reference/shaders.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-empty-shader",
+      "chapter": "scribblings/reference/shaders.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shader-with-color-filter",
+      "chapter": "scribblings/reference/shaders.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-blender-shader",
+      "chapter": "scribblings/reference/shaders.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/effects"
       ],
       "phase": "0",
       "space": null

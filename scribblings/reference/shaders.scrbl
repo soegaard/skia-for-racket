@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require (for-label racket/base racket/contract skia skia/effects))
 
 @title[#:tag "skia-shaders"]{Shaders and Gradients}
 
@@ -139,4 +139,64 @@ shader is unchanged and retained by the result. For an invertible local matrix,
 its inverse maps incoming coordinates to the source shader: a scale of two
 therefore makes its pattern twice as large. Native rejection raises an exception;
 a singular matrix is not promised to have a useful sampling interpretation.
+}
+
+@section[#:tag "skia-additional-shaders"]{Noise and Shader Composition}
+
+@(declare-exporting skia skia/effects #:use-sources (skia/effects))
+
+These factories return owned shaders. Their input arrays and numeric
+parameters are copied, while native child resources are retained. Closing
+caller-owned children after construction does not invalidate the result.
+GPU-dependent children preserve their context restrictions.
+
+@defproc[(make-fractal-noise-shader
+          [frequency-x real?]
+          [frequency-y real?]
+          [octaves (integer-in 0 255)]
+          [seed real? 0]
+          [#:tile-size tile-size
+           (or/c #f (list/c (integer-in 1 32768) (integer-in 1 32768))
+            (vector/c (integer-in 1 32768) (integer-in 1 32768))) #f]) shader?]{
+Returns a Perlin fractal-noise shader. Base frequencies control variation
+along the local x and y axes. Each octave increases frequency and decreases
+its contribution. Frequencies must be nonnegative after single-precision
+rounding; the seed is a drawing scalar, not restricted to an integer. The octave count is exact
+and may be zero.
+
+An optional positive integer tile size requests periodic noise. It is a
+periodicity hint, not an allocated image size. The native implementation can
+adjust frequencies to make the requested tile repeat. Values and seed define
+a pattern, not a promise of identical pixels across native library versions.
+}
+
+@defproc[(make-turbulence-shader
+          [frequency-x real?]
+          [frequency-y real?]
+          [octaves (integer-in 0 255)]
+          [seed real? 0]
+          [#:tile-size tile-size
+           (or/c #f (list/c (integer-in 1 32768) (integer-in 1 32768))
+            (vector/c (integer-in 1 32768) (integer-in 1 32768))) #f]) shader?]{
+Returns a turbulence shader using the magnitudes of successive noise octaves
+rather than their signed contributions. Frequency, octave, seed, and optional
+tile-size contracts are the same as for @racket[make-fractal-noise-shader].
+}
+
+@defproc[(make-empty-shader) shader?]{
+Returns an owned shader that draws nothing. It is a shader resource, not
+@racket[#f] and not a request to use the paint's solid color.
+}
+
+@defproc[(shader-with-color-filter [shader shader?] [filter color-filter?]) shader?]{
+Returns a shader applying the color filter to the source shader's output.
+Both resources are retained independently. This changes shader output before
+the paint is composited with the target; it does not change the source shader.
+}
+
+@defproc[(make-blender-shader [blender blender?] [destination shader?] [source shader?]) shader?]{
+Returns a shader combining two shader results through a retained blender.
+Destination precedes source in the argument list. The paint's own blend mode
+then combines this shader result with the drawing target. All three input
+resources are retained.
 }

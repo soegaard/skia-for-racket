@@ -1,13 +1,117 @@
-# Skia Reference development: R3b.1 editorial cleanup
+# Skia Reference development: R3c effects and filters
 
 The Reference is one registered multi-page manual assembled from
-`scribblings/reference/reference.scrbl`. R3b extends the delivered R3a.1 sources
-with all 23 exports of `skia/text-blobs` and three supporting atlas-transform
-operations. It documents 409 bindings through 525 public export paths in
-seventeen conceptual chapters. It is a bounded R3 batch, not completion of all
-higher-level APIs. No library behavior changes.
-The upstream `for-label` fixes, finite blend-mode contracts, clipping example,
-and independent source-review packaging are retained.
+`scribblings/reference/reference.scrbl`. R3c adds 90 bindings to the committed
+R3b.1 baseline. It documents 499 bindings through 670 public export paths in
+21 conceptual chapters. No library implementation or tutorial program changes.
+The existing contracts, examples, `for-label` fixes, and review gates are retained.
+
+## R3c scope and implementation baseline
+
+Patch baseline: `efc279080b375c376fd27793a748bd9e618110d0`.
+
+| New chapter | Bindings | Scope |
+|---|---:|---|
+| Path Effects and Mask Filters | 16 | Dashes, corners, trim, composition, stamps, and coverage. |
+| Color Filters | 13 | RGBA/HSLA matrices, blending, gamma, tables, and lighting. |
+| Image Filters | 27 | Dynamic-source graphs, sampling, morphology, convolution, and lighting. |
+| Runtime Effects and Blenders | 33 | SkSL compilation, metadata, uniforms, children, and blenders. |
+
+The first three chapters include the four predicates moved out of Paints.
+Those moves do not add bindings. Five new shader operations extend Shaders and
+Gradients. All fourteen exports of `skia/effects`, all nine exports of
+`skia/color-filters`, and all thirty-two exports of `skia/runtime-effects` have
+canonical entries and public-alias links. Core effects and graph constructors
+are documented through `skia`, not through private implementation modules.
+
+The picture-source constructor `make-picture-image-filter` is explicitly deferred
+to R3e with the picture-resource interface. No placeholder picture definition or
+unresolved picture binding is added. Richer color management, pictures/documents,
+streams/codecs, remaining CPU coverage, and GPU/GUI remain later batches.
+
+The descriptions distinguish shape coverage from colors, composition from parallel
+combination, and a missing filter input from transparent content. A `#f` image-filter
+input denotes the dynamic source. Filters attached to a paint do not automatically
+process unrelated pixels already on the canvas. Crops are local output bounds,
+not a request to change the current canvas clip.
+
+Specific exceptions are local to the relevant entries: full normal trim and the
+identity destination-only blend-color filter are rejected; mirror blur/convolution
+tiling is unsupported; non-decal convolution tiling requires a crop. Native-float
+rounding rules are distinguished from restrictions applied before rounding.
+
+Runtime effects require complete uniform and child dictionaries. Symbol and string
+keys share a normalized spelling; duplicate, missing, and unknown names fail.
+Reflection and uniform packing use detached snapshots and remain available after
+effect closure, while instance creation requires an open effect. Child resources
+are explicitly supplied and retained. Four-byte uniform components, flat matrix
+and array input, integer ranges, and premultiplied shader colors are documented.
+
+### Implementation evidence
+
+The wrapper sources were read at the baseline above. The following blob IDs
+record their exact versions, not results of native execution.
+
+| Source | Git blob |
+|---|---|
+| `private/core.rkt` | `9861b7cf96ea6002c71e7eb904780d2fddff808e` |
+| `effects.rkt` | `83d38861b363f4ce67ac334ed2e5d8a9c37093ce` |
+| `color-filters.rkt` | `066c59e2c3ea345efd321fe09d53696b04906aca` |
+| `runtime-effects.rkt` | `6b4f0411ee3a69e062fe8980592006d5fc157af8` |
+| `private/filter-graph.rkt` | `a1d92c57ecd72e96369b9bbe4c073a1eb2625676` |
+| `private/runtime-util.rkt` | `ee89e93cfa911ec093a060952b1f6f429502a268` |
+| `private/effects-util.rkt` | `b75e0562194d1ead9a604840fd5d99e7db0059cf` |
+| `private/color-filter-util.rkt` | `9644e2d48e8fcd949468aaa3588830d8a12b272c` |
+| `private/filter-util.rkt` | `78f1906eeb21e77a131b76d012bbc58469a13dba` |
+
+The upstream SkSL guide and Skia image-filter documentation supply additional
+terminology and pipeline semantics:
+
+- https://skia.org/docs/user/sksl/
+- https://api.skia.org/classSkImageFilters.html
+- https://api.skia.org/classSkColorFilters.html
+
+The m119 convolution source confirms that the public bias is divided by 255,
+that non-convolved RGB uses unpremultiplied samples, and that non-decal tiling
+requires a crop. Its Git blob is `0408d8e538165b26baea48712b4256d2389f784a`
+in `google/skia`, `src/effects/imagefilters/SkMatrixConvolutionImageFilter.cpp`.
+
+### Examples and acceptance
+
+Seven new displayed examples bring the native example count to 57. The twelve
+previously evaluated color/matrix/atlas examples are unchanged. No new effect
+is compiled or rendered by the manual's example evaluator.
+
+`reference-effects-pure-test.rkt` contains six validation-only test cases.
+`reference-effects-test.rkt` contains seventeen native CPU cases for retained
+resources, color matrices and composition, copied tables, dynamic-source graphs,
+runtime metadata, uniform/child validation, compilation errors, and blenders.
+The new cases do not require fonts, a GUI, or a GPU context. The complete existing
+native suite still includes text tests and therefore has its own font requirements.
+These are test descriptions, not claims that the tests ran in a delivery environment.
+
+`reference_effect_cases.py` supplies independent signature expectations for the
+ninety additions. Python regressions inspect the real definitions and compare
+them with those expectations; synthetic export/HTML fixtures remain explicitly
+separate from the full pinned-inventory and native acceptance checks.
+
+Run from the full revised checkout, keeping all output outside the repository:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py --output ../reference-r3c-source \
+  --source-zip ../skia-reference-r3c-source-review.zip
+"$RACKET" -l raco -- test tools/reference-effects-pure-test.rkt
+"$RACKET" -l raco -- test tools/reference-effects-test.rkt
+python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3c-render --review-zip ../skia-reference-r3c-review.zip
+```
+
+Use fresh output paths and ensure `skia` resolves to this checkout. The generated
+review archives include pinned inventories and validate extracted copies. A patch
+bundle containing changed sources is not a substitute for that accepted review
+archive. Companion-manual diagnostics remain separate from Reference acceptance.
 
 ## R3b.1 editorial cleanup and review handoff
 
@@ -77,8 +181,12 @@ the ordinary checker after extraction; `--documents-only` is not a substitute.
 | Surfaces and Canvases | 11 | Construction, backing, dimensions, snapshots, pixel copies. |
 | Canvas State | 19 | Save/restore, affine transforms, clipping and backend queries. |
 | Color Specifications | 17 | Byte colors and standard color-space construction and queries. |
-| Paints | 37 | Construction, copy, getters/setters, reset, blending and stroke expansion. |
-| Shaders and Gradients | 9 | Basic gradients, image and composite shaders, local matrices. |
+| Paints | 33 | Construction, copy, getters/setters, reset, blending and stroke expansion. |
+| Shaders and Gradients | 14 | Basic gradients, image and composite shaders, local matrices. |
+| Path Effects and Mask Filters | 16 | Geometric effects, repeated stamps, and coverage. |
+| Color Filters | 13 | Color matrices, composition, gamma, tables, and contrast. |
+| Image Filters | 27 | Dynamic-source graphs, resampling, convolution, and lighting. |
+| Runtime Effects and Blenders | 33 | Compilation, binding dictionaries, metadata, and blenders. |
 | Drawing | 8 | Paint, line, rectangle, rounded rectangle, oval, circle, path and polygon. |
 | Paths | 64 | Commands, geometry, iteration, filled-region operations and measurement. |
 | Affine Matrices | 24 | Affine operations and detached scaled-rotation/translation values. |
@@ -108,7 +216,7 @@ scope includes extended geometry (arcs, rounded-rectangle records, regions,
 shape recognition and batch operations), projective matrices, specialized
 canvases and layer protocols, raster buffers and additional pixel formats,
 image-operation extensions, codecs and incremental sessions, further color management,
-filters, recorded pictures, documents, streams, caches, GPU and GUI/DC integration.
+picture-source filters, recorded pictures, documents, streams, caches, and GPU/GUI integration.
 The subsequent stages must add their own semantic entries. No
 unwritten entries are hidden behind artificial anchors or counted as complete.
 
@@ -376,7 +484,7 @@ Native examples are displayed as code and run only by explicit acceptance tests.
 The render driver retains Revision 2.1's module-based root prefixes and `top`
 tags. It builds a Reference seed, the three linked companion manuals, and then
 the final Reference with their cross-reference information. The final Reference,
-not the seed, must pass. The probe covers all 473 export paths, including matrix
+not the seed, must pass. The probe covers all 670 export paths, including matrix
 constants and geometry aliases. The Quick check still targets its six original
 foundation identifiers; it is not full tutorial-site acceptance.
 

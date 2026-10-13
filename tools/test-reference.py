@@ -149,6 +149,10 @@ from reference_blob_cases import ATLAS_EXPORTS, BLOB_EXPORTS, BLOB_PROCEDURES
 PROCEDURES.update(TEXT_PROCEDURES)
 PROCEDURES.update(BLOB_PROCEDURES)
 
+from reference_effect_cases import (EFFECT_EXPORTS, COLOR_FILTER_EXPORTS,
+                                    RUNTIME_EXPORTS, EFFECT_PROCEDURES)
+PROCEDURES.update(EFFECT_PROCEDURES)
+
 
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
@@ -174,7 +178,9 @@ def synthetic_inventory():
                       dict(modules=[])]
     for path, names in (('matrix.rkt', MATRIX_EXPORTS), ('geometry.rkt', GEOMETRY_EXPORTS),
                         ('typefaces.rkt', TYPEFACE_EXPORTS), ('fonts.rkt', FONT_EXPORTS),
-                        ('text-blobs.rkt', BLOB_EXPORTS), ('geometry-primitives.rkt', ATLAS_EXPORTS)):
+                        ('text-blobs.rkt', BLOB_EXPORTS), ('geometry-primitives.rkt', ATLAS_EXPORTS),
+                        ('effects.rkt', EFFECT_EXPORTS), ('color-filters.rkt', COLOR_FILTER_EXPORTS),
+                        ('runtime-effects.rkt', RUNTIME_EXPORTS)):
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
@@ -212,10 +218,36 @@ class Fixtures(unittest.TestCase):
     def check(self, **options):
         return checks.check_source(self.root, **options)
 
+    def test_effect_module_alias_sets_are_complete(self):
+        for module, names in [('skia/effects', EFFECT_EXPORTS),
+                              ('skia/color-filters', COLOR_FILTER_EXPORTS),
+                              ('skia/runtime-effects', RUNTIME_EXPORTS)]:
+            actual = {r['name'] for r in self.manifest['definitions'] if module in r['exports']}
+            self.assertEqual(actual, set(names))
+
+    def test_missing_runtime_alias_is_rejected(self):
+        module = next(m for m in self.snapshots[0]['modules'] if m['path'] == 'runtime-effects.rkt')
+        module['exports'] = [r for r in module['exports'] if r['name'] != 'runtime-effect->shader']
+        self.write_inventory()
+        with self.assertRaisesRegex(checks.CheckError, 'unknown public export'):
+            self.check()
+
+    def test_incorrect_runtime_keyword_is_rejected(self):
+        self.change('runtime-effects.scrbl', '#:local-matrix local-matrix', '#:matrix local-matrix')
+        with self.assertRaisesRegex(checks.CheckError, 'allowed_keywords'):
+            self.check()
+
+    def test_effect_alias_arity_must_agree(self):
+        module = next(m for m in self.snapshots[0]['modules'] if m['path'] == 'effects.rkt')
+        next(r for r in module['exports'] if r['name'] == 'make-1d-path-effect')['arity_mask'] = '4'
+        self.write_inventory()
+        with self.assertRaisesRegex(checks.CheckError, 'arity_mask'):
+            self.check()
+
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 409)
-        self.assertEqual(result['documented_exports'], 525)
+        self.assertEqual(len(result['definitions']), 499)
+        self.assertEqual(result['documented_exports'], 670)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -334,12 +366,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 409)
+        self.assertEqual(len(self.check()['definitions']), 499)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 409)
+        self.assertEqual(len(self.check()['definitions']), 499)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -843,9 +875,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 409)
-        self.assertEqual(result['documented_exports'], 525)
-        self.assertEqual(len(result['chapters']), 18)  # Root plus seventeen chapters.
+        self.assertEqual(len(result['definitions']), 499)
+        self.assertEqual(result['documented_exports'], 670)
+        self.assertEqual(len(result['chapters']), 22)  # Root plus twenty-one chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1548,7 +1580,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 50)
+        self.assertEqual(count, 57)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1842,7 +1874,7 @@ class R3TextCoverageTests(unittest.TestCase):
     def test_later_batches_are_not_counted_as_documented(self):
         names = {e['name'] for e in self.check()['definitions']}
         for name in ('make-region', 'make-pdf-document', 'make-gpu-context',
-                     'make-blur-image-filter', 'make-raster-buffer'):
+                     'make-picture-image-filter', 'make-raster-buffer'):
             self.assertNotIn(name, names)
 
 
@@ -2292,6 +2324,181 @@ class R3b1EditorialTests(unittest.TestCase):
                            text.index('@examples[#:eval atlas-eval'))
         self.assertLess(text.index('@close-eval[matrix-eval]'),
                         text.index('@(define atlas-eval'))
+
+
+
+class R3EffectsSemanticsTests(unittest.TestCase):
+    """Inspect independently authored contracts and test wiring, not simulated native behavior."""
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def header(self, name, chapter):
+        return next(h for form, h, _ in checks.commands(self.text(chapter))
+                    if form == 'defproc' and h[0][0] == name)
+
+    def entry(self, name, chapter):
+        text = self.text(chapter)
+        start = next(at for form, h, at in checks.commands(text)
+                     if form == 'defproc' and h[0][0] == name)
+        end = text.find('@defproc[', start + 1)
+        return ' '.join(text[start:end if end >= 0 else None].split())
+
+    def test_four_existing_predicates_have_one_new_authoritative_location(self):
+        mapping = {'path-effect?': 'path-effects', 'mask-filter?': 'path-effects',
+                   'color-filter?': 'color-filters', 'image-filter?': 'image-filters'}
+        specs, _ = checks.document_definitions(ROOT)
+        for name, chapter in mapping.items():
+            rows = [r for r in specs if r['name'] == name]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]['chapter'], 'scribblings/reference/' + chapter + '.scrbl')
+            self.assertNotIn('@defproc[(' + name, self.text('paints'))
+
+    def test_new_public_module_targets_are_not_duplicated(self):
+        text = '\n'.join(p.read_text() for p in (ROOT / checks.REFERENCE).glob('*.scrbl'))
+        for module in ('effects', 'color-filters', 'runtime-effects'):
+            self.assertEqual(text.count('@defmodule[skia/' + module + ' #:no-declare]'), 1)
+
+    def test_color_blend_contract_excludes_only_dst(self):
+        ordinary = self.header('make-blend-mode-blender', 'runtime-effects')[0][1][1]
+        restricted = self.header('make-blend-color-filter', 'color-filters')[0][2][1]
+        expected = [x for x in ordinary if x != ['quote', 'dst']]
+        self.assertEqual(restricted, expected)
+        self.assertEqual(len(ordinary) - 1, 29)
+
+    def test_blend_graph_uses_the_complete_blend_mode_set(self):
+        ordinary = self.header('make-blend-mode-blender', 'runtime-effects')[0][1][1]
+        self.assertEqual(self.header('make-blend-image-filter', 'image-filters')[0][1][1],
+                         ordinary)
+
+    def test_mask_tables_and_color_tables_have_different_domains(self):
+        self.assertEqual(self.header('make-table-mask-filter', 'path-effects')[0][1][1], 'bytes?')
+        self.assertEqual(self.header('make-table-color-filter', 'color-filters')[0][1][1],
+                         ['or/c', 'bytes?', ['listof', 'byte?'], ['vectorof', 'byte?']])
+
+    def test_no_op_trim_and_dash_restrictions_are_visible(self):
+        text = ' '.join(self.text('path-effects').split())
+        self.assertIn('an all-zero pattern is rejected', text)
+        self.assertIn('Normal mode rejects the full interval from 0 to 1', text)
+        self.assertIn('must exceed 1/4096', text)
+
+    def test_path_composition_and_sum_are_distinguished(self):
+        text = ' '.join(self.text('path-effects').split())
+        self.assertIn('applies @racket[inner] first, then @racket[outer]', text)
+        self.assertIn("neither effect receives the other's output", text)
+
+    def test_image_input_is_dynamic_source_not_transparent(self):
+        text = ' '.join(self.text('image-filters').split())
+        self.assertIn('not a transparent image and not a disabled branch', text)
+        self.assertIn('not everything already present on the canvas', text)
+        self.assertIn('two false inputs to a blend node refer to the same source', text)
+
+    def test_crop_and_canvas_clip_are_not_conflated(self):
+        self.assertIn('not a\nreplacement for the canvas clip', self.text('image-filters'))
+        self.assertIn('collapse after native rounding are rejected', self.text('image-filters'))
+
+    def test_blur_and_convolution_reject_mirror(self):
+        for name in ('make-blur-image-filter', 'make-matrix-convolution-image-filter'):
+            fields = {f[0]: f for f in self.header(name, 'image-filters')[0][1:]}
+            self.assertEqual(fields['#:tile-mode'][2],
+                             ['or/c', ['quote', 'decal'], ['quote', 'clamp'], ['quote', 'repeat']])
+        self.assertIn('requires an explicit crop', self.text('image-filters'))
+
+    def test_image_samplers_do_not_claim_unsupported_cubic_modes(self):
+        for name in ('make-matrix-transform-image-filter', 'make-image-source-filter',
+                     'make-magnifier-image-filter'):
+            fields = {f[0]: f for f in self.header(name, 'image-filters')[0][1:]}
+            self.assertEqual(fields['#:sampling'][2],
+                             ['or/c', ['quote', 'nearest'], ['quote', 'linear']])
+
+    def test_rounding_dependent_domains_are_not_unconditional_real_in_contracts(self):
+        fields = {f[0]: f for f in self.header('make-magnifier-image-filter', 'image-filters')[0][1:]}
+        self.assertEqual(fields['zoom'][1], 'real?')
+        fields = {f[0]: f for f in self.header('make-spot-lit-specular-image-filter',
+                                              'image-filters')[0][1:]}
+        for keyword in ('#:shininess', '#:exponent', '#:cutoff-angle'):
+            self.assertEqual(fields[keyword][2], 'real?')
+        self.assertIn('apply after single-precision rounding', self.text('image-filters'))
+        for name in ('make-fractal-noise-shader', 'make-turbulence-shader'):
+            fields = {f[0]: f for f in self.header(name, 'shaders')[0][1:]}
+            for argument in ('frequency-x', 'frequency-y'):
+                self.assertEqual(fields[argument][1], 'real?')
+
+    def test_image_source_default_destination_keeps_source_coordinates(self):
+        text = self.entry('make-image-source-filter', 'image-filters')
+        self.assertIn('preserving its coordinates and scale', text)
+        self.assertIn('does not automatically relocate a subset', text)
+
+    def test_runtime_effect_metadata_remains_available_after_closure(self):
+        for name in ('runtime-effect-kind', 'runtime-effect-source',
+                     'runtime-effect-uniform-byte-size', 'runtime-effect-uniforms',
+                     'runtime-effect-children'):
+            self.assertRegex(self.entry(name, 'runtime-effects'), r'closed|closure')
+
+    def test_runtime_packing_returns_bytes_not_a_native_resource(self):
+        self.assertEqual(self.header('runtime-effect-uniform-bytes', 'runtime-effects')[1], 'bytes?')
+        self.assertIn('new immutable byte string', self.text('runtime-effects'))
+        self.assertIn('not a portable serialization', self.text('runtime-effects'))
+
+    def test_runtime_binding_hashes_are_complete_and_normalized(self):
+        text = ' '.join(self.text('runtime-effects').split())
+        for phrase in ('Missing names, unknown names', 'same normalized spelling',
+                       'Every reflected uniform and child must be supplied',
+                       'no implicit zero uniforms or null-child fallbacks'):
+            self.assertIn(phrase, text)
+
+    def test_scalar_array_and_half_uniform_packing_rules_are_explicit(self):
+        text = ' '.join(self.text('runtime-effects').split())
+        self.assertIn('A scalar array of length one still requires a sequence', text)
+        self.assertIn("column-major component order", text)
+        self.assertIn('four bytes per supplied component', text)
+
+    def test_runtime_stage_specific_factory_shapes(self):
+        for name, result in [('runtime-effect->shader', 'shader?'),
+                             ('runtime-effect->color-filter', 'color-filter?'),
+                             ('runtime-effect->blender', 'blender?')]:
+            h = self.header(name, 'runtime-effects')
+            self.assertEqual(h[1], result)
+            fields = {f[0]: f for f in h[0][1:]}
+            for keyword in ('#:uniforms', '#:children'):
+                self.assertEqual(fields[keyword][2:], ['hash?', ['hash']])
+            self.assertEqual('#:local-matrix' in fields, result == 'shader?')
+
+    def test_paint_blender_has_an_owned_nullable_result(self):
+        self.assertEqual(self.header('paint-blender', 'runtime-effects')[1],
+                         ['or/c', 'blender?', '#f'])
+        text = self.entry('paint-blender', 'runtime-effects')
+        self.assertIn('independently owned', text)
+        self.assertIn('implicit source-over', text)
+
+    def test_runtime_alpha_and_color_uniform_conventions_are_visible(self):
+        text = self.text('runtime-effects')
+        self.assertIn('premultiplied RGBA', text)
+        self.assertIn('unpremultiplied sRGB', text)
+        self.assertIn('does not automatically premultiply', text)
+
+    def test_seven_new_examples_remain_native_opt_in(self):
+        count = 0
+        for chapter in ('path-effects', 'color-filters', 'image-filters', 'runtime-effects'):
+            forms = list(checks.commands(self.text(chapter), recursive=True))
+            self.assertFalse(any(form == 'examples' for form, _, _ in forms))
+            count += sum(form == 'racketblock' for form, _, _ in forms)
+        self.assertEqual(count, 7)
+
+    def test_effect_acceptance_is_wired_into_the_existing_runner(self):
+        text = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn('tools/reference-effects-pure-test.rkt', text)
+        self.assertIn('tools/reference-effects-test.rkt', text)
+        for file, count in [('reference-effects-pure-test.rkt', 6),
+                            ('reference-effects-test.rkt', 17)]:
+            source = (ROOT / 'tools' / file).read_text()
+            checks.Reader('(' + source.split('\n', 1)[1] + ')').read()
+            self.assertEqual(source.count('(test-case '), count)
+
+    def test_picture_filter_is_explicitly_reserved_for_the_picture_batch(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        self.assertNotIn('make-picture-image-filter', {r['name'] for r in manifest['definitions']})
+        notes = (ROOT / 'docs/REFERENCE-DEVELOPMENT.md').read_text()
+        self.assertIn('make-picture-image-filter', notes)
 
 
 if __name__ == '__main__':

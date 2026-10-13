@@ -14,6 +14,8 @@ This manual documents resource management, surfaces, canvas state, colors, paint
 shaders, geometric drawing, paths, affine matrices, images, image encoding,
 font managers, typefaces, fonts, shaped text, text blobs, and paragraph layout.
 Text blobs include multi-run construction, run inspection, and text on paths.
+The effects chapters cover path and mask effects, color and image filters,
+runtime SkSL programs, and custom blenders.
 Other interfaces are described in the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{existing API notes}.
 
@@ -36,6 +38,10 @@ The atlas-transform values used for glyph placement are also exported by
 @include-section["colors.scrbl"]
 @include-section["paints.scrbl"]
 @include-section["shaders.scrbl"]
+@include-section["path-effects.scrbl"]
+@include-section["color-filters.scrbl"]
+@include-section["image-filters.scrbl"]
+@include-section["runtime-effects.scrbl"]
 @include-section["drawing.scrbl"]
 @include-section["paths.scrbl"]
 @include-section["matrices.scrbl"]
