@@ -8,12 +8,13 @@
 (define compile-omit-paths '("native"))
 
 ;; Manuals use Scribble plus reference targets from Racket and the GUI libraries.
-(define build-deps '("scribble-lib" "racket-doc" "draw-doc" "gui-doc"))
+(define build-deps '("scribble-lib" "racket-doc" "racket-index" "draw-doc" "gui-doc"))
 
-;; Keep one single-page manual per tutorial, with globally unique output names.
+;; The Reference is multi-page; tutorials retain their unique single-page output names.
 ;; The landing page appears in the documentation index; individual lessons stay searchable.
 (define scribblings
-  '(("scribblings/tutorials/index.scrbl" () (gui-library) "skia-tutorials")
+  '(("scribblings/reference/reference.scrbl" (multi-page) (gui-library) "skia-reference")
+    ("scribblings/tutorials/index.scrbl" () (gui-library) "skia-tutorials")
     ("scribblings/quick/quick.scrbl" () (omit-start) "skia-tutorial-quick")
     ("scribblings/tutorials/clock/clock.scrbl" () (omit-start) "skia-tutorial-clock")
     ("scribblings/tutorials/logo/logo.scrbl" () (omit-start) "skia-tutorial-logo")

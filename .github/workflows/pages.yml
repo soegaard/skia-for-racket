@@ -1,4 +1,4 @@
-name: Publish tutorials
+name: Publish Skia documentation
 
 on:
   push:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build tutorial site
+    name: Build Skia documentation
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -48,6 +48,14 @@ jobs:
         run: |
           raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
           raco setup --no-zo --pkgs skia-for-racket
+      - name: Check Reference coverage, bindings, and installed links
+        env:
+          PLTUSERHOME: ${{ runner.temp }}/racket-user
+        run: |
+          python3 -B tools/test-reference.py
+          python3 -B tools/check-reference.py \
+            --installed "$GITHUB_WORKSPACE/doc" --native \
+            --output "${{ runner.temp }}/reference-installed"
       - name: Collect the static site
         env:
           SITE: ${{ runner.temp }}/skia-for-racket-pages
@@ -69,6 +77,7 @@ jobs:
             cp "$doc_dir/$asset" "$SITE/$asset"
           done
           for manual in \
+            skia-reference \
             skia-tutorials \
             skia-tutorial-quick \
             skia-tutorial-clock \
@@ -96,21 +105,30 @@ jobs:
             test -f "$doc_dir/$manual/index.html"
             cp -a "$doc_dir/$manual" "$SITE/$manual"
           done
-          # Scribble uses its local-redirect service for links between
-          # installed manuals. A GitHub Pages visitor has no local Racket
-          # documentation tree, so make links among our own manuals local.
-          find "$SITE" -type f -name '*.html' -exec \
-            perl -0pi -e 's{https://download\.racket-lang\.org/releases/[^"?]+/doc/local-redirect/index\.html\?doc=(skia-tutorial(?:s|-[^&"]+))&amp;rel=([^&"]+)&amp;version=[^"<]+}{../$1/$2}g' \
-            {} +
+          # Preserve binding targets while relocating our own installed-manual links.
+          python3 -B tools/check-reference.py \
+            --site "$SITE" --site-source "$doc_dir" \
+            --targets "${{ runner.temp }}/reference-installed/runtime.json" \
+            --output "${{ runner.temp }}/reference-site"
           test -f "$SITE/skia-tutorials/index.html"
           test -z "$(find "$SITE" -type l -print -quit)"
+      - name: Retain Reference validation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: skia-reference-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/reference-installed/
+            ${{ runner.temp }}/reference-site/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload the GitHub Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: ${{ runner.temp }}/skia-for-racket-pages
 
   deploy:
-    name: Deploy tutorial site
+    name: Deploy Skia documentation
     needs: build
     runs-on: ubuntu-24.04
     environment:
