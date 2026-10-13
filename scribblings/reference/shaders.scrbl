@@ -119,7 +119,13 @@ restricts the shader to its GPU context. Use @racket[shader-with-local-matrix]
 to change the image's local placement or scale.
 }
 
-@defproc[(make-blend-shader [mode symbol?] [destination shader?] [source shader?]) shader?]{
+@defproc[(make-blend-shader
+          [mode (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in
+                 'src-out 'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate
+                 'screen 'overlay 'darken 'lighten 'color-dodge 'color-burn
+                 'hard-light 'soft-light 'difference 'exclusion 'multiply
+                 'hue 'saturation 'color 'luminosity)]
+          [destination shader?] [source shader?]) shader?]{
 Returns a shader that combines two shader outputs using a mode from
 @secref["skia-blend-modes"]. The argument order is destination first, source
 second, unlike a source-first description of the blending equation. This blend

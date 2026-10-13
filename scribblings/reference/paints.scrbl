@@ -320,7 +320,12 @@ extend relative to the stroke width; a join that exceeds the limit is beveled.
 The limit must be a nonnegative @tech{drawing scalar}.
 }
 
-@defproc[(paint-set-blend-mode! [paint paint?] [mode symbol?]) void?]{
+@defproc[(paint-set-blend-mode! [paint paint?]
+          [mode (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in
+                 'src-out 'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate
+                 'screen 'overlay 'darken 'lighten 'color-dodge 'color-burn
+                 'hard-light 'soft-light 'difference 'exclusion 'multiply
+                 'hue 'saturation 'color 'luminosity)]) void?]{
 Selects one of the modes in @secref["skia-blend-modes"]. Other symbols are
 rejected. Setting an ordinary blend mode replaces a custom blender previously
 attached through the advanced blending API.

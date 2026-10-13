@@ -147,6 +147,30 @@ def row(name, arity, keywords, kind='procedure'):
                 required_keywords=[], allowed_keywords=keywords)
 
 
+def synthetic_inventory():
+    """Independent test snapshots; never stand in for the repository's pinned files."""
+    exports = [row(name, arity, keywords) for name, (arity, keywords) in PROCEDURES.items()]
+    exports += [row('current-skia-byte-limit', 3, [], 'parameter'),
+                dict(name='with-skia', phase='0', kind='syntax', export_kind='syntax'),
+                dict(name='with-canvas-state', phase='0', kind='syntax', export_kind='syntax'),
+                dict(name='matrix-identity', phase='0', kind='value', export_kind='value'),
+                row('surface-properties-of', 2, []),
+                dict(name='struct:rgba', phase='0', kind='value', export_kind='value')]
+    snapshots = [dict(modules=[dict(path='main.rkt', exports=exports),
+                                    dict(path='color.rkt', exports=[
+                                        copy.deepcopy(item) for item in exports
+                                        if item['name'] in (
+                                            'color?', 'color->argb', 'color->rgba',
+                                            'rgba', 'rgba?', 'rgba-red', 'rgba-green',
+                                            'rgba-blue', 'rgba-alpha', 'struct:rgba', 'rgb')])]),
+                      dict(modules=[])]
+    for path, names in (('matrix.rkt', MATRIX_EXPORTS), ('geometry.rkt', GEOMETRY_EXPORTS)):
+        snapshots[0]['modules'].append(dict(
+            path=path, exports=[copy.deepcopy(item) for item in exports
+                                if item['name'] in names]))
+    return snapshots
+
+
 class Fixtures(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -156,25 +180,7 @@ class Fixtures(unittest.TestCase):
         shutil.copy(ROOT / 'info.rkt', self.root / 'info.rkt')
         (self.root / 'api').mkdir()
         self.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
-        exports = [row(name, arity, keywords) for name, (arity, keywords) in PROCEDURES.items()]
-        exports += [row('current-skia-byte-limit', 3, [], 'parameter'),
-                    dict(name='with-skia', phase='0', kind='syntax', export_kind='syntax'),
-                    dict(name='with-canvas-state', phase='0', kind='syntax', export_kind='syntax'),
-                    dict(name='matrix-identity', phase='0', kind='value', export_kind='value'),
-                    row('surface-properties-of', 2, []),
-                    dict(name='struct:rgba', phase='0', kind='value', export_kind='value')]
-        self.snapshots = [dict(modules=[dict(path='main.rkt', exports=exports),
-                                        dict(path='color.rkt', exports=[
-                                            copy.deepcopy(item) for item in exports
-                                            if item['name'] in (
-                                                'color?', 'color->argb', 'color->rgba',
-                                                'rgba', 'rgba?', 'rgba-red', 'rgba-green',
-                                                'rgba-blue', 'rgba-alpha', 'struct:rgba', 'rgb')])]),
-                          dict(modules=[])]
-        for path, names in (('matrix.rkt', MATRIX_EXPORTS), ('geometry.rkt', GEOMETRY_EXPORTS)):
-            self.snapshots[0]['modules'].append(dict(
-                path=path, exports=[copy.deepcopy(item) for item in exports
-                                    if item['name'] in names]))
+        self.snapshots = synthetic_inventory()
         self.write_inventory()
 
     def write_inventory(self):
@@ -666,7 +672,9 @@ class BuildPlanTests(unittest.TestCase):
         return SimpleNamespace(returncode=0)
 
     def execute(self, *args):
-        with (patch.object(self.runner, 'check_source', return_value=self.source),
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'inspect_link_scopes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
               patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
               patch.object(self.runner.subprocess, 'run', side_effect=self.run_fake),
               patch.object(self.runner, 'check_evidence'),
@@ -713,7 +721,9 @@ class BuildPlanTests(unittest.TestCase):
 
     def test_failed_html_does_not_call_packager(self):
         archive = self.output.parent / 'review.zip'
-        with (patch.object(self.runner, 'check_source', return_value=self.source),
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'inspect_link_scopes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
               patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
               patch.object(self.runner.subprocess, 'run', side_effect=self.run_fake),
               patch.object(self.runner, 'check_evidence'),
@@ -752,7 +762,9 @@ class BuildPlanTests(unittest.TestCase):
         self.assertFalse(report['scribble_rendered'])
 
     def test_render_does_not_silently_skip_missing_racket(self):
-        with (patch.object(self.runner, 'check_source', return_value=self.source),
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'inspect_link_scopes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
               patch.object(self.runner.shutil, 'which', return_value=None),
               contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
             result = self.runner.main(['--render', '--output', str(self.output)])
@@ -839,8 +851,23 @@ class ReviewArchiveTests(unittest.TestCase):
             destination = self.root / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(ROOT / name, destination)
-        self.source = checks.check_source(self.root, documents_only=True)
-        self.hashes = review.source_hashes(self.root)
+        self.manifest = json.loads((self.root / checks.MANIFEST).read_text())
+        self.snapshots = synthetic_inventory()
+        for expected, data in zip(self.manifest['snapshots'], self.snapshots):
+            raw = (json.dumps(data, indent=2) + '\n').encode()
+            (self.root / expected['file']).write_bytes(raw)
+            expected['git_blob'] = checks.git_blob(raw)
+        (self.root / checks.MANIFEST).write_text(json.dumps(self.manifest) + '\n')
+        for row in self.manifest['tutorial_links']:
+            path = self.root / row['manual']
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('#lang scribble/manual\n@title{Synthetic companion}\n')
+        (self.root / 'tools').mkdir()
+        for path in (ROOT / 'tools').glob('*reference*'):
+            if path.suffix in {'.py', '.rkt'}:
+                shutil.copy(path, self.root / 'tools' / path.name)
+        self.source = checks.check_source(self.root)
+        self.hashes = review.source_hashes(self.root, review_inputs=True)
         self.archive = base / 'review.zip'
         self.reference = self.site / 'skia-reference'
         self.reference.mkdir(parents=True)
@@ -1446,6 +1473,269 @@ class R21ReviewTests(unittest.TestCase):
         with self.assertRaises(checks.CheckError):
             self.fixture.package()
         self.assertFalse(self.fixture.archive.exists())
+
+
+
+class PreparatorySourceTests(unittest.TestCase):
+    def test_all_three_blend_contracts_match_the_complete_supported_set(self):
+        expected = ('clear src dst src-over dst-over src-in dst-in src-out dst-out '
+                    'src-atop dst-atop xor plus modulate screen overlay darken lighten '
+                    'color-dodge color-burn hard-light soft-light difference exclusion '
+                    'multiply hue saturation color luminosity').split()
+        found = {}
+        for chapter in ('paints.scrbl', 'shaders.scrbl'):
+            for form, header, _ in checks.commands((ROOT / checks.REFERENCE / chapter).read_text()):
+                if form != 'defproc':
+                    continue
+                name = header[0][0]
+                if name not in ('make-paint', 'paint-set-blend-mode!', 'make-blend-shader'):
+                    continue
+                key = '#:blend-mode' if name == 'make-paint' else 'mode'
+                field = next(arg for arg in header[0][1:] if arg[0] == key)
+                contract = field[2 if key.startswith('#:') else 1]
+                self.assertEqual(contract, ['or/c', *[['quote', symbol] for symbol in expected]])
+                found[name] = contract
+        self.assertEqual(set(found), {'make-paint', 'paint-set-blend-mode!', 'make-blend-shader'})
+        self.assertEqual(len(expected), 29)
+        self.assertEqual(len(set(expected)), 29)
+
+    def test_clipping_example_compares_same_initial_clip_in_separate_scopes(self):
+        text = (ROOT / checks.REFERENCE / 'canvases.scrbl').read_text()
+        start = text.index('@defproc[(canvas-clip-rect!')
+        end = text.index('@defproc[(canvas-clip-path!', start)
+        example = text[start:end]
+        self.assertIn("[operation '(intersect difference)]", example)
+        self.assertIn('(canvas-clear! canvas', example)
+        self.assertIn('(with-canvas-state canvas', example)
+        self.assertIn('(canvas-clip-rect! canvas 0 0 6 6)', example)
+        self.assertIn('(canvas-clip-rect! canvas 2 2 2 2 #:operation operation)', example)
+        self.assertIn("[x '(3 1 7)]", example)
+        self.assertNotIn('@examples', example)
+
+    def test_displayed_native_example_inventory_has_one_addition(self):
+        count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
+                    for form, _, _ in checks.commands(path.read_text(), recursive=True))
+        self.assertEqual(count, 26)
+
+    def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
+        text = (ROOT / 'tools/reference-core-test.rkt').read_text()
+        for phrase in ("(make-paint #:blend-mode 'not-a-blend-mode)",
+                       "(paint-set-blend-mode! paint 'not-a-blend-mode)",
+                       "(make-blend-shader 'not-a-blend-mode destination source)",
+                       "(check-equal? samples '((#t #f #f) (#f #t #f)))",
+                       '(check-equal? (canvas-save-count canvas) 1)'):
+            self.assertIn(phrase, text)
+
+
+class SourceReviewArchiveTests(unittest.TestCase):
+    """Real subprocess/extraction checks against explicitly synthetic test inventories."""
+    def setUp(self):
+        self.fixture = ReviewArchiveTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.root = self.fixture.root
+        self.archive = self.fixture.archive
+
+    def package(self):
+        return review.package_source_review(self.root, self.archive, self.fixture.hashes)
+
+    def test_source_archive_runs_the_full_checker_after_extraction(self):
+        result = self.package()
+        self.assertTrue(result['extracted_zip_checked'])
+        self.assertTrue(result['extracted_source_check']['inventory_checked'])
+        self.assertFalse(result['extracted_source_check']['documents_only'])
+        with zipfile.ZipFile(self.archive) as archive:
+            for item in self.fixture.manifest['snapshots']:
+                self.assertEqual(archive.read('sources/' + item['file']),
+                                 (self.root / item['file']).read_bytes())
+            names = set(archive.namelist())
+            for path in ('info.rkt', 'tools/check-reference.py', 'tools/reference_support.py',
+                         'tools/reference_review.py', *[item['manual']
+                         for item in self.fixture.manifest['tutorial_links']]):
+                self.assertIn('sources/' + path, names)
+            self.assertFalse(any(path.startswith('html/') for path in names))
+
+    def test_source_copy_checker_uses_an_unrelated_directory_and_no_pythonpath(self):
+        original = review.subprocess.run
+        observed = []
+        def run(command, **options):
+            observed.append((command, options))
+            return original(command, **options)
+        with patch.object(review.subprocess, 'run', side_effect=run):
+            self.package()
+        self.assertEqual(len(observed), 2)
+        for command, options in observed:
+            self.assertEqual(command[1:4], ['-E', '-s', '-B'])
+            self.assertNotIn('--documents-only', command)
+            self.assertNotEqual(Path(options['cwd']), self.root)
+            self.assertNotEqual(Path(options['cwd']), Path(command[4]).parent)
+
+    def test_missing_inventory_does_not_publish_a_source_archive(self):
+        path = self.root / self.fixture.manifest['snapshots'][0]['file']
+        path.unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.package()
+        self.assertFalse(self.archive.exists())
+
+    def test_wrong_inventory_hash_is_rejected_even_with_fresh_source_hashes(self):
+        path = self.root / self.fixture.manifest['snapshots'][0]['file']
+        path.write_text(path.read_text() + '\n')
+        hashes = review.source_hashes(self.root, review_inputs=True)
+        with self.assertRaises(checks.CheckError):
+            review.package_source_review(self.root, self.archive, hashes)
+        self.assertFalse(self.archive.exists())
+
+    def test_missing_tutorial_source_fails_closed(self):
+        (self.root / self.fixture.manifest['tutorial_links'][0]['manual']).unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.package()
+        self.assertFalse(self.archive.exists())
+
+    def test_existing_source_archive_is_not_replaced(self):
+        self.archive.write_bytes(b'keep')
+        with self.assertRaisesRegex(checks.CheckError, 'already exists'):
+            self.package()
+        self.assertEqual(self.archive.read_bytes(), b'keep')
+
+    def test_copy_without_checker_dependency_cannot_pass(self):
+        destination = self.root.parent / 'incomplete-copy'
+        review.copy_source_inputs(self.root, destination, self.fixture.hashes)
+        (destination / 'tools/reference_support.py').unlink()
+        with self.assertRaisesRegex(checks.CheckError, 'copied source checker failed'):
+            review.validate_source_copy(
+                destination, self.root.parent / 'failure', self.fixture.source)
+
+    def test_copy_cannot_use_a_documents_only_result_as_full_evidence(self):
+        destination = self.root.parent / 'copy'
+        review.copy_source_inputs(self.root, destination, self.fixture.hashes)
+        limited = checks.check_source(self.root, documents_only=True)
+        with self.assertRaisesRegex(checks.CheckError, 'differs from the original'):
+            review.validate_source_copy(destination, self.root.parent / 'failure', limited)
+
+    def test_corrupt_extracted_source_is_never_published(self):
+        original = zipfile.ZipFile.extractall
+        def corrupt(archive, directory, *args, **kwargs):
+            original(archive, directory, *args, **kwargs)
+            (Path(directory) / 'sources/info.rkt').write_text('corrupt')
+        with patch.object(zipfile.ZipFile, 'extractall', corrupt):
+            with self.assertRaisesRegex(checks.CheckError, 'checksum mismatch'):
+                self.package()
+        self.assertFalse(self.archive.exists())
+
+    def test_html_review_also_contains_full_source_check_inputs(self):
+        result = self.fixture.package()
+        self.assertTrue(result['extracted_source_check']['inventory_checked'])
+        with zipfile.ZipFile(self.archive) as archive:
+            report = json.loads(archive.read('evidence/review.json'))
+            self.assertTrue(report['source_validation']['inventory_checked'])
+            self.assertFalse(report['link_scopes']['complete_site_checked'])
+            for item in self.fixture.manifest['snapshots']:
+                self.assertEqual(archive.read('sources/' + item['file']),
+                                 (self.root / item['file']).read_bytes())
+
+    def test_source_archive_creation_is_available_without_racket(self):
+        command = [review.sys.executable, '-E', '-s', '-B',
+                   str(self.root / 'tools/check-reference.py'),
+                   '--output', str(self.root.parent / 'cli-evidence'),
+                   '--source-zip', str(self.archive), '--racket', '/nonexistent/racket']
+        result = review.subprocess.run(command, cwd=self.root.parent, capture_output=True,
+                                       text=True, timeout=120, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        evidence = json.loads((self.root.parent / 'cli-evidence/validation.json').read_text())
+        self.assertEqual(evidence['commands'], [])
+        self.assertFalse(evidence['racket_executed'])
+        self.assertTrue(evidence['source_zip']['extracted_source_check']['inventory_checked'])
+
+    def test_source_zip_disallows_partial_validation(self):
+        spec = importlib.util.spec_from_file_location(
+            'source_runner', ROOT / 'tools/check-reference.py')
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        with contextlib.redirect_stderr(io.StringIO()):
+            for option in ('--documents-only', '--render', '--native', '--quick'):
+                with self.subTest(option=option), self.assertRaises(SystemExit):
+                    runner.main(['--source-zip', str(self.archive), option])
+
+
+class LinkScopeDiagnosticsTests(unittest.TestCase):
+    """Separate unresolved markup, bad destinations, and partial-site scope."""
+    def setUp(self):
+        self.fixture = ReviewArchiveTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.site = self.fixture.site
+        self.reference = self.fixture.index
+        directory = self.fixture.source['tutorial_links'][0]['directory']
+        self.companion = self.site / directory / 'index.html'
+
+    def diagnose(self):
+        return review.inspect_link_scopes(self.site)
+
+    def test_clean_reference_is_not_complete_site_evidence(self):
+        result = self.diagnose()
+        self.assertEqual(result['reference']['status'], 'passed')
+        self.assertEqual(result['companions']['status'], 'passed')
+        self.assertFalse(result['complete_site_checked'])
+        self.assertEqual(result['reference']['checked_local_links'], 3)
+
+    def test_badlink_tokens_are_separate_from_unlinked_identifiers(self):
+        page = checks.Page('<span class="x badlink">A</span><span class="RktErr">B</span>'
+                           '<span class="badlink RktErr">C</span>')
+        self.assertEqual(page.unresolved_references, 2)
+        self.assertEqual(page.unlinked_identifiers, 2)
+        self.assertEqual(page.badlinks, 3)
+
+    def test_companion_unresolved_text_is_not_an_existing_hyperlink(self):
+        self.companion.write_text('<h1 id="top">Tutorial</h1>'
+                                  '<span class="badlink">Other tutorial</span>')
+        result = self.diagnose()
+        self.assertEqual(result['reference']['status'], 'passed')
+        self.assertEqual(result['companions']['status'], 'incomplete')
+        self.assertEqual(result['companions']['unresolved_references'], 1)
+        self.assertEqual(result['companions']['checked_local_links'], 0)
+        self.assertEqual(result['companions']['broken_local_links'], 0)
+
+    def test_existing_hyperlink_with_missing_file_is_counted_separately(self):
+        self.companion.write_text('<a href="absent.html">Other tutorial</a>')
+        result = self.diagnose()['companions']
+        self.assertEqual(result['unresolved_references'], 0)
+        self.assertEqual(result['checked_local_links'], 1)
+        self.assertEqual(result['broken_local_links'], 1)
+        self.assertEqual(result['problems'][0]['reason'], 'missing target file')
+
+    def test_missing_fragment_is_not_a_valid_local_link(self):
+        self.companion.write_text('<a href="index.html#absent">Section</a>')
+        result = self.diagnose()['companions']
+        self.assertEqual(result['broken_local_links'], 1)
+        self.assertEqual(result['problems'][0]['reason'], 'missing or duplicate fragment')
+
+    def test_external_links_are_counted_but_not_claimed_verified(self):
+        self.companion.write_text('<a href="https://example.invalid/manual">Other manual</a>')
+        result = self.diagnose()['companions']
+        self.assertEqual(result['external_links_not_checked'], 1)
+        self.assertEqual(result['checked_local_links'], 0)
+
+    def test_file_links_are_machine_local_not_portable_acceptance(self):
+        self.companion.write_text('<a href="file:///tmp/manual.html">Manual</a>')
+        result = self.diagnose()['companions']
+        self.assertEqual(result['machine_local_links'], 1)
+        self.assertEqual(result['status'], 'incomplete')
+
+    def test_escaping_relative_link_is_reported(self):
+        self.companion.write_text('<a href="../../escape.html">Other</a>')
+        self.assertEqual(self.diagnose()['companions']['problems'][0]['reason'],
+                         'outside the packaged tree')
+
+    def test_partial_companion_diagnostics_survive_review_packaging(self):
+        self.companion.write_text('<h1 id="top">Tutorial</h1>'
+                                  '<span class="badlink">Undocumented entry</span>')
+        result = self.fixture.package()
+        self.assertEqual(result['link_scopes']['reference']['unresolved_references'], 0)
+        self.assertEqual(result['link_scopes']['companions']['unresolved_references'], 1)
+        with zipfile.ZipFile(self.fixture.archive) as archive:
+            report = json.loads(archive.read('evidence/review.json'))
+            self.assertEqual(report['link_scopes']['companions']['status'], 'incomplete')
+            self.assertIn('does not certify', archive.read('README.txt').decode())
 
 if __name__ == '__main__':
     unittest.main()

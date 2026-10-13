@@ -5,6 +5,34 @@
 (define (results thunk) (call-with-values thunk list))
 
 (module+ test
+  (test-case "unsupported blend modes are rejected without changing the paint"
+    (check-exn exn:fail? (lambda () (make-paint #:blend-mode 'not-a-blend-mode)))
+    (with-skia ([paint (make-paint)]
+                [destination (make-color-shader 'white)]
+                [source (make-color-shader 'blue)])
+      (check-exn exn:fail?
+                 (lambda () (paint-set-blend-mode! paint 'not-a-blend-mode)))
+      (check-equal? (paint-blend-mode-or-src-over paint) 'src-over)
+      (check-exn exn:fail?
+                 (lambda () (make-blend-shader 'not-a-blend-mode destination source)))))
+  (test-case "intersection and difference operate within the existing clip"
+    (with-skia ([surface (make-surface 8 6 #:background 'white)]
+                [paint (make-paint #:color 'blue #:antialias? #f)])
+      (define canvas (surface-canvas surface))
+      (define samples
+        (for/list ([operation '(intersect difference)])
+          (canvas-clear! canvas 'white)
+          (with-canvas-state canvas
+            (canvas-clip-rect! canvas 0 0 6 6)
+            (canvas-clip-rect! canvas 2 2 2 2 #:operation operation)
+            (draw-paint canvas paint))
+          (check-equal? (canvas-save-count canvas) 1)
+          (for/list ([x '(3 1 7)])
+            (equal? (surface-pixel surface x 3) (color->rgba 'blue)))))
+      (check-equal? samples '((#t #f #f) (#f #t #f)))
+      ;; Neither clipping scope survives its exit.
+      (draw-paint canvas paint)
+      (check-equal? (surface-pixel surface 7 3) (color->rgba 'blue))))
   (test-case "state restoration is not pixel rollback"
     (with-skia ([surface (make-surface 8 8)]
                 [paint (make-paint #:color 'red #:antialias? #f)])

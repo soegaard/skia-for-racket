@@ -1,10 +1,12 @@
-# Skia Reference development: R2.1 core corrections
+# Skia Reference development: core precision and review bundles
 
 The Reference is one registered multi-page manual assembled from
 `scribblings/reference/reference.scrbl`. R2.1 refines the R2 core reference.
 It documents 214 bindings through 257 public export paths in twelve conceptual
 chapters. The five additions are standard color-space constructors and queries.
-The work does not change library behavior.
+The preparatory cleanup after R2.1 keeps these counts and does not change library
+behavior. It tightens the two remaining blend-mode signatures, adds a clipping
+comparison, and makes source-review inputs and partial HTML scope explicit.
 
 ## Scope and chapter ownership
 
@@ -47,7 +49,8 @@ unwritten entries are hidden behind artificial anchors or counted as complete.
 
 ## Authoritative source checks
 
-R2.1 repository baseline: `f20b68d866f6c1b92de94c19c62754978a8e9a0d`.
+Preparatory patch baseline: `3a9c69c3dc71e29f008d577f45de5a926133535f`.
+R2.1 was based on `f20b68d866f6c1b92de94c19c62754978a8e9a0d`.
 The upstream `for-label` and module-declaration corrections are preserved.
 The following implementation blobs supplied the R2 specifications. The public paths,
 not private implementation modules, are the documented import paths.
@@ -134,6 +137,23 @@ The path extraction example was also checked against `chrome/m119`
 when requested, and line extraction then calls `lineTo` with the segment endpoint.
 The previously inspected `SkPath.cpp` supplies the implicit move for an empty path.
 
+## Blend-mode and clipping regressions
+
+The contracts of `make-paint`, `paint-set-blend-mode!`, and `make-blend-shader`
+list the same 29 accepted blend modes. The Python regression compares their
+actual parsed contracts against one independent expected enumeration, including
+cardinality and ordering. It is not enough merely to find `or/c` in each header.
+The native suite checks rejection of an unsupported symbol and preservation of
+the paint's previous mode after rejection.
+
+The clipping example starts from the same initial clip in each iteration, then
+intersects with or subtracts a second rectangle. Independent canvas-state scopes
+prevent the first clip from affecting the second. Interior sample points show
+that difference clipping does not add pixels outside the original clip. The
+native regression also checks restoration of the save count and the full clip.
+There are now 26 displayed native example blocks; native acceptance executes them
+separately from documentation rendering. Eleven pure evaluated examples remain.
+
 ## Running the checks
 
 Keep generated output outside the repository so it does not enter the source
@@ -170,11 +190,65 @@ retained getters, native paint defaults, path snapshots, curve bounds, conic
 reductions, path measurement, independent images, standard color spaces and encoder options.
 
 The review ZIP gate checks the final HTML, sources and resources, then checks
-an extracted copy. It refuses bad links, stale source hashes, missing assets or
-incorrect definition destinations. A passing Python fixture test or source-only
+an extracted copy. It refuses unresolved Reference links, stale source hashes, missing Reference
+assets or incorrect definition destinations. A passing Python fixture test or source-only
 check is not a successful Racket build. The deliberately limited
 `--documents-only` mode cannot establish export coverage, runtime correctness,
 or rendered-link success.
+
+## Independently checkable source review
+
+A source-only review ZIP does not need Racket or native libraries:
+
+```sh
+python3 -B tools/check-reference.py --output ../reference-source-check \
+  --source-zip ../skia-reference-source-review.zip
+```
+
+The command requires the full pinned inventories; `--documents-only` cannot be
+combined with `--source-zip`. It includes the Reference sources and manifest,
+`info.rkt`, the ordinary checker and its imports, these development notes, and
+the three tutorial source files declared by the manifest. It copies
+`api/public-api-headless.json` and `api/public-api-gui.json` verbatim and verifies
+their pinned Git blob hashes. Missing inputs fail rather than produce a limited
+archive mislabeled as independently checkable.
+
+Both the source-only ZIP and `--review-zip` contain this same source input set.
+The packager runs the ordinary checker in the staging copy and again in the
+extracted ZIP. Each check starts a new Python process in an unrelated directory,
+with environment and user-site imports disabled. Neither process uses
+`--documents-only` or a neighboring checkout. Its complete source result must
+match the original, including inventory comparison and explicit deferrals.
+Only then is the archive published without replacing an existing file.
+
+For independent review, extract the ZIP, enter `sources/`, and run:
+
+```sh
+python3 -B tools/check-reference.py --output ../independent-source-check
+```
+
+The archive is self-contained for this non-native check, not for running Skia or
+rendering every tutorial. It does not include the native libraries, the complete
+implementation, or all tutorial dependencies. The regression suite exercises
+isolated subprocess checks with explicitly synthetic inventories; those results
+are not a claim that the repository's pinned inventory or native build was run.
+
+## Partial HTML scope
+
+The `html_link_scopes` field in the validation report separates Reference pages
+from packaged companion tutorials. The review ZIP records the same diagnostic
+under `link_scopes` in `evidence/review.json` and rechecks it after extraction.
+Each scope reports existing local hyperlinks and broken targets independently
+of `badlink` markup and `RktErr` identifiers. Counts of verified hyperlinks never
+hide text that Scribble failed to turn into a link.
+
+A companion tutorial may refer to tutorials or APIs outside a partial review
+bundle. Those unresolved references are reported, not suppressed, and do not
+by themselves reject an otherwise valid Reference review. Reference failures
+still reject publication. Remote hyperlinks are counted but not fetched by this
+inspector; machine-local links are reported separately from portable targets.
+The report always states `complete_site_checked: false`: neither a partial
+bundle nor this scoped inspection certifies the full installed or hosted site.
 
 ## Installed documentation and publication
 

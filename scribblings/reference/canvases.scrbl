@@ -166,6 +166,30 @@ Combines the current clip with the transformed rectangle. The default
 rectangle's coverage from the current clip. Neither operation enlarges the clip.
 Antialiasing permits fractional edge coverage. Zero extents are accepted; the
 computed right and bottom coordinates must be @tech{drawing scalar}s.
+
+The following comparison starts each operation with the same clip, covering the
+left six columns of an eight-column surface. A second rectangle either intersects
+that clip or is subtracted from it. Each state scope restores the original clip
+before the next iteration; it does not undo the drawing.
+
+@racketblock[
+(with-skia ([surface (make-surface 8 6 #:background 'white)]
+            [paint (make-paint #:color 'blue #:antialias? #f)])
+  (define canvas (surface-canvas surface))
+  (for/list ([operation '(intersect difference)])
+    (canvas-clear! canvas 'white)
+    (with-canvas-state canvas
+      (canvas-clip-rect! canvas 0 0 6 6)
+      (canvas-clip-rect! canvas 2 2 2 2 #:operation operation)
+      (draw-paint canvas paint))
+    (for/list ([x '(3 1 7)])
+      (equal? (surface-pixel surface x 3) (color->rgba 'blue)))))
+]
+
+The result is @racket['((#t #f #f) (#f #t #f))]. The first sample is inside the
+second rectangle, the next is outside it but inside the initial clip, and the
+last is outside the initial clip. Difference removes an area from the current
+clip; it does not select everything outside the rectangle across the surface.
 }
 
 @defproc[(canvas-clip-path! [canvas canvas?] [path skia-path?]

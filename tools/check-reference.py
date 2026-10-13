@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R1 sources, real bindings, and fresh or installed Reference links.
+"""Validate Reference sources, real bindings, and fresh or installed links.
 
 Default: check sources against pinned export inventories. --documents-only is a
 limited check for a partial source fixture. No mode silently skips requested Racket work.
@@ -15,7 +15,8 @@ import sys
 import uuid
 
 from reference_support import CheckError, check_evidence, check_source, check_targets, prepare_site
-from reference_review import package_review, source_hashes
+from reference_review import (inspect_link_scopes, package_review, package_source_review,
+                              source_hashes)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,7 +40,12 @@ def main(argv=None):
     parser.add_argument('--output', type=Path)
     parser.add_argument('--review-zip', type=Path,
                         help='package checked HTML and sources after --render or --installed')
+    parser.add_argument('--source-zip', type=Path,
+                        help='package all inputs for the non-native source checker')
     args = parser.parse_args(argv)
+    if args.source_zip and (args.documents_only or args.render or args.installed or args.site
+                            or args.quick or args.native or args.review_zip):
+        parser.error('--source-zip requires ordinary source-only validation')
     if args.review_zip and not (args.render or args.installed):
         parser.error('--review-zip requires --render or --installed')
     if args.quick and not args.render:
@@ -97,7 +103,8 @@ def main(argv=None):
             save()
 
     try:
-        before = source_hashes(ROOT)
+        review_inputs = bool(args.review_zip or args.source_zip)
+        before = source_hashes(ROOT, review_inputs=review_inputs)
         report['source_sha256'] = before
         source = check_source(ROOT, documents_only=args.documents_only,
                               require_complete=args.require_complete)
@@ -190,8 +197,12 @@ def main(argv=None):
                                     ROOT / 'tools/reference-native-test.rkt',
                                     ROOT / 'tools/reference-core-test.rkt'])
                 report['native_executed'] = True
-        if source_hashes(ROOT) != before:
+        if source_hashes(ROOT, review_inputs=review_inputs) != before:
             raise CheckError('Reference sources changed during validation')
+        if args.render or args.installed or args.site:
+            report['html_link_scopes'] = inspect_link_scopes(args.site if args.site else site)
+        if args.source_zip:
+            report['source_zip'] = package_source_review(ROOT, args.source_zip, before)
         if args.review_zip:
             report['review_zip'] = package_review(
                 ROOT, site, source, targets, args.review_zip, before,

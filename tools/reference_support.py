@@ -450,6 +450,7 @@ class Page(HTMLParser):
     def __init__(self, text):
         super().__init__(convert_charrefs=True)
         self.anchors, self.links, self.badlinks = Counter(), [], 0
+        self.unresolved_references, self.unlinked_identifiers = 0, 0
         self.current = None
         self.feed(text)
         self.close()
@@ -458,7 +459,10 @@ class Page(HTMLParser):
         attrs = dict(attributes)
         for target in set(filter(None, [attrs.get('id'), attrs.get('name') if tag == 'a' else None])):
             self.anchors[target] += 1
-        if set(attrs.get('class', '').split()) & {'badlink', 'RktErr'}:
+        classes = set(attrs.get('class', '').split())
+        self.unresolved_references += 'badlink' in classes
+        self.unlinked_identifiers += 'RktErr' in classes
+        if classes & {'badlink', 'RktErr'}:
             self.badlinks += 1
         if tag == 'a' and 'href' in attrs:
             self.current = [attrs['href'], []]
