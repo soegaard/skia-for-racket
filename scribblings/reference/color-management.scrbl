@@ -195,6 +195,8 @@ Inversion requires native Skia; it does not modify the argument.
 
 @section[#:tag "skia-xyz-d50"]{RGB Gamuts and XYZ-D50 Matrices}
 
+@(declare-exporting skia skia/color-space #:use-sources (skia/color-space))
+
 An @deftech{XYZ-D50 matrix} is a row-major three-by-three matrix relating
 linear RGB to CIE XYZ with the D50 reference white. It is represented by nine
 numbers, not by an affine drawing matrix. A @deftech{chromaticity} describes a

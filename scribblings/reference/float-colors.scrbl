@@ -185,6 +185,8 @@ The geometric transform does not change the filled region.
 
 @section[#:tag "skia-float-shaders"]{Floating-Point Shaders and Gradients}
 
+@(declare-exporting skia skia/float-colors #:use-sources (skia/float-colors))
+
 The shaders retain their colors and source interpretation independently of
 caller-owned input arrays or ICC bytes. Their wrappers are owned resources.
 Native construction failure raises an exception. The floating-point gradient

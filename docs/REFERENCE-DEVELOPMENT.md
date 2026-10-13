@@ -5,6 +5,51 @@ The current Reference declares 538 bindings through 742 public export paths in
 six standard color-space definitions into their conceptual chapter, and retains
 the legacy `skia-color-spaces` subsection target. No library behavior changes.
 
+## R3d.1 binding-resolution correction (post-R3d)
+
+Patch baseline: `0418c5a69bfe424ad85849b124f5e75181d55f36`
+(`Expand Reference color management coverage`). There are no API or behavior
+changes. The totals remain 538 bindings, 742 export paths, and 23 chapters.
+
+`declare-exporting` applies to its enclosing Scribble section and descendants,
+not later sibling sections. R3d selected `skia/color-space` as a binding source
+within Transfer Functions, but not its sibling RGB Gamuts and XYZ-D50 Matrices.
+Likewise, Floating-Point Paints and Canvas Colors selected `skia/float-colors`,
+but its sibling Floating-Point Shaders and Gradients did not. Twelve definitions
+therefore used the enclosing `skia` declaration rather than explicitly
+selecting their public source modules. This matches the twelve binding identities
+reported in the editor's additional 40 `badlink` occurrences; a real render is
+still required to confirm the correction.
+
+R3d.1 adds the same `#:use-sources` declarations in those two sibling sections.
+Their seven RGB/XYZ and five shader entries, result contracts, examples,
+section tags, and `for-label` imports remain intact. Source tests guard the
+section-scoped declarations and check all twelve source-module aliases against
+both the coverage manifest and link probe. A regression ensures that a `badlink`
+in `doc-index.html` prevents review-archive publication.
+
+**Source inspection cannot certify rendered binding resolution.** Acceptance
+requires a real Racket/Scribble build with `skia` resolving to this checkout:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py \
+  --output ../reference-r3d1-source-check \
+  --source-zip ../skia-reference-r3d1-source-review.zip
+python3 -B tools/check-reference.py \
+  --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3d1-render-check \
+  --review-zip ../skia-reference-r3d1-review.zip
+```
+
+The render driver checks every documented alias in its binding probe and all
+Reference HTML, including `doc-index.html`. The review packager requires linked
+companion tutorial manuals, refuses unresolved Reference markup, and checks the
+extracted archive before publication. A manually zipped Reference-only HTML
+folder is **not** an accepted review artifact. A source-only pass or synthetic
+HTML fixture is also not a substitute for a completed native/render check.
+
 ## R3d scope and baselines
 
 The incremental patch applies after delivered R3c. The cumulative alternative

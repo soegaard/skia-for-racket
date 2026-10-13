@@ -988,6 +988,17 @@ class ReviewArchiveTests(unittest.TestCase):
             self.package()
         self.assertFalse(self.archive.exists())
 
+    def test_unresolved_binding_in_identifier_index_blocks_publication(self):
+        # The R3d regression occurred in doc-index.html, not only index.html.
+        index = self.reference / 'doc-index.html'
+        index.write_text('<span class="RktErr badlink">make-rgb-color-space</span>')
+        with self.assertRaisesRegex(checks.CheckError,
+                                    'unresolved review Reference: doc-index.html'):
+            review.check_review_html(self.site)
+        with self.assertRaises(checks.CheckError):
+            self.package()
+        self.assertFalse(self.archive.exists())
+
     def test_reference_only_badlink_build_is_not_published(self):
         # Reproduce the reported partial review: no companions and unlinked labels.
         self.index.write_text(''.join(
@@ -2706,6 +2717,85 @@ class R3dColorSemanticsTests(unittest.TestCase):
             text = (ROOT / 'tools' / name).read_text()
             checks.Reader('(' + text.split('\n', 1)[1] + ')').read()
             self.assertEqual(text.count('(test-case '), cases)
+
+
+class R3d1BindingScopeTests(unittest.TestCase):
+    """Guard the two sibling-section source identities that produced 40 badlinks.
+
+    These are source regressions, not an actual Scribble hyperlink-resolution test.
+    The live --render probe and extracted-archive check remain publication gates.
+    """
+
+    affected = (
+        ('color-management.scrbl', 'skia-xyz-d50', 'skia/color-space',
+         ('named-xyz-d50', 'primaries->xyz-d50', 'make-rgb-color-space',
+          'color-space-transfer-function', 'color-space-xyz-d50',
+          'xyz-d50-concat', 'xyz-d50-invert')),
+        ('float-colors.scrbl', 'skia-float-shaders', 'skia/float-colors',
+         ('make-color4f-shader', 'make-linear-gradient-color4f-shader',
+          'make-radial-gradient-color4f-shader', 'make-sweep-gradient-color4f-shader',
+          'make-two-point-conical-gradient-color4f-shader')),
+    )
+
+    def section(self, filename, tag):
+        text = (ROOT / checks.REFERENCE / filename).read_text()
+        start = text.index('@section[#:tag "' + tag + '"]')
+        following = re.search(r'(?m)^@section(?:\[|\{)', text[start + 1:])
+        stop = start + 1 + following.start() if following else len(text)
+        return text[start:stop]
+
+    def test_every_affected_section_selects_the_public_source_binding(self):
+        for filename, tag, module, names in self.affected:
+            with self.subTest(section=tag):
+                section = self.section(filename, tag)
+                declaration = ('@(declare-exporting skia ' + module +
+                               ' #:use-sources (' + module + '))')
+                self.assertEqual(section.count(declaration), 1)
+                self.assertEqual(section.count('@(declare-exporting'), 1)
+                self.assertLess(section.index(declaration), section.index('@defproc['))
+                defined = re.findall(r'(?m)^@defproc\[\(([^\s)]+)', section)
+                self.assertEqual(set(defined), set(names))
+                self.assertEqual(len(defined), len(names))
+
+    def test_affected_source_modules_remain_in_for_label(self):
+        for filename, _tag, module, _names in self.affected:
+            with self.subTest(module=module):
+                text = (ROOT / checks.REFERENCE / filename).read_text()
+                require = text.split('@title', 1)[0]
+                self.assertIn(module, require)
+                self.assertIn('for-label', require)
+                self.assertIn(' skia ', require)
+
+    def test_canonical_export_manifest_and_probe_cover_the_twelve_names(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        definitions = {row['name']: row for row in manifest['definitions']}
+        probe = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        affected_count = 0
+        for filename, tag, module, names in self.affected:
+            for name in names:
+                with self.subTest(name=name):
+                    row = definitions[name]
+                    self.assertEqual(row['canonical_module'], 'skia')
+                    self.assertEqual(row['chapter'],
+                                     'scribblings/reference/' + filename)
+                    self.assertIn(module, row['exports'])
+                    self.assertEqual(probe.count('@racket[' + name + ']'), 1)
+                    prefix = module.removeprefix('skia/').replace('/', '-')
+                    self.assertEqual(probe.count('@racket[' + prefix + ':' + name + ']'), 1)
+                    affected_count += 1
+        self.assertEqual(affected_count, 12)
+
+    def test_rendered_review_uses_full_companion_and_binding_checks(self):
+        driver = (ROOT / 'tools/check-reference.py').read_text()
+        review_src = (ROOT / 'tools/reference_review.py').read_text()
+        self.assertIn("run('reference-seed'", driver)
+        self.assertIn('tutorial_xrefs.append(saved)', driver)
+        self.assertIn("run('reference',", driver)
+        self.assertIn("run('link-probe'", driver)
+        self.assertIn('check_targets(site, targets', driver)
+        self.assertIn('check_review_html(html)', review_src)
+        self.assertIn('check_review_html(extracted_html)', review_src)
+
 
 
 if __name__ == '__main__':
