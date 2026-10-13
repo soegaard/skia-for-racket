@@ -1,4 +1,4 @@
-# Skia Reference development: R3b text blobs
+# Skia Reference development: R3b.1 editorial cleanup
 
 The Reference is one registered multi-page manual assembled from
 `scribblings/reference/reference.scrbl`. R3b extends the delivered R3a.1 sources
@@ -8,6 +8,45 @@ seventeen conceptual chapters. It is a bounded R3 batch, not completion of all
 higher-level APIs. No library behavior changes.
 The upstream `for-label` fixes, finite blend-mode contracts, clipping example,
 and independent source-review packaging are retained.
+
+## R3b.1 editorial cleanup and review handoff
+
+Patch baseline: `c0192da1a0ae0b717e5ab9a51b495a2706b0d1e9`.
+The binding and export-path counts remain 409 and 525. Existing definition
+headers, native examples, and `for-label` imports are unchanged.
+
+The atlas-transform subsection is now titled **Atlas Transforms**, with the
+existing `skia-atlas-transforms` tag retained. Its constructor example computes
+`#(2.0 0.0 4.0 12.0)` and uses Scribble's `eval:check` to reject a different result.
+A separate evaluator imports only the two needed public geometry bindings and
+is closed after the subsection. This adds one pure evaluated block, bringing
+the current total to twelve; the fifty displayed native blocks are unchanged.
+The existing native-free atlas-value test also checks the coefficients and the
+mapping of the local anchor `(3, 4)` to `(10, 20)`. The intercept description is
+shortened without changing its rejection of blobs containing transformed runs.
+
+A Reference-only HTML ZIP with the three unresolved cross-manual links is not
+an accepted review archive. The existing render driver exchanges the companion
+manuals' cross-reference information before rendering the final Reference.
+The existing packager requires those manuals and checks the extracted archive.
+Neither mechanism is replaced in this editorial revision. Regressions now
+exercise both the reported Reference-only badlink case and resolved links whose
+companion files were omitted. Neither case may publish a ZIP.
+
+Generate the handoff in the full checkout, with fresh output paths:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3b.1-check --review-zip ../skia-reference-r3b.1-review.zip
+```
+
+Send that complete generated archive, not a manually reduced Reference folder.
+It includes `html/`, matching `sources/`, and `evidence/`. Inspect
+`evidence/review.json` for extracted-source checks and separate Reference and
+companion link diagnostics. Source consistency is not rendered-link or native
+acceptance. When rendering or native tests have not run, report them as
+unexecuted rather than creating a purportedly accepted HTML archive.
 
 ## R3a.1 editorial cleanup
 
@@ -269,10 +308,10 @@ contour. It neither fits nor wraps text, even when measurement forces closure.
 The tangent determines both rotation and the signed normal. Glyph extents may
 cross a contour endpoint even when every checked origin is in range.
 
-R3b adds six focused displayed examples. The manual now contains 50 displayed
-native blocks and eleven pure evaluated blocks. It does not add native examples
-to documentation-time evaluation. `reference-native-test.rkt` reads the actual
-blocks and is configured to execute each twice in fresh namespaces.
+R3b added six focused displayed examples. With the R3b.1 atlas example, the manual
+contains 50 displayed native blocks and twelve pure evaluated blocks. Native examples
+are not added to documentation-time evaluation. `reference-native-test.rkt` reads the
+actual blocks and is configured to execute each twice in fresh namespaces.
 
 `reference-blob-values-test.rkt` contains four native-free cases for atlas values,
 anchors, rotation, zero scale and validation. `reference-blobs-test.rkt` contains
@@ -331,7 +370,7 @@ python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET"
 Use fresh output paths. The matrix test needs only the public `skia/matrix`
 module, not native Skia. It checks coefficient order, detached inputs, rounding,
 composition, inversion, point/vector differences and transformed bounds.
-The Reference itself evaluates only pure color and affine-matrix examples.
+The Reference itself evaluates only pure color, affine-matrix, and atlas-transform examples.
 Native examples are displayed as code and run only by explicit acceptance tests.
 
 The render driver retains Revision 2.1's module-based root prefixes and `top`

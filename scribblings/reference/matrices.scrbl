@@ -180,7 +180,11 @@ within the accepted range.
 @close-eval[matrix-eval]
 
 
-@section[#:tag "skia-atlas-transforms"]{Scaled Rotations and Translations}
+@section[#:tag "skia-atlas-transforms"]{Atlas Transforms}
+
+@(define atlas-eval (make-base-eval))
+@(atlas-eval '(require (only-in skia/geometry-primitives
+                               make-atlas-transform atlas-transform-coefficients)))
 
 @defmodule[skia/geometry-primitives #:no-declare]
 @(declare-exporting skia skia/geometry-primitives #:use-sources (skia/geometry-primitives))
@@ -213,6 +217,18 @@ the four coefficients are @math{scos = scale cos(r)},
 @math{ssin = scale sin(r)}, @math{tx = x - scos ax + ssin ay}, and
 @math{ty = y - ssin ax - scos ay}. This representation does not support a
 nonuniform scale, general shear, or reflection.
+
+@examples[#:eval atlas-eval
+(define transform
+  (make-atlas-transform 10 20
+                        #:scale 2
+                        #:anchor '(3 4)))
+(eval:check (atlas-transform-coefficients transform)
+            (vector-immutable 2.0 0.0 4.0 12.0))
+]
+
+The translation compensates for the scaled anchor, so the local point at
+coordinates 3 and 4 maps to coordinates 10 and 20.
 }
 
 @defproc[(atlas-transform-coefficients [transform atlas-transform?])
@@ -222,3 +238,5 @@ Returns the immutable vector of coefficients in order @math{scos},
 @math{(scos x - ssin y + tx, ssin x + scos y + ty)}. The vector is detached;
 no native conversion or allocation occurs in this query.
 }
+
+@close-eval[atlas-eval]

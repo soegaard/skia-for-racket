@@ -921,6 +921,8 @@ class ReviewArchiveTests(unittest.TestCase):
             self.assertIsNone(archive.testzip())
             names = archive.namelist()
             self.assertIn('html/skia-reference/index.html', names)
+            for row in self.source['tutorial_links']:
+                self.assertIn('html/' + row['directory'] + '/index.html', names)
             self.assertIn('sources/scribblings/reference/drawing.scrbl', names)
             self.assertFalse(any('seed' in name or name.endswith('.sxref') for name in names))
             for line in archive.read('SHA256SUMS.txt').decode().splitlines():
@@ -943,6 +945,27 @@ class ReviewArchiveTests(unittest.TestCase):
 
     def test_badlink_prevents_publication(self):
         self.index.write_text(self.index.read_text() + '<span class="badlink">Missing</span>')
+        with self.assertRaises(checks.CheckError):
+            self.package()
+        self.assertFalse(self.archive.exists())
+
+    def test_reference_only_badlink_build_is_not_published(self):
+        # Reproduce the reported partial review: no companions and unlinked labels.
+        self.index.write_text(''.join(
+            '<span class="badlink">' + row['label'] + '</span>'
+            for row in self.source['tutorial_links']))
+        for row in self.source['tutorial_links']:
+            shutil.rmtree(self.site / row['directory'])
+        with self.assertRaisesRegex(checks.CheckError, 'unresolved review Reference'):
+            review.check_review_html(self.site)
+        with self.assertRaises(checks.CheckError):
+            self.package()
+        self.assertFalse(self.archive.exists())
+
+    def test_resolved_links_without_companion_files_are_not_published(self):
+        # Even resolved links do not make a Reference-only directory portable.
+        for row in self.source['tutorial_links']:
+            shutil.rmtree(self.site / row['directory'])
         with self.assertRaises(checks.CheckError):
             self.package()
         self.assertFalse(self.archive.exists())
@@ -2149,7 +2172,9 @@ class R3BlobSemanticsTests(unittest.TestCase):
 
     def test_intercepts_reject_partial_answers_for_transformed_runs(self):
         prose = ' '.join(self.text().split())
-        self.assertIn('Any transformed run causes an exception', prose)
+        self.assertIn('native backend omits transformed runs when computing intercepts', prose)
+        self.assertIn('rejects any blob containing a transformed run', prose)
+        self.assertIn('result is subject to @racket[current-skia-byte-limit]', prose)
         self.assertIn('not as a promised sorted, merged union', prose)
         self.assertIn('not a pixel coverage readback', prose)
         self.assertEqual(self.header('text-blob-intercepts')[1],
@@ -2226,6 +2251,47 @@ class R3BlobSemanticsTests(unittest.TestCase):
                     return 0
                 return int(bool(form) and form[0] == 'test-case') + sum(map(nested_cases, form))
             self.assertEqual(nested_cases(modules[0]), count)
+
+
+class R3b1EditorialTests(unittest.TestCase):
+    """Inspect the actual Scribble example; these tests do not evaluate Racket."""
+    def text(self):
+        return (ROOT / checks.REFERENCE / 'matrices.scrbl').read_text()
+
+    def test_atlas_heading_keeps_its_existing_link_target(self):
+        text = self.text()
+        self.assertIn('@section[#:tag "skia-atlas-transforms"]{Atlas Transforms}', text)
+        self.assertNotIn('Scaled Rotations and Translations', text)
+        self.assertIn('@title[#:tag "skia-matrices"]{Affine Matrices}', text)
+
+    def test_anchor_example_checks_computed_coefficients_in_the_constructor_entry(self):
+        text = self.text()
+        start = text.index('@defproc[(make-atlas-transform')
+        stop = text.index('@defproc[(atlas-transform-coefficients', start)
+        entry = text[start:stop]
+        examples = [header for form, header, _ in checks.commands(entry, recursive=True)
+                    if form == 'examples']
+        self.assertEqual(examples, [[
+            '#:eval', 'atlas-eval',
+            ['define', 'transform', ['make-atlas-transform', '10', '20',
+                                     '#:scale', '2', '#:anchor', ['quote', ['3', '4']]]],
+            ['eval:check', ['atlas-transform-coefficients', 'transform'],
+             ['vector-immutable', '2.0', '0.0', '4.0', '12.0']]]])
+        self.assertIn('translation compensates for the scaled anchor', entry)
+        self.assertNotIn('eval:result', entry)
+        self.assertNotIn('eval:alts', entry)
+
+    def test_atlas_example_has_its_own_closed_public_api_evaluator(self):
+        text = self.text()
+        normalized = ' '.join(text.split())
+        self.assertIn("(atlas-eval '(require (only-in skia/geometry-primitives "
+                      "make-atlas-transform atlas-transform-coefficients)))", normalized)
+        self.assertEqual(text.count('@(define atlas-eval (make-base-eval))'), 1)
+        self.assertEqual(text.count('@close-eval[atlas-eval]'), 1)
+        self.assertGreater(text.index('@close-eval[atlas-eval]'),
+                           text.index('@examples[#:eval atlas-eval'))
+        self.assertLess(text.index('@close-eval[matrix-eval]'),
+                        text.index('@(define atlas-eval'))
 
 
 if __name__ == '__main__':

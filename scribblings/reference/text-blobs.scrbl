@@ -416,10 +416,9 @@ stroke and path-effect settings to the native query. The result is not a pixel
 coverage readback or the output bounds of an image filter. Intervals are returned
 in native order, not as a promised sorted, merged union.
 
-Any transformed run causes an exception, including in a blob with other run
-types. The native backend omits transformed runs from this query. This procedure
-rejects that case rather than silently return incomplete intervals. The output's charged storage
-must fit @racket[current-skia-byte-limit].
+The native backend omits transformed runs when computing intercepts. To avoid
+returning incomplete results, this procedure rejects any blob containing a
+transformed run. The result is subject to @racket[current-skia-byte-limit].
 
 @racketblock[
 (with-skia ([font (make-font #:size 24)]
