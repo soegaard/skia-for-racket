@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R3d",
-  "reviewed_repository_commit": "efc279080b375c376fd27793a748bd9e618110d0",
+  "stage": "R3e",
+  "reviewed_repository_commit": "eadcff7fce37fc9c1e64e5a4a48fb4835c9fcaa2",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3e-R4",
-    "reason": "Outside R3d color management; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R3f-R4",
+    "reason": "Outside R3e pictures and documents; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -5597,6 +5597,766 @@
       "exports": [
         "skia",
         "skia/float-colors"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-picture-image-filter",
+      "chapter": "scribblings/reference/image-filters.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture?",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-recorder?",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-picture-recorder",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-recorder-recording?",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-recorder-begin-recording!",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-recorder-finish-recording!",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-picture",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-width",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-height",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-picture",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture->image",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-cull-bounds",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-unique-id",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-approximate-op-count",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-approximate-bytes-used",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture->bytes",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-from-bytes",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-from-file",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "save-picture",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-picture-shader",
+      "chapter": "scribblings/reference/pictures.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/pictures"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document?",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-pdf-document",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document-state",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document-page-count",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document-begin-page!",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document-end-page!",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-document-page",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "with-document-page",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document-finish!",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document-abort!",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "document->pdf-bytes",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "save-pdf",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-pdf-bytes",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-pdf-file",
+      "chapter": "scribblings/reference/pdf-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document?",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-svg-document",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document-width",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document-height",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document-state",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document-canvas",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document-finish!",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document-abort!",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document->bytes",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-document->string",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "save-svg",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-svg-bytes",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-svg-string",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-svg-file",
+      "chapter": "scribblings/reference/svg-documents.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "unit->points",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page?",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-output-page",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-width",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-height",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-unit",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-margins",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-background",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-clip?",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-size-in-points",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page-content-size",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-output-page",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-page->image",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output->bytes",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "save-output",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "current-text-output-mode",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "current-raster-output-scale",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-rasterized",
+      "chapter": "scribblings/reference/output-pages.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-annotation-backend",
+      "chapter": "scribblings/reference/annotations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/annotations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-annotate-url!",
+      "chapter": "scribblings/reference/annotations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/annotations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-define-destination!",
+      "chapter": "scribblings/reference/annotations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/annotations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-link-destination!",
+      "chapter": "scribblings/reference/annotations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/annotations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "destination-id",
+      "chapter": "scribblings/reference/annotations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/annotations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "svg-destination-id",
+      "chapter": "scribblings/reference/annotations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/annotations"
       ],
       "phase": "0",
       "space": null

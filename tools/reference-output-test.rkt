@@ -1,0 +1,258 @@
+#lang racket/base
+
+;; Opt-in native CPU output tests. No GUI, GPU, font lookup, or PDF viewer is used.
+(require rackunit racket/file racket/list racket/string skia)
+
+(define (draw-square canvas)
+  (with-skia ([paint (make-paint #:color 'blue #:antialias? #f)])
+    (draw-rect canvas 2 2 8 8 paint)))
+
+(define (check-pdf bytes)
+  (check-true (bytes? bytes))
+  (check-equal? (subbytes bytes 0 5) #"%PDF-")
+  (check-true (regexp-match? #rx#"%%EOF" bytes)))
+
+(define (check-svg bytes)
+  (check-true (regexp-match? #rx#"<svg" bytes))
+  (check-true (regexp-match? #rx#"</svg>" bytes)))
+
+(module+ test
+  (test-case "a picture outlives the recording callback and its paint"
+    (with-skia ([picture (call-with-picture 20 20 draw-square)]
+                [surface (make-surface 20 20)])
+      (draw-picture (surface-canvas surface) picture)
+      (check-equal? (color->argb (surface-pixel surface 5 5)) #xff0000ff)
+      (check-equal? (list (picture-width picture) (picture-height picture)) '(20.0 20.0))))
+
+  (test-case "recorders are reusable but require an active recording to finish"
+    (with-skia ([recorder (make-picture-recorder)])
+      (check-false (picture-recorder-recording? recorder))
+      (check-exn exn:fail? (lambda () (picture-recorder-finish-recording! recorder)))
+      (for ([i (in-range 2)])
+        (define canvas (picture-recorder-begin-recording! recorder 0 0 20 20))
+        (check-true (picture-recorder-recording? recorder))
+        (check-exn exn:fail?
+                   (lambda () (picture-recorder-begin-recording! recorder 0 0 20 20)))
+        (draw-square canvas)
+        (with-skia ([picture (picture-recorder-finish-recording! recorder)])
+          (check-true (picture? picture)))
+        (check-false (picture-recorder-recording? recorder)))))
+
+  (test-case "picture state is restored and size overrides must be paired"
+    (with-skia ([picture (call-with-picture 20 20 draw-square)]
+                [surface (make-surface 40 40)])
+      (define canvas (surface-canvas surface))
+      (define before (matrix->vector (canvas-transform canvas)))
+      (draw-picture canvas picture #:x 3 #:y 4 #:width 30 #:height 30)
+      (check-equal? (matrix->vector (canvas-transform canvas)) before)
+      (check-equal? (canvas-save-count canvas) 1)
+      (check-exn exn:fail? (lambda () (draw-picture canvas picture #:width 30)))))
+
+  (test-case "trusted SKP copies bytes and accepts paired nominal sizes"
+    (with-skia ([picture (call-with-picture 20 20 draw-square)])
+      (define bytes (picture->bytes picture))
+      (check-false (immutable? bytes))
+      (with-skia ([copy (picture-from-bytes bytes #:trusted? #t #:width 30 #:height 40)])
+        (bytes-fill! bytes 0)
+        (check-equal? (list (picture-width copy) (picture-height copy)) '(30.0 40.0))
+        (check-true (immutable? (picture-cull-bounds copy)))
+        (check-true (positive? (bytes-length (picture->bytes copy)))))))
+
+  (test-case "picture shader and image-filter retain the source picture"
+    (define picture (call-with-picture 20 20 draw-square))
+    (with-skia ([shader (make-picture-shader picture #:tile-x 'repeat #:tile-y 'repeat)]
+                [filter (make-picture-image-filter picture)]
+                [surface (make-surface 20 20)]
+                [paint (make-paint #:shader shader)]
+                [filtered (make-paint #:image-filter filter)])
+      (skia-close! picture)
+      (draw-rect (surface-canvas surface) 0 0 20 20 paint)
+      (check-equal? (color->argb (surface-pixel surface 5 5)) #xff0000ff)
+      (canvas-clear! (surface-canvas surface) 'transparent)
+      (draw-rect (surface-canvas surface) 0 0 20 20 filtered)
+      (check-equal? (color->argb (surface-pixel surface 5 5)) #xff0000ff)))
+
+  (test-case "PDF lifecycle distinguishes page end finish byte copy and release"
+    (with-skia ([document (make-pdf-document)])
+      (check-equal? (document-state document) 'open)
+      (check-equal? (document-page-count document) 0)
+      (check-exn exn:fail? (lambda () (document-finish! document)))
+      (check-exn exn:fail? (lambda () (document->pdf-bytes document)))
+      (define old (document-begin-page! document 120 80))
+      (draw-square old)
+      (check-equal? (document-state document) 'page)
+      (check-exn exn:fail? (lambda () (document-finish! document)))
+      (document-end-page! document)
+      (define next (document-begin-page! document 120 80))
+      (check-exn exn:fail? (lambda () (draw-square old)))
+      (draw-square next)
+      (document-end-page! document)
+      (document-finish! document)
+      (check-equal? (document-state document) 'finished)
+      (check-equal? (document-page-count document) 2)
+      (document-finish! document)
+      (define bytes (document->pdf-bytes document))
+      (check-pdf bytes)
+      (check-false (immutable? bytes))
+      (bytes-set! bytes 0 0)
+      (check-pdf (document->pdf-bytes document))
+      (skia-close! document)
+      (check-equal? (document-state document) 'closed)
+      (check-equal? (document-page-count document) 2)))
+
+  (test-case "protected PDF pages return all values and prevent manual end"
+    (with-skia ([document (make-pdf-document)])
+      (check-equal?
+       (call-with-values
+        (lambda ()
+          (with-document-page (canvas document 120 80)
+            (check-exn exn:fail? (lambda () (document-end-page! document)))
+            (draw-square canvas)
+            (values 'one 'two))) list)
+       '(one two))
+      (check-equal? (document-page-count document) 1)
+      (document-finish! document)))
+
+  (test-case "arbitrary callback failure aborts the entire PDF"
+    (with-skia ([document (make-pdf-document)])
+      (call-with-document-page document 120 80 draw-square)
+      (check-exn (lambda (v) (eq? v 'page-failed))
+                 (lambda ()
+                   (call-with-document-page document 120 80
+                     (lambda (canvas) (raise 'page-failed)))))
+      (check-equal? (document-state document) 'aborted)
+      (check-true (skia-closed? document))
+      (check-equal? (document-page-count document) 1)
+      (check-exn exn:fail? (lambda () (document->pdf-bytes document)))))
+
+  (test-case "PDF forward destinations are checked even for zero-size links"
+    (with-skia ([document (make-pdf-document)])
+      (with-document-page (canvas document 120 80)
+        (canvas-link-destination! canvas 0 0 0 0 "later"))
+      (check-exn exn:fail? (lambda () (document-finish! document)))
+      (check-equal? (document-state document) 'open)
+      (with-document-page (canvas document 120 80)
+        (canvas-define-destination! canvas "later" 10 10)
+        (check-exn exn:fail?
+                   (lambda () (canvas-define-destination! canvas "later" 20 20))))
+      (document-finish! document)
+      (check-pdf (document->pdf-bytes document))))
+
+  (test-case "SVG may be empty and invalidates every borrowed canvas at finish"
+    (with-skia ([document (make-svg-document 120 80 #:title "A & B")])
+      (define first (svg-document-canvas document))
+      (define second (svg-document-canvas document))
+      (check-exn exn:fail? (lambda () (svg-document->bytes document)))
+      (svg-document-finish! document)
+      (svg-document-finish! document)
+      (check-equal? (svg-document-state document) 'finished)
+      (check-exn exn:fail? (lambda () (draw-square first)))
+      (check-exn exn:fail? (lambda () (draw-square second)))
+      (define bytes (svg-document->bytes document))
+      (check-svg bytes)
+      (check-true (string-contains? (bytes->string/utf-8 bytes) "A &amp; B"))
+      (bytes-set! bytes 0 0)
+      (check-svg (svg-document->bytes document))))
+
+  (test-case "SVG permits fixing an unresolved destination before retrying finish"
+    (with-skia ([document (make-svg-document 120 80 #:id-prefix "review")])
+      (define canvas (svg-document-canvas document))
+      (canvas-link-destination! canvas 10 10 20 20 "later")
+      (check-exn exn:fail? (lambda () (svg-document-finish! document)))
+      (check-equal? (svg-document-state document) 'open)
+      (canvas-define-destination! canvas "later" 40 40)
+      (svg-document-finish! document)
+      (define xml (svg-document->string document))
+      (check-true (string-contains? xml (svg-destination-id "later" #:id-prefix "review")))))
+
+  (test-case "named annotations reject recording but URI links may be recorded"
+    (with-skia ([picture
+                 (call-with-picture 20 20
+                   (lambda (canvas)
+                     (check-equal? (canvas-annotation-backend canvas) 'recording)
+                     (canvas-annotate-url! canvas 0 0 10 10 "https://example.org/")
+                     (check-exn exn:fail?
+                                (lambda () (canvas-define-destination! canvas "x" 0 0)))
+                     (check-exn exn:fail?
+                                (lambda () (canvas-link-destination! canvas 0 0 1 1 "x")))))])
+      (check-true (picture? picture))))
+
+  (test-case "output-page callbacks run again for each export with restored modes"
+    (define seen '())
+    (define page
+      (make-output-page 40 30
+        (lambda (canvas)
+          (set! seen (cons (current-text-output-mode) seen))
+          (draw-square canvas))))
+    (parameterize ([current-text-output-mode 'native])
+      (check-pdf (output->bytes page 'pdf))
+      (check-svg (output->bytes page 'svg))
+      (check-equal? seen '(outline native))
+      (check-equal? (current-text-output-mode) 'native)))
+
+  (test-case "page raster dimensions use ceiling and preserve parent canvas state"
+    (define page (make-output-page 10 10 draw-square #:margins 1))
+    (with-skia ([image (output-page->image page #:dpi 96)]
+                [surface (make-surface 30 30)])
+      (check-equal? (list (image-width image) (image-height image)) '(14 14))
+      (define canvas (surface-canvas surface))
+      (define before (matrix->vector (canvas-transform canvas)))
+      (draw-output-page canvas page)
+      (check-equal? (matrix->vector (canvas-transform canvas)) before)
+      (check-equal? (canvas-save-count canvas) 1)))
+
+  (test-case "explicit raster fallback expires its callback canvas and restores text mode"
+    (define saved #f)
+    (with-skia ([surface (make-surface 30 30)])
+      (parameterize ([current-text-output-mode 'outline])
+        (draw-rasterized (surface-canvas surface) 5 5 20 20
+          (lambda (canvas)
+            (set! saved canvas)
+            (check-equal? (current-text-output-mode) 'native)
+            (draw-square canvas))
+          #:scale 2 #:padding 1)
+        (check-equal? (current-text-output-mode) 'outline))
+      (check-true (skia-closed? saved))
+      (check-exn exn:fail? (lambda () (draw-square saved)))))
+
+  (test-case "failing raster callback does not composite its temporary image"
+    (with-skia ([surface (make-surface 20 20 #:background 'white)])
+      (check-exn exn:fail?
+                 (lambda ()
+                   (draw-rasterized (surface-canvas surface) 0 0 20 20
+                     (lambda (canvas) (draw-square canvas) (error 'draw "failed")))))
+      (check-equal? (color->argb (surface-pixel surface 5 5)) #xffffffff)))
+
+  (test-case "file helpers preserve old bytes on callback failure and freeze destination"
+    (define directory (make-temporary-file "reference-output-~a" 'directory))
+    (dynamic-wind
+      void
+      (lambda ()
+        (parameterize ([current-directory directory])
+          (make-directory "elsewhere")
+          (for ([extension '("pdf" "svg")])
+            (define target (string-append "keep." extension))
+            (call-with-output-file target (lambda (out) (write-bytes #"keep" out)))
+            (check-exn exn:fail?
+              (lambda ()
+                (if (string=? extension "pdf")
+                    (call-with-pdf-file target (lambda (document) (error 'draw "failed"))
+                                        #:exists 'replace)
+                    (call-with-svg-file target 20 20 (lambda (canvas) (error 'draw "failed"))
+                                        #:exists 'replace))))
+            (check-equal? (file->bytes target) #"keep"))
+          (call-with-svg-file "fixed.svg" 20 20
+            (lambda (canvas)
+              (current-directory (build-path directory "elsewhere"))
+              (draw-square canvas)))
+          (check-true (file-exists? (build-path directory "fixed.svg")))
+          (check-false (file-exists? (build-path directory "elsewhere" "fixed.svg")))))
+      (lambda () (delete-directory/files directory))))
+
+  (test-case "PDF/A option emits an output intent but is not a conformance test"
+    (define bytes
+      (call-with-pdf-bytes
+       (lambda (document) (call-with-document-page document 120 80 draw-square))
+       #:pdfa? #t))
+    (check-pdf bytes)
+    (check-true (regexp-match? #rx#"/OutputIntents" bytes))))

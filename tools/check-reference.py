@@ -15,8 +15,8 @@ import sys
 import uuid
 
 from reference_support import CheckError, check_evidence, check_source, check_targets, prepare_site
-from reference_review import (inspect_link_scopes, package_review, package_source_review,
-                              source_hashes)
+from reference_review import (check_review_html, inspect_link_scopes, package_review,
+                              package_source_review, source_hashes)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -66,6 +66,7 @@ def main(argv=None):
     report = dict(source_sha256={}, status='running', commands=[],
                   native_executed=False, gpu_executed=False,
                   racket_executed=False, scribble_rendered=False, quick_rendered=False,
+                  reference_html_checked=False,
                   installed_checked=False, site_checked=False, tutorial_manuals_rendered=[])
 
     def save():
@@ -140,6 +141,8 @@ def main(argv=None):
             run('color-management-pure-tests',
                 [racket, '-l', 'raco', '--', 'test',
                  ROOT / 'tools/reference-color-management-pure-test.rkt'])
+            run('output-pure-tests', [racket, '-l', 'raco', '--', 'test',
+                                      ROOT / 'tools/reference-output-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:
@@ -208,12 +211,19 @@ def main(argv=None):
                                     ROOT / 'tools/reference-text-test.rkt',
                                     ROOT / 'tools/reference-blobs-test.rkt',
                                     ROOT / 'tools/reference-effects-test.rkt',
-                                    ROOT / 'tools/reference-color-management-test.rkt'])
+                                    ROOT / 'tools/reference-color-management-test.rkt',
+                                    ROOT / 'tools/reference-output-test.rkt'])
                 report['native_executed'] = True
         if source_hashes(ROOT, review_inputs=review_inputs) != before:
             raise CheckError('Reference sources changed during validation')
         if args.render or args.installed or args.site:
-            report['html_link_scopes'] = inspect_link_scopes(args.site if args.site else site)
+            html_site = args.site if args.site else site
+            report['html_link_scopes'] = inspect_link_scopes(html_site)
+            # Installed manuals may link outside this package to other local manuals.
+            # Their existing xref check remains separate from portable publication.
+            if args.render or args.site:
+                report['reference_html'] = check_review_html(html_site)
+                report['reference_html_checked'] = True
         if args.source_zip:
             report['source_zip'] = package_source_review(ROOT, args.source_zip, before)
         if args.review_zip:

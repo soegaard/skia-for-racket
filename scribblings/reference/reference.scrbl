@@ -17,6 +17,8 @@ font managers, typefaces, fonts, shaped text, text blobs, and paragraph layout.
 Text blobs include multi-run construction, run inspection, and text on paths.
 The effects chapters cover path and mask effects, color and image filters,
 runtime SkSL programs, and custom blenders.
+Pictures, PDF and SVG documents, reusable output pages, raster fallback, and
+document annotations are described in the output chapters.
 Other interfaces are described in the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{existing API notes}.
 
@@ -55,5 +57,11 @@ The atlas-transform values used for glyph placement are also exported by
 @include-section["shaping.scrbl"]
 @include-section["text-blobs.scrbl"]
 @include-section["text-layout.scrbl"]
+
+@include-section["pictures.scrbl"]
+@include-section["pdf-documents.scrbl"]
+@include-section["svg-documents.scrbl"]
+@include-section["output-pages.scrbl"]
+@include-section["annotations.scrbl"]
 
 @index-section[]

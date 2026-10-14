@@ -487,3 +487,25 @@ background. The foreground is the blender's source and the background is its
 destination. The blender and explicit inputs are retained. False slots refer
 to the dynamic source, including for identity combinations.
 }
+
+
+@section[#:tag "skia-picture-image-source"]{Picture Sources}
+
+@(declare-exporting skia)
+
+@defproc[(make-picture-image-filter [picture picture?]
+                                    [#:target target (or/c list? vector? #f) #f]
+                                    [#:crop crop (or/c list? vector? #f) #f]) image-filter?]{
+Returns an owned image-filter source that renders a recorded picture. It retains
+the picture independently of the caller's wrapper and ignores the dynamic
+source supplied to the surrounding graph. This operation rasterizes picture
+content for filtering; it does not guarantee vector replay on PDF or SVG.
+
+The optional target is a four-element x, y, width, height list or vector with
+positive extents and drawing-scalar coordinates. It selects the picture's
+rasterization rectangle, not a fit-to-size transform of the recorded commands.
+Omitting it uses the picture's native cull rectangle. The result is clipped to
+both the target and the picture's cull rectangle. The optional crop uses the
+common output-region rules of this chapter. The source picture must be open
+during construction; retained GPU dependencies keep their own affinity rules.
+}

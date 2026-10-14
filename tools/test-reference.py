@@ -158,6 +158,11 @@ from reference_color_cases import (COLOR_SPACE_EXPORTS, COLOR4F_EXPORTS, FLOAT_C
 PROCEDURES.update(COLOR_PROCEDURES)
 
 
+from reference_output_cases import (PICTURE_EXPORTS, OUTPUT_EXPORTS, ANNOTATION_EXPORTS,
+                                    OUTPUT_PROCEDURES, OUTPUT_PARAMETERS, OUTPUT_SYNTAX)
+PROCEDURES.update(OUTPUT_PROCEDURES)
+
+
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
                 required_keywords=COLOR_REQUIRED_KEYWORDS.get(name, []), allowed_keywords=keywords)
@@ -172,6 +177,9 @@ def synthetic_inventory():
                 dict(name='matrix-identity', phase='0', kind='value', export_kind='value'),
                 row('surface-properties-of', 2, []),
                 dict(name='struct:rgba', phase='0', kind='value', export_kind='value')]
+    exports += [row(name, 3, [], 'parameter') for name in OUTPUT_PARAMETERS]
+    exports += [dict(name=name, phase='0', kind='syntax', export_kind='syntax')
+                for name in OUTPUT_SYNTAX]
     snapshots = [dict(modules=[dict(path='main.rkt', exports=exports),
                                     dict(path='color.rkt', exports=[
                                         copy.deepcopy(item) for item in exports
@@ -187,7 +195,9 @@ def synthetic_inventory():
                         ('runtime-effects.rkt', RUNTIME_EXPORTS),
                         ('color-space.rkt', COLOR_SPACE_EXPORTS),
                         ('color4f.rkt', COLOR4F_EXPORTS), ('float-colors.rkt', FLOAT_COLOR_EXPORTS),
-                        ('image-info.rkt', DESCRIPTOR_EXPORTS)):
+                        ('image-info.rkt', DESCRIPTOR_EXPORTS),
+                        ('pictures.rkt', PICTURE_EXPORTS), ('output.rkt', OUTPUT_EXPORTS),
+                        ('annotations.rkt', ANNOTATION_EXPORTS)):
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
@@ -253,8 +263,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 538)
-        self.assertEqual(result['documented_exports'], 742)
+        self.assertEqual(len(result['definitions']), 611)
+        self.assertEqual(result['documented_exports'], 845)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -373,12 +383,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 538)
+        self.assertEqual(len(self.check()['definitions']), 611)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 538)
+        self.assertEqual(len(self.check()['definitions']), 611)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -723,6 +733,7 @@ class BuildPlanTests(unittest.TestCase):
     def execute(self, *args):
         with (patch.object(self.runner, 'source_hashes', return_value={}),
               patch.object(self.runner, 'inspect_link_scopes', return_value={}),
+              patch.object(self.runner, 'check_review_html', return_value={}),
               patch.object(self.runner, 'check_source', return_value=self.source),
               patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
               patch.object(self.runner.subprocess, 'run', side_effect=self.run_fake),
@@ -772,6 +783,7 @@ class BuildPlanTests(unittest.TestCase):
         archive = self.output.parent / 'review.zip'
         with (patch.object(self.runner, 'source_hashes', return_value={}),
               patch.object(self.runner, 'inspect_link_scopes', return_value={}),
+              patch.object(self.runner, 'check_review_html', return_value={}),
               patch.object(self.runner, 'check_source', return_value=self.source),
               patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
               patch.object(self.runner.subprocess, 'run', side_effect=self.run_fake),
@@ -813,6 +825,7 @@ class BuildPlanTests(unittest.TestCase):
     def test_render_does_not_silently_skip_missing_racket(self):
         with (patch.object(self.runner, 'source_hashes', return_value={}),
               patch.object(self.runner, 'inspect_link_scopes', return_value={}),
+              patch.object(self.runner, 'check_review_html', return_value={}),
               patch.object(self.runner, 'check_source', return_value=self.source),
               patch.object(self.runner.shutil, 'which', return_value=None),
               contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
@@ -823,6 +836,52 @@ class BuildPlanTests(unittest.TestCase):
         self.assertFalse(report['scribble_rendered'])
         self.assertEqual(report['commands'], [])
 
+
+
+    def test_plain_render_rejects_unresolved_identifier_in_secondary_page(self):
+        def render(command, **options):
+            result = self.run_fake(command, **options)
+            directory = self.output / 'skia-reference'
+            directory.mkdir(exist_ok=True)
+            (directory / 'index.html').write_text('<p>Reference</p>')
+            (directory / 'doc-index.html').write_text('<span class="badlink">picture?</span>')
+            return result
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
+              patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
+              patch.object(self.runner.subprocess, 'run', side_effect=render),
+              patch.object(self.runner, 'check_evidence'),
+              patch.object(self.runner, 'check_targets', return_value=dict(status='passed')),
+              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
+            result = self.runner.main(['--render', '--output', str(self.output)])
+        self.assertEqual(result, 1)
+        report = json.loads((self.output / 'validation.json').read_text())
+        self.assertTrue(report['scribble_rendered'])
+        self.assertFalse(report['reference_html_checked'])
+        self.assertIn('doc-index.html', report['error'])
+        self.assertEqual(report['html_link_scopes']['reference']['unresolved_references'], 1)
+
+    def test_plain_render_runs_real_html_gate_without_publishing_an_archive(self):
+        def render(command, **options):
+            result = self.run_fake(command, **options)
+            directory = self.output / 'skia-reference'
+            directory.mkdir(exist_ok=True)
+            (directory / 'index.html').write_text('<p>Reference</p>')
+            return result
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
+              patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
+              patch.object(self.runner.subprocess, 'run', side_effect=render),
+              patch.object(self.runner, 'check_evidence'),
+              patch.object(self.runner, 'check_targets', return_value=dict(status='passed')),
+              patch.object(self.runner, 'package_review') as package,
+              contextlib.redirect_stdout(io.StringIO())):
+            result = self.runner.main(['--render', '--output', str(self.output)])
+        self.assertEqual(result, 0)
+        report = json.loads((self.output / 'validation.json').read_text())
+        self.assertTrue(report['reference_html_checked'])
+        self.assertEqual(report['reference_html']['reference_pages'], 1)
+        package.assert_not_called()
 
 
 class EditorialRevisionTests(unittest.TestCase):
@@ -882,9 +941,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 538)
-        self.assertEqual(result['documented_exports'], 742)
-        self.assertEqual(len(result['chapters']), 24)  # Root plus twenty-three chapters.
+        self.assertEqual(len(result['definitions']), 611)
+        self.assertEqual(result['documented_exports'], 845)
+        self.assertEqual(len(result['chapters']), 29)  # Root plus twenty-eight chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1599,7 +1658,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 63)
+        self.assertEqual(count, 71)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1892,8 +1951,7 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_later_batches_are_not_counted_as_documented(self):
         names = {e['name'] for e in self.check()['definitions']}
-        for name in ('make-region', 'make-pdf-document', 'make-gpu-context',
-                     'make-picture-image-filter', 'make-raster-buffer'):
+        for name in ('make-region', 'make-gpu-context', 'make-raster-buffer'):
             self.assertNotIn(name, names)
 
 
@@ -2514,9 +2572,9 @@ class R3EffectsSemanticsTests(unittest.TestCase):
             checks.Reader('(' + source.split('\n', 1)[1] + ')').read()
             self.assertEqual(source.count('(test-case '), count)
 
-    def test_picture_filter_is_explicitly_reserved_for_the_picture_batch(self):
+    def test_picture_filter_is_documented_with_the_picture_batch(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
-        self.assertNotIn('make-picture-image-filter', {r['name'] for r in manifest['definitions']})
+        self.assertIn('make-picture-image-filter', {r['name'] for r in manifest['definitions']})
         notes = (ROOT / 'docs/REFERENCE-DEVELOPMENT.md').read_text()
         self.assertIn('make-picture-image-filter', notes)
 
@@ -2563,8 +2621,8 @@ class R3dColorSemanticsTests(unittest.TestCase):
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 538)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 742)
+        self.assertEqual(len(manifest['definitions']), 611)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 845)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -2796,6 +2854,286 @@ class R3d1BindingScopeTests(unittest.TestCase):
         self.assertIn('check_review_html(html)', review_src)
         self.assertIn('check_review_html(extracted_html)', review_src)
 
+
+
+class R3eOutputSourceTests(unittest.TestCase):
+    """Inspect authored output semantics; no native or rendered success is implied."""
+    def text(self, name):
+        return (ROOT / checks.REFERENCE / (name + '.scrbl')).read_text()
+
+    def normalized(self, name):
+        return ' '.join(self.text(name).split())
+
+    def header(self, name):
+        for file in (ROOT / checks.REFERENCE).glob('*.scrbl'):
+            for form, header, _ in checks.commands(file.read_text(), recursive=True):
+                if form == 'defproc' and header[0][0] == name:
+                    return header
+        self.fail('missing definition: ' + name)
+
+    def test_added_output_call_shapes_match_independent_expectations(self):
+        specs, _ = checks.document_definitions(ROOT)
+        by_name = {s['name']: s for s in specs}
+        self.assertEqual(len(OUTPUT_PROCEDURES), 70)
+        for name, (mask, keywords) in OUTPUT_PROCEDURES.items():
+            with self.subTest(name=name):
+                self.assertEqual(by_name[name]['arity_mask'], str(mask))
+                self.assertEqual(by_name[name]['allowed_keywords'], sorted(keywords))
+                self.assertEqual(by_name[name]['required_keywords'], [])
+        for name in OUTPUT_PARAMETERS:
+            self.assertEqual(by_name[name]['kind'], 'parameter')
+        self.assertEqual(by_name['with-document-page']['kind'], 'syntax')
+
+    def test_public_module_families_are_complete_and_not_private_paths(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        for module, names in [('skia/pictures', PICTURE_EXPORTS),
+                              ('skia/output', OUTPUT_EXPORTS),
+                              ('skia/annotations', ANNOTATION_EXPORTS)]:
+            actual = {r['name'] for r in manifest['definitions'] if module in r['exports']}
+            self.assertEqual(actual, set(names))
+        self.assertFalse(any('private/' in mod for row in manifest['definitions']
+                             for mod in row['exports']))
+
+    def test_new_source_declarations_cover_whole_chapters_not_only_siblings(self):
+        for chapter, module in [('pictures', 'pictures'), ('output-pages', 'output'),
+                                ('annotations', 'annotations')]:
+            text = self.text(chapter)
+            declaration = ('@(declare-exporting skia skia/' + module +
+                           ' #:use-sources (skia/' + module + '))')
+            self.assertIn(declaration, text)
+            self.assertLess(text.index(declaration), text.index('@section'))
+            self.assertIn('skia/' + module, text.split('@title')[0])
+            self.assertEqual(text.count('@(declare-exporting'), 1)
+
+    def test_output_alias_probe_matches_actual_import_prefixes(self):
+        text = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        for module, names in [('pictures', PICTURE_EXPORTS), ('output', OUTPUT_EXPORTS),
+                              ('annotations', ANNOTATION_EXPORTS)]:
+            self.assertIn('(prefix-in ' + module + ': skia/' + module + ')', text)
+            for name in names:
+                self.assertIn('@racket[' + module + ':' + name + ']', text)
+                self.assertIn('@racket[' + name + ']', text)
+
+    def test_picture_trust_is_explicit_and_not_a_sandbox_claim(self):
+        text = self.normalized('pictures')
+        self.assertIn('Do not load untrusted SKP data', text)
+        self.assertIn('not a sandbox', text)
+        self.assertIn('executable SkSL', text)
+        for name in ('picture-from-bytes', 'picture-from-file'):
+            field = next(f for f in self.header(name)[0][1:] if f[0] == '#:trusted?')
+            self.assertEqual(field, ['#:trusted?', 'trusted?', 'boolean?', '#f'])
+
+    def test_recording_metadata_is_not_ink_bounds_or_raster_allocation(self):
+        text = self.normalized('pictures')
+        self.assertIn('not an exact visible-ink bound', text)
+        self.assertIn('origin is not translated to zero', text)
+        self.assertIn('@racket[(* 4 width height)] byte-limit', text)
+        self.assertIn('not a test that the native resource remains open', text)
+
+    def test_skp_size_overrides_do_not_recenter_commands(self):
+        text = self.normalized('pictures')
+        self.assertIn('Both overrides must be given together', text)
+        self.assertIn('not the recorded commands, cull rectangle, or coordinate origin', text)
+        self.assertIn('R-tree recording', text)
+
+    def test_picture_source_closes_the_previous_explicit_deferral(self):
+        text = self.normalized('image-filters')
+        self.assertIn('make-picture-image-filter', text)
+        self.assertIn('not a fit-to-size transform', text)
+        self.assertIn('ignores the dynamic source', text)
+        self.assertEqual(self.header('make-picture-image-filter')[1], 'image-filter?')
+
+    def test_pdf_page_macro_grammar_and_callback_values(self):
+        text = self.text('pdf-documents')
+        forms = [h for f, h, _ in checks.commands(text, recursive=True) if f == 'defform']
+        self.assertEqual(forms, [[['with-document-page',
+                                 ['canvas-id', 'document-expr', 'width-expr', 'height-expr'],
+                                 'body', '...+']]])
+        self.assertEqual(self.header('call-with-document-page')[1], 'any')
+        self.assertIn('returns all of the callback', text)
+        self.assertIn('aborts the whole document', self.normalized('pdf-documents'))
+
+    def test_pdf_dimensions_quality_and_literal_metadata_defaults(self):
+        header = self.header('make-pdf-document')
+        fields = {f[0]: f for f in header[0][1:]}
+        self.assertEqual(fields['#:creator'][-1], 'skia-for-racket')
+        self.assertEqual(fields['#:producer'][-1], 'Skia/PDF m119; skia-for-racket')
+        self.assertEqual(fields['#:encoding-quality'][-2:], [['integer-in', '0', '101'], '101'])
+        self.assertEqual(fields['#:creation-date'][-1], '#f')
+        self.assertEqual(self.header('document-begin-page!')[0][2][1],
+                          ['real-in', '1/1000', '14400'])
+
+    def test_pdfa_is_not_an_arbitrary_profile_or_conformance_certificate(self):
+        text = self.normalized('pdf-documents')
+        self.assertIn('sRGB output intent', text)
+        self.assertIn('not a caller-selected ICC profile', text)
+        self.assertIn('not a PDF/A conformance validation', text)
+        self.assertIn('UUID prevents a promise of byte-identical', text)
+
+    def test_pdf_and_svg_finalize_and_release_are_distinct(self):
+        pdf = self.normalized('pdf-documents')
+        svg = self.normalized('svg-documents')
+        self.assertIn('beginning another page does not revive an old canvas', pdf)
+        self.assertIn('without releasing the document', pdf)
+        self.assertIn('requires the native resource to remain open', pdf)
+        self.assertIn('an SVG with no drawing commands may be finished', svg)
+        self.assertIn('does not finalize it implicitly', svg)
+
+    def test_document_byte_results_are_independent_mutable_copies(self):
+        for name in ('picture->bytes', 'document->pdf-bytes', 'svg-document->bytes',
+                     'call-with-pdf-bytes', 'call-with-svg-bytes', 'output->bytes'):
+            self.assertEqual(self.header(name)[1], ['and/c', 'bytes?', ['not/c', 'immutable?']])
+
+    def test_file_helpers_freeze_destinations_and_publish_completed_files(self):
+        for chapter in ('pictures', 'pdf-documents', 'svg-documents'):
+            text = self.normalized(chapter)
+            self.assertIn('parent', text)
+            self.assertRegex(text, r'rename(?:d only after|s it only after)')
+        for chapter in ('pdf-documents', 'svg-documents'):
+            self.assertIn('current-directory', self.text(chapter))
+            self.assertIn('before', self.text(chapter))
+
+    def test_page_unit_and_margin_examples_check_actual_results(self):
+        text = self.normalized('output-pages')
+        self.assertIn('left, top, right, bottom order', text)
+        self.assertIn('not CSS order', text)
+        self.assertIn('96 pixels per inch', text)
+        self.assertIn('(eval:check (unit->points 127/5 \'mm) 72)', text)
+        self.assertIn('without subtracting margins', text)
+        self.assertIn("not points", text)
+
+    def test_output_format_restrictions_are_not_ignored_options(self):
+        text = self.normalized('output-pages')
+        self.assertIn('These are rejected options, not ignored', text)
+        self.assertIn('SVG requires exactly one page', text)
+        self.assertIn('not inferred from the filename suffix', text)
+        self.assertIn('Automatic text mode selects', text)
+
+    def test_page_callbacks_differ_from_picture_playback(self):
+        self.assertIn('Exporting it invokes the callback again', self.normalized('output-pages'))
+        self.assertIn('does not call the Racket procedure', self.normalized('pictures'))
+        self.assertIn('temporary translation and scale are restored', self.normalized('pictures'))
+
+    def test_fallback_has_explicit_bounds_scope_and_gpu_exclusion(self):
+        text = self.normalized('output-pages')
+        for phrase in ('does not inherit', 'ceilings of the padded extents',
+                       'GPU-surface target is rejected', 'callback canvas must not be retained',
+                       'failed callback does not draw the final snapshot'):
+            self.assertIn(phrase, text)
+        field = next(f for f in self.header('draw-rasterized')[0][1:] if f[0] == '#:scale')
+        self.assertEqual(field[-1], ['current-raster-output-scale'])
+
+    def test_annotation_names_are_document_scoped_and_checked_when_invisible(self):
+        text = self.normalized('annotations')
+        self.assertIn('scoped to the whole PDF document', text)
+        self.assertIn('Zero-size and fully clipped references are still checked', text)
+        self.assertIn('case-sensitive', text)
+        self.assertIn('Picture recording rejects named links', text)
+
+    def test_annotation_urls_and_identifier_encoding_have_distinct_roles(self):
+        text = self.normalized('annotations')
+        self.assertIn('Validation does not access the network', text)
+        self.assertIn('valid percent escapes', text)
+        self.assertIn('not a registered destination', text)
+        self.assertIn('(eval:check (destination-id "A") "dest-41")', text)
+
+    def test_native_tests_are_separate_and_wired_into_acceptance(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        for name, count in [('reference-output-pure-test.rkt', 13),
+                            ('reference-output-test.rkt', 18)]:
+            source = (ROOT / 'tools' / name).read_text()
+            self.assertIn('tools/' + name, runner)
+            self.assertEqual(source.count('(test-case '), count)
+            checks.Reader('(' + source.split('\n', 1)[1] + ')').read()
+        for chapter in ('pictures', 'pdf-documents', 'svg-documents'):
+            self.assertNotIn('@examples', self.text(chapter))
+
+    def test_render_gate_is_required_even_without_archive_publication(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        gate = "report['reference_html'] = check_review_html(html_site)"
+        self.assertIn(gate, runner)
+        self.assertLess(runner.index(gate), runner.index("report['status'] = 'passed'"))
+        self.assertLess(runner.index(gate), runner.index('if args.review_zip:',
+                                                        runner.index(gate)))
+        self.assertIn('reference_html_checked=False', runner)
+
+
+class R3e1EditorialTests(unittest.TestCase):
+    """Check the revised specification and real-macro test setup, not Racket execution."""
+
+    def test_page_form_prose_uses_the_documented_binding_identifier(self):
+        text = (ROOT / checks.REFERENCE / 'pdf-documents.scrbl').read_text()
+        start = text.index('@defform[(with-document-page')
+        end = text.index('@defproc[', start)
+        entry = ' '.join(text[start:end].split())
+        self.assertIn("@racket[canvas-id] bound to the page's canvas in @racket[body]", entry)
+        self.assertNotIn('@racket[canvas]', entry)
+        self.assertIn('body must be nonempty and end with an expression', entry)
+        self.assertIn('internal definitions and return multiple values', entry)
+        self.assertIn('page protection, abort-on-escape, and lifetime rules', entry)
+
+    def test_gpu_annotation_classification_links_to_the_execution_query(self):
+        text = (ROOT / checks.REFERENCE / 'annotations.scrbl').read_text()
+        start = text.index('@defproc[(canvas-annotation-backend')
+        end = text.index('@defproc[', start + 1)
+        entry = ' '.join(text[start:end].split())
+        self.assertIn("GPU-surface canvases are also classified as @racket['raster]", entry)
+        self.assertIn('do not produce document annotations', entry)
+        self.assertIn("independent of the surface's rendering backend", entry)
+        self.assertIn('@racket[canvas-execution-backend]', entry)
+        self.assertIn('Unsupported specialized canvases raise an exception', entry)
+
+    def test_expansion_helper_uses_the_public_macro_without_a_substitute_transformer(self):
+        text = (ROOT / 'tools/reference-output-pure-test.rkt').read_text()
+        forms = checks.Reader('(' + text.split('\n', 1)[1] + ')').read()
+        imports = [form for form in forms if form and form[0] == 'require']
+        self.assertTrue(any('skia' in form for form in imports))
+        self.assertIn(['define-namespace-anchor', 'expansion-anchor'], forms)
+        helper = next(form for form in forms if form[:2] ==
+                      ['define', ['expand-page-form', 'form']])
+        self.assertEqual(helper[2], [
+            'parameterize', [['current-namespace',
+                              ['namespace-anchor->namespace', 'expansion-anchor']]],
+            ['expand', ['datum->syntax', '#f', 'form']]])
+        self.assertNotIn('(define-syntax', text)
+        self.assertNotIn('(eval ', text)
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn("run('output-pure-tests'", runner)
+        self.assertIn("ROOT / 'tools/reference-output-pure-test.rkt'", runner)
+
+    def test_expansion_cases_cover_valid_bodies_empty_bodies_and_binding_errors(self):
+        text = (ROOT / 'tools/reference-output-pure-test.rkt').read_text()
+        forms = checks.Reader('(' + text.split('\n', 1)[1] + ')').read()
+        module = next(form for form in forms if form[:2] == ['module+', 'test'])
+        cases = [form for form in module[2:] if form and form[0] == 'test-case'
+                 and str(form[1]).startswith('page macro ')]
+        self.assertEqual(len(cases), 4)
+
+        def nodes(form):
+            if isinstance(form, list):
+                yield form
+                for child in form:
+                    yield from nodes(child)
+
+        self.assertEqual(sum(node[:1] == ['check-not-exn']
+                             for case in cases for node in nodes(case)), 2)
+        errors = [node for case in cases for node in nodes(case)
+                  if node[:1] == ['check-exn']]
+        self.assertEqual(len(errors), 3)
+        self.assertTrue(all(node[1] == 'exn:fail:syntax?' for node in errors))
+        calls = [node for case in cases for node in nodes(case)
+                 if node[:1] == ['expand-page-form']]
+        self.assertEqual(len(calls), 5)
+        self.assertTrue(all(call[1][0] == 'quote' for call in calls))
+        quoted_forms = [call[1][1] for call in calls]
+        self.assertIn(['with-document-page', ['canvas', '#f', '20', '10']], quoted_forms)
+        self.assertIn(['with-document-page', ['canvas', '#f', '20', '10'],
+                       ['define', 'saved', 'canvas']], quoted_forms)
+        self.assertIn(['with-document-page', ['42', '#f', '20', '10'], ['void']], quoted_forms)
+        self.assertIn('body expression ran', text)
+        self.assertIn('document expression ran', text)
+        self.assertIn('width expression ran', text)
+        self.assertIn('height expression ran', text)
 
 
 if __name__ == '__main__':

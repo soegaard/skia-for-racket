@@ -1,3 +1,169 @@
+# Skia Reference development: R3e.1 page grammar and annotation behavior
+
+The current Reference documents 611 bindings through 845 public export paths in
+28 conceptual chapters. R3e adds 73 bindings and five chapters: Pictures and
+Recording, PDF Documents, SVG Documents, Output Pages and Raster Fallback, and
+Links and Named Destinations. The existing Image Filters chapter gains the
+previously deferred `make-picture-image-filter` definition.
+
+## R3e.1 correction and acceptance status
+
+This correction applies after the delivered R3e sources. Its upstream baseline
+is `eadcff7fce37fc9c1e64e5a4a48fb4835c9fcaa2`, which precedes R3e. The incremental
+patch needs R3e already applied; the cumulative alternative includes R3e. The
+611 bindings, 845 mapped export paths, and 28 chapters are unchanged.
+
+The `with-document-page` grammar uses `canvas-id` for its binding position,
+`document-expr`, `width-expr`, and `height-expr` for its arguments, and `body ...+`
+for the nonempty body. Its description notes the required final expression.
+The implementation already rejects an empty body through the generated `lambda`;
+no macro implementation is changed. Four added expansion-only cases use the
+actual public macro, not a reconstructed transformer. They accept one expression
+and internal definitions with multiple results, and reject an empty body, a
+body containing only definitions, and a non-identifier canvas binding. Deliberately
+raising document, dimension, and body expressions must not run during expansion.
+The existing output-pure acceptance step runs these cases without allocating a PDF.
+
+The annotation entry explicitly classifies GPU-surface canvases as `raster` for
+annotation behavior and links to `canvas-execution-backend` for CPU/GPU execution.
+The unsupported-specialized-canvas qualification remains. No GPU test is implied
+by a source check of that explanation.
+
+The three tutorial links remain an integrated-render acceptance requirement.
+The existing renderer, cross-reference declarations, and publication gate are
+unchanged. A successful source check is not successful HTML publication. Keep
+the exact command log, `validation.json`, and ZIP checksum together when handing
+the generated review archive to an editor. The complete archive must contain
+its required companion manuals; do not replace it with a Reference-only ZIP.
+
+Use fresh paths outside the full checkout, with `skia` resolving to that checkout:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/test-reference.py
+"$RACKET" -l raco -- test tools/reference-output-pure-test.rkt
+python3 -B tools/check-reference.py --output ../reference-r3e1-source-check \
+  --source-zip ../skia-reference-r3e1-source-review.zip
+python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3e1-render-check --review-zip ../skia-reference-r3e1-review.zip
+```
+
+Inspect the actual validation result before delivering the ZIP. Source, Racket
+expansion, native behavior, Reference HTML, and extracted-archive checks are
+separate results. An unexecuted check or a stopped run must not be reported as
+passed. In particular, the expansion tests below are supplied for execution in
+a working Racket installation; Python inspection alone does not execute them.
+
+## R3e baseline and scope
+
+The baseline is `eadcff7fce37fc9c1e64e5a4a48fb4835c9fcaa2`, "Refine Reference
+color management documentation". This is an incremental revision after the
+committed R3d.1 correction, not a cumulative patch against an older baseline.
+Existing API entries, examples, tags, `for-label` imports, and the two repaired
+sibling-section export declarations are preserved. There are no library or
+tutorial implementation changes.
+
+All nine exports of `skia/pictures`, all fifteen exports of `skia/output`, and
+all six exports of `skia/annotations` have canonical entries and alias probes.
+Root-level `declare-exporting` declarations cover every subsection in these
+chapters; the private implementation modules are not public import paths.
+
+The core document APIs cover low-level lifecycles and scoped convenience calls.
+Closing storage, finishing a document, and publishing a completed file remain
+distinct. Failed protected PDF pages abort their whole document. SVG can finish
+without any drawing, unlike PDF's completed-page requirement. SKP loading is an
+explicit trust decision, not sandboxed parsing. Serialized cull bounds do not
+replace the nominal dimensions used by scaled playback. Recorded pictures and
+output-page callbacks have deliberately different replay semantics.
+
+The PDF/A option documents its sRGB output intent without promising arbitrary
+profile selection, sample conversion, reproducible UUIDs, or conformance
+validation. Metadata's literal creator and producer defaults are preserved.
+URI links and named destinations have separate validation and recording rules;
+zero-size named references are still checked at finalization.
+
+The scope does not claim completion of output auditing, output-policy records,
+bounded output groups, drawables, or specialized canvas/layer protocols. Those
+remain explicit deferred records for CPU completion (R3g). Streams and codecs
+remain R3f. GPU/GUI/DC interfaces remain R4. The source inventories, not filename
+similarity or these chapter titles, determine the remaining export coverage.
+
+## R3e authoritative implementation sources
+
+The following blobs were inspected at the baseline. Public names and signatures
+were transcribed from these sources; regression fixtures are not live captures.
+
+| Source | Git blob |
+|---|---|
+| `private/core.rkt` | `9861b7cf96ea6002c71e7eb904780d2fddff808e` |
+| `pictures.rkt` | `20b06532c5973f8bb73b36acefa6ca75b8b9332f` |
+| `private/picture-util.rkt` | `f2ff7ea1f4c807ddb6efeca71f84977c991b0bab` |
+| `output.rkt` | `ababf6f8f8094115d8895f1a190db83b6ae96a88` |
+| `annotations.rkt` | `faa9caf1f019a005129846e37e0578558481d6ce` |
+| `private/pdf-util.rkt` | `50dff5e92620862d5bc8b5a93efc4c6db8ef5a21` |
+| `private/svg-util.rkt` | `664003a5279f0b41b58633828689efb4700cc0c2` |
+| `private/output-util.rkt` | `49566348dd6827e285b0f18aaa794b6732e0796d` |
+| `private/annotation-util.rkt` | `00f049958054e27976a8ae6e784a9f08287cbc30` |
+| `private/filter-graph.rkt` | `a1d92c57ecd72e96369b9bbe4c073a1eb2625676` |
+
+Additional upstream references consulted:
+
+- https://api.skia.org/classSkPictureRecorder.html
+- https://api.skia.org/structSkPDF_1_1Metadata.html
+- https://docs.racket-lang.org/scribble/doc-modules.html
+- https://docs.racket-lang.org/scribble/doc-forms.html
+
+## Examples and validation gates
+
+The manual contains 71 displayed native blocks and 17 evaluated blocks. Eight
+native examples and two pure evaluated blocks are new. The old 63 displayed and
+15 evaluated examples remain unchanged. Native examples are displayed during
+rendering, then executed separately by `reference-native-test.rkt`, twice in
+fresh namespaces. No font files are included in source or review bundles.
+
+`reference-output-pure-test.rkt` supplies nine native-free public API cases.
+`reference-output-test.rkt` supplies eighteen opt-in CPU cases covering picture
+retention and storage, document lifecycles, page aborts, copied bytes, annotations,
+callback reinvocation, raster fallback, publication failure, and PDF/A metadata.
+Its PDF header/output-intent checks are not a PDF/A validator or visual review.
+These new native cases need Skia but no font lookup, HarfBuzz, GUI, or GPU. The
+complete retained acceptance suite still needs its text fonts and HarfBuzz.
+
+The Python runner now requires `check_review_html` for every standalone render
+and staged-site check, even without `--review-zip`. A `badlink` in any Reference
+page, including the identifier index, prevents an overall passing result. The
+report distinguishes `scribble_rendered` from `reference_html_checked`; ordinary
+source-only success leaves both false. Existing binding/xref checks still cover
+all declared export paths, and the archive gate rechecks the extracted output.
+Installed checks retain their existing collection-xref rules because valid
+installed links can leave the package directory for other local manuals.
+Portable review archives made from installed output still pass the strict
+HTML check after relocation. Companion-page limitations are reported separately
+and do not certify a full site.
+
+The seed/companion/final build sequence is unchanged. This stronger required gate
+is not a claim that any current rendered archive has passed it. Never substitute
+a manually zipped Reference directory for an archive that failed validation.
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py --output ../reference-r3e-source \
+  --source-zip ../skia-reference-r3e-source-review.zip
+"$RACKET" -l raco -- test tools/reference-output-pure-test.rkt
+"$RACKET" -l raco -- test tools/reference-output-test.rkt
+python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3e-render --review-zip ../skia-reference-r3e-review.zip
+```
+
+Use fresh output paths and ensure the `skia` collection resolves to the revised
+checkout. Source review requires the two original hash-pinned API inventories.
+Synthetic Python inventories are explicitly not substitutes for those files.
+Regenerate `SOURCE-SHA256SUMS.txt` only in the full checkout and commit it with
+the source changes. Keep downloaded patches and output directories outside it.
+
+## Earlier R3d development
+
 # Skia Reference development: R3d color management
 
 The current Reference declares 538 bindings through 742 public export paths in
