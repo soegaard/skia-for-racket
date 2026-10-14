@@ -1,4 +1,51 @@
-# Skia Reference development: R3g-b
+# Skia Reference development: R3g-b.1
+
+## Local editorial corrections
+
+Baseline: `6e7584be8d46122168065f2af7e82431bc0a16c3`. The three pixel-format
+inventory constants now specify `(and/c (vectorof symbol?) immutable?)`.
+The font-cache count queries and setter describe entry counts and the previous
+count limit, not byte quantities. Their signatures and behavior are unchanged.
+Byte-valued cache operations retain their byte-specific descriptions.
+
+The no-op cache-limit example is removed rather than replaced by a more invasive
+process-global mutation. The Reference now has 97 displayed examples and
+23 evaluated blocks. All other examples and all procedure signatures remain.
+The coverage manifest stays at R3g-b: 1111 bindings, 1822 export paths, and
+49 chapters. Its implementation baseline is unchanged; this is not an API revision.
+
+Ten Python regressions check the refined contracts, separate count and byte
+units, removal of the example, the constant readers, and the pure test wiring. The raster pure suite
+now contains fourteen cases, including a contract test using the actual public
+format inventories and rejecting mutable or nonsymbol vectors. The 28 native
+raster cases are unchanged. Supplied Racket tests still require actual execution.
+
+The Python and Racket constant readers now recognize the exact documented
+immutable-symbol-vector contract. Other compound constant contracts still fail
+until both readers and live validation support them. The runtime check verifies
+immutability and every element instead of treating the expression as a predicate
+name. Standard list, string, and vector predicates use racket/base bindings;
+the public Skia module need not re-export those predicates. The shared runtime
+helper is independently importable by the native-free suite without running the
+worker's command-line entry point. No contract expression is evaluated by Python.
+
+Produce the next editor handoff with fresh output paths outside the checkout:
+
+```sh
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py \
+  --output ../reference-r3gb1-source-check \
+  --source-zip ../skia-reference-r3gb1-source-review.zip
+```
+
+This archive includes all chapter sources, pinned inventories, and checker
+scripts. Its ordinary source checker runs in staging and after extraction.
+It is not a complete installation for native execution or a rendered manual.
+Reference-only previews remain suitable for editing. Neither tutorial links
+nor the existing integrated publication checks are changed by this revision.
+Regenerate the repository-wide `SOURCE-SHA256SUMS.txt` only in the full checkout.
+
+## Earlier R3g-b implementation
 
 ## Raster, output policy, and diagnostics
 

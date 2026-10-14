@@ -33,14 +33,13 @@ unsigned size type. The query does not purge the cache.
 
 @defproc[(skia-font-cache-count-used)
           (integer-in 0 2147483647)]{
-Returns the current font-cache entry count. Byte results must be representable as the native
-unsigned size type. The query does not purge the cache.
+Returns the current number of font-cache entries. The query does not purge the cache.
 }
 
 @defproc[(skia-font-cache-count-limit)
           (integer-in 0 2147483647)]{
-Returns the current font-cache count limit. Byte results must be representable as the native
-unsigned size type. The query does not purge the cache.
+Returns the current upper limit on the number of font-cache entries. The query does not
+purge the cache.
 }
 
 @defproc[(skia-resource-cache-used)
@@ -71,8 +70,8 @@ adds no scope that automatically restores it.
 
 @defproc[(skia-set-font-cache-count-limit! [limit (integer-in 0 2147483647)])
           (integer-in 0 2147483647)]{
-Sets the font-cache count limit and returns its previous setting. The result is not bytes freed,
-current usage, or the newly installed limit. Byte limits must fit the native unsigned size type.
+Sets the upper limit on the number of font-cache entries to @racket[limit] and returns the
+previous count limit. The result is not the current entry count or the newly installed limit.
 Settings affect the loaded library globally; restore a temporary change explicitly. The wrapper
 adds no scope that automatically restores it.
 }
@@ -132,18 +131,6 @@ Returns current cache observations in an immutable hash. The keys are @racket['s
 The fields come from separate native queries. They should not be treated as one simultaneous
 measurement or summed as a complete account of process memory.
 }
-
-@racketblock[
-(define before (skia-font-cache-limit))
-(dynamic-wind
-  void
-  (lambda ()
-    (define previous (skia-set-font-cache-limit! before))
-    (= previous before))
-  (lambda () (skia-set-font-cache-limit! before)))
-]
-
-The setter returns the previous limit. It does not return a measurement of freed memory.
 
 @section[#:tag "skia-memory-statistics"]{Bounded Memory Reports}
 

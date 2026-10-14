@@ -1,9 +1,10 @@
 #lang racket/base
 
 ;; No native allocations or calls are required by these checks.
-(require rackunit racket/list racket/vector
+(require rackunit racket/contract racket/list racket/vector
          skia/image-info skia/surface-properties skia/output-policy skia/native-capabilities
-         skia/graphics)
+         skia/graphics
+         (submod "reference-runtime.rkt" constant-contracts))
 
 (define (expand-layer forms)
   (parameterize ([current-namespace (make-base-namespace)])
@@ -20,6 +21,32 @@
     (check-equal? (vector->list pixel-formats)
                   (append (vector->list integer-pixel-formats)
                           (vector->list float-pixel-formats))))
+
+  (test-case "format inventory contracts require immutable symbol vectors"
+    (define formats/c (and/c (vectorof symbol?) immutable?))
+    (define spec (constant-shape '(and/c (vectorof symbol?) immutable?)))
+    (check-equal? (hash-ref spec 'value_contract)
+                  '("and/c" ("vectorof" "symbol?") "immutable?"))
+    (for ([formats (in-list (list integer-pixel-formats float-pixel-formats pixel-formats))])
+      (define checked (contract formats/c formats 'format-inventory 'reference-test))
+      (check-true (constant-value-valid? spec 'skia/image-info formats))
+      (check-equal? (vector->list checked) (vector->list formats))
+      (for ([format (in-vector checked)])
+        (check-pred symbol? format)))
+    (check-false (constant-value-valid? spec 'skia/image-info (vector 'rgba-8888)))
+    (check-false (constant-value-valid? spec 'skia/image-info (vector-immutable 8)))
+    (check-true (constant-value-valid? (constant-shape 'list?) 'skia/output-policy '(pdf svg)))
+    (check-true (constant-value-valid? (constant-shape 'string?) 'skia/native-capabilities "x"))
+    (check-true (constant-value-valid? (constant-shape 'vector?) 'skia/image-info #(a b)))
+    (check-exn exn:fail? (lambda () (constant-shape '(and/c number? positive?))))
+    (check-exn exn:fail:contract?
+               (lambda ()
+                 (contract formats/c (vector 'rgba-8888) 'format-inventory 'reference-test)))
+    (check-exn exn:fail:contract?
+               (lambda ()
+                 (vector-ref
+                  (contract formats/c (vector-immutable 8) 'format-inventory 'reference-test)
+                  0))))
 
   (test-case "storage description does not imply a drawing target"
     (define info (make-image-info 2 3 #:alpha-type 'unpremul))

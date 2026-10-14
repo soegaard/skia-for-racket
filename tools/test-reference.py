@@ -1694,7 +1694,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 98)
+        self.assertEqual(count, 97)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -3755,7 +3755,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 98)
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 97)
         self.assertEqual(sum(f == 'examples' for f, _ in forms), 23)
         text = (ROOT / 'tools/reference-native-test.rkt').read_text()
         self.assertIn('(in-range 2)', text)
@@ -4029,14 +4029,14 @@ class R3gbRasterTests(unittest.TestCase):
     def test_displayed_examples_remain_opt_in_native_code(self):
         forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, _, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(forms.count('racketblock'), 98)
+        self.assertEqual(forms.count('racketblock'), 97)
         self.assertEqual(forms.count('examples'), 23)
         for name in ('raster-buffers', 'image-operations', 'graphics', 'output-groups'):
             self.assertNotIn('@examples', self.text(name))
 
     def test_racket_suites_are_balanced_and_connected_to_acceptance(self):
         runner = (ROOT / 'tools/check-reference.py').read_text()
-        for name, expected in [('reference-raster-pure-test.rkt', 13),
+        for name, expected in [('reference-raster-pure-test.rkt', 14),
                                ('reference-raster-test.rkt', 28)]:
             self.assertIn(name, runner)
             text = (ROOT / 'tools' / name).read_text()
@@ -4063,6 +4063,127 @@ class R3gbRasterTests(unittest.TestCase):
                        '(check-equal? assembled expected)', "'(1 0)"):
             self.assertIn(phrase, text)
         self.assertEqual(text.count('(test-case '), 21)
+
+
+class R3gb1EditorialTests(unittest.TestCase):
+    def text(self, name):
+        return (ROOT / checks.REFERENCE / (name + '.scrbl')).read_text()
+
+    def entry(self, name):
+        text = self.text('graphics')
+        header, start = next((h, at) for f, h, at in checks.commands(text)
+                             if f == 'defproc' and h[0][0] == name)
+        reader = checks.Reader(text, text.index('[', start))
+        reader.read()
+        end = checks.brace_end(text, reader.position)
+        body = ' '.join(text[reader.position + 1:end - 1].split())
+        return header, body
+
+    def test_format_inventory_contracts_require_immutable_symbol_vectors(self):
+        things = {h[0]: h[1] for f, h, _ in checks.commands(self.text('pixel-descriptions'))
+                  if f == 'defthing'}
+        for name in ('integer-pixel-formats', 'float-pixel-formats', 'pixel-formats'):
+            with self.subTest(name=name):
+                self.assertEqual(things[name], ['and/c', ['vectorof', 'symbol?'], 'immutable?'])
+
+    def test_constant_reader_preserves_the_compound_contract_in_its_specification(self):
+        contract = ['and/c', ['vectorof', 'symbol?'], 'immutable?']
+        shape = checks.constant_shape(['pixel-formats', contract])
+        self.assertEqual(shape, dict(name='pixel-formats', kind='value', arguments=[],
+                                     value_kind='constant', value_contract=contract))
+        self.assertNotIn('value_predicate', shape)
+        self.assertNotIn('arity_mask', shape)
+
+    def test_constant_reader_rejects_unreviewed_or_quoted_compound_forms(self):
+        for contract in (['and/c', 'vector?', 'immutable?'],
+                         ['and/c', ['vectorof', 'string?'], 'immutable?'],
+                         ['and/c', ['vectorof', checks.String('symbol?')], 'immutable?'],
+                         [checks.String('and/c'), ['vectorof', 'symbol?'], 'immutable?'],
+                         ['quote', ['and/c', ['vectorof', 'symbol?'], 'immutable?']],
+                         [], checks.String('vector?')):
+            with self.subTest(contract=contract), self.assertRaises(checks.CheckError):
+                checks.constant_shape(['pixel-formats', contract])
+
+    def test_full_source_report_carries_all_three_compound_constant_contracts(self):
+        report = checks.check_source(ROOT)
+        for name in ('integer-pixel-formats', 'float-pixel-formats', 'pixel-formats'):
+            entry = next(e for e in report['definitions'] if e['name'] == name)
+            self.assertEqual(entry['value_contract'],
+                             ['and/c', ['vectorof', 'symbol?'], 'immutable?'])
+            self.assertEqual(entry['kind'], 'value')
+            self.assertEqual(entry['exports'], ['skia', 'skia/image-info'])
+
+    def test_runtime_reader_and_value_checker_share_the_tested_pure_submodule(self):
+        text = (ROOT / 'tools/reference-runtime.rkt').read_text()
+        self.assertIn('(module constant-contracts racket/base', text)
+        self.assertIn('(record! (cadr datum) (constant-shape (caddr datum)))', text)
+        self.assertIn('(constant-value-valid? spec (string->symbol module) value)', text)
+        self.assertIn('(for/and ([element (in-vector value)]) (symbol? element))', text)
+        for fragment in ('[(list?) list?]', '[(string?) string?]', '[(vector?) vector?]'):
+            self.assertIn(fragment, text)
+        pure = (ROOT / 'tools/reference-raster-pure-test.rkt').read_text()
+        self.assertIn('(submod "reference-runtime.rkt" constant-contracts)', pure)
+        self.assertIn('(constant-value-valid? spec \'skia/image-info formats)', pure)
+
+    def test_count_queries_describe_entries_not_bytes(self):
+        for name in ('skia-font-cache-count-used', 'skia-font-cache-count-limit'):
+            with self.subTest(name=name):
+                header, body = self.entry(name)
+                self.assertEqual(header[1], ['integer-in', '0', '2147483647'])
+                self.assertIn('number of font-cache entries', body)
+                self.assertIn('does not purge', body)
+                self.assertNotIn('byte', body.lower())
+                self.assertNotIn('unsigned size type', body)
+
+    def test_count_setter_returns_previous_count_limit_and_keeps_global_scope(self):
+        header, body = self.entry('skia-set-font-cache-count-limit!')
+        self.assertEqual(header, [
+            ['skia-set-font-cache-count-limit!', ['limit', ['integer-in', '0', '2147483647']]],
+            ['integer-in', '0', '2147483647']])
+        for phrase in ('number of font-cache entries', 'previous count limit',
+                       'not the current entry count', 'loaded library globally',
+                       'restore a temporary change explicitly'):
+            self.assertIn(phrase, body)
+        self.assertNotIn('byte', body.lower())
+        self.assertNotIn('unsigned size type', body)
+
+    def test_byte_accessors_and_setters_keep_their_distinct_units(self):
+        for name in ('skia-font-cache-used', 'skia-font-cache-limit',
+                     'skia-resource-cache-used', 'skia-resource-cache-limit',
+                     'skia-resource-cache-single-allocation-limit'):
+            with self.subTest(name=name):
+                header, body = self.entry(name)
+                self.assertEqual(header[1], 'exact-nonnegative-integer?')
+                self.assertIn('byte', body.lower())
+                self.assertIn('unsigned size type', body)
+        for name in ('skia-set-font-cache-limit!', 'skia-set-resource-cache-limit!',
+                     'skia-set-resource-cache-single-allocation-limit!'):
+            with self.subTest(name=name):
+                _, body = self.entry(name)
+                self.assertIn('previous setting', body)
+                self.assertIn('bytes freed', body)
+                self.assertIn('Byte limits must fit', body)
+
+    def test_no_op_cache_example_is_removed_without_replacing_it(self):
+        text = self.text('graphics')
+        forms = [f for f, _, _ in checks.commands(text, recursive=True)]
+        self.assertNotIn('racketblock', forms)
+        self.assertNotIn('examples', forms)
+        self.assertNotIn('(define before (skia-font-cache-limit))', text)
+        self.assertNotIn('The setter returns the previous limit.', text)
+        self.assertIn('@section[#:tag "skia-memory-statistics"]', text)
+
+    def test_pure_suite_checks_real_constants_and_both_rejection_cases(self):
+        text = (ROOT / 'tools/reference-raster-pure-test.rkt').read_text()
+        for phrase in ('racket/contract', '(and/c (vectorof symbol?) immutable?)',
+                       '(list integer-pixel-formats float-pixel-formats pixel-formats)',
+                       '(contract formats/c formats', '(vector \'rgba-8888)',
+                       '(vector-immutable 8)', '(check-pred symbol? format)'):
+            self.assertIn(phrase, text)
+        self.assertEqual(text.count('(test-case '), 14)
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn("run('raster-pure-tests'", runner)
+        self.assertIn('reference-raster-pure-test.rkt', runner)
 
 
 if __name__ == '__main__':

@@ -227,12 +227,22 @@ def procedure_shape(header):
 
 
 def constant_shape(header):
-    """Document a constant checked by a literal predicate from its public module."""
+    """Read literal predicates and the reviewed immutable-symbol-vector contract.
+
+    Contract expressions are not evaluated here. Keep other compound contracts
+    unsupported until the native reader and live value check also support them.
+    """
     need(isinstance(header, list) and len(header) == 2
-         and all(type(item) is str and not item.startswith('#:') for item in header),
-         'unsupported constant declaration; expected name and literal predicate')
-    return dict(name=header[0], kind='value', arguments=[],
-                value_kind='constant', value_predicate=header[1])
+         and type(header[0]) is str and not header[0].startswith('#:'),
+         'unsupported constant declaration; expected name and contract')
+    contract = header[1]
+    shape = dict(name=header[0], kind='value', arguments=[], value_kind='constant')
+    if type(contract) is str and not contract.startswith('#:'):
+        return dict(shape, value_predicate=contract)
+    need(contract == ['and/c', ['vectorof', 'symbol?'], 'immutable?']
+         and all(type(atom) is str for atom in [contract[0], *contract[1], contract[2]]),
+         'unsupported compound constant contract')
+    return dict(shape, value_contract=contract)
 
 
 def structure_shapes(header):

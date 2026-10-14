@@ -7,6 +7,43 @@
          (only-in scribble/core link-element-tag)
          (for-label (prefix-in main: skia) (prefix-in color: skia/color)))
 
+;; This independent submodule can be tested without running the command-line worker.
+(module constant-contracts racket/base
+  (provide constant-shape constant-value-valid?)
+
+  (define symbol-vector-contract '(and/c (vectorof symbol?) immutable?))
+  (define symbol-vector-json '("and/c" ("vectorof" "symbol?") "immutable?"))
+
+  (define (constant-shape contract)
+    (define shape (hasheq 'kind "value" 'arguments '() 'value_kind "constant"))
+    (cond
+      [(symbol? contract) (hash-set shape 'value_predicate (symbol->string contract))]
+      [(equal? contract symbol-vector-contract)
+       (hash-set shape 'value_contract symbol-vector-json)]
+      [else (error 'reference-runtime "unsupported compound constant contract: ~e" contract)]))
+
+  (define (constant-value-valid? spec module value)
+    (define contract (hash-ref spec 'value_contract #f))
+    (cond
+      [contract
+       (unless (equal? contract symbol-vector-json)
+         (error 'reference-runtime "unsupported constant contract: ~e" contract))
+       (and (vector? value) (immutable? value)
+            (for/and ([element (in-vector value)]) (symbol? element)))]
+      [else
+       (define name (string->symbol (hash-ref spec 'value_predicate)))
+       ;; Standard predicates belong to racket/base; public Skia submodules do
+       ;; not have to re-export them to document their own list/string constants.
+       (define predicate
+         (case name
+           [(list?) list?]
+           [(string?) string?]
+           [(vector?) vector?]
+           [else (dynamic-require module name)]))
+       (and (procedure? predicate) (predicate value))])))
+
+(require (submod "." constant-contracts))
+
 (define-runtime-path root "..")
 (define specs-file #f)
 (define output-file #f)
@@ -131,11 +168,8 @@
       [(defstruct*) (record-structure! datum)]
       [(defproc) (record! (caadr datum) (procedure-shape (cadr datum)))]
       [(defthing)
-       (need (and (symbol? (cadr datum)) (symbol? (caddr datum)))
-             "unsupported constant declaration")
-       (record! (cadr datum)
-                (hasheq 'kind "value" 'arguments '() 'value_kind "constant"
-                        'value_predicate (symbol->string (caddr datum))))]
+       (need (symbol? (cadr datum)) "unsupported constant declaration")
+       (record! (cadr datum) (constant-shape (caddr datum)))]
       [(defform) (record! (caadr datum) (hasheq 'kind "syntax" 'arguments '()))]
       [(defparam)
        (record! (cadr datum)
@@ -163,11 +197,8 @@
            [(equal? (hash-ref spec 'value_kind #f) "struct-type")
             (need (struct-type? value) "not a structure-type descriptor: ~a / ~a" module name)]
            [(equal? (hash-ref spec 'value_kind #f) "constant")
-            (define predicate
-              (dynamic-require (string->symbol module)
-                               (string->symbol (hash-ref spec 'value_predicate))))
-            (need (and (procedure? predicate) (predicate value))
-                  "constant does not satisfy its declared predicate: ~a / ~a" module name)]
+            (need (constant-value-valid? spec (string->symbol module) value)
+                  "constant does not satisfy its declared contract: ~a / ~a" module name)]
            [else (error 'reference-runtime "unsupported value kind: ~a" name)])]
         [else
          (need (procedure? value) "not a procedure: ~a / ~a" module name)

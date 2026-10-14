@@ -189,19 +189,19 @@ certify that incremental decoding was complete.
 
 @(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
 
-@defthing[integer-pixel-formats vector?]{
+@defthing[integer-pixel-formats (and/c (vectorof symbol?) immutable?)]{
 The immutable vector of supported integer format symbols, in order: @racket['rgba-8888],
 @racket['bgra-8888], @racket['rgb-888x], @racket['alpha-8], @racket['gray-8], @racket['rgb-565],
 and @racket['rgba-1010102]. These describe storage, not encoded file formats. Use
 @racket[image-info-supports?] to check a particular operation.
 }
 
-@defthing[float-pixel-formats vector?]{
+@defthing[float-pixel-formats (and/c (vectorof symbol?) immutable?)]{
 The immutable vector @racket[#(rgba-f16 rgba-f32)] of supported floating-point storage formats.
 Both contain four channels; the format names do not imply a color-space interpretation.
 }
 
-@defthing[pixel-formats vector?]{
+@defthing[pixel-formats (and/c (vectorof symbol?) immutable?)]{
 The immutable vector containing the integer formats followed by the floating-point formats.
 Membership does not establish that every decoder, drawing target, or encoder supports a
 particular color-type and alpha-type combination.
