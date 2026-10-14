@@ -69,7 +69,7 @@ are closed before it returns; the image remains owned by the caller and its
 context must remain open.
 
 @racketblock[
-(require skia/gpu)
+(require skia skia/gpu)
 (define (gpu-red-tile context)
   (call-with-gpu-context context
     (lambda ()

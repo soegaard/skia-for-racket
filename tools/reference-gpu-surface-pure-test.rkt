@@ -2,10 +2,35 @@
 
 ;; Native-free checks. Fake operations test the actual one-shot lifetime worker;
 ;; they do not establish GPU, pixel, driver, or platform acceptance.
-(require rackunit racket/list skia skia/gpu
+(require rackunit racket/list racket/runtime-path syntax/modread skia skia/gpu
          "../private/gpu-format-util.rkt"
          "../private/gpu-cache-util.rkt"
          "../private/gpu-render.rkt")
+
+
+
+(define-runtime-path reference-directory "../scribblings/reference")
+
+(define (displayed-blocks path)
+  (define (walk form)
+    (cond [(not (pair? form)) '()]
+          [(memq (car form) '(quote quasiquote examples)) '()]
+          [(eq? (car form) 'racketblock) (list (cdr form))]
+          [else (append-map walk form)]))
+  (define document
+    (call-with-input-file path
+      (lambda (in)
+        (with-module-reading-parameterization
+          (lambda () (syntax->datum (read-syntax path in)))))))
+  (walk document))
+
+(define (compile-displayed-block block)
+  ;; A fresh base namespace deliberately inherits none of this test module's
+  ;; skia/skia-gpu imports. The block must provide every binding it uses.
+  (define namespace (make-base-namespace))
+  (parameterize ([current-namespace namespace])
+    (eval `(module displayed-gpu-example racket/base ,@block))
+    (dynamic-require ''displayed-gpu-example #f)))
 
 (define (fake-render #:failure [failure #f] #:draw [draw (lambda () (values))])
   (define events '())
@@ -130,6 +155,16 @@
     (check-equal? (car out) 'raised)
     (check-equal? events
       '(context enter surface draw readback close-surface exit close-context close-image)))
+
+  (test-case "displayed GPU helpers compile using only their shown imports"
+    (define blocks
+      (append*
+       (for/list ([name '("gpu-surfaces.scrbl" "gpu-images.scrbl" "gpu-transfers.scrbl")])
+         (displayed-blocks (build-path reference-directory name)))))
+    (check-equal? (length blocks) 4)
+    (for ([block (in-list blocks)])
+      (check-equal? (car block) '(require skia skia/gpu))
+      (check-not-exn (lambda () (compile-displayed-block block)))))
 
   (test-case "GPU predicates reject unrelated data without native initialization"
     (check-false (gpu-surface? #f))

@@ -1,0 +1,72 @@
+#lang scribble/manual
+
+@(require (for-label racket/base racket/contract skia skia/gpu skia/gpu-interop))
+
+@title[#:tag "skia-gpu-external-resources"]{External GPU Resources}
+
+@defmodule[skia/gpu-interop #:no-declare]
+@(declare-exporting skia/gpu-interop #:use-sources (skia/gpu-interop))
+
+An @deftech{external GPU texture handoff} is an opaque, owner-thread token that
+coordinates one transfer between a caller-owned native texture and one exact
+GPU context. The safe API never exposes a native pointer. Backend-specific
+constructors that accept native pointers are documented separately in
+@secref["skia-gpu-native-handoffs"].
+
+A token is single-use. Its normal states progress from ready to active to
+consumed. Explicitly closing an unused or consumed token retires its retained
+native references. A validation failure before a handoff begins can leave the
+token ready; once an operation has begun, construct a new token for another
+handoff instead of retrying the old one.
+
+@defproc[(gpu-external-texture? [v any/c]) boolean?]{
+Returns whether @racket[v] is an external-texture handoff wrapper. The predicate
+also recognizes consumed and retired wrappers. It does not prove that the
+underlying native resource is currently usable.
+}
+
+@defproc[(gpu-external-texture-info [texture gpu-external-texture?])
+          (and/c hash? immutable?)]{
+Returns detached diagnostic information on the token's creating thread. The
+report includes its backend, context generation, handoff state, backend-specific
+observations, and @racket['raw_handles_exposed] set to false. The report does
+not grant access to, extend, or synchronize the native resource.
+}
+
+@defproc[(gpu-external-texture-close! [texture gpu-external-texture?]) void?]{
+Retires the token and its retained backend references on the creating execution
+owner. Closing an active token raises. Closing an already retired token is
+harmless. The state is marked retired before its backend retirement action runs,
+so an indeterminate native retirement is not silently retried.
+
+Closing a token does not close its GPU context. Queued native releases still
+follow that context's owner-side drain and shutdown protocol.
+}
+
+@defproc[(gpu-import-image [context gpu-context?]
+                           [texture gpu-external-texture?]) gpu-image?]{
+Consumes a ready token by making an independent Skia-owned GPU image in the
+exact associated @racket[context]. The returned image does not alias the
+caller's external storage and follows the normal GPU-image lifetime rules.
+Backend handoff synchronization and validation occur before control returns.
+There is no CPU pixel readback in the production copy path.
+
+A token belonging to another context, another execution owner, or the wrong
+state is rejected. Nested external-resource operations are not supported.
+}
+
+@defproc[(call-with-gpu-external-surface
+          [context gpu-context?] [texture gpu-external-texture?]
+          [proc (-> canvas? any)]) any]{
+Consumes a ready token by temporarily exposing its external texture as a drawing
+target. @racket[proc] receives only a borrowed Skia canvas and its multiple
+values are returned. The canvas expires at callback exit and cannot be retained
+as a surface, snapshot source, or native-resource handle.
+
+The backend verifies that the token is suitable for rendering before entering
+the active state. The callback must obey the ordinary canvas-state rules; native
+completion and resource retirement still run on exceptional or nonlocal exit.
+Drawing performed before an exception is not rolled back. Successful completion
+returns ownership of the external storage to the caller according to the
+backend's synchronization contract.
+}

@@ -1,4 +1,37 @@
-# Skia Reference development: R4b
+# Skia Reference development: R4c
+
+## External GPU interoperation
+
+Baseline: `57f4b0e2a732a9a9c0ec27f05affe074fbf41518`
+(`Expand Reference GPU surface coverage`). R4c adds 18 bindings through 20
+public export paths and five chapters. The Reference has 1196 definitions,
+1919 documented export paths, and 61 conceptual chapters. The checker accounts
+for 1978 export records including the retained source-verified one-shot renderer;
+59 records remain for R4d-R4e presentation/GUI and DC integration.
+
+The chapters separate OpenGL host creation, diagnostics, explicit GL handoffs,
+safe single-use external-resource tokens, and unsafe Metal/D3D12 native-pointer
+construction. Safe token operations never expose a raw pointer. The unsafe
+modules state that pointer validity is a caller precondition and that malformed
+or freed native objects can crash the process.
+
+The R4b editorial corrections are included: all four GPU displayed helpers now
+show `(require skia skia/gpu)`, and the GPU-image introduction distinguishes
+ordinary canvas image drawing from CPU-only image operations. The pure R4b
+suite compiles each displayed helper in a fresh base namespace using only the
+imports shown inside that block, so surrounding test-module imports cannot hide
+an omitted dependency.
+
+`tools/reference-gpu-interop-pure-test.rkt` contains native-free policy and
+single-use-token cases. It uses explicit fake token backends and pure platform
+validators; it is not native interop acceptance. Real external-resource
+acceptance remains platform-specific: the repository's existing OpenGL/EGL,
+Direct3D, and Metal validators exercise native objects, synchronization, pixels,
+and cleanup on their supported hosts. This documentation batch does not invent
+a cross-platform mock result or treat source validation as GPU execution.
+
+Reference-only editing previews remain distinct from integrated publication
+validation, as described below.
 
 ## GPU surfaces, images, transfers, and synchronization
 

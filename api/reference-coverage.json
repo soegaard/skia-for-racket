@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R4b",
-  "reviewed_repository_commit": "6b474cc2cca76377fa220cb054eb5b8d7d6e5ced",
+  "stage": "R4c",
+  "reviewed_repository_commit": "57f4b0e2a732a9a9c0ec27f05affe074fbf41518",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R4c-R4e",
-    "reason": "External interoperation, GPU diagnostics/output adapters, presentation, GUI, and DC."
+    "stage": "R4d-R4e",
+    "reason": "GPU presentation/GUI and Racket DC integration; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -12514,6 +12514,188 @@
       "exports": [
         "skia/gpu",
         "skia/gpu-diagnostics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-egl-gpu-context",
+      "chapter": "scribblings/reference/gpu-opengl-hosts.scrbl",
+      "canonical_module": "skia/gpu-egl",
+      "exports": [
+        "skia/gpu-egl"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-current-egl-gpu-provider",
+      "chapter": "scribblings/reference/gpu-opengl-hosts.scrbl",
+      "canonical_module": "skia/gpu-egl",
+      "exports": [
+        "skia/gpu-egl"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-racket-gl-provider",
+      "chapter": "scribblings/reference/gpu-opengl-hosts.scrbl",
+      "canonical_module": "skia/gpu-racket-gl",
+      "exports": [
+        "skia/gpu-racket-gl"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-gl-interface-info",
+      "chapter": "scribblings/reference/gpu-diagnostics.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-diagnostics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-gl-has-extension?",
+      "chapter": "scribblings/reference/gpu-diagnostics.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-diagnostics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-smoke-test",
+      "chapter": "scribblings/reference/gpu-diagnostics.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-external-gl",
+      "chapter": "scribblings/reference/gpu-gl-interop.scrbl",
+      "canonical_module": "skia/gpu-gl-interop",
+      "exports": [
+        "skia/gpu-gl-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-gl-framebuffer",
+      "chapter": "scribblings/reference/gpu-gl-interop.scrbl",
+      "canonical_module": "skia/gpu-gl-interop",
+      "exports": [
+        "skia/gpu-gl-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-copy-gl-texture",
+      "chapter": "scribblings/reference/gpu-gl-interop.scrbl",
+      "canonical_module": "skia/gpu-gl-interop",
+      "exports": [
+        "skia/gpu-gl-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-external-texture?",
+      "chapter": "scribblings/reference/gpu-external-resources.scrbl",
+      "canonical_module": "skia/gpu-interop",
+      "exports": [
+        "skia/gpu-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-external-texture-info",
+      "chapter": "scribblings/reference/gpu-external-resources.scrbl",
+      "canonical_module": "skia/gpu-interop",
+      "exports": [
+        "skia/gpu-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-external-texture-close!",
+      "chapter": "scribblings/reference/gpu-external-resources.scrbl",
+      "canonical_module": "skia/gpu-interop",
+      "exports": [
+        "skia/gpu-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-import-image",
+      "chapter": "scribblings/reference/gpu-external-resources.scrbl",
+      "canonical_module": "skia/gpu-interop",
+      "exports": [
+        "skia/gpu-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-external-surface",
+      "chapter": "scribblings/reference/gpu-external-resources.scrbl",
+      "canonical_module": "skia/gpu-interop",
+      "exports": [
+        "skia/gpu-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-metal-device",
+      "chapter": "scribblings/reference/gpu-native-handoffs.scrbl",
+      "canonical_module": "skia/unsafe/gpu-metal",
+      "exports": [
+        "skia/unsafe/gpu-metal"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-metal-external-texture",
+      "chapter": "scribblings/reference/gpu-native-handoffs.scrbl",
+      "canonical_module": "skia/unsafe/gpu-metal",
+      "exports": [
+        "skia/unsafe/gpu-metal"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-d3d12-device",
+      "chapter": "scribblings/reference/gpu-native-handoffs.scrbl",
+      "canonical_module": "skia/unsafe/gpu-d3d12",
+      "exports": [
+        "skia/unsafe/gpu-d3d12"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-d3d12-external-texture",
+      "chapter": "scribblings/reference/gpu-native-handoffs.scrbl",
+      "canonical_module": "skia/unsafe/gpu-d3d12",
+      "exports": [
+        "skia/unsafe/gpu-d3d12"
       ],
       "phase": "0",
       "space": null

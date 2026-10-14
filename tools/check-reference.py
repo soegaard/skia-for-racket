@@ -200,6 +200,8 @@ def main(argv=None):
                                            ROOT / 'tools/reference-gpu-context-pure-test.rkt'])
             run('gpu-surface-pure-tests', [racket, '-l', 'raco', '--', 'test',
                                            ROOT / 'tools/reference-gpu-surface-pure-test.rkt'])
+            run('gpu-interop-pure-tests', [racket, '-l', 'raco', '--', 'test',
+                                           ROOT / 'tools/reference-gpu-interop-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:

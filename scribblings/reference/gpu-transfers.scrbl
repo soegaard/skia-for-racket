@@ -131,7 +131,7 @@ The following helper fills a typed destination inside its writable pixmap scope.
 The buffer remains the caller's resource, rather than being consumed by readback.
 
 @racketblock[
-(require skia/gpu)
+(require skia skia/gpu)
 (define (copy-gpu-surface-to-buffer context surface buffer)
   (call-with-gpu-context context
     (lambda ()
@@ -178,7 +178,7 @@ On macOS with an available Metal backend, calling this helper returns a CPU
 image of a blue rectangle. Defining the helper alone does not create a context.
 
 @racketblock[
-(require skia/gpu)
+(require skia skia/gpu)
 (define (render-metal-tile)
   (render-gpu->raster-image 8 6
     (lambda (canvas)

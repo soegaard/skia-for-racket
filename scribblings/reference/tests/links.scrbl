@@ -58,6 +58,14 @@
 
 @(require (for-label (prefix-in gpu-diagnostics: skia/gpu-diagnostics)))
 
+@(require (for-label
+           (prefix-in gpu-egl: skia/gpu-egl)
+           (prefix-in gpu-racket-gl: skia/gpu-racket-gl)
+           (prefix-in gpu-gl-interop: skia/gpu-gl-interop)
+           (prefix-in gpu-interop: skia/gpu-interop)
+           (prefix-in unsafe-gpu-metal: skia/unsafe/gpu-metal)
+           (prefix-in unsafe-gpu-d3d12: skia/unsafe/gpu-d3d12)))
+
 @title{Reference Binding Links}
 
 The following links exercise the public bindings documented by the Reference.
@@ -3461,3 +3469,26 @@ The following links cover the font and text interfaces.
 @racket[gpu:gpu-free-resources!]
 @racket[gpu:gpu-memory-statistics]
 @racket[gpu-diagnostics:gpu-memory-statistics]
+
+@section{GPU Hosts, Diagnostics, and Interoperation}
+
+@racket[gpu-egl:make-egl-gpu-context]
+@racket[gpu-egl:make-current-egl-gpu-provider]
+@racket[gpu-racket-gl:make-racket-gl-provider]
+@racket[gpu:gpu-gl-interface-info]
+@racket[gpu-diagnostics:gpu-gl-interface-info]
+@racket[gpu:gpu-gl-has-extension?]
+@racket[gpu-diagnostics:gpu-gl-has-extension?]
+@racket[gpu:gpu-smoke-test]
+@racket[gpu-gl-interop:call-with-gpu-external-gl]
+@racket[gpu-gl-interop:call-with-gpu-gl-framebuffer]
+@racket[gpu-gl-interop:gpu-copy-gl-texture]
+@racket[gpu-interop:gpu-external-texture?]
+@racket[gpu-interop:gpu-external-texture-info]
+@racket[gpu-interop:gpu-external-texture-close!]
+@racket[gpu-interop:gpu-import-image]
+@racket[gpu-interop:call-with-gpu-external-surface]
+@racket[unsafe-gpu-metal:call-with-gpu-metal-device]
+@racket[unsafe-gpu-metal:make-metal-external-texture]
+@racket[unsafe-gpu-d3d12:call-with-gpu-d3d12-device]
+@racket[unsafe-gpu-d3d12:make-d3d12-external-texture]

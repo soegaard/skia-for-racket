@@ -7,9 +7,11 @@
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
 A @deftech{GPU image} is an owned image tied to one GPU context. It also satisfies
-@racket[image?]. Draw it with the ordinary image operations or use it to create
-an image shader while that context is active. A texture-backed result is not
-an independently usable CPU image. Use the explicit operations in
+@racket[image?]. Draw a GPU image with the ordinary canvas image-drawing
+procedures, such as @racket[draw-image] and @racket[draw-image-rect], while
+its context is active. CPU-only image operations require an explicit transfer.
+GPU images can also be used to construct image shaders. A texture-backed
+result is not an independently usable CPU image. Use the explicit operations in
 @secref["skia-gpu-transfers"] to cross that boundary.
 
 Native image operations require the owner thread, a live image, and the correct
@@ -123,7 +125,7 @@ This helper applies an offset filter and uses both placement results. It expects
 the receiver and image to belong to the same active context.
 
 @racketblock[
-(require skia/gpu)
+(require skia skia/gpu)
 (define (draw-shifted-gpu-image canvas image)
   (with-skia ([filter (make-offset-image-filter 2 1)])
     (define-values (filtered valid offset)
