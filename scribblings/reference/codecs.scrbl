@@ -278,7 +278,8 @@ image onto another canvas.
 }
 
 @defproc[(codec-frame-info-rect [info codec-frame-info?])
-          (vector/c exact-integer? exact-integer? exact-integer? exact-integer?)]{
+          (and/c (vector/c exact-integer? exact-integer? exact-integer? exact-integer?)
+                 immutable?)]{
 Returns an immutable vector containing x, y, width, and height of the frame
 update in encoded coordinates. The rectangle is not orientation-normalized or
 scaled to a later drawing destination.
@@ -306,8 +307,10 @@ No full-raster allocation is performed.
 @defproc[(codec-supported-subset [codec codec?]
           [x (integer-in 0 2147483647)] [y (integer-in 0 2147483647)]
           [width (integer-in 1 2147483647)] [height (integer-in 1 2147483647)])
-          (or/c (vector/c exact-integer? exact-integer? exact-positive-integer?
-                          exact-positive-integer?) #f)]{
+          (or/c #f
+                (and/c (vector/c exact-integer? exact-integer? exact-positive-integer?
+                                 exact-positive-integer?)
+                       immutable?))]{
 Returns the native decoder's proposed subset as an immutable x, y, width,
 height vector, or @racket[#f] when subset decoding is unsupported. The requested
 rectangle must be nonempty and inside the encoded image; its right and bottom

@@ -4,35 +4,17 @@
 
 @title[#:tag "skia-reference"]{The Skia Reference}
 
-This manual specifies Skia's public interfaces. The
+This manual specifies the Skia API, including argument and result contracts,
+resource lifetimes, and failure behavior. The
 @seclink["top" #:doc '(lib "skia/scribblings/tutorials/index.scrbl")]{Skia tutorials}
 introduce drawing through complete examples.
 
 @defmodule[skia]
 
-This manual documents resource management, surfaces, canvas state, byte and
-floating-point colors, color management, paints, shaders, geometric drawing,
-paths, affine matrices, images, image encoding,
-font managers, typefaces, fonts, shaped text, text blobs, and paragraph layout.
-Text blobs include multi-run construction, run inspection, and text on paths.
-The effects chapters cover path and mask effects, color and image filters,
-runtime SkSL programs, and custom blenders.
-Pictures, PDF and SVG documents, reusable output pages, raster fallback, and
-document annotations are described in the output chapters.
-The stream and codec chapters cover native and live port I/O, image frames,
-scanline batches, incremental decoding, and detached pixel descriptions.
-Other interfaces are described in the
-@hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{existing API notes}.
-
-The module @racketmodname[skia] provides the bindings documented here. Additional
-public import paths are identified in the relevant chapters. In particular,
-color operations are available from @racketmodname[skia/color], affine matrices
-from @racketmodname[skia/matrix], and the indicated paint queries from
-@racketmodname[skia/geometry]. Typeface-data operations are also available from
-@racketmodname[skia/typefaces], and additional glyph queries from @racketmodname[skia/fonts].
-Multi-run blob operations are available from @racketmodname[skia/text-blobs].
-The atlas-transform values used for glyph placement are also exported by
-@racketmodname[skia/geometry-primitives].
+The @racketmodname[skia] module provides the core drawing interface. Individual
+chapters identify additional public import paths. Interfaces not yet covered by
+this manual are described in the
+@hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{API notes}.
 
 @table-of-contents[]
 

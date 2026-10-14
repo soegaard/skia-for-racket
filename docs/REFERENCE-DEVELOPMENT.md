@@ -1,4 +1,53 @@
-# Skia Reference development: R3f streams and codecs
+# Skia Reference development: R3f.1 editorial cleanup
+
+## R3f.1 scope
+
+Baseline: `c1135778c7d29a0f0806768ab5f80b3477bc4680`
+(`Expand Reference codec and stream coverage`). The totals remain 752 bindings,
+1094 documented public export paths, and 34 chapters. No library behavior changes.
+
+The result contracts of `codec-frame-info-rect` and `codec-supported-subset`
+now include `immutable?`. The subset entry keeps its `#f` alternative and
+positive dimensions. Five authored channel-width vector literals lose their
+redundant quote; captured evaluator output is not rewritten. The opening page
+states the manual's purpose, identifies `skia`, distinguishes the tutorials,
+and links to API notes without repeating the table of contents.
+
+The bottom-up scanline example contains its own two-by-three BMP generator.
+The generator matches the existing test input. Successive reads of two rows
+and one row report first-row values 1 and 0. A native test checks the placement
+of both batches into the full image and distinguishes that result from simple
+concatenation. Another native test checks a detached immutable frame rectangle
+using a two-frame GIF. Existing native tests and their assertions remain.
+There are now 79 displayed examples and eighteen evaluated examples. The new
+scanline example is displayed only; native tests execute separately.
+
+## Reference-only editing previews
+
+During editing, render just the Reference. Its three outgoing tutorial links
+may be unresolved when the companion manuals are absent. This is expected in
+an editing preview and is deferred for this revision, not a reason to alter
+those links or block source work. Binding-link failures within the Reference
+are separate from these three known cross-manual references.
+
+Use the render driver directly for a Reference-only preview, with `skia`
+resolving to this checkout and an output directory outside it:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+"$RACKET" tools/reference-render.rkt +m --htmls \
+  --dest ../reference-r3f1-preview --dest-name skia-reference \
+  --redirect-main https://docs.racket-lang.org/ \
+  --lib skia/scribblings/reference/reference.scrbl
+```
+
+Label such output as an editing preview. The integrated `--render` and
+`--review-zip` commands remain publication checks: they include companion
+manuals and retain their strict link validation. No renderer, checker,
+cross-reference declaration, or archive-publication rule is changed here.
+The publication checks are not required for this editorial handoff.
+
+## Earlier R3f implementation
 
 R3f extends the committed R3e.1 Reference at
 `5a2d7d410161758f9a589024eb87259691523c7b` (Expand Reference output documentation).

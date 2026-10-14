@@ -1663,7 +1663,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 78)
+        self.assertEqual(count, 79)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -3421,7 +3421,7 @@ class R3fStreamCodecTests(unittest.TestCase):
                     native.append(header)
                 if form == 'examples':
                     evaluated.append(header)
-        self.assertEqual(len(native), 7)
+        self.assertEqual(len(native), 8)
         self.assertEqual(len(evaluated), 1)
         for example in native:
             self.assertNotIn('eval:alts', str(example))
@@ -3430,7 +3430,7 @@ class R3fStreamCodecTests(unittest.TestCase):
     def test_new_racket_suites_have_expected_cases_and_are_in_the_acceptance_runner(self):
         runner = (ROOT / 'tools/check-reference.py').read_text()
         for filename, expected in [('reference-io-pure-test.rkt', 14),
-                                   ('reference-io-test.rkt', 19)]:
+                                   ('reference-io-test.rkt', 21)]:
             text = (ROOT / 'tools' / filename).read_text()
             self.assertEqual(text.count('(test-case '), expected)
             self.assertIn("ROOT / 'tools/" + filename + "'", runner)
@@ -3472,6 +3472,100 @@ class R3fStreamCodecTests(unittest.TestCase):
         self.assertIn('report[\'status\'] = \'passed\'', runner)
         self.assertIn('check_review_html(extracted_html)',
                       (ROOT / 'tools/reference_review.py').read_text())
+
+
+class R3f1EditorialTests(unittest.TestCase):
+    """Inspect actual source forms; native decoder assertions run separately in Racket."""
+
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def header(self, name):
+        return next(header for form, header, _ in checks.commands(self.text('codecs'))
+                    if form == 'defproc' and header[0][0] == name)
+
+    def test_frame_rectangle_result_contract_promises_immutability(self):
+        self.assertEqual(self.header('codec-frame-info-rect'), [
+            ['codec-frame-info-rect', ['info', 'codec-frame-info?']],
+            ['and/c', ['vector/c', *(['exact-integer?'] * 4)], 'immutable?']])
+
+    def test_subset_keeps_false_alternative_and_positive_immutable_extents(self):
+        self.assertEqual(self.header('codec-supported-subset')[-1], [
+            'or/c', '#f',
+            ['and/c', ['vector/c', 'exact-integer?', 'exact-integer?',
+                       'exact-positive-integer?', 'exact-positive-integer?'], 'immutable?']])
+
+    def test_authored_channel_vectors_do_not_add_redundant_quotes(self):
+        text = self.text('pixel-descriptions')
+        for fields in ('8 8 8 8', '8 8 8', '8', '5 6 5', '10 10 10 2'):
+            self.assertIn('@racket[#(' + fields + ')]', text)
+        self.assertNotIn("@racket['#(", text)
+        # This change does not rewrite evaluated output or change its expressions.
+        examples = [header for form, header, _ in checks.commands(text, recursive=True)
+                    if form == 'examples']
+        self.assertEqual(len(examples), 1)
+        self.assertIn('eval:check', str(examples[0]))
+
+    def test_introduction_is_short_and_preserves_module_and_navigation(self):
+        text = self.text('reference')
+        intro = text[:text.index('@table-of-contents[]')]
+        self.assertLess(len(intro.split()), 110)
+        self.assertEqual(intro.count('@defmodule[skia]'), 1)
+        self.assertIn('argument and result contracts', intro)
+        self.assertIn('resource lifetimes, and failure behavior', intro)
+        self.assertIn('additional public import paths', intro)
+        self.assertIn('docs/API.md', intro)
+        self.assertIn('@seclink["top" #:doc', intro)
+        self.assertIn('skia/scribblings/tutorials/index.scrbl', intro)
+        self.assertEqual(text.count('@include-section['), 34)
+
+    def test_bottom_up_example_is_self_contained_and_uses_the_native_test_fixture(self):
+        text = self.text('scanline-codecs')
+        at = text.index('@defproc[(scanline-batch-first-row')
+        end = text.index('@defproc[(scanline-batch-requested-count', at)
+        entry = text[at:end]
+        blocks = [header for form, header, _ in checks.commands(entry, recursive=True)
+                  if form == 'racketblock']
+        self.assertEqual(len(blocks), 1)
+        native = (ROOT / 'tools/reference-io-test.rkt').read_text()
+        fixture = checks.Reader(native, native.index('(define (bottom-up-bmp)')).read()
+        self.assertEqual(blocks[0][0], fixture)
+        self.assertEqual(blocks[0][1], [
+            'with-skia', [['session', ['codec-scanline-from-bytes', ['bottom-up-bmp']]]],
+            ['define', 'lower-batch', ['codec-scanline-read!', 'session', '2']],
+            ['define', 'upper-batch', ['codec-scanline-read!', 'session', '1']],
+            ['list', ['scanline-batch-first-row', 'lower-batch'],
+             ['scanline-batch-first-row', 'upper-batch']]])
+        self.assertIn("@racket['(1 0)]", entry)
+        self.assertIn('rows 1, 2, 0', entry)
+        self.assertNotIn('@examples', entry)
+
+    def test_native_regressions_check_immutable_metadata_and_pixel_placement(self):
+        text = (ROOT / 'tools/reference-io-test.rkt').read_text()
+        self.assertIn('(check-true (immutable? rectangle))', text)
+        self.assertIn('(codec-frame-info codec 1)', text)
+        self.assertIn('(vector-set! rectangle 0 7)', text)
+        self.assertIn('(when subset', text)
+        self.assertIn('(check-true (immutable? subset))', text)
+        self.assertIn('(check-equal? assembled expected)', text)
+        self.assertIn('(* 8 (scanline-batch-first-row batch))', text)
+        self.assertIn('(check-not-equal? (bytes-append (scanline-batch-bytes lower-batch)', text)
+        self.assertEqual(text.count('(test-case '), 21)
+
+    def test_tutorial_references_are_preserved_for_integrated_publication(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        references = {}
+        for chapter in ('reference', 'paints', 'encoding'):
+            for form, header, _ in checks.commands(self.text(chapter), recursive=True):
+                if form == 'seclink' and '#:doc' in header:
+                    document = header[header.index('#:doc') + 1]
+                    references[document[1][1]] = header[0]
+        for row in manifest['tutorial_links']:
+            self.assertEqual(references['skia/' + row['manual']], row['tag'])
+        notes = (ROOT / 'docs/REFERENCE-DEVELOPMENT.md').read_text()
+        self.assertIn('## Reference-only editing previews', notes)
+        self.assertIn('tools/reference-render.rkt +m --htmls', notes)
+        self.assertIn('deferred for this revision', notes)
 
 
 if __name__ == '__main__':

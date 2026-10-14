@@ -166,6 +166,52 @@
         (skia-close! buffer)
         (check-equal? (image-height image) 3))))
 
+  (test-case "animation frame rectangles are immutable detached vectors"
+    (define encoded
+      (bytes-append
+        #"GIF89a\001\000\001\000\201\000\000\377\000\000"
+        #"\000\000\000\000\000\000\000\000\000!\377\013NETS"
+        #"CAPE2.0\003\001\000\000\000!\371\004\010"
+        #"\012\000\000\000,\000\000\000\000\001\000\001\000\000\010\004"
+        #"\000\001\004\004\000!\371\004\010\012\000\000\000,\000\000"
+        #"\000\000\001\000\001\000\201\000\377\000\000\000\000\000\000\000"
+        #"\000\000\000\010\004\000\001\004\004\000;"))
+    (with-skia ([codec (codec-from-bytes encoded)])
+      (check-equal? (codec-frame-count codec) 2)
+      (define info (codec-frame-info codec 1))
+      (check-true (codec-frame-info? info))
+      (define rectangle (codec-frame-info-rect info))
+      (check-equal? rectangle (vector-immutable 0 0 1 1))
+      (check-true (immutable? rectangle))
+      (skia-close! codec)
+      (check-equal? (codec-frame-info-rect info) rectangle)
+      (check-exn exn:fail:contract? (lambda () (vector-set! rectangle 0 7)))))
+
+  (test-case "successive bottom-up batches must be placed by their output origins"
+    (with-skia ([session (codec-scanline-from-bytes (bottom-up-bmp))])
+      (check-equal? (codec-scanline-order session) 'bottom-up)
+      (define lower-batch (codec-scanline-read! session 2))
+      (check-equal? (codec-scanline-position session) 2)
+      (define upper-batch (codec-scanline-read! session 1))
+      (check-equal? (codec-scanline-state session) 'complete)
+      (check-equal? (list (scanline-batch-first-row lower-batch)
+                          (scanline-batch-first-row upper-batch)) '(1 0))
+      (skia-close! session)
+      (define assembled (make-bytes 24))
+      (for ([batch (in-list (list lower-batch upper-batch))])
+        (check-true (scanline-batch-complete? batch))
+        (check-equal? (scanline-batch-row-bytes batch) 8)
+        (bytes-copy! assembled (* 8 (scanline-batch-first-row batch))
+                     (scanline-batch-bytes batch)))
+      (define expected
+        (bytes 255 0 0 255 0 255 0 255
+               0 0 255 255 255 255 255 255
+               255 255 0 255 0 0 0 255))
+      (check-equal? assembled expected)
+      (check-not-equal? (bytes-append (scanline-batch-bytes lower-batch)
+                                     (scanline-batch-bytes upper-batch))
+                        expected)))
+
   (test-case "incremental feed waits for new visible input and owns its final snapshot"
     (define png (sample-png))
     (with-skia ([session (make-codec-incremental)])

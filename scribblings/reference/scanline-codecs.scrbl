@@ -202,6 +202,38 @@ this stride times the decoded row count.
           (or/c exact-nonnegative-integer? #f)]{
 Returns the output row corresponding to the first stored row. Subsequent
 stored rows increase from there. A zero-decoded-row batch returns @racket[#f].
+
+The following example uses a two-pixel-wide BMP with three rows. Its top row
+is red and green, its middle row is blue and white, and its bottom row is yellow
+and black. The small input is constructed here so no external image file is needed.
+
+@racketblock[
+(define (bottom-up-bmp)
+  ;; Two pixels per row, three rows, uncompressed BGR24, four-byte row alignment.
+  ;; Top-to-bottom colors: red/green, blue/white, yellow/black.
+  (define output (make-bytes 78))
+  (define (put offset value size)
+    (bytes-copy! output offset (integer->integer-bytes value size #f #f)))
+  (bytes-copy! output 0 #"BM")
+  (for ([offset '(2 10 14 18 22 26 28 34)] [value '(78 54 40 2 3 1 24 24)]
+        [size '(4 4 4 4 4 2 2 4)])
+    (put offset value size))
+  (bytes-copy! output 54 (bytes 0 255 255 0 0 0 0 0))
+  (bytes-copy! output 62 (bytes 255 0 0 255 255 255 0 0))
+  (bytes-copy! output 70 (bytes 0 0 255 0 255 0 0 0))
+  output)
+
+(with-skia ([session (codec-scanline-from-bytes (bottom-up-bmp))])
+  (define lower-batch (codec-scanline-read! session 2))
+  (define upper-batch (codec-scanline-read! session 1))
+  (list (scanline-batch-first-row lower-batch)
+        (scanline-batch-first-row upper-batch)))
+]
+
+The result is @racket['(1 0)]. The first batch contains output rows 1 and 2;
+the second contains row 0. Each batch stores its rows in top-to-bottom order,
+but concatenating the batches in consumption order would produce rows 1, 2, 0.
+Place each batch at its reported first row instead.
 }
 
 @defproc[(scanline-batch-requested-count [batch scanline-batch?])

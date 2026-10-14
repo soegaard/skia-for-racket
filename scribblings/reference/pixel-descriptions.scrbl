@@ -81,9 +81,9 @@ RGBA F32. This does not include row padding.
 
 @defproc[(image-info-channel-bits [info image-info?])
           (and/c vector? immutable?)]{
-Returns immutable logical-channel widths. The vectors are @racket['#(8 8 8 8)]
-for RGBA/BGRA8888, @racket['#(8 8 8)] for RGBX8888, @racket['#(8)] for alpha or
-grayscale, @racket['#(5 6 5)] for RGB565, @racket['#(10 10 10 2)] for RGBA1010102,
+Returns immutable logical-channel widths. The vectors are @racket[#(8 8 8 8)]
+for RGBA/BGRA8888, @racket[#(8 8 8)] for RGBX8888, @racket[#(8)] for alpha or
+grayscale, @racket[#(5 6 5)] for RGB565, @racket[#(10 10 10 2)] for RGBA1010102,
 and four equal 16-bit or 32-bit widths for the floating-point formats. These are
 channel widths, not a byte-offset table; RGBX's unused byte is not a channel.
 }
