@@ -75,4 +75,9 @@ this manual are described in the
 @include-section["gpu-context-options.scrbl"]
 @include-section["gpu-contexts.scrbl"]
 
+@include-section["gpu-surfaces.scrbl"]
+@include-section["gpu-images.scrbl"]
+@include-section["gpu-transfers.scrbl"]
+@include-section["gpu-synchronization.scrbl"]
+
 @index-section[]

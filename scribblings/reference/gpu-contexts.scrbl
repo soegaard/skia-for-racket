@@ -119,9 +119,10 @@ A failed close is not silently replaced with abandonment.
     (lambda () (gpu-context-close! context))))
 ]
 
-For example, @racket[(call-with-new-gpu-context gpu-context-info #:backend 'metal)]
-returns detached context information and closes the owned Metal context. Defining
-the helper alone creates no context.
+On macOS, when a Metal context can be created, the following expression returns
+detached context information and closes the context before returning:
+@racket[(call-with-new-gpu-context gpu-context-info #:backend 'metal)].
+Defining the helper alone creates no context.
 }
 
 @section{Identity and State}

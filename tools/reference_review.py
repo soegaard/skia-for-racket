@@ -33,8 +33,9 @@ def source_hashes(root: Path, *, review_inputs: bool = False) -> dict[str, str]:
                  and 'compiled' not in path.relative_to(root).parts)
     paths.update(path.relative_to(root) for path in (root / 'tools').glob('*reference*')
                  if path.suffix in {'.py', '.rkt'})
+    manifest = json.loads(safe_file(root, str(MANIFEST)).read_text(encoding='utf-8'))
+    paths.update(Path(row['source_copy']) for row in manifest.get('source_verified_additions', []))
     if review_inputs:
-        manifest = json.loads(safe_file(root, str(MANIFEST)).read_text(encoding='utf-8'))
         paths.update(Path(row['file']) for row in manifest['snapshots'])
         paths.update(Path(row['manual']) for row in manifest.get('tutorial_links', []))
         # These are the actual imports of the ordinary non-native checker.
@@ -150,6 +151,7 @@ SOURCE_REVIEW_README = (
     'From sources/, run: python3 -B tools/check-reference.py --output ../source-check\n'
     'Use a fresh output path. No --documents-only flag or adjacent checkout is needed.\n'
     'The pinned inventory JSON files are copied verbatim and checked by Git blob hash.\n'
+    'Any source-signature additions have separate pinned source evidence; they are not reflection.\n'
     'This is not a complete Skia installation or tutorial-rendering bundle.\n'
     'Source consistency is not native, Scribble, GUI, GPU, or complete-site acceptance.\n'
 )

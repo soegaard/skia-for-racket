@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R4a",
-  "reviewed_repository_commit": "a24848222a29aff2981590f32c63c2f2d54e4a93",
+  "stage": "R4b",
+  "reviewed_repository_commit": "6b474cc2cca76377fa220cb054eb5b8d7d6e5ced",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R4b-R4e",
-    "reason": "GPU transfers, interoperation, GUI, and DC; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R4c-R4e",
+    "reason": "External interoperation, GPU diagnostics/output adapters, presentation, GUI, and DC."
   },
   "definitions": [
     {
@@ -12156,6 +12156,367 @@
       ],
       "phase": "0",
       "space": null
+    },
+    {
+      "name": "gpu-surface?",
+      "chapter": "scribblings/reference/gpu-surfaces.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-gpu-surface",
+      "chapter": "scribblings/reference/gpu-surfaces.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface-format-info",
+      "chapter": "scribblings/reference/gpu-surfaces.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface-info",
+      "chapter": "scribblings/reference/gpu-surfaces.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface->image-info",
+      "chapter": "scribblings/reference/gpu-surfaces.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image?",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-residency",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-resource-gpu-context",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image-info",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-upload-image",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface-snapshot",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image-subset",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image-apply-filter",
+      "chapter": "scribblings/reference/gpu-images.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface->rgba-bytes",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image->rgba-bytes",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface->raster-buffer",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image->raster-buffer",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface->raster-image",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image->raster-image",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface-read-pixmap!",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-surface-read-raster-buffer!",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image-read-raster-buffer!",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "render-gpu->raster-image",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-flush!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-submit!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-flush-and-submit!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-wait!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-flush-surface!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-flush-image!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-cache-info",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-set-cache-limit!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-purge-unlocked!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-purge-bytes!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-perform-deferred-cleanup!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-free-resources!",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-memory-statistics",
+      "chapter": "scribblings/reference/gpu-synchronization.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-diagnostics"
+      ],
+      "phase": "0",
+      "space": null
     }
   ],
   "tutorial_links": [
@@ -12190,6 +12551,17 @@
       "label": "Image Encoding (current tag)",
       "chapter": "scribblings/reference/encoding.scrbl",
       "filename": "skia-png.html"
+    }
+  ],
+  "source_verified_additions": [
+    {
+      "evidence": "source-signature",
+      "module": "skia/gpu",
+      "name": "render-gpu->raster-image",
+      "source_path": "gpu.rkt",
+      "source_commit": "6b474cc2cca76377fa220cb054eb5b8d7d6e5ced",
+      "source_git_blob": "d12815c3e504a1d056a66e08e85d550446884a3a",
+      "source_copy": "api/reference-source/gpu.rkt.b64"
     }
   ]
 }

@@ -56,6 +56,8 @@
            (prefix-in gpu: skia/gpu)
            (prefix-in gpu-context-options: skia/gpu-context-options)))
 
+@(require (for-label (prefix-in gpu-diagnostics: skia/gpu-diagnostics)))
+
 @title{Reference Binding Links}
 
 The following links exercise the public bindings documented by the Reference.
@@ -3419,3 +3421,43 @@ The following links cover the font and text interfaces.
 @racket[gpu:gpu-context-options->jsexpr]
 
 @racket[gpu-context-options:gpu-context-options->jsexpr]
+
+@section{GPU Surfaces, Transfers, and Synchronization}
+
+@racket[gpu:gpu-surface?]
+@racket[gpu:make-gpu-surface]
+@racket[gpu:gpu-surface-format-info]
+@racket[gpu:gpu-surface-info]
+@racket[gpu:gpu-surface->image-info]
+@racket[gpu:gpu-image?]
+@racket[gpu:image-residency]
+@racket[gpu:skia-resource-gpu-context]
+@racket[gpu:gpu-image-info]
+@racket[gpu:gpu-upload-image]
+@racket[gpu:gpu-surface-snapshot]
+@racket[gpu:gpu-image-subset]
+@racket[gpu:gpu-image-apply-filter]
+@racket[gpu:gpu-surface->rgba-bytes]
+@racket[gpu:gpu-image->rgba-bytes]
+@racket[gpu:gpu-surface->raster-buffer]
+@racket[gpu:gpu-image->raster-buffer]
+@racket[gpu:gpu-surface->raster-image]
+@racket[gpu:gpu-image->raster-image]
+@racket[gpu:gpu-surface-read-pixmap!]
+@racket[gpu:gpu-surface-read-raster-buffer!]
+@racket[gpu:gpu-image-read-raster-buffer!]
+@racket[gpu:render-gpu->raster-image]
+@racket[gpu:gpu-flush!]
+@racket[gpu:gpu-submit!]
+@racket[gpu:gpu-flush-and-submit!]
+@racket[gpu:gpu-wait!]
+@racket[gpu:gpu-flush-surface!]
+@racket[gpu:gpu-flush-image!]
+@racket[gpu:gpu-cache-info]
+@racket[gpu:gpu-set-cache-limit!]
+@racket[gpu:gpu-purge-unlocked!]
+@racket[gpu:gpu-purge-bytes!]
+@racket[gpu:gpu-perform-deferred-cleanup!]
+@racket[gpu:gpu-free-resources!]
+@racket[gpu:gpu-memory-statistics]
+@racket[gpu-diagnostics:gpu-memory-statistics]

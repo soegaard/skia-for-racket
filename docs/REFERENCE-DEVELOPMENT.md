@@ -1,3 +1,118 @@
+# Skia Reference development: R4b
+
+## GPU surfaces, images, transfers, and synchronization
+
+Baseline: `6b474cc2cca76377fa220cb054eb5b8d7d6e5ced`
+(`Expand Reference GPU context coverage`). R4b adds 36 definitions through 37
+public export paths. The Reference has 1178 definitions, 1899 documented paths,
+and 56 conceptual chapters. No library implementation or tutorial program changes.
+
+The two R4a editorial corrections are local: provider host-identity enforcement
+is attributed to the wrapper, and the Metal context-information example is
+qualified by macOS and successful backend creation. Existing examples are retained.
+
+The four new chapters separate offscreen surfaces, GPU image ownership, explicit
+readback and one-shot rendering, and synchronization/cache controls. Native canvas
+operations remain the drawing interface; no DC adapter is introduced. The typed
+pixmap writer stages and validates pixels before committing them, whereas the
+legacy RGBA8888 premultiplied buffer writer does not promise rollback. GPU image
+readback uses a same-context GPU staging surface, not a raw texture-memory copy.
+
+All 98 earlier displayed blocks and 25 evaluated blocks are preserved. Four new
+blocks define helpers without invoking them, so ordinary documentation evaluation
+and the retained CPU displayed-example runner do not create GPU contexts. The
+new total is 102 displayed blocks and 25 evaluated blocks. The selected-backend
+suite loads the actual three generic helper definitions from their Scribble files.
+
+## Inventory evidence: old reflection and one source-verified addition
+
+The two existing public-API JSON inventories remain byte-for-byte unchanged.
+They contain 1977 reflected export records and precede `render-gpu->raster-image`.
+The manifest records this later public export separately in
+`source_verified_additions`, with evidence kind `source-signature`.
+
+The complete `gpu.rkt` source at the baseline is stored, base64-wrapped to keep
+source lines short, in `api/reference-source/gpu.rkt.b64`. Its decoded Git blob
+hash is `d12815c3e504a1d056a66e08e85d550446884a3a`. The source checker verifies
+that hash, the public module, the direct export, and the single procedure's
+positional/keyword shape. In a complete checkout it also requires the source
+copy to match the actual `gpu.rkt` bytes. This is pinned source evidence, not
+runtime reflection, a second installed implementation, or native execution.
+
+The full source report distinguishes 1977 reflected records from one source
+addition. Thus 1978 records are accounted for, of which 1899 are documented
+and 79 remain deferred. Fresh reflection and live binding-identity checks remain
+runtime acceptance requirements. If a reviewed future inventory includes the
+addition, remove the separate addition record; duplicate evidence is rejected.
+
+Source-review archives include this evidence copy, all included chapters, pinned
+inventories, and the ordinary checker dependencies. Their extracted source check
+requires neither an older archive nor an adjacent checkout.
+
+## R4b acceptance levels
+
+The 18 cases in `tools/reference-gpu-surface-pure-test.rkt` use actual validation
+helpers and the actual one-shot lifetime worker with injected fake operations.
+They check request bounds and cleanup after failure without a native GPU. They
+are not driver, graphics, or platform acceptance evidence.
+
+The opt-in `tools/reference-gpu-surface-test.rkt` suite uses a real selected
+backend, checks exact opaque pixel probes, ownership, snapshot and subset
+contents, typed readback, padding, balanced state, cache controls, and cleanup.
+It has 18 common cases and one extra public one-shot case on owned Metal or
+Direct3D. The owned-EGL route does not provide the separately owned external
+host required by the public one-shot OpenGL helper; that check is reported as
+`not-run-external-host-required`, not as a passed case or an unavailable-backend
+skip. The common OpenGL surface tests still require real OpenGL execution.
+
+There are no unavailable-backend skips and no CPU rendering fallback. The
+receipt must have the exact case inventory, successful pixel probes and readbacks,
+and complete closure accounting for contexts created by the suite. Public
+one-shot contexts have separate success accounting because their wrappers do
+not escape the helper. Float-format capability queries do not claim actual
+F16/F32 rendering acceptance. No GUI, presentation, performance, or physical
+hardware-acceleration claim is made by this suite.
+
+With `skia` resolving to the complete revised checkout, use fresh output paths:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+"$RACKET" -l raco -- test tools/reference-gpu-surface-pure-test.rkt
+python3 -B tools/check-reference.py --racket "$RACKET" \
+  --gpu-surface-backend metal --output ../reference-r4b-metal-check
+```
+
+For Linux, select `--gpu-surface-backend opengl` (owned EGL). For Windows WARP,
+select `--gpu-surface-backend direct3d --gpu-surface-adapter warp`. GPU flags are
+not implied by `--native`, which retains its CPU meaning. Requested GPU failure
+prevents a passing acceptance result and review-archive publication.
+
+## Source handoff and rendering
+
+Generate the independently checkable source archive through the existing packager:
+
+```sh
+python3 -B tools/check-reference.py --output ../reference-r4b-source-check \
+  --source-zip ../skia-reference-r4b-source-review.zip
+```
+
+The existing Reference-only preview route remains appropriate during editing.
+Integrated rendering and publication retain their companion-manual and binding
+checks. For combined CPU and selected-backend GPU acceptance plus a review ZIP:
+
+```sh
+python3 -B tools/check-reference.py --racket "$RACKET" --render --quick --native \
+  --gpu-context-backend metal --gpu-surface-backend metal \
+  --output ../reference-r4b-review-check \
+  --review-zip ../skia-reference-r4b-review.zip
+```
+
+R4c-R4e retain external interoperability, the remaining GL diagnostics and GPU
+output adapters, presenters/frames, GUI classes, and DC integration. R4b does
+not claim a newly reflected complete API inventory or completion of those stages.
+
+## Earlier development notes
+
 # Skia Reference development: R4a
 
 ## GPU contexts, providers, and options

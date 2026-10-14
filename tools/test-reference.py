@@ -179,12 +179,15 @@ PROCEDURES.update(GB_PROCEDURES)
 from reference_gpu_context_cases import (R4A_MODULES, R4A_PROCEDURES, R4A_REQUIRED_KEYWORDS,
                                          GPU_CONTEXT_EXPORTS, GPU_OPTION_EXPORTS)
 PROCEDURES.update(R4A_PROCEDURES)
+from reference_gpu_surface_cases import R4B_MODULES, R4B_PROCEDURES, R4B_REQUIRED_KEYWORDS
+from reference_gpu_surface_evidence import COMMON_CASES, ONE_SHOT_CASE, check_gpu_surface_receipt
+PROCEDURES.update(R4B_PROCEDURES)
 
 
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
-                required_keywords=R4A_REQUIRED_KEYWORDS.get(name,
-                    GB_REQUIRED_KEYWORDS.get(name, COLOR_REQUIRED_KEYWORDS.get(name, []))),
+                required_keywords=R4B_REQUIRED_KEYWORDS.get(name, R4A_REQUIRED_KEYWORDS.get(name,
+                    GB_REQUIRED_KEYWORDS.get(name, COLOR_REQUIRED_KEYWORDS.get(name, [])))),
                 allowed_keywords=keywords)
 
 
@@ -232,7 +235,8 @@ def synthetic_inventory():
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
-    for path, names in {**GA_MODULES, **GB_MODULES, **R4A_MODULES}.items():
+    for path, names in {**GA_MODULES, **GB_MODULES, **R4A_MODULES, **R4B_MODULES,
+                        'gpu.rkt': [*R4A_MODULES['gpu.rkt'], *R4B_MODULES['gpu.rkt']]}.items():
         new = dict(path=path, exports=[copy.deepcopy(item) for item in exports
                                        if item['name'] in names])
         old = next((m for m in snapshots[0]['modules'] if m['path'] == path), None)
@@ -243,7 +247,8 @@ def synthetic_inventory():
     non_main = {'image->bitmap', 'surface->bitmap', 'native-abi-catalog', 'native-abi-profiles',
                 'skia-native-capabilities', 'skia-native-symbol-inventory'}
     snapshots[0]['modules'][0]['exports'] = [
-        e for e in exports if e['name'] not in non_main and e['name'] not in R4A_PROCEDURES]
+        e for e in exports if e['name'] not in non_main and e['name'] not in R4A_PROCEDURES
+        and e['name'] not in R4B_PROCEDURES]
     return snapshots
 
 
@@ -256,6 +261,9 @@ class Fixtures(unittest.TestCase):
         shutil.copy(ROOT / 'info.rkt', self.root / 'info.rkt')
         (self.root / 'api').mkdir()
         self.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        # The synthetic inventory already contains the later procedure. Keep the
+        # real source supplement separate from these deliberately synthetic fixtures.
+        self.manifest.pop('source_verified_additions', None)
         self.snapshots = synthetic_inventory()
         self.write_inventory()
 
@@ -306,8 +314,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 1142)
-        self.assertEqual(result['documented_exports'], 1862)
+        self.assertEqual(len(result['definitions']), 1178)
+        self.assertEqual(result['documented_exports'], 1899)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -426,12 +434,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 1142)
+        self.assertEqual(len(self.check()['definitions']), 1178)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 1142)
+        self.assertEqual(len(self.check()['definitions']), 1178)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -984,9 +992,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 1142)
-        self.assertEqual(result['documented_exports'], 1862)
-        self.assertEqual(len(result['chapters']), 53)  # Root plus fifty-two chapters.
+        self.assertEqual(len(result['definitions']), 1178)
+        self.assertEqual(result['documented_exports'], 1899)
+        self.assertEqual(len(result['chapters']), 57)  # Root plus fifty-six chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1003,6 +1011,9 @@ class ReviewArchiveTests(unittest.TestCase):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(ROOT / name, destination)
         self.manifest = json.loads((self.root / checks.MANIFEST).read_text())
+        # The synthetic inventory already contains the later procedure. Keep the
+        # real source supplement separate from these deliberately synthetic fixtures.
+        self.manifest.pop('source_verified_additions', None)
         self.snapshots = synthetic_inventory()
         for expected, data in zip(self.manifest['snapshots'], self.snapshots):
             raw = (json.dumps(data, indent=2) + '\n').encode()
@@ -1331,8 +1342,8 @@ class R2CoverageTests(unittest.TestCase):
 
     def test_public_subset_does_not_claim_deferred_gpu_and_dc_apis(self):
         names = {row['name'] for row in self.check()['definitions']}
-        self.assertNotIn('gpu-image-apply-filter', names)
-        self.assertNotIn('make-gpu-surface', names)
+        self.assertNotIn('gpu-import-image', names)
+        self.assertNotIn('gpu-import-image', names)
         self.assertNotIn('skia-dc%', names)
 
 
@@ -1701,7 +1712,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 98)
+        self.assertEqual(count, 102)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1994,7 +2005,7 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_later_batches_are_not_counted_as_documented(self):
         names = {e['name'] for e in self.check()['definitions']}
-        for name in ('gpu-image-apply-filter', 'make-gpu-surface', 'skia-dc%'):
+        for name in ('gpu-import-image', 'gpu-presenter-render!', 'skia-dc%'):
             self.assertNotIn(name, names)
 
 
@@ -2664,8 +2675,8 @@ class R3dColorSemanticsTests(unittest.TestCase):
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 1142)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1862)
+        self.assertEqual(len(manifest['definitions']), 1178)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1899)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -3555,7 +3566,7 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertIn('docs/API.md', intro)
         self.assertIn('@seclink["top" #:doc', intro)
         self.assertIn('skia/scribblings/tutorials/index.scrbl', intro)
-        self.assertEqual(text.count('@include-section['), 52)
+        self.assertEqual(text.count('@include-section['), 56)
 
     def test_bottom_up_example_is_self_contained_and_uses_the_native_test_fixture(self):
         text = self.text('scanline-codecs')
@@ -3644,19 +3655,19 @@ class R3gaGeometryTests(unittest.TestCase):
         self.assertEqual(set(GA_SYNTAX), {'with-canvas-layer', 'with-canvas-matrix'})
 
     def test_new_chapters_and_aggregate_counts_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1142)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1862)
-        self.assertEqual(len(self.chapters) - 1, 52)
-        self.assertEqual(self.manifest['stage'], 'R4a')
+        self.assertEqual(len(self.definitions), 1178)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1899)
+        self.assertEqual(len(self.chapters) - 1, 56)
+        self.assertEqual(self.manifest['stage'], 'R4b')
         for chapter in ('rounded-rectangles', 'regions', 'projective-matrices',
                         'structured-drawing', 'portable-drawing', 'layers',
                         'drawables', 'specialized-canvases'):
             self.assertIn(f'scribblings/reference/{chapter}.scrbl', self.chapters)
 
     def test_r4_topics_remain_outside_cpu_coverage(self):
-        for name in ('make-gpu-surface', 'skia-canvas%', 'skia-dc%'):
+        for name in ('gpu-import-image', 'skia-canvas%', 'skia-dc%'):
             self.assertNotIn(name, self.by_name)
-        self.assertEqual('R4b-R4e', self.manifest['deferred_policy']['stage'])
+        self.assertEqual('R4c-R4e', self.manifest['deferred_policy']['stage'])
 
     def test_projective_conversion_does_not_promise_lossless_projection(self):
         text = self.text('projective-matrices.scrbl')
@@ -3762,7 +3773,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 98)
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 102)
         self.assertEqual(sum(f == 'examples' for f, _ in forms), 25)
         text = (ROOT / 'tools/reference-native-test.rkt').read_text()
         self.assertIn('(in-range 2)', text)
@@ -3827,12 +3838,12 @@ class R3gbRasterTests(unittest.TestCase):
         self.assertEqual(GB_REQUIRED_KEYWORDS, {'image-apply-filter': ['clip']})
 
     def test_scope_counts_and_r4_deferral_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1142)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1862)
-        self.assertEqual(len(self.chapters) - 1, 52)
-        self.assertEqual(self.manifest['stage'], 'R4a')
-        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4b-R4e')
-        self.assertNotIn('make-gpu-surface', self.by_name)
+        self.assertEqual(len(self.definitions), 1178)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1899)
+        self.assertEqual(len(self.chapters) - 1, 56)
+        self.assertEqual(self.manifest['stage'], 'R4b')
+        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4c-R4e')
+        self.assertNotIn('gpu-import-image', self.by_name)
         self.assertNotIn('skia-dc%', self.by_name)
 
     def test_every_main_export_is_accounted_for(self):
@@ -4036,7 +4047,7 @@ class R3gbRasterTests(unittest.TestCase):
     def test_displayed_examples_remain_opt_in_native_code(self):
         forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, _, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(forms.count('racketblock'), 98)
+        self.assertEqual(forms.count('racketblock'), 102)
         self.assertEqual(forms.count('examples'), 25)
         for name in ('raster-buffers', 'image-operations', 'graphics', 'output-groups'):
             self.assertNotIn('@examples', self.text(name))
@@ -4211,12 +4222,12 @@ class R4aContextTests(unittest.TestCase):
                     if f == 'defproc' and h[0][0] == name)
 
     def test_bounded_scope_counts_real_public_aliases_not_only_names(self):
-        self.assertEqual(len(self.definitions), 1142)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1862)
-        self.assertEqual(len(self.chapters) - 1, 52)
-        self.assertEqual(self.manifest['stage'], 'R4a')
+        self.assertEqual(len(self.definitions), 1178)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1899)
+        self.assertEqual(len(self.chapters) - 1, 56)
+        self.assertEqual(self.manifest['stage'], 'R4b')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
-                         'a24848222a29aff2981590f32c63c2f2d54e4a93')
+                         '6b474cc2cca76377fa220cb054eb5b8d7d6e5ced')
         self.assertEqual(len(R4A_PROCEDURES), 31)
 
     def test_gpu_chapters_precede_the_identifier_index(self):
@@ -4405,10 +4416,10 @@ class R4aContextTests(unittest.TestCase):
                 self.assertIn('@racket[' + prefix + name + ']', text)
 
     def test_remaining_r4_topics_are_deferred_not_stubbed(self):
-        for name in ('make-gpu-surface', 'gpu-submit!', 'gpu-import-image',
+        for name in ('gpu-smoke-test', 'gpu-gl-interface-info', 'gpu-import-image',
                      'gpu-presenter-render!', 'skia-render-window%', 'skia-dc%'):
             self.assertNotIn(name, self.by_name)
-        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4b-R4e')
+        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4c-R4e')
 
     def test_racket_test_sources_parse_and_native_cases_belong_to_a_single_suite(self):
         for filename in ('reference-gpu-context-pure-test.rkt', 'reference-gpu-context-test.rkt'):
@@ -4546,6 +4557,356 @@ class R4aBuildPlanTests(unittest.TestCase):
         package.assert_not_called()
         report = json.loads((self.output / 'validation.json').read_text())
         self.assertFalse(report['gpu_context_tests_passed'])
+
+
+
+class R4bDocumentationTests(unittest.TestCase):
+    setUpClass = classmethod(R4aContextTests.setUpClass.__func__)
+    text = R4aContextTests.text
+    header = R4aContextTests.header
+
+    def test_two_editorial_corrections_identify_the_wrapper_and_qualify_metal(self):
+        providers = ' '.join(self.text('gpu-providers').split())
+        contexts = ' '.join(self.text('gpu-contexts').split())
+        self.assertIn('The wrapper rejects simultaneous GPU contexts', providers)
+        self.assertIn('Different keys must not be used to disguise concurrent access', providers)
+        self.assertIn('On macOS, when a Metal context can be created', contexts)
+        self.assertIn('closes the context before returning:', contexts)
+
+    def test_bounded_batch_adds_36_bindings_and_37_export_paths(self):
+        rows = [d for d in self.manifest['definitions'] if d['name'] in R4B_PROCEDURES]
+        self.assertEqual(len(rows), 36)
+        self.assertEqual(sum(len(d['exports']) for d in rows), 37)
+        self.assertEqual(len(self.definitions), 1178)
+        self.assertEqual(len(self.chapters) - 1, 56)
+        self.assertTrue(all(d['canonical_module'] == 'skia/gpu' for d in rows))
+        self.assertTrue(all('skia' not in d['exports'] for d in rows))
+
+    def test_call_shapes_match_independent_inventory_and_source_signature_evidence(self):
+        for name, (arity, keywords) in R4B_PROCEDURES.items():
+            with self.subTest(name=name):
+                shape = self.by_name[name]
+                self.assertEqual(shape['arity_mask'], str(arity))
+                self.assertEqual(shape['allowed_keywords'], keywords)
+                self.assertEqual(shape['required_keywords'], R4B_REQUIRED_KEYWORDS.get(name, []))
+
+    def test_new_chapters_and_diagnostic_sibling_declare_binding_sources(self):
+        for name in ('gpu-surfaces', 'gpu-images', 'gpu-transfers', 'gpu-synchronization'):
+            text = self.text(name)
+            self.assertLess(text.index('declare-exporting'), text.index('@defproc'))
+            self.assertIn('#:use-sources (skia/gpu)', text)
+        text = self.text('gpu-synchronization')
+        self.assertIn('#:use-sources (skia/gpu-diagnostics)', text)
+        links = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        for name in R4B_PROCEDURES:
+            self.assertIn('@racket[gpu:' + name + ']', links)
+        self.assertIn('@racket[gpu-diagnostics:gpu-memory-statistics]', links)
+
+    def test_surface_request_does_not_claim_actual_msaa_or_unlimited_unbudgeted_memory(self):
+        text = ' '.join(self.text('gpu-surfaces').split())
+        for phrase in ('actual count is not exposed', 'format-aware storage estimate',
+                       'does not bypass', 'Unpremultiplied alpha is not',
+                       'no separate GPU canvas drawing language'):
+            self.assertIn(phrase, text)
+        args = self.header('make-gpu-surface')[0]
+        self.assertIn(['#:sample-count', 'samples', ['integer-in', '0', '64'], '0'], args)
+
+    def test_image_residency_is_not_a_cached_texture_probe(self):
+        text = ' '.join(self.text('gpu-images').split())
+        self.assertIn('ownership classification', text)
+        self.assertIn('caches a texture', text)
+        self.assertIn('does not require a GPU activation', text)
+        self.assertEqual(self.header('image-residency')[1], ['or/c', ['quote', 'cpu'],
+                                                           ['quote', 'gpu']])
+
+    def test_transfers_distinguish_staged_commit_from_direct_partial_writes(self):
+        text = ' '.join(self.text('gpu-transfers').split())
+        for phrase in ('leaves the destination unchanged', 'can leave partial writes',
+                       'rollback is not promised', 'Row padding is initialized',
+                       'This is conversion, not scaling', 'same-context staging GPU surface'):
+            self.assertIn(phrase, text)
+
+    def test_filter_placement_returns_owned_image_and_two_immutable_vectors(self):
+        result = self.header('gpu-image-apply-filter')[1]
+        self.assertEqual(result[:2], ['values', 'gpu-image?'])
+        for vector in result[2:]:
+            self.assertEqual(vector[0], 'and/c')
+            self.assertIn('immutable?', vector)
+        text = ' '.join(self.text('gpu-images').split())
+        self.assertIn('sixteen-byte-per-pixel', text)
+        self.assertIn('must not narrow', text)
+        self.assertIn('extract the valid rectangle', text)
+
+    def test_flush_submit_wait_and_cache_setter_have_distinct_results(self):
+        text = ' '.join(self.text('gpu-synchronization').split())
+        self.assertIn('does not first flush', text)
+        self.assertIn('neither submission nor CPU completion', text)
+        self.assertIn('returns void, not the previous', text)
+        for name in ('gpu-flush!', 'gpu-submit!', 'gpu-wait!', 'gpu-set-cache-limit!'):
+            self.assertEqual(self.header(name)[1], 'void?')
+
+    def test_gpu_memory_report_has_a_context_scope_and_explicit_limits(self):
+        text = self.text('gpu-synchronization')
+        self.assertIn('gpu-context-skia-resources', text)
+        self.assertIn('128 bytes per entry', text)
+        self.assertIn('live-stream operation', text)
+        self.assertEqual(self.header('gpu-memory-statistics')[1], 'memory-statistics?')
+
+    def test_one_shot_returns_only_after_cleanup_and_requires_an_explicit_backend(self):
+        text = ' '.join(self.text('gpu-transfers').split())
+        for phrase in ('backend is required', 'closes its surface and context before returning',
+                       'closes that image instead', 'not silently replaced by abandonment',
+                       'zero, one, or multiple results are ignored'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.by_name['render-gpu->raster-image']['required_keywords'], ['backend'])
+
+    def test_examples_are_helper_definitions_and_do_not_create_gpu_contexts_at_build_time(self):
+        blocks = []
+        for name in ('gpu-surfaces', 'gpu-images', 'gpu-transfers', 'gpu-synchronization'):
+            for form, header, _ in checks.commands(self.text(name), recursive=True):
+                self.assertNotEqual(form, 'examples')
+                if form == 'racketblock':
+                    blocks.append(header)
+        self.assertEqual(len(blocks), 4)
+        for block in blocks:
+            self.assertEqual(block[0], ['require', 'skia/gpu'])
+            self.assertEqual(block[1][0], 'define')
+            self.assertEqual(len(block), 2)
+
+    def test_native_sources_parse_and_have_separate_common_and_owned_backend_cases(self):
+        sources = {}
+        for name in ('reference-gpu-surface-pure-test.rkt', 'reference-gpu-surface-test.rkt'):
+            text = (ROOT / 'tools' / name).read_text()
+            reader, forms = checks.Reader(text, text.index('\n') + 1), []
+            while True:
+                reader.skip()
+                if reader.position == len(text):
+                    break
+                forms.append(reader.read())
+            sources[name] = forms
+        pure = next(f for f in sources['reference-gpu-surface-pure-test.rkt']
+                    if f[:2] == ['module+', 'test'])
+        self.assertEqual(len(pure[2:]), 18)
+        self.assertTrue(all(f[0] == 'test-case' for f in pure[2:]))
+        suite = next(f for f in sources['reference-gpu-surface-test.rkt']
+                     if f[:2] == ['define', ['suite']])[2]
+        common = suite[2:-1]
+        self.assertEqual([f[1] for f in common], list(COMMON_CASES))
+        self.assertEqual(suite[-1][0], 'if')
+        self.assertEqual(suite[-1][-1][1], ONE_SHOT_CASE)
+
+    def test_native_suite_uses_actual_displayed_helpers_and_immutable_snapshot_checks(self):
+        text = (ROOT / 'tools/reference-gpu-surface-test.rkt').read_text()
+        for fragment in ('read-syntax path in', 'load-displayed-helpers', "helper 'gpu-red-tile",
+                         "helper 'draw-shifted-gpu-image", "helper 'copy-gpu-surface-to-buffer",
+                         '(skia-close! surface)', '(gpu-upload-image second owned)',
+                         '(subbytes data 20 24)', '(gpu-flush-image! context image)'):
+            self.assertIn(fragment, text)
+
+    def test_source_inventory_addition_is_reported_separately_from_reflection(self):
+        result = checks.check_source(ROOT)
+        self.assertEqual(result['inventory_exports'], 1978)
+        self.assertEqual(result['reflected_inventory_exports'], 1977)
+        self.assertEqual(result['source_verified_export_additions'], 1)
+        self.assertFalse(result['binding_identity_checked'])
+        self.assertEqual(result['documented_exports'], 1899)
+        self.assertEqual(len(result['deferred']), 79)
+
+    def test_archive_hash_inventory_includes_all_new_chapters_and_pinned_source_copy(self):
+        from reference_review import source_hashes
+        files = source_hashes(ROOT, review_inputs=True)
+        for chapter in ('gpu-surfaces', 'gpu-images', 'gpu-transfers', 'gpu-synchronization'):
+            self.assertIn('scribblings/reference/' + chapter + '.scrbl', files)
+        self.assertIn('api/reference-source/gpu.rkt.b64', files)
+        self.assertIn('api/public-api-headless.json', files)
+        self.assertIn('tools/reference_gpu_surface_evidence.py', files)
+
+
+class R4bSourceAdditionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        item = self.manifest['source_verified_additions'][0]
+        self.path = self.root / item['source_copy']
+        self.path.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / item['source_copy'], self.path)
+
+    def check(self):
+        return checks.source_addition_exports(self.root, self.manifest)
+
+    def test_exact_source_has_a_direct_export_and_correct_keyword_signature(self):
+        shape = self.check()[checks.export_key('skia/gpu', 'render-gpu->raster-image')]
+        self.assertEqual(shape['arity_mask'], '8')
+        self.assertEqual(shape['required_keywords'], ['backend'])
+        self.assertEqual(shape['evidence'], 'source-signature')
+
+    def test_missing_archived_source_is_rejected(self):
+        self.path.unlink()
+        with self.assertRaises(OSError):
+            self.check()
+
+    def test_corrupt_source_copy_is_rejected(self):
+        self.path.write_bytes(b'invalid?')
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_changed_source_blob_hash_is_rejected(self):
+        self.manifest['source_verified_additions'][0]['source_git_blob'] = '0' * 40
+        with self.assertRaises(checks.CheckError):
+            self.check()
+
+    def test_source_provenance_cannot_be_relabelled_as_runtime_reflection(self):
+        self.manifest['source_verified_additions'][0]['evidence'] = 'runtime-reflection'
+        with self.assertRaises(checks.CheckError):
+            self.check()
+
+    def test_wrong_public_module_is_rejected(self):
+        self.manifest['source_verified_additions'][0]['module'] = 'skia'
+        with self.assertRaises(checks.CheckError):
+            self.check()
+
+    def test_undocumented_or_private_name_cannot_be_invented(self):
+        self.manifest['source_verified_additions'][0]['name'] = 'fabricated-renderer'
+        with self.assertRaises(checks.CheckError):
+            self.check()
+
+    def test_source_copy_must_match_an_available_checkout(self):
+        (self.root / 'gpu.rkt').write_text('#lang racket/base\n')
+        with self.assertRaises(checks.CheckError):
+            self.check()
+
+    def test_duplicate_addition_is_rejected(self):
+        self.manifest['source_verified_additions'] *= 2
+        with self.assertRaises(checks.CheckError):
+            self.check()
+
+
+def synthetic_surface_receipt(backend='metal', adapter='hardware'):
+    """Only for validator/build-plan tests; never delivered as native evidence."""
+    names = list(COMMON_CASES) + ([] if backend == 'opengl' else [ONE_SHOT_CASE])
+    return dict(schema=1, status='passed', backend=backend,
+                adapter=adapter if backend == 'direct3d' else False,
+                tests_run=len(names), case_names=names, failures=0,
+                managed_contexts_created=20, managed_contexts_closed=20,
+                context_states=['closed'] * 20, pixel_probes_checked=12, readbacks_completed=10,
+                one_shot_successes=0 if backend == 'opengl' else 1,
+                one_shot_native_status=('not-run-external-host-required'
+                                        if backend == 'opengl' else 'passed'),
+                float_allocation_tested=False, presentation_tested=False,
+                hardware_acceleration_verified=False)
+
+
+class R4bReceiptTests(unittest.TestCase):
+    def test_both_selected_backend_suite_shapes_are_accepted(self):
+        for backend in ('opengl', 'metal', 'direct3d'):
+            check_gpu_surface_receipt(synthetic_surface_receipt(backend), backend, 'hardware')
+
+    def test_wrong_backend_or_adapter_is_rejected(self):
+        for backend, adapter in (('opengl', 'hardware'), ('direct3d', 'warp')):
+            with self.assertRaises(checks.CheckError):
+                check_gpu_surface_receipt(synthetic_surface_receipt(), backend, adapter)
+
+    def test_no_contexts_or_incomplete_closure_is_rejected(self):
+        for changes in (dict(managed_contexts_created=0), dict(managed_contexts_closed=19),
+                        dict(context_states=['ready'] * 20)):
+            with self.subTest(changes=changes), self.assertRaises(checks.CheckError):
+                check_gpu_surface_receipt(dict(synthetic_surface_receipt(), **changes),
+                                          'metal', 'hardware')
+
+    def test_duplicate_or_missing_cases_are_rejected(self):
+        receipt = synthetic_surface_receipt()
+        receipt['case_names'][-1] = receipt['case_names'][0]
+        with self.assertRaises(checks.CheckError):
+            check_gpu_surface_receipt(receipt, 'metal', 'hardware')
+
+    def test_zero_pixel_work_or_boolean_counts_cannot_pass(self):
+        for key in ('pixel_probes_checked', 'readbacks_completed', 'tests_run'):
+            for value in (0, True):
+                with self.subTest(key=key, value=value), self.assertRaises(checks.CheckError):
+                    check_gpu_surface_receipt(dict(synthetic_surface_receipt(), **{key: value}),
+                                              'metal', 'hardware')
+
+    def test_failure_status_or_nonzero_failures_cannot_pass(self):
+        for changes in (dict(status='failed'), dict(failures=1), dict(failures=False)):
+            with self.subTest(changes=changes), self.assertRaises(checks.CheckError):
+                check_gpu_surface_receipt(dict(synthetic_surface_receipt(), **changes),
+                                          'metal', 'hardware')
+
+    def test_unexecuted_scope_cannot_be_advertised_as_tested(self):
+        for key in ('presentation_tested', 'float_allocation_tested',
+                    'hardware_acceleration_verified'):
+            with self.subTest(key=key), self.assertRaises(checks.CheckError):
+                check_gpu_surface_receipt(dict(synthetic_surface_receipt(), **{key: True}),
+                                          'metal', 'hardware')
+
+    def test_opengl_does_not_claim_the_separate_external_host_one_shot_test(self):
+        receipt = synthetic_surface_receipt('opengl')
+        receipt['one_shot_native_status'] = 'passed'
+        with self.assertRaises(checks.CheckError):
+            check_gpu_surface_receipt(receipt, 'opengl', 'hardware')
+
+
+class R4bBuildPlanTests(unittest.TestCase):
+    """Mocked command execution, not Racket or GPU acceptance."""
+    setUp = BuildPlanTests.setUp
+    execute = BuildPlanTests.execute
+
+    def run_fake(self, command, **options):
+        result = BuildPlanTests.run_fake(self, command, **options)
+        if any(str(arg).endswith('reference-gpu-surface-test.rkt') for arg in command):
+            backend = command[command.index('--backend') + 1]
+            adapter = command[command.index('--adapter') + 1]
+            Path(command[command.index('--output') + 1]).write_text(
+                json.dumps(synthetic_surface_receipt(backend, adapter)))
+        return result
+
+    def test_cpu_acceptance_does_not_run_gpu_rendering(self):
+        report = self.execute('--native')
+        labels = [row['label'] for row in report['commands']]
+        self.assertIn('gpu-surface-pure-tests', labels)
+        self.assertNotIn('gpu-surface-native', labels)
+        self.assertFalse(report['gpu_surface_tests_executed'])
+
+    def test_explicit_surface_backend_requires_pixel_receipt(self):
+        report = self.execute('--gpu-surface-backend', 'metal')
+        self.assertTrue(report['gpu_surface_tests_passed'])
+        self.assertTrue(report['gpu_surface_tests_executed'])
+        self.assertEqual(report['commands'][-1]['label'], 'gpu-surface-native')
+        self.assertFalse(report['scribble_rendered'])
+
+    def test_direct3d_adapter_is_forwarded(self):
+        report = self.execute('--gpu-surface-backend', 'direct3d', '--gpu-surface-adapter', 'warp')
+        self.assertEqual(report['gpu_surface_acceptance']['adapter'], 'warp')
+
+    def test_source_only_modes_reject_gpu_requests(self):
+        for mode in ('--documents-only', '--source-zip'):
+            args = [mode] + ([str(self.output.parent / 'source.zip')] if mode == '--source-zip'
+                             else [])
+            with self.subTest(mode=mode), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    self.runner.main([*args, '--gpu-surface-backend', 'metal'])
+
+    def test_requested_gpu_failure_prevents_archive_publication(self):
+        def fail(command, **options):
+            result = self.run_fake(command, **options)
+            if any(str(arg).endswith('reference-gpu-surface-test.rkt') for arg in command):
+                return SimpleNamespace(returncode=1)
+            return result
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
+              patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
+              patch.object(self.runner.subprocess, 'run', side_effect=fail),
+              patch.object(self.runner, 'check_evidence'),
+              patch.object(self.runner, 'check_targets', return_value={}),
+              patch.object(self.runner, 'package_review') as package,
+              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
+            rc = self.runner.main(['--render', '--gpu-surface-backend', 'metal', '--output',
+                                   str(self.output), '--review-zip',
+                                   str(self.output.parent / 'r.zip')])
+        self.assertEqual(rc, 1)
+        package.assert_not_called()
 
 
 if __name__ == '__main__':

@@ -83,9 +83,10 @@ explicit lost-host abandonment protocol before destroying it.
 
 The @racket[name] is a diagnostic label. The pair of @racket[backend] and
 @racket[key] identifies the native host: reuse the same key for the same host,
-and use distinct keys for distinct hosts. Skia rejects simultaneous contexts
-claiming the same pair. A different key is not a way to make concurrent access
-to the same native context safe. A native pointer is not an accepted key.
+and use distinct keys for distinct hosts. The wrapper rejects simultaneous GPU
+contexts whose providers claim the same backend and key. Different keys must not
+be used to disguise concurrent access to the same native host. A native pointer
+is not an accepted key.
 
 The callbacks have the following obligations:
 

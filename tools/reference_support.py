@@ -6,6 +6,7 @@ It rejects unsupported signatures rather than treating a guessed arity as eviden
 from __future__ import annotations
 
 from collections import Counter
+import base64
 import hashlib
 from html import escape, unescape
 from html.parser import HTMLParser
@@ -325,6 +326,59 @@ def git_blob(data: bytes):
     return hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
 
 
+def source_addition_exports(root, manifest):
+    """Verify named additions from pinned source, without claiming runtime reflection."""
+    additions = {}
+    for item in manifest.get('source_verified_additions', []):
+        need(item.get('evidence') == 'source-signature', 'unknown addition evidence kind')
+        need(re.fullmatch(r'[0-9a-f]{40}', item['source_commit']), 'invalid source commit')
+        path = safe_file(root, item['source_copy'])
+        raw = base64.b64decode(b''.join(path.read_bytes().splitlines()), validate=True)
+        need(git_blob(raw) == item['source_git_blob'], 'source addition copy changed')
+        module = public_module(item['source_path'])
+        need(module == item['module'], 'source addition module/path mismatch')
+        installed = safe_file(root, item['source_path'])
+        if installed.is_file():
+            need(installed.read_bytes() == raw, 'source addition differs from checkout')
+        text = raw.decode('utf-8')
+        need(text.startswith('#lang racket/base\n'), 'unsupported source addition language')
+        reader = Reader(text, text.index('\n') + 1)
+        forms = []
+        while True:
+            reader.skip()
+            if reader.position == len(text):
+                break
+            forms.append(reader.read())
+        name = item['name']
+        need(any(isinstance(f, list) and f and f[0] == 'provide' and name in f[1:]
+                 for f in forms), 'addition is not a direct public export')
+        found = [f[1] for f in forms if isinstance(f, list) and len(f) >= 3
+                 and f[0] == 'define' and isinstance(f[1], list) and f[1]
+                 and f[1][0] == name]
+        need(len(found) == 1, 'addition needs one direct procedure definition')
+        tokens, arguments = list(found[0][1:]), []
+        while tokens:
+            token = tokens.pop(0)
+            keyword = token if type(token) is str and token.startswith('#:') else None
+            if keyword:
+                need(tokens, 'source keyword has no argument')
+                token = tokens.pop(0)
+            need(type(token) is str or (isinstance(token, list) and len(token) == 2),
+                 'unsupported source procedure argument')
+            identifier = token[0] if isinstance(token, list) else token
+            need(type(identifier) is str and identifier != '.', 'unsupported source argument')
+            arg = ([keyword] if keyword else []) + [identifier, 'any/c']
+            if isinstance(token, list):
+                arg.append(token[1])
+            arguments.append(arg)
+        shape = procedure_shape([[name, *arguments], 'any/c'])
+        key = export_key(module, name)
+        need(key not in additions, 'duplicate source addition')
+        additions[key] = dict(shape, phase='0', export_kind='value',
+                              evidence='source-signature', source_commit=item['source_commit'])
+    return additions
+
+
 def load_exports(root, manifest):
     exports = {}
     for snapshot in manifest['snapshots']:
@@ -339,6 +393,9 @@ def load_exports(root, manifest):
                 key = export_key(name, row['name'], row['phase'], row.get('space'))
                 need(key not in exports, f'duplicate snapshot export: {key}')
                 exports[key] = row
+    for key, row in source_addition_exports(root, manifest).items():
+        need(key not in exports, f'addition already appears in a pinned inventory: {key}')
+        exports[key] = row
     return exports
 
 
@@ -453,7 +510,13 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
                 documented_exports=len(claimed), deferred=deferred,
                 inventory_checked=exports is not None,
                 inventory_exports=len(exports) if exports is not None else None,
-                binding_identity_checked=False)
+                binding_identity_checked=False,
+                source_verified_export_additions=(
+                    len(manifest.get('source_verified_additions', []))
+                    if exports is not None else None),
+                reflected_inventory_exports=(
+                    len(exports) - len(manifest.get('source_verified_additions', []))
+                    if exports is not None else None))
 
 
 class Page(HTMLParser):

@@ -18,6 +18,8 @@ from reference_support import CheckError, check_evidence, check_source, check_ta
 from reference_review import (check_review_html, inspect_link_scopes, package_review,
                               package_source_review, source_hashes)
 
+from reference_gpu_surface_evidence import check_gpu_surface_receipt
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -39,6 +41,10 @@ def main(argv=None):
                         help='run real context lifecycle acceptance; OpenGL uses owned EGL')
     parser.add_argument('--gpu-context-adapter', choices=('hardware', 'warp'),
                         help='Direct3D adapter for context acceptance (default: hardware)')
+    parser.add_argument('--gpu-surface-backend', choices=('opengl', 'metal', 'direct3d'),
+                        help='run real offscreen surface/transfer acceptance; OpenGL uses EGL')
+    parser.add_argument('--gpu-surface-adapter', choices=('hardware', 'warp'),
+                        help='Direct3D adapter for surface acceptance (default: hardware)')
     parser.add_argument('--require-complete', action='store_true', help='reject any deferred export')
     parser.add_argument('--racket', default='racket')
     parser.add_argument('--output', type=Path)
@@ -49,7 +55,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.source_zip and (args.documents_only or args.render or args.installed or args.site
                             or args.quick or args.native or args.review_zip
-                            or args.gpu_context_backend or args.gpu_context_adapter):
+                            or args.gpu_context_backend or args.gpu_context_adapter
+                            or args.gpu_surface_backend or args.gpu_surface_adapter):
         parser.error('--source-zip requires ordinary source-only validation')
     if args.review_zip and not (args.render or args.installed):
         parser.error('--review-zip requires --render or --installed')
@@ -65,6 +72,10 @@ def main(argv=None):
         parser.error('--gpu-context-adapter requires --gpu-context-backend direct3d')
     if args.gpu_context_backend and (args.documents_only or args.site):
         parser.error('GPU context execution cannot be combined with documents-only or site checks')
+    if args.gpu_surface_adapter and args.gpu_surface_backend != 'direct3d':
+        parser.error('--gpu-surface-adapter requires --gpu-surface-backend direct3d')
+    if args.gpu_surface_backend and (args.documents_only or args.site):
+        parser.error('GPU surface execution cannot be combined with documents-only or site checks')
     if args.documents_only and (args.native or args.require_complete):
         parser.error('documents-only is not runtime or complete-inventory validation')
     output = (args.output or ROOT.parent / ('skia-reference-check-' + uuid.uuid4().hex)).resolve()
@@ -74,6 +85,8 @@ def main(argv=None):
     before = None
     report = dict(source_sha256={}, status='running', commands=[],
                   native_executed=False, gpu_executed=False,
+                  gpu_surface_tests_requested=args.gpu_surface_backend,
+                  gpu_surface_tests_executed=False, gpu_surface_tests_passed=False,
                   gpu_context_tests_requested=args.gpu_context_backend,
                   gpu_context_tests_executed=False, gpu_context_tests_passed=False,
                   racket_executed=False, scribble_rendered=False, quick_rendered=False,
@@ -115,11 +128,23 @@ def main(argv=None):
             report['gpu_context_tests_executed'] = any(
                 item['label'] == 'gpu-context-native' and item['executed']
                 for item in report['commands'])
+            report['gpu_surface_tests_executed'] = any(
+                item['label'] == 'gpu-surface-native' and item['executed']
+                for item in report['commands'])
+            surface_receipt = output / 'gpu-surfaces.json'
+            if surface_receipt.is_file():
+                try:
+                    observed = json.loads(surface_receipt.read_text(encoding='utf-8'))
+                    if observed.get('managed_contexts_created', 0) > 0:
+                        report['gpu_executed'] = True
+                except (ValueError, TypeError):
+                    pass
             receipt_path = output / 'gpu-context.json'
             if receipt_path.is_file():
                 try:
                     receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
-                    report['gpu_executed'] = receipt.get('native_contexts_created', 0) > 0
+                    report['gpu_executed'] = (report['gpu_executed'] or
+                                              receipt.get('native_contexts_created', 0) > 0)
                 except (ValueError, TypeError):
                     pass  # Invalid evidence cannot establish a GPU execution claim.
             save()
@@ -141,7 +166,8 @@ def main(argv=None):
             report['links'] = check_targets(
                 args.site, targets, quick=args.site / 'skia-tutorial-quick/index.html')
             report['site_checked'] = True
-        elif args.render or args.installed or args.native or args.gpu_context_backend:
+        elif (args.render or args.installed or args.native
+              or args.gpu_context_backend or args.gpu_surface_backend):
             racket = shutil.which(args.racket)
             if racket is None:
                 raise CheckError('Racket executable not found: ' + args.racket)
@@ -172,6 +198,8 @@ def main(argv=None):
                                       ROOT / 'tools/reference-raster-pure-test.rkt'])
             run('gpu-context-pure-tests', [racket, '-l', 'raco', '--', 'test',
                                            ROOT / 'tools/reference-gpu-context-pure-test.rkt'])
+            run('gpu-surface-pure-tests', [racket, '-l', 'raco', '--', 'test',
+                                           ROOT / 'tools/reference-gpu-surface-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:
@@ -266,6 +294,18 @@ def main(argv=None):
                     raise CheckError('GPU context acceptance receipt is incomplete or inconsistent')
                 report['gpu_context_tests_passed'] = True
                 report['gpu_context_acceptance'] = receipt
+                report['gpu_executed'] = True
+                report['native_executed'] = True
+            if args.gpu_surface_backend:
+                gpu_output = output / 'gpu-surfaces.json'
+                adapter = args.gpu_surface_adapter or 'hardware'
+                run('gpu-surface-native', [racket, ROOT / 'tools/reference-gpu-surface-test.rkt',
+                                          '--backend', args.gpu_surface_backend,
+                                          '--adapter', adapter, '--output', gpu_output])
+                receipt = json.loads(gpu_output.read_text(encoding='utf-8'))
+                check_gpu_surface_receipt(receipt, args.gpu_surface_backend, adapter)
+                report['gpu_surface_tests_passed'] = True
+                report['gpu_surface_acceptance'] = receipt
                 report['gpu_executed'] = True
                 report['native_executed'] = True
         if source_hashes(ROOT, review_inputs=review_inputs) != before:
