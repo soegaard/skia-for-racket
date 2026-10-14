@@ -19,6 +19,8 @@ The effects chapters cover path and mask effects, color and image filters,
 runtime SkSL programs, and custom blenders.
 Pictures, PDF and SVG documents, reusable output pages, raster fallback, and
 document annotations are described in the output chapters.
+The stream and codec chapters cover native and live port I/O, image frames,
+scanline batches, incremental decoding, and detached pixel descriptions.
 Other interfaces are described in the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{existing API notes}.
 
@@ -63,5 +65,12 @@ The atlas-transform values used for glyph placement are also exported by
 @include-section["svg-documents.scrbl"]
 @include-section["output-pages.scrbl"]
 @include-section["annotations.scrbl"]
+
+@include-section["streams.scrbl"]
+@include-section["live-streams.scrbl"]
+@include-section["pixel-descriptions.scrbl"]
+@include-section["codecs.scrbl"]
+@include-section["scanline-codecs.scrbl"]
+@include-section["incremental-codecs.scrbl"]
 
 @index-section[]

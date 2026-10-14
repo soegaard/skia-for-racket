@@ -1,0 +1,228 @@
+#lang scribble/manual
+
+@(require (for-label racket/base racket/contract skia skia/live-streams))
+
+@title[#:tag "skia-live-streams"]{Live Port Input and Output}
+
+@defmodule[skia/live-streams #:no-declare]
+@(declare-exporting skia skia/live-streams #:use-sources (skia/live-streams))
+
+A @deftech{live port operation} exchanges chunks with a Racket port while native
+work is in progress. The image, picture, and byte-copy
+operations do not first buffer the complete encoded transfer as the
+@secref["skia-buffered-ports"] adapters do. Document preflight has additional
+storage requirements, described below.
+The call is synchronous: it returns after native work and cleanup have finished.
+No persistent port-backed image or codec is returned.
+
+The caller must give the operation exclusive use of its ports until it returns.
+Port callbacks must not re-enter live operations. Another active live port
+operation is rejected rather than nested. The implementation services port I/O
+outside native ownership scopes and does not promise callbacks on the initiating
+Racket thread.
+
+The positive exact @racket[#:limit] must not exceed @racket[2147483647] or
+@racket[current-skia-byte-limit]. It bounds logical transfer/storage quantities,
+not the total native heap. Decoding still allocates pixels. Document output
+records complete pictures and performs a preflight export before publishing;
+streaming output is not a constant-memory authoring guarantee.
+
+A cancellation event is checked during I/O. Cancellation and failures can leave
+partly consumed input or partly written output. They do not roll back bytes or
+restore port positions. Ports remain open by default. Once an operation takes
+ownership under a true close option, cleanup closes the selected ports after
+native teardown, including on failure. Validation or document-authoring failures
+before launch do not take ownership. Native output streams are distinct from
+Racket ports and follow the rules in @secref["skia-native-publication"].
+
+@defproc[(live-streams-check!)
+          void?]{
+Initializes and checks the live-stream support library and its native bridge.
+Raises an exception when unavailable or invoked reentrantly from port service.
+Successful initialization does not establish support for every image format or
+requested decoding operation.
+}
+
+@defproc[(live-streams-available?)
+          boolean?]{
+Calls @racket[live-streams-check!] and returns @racket[#t] on success. Returns
+@racket[#f] when that check raises an ordinary failure exception. This availability
+probe can initialize native libraries; it is not a pure type predicate.
+}
+
+@section{Reading and Copying Ports}
+
+Input begins at the port's current position. A supplied @racket[#:length] is a
+nonnegative exact length within the byte limit for this input, not the total
+size of an enclosing file. Seekable input requires an explicit length and a
+port that supports exact positions and seeking; positions used by the operation
+are relative to the starting position. A false seekable option does not promise
+that every native format can be decoded sequentially. These constructors return
+a decoded first image or picture, not a resumable port-backed decoder.
+
+@defproc[(image-from-port [input input-port?]
+          [#:length length (or/c exact-nonnegative-integer? #f) #f]
+          [#:seekable? seekable? boolean? #f]
+          [#:normalize-origin? normalize? boolean? #t]
+          [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
+          [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
+          image?]{
+Decodes the first image from live input and returns an independently owned CPU
+image. The default applies the encoded orientation; disabling it preserves
+encoded pixel coordinates. Unsupported decoding and incomplete required input
+raise exceptions. The port need not remain open after successful return.
+Use @racket[codec-from-port/buffered] for explicit animation-frame access.
+}
+
+@defproc[(picture-from-port [input input-port?]
+          [#:trusted? trusted? boolean? #f]
+          [#:width width (or/c real? #f) #f] [#:height height (or/c real? #f) #f]
+          [#:length length (or/c exact-nonnegative-integer? #f) #f]
+          [#:seekable? seekable? boolean? #f]
+          [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
+          [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
+          picture?]{
+Loads a picture from trusted live SKP input. The explicit trust decision and
+paired nominal-size overrides have the meaning specified for
+@racket[picture-from-bytes]. Successful loading does not keep the port attached
+to the picture. Header validation is not safe deserialization of untrusted data.
+}
+
+@defproc[(copy-port/streaming [input input-port?] [output output-port?]
+          [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
+          [#:close-input? close-input? boolean? #f]
+          [#:close-output? close-output? boolean? #f]
+          [#:cancel-evt cancel (or/c evt? #f) #f])
+          exact-nonnegative-integer?]{
+Copies input through EOF to a distinct output port and returns the number of
+bytes written. The two close options concern their respective ports. Cancellation,
+quota errors, or I/O errors can leave a written prefix. This operation uses the
+live native bridge even though it performs no image decoding.
+
+@racketblock[
+(define input (open-input-bytes #"chunked output"))
+(define output (open-output-bytes))
+(define count
+  (copy-port/streaming input output #:close-input? #t))
+(define result (get-output-bytes output))
+(close-output-port output)
+(list count result)
+]
+
+The result contains the byte count and @racket[#"chunked output"].
+}
+
+@section{Writing Images and Pictures}
+
+The live image writers validate @emph{all} encoding options, even those not used
+by the selected format. In particular, quality must be an exact integer for PNG,
+JPEG, and WebP. This differs from @racket[image->encoded-bytes], whose inactive
+options are ignored and whose WebP quality accepts noninteger real values.
+The live signatures have no ICC-profile override or destination color-space
+keyword. They retain the image's native color interpretation; they are not an
+implicit color conversion interface.
+
+@defproc[(image->port [image image?] [output output-port?]
+          [format (or/c 'png 'jpeg 'webp)]
+          [#:quality quality (integer-in 0 100) 90]
+          [#:png-compression compression (integer-in 0 9) 6]
+          [#:jpeg-downsample downsample (or/c 'yuv-420 'yuv-422 'yuv-444) 'yuv-420]
+          [#:jpeg-alpha alpha (or/c 'ignore 'blend-on-black) 'ignore]
+          [#:webp-lossless? lossless? boolean? #f]
+          [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
+          [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
+          exact-nonnegative-integer?]{
+Encodes a CPU-compatible image directly to a Racket port and returns the bytes
+written. GPU-dependent images are rejected instead of read back automatically.
+The writer obtains its own raster reference; the caller's image remains owned
+by the caller. The live close and cancellation rules apply to the output port.
+A native or port failure can leave an incomplete encoded file.
+}
+
+@defproc[(picture->port [picture picture?] [output output-port?]
+          [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
+          [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
+          exact-nonnegative-integer?]{
+Serializes a CPU-compatible picture as SKP to a Racket port and returns the
+bytes written. It does not produce SVG or PDF. The caller retains ownership of
+the picture. A failed write can leave a partial SKP stream; no rollback is
+performed. The SKP compatibility and trust cautions in @racket[picture->bytes]
+also apply.
+}
+
+@section{Writing Documents}
+
+@defproc[(output->port [source (or/c output-page? (cons/c output-page? (listof output-page?)))]
+          [output output-port?] [format (or/c 'pdf 'svg)]
+          [#:policy policy (or/c 'report 'error 'vector-only) 'error]
+          [#:text-mode mode (or/c 'auto 'native 'outline) 'auto]
+          [#:raster-dpi dpi (real-in 1 9600) 144]
+          [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
+          [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
+          exact-nonnegative-integer?]{
+Exports output pages to a Racket port and returns the byte count. PDF accepts
+one through 1024 pages; SVG requires exactly one. Each application drawing
+callback runs once to record its page. The recorded commands are preflighted
+against the selected output policy and then replayed for publication. An authoring
+or preflight failure writes no bytes to the destination. Later publication
+failures can leave partial output.
+
+The text-mode and DPI rules are those of @racket[output->bytes]. The automatic
+mode uses native text for PDF and outlines for SVG. SVG output includes physical
+point dimensions. This procedure does not accept the metadata or identifier
+keywords of @racket[output->bytes]. Named destinations cannot be authored on
+the intermediate picture-recording canvas; use direct document output when such
+annotations are required.
+
+The default @racket['error] policy rejects features classified as needing raster
+fallback, unsupported, unknown, or discarded. The @racket['vector-only] policy
+rejects every feature not classified as vector, including embedded raster images.
+The @racket['report] policy does not reject those classifications, but this
+procedure returns only a byte count, not the internally collected audit report.
+These policies do not make arbitrary effects portable or add automatic raster
+fallback. Native and port failures can still raise under any policy.
+}
+
+@section[#:tag "skia-native-publication"]{Writing to Native Output Streams}
+
+The following writers append at the destination stream's current end and return
+the bytes written by this call, not the accumulated total. They use the remaining
+captured/current stream budget and require some budget to remain. The stream is
+exclusively pinned during publication. A failure after pinning can leave partial
+output and make further use fail; close that stream instead of retrying on it.
+Successful publication leaves the stream open. No close or cancellation keyword
+is provided by these three native-stream operations.
+
+@defproc[(image-write-stream! [image image?] [stream skia-output-stream?]
+          [format (or/c 'png 'jpeg 'webp)]
+          [#:quality quality (integer-in 0 100) 90]
+          [#:png-compression compression (integer-in 0 9) 6]
+          [#:jpeg-downsample downsample (or/c 'yuv-420 'yuv-422 'yuv-444) 'yuv-420]
+          [#:jpeg-alpha alpha (or/c 'ignore 'blend-on-black) 'ignore]
+          [#:webp-lossless? lossless? boolean? #f])
+          exact-nonnegative-integer?]{
+Encodes a CPU-compatible image to a memory or file output stream. All encoding
+options are validated as for @racket[image->port], including inactive options.
+The caller retains ownership of both resources.
+}
+
+@defproc[(picture-write-stream! [picture picture?] [stream skia-output-stream?])
+          exact-nonnegative-integer?]{
+Serializes a CPU-compatible picture to a memory or file output stream.
+The operation uses the same SKP representation and compatibility limitations as
+@racket[picture->bytes]. It does not clear preexisting destination bytes.
+}
+
+@defproc[(output-write-stream!
+          [source (or/c output-page? (cons/c output-page? (listof output-page?)))]
+          [stream skia-output-stream?]
+          [#:policy policy (or/c 'report 'error 'vector-only) 'error]
+          [#:text-mode mode (or/c 'auto 'native 'outline) 'auto]
+          [#:raster-dpi dpi (real-in 1 9600) 144])
+          exact-nonnegative-integer?]{
+Publishes one through 1024 output pages as PDF to a native output stream.
+It follows @racket[output->port]'s record-once and preflight rules, using the
+stream's budget. There is no format argument: SVG publication is provided by
+@racket[output->port], where its physical-size header can be handled correctly.
+The automatic text mode is native. The caller retains the open output stream.
+}

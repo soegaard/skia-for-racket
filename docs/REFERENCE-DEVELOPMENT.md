@@ -1,4 +1,133 @@
-# Skia Reference development: R3e.1 page grammar and annotation behavior
+# Skia Reference development: R3f streams and codecs
+
+R3f extends the committed R3e.1 Reference at
+`5a2d7d410161758f9a589024eb87259691523c7b` (Expand Reference output documentation).
+It adds 141 bindings and 249 public export paths. The totals are 752 bindings,
+1094 documented export paths, and 34 conceptual chapters. Existing signatures,
+examples, binding-source declarations, and publication checks are preserved.
+No library implementation or tutorial program changes.
+
+## R3f scope
+
+| Chapter | New bindings | Subject |
+|---|---:|---|
+| Native Streams and Buffered Ports | 32 | Native cursors, memory/file output, buffering, consumers. |
+| Live Port Input and Output | 11 | Synchronous chunk I/O and failure-aware image/document writing. |
+| Image Codecs and Frames | 35 | Metadata, frames, ownership, orientation, size/subset negotiation. |
+| Pixel Descriptions and Decoded Buffers | 18 | Descriptions, layout, and detached decode results. |
+| Scanline Decoding | 25 | Native row sessions, consumption order, short reads, copied batches. |
+| Incremental Image Decoding | 20 | Explicit feeds, retained destinations, progress and snapshots. |
+
+The complete public export families of `skia/streams`, `skia/file-streams`,
+`skia/stream-inputs`, `skia/live-streams`, `skia/codec-queries`,
+`skia/codec-scanlines`, and `skia/codec-incremental` are covered. Public aliases
+have one canonical definition and corresponding binding-probe references.
+Three core codec/metadata groups use `skia` rather than private import paths.
+
+The pixel-description chapter is a bounded prerequisite, not the complete R3g
+raster-buffer expansion. It documents fifteen `skia/image-info` procedures;
+`color-space-descriptor?` retains its existing Color Management entry. The three
+format-inventory constants remain deferred, as do other raster-buffer/pixmap
+operations. Only `raster-buffer?`, `raster-buffer-image-info`, and
+`raster-buffer->image` are added here, so callers can interpret and use scanline
+batches and incremental snapshots without undocumented result types.
+
+## Semantics that must remain distinct
+
+Native duplicate starts at byte zero; fork starts at the current cursor. Both
+have independent cursors and resource ownership, but file-backed duplicates do
+not guarantee immutable file contents. Resource-from-stream constructors use a
+private duplicate from zero and preserve the caller's cursor. Buffered ports
+consume the unread suffix, whereas live ports exchange chunks synchronously.
+The buffered limit probe can consume one byte past the quota before failing.
+
+Live image writers validate every format option and require integer quality,
+including for PNG and WebP. This intentionally differs from the existing
+byte dispatcher, which ignores inactive options and accepts real WebP quality.
+Native file-stream construction can create or truncate immediately. It must not
+be described as exclusive atomic creation or rollback-safe publication. Live
+publication can leave partial bytes; native-output stream failures invalidate
+further use after pinning, while simple failed native byte writes close their
+wrapper. Their failure protocols must not be conflated.
+
+A still image has one selectable frame even when its animation-metadata count
+is zero. Metadata does not certify complete decode success. One-shot frame
+output is an independent premultiplied RGBA8888 image; frame rectangles remain
+in encoded coordinates even when output orientation is normalized. Negotiation
+queries do not apply scaling/subsets to a later one-shot call.
+
+Scanline cursors count requested rows, not just decoded rows. Short bottom-up
+reads exclude native fill rows and return actual decoded rows in increasing
+output-row order. Batch completion concerns one request, not the whole image.
+Incremental decoding has a retained destination and explicit feeds: progressive
+PNG input becomes visible at complete chunk boundaries, and other formats wait
+for final input. A final feed is not proof of a complete image. Terminal native
+failure may leave initialized storage available for a snapshot; cancellation
+releases it. Progress with an unknown row count is not a claim of zero valid
+rows, and interlaced rows are not promised final on first visit.
+
+## Examples and tests
+
+Seven displayed examples are added, for a total of 78. The one new evaluated
+example checks a 3-by-2 RGBA description with 16-byte stride: stride, minimum
+length, and full allocation are 16, 28, and 32. Eighteen evaluated examples now
+appear in the manual. Native examples remain displayed code; the existing
+native example runner reads those actual blocks and runs each twice.
+
+`tools/reference_io_cases.py` contains independent call-shape expectations for
+all 141 additions. It is not a captured native inventory or a replacement for
+the two hash-pinned public API JSON files. The Python suite gains 33 source,
+contract, alias, semantic, and test-integration regressions. Existing full
+inventory and archive tests continue to use explicitly synthetic fixtures.
+
+`tools/reference-io-pure-test.rkt` supplies fourteen native-free cases for public
+pixel descriptions and private buffering/decoder-state helpers. The latter are
+explicitly implementation-level tests, not public exports. The file requires a
+full source checkout even though it performs no native work.
+`tools/reference-io-test.rkt` supplies nineteen CPU/managed-stream cases. It uses
+self-generated PNG and BMP data, not bundled external fonts or image fixtures.
+The BMP rows expose bottom-up batch placement. Required native support must
+fail normally rather than being silently skipped. Neither suite needs fonts,
+GUI, or GPU; the retained full native suite still needs its text dependencies.
+
+## Acceptance and editor handoff
+
+Keep generated output outside the full checkout and use fresh output paths:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py --output ../reference-r3f-source-check \
+  --source-zip ../skia-reference-r3f-source-review.zip
+"$RACKET" -l raco -- test tools/reference-io-pure-test.rkt
+"$RACKET" -l raco -- test tools/reference-io-test.rkt
+python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3f-render-check --review-zip ../skia-reference-r3f-review.zip
+```
+
+The registered `skia` collection must resolve to the revised checkout. The
+existing seed/companion/final rendering sequence, all-alias binding probe,
+strict Reference HTML gate, and extracted-archive checks are retained. A source
+check does not establish rendered links or native execution. The three outgoing
+Reference tutorial links remain a publication gate until the actual integrated
+render and complete review archive pass. No plain-text replacement, fabricated
+anchor, or unresolved-reference suppression is introduced here.
+
+The editor should receive the complete generated archive, including `html/`,
+`sources/`, and `evidence/`, not a manually selected Reference-only folder.
+Source-review ZIPs include pinned inventories and are checked after extraction.
+Their non-native checker is self-contained; native execution still needs the
+full installed library and native dependencies.
+
+R3g remains the next CPU coverage stage: extended geometry and projective
+matrices, broader pixel/raster operations, image-operation extensions, layers,
+specialized canvases, drawables, output policies/groups/audits, caches, and any
+other CPU exports still enumerated as deferred. GPU and GUI/DC integration
+remain R4. No placeholder definitions are counted as documentation.
+
+## Earlier revisions
+
+### R3e.1 page grammar and annotation behavior
 
 The current Reference documents 611 bindings through 845 public export paths in
 28 conceptual chapters. R3e adds 73 bindings and five chapters: Pictures and

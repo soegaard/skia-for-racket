@@ -1,0 +1,186 @@
+#lang scribble/manual
+
+@(require scribble/eval
+          (for-label racket/base racket/contract skia skia/image-info skia/raster-buffers))
+
+@(define pixel-eval (make-base-eval))
+@(pixel-eval '(require skia/image-info))
+
+@title[#:tag "skia-pixel-descriptions"]{Pixel Descriptions and Decoded Buffers}
+
+@defmodule[skia/image-info #:no-declare]
+@(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
+
+A @deftech{pixel description} specifies dimensions, storage format, alpha type,
+and a detached color-space description. It contains no pixels or native handle.
+Scanline batches and incremental snapshots carry these descriptions so their byte
+strings can be interpreted without keeping the decoder open.
+
+Constructing a description validates its representation, not native decoder or
+GPU support. It neither allocates a pixel buffer nor performs color conversion.
+Native operations can reject a valid description they cannot implement.
+
+@defproc[(image-info? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a detached pixel description and @racket[#f] otherwise.
+}
+
+@defproc[(make-image-info [width (integer-in 0 32768)] [height (integer-in 0 32768)]
+          [#:color-type color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
+                                 'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32) 'rgba-8888]
+          [#:alpha-type alpha-type (or/c 'opaque 'premul 'unpremul) 'premul]
+          [#:color-space space (or/c #f 'srgb 'linear-srgb bytes?) #f])
+          image-info?]{
+Returns a pixel description. Zero extents are accepted as descriptions but
+cannot allocate a nonempty raster buffer. RGBX, grayscale, and RGB565 require
+@racket['opaque]. Alpha-only storage accepts @racket['premul] or @racket['opaque],
+rejects @racket['unpremul], and requires a false color-space description.
+
+The space is untagged, sRGB, linear sRGB, or copied ICC bytes. Mutable ICC bytes
+are accepted and copied into immutable storage. The bytes must fit the current
+byte limit and contain a complete-length ICC header with an @tt{acsp} signature.
+This checks the descriptor header, not full native profile support. A live
+@racket[color-space?] resource is not accepted. Declaring a color space does
+not convert samples.
+}
+
+@defproc[(image-info-width [info image-info?])
+          (integer-in 0 32768)]{
+Returns the declared pixel width.
+}
+
+@defproc[(image-info-height [info image-info?])
+          (integer-in 0 32768)]{
+Returns the declared pixel height.
+}
+
+@defproc[(image-info-color-type [info image-info?])
+          (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
+                                 'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32)]{
+Returns the declared storage-format symbol.
+}
+
+@defproc[(image-info-alpha-type [info image-info?])
+          (or/c 'opaque 'premul 'unpremul)]{
+Returns the declared alpha interpretation. Premultiplied RGB is stored after
+multiplication by alpha; unpremultiplied RGB is stored independently.
+}
+
+@defproc[(image-info-color-space [info image-info?])
+          color-space-descriptor?]{
+Returns the detached color-space description: @racket[#f], @racket['srgb],
+@racket['linear-srgb], or immutable ICC bytes. It is not a live color-space resource.
+}
+
+@defproc[(image-info-bytes-per-pixel [info image-info?])
+          exact-positive-integer?]{
+Returns the storage bytes per pixel: 4 for RGBA8888, BGRA8888, RGBX8888, and
+RGBA1010102; 1 for alpha or grayscale; 2 for RGB565; 8 for RGBA F16; and 16 for
+RGBA F32. This does not include row padding.
+}
+
+@defproc[(image-info-channel-bits [info image-info?])
+          (and/c vector? immutable?)]{
+Returns immutable logical-channel widths. The vectors are @racket['#(8 8 8 8)]
+for RGBA/BGRA8888, @racket['#(8 8 8)] for RGBX8888, @racket['#(8)] for alpha or
+grayscale, @racket['#(5 6 5)] for RGB565, @racket['#(10 10 10 2)] for RGBA1010102,
+and four equal 16-bit or 32-bit widths for the floating-point formats. These are
+channel widths, not a byte-offset table; RGBX's unused byte is not a channel.
+}
+
+@defproc[(image-info-sample-type [info image-info?])
+          (or/c 'float 'unsigned-integer)]{
+Returns @racket['float] for F16/F32 storage and @racket['unsigned-integer] otherwise.
+}
+
+@defproc[(image-info-byte-order [info image-info?])
+          (or/c 'byte-channels 'big-endian 'little-endian)]{
+Returns @racket['byte-channels] for byte-wise channel formats. Packed RGB565,
+RGBA1010102, and floating-point samples use the machine's byte order. A storage
+snapshot is therefore not automatically a portable interchange format.
+}
+
+@defproc[(image-info-min-row-bytes [info image-info?])
+          exact-nonnegative-integer?]{
+Returns width times bytes per pixel. This query performs no allocation or
+current-byte-limit check; use @racket[image-info-storage-layout] to validate a
+requested layout.
+}
+
+@defproc[(image-info-with-dimensions [info image-info?]
+          [width (integer-in 0 32768)] [height (integer-in 0 32768)])
+          image-info?]{
+Returns a description with new dimensions and the same format, alpha type,
+and color interpretation. It does not resize or copy pixels.
+}
+
+@defproc[(image-info-storage-layout [info image-info?]
+          [#:row-bytes row-bytes (or/c exact-nonnegative-integer? #f) #f])
+          (values exact-nonnegative-integer? exact-nonnegative-integer?
+                  exact-nonnegative-integer?)]{
+Returns the row stride, minimum addressable byte length, and full allocation
+size. A false stride means the tight stride. An explicit stride must be at least
+the tight stride and divisible by bytes per pixel.
+
+For a nonempty description, the minimum length is the stride times @math{(height - 1)},
+plus the tight stride. The full size is stride times height. Thus the minimum
+omits final-row padding while the allocation includes it. If either dimension
+is zero, both byte lengths are zero, but the stride is still validated.
+The stride and full allocation must fit @racket[2147483647], and the allocation
+must fit @racket[current-skia-byte-limit]. No storage is allocated.
+
+@examples[#:eval pixel-eval
+(define info (make-image-info 3 2))
+(eval:check
+ (call-with-values (lambda () (image-info-storage-layout info #:row-bytes 16)) list)
+ '(16 28 32))
+]
+}
+
+@defproc[(image-info-supports? [info image-info?]
+          [operation (or/c 'storage 'sample 'rgba-read 'rgba-write 'convert
+                           'image-copy 'raster-canvas 'gpu-readback)])
+          boolean?]{
+Returns whether the description satisfies this wrapper's format-level rule
+for @racket[operation]. Raster canvases reject unpremultiplied alpha. GPU readback
+requires RGBA8888 with premultiplied alpha. The other listed operations return
+@racket[#t] for a valid description. This is not a probe of a native library,
+device, codec, available memory, or a particular resource's lifetime.
+}
+
+@close-eval[pixel-eval]
+
+@section{Decoded Raster Buffers}
+
+@defmodule[skia/raster-buffers #:no-declare]
+@(declare-exporting skia skia/raster-buffers #:use-sources (skia/raster-buffers))
+
+A @deftech{raster buffer} owns mutable CPU pixel storage. Converting a scanline
+batch or incremental snapshot into a buffer copies the detached bytes; closing
+the decoding session does not invalidate the buffer. Closing the buffer does
+not invalidate a previously copied image. Open buffers follow ordinary resource
+thread ownership. A canvas or pixmap scope can temporarily borrow the buffer
+exclusively; copying pixels into an image requires the buffer to be idle.
+
+@defproc[(raster-buffer? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a raster buffer, including a closed one, and @racket[#f] otherwise.
+}
+
+@defproc[(raster-buffer-image-info [buffer raster-buffer?])
+          image-info?]{
+Returns a detached description of an open buffer's dimensions, storage format,
+alpha type, and color interpretation. The description remains usable after the
+buffer closes. This metadata query is permitted during a buffer borrow; it does
+not lend pixel storage to the caller.
+}
+
+@defproc[(raster-buffer->image [buffer raster-buffer?])
+          image?]{
+Returns an independently owned image containing copied pixels in the buffer's
+color and alpha format. The buffer must be open and have no active canvas or
+pixmap scope. The storage copy must fit @racket[current-skia-byte-limit]. Later
+buffer mutation or closure does not change the image. The operation does not
+normalize an encoded orientation, concatenate separate scanline batches, or
+certify that incremental decoding was complete.
+}

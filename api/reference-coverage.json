@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R3e",
-  "reviewed_repository_commit": "eadcff7fce37fc9c1e64e5a4a48fb4835c9fcaa2",
+  "stage": "R3f",
+  "reviewed_repository_commit": "5a2d7d410161758f9a589024eb87259691523c7b",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3f-R4",
-    "reason": "Outside R3e pictures and documents; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R3g-R4",
+    "reason": "Outside R3f streams and codecs; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -6357,6 +6357,1524 @@
       "exports": [
         "skia",
         "skia/annotations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-input-stream?",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-memory-input-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-file-input-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-length",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-position",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-at-end?",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-read-bytes",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-peek-bytes",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-skip!",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-seek!",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-rewind!",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-move!",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-duplicate",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream-fork",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "input-stream->bytes",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-output-stream?",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-memory-output-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-stream-write-bytes!",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-stream-bytes-written",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-stream->bytes",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-stream-detach-input!",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-file-output-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/file-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-stream-flush!",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/file-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "buffered-port->input-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-stream-write-port/buffered",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-from-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/stream-inputs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-from-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/stream-inputs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-from-stream",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/stream-inputs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-from-port/buffered",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/stream-inputs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "typeface-from-port/buffered",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/stream-inputs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-from-port/buffered",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/stream-inputs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-from-port/buffered",
+      "chapter": "scribblings/reference/streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/stream-inputs"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "live-streams-check!",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "live-streams-available?",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-from-port",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-from-port",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "copy-port/streaming",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image->port",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture->port",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output->port",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-write-stream!",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture-write-stream!",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-write-stream!",
+      "chapter": "scribblings/reference/live-streams.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/live-streams"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info?",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-image-info",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-width",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-height",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-color-type",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-alpha-type",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-color-space",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-bytes-per-pixel",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-channel-bits",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-sample-type",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-byte-order",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-min-row-bytes",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-with-dimensions",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-storage-layout",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-info-supports?",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer?",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-image-info",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer->image",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec?",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-from-bytes",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-from-file",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-info",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-count",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-repetition-count",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-color-space",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec->image",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-frame-from-bytes",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-frame-from-file",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info?",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-from-bytes",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-from-file",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-width",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-display-width",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-height",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-display-height",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-format",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-color-type",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-alpha-type",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-origin",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "encoded-image-info-frame-count",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info?",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-index",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-required-frame",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-duration",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-fully-received?",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-alpha-type",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-has-alpha-within-bounds?",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-disposal-method",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-blend",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-frame-info-rect",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scaled-dimensions",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-queries"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-supported-subset",
+      "chapter": "scribblings/reference/codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-queries"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-session?",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-from-bytes",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-from-stream",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-from-port/buffered",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-state",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-info",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-source-info",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-order",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-position",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-next-row",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-output-row",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-read!",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-scanline-skip!",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch?",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch-info",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch-row-bytes",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch-first-row",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch-requested-count",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch-decoded-count",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch-bytes",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch-complete?",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "scanline-batch->raster-buffer",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:codec-scanline?",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:codec-scanline-result",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:codec-scanline-native-code",
+      "chapter": "scribblings/reference/scanline-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-scanlines"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-session?",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-codec-incremental",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-feed!",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-step!",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-cancel!",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-state",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-info",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-origin",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-statistics",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-progress?",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-progress-state",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-progress-result",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-progress-initialized-rows",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "codec-incremental-snapshot",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-snapshot?",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-snapshot-info",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-snapshot-row-bytes",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-snapshot-bytes",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-snapshot-progress",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "incremental-snapshot->raster-buffer",
+      "chapter": "scribblings/reference/incremental-codecs.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/codec-incremental"
       ],
       "phase": "0",
       "space": null

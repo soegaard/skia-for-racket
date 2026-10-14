@@ -163,6 +163,10 @@ from reference_output_cases import (PICTURE_EXPORTS, OUTPUT_EXPORTS, ANNOTATION_
 PROCEDURES.update(OUTPUT_PROCEDURES)
 
 
+from reference_io_cases import IO_MODULES, IO_PROCEDURES, PIXEL_INFO_EXPORTS
+PROCEDURES.update(IO_PROCEDURES)
+
+
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
                 required_keywords=COLOR_REQUIRED_KEYWORDS.get(name, []), allowed_keywords=keywords)
@@ -195,9 +199,10 @@ def synthetic_inventory():
                         ('runtime-effects.rkt', RUNTIME_EXPORTS),
                         ('color-space.rkt', COLOR_SPACE_EXPORTS),
                         ('color4f.rkt', COLOR4F_EXPORTS), ('float-colors.rkt', FLOAT_COLOR_EXPORTS),
-                        ('image-info.rkt', DESCRIPTOR_EXPORTS),
+                        ('image-info.rkt', [*DESCRIPTOR_EXPORTS, *PIXEL_INFO_EXPORTS]),
                         ('pictures.rkt', PICTURE_EXPORTS), ('output.rkt', OUTPUT_EXPORTS),
-                        ('annotations.rkt', ANNOTATION_EXPORTS)):
+                        ('annotations.rkt', ANNOTATION_EXPORTS),
+                        *[(p, n) for p, n in IO_MODULES.items() if p != 'image-info.rkt']):
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
@@ -263,8 +268,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 611)
-        self.assertEqual(result['documented_exports'], 845)
+        self.assertEqual(len(result['definitions']), 752)
+        self.assertEqual(result['documented_exports'], 1094)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -383,12 +388,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 611)
+        self.assertEqual(len(self.check()['definitions']), 752)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 611)
+        self.assertEqual(len(self.check()['definitions']), 752)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -941,9 +946,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 611)
-        self.assertEqual(result['documented_exports'], 845)
-        self.assertEqual(len(result['chapters']), 29)  # Root plus twenty-eight chapters.
+        self.assertEqual(len(result['definitions']), 752)
+        self.assertEqual(result['documented_exports'], 1094)
+        self.assertEqual(len(result['chapters']), 35)  # Root plus thirty-four chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1658,7 +1663,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 71)
+        self.assertEqual(count, 78)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -2616,13 +2621,13 @@ class R3dColorSemanticsTests(unittest.TestCase):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
         for module, names in (('color-space', COLOR_SPACE_EXPORTS), ('color4f', COLOR4F_EXPORTS),
                               ('float-colors', FLOAT_COLOR_EXPORTS),
-                              ('image-info', DESCRIPTOR_EXPORTS)):
+                              ('image-info', [*DESCRIPTOR_EXPORTS, *PIXEL_INFO_EXPORTS])):
             actual = [row['name'] for row in manifest['definitions']
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 611)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 845)
+        self.assertEqual(len(manifest['definitions']), 752)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1094)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -3134,6 +3139,339 @@ class R3e1EditorialTests(unittest.TestCase):
         self.assertIn('document expression ran', text)
         self.assertIn('width expression ran', text)
         self.assertIn('height expression ran', text)
+
+
+
+class R3fStreamCodecTests(unittest.TestCase):
+    """Authored semantics and call shapes; no native/render execution is implied."""
+    chapters = ('streams', 'live-streams', 'codecs', 'pixel-descriptions',
+                'scanline-codecs', 'incremental-codecs')
+
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def prose(self, chapter):
+        return ' '.join(self.text(chapter).split())
+
+    def header(self, name):
+        for chapter in self.chapters:
+            for form, header, _ in checks.commands(self.text(chapter), recursive=True):
+                if form == 'defproc' and header[0][0] == name:
+                    return header
+        self.fail('missing R3f procedure: ' + name)
+
+    def option(self, name, keyword):
+        args = self.header(name)[0][1:]
+        return next(arg for arg in args if isinstance(arg, list) and arg[0] == keyword)
+
+    def test_all_added_call_shapes_match_independently_transcribed_expectations(self):
+        definitions, _ = checks.document_definitions(ROOT)
+        by_name = {row['name']: row for row in definitions}
+        self.assertEqual(len(IO_PROCEDURES), 141)
+        for name, (arity, keywords) in IO_PROCEDURES.items():
+            with self.subTest(name=name):
+                self.assertEqual(by_name[name]['arity_mask'], str(arity))
+                self.assertEqual(by_name[name]['allowed_keywords'], sorted(keywords))
+                self.assertEqual(by_name[name]['required_keywords'], [])
+
+    def test_module_families_have_one_canonical_entry_per_binding(self):
+        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        for path, names in IO_MODULES.items():
+            module = checks.public_module(path)
+            rows = [row for row in manifest['definitions'] if module in row['exports']]
+            expected = set(names)
+            if path == 'image-info.rkt':
+                expected.add('color-space-descriptor?')
+            self.assertEqual({row['name'] for row in rows}, expected)
+            self.assertEqual(len(rows), len(expected))
+            self.assertTrue(all(row['canonical_module'] == 'skia' for row in rows))
+        self.assertFalse(any('private/' in module for row in manifest['definitions']
+                             for module in row['exports']))
+
+    def test_new_canonical_and_alias_probes_are_present_exactly_once(self):
+        probe = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        for name in IO_PROCEDURES:
+            self.assertEqual(probe.count('@racket[' + name + ']'), 1, name)
+        for path, names in IO_MODULES.items():
+            module = checks.public_module(path)
+            prefix = module.removeprefix('skia/').replace('/', '-')
+            self.assertEqual(probe.count('(prefix-in ' + prefix + ': ' + module + ')'), 1)
+            for name in names:
+                self.assertEqual(probe.count('@racket[' + prefix + ':' + name + ']'), 1)
+
+    def test_each_new_chapter_has_export_scope_and_public_for_label_imports(self):
+        primary = {'streams': 'streams', 'live-streams': 'live-streams',
+                   'codecs': None, 'pixel-descriptions': 'image-info',
+                   'scanline-codecs': 'codec-scanlines',
+                   'incremental-codecs': 'codec-incremental'}
+        for chapter, module in primary.items():
+            text = self.text(chapter)
+            self.assertIn('for-label racket/base racket/contract skia', text)
+            if module:
+                declaration = ('@(declare-exporting skia skia/' + module +
+                               ' #:use-sources (skia/' + module + '))')
+                self.assertIn(declaration, text)
+                self.assertLess(text.index(declaration), text.index('@defproc['))
+                self.assertIn('skia/' + module, text.split('@title', 1)[0])
+
+    def test_nested_source_modules_do_not_change_later_sibling_ownership(self):
+        text = self.text('streams')
+        start = text.index('@section[#:tag "skia-buffered-ports"]')
+        stop = text.index('@section[#:tag "skia-stream-consumers"]')
+        self.assertIn('@(declare-exporting skia skia/streams', text[start:stop])
+        self.assertIn('@(declare-exporting skia skia/stream-inputs', text[stop:])
+        codecs = self.text('codecs')
+        start = codecs.index('@defmodule[skia/codec-queries')
+        self.assertIn('#:use-sources (skia/codec-queries)', codecs[start:])
+        pixels = self.text('pixel-descriptions')
+        self.assertIn('#:use-sources (skia/raster-buffers)', pixels)
+
+    def test_stream_zero_reads_and_positive_eof_are_distinguished(self):
+        self.assertEqual(self.header('input-stream-read-bytes')[1],
+                         ['or/c', 'bytes?', 'eof-object?'])
+        text = self.prose('streams')
+        self.assertIn('zero request returns an empty byte string', text)
+        self.assertIn('positive request at end-of-input returns @racket[eof]', text)
+        self.assertIn('requested count itself must fit the effective stream limit', text)
+
+    def test_duplicate_and_fork_have_independent_cursors_and_native_owners(self):
+        text = self.prose('streams')
+        self.assertIn('independently owned input stream at position zero', text)
+        self.assertIn("starts at the original stream's current position", text)
+        self.assertIn('a fork is not a suffix-only stream', text)
+        self.assertIn('not a promise of copied file contents', text)
+
+    def test_detach_is_memory_only_resets_count_and_does_not_close_writer(self):
+        text = self.prose('streams')
+        self.assertIn('output remains open, empty, and reusable', text)
+        self.assertIn('File output streams are rejected', text)
+        self.assertIn('not a lifetime total across detach operations', text)
+        self.assertEqual(self.header('output-stream->bytes')[1],
+                         ['and/c', 'bytes?', ['not/c', 'immutable?']])
+
+    def test_stream_limits_and_native_long_are_not_conflated(self):
+        text = self.prose('streams')
+        self.assertIn('smaller of the captured limit and the current byte limit', text)
+        self.assertIn('whole stream length, not only the unread suffix', text)
+        self.assertIn("platform's signed C @tt{long}", text)
+        self.assertIn('not necessarily the same as the pointer-sized integer range', text)
+
+    def test_file_writer_documents_immediate_truncation_and_nonatomic_failure(self):
+        text = self.prose('streams')
+        self.assertIn('create or truncate the destination immediately', text)
+        self.assertIn('not atomic exclusive creation', text)
+        self.assertIn('no durability guarantee is implied', text)
+        self.assertIn('failed native write may have written a prefix', text)
+
+    def test_buffered_ports_document_over_limit_probe_and_close_ownership(self):
+        text = self.prose('streams')
+        self.assertIn('one-byte probe', text)
+        self.assertIn('@racket[(add1 limit)] bytes', text)
+        self.assertIn('before entering that scope does not take ownership', text)
+        self.assertIn('do not retain live port callbacks', text)
+
+    def test_resource_stream_constructors_use_byte_zero_not_callers_cursor(self):
+        text = self.prose('streams')
+        self.assertIn("not from the caller's current cursor", text)
+        self.assertIn('cursor unchanged, including on construction failure', text)
+        self.assertIn('file-backed duplicate still requires a stable backing file', text)
+        self.assertIn('@racket[#:trusted? #t]', text)
+
+    def test_live_encoding_contracts_validate_inactive_options_and_integer_webp(self):
+        for name in ('image->port', 'image-write-stream!'):
+            self.assertEqual(self.option(name, '#:quality')[2], ['integer-in', '0', '100'])
+            self.assertEqual(self.option(name, '#:png-compression')[2], ['integer-in', '0', '9'])
+        text = self.prose('live-streams')
+        self.assertIn('validate @emph{all} encoding options', text)
+        self.assertIn('whose inactive options are ignored', text)
+        self.assertIn('WebP quality accepts noninteger real values', text)
+
+    def test_live_input_length_seekability_and_callback_constraints_are_explicit(self):
+        text = self.prose('live-streams')
+        self.assertIn('Seekable input requires an explicit length', text)
+        self.assertIn('relative to the starting position', text)
+        self.assertIn('Port callbacks must not re-enter live operations', text)
+        self.assertIn('No persistent port-backed image or codec is returned', text)
+        self.assertEqual(self.option('image-from-port', '#:normalize-origin?')[-1], '#t')
+
+    def test_live_document_writers_record_once_and_do_not_promise_constant_memory(self):
+        text = self.prose('live-streams')
+        self.assertIn('callback runs once to record its page', text)
+        self.assertIn('preflight failure writes no bytes', text)
+        self.assertIn('not a constant-memory authoring guarantee', text)
+        self.assertIn('There is no format argument', text)
+        self.assertEqual(self.option('output->port', '#:policy')[2],
+                         ['or/c', ['quote', 'report'], ['quote', 'error'], ['quote', 'vector-only']])
+
+    def test_live_stream_failure_poisoning_is_not_successful_rollback(self):
+        text = self.prose('live-streams')
+        self.assertIn('make further use fail; close that stream instead of retrying', text)
+        self.assertIn('partial', text)
+        self.assertIn('exclusive', text)
+        self.assertEqual(self.header('output-write-stream!')[1], 'exact-nonnegative-integer?')
+
+    def test_still_frame_count_is_not_the_animation_metadata_count(self):
+        text = self.prose('codecs')
+        self.assertIn('one selectable frame', text)
+        self.assertIn('still image commonly reports zero', text)
+        self.assertEqual(self.header('codec-frame-info')[1], ['or/c', 'codec-frame-info?', '#f'])
+        self.assertIn('invalid index', text)
+
+    def test_frame_decode_uses_fresh_storage_and_does_not_return_partial_pixels(self):
+        text = self.prose('codecs')
+        self.assertIn('fresh buffer', text)
+        self.assertIn('Calls need not be made in frame order', text)
+        self.assertIn('premultiplied', text)
+        self.assertIn('incomplete', text)
+        self.assertIn('No scaling or subset negotiation is applied', text)
+
+    def test_negotiation_and_orientation_are_not_resampling_or_subset_decoding(self):
+        text = self.prose('codecs')
+        self.assertIn('without resampling', text)
+        self.assertIn('encoded coordinates', text)
+        self.assertIn('contain', text)
+        self.assertIn('strictly positive after binary32 rounding', text)
+        self.assertEqual(self.header('codec-supported-subset')[1][0], 'or/c')
+
+    def test_pixel_descriptions_have_zero_size_and_format_constraints(self):
+        text = self.prose('pixel-descriptions')
+        self.assertIn('Zero extents are accepted as descriptions', text)
+        self.assertIn('RGBX, grayscale, and RGB565 require', text)
+        self.assertIn('not full native profile support', text)
+        self.assertIn('Mutable ICC bytes are accepted and copied', text)
+        self.assertEqual(self.option('make-image-info', '#:color-space')[-1], '#f')
+
+    def test_row_stride_example_is_evaluated_and_checks_final_padding(self):
+        text = self.text('pixel-descriptions')
+        examples = [header for form, header, _ in checks.commands(text, recursive=True)
+                    if form == 'examples']
+        self.assertEqual(len(examples), 1)
+        self.assertIn('eval:check', str(examples))
+        self.assertIn("'(16 28 32)", text)
+        self.assertIn('@close-eval[pixel-eval]', text)
+        self.assertIn("(pixel-eval '(require skia/image-info))", text)
+
+    def test_decoded_buffers_are_not_views_of_native_decoder_storage(self):
+        text = self.prose('pixel-descriptions')
+        self.assertIn('copies the detached bytes', text)
+        self.assertIn('no active canvas or pixmap scope', text)
+        self.assertIn('does not change the image', text)
+        self.assertIn('certify that incremental decoding was complete', text)
+
+    def test_scanline_state_and_requested_vs_decoded_count_are_separate(self):
+        text = self.prose('scanline-codecs')
+        self.assertIn('requested', text)
+        self.assertIn('decoded', text)
+        self.assertIn('incomplete', text)
+        self.assertIn('fill', text)
+        self.assertEqual(self.header('scanline-batch-first-row')[1],
+                         ['or/c', 'exact-nonnegative-integer?', '#f'])
+        self.assertEqual(self.header('scanline-batch-bytes')[1], ['and/c', 'bytes?', 'immutable?'])
+
+    def test_scanline_options_and_native_support_do_not_promise_fallback(self):
+        text = self.prose('scanline-codecs')
+        self.assertIn('bottom-up', text)
+        self.assertIn('fallback', text)
+        self.assertIn('first frame', text)
+        self.assertEqual(self.option('codec-scanline-from-bytes', '#:alpha-type')[-1],
+                         ['quote', 'unpremul'])
+        self.assertEqual(self.option('codec-scanline-from-bytes', '#:color-space')[-1],
+                         ['quote', 'srgb'])
+
+    def test_incremental_destinations_are_restricted_without_port_callbacks(self):
+        text = self.prose('incremental-codecs')
+        self.assertIn('does not read a Racket port', text)
+        self.assertIn('Floating-point destinations are not accepted', text)
+        self.assertEqual(self.option('make-codec-incremental', '#:color-type')[2],
+                         ['or/c', ['quote', 'rgba-8888'], ['quote', 'bgra-8888']])
+        self.assertEqual(self.option('make-codec-incremental', '#:alpha-type')[2],
+                         ['or/c', ['quote', 'premul'], ['quote', 'unpremul']])
+
+    def test_incremental_png_visibility_is_not_accepted_byte_count(self):
+        text = self.prose('incremental-codecs')
+        self.assertIn('complete chunk boundaries', text)
+        self.assertIn('Other formats are exposed only once', text)
+        self.assertIn('visible input size nor final flag has changed', text)
+        self.assertIn('not their combined heap budget', text)
+        self.assertIn('not current allocation sizes', text)
+
+    def test_incremental_final_input_and_completion_are_different(self):
+        text = self.prose('incremental-codecs')
+        self.assertIn('declaring final means no more input will arrive', text)
+        self.assertIn('terminal @racket[\'incomplete] afterward', text)
+        self.assertIn('A quota rejection leaves the retained prefix and final flag unchanged', text)
+        self.assertIn('cancellation between steps', text)
+        self.assertEqual(self.header('codec-incremental-feed!')[1], 'exact-nonnegative-integer?')
+
+    def test_incremental_snapshot_progress_does_not_certify_complete_image(self):
+        text = self.prose('incremental-codecs')
+        self.assertIn('row report of @racket[#f] means unknown, not zero', text)
+        self.assertIn('Interlaced decoding may revisit pixels', text)
+        self.assertIn('snapshot can describe incomplete output', text)
+        self.assertIn('remains valid after the session closes', text)
+        self.assertEqual(self.header('incremental-snapshot-bytes')[1],
+                         ['and/c', 'bytes?', 'immutable?'])
+
+    def test_all_new_displayed_examples_are_native_tests_not_documentation_evaluation(self):
+        native = []
+        evaluated = []
+        for chapter in self.chapters:
+            for form, header, _ in checks.commands(self.text(chapter), recursive=True):
+                if form == 'racketblock':
+                    native.append(header)
+                if form == 'examples':
+                    evaluated.append(header)
+        self.assertEqual(len(native), 7)
+        self.assertEqual(len(evaluated), 1)
+        for example in native:
+            self.assertNotIn('eval:alts', str(example))
+            self.assertNotIn('eval:result', str(example))
+
+    def test_new_racket_suites_have_expected_cases_and_are_in_the_acceptance_runner(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        for filename, expected in [('reference-io-pure-test.rkt', 14),
+                                   ('reference-io-test.rkt', 19)]:
+            text = (ROOT / 'tools' / filename).read_text()
+            self.assertEqual(text.count('(test-case '), expected)
+            self.assertIn("ROOT / 'tools/" + filename + "'", runner)
+            self.assertNotIn('skip-test', text)
+        self.assertIn("run('io-pure-tests'", runner)
+
+    def test_no_new_tests_use_packaged_fonts_or_native_replacements(self):
+        text = (ROOT / 'tools/reference-io-test.rkt').read_text()
+        self.assertIn('(codec-scanline-from-bytes (bottom-up-bmp))', text)
+        self.assertIn('(make-codec-incremental)', text)
+        self.assertIn('(copy-port/streaming input output', text)
+        self.assertIn('(output->port page output', text)
+        for suffix in ('.ttf', '.otf', '.woff'):
+            self.assertNotIn(suffix, text)
+        self.assertNotIn('(define (codec-', text)
+        self.assertNotIn('(define (input-stream-', text)
+
+    def test_integer_range_contracts_use_exact_bounds_or_false(self):
+        # Racket integer-in uses #f for an unbounded end, not +inf.0.
+        def visit(form):
+            if isinstance(form, list):
+                if form[:1] == ['integer-in']:
+                    yield form
+                for child in form:
+                    yield from visit(child)
+        for name in IO_PROCEDURES:
+            for contract in visit(self.header(name)):
+                self.assertEqual(len(contract), 3)
+                for bound in contract[1:]:
+                    self.assertTrue(bound == '#f' or re.fullmatch(r'-?\d+', str(bound)), name)
+        self.assertEqual(self.header('codec-repetition-count')[1], ['integer-in', '-1', '#f'])
+
+    def test_required_review_gate_and_companions_remain_in_the_existing_path(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn("report['reference_html'] = check_review_html(html_site)", runner)
+        self.assertIn("run('reference-seed'", runner)
+        self.assertIn('tutorial_xrefs.append(saved)', runner)
+        self.assertIn("run('reference',", runner)
+        self.assertIn('report[\'status\'] = \'passed\'', runner)
+        self.assertIn('check_review_html(extracted_html)',
+                      (ROOT / 'tools/reference_review.py').read_text())
 
 
 if __name__ == '__main__':
