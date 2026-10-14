@@ -19,6 +19,8 @@ concurrent external and Skia access.
 
 @section{Metal}
 
+These operations require 64-bit macOS and an active Metal GPU context.
+
 @defmodule[skia/unsafe/gpu-metal #:no-declare]
 @(declare-exporting skia/unsafe/gpu-metal #:use-sources (skia/unsafe/gpu-metal))
 
@@ -62,6 +64,9 @@ than freeing potentially in-flight storage.
 }
 
 @section{Direct3D 12}
+
+These operations require 64-bit Windows on x86-64 and an active Direct3D 12 GPU
+context.
 
 @defmodule[skia/unsafe/gpu-d3d12 #:no-declare]
 @(declare-exporting skia/unsafe/gpu-d3d12 #:use-sources (skia/unsafe/gpu-d3d12))

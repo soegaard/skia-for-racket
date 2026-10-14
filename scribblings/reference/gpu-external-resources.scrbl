@@ -13,11 +13,20 @@ GPU context. The safe API never exposes a native pointer. Backend-specific
 constructors that accept native pointers are documented separately in
 @secref["skia-gpu-native-handoffs"].
 
+Constructing and using an external texture handoff requires an active
+@racket[call-with-gpu-context] scope for its exact associated context. Metadata
+inspection and explicit token retirement require the creating thread, but not an
+active drawing scope.
+
 A token is single-use. Its normal states progress from ready to active to
 consumed. Explicitly closing an unused or consumed token retires its retained
 native references. A validation failure before a handoff begins can leave the
 token ready; once an operation has begun, construct a new token for another
 handoff instead of retrying the old one.
+
+An external texture token is not a @racket[skia-resource?] value and is not
+managed by @racket[with-skia] or @racket[skia-close!]. Use
+@racket[gpu-external-texture-close!] to retire a token that is no longer needed.
 
 @defproc[(gpu-external-texture? [v any/c]) boolean?]{
 Returns whether @racket[v] is an external-texture handoff wrapper. The predicate

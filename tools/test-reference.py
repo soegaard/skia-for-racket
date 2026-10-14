@@ -4999,6 +4999,16 @@ class R4cInteropTests(unittest.TestCase):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('gpu-import-image')[1], 'gpu-image?')
 
+    def test_external_token_lifetime_and_native_platform_rules_are_local(self):
+        external = self.text('gpu-external-resources')
+        for phrase in ('active', 'call-with-gpu-context', 'creating thread',
+                       'not a @racket[skia-resource?]', 'not\nmanaged by @racket[with-skia]',
+                       '@racket[gpu-external-texture-close!]'):
+            self.assertIn(phrase, external)
+        native = ' '.join(self.text('gpu-native-handoffs').split())
+        self.assertIn('64-bit macOS and an active Metal GPU context', native)
+        self.assertIn('64-bit Windows on x86-64 and an active Direct3D 12 GPU context', native)
+
     def test_gl_handoff_distinguishes_ordering_wait_and_state_restoration(self):
         text = ' '.join(self.text('gpu-gl-interop').split())
         for phrase in ('same command stream', 'does not save or restore',

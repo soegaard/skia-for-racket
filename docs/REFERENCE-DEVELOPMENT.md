@@ -1,4 +1,16 @@
-# Skia Reference development: R4c
+# Skia Reference development: R4c.1
+
+## Editorial clarification after R4c
+
+Baseline: `f05e7c9ca99da21d4e63a8f092c2ebe3bcc3da0a`
+(`Expand Reference GPU interop coverage`). This revision changes no API coverage.
+External-texture tokens now state their active-context and explicit-retirement
+rules locally, including that they are not `skia-resource?` values and are not
+managed by `with-skia` or `skia-close!`. The unsafe native-handoff chapter now
+states the supported host platform beside each backend section.
+
+The coverage manifest remains at R4c: 1196 bindings, 1919 documented export
+paths, and 61 chapters. R4d-R4e remain deferred.
 
 ## External GPU interoperation
 
