@@ -145,6 +145,8 @@ def main(argv=None):
                                       ROOT / 'tools/reference-output-pure-test.rkt'])
             run('io-pure-tests', [racket, '-l', 'raco', '--', 'test',
                                   ROOT / 'tools/reference-io-pure-test.rkt'])
+            run('geometry-pure-tests', [racket, '-l', 'raco', '--', 'test',
+                                        ROOT / 'tools/reference-geometry-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:
@@ -215,7 +217,8 @@ def main(argv=None):
                                     ROOT / 'tools/reference-effects-test.rkt',
                                     ROOT / 'tools/reference-color-management-test.rkt',
                                     ROOT / 'tools/reference-output-test.rkt',
-                                    ROOT / 'tools/reference-io-test.rkt'])
+                                    ROOT / 'tools/reference-io-test.rkt',
+                                    ROOT / 'tools/reference-geometry-test.rkt'])
                 report['native_executed'] = True
         if source_hashes(ROOT, review_inputs=review_inputs) != before:
             raise CheckError('Reference sources changed during validation')

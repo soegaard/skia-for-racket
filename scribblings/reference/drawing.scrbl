@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require (for-label racket/base racket/contract skia skia/canvas-primitives))
 
 @title[#:tag "skia-drawing"]{Drawing}
 
@@ -114,4 +114,104 @@ released before the call returns.
                 paint #:closed? #f)
   (save-png surface "polyline.png" #:exists 'replace))
 ]
+}
+
+@section[#:tag "skia-drawing-batches"]{Points, Arcs, and Rounded Rectangles}
+
+@(declare-exporting skia skia/canvas-primitives #:use-sources (skia/canvas-primitives))
+
+These primitives share the drawing-scalar, resource, transform, and clip rules
+above. Batch input is validated before drawing; an empty point batch still
+requires a valid canvas and paint. Native point batches do not imply portable
+SVG output. Use @racket[draw-markers] for explicitly lowered marker geometry.
+
+@defproc[(draw-point [canvas canvas?]
+          [x real?]
+          [y real?]
+          [paint paint?])
+          void?]{
+Draws a point using the paint's stroke width and cap. A round cap gives a
+round mark; the other caps give a square mark. A zero stroke width uses native
+hairline coverage. Paint style does not turn the point into a filled path.
+}
+
+@defproc[(draw-points [canvas canvas?]
+          [points (or/c list? vector?)]
+          [paint paint?]
+          [#:mode mode (or/c 'points 'lines 'polygon) 'points])
+          void?]{
+Draws a list or vector of two-coordinate point lists or vectors. Points mode
+draws independent points. Lines mode draws independent consecutive pairs and
+requires an even count. Polygon mode draws consecutive capped segments without
+closing the final point to the first. These segments are not a joined path:
+paint joins do not join their endpoints. A single polygon point draws nothing.
+
+The submitted buffer, including the explicit segment-pair expansion for polygon
+mode, must fit the native count and @racket[current-skia-byte-limit]. Input
+coordinates are copied; later mutation does not change a recorded operation.
+}
+
+@defproc[(draw-arc [canvas canvas?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [start real?]
+          [sweep real?]
+          [paint paint?]
+          [#:use-center? use-center? boolean? #f])
+          void?]{
+Draws an arc of the oval bounds. Angles are degrees, with zero at the right
+and positive sweep clockwise in the usual y-down coordinates. A true
+@racket[use-center?] includes the center to form a wedge. Without it, a filled
+arc is closed by its chord; a stroked arc follows the native open-arc behavior.
+A sweep of at least a full turn in magnitude draws the oval.
+}
+
+@defproc[(draw-rrect [canvas canvas?]
+          [shape rounded-rect?]
+          [paint paint?])
+          void?]{
+Draws the native-normalized rounded rectangle with the paint's fill/stroke
+style. The detached specification is unchanged. Normalization can reduce radii
+that do not fit the supplied bounds.
+}
+
+@defproc[(draw-double-rounded-rect [canvas canvas?]
+          [outer rounded-rect?]
+          [inner rounded-rect?]
+          [paint paint?])
+          void?]{
+Draws the outer rounded rectangle with the inner shape removed. For a
+nonempty inner rectangle, its entire bounding rectangle must fit inside the
+native-normalized outer rounded shape. This is a conservative containment
+requirement, not an arbitrary Boolean subtraction. Failure raises instead of
+submitting undefined native geometry. An inner shape with zero width or height
+is ignored and the outer shape is drawn alone.
+}
+
+@defproc[(draw-color [canvas canvas?]
+          [color color?]
+          [#:blend-mode mode (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in
+                 'src-out 'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate
+                 'screen 'overlay 'darken 'lighten 'color-dodge 'color-burn
+                 'hard-light 'soft-light 'difference 'exclusion 'multiply
+                 'hue 'saturation 'color 'luminosity) 'src-over])
+          void?]{
+Blends the color across the current device clip, independently of the current
+local transform. The transform is preserved. This differs from drawing a
+local-coordinate rectangle and from @racket[canvas-clear!], which replaces
+rather than source-over blends by default.
+
+@racketblock[
+(with-skia ([surface (make-surface 8 8 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (canvas-clip-rect! canvas 0 0 4 8)
+  (canvas-translate! canvas 100 100)
+  (draw-color canvas 'red)
+  (map (lambda (x) (color->argb (surface-pixel surface x 2))) '(2 6)))
+]
+
+The point inside the clip becomes red even though the transform moved local
+geometry away; the point outside the clip remains white.
 }

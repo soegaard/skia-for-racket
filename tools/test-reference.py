@@ -167,6 +167,11 @@ from reference_io_cases import IO_MODULES, IO_PROCEDURES, PIXEL_INFO_EXPORTS
 PROCEDURES.update(IO_PROCEDURES)
 
 
+from reference_geometry_cases import (GA_MODULES, GA_PROCEDURES, GA_SYNTAX,
+                                      GA_PARAMETERS, GA_CONSTANTS)
+PROCEDURES.update(GA_PROCEDURES)
+
+
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
                 required_keywords=COLOR_REQUIRED_KEYWORDS.get(name, []), allowed_keywords=keywords)
@@ -184,6 +189,11 @@ def synthetic_inventory():
     exports += [row(name, 3, [], 'parameter') for name in OUTPUT_PARAMETERS]
     exports += [dict(name=name, phase='0', kind='syntax', export_kind='syntax')
                 for name in OUTPUT_SYNTAX]
+    exports += [row(name, 3, [], 'parameter') for name in GA_PARAMETERS]
+    exports += [dict(name=name, phase='0', kind='syntax', export_kind='syntax')
+                for name in GA_SYNTAX]
+    exports += [dict(name=name, phase='0', kind='value', export_kind='value')
+                for name in GA_CONSTANTS]
     snapshots = [dict(modules=[dict(path='main.rkt', exports=exports),
                                     dict(path='color.rkt', exports=[
                                         copy.deepcopy(item) for item in exports
@@ -206,6 +216,14 @@ def synthetic_inventory():
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
+    for path, names in GA_MODULES.items():
+        new = dict(path=path, exports=[copy.deepcopy(item) for item in exports
+                                       if item['name'] in names])
+        old = next((m for m in snapshots[0]['modules'] if m['path'] == path), None)
+        if old is None:
+            snapshots[0]['modules'].append(new)
+        else:
+            old['exports'] = new['exports']
     return snapshots
 
 
@@ -268,8 +286,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 752)
-        self.assertEqual(result['documented_exports'], 1094)
+        self.assertEqual(len(result['definitions']), 945)
+        self.assertEqual(result['documented_exports'], 1480)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -388,12 +406,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 752)
+        self.assertEqual(len(self.check()['definitions']), 945)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 752)
+        self.assertEqual(len(self.check()['definitions']), 945)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -905,7 +923,7 @@ class EditorialRevisionTests(unittest.TestCase):
         text = (ROOT / checks.REFERENCE / 'drawing.scrbl').read_text()
         blocks = [header for form, header, _ in checks.commands(text, recursive=True)
                   if form == 'racketblock']
-        self.assertEqual(len(blocks), 2)
+        self.assertEqual(len(blocks), 3)
         self.assertEqual(blocks[0][0][0], 'with-skia')
         self.assertEqual([row[0] for row in blocks[0][0][1]], ['surface', 'paint'])
         self.assertIn("#:exists 'replace", text)
@@ -946,9 +964,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 752)
-        self.assertEqual(result['documented_exports'], 1094)
-        self.assertEqual(len(result['chapters']), 35)  # Root plus thirty-four chapters.
+        self.assertEqual(len(result['definitions']), 945)
+        self.assertEqual(result['documented_exports'], 1480)
+        self.assertEqual(len(result['chapters']), 43)  # Root plus forty-two chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1291,9 +1309,9 @@ class R2CoverageTests(unittest.TestCase):
         self.assertEqual(spec['kind'], 'syntax')
         self.assertNotIn('arity_mask', spec)
 
-    def test_public_subset_does_not_claim_extended_geometry(self):
+    def test_public_subset_does_not_claim_deferred_raster_and_gpu_apis(self):
         names = {row['name'] for row in self.check()['definitions']}
-        self.assertNotIn('path-arc-to!', names)
+        self.assertNotIn('image-apply-filter', names)
         self.assertNotIn('make-gpu-context', names)
         self.assertNotIn('make-raster-buffer', names)
 
@@ -1663,7 +1681,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 79)
+        self.assertEqual(count, 90)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1956,7 +1974,7 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_later_batches_are_not_counted_as_documented(self):
         names = {e['name'] for e in self.check()['definitions']}
-        for name in ('make-region', 'make-gpu-context', 'make-raster-buffer'):
+        for name in ('image-apply-filter', 'make-gpu-context', 'make-raster-buffer'):
             self.assertNotIn(name, names)
 
 
@@ -2626,8 +2644,8 @@ class R3dColorSemanticsTests(unittest.TestCase):
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 752)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1094)
+        self.assertEqual(len(manifest['definitions']), 945)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1480)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -3517,7 +3535,7 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertIn('docs/API.md', intro)
         self.assertIn('@seclink["top" #:doc', intro)
         self.assertIn('skia/scribblings/tutorials/index.scrbl', intro)
-        self.assertEqual(text.count('@include-section['), 34)
+        self.assertEqual(text.count('@include-section['), 42)
 
     def test_bottom_up_example_is_self_contained_and_uses_the_native_test_fixture(self):
         text = self.text('scanline-codecs')
@@ -3568,5 +3586,192 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertIn('deferred for this revision', notes)
 
 
+
+class R3gaGeometryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.definitions, cls.chapters = checks.document_definitions(ROOT)
+        cls.by_name = {d['name']: d for d in cls.definitions}
+
+    def text(self, name):
+        return (ROOT / checks.REFERENCE / name).read_text()
+
+    def header(self, name):
+        chapter = ROOT / self.by_name[name]['chapter']
+        for form, header, _ in checks.commands(chapter.read_text()):
+            if form == 'defproc' and header[0][0] == name:
+                return header
+        self.fail('missing procedure: ' + name)
+
+    def test_ten_selected_modules_have_complete_documented_export_sets(self):
+        for path, names in GA_MODULES.items():
+            module = checks.public_module(path)
+            found = {d['name'] for d in self.manifest['definitions'] if module in d['exports']}
+            with self.subTest(module=module):
+                self.assertEqual(found, set(names))
+
+    def test_fixture_call_boundaries_match_authored_declarations(self):
+        self.assertEqual(len(GA_PROCEDURES), 188)
+        for name, (arity, keywords) in GA_PROCEDURES.items():
+            with self.subTest(name=name):
+                spec = self.by_name[name]
+                self.assertEqual(spec['arity_mask'], str(arity))
+                self.assertEqual(spec['allowed_keywords'], keywords)
+                self.assertEqual(spec['required_keywords'], [])
+        self.assertEqual(set(GA_CONSTANTS), {'matrix3-identity', 'matrix4-identity'})
+        self.assertEqual(set(GA_PARAMETERS), {'current-path-operation-limit'})
+        self.assertEqual(set(GA_SYNTAX), {'with-canvas-layer', 'with-canvas-matrix'})
+
+    def test_new_chapters_and_aggregate_counts_are_explicit(self):
+        self.assertEqual(len(self.definitions), 945)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1480)
+        self.assertEqual(len(self.chapters) - 1, 42)
+        self.assertEqual(self.manifest['stage'], 'R3g-a')
+        for chapter in ('rounded-rectangles', 'regions', 'projective-matrices',
+                        'structured-drawing', 'portable-drawing', 'layers',
+                        'drawables', 'specialized-canvases'):
+            self.assertIn(f'scribblings/reference/{chapter}.scrbl', self.chapters)
+
+    def test_r3gb_topics_are_not_folded_into_geometry_batch(self):
+        for name in ('pixmap-sample', 'image-apply-filter', 'skia-cache-statistics',
+                     'skia-native-capabilities', 'draw-output-group'):
+            self.assertNotIn(name, self.by_name)
+        self.assertIn('R3g-b', self.manifest['deferred_policy']['stage'])
+
+    def test_projective_conversion_does_not_promise_lossless_projection(self):
+        text = self.text('projective-matrices.scrbl')
+        for phrase in ('row-major', 'rightmost', 'binary32', 'lossless', 'lossy',
+                       'strict sign', 'No depth buffer', 'negative divisor'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('matrix4->matrix3')[1], ['or/c', 'matrix3?', '#f'])
+        self.assertEqual(self.header('matrix4-project-xy')[1], 'matrix3?')
+
+    def test_matrix_result_vectors_and_failure_alternatives_are_explicit(self):
+        for name in ('matrix3-map-point', 'matrix3-map-rect', 'matrix4-map-point',
+                     'matrix4-map-homogeneous', 'matrix4-map-rect'):
+            result = self.header(name)[1]
+            self.assertEqual(result[:2], ['or/c', '#f'])
+            self.assertEqual(result[2][0], 'and/c')
+            self.assertIn('immutable?', result[2])
+        self.assertEqual(self.header('matrix3->vector')[1], ['and/c', 'vector?', 'immutable?'])
+
+    def test_macro_grammars_use_expression_metavariables_and_nonempty_bodies(self):
+        for chapter, name in (('layers.scrbl', 'with-canvas-layer'),
+                              ('projective-matrices.scrbl', 'with-canvas-matrix')):
+            found = [h[0] for f, h, _ in checks.commands(self.text(chapter))
+                     if f == 'defform' and h[0][0] == name]
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0][-2:], ['body', '...+'])
+            self.assertIn('canvas-expr', found[0])
+        pure = (ROOT / 'tools/reference-geometry-pure-test.rkt').read_text()
+        self.assertIn('expand-geometry-form', pure)
+        self.assertIn('exn:fail:syntax?', pure)
+
+    def test_layer_options_do_not_turn_bounds_into_clips_or_cleanup_into_rollback(self):
+        text = self.text('layers.scrbl')
+        for phrase in ('not an explicit', 'conservative', 'not pixel rollback',
+                       'composites even', 'pinned', 'does not clear'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('layer-options-flags')[1],
+                         ['or/c', '0', '2', '4', '6', '16', '18', '20', '22'])
+
+    def test_region_queries_distinguish_half_open_snapshots_and_quick_rejection(self):
+        text = self.text('regions.scrbl')
+        for phrase in ('Right and bottom edges are excluded', 'not proven disjoint',
+                       'not when', 'device coordinates', 'Empty results are valid resources'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('region-spans')[1][-1][-1], 'immutable?')
+
+    def test_vertex_metadata_has_an_explicit_post_closure_exception(self):
+        text = self.text('structured-drawing.scrbl')
+        for phrase in ('after explicit closure', 'without requiring its creating thread',
+                       'not a readback', '65536', 'unsigned 16-bit', 'not the number of indices'):
+            self.assertIn(phrase, text)
+
+    def test_lattice_cells_and_portable_atlas_restrictions_are_separate(self):
+        text = self.text('structured-drawing.scrbl')
+        portable = self.text('portable-drawing.scrbl')
+        self.assertIn('fractional source', text)
+        self.assertIn('must have\ninteger coordinates', portable)
+        self.assertIn('Colors require explicit cell types', text)
+        self.assertEqual(self.header('image-grid-cell-color')[1], ['or/c', 'rgba?', '#f'])
+        self.assertNotIn('#:paint', str(self.header('draw-atlas/portable')[0]))
+        self.assertNotIn('#:blend-mode', str(self.header('draw-atlas/portable')[0]))
+
+    def test_drawable_generation_is_not_an_editing_or_callback_api(self):
+        text = self.text('drawables.scrbl')
+        for phrase in ('callback count is 1', 'does not edit', 'process-local',
+                       'independently owned', 'not a projective matrix'):
+            self.assertIn(phrase, text)
+
+    def test_specialized_canvases_preserve_borrowing_and_target_requirements(self):
+        text = ' '.join(self.text('specialized-canvases.scrbl').split())
+        for phrase in ('save count 1', '1 and 64', 'distinct surfaces', 'Alpha8',
+                       'expires', 'does not undo', 'matching backend names alone',
+                       'does not clear it automatically'):
+            self.assertIn(phrase, text)
+
+    def test_rewind_documentation_resets_fill_instead_of_inventing_preservation(self):
+        text = self.text('paths.scrbl')
+        self.assertIn('Native rewind resets the fill type to winding', text)
+        native = (ROOT / 'tools/reference-geometry-test.rkt').read_text()
+        self.assertIn("(check-equal? (path-fill-rule path) 'winding)", native)
+
+    def test_each_new_chapter_declares_sources_at_the_required_scope(self):
+        for chapter in ('rounded-rectangles', 'regions', 'structured-drawing',
+                        'portable-drawing', 'layers', 'drawables', 'specialized-canvases'):
+            text = self.text(chapter + '.scrbl')
+            self.assertLess(text.index('declare-exporting'), text.index('@defproc'))
+            self.assertIn('#:use-sources', text)
+        text = self.text('projective-matrices.scrbl')
+        at = text.index('{Canvas Matrix State}')
+        end = text.index('@defproc[(canvas-matrix4', at)
+        self.assertIn('#:use-sources (skia/canvas-matrix)', text[at:end])
+
+    def test_pure_examples_use_public_modules_and_checked_results(self):
+        for chapter, evaluator, module in (
+            ('projective-matrices.scrbl', 'projective-eval', 'skia/projective-matrix'),
+            ('portable-drawing.scrbl', 'grid-eval', 'skia/portable-drawing')):
+            text = self.text(chapter)
+            self.assertIn(f"({evaluator} '(require {module}))", text)
+            self.assertIn(f'@examples[#:eval {evaluator}', text)
+            self.assertIn('eval:check', text)
+            self.assertIn(f'@close-eval[{evaluator}]', text)
+            self.assertLess(text.index(f'@(define {evaluator}'), text.index('@title'))
+
+    def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
+        forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
+                 for f, h, _ in checks.commands(p.read_text(), recursive=True)]
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 90)
+        self.assertEqual(sum(f == 'examples' for f, _ in forms), 20)
+        text = (ROOT / 'tools/reference-native-test.rkt').read_text()
+        self.assertIn('(in-range 2)', text)
+        self.assertIn('run-displayed-examples', text)
+
+    def test_native_and_pure_geometry_suites_are_connected_to_acceptance(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn("run('geometry-pure-tests'", runner)
+        for name in ('reference-geometry-pure-test.rkt', 'reference-geometry-test.rkt'):
+            self.assertIn(name, runner)
+            text = (ROOT / 'tools' / name).read_text()
+            reader = checks.Reader(text, text.index('\n') + 1)
+            while reader.position < len(text):
+                reader.skip()
+                if reader.position < len(text):
+                    reader.read()
+
+    def test_bottom_up_example_retains_the_two_batch_native_case(self):
+        native = (ROOT / 'tools/reference-io-test.rkt').read_text()
+        for call in ('(codec-scanline-read! session 2)', '(codec-scanline-read! session 1)',
+                     '(scanline-batch-first-row lower-batch)', '(1 0)',
+                     'check-not-equal? (bytes-append'):
+            self.assertIn(call, native)
+
+    def test_new_scope_keeps_actual_pinned_inventory_hashes(self):
+        expected = {row['file']: row['git_blob'] for row in self.manifest['snapshots']}
+        self.assertEqual(expected, {
+            'api/public-api-headless.json': '2cadbe3212b62c3becfb0e184a1adc119639b750',
+            'api/public-api-gui.json': '1221794e26e099b8ca38110f4a42564f6b38f8f6'})
 if __name__ == '__main__':
     unittest.main()

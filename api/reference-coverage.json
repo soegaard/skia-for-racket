@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R3f",
-  "reviewed_repository_commit": "5a2d7d410161758f9a589024eb87259691523c7b",
+  "stage": "R3g-a",
+  "reviewed_repository_commit": "c1135778c7d29a0f0806768ab5f80b3477bc4680",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3g-R4",
-    "reason": "Outside R3f streams and codecs; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R3g-b/R4",
+    "reason": "R3g-b: remaining CPU APIs. R4: GPU/GUI/DC. See docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -7875,6 +7875,2129 @@
       "exports": [
         "skia",
         "skia/codec-incremental"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-clip-rounded-rect!",
+      "chapter": "scribblings/reference/canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-local-clip-bounds",
+      "chapter": "scribblings/reference/canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-device-clip-bounds",
+      "chapter": "scribblings/reference/canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-clip-empty?",
+      "chapter": "scribblings/reference/canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-clip-rect?",
+      "chapter": "scribblings/reference/canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-quick-reject?",
+      "chapter": "scribblings/reference/canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-save-layer!",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-canvas-layer",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "with-canvas-layer",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layer-options?",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/layer-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-layer-options",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/layer-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layer-options-bounds",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/layer-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layer-options-flags",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/layer-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layer-options-preserve-lcd-text?",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/layer-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layer-options-initialize-with-previous?",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/layer-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "layer-options-f16?",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/layer-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-save-layer-rec!",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/advanced-layers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-canvas-layer-rec",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/advanced-layers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-discard!",
+      "chapter": "scribblings/reference/layers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/advanced-layers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-nodraw-canvas",
+      "chapter": "scribblings/reference/specialized-canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/specialized-canvases"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-nway-canvas",
+      "chapter": "scribblings/reference/specialized-canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/specialized-canvases"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-overdraw-canvas",
+      "chapter": "scribblings/reference/specialized-canvases.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/specialized-canvases"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-point",
+      "chapter": "scribblings/reference/drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-points",
+      "chapter": "scribblings/reference/drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-arc",
+      "chapter": "scribblings/reference/drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-rrect",
+      "chapter": "scribblings/reference/drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-double-rounded-rect",
+      "chapter": "scribblings/reference/drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-color",
+      "chapter": "scribblings/reference/drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-arc-to!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-rarc-to!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-arc-to-oval!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-tangent-arc-to!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-add-arc!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-add-rect-start!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-add-rrect!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-add-polygon!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-add-transformed!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-rewind!",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-verbs",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-segment-kinds",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-fill-bounds",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-as-line",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-as-oval",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-as-rectangle",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-as-rounded-rect",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-rectangle?",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-rectangle-bounds",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-rectangle-closed?",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-rectangle-direction",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "conic->quadratics",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path-combine",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "current-path-operation-limit",
+      "chapter": "scribblings/reference/paths.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect?",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-rounded-rect",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-bounds",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-radii",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-empty-rounded-rect",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-normalize",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-type",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-nine-patch-rounded-rect",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-offset",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-inset",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-outset",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rounded-rect-transform",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-region",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-copy",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-empty?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-rect?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-complex?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-bounds",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-contains-point?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-contains-rect?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-contains-region?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-intersects?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-intersects-rect?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-quick-contains-rect?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-quick-reject-rect?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-quick-reject?",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-op",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-union",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-intersect",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-difference",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-xor",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-op-rect",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-clear!",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-set-rect!",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-translate",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "path->region",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region->path",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-rectangles",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "in-region-rectangles",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-clipped-rectangles",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "in-region-clipped-rectangles",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-spans",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "in-region-spans",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-region",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-clip-region!",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vertices?",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-vertices",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vertices-mode",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vertices-positions",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vertices-texture-coordinates",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vertices-colors",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vertices-indices",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vertices-count",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-vertices",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "cubic-patch?",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-cubic-patch",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "cubic-patch-points",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "cubic-patch-colors",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "cubic-patch-texture-coordinates",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-patch",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lattice?",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-image-lattice",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lattice-x-divisions",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lattice-y-divisions",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lattice-bounds",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lattice-cell-types",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lattice-colors",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-image-nine",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-image-lattice",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-atlas",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-markers",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-cell?",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-nine-plan",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lattice-plan",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-cell-row",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-cell-column",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-cell-kind",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-cell-source",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-cell-destination",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-cell-color",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-grid-plan->jsexpr",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-image-nine/portable",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-image-lattice/portable",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-atlas/portable",
+      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/portable-drawing"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3?",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-matrix3",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-identity",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vector->matrix3",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3->vector",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-ref",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-compose",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-transpose",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-invert",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-perspective",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-affine?",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix->matrix3",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3->matrix",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-map-homogeneous",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-map-point",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3-map-rect",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4?",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-matrix4",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-identity",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "vector->matrix4",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4->vector",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-ref",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-compose",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-transpose",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-invert",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-translate",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-scale",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-rotate-x-degrees",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-rotate-y-degrees",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-rotate-z-degrees",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-perspective",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-affine-2d?",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix->matrix4",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4->matrix",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix3->matrix4",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4->matrix3",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-project-xy",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-map-homogeneous",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-map-point",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "matrix4-map-rect",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/projective-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-matrix4",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-set-matrix3!",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-concat-matrix3!",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-set-matrix4!",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "canvas-concat-matrix4!",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-canvas-matrix",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "with-canvas-matrix",
+      "chapter": "scribblings/reference/projective-matrices.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/canvas-matrix"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "drawable?",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture->drawable",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-drawable",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-drawable",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "drawable->picture",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "drawable-bounds",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "drawable-generation-id",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "drawable-approximate-bytes-used",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "drawable-notify-drawing-changed!",
+      "chapter": "scribblings/reference/drawables.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/drawables"
       ],
       "phase": "0",
       "space": null

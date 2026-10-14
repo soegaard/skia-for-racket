@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract racket/sequence skia))
+@(require (for-label racket/base racket/contract racket/sequence skia skia/geometry))
 
 @title[#:tag "skia-paths"]{Paths}
 
@@ -542,4 +542,266 @@ Unlike @racket[path-measure-position+tangent], this function accepts a distance
 past the contour's end: the native measurement clamps it to the contour length.
 Negative distances are still rejected by the wrapper. The distinction matters
 when sharing a distance between the two APIs.
+}
+
+@section[#:tag "skia-path-completion"]{Arcs, Recognition, and Ordered Operations}
+
+@(declare-exporting skia skia/geometry #:use-sources (skia/geometry))
+
+These operations extend the path construction and inspection interfaces above.
+Coordinates and angles are @tech{drawing scalar}s rounded to binary32 before
+native use. Angles are in degrees. A positive oval sweep is clockwise in the
+usual unreflected coordinate system with the y-axis pointing downward.
+Rectangle arguments use coordinates, width, and height; positive extents must
+remain positive when the right and bottom edges are rounded. Arc radii are
+checked for nonnegativity after binary32 rounding; a negative input that rounds
+to negative zero is therefore accepted as zero.
+
+The operations require live paths on their owning thread. Construction changes
+the destination path, not its paint or a canvas. Recognition returns detached
+values that survive later path mutation and closure. Native recognition tests
+stored representations, not arbitrary geometric equivalence.
+
+@defproc[(path-arc-to! [path path?]
+          [rx real?]
+          [ry real?]
+          [rotation real?]
+          [x real?]
+          [y real?]
+          [#:large? large? boolean? #f]
+          [#:direction direction (or/c 'cw 'ccw) 'cw])
+          void?]{
+Appends an elliptical arc from the current point to coordinates @racket[x]
+and @racket[y]. The radii and @racket[rotation] describe the ellipse's axes.
+The @racket[large?] flag selects the large rather than small arc, and
+@racket[direction] selects its traversal direction. Skia can adjust insufficient
+radii to reach the endpoint. Zero radii and coincident endpoints retain native
+degenerate behavior; this operation does not create an alternative arc algorithm.
+}
+
+@defproc[(path-rarc-to! [path path?]
+          [rx real?]
+          [ry real?]
+          [rotation real?]
+          [dx real?]
+          [dy real?]
+          [#:large? large? boolean? #f]
+          [#:direction direction (or/c 'cw 'ccw) 'cw])
+          void?]{
+Appends an elliptical arc from the current point to the point displaced by
+@racket[dx] and @racket[dy]. The relative endpoint must also remain in drawing-scalar
+range. The radii, axis rotation, and arc choices have the same meanings as in
+@racket[path-arc-to!].
+}
+
+@defproc[(path-arc-to-oval! [path path?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [start real?]
+          [sweep real?]
+          [#:force-move? force-move? boolean? #f])
+          void?]{
+Appends an arc of the specified oval, starting at @racket[start] and sweeping
+through @racket[sweep] degrees. A zero start angle is at the oval's rightmost
+point. The operation can connect the existing contour to the arc's start.
+A true @racket[force-move?] starts a new contour instead of adding that connection.
+}
+
+@defproc[(path-tangent-arc-to! [path path?]
+          [x1 real?]
+          [y1 real?]
+          [x2 real?]
+          [y2 real?]
+          [radius real?])
+          void?]{
+Appends a circular arc tangent to the line from the current point toward the
+first point and the line from the first point toward the second. A connecting
+line can precede the arc. The operation does not append a final line to the
+second point. Degenerate inputs use Skia's tangent-arc behavior.
+}
+
+@defproc[(path-add-arc! [path path?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [start real?]
+          [sweep real?])
+          void?]{
+Adds an oval arc as a new contour, rather than connecting it to the preceding
+contour. The oval and angle conventions are those of @racket[path-arc-to-oval!].
+The native full-oval and degenerate cases are preserved.
+}
+
+@defproc[(path-add-rect-start! [path path?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [start (integer-in 0 3)]
+          [#:direction direction (or/c 'cw 'ccw) 'cw])
+          void?]{
+Adds a rectangle contour with an explicit starting corner. Indices 0, 1, 2,
+and 3 select top-left, top-right, bottom-right, and bottom-left, respectively.
+An out-of-range index raises an exception; it is not reduced modulo four.
+}
+
+@defproc[(path-add-rrect! [path path?]
+          [shape rounded-rect?]
+          [#:direction direction (or/c 'cw 'ccw) 'cw]
+          [#:start-index start (integer-in 0 7) 0])
+          void?]{
+Adds the native-normalized rounded rectangle as a new contour. The start index
+selects one of Skia's eight tangent points, not one of four corner centers.
+Indices follow the clockwise boundary: the top edge's left and right tangent
+points, the right edge's top and bottom points, the bottom edge's right and left
+points, and the left edge's bottom and top points. Direction changes traversal,
+not the indexing convention. The shape remains unchanged.
+}
+
+@defproc[(path-add-polygon! [path path?]
+          [points (or/c list? vector?)]
+          [#:closed? closed? boolean? #t])
+          void?]{
+Adds a contour from a list or vector of two-element point lists or vectors.
+All coordinates are validated and copied before mutation. A true @racket[closed?]
+closes the contour. Empty input draws nothing but still validates the path.
+The submitted point count and bytes are bounded by @racket[current-skia-byte-limit].
+}
+
+@defproc[(path-add-transformed! [path path?]
+          [other path?]
+          [transform matrix?]
+          [#:mode mode (or/c 'append 'extend) 'append])
+          void?]{
+Adds the source geometry after applying the affine transform. Append preserves
+its contour starts; extend can join its first contour to the current contour
+as in @racket[path-add-path!]. A distinct source path is unchanged. Singular
+affine matrices are allowed. This is not a projective path transformation.
+}
+
+@defproc[(path-rewind! [path path?])
+          void?]{
+Clears the path's contours for reuse while retaining native storage where
+possible. Native rewind resets the fill type to winding, like
+@racket[path-reset!], but preserves internal storage for reuse. Earlier detached
+point, segment, and contour snapshots are unaffected.
+}
+
+@defproc[(path-verbs [path path?])
+          (listof (or/c 'move 'line 'quad 'conic 'cubic 'close))]{
+Returns the verbs from raw path iteration, in stored order. It is equivalent
+to mapping @racket[path-segment-verb] over @racket[path-segments] with
+@racket[#:mode 'raw]; no synthetic closing line is inserted.
+}
+
+@defproc[(path-segment-kinds [path path?])
+          (listof (or/c 'line 'quad 'conic 'cubic))]{
+Returns the distinct drawing-segment kinds present, in the order line, quad,
+conic, cubic. Moves and closes are not segment kinds, and repeated segments do
+not produce repeated names. This is a summary, not contour order.
+}
+
+@defproc[(path-fill-bounds [path path?])
+          (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the tight rectangle reported by native path operations. Native failure
+raises an exception. The result is not a control-point bound, a painted stroke
+or filter bound, or a finite description of the area outside an inverse path.
+The returned vector is detached.
+}
+
+@defproc[(path-as-line [path path?])
+          (or/c #f (and/c (vector/c (and/c (vector/c real? real?) immutable?)
+                                               (and/c (vector/c real? real?) immutable?))
+                                               immutable?))]{
+Returns the two endpoints when native recognition identifies a line, or
+@racket[#f] otherwise. The outer vector and both point vectors are immutable.
+}
+
+@defproc[(path-as-oval [path path?])
+          (or/c #f (and/c (vector/c real? real? real? real?) immutable?))]{
+Returns the oval's bounds when native recognition succeeds, or @racket[#f]
+otherwise. An arbitrary curve with a similar outline need not be recognized.
+}
+
+@defproc[(path-as-rectangle [path path?])
+          (or/c path-rectangle? #f)]{
+Returns a detached rectangle description when native recognition succeeds,
+or @racket[#f] otherwise. The description records bounds, explicit closure,
+and traversal direction; recognition alone does not imply a closed contour.
+}
+
+@defproc[(path-as-rounded-rect [path path?])
+          (or/c rounded-rect? #f)]{
+Returns a detached, native-normalized rounded rectangle when recognized, or
+@racket[#f] otherwise. No native rounded-rectangle handle escapes.
+}
+
+@defproc[(path-rectangle? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a rectangle description returned by
+@racket[path-as-rectangle], and @racket[#f] otherwise.
+}
+
+@defproc[(path-rectangle-bounds [description path-rectangle?])
+          (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the immutable coordinates, width, and height of the recognized rectangle.
+}
+
+@defproc[(path-rectangle-closed? [description path-rectangle?])
+          boolean?]{
+Reports whether the recognized rectangle contour was explicitly closed.
+}
+
+@defproc[(path-rectangle-direction [description path-rectangle?])
+          (or/c 'cw 'ccw)]{
+Returns the recognized traversal direction.
+}
+
+@defproc[(conic->quadratics [p0 (or/c (list/c real? real?) (vector/c real? real?))]
+          [p1 (or/c (list/c real? real?) (vector/c real? real?))]
+          [p2 (or/c (list/c real? real?) (vector/c real? real?))]
+          [weight (and/c real? (>/c 0))]
+          [#:subdivisions power (integer-in 0 5) 2])
+          (listof (and/c vector? immutable?))]{
+Approximates a rational quadratic with ordinary quadratic segments. The three
+points are its start, control point, and end. The weight must remain strictly
+positive after binary32 rounding. The subdivision exponent limits the result
+to at most @racket[(expt 2 power)] segments, rather than specifying an error tolerance.
+
+Each segment is an immutable vector of three immutable two-coordinate point
+vectors. Adjacent triples have equal endpoint values. The native routine's
+actual count is used and checked; it need not equal the maximum. Temporary
+point storage is bounded by @racket[current-skia-byte-limit].
+}
+
+@defproc[(path-combine [operations (or/c list? vector?)])
+          path?]{
+Combines a list or vector of two-element operation/path pairs, starting with
+an empty accumulator. Operations are @racket['union], @racket['difference],
+@racket['intersect], @racket['xor], and @racket['reverse-difference], applied
+in input order. The input paths remain unchanged and the result is independently owned.
+An empty batch returns an owned empty path.
+
+The batch is bounded by @racket[current-path-operation-limit] and by the submitted
+point/verb payload under @racket[current-skia-byte-limit]. These are not native
+heap or running-time bounds. Failure raises without publishing a partial result.
+
+@racketblock[
+(with-skia ([outer (make-path)] [hole (make-path)])
+  (path-add-rect! outer 0 0 40 30)
+  (path-add-circle! hole 20 15 5)
+  (with-skia ([result (path-combine
+                      (list (list 'union outer) (list 'difference hole)))])
+    (list (path-contains? result 2 2) (path-contains? result 20 15))))
+]
+
+The result contains the corner point but not the center of the removed circle.
+}
+
+@defparam[current-path-operation-limit limit (integer-in 1 #x7fffffff) #:value 4096]{
+Bounds the number of entries accepted by @racket[path-combine]. The default is
+4096. Lowering this parameter does not change an already constructed path.
 }

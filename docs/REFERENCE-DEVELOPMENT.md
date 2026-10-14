@@ -1,4 +1,88 @@
-# Skia Reference development: R3f.1 editorial cleanup
+# Skia Reference development: R3g-a
+
+## Geometry and advanced drawing
+
+The upstream baseline is `c1135778c7d29a0f0806768ab5f80b3477bc4680`.
+This revision includes the R3f.1 corrections missing from that committed baseline.
+R3g-a adds 193 bindings and 386 public export paths: totals are 945 bindings,
+1480 documented export paths, and 42 conceptual chapters. It does not change
+library implementations, tutorial programs, native dependencies, or public APIs.
+
+The ten completed module families are `advanced-layers`, `canvas-matrix`,
+`canvas-primitives`, `drawables`, `geometry-primitives`, `geometry`,
+`layer-options`, `portable-drawing`, `projective-matrix`, and `specialized-canvases`.
+Existing paint and atlas-transform definitions remain authoritative; the added
+entries do not duplicate them. All public aliases are in the binding-link probe.
+Each source-module declaration is scoped to the sections defining its bindings.
+
+New chapters cover rounded rectangles, regions, structured drawing, portable
+drawing, projective matrices, layers, recorded drawables, and specialized canvases.
+Existing Paths, Drawing, and Canvas State chapters are extended locally.
+
+The stream/codec chapters retain eight displayed examples, including the
+self-contained bottom-up BMP. Its acceptance case reads two rows and then one,
+checks first-row values 1 and 0, and checks reconstruction instead of concatenation.
+The full Reference has 90 displayed examples (79 retained, eleven new) and twenty
+evaluated examples (eighteen retained, two new). Native examples do not execute
+while rendering documentation. Evaluated examples use detached public values.
+
+The geometry tests are connected to the existing acceptance runner:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+"$RACKET" -l raco -- test tools/reference-geometry-pure-test.rkt
+"$RACKET" -l raco -- test tools/reference-geometry-test.rkt
+"$RACKET" -l raco -- test tools/reference-io-test.rkt
+```
+
+The first suite contains fifteen native-free value/expansion cases. The second
+contains nineteen native CPU cases; it does not request a GUI, GPU, or fonts.
+The I/O suite retains the two-batch BMP case. A supplied test is not evidence
+that it ran: record the actual executable, result, and any unexecuted suites.
+The complete retained native acceptance suite still has its text dependencies.
+
+## Independent source review
+
+Use the existing source packager, with fresh paths outside the checkout:
+
+```sh
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py \
+  --output ../reference-r3ga-source-check \
+  --source-zip ../skia-reference-r3ga-source-review.zip
+```
+
+The archive must include both pinned public-API inventories, all Reference
+sources, registration, and all checker dependencies. Packaging runs the ordinary
+checker in both the staged and extracted source trees. It must not use
+`--documents-only` or reuse inputs from an older editor archive. Synthetic Python
+fixtures validate the checking infrastructure, not native behavior or rendered links.
+
+Keep Reference-only editing previews and integrated publication checks separate,
+as described below. This revision does not change either rendering route or
+suppress link diagnostics. The existing integrated render command remains:
+
+```sh
+python3 -B tools/check-reference.py \
+  --render --quick --native --racket "$RACKET" \
+  --output ../reference-r3ga-render-check \
+  --review-zip ../skia-reference-r3ga-review.zip
+```
+
+## Deferred scope
+
+R3g-b retains the raster-buffer/pixmap, image-operation, surface-property,
+output-policy/audit/group, cache, and native-diagnostic work. R4 retains GPU and
+GUI/DC integration. The pinned coverage manifest continues to account for every
+remaining public export; documenting a shared CPU type does not count its GPU
+or GUI operations as documented. This revision does not claim complete CPU
+coverage or platform acceptance.
+
+Regenerate `SOURCE-SHA256SUMS.txt` in the complete checkout after applying the
+patch. A checksum file generated from a partial authoring fixture must not
+replace the repository-wide source inventory.
+
+## Earlier R3f.1 editorial cleanup
 
 ## R3f.1 scope
 
