@@ -49,7 +49,7 @@ jobs:
         run: python tools/ci.py --profile source --id source
       - name: Keep source-check evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-source-${{ github.run_attempt }}
           path: output/ci-source/
@@ -95,7 +95,7 @@ jobs:
         run: python tools/check-metal-interop-sdk.py --output "output/ci-${{ matrix.id }}/metal-sdk"
       - name: Keep CPU/native/package evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-${{ matrix.id }}-${{ github.run_attempt }}
           path: output/ci-${{ matrix.id }}/
@@ -136,7 +136,7 @@ jobs:
         run: python tools/ci.py --profile egl --id "$CI_LANE"
       - name: Keep EGL reports and actual visual outputs, including failures
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-${{ matrix.id }}-${{ github.run_attempt }}
           path: output/ci-${{ matrix.id }}/
@@ -173,7 +173,7 @@ jobs:
         run: python tools/ci.py --profile canvas --id canvas-linux-x64
       - name: Keep raster canvas GUI reports and command logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-canvas-linux-x64-${{ github.run_attempt }}
           path: output/ci-canvas-linux-x64/
@@ -204,7 +204,7 @@ jobs:
         run: python tools/ci-d3d12-interop.py
       - name: Keep D3D12 reports, pixels and command logs, including failures
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-d3d12-warp-${{ github.run_attempt }}
           path: output/ci-d3d12-warp/
@@ -213,7 +213,7 @@ jobs:
 
       - name: Keep Direct3D interop reports and independent consumer pixels
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-d3d12-interop-${{ github.run_attempt }}
           path: output/ci-d3d12-interop/
@@ -242,7 +242,7 @@ jobs:
         run: python tools/ci-dxgi.py
       - name: Keep DXGI reports, real back-buffer pixels and command logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-dxgi-warp-${{ github.run_attempt }}
           path: output/ci-dxgi-warp/

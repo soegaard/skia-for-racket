@@ -54,7 +54,7 @@ jobs:
         run: python tools/validate-global-caches.py --regressions "$SKIA_REGRESSIONS_MODE" --racket "$(command -v racket)" --directory output/global-caches-linux
       - name: Retain complete cache evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: global-caches-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/global-caches-linux/
@@ -93,7 +93,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain complete cache evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: global-caches-windows-${{ github.run_attempt }}
           path: output/global-caches-windows/

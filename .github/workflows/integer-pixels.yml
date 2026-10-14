@@ -64,7 +64,7 @@ jobs:
             --require-gpu --backend egl --require-renderers --directory output/integer-pixels-linux
       - name: Retain integer pixel evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: integer-pixels-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/integer-pixels-linux/
@@ -108,7 +108,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain Windows evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: integer-pixels-windows-${{ github.run_attempt }}
           path: output/integer-pixels-windows/

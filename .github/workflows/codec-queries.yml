@@ -56,7 +56,7 @@ jobs:
         run: python tools/validate-codec-scanlines.py --regressions none --racket "$(command -v racket)" --directory output/codec-scanlines-linux
       - name: Retain complete scanline evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: codec-scanlines-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/codec-scanlines-linux/
@@ -66,7 +66,7 @@ jobs:
         run: python tools/validate-codec-incremental.py --regressions none --racket "$(command -v racket)" --directory output/codec-incremental-linux
       - name: Retain complete incremental evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: codec-incremental-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/codec-incremental-linux/
@@ -74,7 +74,7 @@ jobs:
           retention-days: 14
       - name: Retain complete query evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: codec-queries-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/codec-queries-linux/
@@ -117,7 +117,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain complete scanline evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: codec-scanlines-windows-${{ github.run_attempt }}
           path: output/codec-scanlines-windows/
@@ -129,7 +129,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain complete incremental evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: codec-incremental-windows-${{ github.run_attempt }}
           path: output/codec-incremental-windows/
@@ -137,7 +137,7 @@ jobs:
           retention-days: 14
       - name: Retain complete query evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: codec-queries-windows-${{ github.run_attempt }}
           path: output/codec-queries-windows/

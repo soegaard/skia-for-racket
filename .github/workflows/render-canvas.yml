@@ -68,7 +68,7 @@ jobs:
             --require-gpu --backend egl --directory output/render-canvas-ci
       - name: Retain all logs, receipt checks and backing pixels
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: render-canvas-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/render-canvas-ci/
@@ -117,7 +117,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain all logs, receipt checks and backing pixels
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: render-canvas-windows-warp-${{ github.run_attempt }}
           path: output/render-canvas-ci/

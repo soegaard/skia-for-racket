@@ -64,7 +64,7 @@ jobs:
             --require-gpu --backend egl --require-renderers --directory output/geometry-ci
       - name: Retain geometry captures and evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geometry-linux-${{ matrix.racket }}-${{ github.run_attempt }}
           path: output/geometry-ci/
@@ -108,7 +108,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain WARP evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geometry-warp-${{ github.run_attempt }}
           path: output/geometry-warp/
