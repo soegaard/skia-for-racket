@@ -1,4 +1,78 @@
-# Skia Reference development: R3g-a
+# Skia Reference development: R3g-b
+
+## Raster, output policy, and diagnostics
+
+The upstream baseline is `027022cffb19dd314f6a01445e6d3e35c8b1889e`
+(`Expand Reference geometry coverage`). R3g-b adds 166 bindings and 342 public
+export paths. The totals are 1111 bindings, 1822 documented export paths, and
+49 conceptual chapters. The remaining 155 inventory records are GPU, GUI, and
+DC integration work for R4. Every export of the principal `skia` module is now
+mapped; that is inventory coverage, not runtime or platform certification.
+
+The ten completed module families are `raster-buffers`, `image-operations`,
+`image-info`, `bitmap`, `surface-properties`, `output-policy`, `output-audit`,
+`output-groups`, `graphics`, and `native-capabilities`. The bitmap adapter is
+limited to copying an image or surface into a Racket bitmap. DC and GUI APIs
+are not folded into this batch. Existing authoritative definitions stay in
+place rather than being duplicated in the new chapters.
+
+Seven chapters document raster storage and borrowed pixmaps, CPU image
+operations, surface properties, output auditing, bounded output groups, global
+caches and memory statistics, and native preflight. Existing Pixel Descriptions
+and Shaders gain the format inventories and raw image shader respectively.
+The complete Reference has 98 displayed examples and 23 evaluated blocks:
+all 90 earlier displayed blocks and twenty evaluated blocks are preserved.
+The three new evaluated examples use pure public values, not native allocations.
+
+## R3g-a editorial dispositions
+
+The accepted eight geometry chapters remain unchanged, except for the requested
+`with-canvas-layer` grammar. Its `options` nonterminal has exactly five
+alternatives: no option, bounds, paint, or both orders of the two keywords.
+It no longer uses unrestricted option repetition. A native-free expansion test
+covers all five valid forms, duplicate keywords, and the nonempty-body rule.
+No library macro is modified. The two-batch BMP acceptance case remains intact.
+
+The corrected chapter archive is accepted; no further prose rewrite is needed.
+Use the self-contained review packager below rather than manually selecting
+Scribble files. It includes every chapter reached by `@include-section`, both
+pinned inventories, registration, and all source-checker dependencies. Ordinary
+source validation runs on the staged sources and again after ZIP extraction.
+A missing include target prevents publication. The pinned inventory bytes are
+not replaced by synthetic test fixtures or freshly inferred export lists.
+
+## Acceptance and editor handoff
+
+The added suites contain thirteen native-free Racket cases and 28 native CPU
+cases. They exercise pixel leases, detached copies, validation before mutation,
+float and integer sample distinctions, explicit conversions, filtered-image
+placement, single-execution output, atomic file publication after audit checks,
+cache-setting restoration, and bounded memory diagnostics. No new test requests
+a GPU context or GUI window. The complete retained suite still needs its native
+Skia and HarfBuzz libraries and fonts. Supplied tests are not execution evidence.
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+"$RACKET" -l raco -- test tools/reference-raster-pure-test.rkt
+"$RACKET" -l raco -- test tools/reference-raster-test.rkt
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py \
+  --output ../reference-r3gb-source-check \
+  --source-zip ../skia-reference-r3gb-source-review.zip
+```
+
+Use fresh paths outside the checkout. The source archive supports the ordinary
+checker without a neighboring checkout or an earlier editor ZIP. It is not a
+complete installation for native execution or tutorial rendering. Reference-only
+editing previews and integrated publication remain separate. This revision does
+not change their rendering, cross-reference, or archive-validation rules.
+
+Regenerate `SOURCE-SHA256SUMS.txt` in the complete checkout and commit it with
+the documentation changes. Do not generate the repository-wide manifest from
+a partial source-review fixture. Neither library implementation nor tutorial
+programs are changed by this documentation batch.
+
+## Earlier R3g-a implementation
 
 ## Geometry and advanced drawing
 

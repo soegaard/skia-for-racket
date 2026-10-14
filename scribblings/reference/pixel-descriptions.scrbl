@@ -184,3 +184,25 @@ buffer mutation or closure does not change the image. The operation does not
 normalize an encoded orientation, concatenate separate scanline batches, or
 certify that incremental decoding was complete.
 }
+
+@section[#:tag "skia-pixel-format-inventories"]{Format Inventories}
+
+@(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
+
+@defthing[integer-pixel-formats vector?]{
+The immutable vector of supported integer format symbols, in order: @racket['rgba-8888],
+@racket['bgra-8888], @racket['rgb-888x], @racket['alpha-8], @racket['gray-8], @racket['rgb-565],
+and @racket['rgba-1010102]. These describe storage, not encoded file formats. Use
+@racket[image-info-supports?] to check a particular operation.
+}
+
+@defthing[float-pixel-formats vector?]{
+The immutable vector @racket[#(rgba-f16 rgba-f32)] of supported floating-point storage formats.
+Both contain four channels; the format names do not imply a color-space interpretation.
+}
+
+@defthing[pixel-formats vector?]{
+The immutable vector containing the integer formats followed by the floating-point formats.
+Membership does not establish that every decoder, drawing target, or encoder supports a
+particular color-type and alpha-type combination.
+}

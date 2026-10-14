@@ -1,0 +1,251 @@
+#lang scribble/manual
+
+@(require
+          (for-label racket/base racket/contract skia skia/graphics))
+
+@title[#:tag "skia-graphics"]{Global Caches and Memory Statistics}
+
+@defmodule[skia/graphics #:no-declare]
+@(declare-exporting skia skia/graphics #:use-sources (skia/graphics))
+
+These operations inspect or configure the loaded Skia library's process-global CPU caches. They
+are not the Racket garbage collector, total process memory, or a GPU context's resource cache.
+Limits are cache settings, not a hard cap on all native allocations. Purging a cache does not
+close application-owned surfaces, images, fonts, or paints.
+
+Global cache calls are rejected from live-port service callbacks and while a live stream
+operation is active. Native calls are synchronized individually. A sequence of queries,
+including @racket[skia-cache-statistics], is not an atomic joint snapshot.
+
+@section{Usage and Limits}
+
+@defproc[(skia-font-cache-used)
+          exact-nonnegative-integer?]{
+Returns the current font-cache byte usage. Byte results must be representable as the native
+unsigned size type. The query does not purge the cache.
+}
+
+@defproc[(skia-font-cache-limit)
+          exact-nonnegative-integer?]{
+Returns the current font-cache byte limit. Byte results must be representable as the native
+unsigned size type. The query does not purge the cache.
+}
+
+@defproc[(skia-font-cache-count-used)
+          (integer-in 0 2147483647)]{
+Returns the current font-cache entry count. Byte results must be representable as the native
+unsigned size type. The query does not purge the cache.
+}
+
+@defproc[(skia-font-cache-count-limit)
+          (integer-in 0 2147483647)]{
+Returns the current font-cache count limit. Byte results must be representable as the native
+unsigned size type. The query does not purge the cache.
+}
+
+@defproc[(skia-resource-cache-used)
+          exact-nonnegative-integer?]{
+Returns the current resource-cache byte usage. Byte results must be representable as the native
+unsigned size type. The query does not purge the cache.
+}
+
+@defproc[(skia-resource-cache-limit)
+          exact-nonnegative-integer?]{
+Returns the current resource-cache total-byte limit. Byte results must be representable as the
+native unsigned size type. The query does not purge the cache.
+}
+
+@defproc[(skia-resource-cache-single-allocation-limit)
+          exact-nonnegative-integer?]{
+Returns the current single-allocation byte limit for the resource cache. Byte results must be
+representable as the native unsigned size type. The query does not purge the cache.
+}
+
+@defproc[(skia-set-font-cache-limit! [limit exact-nonnegative-integer?])
+          exact-nonnegative-integer?]{
+Sets the font-cache byte limit and returns its previous setting. The result is not bytes freed,
+current usage, or the newly installed limit. Byte limits must fit the native unsigned size type.
+Settings affect the loaded library globally; restore a temporary change explicitly. The wrapper
+adds no scope that automatically restores it.
+}
+
+@defproc[(skia-set-font-cache-count-limit! [limit (integer-in 0 2147483647)])
+          (integer-in 0 2147483647)]{
+Sets the font-cache count limit and returns its previous setting. The result is not bytes freed,
+current usage, or the newly installed limit. Byte limits must fit the native unsigned size type.
+Settings affect the loaded library globally; restore a temporary change explicitly. The wrapper
+adds no scope that automatically restores it.
+}
+
+@defproc[(skia-set-resource-cache-limit! [limit exact-nonnegative-integer?])
+          exact-nonnegative-integer?]{
+Sets the resource-cache total-byte limit and returns its previous setting. The result is not
+bytes freed, current usage, or the newly installed limit. Byte limits must fit the native
+unsigned size type. Settings affect the loaded library globally; restore a temporary change
+explicitly. The wrapper adds no scope that automatically restores it.
+}
+
+@defproc[(skia-set-resource-cache-single-allocation-limit! [limit exact-nonnegative-integer?])
+          exact-nonnegative-integer?]{
+Sets the resource-cache single-allocation byte limit and returns its previous setting. The
+result is not bytes freed, current usage, or the newly installed limit. Byte limits must fit the
+native unsigned size type. Settings affect the loaded library globally; restore a temporary
+change explicitly. The wrapper adds no scope that automatically restores it.
+}
+
+@defproc[(skia-initialize!)
+          void?]{
+Explicitly initializes Skia's global graphics state. Ordinary resource operations already
+perform their required native preflight; this is not a substitute for checking ownership or a
+guarantee that a GPU backend is available.
+}
+
+@defproc[(skia-purge-font-cache!)
+          void?]{
+Requests purging of the font cache. The operation does not return a freed-byte count or promise
+that every cache entry can be discarded. It does not close owned resources or purge a GPU
+context's cache.
+}
+
+@defproc[(skia-purge-resource-cache!)
+          void?]{
+Requests purging of the resource cache. The operation does not return a freed-byte count or
+promise that every cache entry can be discarded. It does not close owned resources or purge a
+GPU context's cache.
+}
+
+@defproc[(skia-purge-all-caches!)
+          void?]{
+Requests purging of the global caches. The operation does not return a freed-byte count or
+promise that every cache entry can be discarded. It does not close owned resources or purge a
+GPU context's cache.
+}
+
+@defproc[(skia-cache-statistics)
+          (and/c hash? immutable?)]{
+Returns current cache observations in an immutable hash. The keys are @racket['scope],
+@racket['atomic?], @racket['font-bytes-used], @racket['font-byte-limit],
+@racket['font-count-used], @racket['font-count-limit], @racket['resource-bytes-used],
+@racket['resource-byte-limit], and @racket['resource-single-allocation-byte-limit]. The scope is
+@racket['process-global-skia-caches] and @racket['atomic?] is false.
+
+The fields come from separate native queries. They should not be treated as one simultaneous
+measurement or summed as a complete account of process memory.
+}
+
+@racketblock[
+(define before (skia-font-cache-limit))
+(dynamic-wind
+  void
+  (lambda ()
+    (define previous (skia-set-font-cache-limit! before))
+    (= previous before))
+  (lambda () (skia-set-font-cache-limit! before)))
+]
+
+The setter returns the previous limit. It does not return a measurement of freed memory.
+
+@section[#:tag "skia-memory-statistics"]{Bounded Memory Reports}
+
+@defproc[(skia-memory-statistics [#:detailed? detailed? boolean? #f] [#:dump-wrapped?
+          dump-wrapped? boolean? #f] [#:max-entries max-entries (integer-in 0 65536) 4096]
+          [#:string-limit string-limit (integer-in 0 65536) 4096] [#:byte-limit byte-limit
+          exact-nonnegative-integer? 1048576])
+          memory-statistics?]{
+Collects a detached native memory report for process-global Skia caches. The flags request
+detailed reporting and inclusion of wrapped objects. Names, units, and string values depend on
+the native backend; they are not a fixed allocation inventory.
+
+The entry limit bounds retained records. The string limit bounds each copied native string in
+UTF-8 bytes; the byte limit bounds aggregate copied strings. The expression @racket[(+ (*
+max-entries 128) byte-limit)] must fit @racket[current-skia-byte-limit]. Zero limits are valid.
+Oversized records are omitted and counted, not shortened into apparently complete values.
+Invalid native strings or callback data raise after native cleanup.
+
+The report is not an atomic process-memory snapshot. The callback provider is process-global; a
+second module instance or place cannot replace an already claimed provider table. The same
+provider is shared with GPU memory reporting, but this procedure's report has CPU-cache scope.
+No application callback runs while Skia is collecting the records.
+}
+
+@defproc[(memory-statistics? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a detached memory report, including a GPU-context report using the same
+data representation.
+}
+
+@defproc[(memory-statistics-entries [report memory-statistics?])
+          (and/c (vectorof memory-statistic?) immutable?)]{
+Returns the retained records in native observation order as an immutable vector.
+}
+
+@defproc[(memory-statistics-detailed? [report memory-statistics?])
+          boolean?]{
+Returns the requested detailed-reporting flag, not a completeness guarantee.
+}
+
+@defproc[(memory-statistics-dump-wrapped? [report memory-statistics?])
+          boolean?]{
+Returns whether inclusion of wrapped native objects was requested.
+}
+
+@defproc[(memory-statistics-truncated? [report memory-statistics?])
+          boolean?]{
+Reports whether any observed record was omitted because of the configured bounds.
+}
+
+@defproc[(memory-statistics-dropped-count [report memory-statistics?])
+          exact-nonnegative-integer?]{
+Returns the number of omitted observed records, not bytes omitted or all allocations absent from
+the native report.
+}
+
+@defproc[(memory-statistics-string-bytes [report memory-statistics?])
+          exact-nonnegative-integer?]{
+Returns the aggregate UTF-8 bytes retained for names, value names, units, and string values.
+Numeric payloads are not counted as strings.
+}
+
+@defproc[(memory-statistics-scope [report memory-statistics?])
+          (or/c 'process-global-skia-caches 'gpu-context-skia-resources)]{
+Returns the origin of the report. A GPU report is not a report of all process-global CPU caches.
+}
+
+@defproc[(memory-statistics->jsexpr [report memory-statistics?])
+          (and/c hash? immutable?)]{
+Returns a detached JSON-compatible hash with scope, an explicit false atomic flag, requested
+options, truncation information, string-byte count, and a list of entries. Entry kinds and scope
+symbols become strings. The conversion does not query native memory again.
+}
+
+@defproc[(memory-statistic? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a detached immutable numeric or string record and @racket[#f] otherwise.
+}
+
+@defproc[(memory-statistic-kind [entry memory-statistic?])
+          (or/c 'numeric 'string)]{
+Returns the payload kind.
+}
+
+@defproc[(memory-statistic-name [entry memory-statistic?])
+          (and/c string? immutable?)]{
+Returns the copied native object or category name.
+}
+
+@defproc[(memory-statistic-value-name [entry memory-statistic?])
+          (and/c string? immutable?)]{
+Returns the copied name of the reported value.
+}
+
+@defproc[(memory-statistic-units [entry memory-statistic?])
+          (or/c #f (and/c string? immutable?))]{
+Returns copied units for a numeric record, or @racket[#f] for a string record.
+}
+
+@defproc[(memory-statistic-value [entry memory-statistic?])
+          (or/c (integer-in 0 #xffffffffffffffff)
+                (and/c string? immutable?))]{
+Returns the unsigned 64-bit numeric payload or copied immutable string, according to
+@racket[memory-statistic-kind].
+}

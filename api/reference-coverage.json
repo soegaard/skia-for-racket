@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R3g-a",
-  "reviewed_repository_commit": "c1135778c7d29a0f0806768ab5f80b3477bc4680",
+  "stage": "R3g-b",
+  "reviewed_repository_commit": "027022cffb19dd314f6a01445e6d3e35c8b1889e",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R3g-b/R4",
-    "reason": "R3g-b: remaining CPU APIs. R4: GPU/GUI/DC. See docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R4",
+    "reason": "GPU, GUI, and DC integration; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -9998,6 +9998,1842 @@
       "exports": [
         "skia",
         "skia/drawables"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties?",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-surface-properties",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties-pixel-geometry",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties-flags",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties-device-independent-fonts?",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties-dynamic-msaa?",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties-always-dither?",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties->jsexpr",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/surface-properties"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface-properties-of",
+      "chapter": "scribblings/reference/surface-properties.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-raw-image-shader",
+      "chapter": "scribblings/reference/shaders.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-unique-id",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-alpha-only?",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-lazy-generated?",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-texture-backed?",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-valid?",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-pixels-available?",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image->non-texture-image",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image->raster-image",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-read-pixmap!",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-scale-pixmap!",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image->raster-buffer",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image-apply-filter",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-operations"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image->bitmap",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia/bitmap",
+      "exports": [
+        "skia/bitmap"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface->bitmap",
+      "chapter": "scribblings/reference/image-operations.scrbl",
+      "canonical_module": "skia/bitmap",
+      "exports": [
+        "skia/bitmap"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-backends",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-feature-names",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-capability?",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-capability-for",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-capability-backend",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-capability-feature",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-capability-status",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-capability-reason",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "analyze-output-page",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output->bytes/audit",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "save-output/audit",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "current-output-audit-event-limit",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-output-label",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "with-output-label",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event?",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event-page",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event-operation",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event-scope",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event-feature",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event-status",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event-reason",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-event-details",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report?",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report-backend",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report-pages",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report-events",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report-mode",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report-blocking?",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report-vector-only?",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-audit-report->jsexpr",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:output-audit?",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:output-audit-event",
+      "chapter": "scribblings/reference/output-audit.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-audit",
+        "skia/output-policy"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-output-group",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-raster-executor?",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report?",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-backend",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-policy",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-strategy",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-reason",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-bounds",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-padded-bounds",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-pixel-size",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-scale",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-features",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-label",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-children",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report-execution",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-group-report->jsexpr",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:output-group?",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:output-group-report",
+      "chapter": "scribblings/reference/output-groups.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/output-groups"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "integer-pixel-formats",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "float-pixel-formats",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixel-formats",
+      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/image-info"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-raster-buffer",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-raster-buffer-from-info",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-width",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-height",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-row-bytes",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-byte-size",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-copy",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer->storage-bytes",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-write-storage!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer->rgba-bytes",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-write-rgba!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-opaque?",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap?",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-raster-buffer-pixmap",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-width",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-height",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-row-bytes",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-writable?",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-image-info",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-subset",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-sample",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-set-sample!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-pixel",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-color4f",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-alphaf",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-fill!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-set-pixel!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-fill-color4f!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-set-color4f!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-opaque?",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap->storage-bytes",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-write-storage!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap->rgba-bytes",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-write-rgba!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-convert!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "pixmap-scale!",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-convert",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "raster-buffer-extract-alpha",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image->image-info",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-surface-from-info",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-raster-buffer-canvas",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color-space->descriptor",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "descriptor->color-space",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/raster-buffers"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-font-cache-used",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-font-cache-limit",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-font-cache-count-used",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-font-cache-count-limit",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-resource-cache-used",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-resource-cache-limit",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-resource-cache-single-allocation-limit",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-set-font-cache-limit!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-set-font-cache-count-limit!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-set-resource-cache-limit!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-set-resource-cache-single-allocation-limit!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-initialize!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-purge-font-cache!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-purge-resource-cache!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-purge-all-caches!",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-cache-statistics",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-memory-statistics",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics?",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics-entries",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics-detailed?",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics-dump-wrapped?",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics-truncated?",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics-dropped-count",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics-string-bytes",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics-scope",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistics->jsexpr",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistic?",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistic-kind",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistic-name",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistic-value-name",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistic-units",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "memory-statistic-value",
+      "chapter": "scribblings/reference/graphics.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/graphics"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-check!",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-available?",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-native-version",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-native-library-path",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "harfbuzz-package-version",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "harfbuzz-check!",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "harfbuzz-available?",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "harfbuzz-native-version",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "harfbuzz-native-library-path",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "native-package-version",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/native-capabilities"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "native-abi-catalog",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia/native-capabilities",
+      "exports": [
+        "skia/native-capabilities"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "native-abi-profiles",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia/native-capabilities",
+      "exports": [
+        "skia/native-capabilities"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-native-capabilities",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia/native-capabilities",
+      "exports": [
+        "skia/native-capabilities"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-native-symbol-inventory",
+      "chapter": "scribblings/reference/native-libraries.scrbl",
+      "canonical_module": "skia/native-capabilities",
+      "exports": [
+        "skia/native-capabilities"
       ],
       "phase": "0",
       "space": null

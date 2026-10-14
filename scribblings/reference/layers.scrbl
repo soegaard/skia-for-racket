@@ -68,9 +68,12 @@ Opacity applies to the completed group rather than separately reducing each
 rectangle's opacity. The canvas save count returns to 1.
 }
 
-@defform[(with-canvas-layer canvas-expr option ... body ...+)
-         #:grammar [(option (code:line #:bounds bounds-expr)
-                            (code:line #:paint paint-expr))]]{
+@defform[(with-canvas-layer canvas-expr options body ...+)
+         #:grammar [(options code:blank
+                             (code:line #:bounds bounds-expr)
+                             (code:line #:paint paint-expr)
+                             (code:line #:bounds bounds-expr #:paint paint-expr)
+                             (code:line #:paint paint-expr #:bounds bounds-expr))]]{
 Like @racket[call-with-canvas-layer], with the body supplying the callback.
 Each optional clause may appear at most once, in either order, before the body.
 The body is nonempty, may contain internal definitions, and ends with an expression.

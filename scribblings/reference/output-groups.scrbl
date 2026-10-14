@@ -1,0 +1,187 @@
+#lang scribble/manual
+
+@(require
+          (for-label racket/base racket/contract skia skia/output-groups))
+
+@title[#:tag "skia-output-groups"]{Bounded Output Groups}
+
+@defmodule[skia/output-groups #:no-declare]
+@(declare-exporting skia skia/output-groups #:use-sources (skia/output-groups))
+
+A @deftech{bounded output group} captures a drawing callback once, then selects native replay or
+explicit rasterization for a PDF, SVG, or CPU-raster destination. It returns a detached report
+describing that decision. Capturing the callback is not a preflight/retry loop: replay never
+reruns the Racket authoring code.
+
+Representation policy and raster execution are separate. CPU execution is the default. A GPU
+raster executor belongs to the GPU output interface; its use does not turn a rasterized group
+into vector content. Groups do not repair unknown resource provenance or recover annotations
+that were already flattened.
+
+@defproc[(draw-output-group [canvas canvas?] [x real?] [y real?] [width (and/c real? (>/c 0))]
+          [height (and/c real? (>/c 0))] [draw (-> canvas? any)] [#:policy policy (or/c
+          'prefer-vector 'require-vector 'raster) 'prefer-vector] [#:padding padding (or/c real?
+          list?) 0] [#:scale scale (real-in 1/1024 1024) (current-raster-output-scale)]
+          [#:color-space space (or/c #f color-space?) #f] [#:label label (or/c #f string?) #f]
+          [#:raster-executor executor (or/c #f 'cpu output-raster-executor?) #f])
+          output-group-report?]{
+Captures @racket[draw] with a borrowed recording canvas whose local origin is placed at
+@racket[x] and @racket[y] on the destination. The positive logical dimensions and padded edges
+must remain drawing scalars. Padding accepts a nonnegative scalar or the left/top/right/bottom
+list forms used by @racket[draw-rasterized]. It enlarges the captured region without shrinking
+the original content. Both replay strategies use the same padded local clip.
+
+The destination is a supported document or CPU-raster canvas. An ordinary picture recorder has
+no output backend and is rejected. A recording canvas created by an enclosing output-group
+capture can inherit that capture's backend; an unrelated recorder cannot. An outer document
+matrix must be affine. Put perspective inside the group callback when raster fallback is needed.
+
+The @racket['prefer-vector] policy chooses native replay only when the captured features permit
+it; native replay can still embed existing images or depend on viewer behavior. The
+@racket['require-vector] policy requires every captured feature to be vector-compatible and is
+not valid for a raster destination. The @racket['raster] policy requests isolated rasterization,
+but does not waive unknown provenance or known semantic loss.
+
+Destination-dependent compositing is isolated against transparency, not the receiving canvas's
+backdrop. Include needed background drawing inside the callback. Groups reject device-coordinate
+region clips, whose replay would ignore the intended local placement. Rasterization that would
+lose annotations or document-native text is rejected rather than silently accepted.
+
+For raster output, pixel extents are the ceilings of padded dimensions times the scale. The
+ordinary dimension and RGBA byte limits are checked when rasterization is selected, not imposed
+as an RGBA allocation requirement on a native vector group. A supplied color space is validated
+before the callback and used by raster fallback; it does not convert existing document content.
+
+A false executor inherits only through the verified enclosing group capture, otherwise selecting
+CPU. An explicit @racket['cpu] overrides inheritance. Executor lifetime/thread checks happen
+before authoring; GPU acquisition, when selected, is delayed until representation policy and any
+outer audit accept rasterization. A later failure does not trigger a second authoring pass.
+
+Callback values are ignored, and its canvas expires on exit. Failure before replay draws no
+group to the destination, but ordinary callback side effects persist. Failures during actual
+replay or image publication are not promised to roll back destination pixels. A policy rejection
+raises @racket[exn:fail:output-group?] with its report. The optional label is copied without the
+200-character restriction of @racket[call-with-output-label].
+}
+
+@racketblock[
+(define calls 0)
+(with-skia ([surface (make-surface 20 20)]
+            [ink (make-paint #:color 'red)])
+  (define report
+    (draw-output-group (surface-canvas surface) 4 5 8 6
+      (lambda (canvas)
+        (set! calls (add1 calls))
+        (draw-rect canvas 0 0 8 6 ink))
+      #:policy 'raster #:scale 2 #:padding 1))
+  (list calls (output-group-report-strategy report)
+        (output-group-report-pixel-size report)))
+]
+
+The result contains 1, @racket['raster], and @racket[#(20 16)]. Padding is included before scaling.
+
+@section{Reports and Failures}
+
+@defproc[(output-raster-executor? [v any/c])
+          boolean?]{
+Identifies an executor object supplied by the output integration interface. The @racket['cpu]
+symbol is accepted by @racket[draw-output-group], but is not such an object. The predicate does
+not certify that an executor's scope is still live or that its backend is available.
+}
+
+@defproc[(output-group-report? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a detached immutable group report and @racket[#f] otherwise. A report
+contains no live drawing callback or native object.
+}
+
+@defproc[(output-group-report-backend [report output-group-report?])
+          (or/c 'pdf 'svg 'raster)]{
+Returns the receiving output representation backend, not the GPU backend used to create an
+intermediate image.
+}
+
+@defproc[(output-group-report-policy [report output-group-report?])
+          (or/c 'prefer-vector 'require-vector 'raster)]{
+Returns the requested representation policy.
+}
+
+@defproc[(output-group-report-strategy [report output-group-report?])
+          (or/c 'native 'raster 'reject)]{
+Returns the selected replay strategy. A rejected report is obtained through the group exception,
+not a successful draw.
+}
+
+@defproc[(output-group-report-reason [report output-group-report?])
+          (or/c 'native-compatible 'raster-target 'explicit-raster 'isolated-compositing
+                  'backend-fallback 'unknown-provenance 'discarded-semantics 'vector-required
+                  'annotation-would-be-lost 'native-text-would-be-lost 'device-space-clip)]{
+Returns the symbolic reason for the decision, separate from diagnostic exception text.
+}
+
+@defproc[(output-group-report-bounds [report output-group-report?])
+          (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the original x, y, width, and height in destination-local coordinates.
+}
+
+@defproc[(output-group-report-padded-bounds [report output-group-report?])
+          (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the padded destination-local rectangle, beginning at the original position minus
+left/top padding.
+}
+
+@defproc[(output-group-report-pixel-size [report output-group-report?])
+          (or/c #f (and/c (vector/c exact-positive-integer?
+                                         exact-positive-integer?) immutable?))]{
+Returns raster width and height, or @racket[#f] when no raster intermediate was selected.
+}
+
+@defproc[(output-group-report-scale [report output-group-report?])
+          (real-in 1/1024 1024)]{
+Returns the requested pixels-per-logical-unit scale, including when no raster intermediate was
+used.
+}
+
+@defproc[(output-group-report-features [report output-group-report?])
+          (listof symbol?)]{
+Returns a sorted, duplicate-free list of captured feature summaries. It is not a full display
+list or a pixel-equivalence proof.
+}
+
+@defproc[(output-group-report-label [report output-group-report?])
+          (or/c #f (and/c string? immutable?))]{
+Returns the copied label or @racket[#f].
+}
+
+@defproc[(output-group-report-children [report output-group-report?])
+          (listof output-group-report?)]{
+Returns nested capture reports in capture order. They describe decisions made during capture,
+not separate callbacks rerun during outer replay.
+}
+
+@defproc[(output-group-report-execution [report output-group-report?])
+          (and/c hash? immutable?)]{
+Returns JSON-compatible execution details. These distinguish the requested executor,
+representation phase, actual backend, context generation, fallback reason, and explicit readback
+count. A native strategy does not initialize a GPU merely because one was requested. Planned or
+rejected work is not reported as completed.
+}
+
+@defproc[(output-group-report->jsexpr [report output-group-report?])
+          (and/c hash? immutable?)]{
+Returns a detached JSON-compatible hash of the report. Rectangles become lists, symbolic
+classifications become strings, and nested reports appear under @racket['captured_children]. A
+false pixel size remains false.
+}
+
+@defproc[(exn:fail:output-group? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a group-policy rejection. Other argument, callback, native, or executor
+errors are not converted to this type.
+}
+
+@defproc[(exn:fail:output-group-report [exception exn:fail:output-group?])
+          output-group-report?]{
+Returns the rejected group's report. No group was drawn to the destination before this policy
+rejection, but callback side effects may already have occurred.
+}

@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/effects))
+@(require (for-label racket/base racket/contract skia skia/effects
+                     skia/image-operations))
 
 @title[#:tag "skia-shaders"]{Shaders and Gradients}
 
@@ -199,4 +200,23 @@ Returns a shader combining two shader results through a retained blender.
 Destination precedes source in the argument list. The paint's own blend mode
 then combines this shader result with the drawing target. All three input
 resources are retained.
+}
+
+@section[#:tag "skia-raw-image-shaders"]{Raw Image Samples}
+
+@(declare-exporting skia skia/image-operations #:use-sources (skia/image-operations))
+
+@defproc[(make-raw-image-shader [image image?] [#:tile-x tile-x (or/c 'clamp 'repeat 'mirror
+          'decal) 'clamp] [#:tile-y tile-y (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
+          [#:sampling sampling (or/c 'nearest 'linear) 'nearest] [#:matrix matrix (or/c #f
+          matrix?) #f])
+          shader?]{
+Creates an owned shader that treats image channels as raw numeric samples. It skips the ordinary
+image shader's color-space conversion and unpremultiplication. This is useful for data textures,
+but is not a drop-in way to display a tagged color image correctly.
+
+The shader retains the image independently and preserves any GPU dependency. A supplied local
+affine matrix must be invertible. Sampling is nearest by default; the public interface accepts
+nearest or linear, not cubic sampling. Raw sample interpretation has no promised direct PDF/SVG
+representation; use an explicit bounded raster group for document output.
 }

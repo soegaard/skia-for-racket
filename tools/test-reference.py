@@ -171,10 +171,15 @@ from reference_geometry_cases import (GA_MODULES, GA_PROCEDURES, GA_SYNTAX,
                                       GA_PARAMETERS, GA_CONSTANTS)
 PROCEDURES.update(GA_PROCEDURES)
 
+from reference_raster_cases import (GB_MODULES, GB_PROCEDURES, GB_REQUIRED_KEYWORDS,
+                                    GB_CONSTANTS, GB_SYNTAX, GB_PARAMETERS)
+PROCEDURES.update(GB_PROCEDURES)
+
 
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
-                required_keywords=COLOR_REQUIRED_KEYWORDS.get(name, []), allowed_keywords=keywords)
+                required_keywords=GB_REQUIRED_KEYWORDS.get(name,
+                    COLOR_REQUIRED_KEYWORDS.get(name, [])), allowed_keywords=keywords)
 
 
 def synthetic_inventory():
@@ -184,7 +189,7 @@ def synthetic_inventory():
                 dict(name='with-skia', phase='0', kind='syntax', export_kind='syntax'),
                 dict(name='with-canvas-state', phase='0', kind='syntax', export_kind='syntax'),
                 dict(name='matrix-identity', phase='0', kind='value', export_kind='value'),
-                row('surface-properties-of', 2, []),
+                row('synthetic-uncovered-export', 2, []),
                 dict(name='struct:rgba', phase='0', kind='value', export_kind='value')]
     exports += [row(name, 3, [], 'parameter') for name in OUTPUT_PARAMETERS]
     exports += [dict(name=name, phase='0', kind='syntax', export_kind='syntax')
@@ -194,6 +199,11 @@ def synthetic_inventory():
                 for name in GA_SYNTAX]
     exports += [dict(name=name, phase='0', kind='value', export_kind='value')
                 for name in GA_CONSTANTS]
+    exports += [row(name, 3, [], 'parameter') for name in GB_PARAMETERS]
+    exports += [dict(name=name, phase='0', kind='syntax', export_kind='syntax')
+                for name in GB_SYNTAX]
+    exports += [dict(name=name, phase='0', kind='value', export_kind='value')
+                for name in GB_CONSTANTS]
     snapshots = [dict(modules=[dict(path='main.rkt', exports=exports),
                                     dict(path='color.rkt', exports=[
                                         copy.deepcopy(item) for item in exports
@@ -216,7 +226,7 @@ def synthetic_inventory():
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
-    for path, names in GA_MODULES.items():
+    for path, names in {**GA_MODULES, **GB_MODULES}.items():
         new = dict(path=path, exports=[copy.deepcopy(item) for item in exports
                                        if item['name'] in names])
         old = next((m for m in snapshots[0]['modules'] if m['path'] == path), None)
@@ -224,6 +234,9 @@ def synthetic_inventory():
             snapshots[0]['modules'].append(new)
         else:
             old['exports'] = new['exports']
+    non_main = {'image->bitmap', 'surface->bitmap', 'native-abi-catalog', 'native-abi-profiles',
+                'skia-native-capabilities', 'skia-native-symbol-inventory'}
+    snapshots[0]['modules'][0]['exports'] = [e for e in exports if e['name'] not in non_main]
     return snapshots
 
 
@@ -286,8 +299,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 945)
-        self.assertEqual(result['documented_exports'], 1480)
+        self.assertEqual(len(result['definitions']), 1111)
+        self.assertEqual(result['documented_exports'], 1822)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -406,12 +419,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 945)
+        self.assertEqual(len(self.check()['definitions']), 1111)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 945)
+        self.assertEqual(len(self.check()['definitions']), 1111)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -964,9 +977,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 945)
-        self.assertEqual(result['documented_exports'], 1480)
-        self.assertEqual(len(result['chapters']), 43)  # Root plus forty-two chapters.
+        self.assertEqual(len(result['definitions']), 1111)
+        self.assertEqual(result['documented_exports'], 1822)
+        self.assertEqual(len(result['chapters']), 50)  # Root plus forty-nine chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1309,11 +1322,11 @@ class R2CoverageTests(unittest.TestCase):
         self.assertEqual(spec['kind'], 'syntax')
         self.assertNotIn('arity_mask', spec)
 
-    def test_public_subset_does_not_claim_deferred_raster_and_gpu_apis(self):
+    def test_public_subset_does_not_claim_deferred_gpu_and_dc_apis(self):
         names = {row['name'] for row in self.check()['definitions']}
-        self.assertNotIn('image-apply-filter', names)
+        self.assertNotIn('gpu-image-apply-filter', names)
         self.assertNotIn('make-gpu-context', names)
-        self.assertNotIn('make-raster-buffer', names)
+        self.assertNotIn('skia-dc%', names)
 
 
 class R2ProseTests(unittest.TestCase):
@@ -1681,7 +1694,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 90)
+        self.assertEqual(count, 98)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1974,7 +1987,7 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_later_batches_are_not_counted_as_documented(self):
         names = {e['name'] for e in self.check()['definitions']}
-        for name in ('image-apply-filter', 'make-gpu-context', 'make-raster-buffer'):
+        for name in ('gpu-image-apply-filter', 'make-gpu-context', 'skia-dc%'):
             self.assertNotIn(name, names)
 
 
@@ -2639,13 +2652,13 @@ class R3dColorSemanticsTests(unittest.TestCase):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
         for module, names in (('color-space', COLOR_SPACE_EXPORTS), ('color4f', COLOR4F_EXPORTS),
                               ('float-colors', FLOAT_COLOR_EXPORTS),
-                              ('image-info', [*DESCRIPTOR_EXPORTS, *PIXEL_INFO_EXPORTS])):
+                              ('image-info', GB_MODULES['image-info.rkt'])):
             actual = [row['name'] for row in manifest['definitions']
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 945)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1480)
+        self.assertEqual(len(manifest['definitions']), 1111)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1822)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -3197,7 +3210,7 @@ class R3fStreamCodecTests(unittest.TestCase):
         for path, names in IO_MODULES.items():
             module = checks.public_module(path)
             rows = [row for row in manifest['definitions'] if module in row['exports']]
-            expected = set(names)
+            expected = set(GB_MODULES.get(path, names))
             if path == 'image-info.rkt':
                 expected.add('color-space-descriptor?')
             self.assertEqual({row['name'] for row in rows}, expected)
@@ -3535,7 +3548,7 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertIn('docs/API.md', intro)
         self.assertIn('@seclink["top" #:doc', intro)
         self.assertIn('skia/scribblings/tutorials/index.scrbl', intro)
-        self.assertEqual(text.count('@include-section['), 42)
+        self.assertEqual(text.count('@include-section['), 49)
 
     def test_bottom_up_example_is_self_contained_and_uses_the_native_test_fixture(self):
         text = self.text('scanline-codecs')
@@ -3624,20 +3637,19 @@ class R3gaGeometryTests(unittest.TestCase):
         self.assertEqual(set(GA_SYNTAX), {'with-canvas-layer', 'with-canvas-matrix'})
 
     def test_new_chapters_and_aggregate_counts_are_explicit(self):
-        self.assertEqual(len(self.definitions), 945)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1480)
-        self.assertEqual(len(self.chapters) - 1, 42)
-        self.assertEqual(self.manifest['stage'], 'R3g-a')
+        self.assertEqual(len(self.definitions), 1111)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1822)
+        self.assertEqual(len(self.chapters) - 1, 49)
+        self.assertEqual(self.manifest['stage'], 'R3g-b')
         for chapter in ('rounded-rectangles', 'regions', 'projective-matrices',
                         'structured-drawing', 'portable-drawing', 'layers',
                         'drawables', 'specialized-canvases'):
             self.assertIn(f'scribblings/reference/{chapter}.scrbl', self.chapters)
 
-    def test_r3gb_topics_are_not_folded_into_geometry_batch(self):
-        for name in ('pixmap-sample', 'image-apply-filter', 'skia-cache-statistics',
-                     'skia-native-capabilities', 'draw-output-group'):
+    def test_r4_topics_remain_outside_cpu_coverage(self):
+        for name in ('make-gpu-context', 'skia-canvas%', 'skia-dc%'):
             self.assertNotIn(name, self.by_name)
-        self.assertIn('R3g-b', self.manifest['deferred_policy']['stage'])
+        self.assertEqual('R4', self.manifest['deferred_policy']['stage'])
 
     def test_projective_conversion_does_not_promise_lossless_projection(self):
         text = self.text('projective-matrices.scrbl')
@@ -3743,8 +3755,8 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 90)
-        self.assertEqual(sum(f == 'examples' for f, _ in forms), 20)
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 98)
+        self.assertEqual(sum(f == 'examples' for f, _ in forms), 23)
         text = (ROOT / 'tools/reference-native-test.rkt').read_text()
         self.assertIn('(in-range 2)', text)
         self.assertIn('run-displayed-examples', text)
@@ -3773,5 +3785,285 @@ class R3gaGeometryTests(unittest.TestCase):
         self.assertEqual(expected, {
             'api/public-api-headless.json': '2cadbe3212b62c3becfb0e184a1adc119639b750',
             'api/public-api-gui.json': '1221794e26e099b8ca38110f4a42564f6b38f8f6'})
+
+
+class R3gbRasterTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.definitions, cls.chapters = checks.document_definitions(ROOT)
+        cls.by_name = {d['name']: d for d in cls.definitions}
+
+    def text(self, name):
+        return (ROOT / checks.REFERENCE / (name + '.scrbl')).read_text()
+
+    def header(self, name):
+        text = (ROOT / self.by_name[name]['chapter']).read_text()
+        return next(h for f, h, _ in checks.commands(text)
+                    if f == 'defproc' and h[0][0] == name)
+
+    def test_selected_modules_have_complete_documented_exports(self):
+        for path, names in GB_MODULES.items():
+            module = checks.public_module(path)
+            actual = {d['name'] for d in self.manifest['definitions'] if module in d['exports']}
+            with self.subTest(module=module):
+                self.assertEqual(actual, set(names))
+
+    def test_new_call_boundaries_match_pinned_fixtures(self):
+        self.assertEqual(len(GB_PROCEDURES), 157)
+        for name, (arity, keywords) in GB_PROCEDURES.items():
+            with self.subTest(name=name):
+                entry = self.by_name[name]
+                self.assertEqual(entry['arity_mask'], str(arity))
+                self.assertEqual(entry['allowed_keywords'], keywords)
+                self.assertEqual(entry['required_keywords'], GB_REQUIRED_KEYWORDS.get(name, []))
+        self.assertEqual(GB_REQUIRED_KEYWORDS, {'image-apply-filter': ['clip']})
+
+    def test_scope_counts_and_r4_deferral_are_explicit(self):
+        self.assertEqual(len(self.definitions), 1111)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1822)
+        self.assertEqual(len(self.chapters) - 1, 49)
+        self.assertEqual(self.manifest['stage'], 'R3g-b')
+        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4')
+        self.assertNotIn('make-gpu-context', self.by_name)
+        self.assertNotIn('skia-dc%', self.by_name)
+
+    def test_every_main_export_is_accounted_for(self):
+        # This is a pinned inventory check, not live reflection.
+        exports = checks.load_exports(ROOT, self.manifest)
+        actual = {name for module, phase, space, name in exports if module == 'skia'}
+        documented = {d['name'] for d in self.manifest['definitions'] if 'skia' in d['exports']}
+        self.assertEqual(actual, documented)
+
+    def test_layer_grammar_has_five_options_and_no_repetition(self):
+        h = next(h for f, h, _ in checks.commands(self.text('layers'))
+                 if f == 'defform' and h[0][0] == 'with-canvas-layer')
+        self.assertEqual(h[0], ['with-canvas-layer', 'canvas-expr', 'options', 'body', '...+'])
+        grammar = h[h.index('#:grammar') + 1]
+        self.assertEqual(grammar, [['options', 'code:blank',
+            ['code:line', '#:bounds', 'bounds-expr'],
+            ['code:line', '#:paint', 'paint-expr'],
+            ['code:line', '#:bounds', 'bounds-expr', '#:paint', 'paint-expr'],
+            ['code:line', '#:paint', 'paint-expr', '#:bounds', 'bounds-expr']]])
+
+    def test_layer_grammar_has_real_expansion_tests(self):
+        pure = (ROOT / 'tools/reference-raster-pure-test.rkt').read_text()
+        for phrase in ('expand-layer', 'all five documented', 'duplicated layer options',
+                       '#:paint #f #:paint #f', 'exn:fail:syntax?'):
+            self.assertIn(phrase, pure)
+
+    def test_source_review_inputs_include_every_reachable_chapter(self):
+        hashes = review.source_hashes(ROOT, review_inputs=True)
+        self.assertTrue(self.chapters <= set(hashes))
+        for path in ('api/public-api-headless.json', 'api/public-api-gui.json',
+                     'tools/check-reference.py', 'tools/reference_review.py',
+                     'tools/reference_raster_cases.py', 'tools/reference-raster-test.rkt'):
+            self.assertIn(path, hashes)
+        for name in ('layers', 'specialized-canvases', 'rounded-rectangles', 'regions',
+                     'structured-drawing', 'portable-drawing', 'projective-matrices', 'drawables'):
+            self.assertIn('scribblings/reference/' + name + '.scrbl', hashes)
+
+    def test_missing_old_or_new_include_target_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / checks.REFERENCE, root / checks.REFERENCE)
+            for name in ('layers', 'raster-buffers'):
+                path = root / checks.REFERENCE / (name + '.scrbl')
+                before = path.read_bytes()
+                path.unlink()
+                with self.subTest(chapter=name):
+                    with self.assertRaises((checks.CheckError, FileNotFoundError)):
+                        checks.document_definitions(root)
+                path.write_bytes(before)
+
+    def test_real_inventory_files_remain_byte_pinned(self):
+        for row in self.manifest['snapshots']:
+            self.assertEqual(checks.git_blob((ROOT / row['file']).read_bytes()), row['git_blob'])
+
+    def test_buffer_and_pixmap_storage_lengths_are_not_conflated(self):
+        text = ' '.join(self.text('raster-buffers').split())
+        for phrase in ('full allocation, including all row padding', 'Rows are tightly packed',
+                       'input length must equal', 'at least the minimum byte length',
+                       'new row padding stays zero'):
+            self.assertIn(phrase, text)
+
+    def test_borrowed_views_expire_without_changing_wrapper_predicates(self):
+        text = ' '.join(self.text('raster-buffers').split())
+        for phrase in ('including an expired wrapper', 'subsets expire on exit',
+                       'creating thread', 'not pixel rollback', 'second canvas or pixmap scope'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('call-with-raster-buffer-pixmap')[1], 'any')
+
+    def test_raw_samples_and_srgb_color_fills_are_distinguished(self):
+        text = ' '.join(self.text('raster-buffers').split())
+        for phrase in ('logical RGBA channel order', 'Premultiplied zero alpha requires zero RGB',
+                       'including after storage rounding', 'unpremultiplied sRGB color',
+                       'does not convert to sRGB'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('pixmap-sample')[1], ['and/c', 'vector?', 'immutable?'])
+
+    def test_staged_conversion_and_direct_scaling_have_different_failure_guarantees(self):
+        text = ' '.join(self.text('raster-buffers').split())
+        self.assertIn('staged and validated before committing pixels', text)
+        self.assertIn('writes through the native scaler directly', text)
+        self.assertIn('does not promise that a failed native call', text)
+
+    def test_image_materialization_does_not_hide_a_gpu_transfer(self):
+        text = ' '.join(self.text('image-operations').split())
+        self.assertIn('reject GPU-owned or texture-backed inputs', text)
+        self.assertIn('F32 must remain F32', text)
+        self.assertIn('16 bytes per pixel', text)
+        self.assertIn('is not a content hash', text)
+
+    def test_filtered_image_results_preserve_three_values_and_required_clip(self):
+        result = self.header('image-apply-filter')[1]
+        self.assertEqual(result[0], 'values')
+        self.assertEqual(len(result), 4)
+        self.assertIn('immutable?', result[2])
+        self.assertIn('immutable?', result[3])
+        self.assertEqual(self.by_name['image-apply-filter']['required_keywords'], ['clip'])
+        text = ' '.join(self.text('image-operations').split())
+        self.assertIn('not converted into an apparently successful empty image', text)
+
+    def test_raw_shader_contract_does_not_advertise_cubic_sampling(self):
+        header = self.header('make-raw-image-shader')
+        fields = {x[0]: x for x in header[0][1:] if x[0].startswith('#:')}
+        self.assertEqual(fields['#:sampling'][2], ['or/c', ['quote', 'nearest'], ['quote', 'linear']])
+        self.assertEqual(fields['#:sampling'][3], ['quote', 'nearest'])
+        self.assertIn('raw numeric samples', self.text('shaders'))
+
+    def test_surface_property_flags_are_requests_not_hardware_evidence(self):
+        text = ' '.join(self.text('surface-properties').split())
+        for phrase in ('records a request', 'not a measurement', 'survives surface closure'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('surface-properties-flags')[1], ['integer-in', '0', '7'])
+
+    def test_audit_policies_distinguish_preflight_and_single_pass_publication(self):
+        text = ' '.join(self.text('output-audit').split())
+        for phrase in ('preflight executes the callback too', 'twice',
+                       'side effects are not rolled back',
+                       'default @racket[\'report]', 'does not truncate or replace'):
+            self.assertIn(phrase, text)
+        for name, value in [('output->bytes/audit', 'report'), ('save-output/audit', 'error')]:
+            field = next(x for x in self.header(name)[0][1:] if x[0] == '#:policy')
+            self.assertEqual(field[-1], ['quote', value])
+
+    def test_group_policies_do_not_erase_unknowns_or_capture_receiver_backdrops(self):
+        text = ' '.join(self.text('output-groups').split())
+        for phrase in ('never reruns the Racket authoring code', 'isolated against transparency',
+                       'unknown provenance', 'does not trigger a second authoring pass',
+                       'device-coordinate region clips'):
+            self.assertIn(phrase, text)
+        field = next(x for x in self.header('draw-output-group')[0][1:]
+                     if x[0] == '#:raster-executor')
+        self.assertEqual(field[-1], '#f')
+
+    def test_cache_setters_return_old_settings_and_have_process_scope(self):
+        text = ' '.join(self.text('graphics').split())
+        for phrase in ('previous setting', 'not bytes freed', 'not an atomic joint snapshot',
+                       'while a live stream operation is active', 'not a hard cap'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('skia-set-font-cache-count-limit!')[1],
+                         ['integer-in', '0', '2147483647'])
+
+    def test_memory_report_fields_are_detached_and_bounded(self):
+        text = ' '.join(self.text('graphics').split())
+        for phrase in ('UTF-8 bytes', 'omitted and counted', 'second module instance or place',
+                       'No application callback runs'):
+            self.assertIn(phrase, text)
+        for name in ('memory-statistic-name', 'memory-statistic-value-name'):
+            self.assertEqual(self.header(name)[1], ['and/c', 'string?', 'immutable?'])
+
+    def test_native_capability_queries_do_not_certify_acceleration(self):
+        text = ' '.join(self.text('native-libraries').split())
+        for phrase in ('active load/preflight attempt', 'flags for optional GPU symbol probing',
+                       'hardware acceleration remain false', 'they are not invoked',
+                       'not a runtime observation'):
+            self.assertIn(phrase, text)
+
+    def test_native_library_source_declarations_do_not_leak_into_sibling_sections(self):
+        text = self.text('native-libraries')
+        harfbuzz = text.split('@section{HarfBuzz Preflight}', 1)[1]
+        harfbuzz = harfbuzz.split('@section{Installed ABI Catalogue}', 1)[0]
+        self.assertIn('@(declare-exporting skia)', harfbuzz)
+        self.assertNotIn('#:use-sources', harfbuzz)
+        default = text.split('@subsection{Default Package}', 1)[1]
+        default, queries = default.split('@subsection{Catalogue Queries}', 1)
+        self.assertIn('@(declare-exporting skia skia/native-capabilities', default)
+        self.assertIn('@defthing[native-package-version', default)
+        self.assertIn('@(declare-exporting skia/native-capabilities', queries)
+        self.assertIn('@defproc[(native-abi-catalog)', queries)
+
+    def test_bitmap_results_are_racket_objects_with_a_separate_import_path(self):
+        for name in ('image->bitmap', 'surface->bitmap'):
+            self.assertEqual(self.header(name)[1], ['is-a?/c', 'bitmap%'])
+            row = next(d for d in self.manifest['definitions'] if d['name'] == name)
+            self.assertEqual(row['exports'], ['skia/bitmap'])
+        self.assertIn('not @racket[skia-close!]', ' '.join(self.text('image-operations').split()))
+
+    def test_all_new_aliases_have_imports_and_link_probes(self):
+        text = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        imports = dict(re.findall(r'\(prefix-in ([^\s]+) (skia/[^\s)]+)\)', text))
+        modules = set(imports.values())
+        for row in self.manifest['definitions']:
+            if row['name'] not in {*GB_PROCEDURES, *GB_CONSTANTS, *GB_PARAMETERS, *GB_SYNTAX}:
+                continue
+            for module in row['exports']:
+                prefix = '' if module == 'skia' else module[5:] + ':'
+                self.assertIn('@racket[' + prefix + row['name'] + ']', text)
+                if module != 'skia':
+                    self.assertIn(module, modules)
+                    self.assertEqual(imports[prefix], module)
+
+    def test_new_pure_examples_have_closed_public_evaluators(self):
+        for chapter, evaluator, module in (
+            ('surface-properties', 'properties-eval', 'skia/surface-properties'),
+            ('output-audit', 'policy-eval', 'skia/output-policy'),
+            ('native-libraries', 'abi-eval', 'skia/native-capabilities')):
+            text = self.text(chapter)
+            self.assertIn(f"({evaluator} '(require {module}))", text)
+            self.assertIn(f'@close-eval[{evaluator}]', text)
+            self.assertIn('eval:check', text)
+            self.assertLess(text.index('@(define ' + evaluator), text.index('@title'))
+
+    def test_displayed_examples_remain_opt_in_native_code(self):
+        forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
+                 for f, _, _ in checks.commands(p.read_text(), recursive=True)]
+        self.assertEqual(forms.count('racketblock'), 98)
+        self.assertEqual(forms.count('examples'), 23)
+        for name in ('raster-buffers', 'image-operations', 'graphics', 'output-groups'):
+            self.assertNotIn('@examples', self.text(name))
+
+    def test_racket_suites_are_balanced_and_connected_to_acceptance(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        for name, expected in [('reference-raster-pure-test.rkt', 13),
+                               ('reference-raster-test.rkt', 28)]:
+            self.assertIn(name, runner)
+            text = (ROOT / 'tools' / name).read_text()
+            self.assertEqual(text.count('(test-case '), expected)
+            reader = checks.Reader(text, text.index('\n') + 1)
+            while reader.position < len(text):
+                reader.skip()
+                if reader.position < len(text):
+                    reader.read()
+        self.assertIn("run('raster-pure-tests'", runner)
+
+    def test_native_tests_cover_transaction_lifetimes_and_group_single_execution(self):
+        text = (ROOT / 'tools/reference-raster-test.rkt').read_text()
+        for phrase in ('pixmap-width saved', 'failed full-rectangle image reads',
+                       'pixmap-set-sample! view 0 0', 'exn:fail:output-audit?',
+                       'output-group-report-pixel-size', 'readback_count',
+                       'memory-statistics-scope',
+                       'skia-native-symbol-inventory'):
+            self.assertIn(phrase, text)
+
+    def test_bottom_up_two_batch_acceptance_is_preserved(self):
+        text = (ROOT / 'tools/reference-io-test.rkt').read_text()
+        for phrase in ('codec-scanline-read! session 2', 'codec-scanline-read! session 1',
+                       '(check-equal? assembled expected)', "'(1 0)"):
+            self.assertIn(phrase, text)
+        self.assertEqual(text.count('(test-case '), 21)
+
+
 if __name__ == '__main__':
     unittest.main()
