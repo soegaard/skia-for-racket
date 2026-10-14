@@ -176,10 +176,16 @@ from reference_raster_cases import (GB_MODULES, GB_PROCEDURES, GB_REQUIRED_KEYWO
 PROCEDURES.update(GB_PROCEDURES)
 
 
+from reference_gpu_context_cases import (R4A_MODULES, R4A_PROCEDURES, R4A_REQUIRED_KEYWORDS,
+                                         GPU_CONTEXT_EXPORTS, GPU_OPTION_EXPORTS)
+PROCEDURES.update(R4A_PROCEDURES)
+
+
 def row(name, arity, keywords, kind='procedure'):
     return dict(name=name, phase='0', kind=kind, export_kind='value', arity_mask=str(arity),
-                required_keywords=GB_REQUIRED_KEYWORDS.get(name,
-                    COLOR_REQUIRED_KEYWORDS.get(name, [])), allowed_keywords=keywords)
+                required_keywords=R4A_REQUIRED_KEYWORDS.get(name,
+                    GB_REQUIRED_KEYWORDS.get(name, COLOR_REQUIRED_KEYWORDS.get(name, []))),
+                allowed_keywords=keywords)
 
 
 def synthetic_inventory():
@@ -226,7 +232,7 @@ def synthetic_inventory():
         snapshots[0]['modules'].append(dict(
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
-    for path, names in {**GA_MODULES, **GB_MODULES}.items():
+    for path, names in {**GA_MODULES, **GB_MODULES, **R4A_MODULES}.items():
         new = dict(path=path, exports=[copy.deepcopy(item) for item in exports
                                        if item['name'] in names])
         old = next((m for m in snapshots[0]['modules'] if m['path'] == path), None)
@@ -236,7 +242,8 @@ def synthetic_inventory():
             old['exports'] = new['exports']
     non_main = {'image->bitmap', 'surface->bitmap', 'native-abi-catalog', 'native-abi-profiles',
                 'skia-native-capabilities', 'skia-native-symbol-inventory'}
-    snapshots[0]['modules'][0]['exports'] = [e for e in exports if e['name'] not in non_main]
+    snapshots[0]['modules'][0]['exports'] = [
+        e for e in exports if e['name'] not in non_main and e['name'] not in R4A_PROCEDURES]
     return snapshots
 
 
@@ -299,8 +306,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 1111)
-        self.assertEqual(result['documented_exports'], 1822)
+        self.assertEqual(len(result['definitions']), 1142)
+        self.assertEqual(result['documented_exports'], 1862)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -419,12 +426,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 1111)
+        self.assertEqual(len(self.check()['definitions']), 1142)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 1111)
+        self.assertEqual(len(self.check()['definitions']), 1142)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -977,9 +984,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 1111)
-        self.assertEqual(result['documented_exports'], 1822)
-        self.assertEqual(len(result['chapters']), 50)  # Root plus forty-nine chapters.
+        self.assertEqual(len(result['definitions']), 1142)
+        self.assertEqual(result['documented_exports'], 1862)
+        self.assertEqual(len(result['chapters']), 53)  # Root plus fifty-two chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1325,7 +1332,7 @@ class R2CoverageTests(unittest.TestCase):
     def test_public_subset_does_not_claim_deferred_gpu_and_dc_apis(self):
         names = {row['name'] for row in self.check()['definitions']}
         self.assertNotIn('gpu-image-apply-filter', names)
-        self.assertNotIn('make-gpu-context', names)
+        self.assertNotIn('make-gpu-surface', names)
         self.assertNotIn('skia-dc%', names)
 
 
@@ -1694,7 +1701,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 97)
+        self.assertEqual(count, 98)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -1987,7 +1994,7 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_later_batches_are_not_counted_as_documented(self):
         names = {e['name'] for e in self.check()['definitions']}
-        for name in ('gpu-image-apply-filter', 'make-gpu-context', 'skia-dc%'):
+        for name in ('gpu-image-apply-filter', 'make-gpu-surface', 'skia-dc%'):
             self.assertNotIn(name, names)
 
 
@@ -2657,8 +2664,8 @@ class R3dColorSemanticsTests(unittest.TestCase):
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 1111)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1822)
+        self.assertEqual(len(manifest['definitions']), 1142)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1862)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -3548,7 +3555,7 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertIn('docs/API.md', intro)
         self.assertIn('@seclink["top" #:doc', intro)
         self.assertIn('skia/scribblings/tutorials/index.scrbl', intro)
-        self.assertEqual(text.count('@include-section['), 49)
+        self.assertEqual(text.count('@include-section['), 52)
 
     def test_bottom_up_example_is_self_contained_and_uses_the_native_test_fixture(self):
         text = self.text('scanline-codecs')
@@ -3637,19 +3644,19 @@ class R3gaGeometryTests(unittest.TestCase):
         self.assertEqual(set(GA_SYNTAX), {'with-canvas-layer', 'with-canvas-matrix'})
 
     def test_new_chapters_and_aggregate_counts_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1111)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1822)
-        self.assertEqual(len(self.chapters) - 1, 49)
-        self.assertEqual(self.manifest['stage'], 'R3g-b')
+        self.assertEqual(len(self.definitions), 1142)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1862)
+        self.assertEqual(len(self.chapters) - 1, 52)
+        self.assertEqual(self.manifest['stage'], 'R4a')
         for chapter in ('rounded-rectangles', 'regions', 'projective-matrices',
                         'structured-drawing', 'portable-drawing', 'layers',
                         'drawables', 'specialized-canvases'):
             self.assertIn(f'scribblings/reference/{chapter}.scrbl', self.chapters)
 
     def test_r4_topics_remain_outside_cpu_coverage(self):
-        for name in ('make-gpu-context', 'skia-canvas%', 'skia-dc%'):
+        for name in ('make-gpu-surface', 'skia-canvas%', 'skia-dc%'):
             self.assertNotIn(name, self.by_name)
-        self.assertEqual('R4', self.manifest['deferred_policy']['stage'])
+        self.assertEqual('R4b-R4e', self.manifest['deferred_policy']['stage'])
 
     def test_projective_conversion_does_not_promise_lossless_projection(self):
         text = self.text('projective-matrices.scrbl')
@@ -3755,8 +3762,8 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 97)
-        self.assertEqual(sum(f == 'examples' for f, _ in forms), 23)
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 98)
+        self.assertEqual(sum(f == 'examples' for f, _ in forms), 25)
         text = (ROOT / 'tools/reference-native-test.rkt').read_text()
         self.assertIn('(in-range 2)', text)
         self.assertIn('run-displayed-examples', text)
@@ -3820,12 +3827,12 @@ class R3gbRasterTests(unittest.TestCase):
         self.assertEqual(GB_REQUIRED_KEYWORDS, {'image-apply-filter': ['clip']})
 
     def test_scope_counts_and_r4_deferral_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1111)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1822)
-        self.assertEqual(len(self.chapters) - 1, 49)
-        self.assertEqual(self.manifest['stage'], 'R3g-b')
-        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4')
-        self.assertNotIn('make-gpu-context', self.by_name)
+        self.assertEqual(len(self.definitions), 1142)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1862)
+        self.assertEqual(len(self.chapters) - 1, 52)
+        self.assertEqual(self.manifest['stage'], 'R4a')
+        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4b-R4e')
+        self.assertNotIn('make-gpu-surface', self.by_name)
         self.assertNotIn('skia-dc%', self.by_name)
 
     def test_every_main_export_is_accounted_for(self):
@@ -4029,8 +4036,8 @@ class R3gbRasterTests(unittest.TestCase):
     def test_displayed_examples_remain_opt_in_native_code(self):
         forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, _, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(forms.count('racketblock'), 97)
-        self.assertEqual(forms.count('examples'), 23)
+        self.assertEqual(forms.count('racketblock'), 98)
+        self.assertEqual(forms.count('examples'), 25)
         for name in ('raster-buffers', 'image-operations', 'graphics', 'output-groups'):
             self.assertNotIn('@examples', self.text(name))
 
@@ -4184,6 +4191,361 @@ class R3gb1EditorialTests(unittest.TestCase):
         runner = (ROOT / 'tools/check-reference.py').read_text()
         self.assertIn("run('raster-pure-tests'", runner)
         self.assertIn('reference-raster-pure-test.rkt', runner)
+
+
+
+
+class R4aContextTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.definitions, cls.chapters = checks.document_definitions(ROOT)
+        cls.by_name = {row['name']: row for row in cls.definitions}
+
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def header(self, name):
+        path = ROOT / self.by_name[name]['chapter']
+        return next(h for f, h, _ in checks.commands(path.read_text())
+                    if f == 'defproc' and h[0][0] == name)
+
+    def test_bounded_scope_counts_real_public_aliases_not_only_names(self):
+        self.assertEqual(len(self.definitions), 1142)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1862)
+        self.assertEqual(len(self.chapters) - 1, 52)
+        self.assertEqual(self.manifest['stage'], 'R4a')
+        self.assertEqual(self.manifest['reviewed_repository_commit'],
+                         'a24848222a29aff2981590f32c63c2f2d54e4a93')
+        self.assertEqual(len(R4A_PROCEDURES), 31)
+
+    def test_gpu_chapters_precede_the_identifier_index(self):
+        text = self.text('reference')
+        self.assertEqual(text.count('@index-section[]'), 1)
+        self.assertTrue(text.rstrip().endswith('@index-section[]'))
+        for chapter in ('gpu-providers', 'gpu-context-options', 'gpu-contexts'):
+            self.assertLess(text.index('@include-section["' + chapter + '.scrbl"]'),
+                            text.index('@index-section[]'))
+
+    def test_selected_gpu_exports_have_one_definition_and_no_main_alias(self):
+        rows = [d for d in self.manifest['definitions'] if d['name'] in R4A_PROCEDURES]
+        self.assertEqual(len(rows), 31)
+        self.assertEqual(sum(len(d['exports']) for d in rows), 40)
+        for row in rows:
+            self.assertEqual(row['canonical_module'], 'skia/gpu')
+            self.assertNotIn('skia', row['exports'])
+            self.assertIn('skia/gpu', row['exports'])
+
+    def test_context_options_module_is_completely_documented(self):
+        found = {d['name'] for d in self.manifest['definitions']
+                 if 'skia/gpu-context-options' in d['exports']}
+        self.assertEqual(found, set(GPU_OPTION_EXPORTS))
+        self.assertEqual(len(found), 9)
+
+    def test_call_shapes_agree_with_independent_test_specifications(self):
+        for name, (arity, keywords) in R4A_PROCEDURES.items():
+            with self.subTest(name=name):
+                spec = self.by_name[name]
+                self.assertEqual(spec['arity_mask'], str(arity))
+                self.assertEqual(spec['allowed_keywords'], keywords)
+                self.assertEqual(spec['required_keywords'], R4A_REQUIRED_KEYWORDS.get(name, []))
+
+    def test_backend_inventory_is_a_procedure_not_a_constant(self):
+        self.assertEqual(self.header('gpu-backends')[0], ['gpu-backends'])
+        self.assertEqual(self.by_name['gpu-backends']['kind'], 'procedure')
+        self.assertEqual(self.by_name['gpu-backends']['arity_mask'], '1')
+
+    def test_provider_requires_all_five_keywords(self):
+        required = self.by_name['make-gpu-provider']['required_keywords']
+        self.assertEqual(required, ['backend', 'call-as-current', 'current?', 'key', 'name'])
+        header = self.header('make-gpu-provider')[0]
+        key = next(row for row in header[1:] if row[0] == '#:key')
+        self.assertEqual(key[2], ['or/c', 'symbol?', 'exact-positive-integer?'])
+
+    def test_option_defaults_and_range_units_are_explicit(self):
+        header = self.header('make-gpu-context-options')[0]
+        args = {row[0]: row for row in header[1:]}
+        self.assertEqual(args['#:runtime-program-cache-size'][2:],
+                         [['integer-in', '1', '2147483647'], '256'])
+        self.assertEqual(args['#:glyph-cache-texture-maximum-bytes'][2:],
+                         [['integer-in', '1', '18446744073709551615'], '8388608'])
+        self.assertEqual(args['#:buffer-map-threshold'][2:],
+                         [['integer-in', '-1', '2147483647'], '-1'])
+        self.assertEqual(args['#:allow-path-mask-caching?'][-1], '#t')
+        self.assertEqual(args['#:manual-mipmapping?'][-1], '#f')
+        self.assertEqual(args['#:avoid-stencil-buffers?'][-1], '#f')
+
+    def test_context_signature_preserves_false_defaults_and_adapter_limit(self):
+        header = self.header('make-gpu-context')[0]
+        self.assertEqual(header[1], ['provider', ['or/c', 'gpu-provider?', '#f'], '#f'])
+        args = {row[0]: row for row in header[2:]}
+        self.assertEqual(args['#:adapter-index'][2:],
+                         [['or/c', ['integer-in', '0', '4294967294'], '#f'], '#f'])
+        self.assertEqual(args['#:backend'][-1], '#f')
+        self.assertEqual(args['#:options'][-1], '#f')
+        self.assertEqual(args['#:gl-interface'][-1], ['quote', 'default'])
+
+    def test_all_interface_choices_and_no_different_standard_fallback_are_documented(self):
+        text = ' '.join(self.text('gpu-contexts').split())
+        for phrase in ('does not fall back to GLES or WebGL',
+                       'They do not create a different kind of host',
+                       'No failed hardware request silently falls back to WARP'):
+            self.assertIn(phrase, text)
+        args = self.header('make-gpu-context')[0]
+        interface = next(row for row in args if isinstance(row, list) and row[0] == '#:gl-interface')
+        self.assertEqual(interface[2], ['or/c', *[['quote', x] for x in
+                                               ('default', 'auto', 'desktop', 'gles', 'webgl')]])
+
+    def test_declarations_and_options_do_not_claim_runtime_probes(self):
+        text = self.text('gpu-providers')
+        for field in ('runtime_availability', 'native_probe_performed',
+                      'hardware_acceleration_verified', 'performance_measured'):
+            self.assertIn(field, text)
+        self.assertIn('not-probed', text)
+        self.assertIn('native-default factory', self.text('gpu-context-options'))
+        self.assertIn('Neither route provides native readback of the effective options',
+                      ' '.join(self.text('gpu-context-options').split()))
+
+    def test_provider_contract_distinguishes_host_ownership_and_callback_obligations(self):
+        text = ' '.join(self.text('gpu-providers').split())
+        for phrase in ('exactly once, synchronously', 'creating thread',
+                       'does not acquire or destroy the host',
+                       'own return values do not replace them',
+                       'Intercepting a callback failure', 'string and returns'):
+            self.assertIn(phrase, text)
+        self.assertIn('same key for the same host', text)
+        self.assertIn('Other failures', self.text('gpu-contexts').replace('Other\nfailures',
+                                                                       'Other failures'))
+
+    def test_provider_diagnostics_exclude_symbols_vectors_and_native_pointers(self):
+        text = ' '.join(self.text('gpu-providers').split())
+        self.assertIn('Symbols as values, vectors, native pointers, and procedures are not accepted',
+                      text)
+        self.assertIn('symbol keys', text)
+
+    def test_same_context_nesting_and_expired_canvas_leases_are_explicit(self):
+        text = ' '.join(self.text('gpu-contexts').split())
+        for phrase in ('without reactivating the provider', 'Nesting a different context is rejected',
+                       'inner scope expires', 'does not revive old canvases',
+                       'does not restore the host', 'not pixel rollback'):
+            self.assertIn(phrase, text)
+
+    def test_shutdown_is_separate_from_state_and_allows_other_thread_requests(self):
+        text = ' '.join(self.text('gpu-contexts').split())
+        self.assertIn('request flag is separate', text)
+        self.assertIn('called from another Racket thread', text)
+        self.assertIn('GC and custodian', text)
+        self.assertIn('dead owner', text)
+        result = self.header('gpu-context-state')[1]
+        self.assertNotIn(['quote', 'shutdown-requested'], result)
+        self.assertIn(['quote', 'release-failed'], result)
+
+    def test_healthy_teardown_and_lost_host_abandonment_are_not_conflated(self):
+        text = ' '.join(self.text('gpu-contexts').split())
+        for phrase in ('lost-host route', 'does not activate the provider',
+                       'healthy-host release operation', 'Success leaves the context abandoned',
+                       'neither this procedure, lost-host abandonment, nor normal closure'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('gpu-context-close!')[1], 'void?')
+        self.assertEqual(self.header('gpu-drain-releases!')[1], 'exact-nonnegative-integer?')
+        self.assertEqual(self.header('gpu-drain-pending-contexts!')[1],
+                         ['listof', ['and/c', 'hash?', 'immutable?']])
+
+    def test_context_information_is_detached_but_not_refreshed_native_state(self):
+        self.assertEqual(self.header('gpu-context-info')[1], ['and/c', 'hash?', 'immutable?'])
+        text = ' '.join(self.text('gpu-contexts').split())
+        for phrase in ('construction-time diagnostics', 'requires no active scope or owning thread',
+                       'does not activate the provider or refresh',
+                       'not a count of every native allocation',
+                       'initial cache measurements', 'shutdown_error'):
+            self.assertIn(phrase, text)
+
+    def test_gpu_examples_are_native_free_until_explicitly_called(self):
+        examples, blocks = [], []
+        for chapter in ('gpu-providers', 'gpu-context-options', 'gpu-contexts'):
+            for form, header, _ in checks.commands(self.text(chapter), recursive=True):
+                if form == 'examples':
+                    examples.append(header)
+                elif form == 'racketblock':
+                    blocks.append(header)
+        self.assertEqual(len(examples), 2)
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0][0], ['require', 'skia/gpu'])
+        self.assertEqual(blocks[0][1][0], 'define')
+        self.assertEqual(blocks[0][1][1][0], 'call-with-new-gpu-context')
+        self.assertEqual(len(blocks[0]), 2)  # No unguarded constructor invocation.
+        for example in examples:
+            def calls(value):
+                if not isinstance(value, list):
+                    return False
+                return (bool(value) and value[0] == 'make-gpu-context'
+                        or any(calls(child) for child in value))
+            self.assertFalse(calls(example))
+            self.assertNotIn('eval:alts', str(example))
+            self.assertIn('eval:check', str(example))
+
+    def test_export_declarations_match_canonical_modules_and_reexport_sources(self):
+        self.assertIn('@defmodule[skia/gpu #:no-declare]', self.text('gpu-providers'))
+        self.assertNotIn('@defmodule[skia/gpu', self.text('gpu-contexts'))
+        self.assertIn('@(declare-exporting skia/gpu)', self.text('gpu-contexts'))
+        self.assertIn('#:use-sources (skia/gpu-context-options)', self.text('gpu-context-options'))
+        for chapter, evaluator in (('gpu-providers', 'backend-eval'),
+                                   ('gpu-context-options', 'options-eval')):
+            text = self.text(chapter)
+            self.assertIn('@close-eval[' + evaluator + ']', text)
+            self.assertLess(text.index('@(define ' + evaluator), text.index('@title'))
+
+    def test_all_40_new_public_paths_appear_in_the_binding_probe(self):
+        text = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        for module, names in R4A_MODULES.items():
+            prefix = module.removesuffix('.rkt') + ':'
+            self.assertIn('(prefix-in ' + prefix + ' skia/' + module.removesuffix('.rkt') + ')',
+                          text)
+            for name in names:
+                self.assertIn('@racket[' + prefix + name + ']', text)
+
+    def test_remaining_r4_topics_are_deferred_not_stubbed(self):
+        for name in ('make-gpu-surface', 'gpu-submit!', 'gpu-import-image',
+                     'gpu-presenter-render!', 'skia-render-window%', 'skia-dc%'):
+            self.assertNotIn(name, self.by_name)
+        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4b-R4e')
+
+    def test_racket_test_sources_parse_and_native_cases_belong_to_a_single_suite(self):
+        for filename in ('reference-gpu-context-pure-test.rkt', 'reference-gpu-context-test.rkt'):
+            text = (ROOT / 'tools' / filename).read_text()
+            reader, forms = checks.Reader(text, text.index('\n') + 1), []
+            while True:
+                reader.skip()
+                if reader.position == len(text):
+                    break
+                forms.append(reader.read())
+            if filename.endswith('-pure-test.rkt'):
+                tests = next(f[2:] for f in forms if f[:2] == ['module+', 'test'])
+                self.assertEqual(len(tests), 22)
+                self.assertTrue(all(f[0] == 'test-case' for f in tests))
+            else:
+                suite = next(f[2] for f in forms if f[:2] == ['define', 'suite'])
+                self.assertEqual(len(suite[2:]), 10)
+                self.assertTrue(all(f[0] == 'test-case' for f in suite[2:]))
+                self.assertTrue(any(f[:2] == ['module+', 'main'] for f in forms))
+
+    def test_state_machine_doubles_are_separate_from_native_acceptance(self):
+        pure = (ROOT / 'tools/reference-gpu-context-pure-test.rkt').read_text()
+        native = (ROOT / 'tools/reference-gpu-context-test.rkt').read_text()
+        self.assertIn('fake-context-pointer', pure)
+        self.assertIn('wrap-gpu-domain', pure)
+        self.assertIn('release-failed', pure)
+        self.assertNotIn('fake-context-pointer', native)
+        self.assertNotIn('wrap-gpu-domain', native)
+        self.assertIn('make-gpu-context #:backend', native)
+        self.assertIn("'tests_run 10", native)
+        self.assertIn("'pixel_validation_performed #f", native)
+        self.assertIn("'hardware_acceleration_verified #f", native)
+
+    def test_source_review_contains_every_new_checker_dependency(self):
+        files = review.source_hashes(ROOT, review_inputs=True)
+        for name in ('reference_gpu_context_cases.py', 'reference-gpu-context-pure-test.rkt',
+                     'reference-gpu-context-test.rkt'):
+            self.assertIn('tools/' + name, files)
+        for name in ('gpu-providers', 'gpu-contexts', 'gpu-context-options'):
+            self.assertIn('scribblings/reference/' + name + '.scrbl', files)
+        self.assertIn('api/public-api-headless.json', files)
+        self.assertIn('api/public-api-gui.json', files)
+
+
+class R4aBuildPlanTests(unittest.TestCase):
+    """Mocked subprocess/receipt tests. No real GPU or Racket is used here."""
+    setUp = BuildPlanTests.setUp
+    execute = BuildPlanTests.execute
+
+    def run_fake(self, command, **options):
+        result = BuildPlanTests.run_fake(self, command, **options)
+        if any(str(arg).endswith('reference-gpu-context-test.rkt') for arg in command):
+            backend = command[command.index('--backend') + 1]
+            adapter = command[command.index('--adapter') + 1]
+            receipt = dict(schema=1, status='passed', backend=backend,
+                           adapter=adapter if backend == 'direct3d' else False,
+                           tests_run=10, failures=0, native_contexts_created=11,
+                           contexts_closed=11, context_states=['closed'] * 11,
+                           pixel_validation_performed=False, hardware_acceleration_verified=False)
+            Path(command[command.index('--output') + 1]).write_text(json.dumps(receipt))
+        return result
+
+    def test_cpu_native_mode_runs_pure_context_tests_but_no_gpu_constructor_suite(self):
+        report = self.execute('--native')
+        labels = [row['label'] for row in report['commands']]
+        self.assertIn('gpu-context-pure-tests', labels)
+        self.assertNotIn('gpu-context-native', labels)
+        self.assertFalse(report['gpu_executed'])
+        self.assertFalse(report['gpu_context_tests_executed'])
+
+    def test_explicit_backend_runs_after_source_binding_and_pure_checks(self):
+        report = self.execute('--gpu-context-backend', 'metal')
+        labels = [row['label'] for row in report['commands']]
+        self.assertEqual(labels[-1], 'gpu-context-native')
+        self.assertIn('bindings', labels)
+        self.assertIn('gpu-context-pure-tests', labels)
+        self.assertNotIn('native-cpu', labels)
+        self.assertNotIn('reference', labels)
+        self.assertTrue(report['gpu_context_tests_passed'])
+        self.assertEqual(report['gpu_context_acceptance']['backend'], 'metal')
+
+    def test_direct3d_warp_is_explicit_and_forwarded(self):
+        report = self.execute('--gpu-context-backend', 'direct3d', '--gpu-context-adapter', 'warp')
+        command = report['commands'][-1]['command']
+        self.assertEqual(command[command.index('--adapter') + 1], 'warp')
+        self.assertTrue(report['gpu_context_tests_passed'])
+
+    def test_gpu_execution_cannot_be_requested_in_source_archive_or_documents_only_modes(self):
+        for args in (['--source-zip', str(self.output.parent / 'source.zip')],
+                     ['--documents-only'], ['--gpu-context-adapter', 'warp']):
+            with self.subTest(args=args), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    self.runner.main([*args, '--gpu-context-backend', 'metal'])
+
+    def test_a_success_exit_without_context_creation_evidence_is_rejected(self):
+        def no_contexts(command, **options):
+            result = self.run_fake(command, **options)
+            if any(str(arg).endswith('reference-gpu-context-test.rkt') for arg in command):
+                path = Path(command[command.index('--output') + 1])
+                receipt = json.loads(path.read_text())
+                receipt.update(native_contexts_created=0, contexts_closed=0, context_states=[])
+                path.write_text(json.dumps(receipt))
+            return result
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
+              patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
+              patch.object(self.runner.subprocess, 'run', side_effect=no_contexts),
+              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
+            result = self.runner.main(['--gpu-context-backend', 'metal',
+                                       '--output', str(self.output)])
+        self.assertEqual(result, 1)
+        report = json.loads((self.output / 'validation.json').read_text())
+        self.assertTrue(report['gpu_context_tests_executed'])
+        self.assertFalse(report['gpu_executed'])
+        self.assertFalse(report['gpu_context_tests_passed'])
+
+    def test_requested_gpu_failure_prevents_review_archive_publication(self):
+        def unavailable(command, **options):
+            result = self.run_fake(command, **options)
+            if any(str(arg).endswith('reference-gpu-context-test.rkt') for arg in command):
+                return SimpleNamespace(returncode=1)
+            return result
+        with (patch.object(self.runner, 'source_hashes', return_value={}),
+              patch.object(self.runner, 'check_source', return_value=self.source),
+              patch.object(self.runner.shutil, 'which', return_value='/fake/racket'),
+              patch.object(self.runner.subprocess, 'run', side_effect=unavailable),
+              patch.object(self.runner, 'check_evidence'),
+              patch.object(self.runner, 'check_targets', return_value={}),
+              patch.object(self.runner, 'package_review') as package,
+              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
+            result = self.runner.main(['--render', '--gpu-context-backend', 'metal',
+                                       '--output', str(self.output), '--review-zip',
+                                       str(self.output.parent / 'review.zip')])
+        self.assertEqual(result, 1)
+        package.assert_not_called()
+        report = json.loads((self.output / 'validation.json').read_text())
+        self.assertFalse(report['gpu_context_tests_passed'])
 
 
 if __name__ == '__main__':

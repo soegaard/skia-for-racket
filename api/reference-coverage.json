@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R3g-b",
-  "reviewed_repository_commit": "027022cffb19dd314f6a01445e6d3e35c8b1889e",
+  "stage": "R4a",
+  "reviewed_repository_commit": "a24848222a29aff2981590f32c63c2f2d54e4a93",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R4",
-    "reason": "GPU, GUI, and DC integration; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R4b-R4e",
+    "reason": "GPU transfers, interoperation, GUI, and DC; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -11834,6 +11834,325 @@
       "canonical_module": "skia/native-capabilities",
       "exports": [
         "skia/native-capabilities"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-backends",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-backend?",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-backend-capabilities",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-provider?",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-gpu-provider",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-provider-name",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-provider-backend",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:gpu:unavailable?",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:gpu:unavailable-step",
+      "chapter": "scribblings/reference/gpu-providers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context?",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-gpu-context",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-context",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-backend",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-generation",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-state",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-info",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-close!",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-abandon!",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-release-and-abandon!",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-request-shutdown!",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-drain-releases!",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-drain-pending-contexts!",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options?",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-gpu-context-options",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options-avoid-stencil-buffers?",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options-runtime-program-cache-size",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options-glyph-cache-texture-maximum-bytes",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options-allow-path-mask-caching?",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options-manual-mipmapping?",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options-buffer-map-threshold",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-context-options->jsexpr",
+      "chapter": "scribblings/reference/gpu-context-options.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu",
+        "skia/gpu-context-options"
       ],
       "phase": "0",
       "space": null

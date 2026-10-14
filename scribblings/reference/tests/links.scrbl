@@ -52,6 +52,10 @@
            (prefix-in surface-properties: skia/surface-properties)
 ))
 
+@(require (for-label
+           (prefix-in gpu: skia/gpu)
+           (prefix-in gpu-context-options: skia/gpu-context-options)))
+
 @title{Reference Binding Links}
 
 The following links exercise the public bindings documented by the Reference.
@@ -3335,3 +3339,83 @@ The following links cover the font and text interfaces.
 @racket[native-capabilities:skia-native-capabilities]
 
 @racket[native-capabilities:skia-native-symbol-inventory]
+
+@racket[gpu:gpu-backends]
+
+@racket[gpu:gpu-backend?]
+
+@racket[gpu:gpu-backend-capabilities]
+
+@racket[gpu:gpu-provider?]
+
+@racket[gpu:make-gpu-provider]
+
+@racket[gpu:gpu-provider-name]
+
+@racket[gpu:gpu-provider-backend]
+
+@racket[gpu:exn:fail:gpu:unavailable?]
+
+@racket[gpu:exn:fail:gpu:unavailable-step]
+
+@racket[gpu:gpu-context?]
+
+@racket[gpu:make-gpu-context]
+
+@racket[gpu:call-with-gpu-context]
+
+@racket[gpu:gpu-context-backend]
+
+@racket[gpu:gpu-context-generation]
+
+@racket[gpu:gpu-context-state]
+
+@racket[gpu:gpu-context-info]
+
+@racket[gpu:gpu-context-close!]
+
+@racket[gpu:gpu-context-abandon!]
+
+@racket[gpu:gpu-context-release-and-abandon!]
+
+@racket[gpu:gpu-context-request-shutdown!]
+
+@racket[gpu:gpu-drain-releases!]
+
+@racket[gpu:gpu-drain-pending-contexts!]
+
+@racket[gpu:gpu-context-options?]
+
+@racket[gpu-context-options:gpu-context-options?]
+
+@racket[gpu:make-gpu-context-options]
+
+@racket[gpu-context-options:make-gpu-context-options]
+
+@racket[gpu:gpu-context-options-avoid-stencil-buffers?]
+
+@racket[gpu-context-options:gpu-context-options-avoid-stencil-buffers?]
+
+@racket[gpu:gpu-context-options-runtime-program-cache-size]
+
+@racket[gpu-context-options:gpu-context-options-runtime-program-cache-size]
+
+@racket[gpu:gpu-context-options-glyph-cache-texture-maximum-bytes]
+
+@racket[gpu-context-options:gpu-context-options-glyph-cache-texture-maximum-bytes]
+
+@racket[gpu:gpu-context-options-allow-path-mask-caching?]
+
+@racket[gpu-context-options:gpu-context-options-allow-path-mask-caching?]
+
+@racket[gpu:gpu-context-options-manual-mipmapping?]
+
+@racket[gpu-context-options:gpu-context-options-manual-mipmapping?]
+
+@racket[gpu:gpu-context-options-buffer-map-threshold]
+
+@racket[gpu-context-options:gpu-context-options-buffer-map-threshold]
+
+@racket[gpu:gpu-context-options->jsexpr]
+
+@racket[gpu-context-options:gpu-context-options->jsexpr]

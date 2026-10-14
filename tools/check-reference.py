@@ -35,6 +35,10 @@ def main(argv=None):
                         help='original installed doc root for file: links')
     parser.add_argument('--quick', action='store_true', help='also render the actual Quick tutorial')
     parser.add_argument('--native', action='store_true', help='also execute CPU resource/PNG tests')
+    parser.add_argument('--gpu-context-backend', choices=('opengl', 'metal', 'direct3d'),
+                        help='run real context lifecycle acceptance; OpenGL uses owned EGL')
+    parser.add_argument('--gpu-context-adapter', choices=('hardware', 'warp'),
+                        help='Direct3D adapter for context acceptance (default: hardware)')
     parser.add_argument('--require-complete', action='store_true', help='reject any deferred export')
     parser.add_argument('--racket', default='racket')
     parser.add_argument('--output', type=Path)
@@ -44,7 +48,8 @@ def main(argv=None):
                         help='package all inputs for the non-native source checker')
     args = parser.parse_args(argv)
     if args.source_zip and (args.documents_only or args.render or args.installed or args.site
-                            or args.quick or args.native or args.review_zip):
+                            or args.quick or args.native or args.review_zip
+                            or args.gpu_context_backend or args.gpu_context_adapter):
         parser.error('--source-zip requires ordinary source-only validation')
     if args.review_zip and not (args.render or args.installed):
         parser.error('--review-zip requires --render or --installed')
@@ -56,6 +61,10 @@ def main(argv=None):
         parser.error('--site requires --targets and --site-source')
     if not args.site and (args.targets or args.site_source):
         parser.error('--targets and --site-source require --site')
+    if args.gpu_context_adapter and args.gpu_context_backend != 'direct3d':
+        parser.error('--gpu-context-adapter requires --gpu-context-backend direct3d')
+    if args.gpu_context_backend and (args.documents_only or args.site):
+        parser.error('GPU context execution cannot be combined with documents-only or site checks')
     if args.documents_only and (args.native or args.require_complete):
         parser.error('documents-only is not runtime or complete-inventory validation')
     output = (args.output or ROOT.parent / ('skia-reference-check-' + uuid.uuid4().hex)).resolve()
@@ -65,6 +74,8 @@ def main(argv=None):
     before = None
     report = dict(source_sha256={}, status='running', commands=[],
                   native_executed=False, gpu_executed=False,
+                  gpu_context_tests_requested=args.gpu_context_backend,
+                  gpu_context_tests_executed=False, gpu_context_tests_passed=False,
                   racket_executed=False, scribble_rendered=False, quick_rendered=False,
                   reference_html_checked=False,
                   installed_checked=False, site_checked=False, tutorial_manuals_rendered=[])
@@ -101,6 +112,16 @@ def main(argv=None):
                 any(item['label'] == 'native-cpu' and item['executed'] for item in report['commands'])
                 or any(name != 'skia-tutorials' for name in report['tutorial_manuals_rendered'])
                 or report['quick_rendered'])
+            report['gpu_context_tests_executed'] = any(
+                item['label'] == 'gpu-context-native' and item['executed']
+                for item in report['commands'])
+            receipt_path = output / 'gpu-context.json'
+            if receipt_path.is_file():
+                try:
+                    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                    report['gpu_executed'] = receipt.get('native_contexts_created', 0) > 0
+                except (ValueError, TypeError):
+                    pass  # Invalid evidence cannot establish a GPU execution claim.
             save()
 
     try:
@@ -120,7 +141,7 @@ def main(argv=None):
             report['links'] = check_targets(
                 args.site, targets, quick=args.site / 'skia-tutorial-quick/index.html')
             report['site_checked'] = True
-        elif args.render or args.installed or args.native:
+        elif args.render or args.installed or args.native or args.gpu_context_backend:
             racket = shutil.which(args.racket)
             if racket is None:
                 raise CheckError('Racket executable not found: ' + args.racket)
@@ -149,6 +170,8 @@ def main(argv=None):
                                         ROOT / 'tools/reference-geometry-pure-test.rkt'])
             run('raster-pure-tests', [racket, '-l', 'raco', '--', 'test',
                                       ROOT / 'tools/reference-raster-pure-test.rkt'])
+            run('gpu-context-pure-tests', [racket, '-l', 'raco', '--', 'test',
+                                           ROOT / 'tools/reference-gpu-context-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:
@@ -222,6 +245,28 @@ def main(argv=None):
                                     ROOT / 'tools/reference-io-test.rkt',
                                     ROOT / 'tools/reference-geometry-test.rkt',
                                     ROOT / 'tools/reference-raster-test.rkt'])
+                report['native_executed'] = True
+            if args.gpu_context_backend:
+                gpu_output = output / 'gpu-context.json'
+                adapter = args.gpu_context_adapter or 'hardware'
+                run('gpu-context-native', [racket, ROOT / 'tools/reference-gpu-context-test.rkt',
+                                          '--backend', args.gpu_context_backend,
+                                          '--adapter', adapter, '--output', gpu_output])
+                receipt = json.loads(gpu_output.read_text(encoding='utf-8'))
+                if not (receipt.get('schema') == 1 and receipt.get('status') == 'passed'
+                        and receipt.get('backend') == args.gpu_context_backend
+                        and receipt.get('adapter') ==
+                        (adapter if args.gpu_context_backend == 'direct3d' else False)
+                        and receipt.get('tests_run') == 10 and receipt.get('failures') == 0
+                        and type(receipt.get('native_contexts_created')) is int
+                        and receipt['native_contexts_created'] > 0
+                        and receipt.get('contexts_closed') == receipt['native_contexts_created']
+                        and receipt.get('context_states') ==
+                        ['closed'] * receipt['native_contexts_created']):
+                    raise CheckError('GPU context acceptance receipt is incomplete or inconsistent')
+                report['gpu_context_tests_passed'] = True
+                report['gpu_context_acceptance'] = receipt
+                report['gpu_executed'] = True
                 report['native_executed'] = True
         if source_hashes(ROOT, review_inputs=review_inputs) != before:
             raise CheckError('Reference sources changed during validation')

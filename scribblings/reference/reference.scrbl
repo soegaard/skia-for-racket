@@ -70,4 +70,9 @@ this manual are described in the
 @include-section["graphics.scrbl"]
 @include-section["native-libraries.scrbl"]
 
+
+@include-section["gpu-providers.scrbl"]
+@include-section["gpu-context-options.scrbl"]
+@include-section["gpu-contexts.scrbl"]
+
 @index-section[]

@@ -1,3 +1,83 @@
+# Skia Reference development: R4a
+
+## GPU contexts, providers, and options
+
+Baseline: `a24848222a29aff2981590f32c63c2f2d54e4a93`
+(`Refine Reference raster evidence`). R4a adds 31 bindings through 40 public
+export paths. The Reference has 1142 definitions, 1862 documented export paths,
+and 52 conceptual chapters. The pinned inventories contain 1977 export records;
+115 remain deferred to R4b-R4e. The nine context-option bindings are documented
+through both `skia/gpu` and `skia/gpu-context-options`, not through `skia`.
+
+The three new chapters separate backend/provider declarations, immutable
+construction requests, and context execution/lifetime. They distinguish stored
+identity from owner-thread reports, shutdown requests from closure, and lost-host
+abandonment from healthy-host release-and-abandon. A failed native teardown is
+not turned into successful cleanup. No library/API implementation changes.
+
+All 97 earlier displayed blocks and 23 evaluated blocks are retained. One new
+displayed block defines a scoped context helper without calling it. Two new
+checked evaluators use native-free backend declarations and context-option
+values. Thus the ordinary displayed-example runner still requires no GPU.
+The totals are 98 displayed blocks and 25 evaluated blocks.
+
+## R4a acceptance levels
+
+The 22 cases in `tools/reference-gpu-context-pure-test.rkt` run with the existing
+Racket acceptance checks. They use the actual public wrappers and private state
+machine with explicitly fake driver operations. They never establish native GPU
+availability, graphics correctness, or teardown behavior of a real driver.
+
+The 10 cases in `tools/reference-gpu-context-test.rkt` require an explicitly
+selected real backend. They create contexts and small child surfaces, but do not
+validate pixel rendering, presentation, performance, or physical acceleration.
+There is no unavailable-backend skip and no CPU fallback. The script writes a
+JSON receipt with created/closed context counts. The runner validates its backend,
+adapter, successful case count, and closure accounting before marking acceptance
+passed. A requested GPU test failure prevents review-archive publication.
+
+With `skia` resolving to the revised complete checkout, use fresh output paths:
+
+```sh
+RACKET="/Applications/Racket v9.3.0.2/bin/racket"
+"$RACKET" -l raco -- test tools/reference-gpu-context-pure-test.rkt
+python3 -B tools/check-reference.py --racket "$RACKET" \
+  --gpu-context-backend metal --output ../reference-r4a-metal-check
+```
+
+On Linux, select `--gpu-context-backend opengl`; this test route uses an actual
+owned EGL host. On Windows, select `--gpu-context-backend direct3d`, optionally
+with `--gpu-context-adapter warp` for explicit software execution. No result on
+one backend certifies another. Omitting `--gpu-context-backend` creates no GPU
+contexts in the Reference acceptance runner; `--native` still selects CPU tests.
+
+Reference-only editing previews remain supported by the existing direct renderer
+command below. Integrated rendering is a separate publication check. Add
+`--render --quick --review-zip ../skia-reference-r4a-review.zip` to an acceptance
+command to request matching HTML and sources. Request `--native` separately for
+the retained CPU native examples and suites, which retain their font requirements.
+
+## Independent R4a source review
+
+```sh
+python3 -B tools/test-reference.py
+python3 -B tools/check-reference.py --output ../reference-r4a-source-check \
+  --source-zip ../skia-reference-r4a-source-review.zip
+```
+
+The generated archive includes every included chapter, the actual pinned API
+inventories, and checker/test dependencies. It validates both staged and extracted
+sources. It is a validation package, not a complete Skia installation or evidence
+that Racket/Scribble/GPU execution occurred.
+
+The inventories remain pinned, not freshly reflected. In particular, the current
+`gpu.rkt` also exports the later `render-gpu->raster-image` convenience operation,
+which is absent from those snapshots. R4b should document that operation and
+reconcile the inventory separately. R4a neither invents its reflection data nor
+claims that the pinned remaining count enumerates every newer live export.
+
+## Earlier R3g-b.1 notes
+
 # Skia Reference development: R3g-b.1
 
 ## Local editorial corrections
