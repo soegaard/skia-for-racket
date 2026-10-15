@@ -183,10 +183,12 @@ from reference_gpu_surface_cases import R4B_MODULES, R4B_PROCEDURES, R4B_REQUIRE
 from reference_gpu_interop_cases import R4C_MODULES, R4C_PROCEDURES, R4C_REQUIRED_KEYWORDS
 from reference_gpu_presentation_cases import (R4D_MODULES, R4D_PROCEDURES,
                                               R4D_VALUES, R4D_GUI_MODULES)
+from reference_dc_cases import (R4E_MODULES, R4E_PROCEDURES, R4E_VALUES, R4E_PARAMETERS)
 from reference_gpu_surface_evidence import COMMON_CASES, ONE_SHOT_CASE, check_gpu_surface_receipt
 PROCEDURES.update(R4B_PROCEDURES)
 PROCEDURES.update(R4C_PROCEDURES)
 PROCEDURES.update(R4D_PROCEDURES)
+PROCEDURES.update(R4E_PROCEDURES)
 
 
 def row(name, arity, keywords, kind='procedure'):
@@ -220,7 +222,8 @@ def synthetic_inventory():
     exports += [dict(name=name, phase='0', kind='value', export_kind='value')
                 for name in GB_CONSTANTS]
     exports += [dict(name=name, phase='0', kind=kind, export_kind='value')
-                for name, kind in R4D_VALUES.items()]
+                for name, kind in {**R4D_VALUES, **R4E_VALUES}.items()]
+    exports += [row(name, 3, [], 'parameter') for name in R4E_PARAMETERS]
     snapshots = [dict(modules=[dict(path='main.rkt', exports=exports),
                                     dict(path='color.rkt', exports=[
                                         copy.deepcopy(item) for item in exports
@@ -244,7 +247,8 @@ def synthetic_inventory():
             path=path, exports=[copy.deepcopy(item) for item in exports
                                 if item['name'] in names]))
     combined_modules = {}
-    for group in (GA_MODULES, GB_MODULES, R4A_MODULES, R4B_MODULES, R4C_MODULES, R4D_MODULES):
+    for group in (GA_MODULES, GB_MODULES, R4A_MODULES, R4B_MODULES, R4C_MODULES, R4D_MODULES,
+                  R4E_MODULES):
         for path, names in group.items():
             combined_modules.setdefault(path, [])
             combined_modules[path].extend(name for name in names
@@ -263,7 +267,9 @@ def synthetic_inventory():
         e for e in exports if e['name'] not in non_main and e['name'] not in R4A_PROCEDURES
         and e['name'] not in R4B_PROCEDURES
         and e['name'] not in R4C_PROCEDURES
-        and e['name'] not in R4D_PROCEDURES and e['name'] not in R4D_VALUES]
+        and e['name'] not in R4D_PROCEDURES and e['name'] not in R4D_VALUES
+        and e['name'] not in R4E_PROCEDURES and e['name'] not in R4E_VALUES
+        and e['name'] not in R4E_PARAMETERS]
     return snapshots
 
 
@@ -279,6 +285,9 @@ class Fixtures(unittest.TestCase):
         # The synthetic inventory already contains the later procedure. Keep the
         # real source supplement separate from these deliberately synthetic fixtures.
         self.manifest.pop('source_verified_additions', None)
+        self.manifest['deferred_policy'] = {
+            'stage': 'synthetic-fixture',
+            'reason': 'The fixture deliberately adds one uncovered export.'}
         self.snapshots = synthetic_inventory()
         self.write_inventory()
 
@@ -329,8 +338,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 1232)
-        self.assertEqual(result['documented_exports'], 1955)
+        self.assertEqual(len(result['definitions']), 1255)
+        self.assertEqual(result['documented_exports'], 1978)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -449,12 +458,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 1232)
+        self.assertEqual(len(self.check()['definitions']), 1255)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 1232)
+        self.assertEqual(len(self.check()['definitions']), 1255)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -1007,9 +1016,9 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 1232)
-        self.assertEqual(result['documented_exports'], 1955)
-        self.assertEqual(len(result['chapters']), 67)  # Root plus sixty-six chapters.
+        self.assertEqual(len(result['definitions']), 1255)
+        self.assertEqual(result['documented_exports'], 1978)
+        self.assertEqual(len(result['chapters']), 70)  # Root plus sixty-nine chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1029,6 +1038,9 @@ class ReviewArchiveTests(unittest.TestCase):
         # The synthetic inventory already contains the later procedure. Keep the
         # real source supplement separate from these deliberately synthetic fixtures.
         self.manifest.pop('source_verified_additions', None)
+        self.manifest['deferred_policy'] = {
+            'stage': 'synthetic-fixture',
+            'reason': 'The fixture deliberately adds one uncovered export.'}
         self.snapshots = synthetic_inventory()
         for expected, data in zip(self.manifest['snapshots'], self.snapshots):
             raw = (json.dumps(data, indent=2) + '\n').encode()
@@ -1355,11 +1367,11 @@ class R2CoverageTests(unittest.TestCase):
         self.assertEqual(spec['kind'], 'syntax')
         self.assertNotIn('arity_mask', spec)
 
-    def test_current_subset_includes_presentation_but_defers_dc(self):
+    def test_current_subset_includes_presentation_and_dc_integration(self):
         names = {row['name'] for row in self.check()['definitions']}
         self.assertIn('gpu-presenter-render!', names)
         self.assertIn('skia-render-window%', names)
-        self.assertNotIn('skia-dc%', names)
+        self.assertIn('skia-dc%', names)
 
 
 class R2ProseTests(unittest.TestCase):
@@ -2022,7 +2034,7 @@ class R3TextCoverageTests(unittest.TestCase):
         names = {e['name'] for e in self.check()['definitions']}
         self.assertIn('gpu-presenter-render!', names)
         self.assertIn('skia-render-window%', names)
-        self.assertNotIn('skia-dc%', names)
+        self.assertIn('skia-dc%', names)
 
 
 class R3TextSemanticsTests(unittest.TestCase):
@@ -2691,8 +2703,8 @@ class R3dColorSemanticsTests(unittest.TestCase):
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 1232)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1955)
+        self.assertEqual(len(manifest['definitions']), 1255)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1978)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -3579,10 +3591,10 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertIn('argument and result contracts', intro)
         self.assertIn('resource lifetimes, and failure behavior', intro)
         self.assertIn('additional public import paths', intro)
-        self.assertIn('docs/API.md', intro)
+        self.assertNotIn('docs/API.md', intro)
         self.assertIn('@seclink["top" #:doc', intro)
         self.assertIn('skia/scribblings/tutorials/index.scrbl', intro)
-        self.assertEqual(text.count('@include-section['), 66)
+        self.assertEqual(text.count('@include-section['), 69)
 
     def test_bottom_up_example_is_self_contained_and_uses_the_native_test_fixture(self):
         text = self.text('scanline-codecs')
@@ -3671,20 +3683,20 @@ class R3gaGeometryTests(unittest.TestCase):
         self.assertEqual(set(GA_SYNTAX), {'with-canvas-layer', 'with-canvas-matrix'})
 
     def test_new_chapters_and_aggregate_counts_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1232)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1955)
-        self.assertEqual(len(self.chapters) - 1, 66)
-        self.assertEqual(self.manifest['stage'], 'R4d')
+        self.assertEqual(len(self.definitions), 1255)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1978)
+        self.assertEqual(len(self.chapters) - 1, 69)
+        self.assertEqual(self.manifest['stage'], 'R4e')
         for chapter in ('rounded-rectangles', 'regions', 'projective-matrices',
                         'structured-drawing', 'portable-drawing', 'layers',
                         'drawables', 'specialized-canvases'):
             self.assertIn(f'scribblings/reference/{chapter}.scrbl', self.chapters)
 
-    def test_r4_presentation_is_added_while_dc_remains_deferred(self):
+    def test_r4_presentation_and_dc_integration_are_both_present(self):
         self.assertIn('gpu-presenter-render!', self.by_name)
         self.assertIn('skia-canvas%', self.by_name)
-        self.assertNotIn('skia-dc%', self.by_name)
-        self.assertEqual('R4e', self.manifest['deferred_policy']['stage'])
+        self.assertIn('skia-dc%', self.by_name)
+        self.assertNotIn('deferred_policy', self.manifest)
 
     def test_projective_conversion_does_not_promise_lossless_projection(self):
         text = self.text('projective-matrices.scrbl')
@@ -3854,14 +3866,14 @@ class R3gbRasterTests(unittest.TestCase):
                 self.assertEqual(entry['required_keywords'], GB_REQUIRED_KEYWORDS.get(name, []))
         self.assertEqual(GB_REQUIRED_KEYWORDS, {'image-apply-filter': ['clip']})
 
-    def test_scope_counts_and_r4_deferral_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1232)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1955)
-        self.assertEqual(len(self.chapters) - 1, 66)
-        self.assertEqual(self.manifest['stage'], 'R4d')
-        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4e')
+    def test_scope_counts_and_r4_completion_are_explicit(self):
+        self.assertEqual(len(self.definitions), 1255)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1978)
+        self.assertEqual(len(self.chapters) - 1, 69)
+        self.assertEqual(self.manifest['stage'], 'R4e')
+        self.assertNotIn('deferred_policy', self.manifest)
         self.assertIn('gpu-presenter-render!', self.by_name)
-        self.assertNotIn('skia-dc%', self.by_name)
+        self.assertIn('skia-dc%', self.by_name)
 
     def test_every_main_export_is_accounted_for(self):
         # This is a pinned inventory check, not live reflection.
@@ -4239,12 +4251,12 @@ class R4aContextTests(unittest.TestCase):
                     if f == 'defproc' and h[0][0] == name)
 
     def test_bounded_scope_counts_real_public_aliases_not_only_names(self):
-        self.assertEqual(len(self.definitions), 1232)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1955)
-        self.assertEqual(len(self.chapters) - 1, 66)
-        self.assertEqual(self.manifest['stage'], 'R4d')
+        self.assertEqual(len(self.definitions), 1255)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1978)
+        self.assertEqual(len(self.chapters) - 1, 69)
+        self.assertEqual(self.manifest['stage'], 'R4e')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
-                         'efa1ae5e5b7f479ee2cd674fc7f620dfdb0af1fc')
+                         'ab4b26693534dd197199dd2beda3639824d84e75')
         self.assertEqual(len(R4A_PROCEDURES), 31)
 
     def test_gpu_chapters_precede_the_identifier_index(self):
@@ -4432,11 +4444,11 @@ class R4aContextTests(unittest.TestCase):
             for name in names:
                 self.assertIn('@racket[' + prefix + name + ']', text)
 
-    def test_remaining_r4e_topics_are_deferred_not_stubbed(self):
+    def test_r4e_topics_are_now_documented_not_stubbed(self):
         self.assertIn('gpu-presenter-render!', self.by_name)
         self.assertIn('skia-render-window%', self.by_name)
-        self.assertNotIn('skia-dc%', self.by_name)
-        self.assertEqual(self.manifest['deferred_policy']['stage'], 'R4e')
+        self.assertIn('skia-dc%', self.by_name)
+        self.assertNotIn('deferred_policy', self.manifest)
 
     def test_racket_test_sources_parse_and_native_cases_belong_to_a_single_suite(self):
         for filename in ('reference-gpu-context-pure-test.rkt', 'reference-gpu-context-test.rkt'):
@@ -4594,8 +4606,8 @@ class R4bDocumentationTests(unittest.TestCase):
         rows = [d for d in self.manifest['definitions'] if d['name'] in R4B_PROCEDURES]
         self.assertEqual(len(rows), 36)
         self.assertEqual(sum(len(d['exports']) for d in rows), 37)
-        self.assertEqual(len(self.definitions), 1232)
-        self.assertEqual(len(self.chapters) - 1, 66)
+        self.assertEqual(len(self.definitions), 1255)
+        self.assertEqual(len(self.chapters) - 1, 69)
         self.assertTrue(all(d['canonical_module'] == 'skia/gpu' for d in rows))
         self.assertTrue(all('skia' not in d['exports'] for d in rows))
 
@@ -4726,8 +4738,8 @@ class R4bDocumentationTests(unittest.TestCase):
         self.assertEqual(result['reflected_inventory_exports'], 1977)
         self.assertEqual(result['source_verified_export_additions'], 1)
         self.assertFalse(result['binding_identity_checked'])
-        self.assertEqual(result['documented_exports'], 1955)
-        self.assertEqual(len(result['deferred']), 23)
+        self.assertEqual(result['documented_exports'], 1978)
+        self.assertEqual(len(result['deferred']), 0)
 
     def test_archive_hash_inventory_includes_all_new_chapters_and_pinned_source_copy(self):
         from reference_review import source_hashes
@@ -4946,13 +4958,13 @@ class R4cInteropTests(unittest.TestCase):
 
     def test_coverage_totals_and_stage_are_explicit(self):
         result = checks.check_source(ROOT)
-        self.assertEqual(len(result['definitions']), 1232)
-        self.assertEqual(result['documented_exports'], 1955)
+        self.assertEqual(len(result['definitions']), 1255)
+        self.assertEqual(result['documented_exports'], 1978)
         self.assertEqual(result['inventory_exports'], 1978)
-        self.assertEqual(len(result['deferred']), 23)
-        self.assertEqual(self.manifest['stage'], 'R4d')
+        self.assertEqual(len(result['deferred']), 0)
+        self.assertEqual(self.manifest['stage'], 'R4e')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
-                         'efa1ae5e5b7f479ee2cd674fc7f620dfdb0af1fc')
+                         'ab4b26693534dd197199dd2beda3639824d84e75')
 
     def test_selected_modules_have_complete_documented_export_sets(self):
         for path, names in R4C_MODULES.items():
@@ -4980,7 +4992,7 @@ class R4cInteropTests(unittest.TestCase):
             text = self.text(chapter)
             self.assertIn('declare-exporting', text)
             self.assertIn('#:use-sources', text)
-        self.assertEqual(root.count('@include-section['), 66)
+        self.assertEqual(root.count('@include-section['), 69)
 
     def test_r4b_examples_show_complete_imports_and_isolated_compile_test(self):
         for chapter in ('gpu-surfaces', 'gpu-images', 'gpu-transfers'):
@@ -5107,15 +5119,15 @@ class R4dPresentationTests(unittest.TestCase):
                 return header
         self.fail('missing procedure: ' + name)
 
-    def test_r4d_coverage_is_bounded_and_leaves_only_r4e(self):
+    def test_r4d_coverage_remains_present_in_complete_r4e_manual(self):
         result = checks.check_source(ROOT)
-        self.assertEqual(len(result['definitions']), 1232)
-        self.assertEqual(result['documented_exports'], 1955)
+        self.assertEqual(len(result['definitions']), 1255)
+        self.assertEqual(result['documented_exports'], 1978)
         self.assertEqual(result['inventory_exports'], 1978)
-        self.assertEqual(len(result['deferred']), 23)
-        self.assertEqual(self.manifest['stage'], 'R4d')
+        self.assertEqual(len(result['deferred']), 0)
+        self.assertEqual(self.manifest['stage'], 'R4e')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
-                         'efa1ae5e5b7f479ee2cd674fc7f620dfdb0af1fc')
+                         'ab4b26693534dd197199dd2beda3639824d84e75')
         self.assertEqual(set(result['runtime_deferred_modules']), set(R4D_GUI_MODULES))
 
     def test_exact_r4d_module_exports_are_documented(self):
@@ -5172,7 +5184,7 @@ class R4dPresentationTests(unittest.TestCase):
             include = '@include-section["' + chapter + '.scrbl"]'
             self.assertIn(include, text)
             self.assertLess(text.index(include), text.index('@index-section[]'))
-        self.assertEqual(text.count('@include-section['), 66)
+        self.assertEqual(text.count('@include-section['), 69)
 
     def test_frame_lifetime_and_presentation_claims_are_precise(self):
         text = ' '.join(self.text('gpu-presentation').split())
@@ -5266,14 +5278,198 @@ class R4dPresentationTests(unittest.TestCase):
         self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 102)
         self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
 
-    def test_gpu_output_is_in_r4d_and_r4e_is_exactly_dc_integration(self):
-        result = checks.check_source(ROOT)
-        modules = {d['module'] for d in result['deferred']}
-        self.assertEqual(modules, {'skia/dc', 'skia/dc-output', 'skia/gpu-dc'})
+    def test_gpu_output_remains_in_r4d_after_r4e_completion(self):
+        result = checks.check_source(ROOT, require_complete=True)
+        self.assertEqual(result['deferred'], [])
         self.assertEqual(self.by_name['make-gpu-raster-executor']['chapter'],
                          'scribblings/reference/gpu-output.scrbl')
         self.assertEqual(self.by_name['call-with-gpu-raster-executor']['allowed_keywords'],
                          ['on-unavailable'])
+
+
+class R4eDcIntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.definitions, cls.chapters = checks.document_definitions(ROOT)
+        cls.by_name = {d['name']: d for d in cls.definitions}
+
+    def text(self, chapter):
+        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+
+    def header(self, name):
+        path = ROOT / self.by_name[name]['chapter']
+        return next(h for f, h, _ in checks.commands(path.read_text())
+                    if f == 'defproc' and h[0][0] == name)
+
+    def test_r4e_closes_the_pinned_and_source_verified_inventory(self):
+        result = checks.check_source(ROOT, require_complete=True)
+        self.assertEqual(len(result['definitions']), 1255)
+        self.assertEqual(result['documented_exports'], 1978)
+        self.assertEqual(result['inventory_exports'], 1978)
+        self.assertEqual(result['reflected_inventory_exports'], 1977)
+        self.assertEqual(result['source_verified_export_additions'], 1)
+        self.assertEqual(result['deferred'], [])
+        self.assertEqual(len(result['chapters']) - 1, 69)
+        self.assertEqual(self.manifest['stage'], 'R4e')
+        self.assertEqual(self.manifest['reviewed_repository_commit'],
+                         'ab4b26693534dd197199dd2beda3639824d84e75')
+        self.assertNotIn('deferred_policy', self.manifest)
+
+    def test_exact_r4e_module_exports_are_documented(self):
+        expected_names = set(R4E_PROCEDURES) | set(R4E_VALUES) | set(R4E_PARAMETERS)
+        rows = [d for d in self.manifest['definitions'] if d['name'] in expected_names]
+        self.assertEqual(len(rows), 23)
+        self.assertEqual(sum(len(d['exports']) for d in rows), 23)
+        for path, names in R4E_MODULES.items():
+            module = checks.public_module(path)
+            found = {d['name'] for d in self.manifest['definitions'] if module in d['exports']}
+            with self.subTest(module=module):
+                self.assertEqual(found, set(names))
+
+    def test_r4e_procedure_and_parameter_shapes_match_pinned_inventory(self):
+        for name, (arity, keywords) in R4E_PROCEDURES.items():
+            with self.subTest(name=name):
+                spec = self.by_name[name]
+                self.assertEqual(spec['kind'], 'procedure')
+                self.assertEqual(spec['arity_mask'], str(arity))
+                self.assertEqual(spec['allowed_keywords'], keywords)
+                self.assertEqual(spec['required_keywords'], [])
+        parameter = self.by_name['current-output-dc-command-limit']
+        self.assertEqual(parameter['kind'], 'parameter')
+        self.assertEqual(parameter['arity_mask'], '3')
+        self.assertEqual(parameter['allowed_keywords'], [])
+
+    def test_dc_class_and_exception_structure_use_native_scribble_forms(self):
+        dc = self.by_name['skia-dc%']
+        self.assertEqual(dc['kind'], 'class')
+        self.assertEqual(dc['form'], 'defclass')
+        constructor = self.by_name['exn:fail:skia-dc:unsupported']
+        self.assertEqual(constructor['form'], 'defstruct*')
+        self.assertEqual(constructor['arity_mask'], '32')
+        self.assertEqual([a['name'] for a in constructor['arguments']],
+                         ['message', 'continuation-marks', 'method', 'feature', 'stage'])
+        descriptor = self.by_name['struct:exn:fail:skia-dc:unsupported']
+        self.assertEqual(descriptor['kind'], 'value')
+        self.assertEqual(descriptor['value_kind'], 'struct-type')
+        for suffix in ('method', 'feature', 'stage'):
+            self.assertEqual(self.by_name['exn:fail:skia-dc:unsupported-' + suffix]
+                             ['definition_group'], 'exn:fail:skia-dc:unsupported')
+
+    def test_structure_readers_support_only_the_reviewed_exception_supertype(self):
+        support = (ROOT / 'tools/reference_support.py').read_text()
+        runtime = (ROOT / 'tools/reference-runtime.rkt').read_text()
+        for text in (support, runtime):
+            self.assertIn('exn:fail:skia-dc:unsupported', text)
+            self.assertIn('exn:fail:contract', text)
+            self.assertIn('continuation-marks', text)
+        self.assertIn('unsupported structure name/supertype', support)
+        self.assertIn('unsupported structure name/supertype', runtime)
+
+    def test_complete_manifest_does_not_need_a_dummy_deferral_policy(self):
+        self.assertNotIn('deferred_policy', self.manifest)
+        support = (ROOT / 'tools/reference_support.py').read_text()
+        self.assertIn('if remaining:', support)
+        self.assertIn('require_complete or not deferred', support)
+        self.assertEqual(checks.check_source(ROOT, require_complete=True)['deferred'], [])
+
+    def test_r4e_chapters_are_included_before_the_index(self):
+        root = self.text('reference')
+        for chapter in ('racket-dc', 'dc-output', 'gpu-dc'):
+            include = '@include-section["' + chapter + '.scrbl"]'
+            self.assertIn(include, root)
+            self.assertLess(root.index(include), root.index('@index-section[]'))
+            text = self.text(chapter)
+            self.assertIn('declare-exporting', text)
+            self.assertIn('#:use-sources', text)
+        self.assertEqual(root.count('@include-section['), 69)
+
+    def test_reference_introduction_no_longer_points_to_incomplete_api_notes(self):
+        intro = self.text('reference').split('@table-of-contents[]', 1)[0]
+        self.assertNotIn('Interfaces not yet covered', intro)
+        self.assertNotIn('docs/API.md', intro)
+
+    def test_three_dc_lifetimes_are_explicitly_distinct(self):
+        raster = ' '.join(self.text('racket-dc').split())
+        output = ' '.join(self.text('dc-output').split())
+        gpu = ' '.join(self.text('gpu-dc').split())
+        self.assertIn('persistent CPU-raster backing', raster)
+        self.assertIn('idempotent on the owner thread', raster)
+        self.assertIn('callback-scoped DC', output)
+        self.assertIn('capture DC expires', output)
+        self.assertIn('fresh GPU drawing context', gpu)
+        self.assertIn('invalid on normal return, exception, or escape', gpu)
+        self.assertIn('Pixel persistence does not imply DC-state persistence', gpu)
+
+    def test_output_callbacks_and_explicit_raster_boundary_are_local(self):
+        text = ' '.join(self.text('dc-output').split())
+        for phrase in ('one positional DC argument with no required keyword arguments',
+                       'capture DC expires',
+                       'explicitly audited bounded raster group',
+                       'require-vector', 'invisible no-op'):
+            self.assertIn(phrase, text)
+        self.assertEqual(self.header('draw-dc-raster-group')[1], 'void?')
+        self.assertEqual(self.header('call-with-output-dc')[1], ['and/c', 'hash?', 'immutable?'])
+
+    def test_gpu_dc_staging_and_borrowed_surface_semantics_are_explicit(self):
+        text = ' '.join(self.text('gpu-dc').split())
+        for phrase in ('RGBA/BGRA/F16/F32', 'GPU-to-GPU', 'No automatic CPU readback',
+                       'exact owning @racket[call-with-gpu-context] activation',
+                       'not a pixel transaction', 'explicit synchronous CPU transfers'):
+            self.assertIn(phrase, text)
+        frame = self.header('call-with-gpu-frame-dc')[0]
+        color = next(arg for arg in frame if isinstance(arg, list) and arg[0] == '#:color-type')
+        self.assertEqual(color[2], ['or/c', ['quote', 'rgba-8888'], ['quote', 'bgra-8888'],
+                                    ['quote', 'rgba-f16'], ['quote', 'rgba-f32']])
+        sample = next(arg for arg in frame if isinstance(arg, list) and arg[0] == '#:sample-count')
+        self.assertEqual(sample[2], ['integer-in', '0', '64'])
+
+    def test_r4e_bindings_remain_live_checked_while_gui_deferrals_stay_bounded(self):
+        result = checks.check_source(ROOT)
+        self.assertEqual(set(result['runtime_deferred_modules']), set(R4D_GUI_MODULES))
+        for name in set(R4E_PROCEDURES) | set(R4E_VALUES) | set(R4E_PARAMETERS):
+            with self.subTest(name=name):
+                self.assertEqual(next(d for d in result['definitions'] if d['name'] == name)
+                                 ['runtime_check'], 'live')
+
+    def test_link_probe_covers_every_r4e_export(self):
+        links = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        prefixes = {'skia/dc': 'dc:', 'skia/dc-output': 'dc-output:', 'skia/gpu-dc': 'gpu-dc:'}
+        for path, names in R4E_MODULES.items():
+            module = checks.public_module(path)
+            for name in names:
+                self.assertIn('@racket[' + prefixes[module] + name + ']', links)
+
+    def test_native_free_dc_integration_suite_is_connected_to_acceptance(self):
+        runner = (ROOT / 'tools/check-reference.py').read_text()
+        self.assertIn("run('dc-integration-pure-tests'", runner)
+        path = ROOT / 'tools/reference-dc-integration-pure-test.rkt'
+        text = path.read_text()
+        self.assertEqual(text.count('(test-case '), 12)
+        for phrase in ('not allocate a Skia surface', 'create a GPU context',
+                       'render a document', 'a GUI'):
+            self.assertIn(phrase, text)
+        reader = checks.Reader(text, text.index('\n') + 1)
+        while True:
+            reader.skip()
+            if reader.position == len(text):
+                break
+            reader.read()
+
+    def test_examples_remain_unchanged_by_r4e(self):
+        forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
+                 for form, header, _ in checks.commands(path.read_text(), recursive=True)]
+        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 102)
+        self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
+
+    def test_source_review_contains_r4e_chapters_cases_and_pinned_inventories(self):
+        files = review.source_hashes(ROOT, review_inputs=True)
+        for chapter in ('racket-dc', 'dc-output', 'gpu-dc'):
+            self.assertIn('scribblings/reference/' + chapter + '.scrbl', files)
+        self.assertIn('tools/reference_dc_cases.py', files)
+        self.assertIn('tools/reference-dc-integration-pure-test.rkt', files)
+        self.assertIn('api/public-api-headless.json', files)
+        self.assertIn('api/public-api-gui.json', files)
 
 
 if __name__ == '__main__':

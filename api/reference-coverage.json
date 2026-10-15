@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R4d",
-  "reviewed_repository_commit": "efa1ae5e5b7f479ee2cd674fc7f620dfdb0af1fc",
+  "stage": "R4e",
+  "reviewed_repository_commit": "ab4b26693534dd197199dd2beda3639824d84e75",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -12,10 +12,6 @@
       "git_blob": "1221794e26e099b8ca38110f4a42564f6b38f8f6"
     }
   ],
-  "deferred_policy": {
-    "stage": "R4e",
-    "reason": "Racket DC integration; see docs/REFERENCE-DEVELOPMENT.md."
-  },
   "definitions": [
     {
       "name": "skia-resource?",
@@ -13056,6 +13052,236 @@
       "canonical_module": "skia/gpu-output",
       "exports": [
         "skia/gpu-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-dc%",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-dc?",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-dc-capabilities",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-dc-compatibility",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-dc:unsupported",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "struct:exn:fail:skia-dc:unsupported",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-dc:unsupported?",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-dc:unsupported-method",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-dc:unsupported-feature",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "exn:fail:skia-dc:unsupported-stage",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-output-dc",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "current-output-dc-command-limit",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "dc-annotate-url!",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "dc-define-destination!",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "dc-link-destination!",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "draw-dc-raster-group",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-dc-output-page",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "output-dc-capabilities",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-output-dc?",
+      "chapter": "scribblings/reference/dc-output.scrbl",
+      "canonical_module": "skia/dc-output",
+      "exports": [
+        "skia/dc-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-frame-dc",
+      "chapter": "scribblings/reference/gpu-dc.scrbl",
+      "canonical_module": "skia/gpu-dc",
+      "exports": [
+        "skia/gpu-dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-surface-dc",
+      "chapter": "scribblings/reference/gpu-dc.scrbl",
+      "canonical_module": "skia/gpu-dc",
+      "exports": [
+        "skia/gpu-dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-gpu-dc-capabilities",
+      "chapter": "scribblings/reference/gpu-dc.scrbl",
+      "canonical_module": "skia/gpu-dc",
+      "exports": [
+        "skia/gpu-dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-gpu-dc?",
+      "chapter": "scribblings/reference/gpu-dc.scrbl",
+      "canonical_module": "skia/gpu-dc",
+      "exports": [
+        "skia/gpu-dc"
       ],
       "phase": "0",
       "space": null

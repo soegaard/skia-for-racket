@@ -12,9 +12,7 @@ introduce drawing through complete examples.
 @defmodule[skia]
 
 The @racketmodname[skia] module provides the core drawing interface. Individual
-chapters identify additional public import paths. Interfaces not yet covered by
-this manual are described in the
-@hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"]{API notes}.
+chapters identify additional public import paths.
 
 @table-of-contents[]
 
@@ -90,5 +88,9 @@ this manual are described in the
 @include-section["gpu-widgets.scrbl"]
 @include-section["gui-canvases.scrbl"]
 @include-section["render-canvases.scrbl"]
+
+@include-section["racket-dc.scrbl"]
+@include-section["dc-output.scrbl"]
+@include-section["gpu-dc.scrbl"]
 
 @index-section[]

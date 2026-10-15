@@ -63,6 +63,10 @@
                      (prefix-in gpu-canvas: skia/gpu-canvas)
                      (prefix-in render-canvas: skia/render-canvas)))
 
+@(require (for-label (prefix-in dc: skia/dc)
+                     (prefix-in dc-output: skia/dc-output)
+                     (prefix-in gpu-dc: skia/gpu-dc)))
+
 
 @(require (for-label
            (prefix-in gpu-egl: skia/gpu-egl)
@@ -3541,3 +3545,31 @@ The following links cover the font and text interfaces.
 @racket[render-canvas:skia-render-canvas<%>]
 @racket[render-canvas:skia-render-canvas?]
 @racket[render-canvas:skia-render-window%]
+
+@section{Racket Drawing-Context Integration}
+
+@racket[dc:skia-dc%]
+@racket[dc:skia-dc?]
+@racket[dc:skia-dc-capabilities]
+@racket[dc:skia-dc-compatibility]
+@racket[dc:exn:fail:skia-dc:unsupported]
+@racket[dc:struct:exn:fail:skia-dc:unsupported]
+@racket[dc:exn:fail:skia-dc:unsupported?]
+@racket[dc:exn:fail:skia-dc:unsupported-method]
+@racket[dc:exn:fail:skia-dc:unsupported-feature]
+@racket[dc:exn:fail:skia-dc:unsupported-stage]
+
+@racket[dc-output:call-with-output-dc]
+@racket[dc-output:current-output-dc-command-limit]
+@racket[dc-output:dc-annotate-url!]
+@racket[dc-output:dc-define-destination!]
+@racket[dc-output:dc-link-destination!]
+@racket[dc-output:draw-dc-raster-group]
+@racket[dc-output:make-dc-output-page]
+@racket[dc-output:output-dc-capabilities]
+@racket[dc-output:skia-output-dc?]
+
+@racket[gpu-dc:call-with-gpu-frame-dc]
+@racket[gpu-dc:call-with-gpu-surface-dc]
+@racket[gpu-dc:skia-gpu-dc-capabilities]
+@racket[gpu-dc:skia-gpu-dc?]

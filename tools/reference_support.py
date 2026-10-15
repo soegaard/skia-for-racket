@@ -248,21 +248,30 @@ def constant_shape(header):
 
 
 def structure_shapes(header):
-    """The immutable transparent, no-supertype defstruct* subset used for RGBA.
+    """Read the transparent defstruct* forms used by the Reference.
 
-    Derive member coverage from the real declaration. Unsupported field/constructor
-    options fail closed until both this reader and the Racket reader support them.
+    Most declarations have no supertype. R4e additionally documents the
+    exn:fail:skia-dc:unsupported subtype of exn:fail:contract; its constructor
+    includes the two inherited exception fields, while only the three new
+    accessors are exported by skia/dc.
     """
     need(isinstance(header, list) and len(header) == 3 and header[2] == '#:transparent',
          'unsupported structure options; expected an immutable transparent defstruct*')
-    name, fields = header[:2]
-    need(type(name) is str and not name.startswith('#:'), 'unsupported structure name/supertype')
+    struct_name, fields = header[:2]
+    super_fields = []
+    if type(struct_name) is str:
+        name = struct_name
+    else:
+        need(struct_name == ['exn:fail:skia-dc:unsupported', 'exn:fail:contract'],
+             'unsupported structure name/supertype')
+        name = struct_name[0]
+        super_fields = [['message', 'string?'], ['continuation-marks', 'continuation-mark-set?']]
     need(isinstance(fields, list), 'invalid structure fields')
     need(all(isinstance(field, list) and len(field) == 2 and type(field[0]) is str
              and not field[0].startswith('#:') for field in fields), 'unsupported structure field')
     names = [field[0] for field in fields]
     need(len(set(names)) == len(names), 'duplicate structure field')
-    constructor = procedure_shape([[name, *fields], name + '?'])
+    constructor = procedure_shape([[name, *super_fields, *fields], name + '?'])
     result = [dict(constructor, definition_group=name, structure_role='constructor'),
               dict(name='struct:' + name, kind='value', arguments=[], definition_group=name,
                    structure_role='descriptor', value_kind='struct-type'),
@@ -451,11 +460,14 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
                           runtime_check=runtime_check))
     deferred = []
     if exports is not None:
-        policy = manifest['deferred_policy']
-        need(policy['stage'] and policy['reason'], 'deferred exports need a stage and reason')
-        for module, phase, space, name in sorted(set(exports) - claimed, key=repr):
-            deferred.append(dict(module=module, phase=phase, space=space, name=name,
-                                 status='deferred', **policy))
+        remaining = sorted(set(exports) - claimed, key=repr)
+        if remaining:
+            policy = manifest.get('deferred_policy')
+            need(policy and policy.get('stage') and policy.get('reason'),
+                 'deferred exports need a stage and reason')
+            for module, phase, space, name in remaining:
+                deferred.append(dict(module=module, phase=phase, space=space, name=name,
+                                     status='deferred', **policy))
         need(not require_complete or not deferred, f'{len(deferred)} exports remain deferred')
     else:
         need(not require_complete, 'documents-only cannot establish complete coverage')

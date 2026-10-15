@@ -138,9 +138,16 @@
           'required_keywords (sort required-keywords string<?)))
 
 (define (record-structure! datum)
-  (define name (cadr datum))
+  (define struct-name (cadr datum))
   (define fields (caddr datum))
-  (need (and (symbol? name) (list? fields) (eq? (list-ref datum 3) '#:transparent))
+  (define-values (name inherited-fields)
+    (cond
+      [(symbol? struct-name) (values struct-name '())]
+      [(equal? struct-name '(exn:fail:skia-dc:unsupported exn:fail:contract))
+       (values 'exn:fail:skia-dc:unsupported
+               '((message string?) (continuation-marks continuation-mark-set?)))]
+      [else (error 'reference-runtime "unsupported structure name/supertype: ~e" struct-name)]))
+  (need (and (list? fields) (eq? (list-ref datum 3) '#:transparent))
         "unsupported structure declaration")
   (need (andmap (lambda (field)
                  (and (list? field) (= (length field) 2) (symbol? (car field)))) fields)
@@ -153,7 +160,7 @@
   (define predicate (string->symbol (string-append group "?")))
   (define (member! id shape role)
     (record! id (hash-set (hash-set shape 'definition_group group) 'structure_role role)))
-  (member! name (procedure-shape (cons name fields)) "constructor")
+  (member! name (procedure-shape (cons name (append inherited-fields fields))) "constructor")
   (member! (string->symbol (string-append "struct:" group))
            (hasheq 'kind "value" 'arguments '() 'value_kind "struct-type") "descriptor")
   (member! predicate (procedure-shape (list predicate '(v any/c))) "predicate")

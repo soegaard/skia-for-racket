@@ -205,6 +205,9 @@ def main(argv=None):
             run('gpu-presentation-pure-tests',
                 [racket, '-l', 'raco', '--', 'test',
                  ROOT / 'tools/reference-gpu-presentation-pure-test.rkt'])
+            run('dc-integration-pure-tests',
+                [racket, '-l', 'raco', '--', 'test',
+                 ROOT / 'tools/reference-dc-integration-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:

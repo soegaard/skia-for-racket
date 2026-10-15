@@ -1,4 +1,47 @@
-# Skia Reference development: R4d.1
+# Skia Reference development: R4e
+
+## Racket drawing-context integration
+
+Baseline: `ab4b26693534dd197199dd2beda3639824d84e75`
+(`Refine Reference GUI documentation`). R4e adds the final 23 bindings through
+23 public export paths and three chapters. The Reference now has 1255
+definitions, 1978 documented export paths, and 69 conceptual chapters. The
+current pinned/runtime-source inventory has no deferred export paths.
+
+The chapters document the persistent CPU `skia-dc%` compatibility layer,
+callback-scoped PDF/SVG/CPU output DC capture, and frame/surface-scoped GPU DCs.
+They keep the lifetime distinctions explicit: the raster DC is persistent until
+closed, while document and GPU DCs expire at callback exit. Unsupported DC
+features raise the documented transparent `exn:fail:skia-dc:unsupported`
+subtype instead of silently routing drawing through Cairo.
+
+The source and runtime readers now support the one transparent documented
+structure subtype used by this stage: `exn:fail:skia-dc:unsupported` extends
+`exn:fail:contract`, so its public constructor includes the inherited message
+and continuation-mark fields plus method, feature, and stage. The checker also
+accepts a complete manifest without a synthetic deferred-policy entry;
+`check_source(..., require_complete=True)` can therefore establish zero remaining
+paths for the pinned inventory.
+
+`tools/reference-dc-integration-pure-test.rkt` exercises declaration values,
+compatibility reports, the unsupported exception shape, command-limit guards,
+detached output-page construction, and GPU-DC rejection boundaries without
+allocating a Skia surface, creating a GPU context, rendering a document, or
+opening a GUI. The existing DC, DC-output, and GPU-DC validators remain the
+native/runtime evidence and are not replaced by this source-level suite.
+
+The four GUI-initializing R4d modules remain explicitly runtime-deferred in the
+ordinary headless binding worker. The three R4e modules are headless-safe and
+remain eligible for live binding/arity checks. R4e changes no library behavior,
+public API, native pin, or tutorial program.
+
+This stage closes the currently pinned plus separately source-verified export
+inventory. It is not a claim that the pinned snapshots are a freshly reflected
+inventory of the post-R4e checkout; fresh API reconciliation remains the next
+validation step before declaring the Reference complete for publication.
+
+## Earlier R4d.1 development notes
+
 
 ## Editorial clarification after R4d
 
