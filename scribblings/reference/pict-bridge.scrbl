@@ -9,23 +9,22 @@
 @defmodule[skia/pict #:no-declare]
 @(declare-exporting skia/pict #:use-sources (skia/pict))
 
-The @racketmodname[skia/pict] module provides an explicit, eager bridge from
-CPU Skia values to ordinary Racket @racket[pict:pict?] values. It is not
-re-exported by @racketmodname[skia]; require it only when a pict consumer is
-needed. Requiring the module does not create a GUI, GPU context, or Skia native
-resource.
+The @racketmodname[skia/pict] module converts Skia images, surfaces, and
+recorded pictures to ordinary Racket @racket[pict:pict?] values.
+@racket[image->pict] and @racket[surface->pict] copy CPU pixels;
+@racket[picture->pict] draws a recorded picture into a temporary CPU surface.
+Each operation creates an independent bitmap-backed pict. Closing the source,
+or drawing further on a source surface, does not change the result.
 
-Every conversion copies pixels into an independent Racket bitmap and returns a
-normal pict backed by that bitmap. The result is not a Skia resource and does
-not retain the source wrapper. Closing an image, surface, or picture after a
-successful conversion therefore does not invalidate the pict, and later drawing
-to a source surface does not change an already returned pict.
-
-The bridge does not attach pict-conversion properties to Skia source values.
-Unlike the standard @racketmodname[file/convertible] path described for images,
-it does not encode and decode PNG data. If a Racket @tt{bitmap%} is the desired
-result instead of a pict, use the direct bitmap operations in
+The conversions are explicit: they neither add pict-conversion properties to
+Skia values nor read back GPU data automatically. Unlike conversion through
+@racketmodname[file/convertible], they transfer pixels without encoding and
+decoding PNG. For a Racket @tt{bitmap%} instead of a pict, use
 @racketmodname[skia/bitmap].
+
+Import @racketmodname[skia/pict] separately; it is not re-exported by
+@racketmodname[skia]. Requiring it does not load the native Skia library,
+create a GPU context, or initialize a GUI.
 
 @section{Images and Surfaces}
 
