@@ -19,8 +19,8 @@ Skia or HarfBuzz native libraries, create a GPU context, or initialize a GUI.
 The bridge converts standalone values rather than drawing contexts. Use
 @racketmodname[skia/pict] when a consumer needs a Racket pict, and use
 @racketmodname[skia/dc] when a consumer needs an implementation of Racket's
-@racket[draw:dc<%>] interface. The functions in this chapter do not create a
-live view, share native handles, or provide zero-copy storage.
+@racket[draw:dc<%>] interface. These functions do not create a live view,
+share native handles, or provide zero-copy storage.
 
 Successful conversions are detached from their sources. @racket[bitmap->image]
 and @racket[dc-path->skia-path] return owned Skia resources, which should be
@@ -31,6 +31,8 @@ those results are not Skia resources. Later mutation of a mutable source, or
 closing a Skia source, does not change an already converted result. The bridge
 does not make concurrent mutation of a Racket Draw source safe while a
 conversion is in progress.
+
+@local-table-of-contents[#:style 'immediate-only]
 
 @section{Bitmaps}
 

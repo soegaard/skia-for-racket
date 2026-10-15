@@ -9,10 +9,10 @@
 @defmodule[skia/gpu-gui #:no-declare]
 @(declare-exporting skia/gpu-gui #:use-sources (skia/gpu-gui))
 
-This module initializes Racket's GUI layer and provides widgets backed by the
-presenter API. Construction and widget-specific operations belong to the
-creating eventspace's handler thread. Use @racket[queue-callback] to schedule
-such work from another thread.
+The @racketmodname[skia/gpu-gui] library initializes Racket's GUI layer and
+provides widgets backed by the presenter API. Construction and widget-specific
+operations belong to the creating eventspace's handler thread. Use
+@racket[queue-callback] to schedule such work from another thread.
 
 Backend selection is fixed for a widget's lifetime. @racket['auto] chooses Metal
 on macOS and OpenGL elsewhere; it is a selection rule, not a failure fallback.
@@ -23,6 +23,8 @@ The unified factory in @secref["skia-render-canvases"] uses a separate automatic
 policy: on Windows x86-64 it selects Direct3D, while these raw GPU widgets select
 OpenGL. In both APIs, @racket['auto] is a constructor-local selection rule rather
 than a universal package-wide backend choice.
+
+@section{GPU Canvases}
 
 @defclass[gpu-canvas% canvas% ()]{
 Implements a callback-oriented GPU canvas with a lazily initialized presenter.
@@ -76,6 +78,8 @@ and a weak geometry monitor invoke this check; the monitor is not an animation
 clock or frame-rate guarantee.
 }
 }
+
+@section{GPU Windows}
 
 @defclass[gpu-window% frame% ()]{
 Provides a convenience frame containing one @racket[gpu-canvas%].

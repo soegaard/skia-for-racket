@@ -28,6 +28,8 @@ An external texture token is not a @racket[skia-resource?] value and is not
 managed by @racket[with-skia] or @racket[skia-close!]. Use
 @racket[gpu-external-texture-close!] to retire a token that is no longer needed.
 
+@section{Token State and Retirement}
+
 @defproc[(gpu-external-texture? [v any/c]) boolean?]{
 Returns whether @racket[v] is an external-texture handoff wrapper. The predicate
 also recognizes consumed and retired wrappers. It does not prove that the
@@ -52,6 +54,8 @@ Closing a token does not close its GPU context. Queued native releases still
 follow that context's owner-side drain and shutdown protocol.
 }
 
+@section{Importing External Textures}
+
 @defproc[(gpu-import-image [context gpu-context?]
                            [texture gpu-external-texture?]) gpu-image?]{
 Consumes a ready token by making an independent Skia-owned GPU image in the
@@ -63,6 +67,8 @@ There is no CPU pixel readback in the production copy path.
 A token belonging to another context, another execution owner, or the wrong
 state is rejected. Nested external-resource operations are not supported.
 }
+
+@section{Borrowing External Drawing Targets}
 
 @defproc[(call-with-gpu-external-surface
           [context gpu-context?] [texture gpu-external-texture?]

@@ -2,9 +2,11 @@
 
 @title[#:tag "skia-reference-presentation-gui" #:style 'toc]{Presentation and GUI}
 
-Presentation APIs connect rendered content to Racket GUI windows. They provide
-GPU presenters and widgets together with persistent raster canvases and a
-renderer-selecting canvas interface.
+Presentation connects rendered content to Racket GUI windows. Presenter
+frames expose short-lived GPU canvases, raw GPU widgets schedule those frames,
+drawing-canvas adapters supply Racket drawing contexts, and the unified
+render-canvas layer selects a raster or GPU implementation behind one callback
+protocol.
 
 @local-table-of-contents[]
 

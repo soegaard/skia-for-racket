@@ -4,9 +4,11 @@
 
 @title[#:tag "skia-reference-racket-integration" #:style 'toc]{Racket Integration}
 
-Skia integrates with Racket picts, Racket Draw values, and Racket's @racket[draw:dc<%>]
-drawing-context interface through explicit bridges and drawing-context
-implementations.
+Racket integration is explicit. Value bridges copy Skia content into picts or
+copy selected values between Skia and Racket Draw. Drawing-context adapters
+implement Racket's @racket[draw:dc<%>] interface over CPU, document, and GPU
+targets. These libraries complement the native Skia canvas API rather than
+replacing it.
 
 @local-table-of-contents[]
 

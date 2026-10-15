@@ -9,10 +9,14 @@
 @defmodule[skia/render-canvas #:no-declare]
 @(declare-exporting skia/render-canvas #:use-sources (skia/render-canvas))
 
-This GUI module provides one callback-oriented protocol over the persistent
-raster canvas and frame-scoped GPU canvas. Renderer choice is fixed before the
-widget is constructed; a runtime GPU failure does not replace the object with a
+The @racketmodname[skia/render-canvas] GUI library provides one
+callback-oriented protocol over the persistent raster canvas and frame-scoped
+GPU canvas. Renderer choice is fixed before the widget is constructed; a runtime GPU failure does not replace the object with a
 raster canvas or replay the application callback.
+
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Construction and Renderer Selection}
 
 @defproc[(make-skia-render-canvas
           [parent (is-a?/c area-container<%>)]
@@ -50,6 +54,8 @@ The selector accepts synchronization intervals from 0 through 4. The current
 Direct3D GUI presenter accepts only 0 or 1, so larger selected values are rejected
 when that implementation is constructed rather than silently changed.
 }
+
+@section{Common Render Canvas Interface}
 
 @definterface[skia-render-canvas<%> ()]{
 Specifies the common callback-oriented protocol implemented by the unified
@@ -128,6 +134,8 @@ state.
 @defproc[(skia-render-canvas? [v any/c]) boolean?]{
 Returns whether @racket[v] implements @racket[skia-render-canvas<%>].
 }
+
+@section{Unified Render Windows}
 
 @defclass[skia-render-window% frame% ()]{
 Provides a convenience frame containing one unified render canvas.

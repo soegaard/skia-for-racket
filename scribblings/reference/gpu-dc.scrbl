@@ -9,8 +9,8 @@
 @defmodule[skia/gpu-dc #:no-declare]
 @(declare-exporting skia/gpu-dc #:use-sources (skia/gpu-dc))
 
-The @racketmodname[skia/gpu-dc] module supplies the supported Racket
-@racket[draw:dc<%>] drawing subset on Ganesh GPU surfaces. Importing the module
+The @racketmodname[skia/gpu-dc] library supplies the supported Racket
+@racket[draw:dc<%>] drawing subset on Ganesh GPU surfaces. Importing the library
 does not initialize a GUI or create a GPU context; native GPU drawing code is
 loaded on first use.
 

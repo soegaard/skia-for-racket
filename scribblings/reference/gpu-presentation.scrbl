@@ -15,7 +15,9 @@ Presenters do not expose native framebuffers, drawables, textures, or command
 buffers. Successful presentation means that submission and presentation were
 requested; it does not certify physical display pixels or performance.
 
-@section{Presenter State and Rendering}
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Presenter State}
 
 @defproc[(gpu-presenter? [v any/c]) boolean?]{
 Returns whether @racket[v] is a presenter wrapper. The predicate inspects Racket
@@ -47,6 +49,8 @@ redraw state, the last frame/error, frame-target cache information, and adapter
 diagnostics. Presentation counts are request counts, not observed screen frames.
 }
 
+@section{Rendering and Scheduling}
+
 @defproc[(gpu-presenter-render! [presenter gpu-presenter?])
          (or/c 'present-requested 'skipped 'cancelled)]{
 Performs one immediate presentation attempt on the presenter owner thread.
@@ -75,6 +79,8 @@ must accept one positional argument. Replacement is rejected for a closing,
 closed, or failed presenter.
 }
 
+@section{Presenter Cleanup}
+
 @defproc[(gpu-presenter-close! [presenter gpu-presenter?]) void?]{
 Requests deterministic owner-thread closure. Closing during a frame cancels
 presentation and defers destruction until the frame unwinds. Frame-target cache
@@ -90,7 +96,7 @@ from a finalizer thread.
 @defproc[(gpu-drain-pending-presenters!)
          (listof (and/c hash? immutable?))]{
 Attempts pending presenter cleanup owned by the current thread and returns their
-detached diagnostic snapshots. The procedure rejects calls from inside an active
+detached diagnostic snapshots. The function rejects calls from inside an active
 GPU or presentation frame. It does not drain presenters owned by other threads.
 }
 

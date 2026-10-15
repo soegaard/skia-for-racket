@@ -9,11 +9,13 @@
 @defmodule[skia/dc-output #:no-declare]
 @(declare-exporting skia/dc-output #:use-sources (skia/dc-output))
 
-The @racketmodname[skia/dc-output] module adapts the supported Racket
+The @racketmodname[skia/dc-output] library adapts the supported Racket
 @racket[draw:dc<%>] drawing subset to Skia PDF, SVG, and CPU-raster canvases.
 Authoring is captured once into a callback-scoped DC and replayed through the
 existing output-policy machinery. The bridge does not render an entire document
 to a bitmap and does not add an implicit GPU fallback.
+
+@local-table-of-contents[#:style 'immediate-only]
 
 @section{Capture and Page Construction}
 

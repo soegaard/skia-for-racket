@@ -6,15 +6,15 @@
 
 @title[#:tag "skia-gpu-native-handoffs"]{Metal and Direct3D Native Handoffs}
 
-The modules in this chapter are explicitly unsafe. Their pointer arguments must
-already designate live native objects of the stated interface or Objective-C
-protocol on the exact device owned by the supplied GPU context. A successful
+The libraries documented here are explicitly unsafe. Their pointer arguments
+must already designate live native objects of the stated interface or
+Objective-C protocol on the exact device owned by the supplied GPU context. A successful
 FFI predicate or native interface query cannot make an arbitrary, forged, or
 freed address safe. Violating these preconditions can crash the process.
 
-The factories create opaque @racket[gpu-external-texture?] tokens for the safe,
-single-use operations in @secref["skia-gpu-external-resources"]. They retain the
-native references needed after construction, but those references do not permit
+The constructors create opaque @racket[gpu-external-texture?] tokens for the
+safe, single-use operations in @secref["skia-gpu-external-resources"]. They
+retain the native references needed after construction, but those references do not permit
 concurrent external and Skia access.
 
 @section{Metal}

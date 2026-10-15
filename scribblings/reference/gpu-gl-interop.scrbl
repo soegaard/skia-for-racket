@@ -9,7 +9,7 @@
 
 These operations temporarily hand the current OpenGL command stream or
 host-owned OpenGL storage across the Skia boundary. They require the exact
-active OpenGL context and its procedure resolver. OpenGL object names are
+active OpenGL context and its function resolver. OpenGL object names are
 interpreted only in that current context; equal integer names do not establish
 resource sharing between contexts.
 

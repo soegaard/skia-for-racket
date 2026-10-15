@@ -9,7 +9,7 @@
 @defmodule[skia/pict #:no-declare]
 @(declare-exporting skia/pict #:use-sources (skia/pict))
 
-The @racketmodname[skia/pict] module converts Skia images, surfaces, and
+The @racketmodname[skia/pict] library converts Skia images, surfaces, and
 recorded pictures to ordinary Racket @racket[pict:pict?] values.
 @racket[image->pict] and @racket[surface->pict] copy CPU pixels;
 @racket[picture->pict] draws a recorded picture into a temporary CPU surface.
@@ -26,6 +26,8 @@ decoding PNG. For a Racket @tt{bitmap%} instead of a pict, use
 Import @racketmodname[skia/pict] separately; it is not re-exported by
 @racketmodname[skia]. Requiring it does not load the native Skia library,
 create a GPU context, or initialize a GUI.
+
+@local-table-of-contents[#:style 'immediate-only]
 
 @section{Images and Surfaces}
 

@@ -6,6 +6,13 @@
 
 @title[#:tag "skia-gui-canvases"]{GUI Drawing Canvases}
 
+These GUI classes present Skia drawing through Racket @racket[canvas%] widgets.
+The raster canvas retains one CPU drawing context across repaints; the GPU canvas
+creates a fresh drawing context for each presenter frame. Both belong to their
+eventspace handler thread, but their pixel and drawing-context lifetimes differ.
+
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Persistent Raster Canvas}
 
 @defmodule[skia/canvas #:no-declare]
@@ -88,7 +95,7 @@ Closes the same resources as @method[skia-canvas% close-skia].
 Returns whether @racket[v] is an instance of @racket[skia-canvas%].
 }
 
-@section{Frame-Scoped GPU Drawing Context}
+@section{Frame-Scoped GPU Canvas}
 
 @defmodule[skia/gpu-canvas #:no-declare]
 @(declare-exporting skia/gpu-canvas #:use-sources (skia/gpu-canvas))
@@ -157,6 +164,8 @@ that implicit CPU readback and visible-pixel verification have not occurred.
 @defproc[(skia-gpu-canvas? [v any/c]) boolean?]{
 Returns whether @racket[v] is an instance of @racket[skia-gpu-canvas%].
 }
+
+@section{GPU Drawing-Context Window}
 
 @defclass[skia-gpu-window% frame% ()]{
 Provides a convenience frame around one @racket[skia-gpu-canvas%].

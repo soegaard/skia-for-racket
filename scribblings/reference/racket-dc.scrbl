@@ -9,11 +9,11 @@
 @defmodule[skia/dc #:no-declare]
 @(declare-exporting skia/dc #:use-sources (skia/dc))
 
-The @racketmodname[skia/dc] module provides a persistent CPU-raster implementation
-of Racket's @racket[draw:dc<%>] interface. Drawing uses Skia, and text uses the
-library's Skia/HarfBuzz text path. Requiring the module does not initialize a GUI
-or GPU context. Constructing a drawing context allocates a native Skia raster
-surface.
+The @racketmodname[skia/dc] library provides a persistent CPU-raster
+implementation of Racket's @racket[draw:dc<%>] interface. Drawing uses Skia, and
+text uses the library's Skia/HarfBuzz text path. Requiring the library does not
+initialize a GUI or GPU context. Constructing a drawing context allocates a
+native Skia raster surface.
 
 The implementation is a compatibility layer with explicit limits, not a claim of
 universal byte-for-byte or metric equivalence with Cairo/Pango or every
@@ -23,6 +23,8 @@ method/arity declaration and remaining exclusions.
 For explicit copying between standalone Draw bitmaps, colors, and paths and
 Skia values, use @racketmodname[skia/racket-draw]. It is separate from this
 DC implementation and never turns ordinary conversions into live DC adapters.
+
+@local-table-of-contents[#:style 'immediate-only]
 
 @section{Persistent Raster Drawing Context}
 
@@ -112,6 +114,8 @@ uses the current affine transform and alignment rules but not the current clip
 or brush/stipple source.
 }
 }
+
+@section{Compatibility Declarations}
 
 @defproc[(skia-dc? [v any/c]) boolean?]{
 Returns whether @racket[v] is an instance of @racket[skia-dc%].
