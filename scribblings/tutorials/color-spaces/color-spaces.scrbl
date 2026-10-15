@@ -31,7 +31,7 @@ to calibrate a monitor or make every display look identical. Save the complete
 
 @tutorial-entry["color-spaces"]
 
-@section{Keep the Numbers Separate from Their Meaning}
+@section[#:tag "color-numbers-and-meaning"]{Keep the Numbers Separate from Their Meaning}
 
 A color space supplies an interpretation for RGB numbers. Its @emph{primaries}
 are the reference red, green, and blue colors. A @emph{transfer function} maps

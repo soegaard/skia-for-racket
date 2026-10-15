@@ -159,7 +159,7 @@ When this image is drawn into PDF or SVG, it is embedded as raster content.
 Saving the containing page as SVG does not reconstruct vector rectangles from
 the stored pixels.
 
-@section{Recognize an Effect That Needs Special Care}
+@section[#:tag "recognize-special-effect"]{Recognize an Effect That Needs Special Care}
 
 The @tutorial-link["effects"] lesson introduced image filters.
 Here, the same kind of filter
