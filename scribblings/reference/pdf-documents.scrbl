@@ -154,7 +154,7 @@ already returned to the caller.
 
 @subsection{Standard Conversion}
 
-PDF documents participate in @racket[file/convertible] as
+PDF documents participate in @racketmodname[file/convertible] as
 @racket['pdf-bytes]. This delegates to @racket[document->pdf-bytes]: the
 document must already be finished and still open. Conversion neither finishes,
 aborts, nor closes the document, so an open document, active page, aborted

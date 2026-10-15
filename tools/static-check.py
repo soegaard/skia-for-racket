@@ -151,9 +151,15 @@ for form in sexps((R/'raster-buffers.rkt').read_text()):
         public=[x for x in form[1:] if isinstance(x,str)]
         assert not [x for x in public if x not in raster_buffer_api], public
 subprocess.run(['bash','-n',str(R/'tools/validate-raster-buffers.sh')],check=True)
-# Check internal local require paths exist (literal relative .rkt strings).
+# Check literal local .rkt paths without mistaking collection module paths
+# such as (lib "scribble/base.rkt") for files relative to the source module.
 for f in racket_files:
-    for ref in re.findall(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',f.read_text()):
+    source=f.read_text()
+    for match in re.finditer(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',source):
+        ref=match.group(1)
+        prefix=source[max(0,match.start()-80):match.start()]
+        if re.search(r'\((?:lib|planet)\s*$',prefix):
+            continue
         if ' ' not in ref:
             assert (f.parent/ref).exists(),(f,ref)
 for shell in ['install-native.sh','install-harfbuzz.sh','audit-symbols.sh','audit-harfbuzz-symbols.sh']:

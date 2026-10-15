@@ -100,7 +100,7 @@ the canvas's current local coordinate system.
 
 @subsection{Standard PNG Conversion}
 
-Surfaces implement @racket[file/convertible]'s protocol for
+Surfaces implement @racketmodname[file/convertible]'s protocol for
 @racket['png-bytes]. It is equivalent to calling @racket[surface->png-bytes]
 with its defaults, so each conversion reflects the surface's current pixels;
 encoded data is not cached. The returned bytes are detached from the surface.

@@ -15,31 +15,6 @@ same @racket[image?] predicate but retain additional context requirements.
 CPU readback, subsetting, and encoding functions in this chapter reject
 GPU-dependent input instead of transferring it implicitly.
 
-@section{Standard Conversion}
-
-Images implement @racket[file/convertible]'s protocol. A live CPU image accepts
-@racket['png-bytes], with the same encoder defaults, color/alpha behavior,
-byte limit, and failure behavior as @racket[image->png-bytes]. The result is a
-detached byte string. Other conversion requests return their supplied default
-unchanged (including a procedure value) without inspecting or decoding the
-image. A supported request propagates its ordinary error instead of using the
-default.
-
-@racketblock[
-(require file/convertible skia)
-(with-skia ([image (rgba-bytes->image 1 1 (bytes 255 0 0 255))])
-  (convert image 'png-bytes))
-]
-
-GPU images also satisfy @racket[convertible?], but @racket['png-bytes] retains
-the ordinary explicit-transfer error. Convert a GPU image through its explicit
-GPU raster-transfer API before converting the resulting CPU image; conversion
-never performs hidden readback.
-
-The @tt{pict:bitmap} constructor requests PNG bytes through this protocol. It
-therefore works for a live CPU image and produces a detached raster pict; it
-does not preserve a live Skia image or a vector representation.
-
 @section{Construction}
 
 @defproc[(image? [v any/c]) boolean?]{
@@ -209,3 +184,28 @@ rectangle must fit inside the image. Destination position and size follow the
 same rules as @racket[draw-image-rect]. Zero source or destination extents are
 accepted by the wrapper but need not produce visible output.
 }
+
+@section{Standard Conversion}
+
+Images implement @racketmodname[file/convertible]'s protocol. A live CPU image accepts
+@racket['png-bytes], with the same encoder defaults, color/alpha behavior,
+byte limit, and failure behavior as @racket[image->png-bytes]. The result is a
+detached byte string. Other conversion requests return their supplied default
+unchanged (including a procedure value) without inspecting or decoding the
+image. A supported request propagates its ordinary error instead of using the
+default.
+
+@racketblock[
+(require file/convertible skia)
+(with-skia ([image (rgba-bytes->image 1 1 (bytes 255 0 0 255))])
+  (convert image 'png-bytes))
+]
+
+GPU images also satisfy @racket[convertible?], but @racket['png-bytes] retains
+the ordinary explicit-transfer error. Convert a GPU image through its explicit
+GPU raster-transfer API before converting the resulting CPU image; conversion
+never performs hidden readback.
+
+When given a Skia image, @tt{pict:bitmap} obtains PNG bytes through
+@racketmodname[file/convertible] and constructs an independent raster pict.
+The original Skia image can be closed after the pict is constructed.

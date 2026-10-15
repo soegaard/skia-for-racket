@@ -83,7 +83,7 @@ but does not alter detached results or files returned by earlier successful call
 
 @subsection{Standard Conversion}
 
-SVG documents participate in @racket[file/convertible] as
+SVG documents participate in @racketmodname[file/convertible] as
 @racket['svg-bytes]. It has exactly @racket[svg-document->bytes]'s lifecycle:
 the document must have finished successfully and must remain open. Conversion
 does not complete, abort, or release it. Unsupported requests return their

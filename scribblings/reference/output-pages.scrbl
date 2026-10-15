@@ -16,20 +16,6 @@ margins, a background, and a drawing callback. It owns no native resource.
 Exporting it invokes the callback again; it is not a recorded picture. Resources
 captured by the callback must remain open whenever the page is drawn.
 
-Output pages also implement @racket[file/convertible]. They accept
-@racket['png-bytes], @racket['svg-bytes], and @racket['pdf-bytes]. PNG first
-rasterizes through @racket[output-page->image] at its fixed 96-DPI default
-(including its ceiling pixel rounding), then uses @racket[image->png-bytes]. It
-therefore produces a raster result. SVG and PDF use @racket[output->bytes] with
-their existing defaults. Each supported conversion invokes the page callback
-once; a later conversion intentionally invokes it again. Temporary raster
-images are released even if the callback raises or escapes. This matters for
-deferred Scribble rendering: resources captured by a page must stay live until
-the renderer requests its chosen format. Unsupported requests return the exact
-supplied default unchanged and do not draw the page. GPU values captured by a
-callback retain their ordinary explicit-transfer rules; conversion adds no
-implicit transfer.
-
 @section{Dimensions and Page Descriptions}
 
 @defproc[(unit->points [value real?] [unit (or/c 'pt 'in 'mm 'cm 'px) 'pt]) real?]{
@@ -183,6 +169,22 @@ is explicit; it is not inferred from the filename suffix. The destination is
 resolved before callbacks run. Its parent directory must exist. Publication
 uses the temporary-file and rename rules of @racket[save-pdf] or @racket[save-svg].
 }
+
+@subsection{Standard Conversion}
+
+Output pages also implement @racketmodname[file/convertible]. They accept
+@racket['png-bytes], @racket['svg-bytes], and @racket['pdf-bytes]. PNG first
+rasterizes through @racket[output-page->image] at its fixed 96-DPI default
+(including its ceiling pixel rounding), then uses @racket[image->png-bytes]. It
+therefore produces a raster result. SVG and PDF use @racket[output->bytes] with
+their existing defaults. Each supported conversion invokes the page callback
+once; a later conversion intentionally invokes it again. Temporary raster
+images are released even if the callback raises or escapes. This matters for
+deferred Scribble rendering: resources captured by a page must stay live until
+the renderer requests its chosen format. Unsupported requests return the exact
+supplied default unchanged and do not draw the page. GPU values captured by a
+callback retain their ordinary explicit-transfer rules; conversion adds no
+implicit transfer.
 
 @section[#:tag "skia-raster-fallback"]{Text Representation and Explicit Raster Fallback}
 
