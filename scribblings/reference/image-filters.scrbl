@@ -508,6 +508,6 @@ positive extents and drawing-scalar coordinates. It selects the picture's
 rasterization rectangle, not a fit-to-size transform of the recorded commands.
 Omitting it uses the picture's native cull rectangle. The result is clipped to
 both the target and the picture's cull rectangle. The optional crop uses the
-common output-region rules of this chapter. The source picture must be open
+common image-filter output-region rules. The source picture must be open
 during construction; retained GPU dependencies keep their own affinity rules.
 }

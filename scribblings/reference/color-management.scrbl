@@ -16,6 +16,10 @@ An omitted or @racket[#f] color-space argument does not mean sRGB. Its meaning
 depends on the operation; for @racket[make-surface] and @racket[rgba-bytes->image],
 it creates an untagged result rather than selecting a default profile.
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Standard Color Spaces}
+
 @defproc[(color-space? [v any/c]) boolean?]{
 Returns @racket[#t] for a Skia color-space resource and @racket[#f] otherwise.
 A closed color-space wrapper still satisfies this predicate but cannot be used
@@ -92,8 +96,6 @@ pixel samples.
 The result is @racket['(#t #f #t #f #f #t)].
 }
 
-
-@local-table-of-contents[#:style 'immediate-only]
 
 @section[#:tag "skia-color-gamma"]{Changing the Transfer Function}
 
@@ -356,7 +358,7 @@ check @racket[current-skia-byte-limit]. A recognized description can still be
 rejected when used to construct a native space.
 
 Use @racket[bytes->immutable-bytes] on an exported profile when an immutable
-descriptor value is needed. The procedure @racket[color-space->icc-bytes]
+descriptor value is needed. The function @racket[color-space->icc-bytes]
 returns mutable bytes, even though it can describe a valid color space.
 }
 

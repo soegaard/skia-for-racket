@@ -15,8 +15,8 @@ two child shaders before the paint reaches its drawing target.
 Runtime effects can be used by CPU drawing. Compiling one does not create a GPU
 context. The available SkSL language is the one supported by the installed
 compatible native library, not an arbitrary desktop GLSL implementation.
-Native rejection raises an exception. Compilation diagnostics use the dedicated
-exception type documented below.
+Native rejection raises an exception. Compilation diagnostics use exceptions
+satisfying @racket[exn:fail:skia-sksl?].
 
 @defmodule[skia/runtime-effects #:no-declare]
 @(declare-exporting skia skia/runtime-effects #:use-sources (skia/runtime-effects))

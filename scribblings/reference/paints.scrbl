@@ -8,6 +8,10 @@ A @deftech{paint} supplies the appearance of a drawing operation. It holds value
 as a color and stroke width, and may retain shaders, effects, or filters.
 It does not contain the shape being drawn or the canvas's current transform.
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Construction}
+
 @defproc[(paint? [v any/c]) boolean?]{
 Returns @racket[#t] for a Skia paint and @racket[#f] otherwise. The result does
 not indicate whether the paint is open or whether it retains GPU-dependent
@@ -65,10 +69,8 @@ The constructor checks options before allocating the native paint.
 The first paint fills geometry; the second draws its outline.
 
 Effects may require rasterization in document output even though the same drawing
-procedure accepts the paint.
+function accepts the paint.
 }
-
-@local-table-of-contents[#:style 'immediate-only]
 
 @section[#:tag "skia-blend-modes"]{Blend Modes}
 
@@ -77,7 +79,8 @@ color already in the drawing target. The paint's @racket[#:blend-mode] selects
 this operation. The source includes the paint's color or shader output and its
 alpha; the destination is not necessarily the surface's original background.
 
-The equations below describe fully covered pixels with color channels and alpha
+The equations in this section describe fully covered pixels with color channels
+and alpha
 in the range 0 through 1. They do not include clipping, partial edge coverage,
 rounding, or extended-range floating-point storage. Blending does not by itself
 convert encoded RGB values to linear light. The drawing target's color space
@@ -87,7 +90,7 @@ and pixel format also matter.
 
 Let @math{S} and @math{D} be source and destination RGBA vectors with RGB
 premultiplied by alpha. Let @math{a} and @math{b} be their respective alpha
-components. The result @math{R} below is also premultiplied RGBA. Addition and
+components. The result @math{R} is also premultiplied RGBA. Addition and
 multiplication of vectors operate on each component, including alpha.
 
 @tabular[#:sep @hspace[2]
@@ -111,7 +114,7 @@ multiplication of vectors operate on each component, including alpha.
 The words inside and outside describe alpha weighting, not binary geometry
 selection. The default @racket['src-over] gives alpha @math{a + b - a b}.
 The @racket['modulate] mode instead gives alpha @math{a b}; it is not the same
-operation as @racket['multiply] below when either input is translucent.
+operation as the @racket['multiply] mode when either input is translucent.
 
 @subsection{Separable Color Blending}
 

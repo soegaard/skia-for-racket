@@ -16,6 +16,8 @@ of the caller's wrappers. Numeric coefficients must be drawing scalars. Native
 construction failure raises an exception. Applying a filter does not change
 the input image's stored pixels or its color-space metadata.
 
+@section{Core Color Filters}
+
 @defproc[(color-filter? [v any/c]) boolean?]{
 Returns @racket[#t] for a color-filter resource and @racket[#f] otherwise.
 The predicate remains true after closure.
@@ -66,7 +68,7 @@ sees the preceding stage's output, including its clamping. Both filters are
 retained. Their caller-owned wrappers may subsequently be closed.
 }
 
-@section{Additional Color Operations}
+@section{Additional Color Filters}
 
 @defmodule[skia/color-filters #:no-declare]
 @(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))

@@ -2,9 +2,10 @@
 
 @title[#:tag "skia-reference-color-paint-effects" #:style 'toc]{Color, Paint, and Effects}
 
-Paints determine how drawing is colored and composited. Colors, shaders, path
-effects, filters, and runtime effects provide the values and transformations
-used by paints and image processing.
+Colors and color spaces describe channel values and their interpretation.
+Paints combine colors with shaders, blend modes, path effects, and filters to
+determine how drawing is rendered. Runtime effects provide programmable
+shaders, color filters, and blenders.
 
 @local-table-of-contents[]
 
