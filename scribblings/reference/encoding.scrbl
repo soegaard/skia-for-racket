@@ -4,6 +4,10 @@
 
 @title[#:tag '("skia-png" "skia-encoding")]{Image Encoding}
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{PNG Surface Output}
+
 @defproc[(save-png [surface surface?] [filename path-string?]
                    [#:exists exists (or/c 'error 'replace) 'error]
                    [#:compression compression (integer-in 0 9) 6]
@@ -28,7 +32,7 @@ The following example permits running the same save more than once:
 
 The complete PNG is encoded before the destination is opened. An encoding
 failure therefore does not truncate an existing destination. A filesystem
-failure during writing is still possible; this procedure does not promise an
+failure during writing is still possible; this function does not promise an
 atomic file replacement or rollback of a partially written file.
 
 The optional @racket[space] requests sample conversion before encoding. The
@@ -141,7 +145,7 @@ Dispatches to @racket[image->png-bytes], @racket[image->jpeg-bytes], or
 @racket[image->webp-bytes] according to @racket[format].
 
 The contracts of the format-specific options depend on @racket[format], as shown
-below. An option marked Ignored is not inspected by the selected encoder and
+in the table. An option marked Ignored is not inspected by the selected encoder and
 may have any value. The @racket[any/c] contracts in the signature do not relax
 the restrictions on an option used by the selected format.
 

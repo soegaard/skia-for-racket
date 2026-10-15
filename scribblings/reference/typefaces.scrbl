@@ -120,7 +120,7 @@ Failure to obtain a native typeface raises an exception, not @racket[#f].
                 [#:slant slant (or/c 'upright 'italic 'oblique) 'upright]) typeface?]{
 Creates an owned typeface using the default font system and the requested
 family and style. The family string must not contain NUL. Native matching may
-substitute a family or style; this procedure does not verify exact family-name
+substitute a family or style; this function does not verify exact family-name
 agreement. Native failure raises an exception. Use
 @racket[font-manager-match-family] to select through a particular manager.
 }
@@ -131,8 +131,8 @@ Loads an owned typeface from an existing file. The zero-based @racket[index]
 selects a face within a collection and must fit the native signed-integer index.
 A path containing NUL, missing file, unsupported font, or native failure raises
 an exception. This loader uses the platform's native file-loading behavior;
-@racket[typeface-from-bytes] provides the collection-member handling described
-below for copied input.
+@racket[typeface-from-bytes] provides copied-byte loading with explicit
+collection-member selection.
 }
 
 @defproc[(typeface-family-name [face typeface?]) string?]{
@@ -159,8 +159,8 @@ Returns the face's declared slant: upright, italic, or oblique.
 @defmodule[skia/typefaces #:no-declare]
 @(declare-exporting skia skia/typefaces #:use-sources (skia/typefaces))
 
-The remaining bindings in this chapter are also provided by
-@racketmodname[skia/typefaces]. A @deftech{font style} is a detached, immutable
+The font-style, style-set, copied-data, and metadata bindings are also provided
+by @racketmodname[skia/typefaces]. A @deftech{font style} is a detached, immutable
 weight/width/slant description, not a typeface and not a native resource.
 
 The weight names denote the following integers: @racket['invisible] is 0,
@@ -329,7 +329,7 @@ are significant; this operation does not check that a table exists.
 
 @defproc[(font-table-tag->bytes [tag (integer-in 0 #xffffffff)]) (and/c bytes? immutable?)]{
 Returns the immutable four-byte representation of the packed integer @racket[tag].
-Unlike @racket[font-table-tag], this procedure accepts only an integer.
+Unlike @racket[font-table-tag], this function accepts only an integer.
 
 @racketblock[
 (= (font-table-tag "head") #x68656164)

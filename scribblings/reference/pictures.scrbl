@@ -2,14 +2,14 @@
 
 @(require (for-label racket/base racket/contract skia skia/pictures))
 
-@title[#:tag "skia-pictures"]{Pictures and Recording}
+@title[#:tag "skia-pictures"]{Pictures}
 
 @defmodule[skia/pictures #:no-declare]
 @(declare-exporting skia skia/pictures #:use-sources (skia/pictures))
 
 A @deftech{picture} is an immutable recording of drawing commands and their
 retained drawing data. Replaying a picture sends those commands to a canvas;
-it does not call the Racket procedure that originally recorded them. A picture
+it does not call the Racket function that originally recorded them. A picture
 can contain image drawing as well as geometry and text. Recording pixels does
 not turn them into vector geometry.
 
@@ -17,7 +17,7 @@ A @deftech{picture recorder} owns a recording canvas while recording is active.
 A finished picture owns its recording independently of the recorder and of the
 caller's paints and paths. Closing those wrappers does not discard the picture.
 Retaining a GPU-backed dependency does not remove its context or thread rules.
-The ordinary CPU examples below do not imply that such a recording is portable
+The ordinary CPU examples do not imply that such a recording is portable
 between GPU contexts or serializable without readback.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -191,8 +191,8 @@ content may impose additional serialization restrictions.
                             [#:width width (or/c #f (and/c real? (>=/c 0))) #f]
                             [#:height height (or/c #f (and/c real? (>=/c 0))) #f]) picture?]{
 Returns an owned picture decoded from a copied snapshot of trusted SKP data.
-Later mutation of @racket[data] does not modify the picture. Trust must be
-explicitly enabled as described above; the default raises an exception.
+Later mutation of @racket[data] does not modify the picture. The caller must
+explicitly pass @racket[#:trusted? #t]; the default raises an exception.
 
 Without overrides, the native cull width and height become the nominal size.
 Both overrides must be given together and must be nonnegative drawing scalars.

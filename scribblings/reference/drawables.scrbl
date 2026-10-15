@@ -17,6 +17,8 @@ Conversion retains the necessary native content independently. It does not
 turn a raster image into vector geometry or discard the output restrictions
 of captured resources.
 
+@section{Construction}
+
 @defproc[(drawable? [v any/c])
           boolean?]{
 Returns @racket[#t] for a drawable wrapper, including a closed one, and
@@ -35,7 +37,7 @@ No Racket drawing callback runs during later playback.
           [height (integer-in 1 32768)]
           [draw (-> canvas? any)])
           drawable?]{
-Calls the drawing procedure once on a temporary picture-recording canvas,
+Calls the drawing function once on a temporary picture-recording canvas,
 then returns the captured recorded drawable. Callback results are discarded.
 The canvas is borrowed only for the callback; it must not escape for later use.
 Temporary recording resources are released on success or escape.
@@ -61,6 +63,8 @@ allocating that raster image.
 The callback count is 1 despite two playbacks.
 }
 
+@section{Playback and Inspection}
+
 @defproc[(draw-drawable [canvas canvas?]
           [drawable drawable?]
           [#:matrix matrix (or/c matrix? #f) #f]
@@ -69,7 +73,7 @@ The callback count is 1 despite two playbacks.
 Draws the recorded content with an optional affine transform. Retained mode
 uses the canvas drawable operation, allowing a recording to retain the drawable.
 Immediate mode executes the drawable's native drawing on the current canvas.
-Neither mode calls back into the original Racket authoring procedure.
+Neither mode calls back into the original Racket authoring function.
 
 The current canvas state and retained-resource restrictions still apply. The
 optional transform is not a projective matrix, and mode does not choose CPU

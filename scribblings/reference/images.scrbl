@@ -12,8 +12,8 @@ An image snapshot and its source surface have separate lifetimes.
 
 The constructors here create CPU-compatible images. GPU images satisfy the
 same @racket[image?] predicate but retain additional context requirements.
-CPU readback, subsetting, and encoding functions in this chapter reject
-GPU-dependent input instead of transferring it implicitly.
+CPU readback, subsetting, and encoding reject GPU-dependent input instead of
+transferring it implicitly.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -149,7 +149,8 @@ read back for a CPU or document target.
                      [#:paint paint (or/c paint? #f) #f]) void?]{
 Draws the image with its upper-left corner at coordinates @racket[x] and
 @racket[y], using its pixel width and height as local drawing dimensions.
-The default sampling is nearest, unlike the scaled rectangle operations below.
+The default sampling is nearest; @racket[draw-image-rect] and
+@racket[draw-image-subrect] default to linear sampling.
 }
 
 @defproc[(draw-image-rect [canvas canvas?] [image image?] [x real?] [y real?]
@@ -193,7 +194,7 @@ Images implement @racketmodname[file/convertible]'s protocol. A live CPU image a
 @racket['png-bytes], with the same encoder defaults, color/alpha behavior,
 byte limit, and failure behavior as @racket[image->png-bytes]. The result is a
 detached byte string. Other conversion requests return their supplied default
-unchanged (including a procedure value) without inspecting or decoding the
+unchanged (including a function value) without inspecting or decoding the
 image. A supported request propagates its ordinary error instead of using the
 default.
 

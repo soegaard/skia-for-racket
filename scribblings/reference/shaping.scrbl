@@ -16,6 +16,10 @@ Shaping one run is not paragraph layout. It does not choose fallback fonts,
 split mixed scripts into separate runs, or apply the Unicode bidirectional
 algorithm to an entire paragraph. Use @racket[layout-mixed-text] for those tasks.
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Shapers and Shaped Runs}
+
 @defproc[(shaper? [v any/c]) boolean?]{
 Returns @racket[#t] for a shaper resource and @racket[#f] otherwise. A closed shaper still
 satisfies it.
@@ -147,7 +151,7 @@ shaper, and paint must satisfy their native-use lifetime rules. The caller is
 responsible for matching the run to its shaping font. The operation does not
 close its arguments.
 
-An empty run draws nothing. For other runs the procedure creates and releases
+An empty run draws nothing. For other runs the function creates and releases
 a temporary text blob, or a temporary outline path when outline output is
 selected. Outline output has the limitations of @racket[shaped-run->path].
 }

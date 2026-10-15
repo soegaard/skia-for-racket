@@ -12,10 +12,10 @@ Images are immutable drawing resources, but their pixels need not already be dec
 CPU-accessible. These queries distinguish validity, deferred generation, texture backing, and
 immediately available pixels. None of those properties alone proves the others.
 
-The materialization, pixel-transfer, and filtering procedures in this chapter require CPU
-images. They reject GPU-owned or texture-backed inputs instead of silently reading back a
-texture. Transfer a GPU image explicitly before using these operations. Ordinary image queries
-still enforce the source resource's lifetime, thread, and any GPU-context restrictions.
+The materialization, pixel-transfer, and filtering functions require CPU images. They reject
+GPU-owned or texture-backed inputs instead of silently reading back a texture. Transfer a GPU
+image explicitly before using these operations. Ordinary image queries still enforce the
+source resource's lifetime, thread, and any GPU-context restrictions.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -179,7 +179,7 @@ is independent of subsequent closure of the input wrappers.
 
 Only the reported source rectangle is drawn, at its reported offset.
 
-@section{Racket Bitmaps}
+@section{Racket Bitmap Conversion}
 
 @defmodule[skia/bitmap #:no-declare]
 @(declare-exporting skia/bitmap #:use-sources (skia/bitmap))
@@ -187,7 +187,7 @@ Only the reported source rectangle is drawn, at its reported offset.
 @defproc[(image->bitmap [image image?])
           (is-a?/c bitmap%)]{
 Returns an independent mutable Racket bitmap with an alpha channel. Pixel access follows
-@racket[image->rgba-bytes] with premultiplied alpha, including that procedure's format and
+@racket[image->rgba-bytes] with premultiplied alpha, including that function's format and
 CPU-access restrictions. The bytes are reordered from RGBA to ARGB; this is not a promise of
 preserving extended floating-point values or ICC metadata.
 
@@ -196,7 +196,7 @@ Closing the source does not close the bitmap. The result follows Racket bitmap o
 canvas.
 
 For the reverse, explicit copy from a Racket @racket[bitmap%] to a CPU Skia image,
-use @racketmodname[skia/racket-draw]. Its @racket[bitmap->image] procedure has
+use @racketmodname[skia/racket-draw]. Its @racket[bitmap->image] function has
 separate physical/logical readback and loaded-mask policies; it is not an
 implicit conversion on image-consuming operations.
 }
@@ -204,7 +204,7 @@ implicit conversion on image-consuming operations.
 @defproc[(surface->bitmap [surface surface?])
           (is-a?/c bitmap%)]{
 Returns an independent mutable Racket bitmap with an alpha channel. Pixel access follows
-@racket[surface->rgba-bytes] with premultiplied alpha, including that procedure's format and
+@racket[surface->rgba-bytes] with premultiplied alpha, including that function's format and
 CPU-access restrictions. The bytes are reordered from RGBA to ARGB; this is not a promise of
 preserving extended floating-point values or ICC metadata.
 

@@ -2,8 +2,9 @@
 
 @title[#:tag "skia-reference-text-fonts" #:style 'toc]{Text and Fonts}
 
-Typefaces and fonts provide glyph data and metrics. Shaping, text blobs, and
-layout build positioned text that can be measured or drawn.
+Font managers and typefaces select glyph designs; fonts add size and rendering
+settings. Shaping produces positioned glyph runs, text blobs retain reusable
+glyph placement, and text layout arranges runs into lines.
 
 @local-table-of-contents[]
 

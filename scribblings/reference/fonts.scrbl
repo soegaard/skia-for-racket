@@ -8,14 +8,14 @@
 
 A @deftech{font} combines a @tech{typeface} with a size, horizontal scale,
 skew, and rendering settings. Fonts are mutable @tech{owned resource}s.
-The operations in this chapter require open native resources on their owning
-thread unless an entry only inspects a detached metrics value.
+Native font operations require open resources on their owning thread unless
+an entry only inspects a detached metrics value.
 
 A @deftech{glyph ID} is a typeface-specific index, not a Unicode code point.
 Glyph zero is the missing-glyph index. A glyph ID from one face must not be
 interpreted as the same glyph in another face.
 
-The simple text and glyph-query operations below do not perform contextual
+The simple text and glyph-query functions do not perform contextual
 shaping, bidirectional reordering, font fallback, or paragraph wrapping.
 Use @racket[shape-text] for a single shaped run and @racket[layout-mixed-text]
 for mixed-direction text and font fallback.
@@ -53,7 +53,7 @@ No fallback chain is installed in the resulting font.
 Edging selects aliased, grayscale-antialiased, or subpixel-antialiased glyph
 edges. Subpixel positioning is a separate option. Hinting and the other flags
 request native font behavior; a target or font backend may limit their effect.
-The corresponding queries and setters below describe each setting.
+The corresponding query and setter functions describe each setting.
 
 @racketblock[
 (with-skia ([face (make-typeface)]
@@ -316,7 +316,8 @@ bitmap or color glyph rendering into vectors.
 @defmodule[skia/fonts #:no-declare]
 @(declare-exporting skia skia/fonts #:use-sources (skia/fonts))
 
-The remaining bindings are also provided by @racketmodname[skia/fonts]. Batch
+The additional font-control and glyph-query bindings are also provided by
+@racketmodname[skia/fonts]. Batch
 glyph queries return immutable vectors of copied measurements. Their glyph
 inputs may be lists or vectors of unsigned 16-bit IDs, but each ID must also
 be less than the current typeface's glyph count. Query payloads are bounded by

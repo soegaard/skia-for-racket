@@ -11,10 +11,14 @@ placement. It retains the font information needed to draw them. A blob does
 not contain a paint, perform paragraph wrapping, or turn glyph IDs into a
 portable character string.
 
-The single-run constructor and the multi-run builder below produce blobs that
-can be drawn repeatedly with different paints or canvas transforms. Native
+Single-run construction and the multi-run builder API produce blobs that can
+be drawn repeatedly with different paints or canvas transforms. Native
 operations require open resources on their owning thread. Drawing also follows
 the canvas's and paint's GPU-context conditions when applicable.
+
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Single-Run Text Blobs}
 
 @defproc[(text-blob? [v any/c]) boolean?]{
 Returns @racket[#t] for a text-blob resource and @racket[#f] otherwise. Closure does not change
@@ -78,8 +82,6 @@ bitmap glyphs.
 }
 
 
-@local-table-of-contents[#:style 'immediate-only]
-
 @section[#:tag "skia-text-blob-builders"]{Building Multiple Runs}
 
 @defmodule[skia/text-blobs #:no-declare]
@@ -92,7 +94,8 @@ mutation, font mutation, or closure of the original font does not change them.
 The builder and finished blob retain their own font information.
 
 Finishing consumes the builder. A finished blob is independent of the builder's
-lifetime and can use the drawing, bounds, and outline operations above. Closing
+lifetime and can be used with @racket[draw-text-blob], @racket[text-blob-bounds],
+and @racket[text-blob->path]. Closing
 an unfinished builder discards its runs and releases its retained resources.
 A builder is not a reusable accumulator, and finishing does not reset it.
 
@@ -146,7 +149,7 @@ exception rather than producing another blob.
 
 @subsection[#:tag "skia-text-run-metadata"]{Optional Text and Clusters}
 
-The four glyph-based append procedures accept @racket[#:text] and
+The four glyph-based append functions accept @racket[#:text] and
 @racket[#:clusters]. Both must be @racket[#f], or both must be supplied. Text
 may be a Racket string or a byte string containing valid UTF-8; malformed byte
 sequences are rejected. Supplied text is retained as immutable UTF-8 bytes.
@@ -223,7 +226,7 @@ is performed. The shared run-input and metadata rules apply.
                                      (vectorof exact-nonnegative-integer?) #f) #f]) void?]{
 Appends a run with an explicit two-dimensional origin for each glyph, relative
 to the blob's origin. No additional run-origin translation is applied. Unlike
-@racket[make-positioned-text-blob], this procedure accepts empty sequences as
+@racket[make-positioned-text-blob], this function accepts empty sequences as
 an append that creates no run. The shared run-input and metadata rules apply.
 
 @racketblock[
@@ -287,7 +290,7 @@ and are checked against that text according to @secref["skia-text-run-metadata"]
 The original string cannot be reconstructed from the shaped run alone. With
 @racket[#f], neither text nor clusters are retained as blob metadata. The run's
 glyphs and positions are still used. An empty run follows the same validation
-and no-append rules as the glyph-based append procedures.
+and no-append rules as the glyph-based append functions.
 
 @racketblock[
 (with-skia ([font (make-font #:size 24)]
@@ -419,7 +422,7 @@ coverage readback or the output bounds of an image filter. Intervals are returne
 in native order, not as a promised sorted, merged union.
 
 The native backend omits transformed runs when computing intercepts. To avoid
-returning incomplete results, this procedure rejects any blob containing a
+returning incomplete results, this function rejects any blob containing a
 transformed run. The result is subject to @racket[current-skia-byte-limit].
 
 @racketblock[
