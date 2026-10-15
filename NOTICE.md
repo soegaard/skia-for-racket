@@ -10,8 +10,8 @@ URL, and locally computed SHA-256 hashes under `native/<platform>/`.
 Review the upstream license and third-party notices before redistributing a
 bundle with native binaries. See `docs/SOURCES.md` for upstream repositories.
 
-The package is experimental and is not affiliated with, endorsed by, or an
-official binding of either the Skia or Racket projects.
+The package is an independent project and is not affiliated with, endorsed by,
+or an official binding of the Skia or SkiaSharp projects.
 
 
 ## Unicode data

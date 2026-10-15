@@ -3,6 +3,7 @@
 @(require (for-label racket/base racket/contract skia skia/geometry))
 
 @title[#:tag "skia-reference"]{The Skia Reference}
+@author[(author+email "Jens Axel Søgaard" "jensaxel@soegaard.net")]
 
 @defmodule[skia]
 
@@ -62,18 +63,20 @@ before redistributing a bundle that includes native binaries or derived data.
 
 @para{@bold{Project Status and Documentation}}
 
-The Skia package is experimental. It is an independent project and is not
-affiliated with, endorsed by, or an official binding of the upstream Skia,
-SkiaSharp, or Racket projects. The reviewed public API distinguishes stable and
-experimental interfaces; @secref["skia-notation"] describes the Reference
-conventions and stability policy.
+The Skia package is under active development and is experimental. It is an
+independent project and is not affiliated with, endorsed by, or an official
+binding of the upstream Skia, SkiaSharp, or Racket projects. The reviewed
+public API distinguishes stable and experimental interfaces;
+@secref["skia-notation"] describes the Reference conventions and stability
+policy.
 
-This manual specifies the public API, including argument and result contracts,
-resource lifetimes, and failure behavior. The
+This manual is the @bold{Skia Reference}. It specifies the public API,
+including argument and result contracts, resource lifetimes, and failure
+behavior. The
 @seclink["top" #:doc '(lib "skia/scribblings/tutorials/index.scrbl")]{Skia tutorials}
 introduce drawing through complete examples. The @racketmodname[skia] library
 provides the core drawing interface; individual parts and chapters identify
-additional public import paths.
+additional public import paths. A @bold{Skia Guide} is planned.
 
 @para{@bold{Detailed Contents}}
 
