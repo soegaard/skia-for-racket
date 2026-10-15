@@ -8,6 +8,8 @@ Skia integrates with Racket picts, Racket Draw values, and Racket's @racket[draw
 drawing-context interface through explicit bridges and drawing-context
 implementations.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @include-section["pict-bridge.scrbl"]
 @include-section["racket-draw.scrbl"]
 @include-section["racket-dc.scrbl"]

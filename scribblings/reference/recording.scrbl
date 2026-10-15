@@ -5,5 +5,7 @@
 Pictures and recorded drawables capture drawing content for later replay
 without rerunning the Racket procedure that originally produced the drawing.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @include-section["pictures.scrbl"]
 @include-section["drawables.scrbl"]

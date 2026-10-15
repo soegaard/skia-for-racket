@@ -6,6 +6,8 @@ Presentation APIs connect rendered content to Racket GUI windows. They provide
 GPU presenters and widgets together with persistent raster canvases and a
 renderer-selecting canvas interface.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @include-section["gpu-presentation.scrbl"]
 @include-section["gpu-widgets.scrbl"]
 @include-section["gui-canvases.scrbl"]

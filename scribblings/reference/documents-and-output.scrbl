@@ -8,6 +8,8 @@ outputs are assembled and validated. Raster fallback normally executes on the
 CPU; an explicit GPU executor can instead render a selected fallback before
 reading it back into CPU-owned document content.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @include-section["pdf-documents.scrbl"]
 @include-section["svg-documents.scrbl"]
 @include-section["output-pages.scrbl"]
