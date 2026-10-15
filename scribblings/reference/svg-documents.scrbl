@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require (for-label racket/base racket/contract file/convertible skia))
 
 @title[#:tag "skia-svg-documents"]{SVG Documents}
 
@@ -80,6 +80,16 @@ but does not alter detached results or files returned by earlier successful call
 }
 
 @section{Reading and Publishing SVG}
+
+@subsection{Standard Conversion}
+
+SVG documents participate in @racket[file/convertible] as
+@racket['svg-bytes]. It has exactly @racket[svg-document->bytes]'s lifecycle:
+the document must have finished successfully and must remain open. Conversion
+does not complete, abort, or release it. Unsupported requests return their
+supplied default unchanged without checking the document; supported requests
+preserve ordinary unfinished, aborted, closed, and wrong-thread errors rather
+than replacing them with that default.
 
 @defproc[(svg-document->bytes [document svg-document?])
           (and/c bytes? (not/c immutable?))]{

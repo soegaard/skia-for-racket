@@ -1,5 +1,6 @@
 #lang racket/base
-(require "color.rkt" "private/core.rkt" "private/check.rkt"
+(require file/convertible
+         "color.rkt" "private/core.rkt" "private/check.rkt"
          "private/output-util.rkt" "private/pdf-util.rkt" "private/svg-util.rkt"
          "private/audit-trace.rkt")
 (provide unit->points output-page? make-output-page
@@ -11,7 +12,18 @@
 ;; A page describes how to draw; it owns no native resource. The callback can
 ;; close over resources, whose lifetimes remain the caller's responsibility.
 (struct output-page (width height unit margins background clip? draw)
-  #:transparent #:constructor-name make-output-page-record)
+  #:transparent #:constructor-name make-output-page-record
+  #:property prop:convertible
+  (lambda (value request default)
+    ;; Do not validate or draw for a request this page does not support. The
+    ;; scoped image owns the rasterization result only long enough to encode it.
+    (case request
+      [(png-bytes)
+       (with-skia ([image (output-page->image value)])
+         (image->png-bytes image))]
+      [(pdf-bytes) (output->bytes value 'pdf)]
+      [(svg-bytes) (output->bytes value 'svg)]
+      [else default])))
 
 (define (unit->points value [unit 'pt])
   (define factor (output-unit-factor 'unit->points unit))

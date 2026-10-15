@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.75b — Standard file conversion interoperability
+
+- Add `file/convertible` support for CPU images and raster surfaces as PNG,
+  completed PDF and SVG documents as their native vector bytes, and output pages
+  as PNG, SVG, or PDF.
+- Preserve explicit GPU transfers, document lifecycle errors, output defaults,
+  detached results, and repeated output-page callback semantics. Add focused
+  conversion, pict, and deferred Scribble renderer coverage.
+
 ## 0.75a — Native streams and buffered ports (package 0.75)
 
 Owned native memory/file input and dynamic-memory output; safe duplicate

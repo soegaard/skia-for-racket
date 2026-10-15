@@ -1,5 +1,6 @@
 #lang racket/base
 (require "tests/public-api-pure-test.rkt")
+(require "tests/convertible-pure-test.rkt")
 (require "tests/gpu-render-pure-test.rkt")
 (require racket/runtime-path "tests/small-gap-pure-test.rkt")
 (define-runtime-path small-gap-native-tests-file "tests/small-gap-native-test.rkt")
@@ -66,6 +67,7 @@
 (define-runtime-path pdf-native-tests-file "tests/pdf-native-test.rkt")
 (define-runtime-path svg-native-tests-file "tests/svg-native-test.rkt")
 (define-runtime-path output-native-tests-file "tests/output-native-test.rkt")
+(define-runtime-path convertible-native-tests-file "tests/convertible-native-test.rkt")
 
 (define-runtime-path path-matrix-native-tests-file "tests/path-matrix-native-test.rkt")
 
@@ -107,7 +109,7 @@
    [("--pure") "Run only tests that do not load libSkiaSharp"
                  (set! pure-only? #t)]
    #:args () (void))
-  (define failures (+ (run-tests public-api-pure-tests) (run-tests small-gap-pure-tests) (run-tests release-scope-pure-tests) (run-tests global-cache-pure-tests) (run-tests codec-incremental-pure-tests) (run-tests codec-scanline-pure-tests) (run-tests codec-query-pure-tests) (run-tests live-stream-pure-tests) (run-tests stream-pure-tests) (run-tests advanced-canvas-pure-tests) (run-tests gpu-format-pure-tests) (run-tests image-operation-pure-tests) (run-tests float-pixel-pure-tests) (run-tests integer-pixel-pure-tests) (run-tests text-blob-pure-tests) (run-tests font-query-pure-tests) (run-tests typeface-pure-tests) (run-tests geometry-completion-pure-tests) (run-tests effects-pure-tests) (run-tests dc-closure-pure-tests) (run-tests dc-output-pure-tests) (+ (+ (run-tests pure-tests) (run-tests gpu-diagnostics-pure-tests)) (run-tests gpu-context-control-pure-tests)) (run-tests lifetime-tests)
+  (define failures (+ (run-tests public-api-pure-tests) (run-tests convertible-pure-tests) (run-tests small-gap-pure-tests) (run-tests release-scope-pure-tests) (run-tests global-cache-pure-tests) (run-tests codec-incremental-pure-tests) (run-tests codec-scanline-pure-tests) (run-tests codec-query-pure-tests) (run-tests live-stream-pure-tests) (run-tests stream-pure-tests) (run-tests advanced-canvas-pure-tests) (run-tests gpu-format-pure-tests) (run-tests image-operation-pure-tests) (run-tests float-pixel-pure-tests) (run-tests integer-pixel-pure-tests) (run-tests text-blob-pure-tests) (run-tests font-query-pure-tests) (run-tests typeface-pure-tests) (run-tests geometry-completion-pure-tests) (run-tests effects-pure-tests) (run-tests dc-closure-pure-tests) (run-tests dc-output-pure-tests) (+ (+ (run-tests pure-tests) (run-tests gpu-diagnostics-pure-tests)) (run-tests gpu-context-control-pure-tests)) (run-tests lifetime-tests)
                       (run-tests gpu-render-pure-tests)
                       (run-tests gpu-frame-target-pure-tests)
                       (run-tests render-canvas-pure-tests)
@@ -150,6 +152,7 @@
               (run-tests (dynamic-require pdf-native-tests-file 'pdf-native-tests))
               (run-tests (dynamic-require svg-native-tests-file 'svg-native-tests))
               (run-tests (dynamic-require output-native-tests-file 'output-native-tests))
+              (run-tests (dynamic-require convertible-native-tests-file 'convertible-native-tests))
               (run-tests (dynamic-require path-matrix-native-tests-file 'path-matrix-native-tests))
               (run-tests (dynamic-require filter-graph-native-tests-file 'filter-graph-native-tests))
               (run-tests (dynamic-require color-output-native-tests-file 'color-output-native-tests))

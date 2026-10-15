@@ -142,6 +142,7 @@
                   (lambda (v) (raster-output-scale 'current-raster-output-scale v))))
 
 (require ffi/unsafe
+         file/convertible
          racket/list
          racket/match
          racket/path
@@ -264,7 +265,15 @@
          layout-mixed-text draw-mixed-text-layout)
 
 (struct surface (handle width height [floors #:mutable])
-  #:constructor-name make-surface-record)
+  #:constructor-name make-surface-record
+  #:property prop:convertible
+  (lambda (value request default)
+    ;; Unsupported requests must not inspect the resource: in particular, this
+    ;; preserves both the supplied default's identity and GPU's explicit
+    ;; transfer boundary.
+    (case request
+      [(png-bytes) (surface->png-bytes value)]
+      [else default])))
 ;; GPU handles use the domain's deferred-release allocator. The context wrapper
 ;; is retained while the surface is reachable. Native color-space references
 ;; are released with the surface handle, not with a public borrowed wrapper.
@@ -309,7 +318,14 @@
 ;; snapshot-box contains a raw native SkPath pointer owned together with the
 ;; native SkPathMeasure. It is never exposed by the public API.
 (struct path-measure (handle snapshot-box) #:constructor-name make-path-measure-record)
-(struct image (handle width height) #:constructor-name make-image-record)
+(struct image (handle width height)
+  #:constructor-name make-image-record
+  #:property prop:convertible
+  (lambda (value request default)
+    ;; image->png-bytes retains its ordinary CPU/GPU and lifetime checks.
+    (case request
+      [(png-bytes) (image->png-bytes value)]
+      [else default])))
 ;; GPU images use the ordinary image record and an affinity-aware lifetime
 ;; cell. The private bridge exports no pointer access to the public modules.
 (module* gpu-image-internals #f
@@ -618,7 +634,13 @@
 (struct svg-storage ([canvas #:mutable] [xml #:mutable]))
 (struct svg-document (handle storage width height title description prefix
                              [status #:mutable] [floors #:mutable])
-  #:constructor-name make-svg-document-record)
+  #:constructor-name make-svg-document-record
+  #:property prop:convertible
+  (lambda (value request default)
+    ;; The exporter deliberately requires an already-finished, open document.
+    (case request
+      [(svg-bytes) (svg-document->bytes value)]
+      [else default])))
 
 (define (svg-document-h who d)
   (typed-handle who d svg-document? svg-document-handle "svg-document?"))
@@ -848,7 +870,13 @@
 ;; The release closure captures storage, never the wrapper (no finalizer cycle).
 (struct pdf-storage ([stream #:mutable] [data #:mutable] [native-closed? #:mutable]))
 (struct document (handle storage [status #:mutable] [page #:mutable] [count #:mutable])
-  #:constructor-name make-document-record)
+  #:constructor-name make-document-record
+  #:property prop:convertible
+  (lambda (value request default)
+    ;; Conversion never changes document state or publishes unfinished output.
+    (case request
+      [(pdf-bytes) (document->pdf-bytes value)]
+      [else default])))
 ;; Each begin-page gets a distinct token. In particular, an old canvas must
 ;; NEVER become usable again when the same document starts its next page.
 (struct pdf-page (document pointer [floors #:mutable] [scoped? #:mutable]))

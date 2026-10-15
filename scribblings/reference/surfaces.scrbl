@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require (for-label racket/base racket/contract file/convertible skia))
 
 @title[#:tag "skia-surfaces"]{Surfaces and Canvases}
 
@@ -97,6 +97,18 @@ The following operations accept CPU surfaces. They reject GPU surfaces instead
 of performing an implicit readback. A GPU application must request a CPU copy
 through its explicit GPU-transfer API first. These operations read pixels, not
 the canvas's current local coordinate system.
+
+@subsection{Standard PNG Conversion}
+
+Surfaces implement @racket[file/convertible]'s protocol for
+@racket['png-bytes]. It is equivalent to calling @racket[surface->png-bytes]
+with its defaults, so each conversion reflects the surface's current pixels;
+encoded data is not cached. The returned bytes are detached from the surface.
+Unsupported conversion requests return the exact supplied default without
+checking the resource or doing native work. Supported requests preserve the
+ordinary lifetime, thread, byte-limit, and encoder errors even when a default
+is supplied. GPU surfaces remain convertible values, but PNG conversion still
+requires an explicit CPU transfer and never initiates implicit readback.
 
 @defproc[(surface-snapshot [surface surface?]) image?]{
 Returns an owned immutable image of the surface's current pixels. Subsequent

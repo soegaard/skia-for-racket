@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require (for-label racket/base racket/contract file/convertible skia))
 
 @title[#:tag "skia-pdf-documents"]{PDF Documents}
 
@@ -151,6 +151,17 @@ already returned to the caller.
 }
 
 @section{Reading and Publishing PDF}
+
+@subsection{Standard Conversion}
+
+PDF documents participate in @racket[file/convertible] as
+@racket['pdf-bytes]. This delegates to @racket[document->pdf-bytes]: the
+document must already be finished and still open. Conversion neither finishes,
+aborts, nor closes the document, so an open document, active page, aborted
+document, released document, or wrong-thread resource reports the same error as
+the ordinary reader. Unsupported conversion requests return the exact supplied
+default unchanged before any resource check. A supported request never catches
+an exporter failure to substitute that default.
 
 @defproc[(document->pdf-bytes [document document?]) (and/c bytes? (not/c immutable?))]{
 Returns a fresh mutable copy of a finished document's bytes. It does not finish

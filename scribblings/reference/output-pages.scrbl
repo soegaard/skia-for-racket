@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require scribble/eval
-          (for-label racket/base racket/contract skia skia/output))
+          (for-label racket/base racket/contract file/convertible skia skia/output))
 
 @(define unit-eval (make-base-eval))
 @(unit-eval '(require skia/output))
@@ -15,6 +15,20 @@ An @deftech{output page} is a detached description containing dimensions, units,
 margins, a background, and a drawing callback. It owns no native resource.
 Exporting it invokes the callback again; it is not a recorded picture. Resources
 captured by the callback must remain open whenever the page is drawn.
+
+Output pages also implement @racket[file/convertible]. They accept
+@racket['png-bytes], @racket['svg-bytes], and @racket['pdf-bytes]. PNG first
+rasterizes through @racket[output-page->image] at its fixed 96-DPI default
+(including its ceiling pixel rounding), then uses @racket[image->png-bytes]. It
+therefore produces a raster result. SVG and PDF use @racket[output->bytes] with
+their existing defaults. Each supported conversion invokes the page callback
+once; a later conversion intentionally invokes it again. Temporary raster
+images are released even if the callback raises or escapes. This matters for
+deferred Scribble rendering: resources captured by a page must stay live until
+the renderer requests its chosen format. Unsupported requests return the exact
+supplied default unchanged and do not draw the page. GPU values captured by a
+callback retain their ordinary explicit-transfer rules; conversion adds no
+implicit transfer.
 
 @section{Dimensions and Page Descriptions}
 
