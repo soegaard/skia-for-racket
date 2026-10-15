@@ -2,7 +2,7 @@
 
 @(require (for-label racket/base racket/contract skia skia/geometry-primitives))
 
-@title[#:tag "skia-structured-drawing"]{Meshes, Image Grids, and Atlases}
+@title[#:tag "skia-structured-drawing"]{Meshes, Patches, Image Grids, and Atlases}
 
 @defmodule[skia/geometry-primitives #:no-declare]
 @(declare-exporting skia skia/geometry-primitives #:use-sources (skia/geometry-primitives))
@@ -14,7 +14,7 @@ call does not promise vector preservation in PDF or SVG. Portable alternatives
 are described in @secref["skia-portable-drawing"].
 
 Point collections are lists or vectors of two-coordinate lists or vectors.
-Coordinates are drawing scalars. Input arrays are validated and copied before
+Coordinates are @tech{drawing scalar}s. Input arrays are validated and copied before
 submission, and their counts and byte sizes are bounded by
 @racket[current-skia-byte-limit]. Detached specifications retain no canvas.
 

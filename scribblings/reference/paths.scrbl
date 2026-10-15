@@ -35,7 +35,7 @@ remains true after the path is closed as a resource. Closing a contour with
                     [#:fill-rule fill-rule (or/c 'winding 'even-odd) 'winding]) skia-path?]{
 Returns a new path by applying @racket[commands] in order. Each command is a
 list in one of the following forms. Coordinates and weights use the same
-contracts as the corresponding path-mutating procedure.
+contracts as the corresponding path-mutating function.
 
 @verbatim{
 (move x y)                         (rmove dx dy)
@@ -88,7 +88,7 @@ resource remains open and can be reused.
 
 @section[#:tag "skia-path-segments-add"]{Adding Segments}
 
-The segment operations below return @racket[(void)]. A move selects the start
+The segment operations in this section return @racket[(void)]. A move selects the start
 of a contour without adding an edge. A segment appended to an empty path has
 an implicit start at the origin. After a close, a following segment starts a
 new contour at the preceding contour's start; an explicit move avoids relying
@@ -555,7 +555,7 @@ when sharing a distance between the two APIs.
 
 @(declare-exporting skia skia/geometry #:use-sources (skia/geometry))
 
-These operations extend the path construction and inspection interfaces above.
+These operations extend the path construction and inspection interfaces.
 Coordinates and angles are @tech{drawing scalar}s rounded to binary32 before
 native use. Angles are in degrees. A positive oval sweep is clockwise in the
 usual unreflected coordinate system with the y-axis pointing downward.

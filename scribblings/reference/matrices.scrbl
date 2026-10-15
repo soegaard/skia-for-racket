@@ -18,12 +18,13 @@ detached Racket value with coefficients in the order
 This order matches a six-element SVG affine transform; it is not row-major
 order for a three-by-three matrix.
 
-All operations in this chapter are independent of native Skia. Coefficients
-are checked against the @tech{drawing scalar} range and rounded to IEEE
+Affine-matrix operations are independent of native Skia. Coefficients are
+checked against the @tech{drawing scalar} range and rounded to IEEE
 single precision when stored. Mapping operations round input coordinates and
 results in the same way. A computed coefficient or result outside the accepted
-range raises an exception, except for the unavailable inverse described below.
-Matrices need neither @racket[with-skia] nor @racket[skia-close!].
+range raises an exception, except that @racket[matrix-invert] returns
+@racket[#f] when an inverse is unavailable. Matrices need neither
+@racket[with-skia] nor @racket[skia-close!].
 
 @local-table-of-contents[#:style 'immediate-only]
 

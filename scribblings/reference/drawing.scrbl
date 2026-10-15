@@ -2,11 +2,21 @@
 
 @(require (for-label racket/base racket/contract skia skia/canvas-primitives))
 
-@title[#:tag "skia-drawing"]{Drawing}
+@title[#:tag "skia-drawing"]{Drawing Primitives}
 
-Drawing procedures use the native Skia canvas API. The receiving canvas can
+Drawing functions use the native Skia canvas API. The receiving canvas can
 belong to a surface, a recording, a document, or a GPU frame, subject to its
 lifetime and backend restrictions.
+
+Unless an entry says otherwise, drawing functions use the canvas's current
+transform and clip. Functions that accept a paint do not mutate it, and no
+function retains a borrowed canvas for later use. Coordinates are
+@tech{drawing scalar}s. Drawing to a recording stores an operation rather than
+immediately producing pixels.
+
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Shapes, Paint, and Paths}
 
 @defproc[(draw-rect [canvas canvas?]
                     [x real?] [y real?]
@@ -36,14 +46,6 @@ promise immediate pixels or a vector-only representation.
   (save-png surface "rectangle.png" #:exists 'replace))
 ]
 }
-
-@section{Other Primitives}
-
-Unless an entry says otherwise, these procedures use the current transform,
-clip, and paint settings just like @racket[draw-rect]. They do not mutate the
-paint or retain a borrowed canvas for later use. All coordinates are
-@tech{drawing scalar}s. Drawing to a recording stores an operation rather than
-immediately producing pixels.
 
 @defproc[(draw-paint [canvas canvas?] [paint paint?]) void?]{
 Draws @racket[paint] across the current clip without a separate geometric shape.
@@ -98,13 +100,13 @@ operation; later mutation of the source path does not edit earlier drawing.
                        [points (and/c pair? (listof (list/c real? real?)))]
                        [paint paint?] [#:closed? closed? boolean? #t]) void?]{
 Draws connected straight segments through @racket[points]. Each point must be a
-two-element list; vectors are not accepted by this procedure. The default adds
+two-element list; vectors are not accepted by this function. The default adds
 a closing segment from the last point to the first. A single point is accepted,
 although it need not produce visible output.
 
 The @racket[#f] option leaves the contour open for stroking. Filling still uses
 an implicit closing edge, as for any open path contour. Use a stroke paint to
-draw an unfilled open polyline. The temporary path used by this procedure is
+draw an unfilled open polyline. The temporary path used by this function is
 released before the call returns.
 
 @racketblock[
@@ -116,14 +118,15 @@ released before the call returns.
 ]
 }
 
-@section[#:tag "skia-drawing-batches"]{Points, Arcs, and Rounded Rectangles}
-
 @(declare-exporting skia skia/canvas-primitives #:use-sources (skia/canvas-primitives))
 
-These primitives share the drawing-scalar, resource, transform, and clip rules
-above. Batch input is validated before drawing; an empty point batch still
-requires a valid canvas and paint. Native point batches do not imply portable
-SVG output. Use @racket[draw-markers] for explicitly lowered marker geometry.
+@section[#:tag "skia-drawing-batches"]{Points and Arcs}
+
+These primitives use the same drawing-scalar, resource, transform, and clip
+rules as the other drawing functions. Batch input is validated before drawing;
+an empty point batch still requires a valid canvas and paint. Native point
+batches do not imply portable SVG output. Use @racket[draw-markers] for
+explicitly lowered marker geometry.
 
 @defproc[(draw-point [canvas canvas?]
           [x real?]
@@ -168,6 +171,11 @@ arc is closed by its chord; a stroked arc follows the native open-arc behavior.
 A sweep of at least a full turn in magnitude draws the oval.
 }
 
+@section{Rounded-Rectangle Values}
+
+The functions in this section draw the detached rounded-rectangle
+specifications described in @secref["skia-rounded-rectangles"].
+
 @defproc[(draw-rrect [canvas canvas?]
           [shape rounded-rect?]
           [paint paint?])
@@ -189,6 +197,8 @@ requirement, not an arbitrary Boolean subtraction. Failure raises instead of
 submitting undefined native geometry. An inner shape with zero width or height
 is ignored and the outer shape is drawn alone.
 }
+
+@section{Device-Clip Color}
 
 @defproc[(draw-color [canvas canvas?]
           [color color?]

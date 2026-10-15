@@ -29,7 +29,7 @@ This does not promise bit-for-bit equality with native canvas matrix arithmetic.
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Three by Three Matrices}
+@section{Three-by-Three Matrices}
 
 @defproc[(matrix3? [v any/c])
           boolean?]{
@@ -168,7 +168,7 @@ mapping inputs. Zero extents are allowed;
 the result is not a paint, clip, or perspective-visibility calculation.
 }
 
-@section{Four by Four Matrices}
+@section{Four-by-Four Matrices}
 
 @defproc[(matrix4? [v any/c])
           boolean?]{
@@ -417,7 +417,7 @@ is raised. A successful finite product need not equal the pure matrix product bi
           [thunk (-> any)]
           [#:replace? replace? boolean? #f])
           any]{
-Calls the zero-argument procedure under a protected canvas-state scope.
+Calls the zero-argument function under a protected canvas-state scope.
 By default the matrix is concatenated; a true @racket[replace?] replaces it.
 The callback cannot require keyword arguments, and its return values are preserved.
 

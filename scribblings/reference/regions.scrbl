@@ -93,7 +93,8 @@ An empty second region does not count as contained by this native predicate.
           [b region?])
           boolean?]{
 Reports whether the two regions share any pixels. This is an exact region
-query, unlike the sufficient quick-rejection tests below.
+query, unlike @racket[region-quick-reject-rect?] and @racket[region-quick-reject?],
+which provide sufficient quick-rejection tests.
 }
 
 @defproc[(region-intersects-rect? [region region?]
@@ -130,7 +131,7 @@ result is inconclusive; use @racket[region-intersects?] for exact intersection.
 @section{Set Operations and Conversion}
 
 Set operations return new owned regions. They do not change their inputs, even
-when an operation has an empty result. The explicit clear and set procedures are
+when an operation has an empty result. The explicit clear and set functions are
 the exceptions: they mutate an existing region and return @racket[(void)].
 
 @defproc[(region-op [a region?]

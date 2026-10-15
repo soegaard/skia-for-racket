@@ -11,9 +11,9 @@
 @defmodule[skia/portable-drawing #:no-declare]
 @(declare-exporting skia skia/portable-drawing #:use-sources (skia/portable-drawing))
 
-These procedures explicitly lower markers and image batches to ordinary shapes
+These functions explicitly lower markers and image batches to ordinary shapes
 and image rectangles before recording. They do not change the native batch
-procedures or silently select a backend. Portable image lowering still embeds
+functions or silently select a backend. Portable image lowering still embeds
 raster image samples; it is not conversion to vector geometry or a guarantee
 about every viewer, font, color profile, or paint effect.
 
@@ -45,7 +45,7 @@ paint effects portable.
 Plans use row-major cell order. Each cell has integer source-image geometry and
 finite destination geometry. Adjacent cells share rounded binary32 destination
 edges rather than rounding their widths independently. A plan can include cells
-with zero destination area, which the drawing procedures omit.
+with zero destination area, which the drawing functions omit.
 
 @defproc[(image-grid-cell? [v any/c])
           boolean?]{
@@ -113,7 +113,7 @@ Some grid edge cells can have zero extent.
 @defproc[(image-grid-cell-destination [cell image-grid-cell?])
           (and/c (vector/c real? real? real? real?) immutable?)]{
 Returns the immutable destination rectangle derived from the shared rounded
-edges. A zero extent means the drawing procedure omits this cell.
+edges. A zero extent means the drawing function omits this cell.
 }
 
 @defproc[(image-grid-cell-color [cell image-grid-cell?])
@@ -132,7 +132,7 @@ become lists, and fixed colors become packed ARGB integers. Missing colors use
 
 @section{Drawing Lowered Image Batches}
 
-These image procedures accept nearest or linear sampling and a byte alpha
+These image functions accept nearest or linear sampling and a byte alpha
 multiplier. They do not accept an arbitrary paint, sprite tint array, or blend
 mode. They draw source-over, in input or cell order. Repeated source rectangles
 share temporary subset images during one call; those temporaries are released
@@ -185,7 +185,7 @@ the image. This prevents silent rounding of fractional atlas selections.
 
 Each sprite's local origin is the origin of its extracted source rectangle.
 A zero-scale transform is omitted. Canvas state is restored around each sprite;
-the procedure does not group all sprites into an isolated compositing layer.
+the function does not group all sprites into an isolated compositing layer.
 An empty batch still validates its canvas, image, and options.
 
 @racketblock[

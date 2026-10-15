@@ -3,8 +3,9 @@
 @title[#:tag "skia-reference-geometry-drawing" #:style 'toc]{Geometry and Drawing}
 
 Canvases draw primitive geometry directly and can consume reusable paths,
-regions, meshes, image grids, and coordinate transformations. Portable drawing
-helpers lower selected operations to more widely supported primitives.
+regions, meshes, cubic patches, image grids, and coordinate transformations.
+Portable drawing helpers lower selected operations to more widely supported
+primitives.
 
 @local-table-of-contents[]
 
