@@ -2,8 +2,8 @@
 
 @title[#:tag "skia-reference-recording"]{Recording}
 
-These chapters cover drawing content that can be recorded and replayed without
-rerunning the original drawing procedure.
+Pictures and recorded drawables capture drawing content for later replay
+without rerunning the Racket procedure that originally produced the drawing.
 
 @include-section["pictures.scrbl"]
 @include-section["drawables.scrbl"]

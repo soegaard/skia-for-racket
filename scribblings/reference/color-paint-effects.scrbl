@@ -2,8 +2,9 @@
 
 @title[#:tag "skia-reference-color-paint-effects"]{Color, Paint, and Effects}
 
-These chapters describe colors, paints, shaders, and the effects and filters
-that modify drawing and image processing.
+Paints determine how drawing is colored and composited. Colors, shaders, path
+effects, filters, and runtime effects provide the values and transformations
+used by paints and image processing.
 
 @include-section["colors.scrbl"]
 @include-section["color-management.scrbl"]

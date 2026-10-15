@@ -12,7 +12,7 @@ introduce drawing through complete examples.
 @defmodule[skia]
 
 The @racketmodname[skia] library provides the core drawing interface. Individual
-chapters identify additional public import paths.
+parts and chapters identify additional public import paths.
 
 @table-of-contents[]
 
@@ -23,10 +23,11 @@ chapters identify additional public import paths.
 @include-section["image-api.scrbl"]
 @include-section["text-and-fonts.scrbl"]
 @include-section["recording.scrbl"]
-@include-section["racket-integration.scrbl"]
 @include-section["documents-and-output.scrbl"]
 @include-section["streams-pixels-codecs.scrbl"]
 @include-section["gpu-rendering.scrbl"]
+@include-section["gpu-interoperability-output.scrbl"]
 @include-section["presentation-and-gui.scrbl"]
+@include-section["racket-integration.scrbl"]
 
 @index-section[]

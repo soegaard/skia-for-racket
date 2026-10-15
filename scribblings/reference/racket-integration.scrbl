@@ -1,9 +1,12 @@
 #lang scribble/manual
 
+@(require (for-label racket/class (prefix-in draw: racket/draw)))
+
 @title[#:tag "skia-reference-racket-integration"]{Racket Integration}
 
-These chapters connect Skia to Racket picts, Racket Draw values, and Racket
-drawing-context interfaces.
+Skia integrates with Racket picts, Racket Draw values, and Racket's @racket[draw:dc<%>]
+drawing-context interface through explicit bridges and drawing-context
+implementations.
 
 @include-section["pict-bridge.scrbl"]
 @include-section["racket-draw.scrbl"]

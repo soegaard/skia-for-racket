@@ -1,9 +1,10 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-gpu-rendering"]{GPU Rendering}
+@title[#:tag "skia-reference-gpu-rendering"]{GPU Contexts and Resources}
 
-These chapters cover GPU providers and contexts, GPU-backed resources,
-transfers, synchronization, diagnostics, native interoperability, and output.
+GPU rendering uses a backend provider to create a context that owns GPU-side
+state and resources. This part covers context configuration, GPU surfaces and
+images, transfers, synchronization, caches, and diagnostics.
 
 @include-section["gpu-providers.scrbl"]
 @include-section["gpu-context-options.scrbl"]
@@ -14,7 +15,3 @@ transfers, synchronization, diagnostics, native interoperability, and output.
 @include-section["gpu-transfers.scrbl"]
 @include-section["gpu-synchronization.scrbl"]
 @include-section["gpu-diagnostics.scrbl"]
-@include-section["gpu-gl-interop.scrbl"]
-@include-section["gpu-external-resources.scrbl"]
-@include-section["gpu-native-handoffs.scrbl"]
-@include-section["gpu-output.scrbl"]

@@ -2,8 +2,9 @@
 
 @title[#:tag "skia-reference-foundations"]{Foundations}
 
-These chapters define conventions, resource management, native-library
-availability, and process-global cache controls used throughout the Reference.
+The conventions and resource rules in this part apply throughout the Skia API.
+This part also documents native-library availability and process-global cache
+controls.
 
 @include-section["notation.scrbl"]
 @include-section["resources.scrbl"]

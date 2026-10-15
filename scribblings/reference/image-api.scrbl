@@ -1,9 +1,10 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-images"]{Images}
+@title[#:tag "skia-reference-images"]{Images and Encoding}
 
-These chapters cover image resources, image operations, and encoded image
-output.
+Images are immutable pixel sources for drawing, readback, and encoding. This
+part covers CPU-compatible image construction, image operations, and encoded
+image output.
 
 @include-section["images.scrbl"]
 @include-section["image-operations.scrbl"]

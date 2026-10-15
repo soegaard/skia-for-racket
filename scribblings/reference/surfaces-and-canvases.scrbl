@@ -1,9 +1,10 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-surfaces-canvases"]{Surfaces and Canvases}
+@title[#:tag "skia-reference-surfaces-canvases"]{Drawing Targets and Canvas State}
 
-These chapters describe drawing surfaces, their properties, canvases, layers,
-and specialized canvas operations.
+A surface owns a drawing target, while a canvas carries the state used to draw
+into a target. This part covers CPU surfaces, surface properties, canvas state,
+layers, and specialized canvases.
 
 @include-section["surfaces.scrbl"]
 @include-section["surface-properties.scrbl"]

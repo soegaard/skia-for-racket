@@ -2,8 +2,9 @@
 
 @title[#:tag "skia-reference-presentation-gui"]{Presentation and GUI}
 
-These chapters cover presenting rendered content in Racket GUI applications,
-including GPU presenters and persistent or renderer-selecting canvas widgets.
+Presentation APIs connect rendered content to Racket GUI windows. They provide
+GPU presenters and widgets together with persistent raster canvases and a
+renderer-selecting canvas interface.
 
 @include-section["gpu-presentation.scrbl"]
 @include-section["gpu-widgets.scrbl"]

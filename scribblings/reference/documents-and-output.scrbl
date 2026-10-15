@@ -2,8 +2,9 @@
 
 @title[#:tag "skia-reference-documents-output"]{Documents and Output}
 
-These chapters cover PDF and SVG documents together with page construction,
-annotations, auditing, and output grouping.
+PDF and SVG outputs record drawing into document-oriented targets. Page
+construction, links, auditing, and bounded output groups control how those
+outputs are assembled and validated.
 
 @include-section["pdf-documents.scrbl"]
 @include-section["svg-documents.scrbl"]
