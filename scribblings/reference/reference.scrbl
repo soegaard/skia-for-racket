@@ -41,12 +41,7 @@ compatibility references are recorded in
 
 @para{@bold{Development and AI Assistance}}
 
-OpenAI Codex has been used extensively in the development of this package,
-including implementation, tests, documentation, and technical review. Codex
-output is treated as proposed work rather than as an authority: accepted
-changes are reviewed against the implementation, the test suites, CI and host
-validation, and the pinned upstream interfaces. AI-generated output by itself
-is not evidence of API behavior or compatibility.
+OpenAI Codex has been used in the development of this package.
 
 @para{@bold{License and Third-Party Software}}
 
@@ -63,20 +58,17 @@ before redistributing a bundle that includes native binaries or derived data.
 
 @para{@bold{Project Status and Documentation}}
 
-The Skia package is under active development and is experimental. It is an
-independent project and is not affiliated with, endorsed by, or an official
-binding of the upstream Skia, SkiaSharp, or Racket projects. The reviewed
-public API distinguishes stable and experimental interfaces;
-@secref["skia-notation"] describes the Reference conventions and stability
-policy.
+The Skia package is under active development. It is an independent project
+and is not affiliated with, endorsed by, or an official binding of the
+upstream Skia or SkiaSharp projects.
 
-This manual is the @bold{Skia Reference}. It specifies the public API,
-including argument and result contracts, resource lifetimes, and failure
-behavior. The
+This manual is the @bold{Skia Reference}.
+
+The
 @seclink["top" #:doc '(lib "skia/scribblings/tutorials/index.scrbl")]{Skia tutorials}
-introduce drawing through complete examples. The @racketmodname[skia] library
-provides the core drawing interface; individual parts and chapters identify
-additional public import paths. A @bold{Skia Guide} is planned.
+introduce drawing through complete examples.
+
+A @bold{Skia Guide} is planned.
 
 @para{@bold{Detailed Contents}}
 
