@@ -1,4 +1,42 @@
-# Skia Reference development: R4c.1
+# Skia Reference development: R4d
+
+## Presentation, GUI, and GPU output integration
+
+Baseline: `efa1ae5e5b7f479ee2cd674fc7f620dfdb0af1fc`
+(`Clarify Reference GPU handoffs`). R4d adds 36 bindings through 36 public
+export paths and five chapters. The Reference has 1232 definitions, 1955
+documented export paths, and 66 conceptual chapters. The checker accounts for
+1978 export records including the retained source-verified one-shot renderer;
+23 records remain for R4e DC integration.
+
+The chapters separate presenter/frame lifetime, raw GPU GUI widgets, persistent
+raster and frame-scoped GPU drawing canvases, unified render canvases, and
+explicit GPU raster execution for bounded PDF/SVG fallbacks. GPU-output
+executors always hand a CPU-owned image to the document layer after explicit
+synchronous readback; they do not create a zero-copy document path.
+
+Class and interface exports use Scribble's native `defclass` and `definterface`
+forms. The source and runtime readers recognize those forms directly. Four
+GUI-initializing modules remain explicitly listed in `runtime_deferred_modules`;
+the ordinary headless binding worker parses their declarations but does not
+`dynamic-require` them. The `skia/gpu-output` procedures remain eligible for
+ordinary headless live binding validation. Fresh rendered xrefs still cover
+every binding target.
+
+`tools/reference-gpu-presentation-pure-test.rkt` exercises native-free presenter
+policy without creating GUI windows or GPU contexts. The repository's existing
+GPU presentation, raster-canvas, GPU-DC, render-canvas, and GPU-output validators
+remain the platform/runtime evidence. This documentation batch does not turn a
+source or policy test into evidence of visible screen pixels, performance, or
+physical hardware acceleration.
+
+R4d changes no library/API behavior. Renderer selection and the GPU-output
+`#:on-unavailable` option remain explicit policies; neither is a general runtime
+fallback that replays application callbacks after rendering has begun. R4e is
+now exactly `skia/dc`, `skia/dc-output`, and `skia/gpu-dc`.
+
+## Earlier R4c.1 development notes
+
 
 ## Editorial clarification after R4c
 

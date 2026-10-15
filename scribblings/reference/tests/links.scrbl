@@ -58,11 +58,18 @@
 
 @(require (for-label (prefix-in gpu-diagnostics: skia/gpu-diagnostics)))
 
+@(require (for-label (prefix-in canvas: skia/canvas)
+                     (prefix-in gpu-gui: skia/gpu-gui)
+                     (prefix-in gpu-canvas: skia/gpu-canvas)
+                     (prefix-in render-canvas: skia/render-canvas)))
+
+
 @(require (for-label
            (prefix-in gpu-egl: skia/gpu-egl)
            (prefix-in gpu-racket-gl: skia/gpu-racket-gl)
            (prefix-in gpu-gl-interop: skia/gpu-gl-interop)
            (prefix-in gpu-interop: skia/gpu-interop)
+           (prefix-in gpu-output: skia/gpu-output)
            (prefix-in unsafe-gpu-metal: skia/unsafe/gpu-metal)
            (prefix-in unsafe-gpu-d3d12: skia/unsafe/gpu-d3d12)))
 
@@ -3492,3 +3499,45 @@ The following links cover the font and text interfaces.
 @racket[unsafe-gpu-metal:make-metal-external-texture]
 @racket[unsafe-gpu-d3d12:call-with-gpu-d3d12-device]
 @racket[unsafe-gpu-d3d12:make-d3d12-external-texture]
+
+@section{GPU Raster Output Execution}
+
+@racket[gpu-output:make-gpu-raster-executor]
+
+@racket[gpu-output:call-with-gpu-raster-executor]
+@section{GPU Presentation and GUI Canvases}
+
+@racket[gpu:gpu-presenter?]
+@racket[gpu:gpu-presenter-backend]
+@racket[gpu:gpu-presenter-context]
+@racket[gpu:gpu-presenter-state]
+@racket[gpu:gpu-presenter-info]
+@racket[gpu:gpu-presenter-render!]
+@racket[gpu:gpu-presenter-request-render!]
+@racket[gpu:gpu-presenter-set-render!]
+@racket[gpu:gpu-presenter-close!]
+@racket[gpu:gpu-drain-pending-presenters!]
+@racket[gpu:gpu-frame?]
+@racket[gpu:gpu-frame-expired?]
+@racket[gpu:gpu-frame-canvas]
+@racket[gpu:gpu-frame-context]
+@racket[gpu:gpu-frame-info]
+@racket[gpu:gpu-frame-width]
+@racket[gpu:gpu-frame-height]
+@racket[gpu:gpu-frame-logical-width]
+@racket[gpu:gpu-frame-logical-height]
+@racket[gpu:gpu-frame-scale-x]
+@racket[gpu:gpu-frame-scale-y]
+@racket[gpu:gpu-frame-generation]
+@racket[gpu:gpu-frame-index]
+@racket[canvas:skia-canvas%]
+@racket[canvas:skia-canvas?]
+@racket[gpu-gui:gpu-canvas%]
+@racket[gpu-gui:gpu-window%]
+@racket[gpu-canvas:skia-gpu-canvas%]
+@racket[gpu-canvas:skia-gpu-canvas?]
+@racket[gpu-canvas:skia-gpu-window%]
+@racket[render-canvas:make-skia-render-canvas]
+@racket[render-canvas:skia-render-canvas<%>]
+@racket[render-canvas:skia-render-canvas?]
+@racket[render-canvas:skia-render-window%]

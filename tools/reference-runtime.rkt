@@ -1,7 +1,7 @@
 #lang racket/base
 
 ;; Read native Scribble forms and inspect public bindings without creating native objects.
-(require json racket/cmdline racket/file racket/list racket/path racket/runtime-path
+(require json racket/class racket/cmdline racket/file racket/list racket/path racket/runtime-path
          racket/string scribble/xref setup/xref syntax/modread
          (only-in scribble/base seclink)
          (only-in scribble/core link-element-tag)
@@ -167,6 +167,10 @@
       [(quote quasiquote racketblock racketblock0 racketmod examples interaction) (void)]
       [(defstruct*) (record-structure! datum)]
       [(defproc) (record! (caadr datum) (procedure-shape (cadr datum)))]
+      [(defclass)
+       (record! (cadr datum) (hasheq 'kind "class" 'arguments '()))]
+      [(definterface)
+       (record! (cadr datum) (hasheq 'kind "interface" 'arguments '()))]
       [(defthing)
        (need (symbol? (cadr datum)) "unsupported constant declaration")
        (record! (cadr datum) (constant-shape (caddr datum)))]
@@ -182,25 +186,38 @@
 (need (= (hash-count declarations) (length specifications))
       "native reader and source checker disagree on the definition count")
 
+(define live-specifications
+  (filter (lambda (spec) (equal? (hash-ref spec 'runtime_check "live") "live"))
+          specifications))
+(define deferred-runtime-specifications
+  (filter (lambda (spec) (not (equal? (hash-ref spec 'runtime_check "live") "live")))
+          specifications))
+
 (for ([spec (in-list specifications)])
   (define name (hash-ref spec 'name))
   (define shape (hash-ref declarations name (lambda () #f)))
   (need shape "native Scribble reader did not find ~a" name)
   (for ([(field value) (in-hash shape)])
     (need (equal? value (hash-ref spec field)) "native reader mismatch: ~a / ~a" name field))
-  (unless (equal? (hash-ref spec 'kind) "syntax")
-    (for ([module (in-list (hash-ref spec 'exports))])
-      (define value (dynamic-require (string->symbol module) (string->symbol name)))
-      (cond
-        [(equal? (hash-ref spec 'kind) "value")
-         (cond
-           [(equal? (hash-ref spec 'value_kind #f) "struct-type")
-            (need (struct-type? value) "not a structure-type descriptor: ~a / ~a" module name)]
-           [(equal? (hash-ref spec 'value_kind #f) "constant")
-            (need (constant-value-valid? spec (string->symbol module) value)
-                  "constant does not satisfy its declared contract: ~a / ~a" module name)]
-           [else (error 'reference-runtime "unsupported value kind: ~a" name)])]
-        [else
+  (when (equal? (hash-ref spec 'runtime_check "live") "live")
+    (unless (equal? (hash-ref spec 'kind) "syntax")
+      (for ([module (in-list (hash-ref spec 'exports))])
+        (define value (dynamic-require (string->symbol module) (string->symbol name)))
+        (cond
+          [(equal? (hash-ref spec 'kind) "value")
+           (cond
+             [(equal? (hash-ref spec 'value_kind #f) "struct-type")
+              (need (struct-type? value)
+                    "not a structure-type descriptor: ~a / ~a" module name)]
+             [(equal? (hash-ref spec 'value_kind #f) "constant")
+              (need (constant-value-valid? spec (string->symbol module) value)
+                    "constant does not satisfy its declared contract: ~a / ~a" module name)]
+             [else (error 'reference-runtime "unsupported value kind: ~a" name)])]
+          [(equal? (hash-ref spec 'kind) "class")
+           (need (class? value) "not a class: ~a / ~a" module name)]
+          [(equal? (hash-ref spec 'kind) "interface")
+           (need (interface? value) "not an interface: ~a / ~a" module name)]
+          [else
          (need (procedure? value) "not a procedure: ~a / ~a" module name)
          (when (equal? (hash-ref spec 'kind) "parameter")
            (need (parameter? value) "not a parameter: ~a" name))
@@ -210,7 +227,7 @@
          (need (and allowed
                     (equal? (map keyword->string required) (hash-ref spec 'required_keywords))
                     (equal? (map keyword->string allowed) (hash-ref spec 'allowed_keywords)))
-               "live keyword mismatch: ~a / ~a" module name)]))))
+               "live keyword mismatch: ~a / ~a" module name)])))))
 
 (need (identifier-binding #'main:with-skia #f) "with-skia has no imported label binding")
 (for ([pair (in-list (list (list #'main:color? #'color:color?)
@@ -227,7 +244,7 @@
   (need (free-label-identifier=? (car pair) (cadr pair))
         "declared color re-exports are not the same label binding"))
 (define alias-namespaces (make-hash))
-(for* ([spec (in-list specifications)]
+(for* ([spec (in-list live-specifications)]
        [module (in-list (hash-ref spec 'exports))]
        #:unless (equal? module (hash-ref spec 'canonical_module)))
   (define canonical (hash-ref spec 'canonical_module))
@@ -351,7 +368,11 @@
 (call-with-output-file output-file #:exists 'error
   (lambda (out)
     (write-json (hasheq 'status "passed" 'racket_version (version)
-                        'definitions (length specifications) 'binding_identity_checked #t
+                        'definitions (length specifications)
+                        'binding_identity_checked (null? deferred-runtime-specifications)
+                        'binding_identity_checked_definitions (length live-specifications)
+                        'binding_identity_deferred_definitions
+                        (length deferred-runtime-specifications)
                         'xref_checked (and xref #t) 'installed_xref installed?
                         'targets targets 'tutorial_targets tutorial-targets
                         'section_targets section-targets) out)

@@ -18,7 +18,8 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 REFERENCE = Path('scribblings/reference')
 MANIFEST = Path('api/reference-coverage.json')
-DEFINITION_FORMS = {'defproc', 'defform', 'defparam', 'defstruct*', 'defthing'}
+DEFINITION_FORMS = {'defproc', 'defform', 'defparam', 'defstruct*', 'defthing',
+                    'defclass', 'definterface'}
 OTHER_DEFINITIONS = {'defproc*', 'defform*', 'defstruct', 'deftogether'}
 
 
@@ -299,6 +300,13 @@ def document_definitions(root: Path):
                     entry = procedure_shape(header)
                 elif form == 'defthing':
                     entry = constant_shape(header)
+                elif form in ('defclass', 'definterface'):
+                    need(isinstance(header, list) and len(header) >= 2
+                         and type(header[0]) is str and not header[0].startswith('#:'),
+                         'invalid class/interface declaration')
+                    entry = dict(name=header[0],
+                                 kind='class' if form == 'defclass' else 'interface',
+                                 arguments=[])
                 elif form == 'defparam':
                     need(len(header) >= 3 and isinstance(header[0], str), 'invalid parameter')
                     entry = dict(name=header[0], kind='parameter', arity_mask='3',
@@ -410,6 +418,11 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
     by_name = {row['name']: row for row in definitions}
     mapped = manifest['definitions']
     need(len({row['name'] for row in mapped}) == len(mapped), 'duplicate manifest definition')
+    runtime_deferred = set(manifest.get('runtime_deferred_modules', []))
+    mapped_modules = {module for row in mapped for module in row['exports']}
+    need(runtime_deferred <= mapped_modules, 'runtime-deferred module is not documented')
+    need(all(module.startswith('skia/') for module in runtime_deferred),
+         'only explicit Skia submodules can defer live runtime checks')
     need(set(by_name) == {row['name'] for row in mapped}, 'definition/manifest coverage mismatch')
     exports = None if documents_only else load_exports(root, manifest)
     claimed, specs = set(), []
@@ -432,7 +445,10 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
                 if spec['kind'] in ('procedure', 'parameter'):
                     for field in ('arity_mask', 'allowed_keywords', 'required_keywords'):
                         need(actual[field] == spec[field], f'{field} mismatch: {key}')
-        specs.append(dict(spec, exports=row['exports'], canonical_module=row['canonical_module']))
+        runtime_check = ('deferred-gui' if any(module in runtime_deferred
+                                                for module in row['exports']) else 'live')
+        specs.append(dict(spec, exports=row['exports'], canonical_module=row['canonical_module'],
+                          runtime_check=runtime_check))
     deferred = []
     if exports is not None:
         policy = manifest['deferred_policy']
@@ -516,7 +532,8 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
                     if exports is not None else None),
                 reflected_inventory_exports=(
                     len(exports) - len(manifest.get('source_verified_additions', []))
-                    if exports is not None else None))
+                    if exports is not None else None),
+                runtime_deferred_modules=sorted(runtime_deferred))
 
 
 class Page(HTMLParser):

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "stage": "R4c",
-  "reviewed_repository_commit": "57f4b0e2a732a9a9c0ec27f05affe074fbf41518",
+  "stage": "R4d",
+  "reviewed_repository_commit": "efa1ae5e5b7f479ee2cd674fc7f620dfdb0af1fc",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
@@ -13,8 +13,8 @@
     }
   ],
   "deferred_policy": {
-    "stage": "R4d-R4e",
-    "reason": "GPU presentation/GUI and Racket DC integration; see docs/REFERENCE-DEVELOPMENT.md."
+    "stage": "R4e",
+    "reason": "Racket DC integration; see docs/REFERENCE-DEVELOPMENT.md."
   },
   "definitions": [
     {
@@ -12699,6 +12699,366 @@
       ],
       "phase": "0",
       "space": null
+    },
+    {
+      "name": "gpu-presenter?",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-backend",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-context",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-state",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-info",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-render!",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-request-render!",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-set-render!",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-presenter-close!",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-drain-pending-presenters!",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame?",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-expired?",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-canvas",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-context",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-info",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-width",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-height",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-logical-width",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-logical-height",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-scale-x",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-scale-y",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-generation",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-frame-index",
+      "chapter": "scribblings/reference/gpu-presentation.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-canvas%",
+      "chapter": "scribblings/reference/gpu-widgets.scrbl",
+      "canonical_module": "skia/gpu-gui",
+      "exports": [
+        "skia/gpu-gui"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-window%",
+      "chapter": "scribblings/reference/gpu-widgets.scrbl",
+      "canonical_module": "skia/gpu-gui",
+      "exports": [
+        "skia/gpu-gui"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-canvas%",
+      "chapter": "scribblings/reference/gui-canvases.scrbl",
+      "canonical_module": "skia/canvas",
+      "exports": [
+        "skia/canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-canvas?",
+      "chapter": "scribblings/reference/gui-canvases.scrbl",
+      "canonical_module": "skia/canvas",
+      "exports": [
+        "skia/canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-gpu-canvas%",
+      "chapter": "scribblings/reference/gui-canvases.scrbl",
+      "canonical_module": "skia/gpu-canvas",
+      "exports": [
+        "skia/gpu-canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-gpu-canvas?",
+      "chapter": "scribblings/reference/gui-canvases.scrbl",
+      "canonical_module": "skia/gpu-canvas",
+      "exports": [
+        "skia/gpu-canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-gpu-window%",
+      "chapter": "scribblings/reference/gui-canvases.scrbl",
+      "canonical_module": "skia/gpu-canvas",
+      "exports": [
+        "skia/gpu-canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-skia-render-canvas",
+      "chapter": "scribblings/reference/render-canvases.scrbl",
+      "canonical_module": "skia/render-canvas",
+      "exports": [
+        "skia/render-canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-render-canvas<%>",
+      "chapter": "scribblings/reference/render-canvases.scrbl",
+      "canonical_module": "skia/render-canvas",
+      "exports": [
+        "skia/render-canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-render-canvas?",
+      "chapter": "scribblings/reference/render-canvases.scrbl",
+      "canonical_module": "skia/render-canvas",
+      "exports": [
+        "skia/render-canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-render-window%",
+      "chapter": "scribblings/reference/render-canvases.scrbl",
+      "canonical_module": "skia/render-canvas",
+      "exports": [
+        "skia/render-canvas"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "make-gpu-raster-executor",
+      "chapter": "scribblings/reference/gpu-output.scrbl",
+      "canonical_module": "skia/gpu-output",
+      "exports": [
+        "skia/gpu-output"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-raster-executor",
+      "chapter": "scribblings/reference/gpu-output.scrbl",
+      "canonical_module": "skia/gpu-output",
+      "exports": [
+        "skia/gpu-output"
+      ],
+      "phase": "0",
+      "space": null
     }
   ],
   "tutorial_links": [
@@ -12745,5 +13105,11 @@
       "source_git_blob": "d12815c3e504a1d056a66e08e85d550446884a3a",
       "source_copy": "api/reference-source/gpu.rkt.b64"
     }
+  ],
+  "runtime_deferred_modules": [
+    "skia/canvas",
+    "skia/gpu-canvas",
+    "skia/gpu-gui",
+    "skia/render-canvas"
   ]
 }

@@ -84,5 +84,11 @@ this manual are described in the
 @include-section["gpu-gl-interop.scrbl"]
 @include-section["gpu-external-resources.scrbl"]
 @include-section["gpu-native-handoffs.scrbl"]
+@include-section["gpu-output.scrbl"]
+
+@include-section["gpu-presentation.scrbl"]
+@include-section["gpu-widgets.scrbl"]
+@include-section["gui-canvases.scrbl"]
+@include-section["render-canvases.scrbl"]
 
 @index-section[]
