@@ -1,4 +1,28 @@
-# Skia Reference development: R4f
+# Skia Reference development: R4g
+
+## Opt-in Racket Draw bridge
+
+Baseline: `4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1`
+(`Clarify Pict bridge introduction`). R4g adds an opt-in
+`skia/racket-draw` reference chapter. The Reference now has 1263 definitions,
+1988 documented export paths, and 71 conceptual chapters. The headless
+inventory records seven bridge exports, including the two unchanged
+`skia/bitmap` bindings re-exported from the bridge. No export paths are
+deferred.
+
+The chapter describes eager detached bitmap, color, and path conversions.
+Bitmap import documents explicit physical/logical density behavior, loaded-mask
+coverage, premultiplied alpha multiplication, and no retained scale/profile
+metadata. Path export returns both a fresh `dc-path%` and its fill style,
+rejects unrepresentable open-contour topology, and makes rational-conic
+approximation explicit and bounded.
+
+The Reference validation runner includes the new pure, native, and consumer
+bridge suites. They cover headless import/color boundaries, exact pixel/mask
+transfer, curve/topology policies, and ordinary bitmap, Skia DC, and vector
+document consumers.
+
+## Earlier R4f development notes
 
 ## Opt-in Racket pict bridge
 

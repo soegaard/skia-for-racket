@@ -14,6 +14,9 @@ call boundaries. Feature-specific restrictions in [API.md](API.md), the
 continue to apply. A disagreement is a documentation defect to resolve, not
 permission to bypass a narrower checked runtime contract.
 
+The opt-in [Racket Draw bridge](RACKET-DRAW.md) is a detached-copy boundary;
+it neither adds implicit adapters nor is re-exported by the root `skia` module.
+
 ## Stability
 
 **Stable** identifies the export/call-boundary compatibility target for the

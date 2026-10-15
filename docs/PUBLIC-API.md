@@ -65,6 +65,7 @@ Experimental names retain that label through convenience re-exports.
 | `pictures.rkt` | stable | headless |
 | `portable-drawing.rkt` | stable | headless |
 | `projective-matrix.rkt` | stable | headless |
+| `racket-draw.rkt` | stable | headless |
 | `raster-buffers.rkt` | stable | headless |
 | `render-canvas.rkt` | experimental | gui |
 | `runtime-effects.rkt` | stable | headless |
@@ -2139,6 +2140,19 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | matrix4? | stable | 0 | procedure | 1 | none | none |
 | vector->matrix3 | stable | 0 | procedure | 1 | none | none |
 | vector->matrix4 | stable | 0 | procedure | 1 | none | none |
+### racket-draw.rkt
+
+Stable opt-in copied Racket Draw boundary. Bitmap density/mask policies and path representability limits remain explicit; shared bitmap exports retain their established stable classification.
+
+| Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
+|---|---|---|---|---|---|---|
+| bitmap->image | stable | 0 | procedure | 1 | none | #:mask, #:resolution |
+| color%->rgba | stable | 0 | procedure | 1 | none | none |
+| dc-path->skia-path | stable | 0 | procedure | 1 | none | #:fill-style |
+| image->bitmap | stable | 0 | procedure | 1 | none | none |
+| rgba->color% | stable | 0 | procedure | 1 | none | none |
+| skia-path->dc-path | stable | 0 | procedure | 1 | none | #:conic-subdivisions |
+| surface->bitmap | stable | 0 | procedure | 1 | none | none |
 ### raster-buffers.rkt
 
 Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.

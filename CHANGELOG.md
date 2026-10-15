@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased — explicit pict snapshots
+## Unreleased — explicit Pict and Racket Draw snapshots
+
+- Add opt-in `skia/racket-draw`: detached bitmap, color, and vector-path
+  copies for ordinary Racket Draw values. Bitmap import has explicit density
+  and mask policies; path export returns a Draw fill style and requires an
+  explicit bounded policy for rational-conic approximation.
 
 - Add opt-in `skia/pict`: eager CPU snapshots for images, surfaces, and
   pictures as ordinary Racket picts, with independent bitmap ownership,

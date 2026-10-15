@@ -300,6 +300,12 @@
     },
     {
       "load_group": "headless",
+      "path": "racket-draw.rkt",
+      "reason": "Stable opt-in copied Racket Draw boundary. Bitmap density/mask policies and path representability limits remain explicit; shared bitmap exports retain their established stable classification.",
+      "stability": "stable"
+    },
+    {
+      "load_group": "headless",
       "path": "raster-buffers.rkt",
       "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
       "stability": "stable"

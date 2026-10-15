@@ -6,7 +6,7 @@ Baseline: `4a6082274e06456aa385fa9337c31528f2f44a4a`. Comparison: SkiaSharp **3.
 
 ## Scope and evidence
 
-**140 capability families; 849 core C function declarations; 86 managed source files; 60 public Racket modules.**
+**140 capability families; 849 core C function declarations; 86 managed source files; 61 public Racket modules.**
 The baseline expects **678 distinct bindings** across **nine registries**, including **609 CPU bindings**. These are not feature-completion percentages.
 
 Each scoped C declaration has exactly one primary disposition. Managed files map to one or more capability families; this does **not** classify every C# overload, property, enum value, platform UI package, or Skia add-on. Normalized C declarations are pinned inputs; the explicit upstream-checkout gate verifies their source bytes and names.
@@ -112,7 +112,7 @@ See [API decisions](API-DESIGN-DECISIONS.md) for the additive image-info/color/l
 | [images.direct-scale](#images-direct-scale) — Scale/read an image directly into a format-aware pixmap | supported-with-limits | — | `image-operations:image-read-pixmap!`; `image-operations:image-scale-pixmap!`; `image-operations:image->raster-buffer` |
 | [images.adopt-texture](#images-adopt-texture) — Arbitrary adopted-texture lifetime ownership | intentionally-excluded | — | — |
 | [images.raw-storage](#images-raw-storage) — Unrestricted no-copy image storage and release callbacks | intentionally-excluded | — | — |
-| [images.picture](#images-picture) — Picture-to-image rendering | racket-equivalent | — | `main:picture->image`; `pict:image->pict`; `pict:picture->pict`; `pict:surface->pict` |
+| [images.picture](#images-picture) — Picture rendering and explicit Racket Draw snapshots | racket-equivalent | — | `main:picture->image`; `pict:image->pict`; `pict:picture->pict`; `pict:surface->pict`; `racket-draw:bitmap->image`; `racket-draw:color%->rgba`; `racket-draw:dc-path->skia-path`; `racket-draw:rgba->color%`; `racket-draw:skia-path->dc-path` |
 | [images.bitmap-copy](#images-bitmap-copy) — Bitmap/pixmap copy factories | racket-equivalent | — | `raster-buffers:raster-buffer->image`; `raster-buffers:image->image-info` |
 | [images.nontexture](#images-nontexture) — Non-texture versus fully materialized raster image | supported-with-limits | — | `image-operations:image->non-texture-image`; `image-operations:image->raster-image` |
 | [images.gpu-transfers](#images-gpu-transfers) — GPU uploads, snapshots, subsets and explicit readback | supported-with-limits | — | `gpu:gpu-upload-image`; `gpu:gpu-image-subset`; `gpu:gpu-image->raster-image` |
@@ -2281,19 +2281,19 @@ Safe buffers/copies retain ownership. Live aliased pointers and arbitrary releas
 **Pinned managed source families:** [SKImage.cs](https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/binding/SkiaSharp/SKImage.cs), [SKData.cs](https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/binding/SkiaSharp/SKData.cs).
 
 <a id="images-picture"></a>
-### images.picture — Picture-to-image rendering
+### images.picture — Picture rendering and explicit Racket Draw snapshots
 
 **racket-equivalent**; next stage: **none scheduled**; origin: `m119`.
 
-Existing explicit rasterization is an equivalent result workflow, not a promise of lazy evaluation or floating bit depth.
+Existing explicit rasterization and opt-in Racket Draw snapshots are equivalent result workflows, not promises of lazy evaluation, floating bit depth, live views, or zero-copy sharing. The Draw boundary is limited to detached CPU bitmap, color, and vector-path copies; it does not transfer fonts, surfaces, GPUs, or DC state.
 
 **Document behavior:** Not a drawing operation.
 
 **Backend declaration:** Backend-neutral wrapper/value or ownership operation; CPU/GPU lifetime distinctions remain explicit. This query does not initialize or verify a backend.
 
-**Public source anchors:** `main.rkt:picture->image`, `pict.rkt:image->pict`, `pict.rkt:picture->pict`, `pict.rkt:surface->pict`.
-**Implementation:** [private/core.rkt](../private/core.rkt), [private/bitmap-transfer.rkt](../private/bitmap-transfer.rkt), [private/pict-util.rkt](../private/pict-util.rkt), [pict.rkt](../pict.rkt).
-**Test sources, not execution receipts:** [tests/native-test.rkt](../tests/native-test.rkt), [tests/pict-pure-test.rkt](../tests/pict-pure-test.rkt), [tests/pict-native-test.rkt](../tests/pict-native-test.rkt).
+**Public source anchors:** `main.rkt:picture->image`, `pict.rkt:image->pict`, `pict.rkt:picture->pict`, `pict.rkt:surface->pict`, `racket-draw.rkt:bitmap->image`, `racket-draw.rkt:color%->rgba`, `racket-draw.rkt:dc-path->skia-path`, `racket-draw.rkt:rgba->color%`, `racket-draw.rkt:skia-path->dc-path`.
+**Implementation:** [private/core.rkt](../private/core.rkt), [private/bitmap-transfer.rkt](../private/bitmap-transfer.rkt), [private/pict-util.rkt](../private/pict-util.rkt), [pict.rkt](../pict.rkt), [private/racket-draw-bitmap.rkt](../private/racket-draw-bitmap.rkt), [private/racket-draw-path.rkt](../private/racket-draw-path.rkt), [racket-draw.rkt](../racket-draw.rkt).
+**Test sources, not execution receipts:** [tests/native-test.rkt](../tests/native-test.rkt), [tests/pict-pure-test.rkt](../tests/pict-pure-test.rkt), [tests/pict-native-test.rkt](../tests/pict-native-test.rkt), [tests/racket-draw-pure-test.rkt](../tests/racket-draw-pure-test.rkt), [tests/racket-draw-native-test.rkt](../tests/racket-draw-native-test.rkt), [tests/racket-draw-consumer-test.rkt](../tests/racket-draw-consumer-test.rkt).
 
 | C entry point | Binding declaration |
 |---|---|

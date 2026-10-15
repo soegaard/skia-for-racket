@@ -17664,6 +17664,81 @@
     {
       "exports": [
         {
+          "allowed_keywords": [
+            "mask",
+            "resolution"
+          ],
+          "arity_mask": "2",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "bitmap->image",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "color%->rgba",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [
+            "fill-style"
+          ],
+          "arity_mask": "2",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "dc-path->skia-path",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "image->bitmap",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "rgba->color%",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [
+            "conic-subdivisions"
+          ],
+          "arity_mask": "2",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "skia-path->dc-path",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "surface->bitmap",
+          "phase": "0",
+          "required_keywords": []
+        }
+      ],
+      "path": "racket-draw.rkt"
+    },
+    {
+      "exports": [
+        {
           "allowed_keywords": [],
           "arity_mask": "4",
           "export_kind": "value",

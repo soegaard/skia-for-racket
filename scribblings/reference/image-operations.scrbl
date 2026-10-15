@@ -192,6 +192,11 @@ preserving extended floating-point values or ICC metadata.
 Closing the source does not close the bitmap. The result follows Racket bitmap ownership, not
 @racket[skia-close!]. This conversion does not create a window or expose a borrowed native
 canvas.
+
+For the reverse, explicit copy from a Racket @racket[bitmap%] to a CPU Skia image,
+use @racketmodname[skia/racket-draw]. Its @racket[bitmap->image] procedure has
+separate physical/logical readback and loaded-mask policies; it is not an
+implicit conversion on image-consuming operations.
 }
 
 @defproc[(surface->bitmap [surface surface?])

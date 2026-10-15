@@ -20,6 +20,10 @@ universal byte-for-byte or metric equivalence with Cairo/Pango or every
 @racket[draw:dc<%>] consumer. Use @racket[skia-dc-compatibility] for the complete
 method/arity declaration and remaining exclusions.
 
+For explicit copying between standalone Draw bitmaps, colors, and paths and
+Skia values, use @racketmodname[skia/racket-draw]. It is separate from this
+DC implementation and never turns ordinary conversions into live DC adapters.
+
 @section{Persistent Raster Drawing Context}
 
 @defclass[skia-dc% object% (draw:dc<%>)]{

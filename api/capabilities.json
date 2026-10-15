@@ -4695,9 +4695,12 @@
         "private/core.rkt",
         "private/bitmap-transfer.rkt",
         "private/pict-util.rkt",
-        "pict.rkt"
+        "pict.rkt",
+        "private/racket-draw-bitmap.rkt",
+        "private/racket-draw-path.rkt",
+        "racket-draw.rkt"
       ],
-      "limitations": "Existing explicit rasterization is an equivalent result workflow, not a promise of lazy evaluation or floating bit depth.",
+      "limitations": "Existing explicit rasterization and opt-in Racket Draw snapshots are equivalent result workflows, not promises of lazy evaluation, floating bit depth, live views, or zero-copy sharing. The Draw boundary is limited to detached CPU bitmap, color, and vector-path copies; it does not transfer fonts, surfaces, GPUs, or DC state.",
       "managed_sources": [
         "binding/SkiaSharp/SKImage.cs"
       ],
@@ -4722,15 +4725,38 @@
         {
           "module": "pict.rkt",
           "name": "surface->pict"
+        },
+        {
+          "module": "racket-draw.rkt",
+          "name": "bitmap->image"
+        },
+        {
+          "module": "racket-draw.rkt",
+          "name": "color%->rgba"
+        },
+        {
+          "module": "racket-draw.rkt",
+          "name": "dc-path->skia-path"
+        },
+        {
+          "module": "racket-draw.rkt",
+          "name": "rgba->color%"
+        },
+        {
+          "module": "racket-draw.rkt",
+          "name": "skia-path->dc-path"
         }
       ],
       "status": "racket-equivalent",
       "test_sources": [
         "tests/native-test.rkt",
         "tests/pict-pure-test.rkt",
-        "tests/pict-native-test.rkt"
+        "tests/pict-native-test.rkt",
+        "tests/racket-draw-pure-test.rkt",
+        "tests/racket-draw-native-test.rkt",
+        "tests/racket-draw-consumer-test.rkt"
       ],
-      "title": "Picture-to-image rendering",
+      "title": "Picture rendering and explicit Racket Draw snapshots",
       "unbound_declarations": [
         "sk_image_new_from_picture"
       ]
@@ -8393,6 +8419,7 @@
     "portable-drawing.rkt",
     "projective-matrix.rkt",
     "raster-buffers.rkt",
+    "racket-draw.rkt",
     "render-canvas.rkt",
     "runtime-effects.rkt",
     "specialized-canvases.rkt",

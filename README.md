@@ -1313,6 +1313,12 @@ For an opt-in snapshot to an ordinary Racket `pict`, use `skia/pict`; its
 logical backing-scale, color, allocation, and CPU/GPU rules are in the
 [pict bridge guide](docs/PICT-BRIDGE.md).
 
+For explicit copied interchange in the other direction—Draw `bitmap%`,
+`color%`, and `dc-path%` values to Skia—use the separate `skia/racket-draw`
+module. It preserves no live view or density metadata, applies loaded masks by
+default when importing a bitmap, and returns a fill style alongside an exported
+Draw path. See the [Racket Draw bridge guide](docs/RACKET-DRAW.md).
+
 ## Boundaries of this version
 
 The library supports native PDF and SVG document output, shaped/paragraph/

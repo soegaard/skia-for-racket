@@ -6,7 +6,7 @@
 (require racket/class
          (only-in racket/draw make-bitmap))
 
-(provide rgba-premul->argb rgba-premul->bitmap)
+(provide rgba-premul->argb argb-premul->rgba rgba-premul->bitmap)
 
 (define (rgba-premul->argb pixels)
   (define argb (make-bytes (bytes-length pixels)))
@@ -16,6 +16,15 @@
     (bytes-set! argb (+ i 2) (bytes-ref pixels (+ i 1)))
     (bytes-set! argb (+ i 3) (bytes-ref pixels (+ i 2))))
   argb)
+
+(define (argb-premul->rgba pixels)
+  (define rgba (make-bytes (bytes-length pixels)))
+  (for ([i (in-range 0 (bytes-length pixels) 4)])
+    (bytes-set! rgba i (bytes-ref pixels (+ i 1)))
+    (bytes-set! rgba (+ i 1) (bytes-ref pixels (+ i 2)))
+    (bytes-set! rgba (+ i 2) (bytes-ref pixels (+ i 3)))
+    (bytes-set! rgba (+ i 3) (bytes-ref pixels i)))
+  rgba)
 
 (define (rgba-premul->bitmap width height pixels)
   (define bitmap (make-bitmap width height #t))

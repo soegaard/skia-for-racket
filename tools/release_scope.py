@@ -211,6 +211,7 @@ def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -
              'tests/public-api-fixture.rkt',
              'examples/public/value-basics.rkt',
              'examples/public/raster-lifetime.rkt',
+             'examples/public/racket-draw.rkt',
              }
     names.update({
         'api/release-candidate-policy.json',

@@ -6,7 +6,7 @@ Reviewed GitHub baseline: `4a6082274e06456aa385fa9337c31528f2f44a4a`. Library pa
 
 **This is a source/capability audit, not a 1.0 release approval.**
 
-140 capability families; 849 pinned core C declarations; 86 managed source files; 60 public Racket modules.
+140 capability families; 849 pinned core C declarations; 86 managed source files; 61 public Racket modules.
 
 678 distinct core bindings (609 CPU); 171 unbound declarations. An unbound convenience function is not automatically a missing user capability.
 

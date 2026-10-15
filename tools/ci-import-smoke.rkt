@@ -5,7 +5,7 @@
 ;; headless imports below must not pull either of those modules in indirectly.
 (require json)
 (module+ main
-  (for ([module '(skia skia/dc skia/gpu-dc skia/bitmap skia/native-capabilities skia/gpu skia/gpu-egl skia/gpu-gl-interop skia/gpu-output skia/gpu-interop skia/unsafe/gpu-d3d12 skia/unsafe/gpu-metal)])
+  (for ([module '(skia skia/dc skia/gpu-dc skia/bitmap skia/racket-draw skia/native-capabilities skia/gpu skia/gpu-egl skia/gpu-gl-interop skia/gpu-output skia/gpu-interop skia/unsafe/gpu-d3d12 skia/unsafe/gpu-metal)])
     (dynamic-require module #f))
   (define gui-instantiated?
     (with-handlers ([exn:fail? (lambda (_) #f)])

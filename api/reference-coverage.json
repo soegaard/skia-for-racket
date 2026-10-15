@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "stage": "R4f",
-  "reviewed_repository_commit": "2dcd956dd9a41c76399c905971e2fa381a636bc2",
+  "stage": "R4g",
+  "reviewed_repository_commit": "4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "f67988e74b0796843eb69a0d6d31fcd1e06e9f1c"
+      "git_blob": "2083a55951da3994247a262733847be5338f8e52"
     },
     {
       "file": "api/public-api-gui.json",
@@ -10244,7 +10244,8 @@
       "chapter": "scribblings/reference/image-operations.scrbl",
       "canonical_module": "skia/bitmap",
       "exports": [
-        "skia/bitmap"
+        "skia/bitmap",
+        "skia/racket-draw"
       ],
       "phase": "0",
       "space": null
@@ -10254,7 +10255,8 @@
       "chapter": "scribblings/reference/image-operations.scrbl",
       "canonical_module": "skia/bitmap",
       "exports": [
-        "skia/bitmap"
+        "skia/bitmap",
+        "skia/racket-draw"
       ],
       "phase": "0",
       "space": null
@@ -13312,6 +13314,56 @@
       "canonical_module": "skia/pict",
       "exports": [
         "skia/pict"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "bitmap->image",
+      "chapter": "scribblings/reference/racket-draw.scrbl",
+      "canonical_module": "skia/racket-draw",
+      "exports": [
+        "skia/racket-draw"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "color%->rgba",
+      "chapter": "scribblings/reference/racket-draw.scrbl",
+      "canonical_module": "skia/racket-draw",
+      "exports": [
+        "skia/racket-draw"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "rgba->color%",
+      "chapter": "scribblings/reference/racket-draw.scrbl",
+      "canonical_module": "skia/racket-draw",
+      "exports": [
+        "skia/racket-draw"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "dc-path->skia-path",
+      "chapter": "scribblings/reference/racket-draw.scrbl",
+      "canonical_module": "skia/racket-draw",
+      "exports": [
+        "skia/racket-draw"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "skia-path->dc-path",
+      "chapter": "scribblings/reference/racket-draw.scrbl",
+      "canonical_module": "skia/racket-draw",
+      "exports": [
+        "skia/racket-draw"
       ],
       "phase": "0",
       "space": null

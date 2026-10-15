@@ -11,6 +11,11 @@ be open or explicitly closed. A path stores geometry and a fill rule, not a
 paint or canvas transform. The predicate is @racket[skia-path?], which is distinct
 from Racket's filesystem-path predicate.
 
+For explicit conversion to and from Racket @racket[dc-path%] values, see
+@racketmodname[skia/racket-draw]. That bridge retains fill interpretation as a
+separate Draw value and rejects topology that one @racket[dc-path%] cannot
+represent without changing open contours.
+
 Path coordinates are local coordinates and must be @tech{drawing scalar}s.
 Construction and mutation do not use a canvas's current transform. Each native
 operation requires an open path on its owning thread. A copied or transformed
