@@ -9,10 +9,11 @@
 @defmodule[skia/racket-draw #:no-declare]
 @(declare-exporting skia/racket-draw #:use-sources (skia/racket-draw))
 
-The @racketmodname[skia/racket-draw] module copies bitmaps, colors, and paths
-between Racket Draw and Skia. Conversions are explicit and eager. The module is
-not re-exported by @racketmodname[skia]; require it where bitmap, color, or path
-interoperability is needed. Requiring the module does not by itself load the
+The @racketmodname[skia/racket-draw] library provides explicit conversions
+between selected Racket Draw and Skia values. Each conversion eagerly copies
+the relevant data and returns an independent result. The library is not
+re-exported by @racketmodname[skia]; require it explicitly when bitmap, color,
+or path interoperability is needed. Requiring it does not by itself load the
 Skia or HarfBuzz native libraries, create a GPU context, or initialize a GUI.
 
 The bridge converts standalone values rather than drawing contexts. Use
@@ -26,9 +27,10 @@ and @racket[dc-path->skia-path] return owned Skia resources, which should be
 managed with @racket[with-skia], @racket[call-with-skia-resource], or
 @racket[skia-close!]. Conversions in the other direction return ordinary
 Racket Draw objects, and @racket[color%->rgba] returns an immutable Skia value;
-those results are not Skia resources. Mutation or closure after a conversion
-does not change the converted result. The bridge does not make concurrent
-mutation of a Racket Draw source safe while a conversion is in progress.
+those results are not Skia resources. Later mutation of a mutable source, or
+closing a Skia source, does not change an already converted result. The bridge
+does not make concurrent mutation of a Racket Draw source safe while a
+conversion is in progress.
 
 @section{Bitmaps}
 
@@ -51,8 +53,8 @@ loaded-mask identity, color profile, or floating-point/HDR representation.
 
 The @racket[mask] argument controls additional alpha coverage. The default
 @racket['loaded] uses @method[draw:bitmap% get-loaded-mask] when one is present.
-A false value ignores the loaded mask, and a supplied @racket[draw:bitmap%]
-replaces it. A resolved mask must be usable and must have the same logical
+@racket[#f] ignores the loaded mask, and a supplied bitmap replaces it. A
+resolved mask must be usable and must have the same logical
 dimensions as the source bitmap. Its own loaded mask is not applied
 recursively. In physical mode, the bridge chooses the nearest mask pixel for each
 source-pixel center, accounting for differing backing scales.
@@ -136,9 +138,9 @@ to Skia's @racket['even-odd] fill rule, and @racket['winding] maps to
 @racket['winding]. The default is @racket['odd-even]; callers that intend to
 draw the source with winding fill should pass @racket['winding] explicitly.
 
-Coordinates must be finite values in the Skia drawing-scalar range. Invalid
-public path data or an allocation/native construction failure raises rather
-than returning a partial path.
+Each coordinate must be a @tech{drawing scalar}. The function raises an
+exception if public path data are invalid or if allocation or native
+construction fails; it does not return a partial path.
 }
 
 @defproc[(skia-path->dc-path
@@ -147,8 +149,8 @@ than returning a partial path.
          (values (is-a?/c draw:dc-path%) (or/c 'odd-even 'winding))]{
 Returns two detached values: a fresh Racket Draw @racket[draw:dc-path%] and the
 Draw fill style required to preserve the Skia path's fill rule. The source path
-must be live and accessed on its owning Racket thread. The returned Draw path has no
-Skia resource lifetime.
+must be live and used on its owning Racket thread. The returned Draw path is
+not a Skia resource.
 
 Moves, lines, cubic Bézier segments, and close operations map directly.
 Quadratic Bézier segments are degree-elevated to cubics without geometric
@@ -169,8 +171,8 @@ function raises instead. Empty paths are accepted.
 
 Both path directions apply a conservative 64-byte charge per copied or
 predicted output command against @racket[current-skia-byte-limit]. For Skia
-conics, the prediction includes the requested subdivision expansion. A failure
-during validation or conversion raises without publishing a partially converted
+conics, the prediction includes the requested subdivision expansion. If
+validation or conversion fails, neither function returns a partially converted
 path.
 }
 
