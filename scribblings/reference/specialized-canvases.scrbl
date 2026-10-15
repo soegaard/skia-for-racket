@@ -8,7 +8,7 @@
 @(declare-exporting skia skia/specialized-canvases #:use-sources (skia/specialized-canvases))
 
 These scoped canvases discard drawing, forward it to several targets, or count
-native overdraw. Each helper calls a procedure with one borrowed canvas and
+native overdraw. Each helper calls a function with one borrowed canvas and
 preserves its return values. Callbacks must not require keyword arguments.
 The supplied canvas expires on return or escape and must not be retained.
 Continuation reentry is prohibited.
@@ -25,11 +25,13 @@ drawing already performed. Target surfaces remain caller-owned. Specialized
 canvases do not provide document annotations and cannot be treated as PDF or SVG
 canvases. No wrapper creates a GPU context or performs automatic readback.
 
+@section{No-Draw Canvases}
+
 @defproc[(call-with-nodraw-canvas [width (integer-in 1 32768)]
           [height (integer-in 1 32768)]
           [proc (-> canvas? any)])
           any]{
-Calls the procedure with a native no-draw canvas of the given dimensions.
+Calls the function with a native no-draw canvas of the given dimensions.
 Drawing produces no pixels, but native canvas construction, graphics-state
 changes, validation, and callback side effects still occur. The usual logical
 four-bytes-per-pixel budget applies even though no output image is allocated.
@@ -39,15 +41,18 @@ The callback may still allocate other native resources. Both its execution and
 cleanup must complete normally for the helper to return values.
 }
 
+@section{N-Way Canvases}
+
 @defproc[(call-with-nway-canvas [surfaces (listof surface?)]
           [proc (-> canvas? any)])
           any]{
-Calls the procedure with a canvas forwarding drawing to between 1 and 64
+Calls the function with a canvas forwarding drawing to between 1 and 64
 distinct surfaces. The list must be nonempty, with no duplicate surface wrappers.
-All targets must have identical dimensions and execution backends as well as
-the root-state requirements above. Resource validation rejects incompatible GPU
-contexts before borrowing targets; matching backend names alone do not prove
-that contexts are compatible.
+All targets must have identical dimensions and execution backends. Each target
+must also have save count 1, an identity full matrix, and a full rectangular
+device clip. Resource validation rejects incompatible GPU contexts before
+borrowing targets; matching backend names alone do not prove that contexts are
+compatible.
 
 The callback runs once, not once per target. A failure is not a transaction over
 target pixels: earlier drawing may remain in some or all targets.
@@ -66,10 +71,12 @@ target pixels: earlier drawing may remain in some or all targets.
 Both targets contain the blue rectangle and have their root canvas state restored.
 }
 
+@section{Overdraw Canvases}
+
 @defproc[(call-with-overdraw-canvas [surface surface?]
           [proc (-> canvas? any)])
           any]{
-Calls the procedure with a native overdraw-counting wrapper over an Alpha8
+Calls the function with a native overdraw-counting wrapper over an Alpha8
 surface. The target must satisfy the root-state rules and have Alpha8 storage;
 initialize its samples to zero before collecting fresh counts. The wrapper does
 not clear it automatically.

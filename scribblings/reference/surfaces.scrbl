@@ -2,7 +2,7 @@
 
 @(require (for-label racket/base racket/contract file/convertible skia))
 
-@title[#:tag "skia-surfaces"]{Surfaces and Canvases}
+@title[#:tag "skia-surfaces"]{Surfaces and Canvas Access}
 
 A @deftech{surface} owns a pixel-based drawing target. A @deftech{canvas}
 provides access to a drawing target and carries drawing state, including the
@@ -12,6 +12,10 @@ also belong to recordings, documents, or GPU frames.
 Several canvas wrappers obtained from one surface refer to the same target and
 state; they are not independent layers. A surface canvas is a
 @tech{borrowed canvas}, not an independently closeable resource.
+
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Construction and Canvas Access}
 
 @defproc[(surface? [v any/c]) boolean?]{
 Returns @racket[#t] for a Skia surface and @racket[#f] otherwise. The predicate

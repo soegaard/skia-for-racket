@@ -75,7 +75,7 @@ use, keep the owner alive for the entire scope.
 
 @defform[(with-canvas-state canvas-expr body ...+)
          #:contracts ([canvas-expr canvas?])]{
-Like @racket[call-with-canvas-state], with @racket[body] as the procedure body.
+Like @racket[call-with-canvas-state], with @racket[body] as the function body.
 The canvas expression is evaluated once. Internal definitions are permitted.
 The form restores canvas state, not pixels or resource lifetimes.
 
@@ -147,8 +147,9 @@ value; the canvas does not borrow its storage. The clip is unchanged.
 
 @defproc[(canvas-concat! [canvas canvas?] [matrix matrix?]) void?]{
 Concatenates @racket[matrix] after the current transform, using the product
-@math{C M} described above. The canvas reads the matrix coefficients during the
-call. The resulting native transform uses single-precision arithmetic.
+@math{C M}, where @math{C} is the current transform and @math{M} is
+@racket[matrix]. The canvas reads the coefficients during the call. The
+resulting native transform uses single-precision arithmetic.
 }
 
 @section[#:tag "skia-clipping"]{Clipping}

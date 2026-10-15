@@ -16,6 +16,8 @@ rendering requests. It owns no surface, context, or other native resource. Creat
 not change an existing surface. A flag records a request, not proof that a device supports or
 fulfills it.
 
+@section{Detached Surface Properties}
+
 @defproc[(surface-properties? [v any/c])
           boolean?]{
 Returns @racket[#t] for a detached surface-properties value and @racket[#f] otherwise.

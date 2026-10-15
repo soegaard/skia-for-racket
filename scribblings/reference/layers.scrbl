@@ -24,6 +24,8 @@ every layer effect. Raster fallback must contain the backdrop
 needed by the operation; an isolated group does not capture an outer document's
 existing pixels automatically.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Simple Layers}
 
 @defproc[(canvas-save-layer! [canvas canvas?]
@@ -45,7 +47,7 @@ prefer @racket[call-with-canvas-layer] for a protected scope.
           [#:bounds bounds (or/c #f list? vector?) #f]
           [#:paint paint (or/c paint? #f) #f])
           any]{
-Calls a zero-argument procedure inside a layer, preserving its return values.
+Calls a zero-argument function inside a layer, preserving its return values.
 The layer establishes a protected save floor and a continuation barrier, and
 restores the prior save count on return or escape.
 
@@ -155,8 +157,8 @@ low-level save; @racket[call-with-canvas-layer-rec] provides protected cleanup.
           [#:backdrop backdrop (or/c image-filter? #f) #f]
           [#:clip clip (or/c #f list? vector?) #f])
           any]{
-Calls the zero-argument procedure inside a protected advanced layer and
-preserves its return values. The procedure must not require keyword arguments.
+Calls the zero-argument function inside a protected advanced layer and
+preserves its return values. The function must not require keyword arguments.
 The canvas owner is pinned during the layer scope, its save floor is protected,
 and continuation reentry is prohibited.
 
@@ -178,6 +180,8 @@ callback exception; it does not undo previously drawn pixels.
 
 The clip, rather than the layer bound, excludes the two-pixel border.
 }
+
+@section{Discarding Target Contents}
 
 @defproc[(canvas-discard! [canvas canvas?])
           void?]{
