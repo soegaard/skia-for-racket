@@ -8,16 +8,30 @@
 @defmodule[skia/graphics #:no-declare]
 @(declare-exporting skia skia/graphics #:use-sources (skia/graphics))
 
-These operations inspect or configure the loaded Skia library's process-global CPU caches. They
-are not the Racket garbage collector, total process memory, or a GPU context's resource cache.
-Limits are cache settings, not a hard cap on all native allocations. Purging a cache does not
-close application-owned surfaces, images, fonts, or paints.
+The @racketmodname[skia/graphics] library exposes Skia's process-global CPU
+graphics state, including cache controls and bounded memory reports. These
+interfaces are separate from the Racket garbage collector, total process memory,
+and a GPU context's resource cache. Cache limits are settings, not a hard cap on
+all native allocations. Purging a cache does not close application-owned
+surfaces, images, fonts, or paints.
 
-Global cache calls are rejected from live-port service callbacks and while a live stream
-operation is active. Native calls are synchronized individually. A sequence of queries,
-including @racket[skia-cache-statistics], is not an atomic joint snapshot.
+Global graphics calls are rejected from live-port service callbacks and while a
+live stream operation is active. Native calls are synchronized individually. A
+sequence of queries, including @racket[skia-cache-statistics], is not an atomic
+joint snapshot.
 
-@section{Usage and Limits}
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Initialization}
+
+@defproc[(skia-initialize!)
+          void?]{
+Explicitly initializes Skia's global graphics state. Ordinary resource operations already
+perform their required native preflight; this is not a substitute for checking ownership or a
+guarantee that a GPU backend is available.
+}
+
+@section{Cache Queries and Limits}
 
 @defproc[(skia-font-cache-used)
           exact-nonnegative-integer?]{
@@ -92,12 +106,20 @@ native unsigned size type. Settings affect the loaded library globally; restore 
 change explicitly. The wrapper adds no scope that automatically restores it.
 }
 
-@defproc[(skia-initialize!)
-          void?]{
-Explicitly initializes Skia's global graphics state. Ordinary resource operations already
-perform their required native preflight; this is not a substitute for checking ownership or a
-guarantee that a GPU backend is available.
+
+@defproc[(skia-cache-statistics)
+          (and/c hash? immutable?)]{
+Returns current cache observations in an immutable hash. The keys are @racket['scope],
+@racket['atomic?], @racket['font-bytes-used], @racket['font-byte-limit],
+@racket['font-count-used], @racket['font-count-limit], @racket['resource-bytes-used],
+@racket['resource-byte-limit], and @racket['resource-single-allocation-byte-limit]. The scope is
+@racket['process-global-skia-caches] and @racket['atomic?] is false.
+
+The fields come from separate native queries. They should not be treated as one simultaneous
+measurement or summed as a complete account of process memory.
 }
+
+@section{Purging Caches}
 
 @defproc[(skia-purge-font-cache!)
           void?]{
@@ -118,18 +140,6 @@ GPU context's cache.
 Requests purging of the global caches. The operation does not return a freed-byte count or
 promise that every cache entry can be discarded. It does not close owned resources or purge a
 GPU context's cache.
-}
-
-@defproc[(skia-cache-statistics)
-          (and/c hash? immutable?)]{
-Returns current cache observations in an immutable hash. The keys are @racket['scope],
-@racket['atomic?], @racket['font-bytes-used], @racket['font-byte-limit],
-@racket['font-count-used], @racket['font-count-limit], @racket['resource-bytes-used],
-@racket['resource-byte-limit], and @racket['resource-single-allocation-byte-limit]. The scope is
-@racket['process-global-skia-caches] and @racket['atomic?] is false.
-
-The fields come from separate native queries. They should not be treated as one simultaneous
-measurement or summed as a complete account of process memory.
 }
 
 @section[#:tag "skia-memory-statistics"]{Bounded Memory Reports}

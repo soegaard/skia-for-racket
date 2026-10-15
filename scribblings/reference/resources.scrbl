@@ -4,6 +4,14 @@
 
 @title[#:tag "skia-resources"]{Resources and Lifetimes}
 
+Skia uses native resources alongside detached Racket values. Resource kind,
+ownership, and scope determine when a value remains valid and how it should be
+released.
+
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Resource Kinds and Validity}
+
 An @deftech{owned resource} has a native lifetime managed by its wrapper. An
 @deftech{ordinary CPU resource}, such as a CPU @tech{surface} or @tech{paint},
 has fallback cleanup after it becomes unreachable. Ordinary Racket bindings
@@ -23,12 +31,6 @@ Native use and explicit release of an ordinary CPU resource belong to the Racket
 thread that created it. A reference to the wrapper does not permit cross-thread
 native access.
 
-Explicit release, successful completion, and publication are different actions.
-Closing abandoned storage does not finish a document or publish an output file.
-GPU contexts and borrowed frame targets have additional activation, generation,
-thread, synchronization, and teardown requirements; the CPU rules do not replace
-those requirements.
-
 @defproc[(skia-resource? [v any/c]) boolean?]{
 Returns @racket[#t] when @racket[v] is an owned resource accepted by the
 ordinary Skia resource protocol, and @racket[#f] otherwise. A closed resource
@@ -43,6 +45,14 @@ canvases additionally follow their documented scope. The query does not reopen
 an object, activate a context, or prove that a later operation will succeed.
 }
 
+@section{Explicit Release}
+
+Explicit release, successful completion, and publication are different actions.
+Closing abandoned storage does not finish a document or publish an output file.
+GPU contexts and borrowed frame targets have additional activation, generation,
+thread, synchronization, and teardown requirements; the CPU rules do not replace
+those requirements.
+
 @defproc[(skia-close! [resource skia-resource?]) void?]{
 Releases @racket[resource]'s owned native reference. Releasing an ordinary CPU
 resource again on its creating thread is harmless. Explicit release cancels its
@@ -54,6 +64,8 @@ canvas cannot be closed with this procedure; close its owner at the permitted
 point instead. Resources that retain their own native references to another
 object follow the retention rules of their constructors.
 }
+
+@section{Scoped Resource Management}
 
 @defproc[(call-with-skia-resource [resource skia-resource?]
                                 [proc (-> skia-resource? any)]) any]{
@@ -106,6 +118,8 @@ An ordinary CPU resource created by an internal definition still has fallback
 cleanup. The empty binding sequence does not disable that cleanup or make its
 timing predictable.
 }
+
+@section{Allocation Limits}
 
 @defparam[current-skia-byte-limit limit exact-positive-integer?]{
 Controls the byte limit used by checked image and encoding operations. The

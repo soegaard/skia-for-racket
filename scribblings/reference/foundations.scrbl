@@ -2,9 +2,10 @@
 
 @title[#:tag "skia-reference-foundations" #:style 'toc]{Foundations}
 
-The conventions and resource rules in this part apply throughout the Skia API.
-This part also documents native-library availability and process-global cache
-controls.
+Skia combines ordinary Racket values with native resources whose validity can
+depend on ownership, lifetime, thread, and native-library availability. Numeric
+conventions, cleanup rules, capability checks, and process-global cache behavior
+establish assumptions used throughout the API.
 
 @local-table-of-contents[]
 

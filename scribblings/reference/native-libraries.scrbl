@@ -11,7 +11,7 @@
 @defmodule[skia/native-capabilities #:no-declare]
 @(declare-exporting skia skia/native-capabilities #:use-sources (skia/native-capabilities))
 
-Native availability checks explicitly load and preflight libraries. Importing a public module or
+Native availability checks explicitly load and preflight libraries. Importing a public library or
 reading the installed ABI catalogue does not establish native availability. Symbol presence, ABI
 compatibility, successful backend creation, and hardware acceleration are separate claims.
 

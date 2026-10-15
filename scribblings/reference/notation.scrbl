@@ -49,6 +49,6 @@ is part of its contract. Resource validity is described in @secref["skia-resourc
 
 The compatibility policy distinguishes stable call boundaries from experimental
 GPU, GUI, and interoperability interfaces. Stability does not imply identical
-pixels across platforms. The complete policy remains in the
+pixels across platforms. The complete policy is described in the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/docs/API-CONTRACTS.md"]{
 public API contracts}.
