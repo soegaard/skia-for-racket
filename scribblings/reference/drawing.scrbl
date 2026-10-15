@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/canvas-primitives))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/canvas-primitives))
 
 @title[#:tag "skia-drawing"]{Drawing Primitives}
 
@@ -45,6 +46,9 @@ promise immediate pixels or a vector-only representation.
   (draw-rect (surface-canvas surface) 20 20 120 60 paint)
   (save-png surface "rectangle.png" #:exists 'replace))
 ]
+
+@reference-figure["rectangle.png"
+                  "A blue filled rectangle on a white background."]
 }
 
 @defproc[(draw-paint [canvas canvas?] [paint paint?]) void?]{
@@ -116,6 +120,9 @@ released before the call returns.
                 paint #:closed? #f)
   (save-png surface "polyline.png" #:exists 'replace))
 ]
+
+@reference-figure["polyline.png"
+                  "A black open polyline with rounded endpoints on a white background."]
 }
 
 @(declare-exporting skia skia/canvas-primitives #:use-sources (skia/canvas-primitives))

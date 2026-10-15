@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia))
 
 @title[#:tag "skia-shaping"]{Shaped Text}
 
@@ -178,6 +179,9 @@ a retained canvas or a text-blob resource.
   (save-png surface "shaped-text.png" #:exists 'replace)
   (shaped-run-glyph-count run))
 ]
+
+@reference-figure["shaped-text.png"
+                  "The word office drawn in black on a white background after Latin text shaping."]
 
 The glyph count depends on the typeface and its shaping features.
 }

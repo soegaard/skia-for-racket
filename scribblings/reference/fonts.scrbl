@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/fonts))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/fonts))
 
 @title[#:tag "skia-fonts"]{Fonts and Text Measurement}
 
@@ -256,6 +257,9 @@ substitution require the shaped-text operations.
   (draw-simple-text (surface-canvas surface) "Skia" 16 48 font paint)
   (save-png surface "simple-text.png" #:exists 'replace))
 ]
+
+@reference-figure["simple-text.png"
+                  "The word Skia drawn in black on a white background using a 24-unit font."]
 }
 
 @defproc[(measure-simple-text [font font?] [text string?] [#:paint paint (or/c paint? #f) #f]) real?]{

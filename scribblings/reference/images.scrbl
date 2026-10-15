@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract file/convertible skia skia/pict))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract file/convertible skia skia/pict))
 
 @title[#:tag "skia-images"]{Images}
 
@@ -169,6 +170,9 @@ Use a reflected canvas transform to mirror an image.
   (draw-image-rect (surface-canvas surface) image 0 0 80 40 #:sampling 'nearest)
   (save-png surface "image-pair.png" #:exists 'replace))
 ]
+
+@reference-figure["image-pair.png"
+                  "An enlarged two-pixel image, red on the left and blue on the right, using nearest sampling."]
 }
 
 @defproc[(draw-image-subrect [canvas canvas?] [image image?]

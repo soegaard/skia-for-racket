@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/effects))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/effects))
 
 @title[#:tag "skia-path-effects"]{Path Effects and Mask Filters}
 
@@ -46,6 +47,9 @@ alternating bands.
   (draw-line (surface-canvas surface) 10 15 90 15 paint)
   (save-png surface "dashed-line.png" #:exists 'replace))
 ]
+
+@reference-figure["dashed-line.png"
+                  "A blue horizontal dashed line on a white background."]
 
 Closing the caller's dash wrapper does not remove the paint's retained effect.
 }

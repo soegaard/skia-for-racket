@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/effects
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/effects
                      skia/image-operations))
 
 @title[#:tag "skia-shaders"]{Shaders and Gradients}
@@ -66,6 +67,9 @@ wrapper checks pass, for example when precision makes geometry degenerate.
   (draw-rect (surface-canvas surface) 0 0 120 40 paint)
   (save-png surface "gradient.png" #:exists 'replace))
 ]
+
+@reference-figure["gradient.png"
+                  "A horizontal gradient changing from red on the left to blue on the right."]
 }
 
 @section{Radial, Sweep, and Conical Shaders}
