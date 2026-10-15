@@ -17,6 +17,8 @@ the coordinate system to compensate for the PDF file's internal conventions.
 Dimensions need not be integer pixel counts, and beginning a vector page does
 not charge a complete RGBA image against the byte limit.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-pdf-settings"]{Construction and Settings}
 
 @defproc[(document? [v any/c]) boolean?]{

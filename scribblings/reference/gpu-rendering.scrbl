@@ -2,9 +2,10 @@
 
 @title[#:tag "skia-reference-gpu-rendering" #:style 'toc]{GPU Contexts and Resources}
 
-GPU rendering uses a backend provider to create a context that owns GPU-side
-state and resources. This part covers context configuration, GPU surfaces and
-images, transfers, synchronization, caches, and diagnostics.
+Backend declarations, providers, and context options describe how GPU contexts
+are created. A live context establishes the owner-thread execution scope for GPU
+surfaces and images. Transfer, synchronization, cache, and diagnostic operations
+make movement and execution boundaries explicit.
 
 @local-table-of-contents[]
 

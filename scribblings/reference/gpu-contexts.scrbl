@@ -8,7 +8,7 @@
 
 A @deftech{GPU context} owns Skia's connection to one native graphics host and
 tracks its GPU-dependent resources. A @tech{GPU provider} activates that host.
-Context creation is explicit: loading a module, recognizing a backend name,
+Context creation is explicit: importing a library, recognizing a backend name,
 or constructing options does not create a context.
 
 A context belongs to its creating Racket thread. GPU execution and teardown
@@ -89,7 +89,7 @@ been created can leave a pending shutdown record for owner-thread cleanup;
 @defproc[(call-with-gpu-context [context gpu-context?] [thunk (-> any)]) any]{
 Activates the context's provider, calls @racket[thunk] without arguments, and
 returns its multiple values. The context must be ready, with no shutdown
-request, on its owning thread. This procedure does not close the context.
+request, on its owning thread. This function does not close the context.
 
 Nested scopes for the same context are supported without reactivating the
 provider. Nesting a different context is rejected. At the outermost entry,
@@ -222,7 +222,7 @@ unsubmitted content. It is not a CPU fence or a readback.
 
 If the native release operation or its abandonment postcondition fails, the
 state becomes @racket['release-failed] and shutdown is requested. The context is
-quarantined; neither this procedure, lost-host abandonment, nor normal closure
+quarantined; neither this function, lost-host abandonment, nor normal closure
 retries the indeterminate operation. Failure before that operation begins does
 not by itself establish that native resources were released.
 }

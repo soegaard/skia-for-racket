@@ -4,7 +4,7 @@
 
 @title[#:tag "skia-gpu-diagnostics"]{GPU Diagnostics}
 
-The operations in this chapter report properties of a selected GPU context.
+These diagnostics report properties of a selected GPU context.
 They are diagnostics, not hardware attestations, performance measurements, or
 implicit synchronization barriers. Detached results contain no native pointers.
 
@@ -43,7 +43,7 @@ correctness. No flush, submission, wait, or pixel readback is implied.
 
 @defproc[(gpu-smoke-test [context gpu-context?]) (and/c hash? immutable?)]{
 Runs a fixed synchronous 8 by 8 GPU rendering diagnostic. The context must be
-ready and owned by the calling thread. The procedure enters the context as
+ready and owned by the calling thread. The function enters the context as
 needed, creates private target and paint resources, draws four fixed color
 regions, flushes, submits with CPU completion, reads RGBA pixels, and verifies
 the expected pattern before returning.

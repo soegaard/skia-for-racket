@@ -24,6 +24,10 @@ All session operations except the predicate require the creating Racket thread.
 The state query also works after closure. Other session queries require an open
 resource. Returned batches and their descriptions are detached values.
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Sessions and Row Decoding}
+
 @defproc[(codec-scanline-session? [v any/c])
           boolean?]{
 Returns @racket[#t] for a scanline session, including a closed one, and @racket[#f] otherwise.

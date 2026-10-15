@@ -15,6 +15,10 @@ Encoded metadata describes the stored image before orientation normalization.
 A decoded image has its own storage and lifetime. Each frame decode starts with
 a fresh destination; callers do not supply a previous frame's pixels.
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Codec Construction and Frame Decoding}
+
 @defproc[(codec? [v any/c])
           boolean?]{
 Returns @racket[#t] for a codec, including a closed wrapper, and @racket[#f]
@@ -88,7 +92,7 @@ The default permutes pixels to top-left orientation without resampling. Origins
 that exchange axes also exchange the output width and height. Disabling
 normalization preserves encoded coordinates. These coordinates differ from a
 frame rectangle reported by @racket[codec-frame-info], which always uses encoded
-coordinates. No scaling or subset negotiation is applied by this procedure.
+coordinates. No scaling or subset negotiation is applied by this function.
 
 @racketblock[
 (with-skia ([surface (make-surface 3 2 #:background 'blue)])
@@ -120,8 +124,6 @@ Constructs a temporary codec with @racket[codec-from-file], decodes @racket[inde
 with @racket[codec->image], and closes the codec. The returned image is independent.
 Orientation, color-space, frame-dependency, and decode-failure rules are unchanged.
 }
-
-@local-table-of-contents[#:style 'immediate-only]
 
 @section[#:tag "skia-encoded-metadata"]{Encoded Metadata}
 

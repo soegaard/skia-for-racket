@@ -65,7 +65,7 @@ Returns the recognized feature symbol.
 @defproc[(output-capability-status [capability output-capability?])
           (or/c 'vector 'embedded-raster 'native-expansion 'needs-raster
                   'viewer-dependent 'rasterized 'discarded 'unknown 'unsupported)]{
-Returns the policy status described below.
+Returns the policy status for the capability entry.
 }
 
 @defproc[(output-capability-reason [capability output-capability?])

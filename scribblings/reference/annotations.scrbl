@@ -63,8 +63,9 @@ that the target exists.
 @defproc[(canvas-define-destination! [canvas canvas?] [name string?]
                                     [x real?] [y real?]) void?]{
 Defines a destination at the given drawing-scalar point in a PDF or SVG document.
-The name must satisfy the rules above and must not already be defined in that
-document, even at the same point. PDF destinations can be referenced across pages.
+The @racket[name] must be valid for a @tech{named destination} and must not already
+be defined in that document, even at the same point. PDF destinations can be
+referenced across pages.
 SVG destinations capture the current affine point and become named views when
 the SVG is finalized.
 

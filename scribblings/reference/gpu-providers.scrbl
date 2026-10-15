@@ -17,8 +17,8 @@ context or device. A provider is not a Skia context, a rendering target, or a
 promise of hardware acceleration. Context construction and lifetime are
 specified in @secref["skia-gpu-contexts"].
 
-Requiring @racketmodname[skia/gpu] does not load a native graphics library,
-create a GPU context, or initialize a GUI. Backend declarations and provider
+Importing the @racketmodname[skia/gpu] library does not load a native graphics
+library, create a GPU context, or initialize a GUI. Backend declarations and provider
 values can be inspected without creating a rendering target.
 
 @section{Backend Declarations}
@@ -91,23 +91,23 @@ is not an accepted key.
 The callbacks have the following obligations:
 
 @itemlist[
- @item{The @racket[activate] procedure accepts one zero-argument callback. It must
+ @item{The @racket[activate] function accepts one zero-argument callback. It must
        activate the intended host, invoke that callback exactly once, synchronously
        on the provider's creating thread, and retain the host for the whole call.
        It must not save the callback for later or reenter it through a continuation.
        The callback's multiple values are preserved; the provider's own return
        values do not replace them. Intercepting a callback failure does not turn
        it into success. Host activation failures must be reported as failures.}
- @item{The @racket[current?] procedure accepts no arguments. It must return a
+ @item{The @racket[current?] function accepts no arguments. It must return a
        true value only when the intended host is current and safe for this thread.
        The wrapper checks this before using the host; it does not create or repair
        a native current-context binding on the provider's behalf.}
- @item{The @racket[describe] procedure accepts no arguments. It supplies a hash
+ @item{The @racket[describe] function accepts no arguments. It supplies a hash
        with symbol keys and detached diagnostic values: strings, booleans, finite
        real numbers, lists of such values, or nested symbol-keyed hashes. Symbols
-       as values, vectors, native pointers, and procedures are not accepted.
+       as values, vectors, native pointers, and functions are not accepted.
        The OpenGL constructor copies this information into its context report.}
- @item{The optional @racket[resolve] procedure accepts a native function name as
+ @item{The optional @racket[resolve] function accepts a native function name as
        a string and returns a foreign pointer or @racket[#f]. It must resolve
        functions for this host and its graphics standard. It is used synchronously
        while the host is current. Interface assembly reports callback failures
@@ -119,7 +119,7 @@ constructor's positional-arity check does not establish their behavior.
 
 Only external OpenGL providers are accepted by @racket[make-gpu-context].
 Provider values for Metal or Direct3D can be constructed, but passing them to
-that procedure raises an unavailability exception; use its owned-device routes.
+that function raises an unavailability exception; use its owned-device routes.
 The EGL adapters use the names @racket['egl-owned] and @racket['egl-current].
 Those names also select a default interface route that avoids the native GL
 interface factory.
@@ -150,7 +150,7 @@ Catching only this predicate does not turn arbitrary errors into CPU fallback.
 @defproc[(exn:fail:gpu:unavailable-step [exception exn:fail:gpu:unavailable?]) symbol?]{
 Returns the step identifying the unavailable facility. The symbol is diagnostic;
 there is no exhaustive public enumeration. The exception message provides the
-associated explanation. This module exports no constructor for the exception.
+associated explanation. This library exports no constructor for the exception.
 }
 
 @close-eval[backend-eval]

@@ -1,12 +1,12 @@
 #lang scribble/manual
 
 @(require scribble/eval
-          (for-label racket/base racket/contract skia skia/image-info skia/raster-buffers))
+          (for-label racket/base racket/contract skia skia/image-info))
 
 @(define pixel-eval (make-base-eval))
 @(pixel-eval '(require skia/image-info))
 
-@title[#:tag "skia-pixel-descriptions"]{Pixel Descriptions and Decoded Buffers}
+@title[#:tag "skia-pixel-descriptions"]{Pixel Descriptions and Formats}
 
 @defmodule[skia/image-info #:no-declare]
 @(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
@@ -19,6 +19,8 @@ strings can be interpreted without keeping the decoder open.
 Constructing a description validates its representation, not native decoder or
 GPU support. It neither allocates a pixel buffer nor performs color conversion.
 Native operations can reject a valid description they cannot implement.
+
+@section{Pixel Descriptions}
 
 @defproc[(image-info? [v any/c])
           boolean?]{
@@ -149,41 +151,6 @@ device, codec, available memory, or a particular resource's lifetime.
 }
 
 @close-eval[pixel-eval]
-
-@section{Decoded Raster Buffers}
-
-@defmodule[skia/raster-buffers #:no-declare]
-@(declare-exporting skia skia/raster-buffers #:use-sources (skia/raster-buffers))
-
-A @deftech{raster buffer} owns mutable CPU pixel storage. Converting a scanline
-batch or incremental snapshot into a buffer copies the detached bytes; closing
-the decoding session does not invalidate the buffer. Closing the buffer does
-not invalidate a previously copied image. Open buffers follow ordinary resource
-thread ownership. A canvas or pixmap scope can temporarily borrow the buffer
-exclusively; copying pixels into an image requires the buffer to be idle.
-
-@defproc[(raster-buffer? [v any/c])
-          boolean?]{
-Returns @racket[#t] for a raster buffer, including a closed one, and @racket[#f] otherwise.
-}
-
-@defproc[(raster-buffer-image-info [buffer raster-buffer?])
-          image-info?]{
-Returns a detached description of an open buffer's dimensions, storage format,
-alpha type, and color interpretation. The description remains usable after the
-buffer closes. This metadata query is permitted during a buffer borrow; it does
-not lend pixel storage to the caller.
-}
-
-@defproc[(raster-buffer->image [buffer raster-buffer?])
-          image?]{
-Returns an independently owned image containing copied pixels in the buffer's
-color and alpha format. The buffer must be open and have no active canvas or
-pixmap scope. The storage copy must fit @racket[current-skia-byte-limit]. Later
-buffer mutation or closure does not change the image. The operation does not
-normalize an encoded orientation, concatenate separate scanline batches, or
-certify that incremental decoding was complete.
-}
 
 @section[#:tag "skia-pixel-format-inventories"]{Format Inventories}
 

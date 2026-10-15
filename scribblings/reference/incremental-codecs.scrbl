@@ -30,6 +30,10 @@ works after closure; other operations require an open resource. Closing destroys
 the decoder before releasing pixels it might retain. Progress and snapshots are
 detached and survive session closure.
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section{Sessions and Incremental Input}
+
 @defproc[(codec-incremental-session? [v any/c])
           boolean?]{
 Returns @racket[#t] for an incremental session, including a closed wrapper,

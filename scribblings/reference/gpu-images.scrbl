@@ -8,7 +8,7 @@
 
 A @deftech{GPU image} is an owned image tied to one GPU context. It also satisfies
 @racket[image?]. Draw a GPU image with the ordinary canvas image-drawing
-procedures, such as @racket[draw-image] and @racket[draw-image-rect], while
+functions, such as @racket[draw-image] and @racket[draw-image-rect], while
 its context is active. CPU-only image operations require an explicit transfer.
 GPU images can also be used to construct image shaders. A texture-backed
 result is not an independently usable CPU image. Use the explicit operations in

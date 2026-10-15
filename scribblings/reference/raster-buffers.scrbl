@@ -8,7 +8,7 @@
 @defmodule[skia/raster-buffers #:no-declare]
 @(declare-exporting skia skia/raster-buffers #:use-sources (skia/raster-buffers))
 
-A @tech{raster buffer} owns mutable CPU pixel storage. Its format and color interpretation are
+A @deftech{raster buffer} owns mutable CPU pixel storage. Its format and color interpretation are
 described by @racket[raster-buffer-image-info]. A @deftech{pixmap} is a temporary view of that
 storage, not an independently owned resource. Use @racket[call-with-raster-buffer-pixmap] to
 obtain one. Use @racket[call-with-raster-buffer-canvas] to draw directly into the same buffer.
@@ -21,6 +21,31 @@ descriptions and @racket[raster-buffer?], @racket[raster-buffer-image-info], and
 @racket[raster-buffer->image].
 
 @local-table-of-contents[#:style 'immediate-only]
+
+@section{Buffer Identity and Image Conversion}
+
+@defproc[(raster-buffer? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a raster buffer, including a closed one, and @racket[#f] otherwise.
+}
+
+@defproc[(raster-buffer-image-info [buffer raster-buffer?])
+          image-info?]{
+Returns a detached description of an open buffer's dimensions, storage format,
+alpha type, and color interpretation. The description remains usable after the
+buffer closes. This metadata query is permitted during a buffer borrow; it does
+not lend pixel storage to the caller.
+}
+
+@defproc[(raster-buffer->image [buffer raster-buffer?])
+          image?]{
+Returns an independently owned image containing copied pixels in the buffer's
+color and alpha format. The buffer must be open and have no active canvas or
+pixmap scope. The storage copy must fit @racket[current-skia-byte-limit]. Later
+buffer mutation or closure does not change the image. The operation does not
+normalize an encoded orientation, concatenate separate scanline batches, or
+certify that incremental decoding was complete.
+}
 
 @section{Allocation and Copies}
 
@@ -208,8 +233,8 @@ range. Alpha is between zero and one. Extended RGB may be negative or greater th
 Premultiplied zero alpha requires zero RGB, including after storage rounding. Binary16 storage
 reads and writes preserve subnormal values; native drawing is not promised to do so.
 
-All coordinate queries below use integer coordinates within the view. Mutators require a
-writable view. Raw sample and storage-byte operations do not perform color-space conversion.
+All coordinate queries in this section use integer coordinates within the view. Mutators
+require a writable view. Raw sample and storage-byte operations do not perform color-space conversion.
 
 @defproc[(pixmap-sample [view pixmap?] [x exact-nonnegative-integer?] [y
           exact-nonnegative-integer?])

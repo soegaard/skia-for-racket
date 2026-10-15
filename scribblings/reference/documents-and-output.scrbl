@@ -2,11 +2,12 @@
 
 @title[#:tag "skia-reference-documents-output" #:style 'toc]{Documents and Output}
 
-PDF and SVG outputs record drawing into document-oriented targets. Page
-construction, links, auditing, and bounded output groups control how those
-outputs are assembled and validated. Raster fallback normally executes on the
-CPU; an explicit GPU executor can instead render a selected fallback before
-reading it back into CPU-owned document content.
+PDF and SVG documents provide vector-oriented output targets with explicit
+lifecycle and publication rules. Output pages add backend-neutral page
+descriptions and controlled raster fallback. Links, auditing, and bounded output
+groups preserve or report document semantics. Raster fallback normally executes
+on the CPU; an explicit GPU executor can instead render a selected fallback
+before reading it back into CPU-owned document content.
 
 @local-table-of-contents[]
 

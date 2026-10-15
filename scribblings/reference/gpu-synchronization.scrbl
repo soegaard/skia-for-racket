@@ -9,7 +9,7 @@
 Flushing makes pending Skia work available for submission. Submission requests
 backend execution. A wait requests completion for the CPU. These are different
 boundaries: none presents a window, exports a native fence, or transfers pixels
-by itself. The operations in this chapter require the owning Racket thread and
+by itself. These operations require the owning Racket thread and
 an active, usable context. Detected native context loss requests shutdown and
 raises; it does not retry rendering on the CPU.
 
@@ -74,7 +74,7 @@ usable after context closure but is not an atomic account of all driver memory.
 
 @defproc[(gpu-set-cache-limit! [context gpu-context?] [bytes exact-nonnegative-integer?]) void?]{
 Sets the context's budgeted cache byte limit. The value must fit native
-@tt{size_t}; zero is accepted. This procedure returns void, not the previous
+@tt{size_t}; zero is accepted. This function returns void, not the previous
 limit or the number of bytes freed. It does not impose a total GPU-memory cap.
 }
 
@@ -95,7 +95,7 @@ is not a guarantee that this many bytes can be freed. The result is void.
 @defproc[(gpu-perform-deferred-cleanup! [context gpu-context?]
                                       [milliseconds (integer-in 0 2147483647)]) void?]{
 Requests native cleanup based on how long resources have been unused. The exact
-nonnegative age is measured in milliseconds. It is not a delay: the procedure
+nonnegative age is measured in milliseconds. It is not a delay: the function
 does not schedule a future callback or sleep for that duration. It returns no
 freed-byte count and does not guarantee CPU completion.
 }

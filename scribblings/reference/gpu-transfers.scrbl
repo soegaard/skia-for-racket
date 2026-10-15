@@ -46,9 +46,9 @@ no partial byte string. Later GPU changes do not alter a successful result.
 @defproc[(gpu-image->rgba-bytes [image gpu-image?]
           [#:premultiplied? premultiplied? boolean? #f]
           [#:color-space space (or/c color-space? #f) #f]) bytes?]{
-Like @racket[gpu-surface->rgba-bytes], using the image staging route described
-above. False selects the image's color interpretation through that staging
-surface. The image is not consumed. The temporary GPU resources are retired
+Like @racket[gpu-surface->rgba-bytes], using the image staging route: the image
+is first drawn one-to-one into a same-context staging surface. False selects the
+image's color interpretation through that staging surface. The image is not consumed. The temporary GPU resources are retired
 before returning or propagating a failure.
 }
 
@@ -100,7 +100,7 @@ Reads the full surface into a live writable pixmap of exactly matching dimension
 The destination description and stride come from the pixmap, whose exclusive
 scope must remain active. The source and destination must agree on whether a
 color-space tag is present. Supported tagged conversions are performed by the
-native readback; this procedure does not silently relabel samples.
+native readback; this function does not silently relabel samples.
 
 The operation waits for GPU work, reads into temporary tight storage, and
 validates the result before committing pixels. A failed read or invalid converted

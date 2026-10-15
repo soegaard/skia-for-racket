@@ -2,9 +2,11 @@
 
 @title[#:tag "skia-reference-streams-pixels-codecs" #:style 'toc]{Streams, Pixels, and Codecs}
 
-Streams move encoded bytes, while pixel descriptions and raster buffers expose
-decoded image storage. Codec interfaces inspect and decode encoded image data,
-including scanline and incremental decoding.
+Native streams are Skia-owned byte sources and sinks; buffered and live adapters
+connect them to Racket ports with different I/O and lifetime guarantees. Pixel
+descriptions specify raster storage layouts, while raster buffers own mutable
+CPU pixels. Codec interfaces inspect and decode encoded image data either as complete
+frames, by scanline, or incrementally.
 
 @local-table-of-contents[]
 

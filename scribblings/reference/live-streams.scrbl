@@ -8,12 +8,12 @@
 @(declare-exporting skia skia/live-streams #:use-sources (skia/live-streams))
 
 A @deftech{live port operation} exchanges chunks with a Racket port while native
-work is in progress. The image, picture, and byte-copy
-operations do not first buffer the complete encoded transfer as the
-@secref["skia-buffered-ports"] adapters do. Document preflight has additional
-storage requirements, described below.
-The call is synchronous: it returns after native work and cleanup have finished.
-No persistent port-backed image or codec is returned.
+work is in progress. The image, picture, and byte-copy operations do not first
+buffer the complete encoded transfer as the @secref["skia-buffered-ports"]
+adapters do. Document output is different: it records complete pictures and
+performs a preflight export before publishing. The call is synchronous: it
+returns after native work and cleanup have finished. No persistent port-backed
+image or codec is returned.
 
 The caller must give the operation exclusive use of its ports until it returns.
 Port callbacks must not re-enter live operations. Another active live port
@@ -23,9 +23,9 @@ Racket thread.
 
 The positive exact @racket[#:limit] must not exceed @racket[2147483647] or
 @racket[current-skia-byte-limit]. It bounds logical transfer/storage quantities,
-not the total native heap. Decoding still allocates pixels. Document output
-records complete pictures and performs a preflight export before publishing;
-streaming output is not a constant-memory authoring guarantee.
+not the total native heap. Decoding still allocates pixels, and document
+recording can retain substantial additional storage. Streaming output is not a
+constant-memory authoring guarantee.
 
 A cancellation event is checked during I/O. Cancellation and failures can leave
 partly consumed input or partly written output. They do not roll back bytes or
@@ -171,7 +171,7 @@ failures can leave partial output.
 
 The text-mode and DPI rules are those of @racket[output->bytes]. The automatic
 mode uses native text for PDF and outlines for SVG. SVG output includes physical
-point dimensions. This procedure does not accept the metadata or identifier
+point dimensions. This function does not accept the metadata or identifier
 keywords of @racket[output->bytes]. Named destinations cannot be authored on
 the intermediate picture-recording canvas; use direct document output when such
 annotations are required.
@@ -180,7 +180,7 @@ The default @racket['error] policy rejects features classified as needing raster
 fallback, unsupported, unknown, or discarded. The @racket['vector-only] policy
 rejects every feature not classified as vector, including embedded raster images.
 The @racket['report] policy does not reject those classifications, but this
-procedure returns only a byte count, not the internally collected audit report.
+function returns only a byte count, not the internally collected audit report.
 These policies do not make arbitrary effects portable or add automatic raster
 fallback. Native and port failures can still raise under any policy.
 }

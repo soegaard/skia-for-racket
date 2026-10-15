@@ -18,6 +18,8 @@ raster executor belongs to the GPU output interface; its use does not turn a ras
 into vector content. Groups do not repair unknown resource provenance or recover annotations
 that were already flattened.
 
+@section{Drawing Bounded Groups}
+
 @defproc[(draw-output-group [canvas canvas?] [x real?] [y real?] [width (and/c real? (>/c 0))]
           [height (and/c real? (>/c 0))] [draw (-> canvas? any)] [#:policy policy (or/c
           'prefer-vector 'require-vector 'raster) 'prefer-vector] [#:padding padding (or/c real?

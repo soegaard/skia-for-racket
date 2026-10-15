@@ -278,8 +278,8 @@ not take ownership of the port.
 @defmodule[skia/stream-inputs #:no-declare]
 @(declare-exporting skia skia/stream-inputs #:use-sources (skia/stream-inputs))
 
-The stream constructors below read from byte zero through a private duplicate,
-not from the caller's current cursor. They leave the original stream open and
+The resource constructors in this section read from byte zero through a private
+duplicate, not from the caller's current cursor. They leave the original stream open and
 its cursor unchanged, including on construction failure. A successful resource
 remains usable after the original stream closes. A file-backed duplicate still
 requires a stable backing file.

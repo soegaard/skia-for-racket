@@ -23,8 +23,8 @@ buffers, or turn a host-owned context into a package-owned one.
           [#:gl-interface interface (or/c 'default 'auto 'desktop) 'default])
          gpu-context?]{
 Creates an owned desktop-OpenGL context through EGL. This is the package's
-headless OpenGL construction route on Linux. Requiring the module does not load
-EGL or create a context; native platform loading begins when this procedure is
+headless OpenGL construction route on Linux. Importing the library does not load
+EGL or create a context; native platform loading begins when this function is
 called.
 
 The @racket['surfaceless] platform requests EGL's surfaceless platform. The
@@ -72,7 +72,7 @@ the host window, event loop, or swap operation.
 
 Provider activation uses the host's @racket[call-as-current] operation and checks
 both the Racket and native current-context identities. The adapter also supplies
-the procedure resolver needed by explicit GL-interface assembly and external GL
+the function resolver needed by explicit GL-interface assembly and external GL
 interop. The provider and contexts made from it retain the ordinary creating-
 thread restrictions. Closing a Skia GPU context does not close @racket[gl].
 }
