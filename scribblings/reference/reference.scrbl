@@ -51,6 +51,7 @@ chapters identify additional public import paths.
 
 @include-section["pictures.scrbl"]
 @include-section["drawables.scrbl"]
+@include-section["pict-bridge.scrbl"]
 @include-section["pdf-documents.scrbl"]
 @include-section["svg-documents.scrbl"]
 @include-section["output-pages.scrbl"]

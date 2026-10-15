@@ -208,6 +208,8 @@ def main(argv=None):
             run('dc-integration-pure-tests',
                 [racket, '-l', 'raco', '--', 'test',
                  ROOT / 'tools/reference-dc-integration-pure-test.rkt'])
+            run('pict-pure-tests', [racket, '-l', 'raco', '--', 'test',
+                                    ROOT / 'tests/pict-pure-test.rkt'])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:
@@ -280,7 +282,8 @@ def main(argv=None):
                                     ROOT / 'tools/reference-output-test.rkt',
                                     ROOT / 'tools/reference-io-test.rkt',
                                     ROOT / 'tools/reference-geometry-test.rkt',
-                                    ROOT / 'tools/reference-raster-test.rkt'])
+                                    ROOT / 'tools/reference-raster-test.rkt',
+                                    ROOT / 'tests/pict-native-test.rkt'])
                 report['native_executed'] = True
             if args.gpu_context_backend:
                 gpu_output = output / 'gpu-context.json'

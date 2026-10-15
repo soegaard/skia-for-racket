@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "stage": "R4e",
-  "reviewed_repository_commit": "ab4b26693534dd197199dd2beda3639824d84e75",
+  "stage": "R4f",
+  "reviewed_repository_commit": "2dcd956dd9a41c76399c905971e2fa381a636bc2",
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "2cadbe3212b62c3becfb0e184a1adc119639b750"
+      "git_blob": "f67988e74b0796843eb69a0d6d31fcd1e06e9f1c"
     },
     {
       "file": "api/public-api-gui.json",
@@ -13282,6 +13282,36 @@
       "canonical_module": "skia/gpu-dc",
       "exports": [
         "skia/gpu-dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "image->pict",
+      "chapter": "scribblings/reference/pict-bridge.scrbl",
+      "canonical_module": "skia/pict",
+      "exports": [
+        "skia/pict"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "surface->pict",
+      "chapter": "scribblings/reference/pict-bridge.scrbl",
+      "canonical_module": "skia/pict",
+      "exports": [
+        "skia/pict"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "picture->pict",
+      "chapter": "scribblings/reference/pict-bridge.scrbl",
+      "canonical_module": "skia/pict",
+      "exports": [
+        "skia/pict"
       ],
       "phase": "0",
       "space": null

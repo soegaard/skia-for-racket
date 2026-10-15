@@ -67,6 +67,8 @@
                      (prefix-in dc-output: skia/dc-output)
                      (prefix-in gpu-dc: skia/gpu-dc)))
 
+@(require (for-label (prefix-in skia-pict: skia/pict)))
+
 
 @(require (for-label
            (prefix-in gpu-egl: skia/gpu-egl)
@@ -2674,6 +2676,14 @@ The following links cover the font and text interfaces.
 @racket[drawable-notify-drawing-changed!]
 
 @racket[drawables:drawable-notify-drawing-changed!]
+
+@section{Racket Pict Bridge}
+
+@racket[skia-pict:image->pict]
+
+@racket[skia-pict:surface->pict]
+
+@racket[skia-pict:picture->pict]
 
 @section{Raster, Output Policy, and Diagnostics}
 

@@ -1,4 +1,39 @@
-# Skia Reference development: R4e.1
+# Skia Reference development: R4f
+
+## Opt-in Racket pict bridge
+
+Baseline: `2dcd956dd9a41c76399c905971e2fa381a636bc2`
+(`Add opt-in Skia pict bridge`). R4f adds three bindings through three public
+export paths and one chapter. The Reference now has 1258 definitions, 1981
+documented export paths, and 70 conceptual chapters. The headless inventory is
+refreshed to the repository version that contains `skia/pict`; the retained
+source-verified one-shot GPU renderer remains the only export accounted for
+outside the reflected snapshots. No export paths are deferred.
+
+The `skia/pict` chapter documents an explicit eager bridge from CPU images,
+surfaces, and recorded pictures to ordinary Racket picts. Returned picts own
+independent Racket bitmaps and can outlive their Skia sources. The bridge does
+not attach pict-conversion properties to Skia values, encode/decode PNG, infer
+display DPI, or perform implicit GPU readback.
+
+The chapter records the separate geometry controls: `#:backing-scale` changes
+the logical size of image/surface picts without resampling their physical
+pixels, while `#:raster-scale` changes the sampling density used to replay a
+recorded picture without changing the requested logical bounds. Tagged image
+samples are converted to sRGB for the 8-bit display bridge; untagged samples
+retain their numerical channels. Transfer preflight accounts for the simultaneous
+RGBA and ARGB byte buffers under `current-skia-byte-limit`.
+
+The existing `tests/pict-pure-test.rkt` and `tests/pict-native-test.rkt` suites
+are added to the Reference validation runner. The pure suite checks geometry,
+byte-budget, import, and explicit-transfer boundaries without native drawing;
+the native suite checks pixels, color conversion, detached lifetime, picture
+viewport behavior, and use of the returned picts by Racket and Skia consumers.
+R4f changes no library behavior; it documents and validates the public pict
+bridge already present in the baseline.
+
+## Earlier R4e.1 development notes
+
 
 ## Editorial clarification after R4e
 
