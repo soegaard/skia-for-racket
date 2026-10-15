@@ -291,7 +291,7 @@ a sprite's local source origin, not its absolute location in the atlas image.
           [#:paint paint (or/c paint? #f) #f])
           void?]{
 Draws one image batch with matching transform and source-rectangle counts.
-Every transform must be an @racket[atlas-transform?]. Source rectangles are
+Every transform must satisfy @racket[atlas-transform?]. Source rectangles are
 nonempty drawing-scalar rectangles contained in the image; fractional source
 coordinates are allowed. Optional packed colors are supplied as color
 specifications, one per sprite. They combine with source samples using

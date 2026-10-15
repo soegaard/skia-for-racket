@@ -24,6 +24,8 @@ and driver workarounds can affect their use. Passing an explicit value to
 value would contain the wrapper's defaults. Neither route provides native
 readback of the effective options.
 
+@section{Construction}
+
 @defproc[(gpu-context-options? [v any/c]) boolean?]{
 Returns @racket[#t] for a GPU context options value.
 }
@@ -65,6 +67,8 @@ constructing another options value.
   (eval:check (gpu-context-options-runtime-program-cache-size defaults) 256)
 ]
 }
+
+@section{Inspection and Serialization}
 
 @defproc[(gpu-context-options-avoid-stencil-buffers? [options gpu-context-options?]) boolean?]{
 Returns the stored request to avoid stencil buffers.

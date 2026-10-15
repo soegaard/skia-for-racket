@@ -7,8 +7,8 @@
 A @tech{canvas} carries a transform, a clip, and a stack of saved drawing states.
 These operations change how subsequent drawing is placed; they do not transform
 pixels that have already been drawn. Several wrappers for the same target share
-this state. All operations in this chapter require a live canvas and its owner's
-thread; a GPU canvas also requires its matching active lease.
+this state. Canvas operations require a live canvas and its owner's thread; a GPU
+canvas also requires its matching active lease.
 
 @local-table-of-contents[#:style 'immediate-only]
 

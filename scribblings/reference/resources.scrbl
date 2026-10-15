@@ -60,7 +60,7 @@ fallback cleanup; it does not schedule a second native release.
 
 The operation can raise when an exclusive borrow or protected use forbids
 closure. A failed close must not be treated as successful release. A borrowed
-canvas cannot be closed with this procedure; close its owner at the permitted
+canvas cannot be closed with this function; close its owner at the permitted
 point instead. Resources that retain their own native references to another
 object follow the retention rules of their constructors.
 }

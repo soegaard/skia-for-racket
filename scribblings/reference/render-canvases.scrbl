@@ -34,12 +34,12 @@ raster canvas or replay the application callback.
          (and/c (is-a?/c canvas%) skia-render-canvas?)]{
 Creates a canvas implementing @racket[skia-render-canvas<%>] on the current
 eventspace handler thread. The paint callback accepts the canvas and drawing
-context, and its result values are ignored. @racket[on-error] accepts one raised
-value. Neither callback may require keyword arguments.
+context, and its result values are ignored. The @racket[on-error] callback accepts one
+raised value. Neither callback may require keyword arguments.
 
-@racket['raster] always selects the CPU implementation. With a GPU renderer and
+The @racket['raster] renderer always selects the CPU implementation. With a GPU renderer and
 an automatic backend, the unified policy chooses Metal on macOS, Direct3D on
-Windows x86-64, and desktop OpenGL on Unix. @racket['auto] chooses that GPU
+Windows x86-64, and desktop OpenGL on Unix. The @racket['auto] renderer chooses that GPU
 preference where declared, otherwise raster. These are declarative platform
 rules, not driver probes or fallback rules. Direct3D adapter/sync options are
 rejected for other backends; WARP never appears as an implicit fallback.
@@ -47,7 +47,7 @@ rejected for other backends; WARP never appears as an implicit fallback.
 The raw GPU-widget API described in @secref["skia-gpu-widgets"] keeps its own
 older automatic policy: it selects Metal on macOS and OpenGL elsewhere. Thus,
 on Windows x86-64, that API selects OpenGL while this unified factory selects
-Direct3D. @racket['auto] is therefore local to each constructor, not one
+Direct3D. The @racket['auto] choice is therefore local to each constructor, not one
 package-wide backend choice.
 
 The selector accepts synchronization intervals from 0 through 4. The current

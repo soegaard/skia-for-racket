@@ -129,7 +129,7 @@ Orientation, color-space, frame-dependency, and decode-failure rules are unchang
 
 An @deftech{encoded image description} is a detached value reporting dimensions,
 format, native color and alpha types, encoded orientation, and animation metadata
-count. It is not an @racket[image-info?] storage description. Its accessors need
+count. It is not a @tech{pixel description}. Its accessors need
 neither an open codec nor a native library call.
 
 @defproc[(encoded-image-info? [v any/c])

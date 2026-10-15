@@ -14,8 +14,8 @@ provides widgets backed by the presenter API. Construction and widget-specific
 operations belong to the creating eventspace's handler thread. Use
 @racket[queue-callback] to schedule such work from another thread.
 
-Backend selection is fixed for a widget's lifetime. @racket['auto] chooses Metal
-on macOS and OpenGL elsewhere; it is a selection rule, not a failure fallback.
+Backend selection is fixed for a widget's lifetime. With @racket['auto], the widget
+selects Metal on macOS and OpenGL elsewhere; this is a selection rule, not a failure fallback.
 Explicit Direct3D presentation requires Windows x86-64. Explicit Metal requires
 macOS. Failed GPU construction does not replay the callback on a CPU renderer.
 

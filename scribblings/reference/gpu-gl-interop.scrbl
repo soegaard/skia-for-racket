@@ -78,7 +78,7 @@ not alias the host texture and follows the ordinary GPU-image lifetime and
 context-affinity rules. No CPU readback occurs.
 
 The original texture must have identity swizzle, base level zero, and no compare
-mode. @racket[premultiplied?] describes its input alpha representation;
+mode. The @racket[premultiplied?] argument describes its input alpha representation;
 @racket[space] describes its color interpretation. The owned destination uses
 the regular premultiplied GPU-surface path. With the default wait, the host may
 reuse or delete its texture after successful return without changing the copy.

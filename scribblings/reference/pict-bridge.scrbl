@@ -10,8 +10,8 @@
 @(declare-exporting skia/pict #:use-sources (skia/pict))
 
 The @racketmodname[skia/pict] library converts Skia images, surfaces, and
-recorded pictures to ordinary Racket @racket[pict:pict?] values.
-@racket[image->pict] and @racket[surface->pict] copy CPU pixels;
+recorded pictures to ordinary Racket pict values.
+The @racket[image->pict] and @racket[surface->pict] functions copy CPU pixels;
 @racket[picture->pict] draws a recorded picture into a temporary CPU surface.
 Each operation creates an independent bitmap-backed pict. Closing the source,
 or drawing further on a source surface, does not change the result.

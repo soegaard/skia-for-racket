@@ -22,8 +22,8 @@ The bridge converts standalone values rather than drawing contexts. Use
 @racket[draw:dc<%>] interface. These functions do not create a live view,
 share native handles, or provide zero-copy storage.
 
-Successful conversions are detached from their sources. @racket[bitmap->image]
-and @racket[dc-path->skia-path] return owned Skia resources, which should be
+Successful conversions are detached from their sources. The @racket[bitmap->image]
+and @racket[dc-path->skia-path] functions return owned Skia resources, which should be
 managed with @racket[with-skia], @racket[call-with-skia-resource], or
 @racket[skia-close!]. Conversions in the other direction return ordinary
 Racket Draw objects, and @racket[color%->rgba] returns an immutable Skia value;
@@ -55,8 +55,8 @@ loaded-mask identity, color profile, or floating-point/HDR representation.
 
 The @racket[mask] argument controls additional alpha coverage. The default
 @racket['loaded] uses @method[draw:bitmap% get-loaded-mask] when one is present.
-@racket[#f] ignores the loaded mask, and a supplied bitmap replaces it. A
-resolved mask must be usable and must have the same logical
+When @racket[mask] is @racket[#f], the loaded mask is ignored; a supplied bitmap
+replaces it. A resolved mask must be usable and must have the same logical
 dimensions as the source bitmap. Its own loaded mask is not applied
 recursively. In physical mode, the bridge chooses the nearest mask pixel for each
 source-pixel center, accounting for differing backing scales.
@@ -135,7 +135,7 @@ subpaths, and a possible final open subpath. Later mutation of the Draw path
 does not change the result.
 
 The @racket[fill-style] argument supplies the interpretation that a Draw
-drawing operation would otherwise receive separately. @racket['odd-even] maps
+drawing operation would otherwise receive separately. The @racket['odd-even] fill style maps
 to Skia's @racket['even-odd] fill rule, and @racket['winding] maps to
 @racket['winding]. The default is @racket['odd-even]; callers that intend to
 draw the source with winding fill should pass @racket['winding] explicitly.

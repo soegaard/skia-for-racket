@@ -261,8 +261,8 @@ owned by other threads are not processed.
 
 With @racket[abandon?] false, normal closure requires an available host. With
 @racket[abandon?] true, the lost-host abandonment operation is attempted first.
-Neither mode silently retires live children. An @racket[exn:fail?] from one
-shutdown becomes a @racket['shutdown_error] string in its report, and processing
+Neither mode silently retires live children. If one shutdown raises a value satisfying
+@racket[exn:fail?], its report contains a @racket['shutdown_error] string and processing
 continues. Other raised values are not converted into reports. Inspect the
 reports: returning a list does not imply that every selected context closed.
 This operation does not drain presenter or GUI-window shutdowns.

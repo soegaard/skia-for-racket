@@ -62,7 +62,7 @@ although ordinary callback side effects remain.
 
 The returned detached report records backend, command count, logical size,
 selected policies, group reports, and the fact that the capture DC has expired.
-@racket['require-vector] is valid only for document receivers and rejects any
+The @racket['require-vector] policy is valid only for document receivers and rejects any
 operation that would require raster representation.
 }
 
@@ -112,7 +112,7 @@ The child closes on every exit and cannot be retained or resumed. Its callback
 must accept one positional argument and no required keywords.
 
 On an output DC, the operation becomes an explicitly audited bounded raster
-group. @racket['require-vector] rejects before the child callback runs. On an
+group. The @racket['require-vector] policy rejects before the child callback runs. On an
 ordinary raster or GPU DC, the helper inserts a bitmap through that DC's public
 bitmap path. The group cannot inspect the already emitted document backdrop;
 include every required source/backdrop pixel inside the child callback.

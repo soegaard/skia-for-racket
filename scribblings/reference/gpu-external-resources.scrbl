@@ -24,7 +24,7 @@ native references. A validation failure before a handoff begins can leave the
 token ready; once an operation has begun, construct a new token for another
 handoff instead of retrying the old one.
 
-An external texture token is not a @racket[skia-resource?] value and is not
+An external texture token does not satisfy @racket[skia-resource?] and is not
 managed by @racket[with-skia] or @racket[skia-close!]. Use
 @racket[gpu-external-texture-close!] to retire a token that is no longer needed.
 
@@ -74,7 +74,7 @@ state is rejected. Nested external-resource operations are not supported.
           [context gpu-context?] [texture gpu-external-texture?]
           [proc (-> canvas? any)]) any]{
 Consumes a ready token by temporarily exposing its external texture as a drawing
-target. @racket[proc] receives only a borrowed Skia canvas and its multiple
+target. The @racket[proc] callback receives only a borrowed Skia canvas and its multiple
 values are returned. The canvas expires at callback exit and cannot be retained
 as a surface, snapshot source, or native-resource handle.
 

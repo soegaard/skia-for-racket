@@ -74,8 +74,8 @@ is deferred until that work unwinds instead of recursively switching contexts.
 
 @defproc[(gpu-presenter-set-render! [presenter gpu-presenter?]
                                     [render procedure?]) void?]{
-Replaces the one-argument frame callback and requests one redraw. @racket[render]
-must accept one positional argument. Replacement is rejected for a closing,
+Replaces the one-argument frame callback and requests one redraw. The @racket[render]
+callback must accept one positional argument. Replacement is rejected for a closing,
 closed, or failed presenter.
 }
 

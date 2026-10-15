@@ -161,7 +161,7 @@ Invalid native strings or callback data raise after native cleanup.
 
 The report is not an atomic process-memory snapshot. The callback provider is process-global; a
 second module instance or place cannot replace an already claimed provider table. The same
-provider is shared with GPU memory reporting, but this procedure's report has CPU-cache scope.
+provider is shared with GPU memory reporting, but this function's report has CPU-cache scope.
 No application callback runs while Skia is collecting the records.
 }
 

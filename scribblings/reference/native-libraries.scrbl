@@ -73,14 +73,14 @@ does not load or verify a library.
 @defproc[(harfbuzz-check!)
           void?]{
 Loads the selected HarfBuzz library, verifies its native version, and resolves the required
-shaping entry points. Incompatible versions or missing symbols raise. The procedure does not
+shaping entry points. Incompatible versions or missing symbols raise. The function does not
 locate fonts, shape text, or guarantee font coverage.
 }
 
 @defproc[(harfbuzz-available?)
           boolean?]{
 Runs @racket[harfbuzz-check!] and returns @racket[#t] on success or @racket[#f] after catching
-an ordinary failure exception. Use the checking procedure when the reason for failure is needed.
+an ordinary failure exception. Use the checking function when the reason for failure is needed.
 }
 
 @defproc[(harfbuzz-native-version)

@@ -135,8 +135,8 @@ lifetime and output target. The report enumerates the complete installed
 checked no-ops, supported-with-limits operations, and document operations that
 require an explicit bounded raster group.
 
-The report is a declaration rather than execution evidence. @racket['raster]
-describes the persistent @racket[skia-dc%]; @racket['gpu], @racket['pdf], and
+The report is a declaration rather than execution evidence. The @racket['raster]
+declaration describes the persistent @racket[skia-dc%]; @racket['gpu], @racket['pdf], and
 @racket['svg] describe the callback-scoped integrations documented in
 @secref["skia-gpu-dc"] and @secref["skia-dc-output"].
 }
