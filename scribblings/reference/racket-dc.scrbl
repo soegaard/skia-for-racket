@@ -90,12 +90,14 @@ has run successfully.
             [src-x real?] [src-y real?]
             [src-width (and/c real? (>=/c 0))]
             [src-height (and/c real? (>=/c 0))]
-            [style symbol? 'solid]
+            [style (or/c 'solid 'opaque 'xor) 'solid]
             [color (is-a?/c draw:color%) (make-object draw:color% 0 0 0)]
             [mask (or/c #f (is-a?/c draw:bitmap%)) #f]) boolean?]{
 Draws a bitmap subsection with linear sampling while preserving the caller's
 smoothing setting. It follows the same copied-pixel, mask, and source-rectangle
-rules as the ordinary bitmap methods.
+rules as the ordinary bitmap methods. The legacy @racket['xor] bitmap style has
+the same solid-drawing semantics as the compatibility layer's other bitmap
+methods; it is not a bitwise XOR operation.
 }
 
 @defmethod[(get-path-bounding-box [path (is-a?/c draw:dc-path%)]

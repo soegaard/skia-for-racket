@@ -69,7 +69,13 @@ operation that would require raster representation.
           [height (and/c real? (>/c 0) (<=/c 32768))]
           [draw (-> (is-a?/c draw:dc<%>) any)]
           [#:unit unit (or/c 'pt 'in 'mm 'cm 'px) 'pt]
-          [#:margins margins (or/c real? list?) 0]
+          [#:margins margins
+           (or/c (and/c real? (>=/c 0))
+                 (list/c (and/c real? (>=/c 0))
+                         (and/c real? (>=/c 0))
+                         (and/c real? (>=/c 0))
+                         (and/c real? (>=/c 0))))
+           0]
           [#:background background (or/c color? #f) #f]
           [#:smoothing smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed]
           [#:policy policy (or/c 'prefer-vector 'require-vector) 'prefer-vector]
@@ -77,8 +83,11 @@ operation that would require raster representation.
          output-page?]{
 Creates an ordinary detached output-page description whose drawing callback is
 adapted through @racket[call-with-output-dc]. The page constructor retains the
-usual physical-unit, margin, background, and content-clipping rules from
-@racket[make-output-page].
+usual physical-unit, background, and content-clipping rules from
+@racket[make-output-page]. A margin is either one nonnegative drawing scalar
+applied to all four sides or four nonnegative drawing scalars in left, top,
+right, bottom order. The horizontal and vertical margin pairs must leave a
+positive content width and height.
 
 Both @racket[draw] and @racket[on-report] must accept their one positional
 argument without required keywords. The report callback runs after successful

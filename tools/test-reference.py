@@ -5411,6 +5411,30 @@ class R4eDcIntegrationTests(unittest.TestCase):
         self.assertEqual(self.header('draw-dc-raster-group')[1], 'void?')
         self.assertEqual(self.header('call-with-output-dc')[1], ['and/c', 'hash?', 'immutable?'])
 
+    def test_bitmap_smooth_style_contract_matches_the_bitmap_bridge(self):
+        text = self.text('racket-dc')
+        header = next(h for f, h, _ in checks.commands(text, recursive=True)
+                      if f == 'defmethod' and h and h[0][0] == 'draw-bitmap-section-smooth')
+        style = next(arg for arg in header[0]
+                     if isinstance(arg, list) and arg[0] == 'style')
+        self.assertEqual(style[1], ['or/c', ['quote', 'solid'], ['quote', 'opaque'],
+                                    ['quote', 'xor']])
+        prose = ' '.join(text.split())
+        self.assertIn("legacy @racket['xor] bitmap style", prose)
+        self.assertIn('not a bitwise XOR operation', prose)
+
+    def test_output_page_margin_contract_has_exact_four_side_shape(self):
+        header = self.header('make-dc-output-page')[0]
+        margins = next(arg for arg in header
+                       if isinstance(arg, list) and arg[0] == '#:margins')
+        nonnegative = ['and/c', 'real?', ['>=/c', '0']]
+        self.assertEqual(margins[2],
+                         ['or/c', nonnegative, ['list/c', nonnegative, nonnegative,
+                                                nonnegative, nonnegative]])
+        prose = ' '.join(self.text('dc-output').split())
+        self.assertIn('left, top, right, bottom order', prose)
+        self.assertIn('positive content width and height', prose)
+
     def test_gpu_dc_staging_and_borrowed_surface_semantics_are_explicit(self):
         text = ' '.join(self.text('gpu-dc').split())
         for phrase in ('RGBA/BGRA/F16/F32', 'GPU-to-GPU', 'No automatic CPU readback',

@@ -1,4 +1,18 @@
-# Skia Reference development: R4e
+# Skia Reference development: R4e.1
+
+## Editorial clarification after R4e
+
+The implementation baseline remains `ab4b26693534dd197199dd2beda3639824d84e75`
+(`Refine Reference GUI documentation`). This revision changes no API coverage.
+The `draw-bitmap-section-smooth` method now declares exactly the three bitmap
+styles accepted by the implementation and states that legacy `'xor` has solid
+bitmap semantics rather than bitwise-XOR semantics. The `make-dc-output-page`
+margin contract now accepts either one nonnegative value or exactly four
+nonnegative values, and the entry states their left/top/right/bottom order and
+the requirement that positive content dimensions remain.
+
+The coverage manifest remains R4e: 1255 definitions and all 1978 checked export
+paths documented, with no deferred export records.
 
 ## Racket drawing-context integration
 
