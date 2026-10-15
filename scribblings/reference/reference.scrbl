@@ -14,8 +14,6 @@ introduce drawing through complete examples.
 The @racketmodname[skia] library provides the core drawing interface. Individual
 parts and chapters identify additional public import paths.
 
-@local-table-of-contents[#:style 'immediate-only]
-
 @para{@bold{Detailed Contents}}
 
 @local-table-of-contents[]
