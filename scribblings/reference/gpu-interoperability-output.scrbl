@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-gpu-interop-output"]{Native GPU Interoperability}
+@title[#:tag "skia-reference-gpu-interop-output" #:style 'toc]{Native GPU Interoperability}
 
 These interfaces cross native GPU API boundaries. They expose explicit OpenGL,
 Metal, and Direct3D integration points without changing the ownership and

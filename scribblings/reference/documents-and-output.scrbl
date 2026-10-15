@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-documents-output"]{Documents and Output}
+@title[#:tag "skia-reference-documents-output" #:style 'toc]{Documents and Output}
 
 PDF and SVG outputs record drawing into document-oriented targets. Page
 construction, links, auditing, and bounded output groups control how those

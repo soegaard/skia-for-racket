@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-foundations"]{Foundations}
+@title[#:tag "skia-reference-foundations" #:style 'toc]{Foundations}
 
 The conventions and resource rules in this part apply throughout the Skia API.
 This part also documents native-library availability and process-global cache

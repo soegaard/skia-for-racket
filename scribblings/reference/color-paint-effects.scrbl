@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-color-paint-effects"]{Color, Paint, and Effects}
+@title[#:tag "skia-reference-color-paint-effects" #:style 'toc]{Color, Paint, and Effects}
 
 Paints determine how drawing is colored and composited. Colors, shaders, path
 effects, filters, and runtime effects provide the values and transformations

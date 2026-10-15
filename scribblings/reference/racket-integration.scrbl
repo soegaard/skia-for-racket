@@ -2,7 +2,7 @@
 
 @(require (for-label racket/class (prefix-in draw: racket/draw)))
 
-@title[#:tag "skia-reference-racket-integration"]{Racket Integration}
+@title[#:tag "skia-reference-racket-integration" #:style 'toc]{Racket Integration}
 
 Skia integrates with Racket picts, Racket Draw values, and Racket's @racket[draw:dc<%>]
 drawing-context interface through explicit bridges and drawing-context

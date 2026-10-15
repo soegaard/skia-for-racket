@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-text-fonts"]{Text and Fonts}
+@title[#:tag "skia-reference-text-fonts" #:style 'toc]{Text and Fonts}
 
 Typefaces and fonts provide glyph data and metrics. Shaping, text blobs, and
 layout build positioned text that can be measured or drawn.

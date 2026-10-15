@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-streams-pixels-codecs"]{Streams, Pixels, and Codecs}
+@title[#:tag "skia-reference-streams-pixels-codecs" #:style 'toc]{Streams, Pixels, and Codecs}
 
 Streams move encoded bytes, while pixel descriptions and raster buffers expose
 decoded image storage. Codec interfaces inspect and decode encoded image data,

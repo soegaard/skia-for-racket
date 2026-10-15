@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-images"]{Images and Encoding}
+@title[#:tag "skia-reference-images" #:style 'toc]{Images and Encoding}
 
 Images are immutable pixel sources for drawing, readback, and encoding. This
 part covers CPU-compatible image construction, image operations, and encoded

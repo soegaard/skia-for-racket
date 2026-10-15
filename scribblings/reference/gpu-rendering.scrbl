@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-gpu-rendering"]{GPU Contexts and Resources}
+@title[#:tag "skia-reference-gpu-rendering" #:style 'toc]{GPU Contexts and Resources}
 
 GPU rendering uses a backend provider to create a context that owns GPU-side
 state and resources. This part covers context configuration, GPU surfaces and

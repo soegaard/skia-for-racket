@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-presentation-gui"]{Presentation and GUI}
+@title[#:tag "skia-reference-presentation-gui" #:style 'toc]{Presentation and GUI}
 
 Presentation APIs connect rendered content to Racket GUI windows. They provide
 GPU presenters and widgets together with persistent raster canvases and a

@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@title[#:tag "skia-reference-geometry-drawing"]{Geometry and Drawing}
+@title[#:tag "skia-reference-geometry-drawing" #:style 'toc]{Geometry and Drawing}
 
 Canvases draw primitive geometry directly and can consume reusable paths,
 regions, meshes, image grids, and coordinate transformations. Portable drawing
