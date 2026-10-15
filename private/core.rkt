@@ -326,6 +326,14 @@
     (case request
       [(png-bytes) (image->png-bytes value)]
       [else default])))
+(module* pict-internals #f
+  (provide require-cpu-image)
+  (define (require-cpu-image who im)
+    ;; GPU images have an ordinary image wrapper, so test their lifetime binding
+    ;; rather than importing the GPU implementation (which would create a cycle).
+    ;; This mirrors lifetime.rkt's CPU-only operation guard before metadata reads.
+    (when (owned-gpu-domain (image-h who im))
+      (error who "GPU-dependent input: detach explicitly with gpu-image->raster-image"))))
 ;; GPU images use the ordinary image record and an affinity-aware lifetime
 ;; cell. The private bridge exports no pointer access to the public modules.
 (module* gpu-image-internals #f

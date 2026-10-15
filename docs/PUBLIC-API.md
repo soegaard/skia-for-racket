@@ -61,6 +61,7 @@ Experimental names retain that label through convenience re-exports.
 | `output-groups.rkt` | stable | headless |
 | `output-policy.rkt` | stable | headless |
 | `output.rkt` | stable | headless |
+| `pict.rkt` | experimental | headless |
 | `pictures.rkt` | stable | headless |
 | `portable-drawing.rkt` | stable | headless |
 | `projective-matrix.rkt` | stable | headless |
@@ -2048,6 +2049,15 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | output-page? | stable | 0 | procedure | 1 | none | none |
 | save-output | stable | 0 | procedure | 3 | none | #:description, #:encoding-quality, #:exists, #:id-prefix, #:pdfa?, #:raster-dpi, #:text-mode, #:title |
 | unit->points | stable | 0 | procedure | 1, 2 | none | none |
+### pict.rkt
+
+Experimental opt-in CPU snapshot bridge to ordinary Racket pict values; backing-scale, sRGB, byte-limit, and explicit GPU-transfer boundaries remain mandatory.
+
+| Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
+|---|---|---|---|---|---|---|
+| image->pict | experimental | 0 | procedure | 1 | none | #:backing-scale |
+| picture->pict | experimental | 0 | procedure | 1 | none | #:bounds, #:raster-scale |
+| surface->pict | experimental | 0 | procedure | 1 | none | #:backing-scale |
 ### pictures.rkt
 
 Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.

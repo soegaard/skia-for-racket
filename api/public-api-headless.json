@@ -17021,6 +17021,45 @@
       "exports": [
         {
           "allowed_keywords": [
+            "backing-scale"
+          ],
+          "arity_mask": "2",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "image->pict",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [
+            "bounds",
+            "raster-scale"
+          ],
+          "arity_mask": "2",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "picture->pict",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [
+            "backing-scale"
+          ],
+          "arity_mask": "2",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "surface->pict",
+          "phase": "0",
+          "required_keywords": []
+        }
+      ],
+      "path": "pict.rkt"
+    },
+    {
+      "exports": [
+        {
+          "allowed_keywords": [
             "local-matrix",
             "sampling",
             "tile-rect",

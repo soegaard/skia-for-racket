@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — explicit pict snapshots
+
+- Add opt-in `skia/pict`: eager CPU snapshots for images, surfaces, and
+  pictures as ordinary Racket picts, with independent bitmap ownership,
+  explicit logical/backing geometry, sRGB display conversion, premultiplied
+  alpha transfer, and no implicit GPU readback.
+
 ## 0.75b — Standard file conversion interoperability
 
 - Add `file/convertible` support for CPU images and raster surfaces as PNG,

@@ -276,6 +276,12 @@
     },
     {
       "load_group": "headless",
+      "path": "pict.rkt",
+      "reason": "Experimental opt-in CPU snapshot bridge to ordinary Racket pict values; backing-scale, sRGB, byte-limit, and explicit GPU-transfer boundaries remain mandatory.",
+      "stability": "experimental"
+    },
+    {
+      "load_group": "headless",
       "path": "pictures.rkt",
       "reason": "Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.",
       "stability": "stable"

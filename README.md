@@ -1309,6 +1309,10 @@ are not custodian-memory-accounted. Dimensions are restricted to 1 through
 The bridge copies and reorders premultiplied RGBA to premultiplied ARGB for
 `bitmap%`. The resulting bitmap can outlive the surface. This is interoperability through pixels, not a Skia-backed `dc%`.
 
+For an opt-in snapshot to an ordinary Racket `pict`, use `skia/pict`; its
+logical backing-scale, color, allocation, and CPU/GPU rules are in the
+[pict bridge guide](docs/PICT-BRIDGE.md).
+
 ## Boundaries of this version
 
 The library supports native PDF and SVG document output, shaped/paragraph/

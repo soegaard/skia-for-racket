@@ -4692,7 +4692,10 @@
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "images.picture",
       "implementation_files": [
-        "private/core.rkt"
+        "private/core.rkt",
+        "private/bitmap-transfer.rkt",
+        "private/pict-util.rkt",
+        "pict.rkt"
       ],
       "limitations": "Existing explicit rasterization is an equivalent result workflow, not a promise of lazy evaluation or floating bit depth.",
       "managed_sources": [
@@ -4707,11 +4710,25 @@
         {
           "module": "main.rkt",
           "name": "picture->image"
+        },
+        {
+          "module": "pict.rkt",
+          "name": "image->pict"
+        },
+        {
+          "module": "pict.rkt",
+          "name": "picture->pict"
+        },
+        {
+          "module": "pict.rkt",
+          "name": "surface->pict"
         }
       ],
       "status": "racket-equivalent",
       "test_sources": [
-        "tests/native-test.rkt"
+        "tests/native-test.rkt",
+        "tests/pict-pure-test.rkt",
+        "tests/pict-native-test.rkt"
       ],
       "title": "Picture-to-image rendering",
       "unbound_declarations": [
@@ -8371,6 +8388,7 @@
     "output-groups.rkt",
     "output-policy.rkt",
     "output.rkt",
+    "pict.rkt",
     "pictures.rkt",
     "portable-drawing.rkt",
     "projective-matrix.rkt",
