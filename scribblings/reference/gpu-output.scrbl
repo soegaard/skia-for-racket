@@ -29,15 +29,21 @@ that exact context, creates a temporary GPU surface, replays the captured
 picture, and converts the result to a CPU-owned raster image before returning it
 to the output layer. A captured picture with affinity to a different GPU
 context is rejected instead of being transferred implicitly.
+
+Pass the executor to @racket[draw-output-group] using its
+@racket[#:raster-executor] argument. The executor is used only when the group's
+output policy selects rasterization; a group that remains vector does not invoke
+GPU raster execution. See @secref["skia-output-groups"].
 }
 
 @defproc[(call-with-gpu-raster-executor
           [make-context (-> gpu-context?)]
-          [proc procedure?]
+          [proc (-> output-raster-executor? any)]
           [#:on-unavailable on-unavailable (or/c 'error 'cpu) 'error])
          any]{
 Calls @racket[proc] with a scoped output raster executor and returns its values.
-The @racket[make-context] function is invoked lazily when the scope first needs
+The function must accept one positional argument and no required keywords. The
+@racket[make-context] function is invoked lazily when the scope first needs
 GPU raster execution, and a created context is closed when the dynamic extent
 ends. The executor must not escape the call.
 

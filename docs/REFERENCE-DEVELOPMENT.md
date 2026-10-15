@@ -1,4 +1,19 @@
-# Skia Reference development: R4d
+# Skia Reference development: R4d.1
+
+## Editorial clarification after R4d
+
+The implementation baseline remains `efa1ae5e5b7f479ee2cd674fc7f620dfdb0af1fc`
+(`Clarify Reference GPU handoffs`). This revision changes no API coverage. The
+unified render-canvas signatures now use the concrete GUI color contract and the
+selection policy's signed-32-bit adapter-index range. GPU raster executors now
+link directly to `draw-output-group`'s `#:raster-executor` argument, and the
+scoped executor callback states its one-positional-argument/no-required-keyword
+rule. The raw GPU-widget and unified-renderer chapters cross-reference their
+deliberately different Windows `auto` backend selections.
+
+The coverage manifest remains R4d: 1232 definitions, 1955 documented export
+paths, 1978 checked export records including the separately source-verified
+one-shot renderer, and 23 deferred R4e DC-integration records.
 
 ## Presentation, GUI, and GPU output integration
 

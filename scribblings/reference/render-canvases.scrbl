@@ -1,6 +1,7 @@
 #lang scribble/manual
 
 @(require (for-label racket/base racket/class racket/contract racket/gui/base
+                     (prefix-in draw: racket/draw)
                      skia/render-canvas))
 
 @title[#:tag "skia-render-canvases"]{Unified Render Canvases}
@@ -18,11 +19,11 @@ raster canvas or replay the application callback.
           [#:renderer renderer (or/c 'auto 'raster 'gpu) 'auto]
           [#:backend backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
           [#:adapter adapter (or/c 'hardware 'warp #f) #f]
-          [#:adapter-index adapter-index (or/c exact-nonnegative-integer? #f) #f]
+          [#:adapter-index adapter-index (or/c #f (integer-in 0 2147483647)) #f]
           [#:sync-interval sync-interval (or/c (integer-in 0 4) #f) #f]
           [#:paint-callback paint-callback procedure? void]
           [#:on-error on-error procedure? raise]
-          [#:background background any/c "white"]
+          [#:background background (or/c string? (is-a?/c draw:color%)) "white"]
           [#:smoothing smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed]
           [#:min-width min-width exact-nonnegative-integer? 1]
           [#:min-height min-height exact-nonnegative-integer? 1])
@@ -38,6 +39,12 @@ Windows x86-64, and desktop OpenGL on Unix. @racket['auto] chooses that GPU
 preference where declared, otherwise raster. These are declarative platform
 rules, not driver probes or fallback rules. Direct3D adapter/sync options are
 rejected for other backends; WARP never appears as an implicit fallback.
+
+The raw GPU-widget API described in @secref["skia-gpu-widgets"] keeps its own
+older automatic policy: it selects Metal on macOS and OpenGL elsewhere. Thus,
+on Windows x86-64, that API selects OpenGL while this unified factory selects
+Direct3D. @racket['auto] is therefore local to each constructor, not one
+package-wide backend choice.
 
 The selector accepts synchronization intervals from 0 through 4. The current
 Direct3D GUI presenter accepts only 0 or 1, so larger selected values are rejected
@@ -131,11 +138,11 @@ Provides a convenience frame containing one unified render canvas.
                  [renderer (or/c 'auto 'raster 'gpu) 'auto]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
                  [adapter (or/c #f 'hardware 'warp) #f]
-                 [adapter-index (or/c #f exact-nonnegative-integer?) #f]
+                 [adapter-index (or/c #f (integer-in 0 2147483647)) #f]
                  [sync-interval (or/c #f (integer-in 0 4)) #f]
                  [paint-callback procedure? void]
                  [on-error procedure? raise]
-                 [background any/c "white"]
+                 [background (or/c string? (is-a?/c draw:color%)) "white"]
                  [smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed])]{
 Creates a 640 by 480 unified render window unless another size is supplied.
 }

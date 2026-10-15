@@ -19,6 +19,11 @@ on macOS and OpenGL elsewhere; it is a selection rule, not a failure fallback.
 Explicit Direct3D presentation requires Windows x86-64. Explicit Metal requires
 macOS. Failed GPU construction does not replay the callback on a CPU renderer.
 
+The unified factory in @secref["skia-render-canvases"] uses a separate automatic
+policy: on Windows x86-64 it selects Direct3D, while these raw GPU widgets select
+OpenGL. In both APIs, @racket['auto] is a constructor-local selection rule rather
+than a universal package-wide backend choice.
+
 @defclass[gpu-canvas% canvas% ()]{
 Implements a callback-oriented GPU canvas with a lazily initialized presenter.
 Hiding or minimizing the widget suspends acquisition but does not close its

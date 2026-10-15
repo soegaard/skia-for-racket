@@ -5192,6 +5192,36 @@ class R4dPresentationTests(unittest.TestCase):
         self.assertIn('Direct3D on Windows x86-64', unified)
         self.assertIn('not driver probes or fallback rules', unified)
 
+    def test_unified_factory_contracts_match_gui_and_selection_policy(self):
+        text = self.text('render-canvases')
+        self.assertIn('(prefix-in draw: racket/draw)', text)
+        self.assertEqual(text.count('(or/c string? (is-a?/c draw:color%))'), 2)
+        self.assertEqual(text.count('(or/c #f (integer-in 0 2147483647))'), 2)
+        self.assertNotIn('[#:background background any/c', text)
+        self.assertNotIn('[background any/c', text)
+
+    def test_gpu_output_connects_executor_to_output_group_and_callback_contract(self):
+        text = ' '.join(self.text('gpu-output').split())
+        for phrase in ('Pass the executor to @racket[draw-output-group]',
+                       '@racket[#:raster-executor] argument',
+                       "used only when the group's output policy selects rasterization",
+                       'one positional argument and no required keywords'):
+            self.assertIn(phrase, text)
+        header = self.header('call-with-gpu-raster-executor')
+        proc = next(arg for arg in header[0] if isinstance(arg, list) and arg[0] == 'proc')
+        self.assertEqual(proc[1], ['->', 'output-raster-executor?', 'any'])
+
+    def test_automatic_backend_policies_cross_reference_the_windows_difference(self):
+        widget = ' '.join(self.text('gpu-widgets').split())
+        unified = ' '.join(self.text('render-canvases').split())
+        self.assertIn('@secref["skia-render-canvases"]', widget)
+        self.assertIn('@secref["skia-gpu-widgets"]', unified)
+        for text in (widget, unified):
+            self.assertIn('Windows x86-64', text)
+            self.assertIn('Direct3D', text)
+            self.assertIn('OpenGL', text)
+            self.assertIn('package-wide backend choice', text)
+
     def test_raster_and_gpu_dc_lifetimes_are_not_conflated(self):
         text = ' '.join(self.text('gui-canvases').split())
         self.assertIn('persistent CPU-raster Skia drawing context', text)
