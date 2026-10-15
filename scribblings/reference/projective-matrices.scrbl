@@ -27,6 +27,8 @@ These values and their arithmetic do not load Skia. Arithmetic uses the exact
 values of the stored coefficients to avoid introducing a singularity tolerance.
 This does not promise bit-for-bit equality with native canvas matrix arithmetic.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Three by Three Matrices}
 
 @defproc[(matrix3? [v any/c])

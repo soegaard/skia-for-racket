@@ -17,6 +17,8 @@ images. They reject GPU-owned or texture-backed inputs instead of silently readi
 texture. Transfer a GPU image explicitly before using these operations. Ordinary image queries
 still enforce the source resource's lifetime, thread, and any GPU-context restrictions.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Image Properties}
 
 @defproc[(image-unique-id [image image?])

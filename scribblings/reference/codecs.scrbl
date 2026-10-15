@@ -121,6 +121,8 @@ with @racket[codec->image], and closes the codec. The returned image is independ
 Orientation, color-space, frame-dependency, and decode-failure rules are unchanged.
 }
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-encoded-metadata"]{Encoded Metadata}
 
 An @deftech{encoded image description} is a detached value reporting dimensions,

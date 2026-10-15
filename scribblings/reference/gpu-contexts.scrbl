@@ -17,6 +17,8 @@ ownership to a different thread. A context is managed with
 @racket[gpu-context-close!], not @racket[skia-close!] or @racket[with-skia].
 The ordinary resource protocol still manages its GPU-dependent child resources.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Construction}
 
 @defproc[(gpu-context? [v any/c]) boolean?]{

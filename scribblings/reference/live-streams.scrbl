@@ -50,6 +50,8 @@ Calls @racket[live-streams-check!] and returns @racket[#t] on success. Returns
 probe can initialize native libraries; it is not a pure type predicate.
 }
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Reading and Copying Ports}
 
 Input begins at the port's current position. A supplied @racket[#:length] is a

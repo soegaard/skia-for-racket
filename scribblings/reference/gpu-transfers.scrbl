@@ -24,6 +24,8 @@ raster-image helpers preserve the selected format by default, including supporte
 F16/F32 storage. Returned CPU resources are independent of the GPU context, but
 retain their ordinary CPU thread and lifetime rules.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Eight-Bit Copies}
 
 @defproc[(gpu-surface->rgba-bytes [surface gpu-surface?]

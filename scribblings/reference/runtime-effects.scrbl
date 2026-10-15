@@ -21,6 +21,8 @@ exception type documented below.
 @defmodule[skia/runtime-effects #:no-declare]
 @(declare-exporting skia skia/runtime-effects #:use-sources (skia/runtime-effects))
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Compilation and Stage Selection}
 
 @defproc[(runtime-effect? [v any/c]) boolean?]{

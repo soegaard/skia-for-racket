@@ -93,6 +93,8 @@ The result is @racket['(#t #f #t #f #f #t)].
 }
 
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-color-gamma"]{Changing the Transfer Function}
 
 These operations return or inspect color-space descriptions. They do not

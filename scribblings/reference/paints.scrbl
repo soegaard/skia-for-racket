@@ -68,6 +68,8 @@ Effects may require rasterization in document output even though the same drawin
 procedure accepts the paint.
 }
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-blend-modes"]{Blend Modes}
 
 A @deftech{blend mode} combines the incoming source color with the destination

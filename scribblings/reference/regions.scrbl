@@ -20,6 +20,8 @@ Right and bottom edges are excluded. Empty rectangles are allowed unless an
 entry says otherwise. Region drawing follows the canvas transform; region
 clipping instead uses device coordinates.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Construction and Queries}
 
 @defproc[(region? [v any/c])

@@ -15,6 +15,8 @@ same @racket[image?] predicate but retain additional context requirements.
 CPU readback, subsetting, and encoding functions in this chapter reject
 GPU-dependent input instead of transferring it implicitly.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Construction}
 
 @defproc[(image? [v any/c]) boolean?]{

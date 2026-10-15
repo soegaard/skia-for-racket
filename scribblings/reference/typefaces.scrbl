@@ -17,6 +17,8 @@ Predicates identify their wrappers even after closure. Font availability,
 family order, and matching results depend on the machine; a family name is
 not a portable font-file identifier.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Font Managers}
 
 @defproc[(font-manager? [v any/c]) boolean?]{

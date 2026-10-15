@@ -18,6 +18,8 @@ Coordinates are drawing scalars. Input arrays are validated and copied before
 submission, and their counts and byte sizes are bounded by
 @racket[current-skia-byte-limit]. Detached specifications retain no canvas.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Triangle Meshes}
 
 A @deftech{vertices resource} owns a native immutable mesh and detached copies

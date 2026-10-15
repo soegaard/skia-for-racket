@@ -16,6 +16,8 @@ to close with @racket[skia-close!]. A layout keeps its required shaper and, for
 mixed text, its font manager reachable. They must nevertheless remain open
 when the layout is drawn. Explicit closure is not prevented by reachability.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-layout-options"]{Wrapping and Alignment}
 
 A positive @racket[#:width] enables greedy wrapping at Unicode line-break

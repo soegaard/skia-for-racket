@@ -78,6 +78,8 @@ bitmap glyphs.
 }
 
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-text-blob-builders"]{Building Multiple Runs}
 
 @defmodule[skia/text-blobs #:no-declare]

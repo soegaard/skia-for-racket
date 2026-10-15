@@ -21,6 +21,8 @@ accepted by @racket[color?]. Operations whose names end in @tt{color4f} or
 contain @tt{color4f-shader} use this representation. Numerical conversion between
 representations is separate from @secref["skia-color-management"].
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Construction and Conversion}
 
 @defproc[(color4f? [v any/c]) boolean?]{

@@ -21,6 +21,8 @@ Construction and mutation do not use a canvas's current transform. Each native
 operation requires an open path on its owning thread. A copied or transformed
 path has its own lifetime.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-path-creation"]{Construction and Fill Rules}
 
 @defproc[(skia-path? [v any/c]) boolean?]{

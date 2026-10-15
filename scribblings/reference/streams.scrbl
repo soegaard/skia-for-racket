@@ -20,6 +20,8 @@ smaller of the captured limit and the current byte limit. Input operations check
 the whole stream length, not only the unread suffix. Output operations check the
 accumulated size. These limits do not bound every native allocation.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Input Streams}
 
 @(declare-exporting skia skia/streams #:use-sources (skia/streams))

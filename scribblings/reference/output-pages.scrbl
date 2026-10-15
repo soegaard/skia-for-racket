@@ -16,6 +16,8 @@ margins, a background, and a drawing callback. It owns no native resource.
 Exporting it invokes the callback again; it is not a recorded picture. Resources
 captured by the callback must remain open whenever the page is drawn.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Dimensions and Page Descriptions}
 
 @defproc[(unit->points [value real?] [unit (or/c 'pt 'in 'mm 'cm 'px) 'pt]) real?]{

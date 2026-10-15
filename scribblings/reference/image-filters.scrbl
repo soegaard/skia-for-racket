@@ -24,6 +24,8 @@ inputs. Closing caller-owned input wrappers afterward is permitted. Retained
 GPU-dependent content preserves its context restrictions. Operations require
 open resources on their owning thread; native rejection raises an exception.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-filter-rectangles"]{Coordinates, Inputs, and Crops}
 
 Filter coordinates are local drawing coordinates, transformed with the drawing

@@ -25,6 +25,8 @@ results in the same way. A computed coefficient or result outside the accepted
 range raises an exception, except for the unavailable inverse described below.
 Matrices need neither @racket[with-skia] nor @racket[skia-close!].
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Construction and Inspection}
 
 @defproc[(matrix? [v any/c]) boolean?]{

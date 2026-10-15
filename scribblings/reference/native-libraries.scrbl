@@ -21,6 +21,8 @@ library file. The default search uses the packaged platform library and the syst
 search. Selection and preflight results are cached; changing an environment variable afterward
 is not a supported library-switching operation.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Skia Preflight}
 
 @(declare-exporting skia)

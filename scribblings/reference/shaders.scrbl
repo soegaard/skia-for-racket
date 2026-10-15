@@ -17,6 +17,8 @@ does not indicate whether the resource is open or whether it depends on a GPU
 context.
 }
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section[#:tag "skia-tile-modes"]{Tile Modes and Gradient Stops}
 
 Tile modes specify values outside a gradient's unit interval or an image's

@@ -20,6 +20,8 @@ Retaining a GPU-backed dependency does not remove its context or thread rules.
 The ordinary CPU examples below do not imply that such a recording is portable
 between GPU contexts or serializable without readback.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Recording}
 
 @defproc[(picture? [v any/c]) boolean?]{

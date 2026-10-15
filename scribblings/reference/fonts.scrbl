@@ -20,6 +20,8 @@ shaping, bidirectional reordering, font fallback, or paragraph wrapping.
 Use @racket[shape-text] for a single shaped run and @racket[layout-mixed-text]
 for mixed-direction text and font fallback.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Font Construction and Settings}
 
 @defproc[(font? [v any/c]) boolean?]{

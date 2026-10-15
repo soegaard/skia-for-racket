@@ -22,6 +22,8 @@ A preflight executes the callback too. Metrics, resource construction, graphics-
 and explicit raster work still occur. Ordinary Racket side effects are not rolled back. Do not
 use these operations to analyze untrusted or nonterminating callbacks.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Capability Table}
 
 @defthing[output-backends list?]{

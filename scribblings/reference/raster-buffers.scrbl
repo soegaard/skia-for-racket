@@ -20,6 +20,8 @@ remain available during a scope. See @secref["skia-pixel-descriptions"] for the 
 descriptions and @racket[raster-buffer?], @racket[raster-buffer-image-info], and
 @racket[raster-buffer->image].
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Allocation and Copies}
 
 @defproc[(make-raster-buffer [width (integer-in 1 32768)] [height (integer-in 1 32768)]

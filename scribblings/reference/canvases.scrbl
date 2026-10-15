@@ -10,6 +10,8 @@ pixels that have already been drawn. Several wrappers for the same target share
 this state. All operations in this chapter require a live canvas and its owner's
 thread; a GPU canvas also requires its matching active lease.
 
+@local-table-of-contents[#:style 'immediate-only]
+
 @section{Clearing and Backend Queries}
 
 @defproc[(canvas-clear! [canvas canvas?] [color color?]) void?]{
