@@ -9,8 +9,8 @@
 @defmodule[skia/racket-draw #:no-declare]
 @(declare-exporting skia/racket-draw #:use-sources (skia/racket-draw))
 
-The @racketmodname[skia/racket-draw] module provides explicit, eager-copy
-conversion between selected Racket Draw values and Skia values. The module is
+The @racketmodname[skia/racket-draw] module copies bitmaps, colors, and paths
+between Racket Draw and Skia. Conversions are explicit and eager. The module is
 not re-exported by @racketmodname[skia]; require it where bitmap, color, or path
 interoperability is needed. Requiring the module does not by itself load the
 Skia or HarfBuzz native libraries, create a GPU context, or initialize a GUI.
@@ -54,8 +54,8 @@ The @racket[mask] argument controls additional alpha coverage. The default
 A false value ignores the loaded mask, and a supplied @racket[draw:bitmap%]
 replaces it. A resolved mask must be usable and must have the same logical
 dimensions as the source bitmap. Its own loaded mask is not applied
-recursively. In physical mode, a mask with a different backing scale is sampled
-at the corresponding source-pixel centers.
+recursively. In physical mode, the bridge chooses the nearest mask pixel for each
+source-pixel center, accounting for differing backing scales.
 
 Pixel readback uses premultiplied ARGB samples. The bridge reorders them to
 premultiplied RGBA and multiplies every premultiplied component by the resolved
@@ -147,7 +147,7 @@ than returning a partial path.
          (values (is-a?/c draw:dc-path%) (or/c 'odd-even 'winding))]{
 Returns two detached values: a fresh Racket Draw @racket[draw:dc-path%] and the
 Draw fill style required to preserve the Skia path's fill rule. The source path
-must be open and usable on its owning thread. The returned Draw path has no
+must be live and accessed on its owning Racket thread. The returned Draw path has no
 Skia resource lifetime.
 
 Moves, lines, cubic Bézier segments, and close operations map directly.
@@ -192,6 +192,10 @@ The result is @racket['(#t winding)]. Rational conics require an explicit
 approximation policy:
 
 @racketblock[
+(require racket/class
+         (prefix-in draw: racket/draw)
+         skia skia/racket-draw)
+
 (with-skia ([path (make-path '((move 0 0) (conic 10 20 20 0 0.5)))])
   (define-values (copy fill-style)
     (skia-path->dc-path path #:conic-subdivisions 4))
