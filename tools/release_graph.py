@@ -20,6 +20,7 @@ GATE = 'Release candidate required'
 ROOT_JOBS = {'ci': './.github/workflows/ci.yml',
              'acceptance': './.github/workflows/acceptance.yml',
              'inventory': './.github/workflows/api-inventory.yml'}
+MANUAL_WORKFLOWS = {'.github/workflows/pages.yml'}
 MAX_BYTES = 16 * 1024 * 1024
 MAX_JOBS = 512
 MAX_STEPS = 128
@@ -297,10 +298,24 @@ def build_policy(root: Path) -> dict:
     artifacts = [name for job in jobs for name in job['artifacts']]
     need(len(set(artifacts)) == len(artifacts), 'artifact name collision across required lanes')
     need(set(ROOT_JOBS.values()) <= {'./' + p for p in seen_paths}, 'incomplete release graph')
-    # Inventory every existing workflow, not just a hand-selected family list.
+    # Inventory every existing workflow. A reviewed publication workflow may
+    # remain outside the release-candidate execution graph, but it must be
+    # manual-only and is still frozen in workflow_sources.
     actual = {p.relative_to(root).as_posix() for suffix in ('*.yml', '*.yaml')
               for p in (root / '.github/workflows').glob(suffix)}
-    need(actual == seen_paths, 'workflow omitted from release graph: ' + repr(sorted(actual ^ seen_paths)))
+    omitted = actual - seen_paths
+    unknown = omitted - MANUAL_WORKFLOWS
+    need(not unknown, 'workflow omitted from release graph: ' + repr(sorted(unknown)))
+    for path in sorted(omitted):
+        data = read(path)
+        need(data.get('name') == 'Publish Skia documentation',
+             'unexpected manual workflow: ' + path)
+        need(set(data.get('on', {})) == {'workflow_dispatch'},
+             'manual publication workflow must be dispatch-only: ' + path)
+        need(data.get('permissions') == {'contents': 'read', 'pages': 'write', 'id-token': 'write'},
+             'manual publication workflow permissions changed: ' + path)
+        seen_paths.add(path)
+    need(actual == seen_paths, 'workflow inventory mismatch: ' + repr(sorted(actual ^ seen_paths)))
     # Validate selector semantics by freezing the existing, independently tested selector.
     for file in ('tools/validation_regressions.py', 'tools/ci_matrix.py'):
         hashes[file] = digest(relative(root, file))

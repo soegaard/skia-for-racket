@@ -151,17 +151,37 @@ for form in sexps((R/'raster-buffers.rkt').read_text()):
         public=[x for x in form[1:] if isinstance(x,str)]
         assert not [x for x in public if x not in raster_buffer_api], public
 subprocess.run(['bash','-n',str(R/'tools/validate-raster-buffers.sh')],check=True)
-# Check literal local .rkt paths without mistaking collection module paths
-# such as (lib "scribble/base.rkt") for files relative to the source module.
+# Check literal local module paths only inside require forms. Quoted .rkt
+# strings used as data (for example collection-file-path arguments) are not
+# source-relative dependencies, and (lib ...) / (planet ...) paths name
+# collections rather than neighboring files.
+def local_require_refs(form):
+    if not isinstance(form,list) or not form:
+        return []
+    if form[0]=='require':
+        refs=[]
+        def walk(spec):
+            if isinstance(spec,str):
+                if len(spec)>=2 and spec[0]=='"' and spec[-1]=='"':
+                    ref=spec[1:-1]
+                    if ref.endswith('.rkt') and ' ' not in ref:
+                        refs.append(ref)
+            elif isinstance(spec,list) and spec:
+                if spec[0] in ('lib','planet'):
+                    return
+                for item in spec[1:]:
+                    walk(item)
+        for spec in form[1:]:
+            walk(spec)
+        return refs
+    refs=[]
+    for item in form:
+        if isinstance(item,list):
+            refs.extend(local_require_refs(item))
+    return refs
 for f in racket_files:
-    source=f.read_text()
-    for match in re.finditer(r'"((?:\.\.?/)?[^"\n]+\.rkt)"',source):
-        ref=match.group(1)
-        prefix=source[max(0,match.start()-80):match.start()]
-        if re.search(r'\((?:lib|planet)\s*$',prefix):
-            continue
-        if ' ' not in ref:
-            assert (f.parent/ref).exists(),(f,ref)
+    for ref in local_require_refs(sexps(f.read_text())):
+        assert (f.parent/ref).exists(),(f,ref)
 for shell in ['install-native.sh','install-harfbuzz.sh','audit-symbols.sh','audit-harfbuzz-symbols.sh']:
     subprocess.run(['bash','-n',str(R/'tools'/shell)],check=True)
 # Exercise installer in a separate temporary project with synthetic data.

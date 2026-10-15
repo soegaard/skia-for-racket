@@ -20,6 +20,7 @@ The conversions are explicit: they neither add pict-conversion properties to
 Skia values nor read back GPU data automatically. Unlike conversion through
 @racketmodname[file/convertible], they transfer pixels without encoding and
 decoding PNG. For a Racket @tt{bitmap%} instead of a pict, use
+@racket[image->bitmap] or @racket[surface->bitmap] from
 @racketmodname[skia/bitmap].
 
 Import @racketmodname[skia/pict] separately; it is not re-exported by
@@ -78,10 +79,10 @@ Returns an ordinary pict by replaying @racket[picture] once into a transparent
 CPU sRGB surface. The picture must be replayable on a CPU raster target;
 retained GPU-dependent content is not transferred implicitly.
 
-When @racket[bounds] is @racket[#f], the viewport is
-@racket[#(0 0 picture-width picture-height)] using the picture's nominal
-width and height. A picture with a zero nominal width or height therefore
-requires explicit positive bounds. An explicit vector contains x, y, width,
+When @racket[bounds] is @racket[#f], the viewport uses
+@racket[(vector 0 0 (picture-width picture) (picture-height picture))].
+A picture with a zero nominal width or height therefore requires explicit
+positive bounds. An explicit vector contains x, y, width,
 and height. Its coordinates and extents must be finite drawing values, width
 and height must be positive, and the vector is copied before drawing so later
 mutation cannot change the conversion.

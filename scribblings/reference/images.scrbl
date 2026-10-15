@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract file/convertible skia))
+@(require (for-label racket/base racket/contract file/convertible skia skia/pict))
 
 @title[#:tag "skia-images"]{Images}
 
@@ -209,3 +209,7 @@ never performs hidden readback.
 When given a Skia image, @tt{pict:bitmap} obtains PNG bytes through
 @racketmodname[file/convertible] and constructs an independent raster pict.
 The original Skia image can be closed after the pict is constructed.
+
+To construct a pict without PNG encoding and decoding, use @racket[image->pict]
+from @racketmodname[skia/pict]. It also supports an explicit logical backing
+scale through @racket[#:backing-scale].
