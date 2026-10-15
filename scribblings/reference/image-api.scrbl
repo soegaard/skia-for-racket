@@ -6,7 +6,7 @@ Images are immutable pixel sources for drawing, readback, and encoding. This
 part covers CPU-compatible image construction, image operations, and encoded
 image output.
 
-@local-table-of-contents[#:style 'immediate-only]
+@local-table-of-contents[]
 
 @include-section["images.scrbl"]
 @include-section["image-operations.scrbl"]

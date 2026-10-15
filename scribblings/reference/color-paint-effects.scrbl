@@ -6,7 +6,7 @@ Paints determine how drawing is colored and composited. Colors, shaders, path
 effects, filters, and runtime effects provide the values and transformations
 used by paints and image processing.
 
-@local-table-of-contents[#:style 'immediate-only]
+@local-table-of-contents[]
 
 @include-section["colors.scrbl"]
 @include-section["color-management.scrbl"]

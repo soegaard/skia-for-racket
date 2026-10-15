@@ -6,7 +6,7 @@ These interfaces cross native GPU API boundaries. They expose explicit OpenGL,
 Metal, and Direct3D integration points without changing the ownership and
 context rules of the underlying resources.
 
-@local-table-of-contents[#:style 'immediate-only]
+@local-table-of-contents[]
 
 @include-section["gpu-gl-interop.scrbl"]
 @include-section["gpu-external-resources.scrbl"]

@@ -5,7 +5,7 @@
 Typefaces and fonts provide glyph data and metrics. Shaping, text blobs, and
 layout build positioned text that can be measured or drawn.
 
-@local-table-of-contents[#:style 'immediate-only]
+@local-table-of-contents[]
 
 @include-section["typefaces.scrbl"]
 @include-section["fonts.scrbl"]

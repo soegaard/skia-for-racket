@@ -6,7 +6,7 @@ Streams move encoded bytes, while pixel descriptions and raster buffers expose
 decoded image storage. Codec interfaces inspect and decode encoded image data,
 including scanline and incremental decoding.
 
-@local-table-of-contents[#:style 'immediate-only]
+@local-table-of-contents[]
 
 @include-section["streams.scrbl"]
 @include-section["live-streams.scrbl"]

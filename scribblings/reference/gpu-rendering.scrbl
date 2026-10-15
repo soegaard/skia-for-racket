@@ -6,7 +6,7 @@ GPU rendering uses a backend provider to create a context that owns GPU-side
 state and resources. This part covers context configuration, GPU surfaces and
 images, transfers, synchronization, caches, and diagnostics.
 
-@local-table-of-contents[#:style 'immediate-only]
+@local-table-of-contents[]
 
 @include-section["gpu-providers.scrbl"]
 @include-section["gpu-context-options.scrbl"]

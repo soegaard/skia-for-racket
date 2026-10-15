@@ -6,7 +6,7 @@ Canvases draw primitive geometry directly and can consume reusable paths,
 regions, meshes, image grids, and coordinate transformations. Portable drawing
 helpers lower selected operations to more widely supported primitives.
 
-@local-table-of-contents[#:style 'immediate-only]
+@local-table-of-contents[]
 
 @include-section["drawing.scrbl"]
 @include-section["paths.scrbl"]
