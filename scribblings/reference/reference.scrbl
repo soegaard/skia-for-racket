@@ -16,6 +16,10 @@ parts and chapters identify additional public import paths.
 
 @local-table-of-contents[#:style 'immediate-only]
 
+@para{@bold{Detailed Contents}}
+
+@local-table-of-contents[]
+
 @include-section["foundations.scrbl"]
 @include-section["surfaces-and-canvases.scrbl"]
 @include-section["color-paint-effects.scrbl"]
