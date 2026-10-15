@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/canvas-primitives skia/geometry))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/canvas-primitives skia/geometry))
 
 @title[#:tag "skia-rounded-rectangles"]{Rounded Rectangles}
 
@@ -83,6 +84,18 @@ validity and does not alias mutable native storage.
 
 The first value records the requested radius 30 at every corner. The second
 records the radii that Skia can represent within the bounds.
+
+@racketblock[
+(with-skia ([surface (make-surface 160 90 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define shape
+    (make-rounded-rect 20 15 120 60
+                       #:radii '((24 24) (8 8) (24 8) (8 24))))
+  (draw-rrect (surface-canvas surface) shape paint))
+]
+
+@reference-figure["rounded-rect.png"
+                  "A blue rounded rectangle with four visibly different corner-radius pairs."]
 }
 
 @defproc[(rounded-rect-type [shape rounded-rect?])

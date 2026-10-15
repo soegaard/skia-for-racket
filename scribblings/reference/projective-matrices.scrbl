@@ -1,6 +1,7 @@
 #lang scribble/manual
 
 @(require scribble/eval
+          "support/figures.rkt"
           (for-label racket/base racket/contract skia skia/projective-matrix skia/canvas-matrix))
 
 @(define projective-eval (make-base-eval))
@@ -411,6 +412,20 @@ before mutation. Native multiplication still uses native precision; if it
 produces a nonfinite matrix, the previous transform is restored and an exception
 is raised. A successful finite product need not equal the pure matrix product bit for bit.
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (with-canvas-matrix canvas
+      (make-matrix3 1 0 25
+                    0 1 20
+                    0.004 0 1)
+    (draw-rect canvas 0 0 110 60 paint)))
+]
+
+@reference-figure["projective-transform.png"
+                  "A blue quadrilateral narrowed toward the right by an x-dependent projective transform on a white canvas."]
 
 @defproc[(call-with-canvas-matrix [canvas canvas?]
           [matrix (or/c matrix? matrix3? matrix4?)]

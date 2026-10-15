@@ -1,6 +1,7 @@
 #lang scribble/manual
 
 @(require scribble/eval
+          "support/figures.rkt"
           (for-label racket/base racket/contract skia skia/matrix skia/geometry-primitives))
 @(define matrix-eval (make-base-eval))
 @(matrix-eval '(require skia/matrix))
@@ -134,6 +135,20 @@ rounding even though exact matrix multiplication is associative.
 (matrix-map-point (matrix-compose scaling translation) 3 4)
 ]
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 180 120 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (with-canvas-state canvas
+    (canvas-concat! canvas
+                    (matrix-compose (matrix-translate 90 60)
+                                    (matrix-rotate-degrees 25)))
+    (draw-rect canvas -45 -20 90 40 paint)))
+]
+
+@reference-figure["affine-transform.png"
+                  "A blue rectangle rotated about its center and translated to the middle of a white canvas."]
 
 @defproc[(matrix-invert [matrix matrix?]) (or/c matrix? #f)]{
 Returns the inverse of @racket[matrix], rounded to the matrix representation.

@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/effects))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/effects))
 
 @title[#:tag "skia-image-filters"]{Image Filters}
 
@@ -166,15 +167,18 @@ fit the native signed-int count, and fit the pointer-array byte limit. Each
 false entry draws the dynamic source again. The input sequence is copied.
 
 @racketblock[
-(with-skia ([shift (make-offset-image-filter 10 0)]
+(with-skia ([shift (make-offset-image-filter 55 0)]
             [both (make-merge-image-filter (list #f shift))]
             [paint (make-paint #:color 'blue #:image-filter both)]
-            [surface (make-surface 30 10)])
-  (draw-rect (surface-canvas surface) 0 0 5 5 paint)
-  (list (surface-pixel surface 2 2) (surface-pixel surface 12 2)))
+            [surface (make-surface 150 60 #:background 'white)])
+  (draw-rect (surface-canvas surface) 15 15 30 30 paint)
+  (list (surface-pixel surface 25 25) (surface-pixel surface 80 25)))
 ]
 
 The original and translated drawings are both present.
+
+@reference-figure["image-filter-merge.png"
+                  "Two blue squares on a white background: the original square and a copy translated to the right by an image-filter graph."]
 }
 
 @defproc[(make-blend-image-filter

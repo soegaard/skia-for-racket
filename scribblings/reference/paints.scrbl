@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/geometry))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/geometry))
 
 @title[#:tag "skia-paints"]{Paints}
 
@@ -61,12 +62,18 @@ to its context's lifetime and activation rules.
 The constructor checks options before allocating the native paint.
 
 @racketblock[
-(define fill (make-paint #:color "#326DE6"))
-(define outline
-  (make-paint #:color 'black #:style 'stroke #:stroke-width 3))
+(with-skia ([surface (make-surface 180 80 #:background 'white)]
+            [fill (make-paint #:color "#326DE6")]
+            [outline (make-paint #:color 'black #:style 'stroke #:stroke-width 3)])
+  (define canvas (surface-canvas surface))
+  (draw-rounded-rect canvas 15 15 60 50 8 8 fill)
+  (draw-rounded-rect canvas 105 15 60 50 8 8 outline))
 ]
 
 The first paint fills geometry; the second draws its outline.
+
+@reference-figure["paint-styles.png"
+                  "A blue filled rounded rectangle beside a black outlined rounded rectangle on a white background."]
 
 Effects may require rasterization in document output even though the same drawing
 function accepts the paint.

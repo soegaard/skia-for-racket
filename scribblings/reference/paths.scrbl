@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract racket/sequence skia skia/geometry))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract racket/sequence skia skia/geometry))
 
 @title[#:tag "skia-paths"]{Paths}
 
@@ -798,14 +799,17 @@ heap or running-time bounds. Failure raises without publishing a partial result.
 
 @racketblock[
 (with-skia ([outer (make-path)] [hole (make-path)])
-  (path-add-rect! outer 0 0 40 30)
-  (path-add-circle! hole 20 15 5)
+  (path-add-rect! outer 20 15 120 70)
+  (path-add-circle! hole 80 50 22)
   (with-skia ([result (path-combine
                       (list (list 'union outer) (list 'difference hole)))])
-    (list (path-contains? result 2 2) (path-contains? result 20 15))))
+    (list (path-contains? result 25 20) (path-contains? result 80 50))))
 ]
 
 The result contains the corner point but not the center of the removed circle.
+
+@reference-figure["path-hole.png"
+                  "A blue rectangular path with a circular hole removed from its center."]
 }
 
 @defparam[current-path-operation-limit limit (integer-in 1 #x7fffffff) #:value 4096]{

@@ -24,6 +24,17 @@ LOGICAL_SIZES = {
     "image-pair.png": (80, 40),
     "simple-text.png": (240, 80),
     "shaped-text.png": (240, 80),
+    "canvas-state.png": (100, 80),
+    "canvas-layer.png": (160, 100),
+    "paint-styles.png": (180, 80),
+    "color-filter.png": (160, 70),
+    "image-filter-merge.png": (150, 60),
+    "runtime-effect-bands.png": (180, 60),
+    "path-hole.png": (160, 100),
+    "rounded-rect.png": (160, 90),
+    "region.png": (155, 80),
+    "affine-transform.png": (180, 120),
+    "projective-transform.png": (180, 110),
 }
 
 

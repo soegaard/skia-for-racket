@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/canvas-primitives
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/canvas-primitives
                      skia/layer-options skia/advanced-layers))
 
 @title[#:tag "skia-layers"]{Canvas Layers}
@@ -56,18 +57,21 @@ not pixel rollback. An enclosing document helper can separately abort the docume
 The bound and paint meanings are those of @racket[canvas-save-layer!].
 
 @racketblock[
-(with-skia ([surface (make-surface 16 16)]
+(with-skia ([surface (make-surface 160 100 #:background 'white)]
             [group-paint (make-paint #:color (rgba 0 0 0 128))]
             [ink (make-paint #:color 'red)])
   (define canvas (surface-canvas surface))
-  (with-canvas-layer canvas #:paint group-paint #:bounds '(0 0 16 16)
-    (draw-rect canvas 2 2 8 8 ink)
-    (draw-rect canvas 6 2 8 8 ink))
+  (with-canvas-layer canvas #:paint group-paint #:bounds '(0 0 160 100)
+    (draw-rect canvas 20 20 80 60 ink)
+    (draw-rect canvas 60 20 80 60 ink))
   (canvas-save-count canvas))
 ]
 
 Opacity applies to the completed group rather than separately reducing each
 rectangle's opacity. The canvas save count returns to 1.
+
+@reference-figure["canvas-layer.png"
+                  "Two overlapping red rectangles composited together at half opacity on a white background; the overlap is not darker than the rest of the group."]
 }
 
 @defform[(with-canvas-layer canvas-expr options body ...+)

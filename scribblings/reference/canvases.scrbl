@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/canvas-primitives))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/canvas-primitives))
 
 @title[#:tag "skia-canvas-state"]{Canvas State}
 
@@ -80,7 +81,7 @@ The canvas expression is evaluated once. Internal definitions are permitted.
 The form restores canvas state, not pixels or resource lifetimes.
 
 @racketblock[
-(with-skia ([surface (make-surface 100 80)]
+(with-skia ([surface (make-surface 100 80 #:background 'white)]
             [paint (make-paint #:color 'blue)])
   (define canvas (surface-canvas surface))
   (with-canvas-state canvas
@@ -89,6 +90,9 @@ The form restores canvas state, not pixels or resource lifetimes.
     (draw-rect canvas 0 0 60 50 paint))
   (equal? (canvas-transform canvas) matrix-identity))
 ]
+
+@reference-figure["canvas-state.png"
+                  "A blue rectangle translated to the right and down and clipped to a smaller rectangle on a white background."]
 }
 
 @section[#:tag "skia-canvas-transforms"]{Changing Coordinates}

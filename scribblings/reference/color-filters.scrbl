@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/color-filters))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/color-filters))
 
 @title[#:tag "skia-color-filters"]{Color Filters}
 
@@ -38,15 +39,21 @@ form for drawing. The input coefficients are copied.
                 0 0 0 0 0
                 0 0 0 0 0
                 0 0 0 1 0))]
-            [paint (make-paint #:color 'blue #:color-filter filter)]
-            [surface (make-surface 4 4)])
-  (draw-paint (surface-canvas surface) paint)
-  (surface-pixel surface 1 1))
+            [source (make-paint #:color 'blue)]
+            [filtered (make-paint #:color 'blue #:color-filter filter)]
+            [surface (make-surface 160 70 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 20 15 45 40 source)
+  (draw-rect canvas 95 15 45 40 filtered)
+  (surface-pixel surface 110 30))
 ]
 
-The constant term makes the result red while preserving the input alpha.
-}
+The constant term makes the filtered rectangle red while preserving the input
+alpha. The unfiltered rectangle remains blue.
 
+@reference-figure["color-filter.png"
+                  "A blue rectangle beside a red rectangle produced from the same blue paint by a color-matrix filter."]
+}
 @defproc[(make-blend-color-filter
           [color color?]
           [mode

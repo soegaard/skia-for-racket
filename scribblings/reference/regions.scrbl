@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract racket/sequence
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract racket/sequence
                      skia skia/geometry-primitives skia/geometry))
 
 @title[#:tag "skia-regions"]{Integer Regions}
@@ -288,6 +289,16 @@ Draws the region under the current canvas transform and clip. A fill paint
 draws the boundary as one path, avoiding seams between touching bands in SVG.
 Stroke and stroke-and-fill paints retain native region drawing, which can stroke
 the rectangular decomposition. The region and paint must remain valid during the call.
+
+@racketblock[
+(with-skia ([region (make-region '((15 15 55 50) (90 15 50 50)))]
+            [paint (make-paint #:color "#326DE6")]
+            [surface (make-surface 155 80 #:background 'white)])
+  (draw-region (surface-canvas surface) region paint))
+]
+
+@reference-figure["region.png"
+                  "Two disjoint blue rectangular bands drawn from one integer region on a white background."]
 }
 
 @defproc[(canvas-clip-region! [canvas canvas?]

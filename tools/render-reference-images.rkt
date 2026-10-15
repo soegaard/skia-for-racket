@@ -94,3 +94,120 @@
                        #:script 'latn
                        #:language "en")))
  #:background 'white)
+
+(render-reference-image
+ "canvas-state.png" 100 80
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color 'blue)])
+     (with-canvas-state canvas
+       (canvas-translate! canvas 20 10)
+       (canvas-clip-rect! canvas 0 0 40 30)
+       (draw-rect canvas 0 0 60 50 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "canvas-layer.png" 160 100
+ (lambda (canvas)
+   (with-skia ([group-paint (make-paint #:color (rgba 0 0 0 128))]
+               [ink (make-paint #:color 'red)])
+     (with-canvas-layer canvas #:paint group-paint #:bounds '(0 0 160 100)
+       (draw-rect canvas 20 20 80 60 ink)
+       (draw-rect canvas 60 20 80 60 ink))))
+ #:background 'white)
+
+(render-reference-image
+ "paint-styles.png" 180 80
+ (lambda (canvas)
+   (with-skia ([fill (make-paint #:color "#326DE6")]
+               [outline (make-paint #:color 'black #:style 'stroke #:stroke-width 3)])
+     (draw-rounded-rect canvas 15 15 60 50 8 8 fill)
+     (draw-rounded-rect canvas 105 15 60 50 8 8 outline)))
+ #:background 'white)
+
+(render-reference-image
+ "color-filter.png" 160 70
+ (lambda (canvas)
+   (with-skia ([filter
+                (make-color-matrix-filter
+                 '(0 0 0 0 1
+                   0 0 0 0 0
+                   0 0 0 0 0
+                   0 0 0 1 0))]
+               [source (make-paint #:color 'blue)]
+               [filtered (make-paint #:color 'blue #:color-filter filter)])
+     (draw-rect canvas 20 15 45 40 source)
+     (draw-rect canvas 95 15 45 40 filtered)))
+ #:background 'white)
+
+(render-reference-image
+ "image-filter-merge.png" 150 60
+ (lambda (canvas)
+   (with-skia ([shift (make-offset-image-filter 55 0)]
+               [both (make-merge-image-filter (list #f shift))]
+               [paint (make-paint #:color 'blue #:image-filter both)])
+     (draw-rect canvas 15 15 30 30 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "runtime-effect-bands.png" 180 60
+ (lambda (canvas)
+   (with-skia ([effect
+                (make-runtime-effect
+                 "half4 main(float2 p) { half t=half(0.5+0.5*sin(p.x*0.08)); return half4(t,0,1-t,1); }")]
+               [shader (runtime-effect->shader effect)]
+               [paint (make-paint #:shader shader)])
+     (draw-paint canvas paint)))
+ #:background 'white)
+
+(render-reference-image
+ "path-hole.png" 160 100
+ (lambda (canvas)
+   (with-skia ([outer (make-path)]
+               [hole (make-path)]
+               [paint (make-paint #:color "#326DE6")])
+     (path-add-rect! outer 20 15 120 70)
+     (path-add-circle! hole 80 50 22)
+     (with-skia ([result (path-combine
+                         (list (list 'union outer) (list 'difference hole)))])
+       (draw-path canvas result paint))))
+ #:background 'white)
+
+(render-reference-image
+ "rounded-rect.png" 160 90
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color "#326DE6")])
+     (define shape
+       (make-rounded-rect 20 15 120 60
+                          #:radii '((24 24) (8 8) (24 8) (8 24))))
+     (draw-rrect canvas shape paint)))
+ #:background 'white)
+
+(render-reference-image
+ "region.png" 155 80
+ (lambda (canvas)
+   (with-skia ([region (make-region '((15 15 55 50) (90 15 50 50)))]
+               [paint (make-paint #:color "#326DE6")])
+     (draw-region canvas region paint)))
+ #:background 'white)
+
+(render-reference-image
+ "affine-transform.png" 180 120
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color "#326DE6")])
+     (with-canvas-state canvas
+       (canvas-concat! canvas
+                       (matrix-compose (matrix-translate 90 60)
+                                       (matrix-rotate-degrees 25)))
+       (draw-rect canvas -45 -20 90 40 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "projective-transform.png" 180 110
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color "#326DE6")])
+     (with-canvas-matrix canvas
+         (make-matrix3 1 0 25
+                       0 1 20
+                       0.004 0 1)
+       (draw-rect canvas 0 0 110 60 paint))))
+ #:background 'white)
