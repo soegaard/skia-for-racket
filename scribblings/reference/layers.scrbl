@@ -25,6 +25,15 @@ every layer effect. Raster fallback must contain the backdrop
 needed by the operation; an isolated group does not capture an outer document's
 existing pixels automatically.
 
+@bold{Conceptual diagram.} Per-draw opacity and layer opacity are different
+routes. Drawing each translucent rectangle directly on the parent accumulates
+coverage in their overlap. A layer instead receives opaque child draws in a
+transparent intermediate target, then applies group opacity once when the layer
+is restored and composited. A normal state save has no intermediate target.
+
+@reference-figure["concept-layer-compositing.png"
+                  "Two checkerboard-backed overlap panels compare separately translucent blue rectangles, whose overlap darkens, with opaque children drawn in a transparent layer and composited once at group opacity, whose overlap stays the same opacity. An arrow labels layer restore/composite."]
+
 @local-table-of-contents[#:style 'immediate-only]
 
 @section{Simple Layers}

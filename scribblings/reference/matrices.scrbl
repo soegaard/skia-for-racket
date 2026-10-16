@@ -128,6 +128,9 @@ matrix acts on a point first. With no arguments, the result is
 single-precision coefficient representation; rearranging products may change
 rounding even though exact matrix multiplication is associative.
 
+For the same two orders shown as local canvas coordinates and calls, see
+@secref["skia-canvas-transforms"].
+
 @examples[#:eval matrix-eval
 (define translation (matrix-translate 10 20))
 (define scaling (matrix-scale 2))

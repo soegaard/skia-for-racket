@@ -59,6 +59,16 @@ to the exterior. Both treat open contours as closed for filling. Explicit
 closure still matters for stroke caps and joins. Reversing an inner contour
 can create a winding-rule hole; an even-odd hole does not depend on direction.
 
+@bold{Conceptual diagram.} Winding considers a signed total, while even-odd
+considers only crossing parity. The annotated nested-contour cases make the
+direction dependency explicit: reversing the inner contour can turn a winding
+center into a hole, but it does not change an even-odd hole. Open contours are
+still treated as closed for filling; that does not replace @racket[path-close!]
+when stroke joins matter.
+
+@reference-figure["concept-fill-rules.png"
+                  "A two-by-two comparison of same and reversed inner contour direction under winding and even-odd fill. Direction arrows, signed winding totals, crossing parity labels, and the resulting filled or hollow centers are shown in every panel."]
+
 @racketblock[
 (with-skia ([path (make-path '((move 0 0) (line 40 0) (line 20 30) (close)))])
   (path-contains? path 20 10))
@@ -341,6 +351,15 @@ Returns tighter geometric bounds computed from the curves rather than simply
 the control-point bounds. It can require more work than @racket[path-bounds].
 It still does not include stroke widths, paint effects, or the canvas transform.
 }
+
+@bold{Conceptual diagram.} A cubic's off-curve controls are stored points, but
+the curve normally does not pass through them. @racket[path-bounds] encloses all
+stored endpoints and controls; @racket[path-tight-bounds] encloses the curve
+geometry itself. Both are path-space geometry measurements, not painted-pixel
+bounds.
+
+@reference-figure["concept-path-bounds.png"
+                  "A cubic Bezier arch shows its two off-curve controls and dashed control polygon. A red rectangle encloses stored points, while a smaller green rectangle encloses tight curve geometry; labels state that neither includes stroke, filters, transforms, or clips."]
 
 @defproc[(path-contains? [path skia-path?] [x real?] [y real?]) boolean?]{
 Reports whether the point is contained in the path's filled region according

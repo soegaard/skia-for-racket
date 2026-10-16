@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/gpu skia/gpu-diagnostics))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/gpu skia/gpu-diagnostics))
 
 @title[#:tag "skia-gpu-synchronization"]{GPU Synchronization and Resource Caches}
 
@@ -12,6 +13,16 @@ boundaries: none presents a window, exports a native fence, or transfers pixels
 by itself. These operations require the owning Racket thread and
 an active, usable context. Detected native context loss requests shutdown and
 raises; it does not retry rendering on the CPU.
+
+@bold{Conceptual diagram.} Pending drawing, flush, submission, and requested
+CPU completion are separate boundaries. Readback and presentation are separate
+routes from submitted work: readback produces an independent CPU result, while
+presentation is requested through its presentation API. A completed wait alone
+neither copies pixels nor presents them; presentation success is a request, not
+proof of physical display.
+
+@reference-figure["concept-gpu-boundaries.png"
+                  "A responsibility diagram sequences pending draw, flush, submit, and CPU wait, then branches from submitted work to readback into a CPU image and a presentation request. Captions state that submit requires prior flush and wait alone neither reads back nor presents."]
 
 @section{Flush, Submit, and Wait}
 

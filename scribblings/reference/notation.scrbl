@@ -37,6 +37,10 @@ increases to the right and the y coordinate increases downward. One drawing
 unit initially corresponds to one pixel. Canvas transforms change the mapping
 for subsequent drawing; they do not move pixels already drawn.
 
+The transform-order coordinate diagram in @secref["skia-canvas-transforms"]
+shows the initial rightward-x/downward-y axes and the distinction between call
+order and point-application order.
+
 The arguments @racket[_x], @racket[_y], @racket[_width], and @racket[_height]
 describe a rectangle by position and size, not by opposite corners. Its computed
 right and bottom coordinates must also fit the drawing-scalar range.

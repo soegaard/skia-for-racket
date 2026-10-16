@@ -42,6 +42,16 @@ a different result from cropping the blur's output. The absence of a crop does
 not imply an infinite pixel allocation. Native bounds, drawing clips, memory
 limits, and output-backend restrictions still apply.
 
+@bold{Conceptual diagram.} A graph connects inputs; constructing it does not
+process pixels. The two executed fixtures use the same crop and blur in opposite
+orders: cropping before blur changes the blur's input, while cropping after blur
+restricts its output. A false input slot is the dynamic drawing source. Thus
+@racket[(make-compose-image-filter outer inner)] feeds the inner graph's output
+into the outer graph's dynamic-source slots.
+
+@reference-figure["concept-filter-graph.png"
+                  "Two filtered fixtures compare source-to-crop-to-blur with source-to-blur-to-crop; red rectangles show the same crop in each. Below, a directed box graph labels the dynamic source, crop, blur, and output, with explanatory text that false input slots receive the dynamic source."]
+
 @defproc[(image-filter? [v any/c]) boolean?]{
 Returns @racket[#t] for an image-filter resource and @racket[#f] otherwise.
 A closed wrapper still satisfies the predicate. This does not determine whether

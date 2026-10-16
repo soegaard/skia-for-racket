@@ -61,6 +61,15 @@ arguments. It draws in page units with its origin at the content area's upper-le
 Its results are discarded. Capturing a closed paint or image does not become
 safe merely because the page itself is a detached value.
 
+@bold{Conceptual diagram.} Margins are left, top, right, bottom--not CSS order.
+They define a content rectangle whose upper-left corner is the callback origin.
+For a page of width and height @math{(W,H)}, content size is
+@math{(W-left-right,H-top-bottom)}. Turning clipping off permits drawing across
+that content boundary without changing either origin.
+
+@reference-figure["concept-page-margins.png"
+                  "A full-page rectangle contains an unequal-margin content rectangle. Arrows label left, top, right, and bottom margins; dots identify the page and callback origins, a red boundary identifies the optional content clip, and a blue mark crosses it when clipping is disabled."]
+
 
 @racketblock[
 (with-skia ([surface (make-surface 220 120 #:background 'white)])
@@ -283,6 +292,16 @@ logical content. Pixel dimensions are the ceilings of the padded extents times
 @racket[scale]; both dimensions and the RGBA allocation must fit the ordinary
 surface limits. The snapshot is placed at the original origin minus left/top
 padding. Coordinates and padded dimensions must remain drawing scalars.
+
+@bold{Conceptual diagram.} Padding creates a larger transparent raster region
+around unchanged logical content. The callback still receives local @racket[(0,0)]
+for the content origin; a blur can extend into the padding. The completed image
+is placed at @math{(x-left,y-top)}, preserving the target location of logical
+content. This callback canvas does not inherit the target transform or clip,
+although final image drawing does.
+
+@reference-figure["concept-raster-padding.png"
+                  "A light-blue logical-content rectangle sits inside a larger gray transparent padded raster region. A blurred blue circle reaches into padding, and labels distinguish callback origin, logical content, and final image placement at x minus left and y minus top."]
 
 Text mode is forced to @racket['native] inside the callback so that native
 rendered glyphs can be captured. Callback results are ignored and temporary

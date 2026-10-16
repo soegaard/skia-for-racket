@@ -48,6 +48,16 @@ display DPI or resample the source merely because the backing scale differs
 from 1. The scale and resulting dimensions must be positive finite values
 representable by the drawing implementation.
 
+@bold{Conceptual diagram.} A 120 by 80 pixel image passed through
+@racket[image->pict] with backing scale 2 remains 120 by 80 physical pixels but
+becomes a 60 by 40 logical pict. This is separate from a picture viewport of
+120 by 80 logical units rendered by @racket[picture->pict] at raster scale 2:
+that route produces 240 by 160 physical pixels while retaining 120 by 80 logical
+dimensions.
+
+@reference-figure["concept-raster-density.png"
+                  "Two routes distinguish physical pixels from logical units: image-to-pict changes 120 by 80 pixels to 60 by 40 logical units through backing scale two, while picture-to-pict keeps a 120 by 80 logical viewport and renders it as 240 by 160 pixels at raster scale two."]
+
 Tagged images are read into sRGB before the Racket bitmap is created. Untagged
 images keep their numerical RGBA samples, which the display bridge treats as
 sRGB values. The transfer is an 8-bit display conversion; floating-point or HDR

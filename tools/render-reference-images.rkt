@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require racket/file
+         racket/list
          racket/runtime-path
          racket/class
          (prefix-in draw: racket/draw)
@@ -25,6 +26,28 @@
 
 (define (output-path filename)
   (build-path output-directory filename))
+
+;; Conceptual figures use the same small visual vocabulary throughout the
+;; Reference.  Keep the annotations in this generator: their coordinates are
+;; derived from the fixture below rather than being hand-drawn after rendering.
+(define (one-decimal value)
+  (number->string (/ (round (* 10.0 value)) 10.0)))
+
+(define (draw-arrow canvas x1 y1 x2 y2 paint)
+  (draw-line canvas x1 y1 x2 y2 paint)
+  (define angle (atan (- y2 y1) (- x2 x1)))
+  (define wing 6)
+  (define (point delta)
+    (list (+ x2 (* wing (cos (+ angle delta))))
+          (+ y2 (* wing (sin (+ angle delta))))))
+  (draw-polygon canvas (list (list x2 y2) (point 2.55) (point -2.55)) paint))
+
+(define (draw-corner-bracket canvas x y width height paint)
+  (define size 7)
+  (for ([x0 (list x (+ x width))] [sx '(1 -1)])
+    (for ([y0 (list y (+ y height))] [sy '(1 -1)])
+      (draw-line canvas x0 y0 (+ x0 (* sx size)) y0 paint)
+      (draw-line canvas x0 y0 x0 (+ y0 (* sy size)) paint))))
 
 (define (make-reference-surface width height [background #f])
   (if background
@@ -4082,4 +4105,737 @@
      (canvas-translate! canvas 70 35)
      (canvas-rotate! canvas 12)
      (draw-output-page canvas page)))
+ #:background 'white)
+
+;; Conceptual diagrams -------------------------------------------------------
+;; These scenes deliberately combine a small executed fixture with guides that
+;; explain the fixture's coordinate contract.  The guides are not presented as
+;; pixels produced by the adjacent API call.
+
+(render-reference-image
+ "concept-font-metrics.png" 460 230
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 64)]
+               [text-ink (make-paint #:color "#20344E")]
+               [ascent-ink (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 1)]
+               [baseline-ink (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1.5)]
+               [descent-ink (make-paint #:color "#2C9B6F" #:style 'stroke #:stroke-width 1)]
+               [measure-ink (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [axis-ink (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [label-font (make-font #:size 13)]
+               [small-font (make-font #:size 11)]
+               [label (make-paint #:color "#20344E")])
+     (define baseline 135)
+     (define text "Hgx")
+     (define metrics (font-get-metrics font))
+     (define ascent (+ baseline (font-metrics-ascent metrics)))
+     (define descent (+ baseline (font-metrics-descent metrics)))
+     (define cap-height (font-metrics-cap-height metrics))
+     (define x-height (font-metrics-x-height metrics))
+     (draw-simple-text canvas "baseline-relative metrics" 22 22 label-font label)
+     (draw-arrow canvas 22 52 22 177 axis-ink)
+     (draw-simple-text canvas "y+" 8 190 small-font label)
+     (draw-line canvas 42 ascent 280 ascent ascent-ink)
+     (draw-line canvas 42 baseline 280 baseline baseline-ink)
+     (draw-line canvas 42 descent 280 descent descent-ink)
+     (draw-simple-text canvas text 58 baseline font text-ink)
+     (draw-simple-text canvas
+                       (format "ascent  a = ~a < 0" (one-decimal (font-metrics-ascent metrics)))
+                       294 (+ ascent 4) small-font label)
+     (draw-simple-text canvas "baseline  b" 294 (+ baseline 4) small-font label)
+     (draw-simple-text canvas
+                       (format "descent  d = ~a > 0" (one-decimal (font-metrics-descent metrics)))
+                       294 (+ descent 4) small-font label)
+     (draw-arrow canvas 270 baseline 270 ascent measure-ink)
+     (draw-simple-text canvas "-a" 247 (/ (+ baseline ascent) 2) small-font label)
+     (draw-arrow canvas 270 baseline 270 descent measure-ink)
+     (draw-simple-text canvas "d" 250 (/ (+ baseline descent) 2) small-font label)
+     (when (positive? cap-height)
+       (define guide (- baseline cap-height))
+       (draw-line canvas 42 guide 210 guide measure-ink)
+       (draw-simple-text canvas "cap height" 216 (+ guide 4) small-font label))
+     (when (positive? x-height)
+       (define guide (- baseline x-height))
+       (draw-line canvas 42 guide 210 guide measure-ink)
+       (draw-simple-text canvas "x-height" 216 (+ guide 4) small-font label))
+     (draw-simple-text canvas "guides: b+a, b, b+d" 42 208 label-font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-text-advance.png" 460 190
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 54)]
+               [ink (make-paint #:color "#20344E")]
+               [bounds-ink (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 1.5)]
+               [advance-ink (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1)]
+               [baseline-ink (make-paint #:color "#AEB7C2" #:style 'stroke #:stroke-width 1)]
+               [label-font (make-font #:size 12)]
+               [label (make-paint #:color "#20344E")])
+     (define baseline 99)
+     (define (panel x text trailing?)
+       (define-values (bx by bw bh) (simple-text-bounds font text))
+       (define advance (measure-simple-text font text))
+       (draw-simple-text canvas (if trailing? "A followed by a space" "A") x 24 label-font label)
+       (draw-line canvas (- x 10) baseline (+ x 178) baseline baseline-ink)
+       (draw-line canvas x (- baseline 12) x (+ baseline 12) advance-ink)
+       (draw-simple-text canvas text x baseline font ink)
+       (draw-rect canvas (+ x bx) (+ baseline by) bw bh bounds-ink)
+       (draw-arrow canvas x 137 (+ x advance) 137 advance-ink)
+       (draw-simple-text canvas "advance: next origin" x 156 label-font label)
+       (when trailing?
+         (draw-line canvas (+ x (measure-simple-text font "A")) 118 (+ x advance) 118 advance-ink)
+         (draw-simple-text canvas "trailing space (annotation)" (+ x 4) 177 label-font label))
+       (draw-simple-text canvas "red = measured ink bounds" x 43 label-font label))
+     (panel 35 "A" #f)
+     (panel 260 "A " #t)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-layout-box.png" 480 300
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 18)]
+               [shaper (make-shaper font)]
+               [ink (make-paint #:color "#20344E")]
+               [box-ink (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1.3)]
+               [guide-ink (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 1)]
+               [faint-ink (make-paint #:color "#AEB7C2" #:style 'stroke #:stroke-width 1)]
+               [label-font (make-font #:size 11)]
+               [title-font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define layout
+       (layout-text shaper "First visible line\nSecond visible line\nThird visible line"
+                    #:width 205 #:line-height 34))
+     (define x 24)
+     (define y 34)
+     (define first (car (text-layout-lines layout)))
+     (draw-simple-text canvas "layout origin, baselines, and height" 24 18 title-font label)
+     (draw-rect canvas x y (text-layout-width layout) (text-layout-height layout) box-ink)
+     (draw-text-layout canvas layout x y ink)
+     (for ([line (in-list (text-layout-lines layout))])
+       (define by (+ y (text-layout-line-baseline line)))
+       (draw-line canvas x by (+ x (text-layout-width layout)) by faint-ink))
+     (draw-arrow canvas 10 34 x y guide-ink)
+     (draw-simple-text canvas "box origin" 24 147 label-font label)
+     (define first-y (+ y (text-layout-line-baseline first)))
+     (draw-arrow canvas 240 y 240 first-y guide-ink)
+     (draw-simple-text canvas "first baseline = max(0, -ascent)" 250 61 label-font label)
+     (draw-arrow canvas 220 first-y 220 (+ first-y (text-layout-line-height layout)) guide-ink)
+     (draw-simple-text canvas "line-height: baseline step" 250 97 label-font label)
+     (draw-arrow canvas 452 y 452 (+ y (text-layout-height layout)) guide-ink)
+     (draw-simple-text canvas "reported\nheight" 404 133 label-font label)
+     (draw-simple-text canvas "requested wrapping width is not a clip" 24 175 title-font label)
+     (define word "unbreakable")
+     (define requested 105)
+     (define overflow (layout-text shaper word #:width requested))
+     (draw-rect canvas 24 194 requested 63 box-ink)
+     (draw-line canvas (+ 24 requested) 186 (+ 24 requested) 269 guide-ink)
+     (draw-text-layout canvas overflow 24 202 ink)
+     (draw-corner-bracket canvas 24 194 (text-layout-width overflow) (text-layout-height overflow) faint-ink)
+     (draw-simple-text canvas "requested width" 24 278 label-font label)
+     (draw-simple-text canvas "reported layout box; whole word remains visible" 155 278 label-font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-transform-order.png" 480 240
+ (lambda (canvas)
+   (with-skia ([grid (make-paint #:color "#D9DEE6" #:style 'stroke #:stroke-width 1)]
+               [axis (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [source (make-paint #:color "#AEB7C2")]
+               [result (make-paint #:color "#326DE6")]
+               [point-ink (make-paint #:color "#E94F37")]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define translation (matrix-translate 10 20))
+     (define scaling (matrix-scale 2))
+     (define-values (tsx tsy) (matrix-map-point (matrix-compose translation scaling) 3 4))
+     (define-values (stx sty) (matrix-map-point (matrix-compose scaling translation) 3 4))
+     (unless (and (= tsx 16) (= tsy 28)
+                  (= stx 26) (= sty 48))
+       (error 'concept-transform-order "matrix fixture endpoints changed"))
+     (define (panel x title-text final-x final-y equation calls)
+       (draw-simple-text canvas title-text x 18 title label)
+       (define ox (+ x 28))
+       (define oy 78)
+       (for ([n '(0 20 40 60 80 100)])
+         (draw-line canvas (+ ox n) 35 (+ ox n) 145 grid)
+         (draw-line canvas ox (+ 35 n) (+ ox 110) (+ 35 n) grid))
+       (draw-arrow canvas ox oy (+ ox 85) oy axis)
+       (draw-arrow canvas ox oy ox (+ oy 56) axis)
+       (draw-simple-text canvas "x" (+ ox 89) (+ oy 4) font label)
+       (draw-simple-text canvas "y" (- ox 5) (+ oy 69) font label)
+       (draw-circle canvas (+ ox 3) (+ oy 4) 4 source)
+       (draw-simple-text canvas "p=(3,4)" (+ ox 7) (+ oy -4) font label)
+       (draw-circle canvas (+ ox final-x) (+ oy final-y) 5 point-ink)
+       (draw-simple-text canvas (format "(~a,~a)" (round final-x) (round final-y))
+                         (+ ox final-x 7) (+ oy final-y 4) font label)
+       (draw-simple-text canvas equation x 166 font label)
+       (draw-simple-text canvas calls x 186 font label))
+     (panel 20 "T then S on the canvas" tsx tsy "T(S(p)) = (16,28)"
+            "canvas: translate, then scale  =>  T × S")
+     (panel 255 "S then T on the canvas" stx sty "S(T(p)) = (26,48)"
+            "canvas: scale, then translate  =>  S × T")
+     (draw-simple-text canvas "Matrix composition names argument order; points receive the rightmost map first." 20 220 font label)))
+ #:background 'white)
+
+;; Resetting the canvas transform needs literal target coordinates.  This
+;; scene is captured before the Reference's normal 2x presentation scale is
+;; applied, so the reset cannot accidentally erase that presentation scale.
+(render-native-scale-reference-image
+ "concept-clip-state.png" 480 240
+ (lambda (canvas)
+   (with-skia ([grid (make-paint #:color "#E5E9ED" #:style 'stroke #:stroke-width 1)]
+               [blue (make-paint #:color "#326DE6")]
+               [orange (make-paint #:color "#EFA02B")]
+               [green (make-paint #:color "#2C9B6F")]
+               [clip-ink (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 2)]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define (grid-panel x)
+       (draw-rect canvas x 35 132 130 border)
+       (for ([n (in-range 0 141 20)])
+         (draw-line canvas (+ x n) 35 (+ x n) 165 grid)
+         (draw-line canvas x (+ 35 n) (+ x 132) (+ 35 n) grid)))
+     (for ([x '(20 174 328)]) (grid-panel x))
+     (draw-simple-text canvas "1. establish clip" 20 19 title label)
+     (with-canvas-state canvas
+       (canvas-translate! canvas 40 55)
+       (canvas-clip-rect! canvas 0 0 75 55)
+       (draw-rect canvas 0 0 120 90 blue))
+     (draw-rect canvas 40 55 75 55 clip-ink)
+     (draw-simple-text canvas "target clip: (40,55,75,55)" 20 181 font label)
+     (draw-simple-text canvas "2. reset transform" 174 19 title label)
+     (with-canvas-state canvas
+       (canvas-translate! canvas 194 55)
+       (canvas-clip-rect! canvas 0 0 75 55)
+       (canvas-reset-transform! canvas)
+       ;; The established clip is in target coordinates.  This orange draw
+       ;; starts at the literal target origin, after reset.
+       (draw-rect canvas 174 35 132 130 orange))
+     (draw-rect canvas 194 55 75 55 clip-ink)
+     (draw-simple-text canvas "clip did not move" 174 181 font label)
+     (draw-simple-text canvas "3. restore state" 328 19 title label)
+     (with-canvas-state canvas
+       (canvas-translate! canvas 348 55)
+       (canvas-clip-rect! canvas 0 0 75 55)
+       (draw-rect canvas 0 0 120 90 blue))
+     (draw-circle canvas 430 145 10 green)
+     (draw-rect canvas 348 55 75 55 clip-ink)
+     (draw-simple-text canvas "pixels remain" 328 181 font label)
+     (draw-simple-text canvas "red boundary = established clip; grid and labels are explanatory" 20 222 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-layer-compositing.png" 480 240
+ (lambda (canvas)
+   (with-skia ([checker-a (make-paint #:color "#E8EDF2")]
+               [checker-b (make-paint #:color "#FFFFFF")]
+               [per-draw (make-paint #:color (rgba 50 109 230 120))]
+               [opaque (make-paint #:color "#326DE6")]
+               [group-alpha (make-paint #:color (rgba 0 0 0 120))]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [arrow-ink (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define (checker x y)
+       (for* ([row (in-range 5)] [column (in-range 7)])
+         (draw-rect canvas (+ x (* column 18)) (+ y (* row 18)) 18 18
+                    (if (even? (+ row column)) checker-a checker-b))))
+     (define (rectangles target left top paint)
+       (draw-rounded-rect target left top 68 48 7 7 paint)
+       (draw-rounded-rect target (+ left 40) top 68 48 7 7 paint))
+     (draw-simple-text canvas "opacity applied to each draw" 24 20 title label)
+     (checker 24 36)
+     (rectangles canvas 38 55 per-draw)
+     (draw-rect canvas 24 36 126 90 border)
+     (draw-simple-text canvas "overlap accumulates" 24 145 font label)
+     (draw-simple-text canvas "opaque children in transparent layer" 258 20 title label)
+     (checker 300 36)
+     (with-canvas-layer canvas #:paint group-alpha #:bounds '(300 36 126 90)
+       (rectangles canvas 314 55 opaque))
+     (draw-rect canvas 300 36 126 90 border)
+     (draw-arrow canvas 227 82 286 82 arrow-ink)
+     (draw-simple-text canvas "restore: composite group once" 205 105 font label)
+     (draw-simple-text canvas "same opacity in overlap" 300 145 font label)
+     (draw-simple-text canvas "A state save has no transparent intermediate target; a layer does." 24 193 title label)
+     (draw-simple-text canvas "The purple arrow is the layer restore/composite step, not a draw call." 24 215 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-image-placement.png" 480 230
+ (lambda (canvas)
+   (with-skia ([source-surface (make-surface 48 32 #:background 'transparent)]
+               [red (make-paint #:color "#E94F37")]
+               [blue (make-paint #:color "#326DE6")]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [source-ink (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 2)]
+               [offset-ink (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 2)]
+               [arrow-ink (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (draw-circle (surface-canvas source-surface) 22 15 11 red)
+     (draw-rect (surface-canvas source-surface) 32 5 10 10 blue)
+     (with-skia ([input (surface-snapshot source-surface)]
+                 [filter (make-offset-image-filter 12 8)])
+       (define-values (result returned-source offset)
+         (image-apply-filter input filter #:clip '(0 0 72 54)))
+       (call-with-skia-resource
+        result
+        (lambda (result-image)
+          (draw-simple-text canvas "filtering coordinates" 18 18 title label)
+          (draw-image-rect canvas input 18 35 96 64 #:sampling 'nearest)
+          (draw-rect canvas 18 35 96 64 border)
+          (draw-simple-text canvas "returned image" 190 18 title label)
+          (draw-image-rect canvas result-image 190 35 144 108 #:sampling 'nearest)
+          ;; Native metadata drives the labels; the large highlighted box is
+          ;; the returned source rectangle at the same 3x presentation scale.
+          (define sx (vector-ref returned-source 0))
+          (define sy (vector-ref returned-source 1))
+          (define sw (vector-ref returned-source 2))
+          (define sh (vector-ref returned-source 3))
+          (draw-rect canvas (+ 190 (* 3 sx)) (+ 35 (* 3 sy)) (* 3 sw) (* 3 sh) source-ink)
+          (draw-simple-text canvas (format "source = (~a,~a,~a,~a)" sx sy sw sh)
+                            190 158 font label)
+          (draw-arrow canvas 335 90 390 90 arrow-ink)
+          (draw-simple-text canvas "place selected source" 348 75 font label)
+          (draw-simple-text canvas "at returned offset" 348 90 font label)
+          (draw-rect canvas 348 105 112 86 border)
+          (define ox (vector-ref offset 0))
+          (define oy (vector-ref offset 1))
+          ;; A small schematic keeps a nonzero returned-source origin visible
+          ;; even if a platform's native result is full-image source.
+          (draw-rect canvas 374 124 62 42 source-ink)
+          (draw-corner-bracket canvas 360 114 84 60 offset-ink)
+          (draw-simple-text canvas (format "offset = (~a,~a)" ox oy) 348 206 font label)
+          (draw-simple-text canvas "source upper-left goes here; full result origin need not" 18 216 font label))))))
+ #:background 'white)
+
+(render-reference-image
+ "concept-filter-graph.png" 480 300
+ (lambda (canvas)
+   (with-skia ([fixture (make-surface 105 58 #:background 'transparent)]
+               [blue (make-paint #:color "#326DE6")]
+               [orange (make-paint #:color "#EFA02B")]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [crop-ink (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 2)]
+               [arrow-ink (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (draw-circle (surface-canvas fixture) 30 30 20 blue)
+     (draw-rounded-rect (surface-canvas fixture) 55 12 35 35 6 6 orange)
+     (with-skia ([image (surface-snapshot fixture)]
+                 [crop (make-crop-image-filter '(20 8 50 42))]
+                 [blur (make-blur-image-filter 7 7)]
+                 [crop-then-blur (make-blur-image-filter 7 7 #:input crop)]
+                 [blur-then-crop (make-crop-image-filter '(20 8 50 42) #:input blur)]
+                 [left-paint (make-paint #:image-filter crop-then-blur)]
+                 [right-paint (make-paint #:image-filter blur-then-crop)])
+       (define (filtered-result paint)
+         (with-skia ([result-surface (make-surface 105 58 #:background 'white)])
+           (draw-circle (surface-canvas result-surface) 30 30 20 paint)
+           (draw-rounded-rect (surface-canvas result-surface) 55 12 35 35 6 6 paint)
+           (surface-snapshot result-surface)))
+       (with-skia ([left-result (filtered-result left-paint)]
+                   [right-result (filtered-result right-paint)])
+       (draw-simple-text canvas "source -> crop -> blur" 20 19 title label)
+       (draw-image canvas left-result 20 38)
+       (draw-rect canvas 20 38 105 58 border)
+       (draw-rect canvas 40 46 50 42 crop-ink)
+       (draw-simple-text canvas "crop limits blur input" 20 111 font label)
+       (draw-simple-text canvas "source -> blur -> crop" 260 19 title label)
+       (draw-image canvas right-result 260 38)
+       (draw-rect canvas 260 38 105 58 border)
+       (draw-rect canvas 280 46 50 42 crop-ink)
+       (draw-simple-text canvas "crop limits blur output" 260 111 font label)
+       (for ([x '(25 135 245 355)])
+         (draw-rounded-rect canvas x 151 82 34 5 5 border))
+       (for ([name '("dynamic\nsource" "crop" "blur" "output")]
+             [x '(38 159 269 374)])
+         (draw-simple-text canvas name x 172 font label))
+       (draw-arrow canvas 107 168 132 168 arrow-ink)
+       (draw-arrow canvas 217 168 242 168 arrow-ink)
+       (draw-arrow canvas 327 168 352 168 arrow-ink)
+       (draw-simple-text canvas "#f input slot = the dynamic drawing source" 20 220 title label)
+       (draw-simple-text canvas "make-compose-image-filter feeds the inner graph into the outer graph's #f input slots." 20 246 font label)
+       (draw-simple-text canvas "Node construction connects a graph; it does not process pixels." 20 270 font label)))))
+ #:background 'white)
+
+(render-reference-image
+ "concept-pixel-stride.png" 480 210
+ (lambda (canvas)
+   (with-skia ([pixel-a (make-paint #:color "#326DE6")]
+               [pixel-b (make-paint #:color "#2C9B6F")]
+               [pixel-c (make-paint #:color "#EFA02B")]
+               [padding (make-paint #:color "#D9DEE6")]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [measure (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define cell 13)
+     (define x0 42)
+     (define (row y row-index)
+       (draw-simple-text canvas (format "row ~a (starts at ~a)" row-index (* row-index 16)) 42 (- y 7) font label)
+       (for ([byte (in-range 16)])
+         (draw-rect canvas (+ x0 (* byte cell)) y cell 28
+                    (cond [(< byte 4) pixel-a]
+                          [(< byte 8) pixel-b]
+                          [(< byte 12) pixel-c]
+                          [else padding]))
+         (draw-rect canvas (+ x0 (* byte cell)) y cell 28 border))
+       (draw-simple-text canvas "pixel 0" (+ x0 3) (+ y 18) font label)
+       (draw-simple-text canvas "pixel 1" (+ x0 55) (+ y 18) font label)
+       (draw-simple-text canvas "pixel 2" (+ x0 107) (+ y 18) font label)
+       (draw-simple-text canvas "padding" (+ x0 160) (+ y 18) font label))
+     (draw-simple-text canvas "3 × 2 RGBA8888: four bytes per pixel" 42 20 title label)
+     (row 47 0)
+     (row 108 1)
+     (draw-arrow canvas 42 151 (+ x0 (* 16 cell)) 151 measure)
+     (draw-simple-text canvas "row stride = 16 bytes (12 pixel bytes + 4 padding bytes)" 42 169 font label)
+     (draw-simple-text canvas "returned (stride, minimum addressable, allocation) = (16, 28, 32)" 42 192 title label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-page-margins.png" 480 240
+ (lambda (canvas)
+   (with-skia ([page (make-paint #:color "#EEF1F4")]
+               [content (make-paint #:color "#DCEAF8")]
+               [ink (make-paint #:color "#326DE6")]
+               [clip-ink (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 2)]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [measure (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define px 70) (define py 32) (define pw 300) (define ph 150)
+     (define left 42) (define top 24) (define right 62) (define bottom 34)
+     (define cx (+ px left)) (define cy (+ py top))
+     (define cw (- pw left right)) (define ch (- ph top bottom))
+     (draw-simple-text canvas "page origin and unequal margins (left, top, right, bottom)" 70 18 title label)
+     (draw-rect canvas px py pw ph page)
+     (draw-rect canvas cx cy cw ch content)
+     (draw-rect canvas px py pw ph border)
+     (draw-rect canvas cx cy cw ch clip-ink)
+     (draw-circle canvas px py 4 ink)
+     (draw-simple-text canvas "page origin" (+ px 7) (+ py 15) font label)
+     (draw-circle canvas cx cy 4 ink)
+     (draw-simple-text canvas "callback origin" (+ cx 6) (+ cy 14) font label)
+     (draw-arrow canvas px (+ py ph 10) cx (+ py ph 10) measure)
+     (draw-simple-text canvas "left" (+ px 8) (+ py ph 27) font label)
+     (draw-arrow canvas (+ cx cw) (+ py ph 10) (+ px pw) (+ py ph 10) measure)
+     (draw-simple-text canvas "right" (- (+ cx cw) 4) (+ py ph 27) font label)
+     (draw-arrow canvas (- px 16) py (- px 16) cy measure)
+     (draw-simple-text canvas "top" 15 (+ py 18) font label)
+     (draw-arrow canvas (- px 16) (+ cy ch) (- px 16) (+ py ph) measure)
+     (draw-simple-text canvas "bottom" 15 (- (+ py ph) 4) font label)
+     (draw-circle canvas (+ cx cw 14) (+ cy ch 8) 18 ink)
+     (draw-simple-text canvas "red = content clip when clip? is true" (+ cx 7) (- (+ cy ch) 8) font label)
+     (draw-simple-text canvas "With clip? false, the blue mark may cross it; neither origin changes." 70 224 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-raster-padding.png" 480 230
+ (lambda (canvas)
+   (with-skia ([padding (make-paint #:color "#E8EDF2")]
+               [content (make-paint #:color "#DCEAF8")]
+               [blur (make-paint #:color (rgba 50 109 230 90))]
+               [ink (make-paint #:color "#326DE6")]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [guide (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define rx 70) (define ry 42) (define rw 280) (define rh 130)
+     (define left 32) (define top 20) (define right 48) (define bottom 28)
+     (draw-simple-text canvas "raster fallback: padding enlarges, content origin stays fixed" 28 20 title label)
+     (draw-rect canvas rx ry rw rh padding)
+     (draw-rect canvas (+ rx left) (+ ry top) (- rw left right) (- rh top bottom) content)
+     (draw-rect canvas rx ry rw rh border)
+     (draw-rect canvas (+ rx left) (+ ry top) (- rw left right) (- rh top bottom) guide)
+     (draw-circle canvas (+ rx left 78) (+ ry top 38) 31 blur)
+     (draw-circle canvas (+ rx left 78) (+ ry top 38) 20 ink)
+     (draw-simple-text canvas "callback (0,0)" (+ rx left 4) (+ ry top 15) font label)
+     (draw-simple-text canvas "logical content" (+ rx left 92) (+ ry top 15) font label)
+     (draw-simple-text canvas "transparent padded raster region" rx (+ ry rh 18) font label)
+     (draw-arrow canvas (+ rx left) 195 rx 195 guide)
+     (draw-simple-text canvas "final image placement: (x-left, y-top)" 70 214 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-path-bounds.png" 480 250
+ (lambda (canvas)
+   (with-skia ([path (make-path '((move 40 170) (cubic 100 45 320 45 390 170)))]
+               [curve (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)]
+               [control (make-paint #:color "#AEB7C2" #:style 'stroke #:stroke-width 1)]
+               [stored (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 2)]
+               [tight (make-paint #:color "#2C9B6F" #:style 'stroke #:stroke-width 2)]
+               [point (make-paint #:color "#EFA02B")]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define-values (bx by bw bh) (path-bounds path))
+     (define-values (tx ty tw th) (path-tight-bounds path))
+     (draw-simple-text canvas "cubic controls are stored points, but the curve does not pass through them" 28 19 title label)
+     (draw-line canvas 40 170 100 45 control)
+     (draw-line canvas 100 45 320 45 control)
+     (draw-line canvas 320 45 390 170 control)
+     (draw-rect canvas bx by bw bh stored)
+     (draw-rect canvas tx ty tw th tight)
+     (draw-path canvas path curve)
+     (for ([p '((40 170) (100 45) (320 45) (390 170))])
+       (draw-circle canvas (first p) (second p) 4 point))
+     (draw-simple-text canvas "end" 26 189 font label)
+     (draw-simple-text canvas "control 1" 72 62 font label)
+     (draw-simple-text canvas "control 2" 292 62 font label)
+     (draw-simple-text canvas "end" 385 189 font label)
+     (draw-simple-text canvas "red: path-bounds (stored points)" 42 214 font label)
+     (draw-simple-text canvas "green: path-tight-bounds (curve geometry)" 230 214 font label)
+     (draw-simple-text canvas "Neither rectangle includes stroke width, filters, transform, or clip." 42 238 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-fill-rules.png" 480 255
+ (lambda (canvas)
+   (with-skia ([blue (make-paint #:color "#326DE6")]
+               [white (make-paint #:color 'white)]
+               [arrow-ink (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 1.5)]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define (panel x y title-text center-filled? directions)
+       (draw-rect canvas x y 205 92 border)
+       (draw-simple-text canvas title-text (+ x 8) (+ y 16) font label)
+       (draw-circle canvas (+ x 62) (+ y 55) 28 blue)
+       (unless center-filled? (draw-circle canvas (+ x 62) (+ y 55) 13 white))
+       (draw-circle canvas (+ x 62) (+ y 55) 13 arrow-ink)
+       (draw-arrow canvas (+ x 90) (+ y 46) (+ x 84) (+ y 35) arrow-ink)
+       (draw-arrow canvas (+ x 75) (+ y 67) (+ x 64) (+ y 71) arrow-ink)
+       (draw-simple-text canvas directions (+ x 110) (+ y 43) font label)
+       (draw-simple-text canvas (if center-filled? "center filled" "center hole") (+ x 110) (+ y 65) font label))
+     (draw-simple-text canvas "nested contours: direction affects winding, not even-odd parity" 28 19 title label)
+     (panel 28 38 "winding: same direction" #t "signed total != 0")
+     (panel 247 38 "winding: reversed inner" #f "signed total = 0")
+     (panel 28 145 "even-odd: same direction" #f "crossing parity = even")
+     (panel 247 145 "even-odd: reversed inner" #f "crossing parity = even")
+     (draw-simple-text canvas "Arrows label contour traversal; the test ray/crossing count is a conceptual guide." 28 250 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-nine-patch.png" 480 245
+ (lambda (canvas)
+   (with-skia ([fixed (make-paint #:color "#326DE6")]
+               [stretch (make-paint #:color "#DCEAF8")]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [measure (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define (grid x y widths heights title-text)
+       (draw-simple-text canvas title-text x (- y 9) title label)
+       (define xx x)
+       (for ([i (in-range 3)] [w (in-list widths)])
+         (define yy y)
+         (for ([j (in-range 3)] [h (in-list heights)])
+           (draw-rect canvas xx yy w h (if (or (= i 1) (= j 1)) stretch fixed))
+           (draw-rect canvas xx yy w h border)
+           (draw-simple-text canvas (format "~a" (+ 1 i (* 3 j))) (+ xx (/ w 2) -3) (+ yy (/ h 2) 4) font label)
+           (set! yy (+ yy h)))
+         (set! xx (+ xx w))))
+     (draw-simple-text canvas "matching numbered cells preserve source correspondence" 28 19 title label)
+     (grid 45 55 '(28 54 28) '(20 38 20) "source; center = (28,20,54,38)")
+     (grid 245 55 '(28 130 28) '(20 75 20) "enlarged destination")
+     (draw-arrow canvas 168 104 226 104 measure)
+     (draw-simple-text canvas "fixed corners" 45 174 font label)
+     (draw-simple-text canvas "edges: one axis; center: both" 245 190 font label)
+     (draw-simple-text canvas "If destination is smaller than fixed spans, fixed spans shrink and stretch spans can collapse." 28 218 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-text-clusters.png" 480 245
+ (lambda (canvas)
+   (with-skia ([border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [header (make-paint #:color "#DCEAF8")]
+               [glyph (make-paint #:color "#326DE6")]
+               [cluster (make-paint #:color "#EFA02B")]
+               [font (make-font #:size 12)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define x 30) (define y 40) (define widths '(105 90 100 120))
+     (define headers '("characters" "UTF-8 bytes" "glyph records" "cluster start"))
+     (define rows '(("e-acute" "0..1" "glyph 0" "byte 0")
+                    ("A" "2" "glyph 1" "byte 2")))
+     (draw-simple-text canvas "characters, UTF-8 offsets, and glyph metadata are different index spaces" 30 19 title label)
+     (for ([h headers] [w widths] [i (in-naturals)])
+       (define xx (+ x (apply + (take widths i))))
+       (draw-rect canvas xx y w 33 header)
+       (draw-rect canvas xx y w 33 border)
+       (draw-simple-text canvas h (+ xx 6) (+ y 21) font label))
+     (for ([row rows] [j (in-naturals)])
+       (for ([cell row] [w widths] [i (in-naturals)])
+         (define xx (+ x (apply + (take widths i))))
+         (define yy (+ y 33 (* j 37)))
+         (draw-rect canvas xx yy w 37 border)
+         (draw-simple-text canvas cell (+ xx 6) (+ yy 23) font label)))
+     (draw-simple-text canvas "2 Racket characters; 3 UTF-8 bytes: e-acute starts at 0, A starts at 2." 30 161 font label)
+     (draw-rect canvas 30 181 194 36 glyph)
+     (draw-simple-text canvas "several characters" 66 204 font label)
+     (draw-arrow canvas 232 199 278 199 cluster)
+     (draw-rect canvas 285 181 150 36 header)
+     (draw-simple-text canvas "one shaped glyph" 304 204 font label)
+     (draw-simple-text canvas "Ligatures can map several characters to one glyph; verify the selected font." 30 233 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-text-path-frame.png" 480 240
+ (lambda (canvas)
+   (with-skia ([path-ink (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 3)]
+               [frame (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 1.5)]
+               [normal (make-paint #:color "#2C9B6F" #:style 'stroke #:stroke-width 1.5)]
+               [glyph (make-paint #:color "#20344E")]
+               [font (make-font #:size 18)]
+               [small (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "text-on-path uses an arc-length tangent/normal frame" 28 19 title label)
+     (draw-line canvas 45 105 425 105 path-ink)
+     (draw-arrow canvas 70 105 155 105 path-ink)
+     (draw-simple-text canvas "contour direction" 75 87 small label)
+     (define sx 230) (define sy 105)
+     (draw-circle canvas sx sy 4 frame)
+     (draw-arrow canvas sx sy (+ sx 60) sy frame)
+     (draw-arrow canvas sx sy sx (+ sy 48) normal)
+     (draw-simple-text canvas "tangent (tx,ty)" (+ sx 8) 94 small label)
+     (draw-simple-text canvas "normal (-ty,tx)" (+ sx 16) (+ sy 43) small label)
+     (draw-arrow canvas 45 130 sx 130 frame)
+     (draw-simple-text canvas "s = start + gx" 112 148 small label)
+     (draw-circle canvas sx (+ sy 48) 3 glyph)
+     (draw-simple-text canvas "A" (+ sx 10) (+ sy 72) font glyph)
+     (draw-simple-text canvas "glyph origin = P(s) + (normal + gy) * (-ty,tx)" 28 185 title label)
+     (draw-simple-text canvas "On a rightward path in downward-positive coordinates, positive normal offset is downward." 28 213 small label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-raster-density.png" 480 225
+ (lambda (canvas)
+   (with-skia ([blue (make-paint #:color "#326DE6")]
+               [orange (make-paint #:color "#EFA02B")]
+               [light (make-paint #:color "#DCEAF8")]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [arrow-ink (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "two density routes keep physical pixels and logical units distinct" 28 19 title label)
+     (draw-simple-text canvas "image->pict backing scale 2" 35 49 title label)
+     (draw-rect canvas 35 62 120 80 light)
+     (for ([n (in-range 0 7)]) (draw-line canvas (+ 35 (* n 20)) 62 (+ 35 (* n 20)) 142 border))
+     (draw-rect canvas 35 62 120 80 border)
+     (draw-simple-text canvas "120 x 80 pixels" 43 158 font label)
+     (draw-arrow canvas 160 101 210 101 arrow-ink)
+     (draw-rect canvas 220 82 60 40 blue)
+     (draw-simple-text canvas "60 x 40 logical units" 205 158 font label)
+     (draw-simple-text canvas "picture->pict raster scale 2" 35 188 title label)
+     (draw-rect canvas 275 177 120 34 orange)
+     (draw-simple-text canvas "120 x 80 logical units -> 240 x 160 pixels" 155 221 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-resource-lifetimes.png" 480 245
+ (lambda (canvas)
+   (with-skia ([owner (make-paint #:color "#326DE6")]
+               [borrowed (make-paint #:color "#EFA02B")]
+               [independent (make-paint #:color "#2C9B6F")]
+               [expired (make-paint #:color "#D9DEE6")]
+               [axis (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "ownership and borrowed-view validity are timelines, not one universal tree" 28 19 title label)
+     (draw-arrow canvas 75 52 440 52 axis)
+     (for ([x '(90 230 350)]) (draw-line canvas x 43 x 213 axis))
+     (draw-simple-text canvas "open" 80 40 font label)
+     (draw-simple-text canvas "owner closes" 205 40 font label)
+     (draw-simple-text canvas "later" 334 40 font label)
+     (draw-simple-text canvas "CPU surface" 28 87 font label)
+     (draw-rect canvas 90 68 140 28 owner)
+     (draw-simple-text canvas "owner open" 130 87 font label)
+     (draw-rect canvas 90 100 140 24 borrowed)
+     (draw-simple-text canvas "borrowed canvas usable" 103 117 font label)
+     (draw-rect canvas 230 100 120 24 expired)
+     (draw-simple-text canvas "invalid" 268 117 font label)
+     (draw-rect canvas 150 132 230 28 independent)
+     (draw-simple-text canvas "independent snapshot remains open" 177 151 font label)
+     (draw-simple-text canvas "buffer callback" 28 190 font label)
+     (draw-rect canvas 90 174 140 26 borrowed)
+     (draw-simple-text canvas "pixmap/subset valid" 110 192 font label)
+     (draw-rect canvas 230 174 120 26 expired)
+     (draw-simple-text canvas "invalid" 268 192 font label)
+     (draw-simple-text canvas "Keeping a borrowed wrapper reachable never extends its owner or callback scope." 28 229 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-color-interpretation.png" 480 220
+ (lambda (canvas)
+   (with-skia ([bytes (make-paint #:color "#AEB7C2")]
+               [srgb (make-paint #:color (rgba 128 128 128 255))]
+               [linear-result (make-paint #:color (rgba 188 188 188 255))]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [arrow-ink (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "same bytes: interpretation then destination conversion" 28 19 title label)
+     (draw-rect canvas 28 50 100 46 bytes)
+     (draw-rect canvas 28 50 100 46 border)
+     (draw-simple-text canvas "bytes (128,128,128)" 30 118 font label)
+     (draw-arrow canvas 137 73 202 73 arrow-ink)
+     (draw-arrow canvas 137 73 202 153 arrow-ink)
+     (draw-simple-text canvas "declared sRGB" 145 61 font label)
+     (draw-simple-text canvas "linear sRGB" 145 143 font label)
+     (draw-rect canvas 220 47 95 55 srgb)
+     (draw-rect canvas 220 47 95 55 border)
+     (draw-rect canvas 220 127 95 55 linear-result)
+     (draw-rect canvas 220 127 95 55 border)
+     (draw-simple-text canvas "draw into sRGB: 128" 326 78 font label)
+     (draw-simple-text canvas "draw into sRGB: approx. 188" 326 158 font label)
+     (draw-simple-text canvas "A tag declares sample meaning; drawing converts into the destination." 28 208 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "concept-gpu-boundaries.png" 480 245
+ (lambda (canvas)
+   (with-skia ([pending (make-paint #:color "#DCEAF8")]
+               [submit (make-paint #:color "#326DE6")]
+               [cpu (make-paint #:color "#2C9B6F")]
+               [route (make-paint #:color "#EFA02B")]
+               [border (make-paint #:color "#526070" #:style 'stroke #:stroke-width 1)]
+               [arrow-ink (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 11)]
+               [title (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define (box x y w h paint text)
+       (draw-rect canvas x y w h paint)
+       (draw-rect canvas x y w h border)
+       (draw-simple-text canvas text (+ x 8) (+ y 24) font label))
+     (draw-simple-text canvas "GPU boundaries are separate responsibilities" 20 19 title label)
+     (box 20 52 92 38 pending "pending draw")
+     (box 150 52 80 38 pending "flush")
+     (box 268 52 95 38 submit "submit")
+     (box 400 52 60 38 cpu "CPU wait")
+     (draw-arrow canvas 112 71 142 71 arrow-ink)
+     (draw-arrow canvas 230 71 260 71 arrow-ink)
+     (draw-arrow canvas 363 71 392 71 arrow-ink)
+     (draw-simple-text canvas "gpu-submit! submits work already flushed" 150 110 font label)
+     (draw-simple-text canvas "gpu-wait! includes flush plus submission and requests CPU completion" 20 135 font label)
+     (box 95 162 125 38 route "readback -> CPU image")
+     (box 290 162 125 38 route "presentation request")
+     (draw-arrow canvas 316 92 170 155 arrow-ink)
+     (draw-arrow canvas 316 92 352 155 arrow-ink)
+     (draw-simple-text canvas "wait alone neither reads back nor presents" 20 220 title label)))
  #:background 'white)

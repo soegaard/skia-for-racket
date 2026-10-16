@@ -598,7 +598,10 @@ class Page(HTMLParser):
 def internal_redirect(url):
     """Recognize only the Racket redirect service and this package's manuals."""
     parts = urlsplit(unescape(url))
-    if parts.hostname not in {'docs.racket-lang.org', 'download.racket-lang.org'}:
+    # Local Racket installations can emit snapshot redirects from Utah's
+    # historical mirror as well as the stable documentation hosts.
+    if parts.hostname not in {'docs.racket-lang.org', 'download.racket-lang.org',
+                              'www.cs.utah.edu'}:
         return None
     if not parts.path.endswith('/local-redirect/index.html'):
         return None
@@ -762,6 +765,8 @@ def prepare_site(site: Path, *, source_root: Path | None = None):
     site = site.resolve()
     edits = 0
     pattern = re.compile(r'(href\s*=\s*")([^"]*)(")', re.I)
+    redirect_script = re.compile(
+        r'<script\b(?P<before>[^>]*)\bsrc\s*=\s*"(?P<src>[^"]*)"[^>]*>\s*</script>', re.I)
     for page in sorted(site.rglob('*.html')):
         source = page.read_text(encoding='utf-8')
 
@@ -791,6 +796,16 @@ def prepare_site(site: Path, *, source_root: Path | None = None):
             return match[1] + escape(relative, quote=True) + match[3]
 
         changed = pattern.sub(replace, source)
+        def remove_local_redirect_script(match):
+            nonlocal edits
+            parts = urlsplit(unescape(match['src']))
+            path = PurePosixPath(unquote(parts.path))
+            if (parts.scheme == 'file' and path.parent.name == 'local-redirect'
+                    and path.name in {'local-redirect.js', 'local-user-redirect.js'}):
+                edits += 1
+                return ''
+            return match[0]
+        changed = redirect_script.sub(remove_local_redirect_script, changed)
         if changed != source:
             page.write_text(changed, encoding='utf-8')
     return edits

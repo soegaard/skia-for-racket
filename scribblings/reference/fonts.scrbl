@@ -162,6 +162,19 @@ are relative to the baseline, with negative coordinates above it in the usual
 downward-positive canvas. Font data and native backends determine the values;
 zero can indicate that a metric is unavailable.
 
+@bold{Conceptual diagram.} The baseline is the origin for vertical font metrics.
+For the measured font below, ascent @math{a} is above that origin and normally
+negative, while descent @math{d} is below it and normally positive. Moving a
+drawing baseline @math{b} moves all three guides to @math{b+a}, @math{b}, and
+@math{b+d}; it does not change the metrics themselves.
+
+@reference-figure["concept-font-metrics.png"
+                  "A measured Hgx specimen is drawn against its baseline, negative ascent guide, positive descent guide, downward y axis, and cap-height and x-height guides. Labels show the actual measured ascent and descent for the font."]
+
+The top and bottom metrics are separate native extents. Neither those guides
+nor ascent and descent are the ink bounds of this particular string; use
+@racket[simple-text-bounds] when string geometry is required.
+
 @defproc[(font-get-metrics [font font?]) font-metrics?]{
 Returns a detached metrics snapshot. Later font mutation or closure does
 not change the snapshot. Metrics do not include the canvas transform or the
@@ -297,6 +310,10 @@ drawing scalars. The canvas transform and clip apply. The operation does not
 close its arguments. It is suitable only when direct character-to-glyph mapping
 and ordinary advances are sufficient.
 
+The baseline-relative metric diagram in @secref["skia-font-metrics"] explains
+why @racket[y] is a baseline origin rather than the top of the ink, and why an
+advance is not a string's ink width.
+
 Outline output uses @racket[simple-text-path] and has that operation's
 monochrome-outline limitations. Complex-script shaping, kerning and ligature
 substitution require the shaped-text operations.
@@ -336,6 +353,15 @@ filter's final output extent.
 ]
 
 The result reports both spacing and bounds; they need not have the same width.
+
+@bold{Conceptual diagram.} An advance interval tells the next drawing origin
+where to go. It is not an ink rectangle: the right panel's trailing space
+extends the measured advance while adding no visible glyph ink. A simple-text
+bounds result @math{(bx, by, bw, bh)} is translated by its drawing origin, so
+its target rectangle is @math{(origin-x+bx, baseline-y+by, bw, bh)}.
+
+@reference-figure["concept-text-advance.png"
+                  "Two baseline-aligned A specimens compare blue advance intervals with red measured ink bounds. The second specimen has a visibly longer advance marked as a trailing-space annotation but the same ink rectangle."]
 
 @racketblock[
 (with-skia ([surface (make-surface 250 90 #:background 'white)]

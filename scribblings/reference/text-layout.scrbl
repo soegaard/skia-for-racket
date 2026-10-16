@@ -12,6 +12,9 @@ origin is the upper-left corner of its layout box, not the baseline origin
 used by @racket[draw-simple-text] and @racket[draw-shaped-text]. The line records
 supply baseline positions relative to that box.
 
+For the baseline-relative font metrics that determine a layout's first baseline
+and reported height, see @secref["skia-font-metrics"].
+
 Layout values and their line records are ordinary Racket values, not resources
 to close with @racket[skia-close!]. A layout keeps its required shaper and, for
 mixed text, its font manager reachable. They must nevertheless remain open
@@ -71,6 +74,15 @@ height is allowed and can make lines overlap. The first baseline is at
 @math{max(0, -ascent)}. For @math{n} lines, the reported height is
 @math{max(0, -ascent) + (n - 1) line-height + max(0, descent)}.
 These metrics come from the base font, not a union of every fallback glyph's ink.
+
+@bold{Conceptual diagram.} A layout is drawn from its box origin, not from a
+text baseline. The top panel separates the first baseline, baseline-to-baseline
+step, and reported metric height. The lower panel shows that requested wrapping
+width is not a canvas clip: an unbreakable word can make the reported layout box
+wider and remains fully drawable.
+
+@reference-figure["concept-layout-box.png"
+                  "An annotated three-line layout box marks its upper-left origin, first baseline, baseline-to-baseline line height, and reported height. A second panel shows an unbreakable word continuing past a requested-width guide without clipping."]
 
 @section{Single-Font Layout}
 

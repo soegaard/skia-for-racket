@@ -67,6 +67,16 @@ bytes' meaning; drawing into the tagged destination performs the conversion.
 
 The swatches are captured from the destination surface. They are not manually selected gray
 paint colors.
+
+@bold{Conceptual diagram.} The constructor's color-space tag declares what the
+same RGB bytes mean; it does not convert those samples. Drawing the tagged image
+into the tagged sRGB destination performs conversion. Thus opaque bytes
+@racket[(128 128 128)] produce destination 128 when declared sRGB and about 188
+when declared linear sRGB. Alpha premultiplication and RGBA/BGRA byte order are
+separate storage topics.
+
+@reference-figure["concept-color-interpretation.png"
+                  "One input byte tuple (128,128,128) branches to an sRGB declaration and a linear-sRGB declaration, then into the same sRGB destination. The two destination swatches are labeled 128 and approximately 188, showing interpretation followed by conversion."]
 }
 
 @defproc[(color-space=? [a color-space?] [b color-space?]) boolean?]{

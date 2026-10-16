@@ -88,6 +88,16 @@ right-to-left output. They are not a complete caret-position or selection map.
 The string has two Racket characters and three UTF-8 bytes. A cluster for the
 second character starts at byte offset 2, not character index 1.
 
+@bold{Conceptual diagram.} Characters, UTF-8 byte offsets, glyph records, and
+stored glyph origins are distinct data. The first table is the exact @racket["éA"]
+relationship above: character starts 0 and 1 correspond to byte starts 0 and 2.
+A ligature can map multiple characters to one glyph only when the selected font
+actually forms it; cluster starts are not a full caret map, and RTL starts can
+descend.
+
+@reference-figure["concept-text-clusters.png"
+                  "A table aligns e-acute and A character entries with UTF-8 byte starts zero through one and two, glyph records, and cluster starts. A second row illustrates several characters mapping to one shaped glyph only for a verified ligature font."]
+
 The run records glyph positions, not bounds. It contains no typeface identity
 check that would make its glyph IDs portable to an unrelated shaper.
 
@@ -154,6 +164,8 @@ coordinates. The paragraph-layout operations support horizontal text only.
 Returns the accumulated horizontal advance in drawing units. It is a
 spacing quantity, not a tight ink width. Horizontal layouts use its absolute
 value as the run's measure.
+
+See the advance-versus-ink-bounds explanation in @secref["skia-font-metrics"].
 
 
 @racketblock[

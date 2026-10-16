@@ -210,6 +210,18 @@ result raises; it is not converted into an apparently successful empty image. Th
 is independent of subsequent closure of the input wrappers.
 }
 
+@bold{Conceptual diagram.} The result has three distinct coordinate facts: the
+original filtering coordinates, a selected source rectangle inside the returned
+image, and an offset in the original coordinates. The offset places the selected
+source rectangle's upper-left corner; it does not necessarily place the full
+returned image's origin. The highlighted returned-source values in the figure
+come from the executed offset-filter fixture. Its final panel is a labeled
+placement schematic, so the source/offset relationship stays visible even when
+a native result has a full-image source rectangle.
+
+@reference-figure["concept-image-placement.png"
+                  "An input image, its returned filtered image with the native returned source rectangle highlighted, and a placement panel connected by an arrow. Red marks the selected source rectangle and purple brackets mark the returned offset position where its upper-left corner is placed."]
+
 @racketblock[
 (with-skia ([surface (make-surface 6 4 #:background 'red)]
             [image (surface-snapshot surface)]

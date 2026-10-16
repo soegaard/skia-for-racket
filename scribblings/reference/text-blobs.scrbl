@@ -617,6 +617,15 @@ origins, not the full visible glyph extents. Glyphs may extend beyond an endpoin
 Right-to-left and vertical runs are not reordered; stored x positions still
 select distances and stored y positions still select normal offsets.
 
+@bold{Conceptual diagram.} At arc-length @math{s=start+gx}, the unit tangent is
+@math{(tx,ty)} and its downward-positive normal is @math{(-ty,tx)}. The glyph
+origin is @math{P(s) + (normal+gy)(-ty,tx)}. On a contour travelling rightward,
+a positive normal offset therefore points downward. The operation rotates whole
+glyphs into this frame; it does not bend outlines or fit text to a contour.
+
+@reference-figure["concept-text-path-frame.png"
+                  "A rightward path marks contour direction, an arc-length bracket to sample distance s, tangent and normal arrows, and a glyph origin offset by the positive downward normal. The equation for the final glyph origin is printed below."]
+
 The result contains a transformed run and therefore cannot be queried with
 @racket[text-blob-intercepts]. It captures its own font state; closing the
 source path or shaper afterward does not invalidate it. The caller must supply

@@ -71,6 +71,9 @@ be positive. The stride follows @racket[image-info-storage-layout]. The color-sp
 is materialized and retained independently. Invalid or unsupported ICC data can fail at this
 point even when its header was accepted by @racket[make-image-info].
 
+The byte-grid explanation in @secref["skia-pixel-descriptions"] distinguishes
+row stride, minimum addressable bytes, final-row padding, and allocation size.
+
 Pixels start at black, with maximum alpha for opaque formats and zero alpha otherwise. The
 unused RGBX byte starts at 255. Padding starts at zero. Unpremultiplied formats can hold pixels
 even when they cannot be used as drawing targets.

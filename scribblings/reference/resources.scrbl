@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia))
 
 @title[#:tag "skia-resources"]{Resources and Lifetimes}
 
@@ -30,6 +31,16 @@ A resource predicate recognizes the kind of value, not whether it is open.
 Native use and explicit release of an ordinary CPU resource belong to the Racket
 thread that created it. A reference to the wrapper does not permit cross-thread
 native access.
+
+@bold{Conceptual diagram.} Lifetime relationships are timelines. A CPU surface
+owns its borrowed canvas, which becomes invalid when the surface closes; an
+independently owned snapshot can remain open afterward. Similarly, a buffer's
+pixmap and subset are callback-scoped views even if their wrappers are retained.
+This does not generalize every detached result: layouts retain live shapers, and
+GPU leases and frames have their own activation and thread rules.
+
+@reference-figure["concept-resource-lifetimes.png"
+                  "A time axis shows a CPU surface and its borrowed canvas valid until owner closure, an independent snapshot continuing afterward, and pixmap/subset views valid only during a buffer callback. Gray segments mark invalid views."]
 
 @defproc[(skia-resource? [v any/c]) boolean?]{
 Returns @racket[#t] when @racket[v] is an owned resource accepted by the

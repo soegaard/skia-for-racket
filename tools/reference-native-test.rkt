@@ -141,6 +141,32 @@
         (set! unlisted paint))
       (check-false (skia-closed? unlisted))
       (skia-close! unlisted)
+      ;; Conceptual-diagram fixtures retain exact API facts in executable form:
+      ;; composition acts right-to-left on points, and final-row padding is
+      ;; excluded only from the minimum addressable storage length.
+      (for ([actual (in-list
+                     (call-with-values
+                      (lambda ()
+                        (matrix-map-point
+                         (matrix-compose (matrix-translate 10 20) (matrix-scale 2))
+                         3 4))
+                      list))]
+            [expected '(16 28)])
+        (check-= actual expected 1e-6))
+      (for ([actual (in-list
+                     (call-with-values
+                      (lambda ()
+                        (matrix-map-point
+                         (matrix-compose (matrix-scale 2) (matrix-translate 10 20))
+                         3 4))
+                      list))]
+            [expected '(26 48)])
+        (check-= actual expected 1e-6))
+      (check-equal?
+       (call-with-values
+        (lambda () (image-info-storage-layout (make-image-info 3 2) #:row-bytes 16))
+        list)
+       '(16 28 32))
       (run-displayed-examples directory)
       ;; Both modes multiply RGB, but their alpha rules differ for translucent input.
       (for ([mode '(modulate multiply)] [alpha '(64 192)])

@@ -122,6 +122,16 @@ transform and @math{M} is the newly supplied transform. A point is mapped by
 scales the drawing's local coordinates without scaling the earlier translation.
 See @racket[matrix-compose] for the corresponding operation on detached values.
 
+@bold{Conceptual diagram.} The two orders below use @math{T=(10,20)}, uniform
+@math{S=2}, and @math{p=(3,4)}. @racket[(matrix-compose T S)] maps the point
+by @math{S} first, producing @math{(16,28)}, while
+@racket[(matrix-compose S T)] produces @math{(26,48)}. Canvas calls accumulate
+the same products: translate then scale gives @math{T S}; scale then translate
+gives @math{S T}. Existing pixels do not move when a later transform changes.
+
+@reference-figure["concept-transform-order.png"
+                  "Two coordinate-grid panels show p=(3,4), the initial rightward-x/downward-y axes, and mapped points (16,28) for T after S versus (26,48) for S after T. Each panel names the matching canvas-call order."]
+
 @defproc[(canvas-translate! [canvas canvas?] [x real?] [y real?]) void?]{
 Concatenates a translation by @racket[x] and @racket[y] in the current local
 coordinate system. The displacement is transformed by any earlier scale or
@@ -192,6 +202,8 @@ with coordinates @math{u} and @math{v}.
 @defproc[(canvas-reset-transform! [canvas canvas?]) void?]{
 Replaces the current transform with the identity. It does not reset the clip.
 A clip established before this call remains in the target's coordinate system.
+The established-clip state diagram in @secref["skia-clipping"] shows this
+separation explicitly.
 
 
 @racketblock[
@@ -254,6 +266,15 @@ A clip limits the coverage affected by later drawing. The geometry supplied to
 a clipping operation is transformed by the current transform when the operation
 runs. Subsequent transform changes do not move the established clip. Saving and
 restoring canvas state is the usual way to apply a temporary clip.
+
+@bold{Conceptual diagram.} Establishing a local @math{(0,0,75,55)} clip after
+translation by @math{(40,55)} fixes target coverage at @math{(40,55,75,55)}.
+Resetting the transform changes later drawing coordinates, not that established
+clip. Restoring a saved state restores transform and clip; it never rolls back
+pixels already drawn.
+
+@reference-figure["concept-clip-state.png"
+                  "Three gridded panels show a translated established clip, drawing after reset-transform through the unchanged target clip, and a restored outer state with prior pixels still present. Red outlines identify the established clips."]
 
 @defproc[(canvas-clip-rect! [canvas canvas?] [x real?] [y real?]
                            [width (and/c real? (>=/c 0))]

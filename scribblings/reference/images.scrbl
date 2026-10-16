@@ -211,6 +211,9 @@ rectangle must fit inside the image. Destination position and size follow the
 same rules as @racket[draw-image-rect]. Zero source or destination extents are
 accepted by the wrapper but need not produce visible output.
 
+For a CPU filter result's separate returned source rectangle and placement
+offset, see @secref["skia-image-filter-results"].
+
 @racketblock[
 (with-skia ([source (make-surface 80 50 #:background "#F4D35E")]
             [blue (make-paint #:color "#326DE6")])

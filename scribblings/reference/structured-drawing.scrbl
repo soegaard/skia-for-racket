@@ -205,6 +205,15 @@ The lattice constructor can operate without an image. Drawing validates its
 bounds and divisions against the actual source image. Divisions must lie strictly
 inside the selected bounds; the native outer-edge special cases are not accepted.
 
+@bold{Conceptual diagram.} Nine-patch drawing preserves correspondence between
+source and destination cells. Corners remain fixed, edge spans stretch in one
+axis, and the center span stretches in both. The center rectangle is
+@tt{x, y, width, height}, not opposite corners. If the destination is smaller
+than the fixed spans, fixed spans shrink and stretch spans can collapse.
+
+@reference-figure["concept-nine-patch.png"
+                  "Numbered three-by-three source and enlarged destination grids show matching cells. Blue corners remain fixed, light edge cells stretch along one axis, and the light center stretches along both; the source center rectangle is labeled by x, y, width, and height."]
+
 @defproc[(image-lattice? [v any/c])
           boolean?]{
 Returns @racket[#t] for an image-lattice specification and @racket[#f] otherwise.
