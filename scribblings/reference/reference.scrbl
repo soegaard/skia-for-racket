@@ -1,8 +1,10 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/geometry))
+@(require (for-label racket/base racket/contract skia skia/geometry)
+          "../support/documentation-navigation.rkt")
 
 @title[#:tag "skia-reference"]{The Skia Reference}
+@(documentation-navigation-band 'reference #:index? #t)
 @author[(author+email "Jens Axel Søgaard" "jensaxel@soegaard.net")]
 
 @defmodule[skia]
@@ -74,18 +76,18 @@ A @bold{Skia Guide} is planned.
 
 @local-table-of-contents[]
 
-@include-section["foundations.scrbl"]
-@include-section["surfaces-and-canvases.scrbl"]
-@include-section["color-paint-effects.scrbl"]
-@include-section["geometry-and-drawing.scrbl"]
-@include-section["image-api.scrbl"]
-@include-section["text-and-fonts.scrbl"]
-@include-section["recording.scrbl"]
-@include-section["documents-and-output.scrbl"]
-@include-section["streams-pixels-codecs.scrbl"]
-@include-section["gpu-rendering.scrbl"]
-@include-section["gpu-interoperability-output.scrbl"]
-@include-section["presentation-and-gui.scrbl"]
-@include-section["racket-integration.scrbl"]
+@include-reference-section["foundations.scrbl"]
+@include-reference-section["surfaces-and-canvases.scrbl"]
+@include-reference-section["color-paint-effects.scrbl"]
+@include-reference-section["geometry-and-drawing.scrbl"]
+@include-reference-section["image-api.scrbl"]
+@include-reference-section["text-and-fonts.scrbl"]
+@include-reference-section["recording.scrbl"]
+@include-reference-section["documents-and-output.scrbl"]
+@include-reference-section["streams-pixels-codecs.scrbl"]
+@include-reference-section["gpu-rendering.scrbl"]
+@include-reference-section["gpu-interoperability-output.scrbl"]
+@include-reference-section["presentation-and-gui.scrbl"]
+@include-reference-section["racket-integration.scrbl"]
 
-@index-section[]
+@(decorate-reference-index (index-section))

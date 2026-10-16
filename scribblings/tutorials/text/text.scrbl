@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Text and Typography — Make a Type Specimen}
+@(tutorial-navigation "text")
 
 @(require "eval.rkt"
           (for-label racket

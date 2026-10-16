@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Paints, Gradients, and Shaders — Make a Poster}
+@(tutorial-navigation "poster")
 
 @(require "eval.rkt"
           (for-label racket

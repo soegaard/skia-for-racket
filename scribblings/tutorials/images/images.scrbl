@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Images — Build a Contact Sheet}
+@(tutorial-navigation "images")
 
 @(require "eval.rkt"
           (for-label racket

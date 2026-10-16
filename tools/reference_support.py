@@ -291,7 +291,7 @@ def document_definitions(root: Path):
         path = safe_file(root, relative)
         source = path.read_text(encoding='utf-8')
         for form, header, position in commands(source):
-            if form == 'include-section':
+            if form in ('include-section', 'include-reference-section'):
                 need(header and isinstance(header[0], String), 'chapter path must be literal')
                 visit((Path(relative).parent / header[0]).as_posix())
             elif form in OTHER_DEFINITIONS:
@@ -552,20 +552,32 @@ class Page(HTMLParser):
     def __init__(self, text):
         super().__init__(convert_charrefs=True)
         self.anchors, self.links, self.badlinks = Counter(), [], 0
+        self.navigation_badlinks = 0
+        self._depth, self._open_badlinks = 0, []
         self.unresolved_references, self.unlinked_identifiers = 0, 0
         self.current = None
         self.feed(text)
         self.close()
 
     def handle_starttag(self, tag, attributes):
+        self._depth += 1
         attrs = dict(attributes)
         for target in set(filter(None, [attrs.get('id'), attrs.get('name') if tag == 'a' else None])):
             self.anchors[target] += 1
         classes = set(attrs.get('class', '').split())
         self.unresolved_references += 'badlink' in classes
         self.unlinked_identifiers += 'RktErr' in classes
+        navigation = any(token.startswith('skia-doc-nav') for token in classes)
+        if navigation:
+            # Scribble wraps unresolved `seclink`s as
+            # <font class="badlink"><span class="skia-doc-nav…">…
+            # rather than putting both classes on one element.
+            for pending in self._open_badlinks:
+                pending['navigation'] = True
         if classes & {'badlink', 'RktErr'}:
             self.badlinks += 1
+            if 'badlink' in classes:
+                self._open_badlinks.append(dict(depth=self._depth, navigation=navigation))
         if tag == 'a' and 'href' in attrs:
             self.current = [attrs['href'], []]
 
@@ -577,6 +589,10 @@ class Page(HTMLParser):
         if tag == 'a' and self.current is not None:
             self.links.append((self.current[0], ''.join(self.current[1])))
             self.current = None
+        if self._open_badlinks and self._open_badlinks[-1]['depth'] == self._depth:
+            pending = self._open_badlinks.pop()
+            self.navigation_badlinks += pending['navigation']
+        self._depth -= 1
 
 
 def internal_redirect(url):
@@ -638,7 +654,8 @@ def check_evidence(source, evidence, *, installed=False):
          'runtime section target inventory differs from source mapping')
 
 
-def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None):
+def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None,
+                  allow_navigation_badlinks=False):
     """Check exact Racket-resolved anchors, plus real identifier links from a caller."""
     site = site.resolve()
     cache = {}
@@ -668,7 +685,10 @@ def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None):
                 prefix = canonical.removeprefix('skia/').replace('/', '-')
                 expected[prefix + ':' + row['name']] = target
     for path in (site / 'skia-reference').rglob('*.html'):
-        need(read(path).badlinks == 0, f'unresolved Reference markup: {path}')
+        parsed = read(path)
+        unresolved = parsed.badlinks - (parsed.navigation_badlinks
+                                        if allow_navigation_badlinks else 0)
+        need(unresolved == 0, f'unresolved Reference markup: {path}')
     probes = []
     if quick:
         probes.append((quick, ('make-surface', 'surface-canvas', 'make-paint',

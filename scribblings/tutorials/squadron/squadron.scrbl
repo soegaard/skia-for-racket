@@ -11,6 +11,7 @@
 @(define-runtime-path math-source "../support/sprite-math.rkt")
 
 @title[#:tag "star-squadron"]{Star Squadron — Build a Galaga-Inspired Arcade Game}
+@(tutorial-navigation "squadron")
 
 @section[#:tag "finished-result"]{The Finished Game}
 

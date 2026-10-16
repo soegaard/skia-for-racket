@@ -41,6 +41,29 @@ def source_hashes(root: Path, *, review_inputs: bool = False) -> dict[str, str]:
         # These are the actual imports of the ordinary non-native checker.
         paths.update(Path('tools') / name for name in
                      ('check-reference.py', 'reference_support.py', 'reference_review.py'))
+        # The shared navigation is rendered by every manual and by the Pages
+        # landing. Keep these real inputs in review snapshots rather than
+        # silently relying on a neighboring checkout.
+        navigation_inputs = (
+            'docs/DOCUMENTATION-NAVIGATION.md',
+            'scribblings/support/documentation-catalog.rkt',
+            'scribblings/support/documentation-navigation.rkt',
+            'scribblings/support/skia-doc-nav.css',
+            'scribblings/support/skia-doc-nav.js',
+            'scribblings/tutorials/pages-index.html',
+            'scribblings/tutorials/index.scrbl',
+            'scribblings/tutorials/support/catalog.json',
+            'scribblings/tutorials/support/catalog.rkt',
+            'scribblings/tutorials/support/reader.rkt',
+            'tools/check-documentation-navigation.py',
+            'tools/render-documentation-landing.rkt',
+        )
+        paths.update(Path(name) for name in navigation_inputs if (root / name).is_file())
+        catalog_path = root / 'scribblings/tutorials/support/catalog.json'
+        if catalog_path.is_file():
+            catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
+            paths.update(Path(row['manual']) for row in catalog.get('tutorials', [])
+                         if (root / row['manual']).is_file())
     return {path.as_posix(): hashlib.sha256(safe_file(root, path.as_posix()).read_bytes()).hexdigest()
             for path in sorted(paths)}
 
@@ -171,7 +194,7 @@ class Resources(HTMLParser):
             self.urls.append(attrs['href'])
 
 
-def check_review_html(site: Path) -> dict:
+def check_review_html(site: Path, *, allow_navigation_badlinks: bool = False) -> dict:
     """Check all local Reference links and HTML-level assets in the relocated tree."""
     site = site.resolve()
     pages = sorted((site / 'skia-reference').rglob('*.html'))
@@ -179,7 +202,10 @@ def check_review_html(site: Path) -> dict:
     count = 0
     for page in pages:
         text = page.read_text(encoding='utf-8')
-        need(Page(text).badlinks == 0, f'unresolved review Reference: {page.name}')
+        parsed = Page(text)
+        unresolved = parsed.badlinks - (parsed.navigation_badlinks
+                                        if allow_navigation_badlinks else 0)
+        need(unresolved == 0, f'unresolved review Reference: {page.name}')
         for url in Resources(text).urls:
             parts = urlsplit(url)
             need(parts.scheme != 'file', 'review contains a machine-specific file link')
@@ -265,7 +291,8 @@ def inspect_link_scopes(site: Path) -> dict:
 
 
 def package_review(root: Path, site: Path, source: dict, evidence: dict,
-                   destination: Path, expected_hashes: dict, *, quick: bool = False) -> dict:
+                   destination: Path, expected_hashes: dict, *, quick: bool = False,
+                   allow_navigation_badlinks: bool = False) -> dict:
     """Refuse stale sources, failed links, or an existing ZIP. Publish only after extraction tests."""
     root, site, destination = root.resolve(), site.resolve(), destination.resolve()
     need(not destination.is_relative_to(root), 'keep the review ZIP outside the source checkout')
@@ -274,7 +301,8 @@ def package_review(root: Path, site: Path, source: dict, evidence: dict,
          'Reference sources changed during the build')
     need(source == check_source(root), 'review requires the full current source-check result')
     check_evidence(source, evidence)
-    check_targets(site, evidence, quick=site / 'skia-tutorial-quick/index.html' if quick else None)
+    check_targets(site, evidence, quick=site / 'skia-tutorial-quick/index.html' if quick else None,
+                  allow_navigation_badlinks=allow_navigation_badlinks)
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='reference-review-', dir=destination.parent) as temporary:
         work = Path(temporary)
@@ -311,8 +339,10 @@ def package_review(root: Path, site: Path, source: dict, evidence: dict,
                 copy(path, 'html/' + path.name)
         prepare_site(html, source_root=site)
         quick_page = html / 'skia-tutorial-quick/index.html' if quick else None
-        links = check_targets(html, evidence, quick=quick_page)
-        inspection = check_review_html(html)
+        links = check_targets(html, evidence, quick=quick_page,
+                              allow_navigation_badlinks=allow_navigation_badlinks)
+        inspection = check_review_html(html,
+                                       allow_navigation_badlinks=allow_navigation_badlinks)
         copy_source_inputs(root, stage / 'sources', expected_hashes)
         source_validation = validate_source_copy(stage / 'sources', work / 'stage-check', source)
         scopes = inspect_link_scopes(html)
@@ -326,7 +356,7 @@ def package_review(root: Path, site: Path, source: dict, evidence: dict,
             (evidence_dir / name).write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
         (stage / 'README.txt').write_text(
             'Open html/skia-reference/index.html. The sources/ tree matches this build.\n'
-            'The three outgoing Reference links and local Reference assets were checked.\n'
+            'The curated outgoing Reference links and local Reference assets were checked.\n'
             'Companion-page diagnostics are separate in evidence/review.json.\n'
             'The partial bundle does not certify a complete installed or published site.\n'
             + SOURCE_REVIEW_README,
@@ -339,8 +369,10 @@ def package_review(root: Path, site: Path, source: dict, evidence: dict,
             extracted / 'sources', work / 'extracted-check', source)
         extracted_html = extracted / 'html'
         check_targets(extracted_html, evidence,
-                      quick=extracted_html / 'skia-tutorial-quick/index.html' if quick else None)
-        check_review_html(extracted_html)
+                      quick=extracted_html / 'skia-tutorial-quick/index.html' if quick else None,
+                      allow_navigation_badlinks=allow_navigation_badlinks)
+        check_review_html(extracted_html,
+                          allow_navigation_badlinks=allow_navigation_badlinks)
         need(inspect_link_scopes(extracted_html) == scopes, 'extracted link diagnostics changed')
         for relative, digest in expected_hashes.items():
             packaged = (extracted / 'sources' / relative).read_bytes()

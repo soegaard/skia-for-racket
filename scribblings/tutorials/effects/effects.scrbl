@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Effects and Filters — Make a Card with Shadows}
+@(tutorial-navigation "effects")
 
 @(require "eval.rkt"
           (for-label racket

@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{GPU Rendering — Render the Same Scene on the GPU}
+@(tutorial-navigation "gpu")
 
 @(require racket/file
           racket/runtime-path

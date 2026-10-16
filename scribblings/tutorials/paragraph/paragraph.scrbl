@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Paragraph Layout — Make a Multilingual Article Card}
+@(tutorial-navigation "paragraph")
 
 @(require "eval.rkt"
           (for-label racket

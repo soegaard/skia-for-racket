@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{PDF and SVG — Make a Printable Diagram}
+@(tutorial-navigation "pdf-svg")
 
 @(require "eval.rkt"
           (for-label racket

@@ -4,6 +4,7 @@
           "../tutorials/support/accessible-figures.rkt")
 
 @title{Quick: An Introduction to Skia with Pictures}
+@(tutorial-navigation "quick")
 
 @(require "eval.rkt"
           (for-label racket

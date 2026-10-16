@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Shaping and Multilingual Text — Make a Language Sampler}
+@(tutorial-navigation "shaping")
 
 @(require "eval.rkt"
           (for-label racket

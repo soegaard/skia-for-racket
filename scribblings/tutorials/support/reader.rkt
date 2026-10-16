@@ -3,10 +3,14 @@
 ;; Reader-facing navigation and source access; no drawing or native initialization.
 (require racket/list racket/string
          scribble/base scribble/core scribble/manual scribble/html-properties
-         "catalog.rkt")
+         "catalog.rkt"
+         "../../support/documentation-navigation.rkt")
 
 (provide tutorial-link tutorial-entry tutorial-next tutorial-sources tutorial-route
-         command-text tutorial-index-link api-link)
+         command-text tutorial-index-link api-link tutorial-navigation)
+
+(define (tutorial-navigation id #:index? [index? #f])
+  (documentation-navigation-band 'tutorials #:index? index? #:tutorial-id id))
 
 (define (api-link)
   (hyperlink "https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"

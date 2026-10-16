@@ -638,11 +638,13 @@ scanline example is displayed only; native tests execute separately.
 
 ## Reference-only editing previews
 
-During editing, render just the Reference. Its three outgoing tutorial links
-may be unresolved when the companion manuals are absent. This is expected in
-an editing preview and is deferred for this revision, not a reason to alter
-those links or block source work. Binding-link failures within the Reference
-are separate from these three known cross-manual references.
+During editing, render just the Reference. The shared documentation band links
+to every enabled collection and all catalog tutorials, so destinations outside
+the selected companion manuals may be unresolved in that partial output. This
+is expected in an editing preview and is reported as incomplete navigation
+scope; it is not a reason to alter the real document targets, substitute
+placeholders, or block source work. Binding-link failures within the Reference
+remain separate from these known cross-manual navigation references.
 
 Use the render driver directly for a Reference-only preview, with `skia`
 resolving to this checkout and an output directory outside it:
@@ -655,11 +657,14 @@ RACKET="/Applications/Racket v9.3.0.2/bin/racket"
   --lib skia/scribblings/reference/reference.scrbl
 ```
 
-Label such output as an editing preview. The integrated `--render` and
-`--review-zip` commands remain publication checks: they include companion
-manuals and retain their strict link validation. No renderer, checker,
-cross-reference declaration, or archive-publication rule is changed here.
-The publication checks are not required for this editorial handoff.
+Label such output as an editing preview. `check-reference.py --render` retains
+strict checks for Reference content and API links, but records that its limited
+companion set is not complete navigation evidence. Complete navigation evidence
+comes from the installed-document build followed by the Pages staging check;
+that route runs `check-documentation-navigation.py` after all registered
+manuals, the neutral landing page, and both shared assets are present. The
+partial review ZIP retains this limitation in its report rather than claiming a
+complete hosted-site check.
 
 ## Earlier R3f implementation
 
@@ -1646,8 +1651,9 @@ python3 -B tools/check-reference.py --output ../reference-source-check \
 
 The command requires the full pinned inventories; `--documents-only` cannot be
 combined with `--source-zip`. It includes the Reference sources and manifest,
-`info.rkt`, the ordinary checker and its imports, these development notes, and
-the three tutorial source files declared by the manifest. It copies
+`info.rkt`, the ordinary checker and its imports, these development notes,
+the shared navigation component/assets, the landing-page scaffold, catalog,
+and catalog-backed tutorial roots. It copies
 `api/public-api-headless.json` and `api/public-api-gui.json` verbatim and verifies
 their pinned Git blob hashes. Missing inputs fail rather than produce a limited
 archive mislabeled as independently checkable.

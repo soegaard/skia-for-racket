@@ -7,6 +7,7 @@
 @(define-runtime-path program-source "badge.rkt")
 
 @title{Path Operations — Construct a Cutout Badge}
+@(tutorial-navigation "path-ops")
 
 @section[#:tag "finished-result"]{The Finished Badge}
 

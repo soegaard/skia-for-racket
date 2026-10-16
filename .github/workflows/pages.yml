@@ -63,7 +63,9 @@ jobs:
           set -euo pipefail
           doc_dir="$GITHUB_WORKSPACE/doc"
           mkdir -p "$SITE"
-          cp scribblings/tutorials/pages-index.html "$SITE/index.html"
+          racket tools/render-documentation-landing.rkt --output "$SITE/index.html"
+          cp scribblings/support/skia-doc-nav.css "$SITE/skia-doc-nav.css"
+          cp scribblings/support/skia-doc-nav.js "$SITE/skia-doc-nav.js"
           for asset in \
             scribble.css \
             manual-style.css \
@@ -110,6 +112,8 @@ jobs:
             --site "$SITE" --site-source "$doc_dir" \
             --targets "${{ runner.temp }}/reference-installed/runtime.json" \
             --output "${{ runner.temp }}/reference-site"
+          python3 -B tools/check-documentation-navigation.py "$SITE" \
+            --output "${{ runner.temp }}/reference-site/navigation.json"
           test -f "$SITE/skia-tutorials/index.html"
           test -z "$(find "$SITE" -type l -print -quit)"
       - name: Retain Reference validation evidence

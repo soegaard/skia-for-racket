@@ -1,0 +1,253 @@
+/* Shared collection navigation.  All selectors are deliberately scoped so
+   manual defaults, figures, code blocks, and existing Racket documentation
+   styling remain untouched. */
+:root {
+  --skia-doc-reference: #245db0;
+  --skia-doc-guide: #006b5e;
+  --skia-doc-tutorials: #7540a8;
+}
+
+.skia-doc-nav-shell {
+  --skia-doc-text: #1f2937;
+  --skia-doc-muted: #56606f;
+  --skia-doc-surface: #f8fafc;
+  --skia-doc-border: #c6cfdb;
+  --skia-doc-focus: #0b63ce;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: none;
+  position: relative;
+  margin: 0.75rem 0 1.25rem;
+  color: var(--skia-doc-text);
+}
+
+.skia-doc-nav-pretitle { margin: 0; }
+
+/* Scribble positions its version box above the main flow and reserves a
+   header-sized gap for it.  Once the band is moved to the first main child,
+   keep that visible order too: band, version, then document content. */
+@supports selector(.main:has(> .skia-doc-nav-shell)) {
+  .maincolumn:has(.skia-doc-nav-shell) {
+    margin-top: 0;
+  }
+
+  .main:has(> .skia-doc-nav-shell) > .skia-doc-nav-shell {
+    margin-block-start: 0;
+  }
+
+  .main:has(> .skia-doc-nav-shell) .versionbox {
+    position: static;
+    float: none;
+    inset: auto;
+    z-index: auto;
+    width: auto;
+    height: auto;
+    margin: 0 0 0.75rem;
+  }
+}
+
+/* Scribble leaves a 2rem desktop gutter between its table of contents and
+   the reading column.  The full-width navigation begins at that boundary,
+   while the document text retains the more comfortable reading inset. */
+@media (min-width: 50rem) {
+  @supports selector(.main:has(> .skia-doc-nav-shell)) {
+    .main:has(> .skia-doc-nav-shell) > .skia-doc-nav-shell {
+      inline-size: calc(100% + 2rem);
+      margin-inline-start: -2rem;
+    }
+  }
+}
+
+.skia-doc-nav {
+  box-sizing: border-box;
+  inline-size: 100%;
+  position: relative;
+}
+
+.skia-doc-nav__bar {
+  box-sizing: border-box;
+  inline-size: 100%;
+  position: relative;
+}
+
+.skia-doc-nav__collections,
+.skia-doc-nav__tutorial-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skia-doc-nav__collections {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.skia-doc-nav__collection,
+.skia-doc-nav__tutorial-item {
+  margin: 0;
+}
+
+.skia-doc-nav__collection {
+  position: relative;
+  min-inline-size: 0;
+}
+
+.skia-doc-nav__collection + .skia-doc-nav__collection {
+  border-inline-start: 0;
+}
+
+.skia-doc-nav__collection + .skia-doc-nav__collection::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset-block: 0.65rem;
+  inset-inline-start: 0;
+  inline-size: 1px;
+  background: color-mix(in srgb, var(--skia-doc-border) 75%, transparent);
+  pointer-events: none;
+}
+
+.skia-doc-nav__collection-link,
+.skia-doc-nav__tutorial-link,
+.skia-doc-nav__all {
+  color: var(--skia-doc-text);
+  text-decoration: none;
+}
+
+.skia-doc-nav__collection-link {
+  display: flex;
+  inline-size: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.8rem 0.18rem;
+  border-bottom: 0.22rem solid transparent;
+  color: var(--skia-doc-muted);
+  font-family: system-ui, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.skia-doc-nav__collection-link--reference { border-bottom-color: #94b4de; }
+.skia-doc-nav__collection-link--tutorials { border-bottom-color: #b99bd5; }
+.skia-doc-nav__collection-link--guide { border-bottom-color: #77a99f; }
+
+@supports (color: color-mix(in srgb, black, white)) {
+  .skia-doc-nav__collection-link--reference { border-bottom-color: color-mix(in srgb, var(--skia-doc-reference) 35%, transparent); }
+  .skia-doc-nav__collection-link--tutorials { border-bottom-color: color-mix(in srgb, var(--skia-doc-tutorials) 35%, transparent); }
+  .skia-doc-nav__collection-link--guide { border-bottom-color: color-mix(in srgb, var(--skia-doc-guide) 35%, transparent); }
+}
+
+.skia-doc-nav__collection-link[aria-current] {
+  border-bottom-color: currentColor;
+  font-weight: 750;
+}
+
+.skia-doc-nav--reference .skia-doc-nav__collection-link--reference[aria-current] { color: var(--skia-doc-reference); }
+.skia-doc-nav--guide .skia-doc-nav__collection-link--guide[aria-current] { color: var(--skia-doc-guide); }
+.skia-doc-nav--tutorials .skia-doc-nav__collection-link--tutorials[aria-current] { color: var(--skia-doc-tutorials); }
+
+.skia-doc-nav--reference .skia-doc-nav__collection-link--reference[aria-current] { background: color-mix(in srgb, var(--skia-doc-reference) 7%, transparent); }
+.skia-doc-nav--guide .skia-doc-nav__collection-link--guide[aria-current] { background: color-mix(in srgb, var(--skia-doc-guide) 7%, transparent); }
+.skia-doc-nav--tutorials .skia-doc-nav__collection-link--tutorials[aria-current] { background: color-mix(in srgb, var(--skia-doc-tutorials) 7%, transparent); }
+
+.skia-doc-nav__collection-link--unavailable {
+  color: var(--skia-doc-muted);
+  cursor: default;
+}
+
+.skia-doc-nav__collection--reference > a:hover { color: var(--skia-doc-reference); background: color-mix(in srgb, var(--skia-doc-reference) 7%, transparent); }
+.skia-doc-nav__collection--tutorials > a:hover { color: var(--skia-doc-tutorials); background: color-mix(in srgb, var(--skia-doc-tutorials) 7%, transparent); }
+
+.skia-doc-nav__panel {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  right: 0;
+  box-sizing: border-box;
+  width: min(45rem, calc(100vw - 1.5rem));
+  max-height: min(70vh, 35rem);
+  overflow: auto;
+  padding: 0.85rem;
+  border: 1px solid var(--skia-doc-border);
+  border-radius: 0.45rem;
+  background: #fff;
+  box-shadow: 0 0.4rem 1.1rem rgb(31 41 55 / 18%);
+  column-width: 17rem;
+  column-gap: 1.25rem;
+}
+
+/* Hover reveals the shortcuts without reserving space in the band.  The
+   focus rule gives keyboard users the same access once Tutorials is entered. */
+.skia-doc-nav__collection--tutorials:is(:hover, :focus-within) .skia-doc-nav__panel {
+  display: block;
+}
+
+.skia-doc-nav__all,
+.skia-doc-nav__tutorial-link {
+  display: inline-block;
+  padding: 0.32rem 0.12rem;
+}
+
+.skia-doc-nav__all { font-weight: 700; color: var(--skia-doc-tutorials); }
+.skia-doc-nav__tutorial-link[aria-current] { font-weight: 750; text-decoration: underline; text-decoration-thickness: 0.16rem; text-underline-offset: 0.2rem; color: var(--skia-doc-tutorials); }
+.skia-doc-nav__group-heading { margin: 0.8rem 0 0.15rem; break-after: avoid; font-weight: 750; color: var(--skia-doc-muted); }
+.skia-doc-nav__tutorial-list { break-inside: avoid; }
+
+.skia-doc-nav :is(a, button):focus-visible {
+  outline: 3px solid var(--skia-doc-focus);
+  outline-offset: 2px;
+}
+
+/* The wash is an optional, wide-screen identity cue.  Script applies the
+   ready class only when there is a real unused right margin for it. */
+@media (min-width: 40rem) {
+  @supports selector(body:has(.skia-doc-nav-shell)) {
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--reference)::after,
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--guide)::after,
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--tutorials)::after {
+      content: "";
+      position: fixed;
+      z-index: 10;
+      inset-block: 0;
+      inset-inline-end: var(--skia-doc-edge-wash-inset, 0px);
+      inline-size: 3rem;
+      pointer-events: none;
+    }
+
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--reference)::after {
+      background: var(--skia-doc-reference);
+    }
+
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--guide)::after {
+      background: var(--skia-doc-guide);
+    }
+
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--tutorials)::after {
+      background: var(--skia-doc-tutorials);
+    }
+  }
+}
+
+@media (max-width: 32rem) {
+  .skia-doc-nav-shell { margin-inline: 0; }
+  .skia-doc-nav__collection-link { padding-inline: 0.42rem; }
+  .skia-doc-nav__panel { right: -0.1rem; width: calc(100vw - 1rem); max-height: 60vh; column-count: 1; }
+}
+
+@media (forced-colors: active) {
+  .skia-doc-nav { border-color: CanvasText; background: Canvas; color: CanvasText; }
+  .skia-doc-nav__collection-link { color: LinkText; border-bottom-color: CanvasText; }
+  .skia-doc-nav__collection-link[aria-current] { color: HighlightText; background: Highlight; border-bottom-color: HighlightText; }
+  .skia-doc-nav__panel { border-color: CanvasText; background: Canvas; color: CanvasText; box-shadow: none; }
+  body:has(.skia-doc-nav-shell)::after { display: none; }
+}
+
+@media print {
+  .skia-doc-nav-shell, body:has(.skia-doc-nav-shell)::after { display: none; }
+}

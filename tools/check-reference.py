@@ -28,7 +28,8 @@ def main(argv=None):
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--documents-only', action='store_true')
     modes.add_argument('--render', action='store_true',
-                       help='render Reference, its three linked tutorials, and binding-link probe')
+                       help=('render Reference, its curated companion manuals, and the binding-link '
+                             'probe; reports incomplete navigation scope when other manuals are absent'))
     modes.add_argument('--installed', type=Path, help='check a freshly built installed doc directory')
     modes.add_argument('--site', type=Path, help='relocate and check the staged Pages site')
     parser.add_argument('--targets', type=Path,
@@ -270,8 +271,9 @@ def main(argv=None):
                     report['quick_rendered'] = True
                 targets = json.loads(evidence.read_text())
                 check_evidence(source, targets, installed=bool(args.installed))
-                report['links'] = check_targets(site, targets,
-                                                smoke=probe / 'links.html', quick=quick)
+                report['links'] = check_targets(
+                    site, targets, smoke=probe / 'links.html', quick=quick,
+                    allow_navigation_badlinks=bool(args.render))
                 report['installed_checked'] = bool(args.installed)
             if args.native:
                 run('native-cpu', [racket, '-l', 'raco', '--', 'test',
@@ -331,14 +333,30 @@ def main(argv=None):
             # Installed manuals may link outside this package to other local manuals.
             # Their existing xref check remains separate from portable publication.
             if args.render or args.site:
-                report['reference_html'] = check_review_html(html_site)
+                report['reference_html'] = check_review_html(
+                    html_site, allow_navigation_badlinks=bool(args.render))
                 report['reference_html_checked'] = True
+            if args.render:
+                rendered = set(report['tutorial_manuals_rendered'])
+                catalog = json.loads(
+                    (ROOT / 'scribblings/tutorials/support/catalog.json').read_text(encoding='utf-8'))
+                all_destinations = {'skia-tutorials',
+                                    *(f'skia-tutorial-{entry["id"]}'
+                                      for entry in catalog['tutorials'])}
+                report['navigation_scope'] = dict(
+                    complete_site_checked=False,
+                    rendered_destinations=sorted(rendered),
+                    unavailable_destinations=sorted(all_destinations - rendered),
+                    note=('Reference-only rendering leaves navigation destinations outside the '
+                          'selected companion set unresolved; use the installed Pages staging '
+                          'check for complete navigation evidence.'))
         if args.source_zip:
             report['source_zip'] = package_source_review(ROOT, args.source_zip, before)
         if args.review_zip:
             report['review_zip'] = package_review(
                 ROOT, site, source, targets, args.review_zip, before,
-                quick=bool(args.quick or args.installed))
+                quick=bool(args.quick or args.installed),
+                allow_navigation_badlinks=bool(args.render))
         report['status'] = 'passed'
     except Exception as error:
         report['status'] = 'failed'

@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Paths and Geometry — Draw a Logo}
+@(tutorial-navigation "logo")
 
 @(require "eval.rkt"
           (for-label racket

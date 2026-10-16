@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Transforms and Coordinate Systems — Build a Clock}
+@(tutorial-navigation "clock")
 
 @(require "eval.rkt"
           (for-label racket

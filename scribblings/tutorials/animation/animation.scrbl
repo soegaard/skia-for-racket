@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Animation — Orbiting Lights in a Window}
+@(tutorial-navigation "animation")
 
 @(require racket/file
           racket/runtime-path

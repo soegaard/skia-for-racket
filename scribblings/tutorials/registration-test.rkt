@@ -4,7 +4,9 @@
          racket/file
          racket/list
          racket/runtime-path
-         setup/getinfo)
+         setup/getinfo
+         "../support/documentation-catalog.rkt"
+         "support/catalog.rkt")
 
 (define-runtime-path repository "../..")
 
@@ -14,11 +16,14 @@
   (define documents (info 'scribblings (lambda () '())))
   (define sources (map car documents))
   (define names (map fourth documents))
-  (check-equal? (length documents) 23)
-  (check-equal? (length (remove-duplicates sources)) 23)
-  (check-equal? (length (remove-duplicates names)) 23)
+  (define expected-manual-count (+ 2 (length tutorials)))
+  (check-equal? (length documents) expected-manual-count)
+  (check-equal? (length (remove-duplicates sources)) expected-manual-count)
+  (check-equal? (length (remove-duplicates names)) expected-manual-count)
   (check-not-false (member "scribblings/tutorials/index.scrbl" sources))
   (check-not-false (member "scribblings/quick/quick.scrbl" sources))
+  (for ([tutorial (in-list tutorials)])
+    (check-not-false (member (tutorial-output-directory (hash-ref tutorial 'id)) names)))
   (for ([entry (in-list documents)])
     (check-true (file-exists? (build-path repository (car entry))))
     (check-true (regexp-match? #rx"^skia-" (fourth entry))))

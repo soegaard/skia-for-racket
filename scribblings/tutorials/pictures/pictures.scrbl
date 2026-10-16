@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Reusable Drawings — Record and Replay a Picture}
+@(tutorial-navigation "pictures")
 
 @(require "eval.rkt"
           (for-label racket

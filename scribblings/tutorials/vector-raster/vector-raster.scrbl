@@ -4,6 +4,7 @@
           "../support/accessible-figures.rkt")
 
 @title{Vector Output and Raster Fallbacks — What Stays Vector?}
+@(tutorial-navigation "vector-raster")
 
 @(require "eval.rkt"
           (for-label racket
