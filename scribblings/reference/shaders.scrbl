@@ -359,3 +359,104 @@ These examples show shader coordinate transforms, procedural noise, filtering, a
 ]
 @reference-figure["gradient-tile-modes.png"
                   "Four horizontal gradient bands showing clamp, repeat, mirror, and decal tiling outside the gradient interval."]
+
+@section{Further Visual Examples}
+
+These examples show additional shader factories and combinations with compact,
+deterministic raster scenes.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [shader (make-two-point-conical-gradient-shader
+                     35 50 5 145 50 55
+                     '("#F4D35E" "#326DE6"))]
+            [paint (make-paint #:shader shader)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["two-point-conical-offset.png"
+                  "An asymmetric two-point conical gradient growing from a small yellow circle on the left toward a larger blue circle on the right."]
+
+@racketblock[
+(with-skia ([tile (make-surface 24 24 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-rect (surface-canvas tile) 0 0 12 12 blue)
+  (draw-rect (surface-canvas tile) 12 12 12 12 blue)
+  (with-skia ([image (surface-snapshot tile)]
+              [shader (make-image-shader image #:tile-x 'repeat #:tile-y 'repeat)]
+              [paint (make-paint #:shader shader)]
+              [surface (make-surface 180 100)])
+    (draw-paint (surface-canvas surface) paint)))
+]
+@reference-figure["image-shader-repeat-stage8.png"
+                  "A yellow-and-blue square tile repeated in both directions by an image shader."]
+
+@racketblock[
+(with-skia ([tile (make-surface 24 24 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-rect (surface-canvas tile) 0 0 12 24 blue)
+  (with-skia ([image (surface-snapshot tile)]
+              [shader (make-image-shader image #:tile-x 'mirror #:tile-y 'mirror)]
+              [paint (make-paint #:shader shader)]
+              [surface (make-surface 180 100)])
+    (draw-paint (surface-canvas surface) paint)))
+]
+@reference-figure["image-shader-mirror-stage8.png"
+                  "Alternating mirrored blue-and-yellow image-shader tiles form a symmetric checker-like pattern."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [back (make-linear-gradient-shader 0 0 180 0 '("#326DE6" "#F4D35E"))]
+            [front (make-radial-gradient-shader 90 50 55 '(white "#E94F37"))]
+            [shader (make-blend-shader 'overlay back front)]
+            [paint (make-paint #:shader shader)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["blend-shader-overlay-stage8.png"
+                  "A horizontal blue-to-yellow gradient blended with a white-to-red radial gradient using overlay mode."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [base (make-linear-gradient-shader 0 0 24 0 '(red blue)
+                                               #:tile-mode 'repeat)]
+            [rotated (shader-with-local-matrix base (matrix-rotate-degrees 30))]
+            [paint (make-paint #:shader rotated)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["shader-local-rotate-stage8.png"
+                  "Repeated red-to-blue gradient bands rotated diagonally by a shader-local matrix."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [shader (make-fractal-noise-shader 0.035 0.045 4 11
+                                               #:tile-size '(90 50))]
+            [paint (make-paint #:shader shader)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["fractal-noise-tiled-stage8.png"
+                  "A tiled fractal-noise field with smooth multiscale cloudy variation."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [shader (make-turbulence-shader 0.055 0.04 3 19
+                                            #:tile-size '(90 50))]
+            [paint (make-paint #:shader shader)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["turbulence-tiled-stage8.png"
+                  "A tiled turbulence field with sharper folded noise variation than the fractal-noise example."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [base (make-linear-gradient-shader 0 0 180 0 '(red blue))]
+            [filter
+             (make-color-matrix-filter
+              '(-1 0 0 0 1
+                0 -1 0 0 1
+                0 0 -1 0 1
+                0 0 0 1 0))]
+            [shader (shader-with-color-filter base filter)]
+            [paint (make-paint #:shader shader)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["shader-filter-invert-stage8.png"
+                  "A red-to-blue gradient after a color filter inverts its RGB channels."]

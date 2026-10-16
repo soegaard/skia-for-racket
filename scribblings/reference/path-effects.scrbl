@@ -255,3 +255,111 @@ It does not use the shader's RGB as the paint color. The shader is retained;
 closing its caller-owned wrapper does not invalidate the filter. A shader
 that depends on a GPU context preserves that dependency.
 }
+
+@section{Further Visual Examples}
+
+The following scenes vary phases, compositions, stamp behavior, and mask-filter
+styles while keeping the source geometry simple.
+
+@racketblock[
+(with-skia ([surface (make-surface 200 90 #:background 'white)]
+            [a (make-dash-path-effect '(12 7) 0)]
+            [b (make-dash-path-effect '(12 7) 8)]
+            [pa (make-paint #:color "#326DE6" #:style 'stroke
+                            #:stroke-width 5 #:path-effect a)]
+            [pb (make-paint #:color "#E94F37" #:style 'stroke
+                            #:stroke-width 5 #:path-effect b)])
+  (draw-line (surface-canvas surface) 15 30 185 30 pa)
+  (draw-line (surface-canvas surface) 15 62 185 62 pb))
+]
+@reference-figure["dash-phase-stage8.png"
+                  "Two equal dash patterns start at different phases, shifting the red row relative to the blue row."]
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)])
+  (for ([radius '(4 16)] [y '(30 72)] [color '("#326DE6" "#E94F37")])
+    (with-skia ([effect (make-corner-path-effect radius)]
+                [paint (make-paint #:color color #:style 'stroke
+                                   #:stroke-width 5 #:path-effect effect)])
+      (draw-polygon (surface-canvas surface)
+                    `((15 ,y) (65 ,(- y 20)) (115 ,(+ y 10)) (185 ,(- y 15)))
+                    paint #:closed? #f))))
+]
+@reference-figure["corner-radius-stage8.png"
+                  "Two zigzag strokes compare small blue and large red corner-rounding radii."]
+
+@racketblock[
+(with-skia ([surface (make-surface 200 90 #:background 'white)]
+            [a (make-discrete-path-effect 11 5 3)]
+            [b (make-discrete-path-effect 11 5 29)]
+            [pa (make-paint #:color "#326DE6" #:style 'stroke
+                            #:stroke-width 4 #:path-effect a)]
+            [pb (make-paint #:color "#E94F37" #:style 'stroke
+                            #:stroke-width 4 #:path-effect b)])
+  (draw-line (surface-canvas surface) 15 30 185 30 pa)
+  (draw-line (surface-canvas surface) 15 62 185 62 pb))
+]
+@reference-figure["discrete-seed-stage8.png"
+                  "Two discrete path effects use the same spacing and deviation but different seeds, producing different irregular strokes."]
+
+@racketblock[
+(with-skia ([surface (make-surface 160 110 #:background 'white)]
+            [path (make-path)]
+            [effect (make-trim-path-effect 0.20 0.70 #:mode 'inverted)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke
+                               #:stroke-width 7 #:cap 'round
+                               #:path-effect effect)])
+  (path-add-circle! path 80 55 38)
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["trim-inverted-stage8.png"
+                  "An inverted trim removes the middle portion of a thick blue circular stroke and keeps the complementary arcs."]
+
+@racketblock[
+(with-skia ([surface (make-surface 210 100 #:background 'white)]
+            [dash (make-dash-path-effect '(15 7))]
+            [corner (make-corner-path-effect 10)]
+            [effect (make-compose-path-effect dash corner)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke
+                               #:stroke-width 5 #:path-effect effect)])
+  (draw-polygon (surface-canvas surface)
+                '((15 80) (65 20) (115 80) (195 25))
+                paint #:closed? #f))
+]
+@reference-figure["compose-path-effects-stage8.png"
+                  "A composed path effect rounds a zigzag and then breaks the rounded result into blue dashes."]
+
+@racketblock[
+(with-skia ([surface (make-surface 210 100 #:background 'white)]
+            [wide (make-dash-path-effect '(22 12))]
+            [fine (make-dash-path-effect '(5 9) 3)]
+            [effect (make-sum-path-effect wide fine)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke
+                               #:stroke-width 5 #:path-effect effect)])
+  (draw-line (surface-canvas surface) 15 50 195 50 paint))
+]
+@reference-figure["sum-path-effects-stage8.png"
+                  "A summed path effect overlays two blue dash patterns with different rhythms along one line."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)]
+            [stamp (make-path '((move 0 -6) (line 12 0) (line 0 6) (close)))]
+            [guide (make-path '((move 15 70) (cubic 70 10 150 100 205 35)))]
+            [effect (make-1d-path-effect stamp 20 0 #:style 'morph)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke
+                               #:stroke-width 2 #:path-effect effect)])
+  (draw-path (surface-canvas surface) guide paint))
+]
+@reference-figure["stamp-morph-stage8.png"
+                  "Repeated triangular stamps bend to follow a cubic curve when the one-dimensional path effect uses morph mode."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 110 #:background 'white)])
+  (for ([style '(normal solid outer inner)]
+        [x '(35 92 149 206)])
+    (with-skia ([mask (make-blur-mask-filter 7 #:style style)]
+                [paint (make-paint #:color "#326DE6" #:mask-filter mask)])
+      (draw-circle (surface-canvas surface) x 55 20 paint))))
+]
+@reference-figure["blur-mask-styles-stage8.png"
+                  "Four blue circles compare normal, solid, outer, and inner blur-mask styles from left to right."]
