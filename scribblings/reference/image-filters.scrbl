@@ -394,6 +394,19 @@ Returns an image-filter source that evaluates the retained shader. It does
 not filter the dynamic source. Dithering requests reduction of quantization
 artifacts when supported by the destination. A crop is useful for bounding
 otherwise unbounded shader content. Shader GPU dependencies remain in force.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([shader (make-linear-gradient-shader 20 0 180 0 '(red blue))]
+              [filter (make-shader-image-filter shader #:crop '(10 10 180 80))]
+              [paint (make-paint #:color 'white #:image-filter filter)])
+    (draw-paint canvas paint))
+)
+]
+@reference-figure["shader-source-filter-stage9.png"
+                  "A shader image filter supplies a red-to-blue gradient as the entire filtered source."]
 }
 
 @defproc[(make-tile-image-filter
@@ -762,116 +775,3 @@ These examples isolate additional graph combinations and source filters.
 ]
 @reference-figure["matrix-transform-filter-stage8.png"
                   "A blue rectangle is translated and rotated by an image-filter matrix rather than by the canvas transform."]
-@section{Further Visual Examples}
-
-The following examples show additional visible consequences of the drawing operations in this chapter.
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([filter (make-drop-shadow-only-image-filter 10 10 6 6
-                                                        (rgba 0 0 0 150))]
-              [shadow (make-paint #:color "#326DE6" #:image-filter filter)]
-              [guide (make-paint #:color "#B5BEC8" #:style 'stroke #:stroke-width 1)])
-    (draw-rounded-rect canvas 38 22 88 48 10 10 shadow)
-    (draw-rounded-rect canvas 38 22 88 48 10 10 guide))
-)
-]
-@reference-figure["shadow-only-stage9.png"
-                  "A soft dark drop shadow appears without its source fill; a pale outline marks the source rectangle that generated it."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([blur (make-blur-image-filter 5 5)]
-              [offset (make-offset-image-filter 28 12)]
-              [filter (make-compose-image-filter offset blur)]
-              [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-    (draw-rounded-rect canvas 28 28 80 44 10 10 paint))
-)
-]
-@reference-figure["compose-filter-stage9.png"
-                  "A blue rounded rectangle is blurred and then translated by a composed image-filter graph."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([one (make-offset-image-filter 55 0)]
-              [two (make-offset-image-filter 110 0)]
-              [filter (make-merge-image-filter (list #f one two))]
-              [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-    (draw-rect canvas 18 30 34 34 paint))
-)
-]
-@reference-figure["merge-three-stage9.png"
-                  "Three blue squares appear from one dynamic source merged with two progressively shifted copies."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([dilate (make-dilate-image-filter 7 7)]
-              [erode (make-erode-image-filter 7 7)]
-              [p1 (make-paint #:color "#326DE6" #:image-filter dilate)]
-              [p2 (make-paint #:color "#326DE6" #:image-filter erode)])
-    (draw-rect canvas 35 25 45 45 p1)
-    (draw-rect canvas 140 25 45 45 p2))
-)
-]
-@reference-figure["morphology-stage9.png"
-                  "A dilated blue square on the left grows outward while an eroded blue square on the right contracts inward."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([filter
-               (make-matrix-convolution-image-filter
-                3 3 '(-2 -1 0 -1 1 1 0 1 2) #:bias 128)]
-              [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-    (draw-rounded-rect canvas 48 28 100 54 12 12 paint))
-)
-]
-@reference-figure["convolution-emboss-stage9.png"
-                  "A blue rounded rectangle receives an emboss-like edge treatment from a three-by-three convolution kernel."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([filter
-               (make-matrix-transform-image-filter
-                (matrix-compose (matrix-translate 32 22)
-                                (matrix-scale 1.55 0.72)))]
-              [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-    (draw-rect canvas 18 20 62 62 paint))
-)
-]
-@reference-figure["matrix-transform-scale-stage9.png"
-                  "A blue square is resampled wider and shorter by a matrix-transform image filter."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source-surface (make-surface 40 30 #:background "#F4D35E")]
-              [blue (make-paint #:color "#326DE6")])
-    (draw-circle (surface-canvas source-surface) 20 15 9 blue)
-    (with-skia ([image (surface-snapshot source-surface)]
-                [filter (make-image-source-filter image
-                                                  #:destination '(20 15 160 70)
-                                                  #:sampling 'nearest)]
-                [paint (make-paint #:color 'white #:image-filter filter)])
-      (draw-paint canvas paint)))
-)
-]
-@reference-figure["image-source-filter-stage9.png"
-                  "An image-source filter places a retained yellow-and-blue miniature into a much larger destination rectangle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([shader (make-linear-gradient-shader 20 0 180 0 '(red blue))]
-              [filter (make-shader-image-filter shader #:crop '(10 10 180 80))]
-              [paint (make-paint #:color 'white #:image-filter filter)])
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["shader-source-filter-stage9.png"
-                  "A shader image filter supplies a red-to-blue gradient as the entire filtered source."]

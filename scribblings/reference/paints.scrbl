@@ -77,6 +77,19 @@ The first paint fills geometry; the second draws its outline.
 
 Effects may require rasterization in document output even though the same drawing
 function accepts the paint.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([orange (make-paint #:color "#EFA02B")]
+              [blue (make-paint #:color (rgba 50 109 230 145))])
+    (draw-circle canvas 78 50 34 orange)
+    (draw-circle canvas 120 50 34 blue))
+)
+]
+@reference-figure["paint-alpha-stage9.png"
+                  "A translucent blue circle overlaps an opaque orange circle, revealing source-over alpha blending in the overlap."]
 }
 
 @section[#:tag "skia-blend-modes"]{Blend Modes}
@@ -285,12 +298,43 @@ Some primitives, such as @racket[draw-line], always use stroke behavior.
 Sets the stroke width in local drawing units. Zero selects a device-space
 hairline; it does not disable stroking. The width must be a nonnegative
 @tech{drawing scalar}.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 90 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                 #:stroke-width 0 #:antialias? #t)])
+    (draw-line canvas 15 20 185 20 paint)
+    (draw-line canvas 15 45 185 55 paint)
+    (draw-line canvas 15 75 185 60 paint))
+)
+]
+@reference-figure["paint-hairline-stage9.png"
+                  "Several one-device-pixel blue hairlines cross a white background at different angles."]
 }
 
 @defproc[(paint-set-antialias! [paint paint?] [antialias? boolean?]) void?]{
 Sets whether the paint requests antialiased shape edges. Image resampling is
 controlled separately by the sampling option of an image operation. A setting
 does not guarantee that every destination or operation implements antialiasing.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([hard (make-paint #:color "#326DE6" #:style 'stroke
+                                #:stroke-width 7 #:antialias? #f)]
+              [smooth (make-paint #:color "#326DE6" #:style 'stroke
+                                  #:stroke-width 7 #:antialias? #t)]
+              [separator (make-paint #:color "#BCC5CF" #:style 'stroke #:stroke-width 1)])
+    (draw-line canvas 18 82 94 18 hard)
+    (draw-line canvas 128 82 204 18 smooth)
+    (draw-line canvas 110 8 110 92 separator))
+)
+]
+@reference-figure["paint-antialias-stage9.png"
+                  "Two diagonal blue strokes compare antialiasing disabled on the left with antialiasing enabled on the right."]
 }
 
 @defproc[(paint-set-cap! [paint paint?] [cap (or/c 'butt 'round 'square)]) void?]{
@@ -519,107 +563,3 @@ The following examples show settings whose effect is easiest to recognize in ren
 ]
 @reference-figure["paint-stroke-and-fill.png"
                   "A translucent blue rounded rectangle is both filled and stroked over an orange circle."]
-@section{Further Visual Examples}
-
-The following examples show additional visible consequences of the drawing operations in this chapter.
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path '((move 25 90) (line 100 18) (line 175 90)))]
-              [paint (make-paint #:color "#326DE6" #:style 'stroke
-                                 #:stroke-width 18 #:join 'miter #:miter-limit 6)])
-    (draw-path canvas path paint))
-)
-]
-@reference-figure["paint-miter-stage9.png"
-                  "A thick blue V-shaped stroke uses a sharp miter join at its central corner."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path '((move 25 90) (line 100 18) (line 175 90)))]
-              [paint (make-paint #:color "#326DE6" #:style 'stroke
-                                 #:stroke-width 18 #:join 'bevel)])
-    (draw-path canvas path paint))
-)
-]
-@reference-figure["paint-bevel-stage9.png"
-                  "A thick blue V-shaped stroke uses a flat bevel join at its central corner."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path '((move 25 90) (line 100 18) (line 175 90)))]
-              [paint (make-paint #:color "#326DE6" #:style 'stroke
-                                 #:stroke-width 18 #:join 'round)])
-    (draw-path canvas path paint))
-)
-]
-@reference-figure["paint-round-join-stage9.png"
-                  "A thick blue V-shaped stroke uses a rounded join at its central corner."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 90 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
-                                 #:stroke-width 0 #:antialias? #t)])
-    (draw-line canvas 15 20 185 20 paint)
-    (draw-line canvas 15 45 185 55 paint)
-    (draw-line canvas 15 75 185 60 paint))
-)
-]
-@reference-figure["paint-hairline-stage9.png"
-                  "Several one-device-pixel blue hairlines cross a white background at different angles."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([orange (make-paint #:color "#EFA02B")]
-              [blue (make-paint #:color (rgba 50 109 230 145))])
-    (draw-circle canvas 78 50 34 orange)
-    (draw-circle canvas 120 50 34 blue))
-)
-]
-@reference-figure["paint-alpha-stage9.png"
-                  "A translucent blue circle overlaps an opaque orange circle, revealing source-over alpha blending in the overlap."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([hard (make-paint #:color "#326DE6" #:style 'stroke
-                                #:stroke-width 7 #:antialias? #f)]
-              [smooth (make-paint #:color "#326DE6" #:style 'stroke
-                                  #:stroke-width 7 #:antialias? #t)]
-              [separator (make-paint #:color "#BCC5CF" #:style 'stroke #:stroke-width 1)])
-    (draw-line canvas 18 82 94 18 hard)
-    (draw-line canvas 128 82 204 18 smooth)
-    (draw-line canvas 110 8 110 92 separator))
-)
-]
-@reference-figure["paint-antialias-stage9.png"
-                  "Two diagonal blue strokes compare antialiasing disabled on the left with antialiasing enabled on the right."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([orange (make-paint #:color "#EFA02B")]
-              [blue (make-paint #:color "#326DE6" #:blend-mode 'overlay)])
-    (draw-circle canvas 75 50 35 orange)
-    (draw-rounded-rect canvas 70 20 80 60 12 12 blue))
-)
-]
-@reference-figure["blend-overlay-stage9.png"
-                  "A blue rectangle overlaps an orange circle using the overlay blend mode."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([orange (make-paint #:color "#EFA02B")]
-              [blue (make-paint #:color "#326DE6" #:blend-mode 'exclusion)])
-    (draw-circle canvas 75 50 35 orange)
-    (draw-rounded-rect canvas 70 20 80 60 12 12 blue))
-)
-]
-@reference-figure["blend-exclusion-stage9.png"
-                  "A blue rectangle overlaps an orange circle using the exclusion blend mode."]

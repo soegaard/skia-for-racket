@@ -173,6 +173,24 @@ to change the image's local placement or scale.
 
 @reference-figure["image-shader-tiles.png"
                   "A repeated red-and-blue checker pattern produced by an image shader."]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 12 12 #:background 'red)]
+              [blue (make-paint #:color "#326DE6")])
+    (draw-rect (surface-canvas source) 6 0 6 12 blue)
+    (with-skia ([image (surface-snapshot source)]
+                [base (make-image-shader image #:tile-x 'decal #:tile-y 'decal
+                                         #:sampling 'nearest)]
+                [shader (shader-with-local-matrix base (matrix-scale 8 8))]
+                [paint (make-paint #:shader shader)])
+      (draw-paint canvas paint)))
+)
+]
+@reference-figure["image-shader-decal-stage9.png"
+                  "A magnified red-and-blue image shader uses decal tiling, leaving transparent white space outside the source extent."]
 }
 
 @defproc[(make-blend-shader
@@ -256,6 +274,23 @@ tile-size contracts are the same as for @racket[make-fractal-noise-shader].
 @defproc[(make-empty-shader) shader?]{
 Returns an owned shader that draws nothing. It is a shader resource, not
 @racket[#f] and not a request to use the paint's solid color.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([blue-shader (make-color-shader "#326DE6")]
+              [empty-shader (make-empty-shader)]
+              [blue (make-paint #:shader blue-shader)]
+              [empty (make-paint #:shader empty-shader)]
+              [border (make-paint #:color "#607080" #:style 'stroke #:stroke-width 2)])
+    (draw-rect canvas 15 18 65 64 blue)
+    (draw-rect canvas 100 18 65 64 empty)
+    (draw-rect canvas 100 18 65 64 border))
+)
+]
+@reference-figure["empty-shader-stage9.png"
+                  "The left panel is filled by a blue color shader; the outlined right panel uses an empty shader and remains white."]
 }
 
 @defproc[(shader-with-color-filter [shader shader?] [filter color-filter?]) shader?]{
@@ -460,118 +495,3 @@ deterministic raster scenes.
 ]
 @reference-figure["shader-filter-invert-stage8.png"
                   "A red-to-blue gradient after a color filter inverts its RGB channels."]
-@section{Further Visual Examples}
-
-The following examples show additional visible consequences of the drawing operations in this chapter.
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([shader (make-two-point-conical-gradient-shader
-                       45 50 5 125 50 58 '(white "#326DE6"))]
-              [paint (make-paint #:shader shader)])
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["conical-circles-stage9.png"
-                  "A two-point conical gradient changes from white near a small left circle to blue around a larger right circle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source (make-surface 12 12 #:background 'red)]
-              [blue (make-paint #:color "#326DE6")])
-    (draw-rect (surface-canvas source) 6 0 6 12 blue)
-    (with-skia ([image (surface-snapshot source)]
-                [base (make-image-shader image #:tile-x 'clamp #:tile-y 'clamp
-                                         #:sampling 'nearest)]
-                [shader (shader-with-local-matrix base (matrix-scale 8 8))]
-                [paint (make-paint #:shader shader)])
-      (draw-paint canvas paint)))
-)
-]
-@reference-figure["image-shader-clamp-stage9.png"
-                  "A magnified red-and-blue source image is sampled with clamp tiling so edge colors extend across the remaining area."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source (make-surface 12 12 #:background 'red)]
-              [blue (make-paint #:color "#326DE6")])
-    (draw-rect (surface-canvas source) 6 0 6 12 blue)
-    (with-skia ([image (surface-snapshot source)]
-                [base (make-image-shader image #:tile-x 'decal #:tile-y 'decal
-                                         #:sampling 'nearest)]
-                [shader (shader-with-local-matrix base (matrix-scale 8 8))]
-                [paint (make-paint #:shader shader)])
-      (draw-paint canvas paint)))
-)
-]
-@reference-figure["image-shader-decal-stage9.png"
-                  "A magnified red-and-blue image shader uses decal tiling, leaving transparent white space outside the source extent."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([destination (make-linear-gradient-shader 0 0 180 0 '(red blue))]
-              [source (make-radial-gradient-shader 90 50 55 '(yellow transparent))]
-              [shader (make-blend-shader 'overlay destination source)]
-              [paint (make-paint #:shader shader)])
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["blend-shader-overlay-stage9.png"
-                  "A linear red-to-blue shader and a radial yellow field are combined using overlay blending."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([base (make-linear-gradient-shader 0 0 28 0 '(red blue)
-                                                  #:tile-mode 'repeat)]
-              [shader (shader-with-local-matrix base (matrix-rotate-degrees 24))]
-              [paint (make-paint #:shader shader)])
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["shader-local-rotate-stage9.png"
-                  "A repeated red-to-blue gradient is rotated in shader-local coordinates while the rectangle itself remains axis aligned."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([shader (make-fractal-noise-shader 0.045 0.055 4 5
-                                                  #:tile-size '(60 50))]
-              [paint (make-paint #:shader shader)])
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["fractal-noise-tiled-stage9.png"
-                  "A periodic fractal-noise shader repeats with a requested sixty-by-fifty local tile size."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([shader (make-turbulence-shader 0.045 0.055 4 5
-                                              #:tile-size '(60 50))]
-              [paint (make-paint #:shader shader)])
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["turbulence-tiled-stage9.png"
-                  "A periodic turbulence shader repeats with a requested sixty-by-fifty local tile size."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([blue-shader (make-color-shader "#326DE6")]
-              [empty-shader (make-empty-shader)]
-              [blue (make-paint #:shader blue-shader)]
-              [empty (make-paint #:shader empty-shader)]
-              [border (make-paint #:color "#607080" #:style 'stroke #:stroke-width 2)])
-    (draw-rect canvas 15 18 65 64 blue)
-    (draw-rect canvas 100 18 65 64 empty)
-    (draw-rect canvas 100 18 65 64 border))
-)
-]
-@reference-figure["empty-shader-stage9.png"
-                  "The left panel is filled by a blue color shader; the outlined right panel uses an empty shader and remains white."]

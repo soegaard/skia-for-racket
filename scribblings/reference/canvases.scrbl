@@ -72,6 +72,25 @@ Closing an ordinary CPU owner in @racket[proc] does not cause restoration throug
 an invalid native pointer: the cleanup skips native restoration for a closed
 owner. Other borrowing and GPU restrictions on closing still apply. In normal
 use, keep the owner alive for the entire scope.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([blue (make-paint #:color "#326DE6")]
+              [orange (make-paint #:color "#EFA02B")])
+    (draw-rounded-rect canvas 15 18 55 40 8 8 blue)
+    (with-canvas-state canvas
+      (canvas-translate! canvas 62 18)
+      (draw-rounded-rect canvas 15 18 55 40 8 8 orange)
+      (with-canvas-state canvas
+        (canvas-translate! canvas 62 18)
+        (canvas-rotate! canvas 12)
+        (draw-rounded-rect canvas 15 18 55 40 8 8 blue))))
+)
+]
+@reference-figure["canvas-nested-state-stage9.png"
+                  "Three rounded rectangles show nested saved canvas states, each adding another local transform without disturbing the outer state."]
 }
 
 @defform[(with-canvas-state canvas-expr body ...+)
@@ -113,12 +132,50 @@ rotation. Both arguments must be @tech{drawing scalar}s.
 Concatenates scaling by @racket[x] horizontally and @racket[y] vertically. A
 negative factor reflects an axis. A zero factor is accepted and makes the
 transform singular. Omitting @racket[y] uses @racket[x] on both axes.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 240 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([blue (make-paint #:color "#326DE6")]
+              [orange (make-paint #:color "#EFA02B")])
+    (with-canvas-state canvas
+      (canvas-clip-rect! canvas 0 0 120 110)
+      (canvas-translate! canvas 20 25)
+      (canvas-scale! canvas 1.6 1)
+      (draw-rect canvas 0 0 45 55 blue))
+    (with-canvas-state canvas
+      (canvas-clip-rect! canvas 120 0 120 110)
+      (canvas-scale! canvas 1.6 1)
+      (canvas-translate! canvas 82 25)
+      (draw-rect canvas 0 0 45 55 orange)))
+)
+]
+@reference-figure["transform-order-stage9.png"
+                  "Blue and orange rectangles demonstrate that translating then scaling differs from scaling then translating."]
 }
 
 @defproc[(canvas-rotate! [canvas canvas?] [degrees real?]) void?]{
 Concatenates a rotation about the local origin by @racket[degrees]. Positive
 angles rotate clockwise in the initial downward-y coordinate system. Translate
 the origin first to rotate around another point.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6")]
+              [axis (make-paint #:color "#AEB7C2" #:style 'stroke #:stroke-width 1)])
+    (draw-line canvas 100 12 100 108 axis)
+    (draw-line canvas 18 60 182 60 axis)
+    (with-canvas-state canvas
+      (canvas-translate! canvas 100 60)
+      (canvas-rotate! canvas 30)
+      (draw-rect canvas -55 -20 110 40 paint)))
+)
+]
+@reference-figure["rotate-around-point-stage9.png"
+                  "A blue rectangle rotates around the translated canvas origin at the center of the figure."]
 }
 
 @defproc[(canvas-rotate-radians! [canvas canvas?] [radians real?]) void?]{
@@ -135,6 +192,21 @@ with coordinates @math{u} and @math{v}.
 @defproc[(canvas-reset-transform! [canvas canvas?]) void?]{
 Replaces the current transform with the identity. It does not reset the clip.
 A clip established before this call remains in the target's coordinate system.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([blue (make-paint #:color "#326DE6")]
+              [orange (make-paint #:color "#EFA02B")])
+    (canvas-translate! canvas 95 20)
+    (draw-rect canvas 0 0 70 45 blue)
+    (canvas-reset-transform! canvas)
+    (draw-rect canvas 20 45 70 45 orange))
+)
+]
+@reference-figure["canvas-reset-transform-stage9.png"
+                  "A translated blue rectangle and an orange rectangle drawn after resetting the canvas transform to the identity."]
 }
 
 @defproc[(canvas-transform [canvas canvas?]) matrix?]{
@@ -147,6 +219,21 @@ perspective or three-dimensional components that the six-coefficient
 @defproc[(canvas-set-transform! [canvas canvas?] [matrix matrix?]) void?]{
 Replaces the current transform with @racket[matrix]. The matrix is a detached
 value; the canvas does not borrow its storage. The clip is unchanged.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6")])
+    (canvas-set-transform!
+     canvas
+     (matrix-compose (matrix-translate 55 25)
+                     (matrix-scale 1.6 0.75)))
+    (draw-rect canvas 0 0 70 65 paint))
+)
+]
+@reference-figure["canvas-set-transform-stage9.png"
+                  "A blue rectangle drawn through a transform installed with canvas-set-transform!, combining translation and nonuniform scale."]
 }
 
 @defproc[(canvas-concat! [canvas canvas?] [matrix matrix?]) void?]{
@@ -197,6 +284,24 @@ The result is @racket['((#t #f #f) (#f #t #f))]. The first sample is inside the
 second rectangle, the next is outside it but inside the initial clip, and the
 last is outside the initial clip. Difference removes an area from the current
 clip; it does not select everything outside the rectangle across the surface.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6")]
+              [separator (make-paint #:color "#BCC5CF" #:style 'stroke #:stroke-width 1)])
+    (with-canvas-state canvas
+      (canvas-clip-rect! canvas 15.5 15.5 75 68 #:antialias? #f)
+      (draw-paint canvas paint))
+    (with-canvas-state canvas
+      (canvas-clip-rect! canvas 129.5 15.5 75 68 #:antialias? #t)
+      (draw-paint canvas paint))
+    (draw-line canvas 110 8 110 92 separator))
+)
+]
+@reference-figure["clip-antialias-stage9.png"
+                  "Two blue clipped rectangles compare a hard fractional clip edge on the left with an antialiased fractional clip edge on the right."]
 }
 
 @defproc[(canvas-clip-path! [canvas canvas?] [path skia-path?]
@@ -205,6 +310,20 @@ clip; it does not select everything outside the rectangle across the surface.
 Like @racket[canvas-clip-rect!], but uses the filled region of @racket[path] and
 its fill rule. Paint stroke settings do not affect this operation. Subsequent
 mutation or closure of the path does not change the established clip.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([path (make-path)]
+              [paint (make-paint #:color "#326DE6")])
+    (path-add-circle! path 90 50 38)
+    (canvas-clip-path! canvas path #:antialias? #t)
+    (draw-paint canvas paint))
+)
+]
+@reference-figure["clip-path-circle-stage9.png"
+                  "A blue fill is restricted to a circular path clip, leaving the surrounding surface white."]
 }
 
 @section[#:tag "skia-clip-queries"]{Rounded Clips and Clip Queries}
@@ -223,6 +342,19 @@ Combines the current clip with the native-normalized rounded boundary in local
 coordinates. The current transform applies; antialiasing is optional and off by
 default. The boundary is preserved through a path representation so unequal
 corner radii are not reduced to a single SVG radius pair.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6")])
+    (define shape (make-rounded-rect 22 15 136 70 #:radii 24))
+    (canvas-clip-rounded-rect! canvas shape #:antialias? #t)
+    (draw-paint canvas paint))
+)
+]
+@reference-figure["clip-rrect-stage9.png"
+                  "A blue fill is clipped to a rounded rectangle with broad rounded corners."]
 }
 
 @defproc[(canvas-local-clip-bounds [canvas canvas?])
@@ -342,130 +474,3 @@ These examples isolate common transform and clip operations.
 ]
 @reference-figure["clip-difference.png"
                   "A blue rectangular clipped area with a white rectangular hole removed by difference clipping."]
-@section{Further Visual Examples}
-
-The following examples show additional visible consequences of the drawing operations in this chapter.
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([blue (make-paint #:color "#326DE6")]
-              [orange (make-paint #:color "#EFA02B")])
-    (canvas-translate! canvas 95 20)
-    (draw-rect canvas 0 0 70 45 blue)
-    (canvas-reset-transform! canvas)
-    (draw-rect canvas 20 45 70 45 orange))
-)
-]
-@reference-figure["canvas-reset-transform-stage9.png"
-                  "A translated blue rectangle and an orange rectangle drawn after resetting the canvas transform to the identity."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([paint (make-paint #:color "#326DE6")])
-    (canvas-set-transform!
-     canvas
-     (matrix-compose (matrix-translate 55 25)
-                     (matrix-scale 1.6 0.75)))
-    (draw-rect canvas 0 0 70 65 paint))
-)
-]
-@reference-figure["canvas-set-transform-stage9.png"
-                  "A blue rectangle drawn through a transform installed with canvas-set-transform!, combining translation and nonuniform scale."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([blue (make-paint #:color "#326DE6")]
-              [orange (make-paint #:color "#EFA02B")])
-    (draw-rounded-rect canvas 15 18 55 40 8 8 blue)
-    (with-canvas-state canvas
-      (canvas-translate! canvas 62 18)
-      (draw-rounded-rect canvas 15 18 55 40 8 8 orange)
-      (with-canvas-state canvas
-        (canvas-translate! canvas 62 18)
-        (canvas-rotate! canvas 12)
-        (draw-rounded-rect canvas 15 18 55 40 8 8 blue))))
-)
-]
-@reference-figure["canvas-nested-state-stage9.png"
-                  "Three rounded rectangles show nested saved canvas states, each adding another local transform without disturbing the outer state."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([paint (make-paint #:color "#326DE6")]
-              [separator (make-paint #:color "#BCC5CF" #:style 'stroke #:stroke-width 1)])
-    (with-canvas-state canvas
-      (canvas-clip-rect! canvas 15.5 15.5 75 68 #:antialias? #f)
-      (draw-paint canvas paint))
-    (with-canvas-state canvas
-      (canvas-clip-rect! canvas 129.5 15.5 75 68 #:antialias? #t)
-      (draw-paint canvas paint))
-    (draw-line canvas 110 8 110 92 separator))
-)
-]
-@reference-figure["clip-antialias-stage9.png"
-                  "Two blue clipped rectangles compare a hard fractional clip edge on the left with an antialiased fractional clip edge on the right."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path)]
-              [paint (make-paint #:color "#326DE6")])
-    (path-add-circle! path 90 50 38)
-    (canvas-clip-path! canvas path #:antialias? #t)
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["clip-path-circle-stage9.png"
-                  "A blue fill is restricted to a circular path clip, leaving the surrounding surface white."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([paint (make-paint #:color "#326DE6")])
-    (define shape (make-rounded-rect 22 15 136 70 #:radii 24))
-    (canvas-clip-rounded-rect! canvas shape #:antialias? #t)
-    (draw-paint canvas paint))
-)
-]
-@reference-figure["clip-rrect-stage9.png"
-                  "A blue fill is clipped to a rounded rectangle with broad rounded corners."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([blue (make-paint #:color "#326DE6")]
-              [orange (make-paint #:color "#EFA02B")])
-    (with-canvas-state canvas
-      (canvas-clip-rect! canvas 0 0 120 110)
-      (canvas-translate! canvas 20 25)
-      (canvas-scale! canvas 1.6 1)
-      (draw-rect canvas 0 0 45 55 blue))
-    (with-canvas-state canvas
-      (canvas-clip-rect! canvas 120 0 120 110)
-      (canvas-scale! canvas 1.6 1)
-      (canvas-translate! canvas 82 25)
-      (draw-rect canvas 0 0 45 55 orange)))
-)
-]
-@reference-figure["transform-order-stage9.png"
-                  "Two blue rectangles demonstrate that translating then scaling differs from scaling then translating."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([paint (make-paint #:color "#326DE6")]
-              [axis (make-paint #:color "#AEB7C2" #:style 'stroke #:stroke-width 1)])
-    (draw-line canvas 100 12 100 108 axis)
-    (draw-line canvas 18 60 182 60 axis)
-    (with-canvas-state canvas
-      (canvas-translate! canvas 100 60)
-      (canvas-rotate! canvas 30)
-      (draw-rect canvas -55 -20 110 40 paint)))
-)
-]
-@reference-figure["rotate-around-point-stage9.png"
-                  "A blue rectangle rotates around the translated canvas origin at the center of the figure."]

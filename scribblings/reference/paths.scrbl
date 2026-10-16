@@ -234,6 +234,27 @@ Extend mode connects the destination's last contour to the source's first
 contour with a line when appropriate. The destination's fill rule is unchanged;
 it does not adopt the source's rule. Later changes to the source do not edit
 the appended geometry.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source-a (make-path '((move 60 24) (line 92 76)))]
+              [append-path (make-path '((move 18 76) (line 50 24)))]
+              [source-b (make-path '((move 170 24) (line 202 76)))]
+              [extend-path (make-path '((move 128 76) (line 160 24)))]
+              [blue (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5
+                                #:cap 'round)]
+              [orange (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 5
+                                  #:cap 'round)])
+    (path-add-path! append-path source-a #:mode 'append)
+    (path-add-path! extend-path source-b #:mode 'extend)
+    (draw-path canvas append-path blue)
+    (draw-path canvas extend-path orange))
+)
+]
+@reference-figure["path-extend-stage9.png"
+                  "Append mode leaves two blue path segments disconnected on the left, while extend mode adds the orange connecting edge on the right."]
 }
 
 @defproc[(path-add-reversed-path! [destination skia-path?] [source skia-path?]) void?]{
@@ -708,6 +729,19 @@ Adds a contour from a list or vector of two-element point lists or vectors.
 All coordinates are validated and copied before mutation. A true @racket[closed?]
 closes the contour. Empty input draws nothing but still validates the path.
 The submitted point count and bytes are bounded by @racket[current-skia-byte-limit].
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([path (make-path)]
+              [paint (make-paint #:color "#326DE6")])
+    (path-add-polygon! path '((90 12) (160 42) (136 88) (44 88) (20 42)))
+    (draw-path canvas path paint))
+)
+]
+@reference-figure["path-polygon-stage9.png"
+                  "A filled blue pentagon is drawn from a polygon contour appended to a path."]
 }
 
 @defproc[(path-add-transformed! [path path?]
@@ -1051,123 +1085,3 @@ operations.
 ]
 @reference-figure["svg-path-stage8.png"
                   "A red heart-like filled shape parsed directly from SVG path-data syntax."]
-@section{Further Visual Examples}
-
-The following examples show additional visible consequences of the drawing operations in this chapter.
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path)]
-              [paint (make-paint #:color "#326DE6")])
-    (path-add-rounded-rect! path 24 16 132 68 20 20)
-    (draw-path canvas path paint))
-)
-]
-@reference-figure["path-rounded-rect-stage9.png"
-                  "A filled blue rounded rectangle is drawn from geometry appended to a path."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path)]
-              [paint (make-paint #:color "#326DE6")])
-    (path-add-oval! path 24 18 132 64)
-    (draw-path canvas path paint))
-)
-]
-@reference-figure["path-oval-stage9.png"
-                  "A filled blue oval is drawn from an oval contour appended to a path."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path)]
-              [paint (make-paint #:color "#326DE6")])
-    (path-add-polygon! path '((90 12) (160 42) (136 88) (44 88) (20 42)))
-    (draw-path canvas path paint))
-)
-]
-@reference-figure["path-polygon-stage9.png"
-                  "A filled blue pentagon is drawn from a polygon contour appended to a path."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source-a (make-path '((move 60 24) (line 92 76)))]
-              [append-path (make-path '((move 18 76) (line 50 24)))]
-              [source-b (make-path '((move 170 24) (line 202 76)))]
-              [extend-path (make-path '((move 128 76) (line 160 24)))]
-              [blue (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5
-                                #:cap 'round)]
-              [orange (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 5
-                                  #:cap 'round)])
-    (path-add-path! append-path source-a #:mode 'append)
-    (path-add-path! extend-path source-b #:mode 'extend)
-    (draw-path canvas append-path blue)
-    (draw-path canvas extend-path orange))
-)
-]
-@reference-figure["path-extend-stage9.png"
-                  "Append mode leaves two blue path segments disconnected on the left, while extend mode adds the orange connecting edge on the right."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([left (make-path)] [right (make-path)]
-              [paint (make-paint #:color "#326DE6")])
-    (path-add-circle! left 70 50 34)
-    (path-add-circle! right 110 50 34)
-    (with-skia ([result (path-reverse-difference left right)])
-      (draw-path canvas result paint)))
-)
-]
-@reference-figure["reverse-difference-stage9.png"
-                  "The blue result contains the part of the right circle that is not covered by the left circle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path '((move 25 18) (line 155 82)
-                                        (line 25 82) (line 155 18) (close)))]
-              [paint (make-paint #:color "#326DE6")])
-    (with-skia ([simple (path-simplify path)])
-      (draw-path canvas simple paint)))
-)
-]
-@reference-figure["simplify-path-stage9.png"
-                  "A self-intersecting bow-tie path is simplified into its resolved blue filled region."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path #:fill-rule 'even-odd)]
-              [paint (make-paint #:color "#326DE6")])
-    (path-add-circle! path 100 50 38)
-    (path-add-circle! path 100 50 17)
-    (with-skia ([winding (path-as-winding path)])
-      (draw-path canvas winding paint)))
-)
-]
-@reference-figure["as-winding-stage9.png"
-                  "An even-odd path with two concentric circles is converted to winding geometry while preserving its white center hole."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path '((move 18 82) (cubic 55 10 165 10 202 82)))]
-              [measure (make-path-measure path)]
-              [guide (make-paint #:color "#AEB7C2" #:style 'stroke #:stroke-width 3)]
-              [marker (make-paint #:color "#E94F37")]
-              [tangent (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 3)])
-    (draw-path canvas path guide)
-    (define distance (/ (path-measure-length measure) 2))
-    (define-values (x y tx ty) (path-measure-position+tangent measure distance))
-    (when x
-      (draw-circle canvas x y 6 marker)
-      (draw-line canvas (- x (* tx 28)) (- y (* ty 28))
-                 (+ x (* tx 28)) (+ y (* ty 28)) tangent)))
-)
-]
-@reference-figure["measure-tangent-stage9.png"
-                  "A red point and tangent segment mark the halfway position along a pale cubic path."]
