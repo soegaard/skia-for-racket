@@ -229,6 +229,22 @@ same mutable font.
 
 @reference-figure["multi-run-text-blob.png"
                   "One text blob containing a smaller word followed by a much larger BIG run."]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 280 120 #:background 'white)]
+            [font (make-font #:size 28)]
+            [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#20344E")])
+  (text-blob-builder-add-run! builder font (font-text->glyphs font "TOP")
+                             #:origin '(20 38))
+  (text-blob-builder-add-run! builder font (font-text->glyphs font "BOTTOM")
+                             #:origin '(95 92))
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
+]
+@reference-figure["blob-run-origins-stage8.png"
+                  "Two text runs in one blob use independent origins, placing TOP high on the left and BOTTOM lower on the right."]
 }
 
 @defproc[(text-blob-builder-add-horizontal-run!
@@ -275,6 +291,21 @@ an append that creates no run. The shared run-input and metadata rules apply.
 The text occupies three UTF-8 bytes. Its glyph clusters start at byte offsets
 0 and 1; a cluster at offset 2 would point into the encoding of the second
 character and would be rejected.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 280 110 #:background 'white)]
+            [font (make-font #:size 34)]
+            [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#326DE6")])
+  (define glyphs (font-text->glyphs font "WAVE"))
+  (text-blob-builder-add-positioned-run!
+   builder font glyphs '((15 65) (75 42) (135 70) (200 35)))
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
+]
+@reference-figure["blob-positioned-wave-stage8.png"
+                  "The blue letters WAVE occupy explicit two-dimensional positions that rise and fall like a wave."]
 }
 
 @defproc[(text-blob-builder-add-transformed-run!
@@ -337,6 +368,23 @@ and no-append rules as the glyph-based append functions.
 
 The result is @racket['positioned]. Closing the shaper after a successful
 append does not invalidate the captured blob font.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 280 100 #:background 'white)]
+            [font (make-font #:size 34)]
+            [shaper (make-shaper font)]
+            [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#20344E")])
+  (define text "office")
+  (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
+  (text-blob-builder-add-shaped-run! builder shaper run
+                                    #:origin '(25 62) #:text text)
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
+]
+@reference-figure["blob-shaped-run-stage8.png"
+                  "The word office is drawn from a shaped run retained inside a text-blob builder."]
 }
 
 @defproc[(text-blob-builder-finish! [builder text-blob-builder?]) (or/c text-blob? #f)]{
@@ -485,6 +533,20 @@ size, scale, and skew are applied, but no paint, canvas transform, shaping, or
 fallback is added. Glyphs without monochrome outlines contribute no contour;
 this is not a general conversion of bitmap or color glyphs to vectors. The
 copied input and resulting geometry are checked against the byte limit.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 240 120 #:background 'white)]
+            [font (make-font #:size 42)]
+            [paint (make-paint #:color "#326DE6")])
+  (define glyphs (font-text->glyphs font "PATH"))
+  (with-skia ([path
+               (positioned-glyphs->path
+                font glyphs '((10 65) (60 65) (115 65) (170 65)))])
+    (draw-path (surface-canvas surface) path paint)))
+]
+@reference-figure["glyphs-to-path-stage8.png"
+                  "The word PATH is drawn as one filled blue vector path assembled from positioned glyph outlines."]
 }
 
 @section[#:tag "skia-text-on-path"]{Placing Shaped Text on a Path}
@@ -586,6 +648,23 @@ Use a retained blob instead when repeatedly drawing the same placement.
 
 @reference-figure["text-on-path.png"
                   "Dark text follows a pale cubic curve from left to right."]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 330 130 #:background 'white)]
+            [font (make-font #:size 24)]
+            [shaper (make-shaper font)]
+            [path (make-path '((move 15 72) (line 315 72)))]
+            [guide (make-paint #:color "#BBBBBB" #:style 'stroke)]
+            [paint (make-paint #:color "#20344E")])
+  (draw-path (surface-canvas surface) path guide)
+  (define run (shape-text shaper "offset from the path"
+                          #:direction 'ltr #:script 'latn))
+  (draw-shaped-run/on-path (surface-canvas surface) shaper run path paint
+                           #:start-offset 25 #:normal-offset -14))
+]
+@reference-figure["text-path-offset-stage8.png"
+                  "Dark text follows a pale horizontal path while a negative normal offset lifts its baseline above the guide."]
 }
 
 @section{Additional Visual Examples}
@@ -629,130 +708,3 @@ Use a retained blob instead when repeatedly drawing the same placement.
 ]
 @reference-figure["text-blob-intercepts.png"
                   "Two large glyphs crossed by a highlighted horizontal band, with the reported intercept intervals marked within that band."]
-
-@section{Further Visual Examples}
-
-These examples use the builder and path-placement interfaces to make run
-placement visible.
-
-@racketblock[
-(with-skia ([surface (make-surface 280 120 #:background 'white)]
-            [font (make-font #:size 28)]
-            [builder (make-text-blob-builder)]
-            [paint (make-paint #:color "#20344E")])
-  (text-blob-builder-add-run! builder font (font-text->glyphs font "TOP")
-                             #:origin '(20 38))
-  (text-blob-builder-add-run! builder font (font-text->glyphs font "BOTTOM")
-                             #:origin '(95 92))
-  (with-skia ([blob (text-blob-builder-finish! builder)])
-    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
-]
-@reference-figure["blob-run-origins-stage8.png"
-                  "Two text runs in one blob use independent origins, placing TOP high on the left and BOTTOM lower on the right."]
-
-@racketblock[
-(with-skia ([surface (make-surface 280 110 #:background 'white)]
-            [font (make-font #:size 34)]
-            [builder (make-text-blob-builder)]
-            [paint (make-paint #:color "#326DE6")])
-  (define glyphs (font-text->glyphs font "WAVE"))
-  (text-blob-builder-add-positioned-run!
-   builder font glyphs '((15 65) (75 42) (135 70) (200 35)))
-  (with-skia ([blob (text-blob-builder-finish! builder)])
-    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
-]
-@reference-figure["blob-positioned-wave-stage8.png"
-                  "The blue letters WAVE occupy explicit two-dimensional positions that rise and fall like a wave."]
-
-@racketblock[
-(with-skia ([surface (make-surface 280 100 #:background 'white)]
-            [font (make-font #:size 34)]
-            [builder (make-text-blob-builder)]
-            [paint (make-paint #:color "#20344E")])
-  (define glyphs (font-text->glyphs font "ABCD"))
-  (text-blob-builder-add-horizontal-run! builder font glyphs
-                                        '(0 45 115 205) #:y 0)
-  (with-skia ([blob (text-blob-builder-finish! builder)])
-    (draw-text-blob (surface-canvas surface) blob 20 62 paint)))
-]
-@reference-figure["blob-horizontal-spacing-stage8.png"
-                  "The letters A through D share one baseline but use increasingly uneven explicit x positions."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 130 #:background 'white)]
-            [font (make-font #:size 34)]
-            [builder (make-text-blob-builder)]
-            [paint (make-paint #:color "#326DE6")])
-  (define glyphs (font-text->glyphs font "FAN"))
-  (text-blob-builder-add-transformed-run!
-   builder font glyphs
-   (list (make-atlas-transform 65 95 #:rotation -28)
-         (make-atlas-transform 145 78 #:rotation 0)
-         (make-atlas-transform 225 95 #:rotation 28)))
-  (with-skia ([blob (text-blob-builder-finish! builder)])
-    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
-]
-@reference-figure["blob-transformed-fan-stage8.png"
-                  "Three blue glyphs use independent scaled-rotation transforms, fanning outward around the middle letter."]
-
-@racketblock[
-(with-skia ([surface (make-surface 280 100 #:background 'white)]
-            [font (make-font #:size 34)]
-            [shaper (make-shaper font)]
-            [builder (make-text-blob-builder)]
-            [paint (make-paint #:color "#20344E")])
-  (define text "office")
-  (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
-  (text-blob-builder-add-shaped-run! builder shaper run
-                                    #:origin '(25 62) #:text text)
-  (with-skia ([blob (text-blob-builder-finish! builder)])
-    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
-]
-@reference-figure["blob-shaped-run-stage8.png"
-                  "The word office is drawn from a shaped run retained inside a text-blob builder."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 120 #:background 'white)]
-            [font (make-font #:size 42)]
-            [paint (make-paint #:color "#326DE6")])
-  (define glyphs (font-text->glyphs font "PATH"))
-  (with-skia ([path
-               (positioned-glyphs->path
-                font glyphs '((10 65) (60 65) (115 65) (170 65)))])
-    (draw-path (surface-canvas surface) path paint)))
-]
-@reference-figure["glyphs-to-path-stage8.png"
-                  "The word PATH is drawn as one filled blue vector path assembled from positioned glyph outlines."]
-
-@racketblock[
-(with-skia ([surface (make-surface 330 130 #:background 'white)]
-            [font (make-font #:size 24)]
-            [shaper (make-shaper font)]
-            [path (make-path '((move 15 72) (line 315 72)))]
-            [guide (make-paint #:color "#BBBBBB" #:style 'stroke)]
-            [paint (make-paint #:color "#20344E")])
-  (draw-path (surface-canvas surface) path guide)
-  (define run (shape-text shaper "offset from the path"
-                          #:direction 'ltr #:script 'latn))
-  (draw-shaped-run/on-path (surface-canvas surface) shaper run path paint
-                           #:start-offset 25 #:normal-offset -14))
-]
-@reference-figure["text-path-offset-stage8.png"
-                  "Dark text follows a pale horizontal path while a negative normal offset lifts its baseline above the guide."]
-
-@racketblock[
-(with-skia ([surface (make-surface 260 180 #:background 'white)]
-            [font (make-font #:size 22)]
-            [shaper (make-shaper font)]
-            [path (make-path)]
-            [guide (make-paint #:color "#CCCCCC" #:style 'stroke)]
-            [paint (make-paint #:color "#326DE6")])
-  (path-add-circle! path 130 90 65)
-  (draw-path (surface-canvas surface) path guide)
-  (define run (shape-text shaper "ROUND"
-                          #:direction 'ltr #:script 'latn))
-  (draw-shaped-run/on-path (surface-canvas surface) shaper run path paint
-                           #:start-offset 20 #:normal-offset -6))
-]
-@reference-figure["text-path-circle-stage8.png"
-                  "The blue word ROUND follows part of a pale circular path with each glyph rotated to the local tangent."]

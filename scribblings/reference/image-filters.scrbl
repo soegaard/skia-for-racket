@@ -75,6 +75,16 @@ The input and crop follow @secref["skia-filter-rectangles"].
 
 @reference-figure["blur-image-filter.png"
                   "A blue rounded rectangle blurred outward in both axes."]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)]
+            [filter (make-blur-image-filter 12 2)]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)])
+  (draw-circle (surface-canvas surface) 100 50 26 paint))
+]
+@reference-figure["blur-anisotropic-stage8.png"
+                  "A blue circle blurred much more horizontally than vertically by unequal blur sigmas."]
 }
 
 @defproc[(make-drop-shadow-image-filter
@@ -121,6 +131,17 @@ The shadow is derived from input alpha, blurred by the two sigmas and offset
 by @racket[dx] and @racket[dy]. Both sigmas may be zero for an unblurred shadow.
 Offsets are local-coordinate displacements, not device-pixel offsets.
 The crop can remove part of the shadow as well as the source.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)]
+            [filter (make-drop-shadow-only-image-filter
+                     12 10 5 5 (rgba 32 52 78 170))]
+            [paint (make-paint #:color "#EFA02B" #:image-filter filter)])
+  (draw-rounded-rect (surface-canvas surface) 45 22 90 48 10 10 paint))
+]
+@reference-figure["shadow-only-stage8.png"
+                  "Only the soft dark shadow of a rounded rectangle is visible; the orange source itself is omitted."]
 }
 
 @defproc[(make-color-filter-image-filter
@@ -144,6 +165,18 @@ Returns a graph that feeds @racket[inner] into the dynamic source slots of
 @racket[outer]. Both arguments must be filters, not @racket[#f]. The optional
 crop applies to the composed result. Swapping the arguments generally changes
 the output.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)]
+            [blur (make-blur-image-filter 5 5)]
+            [shift (make-offset-image-filter 45 20)]
+            [filter (make-compose-image-filter shift blur)]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)])
+  (draw-circle (surface-canvas surface) 45 42 20 paint))
+]
+@reference-figure["compose-filter-stage8.png"
+                  "A blue circle is blurred and then translated down and to the right by a composed image-filter graph."]
 }
 
 @section{Graph Construction and Combining Inputs}
@@ -349,6 +382,19 @@ kernel combines neighboring samples rather than channels of one sample.
 
 @reference-figure["matrix-convolution.png"
                   "An orange circle rendered through a sharpening three-by-three convolution kernel."]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)]
+            [filter
+             (make-matrix-convolution-image-filter
+              3 3 '(-2 -1 0 -1 1 1 0 1 2)
+              #:bias 128)]
+            [paint (make-paint #:color "#EFA02B" #:image-filter filter)])
+  (draw-rounded-rect (surface-canvas surface) 45 22 110 56 10 10 paint))
+]
+@reference-figure["convolution-emboss-stage8.png"
+                  "An orange rounded rectangle is converted into a light-and-dark embossed edge pattern by a convolution kernel."]
 }
 
 @section{Placement and Explicit Sources}
@@ -382,6 +428,22 @@ it. A missing destination uses the source rectangle itself, preserving its
 coordinates and scale; it does not automatically relocate a subset to the
 origin. An explicit destination must also have positive extents.
 Closing the caller's image wrapper does not invalidate the filter.
+
+
+@racketblock[
+(with-skia ([source-surface (make-surface 40 40 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-circle (surface-canvas source-surface) 20 20 13 blue)
+  (with-skia ([image (surface-snapshot source-surface)]
+              [filter (make-image-source-filter
+                       image #:destination '(20 10 180 80)
+                       #:sampling 'nearest)]
+              [paint (make-paint #:image-filter filter)]
+              [surface (make-surface 220 100 #:background 'white)])
+    (draw-paint (surface-canvas surface) paint)))
+]
+@reference-figure["image-source-filter-stage8.png"
+                  "An image-source filter enlarges a small yellow tile with a blue circle into a wide destination rectangle."]
 }
 
 @defproc[(make-shader-image-filter
@@ -676,102 +738,3 @@ These examples show several graph nodes that transform, combine, or replace an i
 ]
 @reference-figure["tile-image-filter.png"
                   "A small yellow-and-blue image repeated as tiles across a larger destination rectangle."]
-
-@section{Further Visual Examples}
-
-These examples isolate additional graph combinations and source filters.
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)]
-            [filter (make-blur-image-filter 12 2)]
-            [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-  (draw-circle (surface-canvas surface) 100 50 26 paint))
-]
-@reference-figure["blur-anisotropic-stage8.png"
-                  "A blue circle blurred much more horizontally than vertically by unequal blur sigmas."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)]
-            [filter (make-drop-shadow-only-image-filter
-                     12 10 5 5 (rgba 32 52 78 170))]
-            [paint (make-paint #:color "#EFA02B" #:image-filter filter)])
-  (draw-rounded-rect (surface-canvas surface) 45 22 90 48 10 10 paint))
-]
-@reference-figure["shadow-only-stage8.png"
-                  "Only the soft dark shadow of a rounded rectangle is visible; the orange source itself is omitted."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 110 #:background 'white)]
-            [blur (make-blur-image-filter 5 5)]
-            [shift (make-offset-image-filter 45 20)]
-            [filter (make-compose-image-filter shift blur)]
-            [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-  (draw-circle (surface-canvas surface) 45 42 20 paint))
-]
-@reference-figure["compose-filter-stage8.png"
-                  "A blue circle is blurred and then translated down and to the right by a composed image-filter graph."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)]
-            [shift1 (make-offset-image-filter 55 0)]
-            [shift2 (make-offset-image-filter 110 0)]
-            [filter (make-merge-image-filter (list #f shift1 shift2))]
-            [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-  (draw-circle (surface-canvas surface) 30 50 17 paint))
-]
-@reference-figure["merge-three-stage8.png"
-                  "Three equal blue circles appear in a row after merging the source with two translated filter inputs."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 100 #:background 'white)]
-            [plain (make-paint #:color "#326DE6")]
-            [dilate-filter (make-dilate-image-filter 6 6)]
-            [erode-filter (make-erode-image-filter 6 6)]
-            [dilate (make-paint #:color "#326DE6" #:image-filter dilate-filter)]
-            [erode (make-paint #:color "#326DE6" #:image-filter erode-filter)])
-  (draw-rect (surface-canvas surface) 20 25 45 50 plain)
-  (draw-rect (surface-canvas surface) 97 25 45 50 dilate)
-  (draw-rect (surface-canvas surface) 174 25 45 50 erode))
-]
-@reference-figure["morphology-stage8.png"
-                  "Three blue rectangles compare the original, a visibly expanded dilation, and a visibly contracted erosion."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)]
-            [filter
-             (make-matrix-convolution-image-filter
-              3 3 '(-2 -1 0 -1 1 1 0 1 2)
-              #:bias 128)]
-            [paint (make-paint #:color "#EFA02B" #:image-filter filter)])
-  (draw-rounded-rect (surface-canvas surface) 45 22 110 56 10 10 paint))
-]
-@reference-figure["convolution-emboss-stage8.png"
-                  "An orange rounded rectangle is converted into a light-and-dark embossed edge pattern by a convolution kernel."]
-
-@racketblock[
-(with-skia ([source-surface (make-surface 40 40 #:background "#F4D35E")]
-            [blue (make-paint #:color "#326DE6")])
-  (draw-circle (surface-canvas source-surface) 20 20 13 blue)
-  (with-skia ([image (surface-snapshot source-surface)]
-              [filter (make-image-source-filter
-                       image #:destination '(20 10 180 80)
-                       #:sampling 'nearest)]
-              [paint (make-paint #:image-filter filter)]
-              [surface (make-surface 220 100 #:background 'white)])
-    (draw-paint (surface-canvas surface) paint)))
-]
-@reference-figure["image-source-filter-stage8.png"
-                  "An image-source filter enlarges a small yellow tile with a blue circle into a wide destination rectangle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 120 #:background 'white)]
-            [filter
-             (make-matrix-transform-image-filter
-              (matrix-compose (matrix-translate 105 58)
-                              (matrix-rotate-degrees 24)
-                              (matrix-translate -55 -30)))]
-            [paint (make-paint #:color "#326DE6" #:image-filter filter)])
-  (draw-rect (surface-canvas surface) 20 20 90 50 paint))
-]
-@reference-figure["matrix-transform-filter-stage8.png"
-                  "A blue rectangle is translated and rotated by an image-filter matrix rather than by the canvas transform."]

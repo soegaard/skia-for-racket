@@ -116,6 +116,33 @@ raises an exception, including for an empty line.
 ]
 
 The word stays on one line even if its advance exceeds the requested width.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 300 100 #:background 'white)]
+            [font (make-font #:size 22)]
+            [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout
+    (layout-text shaper "אבג דהו זחט" #:width 260
+                 #:direction 'rtl #:align 'start))
+  (draw-text-layout (surface-canvas surface) layout 20 18 paint))
+]
+@reference-figure["layout-rtl-stage8.png"
+                  "A Hebrew right-to-left line uses start alignment at the right side of its layout box."]
+
+@racketblock[
+(with-skia ([surface (make-surface 360 90 #:background 'white)]
+            [font (make-font #:size 18)]
+            [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout
+    (layout-text shaper "Wrapping is disabled for this long single line."
+                 #:width #f))
+  (draw-text-layout (surface-canvas surface) layout 10 20 paint))
+]
+@reference-figure["layout-nowrap-stage8.png"
+                  "A long sentence stays on one line because wrapping is disabled with a false width."]
 }
 
 @defproc[(draw-text-layout [canvas canvas?] [layout text-layout?] [x real?] [y real?] [paint
@@ -463,111 +490,3 @@ is used. A false result is not itself proof of complete glyph coverage.
 ]
 @reference-figure["layout-line-height.png"
                   "The same wrapped paragraph shown with tight blue line spacing and looser orange line spacing."]
-
-@section{Further Visual Examples}
-
-These examples use the same short paragraphs to make alignment, wrapping, and
-direction choices directly comparable.
-
-@racketblock[
-(with-skia ([surface (make-surface 300 120 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper "One two three four five six." #:width 260 #:align 'left))
-  (draw-text-layout (surface-canvas surface) layout 20 16 paint))
-]
-@reference-figure["layout-left-stage8.png"
-                  "A short wrapped paragraph is aligned to the left edge of its 260-unit layout box."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 120 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper "One two three four five six." #:width 260 #:align 'right))
-  (draw-text-layout (surface-canvas surface) layout 20 16 paint))
-]
-@reference-figure["layout-right-stage8.png"
-                  "The same wrapped paragraph is aligned to the right edge of its layout box."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 120 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper "One two three four five six." #:width 260 #:align 'center))
-  (draw-text-layout (surface-canvas surface) layout 20 16 paint))
-]
-@reference-figure["layout-center-stage8b.png"
-                  "The same wrapped paragraph is centered line by line within its layout box."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 130 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper
-                 "One two three four five six seven eight nine."
-                 #:width 280 #:align 'justify))
-  (draw-text-layout (surface-canvas surface) layout 20 16 paint))
-]
-@reference-figure["layout-justify-stage8.png"
-                  "A multi-line paragraph uses justification so nonfinal lines expand toward both sides of the layout box."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 130 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper
-                 "One two three four five six seven eight nine."
-                 #:width 280 #:align 'justify-all))
-  (draw-text-layout (surface-canvas surface) layout 20 16 paint))
-]
-@reference-figure["layout-justify-all-stage8.png"
-                  "Justify-all expands the paragraph's final line as well as its earlier lines."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 100 #:background 'white)]
-            [font (make-font #:size 22)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper "אבג דהו זחט" #:width 260
-                 #:direction 'rtl #:align 'start))
-  (draw-text-layout (surface-canvas surface) layout 20 18 paint))
-]
-@reference-figure["layout-rtl-stage8.png"
-                  "A Hebrew right-to-left line uses start alignment at the right side of its layout box."]
-
-@racketblock[
-(with-skia ([surface (make-surface 360 90 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper "Wrapping is disabled for this long single line."
-                 #:width #f))
-  (draw-text-layout (surface-canvas surface) layout 10 20 paint))
-]
-@reference-figure["layout-nowrap-stage8.png"
-                  "A long sentence stays on one line because wrapping is disabled with a false width."]
-
-@racketblock[
-(with-skia ([surface (make-surface 260 170 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper "A narrow box produces many short wrapped lines."
-                 #:width 105 #:line-height 24))
-  (draw-text-layout (surface-canvas surface) layout 20 14 paint))
-]
-@reference-figure["layout-narrow-stage8.png"
-                  "A narrow 105-unit layout box wraps a sentence into many short lines."]

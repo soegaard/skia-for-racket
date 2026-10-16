@@ -160,6 +160,18 @@ explicitly lowered marker geometry.
 Draws a point using the paint's stroke width and cap. A round cap gives a
 round mark; the other caps give a square mark. A zero stroke width uses native
 hairline coverage. Paint style does not turn the point into a filled path.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)]
+            [round (make-paint #:color "#326DE6" #:stroke-width 18 #:cap 'round)]
+            [square (make-paint #:color "#E94F37" #:stroke-width 18 #:cap 'square)])
+  (for ([x '(25 60 95 130 165 200)])
+    (draw-point (surface-canvas surface) x 32 round)
+    (draw-point (surface-canvas surface) x 70 square)))
+]
+@reference-figure["point-caps-stage8.png"
+                  "A row of blue round points sits above a row of red square points at the same positions."]
 }
 
 @defproc[(draw-points [canvas canvas?]
@@ -228,6 +240,16 @@ A sweep of at least a full turn in magnitude draws the oval.
 ]
 @reference-figure["arc-chord-stage9.png"
                   "A filled blue arc is closed by a straight chord because use-center? is false."]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke
+                               #:stroke-width 6 #:cap 'round)])
+  (draw-arc (surface-canvas surface) 30 15 140 70 20 230 paint))
+]
+@reference-figure["arc-open-stage8.png"
+                  "A thick blue open oval arc sweeps clockwise across most of an ellipse without connecting to its center."]
 }
 
 @section{Rounded-Rectangle Values}
@@ -309,87 +331,7 @@ geometry away; the point outside the clip remains white.
 ]
 @reference-figure["draw-color-clipped-stage9.png"
                   "A source-over blue color fills only a circular device clip on an orange background."]
-}
 
-@section{Further Visual Examples}
-
-These comparisons isolate stroke geometry and the remaining primitive options.
-
-@racketblock[
-(with-skia ([surface (make-surface 220 110 #:background 'white)])
-  (for ([cap '(butt round square)]
-        [y '(25 55 85)]
-        [color '("#326DE6" "#E94F37" "#EFA02B")])
-    (with-skia ([paint (make-paint #:color color #:style 'stroke
-                                   #:stroke-width 14 #:cap cap)])
-      (draw-line (surface-canvas surface) 45 y 175 y paint))))
-]
-@reference-figure["line-caps-stage8.png"
-                  "Three thick horizontal strokes compare butt, round, and square caps from top to bottom."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 120 #:background 'white)])
-  (for ([join '(miter round bevel)]
-        [x '(45 120 195)]
-        [color '("#326DE6" "#E94F37" "#EFA02B")])
-    (with-skia ([paint (make-paint #:color color #:style 'stroke
-                                   #:stroke-width 12 #:join join)])
-      (draw-polygon (surface-canvas surface)
-                    `((,(- x 28) 90) (,x 28) (,(+ x 28) 90))
-                    paint #:closed? #f))))
-]
-@reference-figure["line-joins-stage8.png"
-                  "Three V-shaped strokes compare miter, round, and bevel joins from left to right."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)]
-            [round (make-paint #:color "#326DE6" #:stroke-width 18 #:cap 'round)]
-            [square (make-paint #:color "#E94F37" #:stroke-width 18 #:cap 'square)])
-  (for ([x '(25 60 95 130 165 200)])
-    (draw-point (surface-canvas surface) x 32 round)
-    (draw-point (surface-canvas surface) x 70 square)))
-]
-@reference-figure["point-caps-stage8.png"
-                  "A row of blue round points sits above a row of red square points at the same positions."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6" #:style 'stroke
-                               #:stroke-width 6 #:cap 'round)])
-  (draw-arc (surface-canvas surface) 30 15 140 70 20 230 paint))
-]
-@reference-figure["arc-open-stage8.png"
-                  "A thick blue open oval arc sweeps clockwise across most of an ellipse without connecting to its center."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 110 #:background 'white)]
-            [blue (make-paint #:color "#326DE6")]
-            [orange (make-paint #:color "#EFA02B")])
-  (draw-arc (surface-canvas surface) 20 15 80 80 -50 120 blue #:use-center? #t)
-  (draw-arc (surface-canvas surface) 120 15 80 80 40 220 orange #:use-center? #t))
-]
-@reference-figure["arc-wedges-stage8.png"
-                  "Two filled arc wedges use their ellipse centers, showing different start angles and sweep sizes."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)]
-            [blue (make-paint #:color "#326DE6")]
-            [orange (make-paint #:color "#EFA02B")])
-  (draw-circle (surface-canvas surface) 60 50 30 blue)
-  (draw-oval (surface-canvas surface) 125 22 75 56 orange))
-]
-@reference-figure["circle-oval-stage8.png"
-                  "A blue circle is shown beside a wider orange oval inscribed in a rectangular bound."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 110 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (draw-rounded-rect (surface-canvas surface) 10 25 65 60 0 0 paint)
-  (draw-rounded-rect (surface-canvas surface) 88 25 65 60 10 10 paint)
-  (draw-rounded-rect (surface-canvas surface) 166 25 65 60 28 28 paint))
-]
-@reference-figure["rounded-rect-radii-stage8.png"
-                  "Three blue rectangles progress from square corners through modest rounding to strongly rounded corners."]
 
 @racketblock[
 (with-skia ([surface (make-surface 240 100 #:background "#EFA02B")])
@@ -402,3 +344,4 @@ These comparisons isolate stroke geometry and the remaining primitive options.
 ]
 @reference-figure["draw-color-blends-stage8.png"
                   "Three blue-over-orange panels compare multiply, screen, and difference blending through draw-color."]
+}

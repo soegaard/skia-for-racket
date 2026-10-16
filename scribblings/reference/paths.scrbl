@@ -63,6 +63,33 @@ can create a winding-rule hole; an even-odd hole does not depend on direction.
 (with-skia ([path (make-path '((move 0 0) (line 40 0) (line 20 30) (close)))])
   (path-contains? path 20 10))
 ]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 110 #:background 'white)]
+            [path (make-path '((move 20 85)
+                               (rline 35 -55)
+                               (rline 35 55)
+                               (rline 35 -55)
+                               (rline 35 55)))]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke
+                               #:stroke-width 5 #:join 'round)])
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["relative-path-stage8.png"
+                  "A blue zigzag built entirely from relative line commands climbs and descends across the surface."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 120 #:background 'white)]
+            [quad (make-path '((move 15 95) (quad 60 10 110 95)))]
+            [cubic (make-path '((move 130 95) (cubic 145 10 210 10 225 95)))]
+            [blue (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [orange (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 5)])
+  (draw-path (surface-canvas surface) quad blue)
+  (draw-path (surface-canvas surface) cubic orange))
+]
+@reference-figure["quad-cubic-stage8.png"
+                  "A blue quadratic arch and an orange cubic arch show the different curve shapes side by side."]
 }
 
 @defproc[(path-copy [path skia-path?]) skia-path?]{
@@ -345,6 +372,20 @@ Parses SVG path-data syntax into an owned path. The string is the contents of a
 path's @tt{d} attribute, not an entire SVG document. Embedded NUL characters and
 invalid path syntax raise exceptions. The supplied fill rule is independent
 of the command string.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)]
+            [path (svg-path->path
+                   "M20 38 C20 12 55 12 55 38 C55 12 90 12 90 38 C90 65 55 88 55 88 C55 88 20 65 20 38 Z")]
+            [paint (make-paint #:color "#E94F37")])
+  (with-canvas-state (surface-canvas surface)
+    (canvas-translate! (surface-canvas surface) 45 5)
+    (canvas-scale! (surface-canvas surface) 1.25 1.15)
+    (draw-path (surface-canvas surface) path paint)))
+]
+@reference-figure["svg-path-stage8.png"
+                  "A red heart-like filled shape parsed directly from SVG path-data syntax."]
 }
 
 @defproc[(path->svg-path [path skia-path?]) string?]{
@@ -485,17 +526,56 @@ Returns @racket[(path-op first second 'xor)].
 }
 @defproc[(path-reverse-difference [first skia-path?] [second skia-path?]) skia-path?]{
 Returns @racket[(path-op first second 'reverse-difference)].
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)]
+            [a (make-path)] [b (make-path)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! a 65 55 38)
+  (path-add-circle! b 108 55 31)
+  (with-skia ([result (path-reverse-difference a b)])
+    (draw-path (surface-canvas surface) result paint)))
+]
+@reference-figure["reverse-difference-stage8.png"
+                  "Reverse difference keeps the portion of the second circle that lies outside the first, producing a blue crescent."]
 }
 
 @defproc[(path-simplify [path skia-path?]) skia-path?]{
 Returns a path for the same filled region with overlaps and self-intersections
 resolved by Skia. It is not a point-count minimizer or a command-preserving copy.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 110 #:background 'white)]
+            [path (make-path '((move 20 90) (line 100 15)
+                               (line 180 90) (line 40 45)
+                               (line 160 45) (close)))]
+            [paint (make-paint #:color "#326DE6")])
+  (with-skia ([simple (path-simplify path)])
+    (draw-path (surface-canvas surface) simple paint)))
+]
+@reference-figure["simplify-path-stage8.png"
+                  "A self-intersecting star-like contour is resolved into its filled blue region by path simplification."]
 }
 
 @defproc[(path-as-winding [path skia-path?]) skia-path?]{
 Returns a winding-rule path representing the input's filled region. Unlike
 merely setting the fill rule, this operation can change contour directions or
 geometry to preserve the represented region. Failure raises an exception.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 110 #:background 'white)]
+            [path (make-path #:fill-rule 'even-odd)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! path 100 55 43)
+  (path-add-circle! path 100 55 20)
+  (with-skia ([winding (path-as-winding path)])
+    (draw-path (surface-canvas surface) winding paint)))
+]
+@reference-figure["as-winding-stage8.png"
+                  "A winding-rule conversion preserves the white hole inside a blue even-odd ring."]
 }
 
 @section[#:tag "skia-path-measure"]{Measuring Contours}
@@ -558,6 +638,25 @@ An unavailable position, such as on a zero-length contour, returns four
             [measure (make-path-measure path)])
   (path-measure-position+tangent measure 25))
 ]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 240 120 #:background 'white)]
+            [path (make-path '((move 20 90) (cubic 70 10 170 10 220 90)))]
+            [measure (make-path-measure path)]
+            [curve (make-paint #:color "#BBBBBB" #:style 'stroke #:stroke-width 3)]
+            [mark (make-paint #:color "#326DE6")])
+  (draw-path (surface-canvas surface) path curve)
+  (define distance (/ (path-measure-length measure) 2))
+  (define-values (x y tx ty)
+    (path-measure-position+tangent measure distance))
+  (draw-circle (surface-canvas surface) x y 6 mark)
+  (draw-line (surface-canvas surface) x y
+             (+ x (* 30 tx)) (+ y (* 30 ty))
+             (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 3)))
+]
+@reference-figure["measure-tangent-stage8.png"
+                  "A blue point marks the halfway position on a pale cubic curve, with a short blue line showing its tangent direction."]
 }
 
 @defproc[(path-measure-segment [measure path-measure?]
@@ -976,112 +1075,3 @@ These examples compare curve kinds, path transforms, measurement, and Boolean op
 ]
 @reference-figure["path-xor.png"
                   "Two blue crescent regions remain after exclusive-or removes the circles' overlap."]
-
-@section{Further Visual Examples}
-
-These examples emphasize alternate construction forms and additional path
-operations.
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)]
-            [path (make-path '((move 20 85)
-                               (rline 35 -55)
-                               (rline 35 55)
-                               (rline 35 -55)
-                               (rline 35 55)))]
-            [paint (make-paint #:color "#326DE6" #:style 'stroke
-                               #:stroke-width 5 #:join 'round)])
-  (draw-path (surface-canvas surface) path paint))
-]
-@reference-figure["relative-path-stage8.png"
-                  "A blue zigzag built entirely from relative line commands climbs and descends across the surface."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 120 #:background 'white)]
-            [quad (make-path '((move 15 95) (quad 60 10 110 95)))]
-            [cubic (make-path '((move 130 95) (cubic 145 10 210 10 225 95)))]
-            [blue (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
-            [orange (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 5)])
-  (draw-path (surface-canvas surface) quad blue)
-  (draw-path (surface-canvas surface) cubic orange))
-]
-@reference-figure["quad-cubic-stage8.png"
-                  "A blue quadratic arch and an orange cubic arch show the different curve shapes side by side."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 110 #:background 'white)]
-            [path (make-path)]
-            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)])
-  (path-add-oval! path 15 22 90 65)
-  (path-add-rounded-rect! path 135 22 90 65 18 18)
-  (draw-path (surface-canvas surface) path paint))
-]
-@reference-figure["path-oval-rrect-stage8.png"
-                  "One blue path contains an oval contour and a rounded-rectangle contour drawn side by side."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 110 #:background 'white)]
-            [a (make-path)] [b (make-path)]
-            [paint (make-paint #:color "#326DE6")])
-  (path-add-circle! a 65 55 38)
-  (path-add-circle! b 108 55 31)
-  (with-skia ([result (path-reverse-difference a b)])
-    (draw-path (surface-canvas surface) result paint)))
-]
-@reference-figure["reverse-difference-stage8.png"
-                  "Reverse difference keeps the portion of the second circle that lies outside the first, producing a blue crescent."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)]
-            [path (make-path '((move 20 90) (line 100 15)
-                               (line 180 90) (line 40 45)
-                               (line 160 45) (close)))]
-            [paint (make-paint #:color "#326DE6")])
-  (with-skia ([simple (path-simplify path)])
-    (draw-path (surface-canvas surface) simple paint)))
-]
-@reference-figure["simplify-path-stage8.png"
-                  "A self-intersecting star-like contour is resolved into its filled blue region by path simplification."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 110 #:background 'white)]
-            [path (make-path #:fill-rule 'even-odd)]
-            [paint (make-paint #:color "#326DE6")])
-  (path-add-circle! path 100 55 43)
-  (path-add-circle! path 100 55 20)
-  (with-skia ([winding (path-as-winding path)])
-    (draw-path (surface-canvas surface) winding paint)))
-]
-@reference-figure["as-winding-stage8.png"
-                  "A winding-rule conversion preserves the white hole inside a blue even-odd ring."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 120 #:background 'white)]
-            [path (make-path '((move 20 90) (cubic 70 10 170 10 220 90)))]
-            [measure (make-path-measure path)]
-            [curve (make-paint #:color "#BBBBBB" #:style 'stroke #:stroke-width 3)]
-            [mark (make-paint #:color "#326DE6")])
-  (draw-path (surface-canvas surface) path curve)
-  (define distance (/ (path-measure-length measure) 2))
-  (define-values (x y tx ty)
-    (path-measure-position+tangent measure distance))
-  (draw-circle (surface-canvas surface) x y 6 mark)
-  (draw-line (surface-canvas surface) x y
-             (+ x (* 30 tx)) (+ y (* 30 ty))
-             (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 3)))
-]
-@reference-figure["measure-tangent-stage8.png"
-                  "A blue point marks the halfway position on a pale cubic curve, with a short blue line showing its tangent direction."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 120 #:background 'white)]
-            [path (svg-path->path
-                   "M20 38 C20 12 55 12 55 38 C55 12 90 12 90 38 C90 65 55 88 55 88 C55 88 20 65 20 38 Z")]
-            [paint (make-paint #:color "#E94F37")])
-  (with-canvas-state (surface-canvas surface)
-    (canvas-translate! (surface-canvas surface) 45 5)
-    (canvas-scale! (surface-canvas surface) 1.25 1.15)
-    (draw-path (surface-canvas surface) path paint)))
-]
-@reference-figure["svg-path-stage8.png"
-                  "A red heart-like filled shape parsed directly from SVG path-data syntax."]
