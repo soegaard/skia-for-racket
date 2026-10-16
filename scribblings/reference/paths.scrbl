@@ -80,6 +80,22 @@ Returns the path's fill rule. The operation requires an open path.
 Changes how the path's contours combine when filled or used as a clip. The
 stored points and verbs are unchanged. This interface does not accept inverse
 fill-rule symbols.
+
+@racketblock[
+(with-skia ([even-odd (make-path #:fill-rule 'even-odd)]
+            [winding (make-path #:fill-rule 'winding)]
+            [paint (make-paint #:color "#326DE6")]
+            [surface (make-surface 190 90 #:background 'white)])
+  (for ([path (in-list (list even-odd winding))]
+        [x (in-list '(48 142))])
+    (path-add-circle! path x 45 34)
+    (path-add-circle! path x 45 15))
+  (draw-path (surface-canvas surface) even-odd paint)
+  (draw-path (surface-canvas surface) winding paint))
+]
+
+@reference-figure["fill-rules.png"
+                  "Two pairs of concentric blue circles: even-odd filling leaves a white center hole, while winding filling keeps the center blue."]
 }
 
 @defproc[(path-reset! [path skia-path?]) void?]{
@@ -225,6 +241,21 @@ Appends the source's contours with their traversal direction reversed. It
 reverses segment order and curve controls, not just a list of endpoints. The
 destination retains its fill rule and the source remains unchanged.
 }
+
+@racketblock[
+(with-skia ([path
+             (make-path
+              '((move 15 75)
+                (cubic 45 10 135 10 165 75)))]
+            [paint (make-paint #:color "#326DE6"
+                               #:style 'stroke
+                               #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (draw-path (surface-canvas surface) path paint))
+]
+
+@reference-figure["bezier-path.png"
+                  "A thick blue cubic Bezier curve arching upward between two low endpoints."]
 
 @section[#:tag "skia-path-geometry"]{Geometry and Bounds}
 

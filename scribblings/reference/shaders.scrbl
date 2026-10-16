@@ -84,6 +84,16 @@ Returns a gradient centered at coordinates @racket[x] and @racket[y]. The
 parameter is distance from the center divided by @racket[radius]. The radius
 must be a positive drawing scalar. Colors, positions, and tiling follow
 @secref["skia-tile-modes"].
+
+@racketblock[
+(with-skia ([surface (make-surface 120 80)]
+            [shader (make-radial-gradient-shader 60 40 50 '(white "#326DE6"))]
+            [paint (make-paint #:shader shader)])
+  (draw-rect (surface-canvas surface) 0 0 120 80 paint))
+]
+
+@reference-figure["radial-gradient.png"
+                  "A radial gradient changing from white at the center to blue toward the edges."]
 }
 
 @defproc[(make-sweep-gradient-shader [x real?] [y real?] [colors (or/c list? vector?)]
@@ -97,6 +107,18 @@ are degrees, with zero on the positive x axis and increasing angles clockwise
 in downward-y coordinates. Start and end angles map to parameters zero and one;
 the start must be less than the end. Color stops and tiling follow
 @secref["skia-tile-modes"]. This is an angular color field, not a stroked arc.
+
+@racketblock[
+(with-skia ([surface (make-surface 120 80)]
+            [shader
+             (make-sweep-gradient-shader
+              60 40 '(red yellow green cyan blue magenta red))]
+            [paint (make-paint #:shader shader)])
+  (draw-rect (surface-canvas surface) 0 0 120 80 paint))
+]
+
+@reference-figure["sweep-gradient.png"
+                  "A sweep gradient rotating through red, yellow, green, cyan, blue, and magenta around the center."]
 }
 
 @defproc[(make-two-point-conical-gradient-shader

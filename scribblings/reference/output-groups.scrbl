@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require
+@(require "support/figures.rkt"
           (for-label racket/base racket/contract skia skia/output-groups))
 
 @title[#:tag "skia-output-groups"]{Bounded Output Groups}
@@ -79,6 +79,9 @@ raises @racket[exn:fail:output-group?] with its report. The optional label is co
   (list calls (output-group-report-strategy report)
         (output-group-report-pixel-size report)))
 ]
+
+@reference-figure["output-group.png"
+                  "A red bounded output group rasterized inside a larger white surface."]
 
 The result contains 1, @racket['raster], and @racket[#(20 16)]. Padding is included before scaling.
 

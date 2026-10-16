@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia))
 
 @title[#:tag "skia-text-layout"]{Text Layout}
 
@@ -135,6 +136,9 @@ the underlying shaped-run drawing operations.
   (draw-text-layout (surface-canvas surface) layout 20 16 paint)
   (save-png surface "text-layout.png" #:exists 'replace))
 ]
+
+@reference-figure["text-layout.png"
+                  "A short black paragraph wrapped into several lines inside a 220-unit layout width."]
 }
 
 @defproc[(text-layout? [v any/c]) boolean?]{
@@ -298,6 +302,20 @@ Fallback fonts and shapers are created as needed during this call and released
 on return or exceptional exit. Failure to recover a recorded fallback family
 raises an exception. Drawing is not transactional: earlier runs may already
 have changed the canvas before a later failure.
+
+@racketblock[
+(with-skia ([surface (make-surface 300 90 #:background 'white)]
+            [font (make-font #:size 22)]
+            [shaper (make-shaper font)]
+            [manager (make-font-manager)]
+            [paint (make-paint #:color 'black)])
+  (define layout
+    (layout-mixed-text shaper manager "ABC אבג 123" #:width 260))
+  (draw-mixed-text-layout (surface-canvas surface) layout 20 20 paint))
+]
+
+@reference-figure["mixed-text-layout.png"
+                  "A single mixed-direction line containing Latin ABC, Hebrew letters, and the digits 123 in their resolved visual order."]
 }
 
 @defproc[(mixed-text-layout? [v any/c]) boolean?]{

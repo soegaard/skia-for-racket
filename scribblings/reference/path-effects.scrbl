@@ -59,6 +59,22 @@ Returns an effect that replaces sharp path corners with rounded transitions
 of the requested radius. The input path is unchanged. The radius is measured
 in local drawing units and must remain positive at native precision; native
 rejection raises an exception.
+
+@racketblock[
+(with-skia ([effect (make-corner-path-effect 12)]
+            [paint (make-paint #:color "#326DE6"
+                               #:style 'stroke
+                               #:stroke-width 5
+                               #:path-effect effect)]
+            [surface (make-surface 160 90 #:background 'white)])
+  (draw-polygon (surface-canvas surface)
+                '((15 70) (55 20) (95 70) (145 20))
+                paint
+                #:closed? #f))
+]
+
+@reference-figure["corner-path-effect.png"
+                  "A thick blue polyline whose sharp corners are replaced by rounded transitions."]
 }
 
 @defproc[(make-discrete-path-effect
@@ -154,6 +170,16 @@ When @racket[respect-ctm?] is true, the current canvas transform affects the
 blur size; otherwise the blur size is interpreted in device space.
 This filter blurs shape coverage, not arbitrary neighboring image colors.
 For that operation use @racket[make-blur-image-filter].
+
+@racketblock[
+(with-skia ([mask (make-blur-mask-filter 8)]
+            [paint (make-paint #:color "#326DE6" #:mask-filter mask)]
+            [surface (make-surface 160 90 #:background 'white)])
+  (draw-circle (surface-canvas surface) 80 45 24 paint))
+]
+
+@reference-figure["blur-mask-filter.png"
+                  "A blue circle with softly blurred coverage around its edge."]
 }
 
 @(declare-exporting skia skia/effects #:use-sources (skia/effects))

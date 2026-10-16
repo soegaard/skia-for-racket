@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/class (only-in racket/draw bitmap%) skia/bitmap)
+@(require "support/figures.rkt"
+          (for-label racket/class (only-in racket/draw bitmap%) skia/bitmap)
           (for-label racket/base racket/contract skia skia/image-operations))
 
 @title[#:tag "skia-image-operations"]{CPU Image Operations}
@@ -176,6 +177,9 @@ is independent of subsequent closure of the input wrappers.
                     (vector-ref offset 0) (vector-ref offset 1))
         (surface-pixel destination 3 2)))))
 ]
+
+@reference-figure["image-filter-placement.png"
+                  "A red filtered image placed down and to the right according to the offset returned by image-apply-filter."]
 
 Only the reported source rectangle is drawn, at its reported offset.
 

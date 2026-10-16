@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/geometry-primitives))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/geometry-primitives))
 
 @title[#:tag "skia-structured-drawing"]{Meshes, Patches, Image Grids, and Atlases}
 
@@ -62,6 +63,9 @@ be divisible by three. An explicitly empty index array is not treated as omitted
   (draw-vertices (surface-canvas surface) mesh paint)
   (vertices-count mesh))
 ]
+
+@reference-figure["mesh-triangle.png"
+                  "A triangle filled by smoothly interpolated red, green, and blue vertex colors."]
 
 The mesh contains three vertices. Its native arrays do not borrow the input lists.
 }
@@ -168,6 +172,22 @@ Tessellates and draws the patch with native Skia. The blend-mode argument
 combines patch colors with paint shading, independently of destination blending
 selected by the paint. Temporary arrays are retained only for the synchronous
 call; the detached patch remains reusable afterward.
+
+@racketblock[
+(define patch
+  (make-cubic-patch
+   '((20 20) (60 0) (120 0) (160 20)
+     (180 50) (180 70) (160 100)
+     (120 120) (60 120) (20 100)
+     (0 70) (0 50))
+   #:colors '(red blue green yellow)))
+(with-skia ([surface (make-surface 180 120 #:background 'white)]
+            [paint (make-paint #:color 'white)])
+  (draw-patch (surface-canvas surface) patch paint))
+]
+
+@reference-figure["cubic-patch.png"
+                  "A curved four-sided patch with colors interpolated from red, blue, green, and yellow corners."]
 }
 
 @section{Nine-Patch and Lattice Images}
@@ -252,6 +272,20 @@ must lie wholly inside the image. Its edges delimit the stretchable center
 spans; destination coordinates use current local canvas coordinates. The
 optional paint modifies native image drawing. For explicit rectangle-based
 lowering, use @racket[draw-image-nine/portable].
+
+@racketblock[
+(with-skia ([source (make-surface 30 30 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-rect (surface-canvas source) 0 0 30 8 blue)
+  (draw-rect (surface-canvas source) 0 22 30 8 blue)
+  (with-skia ([image (surface-snapshot source)]
+              [target (make-surface 180 110 #:background 'white)])
+    (draw-image-nine (surface-canvas target) image
+                     '(8 8 14 14) 15 10 150 90)))
+]
+
+@reference-figure["nine-patch.png"
+                  "A stretched nine-patch image whose blue top and bottom borders stay narrow while the yellow center expands."]
 }
 
 @defproc[(draw-image-lattice [canvas canvas?]
@@ -301,4 +335,22 @@ A supplied cull rectangle is a local native rejection hint, not a clip. The
 budget accounts for the native expansion to six vertices per sprite. An empty
 batch draws nothing but still validates the canvas, image, paint, and options.
 For the more restricted portable lowering, use @racket[draw-atlas/portable].
+
+@racketblock[
+(with-skia ([source (make-surface 32 16 #:background 'red)]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-rect (surface-canvas source) 16 0 16 16 blue)
+  (with-skia ([image (surface-snapshot source)]
+              [target (make-surface 180 90 #:background 'white)])
+    (draw-atlas
+     (surface-canvas target) image
+     (list (make-atlas-transform 20 20 #:scale 2)
+           (make-atlas-transform 90 15 #:scale 3)
+           (make-atlas-transform 145 55 #:scale 1.5 #:rotation 25))
+     '((0 0 16 16) (16 0 16 16) (0 0 16 16))
+     #:sampling 'nearest)))
+]
+
+@reference-figure["atlas-batch.png"
+                  "Three atlas sprites drawn from red and blue source tiles at different scales, with the final red sprite rotated."]
 }

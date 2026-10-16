@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/drawables))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/drawables))
 
 @title[#:tag "skia-drawables"]{Recorded Drawables}
 
@@ -49,16 +50,22 @@ allocating that raster image.
 @racketblock[
 (define calls 0)
 (with-skia ([drawable
-             (call-with-drawable 16 16
+             (call-with-drawable 40 30
                (lambda (canvas)
                  (set! calls (add1 calls))
                  (with-skia ([ink (make-paint #:color 'red)])
-                   (draw-rect canvas 2 2 8 8 ink))))]
-            [surface (make-surface 16 16)])
-  (draw-drawable (surface-canvas surface) drawable)
-  (draw-drawable (surface-canvas surface) drawable #:mode 'immediate)
+                   (draw-rect canvas 5 5 30 20 ink))))]
+            [surface (make-surface 120 50 #:background 'white)])
+  (draw-drawable (surface-canvas surface) drawable
+                 #:matrix (matrix-translate 5 10))
+  (draw-drawable (surface-canvas surface) drawable
+                 #:matrix (matrix-translate 65 10)
+                 #:mode 'immediate)
   calls)
 ]
+
+@reference-figure["drawable.png"
+                  "Two red rectangles replayed from one recorded drawable, once with retained playback and once with immediate playback."]
 
 The callback count is 1 despite two playbacks.
 }

@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require scribble/eval
+@(require "support/figures.rkt"
+          scribble/eval
           (for-label racket/base racket/contract skia skia/portable-drawing))
 
 @(define grid-eval (make-base-eval))
@@ -38,6 +39,22 @@ The complete batch, including computed marker bounds, is validated before drawin
 Empty input still requires a live canvas and paint. This avoids the isolated-point
 operation used by @racket[draw-points], but does not make arbitrary attached
 paint effects portable.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 90 #:background 'white)]
+            [blue (make-paint #:color "#326DE6")]
+            [orange (make-paint #:color "#EFA02B")])
+  (draw-markers (surface-canvas surface)
+                '((25 25) (55 45) (85 25)) 18 blue #:shape 'circle)
+  (draw-markers (surface-canvas surface)
+                '((115 25) (145 45) (165 25)) 16 orange #:shape 'square))
+]
+
+@reference-figure["portable-atlas.png"
+                  "Two copies of one red atlas tile, with the second copy drawn at twice the scale."]
+
+@reference-figure["portable-markers.png"
+                  "Three blue circular markers followed by three orange square markers."]
 }
 
 @section{Detached Grid Plans}

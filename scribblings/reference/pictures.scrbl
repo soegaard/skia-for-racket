@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/pictures))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/pictures))
 
 @title[#:tag "skia-pictures"]{Pictures}
 
@@ -97,6 +98,9 @@ check, even though it records commands rather than allocating a raster page.
   (draw-picture (surface-canvas surface) picture #:x 10 #:y 10)
   (save-png surface "recording.png" #:exists 'replace))
 ]
+
+@reference-figure["recording.png"
+                  "A recorded blue rectangle replayed onto a larger white surface with a margin around it."]
 
 The paint has already been closed when the picture is replayed.
 }

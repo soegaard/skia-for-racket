@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/text-blobs))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/text-blobs))
 
 @title[#:tag "skia-text-blobs"]{Text Blobs}
 
@@ -67,6 +68,19 @@ Draws the blob translated by the drawing scalars @racket[x] and @racket[y].
 The canvas transform, clip, and supplied paint apply. Reusing a blob does not
 reshape it or consult the original font wrapper. The operation leaves the blob
 open. Outline output uses @racket[text-blob->path].
+
+@racketblock[
+(with-skia ([font (make-font #:size 30)]
+            [blob
+             (make-positioned-text-blob
+              font (font-text->glyphs font "AB") '((0 0) (55 0)))]
+            [paint (make-paint #:color 'black)]
+            [surface (make-surface 180 80 #:background 'white)])
+  (draw-text-blob (surface-canvas surface) blob 20 55 paint))
+]
+
+@reference-figure["text-blob.png"
+                  "Two black glyphs from a positioned text blob, with extra horizontal spacing between A and B."]
 }
 
 @defproc[(text-blob->path [blob text-blob?]) skia-path?]{

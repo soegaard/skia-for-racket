@@ -93,6 +93,23 @@ The width and height are diameters, not radii. Both extents and the computed
 right and bottom coordinates follow the same restrictions as @racket[draw-rect].
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)]
+            [blue (make-paint #:color "#326DE6")]
+            [orange (make-paint #:color "#EFA02B")]
+            [stroke (make-paint #:color "#20344E"
+                                #:style 'stroke
+                                #:stroke-width 4)])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 15 20 45 35 blue)
+  (draw-circle canvas 100 38 22 orange)
+  (draw-oval canvas 140 18 65 40 stroke)
+  (draw-rounded-rect canvas 35 75 150 30 10 10 blue))
+]
+
+@reference-figure["primitive-gallery.png"
+                  "A small gallery showing a blue rectangle, orange circle, outlined oval, and blue rounded rectangle."]
+
 @defproc[(draw-path [canvas canvas?] [path skia-path?] [paint paint?]) void?]{
 Draws the contours of @racket[path] using @racket[paint]. Filling uses the path's
 fill rule. Stroking follows its contours, with the paint's width, cap, join, and

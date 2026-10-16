@@ -65,6 +65,16 @@ extends edge samples and repeat tiles them. Mirror is rejected by this API.
 Non-decal edge behavior should be used with an explicit crop; the native
 legacy no-crop path does not provide the same crop-relative tiling guarantee.
 The input and crop follow @secref["skia-filter-rectangles"].
+
+@racketblock[
+(with-skia ([filter (make-blur-image-filter 6 6)]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 160 90 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 35 25 90 40 8 8 paint))
+]
+
+@reference-figure["blur-image-filter.png"
+                  "A blue rounded rectangle blurred outward in both axes."]
 }
 
 @defproc[(make-drop-shadow-image-filter
@@ -82,6 +92,18 @@ The shadow is derived from input alpha, blurred by the two sigmas and offset
 by @racket[dx] and @racket[dy]. Both sigmas may be zero for an unblurred shadow.
 Offsets are local-coordinate displacements, not device-pixel offsets.
 The crop can remove part of the shadow as well as the source.
+
+@racketblock[
+(with-skia ([filter
+             (make-drop-shadow-image-filter 8 8 5 5
+                                            (rgba 0 0 0 140))]
+            [paint (make-paint #:color "#EFA02B" #:image-filter filter)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 40 25 90 45 8 8 paint))
+]
+
+@reference-figure["drop-shadow-filter.png"
+                  "An orange rounded rectangle with a soft dark shadow displaced down and to the right."]
 }
 
 @defproc[(make-drop-shadow-only-image-filter
