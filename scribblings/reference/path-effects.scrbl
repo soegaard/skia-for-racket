@@ -363,3 +363,126 @@ styles while keeping the source geometry simple.
 ]
 @reference-figure["blur-mask-styles-stage8.png"
                   "Four blue circles compare normal, solid, outer, and inner blur-mask styles from left to right."]
+@section{Further Visual Examples}
+
+The following examples show additional visible consequences of the drawing operations in this chapter.
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([long (make-dash-path-effect '(14 7))]
+              [short (make-dash-path-effect '(2 7))]
+              [p1 (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5
+                              #:cap 'round #:path-effect long)]
+              [p2 (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5
+                              #:cap 'round #:path-effect short)])
+    (draw-line canvas 15 32 185 32 p1)
+    (draw-line canvas 15 70 185 70 p2))
+)
+]
+@reference-figure["dash-pattern-stage9.png"
+                  "Two blue dashed strokes compare a long dash pattern with a short dotted-looking pattern."]
+
+@racketblock[
+(with-skia ([surface (make-surface 200 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([a (make-dash-path-effect '(12 6) 0)]
+              [b (make-dash-path-effect '(12 6) -8)]
+              [p1 (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5
+                              #:path-effect a)]
+              [p2 (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 5
+                              #:path-effect b)])
+    (draw-line canvas 15 32 185 32 p1)
+    (draw-line canvas 15 70 185 70 p2))
+)
+]
+@reference-figure["dash-negative-phase-stage9.png"
+                  "Two identical dash patterns use phase zero and a negative phase, visibly shifting where the dashes begin."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([small (make-corner-path-effect 4)]
+              [large (make-corner-path-effect 16)]
+              [p1 (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5
+                              #:path-effect small)]
+              [p2 (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 5
+                              #:path-effect large)])
+    (draw-polygon canvas '((15 42) (55 14) (95 42) (135 14) (175 42)) p1 #:closed? #f)
+    (draw-polygon canvas '((15 96) (55 68) (95 96) (135 68) (175 96)) p2 #:closed? #f))
+)
+]
+@reference-figure["corner-radius-stage9.png"
+                  "The same zigzag is drawn with small blue corner rounding above and much larger orange corner rounding below."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([path (make-path)]
+              [effect (make-trim-path-effect 0.12 0.68)]
+              [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 7
+                                 #:cap 'round #:path-effect effect)])
+    (path-add-circle! path 90 55 38)
+    (draw-path canvas path paint))
+)
+]
+@reference-figure["trim-normal-stage9.png"
+                  "A thick blue circular stroke retains only its middle interval under a normal trim path effect."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([path (make-path)]
+              [effect (make-trim-path-effect 0.12 0.68 #:mode 'inverted)]
+              [paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 7
+                                 #:cap 'round #:path-effect effect)])
+    (path-add-circle! path 90 55 38)
+    (draw-path canvas path paint))
+)
+]
+@reference-figure["trim-inverted-stage9.png"
+                  "A thick orange circular stroke retains the complement of the selected interval under inverted trimming."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([corner (make-corner-path-effect 10)]
+              [dash (make-dash-path-effect '(12 5))]
+              [effect (make-compose-path-effect dash corner)]
+              [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5
+                                 #:cap 'round #:path-effect effect)])
+    (draw-polygon canvas '((15 80) (60 20) (110 80) (160 20) (205 80))
+                  paint #:closed? #f))
+)
+]
+@reference-figure["compose-path-effects-stage9.png"
+                  "A blue zigzag is rounded first and then dashed by a composed pair of path effects."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([corner (make-corner-path-effect 10)]
+              [dash (make-dash-path-effect '(12 5))]
+              [effect (make-sum-path-effect dash corner)]
+              [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4
+                                 #:cap 'round #:path-effect effect)])
+    (draw-polygon canvas '((15 80) (60 20) (110 80) (160 20) (205 80))
+                  paint #:closed? #f))
+)
+]
+@reference-figure["sum-path-effects-stage9.png"
+                  "A blue zigzag shows the combined geometry produced by summing a dash effect with a corner effect."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([light (make-gamma-mask-filter 0.5)]
+              [dark (make-gamma-mask-filter 2.0)]
+              [p1 (make-paint #:color "#326DE6" #:mask-filter light)]
+              [p2 (make-paint #:color "#326DE6" #:mask-filter dark)])
+    (draw-circle canvas 65 50 34 p1)
+    (draw-circle canvas 155 50 34 p2))
+)
+]
+@reference-figure["gamma-mask-stage9.png"
+                  "Two blue antialiased circles compare gamma 0.5 coverage remapping on the left with gamma 2.0 on the right."]

@@ -376,3 +376,101 @@ These comparisons isolate stroke geometry and the remaining primitive options.
 ]
 @reference-figure["draw-color-blends-stage8.png"
                   "Three blue-over-orange panels compare multiply, screen, and difference blending through draw-color."]
+@section{Further Visual Examples}
+
+The following examples show additional visible consequences of the drawing operations in this chapter.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                 #:stroke-width 8 #:cap 'round)])
+    (draw-line canvas 22 78 158 22 paint))
+)
+]
+@reference-figure["draw-line-stage9.png"
+                  "A single thick blue line with rounded endpoints runs diagonally across the white surface."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                 #:stroke-width 16 #:cap 'round)])
+    (for ([point '((25 68) (58 38) (90 58) (122 28) (155 62))])
+      (draw-point canvas (car point) (cadr point) paint)))
+)
+]
+@reference-figure["draw-point-stage9.png"
+                  "Five large blue round points form a rising and falling sequence across the surface."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                 #:stroke-width 6 #:cap 'round)])
+    (draw-points canvas
+                 '((18 25) (70 75) (82 75) (134 25) (146 25) (202 75))
+                 paint #:mode 'lines))
+)
+]
+@reference-figure["draw-points-lines-stage9.png"
+                  "Three independent blue line segments are drawn from consecutive point pairs in lines mode."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                 #:stroke-width 6 #:cap 'round)])
+    (draw-points canvas '((18 78) (62 22) (108 78) (154 22) (202 78))
+                 paint #:mode 'polygon))
+)
+]
+@reference-figure["draw-points-polygon-stage9.png"
+                  "A blue open zigzag is drawn as consecutive capped segments in polygon point mode."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                 #:stroke-width 7 #:cap 'round)])
+    (draw-arc canvas 28 18 124 64 205 250 paint))
+)
+]
+@reference-figure["arc-open-stage9.png"
+                  "A thick blue open arc follows part of an ellipse without a center wedge or closing chord."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6")])
+    (draw-arc canvas 28 18 124 64 205 250 paint #:use-center? #f))
+)
+]
+@reference-figure["arc-chord-stage9.png"
+                  "A filled blue arc is closed by a straight chord because use-center? is false."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color "#326DE6")])
+    (define outer (make-rounded-rect 18 12 144 76 #:radii 20))
+    (define inner (make-rounded-rect 48 32 84 36 #:radii 10))
+    (draw-double-rounded-rect canvas outer inner paint))
+)
+]
+@reference-figure["double-rrect-stage9.png"
+                  "A blue rounded rectangular frame is formed by subtracting a smaller rounded rectangle from a larger one."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([path (make-path)]
+              [orange (make-paint #:color "#EFA02B")])
+    (draw-paint canvas orange)
+    (path-add-circle! path 90 50 36)
+    (canvas-clip-path! canvas path #:antialias? #t)
+    (draw-color canvas "#326DE6"))
+)
+]
+@reference-figure["draw-color-clipped-stage9.png"
+                  "A source-over blue color fills only a circular device clip on an orange background."]
