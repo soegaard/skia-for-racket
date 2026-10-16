@@ -176,6 +176,19 @@ paint joins do not join their endpoints. A single polygon point draws nothing.
 The submitted buffer, including the explicit segment-pair expansion for polygon
 mode, must fit the native count and @racket[current-skia-byte-limit]. Input
 coordinates are copied; later mutation does not change a recorded operation.
+
+@racketblock[
+(with-skia ([surface (make-surface 220 90 #:background 'white)]
+            [points-paint (make-paint #:color "#326DE6" #:stroke-width 8 #:cap 'round)]
+            [lines-paint (make-paint #:color "#EFA02B" #:stroke-width 4 #:cap 'round)]
+            [poly-paint (make-paint #:color "#20344E" #:stroke-width 4 #:cap 'round)])
+  (draw-points (surface-canvas surface) '((20 25) (40 45) (60 25)) points-paint #:mode 'points)
+  (draw-points (surface-canvas surface) '((85 25) (105 55) (125 25) (145 55)) lines-paint #:mode 'lines)
+  (draw-points (surface-canvas surface) '((165 55) (185 20) (205 55)) poly-paint #:mode 'polygon))
+]
+
+@reference-figure["points-modes.png"
+                  "Three groups demonstrating independent points, paired line segments, and a connected polygonal stroke."]
 }
 
 @defproc[(draw-arc [canvas canvas?]
@@ -193,6 +206,17 @@ and positive sweep clockwise in the usual y-down coordinates. A true
 @racket[use-center?] includes the center to form a wedge. Without it, a filled
 arc is closed by its chord; a stroked arc follows the native open-arc behavior.
 A sweep of at least a full turn in magnitude draws the oval.
+
+@racketblock[
+(with-skia ([surface (make-surface 190 90 #:background 'white)]
+            [stroke (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [fill (make-paint #:color "#EFA02B")])
+  (draw-arc (surface-canvas surface) 15 10 70 70 25 250 stroke)
+  (draw-arc (surface-canvas surface) 105 10 70 70 25 250 fill #:use-center? #t))
+]
+
+@reference-figure["arc-wedge.png"
+                  "A blue open arc beside an orange filled wedge made from the same oval and angular sweep."]
 }
 
 @section{Rounded-Rectangle Values}
@@ -220,6 +244,17 @@ native-normalized outer rounded shape. This is a conservative containment
 requirement, not an arbitrary Boolean subtraction. Failure raises instead of
 submitting undefined native geometry. An inner shape with zero width or height
 is ignored and the outer shape is drawn alone.
+
+@racketblock[
+(define outer (make-rounded-rect 20 15 140 70 #:radii 20))
+(define inner (make-rounded-rect 55 35 70 30 #:radii 10))
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (draw-double-rounded-rect (surface-canvas surface) outer inner paint))
+]
+
+@reference-figure["double-rounded-rect.png"
+                  "A blue rounded rectangular frame formed by subtracting a smaller rounded rectangle from a larger one."]
 }
 
 @section{Device-Clip Color}

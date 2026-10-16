@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require scribble/eval
+@(require "support/figures.rkt"
+          scribble/eval
           (for-label racket/base racket/contract skia skia/color))
 
 @(define color-eval (make-base-eval))
@@ -28,6 +29,23 @@ bytes. The six-digit form has alpha 255. An integer instead uses
 @tt{#xAARRGGBB}: alpha is its most significant byte. A supported name must be a
 symbol, not a string containing the name. Alpha zero is transparent; alpha 255
 is opaque.
+
+@racketblock[
+(with-skia ([surface (make-surface 210 70 #:background 'white)]
+            [red-paint (make-paint #:color 'red)]
+            [orange-paint (make-paint #:color 'orange)]
+            [green-paint (make-paint #:color 'green)]
+            [blue-paint (make-paint #:color "#326DE6")]
+            [purple-paint (make-paint #:color 'purple)])
+  (draw-rect (surface-canvas surface) 10 10 34 50 red-paint)
+  (draw-rect (surface-canvas surface) 49 10 34 50 orange-paint)
+  (draw-rect (surface-canvas surface) 88 10 34 50 green-paint)
+  (draw-rect (surface-canvas surface) 127 10 34 50 blue-paint)
+  (draw-rect (surface-canvas surface) 166 10 34 50 purple-paint))
+]
+
+@reference-figure["color-swatches.png"
+                  "Five solid color swatches: red, orange, named green, a hexadecimal blue, and purple."]
 
 @defproc[(color? [v any/c]) boolean?]{
 Returns @racket[#t] when @racket[v] is a supported @tech{color specification}

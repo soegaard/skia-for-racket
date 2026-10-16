@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/specialized-canvases))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/specialized-canvases))
 
 @title[#:tag "skia-specialized-canvases"]{Specialized Canvases}
 
@@ -69,6 +70,9 @@ target pixels: earlier drawing may remain in some or all targets.
 ]
 
 Both targets contain the blue rectangle and have their root canvas state restored.
+
+@reference-figure["nway-canvas.png"
+                  "One target surface from the n-way canvas example, showing a blue square near the upper-left corner."]
 }
 
 @section{Overdraw Canvases}

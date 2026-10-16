@@ -251,4 +251,21 @@ with positive extents and drawing-scalar coordinates; omitting it uses the nativ
 picture bounds. Tile modes and sampling control repeated picture sampling, not
 the geometry of a later drawing operation. Picture-shader use can rasterize the
 recording and does not guarantee vector output.
+
+@racketblock[
+(with-skia ([picture
+             (call-with-picture 36 36
+               (lambda (canvas)
+                 (with-skia ([blue (make-paint #:color "#326DE6")]
+                             [orange (make-paint #:color "#EFA02B")])
+                   (draw-rect canvas 0 0 36 36 blue)
+                   (draw-circle canvas 18 18 10 orange))))]
+            [shader (make-picture-shader picture #:tile-x 'repeat #:tile-y 'repeat)]
+            [paint (make-paint #:shader shader)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (draw-rect (surface-canvas surface) 0 0 180 100 paint))
+]
+
+@reference-figure["picture-shader.png"
+                  "A repeated picture shader tiles an orange circle on a blue square across the surface."]
 }

@@ -161,4 +161,16 @@ Returns a filter that multiplies RGB by the normalized RGB channels of
 @racket[multiply], adds those of @racket[add], and clamps the result. The alpha
 components of the two arguments are ignored; the incoming color's alpha is
 preserved. This operation does not model a spatial light source or surface normals.
+
+@racketblock[
+(with-skia ([filter (make-lighting-color-filter "#808080" "#500000")]
+            [plain (make-paint #:color "#326DE6")]
+            [filtered (make-paint #:color "#326DE6" #:color-filter filter)]
+            [surface (make-surface 180 80 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 15 18 60 44 8 8 plain)
+  (draw-rounded-rect (surface-canvas surface) 105 18 60 44 8 8 filtered))
+]
+
+@reference-figure["lighting-color-filter.png"
+                  "Two blue rounded rectangles, with the right one darkened and shifted toward red by a lighting color filter."]
 }

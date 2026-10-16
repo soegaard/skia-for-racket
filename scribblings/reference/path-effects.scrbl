@@ -86,6 +86,19 @@ The segment length controls subdivision; deviation controls displacement.
 The segment length must exceed 1/4096, not merely zero. The seed selects the
 perturbation pattern. Reusing it permits repeatable results within the same
 backend, but does not promise identical geometry across Skia versions.
+
+@racketblock[
+(with-skia ([effect (make-discrete-path-effect 12 5 7)]
+            [paint (make-paint #:color "#326DE6"
+                               #:style 'stroke
+                               #:stroke-width 4
+                               #:path-effect effect)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-line (surface-canvas surface) 15 45 165 45 paint))
+]
+
+@reference-figure["discrete-path-effect.png"
+                  "A blue horizontal stroke broken into a repeatable irregular zigzag by a discrete path effect."]
 }
 
 @defproc[(make-trim-path-effect
@@ -98,6 +111,22 @@ The arguments must satisfy @math{start < stop}. Normal mode rejects the full
 interval from 0 to 1 because it produces no native effect object. Inverted
 mode permits that interval and removes the whole path. These fractions are
 not x coordinates or individual curve parameters.
+
+@racketblock[
+(with-skia ([path (make-path)]
+            [effect (make-trim-path-effect 0.10 0.72)]
+            [paint (make-paint #:color "#326DE6"
+                               #:style 'stroke
+                               #:stroke-width 6
+                               #:cap 'round
+                               #:path-effect effect)]
+            [surface (make-surface 160 110 #:background 'white)])
+  (path-add-circle! path 80 55 38)
+  (draw-path (surface-canvas surface) path paint))
+]
+
+@reference-figure["trim-path-effect.png"
+                  "Only a portion of a blue circular stroke remains after applying a trim path effect."]
 }
 
 @defproc[(make-compose-path-effect [outer path-effect?] [inner path-effect?]) path-effect?]{
@@ -131,6 +160,21 @@ Translate mode moves each stamp without rotating it. Rotate mode aligns it
 with the path tangent. Morph mode bends the stamp to follow the path.
 The stamp geometry is copied; later mutation or closure of @racket[path]
 does not change the effect.
+
+@racketblock[
+(with-skia ([stamp (make-path '((move 0 -5) (line 10 0) (line 0 5) (close)))]
+            [line (make-path '((move 15 45) (cubic 60 10 130 80 175 45)))]
+            [effect (make-1d-path-effect stamp 18 0 #:style 'rotate)]
+            [paint (make-paint #:color "#326DE6"
+                               #:style 'stroke
+                               #:stroke-width 2
+                               #:path-effect effect)]
+            [surface (make-surface 190 90 #:background 'white)])
+  (draw-path (surface-canvas surface) line paint))
+]
+
+@reference-figure["stamp-path-effect.png"
+                  "Small blue triangular stamps rotate along a curved path."]
 }
 
 @defproc[(make-2d-line-path-effect [width (and/c real? (>/c 0))] [matrix matrix?]) path-effect?]{

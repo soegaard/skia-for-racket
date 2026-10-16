@@ -190,6 +190,20 @@ coordinates and sizes can be fractional drawing scalars, but the entire source
 rectangle must fit inside the image. Destination position and size follow the
 same rules as @racket[draw-image-rect]. Zero source or destination extents are
 accepted by the wrapper but need not produce visible output.
+
+@racketblock[
+(with-skia ([source (make-surface 80 50 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-circle (surface-canvas source) 40 25 18 blue)
+  (with-skia ([image (surface-snapshot source)]
+              [target (make-surface 220 90 #:background 'white)])
+    (draw-image-rect (surface-canvas target) image 10 15 80 50 #:sampling 'nearest)
+    (draw-image-subrect (surface-canvas target) image
+                        20 5 40 40 125 5 80 80 #:sampling 'nearest)))
+]
+
+@reference-figure["image-subrect.png"
+                  "The complete yellow-and-blue source image on the left and an enlarged central source rectangle on the right."]
 }
 
 @section{Standard Conversion}

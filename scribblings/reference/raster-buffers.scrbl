@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require
+@(require "support/figures.rkt"
           (for-label racket/base racket/contract skia skia/raster-buffers))
 
 @title[#:tag "skia-raster-buffers"]{Raster Buffers and Pixmaps}
@@ -432,6 +432,24 @@ The canvas is borrowed, protected by a canvas-state scope, and expires on exit. 
 cannot be accessed through a second canvas or pixmap scope while this callback runs. Drawn
 pixels persist after an exception; state restoration is not a transaction. Do not close the
 buffer or retain the canvas for later use.
+
+@racketblock[
+(with-skia ([buffer (make-raster-buffer 160 80)])
+  (call-with-raster-buffer-canvas
+   buffer
+   (lambda (canvas)
+     (with-skia ([blue (make-paint #:color "#326DE6")]
+                 [orange (make-paint #:color "#EFA02B")])
+       (canvas-clear! canvas 'white)
+       (draw-rounded-rect canvas 15 15 80 50 10 10 blue)
+       (draw-circle canvas 120 40 22 orange))))
+  (with-skia ([image (raster-buffer->image buffer)]
+              [surface (make-surface 180 100 #:background 'white)])
+    (draw-image (surface-canvas surface) image 10 10)))
+]
+
+@reference-figure["raster-buffer-canvas.png"
+                  "A blue rounded rectangle and orange circle drawn directly through a raster-buffer canvas."]
 }
 
 @racketblock[
@@ -448,6 +466,9 @@ buffer or retain the canvas for later use.
 
 The sample is @racket[#(20 40 60 255)], but the stored bytes are 60, 40, 20, 255.
 Logical channel order is not byte order.
+
+@reference-figure["raster-buffer-checker.png"
+                  "A four-by-three checkerboard written through a raster buffer and shown as an image."]
 
 @section{Color-Space Descriptions}
 

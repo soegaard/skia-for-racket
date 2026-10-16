@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require scribble/eval
+@(require "support/figures.rkt"
+          scribble/eval
           (for-label racket/base racket/contract skia skia/color4f skia/float-colors))
 @(define float-color-eval (make-base-eval))
 @(float-color-eval '(require skia/color4f skia/color))
@@ -240,6 +241,9 @@ The color, stop, tile, and local-matrix rules are specified in
   (draw-paint (surface-canvas surface) paint)
   (save-png surface "float-gradient.png" #:exists 'replace))
 ]
+
+@reference-figure["float-gradient.png"
+                  "A horizontal floating-point gradient from red on the left to blue on the right."]
 }
 
 @defproc[(make-radial-gradient-color4f-shader

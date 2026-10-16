@@ -309,4 +309,16 @@ Combines the current clip with the integer region in device coordinates.
 The current canvas transform does not transform the region. No antialiasing
 option is provided. For a local-coordinate boundary clip, convert the region
 with @racket[region->path] and use @racket[canvas-clip-path!] instead.
+
+@racketblock[
+(with-skia ([region (make-region '((15 15 65 60) (105 15 60 60)))]
+            [shader (make-linear-gradient-shader 0 0 180 0 '("#326DE6" "#EFA02B"))]
+            [paint (make-paint #:shader shader)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (canvas-clip-region! (surface-canvas surface) region)
+  (draw-paint (surface-canvas surface) paint))
+]
+
+@reference-figure["region-clip.png"
+                  "A blue-to-orange gradient visible only inside two disjoint rectangular region components."]
 }

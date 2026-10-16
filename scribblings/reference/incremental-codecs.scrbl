@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/codec-incremental))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/codec-incremental))
 
 @title[#:tag "skia-incremental-codecs"]{Incremental Image Decoding}
 
@@ -259,4 +260,26 @@ image. It neither advances the decoder nor applies encoded orientation.
 ]
 
 The detached snapshot remains usable after the session closes.
+
+@racketblock[
+(with-skia ([source (make-surface 100 70 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")]
+            [session (make-codec-incremental)])
+  (draw-circle (surface-canvas source) 50 35 24 blue)
+  (define encoded (surface->png-bytes source))
+  (codec-incremental-feed! session (subbytes encoded 0 1))
+  (codec-incremental-step! session)
+  (codec-incremental-feed! session (subbytes encoded 1) #:final? #t)
+  (define progress (codec-incremental-step! session))
+  (unless (eq? (incremental-progress-state progress) 'complete)
+    (error 'decode "incremental decode did not complete"))
+  (define snapshot (codec-incremental-snapshot session))
+  (with-skia ([buffer (incremental-snapshot->raster-buffer snapshot)]
+              [image (raster-buffer->image buffer)]
+              [target (make-surface 100 70 #:background 'white)])
+    (draw-image (surface-canvas target) image 0 0)))
+]
+
+@reference-figure["incremental-final.png"
+                  "The completed incremental decode: a blue circle centered on a yellow background."]
 }

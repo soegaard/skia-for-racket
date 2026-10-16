@@ -253,6 +253,18 @@ neighborhood. The radii are nonnegative local distances and may be zero.
 This is a channel-wise morphology operation, not an expansion or contraction
 of the original vector path. The native backend determines the raster
 neighborhood after transforming the radii.
+
+@racketblock[
+(with-skia ([plain (make-paint #:color "#326DE6")]
+            [filter (make-dilate-image-filter 6 6)]
+            [filtered (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-circle (surface-canvas surface) 50 45 18 plain)
+  (draw-circle (surface-canvas surface) 125 45 18 filtered))
+]
+
+@reference-figure["dilate-image-filter.png"
+                  "Two blue circles, with the filtered circle visibly expanded by dilation."]
 }
 
 @defproc[(make-erode-image-filter
@@ -267,6 +279,18 @@ neighborhood. The radii are nonnegative local distances and may be zero.
 This is a channel-wise morphology operation, not an expansion or contraction
 of the original vector path. The native backend determines the raster
 neighborhood after transforming the radii.
+
+@racketblock[
+(with-skia ([plain (make-paint #:color "#326DE6")]
+            [filter (make-erode-image-filter 6 6)]
+            [filtered (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-rect (surface-canvas surface) 25 20 50 50 plain)
+  (draw-rect (surface-canvas surface) 105 20 50 50 filtered))
+]
+
+@reference-figure["erode-image-filter.png"
+                  "Two blue squares, with the filtered square visibly contracted by erosion."]
 }
 
 @defproc[(make-displacement-map-image-filter
@@ -313,6 +337,18 @@ and the result returns to premultiplied form. RGB is limited by the resulting
 alpha. Non-decal tiling
 requires an explicit crop; mirror is rejected. Unlike a color matrix, the
 kernel combines neighboring samples rather than channels of one sample.
+
+@racketblock[
+(with-skia ([filter
+             (make-matrix-convolution-image-filter
+              3 3 '(0 -1 0 -1 5 -1 0 -1 0))]
+            [paint (make-paint #:color "#EFA02B" #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-circle (surface-canvas surface) 90 45 28 paint))
+]
+
+@reference-figure["matrix-convolution.png"
+                  "An orange circle rendered through a sharpening three-by-three convolution kernel."]
 }
 
 @section{Placement and Explicit Sources}

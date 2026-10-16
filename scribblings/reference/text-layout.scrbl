@@ -139,6 +139,21 @@ the underlying shaped-run drawing operations.
 
 @reference-figure["text-layout.png"
                   "A short black paragraph wrapped into several lines inside a 220-unit layout width."]
+
+@racketblock[
+(with-skia ([surface (make-surface 320 125 #:background 'white)]
+            [font (make-font #:size 18)]
+            [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout
+    (layout-text shaper
+                 "Skia makes drawing fast, portable, and expressive."
+                 #:width 280 #:align 'justify-all #:line-height 28))
+  (draw-text-layout (surface-canvas surface) layout 20 15 paint))
+]
+
+@reference-figure["justified-text.png"
+                  "A short paragraph whose lines are expanded to fill a 280-unit justified layout width."]
 }
 
 @defproc[(text-layout? [v any/c]) boolean?]{

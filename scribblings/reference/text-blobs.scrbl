@@ -212,6 +212,23 @@ Input, lifetime, and metadata rules are described in
 
 The two captured font sizes are 24.0 and 36.0, even though both appends used the
 same mutable font.
+
+@racketblock[
+(with-skia ([surface (make-surface 260 100 #:background 'white)]
+            [font (make-font #:size 24)]
+            [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#20344E")])
+  (text-blob-builder-add-run! builder font (font-text->glyphs font "small")
+                             #:origin '(15 38))
+  (font-set-size! font 42)
+  (text-blob-builder-add-run! builder font (font-text->glyphs font " BIG")
+                             #:origin '(105 68))
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
+]
+
+@reference-figure["multi-run-text-blob.png"
+                  "One text blob containing a smaller word followed by a much larger BIG run."]
 }
 
 @defproc[(text-blob-builder-add-horizontal-run!
@@ -552,4 +569,21 @@ The canvas and paint are validated even for an empty run; the path-placement
 operation then validates the other inputs. An empty run draws nothing. The
 operation does not close the caller's path, shaper, paint, or canvas owner.
 Use a retained blob instead when repeatedly drawing the same placement.
+
+@racketblock[
+(with-skia ([surface (make-surface 330 120 #:background 'white)]
+            [font (make-font #:size 24)]
+            [shaper (make-shaper font)]
+            [path (make-path '((move 15 80) (cubic 85 15 245 15 315 80)))]
+            [guide (make-paint #:color "#BBBBBB" #:style 'stroke #:stroke-width 1)]
+            [text-paint (make-paint #:color "#20344E")])
+  (draw-path (surface-canvas surface) path guide)
+  (define run (shape-text shaper "Text follows the curve"
+                          #:direction 'ltr #:script 'latn #:language "en"))
+  (draw-shaped-run/on-path (surface-canvas surface) shaper run path text-paint
+                           #:start-offset 10))
+]
+
+@reference-figure["text-on-path.png"
+                  "Dark text follows a pale cubic curve from left to right."]
 }

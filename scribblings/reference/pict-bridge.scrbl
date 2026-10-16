@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract
                      (prefix-in pict: pict)
                      file/convertible skia skia/bitmap skia/pict))
 
@@ -131,3 +132,7 @@ the pict's logical height and descent is zero.
 
 The final value is @racket['(120 70)]. The surface and paint are already closed;
 the pict remains usable by ordinary Racket pict consumers.
+
+@reference-figure["pict-bridge.png"
+                  "The pict produced from the surface example: a blue circle on a white background."]
+}

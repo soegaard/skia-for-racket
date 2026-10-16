@@ -133,6 +133,18 @@ both center and radius; it is not simply distance from one fixed center.
 Radii must be nonnegative drawing scalars, and the two circles must differ.
 A circle pair rejected by native Skia raises an exception rather than returning
 @racket[#f]. Stop and tile restrictions are those in @secref["skia-tile-modes"].
+
+@racketblock[
+(with-skia ([surface (make-surface 160 90)]
+            [shader
+             (make-two-point-conical-gradient-shader
+              45 45 6 115 45 52 '(white "#326DE6"))]
+            [paint (make-paint #:shader shader)])
+  (draw-rect (surface-canvas surface) 0 0 160 90 paint))
+]
+
+@reference-figure["conical-gradient.png"
+                  "A two-point conical gradient expanding from a small white circle toward a larger blue circle."]
 }
 
 @section{Image and Composite Shaders}
@@ -146,6 +158,21 @@ aligned to local drawing units. The native shader retains the image, so closing
 the caller's image wrapper does not invalidate the shader. A GPU image still
 restricts the shader to its GPU context. Use @racket[shader-with-local-matrix]
 to change the image's local placement or scale.
+
+@racketblock[
+(with-skia ([source (make-surface 20 20 #:background 'red)]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-rect (surface-canvas source) 10 0 10 10 blue)
+  (draw-rect (surface-canvas source) 0 10 10 10 blue)
+  (with-skia ([image (surface-snapshot source)]
+              [shader (make-image-shader image #:tile-x 'repeat #:tile-y 'repeat)]
+              [paint (make-paint #:shader shader)]
+              [target (make-surface 160 90 #:background 'white)])
+    (draw-rect (surface-canvas target) 0 0 160 90 paint)))
+]
+
+@reference-figure["image-shader-tiles.png"
+                  "A repeated red-and-blue checker pattern produced by an image shader."]
 }
 
 @defproc[(make-blend-shader
@@ -160,6 +187,20 @@ Returns a shader that combines two shader outputs using a mode from
 second, unlike a source-first description of the blending equation. This blend
 happens between shaders; the paint's blend mode subsequently combines that
 result with the drawing target.
+
+@racketblock[
+(with-skia ([destination
+             (make-linear-gradient-shader 0 0 180 0 '("#F4D35E" "#326DE6"))]
+            [source
+             (make-radial-gradient-shader 90 45 55 '(white "#E85D75"))]
+            [shader (make-blend-shader 'multiply destination source)]
+            [paint (make-paint #:shader shader)]
+            [surface (make-surface 180 90)])
+  (draw-rect (surface-canvas surface) 0 0 180 90 paint))
+]
+
+@reference-figure["blend-shader.png"
+                  "A linear yellow-to-blue gradient multiplied by a radial white-to-rose gradient."]
 }
 
 @defproc[(shader-with-local-matrix [shader shader?] [matrix matrix?]) shader?]{

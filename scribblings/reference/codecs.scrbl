@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/codec-queries))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/codec-queries))
 
 @title[#:tag "skia-codecs"]{Image Codecs and Frames}
 
@@ -105,6 +106,9 @@ coordinates. No scaling or subset negotiation is applied by this function.
 ]
 
 A still PNG has one selectable frame; its animation-metadata count can be zero.
+
+@reference-figure["codec-image.png"
+                  "An image decoded through a codec: a blue rounded rectangle on a white background."]
 }
 
 @defproc[(image-frame-from-bytes [encoded bytes?] [index (integer-in 0 2147483647) 0]

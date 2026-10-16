@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract file/convertible skia))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract file/convertible skia))
 
 @title[#:tag "skia-svg-documents"]{SVG Documents}
 
@@ -118,6 +119,9 @@ before publication does not replace an existing file with partial XML.
   (svg-document-finish! document)
   (save-svg document "circle.svg" #:exists 'replace))
 ]
+
+@reference-figure["svg-document.png"
+                  "The SVG example rendered as a preview: a solid blue circle centered on a white canvas."]
 }
 
 @defproc[(call-with-svg-bytes [width (real-in 1/1000 32768)]

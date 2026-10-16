@@ -85,6 +85,21 @@ Neither mode calls back into the original Racket authoring function.
 The current canvas state and retained-resource restrictions still apply. The
 optional transform is not a projective matrix, and mode does not choose CPU
 versus GPU execution.
+
+@racketblock[
+(with-skia ([surface (make-surface 120 50 #:background 'white)]
+            [drawable
+             (call-with-drawable 40 30
+               (lambda (canvas)
+                 (with-skia ([paint (make-paint #:color 'red)])
+                   (draw-rect canvas 5 5 30 20 paint))))])
+  (draw-drawable (surface-canvas surface) drawable
+                 #:matrix (matrix-translate 5 10))
+  (draw-drawable (surface-canvas surface) drawable
+                 #:matrix (matrix-translate 65 10)
+                 #:mode 'immediate))
+]
+
 }
 
 @defproc[(drawable->picture [drawable drawable?])

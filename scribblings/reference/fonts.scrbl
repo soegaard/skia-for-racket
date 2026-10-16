@@ -285,6 +285,23 @@ filter's final output extent.
 ]
 
 The result reports both spacing and bounds; they need not have the same width.
+
+@racketblock[
+(with-skia ([surface (make-surface 250 90 #:background 'white)]
+            [font (make-font #:size 40)]
+            [text-paint (make-paint #:color 'black)]
+            [bounds-paint (make-paint #:color 'red #:style 'stroke #:stroke-width 1)]
+            [baseline-paint (make-paint #:color "#888888" #:style 'stroke #:stroke-width 1)])
+  (define x 25)
+  (define y 62)
+  (define-values (bx by bw bh) (simple-text-bounds font "Skia"))
+  (draw-line (surface-canvas surface) 10 y 235 y baseline-paint)
+  (draw-simple-text (surface-canvas surface) "Skia" x y font text-paint)
+  (draw-rect (surface-canvas surface) (+ x bx) (+ y by) bw bh bounds-paint))
+]
+
+@reference-figure["font-bounds.png"
+                  "The word Skia in black, with a gray baseline and a red rectangle around its measured ink bounds."]
 }
 
 @defproc[(font-char->glyph [font font?] [character (or/c char? (integer-in 0 #xd7ff) (integer-in
@@ -435,6 +452,23 @@ Partial results are released if construction fails.
     (lambda ()
       (for ([path (in-vector outlines)] #:when path) (skia-close! path)))))
 ]
+
+@racketblock[
+(with-skia ([surface (make-surface 140 100 #:background 'white)]
+            [font (make-font #:size 70)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
+  (define outlines (font-glyph-paths font (font-text->glyphs font "A")))
+  (define outline (vector-ref outlines 0))
+  (when outline
+    (call-with-skia-resource outline
+      (lambda (path)
+        (with-canvas-state (surface-canvas surface)
+          (canvas-translate! (surface-canvas surface) 35 78)
+          (draw-path (surface-canvas surface) path paint))))))
+]
+
+@reference-figure["glyph-outline.png"
+                  "The glyph A drawn only as its blue vector outline."]
 }
 
 @defproc[(font-break-text [font font?] [text string?] [max-width (and/c real? (>=/c 0))]

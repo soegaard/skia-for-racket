@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/codec-scanlines))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/codec-scanlines))
 
 @title[#:tag "skia-scanline-codecs"]{Scanline Decoding}
 
@@ -167,6 +168,26 @@ to @racket['failed]. No caller-owned byte string is partially mutated.
 ]
 
 A complete two-row read yields @racket[#t], @racket[2], @racket[2], and @racket[#f].
+
+@racketblock[
+(with-skia ([source (make-surface 90 60 #:background 'red)]
+            [green (make-paint #:color 'green)]
+            [blue (make-paint #:color 'blue)])
+  (draw-rect (surface-canvas source) 0 20 90 20 green)
+  (draw-rect (surface-canvas source) 0 40 90 20 blue)
+  (with-skia ([image (surface-snapshot source)]
+              [session (codec-scanline-from-bytes (image->jpeg-bytes image))]
+              [target (make-surface 90 60 #:background 'white)])
+    (for ([count '(20 20 20)])
+      (define batch (codec-scanline-read! session count))
+      (with-skia ([buffer (scanline-batch->raster-buffer batch)]
+                  [part (raster-buffer->image buffer)])
+        (draw-image (surface-canvas target) part 0
+                    (scanline-batch-first-row batch))))))
+]
+
+@reference-figure["scanline-batches.png"
+                  "Three horizontal color bands reconstructed from successive scanline batches."]
 }
 
 @defproc[(codec-scanline-skip! [session codec-scanline-session?] [count exact-nonnegative-integer?])

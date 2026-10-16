@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require scribble/eval
+@(require "support/figures.rkt"
+          scribble/eval
           (for-label racket/base racket/contract file/convertible skia skia/output))
 
 @(define unit-eval (make-base-eval))
@@ -155,6 +156,9 @@ behavior can still differ. Completion must succeed before any bytes are returned
 ]
 
 The same callback runs once for each export; it creates its paint inside each call.
+
+@reference-figure["output-page-preview.png"
+                  "A preview of the output page, showing a blue circle near the upper-left corner on a white page."]
 }
 
 @defproc[(save-output [source (or/c output-page? (listof output-page?))]
@@ -244,4 +248,18 @@ region is no longer vector geometry or searchable text.
   (svg-document-finish! document)
   (save-svg document "raster-region.svg" #:exists 'replace))
 ]
+
+@racketblock[
+(with-skia ([surface (make-surface 190 105 #:background 'white)])
+  (draw-rasterized (surface-canvas surface) 30 22 120 55
+    (lambda (canvas)
+      (with-skia ([filter (make-blur-image-filter 5 5)]
+                  [paint (make-paint #:color "#326DE6" #:image-filter filter)])
+        (draw-rounded-rect canvas 10 8 100 38 10 10 paint)))
+    #:scale 2
+    #:padding 10))
+]
+
+@reference-figure["draw-rasterized.png"
+                  "A bounded blue rounded rectangle with blur captured through explicit rasterization."]
 }

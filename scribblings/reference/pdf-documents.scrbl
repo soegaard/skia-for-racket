@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract file/convertible skia))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract file/convertible skia))
 
 @title[#:tag "skia-pdf-documents"]{PDF Documents}
 
@@ -121,6 +122,9 @@ resume drawing on an expired page.
 ]
 
 This example completes a page but deliberately does not publish a file.
+
+@reference-figure["pdf-document.png"
+                  "The page content from the example: a solid blue rectangle on a white background."]
 }
 
 @defform[(with-document-page
