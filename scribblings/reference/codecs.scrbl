@@ -108,7 +108,10 @@ coordinates. No scaling or subset negotiation is applied by this function.
 A still PNG has one selectable frame; its animation-metadata count can be zero.
 
 @reference-figure["codec-image.png"
-                  "An image decoded through a codec: a blue rounded rectangle on a white background."]
+                  "The actual codec-to-image result, enlarged with nearest-neighbor sampling: an opaque solid-blue image that is three pixels wide by two pixels high."]
+
+The figure is a labeled enlargement of the decoded 3 by 2 image, not a drawing made to resemble
+the source surface.
 }
 
 @defproc[(image-frame-from-bytes [encoded bytes?] [index (integer-in 0 2147483647) 0]

@@ -121,7 +121,7 @@
     (set-box! fail 'present)
     (check-exn exn:fail? (lambda () (gpu-presenter-render! p)))
     (check-eq? (gpu-presenter-state p) 'failed)
-    (check-true (member 'release (unbox log)))
+    (check-not-false (member 'release (unbox log)))
     (gpu-presenter-close! p))
 
   (test-case "close invalidates queued redraw and is idempotent"

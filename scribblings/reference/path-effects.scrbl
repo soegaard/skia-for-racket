@@ -261,6 +261,33 @@ The stamp must contain points, and its copied point payload must fit the byte
 limit. Later mutation or closure of the stamp does not change the effect.
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 300 150 #:background 'white)]
+            [stamp (make-path '((move -5 -4) (line 6 0) (line -5 4) (close)))]
+            [line-effect (make-2d-line-path-effect 3 (matrix-scale 14 14))]
+            [stamp-effect (make-2d-path-effect (matrix-scale 18 18) stamp)]
+            [line-paint (make-paint #:color "#326DE6" #:style 'stroke
+                                    #:stroke-width 2 #:path-effect line-effect)]
+            [stamp-paint (make-paint #:color "#E94F37" #:style 'stroke
+                                     #:stroke-width 2 #:path-effect stamp-effect)]
+            [font (make-font #:size 12)]
+            [label (make-paint #:color "#20344E")]
+            [boundary (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+  (define canvas (surface-canvas surface))
+  (draw-simple-text canvas "parallel-line lattice" 20 20 font label)
+  (draw-simple-text canvas "asymmetric stamp lattice" 165 20 font label)
+  (draw-rect canvas 20 35 115 95 line-paint)
+  (draw-rect canvas 165 35 115 95 stamp-paint)
+  (draw-rect canvas 20 35 115 95 boundary)
+  (draw-rect canvas 165 35 115 95 boundary))
+]
+
+@reference-figure["path-effect-2d-lattices.png"
+                  "The same bounded rectangle covered by a blue parallel-line path-effect lattice and an orange asymmetric-stamp lattice. Dark outlines mark the input regions."]
+
+The matrices define each effect's repeated local lattice; they do not transform the canvas or
+the outlined input rectangles.
+
 @section[#:tag "skia-mask-filters"]{Mask Filters}
 
 @(declare-exporting skia)
@@ -352,3 +379,33 @@ It does not use the shader's RGB as the paint color. The shader is retained;
 closing its caller-owned wrapper does not invalidate the filter. A shader
 that depends on a GPU context preserves that dependency.
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 420 125 #:background 'white)]
+            [table (make-table-mask-filter
+                    (apply bytes (for/list ([coverage (in-range 256)])
+                                   (if (< coverage 128) 0 255))))]
+            [clipped (make-clip-mask-filter 80 180)]
+            [alpha-ramp (make-linear-gradient-shader
+                         325 0 390 0 (list (rgba 255 255 255 0) 'white))]
+            [shader-mask (make-shader-mask-filter alpha-ramp)]
+            [plain (make-paint #:color "#326DE6")]
+            [table-paint (make-paint #:color "#326DE6" #:mask-filter table)]
+            [clip-paint (make-paint #:color "#326DE6" #:mask-filter clipped)]
+            [shader-paint (make-paint #:color "#326DE6" #:mask-filter shader-mask)]
+            [font (make-font #:size 11)]
+            [label (make-paint #:color "#20344E")])
+  (define canvas (surface-canvas surface))
+  (for ([text '("original" "table threshold" "clip 80..180" "shader alpha")]
+        [x '(20 114 216 326)])
+    (draw-simple-text canvas text x 18 font label))
+  (for ([paint (list plain table-paint clip-paint shader-paint)]
+        [x '(55.5 155.5 255.5 355.5)])
+    (draw-circle canvas x 72.5 27.25 paint)))
+]
+
+@reference-figure["mask-filter-coverage.png"
+                  "Four fractional-edge blue circles at native device scale: original coverage, a table threshold, clip remapping from 80 through 180, and an alpha-gradient shader mask. The edge and alpha changes are visible against white."]
+
+All four drawings start from the same antialiased circle. These filters remap or modulate
+coverage; they do not apply an RGB gamma curve or retag an image's color space.

@@ -645,7 +645,8 @@ An unavailable position, such as on a zero-length contour, returns four
             [path (make-path '((move 20 90) (cubic 70 10 170 10 220 90)))]
             [measure (make-path-measure path)]
             [curve (make-paint #:color "#BBBBBB" #:style 'stroke #:stroke-width 3)]
-            [mark (make-paint #:color "#326DE6")])
+            [mark (make-paint #:color "#326DE6")]
+            [tangent (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 3)])
   (draw-path (surface-canvas surface) path curve)
   (define distance (/ (path-measure-length measure) 2))
   (define-values (x y tx ty)
@@ -653,7 +654,7 @@ An unavailable position, such as on a zero-length contour, returns four
   (draw-circle (surface-canvas surface) x y 6 mark)
   (draw-line (surface-canvas surface) x y
              (+ x (* 30 tx)) (+ y (* 30 ty))
-             (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 3)))
+             tangent))
 ]
 @reference-figure["measure-tangent-stage8.png"
                   "A blue point marks the halfway position on a pale cubic curve, with a short blue line showing its tangent direction."]
@@ -675,12 +676,34 @@ path, so Skia inserts an implicit move to the origin before its first segment.
 The result does not connect to the source path's current point.
 
 @racketblock[
-(with-skia ([path (make-path '((move 10 20) (line 90 20)))]
+(with-skia ([surface (make-surface 240 115 #:background 'white)]
+            [path (make-path '((move 10 20) (line 90 20)))]
             [measure (make-path-measure path)]
             [moved (path-measure-segment measure 20 40)]
-            [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)])
+            [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)]
+            [guide (make-paint #:color "#C8CDD3" #:style 'stroke #:stroke-width 2)]
+            [result (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)]
+            [font (make-font #:size 12)]
+            [label (make-paint #:color "#20344E")])
+  (define canvas (surface-canvas surface))
+  (draw-simple-text canvas "with initial move" 10 18 font label)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 10 25)
+    (draw-path canvas path guide)
+    (draw-path canvas moved result))
+  (draw-simple-text canvas "without initial move" 125 18 font label)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 125 25)
+    (draw-path canvas path guide)
+    (draw-path canvas unmoved result))
   (list (path->commands moved) (path->commands unmoved)))
 ]
+
+@reference-figure["path-segment-initial-move.png"
+                  "Two coordinate panels for the same extracted path-measure segment. In the left panel the blue segment follows the faint source guide from x=30 to x=50; in the right, omitting the initial move creates a blue line from the coordinate origin to x=50."]
+
+Each faint line is the original source path. The two blue paths are separate returned values;
+their difference is caused only by the @racket[#:start-with-move-to?] choice.
 
 The first result starts at coordinates 30 and 20 and draws a line to coordinates
 50 and 20. The second starts at coordinates 0 and 0 and draws a line to coordinates
@@ -702,6 +725,59 @@ past the contour's end: the native measurement clamps it to the contour length.
 Negative distances are still rejected by the wrapper. The distinction matters
 when sharing a distance between the two APIs.
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 420 235 #:background 'white)]
+            [quadratic (make-path '((move 20 140) (quad 70 30 120 140)))]
+            [control-polygon (make-path '((move 20 140) (line 70 30) (line 120 140)))]
+            [contours (make-path '((move 235 135) (cubic 260 75 330 175 370 105)
+                                  (move 235 190) (line 370 190)))]
+            [measure (make-path-measure contours)]
+            [arrow (make-path '((move -12 -6) (line 10 0) (line -2 5)
+                                (line -2 2) (line -12 2) (close)))]
+            [dash (make-dash-path-effect '(4 3))]
+            [curve (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)]
+            [control (make-paint #:color "#9BA6B5" #:style 'stroke #:stroke-width 2
+                                 #:path-effect dash)]
+            [stored-bound (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 2)]
+            [tight-bound (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+            [guide (make-paint #:color "#9BA6B5" #:style 'stroke #:stroke-width 3)]
+            [first-arrow (make-paint #:color "#326DE6")]
+            [second-arrow (make-paint #:color "#7D5BA6")]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")])
+  (define canvas (surface-canvas surface))
+  (define-values (left top width height) (path-bounds quadratic))
+  (define-values (tight-left tight-top tight-width tight-height) (path-tight-bounds quadratic))
+  (draw-simple-text canvas "quadratic: control points vs. curve" 18 17 font label)
+  (draw-path canvas control-polygon control)
+  (draw-path canvas quadratic curve)
+  (draw-rect canvas left top width height stored-bound)
+  (draw-rect canvas tight-left tight-top tight-width tight-height tight-bound)
+  (draw-simple-text canvas "red = stored-point bounds" 18 165 font label)
+  (draw-simple-text canvas "orange = tight curve bounds" 18 181 font label)
+  (draw-simple-text canvas "path-measure-matrix on two contours" 230 17 font label)
+  (draw-path canvas contours guide)
+  (define first-placement (path-measure-matrix measure (* 0.55 (path-measure-length measure))))
+  (with-canvas-state canvas
+    (canvas-concat! canvas first-placement)
+    (draw-path canvas arrow first-arrow))
+  (path-measure-next-contour! measure)
+  (define second-placement (path-measure-matrix measure (* 0.55 (path-measure-length measure))))
+  (with-canvas-state canvas
+    (canvas-concat! canvas second-placement)
+    (draw-path canvas arrow second-arrow))
+  (draw-simple-text canvas "blue: first contour" 235 210 font label)
+  (draw-simple-text canvas "purple: after next-contour!" 235 225 font label)
+  surface)
+]
+@reference-figure["path-bounds-and-measure-matrix.png"
+                  "Left: a blue quadratic curve lies inside orange tight geometric bounds, while larger red stored-point bounds include its high control point and dashed control polygon. Right: a blue asymmetric arrow is placed and tangent-aligned on the first gray contour; after advancing the measure, a purple arrow is placed on the second straight contour."]
+
+Neither bounds rectangle includes a stroke width or canvas transform.  The
+placement matrices are evaluated from the current contour: advancing with
+@racket[path-measure-next-contour!] is what makes the purple arrow use the
+second contour rather than another distance on the curve.
 
 @section[#:tag "skia-path-completion"]{Arcs, Recognition, and Ordered Operations}
 

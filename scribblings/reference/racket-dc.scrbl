@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/class racket/contract
+@(require "support/figures.rkt"
+          (for-label racket/base racket/class racket/contract
                      (prefix-in draw: racket/draw)
                      skia skia/dc))
 
@@ -81,6 +82,45 @@ implicitly merged.
 Returns an independently owned CPU Skia image of the root backing. The image
 remains usable after the drawing context closes and must be closed through the
 ordinary Skia resource protocol.
+
+This complete headless example uses ordinary Racket Draw methods, takes an
+owned snapshot, and closes the persistent DC in all cases. No window, event
+loop, or GUI canvas is involved.
+
+@racketblock[
+(require racket/class
+         (prefix-in draw: racket/draw)
+         skia skia/dc)
+
+(define white (make-object draw:color% 255 255 255))
+(define navy (make-object draw:color% 32 52 78))
+(define panel (make-object draw:color% 232 238 249))
+(define orange (make-object draw:color% 239 160 43))
+(define blue (make-object draw:color% 50 109 230))
+(define dc
+  (new skia-dc% [width 180] [height 105]
+                [background white] [smoothing 'smoothed]))
+(define snapshot
+  (dynamic-wind
+   void
+   (lambda ()
+     (send dc clear)
+     (send dc set-pen navy 2 'solid)
+     (send dc set-brush panel 'solid)
+     (send dc draw-rounded-rectangle 8 8 164 88 12)
+     (send dc set-brush orange 'solid)
+     (send dc draw-ellipse 25 35 48 38)
+     (send dc set-pen blue 3 'solid)
+     (send dc draw-line 92 75 154 30)
+     (send dc set-text-foreground navy)
+     (send dc draw-text "headless DC" 24 18)
+     (send dc snapshot))
+   (lambda () (send dc close))))
+(with-skia ([image snapshot])
+  (list (image-width image) (image-height image)))
+]
+@reference-figure["skia-dc-headless-snapshot.png"
+                  "A headless persistent Skia drawing context produces a pale rounded panel, orange ellipse, blue line, and text; the displayed image is its owned snapshot after the DC closes."]
 }
 
 @defmethod[(get-capabilities) (and/c hash? immutable?)]{

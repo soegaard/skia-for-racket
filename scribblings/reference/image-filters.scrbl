@@ -499,6 +499,66 @@ the transition around the magnified content, rather than moving the lens.
 It is nonnegative. The optional crop bounds the result.
 }
 
+@racketblock[
+(with-skia ([source-surface (make-surface 120 80 #:background 'white)]
+            [grid (make-paint #:color "#B8C0CC" #:style 'stroke #:stroke-width 1)]
+            [blue (make-paint #:color "#326DE6")]
+            [orange (make-paint #:color "#E94F37")]
+            [purple (make-paint #:color "#7D5BA6")])
+  (define source-canvas (surface-canvas source-surface))
+  (for ([x '(20 40 60 80 100)]) (draw-line source-canvas x 0 x 80 grid))
+  (for ([y '(20 40 60)]) (draw-line source-canvas 0 y 120 y grid))
+  (draw-circle source-canvas 24 22 8 blue)
+  (draw-polygon source-canvas '((86 12) (110 25) (86 38)) orange)
+  (draw-rect source-canvas 14 54 32 14 purple)
+  (define map-bytes (make-bytes (* 120 80 4)))
+  (for* ([y (in-range 80)] [x (in-range 120)])
+    (define index (* 4 (+ x (* y 120))))
+    (bytes-set! map-bytes index (quotient (* 255 x) 119))
+    (bytes-set! map-bytes (+ index 1) (quotient (* 255 y) 79))
+    (bytes-set! map-bytes (+ index 2) 0)
+    (bytes-set! map-bytes (+ index 3) 255))
+  (with-skia ([source-image (surface-snapshot source-surface)]
+              [map-image (rgba-bytes->image 120 80 map-bytes)]
+              [map-source (make-image-source-filter map-image)]
+              [color-source (make-image-source-filter source-image)]
+              [displacement (make-displacement-map-image-filter
+                             'red 'green 60 map-source color-source)]
+              [magnifier (make-magnifier-image-filter '(14 10 52 52) 2 #:inset 6)]
+              [displaced-paint (make-paint #:image-filter displacement)]
+              [magnified-paint (make-paint #:image-filter magnifier)]
+              [displaced-surface (make-surface 120 80 #:background 'white)]
+              [magnified-surface (make-surface 120 80 #:background 'white)]
+              [surface (make-surface 420 225 #:background 'white)]
+              [font (make-font #:size 10)]
+              [label (make-paint #:color "#20344E")]
+              [lens (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)])
+    (draw-paint (surface-canvas displaced-surface) displaced-paint)
+    (draw-image (surface-canvas magnified-surface) source-image 0 0)
+    (draw-image (surface-canvas magnified-surface) source-image 0 0 #:paint magnified-paint)
+    (with-skia ([displaced-image (surface-snapshot displaced-surface)]
+                [magnified-image (surface-snapshot magnified-surface)])
+      (define canvas (surface-canvas surface))
+      (for ([text '("color source" "map: red=x, green=y" "displaced: red -> x, green -> y")]
+            [x '(10 150 285)])
+        (draw-simple-text canvas text x 16 font label))
+      (draw-image canvas source-image 10 28)
+      (draw-image canvas map-image 150 28)
+      (draw-image canvas displaced-image 285 28)
+      (draw-simple-text canvas "lens on source" 35 127 font label)
+      (draw-simple-text canvas "2x magnifier; inset 6" 235 127 font label)
+      (draw-image canvas source-image 35 138)
+      (draw-rect canvas 49 148 52 52 lens)
+      (draw-image canvas magnified-image 235 138)
+      (draw-rect canvas 249 148 52 52 lens))))
+]
+
+@reference-figure["image-filter-displacement-magnifier.png"
+                  "An asymmetric grid source, its red-x/green-y displacement map, and the displaced result. Below, the orange lens rectangle selects a 2x magnifier with inset 6 beside the actual magnified result."]
+
+The map's red and green channels select horizontal and vertical displacement. The lens rectangle
+selects the sampled region; inset controls its transition and does not move the rectangle.
+
 @section[#:tag "skia-lighting-from-alpha"]{Lighting from Alpha}
 
 Lighting filters interpret input alpha as a height field, scaled by
@@ -610,6 +670,59 @@ to target. Its exponent and cutoff angle control the angular falloff.
 The shared constraints are specified in @secref["skia-lighting-from-alpha"].
 }
 
+@racketblock[
+(with-skia ([height-surface (make-surface 120 70)]
+            [height-shader (make-radial-gradient-shader
+                            60 35 30 (list 'white (rgba 255 255 255 0)))]
+            [height-paint (make-paint #:shader height-shader)]
+            [surface (make-surface 420 280 #:background 'white)]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")]
+            [black (make-paint #:color 'black)])
+  (draw-rect (surface-canvas height-surface) 0 0 120 70 height-paint)
+  (with-skia ([height-image (surface-snapshot height-surface)]
+              [distant-diffuse (make-distant-lit-diffuse-image-filter '(1 -1 2) 'white
+                                                                       #:surface-scale 6 #:coefficient 1.2)]
+              [point-diffuse (make-point-lit-diffuse-image-filter '(60 20 80) 'white
+                                                                   #:surface-scale 6 #:coefficient 1.2)]
+              [spot-diffuse (make-spot-lit-diffuse-image-filter '(60 20 80) '(60 35 0) 'white
+                                                                 #:exponent 2 #:cutoff-angle 35
+                                                                 #:surface-scale 6 #:coefficient 1.2)]
+              [distant-specular (make-distant-lit-specular-image-filter '(1 -1 2) 'white
+                                                                         #:surface-scale 6 #:coefficient 1
+                                                                         #:shininess 8)]
+              [point-specular (make-point-lit-specular-image-filter '(60 35 100) 'white
+                                                                     #:surface-scale 6 #:coefficient 1
+                                                                     #:shininess 8)]
+              [spot-specular (make-spot-lit-specular-image-filter '(60 35 100) '(60 35 0) 'white
+                                                                   #:exponent 2 #:cutoff-angle 35
+                                                                   #:surface-scale 6 #:coefficient 1
+                                                                   #:shininess 8)])
+    (define canvas (surface-canvas surface))
+    (for ([name '("diffuse distant" "diffuse point" "diffuse spot"
+                 "specular distant" "specular point" "specular spot")]
+          [x '(20 155 290 20 155 290)] [y '(20 20 20 125 125 125)])
+      (draw-simple-text canvas name x y font label))
+    (for ([filter (list distant-diffuse point-diffuse spot-diffuse
+                        distant-specular point-specular spot-specular)]
+          [x '(20 155 290 20 155 290)] [y '(32 32 32 137 137 137)])
+      (with-skia ([paint (make-paint #:shader height-shader #:image-filter filter)]
+                  [pane (make-surface 120 70 #:background 'black)])
+        (draw-rect (surface-canvas pane) 0 0 120 70 paint)
+        (with-skia ([image (surface-snapshot pane)])
+          (draw-image canvas image x y))))
+    (draw-simple-text canvas "source alpha height field" 20 235 font label)
+    (draw-rect canvas 20 242 70 30 black)
+    (draw-image-rect canvas height-image 20 242 70 30 #:sampling 'linear)))
+]
+
+@reference-figure["image-filter-lighting-grid.png"
+                  "Six lighting filters computed from one smooth radial alpha height field: diffuse and specular results for distant, point, and spot lights. The alpha source is shown at lower left over black."]
+
+The panels are computed from source alpha, not from relighting the source image's RGB channels.
+Directions, locations, and spotlight targets are parameters to the filter, not a 3D camera or
+visibility system.
+
 @section{Custom Blending}
 
 @(declare-exporting skia skia/effects #:use-sources (skia/effects))
@@ -647,6 +760,57 @@ Omitting it uses the picture's native cull rectangle. The result is clipped to
 both the target and the picture's cull rectangle. The optional crop uses the
 common image-filter output-region rules. The source picture must be open
 during construction; retained GPU dependencies keep their own affinity rules.
+
+@racketblock[
+(with-skia ([surface (make-surface 420 175 #:background 'white)]
+            [picture
+             (call-with-picture
+              120 75
+              (lambda (pc)
+                (with-skia ([blue (make-paint #:color "#326DE6")]
+                            [orange (make-paint #:color "#E94F37")]
+                            [purple (make-paint #:color "#7D5BA6")])
+                  (draw-rounded-rect pc 5 5 80 55 9 9 blue)
+                  (draw-polygon pc '((20 58) (104 58) (86 17)) orange)
+                  (draw-circle pc 98 18 13 purple))))]
+            [target-filter (make-picture-image-filter picture #:target '(30 15 55 40))]
+            [crop-filter (make-picture-image-filter picture
+                                                    #:target '(15 8 85 58)
+                                                    #:crop '(55 8 38 58))]
+            [target-paint (make-paint #:image-filter target-filter)]
+            [crop-paint (make-paint #:image-filter crop-filter)]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")]
+            [bound (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+            [target-bound (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+            [crop-bound (make-paint #:color "#7D5BA6" #:style 'stroke #:stroke-width 2)])
+  (define canvas (surface-canvas surface))
+  ;; Preview it once, then prove that the two filters retain the recording.
+  (draw-picture canvas picture #:x 12 #:y 30)
+  (skia-close! picture)
+  (define (render-filter paint)
+    (with-skia ([page (make-surface 120 75 #:background 'white)])
+      (draw-paint (surface-canvas page) paint)
+      (surface-snapshot page)))
+  (with-skia ([target-image (render-filter target-paint)]
+              [crop-image (render-filter crop-paint)])
+    (draw-simple-text canvas "recorded picture: native cull" 12 17 font label)
+    (draw-simple-text canvas "target: select, don't scale" 150 17 font label)
+    (draw-simple-text canvas "target intersect crop" 290 17 font label)
+    (draw-image canvas target-image 150 30)
+    (draw-image canvas crop-image 290 30)
+    (for ([x '(12 150 290)]) (draw-rect canvas x 30 120 75 bound))
+    (draw-rect canvas 42 45 55 40 target-bound)
+    (draw-rect canvas 180 45 55 40 target-bound)
+    (draw-rect canvas 305 38 85 58 target-bound)
+    (draw-rect canvas 345 38 38 58 crop-bound)
+    (draw-simple-text canvas "orange=target; purple=crop" 12 125 font label)
+    (draw-simple-text canvas "recording stays 1:1" 150 125 font label)
+    (draw-simple-text canvas "only overlap is output" 290 125 font label)
+    surface))
+]
+@reference-figure["picture-image-filter-target-crop.png"
+                  "An asymmetric blue, orange, and purple recorded picture is shown at left with its native cull outline. The middle panel retains only an orange target rectangle without scaling the recorded motifs. The right panel shows a larger orange target and a purple crop rectangle; only their overlap is rendered at the recording's original scale."]
 }
 
 @section{Additional Visual Examples}

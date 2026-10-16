@@ -85,9 +85,15 @@
   (cond
     [(zero? det) #f]
     [else
-     (define values (list (/ d det) (/ (- b) det) (/ (- c) det) (/ a det)
-                          (/ (- (* c y) (* d x)) det)
-                          (/ (- (* b x) (* a y)) det)))
+     ;; Inverting a translation naturally produces algebraic zeroes in the
+     ;; off-diagonal positions.  Canonicalize their sign so an inverse has a
+     ;; stable structural representation (rather than `-0.0` from negation).
+     (define (canonical-zero v) (if (zero? v) 0.0 v))
+     (define values
+       (map canonical-zero
+            (list (/ d det) (/ (- b) det) (/ (- c) det) (/ a det)
+                  (/ (- (* c y) (* d x)) det)
+                  (/ (- (* b x) (* a y)) det))))
      ;; No arbitrary singularity epsilon. An inverse outside the representable
      ;; range is also unavailable, rather than a matrix containing infinities.
      (and (for/and ([v (in-list values)]) (<= -3.402823e38 v 3.402823e38))

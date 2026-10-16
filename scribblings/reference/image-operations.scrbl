@@ -124,6 +124,53 @@ destination description determines storage format, alpha representation, and any
 color-space conversion.
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 420 240 #:background 'white)]
+            [source (rgba-bytes->image
+                     4 3
+                     (bytes 255 0 0 255   0 255 0 128   0 0 255 255   255 220 0 64
+                            0 220 220 255  150 60 200 128  239 79 55 255  80 80 80 0
+                            50 109 230 255  125 91 166 128  34 139 34 255  255 255 255 255))]
+            [read-buffer (make-raster-buffer 2 2)]
+            [nearest-buffer (make-raster-buffer 8 6)]
+            [linear-buffer (make-raster-buffer 8 6)]
+            [source-buffer (image->raster-buffer source)]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")]
+            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+  (call-with-raster-buffer-pixmap
+   read-buffer (lambda (destination) (image-read-pixmap! source destination #:source-x 1 #:source-y 1))
+   #:writable? #t)
+  (call-with-raster-buffer-pixmap
+   nearest-buffer (lambda (destination) (image-scale-pixmap! source destination #:sampling 'nearest))
+   #:writable? #t)
+  (call-with-raster-buffer-pixmap
+   source-buffer
+   (lambda (source-view)
+     (call-with-raster-buffer-pixmap
+      linear-buffer (lambda (destination) (pixmap-scale! destination source-view #:sampling 'linear))
+      #:writable? #t)))
+  (with-skia ([read-image (raster-buffer->image read-buffer)]
+              [nearest-image (raster-buffer->image nearest-buffer)]
+              [linear-image (raster-buffer->image linear-buffer)])
+    (define canvas (surface-canvas surface))
+    (draw-simple-text canvas "source image: 4 × 3" 20 17 font label)
+    (draw-simple-text canvas "read 2 × 2 from (1, 1)" 200 17 font label)
+    (draw-image-rect canvas source 20 30 120 90 #:sampling 'nearest)
+    (draw-image-rect canvas read-image 200 30 90 90 #:sampling 'nearest)
+    (draw-rect canvas 20 30 120 90 outline)
+    (draw-rect canvas 200 30 90 90 outline)
+    (draw-simple-text canvas "image-scale-pixmap!: nearest" 20 132 font label)
+    (draw-simple-text canvas "pixmap-scale!: linear" 220 132 font label)
+    (draw-image-rect canvas nearest-image 20 145 120 90 #:sampling 'nearest)
+    (draw-image-rect canvas linear-image 220 145 120 90 #:sampling 'nearest)
+    (draw-rect canvas 20 145 120 90 outline)
+    (draw-rect canvas 220 145 120 90 outline)
+    surface))
+]
+@reference-figure["image-pixmap-copy-scaling.png"
+                  "An asymmetric 4 by 3 RGBA source is enlarged with nearest sampling. The upper-right 2 by 2 result is copied from source offset one, one. The bottom row shows actual 8 by 6 writable destinations populated by image-scale-pixmap with nearest sampling and pixmap-scale with linear sampling; the latter blends the colored source pixels."]
+
 @defproc[(image->raster-buffer [image image?] [#:info info (or/c #f image-info?) #f]
           [#:row-bytes row-bytes (or/c #f exact-positive-integer?) #f] [#:sampling sampling
           (or/c 'nearest 'linear) 'linear] [#:cache? cache? boolean? #f])
@@ -179,9 +226,10 @@ is independent of subsequent closure of the input wrappers.
 ]
 
 @reference-figure["image-filter-placement.png"
-                  "A red filtered image placed down and to the right according to the offset returned by image-apply-filter."]
+                  "A nearest-neighbor enlargement of the transparent 12 by 10 destination. The returned red filtered subset begins at offset two, one; the sampled pixel at three, two is inside it. The gray checkerboard is only a preview background."]
 
-Only the reported source rectangle is drawn, at its reported offset.
+Only the reported source rectangle is drawn, at its reported offset. The figure enlarges the
+actual 12 by 10 destination; its checkerboard is not stored in that destination.
 
 @section{Racket Bitmap Conversion}
 
@@ -216,3 +264,8 @@ Closing the source does not close the bitmap. The result follows Racket bitmap o
 @racket[skia-close!]. This conversion does not create a window or expose a borrowed native
 canvas.
 }
+
+The Racket Draw interoperability chapter contains a visual round-trip using
+@racket[bitmap->image], @racket[image->bitmap], and @racket[surface->bitmap].
+It deliberately distinguishes an imported loaded mask from a mask-free copy
+and separately shows logical versus physical bitmap readback.

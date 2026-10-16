@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract skia skia/canvas-primitives))
+          (for-label racket/base racket/contract skia))
 
 @title[#:tag "skia-canvas-state"]{Canvas State}
 
@@ -206,7 +206,10 @@ A clip established before this call remains in the target's coordinate system.
 )
 ]
 @reference-figure["canvas-reset-transform-stage9.png"
-                  "A translated blue rectangle and an orange rectangle drawn after resetting the canvas transform to the identity."]
+                  "A literal-pixel capture of the 200 by 110 target: a translated blue 70 by 45 rectangle and an equally sized orange rectangle drawn after reset-transform replaces the transform with identity."]
+
+The preview enlarges the captured target only after the program runs. Resetting the transform
+therefore does not retain a hidden device-density scale.
 }
 
 @defproc[(canvas-transform [canvas canvas?]) matrix?]{
@@ -233,7 +236,9 @@ value; the canvas does not borrow its storage. The clip is unchanged.
 )
 ]
 @reference-figure["canvas-set-transform-stage9.png"
-                  "A blue rectangle drawn through a transform installed with canvas-set-transform!, combining translation and nonuniform scale."]
+                  "A literal-pixel capture of a blue rectangle through the installed translation and nonuniform-scale transform; its placement and size come from the replacement matrix."]
+
+As with reset-transform, the figure is enlarged only after capturing the example's actual target.
 }
 
 @defproc[(canvas-concat! [canvas canvas?] [matrix matrix?]) void?]{
@@ -285,6 +290,12 @@ second rectangle, the next is outside it but inside the initial clip, and the
 last is outside the initial clip. Difference removes an area from the current
 clip; it does not select everything outside the rectangle across the surface.
 
+@reference-figure["clip-within-existing-clip.png"
+                  "Nearest-neighbor enlargements of the two actual eight-by-six clip states. Intersection leaves only the central two-by-two blue area; difference leaves the initial six-column blue region with that two-by-two area removed. The legend identifies samples at y three with x coordinates three, one, and seven."]
+
+Both panels start with the same left-six-column clip. The sample legend refers to the returned
+booleans above, rather than adding marks to the actual pixel results.
+
 
 @racketblock[
 (with-skia ([surface (make-surface 220 100 #:background 'white)])
@@ -301,7 +312,10 @@ clip; it does not select everything outside the rectangle across the surface.
 )
 ]
 @reference-figure["clip-antialias-stage9.png"
-                  "Two blue clipped rectangles compare a hard fractional clip edge on the left with an antialiased fractional clip edge on the right."]
+                  "Two literal-pixel clipped rectangles compare a hard fractional clip edge on the left with an antialiased edge on the right, whose boundary pixels have intermediate blue coverage."]
+
+The source target is captured at one device pixel per coordinate unit and enlarged afterwards;
+scaling the program first would turn the half-pixel edges into integral edges and hide the comparison.
 }
 
 @defproc[(canvas-clip-path! [canvas canvas?] [path skia-path?]
@@ -328,7 +342,7 @@ mutation or closure of the path does not change the established clip.
 
 @section[#:tag "skia-clip-queries"]{Rounded Clips and Clip Queries}
 
-@(declare-exporting skia skia/canvas-primitives #:use-sources (skia/canvas-primitives))
+@(declare-exporting skia)
 
 Clip queries describe the current saved drawing state. Bounds can be conservative
 and do not replace a clip or prove that a shape will draw visible pixels.

@@ -93,6 +93,38 @@ are omitted. Retained multi-run blobs use a stricter conversion: a glyph with
 visible bounds but no monochrome outline raises an exception instead of being
 silently dropped. This operation is not a general vectorization of color or
 bitmap glyphs.
+
+The builder can retain multiple runs with independently captured font settings.
+Here the left panel is the completed two-run blob; the right panel draws the
+path returned by @racket[text-blob->path]. The source font changes size between
+appends, so the large exclamation mark belongs to a separate retained run.
+
+@racketblock[
+(with-skia ([surface (make-surface 420 175 #:background 'white)]
+            [font (make-font #:size 30)]
+            [builder (make-text-blob-builder)]
+            [source-paint (make-paint #:color "#326DE6")]
+            [outline-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+            [label-font (make-font #:size 12)]
+            [label-paint (make-paint #:color "#526070")])
+  (text-blob-builder-add-run! builder font (font-text->glyphs font "small")
+                             #:origin '(18 92))
+  (font-set-size! font 52)
+  (text-blob-builder-add-run! builder font (font-text->glyphs font "!")
+                             #:origin '(130 92))
+  (with-skia ([blob (text-blob-builder-finish! builder)]
+              [outline (text-blob->path blob)])
+    (define canvas (surface-canvas surface))
+    (draw-simple-text canvas "completed blob: two retained runs" 18 24
+                      label-font label-paint)
+    (draw-text-blob canvas blob 0 0 source-paint)
+    (draw-simple-text canvas "text-blob->path" 228 24 label-font label-paint)
+    (with-canvas-state canvas
+      (canvas-translate! canvas 210 0)
+      (draw-path canvas outline outline-paint))))
+]
+@reference-figure["text-blob-multirun-outline.png"
+                  "A filled blue two-run text blob with small and large glyphs is shown beside the orange stroked path returned by text-blob->path."]
 }
 
 
@@ -597,9 +629,16 @@ clusters are absent from the resulting blob metadata. The rules in
 @secref["skia-text-run-metadata"] apply. Failure returns no partial blob.
 
 @racketblock[
-(with-skia ([font (make-font #:size 24)]
+(with-skia ([surface (make-surface 330 100 #:background 'white)]
+            [font (make-font #:size 24)]
             [shaper (make-shaper font)]
-            [path (make-path '((move 10 40) (line 310 40)))])
+            [path (make-path '((move 10 40) (line 310 40)))]
+            [guide-path (make-path '((move 10 40) (line 310 40)))]
+            [guide (make-paint #:color "#BBBBBB" #:style 'stroke #:stroke-width 1)]
+            [mark (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+            [paint (make-paint #:color "#20344E")]
+            [label-font (make-font #:size 12)]
+            [label (make-paint #:color "#20344E")])
   (define text "AB")
   (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
   (with-skia ([blob (shaped-run->text-blob/on-path shaper run path
@@ -607,8 +646,19 @@ clusters are absent from the resulting blob metadata. The rules in
                                                  #:text text)])
     (skia-close! path)
     (skia-close! shaper)
+    (define canvas (surface-canvas surface))
+    (draw-path canvas guide-path guide)
+    (draw-text-blob canvas blob 0 0 paint)
+    (draw-line canvas 30 40 30 45 mark)
+    (draw-simple-text canvas "start +20; normal +5" 10 88 label-font label)
     (text-run-info-transforms (vector-ref (text-blob-runs blob) 0))))
 ]
+
+@reference-figure["text-blob-path-snapshot.png"
+                  "A retained AB text blob drawn after its source path and shaper close. A pale reconstructed straight guide marks the original path; the orange five-unit marker and caption identify the start offset 20 and normal offset 5."]
+
+The guide is a separate retained path. The figure draws @racket[blob] directly, rather than
+calling the on-path helper again after its source resources have closed.
 
 Each transform contains unit rotation coefficients for the horizontal path.
 Its translation includes the start offset and the five-unit normal offset;

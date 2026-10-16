@@ -121,7 +121,10 @@ before publication does not replace an existing file with partial XML.
 ]
 
 @reference-figure["svg-document.png"
-                  "The SVG example rendered as a preview: a solid blue circle centered on a white canvas."]
+                  "A raster content preview of the same centered blue-circle drawing commands as the SVG example. It is not a rendering or verification of the exported SVG file."]
+
+The preview shows the callback's geometry only; SVG representation and publication remain
+separate checks.
 }
 
 @defproc[(call-with-svg-bytes [width (real-in 1/1000 32768)]

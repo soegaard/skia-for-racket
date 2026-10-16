@@ -489,12 +489,34 @@ Color, shaders, mask/image/color filters, and blending are not baked into the
 result. The source path and paint are unchanged.
 
 @racketblock[
-(with-skia ([path (make-path '((move 10 20) (line 90 20)))]
-            [paint (make-paint #:style 'stroke #:stroke-width 6 #:cap 'round)])
+(with-skia ([surface (make-surface 220 120 #:background 'white)]
+            [path (make-path '((move 10 20) (line 90 20)))]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 6 #:cap 'round)]
+            [fill (make-paint #:color "#326DE6")]
+            [boundary (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+            [font (make-font #:size 13)]
+            [label (make-paint #:color "#20344E")])
   (define-values (outline fillable?) (paint->fill-path paint path))
   (call-with-skia-resource outline
-    (lambda (outline) (and fillable? (path-contains? outline 50 20)))))
+    (lambda (outline)
+      (define canvas (surface-canvas surface))
+      (draw-simple-text canvas "original stroke" 10 18 font label)
+      (with-canvas-state canvas
+        (canvas-translate! canvas 10 15)
+        (draw-path canvas path paint))
+      (draw-simple-text canvas "returned fill path" 10 68 font label)
+      (with-canvas-state canvas
+        (canvas-translate! canvas 10 65)
+        (draw-path canvas outline fill)
+        (draw-path canvas outline boundary))
+      (and fillable? (path-contains? outline 50 20)))))
 ]
+
+@reference-figure["paint-fill-path.png"
+                  "The original blue round-capped stroke and the blue fill path returned for the same line, in separate rows. A dark outline marks the returned path boundary."]
+
+Both rows have the same capsule geometry. The returned path contains the stroke expansion,
+not the paint's color, filters, shader, or blend settings.
 }
 
 @section{Additional Visual Examples}
@@ -522,6 +544,55 @@ The following examples show settings whose effect is easiest to recognize in ren
 ]
 @reference-figure["paint-joins.png"
                   "Three blue V-shaped strokes comparing miter, round, and bevel joins."]
+
+@racketblock[
+(with-skia ([surface (make-surface 420 250 #:background 'white)]
+            [high-miter (make-paint #:color "#326DE6" #:style 'stroke
+                                    #:stroke-width 16 #:join 'miter)]
+            [low-miter (make-paint #:color "#326DE6" #:style 'stroke
+                                   #:stroke-width 16 #:join 'miter)]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")]
+            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+            [checker-light (make-paint #:color "#F5F6F8")]
+            [checker-dark (make-paint #:color "#D9DEE6")])
+  (define canvas (surface-canvas surface))
+  (paint-set-miter-limit! high-miter 8)
+  (paint-set-miter-limit! low-miter 1.2)
+  (for ([paint (list high-miter low-miter)] [x '(20 230)]
+        [caption '("miter limit 8" "miter limit 1.2 -> bevel")])
+    (draw-simple-text canvas caption x 17 font label)
+    (draw-polygon canvas (list (list (+ x 55) 115) (list (+ x 85) 42)
+                               (list (+ x 115) 115)) paint #:closed? #f))
+  (draw-simple-text canvas "declared D: 55% azure; incoming S: 65% orange" 18 137 font label)
+  (define (draw-checker x)
+    (for* ([row (in-range 3)] [column (in-range 6)])
+      (draw-rect canvas (+ x (* 20 column)) (+ 150 (* 20 row)) 20 20
+                 (if (even? (+ row column)) checker-light checker-dark))))
+  (define (blend-pane mode)
+    (with-skia ([pane (make-surface 110 58)]
+                [destination (make-paint #:color (rgba 23 105 224 140))]
+                [source (make-paint #:color (rgba 239 79 55 166) #:blend-mode mode)])
+      (draw-rounded-rect (surface-canvas pane) 6 6 82 44 8 8 destination)
+      (draw-circle (surface-canvas pane) 72 29 22 source)
+      (surface-snapshot pane)))
+  (for ([mode '(src-over modulate multiply)] [x '(18 155 292)])
+    (draw-simple-text canvas (symbol->string mode) x 225 font label)
+    (draw-checker x)
+    (with-skia ([result (blend-pane mode)])
+      (draw-image canvas result x 150))
+    (draw-rect canvas x 150 110 58 outline))
+  surface)
+]
+@reference-figure["paint-miter-and-translucent-blends.png"
+                  "Top: matching acute blue V strokes use miter limits 8 and 1.2; the low limit bevels the otherwise long miter. Bottom: a 55-percent opaque azure destination and 65-percent opaque orange source are combined over the same gray checkerboard by source-over, modulate, and multiply; the latter two visibly differ with translucency."]
+
+The first row exercises @racket[paint-set-miter-limit!] after paint construction.
+The lower row declares its translucent destination rather than treating the
+white page as the destination: @racket['modulate] multiplies premultiplied
+components, while @racket['multiply] uses source-over alpha with an RGB
+multiply blend.  It is a compact complement to the cap, join, alpha,
+multiply, and screen examples above, not a gallery of every blend mode.
 
 @racketblock[
 (with-skia ([surface (make-surface 180 100 #:background 'white)])

@@ -294,10 +294,25 @@
         (for*/list ([spec (in-list specifications)]
                     [module (in-list (hash-ref spec 'exports))])
           (define name (hash-ref spec 'name))
-          (define tag
-            (xref-binding->definition-tag
-             xref (list (string->symbol module) (string->symbol name)) 0))
-          (need tag "missing definition target: ~a / ~a" module name)
+          ;; Scribble records one target for a documented binding. A re-export
+          ;; can share that binding without having its own raw xref key, so find
+          ;; the target through any declared export. The free-label check above
+          ;; establishes that these exports are the same public binding.
+          (define tags
+            (remove-duplicates
+             (filter values
+                     (for/list ([candidate
+                                 (in-list
+                                  (remove-duplicates
+                                   (cons (hash-ref spec 'canonical_module)
+                                         (hash-ref spec 'exports))))])
+                       (xref-binding->definition-tag
+                        xref
+                        (list (string->symbol candidate) (string->symbol name))
+                        0)))))
+          (need (pair? tags) "missing definition target: ~a" name)
+          (need (= (length tags) 1) "re-export has distinct definition targets: ~a" name)
+          (define tag (car tags))
           (define group (hash-ref spec 'definition_group name))
           (define previous (hash-ref seen-tags tag #f))
           (need (or (not previous) (equal? previous group))
@@ -313,7 +328,7 @@
                   'relative_path (regexp-replace* #rx"\\\\" (path->string relative) "/")
                   'anchor anchor)))
       '()))
-;; Each alias must resolve to its own canonical entry, not merely to some Reference page.
+;; Each declared export must map to the one documented entry for its binding.
 (for ([spec (in-list specifications)] #:when xref)
   (define matches (filter (lambda (row) (equal? (hash-ref row 'name) (hash-ref spec 'name)))
                           targets))

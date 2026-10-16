@@ -195,6 +195,52 @@ within the accepted range.
 ]
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 420 260 #:background 'white)]
+            [shape (make-path '((move 0 0) (line 35 0) (line 35 12)
+                                (line 12 12) (line 12 35) (line 0 35) (close)))]
+            [ghost (make-paint #:color "#D9DEE6")]
+            [ink (make-paint #:color "#326DE6")]
+            [grid (make-paint #:color "#D9DEE6" #:style 'stroke #:stroke-width 1)]
+            [box (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 2)]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")])
+  (define canvas (surface-canvas surface))
+  (define translation (matrix-translate 28 12))
+  (define scaling (matrix-scale 1.4))
+  (define (composition-panel x transform title)
+    (draw-simple-text canvas title x 17 font label)
+    (with-canvas-state canvas
+      (canvas-translate! canvas x 35)
+      (for ([n '(0 20 40 60 80)])
+        (draw-line canvas n 0 n 80 grid)
+        (draw-line canvas 0 n 80 n grid))
+      (draw-path canvas shape ghost)
+      (canvas-concat! canvas transform)
+      (draw-path canvas shape ink)))
+  (composition-panel 18 (matrix-compose translation scaling) "T × S: S acts first")
+  (composition-panel 215 (matrix-compose scaling translation) "S × T: T acts first")
+  (draw-simple-text canvas "gray = same local L; blue = composed result" 18 130 font label)
+  (define bound-transform
+    (matrix-compose (matrix-translate 210 195) (matrix-rotate-degrees 28)))
+  (define-values (left top width height)
+    (matrix-map-rect bound-transform -45 -22 90 44))
+  (draw-simple-text canvas "matrix-map-rect returns an axis-aligned box" 90 145 font label)
+  (with-canvas-state canvas
+    (canvas-concat! canvas bound-transform)
+    (draw-rect canvas -45 -22 90 44 ink))
+  (draw-rect canvas left top width height box)
+  (draw-simple-text canvas "red = mapped bounds, not an oriented rectangle" 85 250 font label)
+  surface)
+]
+@reference-figure["matrix-composition-and-bounds.png"
+                  "Top row: the same gray L-shaped path is transformed in two orders. Translation composed before scale leaves the blue result closer to the grid origin than scale composed before translation. Bottom: a rotated blue rectangle is enclosed by the red axis-aligned rectangle returned by matrix-map-rect."]
+
+Matrix products act from right to left on points, which is why the two blue
+shapes differ even though they use the same translation and scale.  The red
+result is a bounding box for four mapped corners, not a second rotation or a
+replacement for the existing canvas transform-order comparison.
+
 @close-eval[matrix-eval]
 
 

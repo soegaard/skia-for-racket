@@ -107,29 +107,52 @@ It is not an independent native text blob. Drawing it after closing the shaper
 raises an exception, including for an empty line.
 
 @racketblock[
-(with-skia ([font (make-font #:size 24)]
-            [shaper (make-shaper font)])
+(with-skia ([surface (make-surface 320 90 #:background 'white)]
+            [font (make-font #:size 24)]
+            [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")]
+            [guide (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 1)])
   (define text "unbreakable")
   (define natural (abs (shaped-run-advance-x (shape-text shaper text))))
-  (define layout (layout-text shaper text #:width (max 1 (/ natural 2))))
+  (define requested (max 1 (/ natural 2)))
+  (define layout (layout-text shaper text #:width requested))
+  (define canvas (surface-canvas surface))
+  (draw-line canvas (+ 20 requested) 18 (+ 20 requested) 72 guide)
+  (draw-text-layout canvas layout 20 25 paint)
   (list (text-layout-line-count layout) (text-layout-width layout)))
 ]
+
+@reference-figure["layout-unbreakable-overflow.png"
+                  "The actual one-line layout for the unbreakable word, with an orange vertical guide at the requested half-natural width. The word visibly extends beyond the guide without being clipped."]
+
+The guide marks the requested layout width, not a canvas clip. The full word is deliberately
+left visible so the figure demonstrates overflow rather than merely reporting it.
 
 The word stays on one line even if its advance exceeds the requested width.
 
 
 @racketblock[
 (with-skia ([surface (make-surface 300 100 #:background 'white)]
-            [font (make-font #:size 22)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper "אבג דהו זחט" #:width 260
-                 #:direction 'rtl #:align 'start))
-  (draw-text-layout (surface-canvas surface) layout 20 18 paint))
+            [manager (make-font-manager)])
+  (define hebrew "אבג דהו זחט")
+  (define face (font-manager-match-character manager #\א #:languages '("he")))
+  (unless face (error 'hebrew-layout "no Hebrew-capable typeface is available"))
+  (with-skia ([hebrew-face face]
+              [font (make-font hebrew-face #:size 22)]
+              [shaper (make-shaper font)]
+              [paint (make-paint #:color "#20344E")])
+    (unless (for/and ([char (in-string hebrew)] #:unless (char-whitespace? char))
+              (positive? (font-char->glyph font char)))
+      (error 'hebrew-layout "the selected typeface does not cover the displayed text"))
+    (define layout
+      (layout-text shaper hebrew #:width 260 #:direction 'rtl #:align 'start))
+    (draw-text-layout (surface-canvas surface) layout 20 18 paint)))
 ]
 @reference-figure["layout-rtl-stage8.png"
-                  "A Hebrew right-to-left line uses start alignment at the right side of its layout box."]
+                  "A Hebrew line rendered with one verified Hebrew-capable face uses right-to-left start alignment at the right side of its layout box."]
+
+The selected face must cover every displayed non-space character; it is not a request for
+per-character fallback.
 
 @racketblock[
 (with-skia ([surface (make-surface 360 90 #:background 'white)]
@@ -270,6 +293,46 @@ layout validates paragraph bounds and grapheme boundaries later.
 
 The result is @racket['(4 "-")]. The value owns no native resource.
 }
+
+@subsection{A Selected Break Changes the Display Only}
+
+This provider offers one paragraph-relative character boundary: index four in
+@racket["longword"].  The wide layout leaves the input on one line, so the
+insertion is absent. The narrower layout selects that opportunity and draws a
+hyphen, while the caller's logical text remains @racket["longword"].
+
+@racketblock[
+(with-skia ([surface (make-surface 420 175 #:background 'white)]
+            [font (make-font #:size 28)]
+            [shaper (make-shaper font)]
+            [text-paint (make-paint #:color "#20344E")]
+            [guide (make-paint #:color "#C9D2DF" #:style 'stroke)]
+            [label-font (make-font #:size 11)]
+            [label-paint (make-paint #:color "#526070")])
+  (define text "longword")
+  (define opportunity (make-layout-break-opportunity 4 "-"))
+  (define (provider paragraph language) (list opportunity))
+  (define wide (layout-text shaper text #:width 170 #:break-provider provider))
+  (define narrow (layout-text shaper text #:width 90 #:break-provider provider))
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 18 40 170 82 guide)
+  (draw-rect canvas 228 40 90 82 guide)
+  (draw-simple-text canvas "wide: no break selected" 18 25 label-font label-paint)
+  (draw-text-layout canvas wide 18 48 text-paint)
+  (draw-simple-text canvas "narrow: selected break inserts -" 228 25
+                    label-font label-paint)
+  (draw-text-layout canvas narrow 228 48 text-paint)
+  (draw-simple-text canvas "logical input stays: longword" 18 148
+                    label-font label-paint)
+  (list (map text-layout-line-text (text-layout-lines wide))
+        (map text-layout-line-text (text-layout-lines narrow))))
+]
+@reference-figure["layout-break-provider-insertion.png"
+                  "The logical word longword fits in a wide layout without a hyphen; in a narrow layout the provider's character-index-four break is selected and the visible first line becomes long-."]
+
+The opportunity index is a Racket character index in its paragraph, not a
+UTF-8 byte offset or a shaped-glyph cluster index. The two displayed line-text
+lists are @racket['("longword")] and @racket['("long-" "word")].
 
 @defproc[(layout-break-opportunity-index [opportunity layout-break-opportunity?])
           exact-nonnegative-integer?]{

@@ -202,12 +202,18 @@ behavior can still differ. Completion must succeed before any bytes are returned
     #:unit 'mm #:margins 5 #:background 'white))
 (save-output page "page.pdf" 'pdf #:exists 'replace)
 (save-output page "page.svg" 'svg #:exists 'replace)
+(with-skia ([preview (output-page->image page #:dpi 25.4)])
+  (list (image-width preview) (image-height preview)))
 ]
 
-The same callback runs once for each export; it creates its paint inside each call.
+The same callback runs once for each export and once for the explicit raster preview; it creates
+its paint inside each call. At 25.4 DPI, the preview has one pixel per millimeter.
 
 @reference-figure["output-page-preview.png"
-                  "A preview of the output page, showing a blue circle near the upper-left corner on a white page."]
+                  "A proportional 120 by 80 screen preview rasterized from the documented 60 by 40 millimeter page. The blue circle's center is at 30, 30 and its radius is 16 in preview pixels, including the five-millimeter margins."]
+
+This is a scaled screen preview built through @racket[output-page->image], not proof of a
+physical print size.
 }
 
 @defproc[(save-output [source (or/c output-page? (listof output-page?))]

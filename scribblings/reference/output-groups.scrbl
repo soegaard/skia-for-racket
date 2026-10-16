@@ -81,9 +81,10 @@ raises @racket[exn:fail:output-group?] with its report. The optional label is co
 ]
 
 @reference-figure["output-group.png"
-                  "A red bounded output group rasterized inside a larger white surface."]
+                  "A nearest-neighbor enlargement of the transparent 20 by 20 output surface. The red raster output group occupies x four through eleven and y five through ten; the checkerboard is only a preview background."]
 
-The result contains 1, @racket['raster], and @racket[#(20 16)]. Padding is included before scaling.
+The result contains 1, @racket['raster], and @racket[#(20 16)]. Padding is included before
+scaling, but does not move the group's logical red content or become visible colored geometry.
 
 @section{Reports and Failures}
 

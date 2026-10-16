@@ -1,12 +1,11 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract skia skia/canvas-primitives skia/geometry))
+          (for-label racket/base racket/contract skia))
 
 @title[#:tag "skia-rounded-rectangles"]{Rounded Rectangles}
 
-@(declare-exporting skia skia/canvas-primitives skia/geometry
-                    #:use-sources (skia/canvas-primitives skia/geometry))
+@(declare-exporting skia)
 
 A @deftech{rounded rectangle} is a detached immutable specification of a rectangle
 and four pairs of corner radii. It is not an owned native resource. Drawing or
@@ -157,6 +156,39 @@ preserves this representation. The operation does not silently approximate,
 flatten, or rasterize an unrepresentable shape. For general affine geometry,
 add the rounded rectangle to a path and use @racket[path-transform].
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 260 165 #:background 'white)]
+            [outset-paint (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 3)]
+            [original-paint (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 3)]
+            [inset-paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 3)]
+            [font (make-font #:size 11)]
+            [label (make-paint #:color "#20344E")])
+  (define original (make-rounded-rect 65 52 130 65 #:radii 28))
+  (define inset (rounded-rect-inset original 12 8))
+  (define outset (rounded-rect-outset original 12 8))
+  (define canvas (surface-canvas surface))
+  (draw-rrect canvas outset outset-paint)
+  (draw-rrect canvas original original-paint)
+  (draw-rrect canvas inset inset-paint)
+  (draw-simple-text canvas "orange: outset (12, 8)" 54 22 font label)
+  (draw-simple-text canvas "dark: original" 88 137 font label)
+  (draw-simple-text canvas "blue: inset (12, 8)" 72 153 font label)
+  surface)
+]
+@reference-figure["rounded-rect-inset-outset.png"
+                  "Three concentric rounded-rectangle outlines: a large orange outset expanded by 12 horizontal and 8 vertical units, the dark original, and a smaller blue inset using the same distances. Their corner radii change with the native rounded-rectangle rules."]
+
+Insets and outsets change detached rounded-rectangle specifications; they are
+not strokes.  A translation or axis-aligned scale can produce another
+representable rounded rectangle, but that is not a distinct visual concept from
+the canvas transforms shown elsewhere.  The deliberately numerical shear case
+remains useful because it establishes the refusal to approximate:
+
+@racketblock[
+(rounded-rect-transform (make-rounded-rect 0 0 40 20 #:radii 4)
+                        (make-matrix 1 0 0.5 1 0 0)) ; => #f
+]
 
 @section{Additional Visual Examples}
 

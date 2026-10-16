@@ -206,7 +206,13 @@ not a copy or a new borrow. Zero-sized or out-of-bounds subsets raise an excepti
 }
 
 @racketblock[
-(with-skia ([buffer (make-raster-buffer 3 2)])
+(with-skia ([buffer (make-raster-buffer 3 2)]
+            [surface (make-surface 190 150 #:background 'white)]
+            [dark (make-paint #:color "#D9DEE4")]
+            [light (make-paint #:color "#F1F3F5")]
+            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+            [font (make-font #:size 12)]
+            [label (make-paint #:color "#20344E")])
   (define expired
     (call-with-raster-buffer-pixmap buffer
       (lambda (view)
@@ -214,10 +220,24 @@ not a copy or a new borrow. Zero-sized or out-of-bounds subsets raise an excepti
         (pixmap-fill! corner 'red)
         corner)
       #:writable? #t))
+  (with-skia ([image (raster-buffer->image buffer)])
+    (define canvas (surface-canvas surface))
+    (draw-simple-text canvas "actual 3 x 2 buffer after borrow" 20 20 font label)
+    (for* ([row (in-range 4)] [column (in-range 6)])
+      (draw-rect canvas (+ 20 (* column 25)) (+ 35 (* row 25)) 25 25
+                 (if (even? (+ row column)) light dark)))
+    (draw-image-rect canvas image 20 35 150 100 #:sampling 'nearest)
+    (draw-rect canvas 20 35 150 100 outline))
   (list (pixmap? expired)
         (with-handlers ([exn:fail? (lambda (_) 'expired)])
           (pixmap-width expired))))
 ]
+
+@reference-figure["pixmap-subset-write.png"
+                  "A nearest-neighbor view of the actual 3-by-2 parent raster buffer after the writable subset pixmap expires. Only bottom-right pixel (2,1) is red; the other initialized pixels are transparent over a declared checkerboard preview."]
+
+The rendering uses an image made from the parent buffer only after the borrow ends; it does not
+attempt to draw with the expired pixmap.
 
 The result is @racket['(#t expired)]. The wrapper remains recognizable, but its borrow has ended.
 
@@ -404,6 +424,37 @@ alpha rounds to the nearest eight-bit value. RGB and the source color-space desc
 copied. The source must be idle.
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 300 140 #:background 'white)]
+            [source (make-raster-buffer 4 1)]
+            [font (make-font #:size 11)]
+            [label (make-paint #:color "#20344E")]
+            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+  (call-with-raster-buffer-pixmap
+   source
+   (lambda (view)
+     (for ([x (in-range 4)] [alpha '(0 85 170 255)])
+       (pixmap-set-sample! view x 0
+                           (vector (quotient (* 50 alpha) 255)
+                                   (quotient (* 109 alpha) 255)
+                                   (quotient (* 230 alpha) 255)
+                                   alpha))))
+   #:writable? #t)
+  (with-skia ([alpha-buffer (raster-buffer-extract-alpha source)]
+              [source-image (raster-buffer->image source)]
+              [alpha-image (raster-buffer->image alpha-buffer)])
+    (define canvas (surface-canvas surface))
+    (draw-simple-text canvas "source blue with alpha 0, 85, 170, 255" 20 18 font label)
+    (draw-image-rect canvas source-image 20 30 240 35 #:sampling 'nearest)
+    (draw-simple-text canvas "extracted Alpha8 shown as black over white" 20 87 font label)
+    (draw-image-rect canvas alpha-image 20 99 240 35 #:sampling 'nearest)
+    (draw-rect canvas 20 30 240 35 outline)
+    (draw-rect canvas 20 99 240 35 outline)
+    surface))
+]
+@reference-figure["raster-buffer-extracted-alpha.png"
+                  "Four blue samples with alpha values zero, 85, 170, and 255 appear increasingly opaque over white. The independent Alpha8 buffer extracted from those samples is displayed below as black-to-white grayscale: transparent black appears white over the page and opaque black appears black."]
+
 @defproc[(image->image-info [image image?])
           image-info?]{
 Returns a detached description of the image's dimensions, native color/alpha types, and copied
@@ -464,11 +515,15 @@ buffer or retain the canvas for later use.
   (list sample (subbytes (raster-buffer->storage-bytes buffer) 0 4)))
 ]
 
-The sample is @racket[#(20 40 60 255)], but the stored bytes are 60, 40, 20, 255.
+The written sample is @racket[#(20 40 60 255)] and the untouched sample is
+@racket[#(0 0 0 0)], but the written storage bytes are 60, 40, 20, 255.
 Logical channel order is not byte order.
 
-@reference-figure["raster-buffer-checker.png"
-                  "A four-by-three checkerboard written through a raster buffer and shown as an image."]
+@reference-figure["raster-buffer-bgra-sample.png"
+                  "A nearest-neighbor view of the actual two-pixel BGRA buffer after its writable pixmap scope ends. The written left pixel displays as opaque RGB 20, 40, 60; the untouched right pixel is transparent over a preview checkerboard."]
+
+The checkerboard is only behind the preview. It does not turn BGRA storage order into a different
+displayed color.
 
 @section{Color-Space Descriptions}
 

@@ -248,12 +248,24 @@ and black. The small input is constructed here so no external image file is need
   (bytes-copy! output 70 (bytes 0 0 255 0 255 0 0 0))
   output)
 
-(with-skia ([session (codec-scanline-from-bytes (bottom-up-bmp))])
+(with-skia ([session (codec-scanline-from-bytes (bottom-up-bmp))]
+            [target (make-surface 2 3)])
   (define lower-batch (codec-scanline-read! session 2))
   (define upper-batch (codec-scanline-read! session 1))
+  (for ([batch (list lower-batch upper-batch)])
+    (with-skia ([buffer (scanline-batch->raster-buffer batch)]
+                [part (raster-buffer->image buffer)])
+      (draw-image (surface-canvas target) part 0
+                  (scanline-batch-first-row batch))))
   (list (scanline-batch-first-row lower-batch)
         (scanline-batch-first-row upper-batch)))
 ]
+
+@reference-figure["scanline-bottom-up-placement.png"
+                  "The actual 2-by-3 target rebuilt from bottom-up scanline batches, enlarged with nearest-neighbor sampling. Its top row is red and green, middle row blue and white, and bottom row yellow and black; labels identify the batches' first output rows."]
+
+Each batch is converted to an owned image and drawn at its reported first output row. The thin
+horizontal rules are presentation markers for target rows, not decoded pixels.
 
 The result is @racket['(1 0)]. The first batch contains output rows 1 and 2;
 the second contains row 0. Each batch stores its rows in top-to-bottom order,

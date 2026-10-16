@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/color-space skia/image-info))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/color-space skia/image-info))
 
 @title[#:tag "skia-color-management"]{Color Management}
 
@@ -60,6 +61,12 @@ different colors. The sRGB source produces RGB values of 128; the linear source
 produces approximately 188 in the sRGB destination. Alpha remains 255. The
 @racket[#:color-space] arguments to @racket[rgba-bytes->image] declare the input
 bytes' meaning; drawing into the tagged destination performs the conversion.
+
+@reference-figure["color-space-interpretation.png"
+                  "The actual two-pixel sRGB destination enlarged with nearest-neighbor sampling. The left opaque gray sample, declared sRGB, is RGB 128; the right sample has the same source bytes declared linear sRGB and converts to approximately RGB 188."]
+
+The swatches are captured from the destination surface. They are not manually selected gray
+paint colors.
 }
 
 @defproc[(color-space=? [a color-space?] [b color-space?]) boolean?]{
@@ -395,4 +402,10 @@ The source bytes stay @racket['(128 128 128 255)]; the converted RGB bytes are
 approximately 188, with alpha still 255. Declaring an encoding when constructing
 an image, converting its samples, and overriding an encoder's profile are three
 different operations.
+
+@reference-figure["image-color-space-conversion.png"
+                  "Two actual one-pixel images enlarged with nearest-neighbor sampling. The left untagged source bytes are previewed under an explicitly stated sRGB assumption and appear RGB 128; the right converted sRGB image is approximately RGB 188. Both are opaque."]
+
+The source's bytes are not changed for this preview. Only @racket[image-convert-color-space]
+creates the brighter converted sample.
 }

@@ -359,6 +359,35 @@ Maps a rectangle in the plane z = 0 using @racket[matrix4-project-xy] and
 This is not a bounding-volume operation for a three-dimensional box.
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 300 190 #:background 'white)]
+            [grid (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1)]
+            [axis (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 3)]
+            [marker (make-paint #:color "#7D5BA6")]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")])
+  (define canvas (surface-canvas surface))
+  (define tilt
+    (matrix4-compose (matrix4-translate 150 105 0)
+                     (matrix4-perspective 420)
+                     (matrix4-rotate-y-degrees 38)
+                     (matrix4-rotate-x-degrees -14)
+                     (matrix4-translate -70 -45 40)))
+  (draw-simple-text canvas "matrix4-projected asymmetric grid" 68 17 font label)
+  (with-canvas-matrix canvas tilt
+    (for ([x (in-range 0 141 20)]) (draw-line canvas x 0 x 90 grid))
+    (for ([y (in-range 0 91 15)]) (draw-line canvas 0 y 140 y grid))
+    (draw-line canvas 0 0 140 90 axis)
+    (draw-circle canvas 18 18 6 marker))
+  (draw-simple-text canvas "purple corner marker prevents mirror ambiguity" 35 175 font label)
+  surface)
+]
+@reference-figure["matrix4-projected-grid.png"
+                  "An asymmetric blue grid with a thick red diagonal and a purple corner marker is tilted by a 4 by 4 canvas matrix. The finite projection narrows the far edge without crossing a horizon."]
+
+This projects the plane carrying the grid.  It does not set up a 3D camera,
+depth buffer, visibility sorting, or clipping planes.
+
 
 @section[#:tag "skia-canvas-projective-matrix"]{Canvas Matrix State}
 
@@ -442,14 +471,21 @@ The protected save floor and continuation barrier are those of
 
 @racketblock[
 (with-skia ([surface (make-surface 20 20)]
-            [paint (make-paint #:color 'red)])
+            [inside (make-paint #:color 'red)]
+            [restored (make-paint #:color 'blue)])
   (define canvas (surface-canvas surface))
   (with-canvas-matrix canvas (matrix4-translate 5 6)
-    (draw-rect canvas 0 0 4 3 paint))
+    (draw-rect canvas 0 0 4 3 inside))
+  (draw-rect canvas 0 0 4 3 restored)
   (equal? (canvas-matrix4 canvas) matrix4-identity))
 ]
 
-The matrix is identity after the scope, while the drawn rectangle remains.
+@reference-figure["canvas-matrix-scope.png"
+                  "An actual transparent 20-by-20 canvas enlarged with nearest-neighbor sampling. The blue 4-by-3 mark is drawn after the scope at the restored origin; the red 4-by-3 mark is drawn inside the matrix scope at offset (5,6)."]
+
+The enclosing rectangle is only the enlarged-target boundary. It is not canvas geometry.
+
+The matrix is identity after the scope, while both drawn rectangles remain.
 }
 
 @defform[(with-canvas-matrix canvas-expr matrix-expr option ... body ...+)

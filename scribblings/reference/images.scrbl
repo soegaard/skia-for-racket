@@ -42,9 +42,29 @@ request to multiply them. A supplied @racket[space] declares their interpretatio
 without converting them. The image retains its own native color-space reference.
 
 @racketblock[
-(with-skia ([image (rgba-bytes->image 2 1 (bytes 255 0 0 255 0 0 255 128))])
+(with-skia ([image (rgba-bytes->image 2 1 (bytes 255 0 0 255 0 0 255 128))]
+            [surface (make-surface 200 100 #:background 'white)]
+            [dark (make-paint #:color "#D9DEE4")]
+            [light (make-paint #:color "#F1F3F5")]
+            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+            [font (make-font #:size 12)]
+            [label (make-paint #:color "#20344E")])
+  (define canvas (surface-canvas surface))
+  (draw-simple-text canvas "opaque red" 20 20 font label)
+  (draw-simple-text canvas "blue alpha 128" 105 20 font label)
+  (for* ([row (in-range 3)] [column (in-range 8)])
+    (draw-rect canvas (+ 20 (* column 20)) (+ 35 (* row 20)) 20 20
+               (if (even? (+ row column)) light dark)))
+  (draw-image-rect canvas image 20 35 160 50 #:sampling 'nearest)
+  (draw-rect canvas 20 35 160 50 outline)
   (bytes->list (image->rgba-bytes image)))
 ]
+
+@reference-figure["image-rgba-alpha.png"
+                  "An actual two-pixel RGBA image enlarged with nearest-neighbor sampling. The opaque red pixel is at left; the half-alpha blue pixel is at right over a declared gray checkerboard preview."]
+
+The checkerboard is behind the image only to expose blue's alpha 128. It is not part of
+the supplied RGBA bytes.
 }
 
 @defproc[(image-from-bytes [encoded bytes?]) image?]{

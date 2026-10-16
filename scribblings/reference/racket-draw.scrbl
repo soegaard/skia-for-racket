@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/class racket/contract
+@(require "support/figures.rkt"
+          (for-label racket/base racket/class racket/contract
                      (prefix-in draw: racket/draw)
                      skia skia/bitmap skia/dc skia/pict skia/racket-draw))
 
@@ -97,6 +98,64 @@ not metadata-preserving inverses of @racket[bitmap->image].
 
 For a bitmap with backing scale 1, the result is @racket['(20 10)].
 
+@subsection{Masks, Reverse Copies, and Pixel Density}
+
+This example starts with one asymmetric Racket bitmap and a partly transparent
+loaded mask. The first panel uses that loaded mask; the second explicitly
+ignores it, then goes through @racket[image->bitmap] before returning to a
+Skia image. The third snapshots a Skia surface through @racket[surface->bitmap].
+The checkerboard is only a presentation background for the copied alpha.
+
+@racketblock[
+(require racket/class
+         (prefix-in draw: racket/draw)
+         skia skia/racket-draw)
+
+(define source (draw:make-bitmap 3 2 #t))
+(send source set-argb-pixels 0 0 3 2
+      (bytes 255 230 75 50   255 35 155 85   255 45 105 230
+             255 240 185 45  255 150 70 190   255 35 180 185)
+      #f #t)
+(define coverage (draw:make-bitmap 3 2 #t))
+(send coverage set-argb-pixels 0 0 3 2
+      (bytes 102 0 0 0  178 0 0 0  255 0 0 0
+             102 0 0 0  178 0 0 0  255 0 0 0)
+      #f #t)
+(send source set-loaded-mask coverage)
+
+(with-skia ([masked (bitmap->image source)]
+            [unmasked (bitmap->image source #:mask #f)]
+            [surface (make-surface 3 2)])
+  (draw-image (surface-canvas surface) unmasked 0 0)
+  (define returned-bitmap (image->bitmap unmasked))
+  (define surface-bitmap (surface->bitmap surface))
+  (with-skia ([returned (bitmap->image returned-bitmap #:mask #f)]
+              [surface-copy (bitmap->image surface-bitmap #:mask #f)])
+    (list (image-width masked) (image-height masked)
+          (image-width returned) (image-height surface-copy))))
+]
+@reference-figure["bitmap-mask-and-copies.png"
+                  "An asymmetric three-by-two Racket bitmap is imported with its partly transparent loaded mask, without the mask through image-to-bitmap, and from a Skia surface copied with surface-to-bitmap; checkerboards show only the alpha preview."]
+
+@racketblock[
+(require racket/class
+         (prefix-in draw: racket/draw)
+         skia skia/racket-draw)
+
+(define high-density (draw:make-bitmap 3 2 #t #:backing-scale 2))
+(define bitmap-dc (new draw:bitmap-dc% [bitmap high-density]))
+(send bitmap-dc set-pen "black" 1 'transparent)
+(send bitmap-dc set-brush "orange" 'solid)
+(send bitmap-dc draw-ellipse 1/4 1/4 5/2 3/2)
+(send bitmap-dc set-bitmap #f)
+(with-skia ([physical (bitmap->image high-density #:resolution 'physical #:mask #f)]
+            [logical (bitmap->image high-density #:resolution 'logical #:mask #f)])
+  (list (list (image-width physical) (image-height physical))
+        (list (image-width logical) (image-height logical))))
+]
+@reference-figure["bitmap-resolution-density.png"
+                  "One logical three-by-two Racket bitmap with backing scale two is imported as a six-by-four physical image and as a three-by-two logical image; nearest-neighbor previews expose the different copied sample grids."]
+
 @section{Colors}
 
 The color conversions copy channel values only. They do not use the Racket
@@ -183,14 +242,34 @@ path.
          (prefix-in draw: racket/draw)
          skia skia/racket-draw)
 
-(define draw-path (new draw:dc-path%))
-(send draw-path rectangle 2 2 20 14)
+(define source-path (new draw:dc-path%))
+(send source-path rectangle 2 2 20 14)
 
-(with-skia ([path (dc-path->skia-path draw-path #:fill-style 'winding)])
+(with-skia ([path (dc-path->skia-path source-path #:fill-style 'winding)])
   (define-values (copy fill-style)
     (skia-path->dc-path path))
+  (define bitmap (draw:make-bitmap 24 18 #t))
+  (define bitmap-dc (new draw:bitmap-dc% [bitmap bitmap]))
+  (send bitmap-dc set-pen "black" 1 'transparent)
+  (send bitmap-dc set-brush "blue" 'solid)
+  (send bitmap-dc draw-path copy 0 0 fill-style)
+  (send bitmap-dc set-bitmap #f)
+  (with-skia ([image (bitmap->image bitmap #:mask #f)]
+              [surface (make-surface 200 150 #:background 'white)]
+              [font (make-font #:size 13)]
+              [label (make-paint #:color "#20344E")]
+              [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+    (draw-simple-text (surface-canvas surface) "Draw -> Skia -> Draw (winding)" 20 20 font label)
+    (draw-image-rect (surface-canvas surface) image 20 30 160 120 #:sampling 'nearest)
+    (draw-rect (surface-canvas surface) 20 30 160 120 outline))
   (list (is-a? copy draw:dc-path%) fill-style))
 ]
+
+@reference-figure["draw-path-roundtrip.png"
+                  "The winding rectangle after Draw to Skia to Draw conversion, rendered by a real Racket Draw bitmap DC and enlarged with nearest-neighbor sampling."]
+
+The displayed pixels come from the returned @racket[draw:dc-path%] and its returned fill style;
+they are not a redraw of the original Skia path.
 
 The result is @racket['(#t winding)]. Rational conics require an explicit
 approximation policy:
@@ -200,11 +279,38 @@ approximation policy:
          (prefix-in draw: racket/draw)
          skia skia/racket-draw)
 
-(with-skia ([path (make-path '((move 0 0) (conic 10 20 20 0 0.5)))])
+(with-skia ([path (make-path '((move 0 0) (conic 10 20 20 0 0.5)))]
+            [native-surface (make-surface 24 24 #:background 'white)]
+            [native-paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1.5)])
   (define-values (copy fill-style)
     (skia-path->dc-path path #:conic-subdivisions 4))
+  (draw-path (surface-canvas native-surface) path native-paint)
+  (define bitmap (draw:make-bitmap 24 24 #t))
+  (define bitmap-dc (new draw:bitmap-dc% [bitmap bitmap]))
+  (send bitmap-dc set-pen "blue" 2 'solid)
+  (send bitmap-dc set-brush "black" 'transparent)
+  (send bitmap-dc draw-path copy 1 1 fill-style)
+  (send bitmap-dc set-bitmap #f)
+  (with-skia ([native-image (surface-snapshot native-surface)]
+              [draw-image (bitmap->image bitmap #:mask #f)]
+              [surface (make-surface 280 150 #:background 'white)]
+              [font (make-font #:size 12)]
+              [label (make-paint #:color "#20344E")]
+              [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+    (draw-simple-text (surface-canvas surface) "native Skia conic" 20 20 font label)
+    (draw-simple-text (surface-canvas surface) "Draw approx., power 4" 150 20 font label)
+    (draw-image-rect (surface-canvas surface) native-image 20 32 110 110 #:sampling 'nearest)
+    (draw-image-rect (surface-canvas surface) draw-image 150 32 110 110 #:sampling 'nearest)
+    (draw-rect (surface-canvas surface) 20 32 110 110 outline)
+    (draw-rect (surface-canvas surface) 150 32 110 110 outline))
   (list (is-a? copy draw:dc-path%) fill-style))
 ]
+
+@reference-figure["draw-path-conic-approximation.png"
+                  "The native Skia rational conic at left and the result of rendering the returned Racket Draw path at right. The Draw result uses the explicit subdivision power 4 and is rendered through a Racket Draw bitmap DC."]
+
+The subdivision power bounds the number of generated quadratic segments; it is not an error
+tolerance. The two panels use independent rendering consumers.
 
 The second example returns @racket['(#t winding)] after converting the conic to
 a bounded sequence of cubic Bézier segments.

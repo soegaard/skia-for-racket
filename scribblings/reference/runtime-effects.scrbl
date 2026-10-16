@@ -187,6 +187,93 @@ and native retention follow @secref["skia-runtime-bindings"]. No local-matrix
 option is accepted for this stage.
 }
 
+@section{One Program, Several Composition Sites}
+
+The stage fixes the meaning of a program's inputs.  A color-filter program
+receives one premultiplied color.  A blender program receives the incoming
+@racket[src] color first and the already-present @racket[dst] color second.
+The following self-contained example keeps every input opaque, so each output
+is safely premultiplied.  For translucent inputs, a custom program must still
+ensure that every RGB component is no greater than alpha.
+
+@racketblock[
+(with-skia ([surface (make-surface 420 270 #:background 'white)]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")]
+            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+            [color-effect (make-runtime-effect
+                           "half4 main(half4 c) { return half4(c.b,c.g*0.5,c.r,c.a); }"
+                           #:kind 'color-filter)]
+            [color-filter (runtime-effect->color-filter color-effect)]
+            [orange (make-paint #:color "#E94F37")]
+            [filtered-orange (make-paint #:color "#E94F37" #:color-filter color-filter)]
+            [child-effect (make-runtime-effect
+                           "uniform shader child; half4 main(float2 p) { half4 c=child.eval(p); return half4(c.b,c.g*0.4,c.r,c.a); }")]
+            [child-gradient (make-linear-gradient-shader 220 0 400 0 '(red blue))]
+            [child-shader (runtime-effect->shader child-effect
+                                                  #:children (hash 'child child-gradient))]
+            [child-paint (make-paint #:shader child-shader)]
+            [blender-effect (make-runtime-effect
+                             "half4 main(half4 src, half4 dst) { return half4(src.r,dst.g,dst.b,1); }"
+                             #:kind 'blender)]
+            [paint-blender (runtime-effect->blender blender-effect)]
+            [shader-blender (runtime-effect->blender blender-effect)]
+            [filter-blender (runtime-effect->blender blender-effect)]
+            [destination (make-paint #:color "#1769E0")]
+            [source (make-paint #:color "#E94F37")]
+            [source-with-blender (make-paint #:color "#E94F37")]
+            [destination-shader (make-color-shader "#1769E0")]
+            [source-shader (make-color-shader "#E94F37")]
+            [combined-shader (make-blender-shader shader-blender
+                                                   destination-shader source-shader)]
+            [shader-paint (make-paint #:shader combined-shader)]
+            [destination-filter (make-shader-image-filter destination-shader
+                                                           #:crop '(290 130 110 55))]
+            [source-filter (make-shader-image-filter source-shader
+                                                      #:crop '(290 130 110 55))]
+            [combined-filter (make-blender-image-filter filter-blender
+                                                         destination-filter source-filter
+                                                         #:crop '(290 130 110 55))]
+            [filter-paint (make-paint #:image-filter combined-filter)]
+            [arithmetic (make-arithmetic-blender 0 0.25 0.75 0)]
+            [arithmetic-source (make-paint #:color "#E94F37")])
+  (define canvas (surface-canvas surface))
+  (paint-set-blender! source-with-blender paint-blender)
+  (paint-set-blender! arithmetic-source arithmetic)
+  (draw-simple-text canvas "color filter: source" 18 17 font label)
+  (draw-simple-text canvas "bound child shader" 220 17 font label)
+  (draw-rounded-rect canvas 18 28 82 45 7 7 orange)
+  (draw-rounded-rect canvas 112 28 82 45 7 7 filtered-orange)
+  (draw-rect canvas 220 28 180 45 child-paint)
+  (draw-simple-text canvas "source" 34 84 font label)
+  (draw-simple-text canvas "filtered" 126 84 font label)
+  (draw-simple-text canvas "child = red-to-blue gradient" 220 84 font label)
+  (draw-simple-text canvas "paint: D then S" 18 118 font label)
+  (draw-simple-text canvas "shader: D, S" 155 118 font label)
+  (draw-simple-text canvas "filter: bg=D, fg=S" 290 118 font label)
+  (draw-rounded-rect canvas 18 130 110 55 8 8 destination)
+  (draw-circle canvas 78 158 24 source-with-blender)
+  (draw-rect canvas 155 130 110 55 shader-paint)
+  (draw-rect canvas 290 130 110 55 filter-paint)
+  (for ([x '(18 155 290)]) (draw-rect canvas x 130 110 55 outline))
+  (draw-simple-text canvas "D = azure, S = orange" 18 206 font label)
+  (draw-simple-text canvas "same runtime blender" 155 206 font label)
+  (draw-simple-text canvas "arithmetic: .25 S + .75 D" 18 238 font label)
+  (draw-rounded-rect canvas 225 220 110 28 6 6 destination)
+  (draw-rounded-rect canvas 250 220 60 28 6 6 arithmetic-source)
+  surface)
+]
+@reference-figure["runtime-blender-consumers.png"
+                  "Top row: an orange source and its blue-purple runtime color-filter result; a runtime shader recolors a bound red-to-blue gradient child. Bottom row: one runtime blender combines an azure destination and orange source through a paint, a blender shader, and a blender image filter. A final swatch uses the arithmetic .25 source plus .75 destination blender."]
+
+The three bottom panels use separately owned instances of the same compiled
+blender program.  @racket[paint-set-blender!] sees the destination already in
+the canvas; @racket[make-blender-shader] takes destination before source even
+though the program receives source first; and
+@racket[make-blender-image-filter] names those inputs @racket[background]
+(destination) and @racket[foreground] (source).  The small final swatch uses
+@racket[make-arithmetic-blender] with the same ordering.
+
 @section{Uniform Descriptions}
 
 @defproc[(runtime-uniform? [v any/c]) boolean?]{

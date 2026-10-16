@@ -107,6 +107,47 @@ preserved; RGB hidden beneath fully transparent premultiplied pixels is not a
 stable result. No PNG encoding, temporary file, or borrowed native bitmap is
 involved.
 
+@subsection{Viewport Translation and Raster Density}
+
+The picture below is recorded in a larger coordinate system, then converted
+using a nonzero viewport. Both returned picts measure 100 by 70 logical units.
+Their raster scales differ, so this figure uses an explicitly labeled two-times
+preview to make the distinct sample densities inspectable without claiming that
+their logical sizes differ.
+
+@racketblock[
+(require (prefix-in pict: pict) skia skia/pict skia/racket-draw)
+
+(define bounds (vector 36 22 100 70))
+(with-skia ([font (make-font #:size 14)]
+            [background (make-paint #:color "#EEF2F7")]
+            [ink (make-paint #:color "#20344E")]
+            [orange (make-paint #:color "#EFA02B")]
+            [grid (make-paint #:color "#C9D2DF" #:style 'stroke #:stroke-width 1)]
+            [picture
+             (call-with-picture
+              160 110
+              (lambda (canvas)
+                (draw-rect canvas 0 0 160 110 background)
+                (for ([x '(20 40 60 80 100 120 140)])
+                  (draw-line canvas x 0 x 110 grid))
+                (for ([y '(20 40 60 80 100)])
+                  (draw-line canvas 0 y 160 y grid))
+                (draw-circle canvas 42 29 18 orange)
+                (draw-line canvas 36 92 130 30 ink)
+                (draw-simple-text canvas "viewport" 62 88 font ink)))])
+  (define one (picture->pict picture #:bounds bounds #:raster-scale 1))
+  (define three (picture->pict picture #:bounds bounds #:raster-scale 3))
+  (define one-preview (pict:pict->bitmap (pict:scale one 2)))
+  (define three-preview (pict:pict->bitmap (pict:scale three 2)))
+  (with-skia ([one-image (bitmap->image one-preview #:mask #f)]
+              [three-image (bitmap->image three-preview #:mask #f)])
+    (list (list (pict:pict-width one) (pict:pict-height one))
+          (list (pict:pict-width three) (pict:pict-height three)))))
+]
+@reference-figure["picture-pict-viewport-density.png"
+                  "Two magnified Racket pict previews made from the same nonzero 100-by-70 picture viewport: the left was rasterized at scale one and the right at scale three, while both retain the same logical dimensions."]
+
 The usual image and surface dimension limits still apply. In addition, the
 bridge preflights the two simultaneous Racket byte buffers used during transfer:
 the RGBA readback and its ARGB copy together require twice the physical RGBA

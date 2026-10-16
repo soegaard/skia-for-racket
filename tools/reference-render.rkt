@@ -103,7 +103,11 @@
         (xref-tag->path+anchor (load-info) (link-element-tag link)))
       (check-not-false path)
       (check-true (and path (file-exists? path)))
-      (check-not-false anchor)
-      (check-false (regexp-match? #rx"class=\"[^\"]*badlink"
-                                  (file->string (build-path directory "origin.html")))))
+      ;; Scribble represents a destination at the root of its rendered page
+      ;; with no fragment.  A non-root destination has a string fragment.
+      (check-true (or (not anchor) (string? anchor)))
+      (define origin-html (file->string (build-path directory "origin.html")))
+      (check-true (regexp-match? #rx"href=\"[^\"]*target\\.html(?:#[^\"]*)?\""
+                                 origin-html))
+      (check-false (regexp-match? #rx"class=\"[^\"]*badlink" origin-html)))
     (lambda () (delete-directory/files directory))))

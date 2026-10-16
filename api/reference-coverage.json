@@ -6997,7 +6997,7 @@
     },
     {
       "name": "raster-buffer?",
-      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -7008,7 +7008,7 @@
     },
     {
       "name": "raster-buffer-image-info",
-      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -7019,7 +7019,7 @@
     },
     {
       "name": "raster-buffer->image",
-      "chapter": "scribblings/reference/pixel-descriptions.scrbl",
+      "chapter": "scribblings/reference/raster-buffers.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",

@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/typefaces))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract skia skia/typefaces))
 
 @title[#:tag "skia-typefaces"]{Font Managers and Typefaces}
 
@@ -77,6 +78,43 @@ The accepted weight, width, and slant values are described in
 @secref["skia-font-styles"]. Width here selects a condensed or expanded design;
 it is not a width in drawing units.
 }
+
+@subsection{Selecting and Inspecting Actual Faces}
+
+The requested style is a preference, not a portable promise. This comparison
+starts from a face selected for a displayed character, asks the same manager
+for regular, bold, and italic variants of that face's actual family, and labels
+each result with the family and style that the manager returned.
+
+@racketblock[
+(with-skia ([surface (make-surface 420 180 #:background 'white)]
+            [manager (make-font-manager)]
+            [label-font (make-font #:size 11)]
+            [label-paint (make-paint #:color "#526070")])
+  (define initial
+    (or (font-manager-match-character manager #\g)
+        (error 'face-comparison "no face covers the displayed character")))
+  (define family (typeface-family-name initial))
+  (with-skia ([regular initial]
+              [bold (or (font-manager-match-family manager family #:weight 'bold)
+                        (error 'face-comparison "no bold face was selected"))]
+              [italic (or (font-manager-match-family manager family #:slant 'italic)
+                          (error 'face-comparison "no italic face was selected"))])
+    (define canvas (surface-canvas surface))
+    (for ([face (in-list (list regular bold italic))]
+          [x '(18 154 290)])
+      (with-skia ([font (make-font face #:size 37)]
+                  [paint (make-paint #:color "#20344E")])
+        (draw-simple-text canvas "Style" x 78 font paint)
+        (draw-simple-text canvas (typeface-family-name face) x 132
+                          label-font label-paint)
+        (draw-simple-text canvas
+                          (format "weight ~a; ~a"
+                                  (typeface-weight face) (typeface-slant face))
+                          x 150 label-font label-paint)))))
+]
+@reference-figure["font-manager-style-selection.png"
+                  "Three panels show Style in manager-selected regular, bold, and italic faces; each panel identifies the actual returned family, numeric weight, and slant."]
 
 @defproc[(font-manager-match-character [manager font-manager?] [character (or/c char? (integer-in
           0 #xd7ff) (integer-in #xe000 #x10ffff))]

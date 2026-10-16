@@ -124,7 +124,10 @@ resume drawing on an expired page.
 This example completes a page but deliberately does not publish a file.
 
 @reference-figure["pdf-document.png"
-                  "The page content from the example: a solid blue rectangle on a white background."]
+                  "A raster content preview of the same blue-rectangle drawing commands as the PDF page. It is not a rendering or verification of the exported PDF file."]
+
+This preview makes the page callback's content visible without claiming that a PDF renderer was
+used as part of an ordinary Reference build.
 }
 
 @defform[(with-document-page
@@ -193,6 +196,12 @@ not finish or close the supplied document.
   (document-finish! document)
   (save-pdf document "two-pages.pdf" #:exists 'replace))
 ]
+
+@reference-figure["pdf-two-pages.png"
+                  "Two raster content previews of the drawing commands for the PDF's two 120-by-80 pages. Both blue squares begin at (10,10); page 1 is 20 by 20 and page 2 is 40 by 40. This is not a rendering or verification of the exported PDF."]
+
+The paired preview makes the page order and geometry visible without claiming that an ordinary
+Reference build has rendered or inspected the written PDF file.
 }
 
 @defproc[(call-with-pdf-bytes [proc (-> document? any)]

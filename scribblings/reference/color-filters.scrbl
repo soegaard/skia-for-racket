@@ -156,6 +156,52 @@ Supplying no tables returns an owned identity filter, not @racket[#f].
 ]
 }
 
+@racketblock[
+(with-skia ([color-source (make-surface 120 50)]
+            [gray-source (make-surface 120 50)]
+            [spectrum (make-linear-gradient-shader 0 0 120 0 '(red yellow green cyan blue))]
+            [gray (make-linear-gradient-shader 0 0 120 0 '(black white))]
+            [spectrum-paint (make-paint #:shader spectrum)]
+            [gray-paint (make-paint #:shader gray)])
+  (draw-rect (surface-canvas color-source) 0 0 120 50 spectrum-paint)
+  (draw-rect (surface-canvas gray-source) 0 0 120 50 gray-paint)
+  (with-skia ([color-image (surface-snapshot color-source)]
+              [gray-image (surface-snapshot gray-source)]
+              [hsla (make-hsla-matrix-filter
+                     '(1 0 0 0 0.18
+                       0 0.55 0 0 0
+                       0 0 1 0 0
+                       0 0 0 1 0))]
+              [to-linear (make-srgb-to-linear-gamma-color-filter)]
+              [to-srgb (make-linear-to-srgb-gamma-color-filter)]
+              [blue-table (make-table-argb-color-filter
+                           #:blue (apply bytes (for/list ([v (in-range 256)]) (- 255 v))))]
+              [plain (make-paint)]
+              [hsla-paint (make-paint #:color-filter hsla)]
+              [linear-paint (make-paint #:color-filter to-linear)]
+              [srgb-paint (make-paint #:color-filter to-srgb)]
+              [blue-paint (make-paint #:color-filter blue-table)]
+              [surface (make-surface 420 180 #:background 'white)]
+              [font (make-font #:size 11)]
+              [label (make-paint #:color "#20344E")])
+    (define canvas (surface-canvas surface))
+    (for ([text '("source strip" "HSLA hue + desaturate" "blue table inverted")]
+          [x '(15 150 285)])
+      (draw-simple-text canvas text x 17 font label))
+    (for ([paint (list plain hsla-paint blue-paint)] [x '(15 150 285)])
+      (draw-image canvas color-image x 28 #:paint paint))
+    (for ([text '("sRGB -> linear" "linear -> sRGB")] [x '(80 220)])
+      (draw-simple-text canvas text x 103 font label))
+    (draw-image canvas gray-image 80 114 #:paint linear-paint)
+    (draw-image canvas gray-image 220 114 #:paint srgb-paint)))
+]
+
+@reference-figure["color-filter-channel-curves.png"
+                  "A common multicolor strip and grayscale ramp passed through actual color filters: an HSLA hue/saturation matrix, an inverted blue-only table, sRGB-to-linear RGB channels, and linear-to-sRGB RGB channels."]
+
+These filters change channels. They do not retag an image or perform a full color-space or
+gamut conversion.
+
 @defproc[(make-lighting-color-filter [multiply color?] [add color?]) color-filter?]{
 Returns a filter that multiplies RGB by the normalized RGB channels of
 @racket[multiply], adds those of @racket[add], and clamps the result. The alpha

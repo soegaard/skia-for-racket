@@ -72,7 +72,10 @@ target pixels: earlier drawing may remain in some or all targets.
 Both targets contain the blue rectangle and have their root canvas state restored.
 
 @reference-figure["nway-canvas.png"
-                  "One target surface from the n-way canvas example, showing a blue square near the upper-left corner."]
+                  "A nearest-neighbor enlargement of one actual 16 by 16 target from the n-way callback. Its blue square occupies x two through nine and y two through nine; the white surrounding area is the preview background."]
+
+The renderer invokes @racket[call-with-nway-canvas] and captures target @racket[a] after the
+callback; it does not redraw a similar rectangle on an ordinary canvas.
 }
 
 @section{Overdraw Canvases}

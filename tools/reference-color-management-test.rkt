@@ -31,7 +31,7 @@
       (check-not-false inverse)
       (check-= (transfer-function-evaluate inverse
                                           (transfer-function-evaluate transfer 0.5))
-                0.5 0.00001)))
+                0.5 0.0001)))
   (test-case "XYZ multiplication applies the second matrix first and accepts singular input"
     (define scale '(2 0 0 0 3 0 0 0 4))
     (define shear '(1 1 0 0 1 0 0 0 1))

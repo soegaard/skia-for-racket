@@ -1,12 +1,68 @@
 #lang racket/base
 
 ;; Opt-in CPU checks. The Reference build itself does not run these tests.
-(require rackunit racket/file racket/list racket/path racket/runtime-path syntax/modread skia)
+(require rackunit racket/file racket/list racket/path racket/runtime-path racket/system
+         syntax/modread skia)
 
 (define-runtime-path reference-directory "../scribblings/reference")
 
 ;; Read and execute the displayed native examples, instead of maintaining copies.
-;; Every block runs in a fresh namespace; no chapter inherits another's example state.
+;; The live-stream provider installs process-global native callbacks.  It alone
+;; needs a fresh Racket process; ordinary examples retain the cheaper fresh-
+;; namespace isolation used by this test historically.
+(define live-native-symbols
+  '(make-codec-incremental
+    image-from-port picture-from-port copy-port/streaming
+    image->port picture->port output->port
+    image-write-stream! picture-write-stream! output-write-stream!))
+
+(define (uses-live-native-callbacks? form)
+  (cond
+    [(symbol? form) (memq form live-native-symbols)]
+    [(pair? form) (or (uses-live-native-callbacks? (car form))
+                      (uses-live-native-callbacks? (cdr form)))]
+    [else #f]))
+
+(define (run-example-in-fresh-process directory example)
+  (define source (make-temporary-file "skia-reference-native-example-~a.rkt" #f directory))
+  (dynamic-wind
+    void
+    (lambda ()
+      (call-with-output-file source
+        (lambda (out)
+          (display "#lang racket/base\n(require skia)\n" out)
+          ;; A displayed block may have top-level `require` forms.  Emit those
+          ;; directly in the generated module, then evaluate the remaining
+          ;; forms together so its definitions retain their lexical scope.
+          (define imports
+            (filter (lambda (form) (and (pair? form) (eq? (car form) 'require))) example))
+          (define body (filter (lambda (form) (not (member form imports))) example))
+          (for ([form (in-list imports)])
+            (write form out)
+            (newline out))
+          (when (pair? body)
+            ;; Appending `void` also makes definition-only blocks valid local
+            ;; bodies while deliberately discarding displayed return values.
+            (write `(call-with-values (lambda () (let () ,@body (void)))
+                                      (lambda ignored (void)))
+                   out)
+            (newline out)))
+        #:exists 'truncate/replace)
+      (unless (zero?
+               (parameterize ([current-directory directory])
+                 (system*/exit-code (find-system-path 'exec-file) (path->string source))))
+        (error 'run-displayed-examples "fresh example process failed")))
+    (lambda ()
+      (when (file-exists? source) (delete-file source)))))
+
+(define (run-example-in-fresh-namespace directory example)
+  (parameterize ([current-namespace (make-base-namespace)]
+                 [current-directory directory])
+    (namespace-require 'skia)
+    (call-with-values (lambda () (eval `(begin ,@example)))
+                      (lambda ignored (void)))))
+
+;; Every block runs twice without inheriting another chapter's example state.
 (define (run-displayed-examples directory)
   (define (blocks form)
     (cond
@@ -24,13 +80,13 @@
           (with-module-reading-parameterization
            (lambda () (syntax->datum (read-syntax path in)))))))
     (for* ([example (in-list (blocks document))] [attempt (in-range 2)])
-      (parameterize ([current-namespace (make-base-namespace)]
-                     [current-directory directory])
-        (namespace-require 'skia)
-        (check-not-exn (lambda ()
-                         (call-with-values (lambda () (eval `(begin ,@example)))
-                                           (lambda ignored (void))))
-                       (format "~a, run ~a" chapter (add1 attempt)))))))
+      (check-not-exn
+       (lambda ()
+         ((if (uses-live-native-callbacks? example)
+              run-example-in-fresh-process
+              run-example-in-fresh-namespace)
+          directory example))
+                     (format "~a, run ~a" chapter (add1 attempt))))))
 
 (module+ test
   (define directory (make-temporary-file "skia-reference-native-~a" 'directory))

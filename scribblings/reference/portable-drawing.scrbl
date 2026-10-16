@@ -50,9 +50,6 @@ paint effects portable.
                 '((115 25) (145 45) (165 25)) 16 orange #:shape 'square))
 ]
 
-@reference-figure["portable-atlas.png"
-                  "Two copies of one red atlas tile, with the second copy drawn at twice the scale."]
-
 @reference-figure["portable-markers.png"
                   "Three blue circular markers followed by three orange square markers."]
 }
@@ -246,6 +243,12 @@ An empty batch still validates its canvas, image, and options.
 
 The repeated source rectangle is extracted once within this call. Both transformed
 copies use the same caller-owned image.
+
+@reference-figure["portable-atlas.png"
+                  "A nearest-neighbor enlargement of the transparent 12 by 6 atlas target. A two-by-two red source tile begins at one, one; its second copy begins at seven, one and is four by four. A gray checkerboard belongs only to the preview."]
+
+The figure magnifies the exact 12 by 6 target. Its checkerboard makes the target's transparent
+pixels visible; it is not part of the atlas image.
 
 
 @racketblock[

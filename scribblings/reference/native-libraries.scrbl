@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require scribble/eval
-          (for-label racket/base racket/contract skia skia/native-capabilities))
+          (for-label racket/base racket/contract skia/native-capabilities skia))
 
 @(define abi-eval (make-base-eval))
 @(abi-eval '(require skia/native-capabilities))
@@ -99,7 +99,7 @@ a canonical resolved path is not promised.
 
 @subsection{Default Package}
 
-@(declare-exporting skia skia/native-capabilities #:use-sources (skia/native-capabilities))
+@(declare-exporting skia)
 
 @defthing[native-package-version string?]{
 The default SkiaSharp package version configured in the installed Skia package, as an immutable

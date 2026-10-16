@@ -56,8 +56,8 @@ index array, three positions. Triangles mode requires that submitted count to
 be divisible by three. An explicitly empty index array is not treated as omitted.
 
 @racketblock[
-(with-skia ([surface (make-surface 24 24)]
-            [paint (make-paint)]
+(with-skia ([surface (make-surface 24 24 #:background 'white)]
+            [paint (make-paint #:color 'white #:antialias? #f)]
             [mesh (make-vertices 'triangles '((2 2) (22 2) (2 22))
                                  #:colors '(red green blue))])
   (draw-vertices (surface-canvas surface) mesh paint)
@@ -65,7 +65,10 @@ be divisible by three. An explicitly empty index array is not treated as omitted
 ]
 
 @reference-figure["mesh-triangle.png"
-                  "A triangle filled by smoothly interpolated red, green, and blue vertex colors."]
+                  "A nearest-neighbor enlargement of the displayed 24 by 24 white surface. Its right triangle has red, green, and blue vertex colors blended across the interior."]
+
+The figure is a magnification of the exact 24 by 24 drawing target. The white paint preserves
+the mesh's vertex colors under color modulation; it is not an additional white triangle.
 
 The mesh contains three vertices. Its native arrays do not borrow the input lists.
 }

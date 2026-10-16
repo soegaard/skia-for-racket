@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract file/convertible skia))
+@(require "support/figures.rkt"
+          (for-label racket/base racket/contract file/convertible skia))
 
 @title[#:tag "skia-surfaces"]{Surfaces and Canvas Access}
 
@@ -127,6 +128,12 @@ of every pixel. The image has its own lifetime.
   (canvas-clear! (surface-canvas surface) 'blue)
   (bytes->list (image->rgba-bytes image)))
 ]
+
+@reference-figure["surface-snapshot-independence.png"
+                  "Two nearest-neighbor enlargements of the same two-by-one surface at different times. The snapshot remains two opaque red pixels, while the surface after clear has two opaque blue pixels."]
+
+The snapshot is captured before clearing the surface. Both panels show actual 2 by 1 results at
+the same scale, rather than colors painted as an illustration.
 }
 
 @defproc[(surface->rgba-bytes [surface surface?]

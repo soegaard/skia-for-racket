@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract skia skia/canvas-primitives))
+          (for-label racket/base racket/contract skia))
 
 @title[#:tag "skia-drawing"]{Drawing Primitives}
 
@@ -142,7 +142,7 @@ released before the call returns.
                   "A black open polyline with rounded endpoints on a white background."]
 }
 
-@(declare-exporting skia skia/canvas-primitives #:use-sources (skia/canvas-primitives))
+@(declare-exporting skia)
 
 @section[#:tag "skia-drawing-batches"]{Points and Arcs}
 

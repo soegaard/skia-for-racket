@@ -243,6 +243,44 @@ Returns the strikeout position relative to the baseline, or @racket[#f] when una
 Returns the native recommended baseline spacing reported with the metrics.
 }
 
+@subsection{Metrics, Baselines, and Advance}
+
+The following guide draws the same @racket[font-get-metrics] and
+@racket[measure-simple-text] values used by the program.  The descenders in
+@racket["glyph"] extend below the baseline but remain above the font's descent
+guide; the advance is the next origin, not an ink bound.
+
+@racketblock[
+(with-skia ([surface (make-surface 420 205 #:background 'white)]
+            [font (make-font #:size 58)]
+            [text-paint (make-paint #:color "#20344E")]
+            [ascent-paint (make-paint #:color "#D64F45" #:style 'stroke)]
+            [baseline-paint (make-paint #:color "#326DE6" #:style 'stroke)]
+            [descent-paint (make-paint #:color "#2C9B6F" #:style 'stroke)]
+            [advance-paint (make-paint #:color "#8255C7" #:style 'stroke)]
+            [label-font (make-font #:size 12)]
+            [label-paint (make-paint #:color "#526070")])
+  (define canvas (surface-canvas surface))
+  (define text "glyph")
+  (define x 35)
+  (define baseline 120)
+  (define metrics (font-get-metrics font))
+  (define ascent (+ baseline (font-metrics-ascent metrics)))
+  (define descent (+ baseline (font-metrics-descent metrics)))
+  (define advance (measure-simple-text font text))
+  (draw-line canvas 22 ascent 235 ascent ascent-paint)
+  (draw-line canvas 22 baseline 235 baseline baseline-paint)
+  (draw-line canvas 22 descent 235 descent descent-paint)
+  (draw-simple-text canvas text x baseline font text-paint)
+  (draw-line canvas x 160 (+ x advance) 160 advance-paint)
+  (draw-simple-text canvas "ascent" 250 (+ ascent 4) label-font label-paint)
+  (draw-simple-text canvas "baseline" 250 (+ baseline 4) label-font label-paint)
+  (draw-simple-text canvas "descent" 250 (+ descent 4) label-font label-paint)
+  (draw-simple-text canvas "advance" 35 183 label-font label-paint))
+]
+@reference-figure["font-metrics-guides.png"
+                  "The word glyph is drawn between colored ascent, baseline, and descent guides, with a separate horizontal guide ending at its measured advance."]
+
 @section{Simple Text and Character Mapping}
 
 An @deftech{advance} is the displacement of the next glyph origin. It is not
@@ -343,6 +381,28 @@ Returns an owned path for the unshaped string placed at the given baseline
 origin. Coordinates must be drawing scalars. The font is not closed or mutated.
 The result contains monochrome outlines; it is not a general conversion of
 bitmap or color glyph rendering into vectors.
+
+The converted outline can be filled or stroked like any other path. Both rows
+below come from @racket[simple-text-path] for the same text and font; neither
+row is native text drawing.
+
+@racketblock[
+(with-skia ([surface (make-surface 360 190 #:background 'white)]
+            [font (make-font #:size 52)]
+            [fill-paint (make-paint #:color "#326DE6")]
+            [stroke-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+            [label-font (make-font #:size 12)]
+            [label-paint (make-paint #:color "#526070")])
+  (define canvas (surface-canvas surface))
+  (with-skia ([filled (simple-text-path font "path" 20 78)]
+              [stroked (simple-text-path font "path" 20 170)])
+    (draw-simple-text canvas "filled monochrome outline" 20 20 label-font label-paint)
+    (draw-path canvas filled fill-paint)
+    (draw-simple-text canvas "stroked monochrome outline" 20 110 label-font label-paint)
+    (draw-path canvas stroked stroke-paint)))
+]
+@reference-figure["simple-text-path-outlines.png"
+                  "Two copies of path converted with simple-text-path: a filled blue monochrome outline above and the same orange stroked outline below."]
 }
 
 @section{Additional Font Controls and Glyph Queries}

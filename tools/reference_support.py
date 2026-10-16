@@ -655,7 +655,18 @@ def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None):
         path = safe_file(site, 'skia-reference/' + row['relative_path'])
         need(read(path).anchors[unquote(row['anchor'])] == 1,
              f'missing/duplicate definition anchor: {row["name"]}')
-        expected[row['name']] = (path.resolve(), unquote(row['anchor']))
+        target = (path.resolve(), unquote(row['anchor']))
+        module = row.get('module', 'skia')
+        canonical = row.get('canonical_module', 'skia')
+        # Scribble has one definition target for the documented canonical
+        # binding. Re-exports are checked for binding identity by the runtime
+        # verifier, but do not necessarily have their own raw xref entry.
+        if module == canonical:
+            if canonical == 'skia':
+                expected[row['name']] = target
+            else:
+                prefix = canonical.removeprefix('skia/').replace('/', '-')
+                expected[prefix + ':' + row['name']] = target
     for path in (site / 'skia-reference').rglob('*.html'):
         need(read(path).badlinks == 0, f'unresolved Reference markup: {path}')
     probes = []
@@ -663,10 +674,6 @@ def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None):
         probes.append((quick, ('make-surface', 'surface-canvas', 'make-paint',
                                'draw-rect', 'save-png', 'with-skia')))
     if smoke:
-        for row in evidence['targets']:
-            if row.get('module', 'skia') != 'skia':
-                prefix = row['module'].removeprefix('skia/').replace('/', '-')
-                expected[prefix + ':' + row['name']] = expected[row['name']]
         probes.append((smoke, tuple(expected)))
     counts = {}
     for path, names in probes:
@@ -696,10 +703,14 @@ def check_targets(site: Path, evidence: dict, *, quick=None, smoke=None):
                 if ' '.join(text.split()) != row['label']:
                     continue
                 destination = link_destination(path, href, site)
-                need(destination is not None
-                     and (destination[0].resolve(), destination[1]) == (target.resolve(), anchor),
-                     f'wrong tutorial link for {row["label"]}: {href}')
-                count += 1
+                # A Reference section may legitimately have the same label as
+                # a tutorial (for example, “Color Spaces”). Only inspect links
+                # that actually enter this tutorial's output directory.
+                if (destination is not None
+                    and destination[0].resolve().is_relative_to((site / directory).resolve())):
+                    need((destination[0].resolve(), destination[1]) == (target.resolve(), anchor),
+                         f'wrong tutorial link for {row["label"]}: {href}')
+                    count += 1
         need(count, f'missing tutorial link: {row["label"]}')
         tutorial_counts[row['directory']] = count
     section_counts = {}

@@ -3,8 +3,13 @@
 (require racket/file
          racket/runtime-path
          racket/class
+         (prefix-in draw: racket/draw)
          skia
+         skia/dc
+         skia/dc-output
+         skia/output
          skia/pict
+         skia/racket-draw
          (only-in skia/codec-scanlines
                   codec-scanline-from-bytes codec-scanline-read!
                   scanline-batch-first-row scanline-batch->raster-buffer)
@@ -39,6 +44,61 @@
     (define path (output-path filename))
     (save-png surface path #:exists 'replace)
     (printf "wrote ~a\n" path)))
+
+;; Some examples deliberately replace the canvas transform or inspect
+;; single-device-pixel coverage.  Render those programs at their literal target
+;; size, then enlarge the captured result for the Reference's 2x PNG convention.
+;; Applying `device-scale` before their program would change the example itself.
+(define (render-native-scale-reference-image filename width height draw
+                                              #:background [background #f]
+                                              #:sampling [sampling 'nearest])
+  (make-directory* output-directory)
+  (with-skia ([source (if background
+                          (make-surface width height #:background background)
+                          (make-surface width height))])
+    (draw (surface-canvas source))
+    (with-skia ([image (surface-snapshot source)]
+                [presentation (make-surface (* device-scale width)
+                                            (* device-scale height))])
+      (draw-image-rect (surface-canvas presentation) image 0 0
+                       (* device-scale width) (* device-scale height)
+                       #:sampling sampling)
+      (define path (output-path filename))
+      (save-png presentation path #:exists 'replace)
+      (printf "wrote ~a\n" path))))
+
+;; Hebrew fixtures must use one face with verified coverage.  Font-manager
+;; fallback selects that face once; it does not supply a different face while
+;; shaping the displayed string.  The log records the host-dependent face and
+;; native versions used for a regenerated fixture.
+(define (call-with-hebrew-font label size text proc)
+  (with-skia ([manager (make-font-manager)])
+    (define face
+      (font-manager-match-character manager (string-ref text 0) #:languages '("he")))
+    (unless face (error label "no Hebrew-capable typeface is available"))
+    (with-skia ([chosen-face face] [font (make-font chosen-face #:size size)])
+      (unless (for/and ([char (in-string text)] #:unless (char-whitespace? char))
+                (positive? (font-char->glyph font char)))
+        (error label "the selected typeface does not cover ~s" text))
+      (printf "~a: Hebrew face ~a; Skia ~a; HarfBuzz ~a\n"
+              label (typeface-family-name chosen-face)
+              (skia-native-version) (harfbuzz-native-version))
+      (proc font))))
+
+(define (make-reference-bottom-up-bmp)
+  ;; Two pixels per row, three rows, uncompressed BGR24, four-byte row alignment.
+  ;; Top-to-bottom colors: red/green, blue/white, yellow/black.
+  (define output (make-bytes 78))
+  (define (put offset value size)
+    (bytes-copy! output offset (integer->integer-bytes value size #f #f)))
+  (bytes-copy! output 0 #"BM")
+  (for ([offset '(2 10 14 18 22 26 28 34)] [value '(78 54 40 2 3 1 24 24)]
+        [size '(4 4 4 4 4 2 2 4)])
+    (put offset value size))
+  (bytes-copy! output 54 (bytes 0 255 255 0 0 0 0 0))
+  (bytes-copy! output 62 (bytes 255 0 0 255 255 255 0 0))
+  (bytes-copy! output 70 (bytes 0 0 255 0 255 0 0 0))
+  output)
 
 (render-reference-image
  "rectangle.png" 160 100
@@ -85,6 +145,73 @@
      (draw-image-rect canvas image 0 0 80 40 #:sampling 'nearest))))
 
 (render-reference-image
+ "draw-path-roundtrip.png" 200 150
+ (lambda (canvas)
+   (define source-path (new draw:dc-path%))
+   (send source-path rectangle 2 2 20 14)
+   (with-skia ([path (dc-path->skia-path source-path #:fill-style 'winding)])
+     (define-values (copy fill-style) (skia-path->dc-path path))
+     (define bitmap (draw:make-bitmap 24 18 #t))
+     (define bitmap-dc (new draw:bitmap-dc% [bitmap bitmap]))
+     (send bitmap-dc set-pen "black" 1 'transparent)
+     (send bitmap-dc set-brush "blue" 'solid)
+     (send bitmap-dc draw-path copy 0 0 fill-style)
+     (send bitmap-dc set-bitmap #f)
+     (with-skia ([image (bitmap->image bitmap #:mask #f)]
+                 [font (make-font #:size 13)]
+                 [label (make-paint #:color "#20344E")]
+                 [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+       (draw-simple-text canvas "Draw -> Skia -> Draw (winding)" 20 20 font label)
+       (draw-image-rect canvas image 20 30 160 120 #:sampling 'nearest)
+       (draw-rect canvas 20 30 160 120 outline))))
+ #:background 'white)
+
+(render-reference-image
+ "draw-path-conic-approximation.png" 280 150
+ (lambda (canvas)
+   (with-skia ([path (make-path '((move 0 0) (conic 10 20 20 0 0.5)))]
+               [native-surface (make-surface 24 24 #:background 'white)]
+               [native-paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1.5)])
+     (define-values (copy fill-style) (skia-path->dc-path path #:conic-subdivisions 4))
+     (draw-path (surface-canvas native-surface) path native-paint)
+     (define bitmap (draw:make-bitmap 24 24 #t))
+     (define bitmap-dc (new draw:bitmap-dc% [bitmap bitmap]))
+     (send bitmap-dc set-pen "blue" 2 'solid)
+     (send bitmap-dc set-brush "black" 'transparent)
+     (send bitmap-dc draw-path copy 1 1 fill-style)
+     (send bitmap-dc set-bitmap #f)
+     (with-skia ([native-image (surface-snapshot native-surface)]
+                 [draw-image (bitmap->image bitmap #:mask #f)]
+                 [font (make-font #:size 12)]
+                 [label (make-paint #:color "#20344E")]
+                 [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+       (draw-simple-text canvas "native Skia conic" 20 20 font label)
+       (draw-simple-text canvas "Draw approx., power 4" 150 20 font label)
+       (draw-image-rect canvas native-image 20 32 110 110 #:sampling 'nearest)
+       (draw-image-rect canvas draw-image 150 32 110 110 #:sampling 'nearest)
+       (draw-rect canvas 20 32 110 110 outline)
+       (draw-rect canvas 150 32 110 110 outline))))
+ #:background 'white)
+
+(render-reference-image
+ "image-rgba-alpha.png" 200 100
+ (lambda (canvas)
+   (with-skia ([image (rgba-bytes->image 2 1 (bytes 255 0 0 255 0 0 255 128))]
+               [dark (make-paint #:color "#D9DEE4")]
+               [light (make-paint #:color "#F1F3F5")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 12)]
+               [label (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "opaque red" 20 20 font label)
+     (draw-simple-text canvas "blue alpha 128" 105 20 font label)
+     (for* ([row (in-range 3)] [column (in-range 8)])
+       (draw-rect canvas (+ 20 (* column 20)) (+ 35 (* row 20)) 20 20
+                  (if (even? (+ row column)) light dark)))
+     (draw-image-rect canvas image 20 35 160 50 #:sampling 'nearest)
+     (draw-rect canvas 20 35 160 50 outline)))
+ #:background 'white)
+
+(render-reference-image
  "simple-text.png" 240 80
  (lambda (canvas)
    (with-skia ([font (make-font #:size 24)]
@@ -105,6 +232,24 @@
  #:background 'white)
 
 (render-reference-image
+ "surface-snapshot-independence.png" 220 100
+ (lambda (canvas)
+   (with-skia ([surface (make-surface 2 1 #:background 'red)]
+               [snapshot (surface-snapshot surface)]
+               [font (make-font #:size 14)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (canvas-clear! (surface-canvas surface) 'blue)
+     (with-skia ([current (surface-snapshot surface)])
+       (draw-simple-text canvas "snapshot" 20 20 font label)
+       (draw-simple-text canvas "current surface" 120 20 font label)
+       (draw-image-rect canvas snapshot 20 30 80 40 #:sampling 'nearest)
+       (draw-image-rect canvas current 120 30 80 40 #:sampling 'nearest)
+       (draw-rect canvas 20 30 80 40 outline)
+       (draw-rect canvas 120 30 80 40 outline))))
+ #:background 'white)
+
+(render-reference-image
  "canvas-state.png" 100 80
  (lambda (canvas)
    (with-skia ([paint (make-paint #:color 'blue)])
@@ -122,6 +267,79 @@
      (with-canvas-layer canvas #:paint group-paint #:bounds '(0 0 160 100)
        (draw-rect canvas 20 20 80 60 ink)
        (draw-rect canvas 60 20 80 60 ink))))
+ #:background 'white)
+
+(render-reference-image
+ "layer-options-clip.png" 96 96
+ (lambda (canvas)
+   (with-skia ([surface (make-surface 16 16)]
+               [ink (make-paint #:color 'blue)]
+               [dark (make-paint #:color "#D9DEE4")]
+               [light (make-paint #:color "#F1F3F5")])
+     (define layer-canvas (surface-canvas surface))
+     (call-with-canvas-layer-rec
+      layer-canvas
+      (lambda () (draw-rect layer-canvas 0 0 16 16 ink))
+      #:options (make-layer-options #:bounds '(0 0 16 16))
+      #:clip '(2 2 12 12))
+     (for* ([row (in-range 16)] [column (in-range 16)])
+       (draw-rect canvas (* column 6) (* row 6) 6 6
+                  (if (even? (+ row column)) light dark)))
+     (with-skia ([image (surface-snapshot surface)])
+       (draw-image-rect canvas image 0 0 96 96 #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "layer-backdrop-initialization.png" 420 155
+ (lambda (canvas)
+   (with-skia ([base (make-paint #:color "#DCEAF8")]
+               [stripe-a (make-paint #:color "#326DE6")]
+               [stripe-b (make-paint #:color "#EFA02B")]
+               [dot (make-paint #:color "#7D5BA6")]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")]
+               [clip-outline (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 2)]
+               [border (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (define (draw-pattern target)
+       (draw-paint target base)
+       (for ([x (in-range -10 130 20)])
+         (draw-rect target x 0 10 85
+                    (if (even? (quotient (+ x 10) 20)) stripe-a stripe-b)))
+       (draw-circle target 78 42 21 dot))
+     (define zone '(25 20 70 46))
+     (define (render-panel kind)
+       (with-skia ([page (make-surface 120 85)]
+                   [replace (make-paint #:blend-mode 'src)])
+         (define layer-canvas (surface-canvas page))
+         (draw-pattern layer-canvas)
+         (case kind
+           [(empty)
+            (call-with-canvas-layer-rec layer-canvas void #:paint replace
+                                        #:options (make-layer-options #:bounds zone)
+                                        #:clip zone)]
+           [(initialized)
+            (call-with-canvas-layer-rec layer-canvas void #:paint replace
+                                        #:options (make-layer-options #:bounds zone
+                                                                      #:initialize-with-previous? #t)
+                                        #:clip zone)]
+           [(backdrop)
+            (with-skia ([blur (make-blur-image-filter 4 4)])
+              (call-with-canvas-layer-rec layer-canvas void #:paint replace #:backdrop blur
+                                          #:options (make-layer-options #:bounds zone)
+                                          #:clip zone))])
+         (surface-snapshot page)))
+     (with-skia ([empty-image (render-panel 'empty)]
+                 [initialized-image (render-panel 'initialized)]
+                 [backdrop-image (render-panel 'backdrop)])
+       (for ([title '("empty src layer" "initialize previous" "backdrop blur")]
+             [x '(12 150 290)])
+         (draw-simple-text canvas title x 17 font label))
+       (for ([image (list empty-image initialized-image backdrop-image)]
+             [x '(12 150 290)])
+         (draw-image canvas image x 30)
+         (draw-rect canvas x 30 120 85 border)
+         (draw-rect canvas (+ x 25) 50 70 46 clip-outline))
+       (draw-simple-text canvas "same striped-and-circle backdrop; orange is the explicit clip" 12 135 font label))))
  #:background 'white)
 
 (render-reference-image
@@ -149,6 +367,50 @@
  #:background 'white)
 
 (render-reference-image
+ "color-space-interpretation.png" 220 100
+ (lambda (canvas)
+   (with-skia ([srgb (make-srgb-color-space)]
+               [linear (make-linear-srgb-color-space)]
+               [encoded (rgba-bytes->image 1 1 (bytes 128 128 128 255) #:color-space srgb)]
+               [light (rgba-bytes->image 1 1 (bytes 128 128 128 255) #:color-space linear)]
+               [surface (make-surface 2 1 #:color-space srgb)]
+               [font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (define result-canvas (surface-canvas surface))
+     (draw-image result-canvas encoded 0 0)
+     (draw-image result-canvas light 1 0)
+     (with-skia ([result (surface-snapshot surface)])
+       (draw-simple-text canvas "sRGB 128" 24 20 font label)
+       (draw-simple-text canvas "linear 188" 126 20 font label)
+       (draw-image-rect canvas result 20 30 180 50 #:sampling 'nearest)
+       (draw-rect canvas 20 30 180 50 outline))))
+ #:background 'white)
+
+(render-reference-image
+ "image-color-space-conversion.png" 220 100
+ (lambda (canvas)
+   (with-skia ([linear (make-linear-srgb-color-space)]
+               [srgb (make-srgb-color-space)]
+               [source (rgba-bytes->image 1 1 (bytes 128 128 128 255))]
+               [converted (image-convert-color-space source srgb #:source-color-space linear)]
+               [preview-surface (make-surface 2 1 #:color-space srgb)]
+               [font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     ;; The untagged source is shown under this explicitly declared sRGB
+     ;; preview interpretation; conversion itself happens only on the right.
+     (define preview-canvas (surface-canvas preview-surface))
+     (draw-image preview-canvas source 0 0)
+     (draw-image preview-canvas converted 1 0)
+     (with-skia ([result (surface-snapshot preview-surface)])
+       (draw-simple-text canvas "source 128" 20 20 font label)
+       (draw-simple-text canvas "converted 188" 128 20 font label)
+       (draw-image-rect canvas result 20 30 180 50 #:sampling 'nearest)
+       (draw-rect canvas 20 30 180 50 outline))))
+ #:background 'white)
+
+(render-reference-image
  "image-filter-merge.png" 150 60
  (lambda (canvas)
    (with-skia ([shift (make-offset-image-filter 55 0)]
@@ -166,6 +428,73 @@
                [shader (runtime-effect->shader effect)]
                [paint (make-paint #:shader shader)])
      (draw-paint canvas paint)))
+ #:background 'white)
+
+(render-reference-image
+ "runtime-blender-consumers.png" 420 270
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+               [color-effect (make-runtime-effect
+                              "half4 main(half4 c) { return half4(c.b,c.g*0.5,c.r,c.a); }"
+                              #:kind 'color-filter)]
+               [color-filter (runtime-effect->color-filter color-effect)]
+               [orange (make-paint #:color "#E94F37")]
+               [filtered-orange (make-paint #:color "#E94F37" #:color-filter color-filter)]
+               [child-effect (make-runtime-effect
+                              "uniform shader child; half4 main(float2 p) { half4 c=child.eval(p); return half4(c.b,c.g*0.4,c.r,c.a); }")]
+               [child-gradient (make-linear-gradient-shader 220 0 400 0 '(red blue))]
+               [child-shader (runtime-effect->shader child-effect
+                                                     #:children (hash 'child child-gradient))]
+               [child-paint (make-paint #:shader child-shader)]
+               [blender-effect (make-runtime-effect
+                                "half4 main(half4 src, half4 dst) { return half4(src.r,dst.g,dst.b,1); }"
+                                #:kind 'blender)]
+               [paint-blender (runtime-effect->blender blender-effect)]
+               [shader-blender (runtime-effect->blender blender-effect)]
+               [filter-blender (runtime-effect->blender blender-effect)]
+               [destination (make-paint #:color "#1769E0")]
+               [source (make-paint #:color "#E94F37")]
+               [source-with-blender (make-paint #:color "#E94F37")]
+               [destination-shader (make-color-shader "#1769E0")]
+               [source-shader (make-color-shader "#E94F37")]
+               [combined-shader (make-blender-shader shader-blender
+                                                      destination-shader source-shader)]
+               [shader-paint (make-paint #:shader combined-shader)]
+               [destination-filter (make-shader-image-filter destination-shader
+                                                              #:crop '(290 130 110 55))]
+               [source-filter (make-shader-image-filter source-shader
+                                                         #:crop '(290 130 110 55))]
+               [combined-filter (make-blender-image-filter filter-blender
+                                                            destination-filter source-filter
+                                                            #:crop '(290 130 110 55))]
+               [filter-paint (make-paint #:image-filter combined-filter)]
+               [arithmetic (make-arithmetic-blender 0 0.25 0.75 0)]
+               [arithmetic-source (make-paint #:color "#E94F37")])
+     (paint-set-blender! source-with-blender paint-blender)
+     (paint-set-blender! arithmetic-source arithmetic)
+     (draw-simple-text canvas "color filter: source" 18 17 font label)
+     (draw-simple-text canvas "bound child shader" 220 17 font label)
+     (draw-rounded-rect canvas 18 28 82 45 7 7 orange)
+     (draw-rounded-rect canvas 112 28 82 45 7 7 filtered-orange)
+     (draw-rect canvas 220 28 180 45 child-paint)
+     (draw-simple-text canvas "source" 34 84 font label)
+     (draw-simple-text canvas "filtered" 126 84 font label)
+     (draw-simple-text canvas "child = red-to-blue gradient" 220 84 font label)
+     (draw-simple-text canvas "paint: D then S" 18 118 font label)
+     (draw-simple-text canvas "shader: D, S" 155 118 font label)
+     (draw-simple-text canvas "filter: bg=D, fg=S" 290 118 font label)
+     (draw-rounded-rect canvas 18 130 110 55 8 8 destination)
+     (draw-circle canvas 78 158 24 source-with-blender)
+     (draw-rect canvas 155 130 110 55 shader-paint)
+     (draw-rect canvas 290 130 110 55 filter-paint)
+     (for ([x '(18 155 290)]) (draw-rect canvas x 130 110 55 outline))
+     (draw-simple-text canvas "D = azure, S = orange" 18 206 font label)
+     (draw-simple-text canvas "same runtime blender" 155 206 font label)
+     (draw-simple-text canvas "arithmetic: .25 S + .75 D" 18 238 font label)
+     (draw-rounded-rect canvas 225 220 110 28 6 6 destination)
+     (draw-rounded-rect canvas 250 220 60 28 6 6 arithmetic-source)))
  #:background 'white)
 
 (render-reference-image
@@ -211,6 +540,67 @@
  #:background 'white)
 
 (render-reference-image
+ "matrix-composition-and-bounds.png" 420 260
+ (lambda (canvas)
+   (with-skia ([shape (make-path '((move 0 0) (line 35 0) (line 35 12)
+                                   (line 12 12) (line 12 35) (line 0 35) (close)))]
+               [ghost (make-paint #:color "#D9DEE6")]
+               [ink (make-paint #:color "#326DE6")]
+               [grid (make-paint #:color "#D9DEE6" #:style 'stroke #:stroke-width 1)]
+               [box (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 2)]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")])
+     (define translation (matrix-translate 28 12))
+     (define scaling (matrix-scale 1.4))
+     (define (composition-panel x transform title)
+       (draw-simple-text canvas title x 17 font label)
+       (with-canvas-state canvas
+         (canvas-translate! canvas x 35)
+         (for ([n '(0 20 40 60 80)])
+           (draw-line canvas n 0 n 80 grid)
+           (draw-line canvas 0 n 80 n grid))
+         (draw-path canvas shape ghost)
+         (canvas-concat! canvas transform)
+         (draw-path canvas shape ink)))
+     (composition-panel 18 (matrix-compose translation scaling) "T × S: S acts first")
+     (composition-panel 215 (matrix-compose scaling translation) "S × T: T acts first")
+     (draw-simple-text canvas "gray = same local L; blue = composed result" 18 130 font label)
+     (define bound-transform
+       (matrix-compose (matrix-translate 210 195) (matrix-rotate-degrees 28)))
+     (define-values (left top width height)
+       (matrix-map-rect bound-transform -45 -22 90 44))
+     (draw-simple-text canvas "matrix-map-rect returns an axis-aligned box" 90 145 font label)
+     (with-canvas-state canvas
+       (canvas-concat! canvas bound-transform)
+       (draw-rect canvas -45 -22 90 44 ink))
+     (draw-rect canvas left top width height box)
+     (draw-simple-text canvas "red = mapped bounds, not an oriented rectangle" 85 250 font label)))
+ #:background 'white)
+
+(render-reference-image
+ "matrix4-projected-grid.png" 300 190
+ (lambda (canvas)
+   (with-skia ([grid (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1)]
+               [axis (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 3)]
+               [marker (make-paint #:color "#7D5BA6")]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")])
+     (define tilt
+       (matrix4-compose (matrix4-translate 150 105 0)
+                        (matrix4-perspective 420)
+                        (matrix4-rotate-y-degrees 38)
+                        (matrix4-rotate-x-degrees -14)
+                        (matrix4-translate -70 -45 40)))
+     (draw-simple-text canvas "matrix4-projected asymmetric grid" 68 17 font label)
+     (with-canvas-matrix canvas tilt
+       (for ([x (in-range 0 141 20)]) (draw-line canvas x 0 x 90 grid))
+       (for ([y (in-range 0 91 15)]) (draw-line canvas 0 y 140 y grid))
+       (draw-line canvas 0 0 140 90 axis)
+       (draw-circle canvas 18 18 6 marker))
+     (draw-simple-text canvas "purple corner marker prevents mirror ambiguity" 35 175 font label)))
+ #:background 'white)
+
+(render-reference-image
  "projective-transform.png" 180 110
  (lambda (canvas)
    (with-skia ([paint (make-paint #:color "#326DE6")])
@@ -219,6 +609,27 @@
                        0 1 20
                        0.004 0 1)
        (draw-rect canvas 0 0 110 60 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "canvas-matrix-scope.png" 160 150
+ (lambda (canvas)
+   (with-skia ([source (make-surface 20 20)]
+               [inside (make-paint #:color 'red)]
+               [restored (make-paint #:color 'blue)]
+               [font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")]
+               [boundary (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (define source-canvas (surface-canvas source))
+     (with-canvas-matrix source-canvas (matrix4-translate 5 6)
+       (draw-rect source-canvas 0 0 4 3 inside))
+     (draw-rect source-canvas 0 0 4 3 restored)
+     (unless (equal? (canvas-matrix4 source-canvas) matrix4-identity)
+       (error 'canvas-matrix-scope "canvas matrix was not restored"))
+     (with-skia ([image (surface-snapshot source)])
+       (draw-simple-text canvas "actual 20 x 20 target" 20 18 font label)
+       (draw-image-rect canvas image 20 28 120 120 #:sampling 'nearest)
+       (draw-rect canvas 20 28 120 120 boundary))))
  #:background 'white)
 
 
@@ -321,13 +732,16 @@
  #:background 'white)
 
 (render-reference-image
- "mesh-triangle.png" 160 120
+ "mesh-triangle.png" 144 144
  (lambda (canvas)
-   (with-skia ([paint (make-paint #:color 'white)]
+   (with-skia ([source (make-surface 24 24 #:background 'white)]
+               [paint (make-paint #:color 'white #:antialias? #f)]
                [mesh (make-vertices 'triangles
-                                    '((15 105) (145 105) (80 15))
+                                    '((2 2) (22 2) (2 22))
                                     #:colors '(red green blue))])
-     (draw-vertices canvas mesh paint)))
+     (draw-vertices (surface-canvas source) mesh paint)
+     (with-skia ([image (surface-snapshot source)])
+       (draw-image-rect canvas image 0 0 144 144 #:sampling 'nearest))))
  #:background 'white)
 
 (render-reference-image
@@ -389,32 +803,94 @@
  #:background 'white)
 
 (render-reference-image
- "portable-atlas.png" 120 60
+ "portable-atlas.png" 240 120
  (lambda (canvas)
    (with-skia ([source (make-surface 2 2 #:background 'red)]
-               [image (surface-snapshot source)])
+               [dark (make-paint #:color "#D9DEE4")]
+               [light (make-paint #:color "#F1F3F5")])
+     ;; This is presentation-only: the documented 12 by 6 target stays
+     ;; transparent outside its two drawn atlas copies.
+     (for* ([row (in-range 6)] [column (in-range 12)])
+       (draw-rect canvas (+ 24 (* column 16)) (+ 12 (* row 16)) 16 16
+                  (if (even? (+ row column)) light dark)))
+     (with-skia ([image (surface-snapshot source)]
+                 [target (make-surface 12 6)])
      (draw-atlas/portable
-      canvas image
-      (list (make-atlas-transform 10 10 #:scale 10)
-            (make-atlas-transform 70 10 #:scale 20))
-      '((0 0 2 2) (0 0 2 2))
-      #:sampling 'nearest)))
+      (surface-canvas target) image
+      (list (make-atlas-transform 1 1) (make-atlas-transform 7 1 #:scale 2))
+     '((0 0 2 2) (0 0 2 2)))
+     (with-skia ([preview (surface-snapshot target)])
+       (draw-image-rect canvas preview 24 12 192 96 #:sampling 'nearest)))))
  #:background 'white)
 
 (render-reference-image
- "image-filter-placement.png" 120 80
+ "image-filter-placement.png" 240 200
  (lambda (canvas)
-   (with-skia ([source-surface (make-surface 40 25 #:background 'red)]
+   (with-skia ([source-surface (make-surface 6 4 #:background 'red)]
                [image (surface-snapshot source-surface)]
-               [filter (make-offset-image-filter 30 15)])
+               [filter (make-offset-image-filter 2 1)])
      (define-values (result source offset)
-       (image-apply-filter image filter #:clip '(0 0 120 80)))
+       (image-apply-filter image filter #:clip '(0 0 12 10)))
      (call-with-skia-resource result
        (lambda (result)
-         (with-skia ([part (apply image-subset result (vector->list source))])
-           (draw-image canvas part
+         (with-skia ([part (apply image-subset result (vector->list source))]
+                     [destination (make-surface 12 10)]
+                     [dark (make-paint #:color "#D9DEE4")]
+                     [light (make-paint #:color "#F1F3F5")])
+           (draw-image (surface-canvas destination) part
                        (vector-ref offset 0)
-                       (vector-ref offset 1)))))))
+                       (vector-ref offset 1))
+           ;; The checkerboard is presentation-only; destination remains
+           ;; transparent outside the returned filtered subset.
+           (for* ([row (in-range 10)] [column (in-range 12)])
+             (draw-rect canvas (+ 24 (* column 16)) (+ 20 (* row 16)) 16 16
+                        (if (even? (+ row column)) light dark)))
+           (with-skia ([preview (surface-snapshot destination)])
+             (draw-image-rect canvas preview 24 20 192 160 #:sampling 'nearest)))))))
+ #:background 'white)
+
+(render-reference-image
+ "image-pixmap-copy-scaling.png" 420 240
+ (lambda (canvas)
+   (with-skia ([source (rgba-bytes->image
+                        4 3
+                        (bytes 255 0 0 255   0 255 0 128   0 0 255 255   255 220 0 64
+                               0 220 220 255  150 60 200 128  239 79 55 255  80 80 80 0
+                               50 109 230 255  125 91 166 128  34 139 34 255  255 255 255 255))]
+               [read-buffer (make-raster-buffer 2 2)]
+               [nearest-buffer (make-raster-buffer 8 6)]
+               [linear-buffer (make-raster-buffer 8 6)]
+               [source-buffer (image->raster-buffer source)]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (call-with-raster-buffer-pixmap
+      read-buffer (lambda (destination) (image-read-pixmap! source destination #:source-x 1 #:source-y 1))
+      #:writable? #t)
+     (call-with-raster-buffer-pixmap
+      nearest-buffer (lambda (destination) (image-scale-pixmap! source destination #:sampling 'nearest))
+      #:writable? #t)
+     (call-with-raster-buffer-pixmap
+      source-buffer
+      (lambda (source-view)
+        (call-with-raster-buffer-pixmap
+         linear-buffer (lambda (destination) (pixmap-scale! destination source-view #:sampling 'linear))
+         #:writable? #t)))
+     (with-skia ([read-image (raster-buffer->image read-buffer)]
+                 [nearest-image (raster-buffer->image nearest-buffer)]
+                 [linear-image (raster-buffer->image linear-buffer)])
+       (draw-simple-text canvas "source image: 4 × 3" 20 17 font label)
+       (draw-simple-text canvas "read 2 × 2 from (1, 1)" 200 17 font label)
+       (draw-image-rect canvas source 20 30 120 90 #:sampling 'nearest)
+       (draw-image-rect canvas read-image 200 30 90 90 #:sampling 'nearest)
+       (draw-rect canvas 20 30 120 90 outline)
+       (draw-rect canvas 200 30 90 90 outline)
+       (draw-simple-text canvas "image-scale-pixmap!: nearest" 20 132 font label)
+       (draw-simple-text canvas "pixmap-scale!: linear" 220 132 font label)
+       (draw-image-rect canvas nearest-image 20 145 120 90 #:sampling 'nearest)
+       (draw-image-rect canvas linear-image 220 145 120 90 #:sampling 'nearest)
+       (draw-rect canvas 20 145 120 90 outline)
+       (draw-rect canvas 220 145 120 90 outline))))
  #:background 'white)
 
 (render-reference-image
@@ -478,15 +954,28 @@
  #:background 'white)
 
 (render-reference-image
- "output-group.png" 120 80
+ "output-group.png" 220 220
  (lambda (canvas)
-   (with-skia ([ink (make-paint #:color 'red)])
-     (draw-output-group canvas 20 20 60 40
+   (with-skia ([source (make-surface 20 20)]
+               [ink (make-paint #:color 'red)]
+               [dark (make-paint #:color "#D9DEE4")]
+               [light (make-paint #:color "#F1F3F5")]
+               [font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "actual 20 x 20 target" 30 22 font label)
+     (draw-output-group (surface-canvas source) 4 5 8 6
        (lambda (group-canvas)
-         (draw-rect group-canvas 0 0 60 40 ink))
+         (draw-rect group-canvas 0 0 8 6 ink))
        #:policy 'raster
        #:scale 2
-       #:padding 4)))
+       #:padding 1)
+     ;; The surface is transparent outside the output group; this checkerboard
+     ;; belongs only to the enlarged presentation.
+     (for* ([row (in-range 20)] [column (in-range 20)])
+       (draw-rect canvas (+ 30 (* column 8)) (+ 40 (* row 8)) 8 8
+                  (if (even? (+ row column)) light dark)))
+     (with-skia ([image (surface-snapshot source)])
+       (draw-image-rect canvas image 30 40 160 160 #:sampling 'nearest))))
  #:background 'white)
 
 
@@ -506,16 +995,40 @@
      (draw-paint canvas paint))))
 
 (render-reference-image
- "nway-canvas.png" 16 16
+ "nway-canvas.png" 160 160
  (lambda (canvas)
-   (with-skia ([ink (make-paint #:color 'blue #:antialias? #f)])
-     (draw-rect canvas 2 2 8 8 ink))))
+   (with-skia ([a (make-surface 16 16)]
+               [b (make-surface 16 16)]
+               [ink (make-paint #:color 'blue #:antialias? #f)])
+     (call-with-nway-canvas
+      (list a b)
+      (lambda (nway-canvas) (draw-rect nway-canvas 2 2 8 8 ink)))
+     (with-skia ([image (surface-snapshot a)])
+       (draw-image-rect canvas image 0 0 160 160 #:sampling 'nearest))))
+ #:background 'white)
 
 (render-reference-image
  "pdf-document.png" 120 80
  (lambda (canvas)
    (with-skia ([paint (make-paint #:color 'blue)])
      (draw-rect canvas 10 10 100 60 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "pdf-two-pages.png" 260 115
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color 'blue)]
+               [page (make-paint #:color 'white)]
+               [font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")]
+               [boundary (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     ;; These are content previews of the exact page callbacks, not PDF output
+     ;; rendered back through a document consumer.
+     (for ([x '(10 135)] [size '(20 40)] [name '("page 1" "page 2")])
+       (draw-simple-text canvas name x 18 font label)
+       (draw-rect canvas x 28 120 80 page)
+       (draw-rect canvas (+ x 10) 38 size size paint)
+       (draw-rect canvas x 28 120 80 boundary))))
  #:background 'white)
 
 (render-reference-image
@@ -528,28 +1041,106 @@
 (render-reference-image
  "output-page-preview.png" 120 80
  (lambda (canvas)
-   (with-skia ([paint (make-paint #:color 'blue)])
-     (draw-circle canvas 20 20 16 paint)))
+   (define page
+     (make-output-page 60 40
+       (lambda (page-canvas)
+         (with-skia ([paint (make-paint #:color 'blue)])
+           (draw-circle page-canvas 10 10 8 paint)))
+       #:unit 'mm #:margins 5 #:background 'white))
+   ;; At 25.4 DPI, a millimeter page unit maps to one pixel.  The following
+   ;; draw is only the proportional 2x screen presentation of that real page.
+   (with-skia ([image (output-page->image page #:dpi 25.4)])
+     (draw-image-rect canvas image 0 0 120 80)))
  #:background 'white)
 
 (render-reference-image
- "raster-buffer-checker.png" 64 48
+ "raster-buffer-bgra-sample.png" 280 150
  (lambda (canvas)
-   (with-skia ([dark (make-paint #:color "#326DE6")]
-               [light (make-paint #:color "#E8EEF9")])
-     (for ([row '(0 1 2)]
-           [y '(0 16 32)])
-       (for ([col '(0 1 2 3)]
-             [x '(0 16 32 48)])
-         (draw-rect canvas x y 16 16
-                    (if (even? (+ row col)) dark light))))))
+   (with-skia ([buffer (make-raster-buffer-from-info
+                        (make-image-info 2 1 #:color-type 'bgra-8888))]
+               [dark (make-paint #:color "#D9DEE4")]
+               [light (make-paint #:color "#F1F3F5")]
+               [font (make-font #:size 11)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (call-with-raster-buffer-pixmap
+      buffer (lambda (view) (pixmap-set-sample! view 0 0 #(20 40 60 255))) #:writable? #t)
+     ;; The image is created only after the temporary writable pixmap closes.
+     (with-skia ([image (raster-buffer->image buffer)])
+       (for* ([row (in-range 3)] [column (in-range 12)])
+         (draw-rect canvas (+ 20 (* column 20)) (+ 34 (* row 20)) 20 20
+                    (if (even? (+ row column)) light dark)))
+       (draw-image-rect canvas image 20 34 240 60 #:sampling 'nearest)
+       (draw-rect canvas 20 34 240 60 outline)
+       (draw-simple-text canvas "written: (20,40,60,255)" 20 116 font label)
+       (draw-simple-text canvas "initial: transparent" 156 134 font label))))
  #:background 'white)
 
 (render-reference-image
- "codec-image.png" 48 32
+ "raster-buffer-extracted-alpha.png" 300 140
  (lambda (canvas)
-   (with-skia ([paint (make-paint #:color "#326DE6")])
-     (draw-rounded-rect canvas 6 6 36 20 6 6 paint)))
+   (with-skia ([source (make-raster-buffer 4 1)]
+               [font (make-font #:size 11)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (call-with-raster-buffer-pixmap
+      source
+      (lambda (view)
+        (for ([x (in-range 4)] [alpha '(0 85 170 255)])
+          (pixmap-set-sample! view x 0
+                              (vector (quotient (* 50 alpha) 255)
+                                      (quotient (* 109 alpha) 255)
+                                      (quotient (* 230 alpha) 255)
+                                      alpha))))
+      #:writable? #t)
+     (with-skia ([alpha-buffer (raster-buffer-extract-alpha source)]
+                 [source-image (raster-buffer->image source)]
+                 [alpha-image (raster-buffer->image alpha-buffer)])
+       (draw-simple-text canvas "source blue with alpha 0, 85, 170, 255" 20 18 font label)
+       (draw-image-rect canvas source-image 20 30 240 35 #:sampling 'nearest)
+       (draw-simple-text canvas "extracted Alpha8 shown as black over white" 20 87 font label)
+       (draw-image-rect canvas alpha-image 20 99 240 35 #:sampling 'nearest)
+       (draw-rect canvas 20 30 240 35 outline)
+       (draw-rect canvas 20 99 240 35 outline))))
+ #:background 'white)
+
+(render-reference-image
+ "pixmap-subset-write.png" 190 150
+ (lambda (canvas)
+   (with-skia ([buffer (make-raster-buffer 3 2)]
+               [dark (make-paint #:color "#D9DEE4")]
+               [light (make-paint #:color "#F1F3F5")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 12)]
+               [label (make-paint #:color "#20344E")])
+     (call-with-raster-buffer-pixmap
+      buffer
+      (lambda (view)
+        (define corner (pixmap-subset view 2 1 1 1))
+        (pixmap-fill! corner 'red))
+      #:writable? #t)
+     (with-skia ([image (raster-buffer->image buffer)])
+       (draw-simple-text canvas "actual 3 x 2 buffer after borrow" 20 20 font label)
+       (for* ([row (in-range 4)] [column (in-range 6)])
+         (draw-rect canvas (+ 20 (* column 25)) (+ 35 (* row 25)) 25 25
+                    (if (even? (+ row column)) light dark)))
+       (draw-image-rect canvas image 20 35 150 100 #:sampling 'nearest)
+       (draw-rect canvas 20 35 150 100 outline))))
+ #:background 'white)
+
+(render-reference-image
+ "codec-image.png" 200 130
+ (lambda (canvas)
+   (with-skia ([surface (make-surface 3 2 #:background 'blue)])
+     (define encoded (surface->png-bytes surface))
+     (with-skia ([codec (codec-from-bytes encoded)]
+                 [image (codec->image codec)]
+                 [font (make-font #:size 16)]
+                 [label (make-paint #:color "#20344E")]
+                 [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+       (draw-simple-text canvas "decoded: 3 x 2 pixels" 20 20 font label)
+       (draw-image-rect canvas image 34 30 132 88 #:sampling 'nearest)
+       (draw-rect canvas 34 30 132 88 outline))))
  #:background 'white)
 
 (let ()
@@ -563,6 +1154,207 @@
   (make-directory* output-directory)
   (send bitmap save-file path 'png)
   (printf "wrote ~a\n" path))
+
+(render-reference-image
+ "bitmap-mask-and-copies.png" 420 180
+ (lambda (canvas)
+   (define source (draw:make-bitmap 3 2 #t))
+   (send source set-argb-pixels 0 0 3 2
+         (bytes 255 230 75 50   255 35 155 85   255 45 105 230
+                255 240 185 45  255 150 70 190   255 35 180 185)
+         #f #t)
+   (define coverage (draw:make-bitmap 3 2 #t))
+   (send coverage set-argb-pixels 0 0 3 2
+         (bytes 102 0 0 0  178 0 0 0  255 0 0 0
+                102 0 0 0  178 0 0 0  255 0 0 0)
+         #f #t)
+   (send source set-loaded-mask coverage)
+   (with-skia ([masked (bitmap->image source)]
+               [unmasked (bitmap->image source #:mask #f)]
+               [surface (make-surface 3 2)]
+               [light (make-paint #:color "#F1F3F5")]
+               [dark (make-paint #:color "#D5D9DE")]
+               [border (make-paint #:color "#9CA8B5" #:style 'stroke #:stroke-width 1)]
+               [label-font (make-font #:size 10)]
+               [label-paint (make-paint #:color "#526070")])
+     (draw-image (surface-canvas surface) unmasked 0 0)
+     (define returned-bitmap (image->bitmap unmasked))
+     (define surface-bitmap (surface->bitmap surface))
+     (define (checker x y)
+       (for* ([row (in-range 6)] [column (in-range 9)])
+         (draw-rect canvas (+ x (* column 12)) (+ y (* row 12)) 12 12
+                    (if (even? (+ row column)) light dark))))
+     (with-skia ([returned (bitmap->image returned-bitmap #:mask #f)]
+                 [surface-copy (bitmap->image surface-bitmap #:mask #f)])
+       (for ([image (in-list (list masked returned surface-copy))]
+             [x '(17 156 295)])
+         (checker x 43)
+         (draw-image-rect canvas image x 43 108 72 #:sampling 'nearest)
+         (draw-rect canvas x 43 108 72 border))
+       (for ([line-1 '("loaded mask" "mask #f, then" "surface->bitmap")]
+             [line-2 '("bitmap->image" "image->bitmap" "snapshot")]
+             [x '(17 156 295)])
+         (draw-simple-text canvas line-1 x 16 label-font label-paint)
+         (draw-simple-text canvas line-2 x 29 label-font label-paint))
+       (draw-simple-text canvas "3 x 2 source; checkerboard is preview only" 17 148
+                         label-font label-paint))))
+ #:background 'white)
+
+(render-reference-image
+ "bitmap-resolution-density.png" 400 185
+ (lambda (canvas)
+   (define high-density (draw:make-bitmap 3 2 #t #:backing-scale 2))
+   (define bitmap-dc (new draw:bitmap-dc% [bitmap high-density]))
+   (send bitmap-dc set-pen "black" 1 'transparent)
+   (send bitmap-dc set-brush "orange" 'solid)
+   (send bitmap-dc draw-ellipse 1/4 1/4 5/2 3/2)
+   (send bitmap-dc set-bitmap #f)
+   (with-skia ([physical (bitmap->image high-density #:resolution 'physical #:mask #f)]
+               [logical (bitmap->image high-density #:resolution 'logical #:mask #f)]
+               [light (make-paint #:color "#F1F3F5")]
+               [dark (make-paint #:color "#D5D9DE")]
+               [border (make-paint #:color "#9CA8B5" #:style 'stroke #:stroke-width 1)]
+               [label-font (make-font #:size 11)]
+               [label-paint (make-paint #:color "#526070")])
+     (define (checker x y)
+       (for* ([row (in-range 10)] [column (in-range 15)])
+         (draw-rect canvas (+ x (* column 10)) (+ y (* row 10)) 10 10
+                    (if (even? (+ row column)) light dark))))
+     (for ([image (in-list (list physical logical))]
+           [x '(25 225)])
+       (checker x 45)
+       (draw-image-rect canvas image x 45 150 100 #:sampling 'nearest)
+       (draw-rect canvas x 45 150 100 border))
+     (draw-simple-text canvas "physical: 6 x 4 samples" 25 22 label-font label-paint)
+     (draw-simple-text canvas "logical: 3 x 2 samples" 225 22 label-font label-paint)
+     (draw-simple-text canvas "same 3 x 2 logical bitmap; backing scale 2" 25 168
+                       label-font label-paint)))
+ #:background 'white)
+
+(render-reference-image
+ "picture-pict-viewport-density.png" 420 220
+ (lambda (canvas)
+   (define bounds (vector 36 22 100 70))
+   (with-skia ([font (make-font #:size 14)]
+               [background (make-paint #:color "#EEF2F7")]
+               [ink (make-paint #:color "#20344E")]
+               [orange (make-paint #:color "#EFA02B")]
+               [grid (make-paint #:color "#C9D2DF" #:style 'stroke #:stroke-width 1)]
+               [picture
+                (call-with-picture
+                 160 110
+                 (lambda (picture-canvas)
+                   (draw-rect picture-canvas 0 0 160 110 background)
+                   (for ([x '(20 40 60 80 100 120 140)])
+                     (draw-line picture-canvas x 0 x 110 grid))
+                   (for ([y '(20 40 60 80 100)])
+                     (draw-line picture-canvas 0 y 160 y grid))
+                   (draw-circle picture-canvas 42 29 18 orange)
+                   (draw-line picture-canvas 36 92 130 30 ink)
+                   (draw-simple-text picture-canvas "viewport" 62 88 font ink)))])
+     (define one (picture->pict picture #:bounds bounds #:raster-scale 1))
+     (define three (picture->pict picture #:bounds bounds #:raster-scale 3))
+     (define one-preview (pict:pict->bitmap (pict:scale one 2)))
+     (define three-preview (pict:pict->bitmap (pict:scale three 2)))
+     (with-skia ([one-image (bitmap->image one-preview #:mask #f)]
+                 [three-image (bitmap->image three-preview #:mask #f)]
+                 [label-font (make-font #:size 11)]
+                 [label-paint (make-paint #:color "#526070")]
+                 [border (make-paint #:color "#9CA8B5" #:style 'stroke #:stroke-width 1)])
+       (draw-simple-text canvas "picture->pict: raster scale 1" 10 22 label-font label-paint)
+       (draw-simple-text canvas "picture->pict: raster scale 3" 220 22 label-font label-paint)
+       (draw-image-rect canvas one-image 10 43 200 140 #:sampling 'nearest)
+       (draw-image-rect canvas three-image 210 43 200 140 #:sampling 'nearest)
+       (draw-rect canvas 10 43 200 140 border)
+       (draw-rect canvas 210 43 200 140 border)
+       (draw-simple-text canvas "same nonzero 100 x 70 viewport; previews are 2x" 10 205
+                         label-font label-paint))))
+ #:background 'white)
+
+(render-reference-image
+ "skia-dc-headless-snapshot.png" 220 150
+ (lambda (canvas)
+   (define white (make-object draw:color% 255 255 255))
+   (define navy (make-object draw:color% 32 52 78))
+   (define panel (make-object draw:color% 232 238 249))
+   (define orange (make-object draw:color% 239 160 43))
+   (define blue (make-object draw:color% 50 109 230))
+   (define dc
+     (new skia-dc% [width 180] [height 105]
+                   [background white] [smoothing 'smoothed]))
+   (define snapshot
+     (dynamic-wind
+      void
+      (lambda ()
+        (send dc clear)
+        (send dc set-pen navy 2 'solid)
+        (send dc set-brush panel 'solid)
+        (send dc draw-rounded-rectangle 8 8 164 88 12)
+        (send dc set-brush orange 'solid)
+        (send dc draw-ellipse 25 35 48 38)
+        (send dc set-pen blue 3 'solid)
+        (send dc draw-line 92 75 154 30)
+        (send dc set-text-foreground navy)
+        (send dc draw-text "headless DC" 24 18)
+        (send dc snapshot))
+      (lambda () (send dc close))))
+   (with-skia ([image snapshot]
+               [label-font (make-font #:size 11)]
+               [label-paint (make-paint #:color "#526070")]
+               [border (make-paint #:color "#9CA8B5" #:style 'stroke #:stroke-width 1)])
+     (draw-simple-text canvas "headless DC -> snapshot after close" 20 18
+                       label-font label-paint)
+     (draw-image-rect canvas image 20 32 180 105 #:sampling 'nearest)
+     (draw-rect canvas 20 32 180 105 border)))
+ #:background 'white)
+
+(render-reference-image
+ "dc-output-capture-and-page-preview.png" 420 170
+ (lambda (canvas)
+   (define white (make-object draw:color% 255 255 255))
+   (define navy (make-object draw:color% 32 52 78))
+   (define panel (make-object draw:color% 232 238 249))
+   (define orange (make-object draw:color% 239 160 43))
+   (define blue (make-object draw:color% 50 109 230))
+   (define black (make-object draw:color% 0 0 0))
+   (define (draw-scene dc)
+     (send dc set-pen navy 2 'solid)
+     (send dc set-brush panel 'solid)
+     (send dc draw-rectangle 4 4 172 92)
+     (send dc set-text-foreground navy)
+     (send dc draw-text "vector frame" 12 14)
+     (draw-dc-raster-group
+      dc 100 30 52 45
+      (lambda (group)
+        (send group set-pen black 1 'transparent)
+        (send group set-brush orange 'solid)
+        (send group draw-ellipse 2 2 44 35)
+        (send group set-pen blue 3 'solid)
+        (send group draw-line 4 39 48 5))
+      #:scale 2 #:label "orange-badge")
+     (send dc set-pen blue 3 'solid)
+     (send dc draw-line 15 80 80 42))
+   (define page (make-dc-output-page 180 100 draw-scene #:background "#FFFFFF"))
+   (with-skia ([surface (make-surface 180 100 #:background "#FFFFFF")]
+               [label-font (make-font #:size 10)]
+               [label-paint (make-paint #:color "#526070")]
+               [border (make-paint #:color "#9CA8B5" #:style 'stroke #:stroke-width 1)])
+     (define report (call-with-output-dc (surface-canvas surface) 180 100 draw-scene))
+     (with-skia ([direct (surface-snapshot surface)]
+                 [preview (output-page->image page #:dpi 72)])
+       (draw-simple-text canvas "call-with-output-dc CPU capture" 15 17
+                         label-font label-paint)
+       (draw-simple-text canvas "make-dc-output-page content preview" 225 17
+                         label-font label-paint)
+       (draw-image-rect canvas direct 15 30 180 100 #:sampling 'nearest)
+       (draw-image-rect canvas preview 225 30 180 100 #:sampling 'nearest)
+       (draw-rect canvas 15 30 180 100 border)
+       (draw-rect canvas 225 30 180 100 border)
+       (draw-simple-text canvas
+                         (format "report: ~a explicit raster group; preview is not document proof"
+                                 (hash-ref report 'raster_groups))
+                         15 151 label-font label-paint))))
+ #:background 'white)
 
 ;; Stage 6: thirty-two additional reference figures. Six already had generator
 ;; entries from the earlier broad rendering pass; the twenty-six entries below
@@ -652,6 +1444,239 @@
                                   #:stroke-width 2
                                   #:path-effect effect)])
      (draw-path canvas line paint)))
+ #:background 'white)
+
+(render-reference-image
+ "path-effect-2d-lattices.png" 300 150
+ (lambda (canvas)
+   (with-skia ([stamp (make-path '((move -5 -4) (line 6 0) (line -5 4) (close)))]
+               [line-effect (make-2d-line-path-effect 3 (matrix-scale 14 14))]
+               [stamp-effect (make-2d-path-effect (matrix-scale 18 18) stamp)]
+               [line-paint (make-paint #:color "#326DE6" #:style 'stroke
+                                       #:stroke-width 2 #:path-effect line-effect)]
+               [stamp-paint (make-paint #:color "#E94F37" #:style 'stroke
+                                        #:stroke-width 2 #:path-effect stamp-effect)]
+               [font (make-font #:size 12)]
+               [label (make-paint #:color "#20344E")]
+               [boundary (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (draw-simple-text canvas "parallel-line lattice" 20 20 font label)
+     (draw-simple-text canvas "asymmetric stamp lattice" 165 20 font label)
+     (draw-rect canvas 20 35 115 95 line-paint)
+     (draw-rect canvas 165 35 115 95 stamp-paint)
+     (draw-rect canvas 20 35 115 95 boundary)
+     (draw-rect canvas 165 35 115 95 boundary)))
+ #:background 'white)
+
+(render-native-scale-reference-image
+ "mask-filter-coverage.png" 420 125
+ (lambda (canvas)
+   (with-skia ([table (make-table-mask-filter
+                       (apply bytes (for/list ([coverage (in-range 256)])
+                                      (if (< coverage 128) 0 255))))]
+               [clipped (make-clip-mask-filter 80 180)]
+               [alpha-ramp (make-linear-gradient-shader
+                            325 0 390 0 (list (rgba 255 255 255 0) 'white))]
+               [shader-mask (make-shader-mask-filter alpha-ramp)]
+               [plain (make-paint #:color "#326DE6")]
+               [table-paint (make-paint #:color "#326DE6" #:mask-filter table)]
+               [clip-paint (make-paint #:color "#326DE6" #:mask-filter clipped)]
+               [shader-paint (make-paint #:color "#326DE6" #:mask-filter shader-mask)]
+               [font (make-font #:size 11)]
+               [label (make-paint #:color "#20344E")])
+     (for ([text '("original" "table threshold" "clip 80..180" "shader alpha")]
+           [x '(20 114 216 326)])
+       (draw-simple-text canvas text x 18 font label))
+     (for ([paint (list plain table-paint clip-paint shader-paint)]
+           [x '(55.5 155.5 255.5 355.5)])
+       (draw-circle canvas x 72.5 27.25 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "color-filter-channel-curves.png" 420 180
+ (lambda (canvas)
+   (with-skia ([color-source (make-surface 120 50)]
+               [gray-source (make-surface 120 50)]
+               [spectrum (make-linear-gradient-shader 0 0 120 0 '(red yellow green cyan blue))]
+               [gray (make-linear-gradient-shader 0 0 120 0 '(black white))]
+               [spectrum-paint (make-paint #:shader spectrum)]
+               [gray-paint (make-paint #:shader gray)])
+     (draw-rect (surface-canvas color-source) 0 0 120 50 spectrum-paint)
+     (draw-rect (surface-canvas gray-source) 0 0 120 50 gray-paint)
+     (with-skia ([color-image (surface-snapshot color-source)]
+                 [gray-image (surface-snapshot gray-source)]
+                 [hsla (make-hsla-matrix-filter
+                        '(1 0 0 0 0.18
+                          0 0.55 0 0 0
+                          0 0 1 0 0
+                          0 0 0 1 0))]
+                 [to-linear (make-srgb-to-linear-gamma-color-filter)]
+                 [to-srgb (make-linear-to-srgb-gamma-color-filter)]
+                 [blue-table (make-table-argb-color-filter
+                              #:blue (apply bytes (for/list ([v (in-range 256)]) (- 255 v))))]
+                 [plain (make-paint)]
+                 [hsla-paint (make-paint #:color-filter hsla)]
+                 [linear-paint (make-paint #:color-filter to-linear)]
+                 [srgb-paint (make-paint #:color-filter to-srgb)]
+                 [blue-paint (make-paint #:color-filter blue-table)]
+                 [font (make-font #:size 11)]
+                 [label (make-paint #:color "#20344E")])
+       (for ([text '("source strip" "HSLA hue + desaturate" "blue table inverted")]
+             [x '(15 150 285)])
+         (draw-simple-text canvas text x 17 font label))
+       (for ([paint (list plain hsla-paint blue-paint)] [x '(15 150 285)])
+         (draw-image canvas color-image x 28 #:paint paint))
+       (for ([text '("sRGB -> linear" "linear -> sRGB")] [x '(80 220)])
+         (draw-simple-text canvas text x 103 font label))
+       (draw-image canvas gray-image 80 114 #:paint linear-paint)
+       (draw-image canvas gray-image 220 114 #:paint srgb-paint))))
+ #:background 'white)
+
+(render-reference-image
+ "image-filter-displacement-magnifier.png" 420 225
+ (lambda (canvas)
+   (with-skia ([source-surface (make-surface 120 80 #:background 'white)]
+               [grid (make-paint #:color "#B8C0CC" #:style 'stroke #:stroke-width 1)]
+               [blue (make-paint #:color "#326DE6")]
+               [orange (make-paint #:color "#E94F37")]
+               [purple (make-paint #:color "#7D5BA6")])
+     (define source-canvas (surface-canvas source-surface))
+     (for ([x '(20 40 60 80 100)]) (draw-line source-canvas x 0 x 80 grid))
+     (for ([y '(20 40 60)]) (draw-line source-canvas 0 y 120 y grid))
+     (draw-circle source-canvas 24 22 8 blue)
+     (draw-polygon source-canvas '((86 12) (110 25) (86 38)) orange)
+     (draw-rect source-canvas 14 54 32 14 purple)
+     (define map-bytes (make-bytes (* 120 80 4)))
+     (for* ([y (in-range 80)] [x (in-range 120)])
+       (define index (* 4 (+ x (* y 120))))
+       (bytes-set! map-bytes index (quotient (* 255 x) 119))
+       (bytes-set! map-bytes (+ index 1) (quotient (* 255 y) 79))
+       (bytes-set! map-bytes (+ index 2) 0)
+       (bytes-set! map-bytes (+ index 3) 255))
+     (with-skia ([source-image (surface-snapshot source-surface)]
+                 [map-image (rgba-bytes->image 120 80 map-bytes)]
+                 [map-source (make-image-source-filter map-image)]
+                 [color-source (make-image-source-filter source-image)]
+                 [displacement (make-displacement-map-image-filter
+                                'red 'green 60 map-source color-source)]
+                 [magnifier (make-magnifier-image-filter '(14 10 52 52) 2 #:inset 6)]
+                 [displaced-paint (make-paint #:image-filter displacement)]
+                 [magnified-paint (make-paint #:image-filter magnifier)]
+                 [displaced-surface (make-surface 120 80 #:background 'white)]
+                 [magnified-surface (make-surface 120 80 #:background 'white)]
+                 [font (make-font #:size 10)]
+                 [label (make-paint #:color "#20344E")]
+                 [lens (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)])
+       (draw-paint (surface-canvas displaced-surface) displaced-paint)
+       (draw-image (surface-canvas magnified-surface) source-image 0 0)
+       (draw-image (surface-canvas magnified-surface) source-image 0 0 #:paint magnified-paint)
+       (with-skia ([displaced-image (surface-snapshot displaced-surface)]
+                   [magnified-image (surface-snapshot magnified-surface)])
+         (for ([text '("color source" "map: red=x, green=y" "displaced: red -> x, green -> y")]
+               [x '(10 150 285)])
+           (draw-simple-text canvas text x 16 font label))
+         (draw-image canvas source-image 10 28)
+         (draw-image canvas map-image 150 28)
+         (draw-image canvas displaced-image 285 28)
+         (draw-simple-text canvas "lens on source" 35 127 font label)
+         (draw-simple-text canvas "2x magnifier; inset 6" 235 127 font label)
+         (draw-image canvas source-image 35 138)
+         (draw-rect canvas 49 148 52 52 lens)
+         (draw-image canvas magnified-image 235 138)
+         (draw-rect canvas 249 148 52 52 lens)))))
+ #:background 'white)
+
+(render-reference-image
+ "image-filter-lighting-grid.png" 420 280
+ (lambda (canvas)
+   (with-skia ([height-surface (make-surface 120 70)]
+               [height-shader (make-radial-gradient-shader
+                               60 35 30 (list 'white (rgba 255 255 255 0)))]
+               [height-paint (make-paint #:shader height-shader)]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")]
+               [black (make-paint #:color 'black)])
+     (draw-rect (surface-canvas height-surface) 0 0 120 70 height-paint)
+     (with-skia ([height-image (surface-snapshot height-surface)]
+                 [distant-diffuse (make-distant-lit-diffuse-image-filter '(1 -1 2) 'white
+                                                                          #:surface-scale 6 #:coefficient 1.2)]
+                 [point-diffuse (make-point-lit-diffuse-image-filter '(60 20 80) 'white
+                                                                      #:surface-scale 6 #:coefficient 1.2)]
+                 [spot-diffuse (make-spot-lit-diffuse-image-filter '(60 20 80) '(60 35 0) 'white
+                                                                    #:exponent 2 #:cutoff-angle 35
+                                                                    #:surface-scale 6 #:coefficient 1.2)]
+                 [distant-specular (make-distant-lit-specular-image-filter '(1 -1 2) 'white
+                                                                            #:surface-scale 6 #:coefficient 1
+                                                                            #:shininess 8)]
+                 [point-specular (make-point-lit-specular-image-filter '(60 35 100) 'white
+                                                                        #:surface-scale 6 #:coefficient 1
+                                                                        #:shininess 8)]
+                 [spot-specular (make-spot-lit-specular-image-filter '(60 35 100) '(60 35 0) 'white
+                                                                      #:exponent 2 #:cutoff-angle 35
+                                                                      #:surface-scale 6 #:coefficient 1
+                                                                      #:shininess 8)])
+       (for ([name '("diffuse distant" "diffuse point" "diffuse spot"
+                    "specular distant" "specular point" "specular spot")]
+             [x '(20 155 290 20 155 290)] [y '(20 20 20 125 125 125)])
+         (draw-simple-text canvas name x y font label))
+       (for ([filter (list distant-diffuse point-diffuse spot-diffuse
+                           distant-specular point-specular spot-specular)]
+             [x '(20 155 290 20 155 290)] [y '(32 32 32 137 137 137)])
+         (with-skia ([paint (make-paint #:shader height-shader #:image-filter filter)]
+                     [pane (make-surface 120 70 #:background 'black)])
+           (draw-rect (surface-canvas pane) 0 0 120 70 paint)
+           (with-skia ([image (surface-snapshot pane)])
+             (draw-image canvas image x y))))
+       (draw-simple-text canvas "source alpha height field" 20 235 font label)
+       (draw-rect canvas 20 242 70 30 black)
+       (draw-image-rect canvas height-image 20 242 70 30 #:sampling 'linear))))
+ #:background 'white)
+
+(render-reference-image
+ "picture-image-filter-target-crop.png" 420 175
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture
+                 120 75
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#E94F37")]
+                               [purple (make-paint #:color "#7D5BA6")])
+                     (draw-rounded-rect pc 5 5 80 55 9 9 blue)
+                     (draw-polygon pc '((20 58) (104 58) (86 17)) orange)
+                     (draw-circle pc 98 18 13 purple))))]
+               [target-filter (make-picture-image-filter picture #:target '(30 15 55 40))]
+               [crop-filter (make-picture-image-filter picture
+                                                       #:target '(15 8 85 58)
+                                                       #:crop '(55 8 38 58))]
+               [target-paint (make-paint #:image-filter target-filter)]
+               [crop-paint (make-paint #:image-filter crop-filter)]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")]
+               [bound (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+               [target-bound (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+               [crop-bound (make-paint #:color "#7D5BA6" #:style 'stroke #:stroke-width 2)])
+     ;; Preview it once, then prove that the two filters retain the recording.
+     (draw-picture canvas picture #:x 12 #:y 30)
+     (skia-close! picture)
+     (define (render-filter paint)
+       (with-skia ([page (make-surface 120 75 #:background 'white)])
+         (draw-paint (surface-canvas page) paint)
+         (surface-snapshot page)))
+     (with-skia ([target-image (render-filter target-paint)]
+                 [crop-image (render-filter crop-paint)])
+       (draw-simple-text canvas "recorded picture: native cull" 12 17 font label)
+       (draw-simple-text canvas "target: select, don't scale" 150 17 font label)
+       (draw-simple-text canvas "target intersect crop" 290 17 font label)
+       (draw-image canvas target-image 150 30)
+       (draw-image canvas crop-image 290 30)
+       (for ([x '(12 150 290)]) (draw-rect canvas x 30 120 75 bound))
+       (draw-rect canvas 42 45 55 40 target-bound)
+       (draw-rect canvas 180 45 55 40 target-bound)
+       (draw-rect canvas 305 38 85 58 target-bound)
+       (draw-rect canvas 345 38 38 58 crop-bound)
+       (draw-simple-text canvas "orange=target; purple=crop" 12 125 font label)
+       (draw-simple-text canvas "recording stays 1:1" 150 125 font label)
+       (draw-simple-text canvas "only overlap is output" 290 125 font label))))
  #:background 'white)
 
 (render-reference-image
@@ -765,6 +1790,106 @@
  #:background 'white)
 
 (render-reference-image
+ "font-metrics-guides.png" 420 205
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 58)]
+               [text-paint (make-paint #:color "#20344E")]
+               [ascent-paint (make-paint #:color "#D64F45" #:style 'stroke #:stroke-width 1)]
+               [baseline-paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 1)]
+               [descent-paint (make-paint #:color "#2C9B6F" #:style 'stroke #:stroke-width 1)]
+               [advance-paint (make-paint #:color "#8255C7" #:style 'stroke #:stroke-width 1.5)]
+               [ascent-label (make-paint #:color "#D64F45")]
+               [baseline-label (make-paint #:color "#326DE6")]
+               [descent-label (make-paint #:color "#2C9B6F")]
+               [advance-label (make-paint #:color "#8255C7")]
+               [label-font (make-font #:size 12)]
+               [label-paint (make-paint #:color "#526070")])
+     (define text "glyph")
+     (define x 35)
+     (define baseline 120)
+     (define metrics (font-get-metrics font))
+     (define ascent (+ baseline (font-metrics-ascent metrics)))
+     (define descent (+ baseline (font-metrics-descent metrics)))
+     (define advance (measure-simple-text font text))
+     (draw-line canvas 22 ascent 235 ascent ascent-paint)
+     (draw-line canvas 22 baseline 235 baseline baseline-paint)
+     (draw-line canvas 22 descent 235 descent descent-paint)
+     (draw-simple-text canvas text x baseline font text-paint)
+     (draw-line canvas x 160 (+ x advance) 160 advance-paint)
+     (draw-line canvas x 156 (+ x 5) 161 advance-paint)
+     (draw-line canvas x 164 (+ x 5) 159 advance-paint)
+     (draw-line canvas (+ x advance) 156 (+ x advance -5) 161 advance-paint)
+     (draw-line canvas (+ x advance) 164 (+ x advance -5) 159 advance-paint)
+     (draw-simple-text canvas "ascent" 250 (+ ascent 4) label-font ascent-label)
+     (draw-simple-text canvas "baseline" 250 (+ baseline 4) label-font baseline-label)
+     (draw-simple-text canvas "descent" 250 (+ descent 4) label-font descent-label)
+     (draw-simple-text canvas (format "advance ~a" (inexact->exact (round advance)))
+                       35 183 label-font advance-label)))
+ #:background 'white)
+
+(render-reference-image
+ "simple-text-path-outlines.png" 360 190
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 52)]
+               [fill-paint (make-paint #:color "#326DE6")]
+               [stroke-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+               [label-font (make-font #:size 12)]
+               [label-paint (make-paint #:color "#526070")])
+     (with-skia ([filled (simple-text-path font "path" 20 78)]
+                 [stroked (simple-text-path font "path" 20 170)])
+       (draw-simple-text canvas "filled monochrome outline" 20 20 label-font label-paint)
+       (draw-path canvas filled fill-paint)
+       (draw-simple-text canvas "stroked monochrome outline" 20 110 label-font label-paint)
+       (draw-path canvas stroked stroke-paint))))
+ #:background 'white)
+
+(define (face-label face)
+  (define family (typeface-family-name face))
+  (if (> (string-length family) 16)
+      (string-append (substring family 0 13) "...")
+      family))
+
+(render-reference-image
+ "font-manager-style-selection.png" 420 180
+ (lambda (canvas)
+   (with-skia ([manager (make-font-manager)]
+               [title-font (make-font #:size 12)]
+               [label-font (make-font #:size 10)]
+               [title-paint (make-paint #:color "#526070")]
+               [label-paint (make-paint #:color "#526070")]
+               [panel-paint (make-paint #:color "#EEF2F7")]
+               [border-paint (make-paint #:color "#C9D2DF" #:style 'stroke #:stroke-width 1)])
+     (define initial
+       (or (font-manager-match-character manager #\g)
+           (error 'font-manager-style-selection "no face covers the displayed character")))
+     (define family (typeface-family-name initial))
+     (define bold-face
+       (or (font-manager-match-family manager family #:weight 'bold)
+           (error 'font-manager-style-selection "no bold face was selected")))
+     (define italic-face
+       (or (font-manager-match-family manager family #:slant 'italic)
+           (error 'font-manager-style-selection "no italic face was selected")))
+     (with-skia ([regular-face initial]
+                 [bold-face* bold-face]
+                 [italic-face* italic-face])
+       (for ([face (in-list (list regular-face bold-face* italic-face*))]
+             [request '("regular request" "bold request" "italic request")]
+             [x '(12 148 284)])
+         (with-skia ([font (make-font face #:size 37)]
+                     [text-paint (make-paint #:color "#20344E")])
+           (draw-rect canvas x 26 124 140 panel-paint)
+           (draw-rect canvas x 26 124 140 border-paint)
+           (draw-simple-text canvas request (+ x 8) 45 title-font title-paint)
+           (draw-simple-text canvas "Style" (+ x 8) 90 font text-paint)
+           (draw-simple-text canvas (format "actual: ~a" (face-label face))
+                             (+ x 8) 125 label-font label-paint)
+           (draw-simple-text canvas
+                             (format "w~a; ~a"
+                                     (typeface-weight face) (typeface-slant face))
+                             (+ x 8) 144 label-font label-paint))))))
+ #:background 'white)
+
+(render-reference-image
  "glyph-outline.png" 140 100
  (lambda (canvas)
    (with-skia ([font (make-font #:size 70)]
@@ -791,6 +1916,58 @@
      (define run (shape-text shaper "Text follows the curve"
                              #:direction 'ltr #:script 'latn #:language "en"))
      (draw-shaped-run/on-path canvas shaper run path text-paint #:start-offset 10)))
+ #:background 'white)
+
+(render-reference-image
+ "text-blob-path-snapshot.png" 330 100
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 24)]
+               [shaper (make-shaper font)]
+               [path (make-path '((move 10 40) (line 310 40)))]
+               [guide-path (make-path '((move 10 40) (line 310 40)))]
+               [guide (make-paint #:color "#BBBBBB" #:style 'stroke #:stroke-width 1)]
+               [mark (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+               [paint (make-paint #:color "#20344E")]
+               [label-font (make-font #:size 12)]
+               [label (make-paint #:color "#20344E")])
+     (define text "AB")
+     (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
+     (with-skia ([blob (shaped-run->text-blob/on-path shaper run path
+                                                    #:start-offset 20 #:normal-offset 5
+                                                    #:text text)])
+       (skia-close! path)
+       (skia-close! shaper)
+       (draw-path canvas guide-path guide)
+       (draw-text-blob canvas blob 0 0 paint)
+       (draw-line canvas 30 40 30 45 mark)
+       (draw-simple-text canvas "start +20; normal +5" 10 88 label-font label))))
+ #:background 'white)
+
+(render-reference-image
+ "text-blob-multirun-outline.png" 420 175
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 30)]
+               [builder (make-text-blob-builder)]
+               [source-paint (make-paint #:color "#326DE6")]
+               [outline-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+               [divider-paint (make-paint #:color "#C9D2DF" #:style 'stroke #:stroke-width 1)]
+               [label-font (make-font #:size 12)]
+               [label-paint (make-paint #:color "#526070")])
+     (text-blob-builder-add-run! builder font (font-text->glyphs font "small")
+                                #:origin '(18 92))
+     (font-set-size! font 52)
+     (text-blob-builder-add-run! builder font (font-text->glyphs font "!")
+                                #:origin '(130 92))
+     (with-skia ([blob (text-blob-builder-finish! builder)]
+                 [outline (text-blob->path blob)])
+       (draw-line canvas 210 12 210 160 divider-paint)
+       (draw-simple-text canvas "completed blob: two retained runs" 18 24
+                         label-font label-paint)
+       (draw-text-blob canvas blob 0 0 source-paint)
+       (draw-simple-text canvas "text-blob->path" 228 24 label-font label-paint)
+       (with-canvas-state canvas
+         (canvas-translate! canvas 210 0)
+         (draw-path canvas outline outline-paint)))))
  #:background 'white)
 
 (render-reference-image
@@ -883,6 +2060,32 @@
  #:background 'white)
 
 (render-reference-image
+ "scanline-bottom-up-placement.png" 190 190
+ (lambda (canvas)
+   (with-skia ([session (codec-scanline-from-bytes (make-reference-bottom-up-bmp))]
+               [target (make-surface 2 3)]
+               [font (make-font #:size 12)]
+               [label (make-paint #:color "#20344E")]
+               [rule (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+     (define lower-batch (codec-scanline-read! session 2))
+     (define upper-batch (codec-scanline-read! session 1))
+     (for ([batch (list lower-batch upper-batch)])
+       (with-skia ([buffer (scanline-batch->raster-buffer batch)]
+                   [part (raster-buffer->image buffer)])
+         (draw-image (surface-canvas target) part 0
+                     (scanline-batch-first-row batch))))
+     (with-skia ([image (surface-snapshot target)])
+       (draw-simple-text canvas "first read -> rows 1,2" 20 17 font label)
+       (draw-simple-text canvas "second read -> row 0" 20 34 font label)
+       (draw-image-rect canvas image 20 50 80 120 #:sampling 'nearest)
+       (draw-rect canvas 20 50 80 120 rule)
+       (draw-line canvas 20 90 100 90 rule)
+       (draw-line canvas 20 130 100 130 rule)
+       (for ([row '(0 1 2)] [y '(75 115 155)])
+         (draw-simple-text canvas (format "output row ~a" row) 112 y font label)))))
+ #:background 'white)
+
+(render-reference-image
  "incremental-final.png" 100 70
  (lambda (canvas)
    (with-skia ([source (make-surface 100 70 #:background "#F4D35E")]
@@ -950,6 +2153,31 @@
 ;; Paint styles and blending.
 
 (render-reference-image
+ "paint-fill-path.png" 220 120
+ (lambda (canvas)
+   (with-skia ([path (make-path '((move 10 20) (line 90 20)))]
+               [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 6 #:cap 'round)]
+               [fill (make-paint #:color "#326DE6")]
+               [boundary (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+               [font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define-values (outline fillable?) (paint->fill-path paint path))
+     (call-with-skia-resource
+      outline
+      (lambda (outline)
+        (unless fillable? (error 'paint-fill-path "round stroke should have a fillable expansion"))
+        (draw-simple-text canvas "original stroke" 10 18 font label)
+        (with-canvas-state canvas
+          (canvas-translate! canvas 10 15)
+          (draw-path canvas path paint))
+        (draw-simple-text canvas "returned fill path" 10 68 font label)
+        (with-canvas-state canvas
+          (canvas-translate! canvas 10 65)
+          (draw-path canvas outline fill)
+          (draw-path canvas outline boundary))))))
+ #:background 'white)
+
+(render-reference-image
  "paint-caps.png" 180 100
  (lambda (canvas)
    (for ([cap '(butt round square)] [y '(20 50 80)])
@@ -974,6 +2202,45 @@
                            (list (+ x 30) 20)
                            (list (+ x 55) 80))
                      paint #:closed? #f))))
+ #:background 'white)
+
+(render-reference-image
+ "paint-miter-and-translucent-blends.png" 420 250
+ (lambda (canvas)
+   (with-skia ([high-miter (make-paint #:color "#326DE6" #:style 'stroke
+                                       #:stroke-width 16 #:join 'miter)]
+               [low-miter (make-paint #:color "#326DE6" #:style 'stroke
+                                      #:stroke-width 16 #:join 'miter)]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")]
+               [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+               [checker-light (make-paint #:color "#F5F6F8")]
+               [checker-dark (make-paint #:color "#D9DEE6")])
+     (paint-set-miter-limit! high-miter 8)
+     (paint-set-miter-limit! low-miter 1.2)
+     (for ([paint (list high-miter low-miter)] [x '(20 230)]
+           [caption '("miter limit 8" "miter limit 1.2 -> bevel")])
+       (draw-simple-text canvas caption x 17 font label)
+       (draw-polygon canvas (list (list (+ x 55) 115) (list (+ x 85) 42)
+                                  (list (+ x 115) 115)) paint #:closed? #f))
+     (draw-simple-text canvas "declared D: 55% azure; incoming S: 65% orange" 18 137 font label)
+     (define (draw-checker x)
+       (for* ([row (in-range 3)] [column (in-range 6)])
+         (draw-rect canvas (+ x (* 20 column)) (+ 150 (* 20 row)) 20 20
+                    (if (even? (+ row column)) checker-light checker-dark))))
+     (define (blend-pane mode)
+       (with-skia ([pane (make-surface 110 58)]
+                   [destination (make-paint #:color (rgba 23 105 224 140))]
+                   [source (make-paint #:color (rgba 239 79 55 166) #:blend-mode mode)])
+         (draw-rounded-rect (surface-canvas pane) 6 6 82 44 8 8 destination)
+         (draw-circle (surface-canvas pane) 72 29 22 source)
+         (surface-snapshot pane)))
+     (for ([mode '(src-over modulate multiply)] [x '(18 155 292)])
+       (draw-simple-text canvas (symbol->string mode) x 225 font label)
+       (draw-checker x)
+       (with-skia ([result (blend-pane mode)])
+         (draw-image canvas result x 150))
+       (draw-rect canvas x 150 110 58 outline))))
  #:background 'white)
 
 (render-reference-image
@@ -1355,6 +2622,74 @@
  #:background 'white)
 
 (render-reference-image
+ "path-segment-initial-move.png" 240 115
+ (lambda (canvas)
+   (with-skia ([path (make-path '((move 10 20) (line 90 20)))]
+               [measure (make-path-measure path)]
+               [moved (path-measure-segment measure 20 40)]
+               [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)]
+               [guide (make-paint #:color "#C8CDD3" #:style 'stroke #:stroke-width 2)]
+               [result (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)]
+               [font (make-font #:size 12)]
+               [label (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "with initial move" 10 18 font label)
+     (with-canvas-state canvas
+       (canvas-translate! canvas 10 25)
+       (draw-path canvas path guide)
+       (draw-path canvas moved result))
+     (draw-simple-text canvas "without initial move" 125 18 font label)
+     (with-canvas-state canvas
+       (canvas-translate! canvas 125 25)
+       (draw-path canvas path guide)
+       (draw-path canvas unmoved result))))
+ #:background 'white)
+
+(render-reference-image
+ "path-bounds-and-measure-matrix.png" 420 235
+ (lambda (canvas)
+   (with-skia ([quadratic (make-path '((move 20 140) (quad 70 30 120 140)))]
+               [control-polygon (make-path '((move 20 140) (line 70 30) (line 120 140)))]
+               [contours (make-path '((move 235 135) (cubic 260 75 330 175 370 105)
+                                     (move 235 190) (line 370 190)))]
+               [measure (make-path-measure contours)]
+               [arrow (make-path '((move -12 -6) (line 10 0) (line -2 5)
+                                   (line -2 2) (line -12 2) (close)))]
+               [dash (make-dash-path-effect '(4 3))]
+               [curve (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)]
+               [control (make-paint #:color "#9BA6B5" #:style 'stroke #:stroke-width 2
+                                    #:path-effect dash)]
+               [stored-bound (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 2)]
+               [tight-bound (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+               [guide (make-paint #:color "#9BA6B5" #:style 'stroke #:stroke-width 3)]
+               [first-arrow (make-paint #:color "#326DE6")]
+               [second-arrow (make-paint #:color "#7D5BA6")]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")])
+     (define-values (left top width height) (path-bounds quadratic))
+     (define-values (tight-left tight-top tight-width tight-height) (path-tight-bounds quadratic))
+     (draw-simple-text canvas "quadratic: control points vs. curve" 18 17 font label)
+     (draw-path canvas control-polygon control)
+     (draw-path canvas quadratic curve)
+     (draw-rect canvas left top width height stored-bound)
+     (draw-rect canvas tight-left tight-top tight-width tight-height tight-bound)
+     (draw-simple-text canvas "red = stored-point bounds" 18 165 font label)
+     (draw-simple-text canvas "orange = tight curve bounds" 18 181 font label)
+     (draw-simple-text canvas "path-measure-matrix on two contours" 230 17 font label)
+     (draw-path canvas contours guide)
+     (define first-placement (path-measure-matrix measure (* 0.55 (path-measure-length measure))))
+     (with-canvas-state canvas
+       (canvas-concat! canvas first-placement)
+       (draw-path canvas arrow first-arrow))
+     (path-measure-next-contour! measure)
+     (define second-placement (path-measure-matrix measure (* 0.55 (path-measure-length measure))))
+     (with-canvas-state canvas
+       (canvas-concat! canvas second-placement)
+       (draw-path canvas arrow second-arrow))
+     (draw-simple-text canvas "blue: first contour" 235 210 font label)
+     (draw-simple-text canvas "purple: after next-contour!" 235 225 font label)))
+ #:background 'white)
+
+(render-reference-image
  "path-union.png" 170 100
  (lambda (canvas)
    (with-skia ([path (make-reference-overlap-path 'union)]
@@ -1400,6 +2735,25 @@
  #:background 'white)
 
 (render-reference-image
+ "rounded-rect-inset-outset.png" 260 165
+ (lambda (canvas)
+   (with-skia ([outset-paint (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 3)]
+               [original-paint (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 3)]
+               [inset-paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 3)]
+               [font (make-font #:size 11)]
+               [label (make-paint #:color "#20344E")])
+     (define original (make-rounded-rect 65 52 130 65 #:radii 28))
+     (define inset (rounded-rect-inset original 12 8))
+     (define outset (rounded-rect-outset original 12 8))
+     (draw-rrect canvas outset outset-paint)
+     (draw-rrect canvas original original-paint)
+     (draw-rrect canvas inset inset-paint)
+     (draw-simple-text canvas "orange: outset (12, 8)" 54 22 font label)
+     (draw-simple-text canvas "dark: original" 88 137 font label)
+     (draw-simple-text canvas "blue: inset (12, 8)" 72 153 font label)))
+ #:background 'white)
+
+(render-reference-image
  "region-intersection.png" 180 100
  (lambda (canvas)
    (with-skia ([region (make-reference-region-result 'intersect)]
@@ -1413,6 +2767,53 @@
    (with-skia ([region (make-reference-region-result 'xor)]
                [paint (make-paint #:color "#326DE6")])
      (draw-region canvas region paint)))
+ #:background 'white)
+
+(render-reference-image
+ "region-quantization-and-difference.png" 420 170
+ (lambda (canvas)
+   (with-skia ([source (make-path '((move 2 12) (quad 2 1 10 1)
+                                   (quad 18 1 18 8) (quad 18 13 10 13)
+                                   (quad 3 13 2 12) (close)))]
+               [clip (make-region '((0 0 20 14)))]
+               [region (path->region source clip)]
+               [boundary (region->path region)]
+               [cutter (make-region '((9 0 5 14)))]
+               [difference (region-difference region cutter)]
+               [fill (make-paint #:color "#326DE6" #:antialias? #f)]
+               [boundary-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 0.8)]
+               [scanline (make-paint #:color (rgba 239 79 55 135))]
+               [grid (make-paint #:color "#CAD1DA" #:style 'stroke #:stroke-width 0.5)]
+               [font (make-font #:size 10)]
+               [label (make-paint #:color "#20344E")])
+     (define scale 7)
+     (define row 7)
+     (define spans (region-spans region row 0 20))
+     (define (image-of value)
+       (with-skia ([page (make-surface 20 14)])
+         (draw-region (surface-canvas page) value fill)
+         (surface-snapshot page)))
+     (with-skia ([region-image (image-of region)]
+                 [difference-image (image-of difference)])
+       (draw-simple-text canvas "path -> region: integer pixels" 18 17 font label)
+       (draw-simple-text canvas "region-difference: remove center band" 208 17 font label)
+       (draw-image-rect canvas region-image 18 30 (* 20 scale) (* 14 scale) #:sampling 'nearest)
+       (draw-image-rect canvas difference-image 208 30 (* 20 scale) (* 14 scale) #:sampling 'nearest)
+       (for ([x (in-range 21)])
+         (draw-line canvas (+ 18 (* x scale)) 30 (+ 18 (* x scale)) (+ 30 (* 14 scale)) grid)
+         (draw-line canvas (+ 208 (* x scale)) 30 (+ 208 (* x scale)) (+ 30 (* 14 scale)) grid))
+       (for ([y (in-range 15)])
+         (draw-line canvas 18 (+ 30 (* y scale)) (+ 18 (* 20 scale)) (+ 30 (* y scale)) grid)
+         (draw-line canvas 208 (+ 30 (* y scale)) (+ 208 (* 20 scale)) (+ 30 (* y scale)) grid))
+       (for ([span spans])
+         (draw-rect canvas (+ 18 (* scale (vector-ref span 0))) (+ 30 (* scale row))
+                    (* scale (- (vector-ref span 1) (vector-ref span 0))) scale scanline))
+       (with-canvas-state canvas
+         (canvas-translate! canvas 18 30)
+         (canvas-scale! canvas scale scale)
+         (draw-path canvas boundary boundary-paint))
+       (draw-simple-text canvas "orange=boundary; red=spans y=7" 18 145 font label)
+       (draw-simple-text canvas "binary cells, not coverage" 260 145 font label))))
  #:background 'white)
 
 ;; Image sampling, subsets, alpha, and reflected drawing.
@@ -1515,11 +2916,15 @@
 (render-reference-image
  "rtl-shaping.png" 260 90
  (lambda (canvas)
-   (with-skia ([font (make-font #:size 36)]
-               [shaper (make-shaper font)]
-               [paint (make-paint #:color "#20344E")])
-     (draw-shaped-text canvas shaper "שלום" 230 58 paint
-                       #:direction 'rtl #:script 'hebr)))
+   (call-with-hebrew-font
+    'rtl-shaping 36 "שלום"
+    (lambda (font)
+      (with-skia ([shaper (make-shaper font)]
+                  [paint (make-paint #:color "#20344E")])
+        (define run (shape-text shaper "שלום" #:direction 'rtl #:script 'hebr))
+        (with-skia ([blob (shaped-run->text-blob shaper run)])
+          (define-values (_left _top right _bottom) (text-blob-bounds blob))
+          (draw-shaped-run canvas shaper run (- 230 right) 58 paint))))))
  #:background 'white)
 
 (render-reference-image
@@ -2024,13 +3429,15 @@
 (render-reference-image
  "layout-rtl-stage8.png" 300 100
  (lambda (canvas)
-   (with-skia ([font (make-font #:size 22)]
-               [shaper (make-shaper font)]
-               [paint (make-paint #:color "#20344E")])
-     (define layout
-       (layout-text shaper "אבג דהו זחט" #:width 260
-                    #:direction 'rtl #:align 'start))
-     (draw-text-layout canvas layout 20 18 paint)))
+   (call-with-hebrew-font
+    'layout-rtl 22 "אבג דהו זחט"
+    (lambda (font)
+      (with-skia ([shaper (make-shaper font)]
+                  [paint (make-paint #:color "#20344E")])
+        (define layout
+          (layout-text shaper "אבג דהו זחט" #:width 260
+                       #:direction 'rtl #:align 'start))
+        (draw-text-layout canvas layout 20 18 paint)))))
  #:background 'white)
 
 (render-reference-image
@@ -2045,13 +3452,53 @@
      (draw-text-layout canvas layout 10 20 paint)))
  #:background 'white)
 
+(render-reference-image
+ "layout-unbreakable-overflow.png" 320 90
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 24)]
+               [shaper (make-shaper font)]
+               [paint (make-paint #:color "#20344E")]
+               [guide (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 1)])
+     (define text "unbreakable")
+     (define natural (abs (shaped-run-advance-x (shape-text shaper text))))
+     (define requested (max 1 (/ natural 2)))
+     (define layout (layout-text shaper text #:width requested))
+     (draw-line canvas (+ 20 requested) 18 (+ 20 requested) 72 guide)
+     (draw-text-layout canvas layout 20 25 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "layout-break-provider-insertion.png" 420 175
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 28)]
+               [shaper (make-shaper font)]
+               [text-paint (make-paint #:color "#20344E")]
+               [guide (make-paint #:color "#C9D2DF" #:style 'stroke #:stroke-width 1)]
+               [label-font (make-font #:size 11)]
+               [label-paint (make-paint #:color "#526070")])
+     (define text "longword")
+     (define opportunity (make-layout-break-opportunity 4 "-"))
+     (define (provider paragraph language) (list opportunity))
+     (define wide (layout-text shaper text #:width 170 #:break-provider provider))
+     (define narrow (layout-text shaper text #:width 90 #:break-provider provider))
+     (draw-rect canvas 18 40 170 82 guide)
+     (draw-rect canvas 228 40 90 82 guide)
+     (draw-simple-text canvas "wide: no break selected" 18 25 label-font label-paint)
+     (draw-text-layout canvas wide 18 48 text-paint)
+     (draw-simple-text canvas "narrow: selected break inserts -" 228 25
+                       label-font label-paint)
+     (draw-text-layout canvas narrow 228 48 text-paint)
+     (draw-simple-text canvas "logical input stays: longword" 18 148
+                       label-font label-paint)))
+ #:background 'white)
+
 ;; Stage 9: retained visual examples after consolidation.
 
 
 
 ;; canvases
 
-(render-reference-image
+(render-native-scale-reference-image
  "canvas-reset-transform-stage9.png" 200 110
  (lambda (canvas)
    (with-skia ([blue (make-paint #:color "#326DE6")]
@@ -2063,7 +3510,7 @@
 )
  #:background 'white)
 
-(render-reference-image
+(render-native-scale-reference-image
  "canvas-set-transform-stage9.png" 200 110
  (lambda (canvas)
    (with-skia ([paint (make-paint #:color "#326DE6")])
@@ -2091,7 +3538,7 @@
 )
  #:background 'white)
 
-(render-reference-image
+(render-native-scale-reference-image
  "clip-antialias-stage9.png" 220 100
  (lambda (canvas)
    (with-skia ([paint (make-paint #:color "#326DE6")]
@@ -2104,6 +3551,27 @@
        (draw-paint canvas paint))
      (draw-line canvas 110 8 110 92 separator))
 )
+ #:background 'white)
+
+(render-reference-image
+ "clip-within-existing-clip.png" 240 130
+ (lambda (canvas)
+   (with-skia ([state (make-surface 8 6 #:background 'white)]
+               [paint (make-paint #:color 'blue #:antialias? #f)]
+               [font (make-font #:size 13)]
+               [label (make-paint #:color "#20344E")])
+     (define state-canvas (surface-canvas state))
+     (for ([operation '(intersect difference)] [x '(12 132)]
+           [name '("intersect" "difference")])
+       (canvas-clear! state-canvas 'white)
+       (with-canvas-state state-canvas
+         (canvas-clip-rect! state-canvas 0 0 6 6)
+         (canvas-clip-rect! state-canvas 2 2 2 2 #:operation operation)
+         (draw-paint state-canvas paint))
+       (with-skia ([preview (surface-snapshot state)])
+         (draw-simple-text canvas name x 20 font label)
+         (draw-image-rect canvas preview x 30 96 72 #:sampling 'nearest)))
+     (draw-simple-text canvas "samples at y=3: x=3, 1, 7" 35 122 font label)))
  #:background 'white)
 
 (render-reference-image
@@ -2163,7 +3631,7 @@
 
 ;; paints
 
-(render-reference-image
+(render-native-scale-reference-image
  "paint-hairline-stage9.png" 200 90
  (lambda (canvas)
    (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
@@ -2184,7 +3652,7 @@
 )
  #:background 'white)
 
-(render-reference-image
+(render-native-scale-reference-image
  "paint-antialias-stage9.png" 220 100
  (lambda (canvas)
    (with-skia ([hard (make-paint #:color "#326DE6" #:style 'stroke
@@ -2233,7 +3701,7 @@
 
 ;; path-effects
 
-(render-reference-image
+(render-native-scale-reference-image
  "gamma-mask-stage9.png" 220 100
  (lambda (canvas)
    (with-skia ([light (make-gamma-mask-filter 0.5)]

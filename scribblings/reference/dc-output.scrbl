@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/class racket/contract
+@(require "support/figures.rkt"
+          (for-label racket/base racket/class racket/contract
                      (prefix-in draw: racket/draw)
                      skia skia/dc skia/dc-output skia/output))
 
@@ -117,6 +118,61 @@ ordinary raster or GPU DC, the helper inserts a bitmap through that DC's public
 bitmap path. The group cannot inspect the already emitted document backdrop;
 include every required source/backdrop pixel inside the child callback.
 }
+
+@subsection{One Callback, CPU Capture, and Page Preview}
+
+The callback below has vector-like surrounding geometry and one bounded raster
+group. It is first captured onto a CPU raster canvas with
+@racket[call-with-output-dc], then used to author a real
+@racket[make-dc-output-page]. The result image is a content preview only: the
+report and explicit SVG-byte inspection, not this PNG, establish that the
+raster group is represented as an image in SVG output.
+
+@racketblock[
+(require racket/class
+         (prefix-in draw: racket/draw)
+         skia skia/dc-output skia/output)
+
+(define white (make-object draw:color% 255 255 255))
+(define navy (make-object draw:color% 32 52 78))
+(define panel (make-object draw:color% 232 238 249))
+(define orange (make-object draw:color% 239 160 43))
+(define blue (make-object draw:color% 50 109 230))
+(define black (make-object draw:color% 0 0 0))
+(define (draw-scene dc)
+  (send dc set-pen navy 2 'solid)
+  (send dc set-brush panel 'solid)
+  (send dc draw-rectangle 4 4 172 92)
+  (send dc set-text-foreground navy)
+  (send dc draw-text "vector frame" 12 14)
+  (draw-dc-raster-group
+   dc 100 30 52 45
+   (lambda (group)
+     (send group set-pen black 1 'transparent)
+     (send group set-brush orange 'solid)
+     (send group draw-ellipse 2 2 44 35)
+     (send group set-pen blue 3 'solid)
+     (send group draw-line 4 39 48 5))
+   #:scale 2 #:label "orange-badge")
+  (send dc set-pen blue 3 'solid)
+  (send dc draw-line 15 80 80 42))
+
+(define page (make-dc-output-page 180 100 draw-scene #:background "#FFFFFF"))
+(with-skia ([surface (make-surface 180 100 #:background "#FFFFFF")])
+  (define report (call-with-output-dc (surface-canvas surface) 180 100 draw-scene))
+  (with-skia ([direct (surface-snapshot surface)]
+              [preview (output-page->image page #:dpi 72)])
+    (define svg (output->bytes page 'svg))
+    (list (hash-ref report 'raster_groups)
+          (list (image-width direct) (image-height preview))
+          (regexp-match? #rx#"<image" svg))))
+]
+@reference-figure["dc-output-capture-and-page-preview.png"
+                  "Side-by-side CPU-raster results from call-with-output-dc and a make-dc-output-page preview show the same pale frame, blue vector line, and orange bounded raster badge; the preview does not itself claim PDF or SVG representation."]
+
+The first result is one explicit raster group, and the final boolean is true
+for the inspected SVG @tt{<image} element. Callback DCs expire after each
+capture; unlike @racket[skia-dc%], neither is an object to retain or close.
 
 @section{Document Annotations}
 

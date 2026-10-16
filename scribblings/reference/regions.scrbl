@@ -270,6 +270,61 @@ The snapshot contains @racket[#(0 4)] and @racket[#(6 8)] and remains usable
 after the region is closed.
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 420 170 #:background 'white)]
+            [source (make-path '((move 2 12) (quad 2 1 10 1)
+                                (quad 18 1 18 8) (quad 18 13 10 13)
+                                (quad 3 13 2 12) (close)))]
+            [clip (make-region '((0 0 20 14)))]
+            [region (path->region source clip)]
+            [boundary (region->path region)]
+            [cutter (make-region '((9 0 5 14)))]
+            [difference (region-difference region cutter)]
+            [fill (make-paint #:color "#326DE6" #:antialias? #f)]
+            [boundary-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 0.8)]
+            [scanline (make-paint #:color (rgba 239 79 55 135))]
+            [grid (make-paint #:color "#CAD1DA" #:style 'stroke #:stroke-width 0.5)]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")])
+  (define scale 7)
+  (define row 7)
+  (define spans (region-spans region row 0 20))
+  (define (image-of value)
+    (with-skia ([page (make-surface 20 14)])
+      (draw-region (surface-canvas page) value fill)
+      (surface-snapshot page)))
+  (with-skia ([region-image (image-of region)]
+              [difference-image (image-of difference)])
+    (define canvas (surface-canvas surface))
+    (draw-simple-text canvas "path -> region: integer pixels" 18 17 font label)
+    (draw-simple-text canvas "region-difference: remove center band" 208 17 font label)
+    (draw-image-rect canvas region-image 18 30 (* 20 scale) (* 14 scale) #:sampling 'nearest)
+    (draw-image-rect canvas difference-image 208 30 (* 20 scale) (* 14 scale) #:sampling 'nearest)
+    (for ([x (in-range 21)])
+      (draw-line canvas (+ 18 (* x scale)) 30 (+ 18 (* x scale)) (+ 30 (* 14 scale)) grid)
+      (draw-line canvas (+ 208 (* x scale)) 30 (+ 208 (* x scale)) (+ 30 (* 14 scale)) grid))
+    (for ([y (in-range 15)])
+      (draw-line canvas 18 (+ 30 (* y scale)) (+ 18 (* 20 scale)) (+ 30 (* y scale)) grid)
+      (draw-line canvas 208 (+ 30 (* y scale)) (+ 208 (* 20 scale)) (+ 30 (* y scale)) grid))
+    (for ([span spans])
+      (draw-rect canvas (+ 18 (* scale (vector-ref span 0))) (+ 30 (* scale row))
+                 (* scale (- (vector-ref span 1) (vector-ref span 0))) scale scanline))
+    (with-canvas-state canvas
+      (canvas-translate! canvas 18 30)
+      (canvas-scale! canvas scale scale)
+      (draw-path canvas boundary boundary-paint))
+    (draw-simple-text canvas "orange=boundary; red=spans y=7" 18 145 font label)
+    (draw-simple-text canvas "binary cells, not coverage" 260 145 font label)
+    surface))
+]
+@reference-figure["region-quantization-and-difference.png"
+                  "A curved blue path has been rasterized to a 20 by 14 integer region and enlarged with a visible pixel grid. Orange traces the boundary path returned from that region and a red band highlights the actual horizontal spans at row seven. A second enlarged panel removes a central rectangular band with region-difference, splitting the same quantized region."]
+
+The left result is deliberately not a smooth antialiased rendering of the source
+curve.  It displays the binary scan conversion used by @racket[path->region].
+The span endpoints are inclusive on the left and exclusive on the right, so the
+red row is an actual visualization of the values returned by @racket[region-spans].
+
 @defproc[(in-region-spans [region region?]
           [y (integer-in -1073741823 1073741823)]
           [left (integer-in -1073741823 1073741823)]

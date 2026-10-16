@@ -183,6 +183,73 @@ callback exception; it does not undo previously drawn pixels.
 ]
 
 The clip, rather than the layer bound, excludes the two-pixel border.
+
+@reference-figure["layer-options-clip.png"
+                  "A nearest-neighbor enlargement of the actual transparent 16 by 16 layer result. The blue interior follows the explicit clip from two, two through thirteen, thirteen; the two-pixel checkerboard border is only a preview background."]
+
+The layer bounds cover the whole target. Only the explicit clip creates the transparent border.
+
+@racketblock[
+(with-skia ([surface (make-surface 420 155 #:background 'white)]
+            [base (make-paint #:color "#DCEAF8")]
+            [stripe-a (make-paint #:color "#326DE6")]
+            [stripe-b (make-paint #:color "#EFA02B")]
+            [dot (make-paint #:color "#7D5BA6")]
+            [font (make-font #:size 10)]
+            [label (make-paint #:color "#20344E")]
+            [clip-outline (make-paint #:color "#E94F37" #:style 'stroke #:stroke-width 2)]
+            [border (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
+  (define (draw-pattern canvas)
+    (draw-paint canvas base)
+    (for ([x (in-range -10 130 20)])
+      (draw-rect canvas x 0 10 85 (if (even? (quotient (+ x 10) 20)) stripe-a stripe-b)))
+    (draw-circle canvas 78 42 21 dot))
+  (define zone '(25 20 70 46))
+  (define (render-panel kind)
+    (with-skia ([page (make-surface 120 85)]
+                [replace (make-paint #:blend-mode 'src)])
+      (define layer-canvas (surface-canvas page))
+      (draw-pattern layer-canvas)
+      (case kind
+        [(empty)
+         (call-with-canvas-layer-rec layer-canvas void #:paint replace
+                                     #:options (make-layer-options #:bounds zone)
+                                     #:clip zone)]
+        [(initialized)
+         (call-with-canvas-layer-rec layer-canvas void #:paint replace
+                                     #:options (make-layer-options #:bounds zone
+                                                                   #:initialize-with-previous? #t)
+                                     #:clip zone)]
+        [(backdrop)
+         (with-skia ([blur (make-blur-image-filter 4 4)])
+           (call-with-canvas-layer-rec layer-canvas void #:paint replace #:backdrop blur
+                                       #:options (make-layer-options #:bounds zone)
+                                       #:clip zone))])
+      (surface-snapshot page)))
+  (with-skia ([empty-image (render-panel 'empty)]
+              [initialized-image (render-panel 'initialized)]
+              [backdrop-image (render-panel 'backdrop)])
+    (define canvas (surface-canvas surface))
+    (for ([title '("empty src layer" "initialize previous" "backdrop blur")]
+          [x '(12 150 290)])
+      (draw-simple-text canvas title x 17 font label))
+    (for ([image (list empty-image initialized-image backdrop-image)]
+          [x '(12 150 290)])
+      (draw-image canvas image x 30)
+      (draw-rect canvas x 30 120 85 border)
+      (draw-rect canvas (+ x 25) 50 70 46 clip-outline))
+    (draw-simple-text canvas "same striped-and-circle backdrop; orange is the explicit clip" 12 135 font label)
+    surface))
+]
+@reference-figure["layer-backdrop-initialization.png"
+                  "Three identical striped blue-orange backgrounds with a purple circle are compared inside the same orange explicit clip. An empty source-replace layer clears the middle region, initialize-with-previous preserves it, and a backdrop blur replaces it with a softened view of the previous content."]
+
+All three panels use the same layer bounds and explicit clip.  The bounds are a
+conservative allocation/culling hint; the orange rectangle is present because
+@racket[#:clip] is what restricts the visible result.  The backdrop operates on
+the already-drawn pattern before the callback, whereas
+@racket[#:initialize-with-previous?] requests an unfiltered copy of that
+previous content.
 }
 
 @section{Discarding Target Contents}

@@ -261,15 +261,30 @@ the shaper is closed and does not retain paint settings.
 @reference-figure["ligature-shaping.png"
                   "The word office shaped once with default features and once with standard ligatures disabled; the exact difference is font-dependent."]
 
+The following example selects one Hebrew-capable face, verifies every non-space glyph before
+shaping, and keeps that one face for the whole run. It does not use mixed-text fallback.
+
 @racketblock[
 (with-skia ([surface (make-surface 260 90 #:background 'white)]
-            [font (make-font #:size 36)] [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (draw-shaped-text (surface-canvas surface) shaper "שלום" 230 58 paint
-                    #:direction 'rtl #:script 'hebr))
+            [manager (make-font-manager)])
+  (define hebrew "שלום")
+  (define face (font-manager-match-character manager #\ש #:languages '("he")))
+  (unless face (error 'hebrew-example "no Hebrew-capable typeface is available"))
+  (with-skia ([hebrew-face face]
+              [font (make-font hebrew-face #:size 36)] [shaper (make-shaper font)]
+              [paint (make-paint #:color "#20344E")])
+    (unless (for/and ([char (in-string hebrew)]) (positive? (font-char->glyph font char)))
+      (error 'hebrew-example "the selected typeface does not cover the displayed text"))
+    (define run (shape-text shaper hebrew #:direction 'rtl #:script 'hebr))
+    (with-skia ([blob (shaped-run->text-blob shaper run)])
+      (define-values (_left _top right _bottom) (text-blob-bounds blob))
+      (draw-shaped-run (surface-canvas surface) shaper run (- 230 right) 58 paint))))
 ]
 @reference-figure["rtl-shaping.png"
-                  "A Hebrew word shaped and drawn right-to-left from a baseline origin near the right edge."]
+                  "The Hebrew word שלום is shaped with one verified Hebrew-capable face; its right ink edge is aligned to the guide position rather than treating the supplied baseline origin as a right-edge anchor."]
+
+The x coordinate is calculated from the run's actual bounds, so right-to-left shaping alone is
+not mistaken for right-edge anchoring. Regeneration records the selected face and native versions.
 
 @racketblock[
 (with-skia ([surface (make-surface 240 110 #:background 'white)]

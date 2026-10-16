@@ -167,6 +167,8 @@ Returns whether @racket[v] is an instance of @racket[skia-gpu-canvas%].
 
 @section{GPU Drawing-Context Window}
 
+@(declare-exporting skia/gpu-canvas #:use-sources (skia/gpu-canvas))
+
 @defclass[skia-gpu-window% frame% ()]{
 Provides a convenience frame around one @racket[skia-gpu-canvas%].
 
