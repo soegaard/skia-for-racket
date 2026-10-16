@@ -146,6 +146,20 @@ paint allocation, the new paint is released before the exception is raised.
 
 The RGB bytes are approximately 188, not 128: the supplied components describe
 linear light, while the destination stores sRGB-encoded bytes. Alpha is 255.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 210 80 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([srgb-paint (make-paint/color4f (make-color4f 0.5 0.5 0.5)
+                                               #:color-space 'srgb)]
+              [linear-paint (make-paint/color4f (make-color4f 0.5 0.5 0.5)
+                                                 #:color-space 'linear-srgb)])
+    (draw-rect canvas 15 15 80 50 srgb-paint)
+    (draw-rect canvas 115 15 80 50 linear-paint)))
+]
+@reference-figure["float-source-space-stage10.png"
+                  "Two mid-gray rectangles compare the same numeric components interpreted as sRGB and linear sRGB."]
 }
 
 @defproc[(paint-color4f [paint paint?]) color4f?]{
@@ -257,6 +271,21 @@ The color, stop, tile, and local-matrix rules are specified in
 Returns a radial gradient from @racket[center] outward to @racket[radius].
 The center and positive radius must be drawing scalars. The shared gradient
 rules are specified in @secref["skia-float-shaders"].
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([shader
+               (make-radial-gradient-color4f-shader
+                '(90 50) 55
+                (list (make-color4f 1 1 1) (make-color4f 0.2 0.43 0.9))
+                #:color-space 'srgb)]
+              [paint (make-paint #:shader shader)])
+    (draw-rect canvas 0 0 180 100 paint)))
+]
+@reference-figure["float-radial-stage10.png"
+                  "A floating-point radial gradient changes from white at the center to blue at the edge."]
 }
 
 @defproc[(make-sweep-gradient-color4f-shader
@@ -272,79 +301,7 @@ the end angle must exceed the start angle. Positive angles follow clockwise
 rotation in downward-positive drawing coordinates. The center and angles must
 be drawing scalars. Stops, tiling, and the local matrix follow
 @secref["skia-float-shaders"].
-}
 
-@defproc[(make-two-point-conical-gradient-color4f-shader
-          [start (or/c (list/c real? real?) (vector/c real? real?))]
-          [start-radius (and/c real? (>=/c 0))]
-          [end (or/c (list/c real? real?) (vector/c real? real?))]
-          [end-radius (and/c real? (>=/c 0))]
-          [colors (or/c (listof color4f?) (vectorof color4f?))]
-          [#:color-space space (or/c 'srgb 'linear-srgb bytes?)]
-          [#:stops stops (or/c #f (listof real?) (vectorof real?)) #f]
-          [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
-          [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
-Returns a gradient between circles with the given centers and nonnegative
-radii. Centers and radii must be drawing scalars; the native circles must differ.
-The constructor can reject a configuration that the native backend cannot
-represent. The remaining rules follow @secref["skia-float-shaders"].
-}
-
-@section{Additional Floating-Point Color Examples}
-
-@racketblock[
-(with-skia ([surface (make-surface 210 70 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (for ([color (in-list (list (make-color4f 1 0 0)
-                              (make-color4f 0 1 0)
-                              (make-color4f 0 0 1)))]
-        [x (in-list '(15 80 145))])
-    (with-skia ([paint (make-paint/color4f color #:color-space 'srgb)])
-      (draw-rounded-rect canvas x 10 50 50 8 8 paint))))
-]
-@reference-figure["float-primary-swatches-stage10.png"
-                  "Three rounded swatches show red, green, and blue floating-point colors."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 80 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([background (make-paint #:color "#EFA02B")])
-    (draw-rect canvas 0 0 220 80 background))
-  (for ([alpha (in-list '(0.25 0.5 0.75))]
-        [x (in-list '(45 110 175))])
-    (with-skia ([paint (make-paint/color4f (make-color4f 0.2 0.43 0.9 alpha)
-                                           #:color-space 'srgb)])
-      (draw-circle canvas x 40 27 paint))))
-]
-@reference-figure["float-alpha-stage10.png"
-                  "Three translucent blue circles with increasing alpha overlap an orange background."]
-
-@racketblock[
-(with-skia ([surface (make-surface 210 80 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([srgb-paint (make-paint/color4f (make-color4f 0.5 0.5 0.5)
-                                               #:color-space 'srgb)]
-              [linear-paint (make-paint/color4f (make-color4f 0.5 0.5 0.5)
-                                                 #:color-space 'linear-srgb)])
-    (draw-rect canvas 15 15 80 50 srgb-paint)
-    (draw-rect canvas 115 15 80 50 linear-paint)))
-]
-@reference-figure["float-source-space-stage10.png"
-                  "Two mid-gray rectangles compare the same numeric components interpreted as sRGB and linear sRGB."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([shader
-               (make-radial-gradient-color4f-shader
-                '(90 50) 55
-                (list (make-color4f 1 1 1) (make-color4f 0.2 0.43 0.9))
-                #:color-space 'srgb)]
-              [paint (make-paint #:shader shader)])
-    (draw-rect canvas 0 0 180 100 paint)))
-]
-@reference-figure["float-radial-stage10.png"
-                  "A floating-point radial gradient changes from white at the center to blue at the edge."]
 
 @racketblock[
 (with-skia ([surface (make-surface 180 100 #:background 'white)])
@@ -362,6 +319,23 @@ represent. The remaining rules follow @secref["skia-float-shaders"].
 ]
 @reference-figure["float-sweep-stage10.png"
                   "A floating-point sweep gradient rotates through red, green, blue, and back to red."]
+}
+
+@defproc[(make-two-point-conical-gradient-color4f-shader
+          [start (or/c (list/c real? real?) (vector/c real? real?))]
+          [start-radius (and/c real? (>=/c 0))]
+          [end (or/c (list/c real? real?) (vector/c real? real?))]
+          [end-radius (and/c real? (>=/c 0))]
+          [colors (or/c (listof color4f?) (vectorof color4f?))]
+          [#:color-space space (or/c 'srgb 'linear-srgb bytes?)]
+          [#:stops stops (or/c #f (listof real?) (vectorof real?)) #f]
+          [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
+          [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
+Returns a gradient between circles with the given centers and nonnegative
+radii. Centers and radii must be drawing scalars; the native circles must differ.
+The constructor can reject a configuration that the native backend cannot
+represent. The remaining rules follow @secref["skia-float-shaders"].
+
 
 @racketblock[
 (with-skia ([surface (make-surface 190 105 #:background 'white)])
@@ -376,34 +350,4 @@ represent. The remaining rules follow @secref["skia-float-shaders"].
 ]
 @reference-figure["float-conical-stage10.png"
                   "A floating-point conical gradient grows from a small orange circle toward a larger blue circle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 90 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([shader
-               (make-linear-gradient-color4f-shader
-                '(0 0) '(45 0)
-                (list (make-color4f 0.2 0.43 0.9) (make-color4f 0.94 0.63 0.17))
-                #:color-space 'srgb #:tile-mode 'repeat)]
-              [paint (make-paint #:shader shader)])
-    (draw-rect canvas 0 0 200 90 paint)))
-]
-@reference-figure["float-repeat-stage10.png"
-                  "A blue-to-orange floating-point linear gradient repeats several times across the rectangle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([shader
-               (make-linear-gradient-color4f-shader
-                '(0 0) '(50 0)
-                (list (make-color4f 0.2 0.43 0.9) (make-color4f 0.06 0.6 0.56))
-                #:color-space 'srgb #:tile-mode 'repeat
-                #:matrix (matrix-compose (matrix-translate 100 50)
-                                         (matrix-rotate-degrees 28)
-                                         (matrix-translate -100 -50)))]
-              [paint (make-paint #:shader shader)])
-    (draw-rect canvas 0 0 200 100 paint)))
-]
-@reference-figure["float-gradient-matrix-stage10.png"
-                  "A repeated floating-point blue-to-teal gradient is rotated by its local matrix."]
+}

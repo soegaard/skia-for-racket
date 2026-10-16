@@ -90,6 +90,23 @@ second character starts at byte offset 2, not character index 1.
 
 The run records glyph positions, not bounds. It contains no typeface identity
 check that would make its glyph IDs portable to an unrelated shaper.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 320 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([font (make-font #:size 38)]
+              [shaper (make-shaper font)]
+              [blue (make-paint #:color "#326DE6")]
+              [orange (make-paint #:color "#EFA02B")])
+    (define kerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn))
+    (define unkerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn
+                                 #:features '("kern=0")))
+    (draw-shaped-run canvas shaper kerned 20 42 blue)
+    (draw-shaped-run canvas shaper unkerned 20 94 orange)))
+]
+@reference-figure["shaping-kern-stage10.png"
+                  "AVATAR is shaped with normal kerning in blue and with kerning disabled in orange."]
 }
 
 @defproc[(shaped-run? [v any/c]) boolean?]{
@@ -115,12 +132,44 @@ subtract the scaled y offsets. The operation does not apply a canvas transform.
 Vertical directions preserve the native signed advance convention; this API
 does not automatically lay out vertical paragraphs in downward-positive canvas
 coordinates. The paragraph-layout operations support horizontal text only.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 320 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([font (make-font #:size 38)]
+              [shaper (make-shaper font)]
+              [text-paint (make-paint #:color "#20344E")]
+              [mark (make-paint #:color "#E94F37")])
+    (define run (shape-text shaper "office" #:direction 'ltr #:script 'latn))
+    (draw-shaped-run canvas shaper run 20 62 text-paint)
+    (for ([position (in-list (shaped-run-positions run))])
+      (draw-circle canvas (+ 20 (car position)) (+ 62 (cadr position)) 2.5 mark))))
+]
+@reference-figure["shaped-positions-stage10.png"
+                  "Small red dots mark the stored glyph origins beneath the shaped word office."]
 }
 
 @defproc[(shaped-run-advance-x [run shaped-run?]) real?]{
 Returns the accumulated horizontal advance in drawing units. It is a
 spacing quantity, not a tight ink width. Horizontal layouts use its absolute
 value as the run's measure.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 320 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([font (make-font #:size 38)]
+              [shaper (make-shaper font)]
+              [text-paint (make-paint #:color "#20344E")]
+              [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
+    (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
+    (define advance (abs (shaped-run-advance-x run)))
+    (draw-shaped-run canvas shaper run 20 58 text-paint)
+    (draw-line canvas 20 75 (+ 20 advance) 75 rule)))
+]
+@reference-figure["shaped-advance-stage10.png"
+                  "A blue rule below the shaped word Skia visualizes the run horizontal advance."]
 }
 
 @defproc[(shaped-run-advance-y [run shaped-run?]) real?]{
@@ -234,126 +283,3 @@ the shaper is closed and does not retain paint settings.
 ]
 @reference-figure["shaped-outline.png"
                   "The shaped word Skia drawn as blue stroked glyph outlines rather than as native text."]
-
-@section{Additional Shaping Examples}
-
-@racketblock[
-(with-skia ([surface (make-surface 320 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 38)]
-              [shaper (make-shaper font)]
-              [blue (make-paint #:color "#326DE6")]
-              [orange (make-paint #:color "#EFA02B")])
-    (define kerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn))
-    (define unkerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn
-                                 #:features '("kern=0")))
-    (draw-shaped-run canvas shaper kerned 20 42 blue)
-    (draw-shaped-run canvas shaper unkerned 20 94 orange)))
-]
-@reference-figure["shaping-kern-stage10.png"
-                  "AVATAR is shaped with normal kerning in blue and with kerning disabled in orange."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 95 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 36)]
-              [shaper (make-shaper font)]
-              [paint (make-paint #:color "#20344E")])
-    (draw-shaped-text canvas shaper "ABC 123" 270 58 paint
-                      #:direction 'rtl #:script 'latn)))
-]
-@reference-figure["shaping-rtl-latin-stage10.png"
-                  "Latin letters and digits are explicitly shaped as a right-to-left run from an origin near the right edge."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 110 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 38)]
-              [shaper (make-shaper font)]
-              [text-paint (make-paint #:color "#20344E")]
-              [mark (make-paint #:color "#E94F37")])
-    (define run (shape-text shaper "office" #:direction 'ltr #:script 'latn))
-    (draw-shaped-run canvas shaper run 20 62 text-paint)
-    (for ([position (in-list (shaped-run-positions run))])
-      (draw-circle canvas (+ 20 (car position)) (+ 62 (cadr position)) 2.5 mark))))
-]
-@reference-figure["shaped-positions-stage10.png"
-                  "Small red dots mark the stored glyph origins beneath the shaped word office."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 38)]
-              [shaper (make-shaper font)]
-              [text-paint (make-paint #:color "#20344E")]
-              [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
-    (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
-    (define advance (abs (shaped-run-advance-x run)))
-    (draw-shaped-run canvas shaper run 20 58 text-paint)
-    (draw-line canvas 20 75 (+ 20 advance) 75 rule)))
-]
-@reference-figure["shaped-advance-stage10.png"
-                  "A blue rule below the shaped word Skia visualizes the run horizontal advance."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 34)]
-              [shaper (make-shaper font)]
-              [paint (make-paint #:color "#326DE6")])
-    (define run (shape-text shaper "Scale" #:direction 'ltr #:script 'latn))
-    (draw-shaped-run canvas shaper run 15 42 paint)
-    (with-canvas-state canvas
-      (canvas-translate! canvas 15 100)
-      (canvas-scale! canvas 1.6 0.8)
-      (draw-shaped-run canvas shaper run 0 0 paint))))
-]
-@reference-figure["shaped-scale-stage10.png"
-                  "The same shaped run appears normally and then replayed under a nonuniform canvas scale."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 36)]
-              [shaper (make-shaper font)]
-              [paint (make-paint #:color "#326DE6")])
-    (define run (shape-text shaper "Rotate" #:direction 'ltr #:script 'latn))
-    (with-canvas-state canvas
-      (canvas-translate! canvas 75 85)
-      (canvas-rotate! canvas -18)
-      (draw-shaped-run canvas shaper run 0 0 paint))))
-]
-@reference-figure["shaped-rotate-stage10.png"
-                  "A shaped word is replayed under a rotated canvas transform without reshaping the run."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 115 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 62)]
-              [shaper (make-shaper font)]
-              [paint (make-paint #:color "#326DE6")])
-    (define run (shape-text shaper "Path" #:direction 'ltr #:script 'latn))
-    (with-skia ([path (shaped-run->path shaper run)])
-      (with-canvas-state canvas
-        (canvas-translate! canvas 20 82)
-        (draw-path canvas path paint)))))
-]
-@reference-figure["shaped-outline-fill-stage10.png"
-                  "The shaped word Path is converted to outlines and filled as ordinary blue path geometry."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 58)]
-              [shaper (make-shaper font)]
-              [fill (make-paint #:color "#F4D35E")]
-              [stroke (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 2)])
-    (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
-    (with-skia ([path (shaped-run->path shaper run)])
-      (with-canvas-state canvas
-        (canvas-translate! canvas 20 82)
-        (draw-path canvas path fill)
-        (draw-path canvas path stroke)))))
-]
-@reference-figure["shaped-outline-dual-stage10.png"
-                  "Shaped glyph outlines are filled yellow and then stroked dark gray as ordinary paths."]

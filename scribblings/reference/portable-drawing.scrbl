@@ -170,6 +170,20 @@ Draws the @racket[image-nine-plan] as ordinary image rectangles. Empty source
 or destination cells are omitted. Source samples are sliced without resampling
 before destination drawing; interpolation then follows the chosen sampling mode.
 The alpha multiplier applies to each cell.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 30 30 #:background "#326DE6")]
+              [orange (make-paint #:color "#EFA02B")])
+    (draw-circle (surface-canvas source) 15 15 8 orange)
+    (with-skia ([image (surface-snapshot source)])
+      (draw-image-nine/portable canvas image '(8 8 14 14) 15 10 170 100
+                                #:sampling 'nearest #:alpha 128))))
+]
+@reference-figure["portable-nine-alpha-stage10.png"
+                  "A portable nine-patch is drawn at half alpha, revealing the white background through the image."]
 }
 
 @defproc[(draw-image-lattice/portable [canvas canvas?]
@@ -186,6 +200,21 @@ Draws the @racket[image-lattice-plan] as image rectangles and plain fixed-color
 rectangles. Transparent or zero-area cells are omitted. The alpha multiplier
 also scales fixed-color alpha, using nearest byte rounding. The lattice's
 full-grid validation occurs before drawing.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 30 30 #:background "#E8EEF9")]
+              [blue (make-paint #:color "#326DE6")])
+    (draw-rect (surface-canvas source) 0 0 10 30 blue)
+    (draw-rect (surface-canvas source) 20 0 10 30 blue)
+    (with-skia ([image (surface-snapshot source)])
+      (define lattice (make-image-lattice '(10 20) '(10 20)))
+      (draw-image-lattice/portable canvas image lattice 15 10 170 100 #:sampling 'nearest))))
+]
+@reference-figure["portable-lattice-stage10.png"
+                  "A portable lattice stretches the center spans while drawing each cell as ordinary rectangles."]
 }
 
 @defproc[(draw-atlas/portable [canvas canvas?]
@@ -217,103 +246,7 @@ An empty batch still validates its canvas, image, and options.
 
 The repeated source rectangle is extracted once within this call. Both transformed
 copies use the same caller-owned image.
-}
 
-
-@close-eval[grid-eval]
-
-@section{Additional Portable Drawing Examples}
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)])
-    (draw-markers canvas '((30 30) (70 55) (110 30) (150 55)) 26 paint #:shape 'circle)))
-]
-@reference-figure["portable-markers-outline-stage10.png"
-                  "Four blue circular markers are drawn as outlines with a stroke paint."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([blue (make-paint #:color (rgba 50 109 230 190))]
-              [orange (make-paint #:color (rgba 239 160 43 190))])
-    (draw-markers canvas '((55 50) (90 50) (125 50)) 52 blue #:shape 'circle)
-    (draw-markers canvas '((72 50) (107 50) (142 50)) 34 orange #:shape 'square)))
-]
-@reference-figure["portable-markers-overlap-stage10.png"
-                  "Translucent blue circular markers overlap orange square markers in input order."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source (make-surface 30 30 #:background "#F4D35E")]
-              [blue (make-paint #:color "#326DE6")])
-    (draw-rect (surface-canvas source) 0 0 30 6 blue)
-    (draw-rect (surface-canvas source) 0 24 30 6 blue)
-    (with-skia ([image (surface-snapshot source)])
-      (draw-image-nine/portable canvas image '(6 6 18 18) 15 10 170 100 #:sampling 'nearest))))
-]
-@reference-figure["portable-nine-large-stage10.png"
-                  "Portable nine-patch drawing expands a yellow center while keeping blue horizontal borders narrow."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source (make-surface 30 30 #:background "#326DE6")]
-              [orange (make-paint #:color "#EFA02B")])
-    (draw-circle (surface-canvas source) 15 15 8 orange)
-    (with-skia ([image (surface-snapshot source)])
-      (draw-image-nine/portable canvas image '(8 8 14 14) 15 10 170 100
-                                #:sampling 'nearest #:alpha 128))))
-]
-@reference-figure["portable-nine-alpha-stage10.png"
-                  "A portable nine-patch is drawn at half alpha, revealing the white background through the image."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source (make-surface 30 30 #:background "#E8EEF9")]
-              [blue (make-paint #:color "#326DE6")])
-    (draw-rect (surface-canvas source) 0 0 10 30 blue)
-    (draw-rect (surface-canvas source) 20 0 10 30 blue)
-    (with-skia ([image (surface-snapshot source)])
-      (define lattice (make-image-lattice '(10 20) '(10 20)))
-      (draw-image-lattice/portable canvas image lattice 15 10 170 100 #:sampling 'nearest))))
-]
-@reference-figure["portable-lattice-stage10.png"
-                  "A portable lattice stretches the center spans while drawing each cell as ordinary rectangles."]
-
-@racketblock[
-(with-skia ([surface (make-surface 200 120 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source (make-surface 30 30 #:background "#10988E")]
-              [orange (make-paint #:color "#EFA02B")])
-    (draw-circle (surface-canvas source) 15 15 9 orange)
-    (with-skia ([image (surface-snapshot source)])
-      (define lattice (make-image-lattice '(10 20) '(10 20)))
-      (draw-image-lattice/portable canvas image lattice 15 10 170 100
-                                   #:sampling 'nearest #:alpha 140))))
-]
-@reference-figure["portable-lattice-alpha-stage10.png"
-                  "The portable lattice alpha option uniformly reduces opacity across all sampled cells."]
-
-@racketblock[
-(with-skia ([surface (make-surface 220 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([source (make-surface 18 18 #:background "#326DE6")]
-              [orange (make-paint #:color "#EFA02B")])
-    (draw-circle (surface-canvas source) 9 9 5 orange)
-    (with-skia ([image (surface-snapshot source)])
-      (draw-atlas/portable canvas image
-                           (list (make-atlas-transform 25 25 #:scale 2 #:rotation -20)
-                                 (make-atlas-transform 95 20 #:scale 2.5 #:rotation 15)
-                                 (make-atlas-transform 170 30 #:scale 2 #:rotation 35))
-                           '((0 0 18 18) (0 0 18 18) (0 0 18 18))
-                           #:sampling 'nearest))))
-]
-@reference-figure["portable-atlas-rotate-stage10.png"
-                  "Portable atlas drawing places three rotated copies of one blue-and-orange sprite."]
 
 @racketblock[
 (with-skia ([surface (make-surface 220 100 #:background 'white)])
@@ -329,3 +262,7 @@ copies use the same caller-owned image.
 ]
 @reference-figure["portable-atlas-alpha-stage10.png"
                   "Three portable atlas sprites are drawn with the same reduced alpha over a white background."]
+}
+
+
+@close-eval[grid-eval]
