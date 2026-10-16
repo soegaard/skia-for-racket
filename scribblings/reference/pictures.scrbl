@@ -269,3 +269,35 @@ recording and does not guarantee vector output.
 @reference-figure["picture-shader.png"
                   "A repeated picture shader tiles an orange circle on a blue square across the surface."]
 }
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([picture
+             (call-with-picture 40 30
+               (lambda (canvas)
+                 (with-skia ([blue (make-paint #:color "#326DE6")]
+                             [orange (make-paint #:color "#EFA02B")])
+                   (draw-rect canvas 0 0 40 30 blue)
+                   (draw-circle canvas 20 15 9 orange))))]
+            [surface (make-surface 180 120 #:background 'white)])
+  (draw-picture (surface-canvas surface) picture
+                #:x 25 #:y 15 #:width 130 #:height 90))
+]
+@reference-figure["picture-scaled.png"
+                  "A recorded blue rectangle with an orange circle replayed at a larger requested width and height."]
+
+@racketblock[
+(with-skia ([picture
+             (call-with-picture 40 30
+               (lambda (canvas)
+                 (with-skia ([blue (make-paint #:color "#326DE6")]
+                             [orange (make-paint #:color "#EFA02B")])
+                   (draw-rect canvas 0 0 40 30 blue)
+                   (draw-circle canvas 20 15 9 orange))))]
+            [image (picture->image picture 130 90 #:background 'white)]
+            [surface (make-surface 180 120 #:background 'white)])
+  (draw-image (surface-canvas surface) image 25 15))
+]
+@reference-figure["picture-rasterized.png"
+                  "The same recorded blue-and-orange scene rasterized into an image at a requested pixel size."]

@@ -174,3 +174,72 @@ preserved. This operation does not model a spatial light source or surface norma
 @reference-figure["lighting-color-filter.png"
                   "Two blue rounded rectangles, with the right one darkened and shifted toward red by a lighting color filter."]
 }
+
+@section{Additional Visual Examples}
+
+These examples compare several color-filter constructions using simple source colors or gradients.
+
+@racketblock[
+(with-skia ([filter (make-blend-color-filter 'orange 'screen)]
+            [plain (make-paint #:color "#326DE6")]
+            [filtered (make-paint #:color "#326DE6" #:color-filter filter)]
+            [surface (make-surface 180 80 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 18 18 60 44 8 8 plain)
+  (draw-rounded-rect (surface-canvas surface) 102 18 60 44 8 8 filtered))
+]
+@reference-figure["blend-color-filter.png"
+                  "An unfiltered blue rounded rectangle beside the lighter result of screening orange into the same input color."]
+
+@racketblock[
+(with-skia ([inner (make-blend-color-filter 'red 'src)]
+            [outer (make-blend-color-filter 'blue 'screen)]
+            [filter (make-compose-color-filter outer inner)]
+            [paint (make-paint #:color "#EFA02B" #:color-filter filter)]
+            [surface (make-surface 180 80 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 35 18 110 44 8 8 paint))
+]
+@reference-figure["compose-color-filter.png"
+                  "A rounded rectangle colored by a two-stage composition of color filters."]
+
+@racketblock[
+(with-skia ([red-filter (make-blend-color-filter 'red 'src)]
+            [blue-filter (make-blend-color-filter 'blue 'src)]
+            [filter (make-lerp-color-filter 0.5 red-filter blue-filter)]
+            [paint (make-paint #:color 'white #:color-filter filter)]
+            [surface (make-surface 180 80 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 35 16 110 48 10 10 paint))
+]
+@reference-figure["lerp-color-filter.png"
+                  "A purple rounded rectangle produced by interpolating halfway between constant red and blue color filters."]
+
+@racketblock[
+(with-skia ([shader (make-linear-gradient-shader 0 0 180 0 '(red yellow green cyan blue))]
+            [filter (make-luma-color-filter)]
+            [paint (make-paint #:shader shader #:color-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-rect (surface-canvas surface) 0 0 180 90 paint))
+]
+@reference-figure["luma-color-filter.png"
+                  "A colored gradient converted into black coverage whose opacity follows luminance."]
+
+@racketblock[
+(with-skia ([shader (make-linear-gradient-shader 0 0 180 0 '(black white))]
+            [filter (make-high-contrast-color-filter #:contrast 0.8)]
+            [paint (make-paint #:shader shader #:color-filter filter)]
+            [surface (make-surface 180 80)])
+  (draw-rect (surface-canvas surface) 0 0 180 80 paint))
+]
+@reference-figure["high-contrast-color-filter.png"
+                  "A black-to-white gradient with strong contrast enhancement around its middle tones."]
+
+@racketblock[
+(define table (for/vector ([i (in-range 256)]) (min 255 (* 2 i))))
+(with-skia ([filter (make-table-color-filter table)]
+            [plain (make-paint #:color "#326DE6")]
+            [filtered (make-paint #:color "#326DE6" #:color-filter filter)]
+            [surface (make-surface 180 80 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 18 18 60 44 8 8 plain)
+  (draw-rounded-rect (surface-canvas surface) 102 18 60 44 8 8 filtered))
+]
+@reference-figure["table-color-filter.png"
+                  "A blue rounded rectangle beside a brighter result produced by a channel lookup table."]

@@ -487,3 +487,40 @@ breaking or shaping-aware wrapping. An empty input returns 0 and 0.0.
   (list (substring text 0 count) width))
 ]
 }
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 250 130 #:background 'white)]
+            [font (make-font #:size 18)]
+            [paint (make-paint #:color "#20344E")])
+  (draw-simple-text (surface-canvas surface) "Skia" 15 30 font paint)
+  (font-set-size! font 30)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 72 font paint)
+  (font-set-size! font 44)
+  (draw-simple-text (surface-canvas surface) "Skia" 100 112 font paint))
+]
+@reference-figure["font-sizes.png"
+                  "The word Skia drawn three times at increasing font sizes."]
+
+@racketblock[
+(with-skia ([surface (make-surface 260 100 #:background 'white)]
+            [normal (make-font #:size 34)] [wide (make-font #:size 34)]
+            [paint (make-paint #:color "#20344E")])
+  (font-set-scale-x! wide 1.7)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 42 normal paint)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 86 wide paint))
+]
+@reference-figure["font-scale-x.png"
+                  "The word Skia at normal width above a horizontally stretched version produced by font scale-x."]
+
+@racketblock[
+(with-skia ([surface (make-surface 260 100 #:background 'white)]
+            [normal (make-font #:size 34)] [skewed (make-font #:size 34)]
+            [paint (make-paint #:color "#20344E")])
+  (font-set-skew-x! skewed 0.4)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 42 normal paint)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 86 skewed paint))
+]
+@reference-figure["font-skew-x.png"
+                  "The word Skia at normal slant above a visibly skewed version produced by font skew-x."]

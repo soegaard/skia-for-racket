@@ -264,3 +264,81 @@ against the current clip. A false result does not prove intersection or visible
 output. The query has no paint argument and does not expand the rectangle for
 strokes, filters, or other painted extents.
 }
+
+@section{Additional Visual Examples}
+
+These examples isolate common transform and clip operations.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [guide (make-paint #:color "#D9DEE4")]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 20 20 50 35 guide)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 75 30)
+    (draw-rect canvas 20 20 50 35 paint)))
+]
+@reference-figure["canvas-translate.png"
+                  "A gray reference rectangle and the same rectangle translated down and right in blue."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)]
+            [guide (make-paint #:color "#D9DEE4")]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 18 18 45 30 guide)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 75 20)
+    (canvas-scale! canvas 1.8 1.6)
+    (draw-rect canvas 0 0 45 30 paint)))
+]
+@reference-figure["canvas-scale.png"
+                  "A small gray reference rectangle and a larger blue rectangle produced by canvas scaling."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 120 #:background 'white)]
+            [guide (make-paint #:color "#D9DEE4")]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 55 40 70 40 guide)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 90 60)
+    (canvas-rotate! canvas 28)
+    (draw-rect canvas -35 -20 70 40 paint)))
+]
+@reference-figure["canvas-rotate.png"
+                  "A blue rectangle rotated clockwise over a gray unrotated reference rectangle."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (canvas-translate! canvas 60 0)
+  (canvas-skew! canvas 0.55 0)
+  (draw-rect canvas 0 30 60 45 paint))
+]
+@reference-figure["canvas-skew.png"
+                  "A blue rectangle sheared horizontally by the canvas skew transform."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (canvas-clip-rect! canvas 20 15 120 70)
+  (canvas-clip-rect! canvas 65 30 90 45 #:operation 'intersect)
+  (draw-paint canvas paint))
+]
+@reference-figure["clip-intersect.png"
+                  "Blue paint appears only in the intersection of two rectangular canvas clips."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (canvas-clip-rect! canvas 20 15 140 70)
+  (canvas-clip-rect! canvas 60 30 60 40 #:operation 'difference)
+  (draw-paint canvas paint))
+]
+@reference-figure["clip-difference.png"
+                  "A blue rectangular clipped area with a white rectangular hole removed by difference clipping."]

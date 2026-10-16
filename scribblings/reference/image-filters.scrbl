@@ -573,3 +573,93 @@ both the target and the picture's cull rectangle. The optional crop uses the
 common image-filter output-region rules. The source picture must be open
 during construction; retained GPU dependencies keep their own affinity rules.
 }
+
+@section{Additional Visual Examples}
+
+These examples show several graph nodes that transform, combine, or replace an image-filter input.
+
+@racketblock[
+(with-skia ([filter (make-offset-image-filter 55 20)]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-rect (surface-canvas surface) 20 15 45 35 paint))
+]
+@reference-figure["offset-image-filter.png"
+                  "A blue rectangle shifted down and right by an offset image filter."]
+
+@racketblock[
+(with-skia ([shift (make-offset-image-filter 55 0)]
+            [filter (make-blend-image-filter 'src-over #f shift)]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 20 25 50 40 8 8 paint))
+]
+@reference-figure["blend-image-filter.png"
+                  "A blue rounded rectangle combined with a translated copy by an image-filter blend node."]
+
+@racketblock[
+(with-skia ([shift (make-offset-image-filter 50 0)]
+            [filter (make-arithmetic-image-filter 0 0.5 0.5 0 #f shift)]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-circle (surface-canvas surface) 45 45 25 paint))
+]
+@reference-figure["arithmetic-image-filter.png"
+                  "A blue circle and translated copy combined by an arithmetic image filter with equal source weights."]
+
+@racketblock[
+(with-skia ([filter (make-crop-image-filter '(65 20 60 50))]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 25 10 120 70 10 10 paint))
+]
+@reference-figure["crop-image-filter.png"
+                  "Only the central rectangular portion of a larger blue rounded rectangle remains after cropping."]
+
+@racketblock[
+(with-skia ([color-filter
+             (make-color-matrix-filter
+              '(0 0 0 0 1  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0))]
+            [filter (make-color-filter-image-filter color-filter)]
+            [paint (make-paint #:color 'blue #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-circle (surface-canvas surface) 90 45 26 paint))
+]
+@reference-figure["color-filter-image-filter.png"
+                  "A circle whose blue dynamic source has been converted to red by a color-filter image-filter node."]
+
+@racketblock[
+(with-skia ([filter (make-matrix-transform-image-filter
+                     (matrix-compose (matrix-translate 75 10)
+                                     (matrix-rotate-degrees 22)))]
+            [paint (make-paint #:color "#326DE6" #:image-filter filter)]
+            [surface (make-surface 190 110 #:background 'white)])
+  (draw-rect (surface-canvas surface) 20 35 60 35 paint))
+]
+@reference-figure["matrix-transform-image-filter.png"
+                  "A blue rectangle translated and rotated by a matrix-transform image filter."]
+
+@racketblock[
+(with-skia ([shader (make-linear-gradient-shader 20 0 160 0 '(red yellow blue))]
+            [filter (make-shader-image-filter shader #:crop '(20 15 140 60))]
+            [paint (make-paint #:color 'white #:image-filter filter)]
+            [surface (make-surface 180 90 #:background 'white)])
+  (draw-rect (surface-canvas surface) 0 0 180 90 paint))
+]
+@reference-figure["shader-image-filter.png"
+                  "A bounded red-yellow-blue gradient produced by a shader image-filter source."]
+
+@racketblock[
+(with-skia ([source-surface (make-surface 40 30 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-circle (surface-canvas source-surface) 12 15 9 blue)
+  (with-skia ([image (surface-snapshot source-surface)]
+              [source (make-image-source-filter image)]
+              [filter (make-tile-image-filter '(0 0 40 30) '(0 0 180 90)
+                                              #:input source)]
+              [paint (make-paint #:color 'white #:image-filter filter)]
+              [surface (make-surface 180 90 #:background 'white)])
+    (draw-rect (surface-canvas surface) 0 0 180 90 paint)))
+]
+@reference-figure["tile-image-filter.png"
+                  "A small yellow-and-blue image repeated as tiles across a larger destination rectangle."]

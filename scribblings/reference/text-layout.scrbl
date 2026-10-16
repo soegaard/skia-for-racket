@@ -424,3 +424,42 @@ Returns the inferred script tag, or @racket[#f] when no specific script is selec
 Returns the recorded fallback family name, or @racket[#f] when the base shaper
 is used. A false result is not itself proof of complete glyph coverage.
 }
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 300 120 #:background 'white)]
+            [font (make-font #:size 20)] [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout (layout-text shaper "Centered lines wrap inside a fixed width."
+                              #:width 260 #:align 'center #:line-height 30))
+  (draw-text-layout (surface-canvas surface) layout 20 15 paint))
+]
+@reference-figure["layout-center.png"
+                  "A wrapped paragraph whose line advances are centered within a fixed-width layout box."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 100 #:background 'white)]
+            [font (make-font #:size 22)] [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout (layout-text shaper "End aligned" #:width 250 #:align 'end))
+  (draw-text-layout (surface-canvas surface) layout 20 20 paint))
+]
+@reference-figure["layout-end.png"
+                  "A short left-to-right line positioned at the end, or right side, of its layout box."]
+
+@racketblock[
+(with-skia ([surface (make-surface 320 160 #:background 'white)]
+            [font (make-font #:size 18)] [shaper (make-shaper font)]
+            [blue (make-paint #:color "#326DE6")]
+            [orange (make-paint #:color "#EFA02B")])
+  (define text "One two three four five six seven eight.")
+  (draw-text-layout (surface-canvas surface)
+                    (layout-text shaper text #:width 130 #:line-height 20)
+                    10 10 blue)
+  (draw-text-layout (surface-canvas surface)
+                    (layout-text shaper text #:width 130 #:line-height 34)
+                    175 10 orange))
+]
+@reference-figure["layout-line-height.png"
+                  "The same wrapped paragraph shown with tight blue line spacing and looser orange line spacing."]

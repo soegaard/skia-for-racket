@@ -263,3 +263,20 @@ region is no longer vector geometry or searchable text.
 @reference-figure["draw-rasterized.png"
                   "A bounded blue rounded rectangle with blur captured through explicit rasterization."]
 }
+
+@section{Additional Visual Example}
+
+@racketblock[
+(define page
+  (make-output-page
+   180 100
+   (lambda (canvas)
+     (with-skia ([paint (make-paint #:color "#326DE6")])
+       (draw-rect canvas 0 0 130 70 paint)))
+   #:margins '(20 15 30 15)
+   #:background "#EEF1F4"))
+(with-skia ([image (output-page->image page #:dpi 72)])
+  image)
+]
+@reference-figure["output-page-margins.png"
+                  "A light-gray page with a blue content rectangle inset by unequal left, top, right, and bottom margins."]

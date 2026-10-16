@@ -132,3 +132,24 @@ Invalidates generation metadata. It does not edit or replace captured commands,
 rerun the authoring callback, or revive a closed resource. The next generation
 query can report a new identifier while the recorded drawing remains the same.
 }
+
+@section{Additional Visual Example}
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)]
+            [drawable
+             (call-with-drawable 50 35
+               (lambda (canvas)
+                 (with-skia ([paint (make-paint #:color "#326DE6")])
+                   (draw-rounded-rect canvas 5 5 40 25 7 7 paint))))])
+  (draw-drawable (surface-canvas surface) drawable
+                 #:matrix (matrix-compose (matrix-translate 40 45)
+                                          (matrix-rotate-degrees -18)))
+  (draw-drawable (surface-canvas surface) drawable
+                 #:matrix (matrix-compose (matrix-translate 120 30)
+                                          (matrix-scale 1.25 1.25)
+                                          (matrix-rotate-degrees 18))
+                 #:mode 'immediate))
+]
+@reference-figure["drawable-transformed.png"
+                  "The same recorded blue rounded rectangle replayed twice with different affine transforms and playback modes."]

@@ -289,3 +289,73 @@ affine matrix must be invertible. Sampling is nearest by default; the public int
 nearest or linear, not cubic sampling. Raw sample interpretation has no promised direct PDF/SVG
 representation; use an explicit bounded raster group for document output.
 }
+
+@section{Additional Visual Examples}
+
+These examples show shader coordinate transforms, procedural noise, filtering, and tiling.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [base (make-linear-gradient-shader 0 0 30 0 '(red blue) #:tile-mode 'repeat)]
+            [scaled (shader-with-local-matrix base (matrix-scale 2 1))]
+            [top (make-paint #:shader base)]
+            [bottom (make-paint #:shader scaled)])
+  (draw-rect (surface-canvas surface) 0 0 180 45 top)
+  (draw-rect (surface-canvas surface) 0 55 180 45 bottom))
+]
+@reference-figure["shader-local-matrix.png"
+                  "Two repeated red-to-blue gradients; the lower pattern is enlarged by a shader-local scale matrix."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [shader (make-fractal-noise-shader 0.035 0.05 4 7)]
+            [paint (make-paint #:shader shader)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["fractal-noise.png"
+                  "A procedural fractal-noise field with several smooth scales of variation."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100)]
+            [shader (make-turbulence-shader 0.035 0.05 4 7)]
+            [paint (make-paint #:shader shader)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["turbulence.png"
+                  "A procedural turbulence field using the magnitudes of successive noise octaves."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 90)]
+            [base (make-linear-gradient-shader 0 0 180 0 '(red yellow green blue))]
+            [filter (make-luma-color-filter)]
+            [filtered (shader-with-color-filter base filter)]
+            [paint (make-paint #:shader filtered)])
+  (draw-rect (surface-canvas surface) 0 0 180 90 paint))
+]
+@reference-figure["shader-color-filter.png"
+                  "A multicolor gradient converted to luminance-derived coverage by a color filter attached to the shader."]
+
+@racketblock[
+(with-skia ([image (rgba-bytes->image 2 2
+                 (bytes 255 0 0 255 0 128 0 255
+                        0 0 255 255 255 255 0 255))]
+            [shader (make-raw-image-shader image #:tile-x 'repeat #:tile-y 'repeat
+                                           #:sampling 'nearest
+                                           #:matrix (matrix-scale 12 12))]
+            [paint (make-paint #:shader shader)]
+            [surface (make-surface 180 100)])
+  (draw-paint (surface-canvas surface) paint))
+]
+@reference-figure["raw-image-shader.png"
+                  "A repeated block pattern produced by sampling a small image as raw numeric channel data."]
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background "#E9EDF2")])
+  (for ([mode '(clamp repeat mirror decal)] [y '(0 30 60 90)])
+    (with-skia ([shader (make-linear-gradient-shader 30 0 70 0 '(red blue)
+                                                    #:tile-mode mode)]
+                [paint (make-paint #:shader shader)])
+      (draw-rect (surface-canvas surface) 0 y 200 30 paint))))
+]
+@reference-figure["gradient-tile-modes.png"
+                  "Four horizontal gradient bands showing clamp, repeat, mirror, and decal tiling outside the gradient interval."]

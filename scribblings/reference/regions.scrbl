@@ -322,3 +322,27 @@ with @racket[region->path] and use @racket[canvas-clip-path!] instead.
 @reference-figure["region-clip.png"
                   "A blue-to-orange gradient visible only inside two disjoint rectangular region components."]
 }
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([a (make-region '((20 15 90 55)))]
+            [b (make-region '((70 30 80 50)))]
+            [surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (with-skia ([result (region-intersect a b)])
+    (draw-region (surface-canvas surface) result paint)))
+]
+@reference-figure["region-intersection.png"
+                  "The blue rectangular overlap retained by intersecting two integer regions."]
+
+@racketblock[
+(with-skia ([a (make-region '((20 15 90 55)))]
+            [b (make-region '((70 30 80 50)))]
+            [surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (with-skia ([result (region-xor a b)])
+    (draw-region (surface-canvas surface) result paint)))
+]
+@reference-figure["region-xor.png"
+                  "Two blue rectangular lobes remain after integer-region exclusive-or removes their overlap."]

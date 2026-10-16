@@ -195,3 +195,42 @@ Glyphs without monochrome outlines are omitted; bitmap-only and color glyph
 appearance is not preserved by this conversion. The path remains usable after
 the shaper is closed and does not retain paint settings.
 }
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 300 110 #:background 'white)]
+            [font (make-font #:size 34)] [shaper (make-shaper font)]
+            [blue (make-paint #:color "#326DE6")]
+            [orange (make-paint #:color "#EFA02B")])
+  (define default-run (shape-text shaper "office" #:language "en"))
+  (define no-liga-run (shape-text shaper "office" #:language "en"
+                                  #:features '("liga=0")))
+  (draw-shaped-run (surface-canvas surface) shaper default-run 20 42 blue)
+  (draw-shaped-run (surface-canvas surface) shaper no-liga-run 20 92 orange))
+]
+@reference-figure["ligature-shaping.png"
+                  "The word office shaped once with default features and once with standard ligatures disabled; the exact difference is font-dependent."]
+
+@racketblock[
+(with-skia ([surface (make-surface 260 90 #:background 'white)]
+            [font (make-font #:size 36)] [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (draw-shaped-text (surface-canvas surface) shaper "שלום" 230 58 paint
+                    #:direction 'rtl #:script 'hebr))
+]
+@reference-figure["rtl-shaping.png"
+                  "A Hebrew word shaped and drawn right-to-left from a baseline origin near the right edge."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 110 #:background 'white)]
+            [font (make-font #:size 60)] [shaper (make-shaper font)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
+  (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
+  (with-skia ([path (shaped-run->path shaper run)])
+    (with-canvas-state (surface-canvas surface)
+      (canvas-translate! (surface-canvas surface) 20 78)
+      (draw-path (surface-canvas surface) path paint))))
+]
+@reference-figure["shaped-outline.png"
+                  "The shaped word Skia drawn as blue stroked glyph outlines rather than as native text."]

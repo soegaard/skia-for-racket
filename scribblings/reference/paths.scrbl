@@ -847,3 +847,98 @@ The result contains the corner point but not the center of the removed circle.
 Bounds the number of entries accepted by @racket[path-combine]. The default is
 4096. Lowering this parameter does not change an already constructed path.
 }
+
+@section{Additional Visual Examples}
+
+These examples compare curve kinds, path transforms, measurement, and Boolean operations.
+
+@racketblock[
+(with-skia ([path (make-path)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (path-move-to! path 15 80)
+  (path-quad-to! path 90 5 165 80)
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["quadratic-path.png"
+                  "A thick blue quadratic Bezier arc rising from two low endpoints toward one high control point."]
+
+@racketblock[
+(with-skia ([path (make-path)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (path-move-to! path 15 80)
+  (path-conic-to! path 90 5 165 80 0.45)
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["conic-path.png"
+                  "A thick blue rational quadratic curve whose weight pulls it differently from an ordinary quadratic."]
+
+@racketblock[
+(with-skia ([path (make-path)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (path-add-arc! path 25 15 130 70 200 250)
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["path-arc.png"
+                  "A blue elliptical arc drawn as its own path contour."]
+
+@racketblock[
+(with-skia ([source (make-path '((move 20 85) (line 70 20) (line 110 85) (close)))]
+            [surface (make-surface 190 120 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (with-skia ([moved (path-transform source
+                     (matrix-compose (matrix-translate 55 5)
+                                     (matrix-rotate-degrees 12)))])
+    (draw-path (surface-canvas surface) moved paint)))
+]
+@reference-figure["path-transform.png"
+                  "A filled blue triangle after an affine translation and rotation have been applied to its path geometry."]
+
+@racketblock[
+(with-skia ([path (make-path '((move 20 40) (line 170 40)))]
+            [measure (make-path-measure path)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 6)]
+            [surface (make-surface 190 80 #:background 'white)])
+  (with-skia ([segment (path-measure-segment measure 35 120)])
+    (draw-path (surface-canvas surface) segment paint)))
+]
+@reference-figure["path-measure-segment.png"
+                  "A blue middle segment extracted by measured distances from a longer horizontal path."]
+
+@racketblock[
+(with-skia ([a (make-path)] [b (make-path)]
+            [surface (make-surface 170 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! a 65 50 34)
+  (path-add-circle! b 105 50 34)
+  (with-skia ([result (path-union a b)])
+    (draw-path (surface-canvas surface) result paint)))
+]
+@reference-figure["path-union.png"
+                  "The union of two overlapping circles, filled as one blue shape."]
+
+@racketblock[
+(with-skia ([a (make-path)] [b (make-path)]
+            [surface (make-surface 170 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! a 65 50 34)
+  (path-add-circle! b 105 50 34)
+  (with-skia ([result (path-intersect a b)])
+    (draw-path (surface-canvas surface) result paint)))
+]
+@reference-figure["path-intersection.png"
+                  "Only the lens-shaped overlap of two circles remains after path intersection."]
+
+@racketblock[
+(with-skia ([a (make-path)] [b (make-path)]
+            [surface (make-surface 170 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! a 65 50 34)
+  (path-add-circle! b 105 50 34)
+  (with-skia ([result (path-xor a b)])
+    (draw-path (surface-canvas surface) result paint)))
+]
+@reference-figure["path-xor.png"
+                  "Two blue crescent regions remain after exclusive-or removes the circles' overlap."]

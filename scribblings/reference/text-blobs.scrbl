@@ -587,3 +587,45 @@ Use a retained blob instead when repeatedly drawing the same placement.
 @reference-figure["text-on-path.png"
                   "Dark text follows a pale cubic curve from left to right."]
 }
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 240 90 #:background 'white)]
+            [font (make-font #:size 32)] [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#20344E")])
+  (define glyphs (font-text->glyphs font "ABC"))
+  (text-blob-builder-add-horizontal-run! builder font glyphs '(0 55 125) #:y 0)
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 20 58 paint)))
+]
+@reference-figure["horizontal-text-run.png"
+                  "The glyphs A, B, and C placed at explicit horizontal positions with uneven spacing."]
+
+@racketblock[
+(with-skia ([surface (make-surface 260 110 #:background 'white)]
+            [font (make-font #:size 34)] [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#20344E")])
+  (define glyphs (font-text->glyphs font "ABC"))
+  (text-blob-builder-add-transformed-run!
+   builder font glyphs
+   (list (make-atlas-transform 30 70 #:rotation -18)
+         (make-atlas-transform 100 55 #:scale 1.2 #:rotation 8)
+         (make-atlas-transform 185 75 #:scale 0.9 #:rotation 22)))
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
+]
+@reference-figure["transformed-text-run.png"
+                  "The glyphs A, B, and C individually translated, scaled, and rotated within one transformed text run."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 100 #:background 'white)]
+            [font (make-font #:size 42)]
+            [blob (make-positioned-text-blob font (font-text->glyphs font "AB")
+                                             '((0 55) (70 55)))]
+            [text-paint (make-paint #:color "#20344E")])
+  (draw-text-blob (surface-canvas surface) blob 20 10 text-paint)
+  (text-blob-intercepts blob 35 45))
+]
+@reference-figure["text-blob-intercepts.png"
+                  "Two large glyphs crossed by a highlighted horizontal band, with the reported intercept intervals marked within that band."]

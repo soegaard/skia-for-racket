@@ -452,3 +452,70 @@ result. The source path and paint are unchanged.
     (lambda (outline) (and fillable? (path-contains? outline 50 20)))))
 ]
 }
+
+@section{Additional Visual Examples}
+
+The following examples show settings whose effect is easiest to recognize in rendered geometry.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (for ([cap '(butt round square)] [y '(20 50 80)])
+    (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                   #:stroke-width 18 #:cap cap)])
+      (draw-line (surface-canvas surface) 35 y 145 y paint))))
+]
+@reference-figure["paint-caps.png"
+                  "Three thick blue horizontal strokes showing butt, round, and square caps."]
+
+@racketblock[
+(with-skia ([surface (make-surface 210 100 #:background 'white)])
+  (for ([join '(miter round bevel)] [x '(10 80 150)])
+    (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                   #:stroke-width 12 #:join join)])
+      (draw-polygon (surface-canvas surface)
+                    (list (list (+ x 5) 80) (list (+ x 30) 20) (list (+ x 55) 80))
+                    paint #:closed? #f))))
+]
+@reference-figure["paint-joins.png"
+                  "Three blue V-shaped strokes comparing miter, round, and bevel joins."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (for ([width '(2 8 18)] [y '(20 50 80)])
+    (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke
+                                   #:stroke-width width #:cap 'round)])
+      (draw-line (surface-canvas surface) 20 y 160 y paint))))
+]
+@reference-figure["paint-stroke-widths.png"
+                  "Three blue horizontal strokes with increasingly large stroke widths."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [background (make-paint #:color "#326DE6")]
+            [source (make-paint #:color "#EFA02B" #:blend-mode 'multiply)])
+  (draw-rect (surface-canvas surface) 25 20 95 60 background)
+  (draw-circle (surface-canvas surface) 115 50 36 source))
+]
+@reference-figure["blend-multiply.png"
+                  "An orange circle overlaps a blue rectangle using multiply blending, darkening the overlap."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [background (make-paint #:color "#326DE6")]
+            [source (make-paint #:color "#EFA02B" #:blend-mode 'screen)])
+  (draw-rect (surface-canvas surface) 25 20 95 60 background)
+  (draw-circle (surface-canvas surface) 115 50 36 source))
+]
+@reference-figure["blend-screen.png"
+                  "An orange circle overlaps a blue rectangle using screen blending, lightening the overlap."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [under (make-paint #:color "#EFA02B")]
+            [paint (make-paint #:color (rgba 50 109 230 190)
+                               #:style 'stroke-and-fill #:stroke-width 10)])
+  (draw-circle (surface-canvas surface) 90 50 34 under)
+  (draw-rounded-rect (surface-canvas surface) 45 22 90 56 14 14 paint))
+]
+@reference-figure["paint-stroke-and-fill.png"
+                  "A translucent blue rounded rectangle is both filled and stroked over an orange circle."]

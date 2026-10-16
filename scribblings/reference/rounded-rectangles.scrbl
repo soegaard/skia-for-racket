@@ -157,3 +157,24 @@ preserves this representation. The operation does not silently approximate,
 flatten, or rasterize an unrepresentable shape. For general affine geometry,
 add the rounded rectangle to a path and use @racket[path-transform].
 }
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define normalized
+    (rounded-rect-normalize (make-rounded-rect 25 20 130 60 #:radii 80)))
+  (draw-rrect (surface-canvas surface) normalized paint))
+]
+@reference-figure["rounded-rect-normalized.png"
+                  "A blue rounded rectangle after oversized corner radii have been normalized to fit its bounds."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define shape (make-nine-patch-rounded-rect 20 15 140 70 30 10 16 28))
+  (draw-rrect (surface-canvas surface) shape paint))
+]
+@reference-figure["rounded-rect-nine-patch.png"
+                  "A blue rounded rectangle whose four corner radii come from independent left, top, right, and bottom components."]

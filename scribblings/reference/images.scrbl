@@ -234,3 +234,54 @@ The original Skia image can be closed after the pict is constructed.
 To construct a pict without PNG encoding and decoding, use @racket[image->pict]
 from @racketmodname[skia/pict]. It also supports an explicit logical backing
 scale through @racket[#:backing-scale].
+
+@section{Additional Visual Examples}
+
+@racketblock[
+(with-skia ([image (rgba-bytes->image 2 2
+                 (bytes 255 0 0 255 0 128 0 255
+                        0 0 255 255 255 255 0 255))]
+            [surface (make-surface 210 100 #:background 'white)])
+  (draw-image-rect (surface-canvas surface) image 10 10 85 80 #:sampling 'nearest)
+  (draw-image-rect (surface-canvas surface) image 115 10 85 80 #:sampling 'linear))
+]
+@reference-figure["sampling-comparison.png"
+                  "The same four-color image enlarged with nearest sampling on the left and linear sampling on the right."]
+
+@racketblock[
+(with-skia ([source (make-surface 80 60 #:background "#F4D35E")]
+            [blue (make-paint #:color "#326DE6")])
+  (draw-circle (surface-canvas source) 40 30 22 blue)
+  (with-skia ([image (surface-snapshot source)]
+              [part (image-subset image 20 10 40 40)]
+              [target (make-surface 220 100 #:background 'white)])
+    (draw-image-rect (surface-canvas target) image 10 20 80 60 #:sampling 'nearest)
+    (draw-image-rect (surface-canvas target) part 125 5 80 80 #:sampling 'nearest)))
+]
+@reference-figure["image-subset.png"
+                  "A complete yellow image with a blue circle beside an enlarged independently owned central subset."]
+
+@racketblock[
+(with-skia ([source (make-surface 40 40 #:background "#326DE6")]
+            [image (surface-snapshot source)]
+            [alpha-paint (make-paint #:color (rgba 255 255 255 100))]
+            [target (make-surface 200 90 #:background "#EFA02B")])
+  (draw-image-rect (surface-canvas target) image 20 20 50 50 #:sampling 'nearest)
+  (draw-image-rect (surface-canvas target) image 125 20 50 50
+                   #:sampling 'nearest #:paint alpha-paint))
+]
+@reference-figure["image-alpha-paint.png"
+                  "Two blue images on orange: the right copy is translucent because its drawing paint reduces alpha."]
+
+@racketblock[
+(with-skia ([image (rgba-bytes->image 2 1 (bytes 255 0 0 255 0 0 255 255))]
+            [surface (make-surface 220 90 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (draw-image-rect canvas image 15 20 80 50 #:sampling 'nearest)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 205 20)
+    (canvas-scale! canvas -1 1)
+    (draw-image-rect canvas image 0 0 80 50 #:sampling 'nearest)))
+]
+@reference-figure["image-mirror.png"
+                  "A red-left blue-right image beside a horizontally reflected copy with blue on the left."]
