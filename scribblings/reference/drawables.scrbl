@@ -153,3 +153,130 @@ query can report a new identifier while the recorded drawing remains the same.
 ]
 @reference-figure["drawable-transformed.png"
                   "The same recorded blue rounded rectangle replayed twice with different affine transforms and playback modes."]
+
+@section{Additional Drawable Playback Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 50 35
+                 (lambda (dc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")])
+                     (draw-rounded-rect dc 0 0 50 35 8 8 blue))))])
+    (draw-drawable canvas drawable #:matrix (matrix-translate 30 30) #:mode 'retained)
+    (draw-drawable canvas drawable #:matrix (matrix-translate 130 30) #:mode 'retained)))
+]
+@reference-figure["drawable-retained-stage10.png"
+                  "The same drawable is replayed twice using retained playback mode."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 50 35
+                 (lambda (dc)
+                   (with-skia ([orange (make-paint #:color "#EFA02B")])
+                     (draw-circle dc 25 18 16 orange))))])
+    (draw-drawable canvas drawable #:matrix (matrix-translate 30 30) #:mode 'immediate)
+    (draw-drawable canvas drawable #:matrix (matrix-translate 130 30) #:mode 'immediate)))
+]
+@reference-figure["drawable-immediate-stage10.png"
+                  "The same orange-circle drawable is replayed twice using immediate playback mode."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 45 30
+                 (lambda (dc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")])
+                     (draw-rect dc 0 0 45 30 blue))))])
+    (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 20 20)
+                                                             (matrix-scale 1.2 1.2)))
+    (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 120 15)
+                                                             (matrix-scale 2 2)))))
+]
+@reference-figure["drawable-scale-stage10.png"
+                  "A recorded rectangle drawable is replayed at two different scales."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 50 30
+                 (lambda (dc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#EFA02B")])
+                     (draw-rect dc 0 0 50 30 blue)
+                     (draw-circle dc 12 15 8 orange))))])
+    (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 55 55)
+                                                             (matrix-rotate-degrees -25)))
+    (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 155 45)
+                                                             (matrix-rotate-degrees 25)))))
+]
+@reference-figure["drawable-rotate-stage10.png"
+                  "An asymmetric drawable is replayed with negative and positive rotations."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 28 22
+                 (lambda (dc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")])
+                     (draw-rounded-rect dc 0 0 28 22 5 5 blue))))])
+    (for* ([row (in-range 3)] [col (in-range 5)])
+      (draw-drawable canvas drawable
+                     #:matrix (matrix-translate (+ 10 (* col 45)) (+ 12 (* row 34)))))))
+]
+@reference-figure["drawable-grid-stage10.png"
+                  "A small rounded-rectangle drawable is replayed in a regular three-by-five grid."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 60 40
+                 (lambda (dc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#EFA02B")])
+                     (draw-rounded-rect dc 0 0 60 40 10 10 blue)
+                     (draw-circle dc 30 20 10 orange))))]
+              [picture (drawable->picture drawable)])
+    (draw-picture canvas picture #:x 25 #:y 20)
+    (draw-picture canvas picture #:x 120 #:y 35 #:width 80 #:height 54)))
+]
+@reference-figure["drawable-to-picture-stage10.png"
+                  "A drawable is converted to a picture, then replayed once at native size and once scaled."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 60 40
+                 (lambda (dc)
+                   (with-skia ([blue (make-paint #:color (rgba 50 109 230 180))])
+                     (draw-circle dc 30 20 20 blue))))])
+    (draw-drawable canvas drawable #:matrix (matrix-translate 45 30))
+    (draw-drawable canvas drawable #:matrix (matrix-translate 85 30))
+    (draw-drawable canvas drawable #:matrix (matrix-translate 125 30))))
+]
+@reference-figure["drawable-overlap-stage10.png"
+                  "Three translucent replays of one circular drawable overlap across the surface."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([drawable
+               (call-with-drawable 50 35
+                 (lambda (dc)
+                   (with-skia ([orange (make-paint #:color "#EFA02B")])
+                     (draw-rounded-rect dc 0 0 50 35 8 8 orange))))])
+    (draw-drawable canvas drawable #:matrix (matrix-translate 35 30) #:mode 'retained)
+    (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 135 30)
+                                                             (matrix-rotate-degrees 18))
+                   #:mode 'immediate)))
+]
+@reference-figure["drawable-mixed-modes-stage10.png"
+                  "One orange drawable is replayed retained on the left and immediately with rotation on the right."]

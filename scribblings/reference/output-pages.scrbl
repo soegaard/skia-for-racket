@@ -280,3 +280,130 @@ region is no longer vector geometry or searchable text.
 ]
 @reference-figure["output-page-margins.png"
                   "A light-gray page with a blue content rectangle inset by unequal left, top, right, and bottom margins."]
+
+@section{Additional Output-Page Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 220 120
+      (lambda (pc)
+        (with-skia ([blue (make-paint #:color "#326DE6")])
+          (draw-rect pc 0 0 220 120 blue)))
+      #:background 'white))
+  (with-skia ([image (output-page->image page #:dpi 72)])
+    (draw-image canvas image 0 0)))
+]
+@reference-figure["output-page-no-margins-stage10.png"
+                  "An output page with no margins is filled edge to edge by its blue content rectangle."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 220 120
+      (lambda (pc)
+        (with-skia ([blue (make-paint #:color "#326DE6")])
+          (draw-rect pc 0 0 180 80 blue)))
+      #:margins 20 #:background "#EEF1F4"))
+  (with-skia ([image (output-page->image page #:dpi 72)])
+    (draw-image canvas image 0 0)))
+]
+@reference-figure["output-page-equal-margins-stage10.png"
+                  "Equal twenty-unit margins surround a blue content rectangle on a light-gray output page."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 220 120
+      (lambda (pc)
+        (with-skia ([blue (make-paint #:color "#326DE6")])
+          (draw-rect pc 0 0 165 80 blue)))
+      #:margins '(15 10 40 30) #:background "#EEF1F4"))
+  (with-skia ([image (output-page->image page #:dpi 72)])
+    (draw-image canvas image 0 0)))
+]
+@reference-figure["output-page-unequal-stage10.png"
+                  "Unequal left, top, right, and bottom margins visibly offset the blue content area."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 220 120
+      (lambda (pc)
+        (with-skia ([blue (make-paint #:color "#326DE6")])
+          (draw-circle pc 0 0 45 blue)))
+      #:margins 25 #:clip? #f #:background "#EEF1F4"))
+  (with-skia ([image (output-page->image page #:dpi 72)])
+    (draw-image canvas image 0 0)))
+]
+@reference-figure["output-page-no-clip-stage10.png"
+                  "With content clipping disabled, a blue circle centered at the content origin spills into the page margins."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 220 120
+      (lambda (pc)
+        (with-skia ([orange (make-paint #:color "#EFA02B")])
+          (draw-circle pc 90 45 32 orange)))
+      #:margins 20 #:background "#326DE6"))
+  (with-skia ([image (output-page->image page #:dpi 72)])
+    (draw-image canvas image 0 0)))
+]
+@reference-figure["output-page-background-stage10.png"
+                  "An orange content circle sits on a blue output-page background inside equal margins."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 80 45
+      (lambda (pc)
+        (with-skia ([blue (make-paint #:color "#326DE6")])
+          (draw-rounded-rect pc 5 5 60 25 5 5 blue)))
+      #:unit 'mm #:margins 5 #:background 'white))
+  (with-skia ([image (output-page->image page #:dpi 72)])
+    (draw-image-rect canvas image 0 0 220 120)))
+]
+@reference-figure["output-page-mm-stage10.png"
+                  "A page specified in millimeters is rasterized and scaled into the preview while preserving its physical aspect ratio."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 140 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 100 60
+      (lambda (pc)
+        (with-skia ([blue (make-paint #:color "#326DE6")])
+          (draw-rounded-rect pc 0 0 100 60 10 10 blue)))
+      #:background "#EEF1F4"))
+  (with-canvas-state canvas
+    (canvas-translate! canvas 70 35)
+    (canvas-rotate! canvas 12)
+    (draw-output-page canvas page)))
+]
+@reference-figure["draw-output-page-rotated-stage10.png"
+                  "A complete output page is drawn onto another canvas under a translated and rotated current transform."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define page
+    (make-output-page 220 120
+      (lambda (pc)
+        (with-skia ([blur (make-blur-image-filter 4 4)]
+                    [paint (make-paint #:color "#326DE6" #:image-filter blur)])
+          (draw-rasterized pc 45 25 110 60
+            (lambda (rc) (draw-rounded-rect rc 0 0 110 60 14 14 paint))
+            #:scale 2 #:padding 12)))
+      #:background 'white))
+  (with-skia ([image (output-page->image page #:dpi 72)])
+    (draw-image canvas image 0 0)))
+]
+@reference-figure["output-page-rasterized-stage10.png"
+                  "An output page contains an explicitly rasterized blue rounded rectangle with a soft blur and padded bounds."]

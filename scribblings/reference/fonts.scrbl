@@ -524,3 +524,104 @@ breaking or shaping-aware wrapping. An empty input returns 0 and 0.0.
 ]
 @reference-figure["font-skew-x.png"
                   "The word Skia at normal slant above a visibly skewed version produced by font skew-x."]
+
+@section{Additional Font Rendering Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 280 105 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([normal (make-font #:size 36)]
+              [bold (make-font #:size 36 #:embolden? #t)]
+              [paint (make-paint #:color "#20344E")])
+    (draw-simple-text canvas "Skia" 15 42 normal paint)
+    (draw-simple-text canvas "Skia" 15 92 bold paint)))
+]
+@reference-figure["font-embolden-stage10.png"
+                  "The word Skia is shown normally and again with the font embolden flag enabled."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 105 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([aliased (make-font #:size 34 #:edging 'alias)]
+              [antialiased (make-font #:size 34 #:edging 'antialias)]
+              [paint (make-paint #:color "#20344E")])
+    (draw-simple-text canvas "Alias" 15 42 aliased paint)
+    (draw-simple-text canvas "Antialias" 15 92 antialiased paint)))
+]
+@reference-figure["font-edging-stage10.png"
+                  "Aliased text is shown above grayscale-antialiased text using two font edging modes."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 105 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([none (make-font #:size 30 #:hinting 'none)]
+              [full (make-font #:size 30 #:hinting 'full)]
+              [paint (make-paint #:color "#20344E")])
+    (draw-simple-text canvas "Hinting none" 15 40 none paint)
+    (draw-simple-text canvas "Hinting full" 15 90 full paint)))
+]
+@reference-figure["font-hinting-stage10.png"
+                  "The same size text compares no hinting with full hinting; exact raster differences are font-dependent."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 105 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([whole (make-font #:size 32 #:subpixel? #f)]
+              [fractional (make-font #:size 32 #:subpixel? #t)]
+              [paint (make-paint #:color "#20344E")])
+    (draw-simple-text canvas "Subpixel off" 15.25 40.25 whole paint)
+    (draw-simple-text canvas "Subpixel on" 15.25 90.25 fractional paint)))
+]
+@reference-figure["font-subpixel-stage10.png"
+                  "Text at fractional coordinates compares fonts with subpixel positioning disabled and enabled."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 105 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([normal (make-font #:size 31.5 #:linear-metrics? #f)]
+              [linear (make-font #:size 31.5 #:linear-metrics? #t)]
+              [paint (make-paint #:color "#20344E")])
+    (draw-simple-text canvas "Metrics normal" 15 40 normal paint)
+    (draw-simple-text canvas "Metrics linear" 15 90 linear paint)))
+]
+@reference-figure["font-linear-metrics-stage10.png"
+                  "Two text rows compare ordinary and linear font metrics at a fractional font size."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 105 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([snapped (make-font #:size 32 #:baseline-snap? #t)]
+              [free (make-font #:size 32 #:baseline-snap? #f)]
+              [paint (make-paint #:color "#20344E")])
+    (draw-simple-text canvas "Baseline snapped" 15 40.4 snapped paint)
+    (draw-simple-text canvas "Baseline free" 15 90.4 free paint)))
+]
+@reference-figure["font-baseline-snap-stage10.png"
+                  "Text on fractional baselines compares baseline snapping enabled and disabled."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([font (make-font #:size 62)]
+              [path (simple-text-path font "Skia" 20 82)]
+              [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2.5)])
+    (draw-path canvas path paint)))
+]
+@reference-figure["simple-text-path-stage10.png"
+                  "The word Skia is converted to monochrome outlines and drawn as a blue stroked path."]
+
+@racketblock[
+(with-skia ([surface (make-surface 320 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([font (make-font #:size 30)]
+              [gray (make-paint #:color "#A0A7B0")]
+              [blue (make-paint #:color "#326DE6")]
+              [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
+    (define text "Skia for Racket")
+    (draw-simple-text canvas text 15 55 font gray)
+    (define-values (count width) (font-break-text font text 145))
+    (draw-simple-text canvas (substring text 0 count) 15 55 font blue)
+    (draw-line canvas 15 70 (+ 15 width) 70 rule)))
+]
+@reference-figure["font-break-prefix-stage10.png"
+                  "The longest prefix fitting a width is colored blue, with a blue rule showing its measured advance."]

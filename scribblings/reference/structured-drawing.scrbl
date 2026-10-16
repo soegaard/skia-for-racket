@@ -354,3 +354,127 @@ For the more restricted portable lowering, use @racket[draw-atlas/portable].
 @reference-figure["atlas-batch.png"
                   "Three atlas sprites drawn from red and blue source tiles at different scales, with the final red sprite rotated."]
 }
+
+@section{Additional Mesh and Image-Batch Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color 'white)]
+              [mesh (make-vertices 'triangle-strip
+                                   '((20 20) (20 90) (90 20) (90 90))
+                                   #:colors '(red blue yellow green))])
+    (draw-vertices canvas mesh paint)))
+]
+@reference-figure["mesh-strip-stage10.png"
+                  "A triangle strip interpolates four vertex colors across two connected triangles."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color 'white)]
+              [mesh (make-vertices 'triangle-fan
+                                   '((90 55) (25 20) (155 20) (155 90) (25 90))
+                                   #:colors '(white red green blue yellow))])
+    (draw-vertices canvas mesh paint)))
+]
+@reference-figure["mesh-fan-stage10.png"
+                  "A triangle fan radiates four colored triangles from a white center vertex."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([paint (make-paint #:color 'white)]
+              [mesh (make-vertices 'triangles
+                                   '((25 20) (155 20) (155 90) (25 90))
+                                   #:colors '(red green blue yellow)
+                                   #:indices '(0 1 2 0 2 3))])
+    (draw-vertices canvas mesh paint)))
+]
+@reference-figure["mesh-indexed-stage10.png"
+                  "An indexed mesh forms a rectangle from two triangles with four interpolated corner colors."]
+
+@racketblock[
+(with-skia ([surface (make-surface 200 130 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (define patch
+    (make-cubic-patch
+     '((25 25) (60 0) (140 0) (175 25)
+       (200 50) (200 80) (175 105)
+       (140 130) (60 130) (25 105)
+       (0 80) (0 50))
+     #:colors '("#326DE6" "#10988E" "#EFA02B" "#E94F37")))
+  (with-skia ([paint (make-paint #:color 'white)])
+    (draw-patch canvas patch paint)))
+]
+@reference-figure["patch-curved-stage10.png"
+                  "A curved cubic patch blends blue, teal, orange, and red corner colors."]
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 30 30 #:background "#F4D35E")]
+              [blue (make-paint #:color "#326DE6")])
+    (draw-rect (surface-canvas source) 0 0 30 7 blue)
+    (draw-rect (surface-canvas source) 0 23 30 7 blue)
+    (draw-rect (surface-canvas source) 0 0 7 30 blue)
+    (draw-rect (surface-canvas source) 23 0 7 30 blue)
+    (with-skia ([image (surface-snapshot source)])
+      (define lattice (make-image-lattice '(7 23) '(7 23)))
+      (draw-image-lattice canvas image lattice 15 10 170 100 #:sampling 'nearest))))
+]
+@reference-figure["lattice-native-stage10.png"
+                  "A native image lattice stretches a yellow center while preserving narrow blue border cells."]
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 30 30 #:background "#E8EEF9")])
+    (with-skia ([image (surface-snapshot source)])
+      (define lattice
+        (make-image-lattice
+         '(10 20) '(10 20)
+         #:cell-types '(default fixed-color default
+                        fixed-color transparent fixed-color
+                        default fixed-color default)
+         #:colors '(white "#326DE6" white
+                    "#10988E" transparent "#EFA02B"
+                    white "#E94F37" white)))
+      (draw-image-lattice canvas image lattice 15 10 170 100 #:sampling 'nearest))))
+]
+@reference-figure["lattice-fixed-color-stage10.png"
+                  "A lattice combines sampled cells, four fixed-color cells, and a transparent center cell."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 24 24 #:background "#326DE6")]
+              [orange (make-paint #:color "#EFA02B")])
+    (draw-circle (surface-canvas source) 12 12 7 orange)
+    (with-skia ([image (surface-snapshot source)])
+      (draw-atlas canvas image
+                  (list (make-atlas-transform 20 20 #:scale 2 #:rotation -25)
+                        (make-atlas-transform 90 18 #:scale 2.5 #:rotation 10)
+                        (make-atlas-transform 165 25 #:scale 2 #:rotation 35))
+                  '((0 0 24 24) (0 0 24 24) (0 0 24 24))
+                  #:sampling 'nearest))))
+]
+@reference-figure["atlas-rotations-stage10.png"
+                  "Three copies of one atlas sprite are scaled and rotated independently."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 20 20 #:background 'white)])
+    (with-skia ([image (surface-snapshot source)])
+      (draw-atlas canvas image
+                  (list (make-atlas-transform 20 20 #:scale 2.5)
+                        (make-atlas-transform 90 20 #:scale 2.5)
+                        (make-atlas-transform 160 20 #:scale 2.5))
+                  '((0 0 20 20) (0 0 20 20) (0 0 20 20))
+                  #:colors '(red green blue)
+                  #:blend-mode 'modulate
+                  #:sampling 'nearest))))
+]
+@reference-figure["atlas-tints-stage10.png"
+                  "Three white atlas sprites are modulated by red, green, and blue per-sprite colors."]

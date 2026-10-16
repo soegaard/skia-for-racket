@@ -301,3 +301,136 @@ recording and does not guarantee vector output.
 ]
 @reference-figure["picture-rasterized.png"
                   "The same recorded blue-and-orange scene rasterized into an image at a requested pixel size."]
+
+@section{Additional Picture Playback Examples}
+
+@racketblock[
+(with-skia ([surface (make-surface 220 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([picture
+               (call-with-picture 50 35
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#EFA02B")])
+                     (draw-rect pc 0 0 50 35 blue)
+                     (draw-circle pc 25 18 9 orange))))])
+    (draw-picture canvas picture #:x 20 #:y 20)
+    (draw-picture canvas picture #:x 130 #:y 45)))
+]
+@reference-figure["picture-translate-stage10.png"
+                  "The same recorded blue-and-orange picture is replayed at two different translations."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([picture
+               (call-with-picture 50 35
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")])
+                     (draw-rounded-rect pc 0 0 50 35 7 7 blue))))])
+    (draw-picture canvas picture #:x 15 #:y 15 #:width 70 #:height 49)
+    (draw-picture canvas picture #:x 120 #:y 12 #:width 100 #:height 70)))
+]
+@reference-figure["picture-scale-stage10.png"
+                  "A recorded rounded rectangle is replayed twice at two uniform scales."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([picture
+               (call-with-picture 50 35
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#EFA02B")])
+                     (draw-rect pc 0 0 50 35 blue)
+                     (draw-circle pc 25 18 9 orange))))])
+    (draw-picture canvas picture #:x 15 #:y 20 #:width 90 #:height 45)
+    (draw-picture canvas picture #:x 130 #:y 10 #:width 70 #:height 85)))
+]
+@reference-figure["picture-stretch-stage10.png"
+                  "The same picture is stretched horizontally in one replay and vertically in another."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([picture
+               (call-with-picture 36 36
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#EFA02B")])
+                     (draw-rect pc 0 0 36 36 blue)
+                     (draw-circle pc 10 18 8 orange))))]
+              [shader (make-picture-shader picture #:tile-x 'mirror #:tile-y 'mirror)]
+              [paint (make-paint #:shader shader)])
+    (draw-rect canvas 0 0 220 110 paint)))
+]
+@reference-figure["picture-shader-mirror-stage10.png"
+                  "A picture shader mirrors an off-center orange circle across repeated blue tiles."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([picture
+               (call-with-picture 30 30
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#EFA02B")])
+                     (draw-rect pc 0 0 30 30 blue)
+                     (draw-circle pc 15 15 7 orange))))]
+              [shader (make-picture-shader picture #:tile-x 'repeat #:tile-y 'repeat
+                                           #:local-matrix (matrix-scale 1.6 1.6))]
+              [paint (make-paint #:shader shader)])
+    (draw-rect canvas 0 0 220 110 paint)))
+]
+@reference-figure["picture-shader-matrix-stage10.png"
+                  "A repeated picture shader uses a local scale matrix to enlarge its blue-and-orange tile."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([picture
+               (call-with-picture 50 35
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color (rgba 50 109 230 180))])
+                     (draw-circle pc 25 18 15 blue))))]
+              [image (picture->image picture 160 90 #:background "#F4D35E")])
+    (draw-image canvas image 30 10)))
+]
+@reference-figure["picture-image-background-stage10.png"
+                  "A translucent recorded blue circle is rasterized onto an explicit yellow background."]
+
+@racketblock[
+(with-skia ([surface (make-surface 220 110 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([child
+               (call-with-picture 35 35
+                 (lambda (pc)
+                   (with-skia ([orange (make-paint #:color "#EFA02B")])
+                     (draw-circle pc 18 18 13 orange))))])
+    (with-skia ([parent
+                 (call-with-picture 100 60
+                   (lambda (pc)
+                     (with-skia ([blue (make-paint #:color "#326DE6")])
+                       (draw-rounded-rect pc 0 0 100 60 12 12 blue))
+                     (draw-picture pc child #:x 10 #:y 12)
+                     (draw-picture pc child #:x 55 #:y 12)))])
+      (draw-picture canvas parent #:x 60 #:y 25))))
+]
+@reference-figure["picture-nested-stage10.png"
+                  "A parent picture records a blue rounded rectangle and two replays of a nested orange-circle picture."]
+
+@racketblock[
+(with-skia ([surface (make-surface 240 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([picture
+               (call-with-picture 30 24
+                 (lambda (pc)
+                   (with-skia ([blue (make-paint #:color "#326DE6")]
+                               [orange (make-paint #:color "#EFA02B")])
+                     (draw-rect pc 0 0 30 24 blue)
+                     (draw-circle pc 15 12 6 orange))))])
+    (for* ([row (in-range 3)] [col (in-range 5)])
+      (draw-picture canvas picture #:x (+ 10 (* col 45)) #:y (+ 10 (* row 35))))))
+]
+@reference-figure["picture-grid-stage10.png"
+                  "One small recorded picture is replayed in a three-by-five grid."]

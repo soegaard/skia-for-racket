@@ -3289,3 +3289,823 @@
        (draw-image-subrect canvas image 2 0 2 4 120 10 90 80 #:sampling 'nearest)))
 )
  #:background 'white)
+
+
+;; Additional Reference visual examples.
+
+(render-reference-image
+ "float-primary-swatches-stage10.png" 210 70
+ (lambda (canvas)
+   (for ([color (in-list (list (make-color4f 1 0 0)
+                               (make-color4f 0 1 0)
+                               (make-color4f 0 0 1)))]
+         [x (in-list '(15 80 145))])
+     (with-skia ([paint (make-paint/color4f color #:color-space 'srgb)])
+       (draw-rounded-rect canvas x 10 50 50 8 8 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "float-alpha-stage10.png" 220 80
+ (lambda (canvas)
+   (with-skia ([background (make-paint #:color "#EFA02B")])
+     (draw-rect canvas 0 0 220 80 background))
+   (for ([alpha (in-list '(0.25 0.5 0.75))]
+         [x (in-list '(45 110 175))])
+     (with-skia ([paint (make-paint/color4f (make-color4f 0.2 0.43 0.9 alpha)
+                                            #:color-space 'srgb)])
+       (draw-circle canvas x 40 27 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "float-source-space-stage10.png" 210 80
+ (lambda (canvas)
+   (with-skia ([srgb-paint (make-paint/color4f (make-color4f 0.5 0.5 0.5)
+                                                #:color-space 'srgb)]
+               [linear-paint (make-paint/color4f (make-color4f 0.5 0.5 0.5)
+                                                  #:color-space 'linear-srgb)])
+     (draw-rect canvas 15 15 80 50 srgb-paint)
+     (draw-rect canvas 115 15 80 50 linear-paint)))
+ #:background 'white)
+
+(render-reference-image
+ "float-radial-stage10.png" 180 100
+ (lambda (canvas)
+   (with-skia ([shader
+                (make-radial-gradient-color4f-shader
+                 '(90 50) 55
+                 (list (make-color4f 1 1 1) (make-color4f 0.2 0.43 0.9))
+                 #:color-space 'srgb)]
+               [paint (make-paint #:shader shader)])
+     (draw-rect canvas 0 0 180 100 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "float-sweep-stage10.png" 180 100
+ (lambda (canvas)
+   (with-skia ([shader
+                (make-sweep-gradient-color4f-shader
+                 '(90 50)
+                 (list (make-color4f 1 0 0)
+                       (make-color4f 0 1 0)
+                       (make-color4f 0 0 1)
+                       (make-color4f 1 0 0))
+                 #:color-space 'srgb)]
+               [paint (make-paint #:shader shader)])
+     (draw-rect canvas 0 0 180 100 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "float-conical-stage10.png" 190 105
+ (lambda (canvas)
+   (with-skia ([shader
+                (make-two-point-conical-gradient-color4f-shader
+                 '(55 52) 5 '(135 52) 58
+                 (list (make-color4f 1 0.63 0.17) (make-color4f 0.2 0.43 0.9))
+                 #:color-space 'srgb)]
+               [paint (make-paint #:shader shader)])
+     (draw-rect canvas 0 0 190 105 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "float-repeat-stage10.png" 200 90
+ (lambda (canvas)
+   (with-skia ([shader
+                (make-linear-gradient-color4f-shader
+                 '(0 0) '(45 0)
+                 (list (make-color4f 0.2 0.43 0.9) (make-color4f 0.94 0.63 0.17))
+                 #:color-space 'srgb #:tile-mode 'repeat)]
+               [paint (make-paint #:shader shader)])
+     (draw-rect canvas 0 0 200 90 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "float-gradient-matrix-stage10.png" 200 100
+ (lambda (canvas)
+   (with-skia ([shader
+                (make-linear-gradient-color4f-shader
+                 '(0 0) '(50 0)
+                 (list (make-color4f 0.2 0.43 0.9) (make-color4f 0.06 0.6 0.56))
+                 #:color-space 'srgb #:tile-mode 'repeat
+                 #:matrix (matrix-compose (matrix-translate 100 50)
+                                          (matrix-rotate-degrees 28)
+                                          (matrix-translate -100 -50)))]
+               [paint (make-paint #:shader shader)])
+     (draw-rect canvas 0 0 200 100 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "mesh-strip-stage10.png" 180 110
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color 'white)]
+               [mesh (make-vertices 'triangle-strip
+                                    '((20 20) (20 90) (90 20) (90 90))
+                                    #:colors '(red blue yellow green))])
+     (draw-vertices canvas mesh paint)))
+ #:background 'white)
+
+(render-reference-image
+ "mesh-fan-stage10.png" 180 110
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color 'white)]
+               [mesh (make-vertices 'triangle-fan
+                                    '((90 55) (25 20) (155 20) (155 90) (25 90))
+                                    #:colors '(white red green blue yellow))])
+     (draw-vertices canvas mesh paint)))
+ #:background 'white)
+
+(render-reference-image
+ "mesh-indexed-stage10.png" 180 110
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color 'white)]
+               [mesh (make-vertices 'triangles
+                                    '((25 20) (155 20) (155 90) (25 90))
+                                    #:colors '(red green blue yellow)
+                                    #:indices '(0 1 2 0 2 3))])
+     (draw-vertices canvas mesh paint)))
+ #:background 'white)
+
+(render-reference-image
+ "patch-curved-stage10.png" 200 130
+ (lambda (canvas)
+   (define patch
+     (make-cubic-patch
+      '((25 25) (60 0) (140 0) (175 25)
+        (200 50) (200 80) (175 105)
+        (140 130) (60 130) (25 105)
+        (0 80) (0 50))
+      #:colors '("#326DE6" "#10988E" "#EFA02B" "#E94F37")))
+   (with-skia ([paint (make-paint #:color 'white)])
+     (draw-patch canvas patch paint)))
+ #:background 'white)
+
+(render-reference-image
+ "lattice-native-stage10.png" 200 120
+ (lambda (canvas)
+   (with-skia ([source (make-surface 30 30 #:background "#F4D35E")]
+               [blue (make-paint #:color "#326DE6")])
+     (draw-rect (surface-canvas source) 0 0 30 7 blue)
+     (draw-rect (surface-canvas source) 0 23 30 7 blue)
+     (draw-rect (surface-canvas source) 0 0 7 30 blue)
+     (draw-rect (surface-canvas source) 23 0 7 30 blue)
+     (with-skia ([image (surface-snapshot source)])
+       (define lattice (make-image-lattice '(7 23) '(7 23)))
+       (draw-image-lattice canvas image lattice 15 10 170 100 #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "lattice-fixed-color-stage10.png" 200 120
+ (lambda (canvas)
+   (with-skia ([source (make-surface 30 30 #:background "#E8EEF9")])
+     (with-skia ([image (surface-snapshot source)])
+       (define lattice
+         (make-image-lattice
+          '(10 20) '(10 20)
+          #:cell-types '(default fixed-color default
+                         fixed-color transparent fixed-color
+                         default fixed-color default)
+          #:colors '(white "#326DE6" white
+                     "#10988E" transparent "#EFA02B"
+                     white "#E94F37" white)))
+       (draw-image-lattice canvas image lattice 15 10 170 100 #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "atlas-rotations-stage10.png" 220 110
+ (lambda (canvas)
+   (with-skia ([source (make-surface 24 24 #:background "#326DE6")]
+               [orange (make-paint #:color "#EFA02B")])
+     (draw-circle (surface-canvas source) 12 12 7 orange)
+     (with-skia ([image (surface-snapshot source)])
+       (draw-atlas canvas image
+                   (list (make-atlas-transform 20 20 #:scale 2 #:rotation -25)
+                         (make-atlas-transform 90 18 #:scale 2.5 #:rotation 10)
+                         (make-atlas-transform 165 25 #:scale 2 #:rotation 35))
+                   '((0 0 24 24) (0 0 24 24) (0 0 24 24))
+                   #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "atlas-tints-stage10.png" 220 100
+ (lambda (canvas)
+   (with-skia ([source (make-surface 20 20 #:background 'white)])
+     (with-skia ([image (surface-snapshot source)])
+       (draw-atlas canvas image
+                   (list (make-atlas-transform 20 20 #:scale 2.5)
+                         (make-atlas-transform 90 20 #:scale 2.5)
+                         (make-atlas-transform 160 20 #:scale 2.5))
+                   '((0 0 20 20) (0 0 20 20) (0 0 20 20))
+                   #:colors '(red green blue)
+                   #:blend-mode 'modulate
+                   #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "portable-markers-outline-stage10.png" 200 100
+ (lambda (canvas)
+   (with-skia ([paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)])
+     (draw-markers canvas '((30 30) (70 55) (110 30) (150 55)) 26 paint #:shape 'circle)))
+ #:background 'white)
+
+(render-reference-image
+ "portable-markers-overlap-stage10.png" 200 100
+ (lambda (canvas)
+   (with-skia ([blue (make-paint #:color (rgba 50 109 230 190))]
+               [orange (make-paint #:color (rgba 239 160 43 190))])
+     (draw-markers canvas '((55 50) (90 50) (125 50)) 52 blue #:shape 'circle)
+     (draw-markers canvas '((72 50) (107 50) (142 50)) 34 orange #:shape 'square)))
+ #:background 'white)
+
+(render-reference-image
+ "portable-nine-large-stage10.png" 200 120
+ (lambda (canvas)
+   (with-skia ([source (make-surface 30 30 #:background "#F4D35E")]
+               [blue (make-paint #:color "#326DE6")])
+     (draw-rect (surface-canvas source) 0 0 30 6 blue)
+     (draw-rect (surface-canvas source) 0 24 30 6 blue)
+     (with-skia ([image (surface-snapshot source)])
+       (draw-image-nine/portable canvas image '(6 6 18 18) 15 10 170 100 #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "portable-nine-alpha-stage10.png" 200 120
+ (lambda (canvas)
+   (with-skia ([source (make-surface 30 30 #:background "#326DE6")]
+               [orange (make-paint #:color "#EFA02B")])
+     (draw-circle (surface-canvas source) 15 15 8 orange)
+     (with-skia ([image (surface-snapshot source)])
+       (draw-image-nine/portable canvas image '(8 8 14 14) 15 10 170 100
+                                 #:sampling 'nearest #:alpha 128))))
+ #:background 'white)
+
+(render-reference-image
+ "portable-lattice-stage10.png" 200 120
+ (lambda (canvas)
+   (with-skia ([source (make-surface 30 30 #:background "#E8EEF9")]
+               [blue (make-paint #:color "#326DE6")])
+     (draw-rect (surface-canvas source) 0 0 10 30 blue)
+     (draw-rect (surface-canvas source) 20 0 10 30 blue)
+     (with-skia ([image (surface-snapshot source)])
+       (define lattice (make-image-lattice '(10 20) '(10 20)))
+       (draw-image-lattice/portable canvas image lattice 15 10 170 100 #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "portable-lattice-alpha-stage10.png" 200 120
+ (lambda (canvas)
+   (with-skia ([source (make-surface 30 30 #:background "#10988E")]
+               [orange (make-paint #:color "#EFA02B")])
+     (draw-circle (surface-canvas source) 15 15 9 orange)
+     (with-skia ([image (surface-snapshot source)])
+       (define lattice (make-image-lattice '(10 20) '(10 20)))
+       (draw-image-lattice/portable canvas image lattice 15 10 170 100
+                                    #:sampling 'nearest #:alpha 140))))
+ #:background 'white)
+
+(render-reference-image
+ "portable-atlas-rotate-stage10.png" 220 100
+ (lambda (canvas)
+   (with-skia ([source (make-surface 18 18 #:background "#326DE6")]
+               [orange (make-paint #:color "#EFA02B")])
+     (draw-circle (surface-canvas source) 9 9 5 orange)
+     (with-skia ([image (surface-snapshot source)])
+       (draw-atlas/portable canvas image
+                            (list (make-atlas-transform 25 25 #:scale 2 #:rotation -20)
+                                  (make-atlas-transform 95 20 #:scale 2.5 #:rotation 15)
+                                  (make-atlas-transform 170 30 #:scale 2 #:rotation 35))
+                            '((0 0 18 18) (0 0 18 18) (0 0 18 18))
+                            #:sampling 'nearest))))
+ #:background 'white)
+
+(render-reference-image
+ "portable-atlas-alpha-stage10.png" 220 100
+ (lambda (canvas)
+   (with-skia ([source (make-surface 18 18 #:background "#326DE6")])
+     (with-skia ([image (surface-snapshot source)])
+       (draw-atlas/portable canvas image
+                            (list (make-atlas-transform 25 20 #:scale 2.5)
+                                  (make-atlas-transform 95 20 #:scale 2.5)
+                                  (make-atlas-transform 165 20 #:scale 2.5))
+                            '((0 0 18 18) (0 0 18 18) (0 0 18 18))
+                            #:sampling 'nearest #:alpha 110))))
+ #:background 'white)
+
+(render-reference-image
+ "font-embolden-stage10.png" 280 105
+ (lambda (canvas)
+   (with-skia ([normal (make-font #:size 36)]
+               [bold (make-font #:size 36 #:embolden? #t)]
+               [paint (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "Skia" 15 42 normal paint)
+     (draw-simple-text canvas "Skia" 15 92 bold paint)))
+ #:background 'white)
+
+(render-reference-image
+ "font-edging-stage10.png" 300 105
+ (lambda (canvas)
+   (with-skia ([aliased (make-font #:size 34 #:edging 'alias)]
+               [antialiased (make-font #:size 34 #:edging 'antialias)]
+               [paint (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "Alias" 15 42 aliased paint)
+     (draw-simple-text canvas "Antialias" 15 92 antialiased paint)))
+ #:background 'white)
+
+(render-reference-image
+ "font-hinting-stage10.png" 300 105
+ (lambda (canvas)
+   (with-skia ([none (make-font #:size 30 #:hinting 'none)]
+               [full (make-font #:size 30 #:hinting 'full)]
+               [paint (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "Hinting none" 15 40 none paint)
+     (draw-simple-text canvas "Hinting full" 15 90 full paint)))
+ #:background 'white)
+
+(render-reference-image
+ "font-subpixel-stage10.png" 300 105
+ (lambda (canvas)
+   (with-skia ([whole (make-font #:size 32 #:subpixel? #f)]
+               [fractional (make-font #:size 32 #:subpixel? #t)]
+               [paint (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "Subpixel off" 15.25 40.25 whole paint)
+     (draw-simple-text canvas "Subpixel on" 15.25 90.25 fractional paint)))
+ #:background 'white)
+
+(render-reference-image
+ "font-linear-metrics-stage10.png" 300 105
+ (lambda (canvas)
+   (with-skia ([normal (make-font #:size 31.5 #:linear-metrics? #f)]
+               [linear (make-font #:size 31.5 #:linear-metrics? #t)]
+               [paint (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "Metrics normal" 15 40 normal paint)
+     (draw-simple-text canvas "Metrics linear" 15 90 linear paint)))
+ #:background 'white)
+
+(render-reference-image
+ "font-baseline-snap-stage10.png" 300 105
+ (lambda (canvas)
+   (with-skia ([snapped (make-font #:size 32 #:baseline-snap? #t)]
+               [free (make-font #:size 32 #:baseline-snap? #f)]
+               [paint (make-paint #:color "#20344E")])
+     (draw-simple-text canvas "Baseline snapped" 15 40.4 snapped paint)
+     (draw-simple-text canvas "Baseline free" 15 90.4 free paint)))
+ #:background 'white)
+
+(render-reference-image
+ "simple-text-path-stage10.png" 300 110
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 62)]
+               [path (simple-text-path font "Skia" 20 82)]
+               [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2.5)])
+     (draw-path canvas path paint)))
+ #:background 'white)
+
+(render-reference-image
+ "font-break-prefix-stage10.png" 320 100
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 30)]
+               [gray (make-paint #:color "#A0A7B0")]
+               [blue (make-paint #:color "#326DE6")]
+               [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
+     (define text "Skia for Racket")
+     (draw-simple-text canvas text 15 55 font gray)
+     (define-values (count width) (font-break-text font text 145))
+     (draw-simple-text canvas (substring text 0 count) 15 55 font blue)
+     (draw-line canvas 15 70 (+ 15 width) 70 rule)))
+ #:background 'white)
+
+(render-reference-image
+ "shaping-kern-stage10.png" 320 110
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 38)]
+               [shaper (make-shaper font)]
+               [blue (make-paint #:color "#326DE6")]
+               [orange (make-paint #:color "#EFA02B")])
+     (define kerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn))
+     (define unkerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn
+                                  #:features '("kern=0")))
+     (draw-shaped-run canvas shaper kerned 20 42 blue)
+     (draw-shaped-run canvas shaper unkerned 20 94 orange)))
+ #:background 'white)
+
+(render-reference-image
+ "shaping-rtl-latin-stage10.png" 300 95
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 36)]
+               [shaper (make-shaper font)]
+               [paint (make-paint #:color "#20344E")])
+     (draw-shaped-text canvas shaper "ABC 123" 270 58 paint
+                       #:direction 'rtl #:script 'latn)))
+ #:background 'white)
+
+(render-reference-image
+ "shaped-positions-stage10.png" 320 110
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 38)]
+               [shaper (make-shaper font)]
+               [text-paint (make-paint #:color "#20344E")]
+               [mark (make-paint #:color "#E94F37")])
+     (define run (shape-text shaper "office" #:direction 'ltr #:script 'latn))
+     (draw-shaped-run canvas shaper run 20 62 text-paint)
+     (for ([position (in-list (shaped-run-positions run))])
+       (draw-circle canvas (+ 20 (car position)) (+ 62 (cadr position)) 2.5 mark))))
+ #:background 'white)
+
+(render-reference-image
+ "shaped-advance-stage10.png" 320 100
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 38)]
+               [shaper (make-shaper font)]
+               [text-paint (make-paint #:color "#20344E")]
+               [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
+     (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
+     (define advance (abs (shaped-run-advance-x run)))
+     (draw-shaped-run canvas shaper run 20 58 text-paint)
+     (draw-line canvas 20 75 (+ 20 advance) 75 rule)))
+ #:background 'white)
+
+(render-reference-image
+ "shaped-scale-stage10.png" 320 120
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 34)]
+               [shaper (make-shaper font)]
+               [paint (make-paint #:color "#326DE6")])
+     (define run (shape-text shaper "Scale" #:direction 'ltr #:script 'latn))
+     (draw-shaped-run canvas shaper run 15 42 paint)
+     (with-canvas-state canvas
+       (canvas-translate! canvas 15 100)
+       (canvas-scale! canvas 1.6 0.8)
+       (draw-shaped-run canvas shaper run 0 0 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "shaped-rotate-stage10.png" 300 120
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 36)]
+               [shaper (make-shaper font)]
+               [paint (make-paint #:color "#326DE6")])
+     (define run (shape-text shaper "Rotate" #:direction 'ltr #:script 'latn))
+     (with-canvas-state canvas
+       (canvas-translate! canvas 75 85)
+       (canvas-rotate! canvas -18)
+       (draw-shaped-run canvas shaper run 0 0 paint))))
+ #:background 'white)
+
+(render-reference-image
+ "shaped-outline-fill-stage10.png" 300 115
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 62)]
+               [shaper (make-shaper font)]
+               [paint (make-paint #:color "#326DE6")])
+     (define run (shape-text shaper "Path" #:direction 'ltr #:script 'latn))
+     (with-skia ([path (shaped-run->path shaper run)])
+       (with-canvas-state canvas
+         (canvas-translate! canvas 20 82)
+         (draw-path canvas path paint)))))
+ #:background 'white)
+
+(render-reference-image
+ "shaped-outline-dual-stage10.png" 320 120
+ (lambda (canvas)
+   (with-skia ([font (make-font #:size 58)]
+               [shaper (make-shaper font)]
+               [fill (make-paint #:color "#F4D35E")]
+               [stroke (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 2)])
+     (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
+     (with-skia ([path (shaped-run->path shaper run)])
+       (with-canvas-state canvas
+         (canvas-translate! canvas 20 82)
+         (draw-path canvas path fill)
+         (draw-path canvas path stroke)))))
+ #:background 'white)
+
+(render-reference-image
+ "picture-translate-stage10.png" 220 100
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture 50 35
+                  (lambda (pc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")]
+                                [orange (make-paint #:color "#EFA02B")])
+                      (draw-rect pc 0 0 50 35 blue)
+                      (draw-circle pc 25 18 9 orange))))])
+     (draw-picture canvas picture #:x 20 #:y 20)
+     (draw-picture canvas picture #:x 130 #:y 45)))
+ #:background 'white)
+
+(render-reference-image
+ "picture-scale-stage10.png" 240 110
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture 50 35
+                  (lambda (pc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")])
+                      (draw-rounded-rect pc 0 0 50 35 7 7 blue))))])
+     (draw-picture canvas picture #:x 15 #:y 15 #:width 70 #:height 49)
+     (draw-picture canvas picture #:x 120 #:y 12 #:width 100 #:height 70)))
+ #:background 'white)
+
+(render-reference-image
+ "picture-stretch-stage10.png" 240 110
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture 50 35
+                  (lambda (pc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")]
+                                [orange (make-paint #:color "#EFA02B")])
+                      (draw-rect pc 0 0 50 35 blue)
+                      (draw-circle pc 25 18 9 orange))))])
+     (draw-picture canvas picture #:x 15 #:y 20 #:width 90 #:height 45)
+     (draw-picture canvas picture #:x 130 #:y 10 #:width 70 #:height 85)))
+ #:background 'white)
+
+(render-reference-image
+ "picture-shader-mirror-stage10.png" 220 110
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture 36 36
+                  (lambda (pc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")]
+                                [orange (make-paint #:color "#EFA02B")])
+                      (draw-rect pc 0 0 36 36 blue)
+                      (draw-circle pc 10 18 8 orange))))]
+               [shader (make-picture-shader picture #:tile-x 'mirror #:tile-y 'mirror)]
+               [paint (make-paint #:shader shader)])
+     (draw-rect canvas 0 0 220 110 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "picture-shader-matrix-stage10.png" 220 110
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture 30 30
+                  (lambda (pc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")]
+                                [orange (make-paint #:color "#EFA02B")])
+                      (draw-rect pc 0 0 30 30 blue)
+                      (draw-circle pc 15 15 7 orange))))]
+               [shader (make-picture-shader picture #:tile-x 'repeat #:tile-y 'repeat
+                                            #:local-matrix (matrix-scale 1.6 1.6))]
+               [paint (make-paint #:shader shader)])
+     (draw-rect canvas 0 0 220 110 paint)))
+ #:background 'white)
+
+(render-reference-image
+ "picture-image-background-stage10.png" 220 110
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture 50 35
+                  (lambda (pc)
+                    (with-skia ([blue (make-paint #:color (rgba 50 109 230 180))])
+                      (draw-circle pc 25 18 15 blue))))]
+               [image (picture->image picture 160 90 #:background "#F4D35E")])
+     (draw-image canvas image 30 10)))
+ #:background 'white)
+
+(render-reference-image
+ "picture-nested-stage10.png" 220 110
+ (lambda (canvas)
+   (with-skia ([child
+                (call-with-picture 35 35
+                  (lambda (pc)
+                    (with-skia ([orange (make-paint #:color "#EFA02B")])
+                      (draw-circle pc 18 18 13 orange))))])
+     (with-skia ([parent
+                  (call-with-picture 100 60
+                    (lambda (pc)
+                      (with-skia ([blue (make-paint #:color "#326DE6")])
+                        (draw-rounded-rect pc 0 0 100 60 12 12 blue))
+                      (draw-picture pc child #:x 10 #:y 12)
+                      (draw-picture pc child #:x 55 #:y 12)))])
+       (draw-picture canvas parent #:x 60 #:y 25))))
+ #:background 'white)
+
+(render-reference-image
+ "picture-grid-stage10.png" 240 120
+ (lambda (canvas)
+   (with-skia ([picture
+                (call-with-picture 30 24
+                  (lambda (pc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")]
+                                [orange (make-paint #:color "#EFA02B")])
+                      (draw-rect pc 0 0 30 24 blue)
+                      (draw-circle pc 15 12 6 orange))))])
+     (for* ([row (in-range 3)] [col (in-range 5)])
+       (draw-picture canvas picture #:x (+ 10 (* col 45)) #:y (+ 10 (* row 35))))))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-retained-stage10.png" 220 100
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 50 35
+                  (lambda (dc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")])
+                      (draw-rounded-rect dc 0 0 50 35 8 8 blue))))])
+     (draw-drawable canvas drawable #:matrix (matrix-translate 30 30) #:mode 'retained)
+     (draw-drawable canvas drawable #:matrix (matrix-translate 130 30) #:mode 'retained)))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-immediate-stage10.png" 220 100
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 50 35
+                  (lambda (dc)
+                    (with-skia ([orange (make-paint #:color "#EFA02B")])
+                      (draw-circle dc 25 18 16 orange))))])
+     (draw-drawable canvas drawable #:matrix (matrix-translate 30 30) #:mode 'immediate)
+     (draw-drawable canvas drawable #:matrix (matrix-translate 130 30) #:mode 'immediate)))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-scale-stage10.png" 240 110
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 45 30
+                  (lambda (dc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")])
+                      (draw-rect dc 0 0 45 30 blue))))])
+     (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 20 20)
+                                                              (matrix-scale 1.2 1.2)))
+     (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 120 15)
+                                                              (matrix-scale 2 2)))))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-rotate-stage10.png" 240 120
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 50 30
+                  (lambda (dc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")]
+                                [orange (make-paint #:color "#EFA02B")])
+                      (draw-rect dc 0 0 50 30 blue)
+                      (draw-circle dc 12 15 8 orange))))])
+     (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 55 55)
+                                                              (matrix-rotate-degrees -25)))
+     (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 155 45)
+                                                              (matrix-rotate-degrees 25)))))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-grid-stage10.png" 240 120
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 28 22
+                  (lambda (dc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")])
+                      (draw-rounded-rect dc 0 0 28 22 5 5 blue))))])
+     (for* ([row (in-range 3)] [col (in-range 5)])
+       (draw-drawable canvas drawable
+                      #:matrix (matrix-translate (+ 10 (* col 45)) (+ 12 (* row 34)))))))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-to-picture-stage10.png" 220 110
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 60 40
+                  (lambda (dc)
+                    (with-skia ([blue (make-paint #:color "#326DE6")]
+                                [orange (make-paint #:color "#EFA02B")])
+                      (draw-rounded-rect dc 0 0 60 40 10 10 blue)
+                      (draw-circle dc 30 20 10 orange))))]
+               [picture (drawable->picture drawable)])
+     (draw-picture canvas picture #:x 25 #:y 20)
+     (draw-picture canvas picture #:x 120 #:y 35 #:width 80 #:height 54)))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-overlap-stage10.png" 220 110
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 60 40
+                  (lambda (dc)
+                    (with-skia ([blue (make-paint #:color (rgba 50 109 230 180))])
+                      (draw-circle dc 30 20 20 blue))))])
+     (draw-drawable canvas drawable #:matrix (matrix-translate 45 30))
+     (draw-drawable canvas drawable #:matrix (matrix-translate 85 30))
+     (draw-drawable canvas drawable #:matrix (matrix-translate 125 30))))
+ #:background 'white)
+
+(render-reference-image
+ "drawable-mixed-modes-stage10.png" 240 110
+ (lambda (canvas)
+   (with-skia ([drawable
+                (call-with-drawable 50 35
+                  (lambda (dc)
+                    (with-skia ([orange (make-paint #:color "#EFA02B")])
+                      (draw-rounded-rect dc 0 0 50 35 8 8 orange))))])
+     (draw-drawable canvas drawable #:matrix (matrix-translate 35 30) #:mode 'retained)
+     (draw-drawable canvas drawable #:matrix (matrix-compose (matrix-translate 135 30)
+                                                              (matrix-rotate-degrees 18))
+                    #:mode 'immediate)))
+ #:background 'white)
+
+(render-reference-image
+ "output-page-no-margins-stage10.png" 220 120
+ (lambda (canvas)
+   (define page
+     (make-output-page 220 120
+       (lambda (pc)
+         (with-skia ([blue (make-paint #:color "#326DE6")])
+           (draw-rect pc 0 0 220 120 blue)))
+       #:background 'white))
+   (with-skia ([image (output-page->image page #:dpi 72)])
+     (draw-image canvas image 0 0)))
+ #:background 'white)
+
+(render-reference-image
+ "output-page-equal-margins-stage10.png" 220 120
+ (lambda (canvas)
+   (define page
+     (make-output-page 220 120
+       (lambda (pc)
+         (with-skia ([blue (make-paint #:color "#326DE6")])
+           (draw-rect pc 0 0 180 80 blue)))
+       #:margins 20 #:background "#EEF1F4"))
+   (with-skia ([image (output-page->image page #:dpi 72)])
+     (draw-image canvas image 0 0)))
+ #:background 'white)
+
+(render-reference-image
+ "output-page-unequal-stage10.png" 220 120
+ (lambda (canvas)
+   (define page
+     (make-output-page 220 120
+       (lambda (pc)
+         (with-skia ([blue (make-paint #:color "#326DE6")])
+           (draw-rect pc 0 0 165 80 blue)))
+       #:margins '(15 10 40 30) #:background "#EEF1F4"))
+   (with-skia ([image (output-page->image page #:dpi 72)])
+     (draw-image canvas image 0 0)))
+ #:background 'white)
+
+(render-reference-image
+ "output-page-no-clip-stage10.png" 220 120
+ (lambda (canvas)
+   (define page
+     (make-output-page 220 120
+       (lambda (pc)
+         (with-skia ([blue (make-paint #:color "#326DE6")])
+           (draw-circle pc 0 0 45 blue)))
+       #:margins 25 #:clip? #f #:background "#EEF1F4"))
+   (with-skia ([image (output-page->image page #:dpi 72)])
+     (draw-image canvas image 0 0)))
+ #:background 'white)
+
+(render-reference-image
+ "output-page-background-stage10.png" 220 120
+ (lambda (canvas)
+   (define page
+     (make-output-page 220 120
+       (lambda (pc)
+         (with-skia ([orange (make-paint #:color "#EFA02B")])
+           (draw-circle pc 90 45 32 orange)))
+       #:margins 20 #:background "#326DE6"))
+   (with-skia ([image (output-page->image page #:dpi 72)])
+     (draw-image canvas image 0 0)))
+ #:background 'white)
+
+(render-reference-image
+ "output-page-mm-stage10.png" 220 120
+ (lambda (canvas)
+   (define page
+     (make-output-page 80 45
+       (lambda (pc)
+         (with-skia ([blue (make-paint #:color "#326DE6")])
+           (draw-rounded-rect pc 5 5 60 25 5 5 blue)))
+       #:unit 'mm #:margins 5 #:background 'white))
+   (with-skia ([image (output-page->image page #:dpi 72)])
+     (draw-image-rect canvas image 0 0 220 120)))
+ #:background 'white)
+
+(render-reference-image
+ "draw-output-page-rotated-stage10.png" 240 140
+ (lambda (canvas)
+   (define page
+     (make-output-page 100 60
+       (lambda (pc)
+         (with-skia ([blue (make-paint #:color "#326DE6")])
+           (draw-rounded-rect pc 0 0 100 60 10 10 blue)))
+       #:background "#EEF1F4"))
+   (with-canvas-state canvas
+     (canvas-translate! canvas 70 35)
+     (canvas-rotate! canvas 12)
+     (draw-output-page canvas page)))
+ #:background 'white)
+
+(render-reference-image
+ "output-page-rasterized-stage10.png" 220 120
+ (lambda (canvas)
+   (define page
+     (make-output-page 220 120
+       (lambda (pc)
+         (with-skia ([blur (make-blur-image-filter 4 4)]
+                     [paint (make-paint #:color "#326DE6" #:image-filter blur)])
+           (draw-rasterized pc 45 25 110 60
+             (lambda (rc) (draw-rounded-rect rc 0 0 110 60 14 14 paint))
+             #:scale 2 #:padding 12)))
+       #:background 'white))
+   (with-skia ([image (output-page->image page #:dpi 72)])
+     (draw-image canvas image 0 0)))
+ #:background 'white)
