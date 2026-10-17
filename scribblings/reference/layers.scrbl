@@ -38,32 +38,24 @@ is restored and composited. A normal state save has no intermediate target.
 
 @section{Simple Layers}
 
-@defproc[(canvas-save-layer! [canvas canvas?]
-          [#:bounds bounds (or/c #f list? vector?) #f]
-          [#:paint paint (or/c paint? #f) #f])
-          exact-positive-integer?]{
-Saves a layer and returns the save count from before the push. Restore to that
-count to composite and remove the layer. A false bound leaves native bounds
-selection to Skia. The paint is optional; its compositing settings are captured
-for restore rather than applied as a paint to every drawing command inside.
-
-Bounds are four drawing-scalar values with nonnegative extents and valid computed
-edges. The caller must balance this low-level operation, including on exceptions;
-prefer @racket[call-with-canvas-layer] for a protected scope.
-}
-
 @defproc[(call-with-canvas-layer [canvas canvas?]
           [thunk (-> any)]
           [#:bounds bounds (or/c #f list? vector?) #f]
           [#:paint paint (or/c paint? #f) #f])
           any]{
-Calls a zero-argument function inside a layer, preserving its return values.
-The layer establishes a protected save floor and a continuation barrier, and
-restores the prior save count on return or escape.
+Calls @racket[thunk] inside a layer and returns its results. The protected save
+floor prevents the callback from restoring state outside the layer. A
+continuation barrier prevents reentry after the scope ends. The prior save
+count is restored on return or escape.
+
+The optional paint supplies the compositing settings used when the layer is
+restored, not for each drawing operation inside it. Bounds are four drawing
+scalars: x, y, width, and height. Width and height must be nonnegative, and the
+computed right and bottom edges must also be drawing scalars. A false bound
+leaves bounds selection to Skia.
 
 Cleanup composites the layer even when the callback raises. It is state cleanup,
 not pixel rollback. An enclosing document helper can separately abort the document.
-The bound and paint meanings are those of @racket[canvas-save-layer!].
 
 @racketblock[
 (with-skia ([surface (make-surface 160 100 #:background 'white)]
@@ -93,6 +85,7 @@ Like @racket[call-with-canvas-layer], with the body supplying the callback.
 Each optional clause may appear at most once, in either order, before the body.
 The body is nonempty, may contain internal definitions, and ends with an expression.
 }
+
 @section{Layer Options}
 
 A @deftech{layer-options value} is detached immutable data. It stores bounds and
@@ -148,21 +141,6 @@ Reports whether the F16-storage flag was requested, not whether a backend fulfil
 
 @section{Backdrop Filters and Protected Layers}
 
-@defproc[(canvas-save-layer-rec! [canvas canvas?]
-          [#:options options layer-options? (make-layer-options)]
-          [#:paint paint (or/c paint? #f) #f]
-          [#:backdrop backdrop (or/c image-filter? #f) #f])
-          exact-positive-integer?]{
-Saves a layer using the options, optional composite paint, and optional
-backdrop filter. Returns the previous save count. The backdrop operates on the
-previous destination content used to initialize the layer, not on drawing that
-will occur later inside it. Referenced native inputs are validated with the
-canvas and their required context affinity.
-
-The options' bounds are not an explicit clip. The caller must balance this
-low-level save; @racket[call-with-canvas-layer-rec] provides protected cleanup.
-}
-
 @defproc[(call-with-canvas-layer-rec [canvas canvas?]
           [thunk (-> any)]
           [#:options options layer-options? (make-layer-options)]
@@ -170,10 +148,15 @@ low-level save; @racket[call-with-canvas-layer-rec] provides protected cleanup.
           [#:backdrop backdrop (or/c image-filter? #f) #f]
           [#:clip clip (or/c #f list? vector?) #f])
           any]{
-Calls the zero-argument function inside a protected advanced layer and
-preserves its return values. The function must not require keyword arguments.
-The canvas owner is pinned during the layer scope, its save floor is protected,
-and continuation reentry is prohibited.
+Calls @racket[thunk] inside a protected layer and returns its results.
+The function must not require keyword arguments. The canvas owner is kept alive
+and cannot be closed during the scope. The protected save floor prevents
+restoring state outside the layer, and continuation reentry is prohibited.
+
+The @racket[backdrop] filter processes existing destination content used to
+initialize the layer, not new drawing inside it. The options' bounds are not
+an explicit clip. The canvas, paint, and filter must satisfy their native-use
+and GPU-context requirements.
 
 A supplied clip is an explicit local-coordinate rectangular intersection applied
 in an outer saved state before layer creation. This is distinct from the bounds
@@ -259,6 +242,39 @@ conservative allocation/culling hint; the orange rectangle is present because
 the already-drawn pattern before the callback, whereas
 @racket[#:initialize-with-previous?] requests an unfiltered copy of that
 previous content.
+}
+
+@section[#:tag "skia-layer-manual-state"]{Manual Layer Management}
+
+Use @racket[with-canvas-layer] or @racket[call-with-canvas-layer] for a simple
+layer, and @racket[call-with-canvas-layer-rec] for layer options and backdrop
+filters. These helpers restore the canvas state automatically. The save
+operations in this section leave the layer active after returning. The caller
+must restore the returned save count with @racket[canvas-restore-to-count!],
+including when drawing raises an exception or exits early.
+
+@defproc[(canvas-save-layer! [canvas canvas?]
+          [#:bounds bounds (or/c #f list? vector?) #f]
+          [#:paint paint (or/c paint? #f) #f])
+          exact-positive-integer?]{
+Saves a layer and returns the save count from before the push. Restore to that
+count to composite and remove the layer. Bounds and paint follow the rules of
+@racket[call-with-canvas-layer]. The caller must balance this operation, including on exceptions;
+prefer @racket[call-with-canvas-layer] for a protected scope.
+}
+
+@defproc[(canvas-save-layer-rec! [canvas canvas?]
+          [#:options options layer-options? (make-layer-options)]
+          [#:paint paint (or/c paint? #f) #f]
+          [#:backdrop backdrop (or/c image-filter? #f) #f])
+          exact-positive-integer?]{
+Saves a layer using the options, optional compositing paint, and optional
+backdrop filter, as described for @racket[call-with-canvas-layer-rec]. The result
+is the previous save count. Referenced native inputs are checked with the canvas
+and must satisfy their GPU-context requirements.
+
+The options' bounds are not an explicit clip. The caller must balance this
+low-level save; @racket[call-with-canvas-layer-rec] provides protected cleanup.
 }
 
 @section{Discarding Target Contents}

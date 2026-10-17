@@ -18,7 +18,7 @@ transferring it implicitly.
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Construction}
+@section[#:tag "skia-image-loading"]{Loading Images}
 
 @defproc[(image? [v any/c]) boolean?]{
 Returns @racket[#t] for an image, including a GPU image or a closed wrapper,
@@ -26,45 +26,12 @@ and @racket[#f] otherwise. It does not establish that pixels are decoded or
 that the resource is valid for native use.
 }
 
-@defproc[(rgba-bytes->image [width (integer-in 1 32768)]
-                           [height (integer-in 1 32768)] [pixels bytes?]
-                           [#:premultiplied? premultiplied? boolean? #f]
-                           [#:color-space space (or/c color-space? #f) #f]) image?]{
-Copies tightly packed RGBA bytes into a new owned raster image. The byte string
-must contain exactly @racket[(* width height 4)] bytes, within
-@racket[current-skia-byte-limit]. Rows run from top to bottom, with no padding.
-Later mutation of @racket[pixels] does not change the image.
-
-The default uses @tech{unpremultiplied alpha}. With @racket[premultiplied?] true,
-each RGB byte must be no greater than its pixel's alpha byte; otherwise the
-operation raises an exception. The option describes the supplied bytes, not a
-request to multiply them. A supplied @racket[space] declares their interpretation
-without converting them. The image retains its own native color-space reference.
-
-@racketblock[
-(with-skia ([image (rgba-bytes->image 2 1 (bytes 255 0 0 255 0 0 255 128))]
-            [surface (make-surface 200 100 #:background 'white)]
-            [dark (make-paint #:color "#D9DEE4")]
-            [light (make-paint #:color "#F1F3F5")]
-            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
-            [font (make-font #:size 12)]
-            [label (make-paint #:color "#20344E")])
-  (define canvas (surface-canvas surface))
-  (draw-simple-text canvas "opaque red" 20 20 font label)
-  (draw-simple-text canvas "blue alpha 128" 105 20 font label)
-  (for* ([row (in-range 3)] [column (in-range 8)])
-    (draw-rect canvas (+ 20 (* column 20)) (+ 35 (* row 20)) 20 20
-               (if (even? (+ row column)) light dark)))
-  (draw-image-rect canvas image 20 35 160 50 #:sampling 'nearest)
-  (draw-rect canvas 20 35 160 50 outline)
-  (bytes->list (image->rgba-bytes image)))
-]
-
-@reference-figure["image-rgba-alpha.png"
-                  "An actual two-pixel RGBA image enlarged with nearest-neighbor sampling. The opaque red pixel is at left; the half-alpha blue pixel is at right over a declared gray checkerboard preview."]
-
-The checkerboard is behind the image only to expose blue's alpha 128. It is not part of
-the supplied RGBA bytes.
+@defproc[(image-from-file [filename path-string?]) image?]{
+Creates an image from a nonempty encoded file. The file must exist, its size
+must fit @racket[current-skia-byte-limit], and its path must not contain an
+embedded NUL. Native image construction applies the dimension checks described
+for @racket[image-from-bytes]. The native image retains encoded data
+for deferred decoding; no Racket input port remains open on the caller's behalf.
 }
 
 @defproc[(image-from-bytes [encoded bytes?]) image?]{
@@ -80,15 +47,7 @@ The operation does not expose an animation's individual frames. Frame selection
 and explicit @tech{encoded orientation} handling belong to the @tech{codec} interfaces.
 }
 
-@defproc[(image-from-file [filename path-string?]) image?]{
-Creates an image from a nonempty encoded file. The file must exist, its size
-must fit @racket[current-skia-byte-limit], and its path must not contain an
-embedded NUL. Native image construction applies the dimension checks described
-for @racket[image-from-bytes]. The native image retains encoded data
-for deferred decoding; no Racket input port remains open on the caller's behalf.
-}
-
-@section{Image Properties}
+@section[#:tag "skia-image-dimensions"]{Image Dimensions}
 
 @defproc[(image-width [image image?]) exact-positive-integer?]{
 Returns the stored pixel width, including after the resource is closed. This
@@ -98,57 +57,6 @@ metadata query does not decode pixels or activate a GPU context.
 @defproc[(image-height [image image?]) exact-positive-integer?]{
 Returns the stored pixel height, including after closure. The same metadata
 restrictions as @racket[image-width] apply.
-}
-
-@defproc[(image-color-type [image image?]) symbol?]{
-Returns the native pixel-format name, such as @racket['rgba-8888],
-@racket['bgra-8888], or @racket['rgba-f16]. The result is not the encoded file
-format: a PNG and a JPEG may decode into the same pixel format. Unlike the stored
-dimension queries, this call requires the image to be valid for native use.
-}
-
-@defproc[(image-alpha-type [image image?]) (or/c 'unknown 'opaque 'premul 'unpremul)]{
-Returns the image's native alpha interpretation. Opaque means no transparency;
-premultiplied means stored RGB is multiplied by alpha; unpremultiplied means
-RGB is stored independently. The unknown value denotes no usable declared alpha
-type, rather than a fourth blending rule. The query requires native resource validity.
-}
-
-@defproc[(image-color-space [image image?]) (or/c color-space? #f)]{
-Returns an independently owned reference to the image's color space, or
-@racket[#f] for an untagged image. The returned reference remains usable after
-the image is closed. It is a CPU color-space resource even when obtained from
-a GPU image, although querying the GPU image requires its normal context rules.
-}
-
-@defproc[(image-original-encoded-bytes [image image?]) (or/c bytes? #f)]{
-Returns a new mutable copy of retained encoded data when the native image has
-such data, or @racket[#f] otherwise. It does not encode raster pixels. A surface
-snapshot or a raw-byte image therefore need not have an original encoded form.
-The copied data must fit @racket[current-skia-byte-limit]. GPU-dependent input
-is not accepted by this ordinary CPU API.
-}
-
-@section{Pixel Copies and Subsets}
-
-@defproc[(image->rgba-bytes [image image?]
-                           [#:premultiplied? premultiplied? boolean? #f]
-                           [#:color-space space (or/c color-space? #f) #f]) bytes?]{
-Returns a new mutable, tightly packed RGBA byte string. Row order, alpha
-interpretation, destination color-space selection, and size limits are the
-same as for @racket[surface->rgba-bytes]. The read may trigger deferred decoding.
-A failed native read raises an exception instead of returning partial bytes.
-The image itself is unchanged.
-}
-
-@defproc[(image-subset [image image?]
-                      [x exact-nonnegative-integer?] [y exact-nonnegative-integer?]
-                      [width exact-positive-integer?] [height exact-positive-integer?]) image?]{
-Returns an independently owned raster subset. The rectangle must fit entirely
-within the image; it is not silently clipped. Unlike drawing source rectangles,
-these coordinates and extents must be exact integers. The subset remains usable
-after the source is closed, although native storage may be shared. GPU-dependent
-images require an explicit GPU-subset or transfer operation instead.
 }
 
 @section[#:tag "skia-image-drawing"]{Drawing Images}
@@ -229,6 +137,18 @@ offset, see @secref["skia-image-filter-results"].
                   "The complete yellow-and-blue source image on the left and an enlarged central source rectangle on the right."]
 }
 
+@section[#:tag "skia-image-subsets"]{Image Subsets}
+
+@defproc[(image-subset [image image?]
+                      [x exact-nonnegative-integer?] [y exact-nonnegative-integer?]
+                      [width exact-positive-integer?] [height exact-positive-integer?]) image?]{
+Returns an independently owned raster subset. The rectangle must fit entirely
+within the image; it is not silently clipped. Unlike drawing source rectangles,
+these coordinates and extents must be exact integers. The subset remains usable
+after the source is closed, although native storage may be shared. GPU-dependent
+images require an explicit GPU-subset or transfer operation instead.
+}
+
 @section{Standard Conversion}
 
 Images implement @racketmodname[file/convertible]'s protocol. A live CPU image accepts
@@ -257,6 +177,100 @@ The original Skia image can be closed after the pict is constructed.
 To construct a pict without PNG encoding and decoding, use @racket[image->pict]
 from @racketmodname[skia/pict]. It also supports an explicit logical backing
 scale through @racket[#:backing-scale].
+
+@section[#:tag "skia-image-pixel-copies"]{Raw Pixel Construction and Readback}
+
+To load encoded images, use @racket[image-from-file] or @racket[image-from-bytes].
+To display an image, use @racket[draw-image] or @racket[draw-image-rect]. The
+operations in this section instead accept or return raw RGBA pixels. Callers
+must account for the pixel layout and alpha representation.
+
+@defproc[(rgba-bytes->image [width (integer-in 1 32768)]
+                           [height (integer-in 1 32768)] [pixels bytes?]
+                           [#:premultiplied? premultiplied? boolean? #f]
+                           [#:color-space space (or/c color-space? #f) #f]) image?]{
+Copies tightly packed RGBA bytes into a new owned raster image. The byte string
+must contain exactly @racket[(* width height 4)] bytes, within
+@racket[current-skia-byte-limit]. Rows run from top to bottom, with no padding.
+Later mutation of @racket[pixels] does not change the image.
+
+The default uses @tech{unpremultiplied alpha}. With @racket[premultiplied?] true,
+each RGB byte must be no greater than its pixel's alpha byte; otherwise the
+operation raises an exception. The option describes the supplied bytes, not a
+request to multiply them. A supplied @racket[space] declares their interpretation
+without converting them. The image retains its own native color-space reference.
+
+@racketblock[
+(with-skia ([image (rgba-bytes->image 2 1 (bytes 255 0 0 255 0 0 255 128))]
+            [surface (make-surface 200 100 #:background 'white)]
+            [dark (make-paint #:color "#D9DEE4")]
+            [light (make-paint #:color "#F1F3F5")]
+            [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
+            [font (make-font #:size 12)]
+            [label (make-paint #:color "#20344E")])
+  (define canvas (surface-canvas surface))
+  (draw-simple-text canvas "opaque red" 20 20 font label)
+  (draw-simple-text canvas "blue alpha 128" 105 20 font label)
+  (for* ([row (in-range 3)] [column (in-range 8)])
+    (draw-rect canvas (+ 20 (* column 20)) (+ 35 (* row 20)) 20 20
+               (if (even? (+ row column)) light dark)))
+  (draw-image-rect canvas image 20 35 160 50 #:sampling 'nearest)
+  (draw-rect canvas 20 35 160 50 outline)
+  (bytes->list (image->rgba-bytes image)))
+]
+
+@reference-figure["image-rgba-alpha.png"
+                  "An actual two-pixel RGBA image enlarged with nearest-neighbor sampling. The opaque red pixel is at left; the half-alpha blue pixel is at right over a declared gray checkerboard preview."]
+
+The checkerboard is behind the image only to expose blue's alpha 128. It is not part of
+the supplied RGBA bytes.
+}
+
+@defproc[(image->rgba-bytes [image image?]
+                           [#:premultiplied? premultiplied? boolean? #f]
+                           [#:color-space space (or/c color-space? #f) #f]) bytes?]{
+Returns a new mutable, tightly packed RGBA byte string. Row order, alpha
+interpretation, destination color-space selection, and size limits are the
+same as for @racket[surface->rgba-bytes]. The read may trigger deferred decoding.
+A failed native read raises an exception instead of returning partial bytes.
+The image itself is unchanged.
+}
+
+@section{Image Properties}
+
+Use @racket[image-width] and @racket[image-height] for image dimensions. These
+queries inspect storage formats, color spaces, and retained encoded data;
+ordinary drawing does not require them.
+
+@defproc[(image-color-type [image image?]) symbol?]{
+Returns the native pixel-format name, such as @racket['rgba-8888],
+@racket['bgra-8888], or @racket['rgba-f16]. The result is not the encoded file
+format: a PNG and a JPEG may decode into the same pixel format. Unlike the stored
+dimension queries, this call requires the image to be valid for native use.
+}
+
+@defproc[(image-alpha-type [image image?]) (or/c 'unknown 'opaque 'premul 'unpremul)]{
+Returns the image's native alpha interpretation. Opaque means no transparency.
+With @tech{premultiplied alpha}, stored RGB is multiplied by alpha. With
+@tech{unpremultiplied alpha}, RGB is stored independently. The unknown value means
+that no usable alpha type is declared; it is not a fourth blending rule.
+The image must be valid for native use.
+}
+
+@defproc[(image-color-space [image image?]) (or/c color-space? #f)]{
+Returns an independently owned reference to the image's color space, or
+@racket[#f] for an untagged image. The returned reference remains usable after
+the image is closed. It is a CPU color-space resource even when obtained from
+a GPU image, although querying the GPU image requires its normal context rules.
+}
+
+@defproc[(image-original-encoded-bytes [image image?]) (or/c bytes? #f)]{
+Returns a new mutable copy of retained encoded data when the native image has
+such data, or @racket[#f] otherwise. It does not encode raster pixels. A surface
+snapshot or a raw-byte image therefore need not have an original encoded form.
+The copied data must fit @racket[current-skia-byte-limit]. GPU-dependent input
+is not accepted by this ordinary CPU API.
+}
 
 @section{Additional Visual Examples}
 

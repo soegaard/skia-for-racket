@@ -13,7 +13,7 @@ canvas also requires its matching active lease.
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Clearing and Backend Queries}
+@section[#:tag "skia-canvas-clear"]{Clearing}
 
 @defproc[(canvas-clear! [canvas canvas?] [color color?]) void?]{
 Replaces the content inside the current clip with @racket[color], using source
@@ -23,44 +23,12 @@ existing content inside the clip. The operation does not reset the transform,
 clip, or save stack.
 }
 
-@defproc[(canvas-execution-backend [canvas canvas?]) symbol?]{
-Returns the execution backend of a valid canvas. Ordinary targets report
-@racket['raster], @racket['recording], @racket['pdf], or @racket['svg]; GPU targets
-report the selected GPU backend, such as @racket['opengl], @racket['metal], or
-@racket['direct3d]. Specialized canvases report their declared execution backend.
-Unlike @racket[surface-backend], this operation validates native use of the canvas.
-A backend name does not guarantee that every paint effect is supported.
-}
-
 @section[#:tag "skia-canvas-save"]{Saving and Restoring State}
 
 The @deftech{save count} is the number of canvas states, including the base state.
 A new ordinary canvas has a save count of one. Saving pushes a copy of the
 current transform and clip. Restoring removes saved states; it does not undo
 drawing or restore mutations of a @tech{paint} or @tech{path}.
-
-@defproc[(canvas-save! [canvas canvas?]) exact-positive-integer?]{
-Saves the current transform and clip and returns the save count from before
-this save. Passing that result to @racket[canvas-restore-to-count!] later restores
-the state that was current before the call.
-}
-
-@defproc[(canvas-save-count [canvas canvas?]) exact-positive-integer?]{
-Returns the current number of states, including the base state.
-}
-
-@defproc[(canvas-restore! [canvas canvas?]) void?]{
-Restores the previous transform and clip by removing the top state. An attempt
-to remove the base state, or a state protected by an enclosing state or layer
-scope, raises an exception instead of silently doing nothing.
-}
-
-@defproc[(canvas-restore-to-count! [canvas canvas?]
-                                  [count exact-positive-integer?]) void?]{
-Restores states until the save count is @racket[count]. The requested count must
-be at least the current protected floor and no greater than the current save
-count. A count equal to the current count leaves the state unchanged.
-}
 
 @defproc[(call-with-canvas-state [canvas canvas?] [proc (-> any)]) any]{
 Saves the canvas state, calls @racket[proc] with no arguments, and returns its
@@ -128,7 +96,7 @@ transform and @math{M} is the newly supplied transform. A point is mapped by
 scales the drawing's local coordinates without scaling the earlier translation.
 See @racket[matrix-compose] for the corresponding operation on detached values.
 
-@bold{Conceptual diagram.} The two orders below use @math{T=(10,20)}, uniform
+@bold{Conceptual diagram.} The two transform orders use @math{T=(10,20)}, uniform
 @math{S=2}, and @math{p=(3,4)}. @racket[(matrix-compose T S)] maps the point
 by @math{S} first, producing @math{(16,28)}, while
 @racket[(matrix-compose S T)] produces @math{(26,48)}. Canvas calls accumulate
@@ -320,8 +288,8 @@ clip; it does not select everything outside the rectangle across the surface.
 @reference-figure["clip-within-existing-clip.png"
                   "Nearest-neighbor enlargements of the two actual eight-by-six clip states. Intersection leaves only the central two-by-two blue area; difference leaves the initial six-column blue region with that two-by-two area removed. The legend identifies samples at y three with x coordinates three, one, and seven."]
 
-Both panels start with the same left-six-column clip. The sample legend refers to the returned
-booleans above, rather than adding marks to the actual pixel results.
+Both panels start with the same left-six-column clip. The sample legend identifies
+the positions tested by the example; the image adds no marks to the pixel results.
 
 
 @racketblock[
@@ -436,6 +404,47 @@ Returns @racket[#t] when the transformed local rectangle can be rejected
 against the current clip. A false result does not prove intersection or visible
 output. The query has no paint argument and does not expand the rectangle for
 strokes, filters, or other painted extents.
+}
+
+@section[#:tag "skia-canvas-manual-state"]{Manual Canvas State Management}
+
+Use @racket[with-canvas-state] or @racket[call-with-canvas-state] to restore the
+transform and clip automatically when a drawing scope ends. The operations in
+this section control individual saved states. The caller must balance saves
+and restores, including when drawing raises an exception or exits early.
+
+@defproc[(canvas-save! [canvas canvas?]) exact-positive-integer?]{
+Saves the current transform and clip and returns the save count from before
+this save. Passing that result to @racket[canvas-restore-to-count!] later restores
+the state that was current before the call.
+}
+
+@defproc[(canvas-save-count [canvas canvas?]) exact-positive-integer?]{
+Returns the current number of states, including the base state.
+}
+
+@defproc[(canvas-restore! [canvas canvas?]) void?]{
+Restores the previous transform and clip by removing the top state. An attempt
+to remove the base state, or a state protected by an enclosing state or layer
+scope, raises an exception instead of silently doing nothing.
+}
+
+@defproc[(canvas-restore-to-count! [canvas canvas?]
+                                  [count exact-positive-integer?]) void?]{
+Restores states until the save count is @racket[count]. The requested count must
+be at least the current protected floor and no greater than the current save
+count. A count equal to the current count leaves the state unchanged.
+}
+
+@section[#:tag "skia-canvas-backend"]{Backend Queries}
+
+@defproc[(canvas-execution-backend [canvas canvas?]) symbol?]{
+Returns the execution backend of a valid canvas. Ordinary targets report
+@racket['raster], @racket['recording], @racket['pdf], or @racket['svg]; GPU targets
+report the selected GPU backend, such as @racket['opengl], @racket['metal], or
+@racket['direct3d]. Specialized canvases report their declared execution backend.
+Unlike @racket[surface-backend], this operation validates native use of the canvas.
+A backend name does not guarantee that every paint effect is supported.
 }
 
 @section{Additional Visual Examples}

@@ -8,8 +8,8 @@
 @(declare-exporting skia)
 
 An @deftech{SVG document} owns one canvas and an XML output stream. It has a
-single viewport rather than a @tech{PDF document}'s sequence of pages. Coordinates use the usual
-upper-left drawing origin with downward-positive y. Width and height are SVG
+single viewport rather than a @tech{PDF document}'s sequence of pages. Coordinates
+start at the upper-left, with y increasing downward. Width and height are SVG
 user units, not a request to allocate an equally sized raster surface.
 
 Finalization completes the XML and invalidates the drawing canvas. The document
@@ -17,7 +17,58 @@ must remain open to retrieve the finished bytes. Releasing unfinished storage
 is not a way to publish SVG. For shared physical sizes in PDF and SVG, use the
 @seclink["skia-output-pages"]{output-page interface}.
 
+@local-table-of-contents[#:style 'immediate-only]
+
+@section[#:tag "skia-svg-output"]{Creating SVG Output}
+
+Use @racket[call-with-svg-file] to write a file, @racket[call-with-svg-string]
+to obtain XML text, or @racket[call-with-svg-bytes] to obtain bytes. Each helper
+passes a canvas to a drawing callback, finishes the document, and releases it.
+
+@defproc[(call-with-svg-file [filename path-string?]
+                            [width (real-in 1/1000 32768)]
+                            [height (real-in 1/1000 32768)]
+                            [proc (-> canvas? any)]
+                            [#:exists exists (or/c 'error 'replace) 'error]
+          [#:title title string? ""]
+          [#:description description string? ""]
+          [#:id-prefix id-prefix string? "skia"]) void?]{
+Runs @racket[call-with-svg-bytes] and publishes the completed output according
+to @racket[save-svg]'s file rules. The destination is resolved and checked before
+the callback, so changing @racket[current-directory] cannot redirect the file.
+Callback and finalization failures leave any existing destination untouched.
+}
+
+@defproc[(call-with-svg-bytes [width (real-in 1/1000 32768)]
+                             [height (real-in 1/1000 32768)]
+                             [proc (-> canvas? any)]
+          [#:title title string? ""]
+          [#:description description string? ""]
+          [#:id-prefix id-prefix string? "skia"]) (and/c bytes? (not/c immutable?))]{
+Creates an SVG document and calls @racket[proc] with its canvas. After the
+callback returns, the helper discards its results, finishes the XML, and returns
+the bytes. Settings have the meaning described at @racket[make-svg-document].
+The document is released on success or escape; the canvas cannot be retained
+for later drawing. Bytes are returned only if both drawing and finalization succeed.
+}
+
+@defproc[(call-with-svg-string [width (real-in 1/1000 32768)]
+                              [height (real-in 1/1000 32768)]
+                              [proc (-> canvas? any)]
+          [#:title title string? ""]
+          [#:description description string? ""]
+          [#:id-prefix id-prefix string? "skia"]) string?]{
+Like @racket[call-with-svg-bytes], returning the UTF-8-decoded SVG string.
+The callback receives a canvas, not a document.
+}
+
 @section{Construction and Lifetime}
+
+For automatic finalization and cleanup, use @racket[call-with-svg-file],
+@racket[call-with-svg-string], or @racket[call-with-svg-bytes]. Explicit
+construction keeps the document open across separate drawing calls. The caller
+must finish it before reading or saving the result, and must release it on
+success or failure.
 
 @defproc[(svg-document? [v any/c]) boolean?]{
 Returns @racket[#t] for an SVG document and @racket[#f] otherwise.
@@ -82,16 +133,6 @@ but does not alter detached results or files returned by earlier successful call
 
 @section{Reading and Publishing SVG}
 
-@subsection{Standard Conversion}
-
-SVG documents participate in @racketmodname[file/convertible] as
-@racket['svg-bytes]. It has exactly @racket[svg-document->bytes]'s lifecycle:
-the document must have finished successfully and must remain open. Conversion
-does not complete, abort, or release it. Unsupported requests return their
-supplied default unchanged without checking the document; supported requests
-preserve ordinary unfinished, aborted, closed, and wrong-thread errors rather
-than replacing them with that default.
-
 @defproc[(svg-document->bytes [document svg-document?])
           (and/c bytes? (not/c immutable?))]{
 Returns a fresh mutable copy of the finished SVG. The document must be finished
@@ -127,39 +168,12 @@ The preview shows the callback's geometry only; SVG representation and publicati
 separate checks.
 }
 
-@defproc[(call-with-svg-bytes [width (real-in 1/1000 32768)]
-                             [height (real-in 1/1000 32768)]
-                             [proc (-> canvas? any)]
-          [#:title title string? ""]
-          [#:description description string? ""]
-          [#:id-prefix id-prefix string? "skia"]) (and/c bytes? (not/c immutable?))]{
-Creates an SVG document, calls @racket[proc] with its canvas, discards the
-callback's results, finishes the XML, and returns the bytes. Settings have the
-meaning described at @racket[make-svg-document]. The document is released on
-success or escape; the canvas cannot be retained for later drawing. No completed
-result escapes unless both the callback and finalization succeed.
-}
+@subsection{Standard Conversion}
 
-@defproc[(call-with-svg-string [width (real-in 1/1000 32768)]
-                              [height (real-in 1/1000 32768)]
-                              [proc (-> canvas? any)]
-          [#:title title string? ""]
-          [#:description description string? ""]
-          [#:id-prefix id-prefix string? "skia"]) string?]{
-Like @racket[call-with-svg-bytes], returning the UTF-8-decoded SVG string.
-The callback receives a canvas, not a document.
-}
-
-@defproc[(call-with-svg-file [filename path-string?]
-                            [width (real-in 1/1000 32768)]
-                            [height (real-in 1/1000 32768)]
-                            [proc (-> canvas? any)]
-                            [#:exists exists (or/c 'error 'replace) 'error]
-          [#:title title string? ""]
-          [#:description description string? ""]
-          [#:id-prefix id-prefix string? "skia"]) void?]{
-Runs @racket[call-with-svg-bytes] and publishes the completed output according
-to @racket[save-svg]'s file rules. The destination is resolved and checked before
-the callback, so changing @racket[current-directory] cannot redirect the file.
-Callback and finalization failures leave any existing destination untouched.
-}
+SVG documents participate in @racketmodname[file/convertible] as
+@racket['svg-bytes]. It has exactly @racket[svg-document->bytes]'s lifecycle:
+the document must have finished successfully and must remain open. Conversion
+does not complete, abort, or release it. Unsupported requests return their
+supplied default unchanged without checking the document; supported requests
+preserve ordinary unfinished, aborted, closed, and wrong-thread errors rather
+than replacing them with that default.

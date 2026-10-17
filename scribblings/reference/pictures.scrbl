@@ -29,52 +29,6 @@ between GPU contexts or serializable without readback.
 Returns @racket[#t] for a picture, including a closed picture, and @racket[#f] otherwise.
 }
 
-@defproc[(picture-recorder? [v any/c]) boolean?]{
-Returns @racket[#t] for a picture recorder and @racket[#f] otherwise.
-}
-
-@defproc[(make-picture-recorder) picture-recorder?]{
-Returns an owned recorder with no active recording. The recorder may be reused
-after successfully finishing a recording. Closing it discards any unfinished
-recording; closing does not return a picture.
-}
-
-@defproc[(picture-recorder-recording? [recorder picture-recorder?]) boolean?]{
-Reports the recorder's recording flag. Beginning a recording sets the flag;
-successfully finishing clears it. This is a stored-state query, not a test that
-the native resource remains open. Use @racket[skia-closed?] for the latter.
-}
-
-@defproc[(picture-recorder-begin-recording!
-          [recorder picture-recorder?] [x real?] [y real?]
-          [width (and/c real? (>=/c 0))] [height (and/c real? (>=/c 0))]
-          [#:spatial-index spatial-index (or/c 'none 'rtree) 'none]) canvas?]{
-Begins a recording and returns its @tech{borrowed canvas}. The recorder must be open
-and must not already be recording. Coordinates, extents, and computed right
-and bottom coordinates must be drawing scalars. Zero extents are permitted.
-The rectangle is a culling bound, not a promise that drawing outside it will
-be preserved or clipped in a particular way. Add an explicit canvas clip when
-clipping is required.
-
-The default @racket['none] records without a spatial index. The @racket['rtree]
-option builds a spatial index for playback and may tighten the native culling
-bounds. Neither option changes the nominal width and height stored in the
-returned picture. The origin is not translated to zero.
-
-Use the returned canvas only for this active recording; do not close it
-independently or reuse it across recordings. Finishing or closing the recorder
-ends the current recording's use of the canvas.
-}
-
-@defproc[(picture-recorder-finish-recording!
-          [recorder picture-recorder?]) picture?]{
-Finishes the active recording and returns an owned picture. The recorder must
-be open and recording, and no protected canvas-state or layer scope may remain
-active. The nominal picture dimensions are those supplied when recording began.
-Finishing does not close the recorder. Native failure raises an exception rather
-than returning a false picture.
-}
-
 @defproc[(call-with-picture [width (integer-in 1 32768)]
                             [height (integer-in 1 32768)]
                             [proc (-> canvas? any)]
@@ -84,7 +38,7 @@ returns the finished picture. The callback's results are discarded. The
 recorder is released on success or escape; the returned picture is not released.
 Do not retain the callback's canvas for later drawing.
 
-Unlike the lower-level begin operation, this helper requires exact positive
+Unlike @racket[picture-recorder-begin-recording!], this helper requires exact positive
 integer extents and applies the usual @racket[(* 4 width height)] byte-limit
 check, even though it records commands rather than allocating a raster page.
 
@@ -107,16 +61,6 @@ The paint has already been closed when the picture is replayed.
 
 @section{Playback and Inspection}
 
-@defproc[(picture-width [picture picture?]) (and/c real? (>=/c 0))]{
-Returns the stored nominal width. This detached metadata remains readable after
-closure. It is not a measurement of visible ink or a fresh native culling query.
-}
-
-@defproc[(picture-height [picture picture?]) (and/c real? (>=/c 0))]{
-Returns the stored nominal height, with the same distinction from native bounds
-as @racket[picture-width].
-}
-
 @defproc[(draw-picture [canvas canvas?] [picture picture?]
                       [#:x x real? 0] [#:y y real? 0]
                       [#:width width (or/c #f (and/c real? (>=/c 0))) #f]
@@ -128,9 +72,9 @@ different factors. Scaling a picture with a zero nominal dimension raises an
 exception. Requested zero extents are otherwise accepted.
 
 The current transform and clip still apply. The temporary translation and scale
-are restored afterward, including on escape; drawing already performed is not
-undone. The operation does not subtract a nonzero native cull origin, center the
-picture, or promise a purely vector representation on a document backend.
+are restored afterward, including on escape. Drawing already performed is not
+undone. The operation does not subtract a nonzero native cull origin or center
+the picture. Playback on a document backend is not guaranteed to remain entirely vector.
 
 
 @racketblock[
@@ -179,6 +123,22 @@ surface limits. GPU readback is not implicit.
                   "A translucent recorded blue circle is rasterized onto an explicit yellow background."]
 }
 
+@defproc[(picture-width [picture picture?]) (and/c real? (>=/c 0))]{
+Returns the stored nominal width. This detached metadata remains readable after
+closure. It is not a measurement of visible ink or a fresh native culling query.
+}
+
+@defproc[(picture-height [picture picture?]) (and/c real? (>=/c 0))]{
+Returns the stored nominal height, with the same distinction from native bounds
+as @racket[picture-width].
+}
+
+@section[#:tag "skia-picture-inspection"]{Detailed Picture Inspection}
+
+Use @racket[draw-picture] to replay a picture or @racket[picture->image] to
+rasterize it. These queries inspect native bounds and storage estimates; they
+are not needed for ordinary playback.
+
 @defproc[(picture-cull-bounds [picture picture?])
           (and/c (vector/c real? real? real? real?) immutable?)]{
 Returns a detached four-element vector containing the native culling rectangle's
@@ -203,6 +163,60 @@ It is not a count of Racket callback invocations or a timing prediction.
 @defproc[(picture-approximate-bytes-used [picture picture?]) exact-nonnegative-integer?]{
 Returns the native estimate of picture storage. It is not the serialized byte
 length, a complete accounting of retained resources, or a process-memory limit.
+}
+
+@section[#:tag "skia-picture-recorders"]{Explicit Recorder Management}
+
+For recording a drawing callback with automatic recorder cleanup, use
+@racket[call-with-picture]. Explicit recorder operations support recorder reuse
+and recording bounds with a nonzero origin or noninteger extents. The caller
+must finish the recording to obtain a picture and release the recorder when it
+is no longer needed. The recording canvas must not outlive its recording.
+
+@defproc[(picture-recorder? [v any/c]) boolean?]{
+Returns @racket[#t] for a picture recorder and @racket[#f] otherwise.
+}
+
+@defproc[(make-picture-recorder) picture-recorder?]{
+Returns an owned recorder with no active recording. The recorder may be reused
+after successfully finishing a recording. Closing it discards any unfinished
+recording; closing does not return a picture.
+}
+
+@defproc[(picture-recorder-recording? [recorder picture-recorder?]) boolean?]{
+Reports the recorder's recording flag. Beginning a recording sets the flag;
+successfully finishing clears it. This is a stored-state query, not a test that
+the native resource remains open. Use @racket[skia-closed?] for the latter.
+}
+
+@defproc[(picture-recorder-begin-recording!
+          [recorder picture-recorder?] [x real?] [y real?]
+          [width (and/c real? (>=/c 0))] [height (and/c real? (>=/c 0))]
+          [#:spatial-index spatial-index (or/c 'none 'rtree) 'none]) canvas?]{
+Begins a recording and returns its @tech{borrowed canvas}. The recorder must be open
+and must not already be recording. Coordinates, extents, and computed right
+and bottom coordinates must be drawing scalars. Zero extents are permitted.
+The rectangle is a culling bound, not a promise that drawing outside it will
+be preserved or clipped in a particular way. Add an explicit canvas clip when
+clipping is required.
+
+The default @racket['none] records without a spatial index. The @racket['rtree]
+option builds a spatial index for playback and may tighten the native culling
+bounds. Neither option changes the nominal width and height stored in the
+returned picture. The origin is not translated to zero.
+
+Use the returned canvas only for this active recording; do not close it
+independently or reuse it across recordings. Finishing or closing the recorder
+ends the current recording's use of the canvas.
+}
+
+@defproc[(picture-recorder-finish-recording!
+          [recorder picture-recorder?]) picture?]{
+Finishes the active recording and returns an owned picture. The recorder must
+be open and recording, and no protected canvas-state or layer scope may remain
+active. The nominal picture dimensions are those supplied when recording began.
+Finishing does not close the recorder. Native failure raises an exception rather
+than returning a false picture.
 }
 
 @section[#:tag "skia-picture-storage"]{Trusted Picture Storage}

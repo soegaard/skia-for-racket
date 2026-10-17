@@ -9,8 +9,8 @@
 
 A @deftech{font} combines a @tech{typeface} with a size, horizontal scale,
 skew, and rendering settings. Fonts are mutable @tech{owned resource}s.
-Native font operations require open resources on their owning thread unless
-an entry only inspects a detached metrics value.
+Native font operations require resources to be open on their owning thread.
+Inspecting detached metrics values does not require a live font.
 
 A @deftech{glyph ID} is a typeface-specific index, not a Unicode code point.
 Glyph zero is the missing-glyph index. A glyph ID from one face must not be
@@ -23,7 +23,7 @@ for mixed-direction text and font fallback.
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Font Construction and Settings}
+@section[#:tag "skia-font-construction"]{Font Construction}
 
 @defproc[(font? [v any/c]) boolean?]{
 Returns @racket[#t] for a font resource and @racket[#f] otherwise. Closure does not change the result.
@@ -66,6 +66,101 @@ The corresponding query and setter functions describe each setting.
 The font remains usable after the supplied wrapper is closed. The surrounding
 scope releases both wrappers; repeated closure of the face is harmless.
 }
+
+@section[#:tag "skia-simple-text"]{Simple Text Drawing and Measurement}
+
+An @deftech{advance} is the displacement of the next glyph origin. It is not
+an ink bound: a space can have an advance without visible ink, while a glyph
+can extend to either side of its advance interval. These simple operations use
+one typeface and the input character order. A newline does not request a new
+baseline; paragraph line breaking is provided by @racket[layout-text].
+
+@defproc[(draw-simple-text [canvas canvas?] [text string?] [x real?] [y real?]
+                  [font font?] [paint paint?]) void?]{
+Draws unshaped text with the @tech{baseline} origin at coordinates @racket[x] and
+@racket[y], using @racket[font] and @racket[paint]. The coordinates must be
+drawing scalars. The canvas transform and clip apply. The operation does not
+close its arguments. It is suitable only when direct character-to-glyph mapping
+and ordinary advances are sufficient.
+
+The baseline-relative metric diagram in @secref["skia-font-metrics"] explains
+why @racket[y] is a baseline origin rather than the top of the ink, and why an
+advance is not a string's ink width.
+
+Outline output uses @racket[simple-text-path] and has that operation's
+monochrome-outline limitations. Complex-script shaping, kerning and ligature
+substitution require the shaped-text operations.
+
+@racketblock[
+(with-skia ([surface (make-surface 240 80 #:background 'white)]
+            [font (make-font #:size 24)]
+            [paint (make-paint #:color 'black)])
+  (draw-simple-text (surface-canvas surface) "Skia" 16 48 font paint)
+  (save-png surface "simple-text.png" #:exists 'replace))
+]
+
+@reference-figure["simple-text.png"
+                  "The word Skia drawn in black on a white background using a 24-unit font."]
+}
+
+@defproc[(measure-simple-text [font font?] [text string?] [#:paint paint (or/c paint? #f) #f]) real?]{
+Returns the horizontal @tech{advance} of the unshaped text in local drawing units.
+This is not the width of visible ink and does not apply the canvas transform.
+The optional paint is forwarded to native measurement; it does not turn this
+operation into shaped-text measurement.
+}
+
+@defproc[(simple-text-bounds [font font?] [text string?]
+                     [#:paint paint (or/c paint? #f) #f]) (values real? real? real? real?)]{
+Returns the unshaped text's bounds as four values: x, y, width, and height,
+relative to a baseline origin at zero. Negative x or y values are possible.
+The optional paint participates in native bounds measurement; the result does
+not include a canvas transform or clip and is not a guarantee about every
+filter's final output extent.
+
+@racketblock[
+(with-skia ([font (make-font #:size 24)])
+  (define advance (measure-simple-text font "A "))
+  (define-values (x y width height) (simple-text-bounds font "A "))
+  (list advance (list x y width height)))
+]
+
+The result reports both spacing and bounds; they need not have the same width.
+
+@bold{Conceptual diagram.} An advance interval tells the next drawing origin
+where to go. It is not an ink rectangle: the right panel's trailing space
+extends the measured advance while adding no visible glyph ink. A simple-text
+bounds result @math{(bx, by, bw, bh)} is translated by its drawing origin, so
+its target rectangle is @math{(origin-x+bx, baseline-y+by, bw, bh)}.
+
+@reference-figure["concept-text-advance.png"
+                  "Two baseline-aligned A specimens compare blue advance intervals with red measured ink bounds. The second specimen has a visibly longer advance marked as a trailing-space annotation but the same ink rectangle."]
+
+@racketblock[
+(with-skia ([surface (make-surface 250 90 #:background 'white)]
+            [font (make-font #:size 40)]
+            [text-paint (make-paint #:color 'black)]
+            [bounds-paint (make-paint #:color 'red #:style 'stroke #:stroke-width 1)]
+            [baseline-paint (make-paint #:color "#888888" #:style 'stroke #:stroke-width 1)])
+  (define x 25)
+  (define y 62)
+  (define-values (bx by bw bh) (simple-text-bounds font "Skia"))
+  (draw-line (surface-canvas surface) 10 y 235 y baseline-paint)
+  (draw-simple-text (surface-canvas surface) "Skia" x y font text-paint)
+  (draw-rect (surface-canvas surface) (+ x bx) (+ y by) bw bh bounds-paint))
+]
+
+@reference-figure["font-bounds.png"
+                  "The word Skia in black, with a gray baseline and a red rectangle around its measured ink bounds."]
+}
+
+@section[#:tag "skia-font-settings"]{Font Settings}
+
+Use @racket[make-font] to choose settings when creating a font. The operations
+in this section inspect or change an existing font. Drawing with
+@racket[draw-simple-text] and measuring with @racket[measure-simple-text] do not
+require changing these settings. Existing shapers and text blobs keep their
+captured font settings.
 
 @defproc[(font-size [font font?]) real?]{
 Returns the font's size in local drawing units.
@@ -156,6 +251,10 @@ This does not select a different typeface or reshape an existing run.
 
 @section[#:tag "skia-font-metrics"]{Font Metrics}
 
+Use @racket[measure-simple-text] for an unshaped string's advance or
+@racket[simple-text-bounds] for its ink bounds. Font metrics describe the font
+as a whole and are useful for baseline placement and line spacing.
+
 @deftech{Font metrics} describe the selected font, not the visible extent of a particular
 string. Distances are scaled to the font's drawing size. Vertical coordinates
 are relative to the baseline, with negative coordinates above it in the usual
@@ -168,7 +267,7 @@ coordinates used for line spacing, normally negative and positive, respectively.
 The @deftech{leading} is the recommended additional spacing between lines.
 
 @bold{Conceptual diagram.} The baseline is the origin for vertical font metrics.
-For the measured font below, ascent @math{a} is above that origin and normally
+For the font in the diagram, ascent @math{a} is above that origin and normally
 negative, while descent @math{d} is below it and normally positive. Moving a
 drawing baseline @math{b} moves all three guides to @math{b+a}, @math{b}, and
 @math{b+d}; it does not change the metrics themselves.
@@ -299,92 +398,12 @@ guide; the advance is the next origin, not an ink bound.
 @reference-figure["font-metrics-guides.png"
                   "The word glyph is drawn between colored ascent, baseline, and descent guides, with a separate horizontal guide ending at its measured advance."]
 
-@section{Simple Text and Character Mapping}
+@section[#:tag "skia-font-glyph-mapping"]{Character Mapping and Outlines}
 
-An @deftech{advance} is the displacement of the next glyph origin. It is not
-an ink bound: a space can have an advance without visible ink, while a glyph
-can extend to either side of its advance interval. These simple operations use
-one typeface and the input character order. A newline does not request a new
-baseline; paragraph line breaking is provided by @racket[layout-text].
-
-@defproc[(draw-simple-text [canvas canvas?] [text string?] [x real?] [y real?]
-                  [font font?] [paint paint?]) void?]{
-Draws unshaped text with the @tech{baseline} origin at coordinates @racket[x] and
-@racket[y], using @racket[font] and @racket[paint]. The coordinates must be
-drawing scalars. The canvas transform and clip apply. The operation does not
-close its arguments. It is suitable only when direct character-to-glyph mapping
-and ordinary advances are sufficient.
-
-The baseline-relative metric diagram in @secref["skia-font-metrics"] explains
-why @racket[y] is a baseline origin rather than the top of the ink, and why an
-advance is not a string's ink width.
-
-Outline output uses @racket[simple-text-path] and has that operation's
-monochrome-outline limitations. Complex-script shaping, kerning and ligature
-substitution require the shaped-text operations.
-
-@racketblock[
-(with-skia ([surface (make-surface 240 80 #:background 'white)]
-            [font (make-font #:size 24)]
-            [paint (make-paint #:color 'black)])
-  (draw-simple-text (surface-canvas surface) "Skia" 16 48 font paint)
-  (save-png surface "simple-text.png" #:exists 'replace))
-]
-
-@reference-figure["simple-text.png"
-                  "The word Skia drawn in black on a white background using a 24-unit font."]
-}
-
-@defproc[(measure-simple-text [font font?] [text string?] [#:paint paint (or/c paint? #f) #f]) real?]{
-Returns the horizontal @tech{advance} of the unshaped text in local drawing units.
-This is not the width of visible ink and does not apply the canvas transform.
-The optional paint is forwarded to native measurement; it does not turn this
-operation into shaped-text measurement.
-}
-
-@defproc[(simple-text-bounds [font font?] [text string?]
-                     [#:paint paint (or/c paint? #f) #f]) (values real? real? real? real?)]{
-Returns the unshaped text's bounds as four values: x, y, width, and height,
-relative to a baseline origin at zero. Negative x or y values are possible.
-The optional paint participates in native bounds measurement; the result does
-not include a canvas transform or clip and is not a guarantee about every
-filter's final output extent.
-
-@racketblock[
-(with-skia ([font (make-font #:size 24)])
-  (define advance (measure-simple-text font "A "))
-  (define-values (x y width height) (simple-text-bounds font "A "))
-  (list advance (list x y width height)))
-]
-
-The result reports both spacing and bounds; they need not have the same width.
-
-@bold{Conceptual diagram.} An advance interval tells the next drawing origin
-where to go. It is not an ink rectangle: the right panel's trailing space
-extends the measured advance while adding no visible glyph ink. A simple-text
-bounds result @math{(bx, by, bw, bh)} is translated by its drawing origin, so
-its target rectangle is @math{(origin-x+bx, baseline-y+by, bw, bh)}.
-
-@reference-figure["concept-text-advance.png"
-                  "Two baseline-aligned A specimens compare blue advance intervals with red measured ink bounds. The second specimen has a visibly longer advance marked as a trailing-space annotation but the same ink rectangle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 250 90 #:background 'white)]
-            [font (make-font #:size 40)]
-            [text-paint (make-paint #:color 'black)]
-            [bounds-paint (make-paint #:color 'red #:style 'stroke #:stroke-width 1)]
-            [baseline-paint (make-paint #:color "#888888" #:style 'stroke #:stroke-width 1)])
-  (define x 25)
-  (define y 62)
-  (define-values (bx by bw bh) (simple-text-bounds font "Skia"))
-  (draw-line (surface-canvas surface) 10 y 235 y baseline-paint)
-  (draw-simple-text (surface-canvas surface) "Skia" x y font text-paint)
-  (draw-rect (surface-canvas surface) (+ x bx) (+ y by) bw bh bounds-paint))
-]
-
-@reference-figure["font-bounds.png"
-                  "The word Skia in black, with a gray baseline and a red rectangle around its measured ink bounds."]
-}
+For unshaped text, use @racket[draw-simple-text], @racket[measure-simple-text],
+or @racket[simple-text-bounds]. Use @racket[draw-shaped-text] when shaping is
+needed. The operations in this section expose individual glyph IDs and outlines;
+they do not perform contextual shaping or font fallback.
 
 @defproc[(font-char->glyph [font font?] [character (or/c char? (integer-in 0 #xd7ff) (integer-in
           #xe000 #x10ffff))]) (integer-in 0 #xffff)]{
@@ -413,9 +432,9 @@ origin. Coordinates must be drawing scalars. The font is not closed or mutated.
 The result contains monochrome outlines; it is not a general conversion of
 bitmap or color glyph rendering into vectors.
 
-The converted outline can be filled or stroked like any other path. Both rows
-below come from @racket[simple-text-path] for the same text and font; neither
-row is native text drawing.
+The converted outline can be filled or stroked like any other path. The example
+uses @racket[simple-text-path] twice with the same text and font, then fills one
+outline and strokes the other. Neither row uses native text drawing.
 
 @racketblock[
 (with-skia ([surface (make-surface 360 190 #:background 'white)]
@@ -442,10 +461,13 @@ row is native text drawing.
 @(declare-exporting skia skia/fonts #:use-sources (skia/fonts))
 
 The additional font-control and glyph-query bindings are also provided by
-@racketmodname[skia/fonts]. Batch
-glyph queries return immutable vectors of copied measurements. Their glyph
-inputs may be lists or vectors of unsigned 16-bit IDs, but each ID must also
-be less than the current typeface's glyph count. Query payloads are bounded by
+@racketmodname[skia/fonts]. Use @racket[make-font] to set these controls during
+construction. Use @racket[measure-simple-text] or @racket[simple-text-bounds]
+to measure a complete unshaped string without working with individual glyph IDs.
+
+Batch glyph queries return immutable vectors of copied measurements. Their
+inputs may be lists or vectors of unsigned 16-bit glyph IDs. Each ID must be
+less than the current typeface's glyph count. Query payloads are bounded by
 @racket[current-skia-byte-limit]; this is not a limit on all native font caches.
 
 @defproc[(font-embedded-bitmaps? [font font?]) boolean?]{

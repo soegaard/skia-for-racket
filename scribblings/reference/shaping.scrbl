@@ -19,7 +19,7 @@ algorithm to an entire paragraph. Use @racket[layout-mixed-text] for those tasks
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Shapers and Shaped Runs}
+@section[#:tag "Shapers_and_Shaped_Runs"]{Shaper Construction}
 
 @defproc[(shaper? [v any/c]) boolean?]{
 Returns @racket[#t] for a shaper resource and @racket[#f] otherwise. A closed shaper still
@@ -47,6 +47,44 @@ font snapshot.
 
 The result is @racket[#t]; changing the original font does not resize the shaper.
 }
+
+@section[#:tag "skia-shaped-text-drawing"]{Drawing Shaped Text}
+
+@defproc[(draw-shaped-text [canvas canvas?] [shaper shaper?] [text string?] [x real?] [y real?]
+          [paint paint?]
+                [#:direction direction (or/c 'auto 'ltr 'rtl 'ttb 'btt) 'auto]
+                [#:script script (or/c symbol? string? #f) #f]
+                [#:language language (or/c string? #f) #f]
+                [#:features features (or/c (listof string?) (vectorof string?)) '()]) shaped-run?]{
+Shapes @racket[text] with @racket[shape-text], draws it with
+@racket[draw-shaped-run], and returns the shaped run. All shaping options have
+the same meaning as in @racket[shape-text]. The result is a detached run, not
+a retained canvas or a text-blob resource.
+
+@racketblock[
+(with-skia ([surface (make-surface 240 80 #:background 'white)]
+            [font (make-font #:size 28)]
+            [shaper (make-shaper font)]
+            [paint (make-paint #:color 'black)])
+  (define run
+    (draw-shaped-text (surface-canvas surface) shaper "office" 16 48 paint
+                      #:direction 'ltr #:script 'latn #:language "en"))
+  (save-png surface "shaped-text.png" #:exists 'replace)
+  (shaped-run-glyph-count run))
+]
+
+@reference-figure["shaped-text.png"
+                  "The word office drawn in black on a white background after Latin text shaping."]
+
+The glyph count depends on the typeface and its shaping features.
+}
+
+@section[#:tag "skia-shaped-run-reuse"]{Shaping and Reusing Runs}
+
+Use @racket[draw-shaped-text] to shape and draw text in one call. Use
+@racket[shape-text] and @racket[draw-shaped-run] separately to inspect a run
+before drawing or to draw it more than once. The shaper used for drawing must
+match the font used to shape the run.
 
 @defproc[(shape-text [shaper shaper?] [text string?]
                 [#:direction direction (or/c 'auto 'ltr 'rtl 'ttb 'btt) 'auto]
@@ -90,8 +128,8 @@ The string has two Racket characters and three UTF-8 bytes. The cluster offset f
 second character starts at byte offset 2, not character index 1.
 
 @bold{Conceptual diagram.} Characters, UTF-8 byte offsets, glyph records, and
-stored glyph origins are distinct data. The first table is the exact @racket["éA"]
-relationship above: character starts 0 and 1 correspond to byte starts 0 and 2.
+stored glyph origins are distinct data. The first table shows @racket["éA"]:
+character starts 0 and 1 correspond to byte starts 0 and 2.
 A ligature can map multiple characters to one glyph only when the selected font
 actually forms it; cluster starts are not a full caret map, and RTL starts can
 descend.
@@ -119,6 +157,26 @@ check that would make its glyph IDs portable to an unrelated shaper.
 @reference-figure["shaping-kern-stage10.png"
                   "AVATAR is shaped with normal kerning in blue and with kerning disabled in orange."]
 }
+
+@defproc[(draw-shaped-run [canvas canvas?] [shaper shaper?] [run shaped-run?] [x real?] [y real?]
+          [paint paint?]) void?]{
+Draws the run with its origin translated by @racket[x] and @racket[y].
+For a nonempty run, the coordinates must be drawing scalars and the canvas,
+shaper, and paint must satisfy their native-use lifetime rules. The caller is
+responsible for matching the run to its shaping font. The operation does not
+close its arguments.
+
+An empty run draws nothing. For other runs the function creates and releases
+a temporary text blob, or a temporary outline path when outline output is
+selected. Outline output has the limitations of @racket[shaped-run->path].
+}
+
+@section[#:tag "skia-shaped-run-inspection"]{Inspecting Shaped Runs}
+
+For drawing without inspecting glyph data, use @racket[draw-shaped-text] or
+@racket[draw-shaped-run]. These accessors expose glyph IDs, cluster offsets,
+positions, and advances. Glyph indices and UTF-8 byte offsets are not Racket
+character indices.
 
 @defproc[(shaped-run? [v any/c]) boolean?]{
 Returns @racket[#t] for a shaped-run value and @racket[#f] otherwise.
@@ -195,7 +253,11 @@ increasing downward. Ordinary horizontal runs generally have zero y advance.
 Returns the number of glyph IDs in the run, not the number of characters or clusters.
 }
 
-@section{Drawing and Converting Shaped Runs}
+@section[#:tag "Drawing_and_Converting_Shaped_Runs"]{Converting Shaped Runs}
+
+Use @racket[draw-shaped-run] for direct drawing. Conversion is useful when a
+caller needs a reusable @tech{text blob} or a @tech{path}. Each converted resource
+has its own lifetime and must be released separately.
 
 @defproc[(shaped-run->text-blob [shaper shaper?] [run shaped-run?]) text-blob?]{
 Returns an owned text blob containing the run's glyphs and positions,
@@ -204,48 +266,6 @@ its own font state and remains usable after the shaper is closed.
 
 The caller must supply the shaper whose font gives meaning to the run's glyph
 IDs; the run does not record enough information to verify that relationship.
-}
-
-@defproc[(draw-shaped-run [canvas canvas?] [shaper shaper?] [run shaped-run?] [x real?] [y real?]
-          [paint paint?]) void?]{
-Draws the run with its origin translated by @racket[x] and @racket[y].
-For a nonempty run, the coordinates must be drawing scalars and the canvas,
-shaper, and paint must satisfy their native-use lifetime rules. The caller is
-responsible for matching the run to its shaping font. The operation does not
-close its arguments.
-
-An empty run draws nothing. For other runs the function creates and releases
-a temporary text blob, or a temporary outline path when outline output is
-selected. Outline output has the limitations of @racket[shaped-run->path].
-}
-
-@defproc[(draw-shaped-text [canvas canvas?] [shaper shaper?] [text string?] [x real?] [y real?]
-          [paint paint?]
-                [#:direction direction (or/c 'auto 'ltr 'rtl 'ttb 'btt) 'auto]
-                [#:script script (or/c symbol? string? #f) #f]
-                [#:language language (or/c string? #f) #f]
-                [#:features features (or/c (listof string?) (vectorof string?)) '()]) shaped-run?]{
-Shapes @racket[text] with @racket[shape-text], draws it with
-@racket[draw-shaped-run], and returns the shaped run. All shaping options have
-the same meaning as in @racket[shape-text]. The result is a detached run, not
-a retained canvas or a text-blob resource.
-
-@racketblock[
-(with-skia ([surface (make-surface 240 80 #:background 'white)]
-            [font (make-font #:size 28)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color 'black)])
-  (define run
-    (draw-shaped-text (surface-canvas surface) shaper "office" 16 48 paint
-                      #:direction 'ltr #:script 'latn #:language "en"))
-  (save-png surface "shaped-text.png" #:exists 'replace)
-  (shaped-run-glyph-count run))
-]
-
-@reference-figure["shaped-text.png"
-                  "The word office drawn in black on a white background after Latin text shaping."]
-
-The glyph count depends on the typeface and its shaping features.
 }
 
 @defproc[(shaped-run->path [shaper shaper?] [run shaped-run?]) skia-path?]{
