@@ -18,7 +18,8 @@ callback executes. It is not static analysis, a pixel comparison, a font-embeddi
 validator, or a PDF/A conformance test. The policy table describes the supported serialization
 policy; it does not probe arbitrary native builds or predict a viewer's exact output.
 
-A preflight executes the callback too. Metrics, resource construction, graphics-state changes,
+An @deftech{output preflight} executes the callback to
+check output compatibility before publication. Metrics, resource construction, graphics-state changes,
 and explicit raster work still occur. Ordinary Racket side effects are not rolled back. Do not
 use these operations to analyze untrusted or nonterminating callbacks.
 
@@ -99,7 +100,7 @@ code.
 
 @section{Preflight and Audited Export}
 
-Sources and export settings follow @racket[output->bytes]. A source is one output page or a
+Sources and export settings follow @racket[output->bytes]. A source is one @tech{output page} or a
 nonempty list of pages; SVG accepts only one page. The PDF-only and SVG-only options remain
 restricted rather than ignored. The callback receives a real canvas for the selected backend.
 Analyzing a page and then exporting it executes the authoring callback twice; an audited export

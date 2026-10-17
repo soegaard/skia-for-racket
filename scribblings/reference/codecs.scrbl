@@ -135,7 +135,7 @@ Orientation, color-space, frame-dependency, and decode-failure rules are unchang
 @section[#:tag "skia-encoded-metadata"]{Encoded Metadata}
 
 An @deftech{encoded image description} is a detached value reporting dimensions,
-format, native color and alpha types, encoded orientation, and animation metadata
+format, native color and alpha types, @tech{encoded orientation}, and animation metadata
 count. It is not a @tech{pixel description}. Its accessors need
 neither an open codec nor a native library call.
 
@@ -207,7 +207,8 @@ premultiplied alpha type selected for @racket[codec->image]'s output.
 @defproc[(encoded-image-info-origin [info encoded-image-info?])
           (or/c 'top-left 'top-right 'bottom-right 'bottom-left
                 'left-top 'right-top 'right-bottom 'left-bottom)]{
-Returns the orientation of the encoded pixels. The first part names the side
+Returns the @deftech{encoded orientation}, which specifies how stored pixel rows
+and columns are oriented for display. The first part names the side
 containing the first row; the second names the side containing the first column.
 The @racket['left-top], @racket['right-top], @racket['right-bottom], and
 @racket['left-bottom] orientations exchange axes. Use the display-dimension

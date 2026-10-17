@@ -6,10 +6,10 @@
 
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
-A @deftech{GPU presenter} owns the presentation adapter and GPU context for one
+A @deftech{GPU presenter} owns the presentation adapter and @tech{GPU context} for one
 window target. A presenter belongs to its creating GUI/eventspace handler thread.
 A @deftech{GPU frame} is a short-lived value delivered to the presenter's render
-callback. Its canvas and context are borrowed only while that callback is live.
+callback. Its @tech{canvas} and context are borrowed only while that callback is live.
 
 Presenters do not expose native framebuffers, drawables, textures, or command
 buffers. Successful presentation means that submission and presentation were

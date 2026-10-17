@@ -12,7 +12,7 @@
 @(declare-exporting skia skia/annotations #:use-sources (skia/annotations))
 
 A @deftech{named destination} associates a case-sensitive name with a point in
-one PDF or SVG document. A link rectangle refers to a URI or to a named
+one @tech{PDF document} or @tech{SVG document}. A link rectangle refers to a URI or to a named
 destination. Annotations do not paint a visible label or border; draw those
 separately. Destination names are scoped to the whole PDF document, across
 pages, or to one SVG document.

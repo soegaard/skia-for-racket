@@ -91,6 +91,9 @@ Activates the context's provider, calls @racket[thunk] without arguments, and
 returns its multiple values. The context must be ready, with no shutdown
 request, on its owning thread. This function does not close the context.
 
+A @deftech{GPU activation} is one execution scope established by this call.
+It keeps the context's native host current while the callback runs.
+
 Nested scopes for the same context are supported without reactivating the
 provider. Nesting a different context is rejected. At the outermost entry,
 Skia's cached assumptions about native state are reset. Pending resource
@@ -98,9 +101,9 @@ releases are drained at entry and exit. This does not restore the host's OpenGL
 state after the call, submit all pending drawing, wait for GPU completion, or
 present a window.
 
-The host must remain current throughout the scope. A borrowed GPU canvas is
-valid only within the activation that supplied it. A canvas obtained in an
-inner scope expires when that scope exits, even if an outer scope for the same
+The host must remain current throughout the scope. A @deftech{GPU lease}
+limits a borrowed GPU canvas to the activation that supplied it. A canvas
+obtained in an inner scope expires when that scope exits, even if an outer scope for the same
 context remains active. Entering the context again does not revive old canvases.
 
 Cleanup retires the activation after normal return, an exception, or an escape.

@@ -5,11 +5,11 @@
 
 @title[#:tag "skia-paths"]{Paths}
 
-A @deftech{path} stores contours made from straight segments, quadratic and
+A @deftech{path} stores @tech{contours} made from straight segments, quadratic and
 cubic Bézier curves, rational quadratic curves, and close commands. It is an
 owned, mutable native resource. A @deftech{contour} starts with a move and can
-be open or explicitly closed. A path stores geometry and a fill rule, not a
-paint or canvas transform. The predicate is @racket[skia-path?], which is distinct
+be open or explicitly closed. A path stores geometry and a @tech{fill rule}, not a
+@tech{paint} or @tech{canvas transform}. The predicate is @racket[skia-path?], which is distinct
 from Racket's filesystem-path predicate.
 
 For explicit conversion to and from Racket @racket[dc-path%] values, see
@@ -17,7 +17,7 @@ For explicit conversion to and from Racket @racket[dc-path%] values, see
 separate Draw value and rejects topology that one @racket[dc-path%] cannot
 represent without changing open contours.
 
-Path coordinates are local coordinates and must be @tech{drawing scalar}s.
+Path coordinates are @tech{local coordinates} and must be @tech{drawing scalar}s.
 Construction and mutation do not use a canvas's current transform. Each native
 operation requires an open path on its owning thread. A copied or transformed
 path has its own lifetime.
@@ -53,6 +53,7 @@ first control point. Commands are processed immediately, not retained as a
 Racket program. An invalid command raises an exception, and construction releases
 the partially built path.
 
+A @deftech{fill rule} determines which points are inside a path for filling.
 The @racket['winding] rule fills points with nonzero signed winding number.
 The @racket['even-odd] rule fills points crossed an odd number of times by a ray
 to the exterior. Both treat open contours as closed for filling. Explicit

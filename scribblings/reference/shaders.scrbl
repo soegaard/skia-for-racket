@@ -6,8 +6,8 @@
 
 @title[#:tag "skia-shaders"]{Shaders and Gradients}
 
-A @deftech{shader} supplies colors as a function of local drawing coordinates.
-Attaching it to a paint changes the color source, not the geometry. Shader
+A @deftech{shader} supplies colors as a function of @tech{local coordinates}.
+Attaching it to a @tech{paint} changes the color source, not the geometry. Shader
 resources are immutable: a transformed or combined shader is a new owned
 wrapper. Combinations retain their native inputs rather than borrowing the
 caller's wrappers, and preserve any GPU-context dependency.
@@ -22,12 +22,13 @@ context.
 
 @section[#:tag "skia-tile-modes"]{Tile Modes and Gradient Stops}
 
-Tile modes specify values outside a gradient's unit interval or an image's
+A @deftech{tile mode} specifies values outside a gradient's unit interval or an image's
 bounds. The @indexed-racket['clamp] mode extends edge colors;
 @indexed-racket['repeat] repeats the interval; @indexed-racket['mirror] alternates
 forward and reversed intervals; @indexed-racket['decal] uses transparent color
 outside the interval. Image shaders select a separate mode for each axis.
 
+A @deftech{gradient stop} pairs a color with a position along a gradient.
 Gradient colors are a list or vector of at least two @tech{color specification}s.
 Positions, when supplied, are a list or vector of the same length, containing
 nondecreasing drawing scalars between zero and one. Repeated positions are

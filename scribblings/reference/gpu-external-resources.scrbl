@@ -9,12 +9,12 @@
 
 An @deftech{external GPU texture handoff} is an opaque, owner-thread token that
 coordinates one transfer between a caller-owned native texture and one exact
-GPU context. The safe API never exposes a native pointer. Backend-specific
+@tech{GPU context}. The safe API never exposes a native pointer. Backend-specific
 constructors that accept native pointers are documented separately in
 @secref["skia-gpu-native-handoffs"].
 
-Constructing and using an external texture handoff requires an active
-@racket[call-with-gpu-context] scope for its exact associated context. Metadata
+Constructing and using an external texture handoff requires a @tech{GPU activation}
+for its exact associated context. Metadata
 inspection and explicit token retirement require the creating thread, but not an
 active drawing scope.
 

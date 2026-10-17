@@ -8,7 +8,7 @@
 @(declare-exporting skia)
 
 A @deftech{PDF document} owns an output stream and at most one active page.
-A page canvas borrows that page's lifetime. Ending the page invalidates every
+A page supplies a @tech{borrowed canvas}. Ending the page invalidates every
 canvas wrapper for it; beginning another page does not revive an old canvas.
 Finishing, releasing, and writing the document are separate operations.
 
@@ -24,7 +24,7 @@ not charge a complete RGBA image against the byte limit.
 
 @defproc[(document? [v any/c]) boolean?]{
 Returns @racket[#t] for a PDF document, including a closed one, and @racket[#f] otherwise.
-An SVG document is a separate kind of resource.
+An @tech{SVG document} is a separate kind of resource.
 }
 
 @defproc[(make-pdf-document

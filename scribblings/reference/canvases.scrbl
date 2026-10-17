@@ -5,7 +5,7 @@
 
 @title[#:tag "skia-canvas-state"]{Canvas State}
 
-A @tech{canvas} carries a transform, a clip, and a stack of saved drawing states.
+A @tech{canvas} carries a @tech{canvas transform}, a @tech{clip}, and a stack of saved drawing states.
 These operations change how subsequent drawing is placed; they do not transform
 pixels that have already been drawn. Several wrappers for the same target share
 this state. Canvas operations require a live canvas and its owner's thread; a GPU
@@ -34,6 +34,7 @@ A backend name does not guarantee that every paint effect is supported.
 
 @section[#:tag "skia-canvas-save"]{Saving and Restoring State}
 
+The @deftech{save count} is the number of canvas states, including the base state.
 A new ordinary canvas has a save count of one. Saving pushes a copy of the
 current transform and clip. Restoring removes saved states; it does not undo
 drawing or restore mutations of a @tech{paint} or @tech{path}.
@@ -115,6 +116,11 @@ The form restores canvas state, not pixels or resource lifetimes.
 }
 
 @section[#:tag "skia-canvas-transforms"]{Changing Coordinates}
+
+A @deftech{canvas transform} maps @deftech{local coordinates}, supplied to
+drawing operations, to @deftech{device coordinates} in the drawing target.
+Changing the transform changes where subsequent drawing appears; it does not
+move existing pixels.
 
 Canvas concatenation uses the product @math{C M}, where @math{C} is the current
 transform and @math{M} is the newly supplied transform. A point is mapped by
@@ -262,7 +268,7 @@ resulting native transform uses single-precision arithmetic.
 
 @section[#:tag "skia-clipping"]{Clipping}
 
-A clip limits the coverage affected by later drawing. The geometry supplied to
+A @deftech{clip} limits the coverage affected by later drawing. The geometry supplied to
 a clipping operation is transformed by the current transform when the operation
 runs. Subsequent transform changes do not move the established clip. Saving and
 restoring canvas state is the usual way to apply a temporary clip.
@@ -284,7 +290,7 @@ pixels already drawn.
 Combines the current clip with the transformed rectangle. The default
 @racket['intersect] keeps only their overlap; @racket['difference] removes the
 rectangle's coverage from the current clip. Neither operation enlarges the clip.
-Antialiasing permits fractional edge coverage. Zero extents are accepted; the
+@tech{Antialiasing} permits fractional edge coverage. Zero extents are accepted; the
 computed right and bottom coordinates must be @tech{drawing scalar}s.
 
 The following comparison starts each operation with the same clip, covering the

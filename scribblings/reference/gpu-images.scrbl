@@ -6,11 +6,11 @@
 
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
-A @deftech{GPU image} is an owned image tied to one GPU context. It also satisfies
+A @deftech{GPU image} is an owned @tech{image} tied to one @tech{GPU context}. It also satisfies
 @racket[image?]. Draw a GPU image with the ordinary canvas image-drawing
 functions, such as @racket[draw-image] and @racket[draw-image-rect], while
 its context is active. CPU-only image operations require an explicit transfer.
-GPU images can also be used to construct image shaders. A texture-backed
+GPU images can also be used to construct image @tech{shaders}. A texture-backed
 result is not an independently usable CPU image. Use the explicit operations in
 @secref["skia-gpu-transfers"] to cross that boundary.
 

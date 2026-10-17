@@ -13,13 +13,19 @@
 @(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
 
 A @deftech{pixel description} specifies dimensions, storage format, alpha type,
-and a detached color-space description. It contains no pixels or native handle.
-Scanline batches and incremental snapshots carry these descriptions so their byte
+and a detached @tech{color-space descriptor}. It contains no pixels or native handle.
+@tech[#:key "scanline batch"]{Scanline batches} and incremental snapshots carry these
+descriptions so their byte
 strings can be interpreted without keeping the decoder open.
 
 Constructing a description validates its representation, not native decoder or
 GPU support. It neither allocates a pixel buffer nor performs color conversion.
 Native operations can reject a valid description they cannot implement.
+
+With @deftech{premultiplied alpha}, stored RGB components include multiplication
+by alpha. With @deftech{unpremultiplied alpha}, RGB components are stored
+independently of alpha. An alpha-type declaration describes the supplied
+samples; it does not request multiplication or division of their components.
 
 @section{Pixel Descriptions}
 
@@ -39,7 +45,7 @@ cannot allocate a nonempty raster buffer. RGBX, grayscale, and RGB565 require
 @racket['opaque]. Alpha-only storage accepts @racket['premul] or @racket['opaque],
 rejects @racket['unpremul], and requires a false color-space description.
 
-The space is untagged, sRGB, linear sRGB, or copied ICC bytes. Mutable ICC bytes
+The space is untagged, sRGB, linear sRGB, or copied @tech{ICC profile} bytes. Mutable ICC bytes
 are accepted and copied into immutable storage. The bytes must fit the current
 byte limit and contain a complete-length ICC header with an @tt{acsp} signature.
 This checks the descriptor header, not full native profile support. A live
@@ -122,7 +128,10 @@ and color interpretation. It does not resize or copy pixels.
           (values exact-nonnegative-integer? exact-nonnegative-integer?
                   exact-nonnegative-integer?)]{
 Returns the row stride, minimum addressable byte length, and full allocation
-size. A false stride means the tight stride. An explicit stride must be at least
+size. The @deftech{row stride} is the number of bytes between consecutive row starts.
+@deftech{Row padding} consists of unused bytes after a row's pixels that fill out the stride.
+A tight stride contains only pixel bytes, without padding.
+A false stride means the tight stride. An explicit stride must be at least
 the tight stride and divisible by bytes per pixel.
 
 For a nonempty description, the minimum length is the stride times @math{(height - 1)},

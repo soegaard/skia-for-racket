@@ -4,7 +4,7 @@
 
 @title[#:tag "skia-gpu-diagnostics"]{GPU Diagnostics}
 
-These diagnostics report properties of a selected GPU context.
+These diagnostics report properties of a selected @tech{GPU context}.
 They are diagnostics, not hardware attestations, performance measurements, or
 implicit synchronization barriers. Detached results contain no native pointers.
 

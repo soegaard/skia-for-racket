@@ -7,12 +7,12 @@
 
 @(declare-exporting skia)
 
-A @deftech{text layout} arranges shaped runs into horizontal lines. The layout
-origin is the upper-left corner of its layout box, not the baseline origin
+A @deftech{text layout} arranges @tech{shaped runs} into horizontal lines. The layout
+origin is the upper-left corner of its layout box, not the @tech{baseline} origin
 used by @racket[draw-simple-text] and @racket[draw-shaped-text]. The line records
 supply baseline positions relative to that box.
 
-For the baseline-relative font metrics that determine a layout's first baseline
+For the baseline-relative @tech{font metrics} that determine a layout's first baseline
 and reported height, see @secref["skia-font-metrics"].
 
 Layout values and their line records are ordinary Racket values, not resources
@@ -25,7 +25,7 @@ when the layout is drawn. Explicit closure is not prevented by reachability.
 @section[#:tag "skia-layout-options"]{Wrapping and Alignment}
 
 A positive @racket[#:width] enables greedy wrapping at Unicode line-break
-opportunities, supplemented by an optional break provider. An unbreakable span
+opportunities, supplemented by an optional @tech{break provider}. An unbreakable span
 is retained even when wider than the requested width; the layout does not
 invent an emergency break inside it. The reported box width is the greater
 of the requested width and the largest line advance, not a hard clipping width.
@@ -50,16 +50,17 @@ The alignment choices are:
   (list @indexed-racket['justify] "Expand eligible lines except the last line of each paragraph.")
   (list @indexed-racket['justify-all] "Expand eligible lines including paragraph-final lines."))]
 
-Both justification modes require a positive width. They do not shrink lines
+The @deftech{justification} modes expand eligible lines toward the requested
+width. Both require a positive width. They do not shrink lines
 that are already too wide. Lines without expandable opportunities keep their
-natural advance and use start alignment. Alignment concerns advances, not tight
+natural @tech{advance} and use start alignment. Alignment concerns advances, not tight
 ink bounds; glyph overhang can extend beyond the nominal box.
 
 Justification can expand ordinary U+0020 spaces. Script-specific processing can
 also expand boundaries between adjacent CJK grapheme clusters and elongate
 Arabic joining positions by shaping inserted tatweel characters. Common CJK
 punctuation is not itself an expansion point. Arabic insertions are display-only;
-cluster offsets are remapped to the logical line text. This does not replace
+@tech{cluster offsets} are remapped to the logical line text. This does not replace
 that text with a string containing the inserted elongations.
 
 For @racket[layout-text], CJK and Arabic opportunity detection uses script
@@ -69,7 +70,7 @@ Mixed-text layout instead determines scripts for its individual runs.
 
 The baseline step is @racket[#:line-height] when supplied. Otherwise it uses a
 positive native font spacing, or a fallback of at least one drawing unit based
-on ascent, descent, and nonnegative leading. An explicitly small positive line
+on @tech{ascent}, @tech{descent}, and nonnegative @tech{leading}. An explicitly small positive line
 height is allowed and can make lines overlap. The first baseline is at
 @math{max(0, -ascent)}. For @math{n} lines, the reported height is
 @math{max(0, -ascent) + (n - 1) line-height + max(0, descent)}.
@@ -264,7 +265,7 @@ Returns the baseline y coordinate relative to the layout-box origin.
 }
 
 @defproc[(text-layout-line-width [line text-layout-line?]) real?]{
-Returns the line's horizontal advance measure after justification, not its tight ink width.
+Returns the line's horizontal advance measure after @tech{justification}, not its tight ink width.
 }
 
 @defproc[(text-layout-line-direction [line text-layout-line?]) (or/c 'ltr 'rtl)]{
@@ -273,9 +274,9 @@ Returns the direction used for start/end alignment of this line.
 
 @section{Additional Break Opportunities}
 
-A break provider supplements Unicode line breaking; it does not replace it.
+A @deftech{break provider} supplements Unicode line breaking; it does not replace it.
 The provider receives a hard-break-delimited paragraph string and the requested
-language, and returns a list of integer positions or break-opportunity values.
+language, and returns a list of integer positions or @tech{break opportunity} values.
 Positions are Racket character indices within that paragraph, not UTF-8 offsets
 and not indices in the whole multi-paragraph input.
 
@@ -297,6 +298,9 @@ Returns an ordinary break-opportunity value. The insertion must contain
 neither a hard line separator nor a bidi formatting control. Construction checks
 the index's type but cannot establish that it is inside a particular paragraph;
 layout validates paragraph bounds and grapheme boundaries later.
+
+A @deftech{break opportunity} pairs a paragraph-relative character index with
+text to insert for display when a line breaks at that index.
 
 @racketblock[
 (define break (make-layout-break-opportunity 4 "-"))
@@ -362,7 +366,8 @@ paragraph before wrapping, then applies line-dependent reordering. It groups
 compatible script, direction, and font choices into shaped runs. Explicit bidi
 controls affect this resolution rather than becoming ordinary drawn glyphs.
 
-Fallback is selected for grapheme clusters through the supplied font manager.
+With @deftech{font fallback}, the supplied @tech{font manager} selects alternative
+typefaces for grapheme clusters that need them.
 A selected face is not guaranteed to cover every character of a cluster; a
 missing fallback can still leave glyph zero. Matching may depend on language
 and the machine's font configuration. This is not a promise that every Unicode

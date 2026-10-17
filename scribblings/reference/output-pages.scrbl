@@ -14,7 +14,7 @@
 
 An @deftech{output page} is a detached description containing dimensions, units,
 margins, a background, and a drawing callback. It owns no native resource.
-Exporting it invokes the callback again; it is not a recorded picture. Resources
+Exporting it invokes the callback again; it is not a recorded @tech{picture}. Resources
 captured by the callback must remain open whenever the page is drawn.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -257,6 +257,12 @@ callback retain their ordinary explicit-transfer rules; conversion adds no
 implicit transfer.
 
 @section[#:tag "skia-raster-fallback"]{Text Representation and Explicit Raster Fallback}
+
+A @deftech{raster fallback} replaces a drawing region with an image rendered
+on a temporary pixel surface. PDF and SVG output can embed that image, but the
+region then contains pixels rather than vector geometry or searchable text.
+Use @racket[draw-rasterized] to request this explicitly, or a
+@tech{bounded output group} to select it according to an output policy.
 
 @defparam[current-text-output-mode mode (or/c 'native 'outline)]{
 Selects native text drawing or monochrome outline conversion for the drawing

@@ -101,3 +101,34 @@ supply information that would otherwise appear in source comments.
 
 Names should identify the role of a value: `canvas`, `paint`, `baseline-y`, or
 `row-bytes` is usually more informative than `data` or `value`.
+
+## 4. Documentation Style
+
+Follow the [Racket reference style](https://docs.racket-lang.org/style/reference-style.html)
+for prose, terminology, examples, and Scribble markup.
+
+Use [`deftech` and `tech`](https://docs.racket-lang.org/scribble/section-links.html)
+to connect technical terms with their explanations:
+
+- Use `@deftech{term}` where the term is introduced and explained, rather than
+  at an unexplained first mention. It establishes a reference target and an
+  index entry; do not use it merely for emphasis.
+- Give each term one defining occurrence in the manual, in the chapter that
+  explains the concept. Keep the explanation with the relevant API discussion.
+- Use `@tech{term}` where a link to that explanation helps the reader,
+  especially across chapters or when a distinction affects correct use.
+  Avoid linking every repeated occurrence in a paragraph.
+- Use natural prose for concepts and `@racket` for code identifiers. Refer to
+  a canvas as `@tech{canvas}`, not as a noun spelled `@racket[canvas?]`.
+- Scribble normalizes case, certain plural endings, and hyphens or whitespace
+  in term keys. Use `#:key` when the displayed wording does not normalize to
+  the definition's key, as in `@tech[#:key "cubic patch"]{cubic patches}`.
+- Check the rendered manual for duplicate definitions and unresolved term links.
+
+For example:
+
+```scribble
+A @deftech{clip} limits the coverage affected by later drawing.
+
+The current @tech{clip} also applies when drawing an image.
+```

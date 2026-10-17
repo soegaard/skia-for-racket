@@ -8,8 +8,9 @@
 @defmodule[skia/geometry-primitives #:no-declare]
 @(declare-exporting skia skia/geometry-primitives #:use-sources (skia/geometry-primitives))
 
-These interfaces draw triangle meshes, cubic patches, image grids, and transformed
-image batches. They use the native Skia canvas, its current transform and clip,
+These interfaces draw triangle meshes, @tech[#:key "cubic patch"]{cubic patches},
+image grids, and transformed image batches. They use the native Skia canvas,
+its current transform and clip,
 and the normal resource lifetime and context restrictions. A successful native
 call does not promise vector preservation in PDF or SVG. Portable alternatives
 are described in @secref["skia-portable-drawing"].
@@ -356,8 +357,8 @@ lowering, use @racket[draw-image-lattice/portable].
 
 @section{Transformed Image Batches}
 
-Atlas transforms are documented in @secref["skia-atlas-transforms"]. Each maps
-a sprite's local source origin, not its absolute location in the atlas image.
+Each @tech{atlas transform} maps a sprite's local source origin, not its absolute
+location in the atlas image.
 
 @defproc[(draw-atlas [canvas canvas?]
           [image image?]

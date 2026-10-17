@@ -9,7 +9,7 @@
 @defmodule[skia/image-operations #:no-declare]
 @(declare-exporting skia skia/image-operations #:use-sources (skia/image-operations))
 
-Images are immutable drawing resources, but their pixels need not already be decoded or
+@tech{Images} are immutable drawing resources, but their pixels need not already be decoded or
 CPU-accessible. These queries distinguish validity, deferred generation, texture backing, and
 immediately available pixels. None of those properties alone proves the others.
 
@@ -96,15 +96,15 @@ The result is @racket['(#f #t)]. Closing the source wrapper does not close the r
 
 @section{Copies into Pixel Views}
 
-The following writes require a live writable destination pixmap. Source and destination must
+The following writes require a live writable destination @tech{pixmap}. Source and destination must
 either both have a color-space interpretation or both be untagged. A tagged/untagged pair raises
 instead of silently assigning sRGB. Pixel-format and color-space conversion are performed only
 after those checks.
 
 Writes are staged and validated before destination mutation. Failed native reads, scaling, or
-invalid converted samples leave the destination unchanged. Only pixel bytes are committed; row
-padding is preserved. The caching option is a native caching hint, not an ownership transfer or
-a promise that data will remain cached.
+invalid converted samples leave the destination unchanged. Only pixel bytes are committed;
+@tech{row padding} is preserved. The caching option is a native caching hint,
+not an ownership transfer or a promise that data will remain cached.
 
 @defproc[(image-read-pixmap! [image image?] [destination pixmap?] [#:source-x x
           exact-nonnegative-integer? 0] [#:source-y y exact-nonnegative-integer? 0] [#:cache?

@@ -12,7 +12,7 @@ Objective-C protocol on the exact device owned by the supplied GPU context. A su
 FFI predicate or native interface query cannot make an arbitrary, forged, or
 freed address safe. Violating these preconditions can crash the process.
 
-The constructors create opaque @racket[gpu-external-texture?] tokens for the
+The constructors create @tech{external GPU texture handoff} tokens for the
 safe, single-use operations in @secref["skia-gpu-external-resources"]. They
 retain the native references needed after construction, but those references do not permit
 concurrent external and Skia access.

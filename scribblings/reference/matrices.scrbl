@@ -259,7 +259,7 @@ replacement for the existing canvas transform-order comparison.
 An @deftech{atlas transform} is a detached immutable value representing uniform
 scale, rotation, and translation. It is used for sprite placement and for the
 per-glyph transforms accepted by @racket[text-blob-builder-add-transformed-run!].
-It is not a six-coefficient affine @tech{affine matrix} and contains no native resource.
+It is not a six-coefficient @tech{affine matrix} and contains no native resource.
 
 @defproc[(atlas-transform? [v any/c]) boolean?]{
 Returns @racket[#t] for an atlas transform and @racket[#f] otherwise. A raw

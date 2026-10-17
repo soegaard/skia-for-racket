@@ -17,8 +17,8 @@ Glyph zero is the missing-glyph index. A glyph ID from one face must not be
 interpreted as the same glyph in another face.
 
 The simple text and glyph-query functions do not perform contextual
-shaping, bidirectional reordering, font fallback, or paragraph wrapping.
-Use @racket[shape-text] for a single shaped run and @racket[layout-mixed-text]
+@tech{shaping}, bidirectional reordering, @tech{font fallback}, or paragraph wrapping.
+Use @racket[shape-text] for a single @tech{shaped run} and @racket[layout-mixed-text]
 for mixed-direction text and font fallback.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -156,11 +156,16 @@ This does not select a different typeface or reshape an existing run.
 
 @section[#:tag "skia-font-metrics"]{Font Metrics}
 
-Font metrics describe the selected font, not the visible extent of a particular
+@deftech{Font metrics} describe the selected font, not the visible extent of a particular
 string. Distances are scaled to the font's drawing size. Vertical coordinates
 are relative to the baseline, with negative coordinates above it in the usual
 downward-positive canvas. Font data and native backends determine the values;
 zero can indicate that a metric is unavailable.
+
+The @deftech{baseline} is the reference line from which vertical font metrics
+are measured. The @deftech{ascent} and @deftech{descent} are the font's vertical
+coordinates used for line spacing, normally negative and positive, respectively.
+The @deftech{leading} is the recommended additional spacing between lines.
 
 @bold{Conceptual diagram.} The baseline is the origin for vertical font metrics.
 For the measured font below, ascent @math{a} is above that origin and normally
@@ -304,7 +309,7 @@ baseline; paragraph line breaking is provided by @racket[layout-text].
 
 @defproc[(draw-simple-text [canvas canvas?] [text string?] [x real?] [y real?]
                   [font font?] [paint paint?]) void?]{
-Draws unshaped text with the baseline origin at coordinates @racket[x] and
+Draws unshaped text with the @tech{baseline} origin at coordinates @racket[x] and
 @racket[y], using @racket[font] and @racket[paint]. The coordinates must be
 drawing scalars. The canvas transform and clip apply. The operation does not
 close its arguments. It is suitable only when direct character-to-glyph mapping
@@ -331,7 +336,7 @@ substitution require the shaped-text operations.
 }
 
 @defproc[(measure-simple-text [font font?] [text string?] [#:paint paint (or/c paint? #f) #f]) real?]{
-Returns the horizontal advance of the unshaped text in local drawing units.
+Returns the horizontal @tech{advance} of the unshaped text in local drawing units.
 This is not the width of visible ink and does not apply the canvas transform.
 The optional paint is forwarded to native measurement; it does not turn this
 operation into shaped-text measurement.

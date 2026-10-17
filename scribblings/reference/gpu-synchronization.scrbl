@@ -7,15 +7,16 @@
 
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
-Flushing makes pending Skia work available for submission. Submission requests
-backend execution. A wait requests completion for the CPU. These are different
-boundaries: none presents a window, exports a native fence, or transfers pixels
+A @deftech{GPU flush} makes pending Skia work available for submission.
+A @deftech{GPU submission} requests backend execution. A @deftech{GPU wait}
+requests completion for the CPU. These are different boundaries: none presents
+a window, exports a native fence, or transfers pixels
 by itself. These operations require the owning Racket thread and
-an active, usable context. Detected native context loss requests shutdown and
+an active, usable @tech{GPU context}. Detected native context loss requests shutdown and
 raises; it does not retry rendering on the CPU.
 
 @bold{Conceptual diagram.} Pending drawing, flush, submission, and requested
-CPU completion are separate boundaries. Readback and presentation are separate
+CPU completion are separate boundaries. @tech{GPU readback} and presentation are separate
 routes from submitted work: readback produces an independent CPU result, while
 presentation is requested through its presentation API. A completed wait alone
 neither copies pixels nor presents them; presentation success is a request, not
@@ -27,14 +28,15 @@ proof of physical display.
 @section{Flush, Submit, and Wait}
 
 @defproc[(gpu-flush! [context gpu-context?]) void?]{
-Flushes pending Skia work for the context. It does not request CPU completion.
+Performs a @tech{GPU flush} for the context. It does not request CPU completion.
 Use @racket[gpu-submit!] to submit flushed work, or
 @racket[gpu-flush-and-submit!] for both operations.
 }
 
 @defproc[(gpu-submit! [context gpu-context?] [#:wait? wait? boolean? #f]) void?]{
-Submits previously flushed work. A true @racket[wait?] requests CPU completion
-of submitted work. This operation does not first flush all pending Skia commands;
+Requests @tech{GPU submission} of previously flushed work. A true @racket[wait?]
+requests CPU completion of submitted work. This operation does not first flush
+all pending Skia commands;
 use @racket[gpu-wait!] when those commands must be included. Native submission
 failure raises an exception. No pixel readback or presentation is performed.
 }

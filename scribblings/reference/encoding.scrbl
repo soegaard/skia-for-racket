@@ -17,7 +17,7 @@
 Encodes the current pixels of an open CPU surface as PNG and writes them to
 @racket[filename]. The operation does not close the surface or change its
 pixels. A GPU surface is rejected; obtain a separate CPU image through an
-explicit GPU readback API before using the corresponding image encoder.
+explicit @tech{GPU readback} API before using the corresponding image encoder.
 
 The default @racket['error] refuses to replace an existing file. The
 @racket['replace] mode permits replacement. The parent directory must already
@@ -40,7 +40,7 @@ source must already have a color-space tag; the operation does not guess the
 meaning of untagged samples. The original surface is unchanged.
 
 The optional @racket[profile] overrides output color metadata, not pixel samples.
-It must be a supported SDR RGB matrix/TRC ICC profile with XYZ profile connection
+It must be a supported SDR RGB matrix/TRC @tech{ICC profile} with XYZ profile connection
 space, valid tag ranges, and a declared byte length equal to the supplied length.
 LUT and HDR profile overrides are rejected. The profile must be at least 132
 bytes and fit @racket[(current-skia-byte-limit)]. Native profile parsing can also

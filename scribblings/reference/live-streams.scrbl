@@ -11,7 +11,7 @@ A @deftech{live port operation} exchanges chunks with a Racket port while native
 work is in progress. The image, picture, and byte-copy operations do not first
 buffer the complete encoded transfer as the @secref["skia-buffered-ports"]
 adapters do. Document output is different: it records complete pictures and
-performs a preflight export before publishing. The call is synchronous: it
+performs an @tech{output preflight} export before publishing. The call is synchronous: it
 returns after native work and cleanup have finished. No persistent port-backed
 image or codec is returned.
 

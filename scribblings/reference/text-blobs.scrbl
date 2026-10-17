@@ -8,8 +8,8 @@
 @(declare-exporting skia)
 
 A @deftech{text blob} is an owned native object containing glyphs and their
-placement. It retains the font information needed to draw them. A blob does
-not contain a paint, perform paragraph wrapping, or turn glyph IDs into a
+placement. It retains the @tech{font} information needed to draw them. A blob does
+not contain a @tech{paint}, perform paragraph wrapping, or turn @tech{glyph IDs} into a
 portable character string.
 
 Single-run construction and the multi-run builder API produce blobs that can
@@ -200,7 +200,7 @@ The four glyph-based append functions accept @racket[#:text] and
 may be a Racket string or a byte string containing valid UTF-8; malformed byte
 sequences are rejected. Supplied text is retained as immutable UTF-8 bytes.
 
-The cluster sequence contains one exact nonnegative integer per glyph. Each
+The @tech{cluster offset} sequence contains one exact nonnegative integer per glyph. Each
 integer is a byte offset inside the supplied UTF-8 text, at the beginning of a
 Unicode scalar value. It is not a Racket character index or necessarily a
 grapheme boundary. Repeated and descending offsets are permitted, so clusters
@@ -288,9 +288,9 @@ same mutable font.
           [#:text text (or/c string? bytes? #f) #f]
           [#:clusters clusters (or/c (listof exact-nonnegative-integer?)
                                      (vectorof exact-nonnegative-integer?) #f) #f]) void?]{
-Appends a run with one absolute x coordinate per glyph and a shared baseline
+Appends a run with one absolute x coordinate per glyph and a shared @tech{baseline}
 coordinate @racket[y], all relative to the blob's origin. The x values are not
-advances to be accumulated. Their order is preserved; no sorting or shaping
+@tech{advances} to be accumulated. Their order is preserved; no sorting or @tech{shaping}
 is performed. The shared run-input and metadata rules apply.
 }
 

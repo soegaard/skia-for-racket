@@ -6,12 +6,13 @@
 @title[#:tag "skia-drawing"]{Drawing Primitives}
 
 Drawing functions use the native Skia canvas API. The receiving canvas can
-belong to a surface, a recording, a document, or a GPU frame, subject to its
+belong to a @tech{surface}, a recording, a document, or a @tech{GPU frame}, subject to its
 lifetime and backend restrictions.
 
 Unless an entry says otherwise, drawing functions use the canvas's current
-transform and clip. Functions that accept a paint do not mutate it, and no
-function retains a borrowed canvas for later use. Coordinates are
+@tech[#:key "canvas transform"]{transform} and @tech{clip}.
+Functions that accept a @tech{paint} do not mutate it, and no
+function retains a @tech{borrowed canvas} for later use. Coordinates are
 @tech{drawing scalar}s. Drawing to a recording stores an operation rather than
 immediately producing pixels.
 

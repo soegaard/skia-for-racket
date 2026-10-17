@@ -12,7 +12,7 @@ metrics. It does not select a drawing size. A @tech{font} combines a typeface
 with size and rendering settings. A @deftech{font manager} finds typefaces
 available through a platform font system or a supplied collection.
 
-Font managers, typefaces, and font-style sets are @tech{owned resource}s.
+Font managers, typefaces, and @tech{font-style sets} are @tech{owned resource}s.
 Their native operations require an open resource on its owning thread.
 Predicates identify their wrappers even after closure. Font availability,
 family order, and matching results depend on the machine; a family name is
@@ -201,6 +201,10 @@ The font-style, style-set, copied-data, and metadata bindings are also provided
 by @racketmodname[skia/typefaces]. A @deftech{font style} is a detached, immutable
 weight/width/slant description, not a typeface and not a native resource.
 
+A @deftech{font-style set} is an owned collection of the styles available for a
+font family. It retains the native data needed to inspect styles and obtain
+their typefaces independently of the font manager's wrapper.
+
 The weight names denote the following integers: @racket['invisible] is 0,
 @racket['thin] is 100, @racket['extra-light] is 200, @racket['light] is 300,
 @racket['normal] is 400, @racket['medium] is 500, @racket['semi-bold] is 600,
@@ -225,7 +229,7 @@ Returns @racket[#t] for a detached font-style value and @racket[#f] otherwise.
                         'semi-condensed 'normal 'semi-expanded 'expanded
                         'extra-expanded 'ultra-expanded) 'normal]
                 [#:slant slant (or/c 'upright 'italic 'oblique) 'upright]) font-style?]{
-Returns a font-style value, normalizing named weights and widths to their
+Returns a @tech{font style} value, normalizing named weights and widths to their
 numeric classes. This operation performs no font lookup or native allocation.
 
 @racketblock[

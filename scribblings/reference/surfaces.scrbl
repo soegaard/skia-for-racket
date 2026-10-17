@@ -7,8 +7,8 @@
 
 A @deftech{surface} owns a pixel-based drawing target. A @deftech{canvas}
 provides access to a drawing target and carries drawing state, including the
-current transform and clip. A surface has an associated canvas; canvases can
-also belong to recordings, documents, or GPU frames.
+current @tech{canvas transform} and @tech{clip}. A surface has an associated canvas;
+canvases can also belong to recordings, documents, or @tech{GPU frames}.
 
 Several canvas wrappers obtained from one surface refer to the same target and
 state; they are not independent layers. A surface canvas is a

@@ -8,10 +8,10 @@
 @(declare-exporting skia)
 
 The process of @deftech{shaping} maps text to glyphs and positions using a
-typeface's layout rules. It can combine characters into ligatures, select
+@tech{typeface}'s layout rules. It can combine characters into ligatures, select
 contextual forms, position marks, and apply kerning. A @deftech{shaper} uses
-HarfBuzz with one captured font. A @deftech{shaped run} holds copied glyph IDs,
-cluster offsets, positions, and advances; it does not own a native font.
+HarfBuzz with one captured @tech{font}. A @deftech{shaped run} holds copied @tech{glyph IDs},
+@tech{cluster offsets}, positions, and @tech{advances}; it does not own a native font.
 
 Shaping one run is not paragraph layout. It does not choose fallback fonts,
 split mixed scripts into separate runs, or apply the Unicode bidirectional
@@ -56,7 +56,7 @@ The result is @racket[#t]; changing the original font does not resize the shaper
 Shapes @racket[text] with the captured font and returns a detached run.
 An empty string produces empty glyph, cluster, and position lists and zero
 advances. Glyph zero denotes a missing glyph; this operation does not invoke
-font fallback.
+@tech{font fallback}.
 
 HarfBuzz guesses unset segment properties from the input. An explicit direction
 selects left-to-right, right-to-left, top-to-bottom, or bottom-to-top shaping.
@@ -71,8 +71,9 @@ shaping order, which can differ from logical character order. Glyph count need
 not equal character count. Returned glyph IDs must fit the unsigned 16-bit
 Skia representation; an incompatible native result raises an exception.
 
-A cluster is a UTF-8 byte offset into @racket[text], not a Racket character
-index. Multiple glyphs can share a cluster, and cluster values can descend in
+A @deftech{cluster offset} is a UTF-8 byte offset into @racket[text] that associates
+a glyph with its source text. It is not a Racket character index.
+Multiple glyphs can share a cluster offset, and cluster offsets can descend in
 right-to-left output. They are not a complete caret-position or selection map.
 
 @racketblock[
@@ -85,7 +86,7 @@ right-to-left output. They are not a complete caret-position or selection map.
         (shaped-run-clusters run)))
 ]
 
-The string has two Racket characters and three UTF-8 bytes. A cluster for the
+The string has two Racket characters and three UTF-8 bytes. The cluster offset for the
 second character starts at byte offset 2, not character index 1.
 
 @bold{Conceptual diagram.} Characters, UTF-8 byte offsets, glyph records, and

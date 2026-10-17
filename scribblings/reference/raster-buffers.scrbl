@@ -15,7 +15,8 @@ obtain one. Use @racket[call-with-raster-buffer-canvas] to draw directly into th
 
 Buffer operations require an open resource on its creating thread. Only one canvas or pixmap
 scope may use a buffer at a time. Ordinary buffer reads, writes, copying, and nested scopes are
-rejected while it is borrowed. Width, height, stride, byte-size, and image-description queries
+rejected while it is borrowed. Width, height, @tech[#:key "row stride"]{stride}, byte-size,
+and image-description queries
 remain available during a scope. See @secref["skia-pixel-descriptions"] for the format
 descriptions and @racket[raster-buffer?], @racket[raster-buffer-image-info], and
 @racket[raster-buffer->image].
@@ -93,7 +94,7 @@ canvas or pixmap scope.
 
 @defproc[(raster-buffer-row-bytes [buffer raster-buffer?])
           exact-positive-integer?]{
-Returns the buffer's byte stride between row starts. This live-resource query is also allowed
+Returns the buffer's @tech{row stride}. This live-resource query is also allowed
 during its canvas or pixmap scope.
 }
 
@@ -130,7 +131,7 @@ length, or a byte-limit failure leave the buffer unchanged. The buffer must be i
 @defproc[(raster-buffer->rgba-bytes [buffer raster-buffer?] [#:premultiplied? premultiplied?
           boolean? #f])
           bytes?]{
-Returns a detached mutable, tightly packed RGBA8888 copy. The default is unpremultiplied alpha.
+Returns a detached mutable, tightly packed RGBA8888 copy. The default is @tech{unpremultiplied alpha}.
 This converts storage format and alpha representation through the native pixel reader, retaining
 the buffer's color interpretation rather than implicitly converting to sRGB. Floating-point
 samples can lose range and precision. There is no row padding in the result.

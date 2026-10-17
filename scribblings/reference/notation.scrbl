@@ -34,7 +34,7 @@ integer and follows the bounds stated by the constructor.
 
 The initial origin of a CPU surface is its upper-left corner. The x coordinate
 increases to the right and the y coordinate increases downward. One drawing
-unit initially corresponds to one pixel. Canvas transforms change the mapping
+unit initially corresponds to one pixel. @tech{Canvas transforms} change the mapping
 for subsequent drawing; they do not move pixels already drawn.
 
 The transform-order coordinate diagram in @secref["skia-canvas-transforms"]

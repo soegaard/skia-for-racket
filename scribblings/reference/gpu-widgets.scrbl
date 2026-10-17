@@ -10,7 +10,7 @@
 @(declare-exporting skia/gpu-gui #:use-sources (skia/gpu-gui))
 
 The @racketmodname[skia/gpu-gui] library initializes Racket's GUI layer and
-provides widgets backed by the presenter API. Construction and widget-specific
+provides widgets backed by the @tech{GPU presenter} API. Construction and widget-specific
 operations belong to the creating eventspace's handler thread. Use
 @racket[queue-callback] to schedule such work from another thread.
 

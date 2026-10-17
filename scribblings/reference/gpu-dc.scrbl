@@ -14,7 +14,8 @@ The @racketmodname[skia/gpu-dc] library supplies the supported Racket
 does not initialize a GUI or create a GPU context; native GPU drawing code is
 loaded on first use.
 
-A GPU DC is callback-scoped. Every call creates a fresh DC, closes it on every
+A @deftech[#:key "GPU drawing context"]{GPU DC} is a callback-scoped implementation
+of that drawing subset. Every call creates a fresh DC, closes it on every
 exit, and permanently expires it when the callback returns. Retaining the Racket
 object does not extend the underlying GPU target or reactivate the DC in a later
 frame.

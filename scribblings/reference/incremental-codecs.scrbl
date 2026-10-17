@@ -11,12 +11,12 @@
 An @deftech{incremental decoding session} accepts explicitly fed encoded bytes
 and retains a native decoder and destination between steps. It does not read a
 Racket port or keep arbitrary port callbacks. It decodes the first frame at the
-encoded dimensions and orientation, without subset selection, scaling, or a
+encoded dimensions and @tech{encoded orientation}, without subset selection, scaling, or a
 fallback to one-shot decoding.
 
 Input and decoded pixels can both remain resident. Incremental decoding is not
 a promise of constant memory. The supported destination is byte RGBA8888 or
-BGRA8888, with premultiplied or unpremultiplied alpha. Floating-point destinations
+BGRA8888, with @tech{premultiplied alpha} or @tech{unpremultiplied alpha}. Floating-point destinations
 are not accepted by this interface.
 
 Progressive input is supported for PNG at complete chunk boundaries. Partial PNG

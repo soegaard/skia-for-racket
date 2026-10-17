@@ -9,9 +9,9 @@ An @deftech{image} is an immutable source of pixels for drawing, encoding, or
 readback. Its native storage is owned by its resource wrapper. Immutability
 means that drawing to another target does not edit the image; it does not mean
 that decoding must already be complete or that storage must be CPU-resident.
-An image snapshot and its source surface have separate lifetimes.
+An image snapshot and its source @tech{surface} have separate lifetimes.
 
-The constructors here create CPU-compatible images. GPU images satisfy the
+The constructors here create CPU-compatible images. @tech{GPU images} satisfy the
 same @racket[image?] predicate but retain additional context requirements.
 CPU readback, subsetting, and encoding reject GPU-dependent input instead of
 transferring it implicitly.
@@ -35,7 +35,7 @@ must contain exactly @racket[(* width height 4)] bytes, within
 @racket[current-skia-byte-limit]. Rows run from top to bottom, with no padding.
 Later mutation of @racket[pixels] does not change the image.
 
-The default interprets RGB as unpremultiplied. With @racket[premultiplied?] true,
+The default uses @tech{unpremultiplied alpha}. With @racket[premultiplied?] true,
 each RGB byte must be no greater than its pixel's alpha byte; otherwise the
 operation raises an exception. The option describes the supplied bytes, not a
 request to multiply them. A supplied @racket[space] declares their interpretation
@@ -77,7 +77,7 @@ used for decode failure.
 The native decoder can defer pixel decoding until drawing or readback, so
 successful construction does not guarantee that later decoding will succeed.
 The operation does not expose an animation's individual frames. Frame selection
-and explicit encoded-orientation handling belong to the codec interfaces.
+and explicit @tech{encoded orientation} handling belong to the @tech{codec} interfaces.
 }
 
 @defproc[(image-from-file [filename path-string?]) image?]{
@@ -154,10 +154,10 @@ images require an explicit GPU-subset or transfer operation instead.
 @section[#:tag "skia-image-drawing"]{Drawing Images}
 
 Drawing uses image coordinates for a source rectangle and canvas-local
-coordinates for a destination rectangle. The canvas transform and clip apply
-to the destination. Nearest sampling selects individual source pixels; linear
-sampling interpolates adjacent samples. Sampling is independent of a paint's
-shape-antialiasing setting.
+coordinates for a destination rectangle. The @tech{canvas transform} and @tech{clip} apply
+to the destination. @deftech{Nearest sampling} selects individual source pixels;
+@deftech{linear sampling} interpolates adjacent samples. Sampling is independent
+of a paint's @tech{antialiasing} setting.
 
 The optional paint can supply alpha, blending, and filters. The image supplies
 the source pixels; its destination rectangle is not outlined when the paint's
@@ -170,8 +170,8 @@ read back for a CPU or document target.
                      [#:paint paint (or/c paint? #f) #f]) void?]{
 Draws the image with its upper-left corner at coordinates @racket[x] and
 @racket[y], using its pixel width and height as local drawing dimensions.
-The default sampling is nearest; @racket[draw-image-rect] and
-@racket[draw-image-subrect] default to linear sampling.
+The default is @tech{nearest sampling}; @racket[draw-image-rect] and
+@racket[draw-image-subrect] default to @tech{linear sampling}.
 }
 
 @defproc[(draw-image-rect [canvas canvas?] [image image?] [x real?] [y real?]

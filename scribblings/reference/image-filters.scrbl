@@ -13,12 +13,13 @@ connects filters by their input slots. Attach its final filter with
 @racket[paint-set-image-filter!] or the @racket[#:image-filter] option of
 @racket[make-paint]. Construction does not execute the graph or change an image.
 
-A false input slot denotes the dynamic source supplied when the graph is used,
-not a transparent image and not a disabled branch. For example, two false
+A false input slot denotes the @deftech{dynamic source}, the drawing content
+supplied when the graph is used, not a transparent image and not a disabled branch.
+For example, two false
 inputs to a blend node refer to the same source. A composition substitutes
 one graph into another's source slots. A paint filter processes each drawing
 operation, not everything already present on the canvas. Explicit source nodes retain
-an image or shader.
+an @tech{image} or @tech{shader}.
 
 Each constructor returns an owned filter and retains native references to its
 inputs. Closing caller-owned input wrappers afterward is permitted. Retained
@@ -29,7 +30,7 @@ open resources on their owning thread; native rejection raises an exception.
 
 @section[#:tag "skia-filter-rectangles"]{Coordinates, Inputs, and Crops}
 
-Filter coordinates are local drawing coordinates, transformed with the drawing
+Filter coordinates are @tech{local coordinates}, transformed with the drawing
 operation. Rectangles are lists or vectors of @tt{x, y, width, height}, not
 left/top/right/bottom coordinates. Width and height are nonnegative. Source,
 lens, and tile rectangles specifically require positive extents. Coordinates,
@@ -37,7 +38,7 @@ coefficients, and computed edges must be drawing scalars. Positive extents that
 collapse after native rounding are rejected.
 
 The optional crop constrains the filter node's output region. It is not a
-canvas clip and does not move pixels. Cropping a child before a blur can produce
+canvas @tech{clip} and does not move pixels. Cropping a child before a blur can produce
 a different result from cropping the blur's output. The absence of a crop does
 not imply an infinite pixel allocation. Native bounds, drawing clips, memory
 limits, and output-backend restrictions still apply.
@@ -45,7 +46,7 @@ limits, and output-backend restrictions still apply.
 @bold{Conceptual diagram.} A graph connects inputs; constructing it does not
 process pixels. The two executed fixtures use the same crop and blur in opposite
 orders: cropping before blur changes the blur's input, while cropping after blur
-restricts its output. A false input slot is the dynamic drawing source. Thus
+restricts its output. A false input slot is the @tech{dynamic source}. Thus
 @racket[(make-compose-image-filter outer inner)] feeds the inner graph's output
 into the outer graph's dynamic-source slots.
 

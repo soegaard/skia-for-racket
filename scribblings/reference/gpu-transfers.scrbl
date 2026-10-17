@@ -12,7 +12,7 @@ for the one-shot constructor, they require the owning context to be active.
 No readback performs presentation or silently switches failed GPU rendering
 to the CPU.
 
-A surface readback requires a balanced save/layer stack at save count 1.
+A surface readback requires a balanced save/layer stack at @tech{save count} 1.
 Reading a GPU image first draws it one-to-one, with nearest sampling and source
 replacement, into a same-context staging GPU surface. That stage preserves the
 source color type and color interpretation; opaque images use opaque staging,
@@ -37,7 +37,8 @@ alpha unless requested otherwise. A supplied live color space selects the
 readback destination interpretation; false uses the surface's native color
 space. The color-space argument is not a detached descriptor.
 
-The operation flushes, submits, and waits before copying pixels. Float or
+The operation performs a @tech{GPU flush}, @tech{GPU submission}, and
+@tech{GPU wait} before copying pixels. Float or
 higher-bit-depth sources are explicitly converted to eight-bit output.
 The output allocation must fit @racket[current-skia-byte-limit]. Failure returns
 no partial byte string. Later GPU changes do not alter a successful result.

@@ -9,13 +9,13 @@
 @(declare-exporting skia skia/specialized-canvases #:use-sources (skia/specialized-canvases))
 
 These scoped canvases discard drawing, forward it to several targets, or count
-native overdraw. Each helper calls a function with one borrowed canvas and
+native overdraw. Each helper calls a function with one @tech{borrowed canvas} and
 preserves its return values. Callbacks must not require keyword arguments.
 The supplied canvas expires on return or escape and must not be retained.
 Continuation reentry is prohibited.
 
 Target-based helpers borrow the supplied surfaces, not their ownership. Each
-surface must have a balanced root canvas: save count 1, identity full matrix,
+surface must have a balanced root canvas: @tech{save count} 1, identity full matrix,
 and a full rectangular device clip. Targets cannot already be borrowed by
 another specialized-canvas scope. While borrowed, use the supplied wrapper,
 not a target's ordinary canvas or operations that close or repurpose that target.

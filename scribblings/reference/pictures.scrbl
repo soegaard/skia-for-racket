@@ -9,7 +9,7 @@
 @(declare-exporting skia skia/pictures #:use-sources (skia/pictures))
 
 A @deftech{picture} is an immutable recording of drawing commands and their
-retained drawing data. Replaying a picture sends those commands to a canvas;
+retained drawing data. Replaying a picture sends those commands to a @tech{canvas};
 it does not call the Racket function that originally recorded them. A picture
 can contain image drawing as well as geometry and text. Recording pixels does
 not turn them into vector geometry.
@@ -49,7 +49,7 @@ the native resource remains open. Use @racket[skia-closed?] for the latter.
           [recorder picture-recorder?] [x real?] [y real?]
           [width (and/c real? (>=/c 0))] [height (and/c real? (>=/c 0))]
           [#:spatial-index spatial-index (or/c 'none 'rtree) 'none]) canvas?]{
-Begins a recording and returns its borrowed canvas. The recorder must be open
+Begins a recording and returns its @tech{borrowed canvas}. The recorder must be open
 and must not already be recording. Coordinates, extents, and computed right
 and bottom coordinates must be drawing scalars. Zero extents are permitted.
 The rectangle is a culling bound, not a promise that drawing outside it will

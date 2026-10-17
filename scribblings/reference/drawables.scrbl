@@ -9,7 +9,7 @@
 @(declare-exporting skia skia/drawables #:use-sources (skia/drawables))
 
 A @deftech{recorded drawable} owns native drawing content captured from a
-picture. Playback does not invoke a Racket callback. This API exposes recorded
+@tech{picture}. Playback does not invoke a Racket callback. This API exposes recorded
 content, not an application-defined native callback or an editable scene.
 A drawable is an @tech{owned resource}; native operations require it to be open
 on its owning thread with any retained GPU dependencies in their proper context.

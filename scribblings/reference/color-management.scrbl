@@ -29,7 +29,7 @@ for native operations.
 
 @defproc[(make-srgb-color-space) color-space?]{
 Returns a new owned color-space reference describing sRGB, with its standard
-RGB primaries and nonlinear transfer function. The result has an independent
+RGB primaries and nonlinear @tech{transfer function}. The result has an independent
 wrapper lifetime even when Skia shares the underlying native color space.
 Creating the reference does not convert any image or surface samples.
 }
@@ -312,7 +312,7 @@ an ill-conditioned matrix.
 
 @(declare-exporting skia)
 
-An ICC profile is an external color-space description stored as bytes. Import,
+An @deftech{ICC profile} is an external color-space description stored as bytes. Import,
 export, and encoder overrides have different restrictions. Neither an ICC
 profile nor a native color space verifies that a particular set of samples was
 actually encoded in the described space.

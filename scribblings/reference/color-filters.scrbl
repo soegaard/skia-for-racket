@@ -8,12 +8,12 @@
 @(declare-exporting skia)
 
 A @deftech{color filter} changes colors without resampling neighboring
-pixels. Attach one to a paint, wrap a shader with
+pixels. Attach one to a @tech{paint}, wrap a @tech{shader} with
 @racket[shader-with-color-filter], or use @racket[make-color-filter-image-filter]
-inside an image-filter graph.
+inside a @tech{filter graph}.
 
-Constructors return owned resources and retain any input filters independently
-of the caller's wrappers. Numeric coefficients must be drawing scalars. Native
+Constructors return @tech{owned resources} and retain any input filters independently
+of the caller's wrappers. Numeric coefficients must be @tech{drawing scalars}. Native
 construction failure raises an exception. Applying a filter does not change
 the input image's stored pixels or its color-space metadata.
 

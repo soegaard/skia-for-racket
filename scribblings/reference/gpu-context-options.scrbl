@@ -13,7 +13,7 @@
                     #:use-sources (skia/gpu-context-options))
 
 A @deftech{GPU context options} value contains immutable requests used when
-constructing a context. It is detached Racket data, not a native resource; it
+constructing a @tech{GPU context}. It is a @tech{detached value}, not a native resource; it
 needs no explicit release. Constructing or inspecting options does not load
 Skia or probe a backend. The same value can be used on different Racket threads.
 

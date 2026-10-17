@@ -8,7 +8,7 @@
 @(declare-exporting skia)
 
 An @deftech{SVG document} owns one canvas and an XML output stream. It has a
-single viewport rather than PDF's sequence of pages. Coordinates use the usual
+single viewport rather than a @tech{PDF document}'s sequence of pages. Coordinates use the usual
 upper-left drawing origin with downward-positive y. Width and height are SVG
 user units, not a request to allocate an equally sized raster surface.
 

@@ -19,7 +19,7 @@ height. Coordinates and computed right and bottom edges must be exact integers
 from -1073741823 through 1073741823. Dimensions are exact nonnegative integers.
 Right and bottom edges are excluded. Empty rectangles are allowed unless an
 entry says otherwise. Region drawing follows the canvas transform; region
-clipping instead uses device coordinates.
+clipping instead uses @tech{device coordinates}.
 
 @local-table-of-contents[#:style 'immediate-only]
 

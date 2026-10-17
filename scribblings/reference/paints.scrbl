@@ -6,8 +6,8 @@
 @title[#:tag "skia-paints"]{Paints}
 
 A @deftech{paint} supplies the appearance of a drawing operation. It holds values such
-as a color and stroke width, and may retain shaders, effects, or filters.
-It does not contain the shape being drawn or the canvas's current transform.
+as a color and stroke width, and may retain @tech{shaders}, effects, or filters.
+It does not contain the shape being drawn or the current @tech{canvas transform}.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -43,13 +43,15 @@ Creates an owned mutable paint with the specified settings. Numeric stroke
 width and miter limit must also be @tech{drawing scalar}s.
 
 The style selects filling, stroking, or both. Stroke width is measured in local
-drawing units; zero requests a hairline rather than no stroke. The cap controls
-open stroke ends, while the join controls corners. The miter limit bounds sharp
-miter joins. Antialiasing controls edge coverage, not image resampling.
+drawing units; zero requests a @tech{hairline} rather than no stroke. The
+@tech{stroke cap} controls open stroke ends, while the @tech{stroke join}
+controls corners. The @tech{miter limit} bounds sharp miter joins.
+@deftech{Antialiasing} smooths shape edges by allowing fractional pixel coverage.
+It does not control image resampling.
 
 A shader supplies the drawing colors when present; the paint's color alpha
 still modulates the result. Without a shader, the color supplies the paint's
-solid RGBA value. The default blend mode places source content over the
+solid RGBA value. The default @tech{blend mode} places source content over the
 existing destination, taking alpha into account. The other accepted modes are
 specified in @secref["skia-blend-modes"].
 
@@ -109,7 +111,7 @@ and pixel format also matter.
 @subsection{Compositing and Component Multiplication}
 
 Let @math{S} and @math{D} be source and destination RGBA vectors with RGB
-premultiplied by alpha. Let @math{a} and @math{b} be their respective alpha
+stored with @tech{premultiplied alpha}. Let @math{a} and @math{b} be their respective alpha
 components. The result @math{R} is also premultiplied RGBA. Addition and
 multiplication of vectors operate on each component, including alpha.
 
@@ -295,8 +297,9 @@ Some primitives, such as @racket[draw-line], always use stroke behavior.
 
 @defproc[(paint-set-stroke-width! [paint paint?]
                                  [width (and/c real? (>=/c 0))]) void?]{
-Sets the stroke width in local drawing units. Zero selects a device-space
-hairline; it does not disable stroking. The width must be a nonnegative
+Sets the stroke width in local drawing units. Zero selects a @deftech{hairline},
+a stroke whose width is one device pixel regardless of the canvas transform;
+it does not disable stroking. The width must be a nonnegative
 @tech{drawing scalar}.
 
 
@@ -338,21 +341,22 @@ does not guarantee that every destination or operation implements antialiasing.
 }
 
 @defproc[(paint-set-cap! [paint paint?] [cap (or/c 'butt 'round 'square)]) void?]{
-Sets the shape of open stroke ends. A butt cap stops at the endpoint; round and
-square caps extend beyond it by half the stroke width. Closed contours have
+Sets the @deftech{stroke cap}, the shape of open stroke ends. A butt cap stops at
+the endpoint; round and square caps extend beyond it by half the stroke width.
+Closed contours have
 joins rather than open end caps.
 }
 
 @defproc[(paint-set-join! [paint paint?] [join (or/c 'miter 'round 'bevel)]) void?]{
-Sets the connection between adjacent stroked segments. A miter extends the
-outer edges to their intersection, a round join uses a circular connection,
+Sets the @deftech{stroke join}, the connection between adjacent stroked segments.
+A miter extends the outer edges to their intersection, a round join uses a circular connection,
 and a bevel connects the outer corners directly. Excessively long miters are
 limited by @racket[paint-set-miter-limit!].
 }
 
 @defproc[(paint-set-miter-limit! [paint paint?]
                                 [limit (and/c real? (>=/c 0))]) void?]{
-Sets the dimensionless miter limit. It limits how far a sharp miter join can
+Sets the dimensionless @deftech{miter limit}. It limits how far a sharp miter join can
 extend relative to the stroke width; a join that exceeds the limit is beveled.
 The limit must be a nonnegative @tech{drawing scalar}.
 }

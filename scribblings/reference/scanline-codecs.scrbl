@@ -17,8 +17,8 @@ fallback.
 
 Input is already available as copied bytes, a private stream duplicate, or a
 fully buffered port. A short scanline read is not a request to feed more input;
-use an @secref["skia-incremental-codecs"] session for explicitly supplied chunks.
-Scanline output preserves encoded orientation. The session's row order describes
+use an @tech{incremental decoding session} for explicitly supplied chunks.
+Scanline output preserves @tech{encoded orientation}. The session's row order describes
 native consumption order, not EXIF orientation normalization.
 
 All session operations except the predicate require the creating Racket thread.
@@ -201,7 +201,7 @@ does not supply decoded pixels for the skipped rows.
 
 @section{Detached Row Batches}
 
-A @deftech{scanline batch} contains only decoded rows, their stride and output-row
+A @deftech{scanline batch} contains only decoded rows, their @tech{row stride} and output-row
 origin, and the counts for one request. Its accessors remain usable after the
 session closes. Consecutive bottom-up batches must be placed by their first-row
 fields, not blindly concatenated as if they arrived in top-down order.

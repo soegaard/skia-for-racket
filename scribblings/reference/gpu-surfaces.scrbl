@@ -13,8 +13,8 @@ there is no separate GPU canvas drawing language. Creating a GPU surface does
 not create a window or present its contents.
 
 Native surface operations require the creating Racket thread and a live
-@racket[call-with-gpu-context] activation for the owning context. A borrowed
-canvas expires with the activation that supplied it, even when the surface
+@tech{GPU activation} for the owning context. A @tech{borrowed canvas}
+expires with the activation that supplied its @tech{GPU lease}, even when the surface
 remains open. Obtain a fresh canvas in each later activation. Close the surface
 with @racket[skia-close!] before closing its context. Closing the wrapper queues
 native release; it is not a pixel transfer or a completion fence.

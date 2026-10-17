@@ -15,13 +15,13 @@ This differs from an ordinary state save, which does not establish a separate
 compositing group. Layer creation does not return an independently owned image.
 
 Layer bounds use local coordinates, width, and height. They are not an explicit
-canvas clip, but Skia can restrict a layer's extent to them. Supply conservative
+canvas @tech{clip}, but Skia can restrict a layer's extent to them. Supply conservative
 bounds for all intended content and effects; do not rely on pixels outside a
 bound being retained. Use an explicit clip when exact clipping is needed.
 
 Layer creation, drawing, and discard require a live canvas on its owning thread
 and, where applicable, its current GPU context. PDF and SVG need not preserve
-every layer effect. Raster fallback must contain the backdrop
+every layer effect. @tech{Raster fallback} must contain the backdrop
 needed by the operation; an isolated group does not capture an outer document's
 existing pixels automatically.
 

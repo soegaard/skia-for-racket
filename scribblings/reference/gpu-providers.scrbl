@@ -11,8 +11,8 @@
 @defmodule[skia/gpu #:no-declare]
 @(declare-exporting skia/gpu)
 
-A @deftech{GPU backend} identifies the graphics interface used by a Skia GPU
-context. A @deftech{GPU provider} supplies access to a particular native host
+A @deftech{GPU backend} identifies the graphics interface used by a Skia
+@tech{GPU context}. A @deftech{GPU provider} supplies access to a particular native host
 context or device. A provider is not a Skia context, a rendering target, or a
 promise of hardware acceleration. Context construction and lifetime are
 specified in @secref["skia-gpu-contexts"].

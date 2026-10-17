@@ -12,7 +12,7 @@
 @(declare-exporting skia skia/color4f #:use-sources (skia/color4f))
 
 A @deftech{floating-point color} is a detached immutable value with red, green,
-blue, and alpha components. Its RGB values are unpremultiplied: they are not
+blue, and alpha components. It uses @tech{unpremultiplied alpha}: RGB values are not
 multiplied by alpha and need not lie between zero and alpha. RGB may be negative
 or greater than one. A value does not carry a color space, choose a pixel
 format, or enable HDR output merely by containing extended components.
@@ -210,16 +210,16 @@ Native construction failure raises an exception. The floating-point gradient
 interface uses @racket[#:stops] rather than the byte-color interface's
 @racket[#:positions], and its positions must increase strictly.
 
-A color sequence contains at least two floating-point colors, in a list or
+A color sequence contains at least two @tech{floating-point colors}, in a list or
 vector. Its count must fit a signed native integer, and its charged input
 payload of 64 bytes per color must fit @racket[current-skia-byte-limit]. A
-nonfalse stops list or vector must have the same length. Stops lie between
+nonfalse stops list or vector must have the same length. @tech{Gradient stop} positions lie between
 zero and one and must remain strictly increasing after binary32 conversion;
 two distinct Racket numbers that round to the same stop are rejected. Omitted
 stops are evenly distributed. This interface therefore does not accept equal
 stops for abrupt color transitions.
 
-Tile modes have the meanings described for the basic gradient shaders. An
+@tech{Tile modes} have the meanings described for the basic gradient shaders. An
 optional @racket[#:matrix] is a local affine transform of the shader. The wrapper
 does not require an invertible local matrix; native rejection can still raise
 an exception, and a singular matrix has no promised useful sampling behavior.

@@ -8,8 +8,8 @@
 @(declare-exporting skia)
 
 A @deftech{runtime effect} is a compiled SkSL program for one stage of drawing:
-a shader, color filter, or blender. Compilation produces an effect resource;
-creating an instance binds its uniforms and child resources. A @deftech{blender}
+a @tech{shader}, @tech{color filter}, or blender. Compilation produces an effect resource;
+creating an instance binds its @tech{uniforms} and child resources. A @deftech{blender}
 combines source and destination colors. It is distinct from a shader combining
 two child shaders before the paint reaches its drawing target.
 
@@ -94,6 +94,11 @@ bound to an instance and remains valid after closure.
 }
 
 @section[#:tag "skia-runtime-bindings"]{Uniform and Child Bindings}
+
+A @deftech{uniform} is a named numeric parameter supplied when a runtime effect
+is instantiated. Its value is copied into the instance and stays fixed for
+that instance. A child binding supplies a shader, color filter, or blender
+resource for the program to use.
 
 Binding dictionaries are hashes with symbol or string keys. Keys match reflected
 names exactly after symbols are converted to strings. Missing names, unknown

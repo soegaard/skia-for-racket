@@ -9,8 +9,9 @@
 @(declare-exporting skia skia/output-groups #:use-sources (skia/output-groups))
 
 A @deftech{bounded output group} captures a drawing callback once, then selects native replay or
-explicit rasterization for a PDF, SVG, or CPU-raster destination. It returns a detached report
-describing that decision. Capturing the callback is not a preflight/retry loop: replay never
+explicit @tech{raster fallback} for a PDF, SVG, or CPU-raster destination. It returns
+a detached report describing that decision. Capturing the callback is not a
+preflight/retry loop: replay never
 reruns the Racket authoring code.
 
 Representation policy and raster execution are separate. CPU execution is the default. A GPU

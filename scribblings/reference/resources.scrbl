@@ -5,7 +5,7 @@
 
 @title[#:tag "skia-resources"]{Resources and Lifetimes}
 
-Skia uses native resources alongside detached Racket values. Resource kind,
+Skia uses native resources alongside @tech{detached values}. Resource kind,
 ownership, and scope determine when a value remains valid and how it should be
 released.
 
@@ -24,7 +24,7 @@ any callback or GPU activation that supplied it must remain valid. Keeping the
 Racket wrapper reachable does not keep an expired target valid.
 
 A @deftech{detached value} contains ordinary copied information rather than an
-owned native handle. An RGBA color is a detached value; a paint is not. Detached
+owned native handle. An RGBA color is a detached value; a @tech{paint} is not. Detached
 values do not need @racket[skia-close!].
 
 A resource predicate recognizes the kind of value, not whether it is open.
@@ -43,7 +43,7 @@ GPU leases and frames have their own activation and thread rules.
                   "A time axis shows a CPU surface and its borrowed canvas valid until owner closure, an independent snapshot continuing afterward, and pixmap/subset views valid only during a buffer callback. Gray segments mark invalid views."]
 
 @defproc[(skia-resource? [v any/c]) boolean?]{
-Returns @racket[#t] when @racket[v] is an owned resource accepted by the
+Returns @racket[#t] when @racket[v] is an @tech{owned resource} accepted by the
 ordinary Skia resource protocol, and @racket[#f] otherwise. A closed resource
 still satisfies the predicate. Borrowed canvases and detached values do not.
 This predicate is not a classifier for every object in the separate GPU APIs.
