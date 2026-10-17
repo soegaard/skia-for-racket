@@ -38,6 +38,8 @@ class NavigationParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.depth = 0
         self.navigation_depths = []
+        self.group_depths = []
+        self.heading_depths = []
         self.navigations = []
 
     def handle_starttag(self, tag, attrs):
@@ -45,7 +47,8 @@ class NavigationParser(HTMLParser):
         attrs = dict(attrs)
         if attrs.get('role') == 'navigation' and attrs.get('data-skia-doc-section'):
             self.navigation_depths.append(self.depth)
-            self.navigations.append(dict(attrs=attrs, anchors=[], buttons=[], panels=[], collections=[]))
+            self.navigations.append(
+                dict(attrs=attrs, anchors=[], buttons=[], panels=[], collections=[], groups=[]))
         if not self.navigation_depths:
             return
         navigation = self.navigations[-1]
@@ -55,18 +58,34 @@ class NavigationParser(HTMLParser):
             navigation['buttons'].append(attrs)
         elif attrs.get('data-skia-doc-nav-panel') == 'tutorials':
             navigation['panels'].append(attrs)
+        if 'skia-doc-nav__tutorial-group' in class_tokens(attrs):
+            group = dict(attrs=attrs, heading='', anchors=[])
+            navigation['groups'].append(group)
+            self.group_depths.append((self.depth, group))
+        elif 'skia-doc-nav__group-heading' in class_tokens(attrs) and self.group_depths:
+            self.heading_depths.append((self.depth, self.group_depths[-1][1]))
         if ('skia-doc-nav__collection-link' in class_tokens(attrs)
                 and 'data-skia-doc-nav-all' not in attrs):
             navigation['collections'].append((tag, attrs))
+        if tag == 'a' and self.group_depths:
+            self.group_depths[-1][1]['anchors'].append(attrs)
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
         self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
+        if self.heading_depths and self.depth == self.heading_depths[-1][0]:
+            self.heading_depths.pop()
+        if self.group_depths and self.depth == self.group_depths[-1][0]:
+            self.group_depths.pop()
         if self.navigation_depths and self.depth == self.navigation_depths[-1]:
             self.navigation_depths.pop()
         self.depth -= 1
+
+    def handle_data(self, data):
+        if self.heading_depths:
+            self.heading_depths[-1][1]['heading'] += data
 
 
 def parse_navigation(page: Path):
@@ -80,20 +99,32 @@ def parse_navigation(page: Path):
 
 def load_catalog():
     catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
+    need(catalog.get('schema_version') == 2, 'expected tutorial catalog schema version 2')
     tutorials = catalog['tutorials']
-    routes = catalog['routes']
+    categories = catalog['categories']
     ids = [entry['id'] for entry in tutorials]
     need(len(ids) == len(set(ids)), 'tutorial catalog has duplicate ids')
-    seen = set()
+    for entry in tutorials:
+        need(isinstance(entry.get('menu_title'), str) and entry['menu_title'].strip(),
+             f'tutorial has no menu title: {entry["id"]}')
+    category_ids = [category.get('id') for category in categories]
+    need(all(isinstance(identifier, str) and identifier for identifier in category_ids),
+         'tutorial catalog has a category without an id')
+    need(len(category_ids) == len(set(category_ids)), 'tutorial catalog has duplicate category ids')
     shortcut_ids = []
-    for route in routes:
-        for identifier in route['lessons']:
-            need(identifier in ids, f'route has unknown tutorial: {identifier}')
-            if identifier not in seen:
-                seen.add(identifier)
-                shortcut_ids.append(identifier)
+    for category in categories:
+        need(isinstance(category.get('title'), str) and category['title'].strip(),
+             f'tutorial category has no title: {category["id"]}')
+        lessons = category.get('lessons')
+        need(isinstance(lessons, list) and lessons,
+             f'tutorial category has no lessons: {category["id"]}')
+        for identifier in lessons:
+            need(identifier in ids, f'category has unknown tutorial: {identifier}')
+            shortcut_ids.append(identifier)
+    need(len(shortcut_ids) == len(set(shortcut_ids)),
+         'tutorial catalog assigns a lesson to more than one category')
     need(set(shortcut_ids) == set(ids), 'tutorial catalog has uncategorized tutorials')
-    return catalog, tutorials, routes, shortcut_ids
+    return catalog, tutorials, categories, shortcut_ids
 
 
 def nav_collection(navigation, class_name):
@@ -151,7 +182,7 @@ def check_assets(root: Path, page: Path):
 
 
 def check_page(root: Path, page: Path, *, section: str, index: bool, tutorial_id: str | None,
-               shortcut_ids: list[str]):
+               categories: list[dict], shortcut_ids: list[str]):
     navigation = parse_navigation(page)
     attrs = navigation['attrs']
     need(attrs.get('aria-label') == 'Skia documentation',
@@ -203,6 +234,16 @@ def check_page(root: Path, page: Path, *, section: str, index: bool, tutorial_id
          f'{page}: tutorial shortcuts contain duplicate targets')
     need(set(shortcut_targets) == expected_targets,
          f'{page}: tutorial shortcuts do not match the catalog')
+    need(len(navigation['groups']) == len(categories),
+         f'{page}: expected {len(categories)} tutorial categories, found {len(navigation["groups"])}')
+    for group, category in zip(navigation['groups'], categories):
+        need(group['heading'].strip() == category['title'],
+             f'{page}: tutorial category heading differs from catalog: {category["id"]}')
+        targets = [local_target(root, page, anchor.get('href', '')).parent.name
+                   for anchor in group['anchors']]
+        expected = [tutorial_directory(identifier) for identifier in category['lessons']]
+        need(targets == expected,
+             f'{page}: tutorial category differs from catalog: {category["id"]}')
     current_shortcuts = [anchor for anchor in shortcuts if anchor.get('aria-current') == 'page']
     if tutorial_id:
         need(len(current_shortcuts) == 1,
@@ -222,30 +263,30 @@ def tutorial_directory(identifier: str):
 def check_site(root: Path):
     root = root.resolve()
     need(root.is_dir(), f'HTML site does not exist: {root}')
-    _catalog, tutorials, _routes, shortcut_ids = load_catalog()
+    _catalog, tutorials, categories, shortcut_ids = load_catalog()
     landing = root / 'index.html'
     need(landing.is_file(), f'missing neutral landing page: {landing}')
     check_page(root, landing, section='landing', index=False, tutorial_id=None,
-               shortcut_ids=shortcut_ids)
+               categories=categories, shortcut_ids=shortcut_ids)
 
     reference = root / 'skia-reference'
     pages = sorted(reference.glob('*.html'))
     need(pages, f'missing Reference HTML pages under {reference}')
     for page in pages:
         check_page(root, page, section='reference', index=page.name == 'index.html',
-                   tutorial_id=None, shortcut_ids=shortcut_ids)
+                   tutorial_id=None, categories=categories, shortcut_ids=shortcut_ids)
 
     tutorial_index = root / 'skia-tutorials' / 'index.html'
     need(tutorial_index.is_file(), f'missing Tutorials index: {tutorial_index}')
     check_page(root, tutorial_index, section='tutorials', index=True, tutorial_id=None,
-               shortcut_ids=shortcut_ids)
+               categories=categories, shortcut_ids=shortcut_ids)
 
     for entry in tutorials:
         identifier = entry['id']
         page = root / tutorial_directory(identifier) / 'index.html'
         need(page.is_file(), f'missing tutorial page for {identifier}: {page}')
         check_page(root, page, section='tutorials', index=False, tutorial_id=identifier,
-                   shortcut_ids=shortcut_ids)
+                   categories=categories, shortcut_ids=shortcut_ids)
 
     return dict(
         status='passed',

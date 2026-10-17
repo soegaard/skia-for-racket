@@ -18,6 +18,17 @@ CATALOG = Path('scribblings/tutorials/support/catalog.json')
 MARKERS = {'skia-reader-prerequisites', 'skia-reader-next', 'skia-reader-sources'}
 VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta',
         'param', 'source', 'track', 'wbr'}
+EXPECTED_CATEGORIES = [
+    ('getting-started', 'Getting Started', ['quick']),
+    ('geometry', 'Geometry', ['clock', 'logo', 'path-ops']),
+    ('paints-effects', 'Paints and Effects', ['poster', 'effects', 'shaders']),
+    ('images-color', 'Images and Color', ['images', 'pixels', 'color-spaces']),
+    ('text', 'Text', ['text', 'shaping', 'paragraph']),
+    ('recording-export', 'Recording and Export', ['pictures', 'pdf-svg', 'vector-raster']),
+    ('windows-interaction', 'Windows and Interaction',
+     ['gpu', 'animation', 'interaction', 'navigation']),
+    ('sprites-games', 'Sprites and Games', ['sprites', 'squadron']),
+]
 
 
 def need(condition: bool, message: str) -> None:
@@ -39,12 +50,15 @@ def source_path(root: Path, relative: str) -> Path:
 
 def check_structure(root: Path) -> dict:
     data = json.loads((root / CATALOG).read_text(encoding='utf-8'))
+    need(data.get('schema_version') == 2, 'expected tutorial catalog schema version 2')
     rows = data['tutorials']
     ids = [row['id'] for row in rows]
     need(len(ids) == 22 and len(set(ids)) == 22, 'expected 22 distinct lessons')
     by_id = {row['id']: row for row in rows}
     for row in rows:
         id_ = row['id']
+        need(isinstance(row.get('menu_title'), str) and row['menu_title'].strip(),
+             f'{id_}: missing menu title')
         need(row['entry'] in row['files'], f'{id_}: entry missing from file set')
         need(len(row['files']) == len(set(row['files'])), f'{id_}: duplicate files')
         for name in row['files']:
@@ -72,23 +86,39 @@ def check_structure(root: Path) -> dict:
             visit(dependency, path + (id_,))
     for id_ in ids:
         visit(id_)
-    covered = set()
+    categories = data['categories']
+    actual_categories = [(category.get('id'), category.get('title'), category.get('lessons'))
+                         for category in categories]
+    need(actual_categories == EXPECTED_CATEGORIES,
+         'tutorial categories differ from the subject catalog')
+    categorized = []
+    for category in categories:
+        lessons = category['lessons']
+        need(bool(lessons), f'empty tutorial category: {category["id"]}')
+        need(all(id_ in by_id for id_ in lessons),
+             f'unknown tutorial category destination: {category["id"]}')
+        categorized.extend(lessons)
+    need(len(categorized) == len(set(categorized)),
+         'a tutorial belongs to more than one category')
+    need(set(categorized) == set(ids), 'a tutorial has no subject category')
     for route in data['routes']:
         need(bool(route['lessons']), 'empty route')
         need(all(id_ in by_id for id_ in route['lessons']), 'unknown route destination')
-        covered.update(route['lessons'])
-    need(covered == set(ids), 'a tutorial has no index route')
     index = (root / 'scribblings/tutorials/index.scrbl').read_text(encoding='utf-8')
+    rendered_categories = re.findall(r'@tutorial-category\["([^"]+)"\]', index)
+    need(rendered_categories == [category['id'] for category in categories],
+         'index categories differ from catalog categories')
     rendered_routes = [re.findall(r'"([^"]+)"', route)
                        for route in re.findall(r"@tutorial-route\['\(([^)]*)\)\]", index)]
     need(rendered_routes == [route['lessons'] for route in data['routes']],
          'index routes differ from catalog routes')
-    need(index.count('#:tag "running-examples"') == 1, 'missing running-examples destination')
+    for tag in ('all-tutorials', 'suggested-reading-routes', 'running-examples'):
+        need(index.count(f'#:tag "{tag}"') == 1, f'missing {tag} destination')
     for id_ in ('sprites', 'squadron'):
         need(set(by_id[id_]['files']) >= {
             'support/sprite-assets.rkt', 'support/sprite-window.rkt', 'support/sprite-math.rkt'
         }, f'{id_}: incomplete shared sprite dependencies')
-    return dict(lessons=len(ids), routes=len(data['routes']),
+    return dict(lessons=len(ids), categories=len(categories), routes=len(data['routes']),
                 source_files=len({file for row in rows for file in row['files']}))
 
 

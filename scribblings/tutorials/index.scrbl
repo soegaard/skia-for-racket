@@ -7,8 +7,7 @@
 
 Skia lets Racket programs draw shapes, text, and images on CPU surfaces, GPU
 frames, and documents. Each tutorial builds a complete result around one main
-idea. Begin with @tutorial-link["quick"], then choose a route for the work you
-want to do. The routes are suggestions, not one mandatory sequence of 22 lessons.
+idea. The tutorials are organized both by subject and by suggested reading route.
 
 The tutorials assume basic Racket knowledge: function calls, definitions, and
 module imports. Each lesson names the drawing concepts it needs and links to
@@ -16,14 +15,65 @@ the lessons that introduce them. Skip a prerequisite when you already know
 those concepts. Complete source files and the required fixtures are available
 in every lesson's Complete Example section.
 
-@section{Start with Drawing}
+@section[#:tag "start-here"]{Start Here}
+
+@bold{Begin with @tutorial-link["quick"].} It introduces drawing surfaces,
+paints, and shared drawing functions without requiring a particular next step.
+Then browse @seclink["all-tutorials"]{all tutorials} by subject, or use a
+@seclink["suggested-reading-routes"]{suggested reading route} when you want a
+guided sequence. See @seclink["running-examples"]{Running the Examples} before
+running a complete lesson outside the documentation.
+
+@section[#:tag "all-tutorials"]{All Tutorials}
+
+Browse the complete catalog by the kind of drawing work you want to do. Each
+entry names the finished result and the main idea it teaches.
+
+@subsection[#:tag "tutorial-category-getting-started"]{Getting Started}
+
+@tutorial-category["getting-started"]
+
+@subsection[#:tag "tutorial-category-geometry"]{Geometry}
+
+@tutorial-category["geometry"]
+
+@subsection[#:tag "tutorial-category-paints-effects"]{Paints and Effects}
+
+@tutorial-category["paints-effects"]
+
+@subsection[#:tag "tutorial-category-images-color"]{Images and Color}
+
+@tutorial-category["images-color"]
+
+@subsection[#:tag "tutorial-category-text"]{Text}
+
+@tutorial-category["text"]
+
+@subsection[#:tag "tutorial-category-recording-export"]{Recording and Export}
+
+@tutorial-category["recording-export"]
+
+@subsection[#:tag "tutorial-category-windows-interaction"]{Windows and Interaction}
+
+@tutorial-category["windows-interaction"]
+
+@subsection[#:tag "tutorial-category-sprites-games"]{Sprites and Games}
+
+@tutorial-category["sprites-games"]
+
+@section[#:tag "suggested-reading-routes"]{Suggested Reading Routes}
+
+The routes below are suggestions, not one mandatory sequence of 22 lessons.
+They overlap where one lesson supports more than one kind of project.
+
+@subsection[#:tag "start-with-drawing"]{Start with Drawing}
 
 The foundation route introduces surfaces and paints, then coordinates, paths,
 images, and shaders. Clock and Logo both build on Quick; neither requires the other.
 
 @tutorial-route['("quick" "clock" "logo" "images" "poster")]
 
-@section{Text and Printable Documents}
+@subsection[#:tag "text-and-printable-documents"]{Text and Printable Documents}
 
 Start with Quick's drawing basics. The text route proceeds from simple text to
 single shaped runs and then paragraphs. The printable diagram uses text placement
@@ -31,14 +81,14 @@ and single-font paragraph wrapping; its caption does not require mixed-script la
 
 @tutorial-route['("text" "shaping" "paragraph" "pdf-svg")]
 
-@section{Effects and Reusable Drawings}
+@subsection[#:tag "effects-and-reusable-drawings"]{Effects and Reusable Drawings}
 
 Effects builds on Poster's paints. Pictures uses Clock's transforms to place
 recorded drawings. Vector Output combines the document and effects lessons.
 
 @tutorial-route['("effects" "pictures" "vector-raster")]
 
-@section{Windows and Interactive Drawings}
+@subsection[#:tag "windows-and-interactive-drawings"]{Windows and Interactive Drawings}
 
 Use Quick's drawing basics and Clock's coordinate transforms. GPU Rendering
 first draws one image; Animation retains a renderer across window frames.
@@ -46,28 +96,28 @@ The editors then add pointer input and a transformed view.
 
 @tutorial-route['("gpu" "animation" "interaction" "navigation")]
 
-@section{Pixels and Color}
+@subsection[#:tag "pixels-and-color"]{Pixels and Color}
 
 Use Images to learn image dimensions and sampling. Working with Pixels then
 introduces mutable storage; Color Spaces explains what the sample values mean.
 
 @tutorial-route['("images" "pixels" "color-spaces")]
 
-@section{Programmable Paints}
+@subsection[#:tag "programmable-paints"]{Programmable Paints}
 
 Use Poster for shader coordinates and Animation for the window and timer.
 Runtime Shaders combines those ideas in an animated, adjustable SkSL effect.
 
 @tutorial-route['("poster" "shaders")]
 
-@section{Constructed Geometry}
+@subsection[#:tag "constructed-geometry"]{Constructed Geometry}
 
 Use Logo to understand paths and fill rules. Path Operations combines filled
 regions instead of placing each contour command by command.
 
 @tutorial-route['("logo" "path-ops")]
 
-@section{Sprite Animation and Games}
+@subsection[#:tag "sprite-animation-and-games"]{Sprite Animation and Games}
 
 Use Images for source rectangles and sampling, and Animation for frame scheduling.
 Sprite Atlases adds a retained GPU image; Star Squadron reuses that ownership

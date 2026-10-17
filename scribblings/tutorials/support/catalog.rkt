@@ -2,21 +2,92 @@
 
 (require json racket/file racket/list racket/runtime-path racket/string)
 
-(provide tutorials routes tutorial-by-id tutorial-source-path repository-root tutorial-requirements)
+(provide catalog
+         tutorials categories routes
+         tutorial-by-id tutorial-category-by-id tutorial-category-groups
+         tutorial-source-path repository-root tutorial-requirements
+         validate-tutorial-catalog!)
 
 (define-runtime-path catalog-path "catalog.json")
 (define-runtime-path repository-root "../../..")
 (define catalog (call-with-input-file catalog-path read-json))
 (define tutorials (hash-ref catalog 'tutorials))
+(define categories (hash-ref catalog 'categories))
 (define routes (hash-ref catalog 'routes))
+
+(define (nonempty-string? value)
+  (and (string? value) (positive? (string-length value))))
+
+(define (validate-tutorial-catalog! [catalog* catalog])
+  (unless (equal? (hash-ref catalog* 'schema_version #f) 2)
+    (error 'validate-tutorial-catalog! "expected tutorial catalog schema version 2"))
+  (define tutorials* (hash-ref catalog* 'tutorials))
+  (define categories* (hash-ref catalog* 'categories))
+  (define routes* (hash-ref catalog* 'routes))
+  (define tutorial-ids
+    (for/list ([entry (in-list tutorials*)])
+      (define id (hash-ref entry 'id #f))
+      (unless (nonempty-string? id)
+        (error 'validate-tutorial-catalog! "tutorial has no id: ~e" entry))
+      (unless (nonempty-string? (hash-ref entry 'menu_title #f))
+        (error 'validate-tutorial-catalog! "tutorial has no menu title: ~e" id))
+      id))
+  (unless (= (length tutorial-ids) (length (remove-duplicates tutorial-ids)))
+    (error 'validate-tutorial-catalog! "duplicate tutorial id"))
+  (define category-ids
+    (for/list ([category (in-list categories*)])
+      (define id (hash-ref category 'id #f))
+      (unless (nonempty-string? id)
+        (error 'validate-tutorial-catalog! "category has no id: ~e" category))
+      (unless (nonempty-string? (hash-ref category 'title #f))
+        (error 'validate-tutorial-catalog! "category has no title: ~e" id))
+      (define lessons (hash-ref category 'lessons #f))
+      (unless (and (list? lessons) (pair? lessons))
+        (error 'validate-tutorial-catalog! "category has no lessons: ~e" id))
+      id))
+  (unless (= (length category-ids) (length (remove-duplicates category-ids)))
+    (error 'validate-tutorial-catalog! "duplicate tutorial category id"))
+  (define categorized-ids
+    (append-map (lambda (category) (hash-ref category 'lessons)) categories*))
+  (for ([id (in-list categorized-ids)])
+    (unless (member id tutorial-ids)
+      (error 'validate-tutorial-catalog! "category has unknown tutorial id: ~e" id)))
+  (unless (= (length categorized-ids) (length (remove-duplicates categorized-ids)))
+    (error 'validate-tutorial-catalog! "tutorial belongs to more than one category"))
+  (unless (and (= (length categorized-ids) (length tutorial-ids))
+               (andmap (lambda (id) (member id categorized-ids)) tutorial-ids))
+    (error 'validate-tutorial-catalog! "tutorial is absent from all categories"))
+  (for ([route (in-list routes*)])
+    (define lessons (hash-ref route 'lessons #f))
+    (unless (and (list? lessons) (pair? lessons))
+      (error 'validate-tutorial-catalog! "route has no lessons: ~e" route))
+    (for ([id (in-list lessons)])
+      (unless (member id tutorial-ids)
+        (error 'validate-tutorial-catalog! "route has unknown tutorial id: ~e" id))))
+  (void))
+
+(validate-tutorial-catalog!)
 
 (define (tutorial-by-id id)
   (or (for/first ([entry (in-list tutorials)]
-                 #:when (equal? id (hash-ref entry 'id)))
+                  #:when (equal? id (hash-ref entry 'id)))
         entry)
       (raise-arguments-error 'tutorial-by-id "unknown tutorial"
                              "name" id
                              "available" (map (lambda (row) (hash-ref row 'id)) tutorials))))
+
+(define (tutorial-category-by-id id)
+  (or (for/first ([category (in-list categories)]
+                  #:when (equal? id (hash-ref category 'id)))
+        category)
+      (raise-arguments-error 'tutorial-category-by-id "unknown tutorial category"
+                             "id" id
+                             "available" (map (lambda (row) (hash-ref row 'id)) categories))))
+
+(define (tutorial-category-groups)
+  (for/list ([category (in-list categories)])
+    (cons (hash-ref category 'title)
+          (map tutorial-by-id (hash-ref category 'lessons)))))
 
 ;; Paths in the catalog describe the copied tree, not arbitrary filesystem paths.
 (define (tutorial-source-path relative [root repository-root])
@@ -31,3 +102,24 @@
 
 (define (tutorial-requirements row)
   (string-join (hash-ref row 'requirements) " "))
+
+(module+ test
+  (require rackunit)
+  (check-equal? (hash-ref catalog 'schema_version) 2)
+  (check-equal? (map (lambda (category) (hash-ref category 'title)) categories)
+                '("Getting Started"
+                  "Geometry"
+                  "Paints and Effects"
+                  "Images and Color"
+                  "Text"
+                  "Recording and Export"
+                  "Windows and Interaction"
+                  "Sprites and Games"))
+  (check-equal? (map car (tutorial-category-groups))
+                (map (lambda (category) (hash-ref category 'title)) categories))
+  (check-exn exn:fail?
+             (lambda ()
+               (validate-tutorial-catalog!
+                (hash-set catalog 'schema_version 1))))
+  (check-equal? (tutorial-source-path "quick/moonlight.rkt")
+                (build-path repository-root "scribblings" "quick" "moonlight.rkt")))

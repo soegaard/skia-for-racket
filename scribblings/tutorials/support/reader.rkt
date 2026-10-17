@@ -6,7 +6,7 @@
          "catalog.rkt"
          "../../support/documentation-navigation.rkt")
 
-(provide tutorial-link tutorial-entry tutorial-next tutorial-sources tutorial-route
+(provide tutorial-link tutorial-entry tutorial-next tutorial-sources tutorial-route tutorial-category
          command-text tutorial-index-link api-link tutorial-navigation)
 
 (define (tutorial-navigation id #:index? [index? #f])
@@ -59,13 +59,21 @@
             (define target (tutorial-by-id next))
             (item (tutorial-link next) ". " (hash-ref target 'goal))))
    (para #:style "skia-reader-next"
-         "Return to " (tutorial-index-link) " to choose a different reading route.")))
+         "Return to " (tutorial-index-link)
+         " to browse all tutorials or choose a suggested reading route.")))
+
+(define (tutorial-list rows)
+  (apply itemlist
+         (for/list ([row (in-list rows)])
+           (define id (hash-ref row 'id))
+           (item (tutorial-link id) ". " (hash-ref row 'goal)))))
 
 (define (tutorial-route ids)
-  (apply itemlist
-         (for/list ([id (in-list ids)])
-           (define row (tutorial-by-id id))
-           (item (tutorial-link id) ". " (hash-ref row 'goal)))))
+  (tutorial-list (map tutorial-by-id ids)))
+
+(define (tutorial-category id)
+  (define category (tutorial-category-by-id id))
+  (tutorial-list (map tutorial-by-id (hash-ref category 'lessons))))
 
 (define (source-link relative)
   (elem #:style (style "skia-reader-source-link"

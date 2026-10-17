@@ -17,6 +17,15 @@ SPEC.loader.exec_module(navigation)
 
 
 class NavigationParserTests(unittest.TestCase):
+    def test_catalog_shortcuts_follow_subject_categories(self):
+        _catalog, tutorials, categories, shortcut_ids = navigation.load_catalog()
+        self.assertEqual([category['title'] for category in categories], [
+            'Getting Started', 'Geometry', 'Paints and Effects', 'Images and Color',
+            'Text', 'Recording and Export', 'Windows and Interaction', 'Sprites and Games'])
+        self.assertEqual(shortcut_ids,
+                         [identifier for category in categories for identifier in category['lessons']])
+        self.assertEqual(set(shortcut_ids), {entry['id'] for entry in tutorials})
+
     def test_requires_one_named_landmark(self):
         parser = navigation.NavigationParser()
         parser.feed('<main>No landmark</main>')
@@ -45,6 +54,20 @@ class NavigationParserTests(unittest.TestCase):
         self.assertEqual(len(parser.navigations[0]['buttons']), 0)
         self.assertEqual(len(parser.navigations[0]['collections']), 3)
         self.assertEqual(len(parser.navigations[0]['panels']), 1)
+
+    def test_collects_tutorial_categories_in_document_order(self):
+        parser = navigation.NavigationParser()
+        parser.feed('''<div role="navigation" aria-label="Skia documentation"
+                         data-skia-doc-section="tutorials">
+          <div class="skia-doc-nav__tutorial-group">
+            <p class="skia-doc-nav__group-heading">Geometry</p>
+            <ul><li><a class="skia-doc-nav__tutorial-link" href="clock.html">Clock</a></li></ul>
+          </div>
+        </div>''')
+        groups = parser.navigations[0]['groups']
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]['heading'].strip(), 'Geometry')
+        self.assertEqual(groups[0]['anchors'][0]['href'], 'clock.html')
 
     def test_accepts_only_package_local_installed_redirects(self):
         with TemporaryDirectory() as directory:

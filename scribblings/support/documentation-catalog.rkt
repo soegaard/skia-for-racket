@@ -54,17 +54,9 @@
   (string-append "skia-tutorial-" id))
 
 (define (tutorial-shortcut-groups)
-  ;; The index routes may repeat prerequisites.  The first route occurrence
-  ;; owns a lesson in the shortcut panel, preserving catalog route order.
-  (define seen (make-hash))
-  (for/list ([route (in-list routes)]
-             #:do [(define ids
-                     (for/list ([id (in-list (hash-ref route 'lessons))]
-                                #:unless (hash-ref seen id #f))
-                       (hash-set! seen id #t)
-                       id))]
-             #:when (pair? ids))
-    (cons (hash-ref route 'title) (map tutorial-by-id ids))))
+  ;; Categories describe subject browsing. Reading routes may overlap and do
+  ;; not decide the navigation menu's order or membership.
+  (tutorial-category-groups))
 
 (define (validate-documentation-collections! [collections documentation-collections])
   (define ids (map documentation-collection-id collections))
@@ -82,6 +74,7 @@
 
 (define (validate-documentation-catalog!)
   (validate-documentation-collections!)
+  (validate-tutorial-catalog!)
   (define tutorial-ids (map tutorial-id tutorials))
   (unless (= (length tutorial-ids) (length (remove-duplicates tutorial-ids)))
     (error 'validate-documentation-catalog! "duplicate tutorial id"))
@@ -89,9 +82,6 @@
   (for ([id (in-list route-ids)])
     (unless (member id tutorial-ids)
       (error 'validate-documentation-catalog! "route has unknown tutorial id: ~e" id)))
-  (for ([id (in-list tutorial-ids)])
-    (unless (member id route-ids)
-      (error 'validate-documentation-catalog! "tutorial is absent from all routes: ~e" id)))
   (void))
 
 (validate-documentation-catalog!)
@@ -122,14 +112,14 @@
                 (list (first documentation-collections)
                       (first documentation-collections)))))
   (check-equal? (map car (tutorial-shortcut-groups))
-                '("Start with drawing"
-                  "Text and printable documents"
-                  "Effects and reusable drawings"
-                  "Windows and interactive drawings"
-                  "Pixels and color"
-                  "Programmable paints"
-                  "Constructed geometry"
-                  "Sprite animation and games"))
+                '("Getting Started"
+                  "Geometry"
+                  "Paints and Effects"
+                  "Images and Color"
+                  "Text"
+                  "Recording and Export"
+                  "Windows and Interaction"
+                  "Sprites and Games"))
   (define grouped-ids
     (append-map (lambda (group) (map tutorial-id (cdr group)))
                 (tutorial-shortcut-groups)))

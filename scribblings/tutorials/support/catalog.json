@@ -1,9 +1,82 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "categories": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "lessons": [
+        "quick"
+      ]
+    },
+    {
+      "id": "geometry",
+      "title": "Geometry",
+      "lessons": [
+        "clock",
+        "logo",
+        "path-ops"
+      ]
+    },
+    {
+      "id": "paints-effects",
+      "title": "Paints and Effects",
+      "lessons": [
+        "poster",
+        "effects",
+        "shaders"
+      ]
+    },
+    {
+      "id": "images-color",
+      "title": "Images and Color",
+      "lessons": [
+        "images",
+        "pixels",
+        "color-spaces"
+      ]
+    },
+    {
+      "id": "text",
+      "title": "Text",
+      "lessons": [
+        "text",
+        "shaping",
+        "paragraph"
+      ]
+    },
+    {
+      "id": "recording-export",
+      "title": "Recording and Export",
+      "lessons": [
+        "pictures",
+        "pdf-svg",
+        "vector-raster"
+      ]
+    },
+    {
+      "id": "windows-interaction",
+      "title": "Windows and Interaction",
+      "lessons": [
+        "gpu",
+        "animation",
+        "interaction",
+        "navigation"
+      ]
+    },
+    {
+      "id": "sprites-games",
+      "title": "Sprites and Games",
+      "lessons": [
+        "sprites",
+        "squadron"
+      ]
+    }
+  ],
   "tutorials": [
     {
       "id": "quick",
       "title": "Quick: An Introduction to Skia with Pictures",
+      "menu_title": "Quick Introduction",
       "manual": "scribblings/quick/quick.scrbl",
       "goal": "Draw a moonlit lake from shapes, paints, and a shared drawing function.",
       "prerequisites": [],
@@ -25,6 +98,7 @@
     {
       "id": "clock",
       "title": "Transforms and Coordinate Systems — Build a Clock",
+      "menu_title": "Build a Clock",
       "manual": "scribblings/tutorials/clock/clock.scrbl",
       "goal": "Place repeated geometry by translating, rotating, and scaling the canvas.",
       "prerequisites": [
@@ -48,6 +122,7 @@
     {
       "id": "logo",
       "title": "Paths and Geometry — Draw a Logo",
+      "menu_title": "Draw a Logo",
       "manual": "scribblings/tutorials/logo/logo.scrbl",
       "goal": "Construct contours from lines and curves, then fill and stroke them.",
       "prerequisites": [
@@ -71,6 +146,7 @@
     {
       "id": "images",
       "title": "Images — Build a Contact Sheet",
+      "menu_title": "Images",
       "manual": "scribblings/tutorials/images/images.scrbl",
       "goal": "Decode, crop, sample, and fit images into a contact sheet.",
       "prerequisites": [
@@ -98,6 +174,7 @@
     {
       "id": "poster",
       "title": "Paints, Gradients, and Shaders — Make a Poster",
+      "menu_title": "Make a Poster",
       "manual": "scribblings/tutorials/poster/poster.scrbl",
       "goal": "Combine paints, gradients, transparency, and image shaders.",
       "prerequisites": [
@@ -121,6 +198,7 @@
     {
       "id": "text",
       "title": "Text and Typography — Make a Type Specimen",
+      "menu_title": "Type Specimen",
       "manual": "scribblings/tutorials/text/text.scrbl",
       "goal": "Position simple text using baselines, advances, ink bounds, and font metrics.",
       "prerequisites": [
@@ -143,6 +221,7 @@
     {
       "id": "shaping",
       "title": "Shaping and Multilingual Text — Make a Language Sampler",
+      "menu_title": "Language Sampler",
       "manual": "scribblings/tutorials/shaping/shaping.scrbl",
       "goal": "Select script fonts and shape individual runs into positioned glyphs.",
       "prerequisites": [
@@ -166,6 +245,7 @@
     {
       "id": "paragraph",
       "title": "Paragraph Layout — Make a Multilingual Article Card",
+      "menu_title": "Article Card",
       "manual": "scribblings/tutorials/paragraph/paragraph.scrbl",
       "goal": "Wrap and align text, then resolve font and direction changes in paragraphs.",
       "prerequisites": [
@@ -188,6 +268,7 @@
     {
       "id": "pdf-svg",
       "title": "PDF and SVG — Make a Printable Diagram",
+      "menu_title": "Printable Diagram",
       "manual": "scribblings/tutorials/pdf-svg/pdf-svg.scrbl",
       "goal": "Give a drawing physical dimensions and export PDF, SVG, and a PNG preview.",
       "prerequisites": [
@@ -214,6 +295,7 @@
     {
       "id": "effects",
       "title": "Effects and Filters — Make a Card with Shadows",
+      "menu_title": "Card with Shadows",
       "manual": "scribblings/tutorials/effects/effects.scrbl",
       "goal": "Compare shadows, mask blur, and image blur while keeping geometry unchanged.",
       "prerequisites": [
@@ -237,6 +319,7 @@
     {
       "id": "pictures",
       "title": "Reusable Drawings — Record and Replay a Picture",
+      "menu_title": "Record and Replay a Picture",
       "manual": "scribblings/tutorials/pictures/pictures.scrbl",
       "goal": "Record a drawing and replay it with different positions, sizes, and angles.",
       "prerequisites": [
@@ -259,6 +342,7 @@
     {
       "id": "vector-raster",
       "title": "Vector Output and Raster Fallbacks — What Stays Vector?",
+      "menu_title": "Vector and Raster Fallbacks",
       "manual": "scribblings/tutorials/vector-raster/vector-raster.scrbl",
       "goal": "Distinguish vector operations, source pixels, and bounded raster fallbacks.",
       "prerequisites": [
@@ -282,6 +366,7 @@
     {
       "id": "gpu",
       "title": "GPU Rendering — Render the Same Scene on the GPU",
+      "menu_title": "GPU Rendering",
       "manual": "scribblings/tutorials/gpu/gpu.scrbl",
       "goal": "Use one drawing function with CPU and platform-specific GPU backends.",
       "prerequisites": [
@@ -311,6 +396,7 @@
     {
       "id": "animation",
       "title": "Animation — Orbiting Lights in a Window",
+      "menu_title": "Animation",
       "manual": "scribblings/tutorials/animation/animation.scrbl",
       "goal": "Animate elapsed time, schedule frames, and manage a CPU or GPU window.",
       "prerequisites": [
@@ -337,6 +423,7 @@
     {
       "id": "interaction",
       "title": "Interactive Paths — Drag Bézier Control Points",
+      "menu_title": "Interactive Paths",
       "manual": "scribblings/tutorials/interaction/interaction.scrbl",
       "goal": "Edit a curve with mouse input, hit testing, and redraw requests.",
       "prerequisites": [
@@ -362,6 +449,7 @@
     {
       "id": "navigation",
       "title": "Zoom and Pan — Navigate an Interactive Canvas",
+      "menu_title": "Zoom and Pan",
       "manual": "scribblings/tutorials/navigation/navigation.scrbl",
       "goal": "Pan and zoom a view while mapping pointer positions back into model space.",
       "prerequisites": [
@@ -388,6 +476,7 @@
     {
       "id": "shaders",
       "title": "Runtime Shaders — Animate Prismatic Waves in a Window",
+      "menu_title": "Runtime Shaders",
       "manual": "scribblings/tutorials/shaders/shaders.scrbl",
       "goal": "Animate a compiled SkSL effect by changing uniforms, not the drawing API.",
       "prerequisites": [
@@ -413,6 +502,7 @@
     {
       "id": "pixels",
       "title": "Working with Pixels — Build a Two-Ink Image Processor",
+      "menu_title": "Working with Pixels",
       "manual": "scribblings/tutorials/pixels/pixels.scrbl",
       "goal": "Edit CPU pixels while distinguishing buffers, borrowed views, and snapshots.",
       "prerequisites": [
@@ -435,6 +525,7 @@
     {
       "id": "color-spaces",
       "title": "Color Spaces — Give Pixel Values Their Meaning",
+      "menu_title": "Color Spaces",
       "manual": "scribblings/tutorials/color-spaces/color-spaces.scrbl",
       "goal": "Give samples a color-space interpretation and save matching profile metadata.",
       "prerequisites": [
@@ -457,6 +548,7 @@
     {
       "id": "path-ops",
       "title": "Path Operations — Construct a Cutout Badge",
+      "menu_title": "Path Operations",
       "manual": "scribblings/tutorials/path-ops/path-ops.scrbl",
       "goal": "Combine filled regions to construct a badge with genuine holes.",
       "prerequisites": [
@@ -480,6 +572,7 @@
     {
       "id": "sprites",
       "title": "Sprite Atlases — Animate Bouncing Balls on the GPU",
+      "menu_title": "Sprite Atlases",
       "manual": "scribblings/tutorials/sprites/sprites.scrbl",
       "goal": "Retain one atlas across GPU frames and change only its sprite placements.",
       "prerequisites": [
@@ -512,6 +605,7 @@
     {
       "id": "squadron",
       "title": "Star Squadron — Build a Galaga-Inspired Arcade Game",
+      "menu_title": "Star Squadron",
       "manual": "scribblings/tutorials/squadron/squadron.scrbl",
       "goal": "Combine a fixed-step game simulation with animated atlas sprites.",
       "prerequisites": [

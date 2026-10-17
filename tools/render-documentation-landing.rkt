@@ -55,7 +55,7 @@
 (define (tutorial-link entry)
   (format "<li><a class=\"skia-doc-nav__tutorial-link\" href=\"~a/index.html\">~a</a></li>"
           (tutorial-output-directory (hash-ref entry 'id))
-          (escape-html (hash-ref entry 'title))))
+          (escape-html (hash-ref entry 'menu_title))))
 
 (define (tutorial-panel-html)
   (string-append

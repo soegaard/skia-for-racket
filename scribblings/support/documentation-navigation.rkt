@@ -77,7 +77,7 @@
     (seclink "top"
              #:doc `(lib ,(string-append "skia/" (hash-ref entry 'manual)))
              #:underline? #f
-             (hash-ref entry 'title)))
+             (hash-ref entry 'menu_title)))
   (make-link-element
    (make-style "skia-doc-nav__tutorial-link"
                (if current

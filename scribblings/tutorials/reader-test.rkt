@@ -88,5 +88,8 @@
           (check-true (element? (tutorial-link id)))
           (check-not-exn (lambda () (tutorial-entry id)))
           (check-not-exn (lambda () (tutorial-next id)))
-          (check-not-exn (lambda () (tutorial-sources id))))))
+          (check-not-exn (lambda () (tutorial-sources id))))
+        (for ([category (in-list categories)])
+          (check-not-exn
+           (lambda () (tutorial-category (hash-ref category 'id)))))))
     (lambda () (delete-directory/files root))))

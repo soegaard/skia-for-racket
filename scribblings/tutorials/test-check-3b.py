@@ -55,7 +55,14 @@ class ReaderChecks(unittest.TestCase):
     def test_structure(self):
         self.catalog_fixture()
         self.assertEqual(checker.check_structure(self.root),
-                         dict(lessons=22, routes=8, source_files=43))
+                         dict(lessons=22, categories=8, routes=8, source_files=43))
+
+    def test_index_category_drift(self):
+        self.catalog_fixture()
+        index = self.root / 'scribblings/tutorials/index.scrbl'
+        index.write_text(index.read_text().replace('@tutorial-category', '@wrong-category', 1))
+        with self.assertRaisesRegex(ValueError, 'index categories'):
+            checker.check_structure(self.root)
 
     def test_index_route_drift(self):
         self.catalog_fixture()
@@ -70,6 +77,28 @@ class ReaderChecks(unittest.TestCase):
         self.write_catalog()
         with self.assertRaises(ValueError):
             checker.check_structure(self.root)
+
+    def test_missing_menu_title(self):
+        self.catalog_fixture()
+        del self.data['tutorials'][0]['menu_title']
+        self.write_catalog()
+        with self.assertRaisesRegex(ValueError, 'menu title'):
+            checker.check_structure(self.root)
+
+    def test_categories_must_cover_each_lesson_once(self):
+        self.catalog_fixture()
+        self.data['categories'][0]['lessons'].append('clock')
+        self.write_catalog()
+        with self.assertRaisesRegex(ValueError, 'categories'):
+            checker.check_structure(self.root)
+
+    def test_routes_need_not_cover_every_tutorial(self):
+        self.catalog_fixture()
+        self.data['routes'][-1]['lessons'].remove('squadron')
+        self.write_catalog()
+        index = self.root / 'scribblings/tutorials/index.scrbl'
+        index.write_text(index.read_text().replace('"sprites" "squadron"', '"sprites"'))
+        self.assertEqual(checker.check_structure(self.root)['lessons'], 22)
 
     def test_unknown_prerequisite(self):
         self.catalog_fixture()
