@@ -415,7 +415,9 @@ class WorkflowAndIntegration(unittest.TestCase):
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
         self.assertIn('(define version "0.78")', text)
-        self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22") "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"))', text)
+        self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")\n'
+                      '               "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"\n'
+                      '               "scribble-lib" "racket-index"))', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):
         with tempfile.TemporaryDirectory() as t:
