@@ -12,8 +12,9 @@
          (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-owned-metal-components)
+
 ; make-owned-metal-components : [#:options any/c] -> any
-;;   Creates retained Metal device/queue components and a Ganesh driver using the selected options.
+;   Creates retained Metal device/queue components and a Ganesh driver using the selected options.
 (define (make-owned-metal-components #:options [options #f])
   (check-optional-context-options 'make-owned-metal-components options)
   ;; Platform rejection precedes symbol lookup, and neither happens on import.

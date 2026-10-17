@@ -23,29 +23,30 @@
 ;;;
 
 ; operation-scenes : (listof symbol?)
-;;   Lists direct-image operations in the order used by capture drivers.
+;   Lists direct-image operations in the order used by capture drivers.
 (define operation-scenes '(offset clip blur shadow scale raw))
 
 ; operation-blue : rgba?
-;;   Provides the source color used to distinguish image contents from white background.
+;   Provides the source color used to distinguish image contents from white background.
 (define operation-blue (rgb 32 96 192))
 
 ; operation-width : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define operation-width 96)
+
 ; operation-height : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define operation-height 64)
 
 ; make-operation-source : -> image?
-;;   Creates an owned solid-blue image detached from a temporary raster buffer.
+;   Creates an owned solid-blue image detached from a temporary raster buffer.
 (define (make-operation-source)
   (with-skia ([b (make-raster-buffer 16 12)])
     (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-fill! v operation-blue)) #:writable? #t)
     (raster-buffer->image b)))
 
 ; make-operation-float-source : [any/c] -> image?
-;;   Creates float samples with fractional and extended-range values for raw-conversion checks.
+;   Creates float samples with fractional and extended-range values for raw-conversion checks.
 (define (make-operation-float-source [space #f])
   (with-skia ([b (make-raster-buffer-from-info
                   (make-image-info 4 3 #:color-type 'rgba-f32 #:color-space space))])
@@ -56,7 +57,7 @@
     (raster-buffer->image b)))
 
 ; make-operation-filter : symbol? -> image-filter?
-;;   Creates the offset, blur, or shadow graph associated with a named operation scene.
+;   Creates the offset, blur, or shadow graph associated with a named operation scene.
 (define (make-operation-filter scene)
   (case scene
     [(offset clip) (make-offset-image-filter 7 5)]
@@ -65,11 +66,11 @@
     [else (raise-argument-error 'make-operation-filter "offset, clip, blur or shadow" scene)]))
 
 ; operation-filter-subset : symbol? -> (or/c vector? #f)
-;;   Restricts the clip scenario to a source subset; other scenes use the complete source.
+;   Restricts the clip scenario to a source subset; other scenes use the complete source.
 (define (operation-filter-subset scene) (and (eq? scene 'clip) '#(4 3 8 6)))
 
 ; operation-filter-clip : symbol? -> vector?
-;;   Returns the output clip rectangle for the chosen filter scenario.
+;   Returns the output clip rectangle for the chosen filter scenario.
 (define (operation-filter-clip scene)
   (case scene [(clip) '#(12 9 5 3)] [(blur) '#(-8 -8 32 28)] [else '#(-8 -8 48 40)]))
 
@@ -77,7 +78,7 @@
 ;; detached filter metadata, and optional raw F32 evidence before conversion.
 
 ; make-operation-scene-image : symbol? -> any
-;;   Returns the processed image and its placement information for a named fixture scene.
+;   Returns the processed image and its placement information for a named fixture scene.
 (define (make-operation-scene-image scene)
   (case scene
     [(offset clip blur shadow)
@@ -108,13 +109,13 @@
 
 ; operation-pixel : bytes? exact-nonnegative-integer? exact-nonnegative-integer?
 ; [exact-positive-integer?] -> (listof byte?)
-;;   Extracts one row-major RGBA pixel from an operation capture.
+;   Extracts one row-major RGBA pixel from an operation capture.
 (define (operation-pixel data x y [width operation-width])
   (define at (* 4 (+ x (* width y))))
   (bytes->list (subbytes data at (+ at 4))))
 
 ; operation-check-pixels : symbol? bytes? -> void?
-;;   Checks capture dimensions and scene-specific source, effect, and marker landmarks.
+;   Checks capture dimensions and scene-specific source, effect, and marker landmarks.
 (define (operation-check-pixels scene data)
   (unless (= (bytes-length data) (* 4 operation-width operation-height))
     (error 'image-operation-fixture "wrong capture dimensions"))

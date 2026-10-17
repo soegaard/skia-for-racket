@@ -18,42 +18,51 @@
 ;;;
 
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20344e")
+
 ; teal : string?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal "#10988e")
+
 ; blue : string?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue "#3269d5")
+
 ; orange : string?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
+
 ; pale : string?
-;;   Specifies the pale color used by this drawing.
+;   Specifies the pale color used by this drawing.
 (define pale "#edf0f4")
+
 ; docs-uri : string?
-;;   Names the external documentation destination for the hyperlink examples.
+;   Names the external documentation destination for the hyperlink examples.
 (define docs-uri "https://docs.racket-lang.org/")
+
 ; label : canvas? string? real? real? [real?] [any/c] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11] [color ink])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color color)])
     (draw-simple-text c text x y f p)))
+
 ; line : canvas? real? real? real? real? [any/c] [real?] -> void?
-;;   Draws the line comparison in the current canvas coordinate system.
+;   Draws the line comparison in the current canvas coordinate system.
 (define (line c x0 y0 x1 y1 [color teal] [width 2])
   (with-skia ([p (make-paint #:color color #:stroke-width width)])
     (draw-line c x0 y0 x1 y1 p)))
+
 ; button : canvas? real? real? real? real? string? [any/c] [real?] -> void?
-;;   Draws the button comparison in the current canvas coordinate system.
+;   Draws the button comparison in the current canvas coordinate system.
 (define (button c x y w h text [color blue] [size 16])
   (with-skia ([p (make-paint #:color color)])
     (draw-rounded-rect c x y w h 8 8 p))
   (label c text (+ x 12) (+ y (/ h 2) (* size 0.35)) size 'white))
+
 ; page : procedure? string? string? any/c -> output-page?
-;;   Builds the page output page and its drawing callback.
+;   Builds the page output page and its drawing callback.
 (define (page draw title subtitle number)
   (make-output-page
    720 500
@@ -67,15 +76,17 @@
    #:margins 24 #:background 'white))
 
 ; escape-html : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (escape-html s)
   (for/fold ([s s]) ([entry '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" . "&quot;"))])
     (string-replace s (car entry) (cdr entry))))
+
 ; file-name : any/c -> string?
-;;   Escapes the filename portion for a generated HTML link.
+;   Escapes the filename portion for a generated HTML link.
 (define (file-name s) (path->string (file-name-from-path s)))
+
 ; file-uri : any/c -> string?
-;;   Percent-encodes one filename component without altering a complete URI.
+;   Percent-encodes one filename component without altering a complete URI.
 (define (file-uri s)
   ;; Encode a single filename, not an entire URI. No extra package or network.
   (define out (open-output-string))
@@ -89,7 +100,7 @@
   (get-output-string out))
 
 ; make-registry : any/c -> list?
-;;   Constructs registry for the example's drawing pipeline.
+;   Constructs registry for the example's drawing pipeline.
 (define (make-registry prefix)
   (define (name suffix) (string-append prefix suffix))
   (define companion (string-append (file-uri (name ".companion.html")) "#note"))
@@ -194,16 +205,19 @@
 ;;;
 
 (module+ main
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix
     (command-line #:program "document-links.rkt" #:args ([prefix "document-links-0.27"]) prefix))
+
   ; name : any/c -> string?
-  ;;   Constructs an output filename from the selected prefix.
+  ;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
+
   ; registry : list?
-  ;;   Keeps the shared scene/page order used by the exported documents and raster references.
+  ;   Keeps the shared scene/page order used by the exported documents and raster references.
   (define registry (make-registry prefix))
   (save-output (map cdr registry) (name ".pdf") 'pdf #:exists 'replace
                #:title "Document links and destinations" #:raster-dpi 144)

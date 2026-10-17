@@ -22,24 +22,24 @@
   ;;;
 
   ; root : (or/c path-string? #f)
-  ;;   Holds the checkout root against which all policy module paths are resolved.
+  ;   Holds the checkout root against which all policy module paths are resolved.
   (define root #f)
 
   ; policy-path : (or/c path-string? #f)
-  ;;   Selects the JSON policy describing public modules and their allowed load groups.
+  ;   Selects the JSON policy describing public modules and their allowed load groups.
   (define policy-path #f)
 
   ; group : (or/c string? #f)
-  ;;   Selects the policy load group to reflect in this isolated process.
+  ;   Selects the policy load group to reflect in this isolated process.
   (define group #f)
 
   ; output : (or/c path-string? #f)
-  ;;   Holds the destination for reflected public-export evidence.
+  ;   Holds the destination for reflected public-export evidence.
   (define output #f)
 
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line
    #:once-each
@@ -53,11 +53,11 @@
     (error 'public-api-probe "--root, --policy, --group, --output and --token are required"))
 
   ; policy : hash?
-  ;;   Contains the decoded module and load-group policy.
+  ;   Contains the decoded module and load-group policy.
   (define policy (call-with-input-file policy-path read-json))
 
   ; modules : (listof hash?)
-  ;;   Selects policy entries belonging to this worker's load group.
+  ;   Selects policy entries belonging to this worker's load group.
   (define modules
     (filter (lambda (row) (string=? (hash-ref row 'load_group) group))
             (hash-ref policy 'modules)))
@@ -70,7 +70,7 @@
       (error 'public-api-probe "~a must name a nonexistent path" name)))
 
   ; observations : (listof hash?)
-  ;;   Records reflected module exports after validating safe paths and headless GUI constraints.
+  ;   Records reflected module exports after validating safe paths and headless GUI constraints.
   (define observations
     (for/list ([row (in-list modules)])
       (define name (hash-ref row 'path))
@@ -84,8 +84,8 @@
       result))
 
   ; result : hash?
-  ;;   Packages export observations, runtime identity, and explicit non-rendering scope into the
-  ;;   evidence report.
+  ;   Packages export observations, runtime identity, and explicit non-rendering scope into the
+  ;   evidence report.
   (define result
     (hasheq 'schema 1 'stage "0.78c" 'status "passed" 'run_token token
             'group group 'modules observations

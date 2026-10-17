@@ -23,11 +23,11 @@
 
 ; argb : surface? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ; exact-nonnegative-integer?
-;;   Converts a sampled pixel to a packed ARGB value for exact geometry checks.
+;   Converts a sampled pixel to a packed ARGB value for exact geometry checks.
 (define (argb surface x y) (color->argb (surface-pixel surface x y)))
 
 ; blue-box : canvas? -> void?
-;;   Draws an unaliased blue rectangle whose interior and exterior pixels are deterministic.
+;   Draws an unaliased blue rectangle whose interior and exterior pixels are deterministic.
 (define (blue-box canvas)
   (with-skia ([ink (make-paint #:color 'blue #:antialias? #f)])
     (draw-rect canvas 2 2 8 8 ink)))

@@ -22,7 +22,7 @@
 ;;;
 
 ; ramp-bytes : -> bytes?
-;;   Builds 256 opaque grayscale pixels in tightly packed RGBA order.
+;   Builds 256 opaque grayscale pixels in tightly packed RGBA order.
 (define (ramp-bytes)
   (define pixels (make-bytes (* 256 4)))
   (for ([value (in-range 256)])
@@ -30,12 +30,12 @@
   pixels)
 
 ; make-gray-sample : (or/c color-space? #f) [byte?] -> image?
-;;   Constructs gray sample for the example's drawing pipeline.
+;   Constructs gray sample for the example's drawing pipeline.
 (define (make-gray-sample color-space [sample 128])
   (rgba-bytes->image 1 1 (bytes sample sample sample 255) #:color-space color-space))
 
 ; make-color-study : [byte?] -> list?
-;;   Constructs color study for the example's drawing pipeline.
+;   Constructs color study for the example's drawing pipeline.
 (define (make-color-study [sample 128])
   (define srgb (make-srgb-color-space))
   (define linear (make-linear-srgb-color-space))
@@ -50,7 +50,7 @@
   (list encoded-gray converted-gray encoded-ramp converted-ramp))
 
 ; draw-color-study : canvas? list? -> void?
-;;   Draws the color study component in the current canvas coordinate system.
+;   Draws the color study component in the current canvas coordinate system.
 (define (draw-color-study canvas images)
   (match-define (list encoded-gray converted-gray encoded-ramp converted-ramp) images)
   (define font (make-font #:size 16))
@@ -77,7 +77,7 @@
   (draw-simple-text canvas "Equal steps in linear light, then converted to sRGB" 30 462 small ink))
 
 ; save-color-study : -> void?
-;;   Renders the color study example to the selected output destination.
+;   Renders the color study example to the selected output destination.
 (define (save-color-study)
   (define srgb (make-srgb-color-space))
   (define profile (color-space->icc-bytes srgb))

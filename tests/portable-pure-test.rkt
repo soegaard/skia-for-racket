@@ -21,19 +21,19 @@
 ;;;
 
 ; nine : [real? real?] -> any/c
-;;   Builds a nine-patch layout for destination-size and stretch-boundary checks.
+;   Builds a nine-patch layout for destination-size and stretch-boundary checks.
 (define (nine [w 30] [h 24]) (image-nine-plan 9 9 '(3 3 3 3) 0 0 w h))
 
 ; dst : any/c exact-nonnegative-integer? -> any/c
-;;   Selects a patch cell's destination rectangle.
+;   Selects a patch cell's destination rectangle.
 (define (dst p i) (image-grid-cell-destination (list-ref p i)))
 
 ; src : any/c exact-nonnegative-integer? -> any/c
-;;   Selects a patch cell's source rectangle.
+;   Selects a patch cell's source rectangle.
 (define (src p i) (image-grid-cell-source (list-ref p i)))
 
 ; live-cell? : any/c -> boolean?
-;;   Recognizes patch cells with nonempty drawable source and destination extents.
+;   Recognizes patch cells with nonempty drawable source and destination extents.
 (define (live-cell? c)
   (for/and ([v (in-list (list (image-grid-cell-source c) (image-grid-cell-destination c)))])
     (and (> (vector-ref v 2) 0) (> (vector-ref v 3) 0))))
@@ -43,7 +43,7 @@
 ;;;
 
 ; portable-pure-tests : test-suite?
-;;   Collects the regression cases for portable drawing: plans and validation.
+;   Collects the regression cases for portable drawing: plans and validation.
 (define portable-pure-tests
   (test-suite
    "Portable drawing: plans and validation"

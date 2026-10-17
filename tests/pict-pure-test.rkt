@@ -26,7 +26,7 @@
 ;;;
 
 ; pict-pure-tests : test-suite?
-;;   Collects the regression cases for skia/pict pure validation and explicit-transfer boundaries.
+;   Collects the regression cases for skia/pict pure validation and explicit-transfer boundaries.
 (define pict-pure-tests
   (test-suite
    "skia/pict pure validation and explicit-transfer boundaries"
@@ -71,6 +71,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pict-pure-tests))
   (unless (zero? failures) (error 'pict-pure-test "~a failures" failures)))

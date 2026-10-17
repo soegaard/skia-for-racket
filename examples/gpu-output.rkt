@@ -19,14 +19,17 @@
 ;;;
 
 (module+ main
+
   ; backend : symbol?
-  ;;   Selects backend for the example.
+  ;   Selects backend for the example.
   (define backend 'metal)
+
   ; host : symbol?
-  ;;   Selects host for the example.
+  ;   Selects host for the example.
   (define host 'gui)
+
   ; prefix : string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix "output/gpu-output-example")
   (command-line #:once-each
     [("--backend") b "opengl or metal" (set! backend (string->symbol b))]

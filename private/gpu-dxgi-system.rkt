@@ -44,7 +44,7 @@
 ;;   resources remain alive through their fence completion; teardown occurs on owner.
 
 ; win-api : promise?
-;;   Lazily resolves window, event, and DXGI procedures used by presentation and fence waiting.
+;   Lazily resolves window, event, and DXGI procedures used by presentation and fence waiting.
 (define win-api
   (delay/sync
     (define user (ffi-lib "user32"))
@@ -59,47 +59,55 @@
      ;; Racket callback can reenter a half-retired swap chain during a fence wait.
      'wait (get-ffi-obj "WaitForSingleObject" kernel
                       (_fun #:blocking? #t _pointer _uint32 -> _uint32)))))
+
 ; platform! : -> any
-;;   Requires the reviewed Windows platform and validates its presentation record layouts.
+;   Requires the reviewed Windows platform and validates its presentation record layouts.
 (define (platform!)
   (unless (and (eq? (system-type 'os) 'windows) (eq? (system-type 'arch) 'x86_64))
     (gpu-unavailable 'dxgi-platform "DXGI presentation requires Windows x64"))
   (check-dxgi-layouts!)
   (force win-api))
+
 ; api : any/c -> any
-;;   Obtains one lazily resolved Windows API function by its private operation key.
+;   Obtains one lazily resolved Windows API function by its private operation key.
 (define (api key) (hash-ref (force win-api) key))
+
 ; owner! : dxgi-host? -> void?
-;;   Requires the swap-chain host's creator thread before touching native presentation state.
+;   Requires the swap-chain host's creator thread before touching native presentation state.
 (define (owner! h)
   (unless (and (eq? (current-thread) (dxgi-host-owner h)) (not (current-future)))
     (error 'direct3d-presentation "DXGI operations require the owning eventspace handler")))
+
 ; open! : dxgi-host? -> void?
-;;   Rejects closed or broken swap-chain hosts before frame acquisition or submission.
+;   Rejects closed or broken swap-chain hosts before frame acquisition or submission.
 (define (open! h)
   (owner! h)
   (when (dxgi-host-closed? h) (error 'direct3d-presentation "swap chain is closed"))
   (when (dxgi-host-broken h)
     (error 'direct3d-presentation "indeterminate DXGI resources quarantined: ~a" (dxgi-host-broken
       h))))
+
 ; checked : any/c any/c -> void?
-;;   Rejects failing presentation HRESULTs with step-specific hexadecimal diagnostics.
+;   Rejects failing presentation HRESULTs with step-specific hexadecimal diagnostics.
 (define (checked step hr)
   (unless (zero? hr)
     (error 'direct3d-presentation "~a failed: HRESULT 0x~a" step
            (number->string (bitwise-and hr #xffffffff) 16))))
+
 ; quarantine! : dxgi-host? any/c -> any
-;;   Keeps failed presentation ownership rooted when native work may still reference its resources.
+;   Keeps failed presentation ownership rooted when native work may still reference its resources.
 (define (quarantine! h e)
   (set-dxgi-host-broken! h (if (exn? e) (exn-message e) (format "~s" e))))
+
 ; device! : any/c -> any
-;;   Queries device removal before trusting swap-chain or fence state.
+;   Queries device removal before trusting swap-chain or fence state.
 (define (device! h)
   (define hr ((method (dxgi-host-device h) device-removed-reason-slot
                       (_fun _pointer -> _int32)) (dxgi-host-device h)))
   (checked 'GetDeviceRemovedReason hr))
+
 ; dxgi-client-size : any/c -> any
-;;   Copies the native window client rectangle and returns its pixel extents.
+;   Copies the native window client rectangle and returns its pixel extents.
 (define (dxgi-client-size hwnd)
   (platform!)
   (raw 16
@@ -107,34 +115,39 @@
       (when (zero? ((api 'rect) hwnd p)) (error 'direct3d-presentation "GetClientRect failed"))
       (values (- (ptr-ref p _int32 2) (ptr-ref p _int32 0))
               (- (ptr-ref p _int32 3) (ptr-ref p _int32 1))))))
+
 ; dxgi-host-pointer : dxgi-host? -> any
-;;   Returns the host's active swap-chain pointer after ownership and lifecycle checks.
+;   Returns the host's active swap-chain pointer after ownership and lifecycle checks.
 (define (dxgi-host-pointer h)
   ;; The borrowed device is only a non-null domain-resource token. The host
   ;; destructor does not Release it; the owning context driver retains it.
   (dxgi-host-device h))
+
 ; release-vector! : vector? -> void?
-;;   Clears and releases owned COM pointers held in parallel per-buffer storage.
+;   Clears and releases owned COM pointers held in parallel per-buffer storage.
 (define (release-vector! v)
   (for ([i (in-range (vector-length v))])
     (define p (vector-ref v i))
     (when p (vector-set! v i #f) (release p))))
+
 ; release-buffers! : dxgi-host? -> any
-;;   Releases the swap-chain's retained back buffers before resize or host teardown.
+;   Releases the swap-chain's retained back buffers before resize or host teardown.
 (define (release-buffers! h)
   ;; Command lists can retain indirect buffer references. Release them first.
   (release-vector! (dxgi-host-lists h))
   (release-vector! (dxgi-host-allocators h))
   (release-vector! (dxgi-host-buffers h)))
+
 ; completed : any/c -> any
-;;   Reads and validates the current completion fence value, detecting device-loss sentinels.
+;   Reads and validates the current completion fence value, detecting device-loss sentinels.
 (define (completed h)
   (define value ((method (dxgi-host-fence h) fence-completed-slot
                          (_fun _pointer -> _uint64)) (dxgi-host-fence h)))
   (dxgi-fence-completed! value 0) ; UINT64_MAX is device loss, not completion.
   value)
+
 ; wait! : dxgi-host? any/c any/c -> void?
-;;   Waits for a required fence serial and records why presentation had to synchronize.
+;   Waits for a required fence serial and records why presentation had to synchronize.
 (define (wait! h value reason)
   (unless (dxgi-fence-completed! (completed h) value)
     (device! h)
@@ -147,8 +160,9 @@
       (error 'direct3d-presentation
         "~a fence wait failed/timed out (status ~a); retain native references" reason status))
     (set-dxgi-host-waits! h (add1 (dxgi-host-waits h)))))
+
 ; signal! : dxgi-host? any/c -> any
-;;   Signals the next completion serial and associates it with the submitted back-buffer slot.
+;   Signals the next completion serial and associates it with the submitted back-buffer slot.
 (define (signal! h index)
   (define value (dxgi-next-fence (dxgi-host-serial h)))
   (checked 'Signal
@@ -158,9 +172,10 @@
   (set-dxgi-host-serial! h value)
   (vector-set! (dxgi-host-fences h) index value)
   value)
+
 ; make-host/native : any/c any/c any/c any/c -> any
-;;   Creates native swap-chain bookkeeping, command resources, fence, and event handles with failure
-;;   cleanup.
+;   Creates native swap-chain bookkeeping, command resources, fence, and event handles with failure
+;   cleanup.
 (define (make-host/native device queue hwnd sync)
   (platform!) (dxgi-sync-interval! sync)
   (unless (and device queue hwnd) (error 'direct3d-presentation
@@ -185,8 +200,9 @@
       (unless ok?
         (when (dxgi-host-fence h) (release (dxgi-host-fence h)))
         (when (dxgi-host-event h) ((api 'close) (dxgi-host-event h)))))))
+
 ; populate-buffers! : dxgi-host? -> void?
-;;   Retains each current swap-chain back buffer in its corresponding indexed slot.
+;   Retains each current swap-chain back buffer in its corresponding indexed slot.
 (define (populate-buffers! h)
   (define swap (dxgi-host-swap h))
   (define device (dxgi-host-device h))
@@ -211,9 +227,10 @@
            device 0 0 alloc #f iid-command-list out))))
     (vector-set! (dxgi-host-lists h) i list)
     (checked 'CloseCommandList ((method list list-close-slot (_fun _pointer -> _int32)) list))))
+
 ; verify-desc! : any/c any/c any/c -> any
-;;   Checks the created swap chain against the requested size and reviewed presentation
-;;   configuration.
+;   Checks the created swap chain against the requested size and reviewed presentation
+;   configuration.
 (define (verify-desc! h w height)
   (raw 48
     (lambda (p)
@@ -228,8 +245,9 @@
                    (= (dxgi-swap-desc-stereo d) 0) (= (dxgi-swap-desc-flags d) 0)
                    (= (dxgi-swap-desc-alpha d) dxgi-alpha-ignore))
         (error 'direct3d-presentation "DXGI returned an unexpected swap-chain format or extent")))))
+
 ; create-swap! : dxgi-host? any/c any/c -> any
-;;   Creates the window swap chain and populates its retained back-buffer references.
+;   Creates the window swap chain and populates its retained back-buffer references.
 (define (create-swap! h w height)
   (define factory (out-interface 'CreateDXGIFactory1 (lambda (out) ((api 'create) iid-factory4 out))))
   (define initial #f)
@@ -258,8 +276,9 @@
   (populate-buffers! h)
   (set-dxgi-host-width! h w) (set-dxgi-host-height! h height)
   (set-dxgi-host-generation! h 1))
+
 ; resize! : any/c any/c any/c any/c -> any
-;;   Waits for outstanding work and retires Skia wrappers before replacing the swap-chain buffers.
+;   Waits for outstanding work and retires Skia wrappers before replacing the swap-chain buffers.
 (define (resize! h w height retire-skia)
   (call-with-dxgi-retirement
     (lambda () (wait! h (dxgi-host-serial h) 'resize) (retire-skia))
@@ -275,8 +294,9 @@
       (set-dxgi-host-generation! h (add1 (dxgi-host-generation h)))
       (set-dxgi-host-resizes! h (add1 (dxgi-host-resizes h))))
     (lambda (e) (quarantine! h e))))
+
 ; acquire/native! : dxgi-host? any/c any/c any/c -> any
-;;   Returns a generation-tagged token for the current completed back buffer, resizing when needed.
+;   Returns a generation-tagged token for the current completed back buffer, resizing when needed.
 (define (acquire/native! h w height retire-skia)
   (open! h) (dxgi-extent! w height)
   (when (dxgi-host-active h) (error 'direct3d-presentation "a back buffer is already acquired"))
@@ -300,14 +320,16 @@
         (set-dxgi-host-active! h token)
         (set-dxgi-host-acquired! h (add1 (dxgi-host-acquired h)))
         token))))
+
 ; barrier! : any/c any/c any/c any/c -> any
-;;   Emits a transition barrier only when the before and after resource states differ.
+;   Emits a transition barrier only when the before and after resource states differ.
 (define (barrier! list resource before after)
   (define b (make-d3d12-transition 0 0 resource #xffffffff before after))
   ((method list list-barrier-slot (_fun _pointer _uint32 _d3d12-transition-pointer -> _void)) list 1
     b))
+
 ; make-readback : any/c any/c -> any
-;;   Creates CPU-readable storage for an explicitly requested presentation capture.
+;   Creates CPU-readable storage for an explicitly requested presentation capture.
 (define (make-readback h size)
   (define device (dxgi-host-device h))
   (define props (make-d3d12-heap-properties 3 0 0 1 1)) ; READBACK heap
@@ -318,9 +340,10 @@
                (_fun _pointer _d3d12-heap-properties-pointer _uint32 _d3d12-resource-desc-pointer
                      _uint32 _pointer _bytes _pointer -> _int32))
        device props 0 desc d3d12-state-copy-dest #f iid-resource out))))
+
 ; copy-readback! : any/c any/c any/c any/c any/c -> any
-;;   Records the back-buffer copy into an aligned readback footprint without mapping it before
-;;   completion.
+;   Records the back-buffer copy into an aligned readback footprint without mapping it before
+;   completion.
 (define (copy-readback! h list resource readback pitch)
   (define dest (make-d3d12-copy-location readback 1 0 0 dxgi-format-rgba8
                                        (dxgi-host-width h) (dxgi-host-height h) 1 pitch 0))
@@ -329,8 +352,9 @@
            (_fun _pointer _d3d12-copy-location-pointer _uint32 _uint32 _uint32
                  _d3d12-copy-location-pointer _pointer -> _void))
    list dest 0 0 0 src #f))
+
 ; map-readback : any/c any/c any/c -> any
-;;   Copies completed padded native rows into detached tightly packed RGBA bytes.
+;   Copies completed padded native rows into detached tightly packed RGBA bytes.
 (define (map-readback h resource pitch)
   (define width (dxgi-host-width h)) (define height (dxgi-host-height h))
   (define range (make-d3d12-range 0 (* pitch height)))
@@ -352,9 +376,10 @@
           (define written (make-d3d12-range 0 0))
           ((method resource resource-unmap-slot (_fun _pointer _uint32 _d3d12-range-pointer -> _void))
            resource 0 written))))))
+
 ; finish/native! : dxgi-host? dxgi-token? any/c any/c procedure? -> (values any/c any/c any/c)
-;;   Completes a frame token by transitioning, submitting, optionally presenting, and optionally
-;;   capturing its buffer.
+;   Completes a frame token by transitioning, submitting, optionally presenting, and optionally
+;   capturing its buffer.
 (define (finish/native! h token rendered? present? capture?)
   (open! h)
   (unless (and (eq? token (dxgi-host-active h)) (dxgi-token-live? token)
@@ -429,8 +454,9 @@
               'visible_pixels_verified #f))
     (set-dxgi-host-last! h record)
     (values outcome pixels record)))
+
 ; close/native! : dxgi-host? -> void?
-;;   Waits for native work before releasing swap-chain, command, fence, and event ownership.
+;   Waits for native work before releasing swap-chain, command, fence, and event ownership.
 (define (close/native! h)
   (owner! h)
   (unless (dxgi-host-closed? h)
@@ -451,8 +477,9 @@
           (when (zero? ((api 'close) p)) (error 'direct3d-presentation "CloseHandle failed")))
         (set-dxgi-host-closed?! h #t))
       (lambda (e) (quarantine! h e)))))
+
 ; dxgi-host-info : dxgi-host? -> hash?
-;;   Returns detached lifecycle, resize, synchronization, and presentation counters.
+;   Returns detached lifecycle, resize, synchronization, and presentation counters.
 (define (dxgi-host-info h)
   (owner! h)
   (hasheq 'state (cond [(dxgi-host-closed? h) "closed"] [(dxgi-host-broken h) "quarantined"] [else
@@ -475,20 +502,24 @@
 ;; Native transactions contain no application callbacks. Delay asynchronous
 ;; Racket breaks until owned return values and submission/fence state have
 ;; been registered. Fence waits remain bounded; user drawing is outside this.
+
 ; make-dxgi-host : any/c any/c any/c any/c -> any
-;;   Constructs a checked owner-thread presentation host and quarantines uncertain native setup
-;;   failures.
+;   Constructs a checked owner-thread presentation host and quarantines uncertain native setup
+;   failures.
 (define (make-dxgi-host device queue hwnd sync)
   (parameterize-break #f (make-host/native device queue hwnd sync)))
+
 ; dxgi-host-acquire! : dxgi-host? any/c any/c any/c -> any
-;;   Checks host ownership and wraps native buffer acquisition with failure quarantine.
+;   Checks host ownership and wraps native buffer acquisition with failure quarantine.
 (define (dxgi-host-acquire! h w height retire-skia)
   (parameterize-break #f (acquire/native! h w height retire-skia)))
+
 ; dxgi-host-finish! : dxgi-host? dxgi-token? any/c any/c procedure? -> any
-;;   Validates a live frame token and coordinates native completion with failure quarantine.
+;   Validates a live frame token and coordinates native completion with failure quarantine.
 (define (dxgi-host-finish! h token rendered? present? capture?)
   (parameterize-break #f (finish/native! h token rendered? present? capture?)))
+
 ; dxgi-host-close! : dxgi-host? -> any
-;;   Requests safe native host retirement without retrying uncertain destruction.
+;   Requests safe native host retirement without retrying uncertain destruction.
 (define (dxgi-host-close! h)
   (parameterize-break #f (close/native! h)))

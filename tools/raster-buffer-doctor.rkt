@@ -19,8 +19,8 @@
 ;;;
 
 ; raster-buffer-doctor! : -> void?
-;;   Checks padded storage, direct drawing, borrowed subset lifetime, retired views, and detached
-;;   image snapshots.
+;   Checks padded storage, direct drawing, borrowed subset lifetime, retired views, and detached
+;   image snapshots.
 (define (raster-buffer-doctor!)
   (with-skia ([b (make-raster-buffer 3 2 #:row-bytes 20)])
     (call-with-raster-buffer-canvas b (lambda (c) (canvas-clear! c 'blue)))

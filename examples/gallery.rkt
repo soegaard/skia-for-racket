@@ -20,7 +20,7 @@
 ;;;
 
 ; render-gallery : path-string? -> void?
-;;   Renders the gallery example to the selected output destination.
+;   Renders the gallery example to the selected output destination.
 (define (render-gallery filename)
   (with-skia ([s (make-surface 1000 720 #:background "#F3F5F9")]
               [card (make-paint #:color 'white)]
@@ -97,8 +97,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "gallery.rkt" #:args ([output "gallery.png"]) output))
   (render-gallery filename)

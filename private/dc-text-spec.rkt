@@ -38,8 +38,8 @@
 ;;   extension; inherited fields retain the dc-font-spec representation and invariants.
 
 ; dc-font-request-width : dc-font-spec? -> exact-integer?
-;;   Returns the requested Skia width class, using normal width five for the original font-spec
-;;   representation.
+;   Returns the requested Skia width class, using normal width five for the original font-spec
+;   representation.
 (define (dc-font-request-width spec)
   (if (dc-font-spec/stretch? spec) (dc-font-spec/stretch-width spec) 5))
 (struct dc-text-spec (font units combine) #:transparent)
@@ -54,8 +54,8 @@
 ;;;
 
 ; dc-font-description : symbol? (is-a?/c font%) -> dc-font-spec?
-;;   Copies resolved pixel size, mapped family/style, rasterization options, underline flag, and
-;;   sorted shaping features.
+;   Copies resolved pixel size, mapped family/style, rasterization options, underline flag, and
+;   sorted shaping features.
 (define (dc-font-description who f)
   (unless (is-a? f rd:font%) (raise-argument-error who "font% object" f))
   ;; get-size #t, unlike get-point-size, preserves fractional sizes and Racket's
@@ -82,8 +82,8 @@
 
 ; dc-text-description : symbol? string? (is-a?/c font%) any/c exact-nonnegative-integer? ->
 ; dc-text-spec?
-;;   Copies text from the character offset up to NUL into character, grapheme, or combined units,
-;;   rejecting unsupported combined line breaks.
+;   Copies text from the character offset up to NUL into character, grapheme, or combined units,
+;   rejecting unsupported combined line breaks.
 (define (dc-text-description who str f combine offset)
   (unless (string? str) (raise-argument-error who "string?" str))
   (unless (and (exact-nonnegative-integer? offset) (<= offset (string-length str)))

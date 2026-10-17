@@ -25,7 +25,7 @@
 ;;;
 
 ; repository : path?
-;;   Locates repository relative to this module rather than the current directory.
+;   Locates repository relative to this module rather than the current directory.
 (define-runtime-path repository "../..")
 
 ;;;
@@ -33,21 +33,26 @@
 ;;;
 
 (module+ test
+
   ; info : procedure?
-  ;;   Reads package registration fields without building the manuals.
+  ;   Reads package registration fields without building the manuals.
   (define info (get-info/full repository))
   (check-not-false info)
+
   ; documents : list?
-  ;;   Retains the registered Scribble document entries for comparison with the catalogs.
+  ;   Retains the registered Scribble document entries for comparison with the catalogs.
   (define documents (info 'scribblings (lambda () '())))
+
   ; sources : list?
-  ;;   Collects registered manual source paths for duplicate and coverage checks.
+  ;   Collects registered manual source paths for duplicate and coverage checks.
   (define sources (map car documents))
+
   ; names : list?
-  ;;   Collects registered manual output names for identity and uniqueness checks.
+  ;   Collects registered manual output names for identity and uniqueness checks.
   (define names (map fourth documents))
+
   ; expected-manual-count : real?
-  ;;   Counts the collection manuals and individual tutorials expected in registration.
+  ;   Counts the collection manuals and individual tutorials expected in registration.
   (define expected-manual-count (+ 2 (length tutorials)))
   (check-equal? (length documents) expected-manual-count)
   (check-equal? (length (remove-duplicates sources)) expected-manual-count)

@@ -28,7 +28,7 @@
 ;;;
 
 ; skia-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define skia-eval (make-base-eval))
 
 (void
@@ -127,31 +127,31 @@
        0.62)))))
 
 ; skia-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (skia-interaction expression ...)
   (interaction #:eval skia-eval expression ...))
 
 ; skia-interaction-eval : syntax -> syntax
-;;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
+;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
 (define-syntax-rule (skia-interaction-eval expression ...)
   (interaction-eval #:eval skia-eval expression ...))
 
 ; skia-racketmod+eval : syntax -> syntax
-;;   Displays a module example and evaluates its expressions in the tutorial evaluator.
+;   Displays a module example and evaluates its expressions in the tutorial evaluator.
 (define-syntax-rule (skia-racketmod+eval expression ...)
   (racketmod+eval #:eval skia-eval expression ...))
 
 ; skia-racketblock+eval : syntax -> syntax
-;;   Displays a code block and evaluates the same expressions for the tutorial.
+;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (skia-racketblock+eval expression ...)
   (racketblock+eval #:eval skia-eval expression ...))
 
 ; skia-def+int : syntax -> syntax
-;;   Displays definitions followed by their evaluated tutorial interaction.
+;   Displays definitions followed by their evaluated tutorial interaction.
 (define-syntax-rule (skia-def+int expression ...)
   (def+int #:eval skia-eval expression ...))
 
 ; skia-image : syntax -> syntax
-;;   Evaluates the figure expression using the tutorial's shared drawing environment.
+;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (skia-image expression)
   (interaction-eval-show #:eval skia-eval expression))

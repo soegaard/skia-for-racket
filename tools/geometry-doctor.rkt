@@ -19,7 +19,7 @@
 ;;;
 
 ; geometry-doctor! : -> void?
-;;   Checks region operations, colored vertices, lattice cells, and structured-geometry ABI sizes.
+;   Checks region operations, colored vertices, lattice cells, and structured-geometry ABI sizes.
 (define (geometry-doctor!)
   (with-skia ([r (make-region '((0 0 12 10)))] [q (make-region '((4 3 4 4)))]
               [hole (region-difference r q)] [s (make-surface 40 40)]

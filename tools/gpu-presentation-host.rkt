@@ -21,12 +21,12 @@
 ;;;
 
 ; widgets : path?
-;;   Locates ../gpu-gui.rkt relative to this module, independent of the invoking directory.
+;   Locates ../gpu-gui.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path widgets "../gpu-gui.rkt")
 
 ; call-on-presentation-handler : procedure? -> any/c
-;;   Runs the callback with the window class and event-settling thunk on an owned GUI eventspace,
-;;   then shuts down that eventspace.
+;   Runs the callback with the window class and event-settling thunk on an owned GUI eventspace,
+;   then shuts down that eventspace.
 (define (call-on-presentation-handler proc)
   (define-values (current-space make-space handler-thread enqueue settle)
     (with-handlers ([exn:fail?

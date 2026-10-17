@@ -18,7 +18,7 @@
 ;;;
 
 ; stream-roundtrip-example : -> (values any/c any/c)
-;;   Returns both the complete copied stream bytes and the suffix after skipping input.
+;   Returns both the complete copied stream bytes and the suffix after skipping input.
 (define (stream-roundtrip-example)
   (with-skia ([out (make-memory-output-stream #:limit 1024)])
     (output-stream-write-bytes! out #"Native stream / Racket bytes")
@@ -31,8 +31,9 @@
 ;;;
 
 (module+ main
+
   ; (whole suffix) : (values any/c any/c)
-  ;;   Receives the detached full byte string and the suffix from the stream example.
+  ;   Receives the detached full byte string and the suffix from the stream example.
   (define-values (whole suffix) (stream-roundtrip-example))
   (unless (and (bytes=? whole #"Native stream / Racket bytes")
                (bytes=? suffix #"stream / Racket bytes"))

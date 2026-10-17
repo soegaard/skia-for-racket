@@ -26,7 +26,7 @@
 ;;;
 
 ; rgba-premul->argb : bytes? -> bytes?
-;;   Copies four-byte premultiplied RGBA pixels into ARGB order; the length must be divisible by four.
+;   Copies four-byte premultiplied RGBA pixels into ARGB order; the length must be divisible by four.
 (define (rgba-premul->argb pixels)
   (define argb (make-bytes (bytes-length pixels)))
   (for ([i (in-range 0 (bytes-length pixels) 4)])
@@ -37,7 +37,7 @@
   argb)
 
 ; argb-premul->rgba : bytes? -> bytes?
-;;   Copies four-byte premultiplied ARGB pixels into RGBA order without changing their alpha values.
+;   Copies four-byte premultiplied ARGB pixels into RGBA order without changing their alpha values.
 (define (argb-premul->rgba pixels)
   (define rgba (make-bytes (bytes-length pixels)))
   (for ([i (in-range 0 (bytes-length pixels) 4)])
@@ -48,7 +48,7 @@
   rgba)
 
 ; rgba-premul->bitmap : exact-positive-integer? exact-positive-integer? bytes? -> (is-a?/c bitmap%)
-;;   Creates an alpha bitmap from a tightly packed width-by-height premultiplied RGBA buffer.
+;   Creates an alpha bitmap from a tightly packed width-by-height premultiplied RGBA buffer.
 (define (rgba-premul->bitmap width height pixels)
   (define bitmap (make-bitmap width height #t))
   ;; Both buffers use premultiplied alpha. Only channel order is changed.

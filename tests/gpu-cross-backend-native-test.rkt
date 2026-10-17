@@ -19,21 +19,21 @@
 ;;;
 
 ; gpu-cross-backend-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-cross-backend-native-test-count 9)
 
 ; under : gpu-context? (-> any) -> any
-;;   Runs the callback in the selected context's activation scope.
+;   Runs the callback in the selected context's activation scope.
 (define (under c thunk) (call-with-gpu-context c thunk))
 
 ; source-image : gpu-context? -> image?
-;;   Uploads a shared CPU pattern and returns the owned GPU-resident image.
+;   Uploads a shared CPU pattern and returns the owned GPU-resident image.
 (define (source-image c)
   (under c (lambda () (with-skia ([cpu (make-image-workflow-source)]) (gpu-upload-image c cpu)))))
 
 ; make-gpu-cross-backend-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for actual OpenGL/Metal separation and explicit two-way
-;;   transfer.
+;   Builds the parameterized suite for actual OpenGL/Metal separation and explicit two-way
+;   transfer.
 (define (make-gpu-cross-backend-native-tests gl metal)
   (define (both proc)
     (for ([a (in-list (list gl metal))] [b (in-list (list metal gl))])

@@ -20,7 +20,7 @@
 ;;;
 
 ; render-codec-gallery : path-string? -> void?
-;;   Renders the codec gallery example to the selected output destination.
+;   Renders the codec gallery example to the selected output destination.
 (define (render-codec-gallery filename)
   (with-skia ([source (make-surface 240 180 #:background 'white)]
               [gradient (make-linear-gradient-shader
@@ -80,8 +80,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "codecs.rkt" #:args ([output "codecs.png"]) output))
   (render-codec-gallery filename)

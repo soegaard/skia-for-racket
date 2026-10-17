@@ -25,7 +25,7 @@
 ;;;
 
 ; draw-pattern : gpu-frame? -> void?
-;;   Draws distinct quadrants and a single-pixel marker on the acquired presentation target.
+;   Draws distinct quadrants and a single-pixel marker on the acquired presentation target.
 (define (draw-pattern frame)
   (define c (gpu-frame-canvas frame))
   (define w (gpu-frame-width frame)) (define h (gpu-frame-height frame))
@@ -42,8 +42,8 @@
     (draw-rect c 0 0 1 1 yellow)))
 
 ; dxgi-doctor! : path? symbol? (or/c exact-nonnegative-integer? #f) -> void?
-;;   Exercises shown DXGI windows, resizing, captured targets, and repeated teardown on the selected
-;;   adapter.
+;   Exercises shown DXGI windows, resizing, captured targets, and repeated teardown on the selected
+;   adapter.
 (define (dxgi-doctor! directory selection index)
   (define run-id (path->string (file-name-from-path (simplify-path directory))))
   (define cycles '())
@@ -174,13 +174,15 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; selection : symbol?
-  ;;   Chooses the Direct3D adapter policy; WARP is the default for reproducible software execution.
+  ;   Chooses the Direct3D adapter policy; WARP is the default for reproducible software execution.
   (define selection 'warp)
+
   ; index : exact-nonnegative-integer?
-  ;;   Selects the zero-based Direct3D adapter within the chosen adapter policy.
+  ;   Selects the zero-based Direct3D adapter within the chosen adapter policy.
   (define index 0)
   (command-line #:once-each
     [("--directory") path "fresh evidence directory" (set! directory (path->complete-path path))]

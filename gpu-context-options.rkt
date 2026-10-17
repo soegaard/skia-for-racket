@@ -36,19 +36,21 @@
 ;; the value neither owns a GPU context nor reports the driver's effective state.
 
 ; boolean! : symbol? boolean? -> void?
-;;   Rejects a nonboolean option before native context creation is attempted.
+;   Rejects a nonboolean option before native context creation is attempted.
 (define (boolean! who value)
   (unless (boolean? value) (raise-argument-error who "boolean?" value)))
+
 ; integer! : symbol? exact-integer? exact-integer? exact-integer? string? -> void?
-;;   Checks an exact option value against inclusive native integer bounds.
+;   Checks an exact option value against inclusive native integer bounds.
 (define (integer! who value lower upper description)
   (unless (and (exact-integer? value) (<= lower value upper))
     (raise-argument-error who description value)))
+
 ; make-gpu-context-options : [#:avoid-stencil-buffers? boolean?] [#:runtime-program-cache-size
 ;   (integer-in 1 2147483647)] [#:glyph-cache-texture-maximum-bytes (integer-in 1
 ;   18446744073709551615)] [#:allow-path-mask-caching? boolean?] [#:manual-mipmapping? boolean?]
 ;   [#:buffer-map-threshold (integer-in -1 2147483647)] -> gpu-context-options?
-;;   Creates validated immutable requests to be copied during native context construction.
+;   Creates validated immutable requests to be copied during native context construction.
 (define (make-gpu-context-options
          #:avoid-stencil-buffers? [stencil? #f]
          #:runtime-program-cache-size [programs 256]
@@ -62,10 +64,11 @@
   (integer! who glyphs 1 #xffffffffffffffff "positive exact 64-bit glyph-texture byte budget")
   (integer! who threshold -1 #x7fffffff "exact buffer-map threshold -1 through 2147483647")
   (make-options-record stencil? programs glyphs paths? mipmaps? threshold))
+
 ; gpu-context-options->jsexpr : gpu-context-options? -> (and/c hash? immutable?)
-;;   Returns an immutable JSON-compatible hash with keys 'avoid_stencil_buffers,
-;;   'runtime_program_cache_size, 'glyph_cache_texture_maximum_bytes, 'allow_path_mask_caching,
-;;   'manual_mipmapping, and 'buffer_map_threshold.
+;   Returns an immutable JSON-compatible hash with keys 'avoid_stencil_buffers,
+;   'runtime_program_cache_size, 'glyph_cache_texture_maximum_bytes, 'allow_path_mask_caching,
+;   'manual_mipmapping, and 'buffer_map_threshold.
 (define (gpu-context-options->jsexpr value)
   (unless (gpu-context-options? value)
     (raise-argument-error 'gpu-context-options->jsexpr "gpu-context-options?" value))
@@ -78,14 +81,16 @@
           'buffer_map_threshold (gpu-context-options-buffer-map-threshold value)))
 (module* internals #f
   (provide check-optional-context-options context-options-diagnostics add-context-options-diagnostics)
+
   ; check-optional-context-options : symbol? any/c -> (or/c #f gpu-context-options?)
-  ;;   Checks optional factory settings, retaining #f to request native defaults.
+  ;   Checks optional factory settings, retaining #f to request native defaults.
   (define (check-optional-context-options who value)
     (unless (or (not value) (gpu-context-options? value))
       (raise-argument-error who "#f or gpu-context-options?" value))
     value)
+
   ; context-options-diagnostics : (or/c #f gpu-context-options?) symbol? -> hash?
-  ;;   Describes requested options and factory selection without claiming native readback.
+  ;   Describes requested options and factory selection without claiming native readback.
   (define (context-options-diagnostics options backend)
     (check-optional-context-options 'context-options-diagnostics options)
     (define factory
@@ -100,8 +105,9 @@
             'context_options_source (if options "explicit" "native-defaults")
             'context_options (and options (gpu-context-options->jsexpr options))
             'context_options_native_readback #f))
+
   ; add-context-options-diagnostics : hash? (or/c #f gpu-context-options?) symbol? -> hash?
-  ;;   Adds factory and requested-option metadata to immutable context diagnostics.
+  ;   Adds factory and requested-option metadata to immutable context diagnostics.
   (define (add-context-options-diagnostics details options backend)
     (for/fold ([result details])
               ([(key value) (in-hash (context-options-diagnostics options backend))])

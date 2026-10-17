@@ -17,26 +17,31 @@
 ;;;
 
 (module+ main
+
   ; adapter : symbol?
-  ;;   Selects the requested GPU adapter, or leaves backend selection at its default.
+  ;   Selects the requested GPU adapter, or leaves backend selection at its default.
   (define adapter 'warp)
+
   ; index : exact-integer?
-  ;;   Selects the device or adapter enumeration index requested by the command line.
+  ;   Selects the device or adapter enumeration index requested by the command line.
   (define index 0)
+
   ; destination : path?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define destination
     (command-line
      #:once-each
      [("--adapter") name "warp or hardware (default warp)" (set! adapter (string->symbol name))]
      [("--adapter-index") number "exact hardware adapter index" (set! index (string->number number))]
      #:args (output-png) (path->complete-path output-png)))
+
   ; context : gpu-context?
-  ;;   Owns the explicitly selected GPU context for the example's rendering work.
+  ;   Owns the explicitly selected GPU context for the example's rendering work.
   (define context (make-gpu-context #:backend 'direct3d #:adapter adapter #:adapter-index index))
   (write-json (gpu-context-info context)) (newline)
+
   ; detached : image?
-  ;;   Retains the CPU image after the temporary GPU context has been closed.
+  ;   Retains the CPU image after the temporary GPU context has been closed.
   (define detached
     (dynamic-wind
       void

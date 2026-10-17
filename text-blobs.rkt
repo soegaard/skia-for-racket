@@ -33,23 +33,26 @@
 ;;;
 
 ; text-blob-builder? : any/c -> boolean?
-;;   Returns #t for a text-blob builder and #f otherwise.
+;   Returns #t for a text-blob builder and #f otherwise.
 (define (text-blob-builder? v) (text-blob-builder-resource? v))
+
 ; builder-h : symbol? text-blob-builder? -> (or/c owned? domain-resource?)
-;;   Checks a text-blob builder and retrieves its managed native handle.
+;   Checks a text-blob builder and retrieves its managed native handle.
 (define (builder-h who b)
   (unless (text-blob-builder? b) (raise-argument-error who "text-blob-builder?" b))
   (text-blob-builder-resource-handle b))
+
 ; make-text-blob-builder : -> text-blob-builder?
-;;   Creates an open, owned builder with no runs.
+;   Creates an open, owned builder with no runs.
 (define (make-text-blob-builder)
   (skia-check!)
   (make-text-blob-builder-record
    (new-owned 'make-text-blob-builder 'text-blob-builder
               sk_textblob_builder_new sk_textblob_builder_delete)
    (box '()) (box 0)))
+
 ; text-blob-builder-run-count : text-blob-builder? -> exact-nonnegative-integer?
-;;   Returns the number of nonempty runs successfully appended to an open builder.
+;   Returns the number of nonempty runs successfully appended to an open builder.
 (define (text-blob-builder-run-count b)
   (call-with-owned 'text-blob-builder-run-count (list (builder-h 'text-blob-builder-run-count b))
     (lambda (_) (length (unbox (text-blob-builder-resource-runs b))))))
@@ -59,7 +62,7 @@
 ;;;
 
 ; check-face-glyphs : symbol? cpointer? (listof exact-nonnegative-integer?) -> void?
-;;   Checks glyph IDs against the font's typeface while balancing the temporary typeface reference.
+;   Checks glyph IDs against the font's typeface while balancing the temporary typeface reference.
 (define (check-face-glyphs who fp gs)
   (call-with-native-temporary
    who 'typeface-from-font (lambda () (sk_font_get_typeface fp)) sk_typeface_unref
@@ -70,21 +73,24 @@
        (unless (< g n)
          (raise-arguments-error who "glyph ID is outside this font's typeface"
                                 "glyph" g "glyph count" n))))))
+
 ; copy-font : symbol? cpointer? -> font?
-;;   Snapshots font settings and retains the typeface for later text-run inspection.
+;   Snapshots font settings and retains the typeface for later text-run inspection.
 (define (copy-font who fp)
   (call-with-native-temporary
    who 'typeface-from-font (lambda () (sk_font_get_typeface fp)) sk_typeface_unref
    (lambda (tp) (copy-font-for-shaper who fp tp))))
+
 ; glyph-buffer : (listof exact-nonnegative-integer?) -> (or/c #f cpointer?)
-;;   Copies ordered glyph IDs into a uint16 buffer, using null for an empty run.
+;   Copies ordered glyph IDs into a uint16 buffer, using null for an empty run.
 (define (glyph-buffer gs)
   (and (pair? gs)
        (let ([buf (malloc (length gs) _uint16 'atomic)])
          (for ([g (in-list gs)] [i (in-naturals)]) (ptr-set! buf _uint16 i g))
          buf)))
+
 ; default-positions : symbol? cpointer? list? list? -> list?
-;;   Computes checked x/y glyph positions in run order from the font and baseline origin.
+;   Computes checked x/y glyph positions in run order from the font and baseline origin.
 (define (default-positions who fp gs origin)
   (define n (length gs))
   (define input (glyph-buffer gs))
@@ -96,9 +102,10 @@
       (list (scalar who (ptr-ref output _float (* i 2)))
             (scalar who (ptr-ref output _float (add1 (* i 2))))))
     (void/reference-sink input output at)))
+
 ; allocate-run! : cpointer? cpointer? symbol? integer? any/c list? any/c sk-textblob-runbuffer? ->
 ;   void?
-;;   Selects the native run allocator for placement kind and optional UTF-8 text metadata.
+;   Selects the native run allocator for placement kind and optional UTF-8 text metadata.
 (define (allocate-run! bp fp kind n coords origin text rb)
   (define bytes (and text (bytes-length text)))
   (case kind
@@ -118,9 +125,10 @@
      (if text
          (sk_textblob_builder_alloc_run_text_rsxform bp fp n bytes #f rb)
          (sk_textblob_builder_alloc_run_rsxform bp fp n #f rb))]))
+
 ; fill-run! : symbol? sk-textblob-runbuffer? symbol? list? any/c any/c any/c -> void?
-;;   Fills allocated run buffers in glyph order before another builder allocation can invalidate
-;;   them.
+;   Fills allocated run buffers in glyph order before another builder allocation can invalidate
+;   them.
 (define (fill-run! who rb kind gs coords text clusters)
   (define gp (sk-textblob-runbuffer-glyphs rb))
   (define pp (sk-textblob-runbuffer-pos rb))
@@ -138,8 +146,8 @@
   (void/reference-sink rb text))
 
 ; append-run! : symbol? text-blob-builder? font? list? symbol? any/c list? any/c any/c -> void?
-;;   Appends a retained font/run snapshot, closing the builder if an allocated native run cannot be
-;;   completed.
+;   Appends a retained font/run snapshot, closing the builder if an allocated native run cannot be
+;   completed.
 (define (append-run! who b f gs kind coords origin text clusters)
   (define bh (builder-h who b)) (define fh (font-h who f))
   (define n (length gs))
@@ -193,7 +201,7 @@
 ;   (vectorof (integer-in 0 65535))) [#:origin (or/c (list/c real? real?) (vector/c real? real?))]
 ;   [#:text (or/c string? bytes? #f)] [#:clusters (or/c (listof exact-nonnegative-integer?)
 ;   (vectorof exact-nonnegative-integer?) #f)] -> void?
-;;   Appends a default-positioned run.
+;   Appends a default-positioned run.
 (define (text-blob-builder-add-run! b f glyphs #:origin [origin '(0 0)]
                                     #:text [text #f] #:clusters [clusters #f])
   (define who 'text-blob-builder-add-run!)
@@ -201,12 +209,13 @@
   (define at (text-run-point who origin))
   (define-values (bs cs) (text-run-metadata who text clusters (length gs)))
   (append-run! who b f gs 'default '() at bs cs))
+
 ; text-blob-builder-add-horizontal-run! : text-blob-builder? font? (or/c (listof (integer-in 0
 ;   65535)) (vectorof (integer-in 0 65535))) (or/c (listof real?) (vectorof real?)) [#:y real?]
 ;   [#:text (or/c string? bytes? #f)] [#:clusters (or/c (listof exact-nonnegative-integer?)
 ;   (vectorof exact-nonnegative-integer?) #f)] -> void?
-;;   Appends a run with one absolute x coordinate per glyph and a shared baseline coordinate y, all
-;;   relative to the blob's origin.
+;   Appends a run with one absolute x coordinate per glyph and a shared baseline coordinate y, all
+;   relative to the blob's origin.
 (define (text-blob-builder-add-horizontal-run! b f glyphs xs #:y [y 0]
                                                #:text [text #f] #:clusters [clusters #f])
   (define who 'text-blob-builder-add-horizontal-run!)
@@ -215,13 +224,14 @@
   (define yy (scalar who y))
   (define-values (bs cs) (text-run-metadata who text clusters (length gs)))
   (append-run! who b f gs 'horizontal coords (list 0.0 yy) bs cs))
+
 ; text-blob-builder-add-positioned-run! : text-blob-builder? font? (or/c (listof (integer-in 0
 ;   65535)) (vectorof (integer-in 0 65535))) (or/c (listof (or/c (list/c real? real?) (vector/c
 ;   real? real?))) (vectorof (or/c (list/c real? real?) (vector/c real? real?)))) [#:text (or/c
 ;   string? bytes? #f)] [#:clusters (or/c (listof exact-nonnegative-integer?) (vectorof
 ;   exact-nonnegative-integer?) #f)] -> void?
-;;   Appends a run with an explicit two-dimensional origin for each glyph, relative to the blob's
-;;   origin.
+;   Appends a run with an explicit two-dimensional origin for each glyph, relative to the blob's
+;   origin.
 (define (text-blob-builder-add-positioned-run! b f glyphs positions
                                                #:text [text #f] #:clusters [clusters #f])
   (define who 'text-blob-builder-add-positioned-run!)
@@ -229,13 +239,14 @@
   (define coords (text-run-points who positions (length gs)))
   (define-values (bs cs) (text-run-metadata who text clusters (length gs)))
   (append-run! who b f gs 'positioned coords '(0.0 0.0) bs cs))
+
 ; text-blob-builder-add-transformed-run! : text-blob-builder? font? (or/c (listof (integer-in 0
 ;   65535)) (vectorof (integer-in 0 65535))) (or/c (listof (or/c atlas-transform? (list/c real?
 ;   real? real? real?) (vector/c real? real? real? real?))) (vectorof (or/c atlas-transform? (list/c
 ;   real? real? real? real?) (vector/c real? real? real? real?)))) [#:text (or/c string? bytes? #f)]
 ;   [#:clusters (or/c (listof exact-nonnegative-integer?) (vectorof exact-nonnegative-integer?) #f)]
 ;   -> void?
-;;   Appends a run with an independent scaled rotation and translation for each glyph.
+;   Appends a run with an independent scaled rotation and translation for each glyph.
 (define (text-blob-builder-add-transformed-run! b f glyphs transforms
                                                 #:text [text #f] #:clusters [clusters #f])
   (define who 'text-blob-builder-add-transformed-run!)
@@ -247,10 +258,11 @@
                          (length gs)))
   (define-values (bs cs) (text-run-metadata who text clusters (length gs)))
   (append-run! who b f gs 'transformed coords '(0.0 0.0) bs cs))
+
 ; text-blob-builder-add-shaped-run! : text-blob-builder? shaper? shaped-run? [#:origin (or/c (list/c
 ;   real? real?) (vector/c real? real?))] [#:text (or/c string? bytes? #f)] -> void?
-;;   Appends a positioned run using the glyphs and positions already stored in run, translated by
-;;   origin.
+;   Appends a positioned run using the glyphs and positions already stored in run, translated by
+;   origin.
 (define (text-blob-builder-add-shaped-run! b sh run #:origin [origin '(0 0)] #:text [text #f])
   (define who 'text-blob-builder-add-shaped-run!)
   (define at (text-run-point who origin))
@@ -268,7 +280,7 @@
        #:text text #:clusters (and text (shaped-run-clusters run))))))
 
 ; text-blob-builder-finish! : text-blob-builder? -> (or/c text-blob? #f)
-;;   Consumes an open builder and returns an owned blob containing its runs, in append order.
+;   Consumes an open builder and returns an owned blob containing its runs, in append order.
 (define (text-blob-builder-finish! b)
   (define who 'text-blob-builder-finish!)
   (call-with-owned who (list (builder-h who b))
@@ -299,8 +311,8 @@
 ;;;
 
 ; retained-runs : text-blob? -> (listof retained-text-run?)
-;;   Exposes retained runs in drawing order, adapting a legacy single-run blob to the same
-;;   representation.
+;   Exposes retained runs in drawing order, adapting a legacy single-run blob to the same
+;   representation.
 (define (retained-runs blob)
   (if (multi-text-blob? blob) (multi-text-blob-runs blob)
       (list (retained-text-run
@@ -309,20 +321,23 @@
                             (vector->immutable-vector (list->vector (text-blob-glyphs blob)))
                             (vector->immutable-vector (list->vector (text-blob-positions blob)))
                             #f #f #f)))))
+
 ; text-blob-run-count : text-blob? -> exact-nonnegative-integer?
-;;   Returns the number of logical runs retained by an open blob.
+;   Returns the number of logical runs retained by an open blob.
 (define (text-blob-run-count blob)
   (call-with-owned 'text-blob-run-count (list (text-blob-h 'text-blob-run-count blob))
     (lambda (_) (if (multi-text-blob? blob) (length (multi-text-blob-runs blob)) 1))))
+
 ; text-blob-runs : text-blob? -> (vectorof text-run-info?)
-;;   Returns an immutable vector of detached run descriptions in append order.
+;   Returns an immutable vector of detached run descriptions in append order.
 (define (text-blob-runs blob)
   (define who 'text-blob-runs)
   (call-with-owned who (list (text-blob-h who blob))
     (lambda (_)
       (vector->immutable-vector (list->vector (map retained-text-run-info (retained-runs blob)))))))
+
 ; text-blob-run-font : text-blob? exact-nonnegative-integer? -> font?
-;;   Returns a new owned mutable font copied from the selected run's captured font.
+;   Returns a new owned mutable font copied from the selected run's captured font.
 (define (text-blob-run-font blob index)
   (define who 'text-blob-run-font)
   (call-with-owned who (list (text-blob-h who blob))
@@ -334,8 +349,8 @@
 
 ; text-blob-intercepts : text-blob? real? real? [#:paint (or/c paint? #f)] -> (vectorof (list/c
 ;   real? real?))
-;;   Returns an immutable vector of horizontal intervals where glyph outlines intersect the band
-;;   between top and bottom.
+;   Returns an immutable vector of horizontal intervals where glyph outlines intersect the band
+;   between top and bottom.
 (define (text-blob-intercepts blob top bottom #:paint [paint #f])
   (define who 'text-blob-intercepts)
   (define band (text-run-band who top bottom))
@@ -374,8 +389,8 @@
 ; positioned-glyphs->path : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0
 ;   65535))) (or/c (listof (or/c (list/c real? real?) (vector/c real? real?))) (vectorof (or/c
 ;   (list/c real? real?) (vector/c real? real?)))) -> skia-path?
-;;   Returns an owned path containing the font's monochrome glyph outlines at the supplied
-;;   positions.
+;   Returns an owned path containing the font's monochrome glyph outlines at the supplied
+;   positions.
 (define (positioned-glyphs->path f glyphs positions)
   (define who 'positioned-glyphs->path)
   (define gs (text-run-glyphs who glyphs))
@@ -406,7 +421,7 @@
 ; shaped-run->text-blob/on-path : shaper? shaped-run? skia-path? [#:start-offset real?]
 ;   [#:normal-offset real?] [#:contour exact-nonnegative-integer?] [#:force-closed? boolean?]
 ;   [#:text (or/c string? bytes? #f)] -> (or/c text-blob? #f)
-;;   Returns an owned blob that places the run's glyphs along the selected measured contour.
+;   Returns an owned blob that places the run's glyphs along the selected measured contour.
 (define (shaped-run->text-blob/on-path sh run path
                                       #:start-offset [start 0] #:normal-offset [normal 0]
                                       #:contour [contour 0] #:force-closed? [closed? #f]
@@ -444,11 +459,12 @@
            builder (shaper-font sh) gs transforms
            #:text text #:clusters (and text (shaped-run-clusters run)))
           (text-blob-builder-finish! builder))))))
+
 ; draw-shaped-run/on-path : canvas? shaper? shaped-run? skia-path? paint? [#:start-offset real?]
 ;   [#:normal-offset real?] [#:contour exact-nonnegative-integer?] [#:force-closed? boolean?] ->
 ;   void?
-;;   Places and draws the run using the same contour and offset rules as
-;;   shaped-run->text-blob/on-path.
+;   Places and draws the run using the same contour and offset rules as
+;   shaped-run->text-blob/on-path.
 (define (draw-shaped-run/on-path canvas sh run path paint
                                   #:start-offset [start 0] #:normal-offset [normal 0]
                                   #:contour [contour 0] #:force-closed? [closed? #f])

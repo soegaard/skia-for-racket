@@ -25,7 +25,7 @@
 
 ; collector-call : symbol? [#:entries exact-positive-integer? #:strings exact-positive-integer?
 ; #:bytes exact-positive-integer? #:detailed? boolean?] -> any
-;;   Runs the native memory-statistics collector with explicit entry/string/byte bounds.
+;   Runs the native memory-statistics collector with explicit entry/string/byte bounds.
 (define (collector-call scope #:entries [entries 4096] #:strings [strings 4096]
                          #:bytes [bytes 1048576] #:detailed? [detailed? #f])
   ;; A real global native dump exercises the shared collector, not GPU memory.
@@ -33,7 +33,7 @@
     sk_graphics_dump_memory_statistics detailed? #f entries strings bytes))
 
 ; gpu-diagnostics-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-diagnostics-native-test-count 13)
 
 ;;;
@@ -41,8 +41,8 @@
 ;;;
 
 ; gpu-diagnostics-native-tests : test-suite?
-;;   Collects the regression cases for gPU diagnostic ABI and shared collector (GPU execution
-;;   separate).
+;   Collects the regression cases for gPU diagnostic ABI and shared collector (GPU execution
+;   separate).
 (define gpu-diagnostics-native-tests
   (test-suite "GPU diagnostic ABI and shared collector (GPU execution separate)"
     (test-case "pinned native ABI"
@@ -107,7 +107,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-diagnostics-native-tests))
   (printf "gpu-diagnostics-native: ~a cases, ~a failures\n" gpu-diagnostics-native-test-count
     failures)

@@ -22,11 +22,11 @@
 ;;;
 
 ; release-scope-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define release-scope-pure-test-count 16)
 
 ; roundtrip : any/c -> any/c
-;;   Serializes and reads a release-scope case to verify its detached representation.
+;   Serializes and reads a release-scope case to verify its detached representation.
 (define (roundtrip c) (color->argb (color4f->rgba (color->color4f c))))
 
 ;;;
@@ -34,7 +34,7 @@
 ;;;
 
 ; release-scope-pure-tests : test-suite?
-;;   Collects the regression cases for release-scope Color4f equivalent (pure Racket).
+;   Collects the regression cases for release-scope Color4f equivalent (pure Racket).
 (define release-scope-pure-tests
   (test-suite "Release-scope Color4f equivalent (pure Racket)"
     (test-case "all red bytes roundtrip"
@@ -90,7 +90,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests release-scope-pure-tests))
   (printf "release-scope-pure: ~a cases, ~a failures\n" release-scope-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

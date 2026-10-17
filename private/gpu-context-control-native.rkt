@@ -9,9 +9,10 @@
 
 (require "gpu-native.rkt")
 (provide context-control-dispatch/native)
+
 ; context-control-dispatch/native : any/c any/c ... -> any
-;;   Routes the reviewed abandonment and resource-flush operations to their corresponding native
-;;   entry points.
+;   Routes the reviewed abandonment and resource-flush operations to their corresponding native
+;   entry points.
 (define (context-control-dispatch/native operation . arguments)
   (apply
     (case operation

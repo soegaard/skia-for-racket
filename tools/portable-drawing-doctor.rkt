@@ -18,8 +18,8 @@
 ;;;
 
 ; portable-drawing-doctor! : -> void?
-;;   Checks marker geometry, fixed/stretch image-grid plans, and cropped-image classification inside
-;;   native output groups.
+;   Checks marker geometry, fixed/stretch image-grid plans, and cropped-image classification inside
+;   native output groups.
 (define (portable-drawing-doctor!)
   (define plan (image-nine-plan 9 9 '(3 3 3 3) 0 0 30 24))
   (unless (and (= (length plan) 9)

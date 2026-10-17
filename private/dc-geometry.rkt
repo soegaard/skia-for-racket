@@ -21,8 +21,8 @@
 ;;;
 
 ; dc-path-commands : symbol? (is-a?/c dc-path%) [real? real?] -> (listof vector?)
-;;   Copies closed then open Racket contours into immutable move/line/cubic/close commands with
-;;   optional xy translation.
+;   Copies closed then open Racket contours into immutable move/line/cubic/close commands with
+;   optional xy translation.
 (define (dc-path-commands who path [dx 0] [dy 0])
   (unless (is-a? path rd:dc-path%) (raise-argument-error who "dc-path% object" path))
   (dc-real who dx) (dc-real who dy)
@@ -41,8 +41,8 @@
   (append (append* (for/list ([p (in-list closed)]) (subpath p #t))) (subpath open #f)))
 
 ; dc-polyline : symbol? list? real? real? boolean? -> (listof vector?)
-;;   Copies a homogeneous list of coordinate pairs or point% objects into translated commands,
-;;   optionally closing the contour.
+;   Copies a homogeneous list of coordinate pairs or point% objects into translated commands,
+;   optionally closing the contour.
 (define (dc-polyline who points dx dy close?)
   (dc-real who dx) (dc-real who dy)
   (unless (and (list? points)
@@ -60,12 +60,12 @@
        (if close? (list '#(close)) '()))))
 
 ; dc-rectangle : real? real? real? real? -> (listof vector?)
-;;   Builds a closed rectangular contour in corner order from x, y, width, and height.
+;   Builds a closed rectangular contour in corner order from x, y, width, and height.
 (define (dc-rectangle x y w h)
   (list (vector-immutable 'move x y) (vector-immutable 'line (+ x w) y)
         (vector-immutable 'line (+ x w) (+ y h)) (vector-immutable 'line x (+ y h)) '#(close)))
 
 ; dc-clip-points : vector? real? real? real? real? -> (listof vector?)
-;;   Transforms a rectangle into device-coordinate path commands for clipping or pixel copies.
+;   Transforms a rectangle into device-coordinate path commands for clipping or pixel copies.
 (define (dc-clip-points matrix x y w h)
   (dc-path-map (dc-rectangle x y w h) (lambda (x y) (dc-point matrix x y))))

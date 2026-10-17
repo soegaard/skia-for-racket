@@ -31,17 +31,17 @@
 ;;;
 
 ; landing-template : path?
-;;   Locates ../scribblings/tutorials/pages-index.html relative to this module, independent of the
-;;   invoking directory.
+;   Locates ../scribblings/tutorials/pages-index.html relative to this module, independent of the
+;   invoking directory.
 (define-runtime-path landing-template "../scribblings/tutorials/pages-index.html")
 
 ; template-marker : string?
-;;   Marks the single insertion point for shared documentation navigation in the landing template.
+;   Marks the single insertion point for shared documentation navigation in the landing template.
 (define template-marker "<!-- skia-documentation-navigation -->")
 
 
 ; output : (or/c path-string? #f)
-;;   Holds the required generated landing-page destination from the command line.
+;   Holds the required generated landing-page destination from the command line.
 (define output #f)
 (command-line
  #:program "render-documentation-landing.rkt"
@@ -52,7 +52,7 @@
 
 
 ; html-replacements : (listof pair?)
-;;   Lists HTML escapes with ampersand first so later entity insertions are not escaped again.
+;   Lists HTML escapes with ampersand first so later entity insertions are not escaped again.
 (define html-replacements
   (list (cons "&" "&amp;")
         (cons "<" "&lt;")
@@ -62,14 +62,14 @@
 
 
 ; escape-html : any/c -> string?
-;;   Formats a value and escapes it for generated HTML text or attribute content.
+;   Formats a value and escapes it for generated HTML text or attribute content.
 (define (escape-html value)
   (for/fold ([result (~a value)]) ([replacement (in-list html-replacements)])
     (string-replace result (car replacement) (cdr replacement))))
 
 
 ; collection-link : documentation-collection? -> string?
-;;   Renders a documentation-family navigation item and adds the tutorial panel only for Tutorials.
+;   Renders a documentation-family navigation item and adds the tutorial panel only for Tutorials.
 (define (collection-link entry)
   (define id (documentation-collection-id entry))
   (define label (escape-html (documentation-collection-label entry)))
@@ -92,7 +92,7 @@
 
 
 ; tutorial-link : hash? -> string?
-;;   Renders one menu item using the tutorial's explicit menu title and output directory.
+;   Renders one menu item using the tutorial's explicit menu title and output directory.
 (define (tutorial-link entry)
   (format "<li><a class=\"skia-doc-nav__tutorial-link\" href=\"~a/index.html\">~a</a></li>"
           (tutorial-output-directory (hash-ref entry 'id))
@@ -100,7 +100,7 @@
 
 
 ; tutorial-panel-html : -> string?
-;;   Renders the tutorial index link and subject-grouped menu without mixing in reading routes.
+;   Renders the tutorial index link and subject-grouped menu without mixing in reading routes.
 (define (tutorial-panel-html)
   (string-append
    "<div class=\"skia-doc-nav__panel\" id=\"skia-doc-nav-tutorials\" data-skia-doc-nav-panel=\"tutorials\">\n"
@@ -120,7 +120,7 @@
 
 
 ; navigation-html : -> string?
-;;   Renders the shared three-family navigation band for the landing page.
+;   Renders the shared three-family navigation band for the landing page.
 (define (navigation-html)
   (string-append
    "<div class=\"skia-doc-nav-shell skia-doc-nav-shell--landing\" data-skia-doc-section=\"landing\">\n"
@@ -131,14 +131,14 @@
 
 
 ; template : string?
-;;   Contains the unmodified landing template before navigation insertion.
+;   Contains the unmodified landing template before navigation insertion.
 (define template (file->string landing-template))
 (unless (= (length (regexp-match* (regexp (regexp-quote template-marker)) template)) 1)
   (raise-user-error 'render-documentation-landing.rkt
                     "landing template must contain exactly one navigation marker"))
 
 ; page : string?
-;;   Contains the complete landing HTML with its navigation marker replaced.
+;   Contains the complete landing HTML with its navigation marker replaced.
 (define page (string-replace template template-marker (navigation-html)))
 
 (make-parent-directory* output)

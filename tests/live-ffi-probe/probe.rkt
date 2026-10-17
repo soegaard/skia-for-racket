@@ -20,19 +20,19 @@
 ;;;
 
 ; library-path : (or/c path-string? #f)
-;;   Holds the explicitly selected native probe library from the command line.
+;   Holds the explicitly selected native probe library from the command line.
 (define library-path #f)
 
 ; directory : (or/c path-string? #f)
-;;   Holds the new evidence-output directory selected by the validation driver.
+;   Holds the new evidence-output directory selected by the validation driver.
 (define directory #f)
 
 ; fixtures : (or/c path-string? #f)
-;;   Locates deterministic binary inputs produced by the Python fixture generator.
+;   Locates deterministic binary inputs produced by the Python fixture generator.
 (define fixtures #f)
 
 ; token : (or/c string? #f)
-;;   Carries the invocation identity into the final JSON receipt.
+;   Carries the invocation identity into the final JSON receipt.
 (define token #f)
 (command-line
  #:program "pure Racket / real Skia stream probe"
@@ -48,43 +48,43 @@
 (initialize-native! library-path)
 
 ; png-input : bytes?
-;;   Loads the encoded PNG input used by native callback decode probes.
+;   Loads the encoded PNG input used by native callback decode probes.
 (define png-input (file->bytes (build-path fixtures "reference.png")))
 
 ; rgba-input : bytes?
-;;   Loads the expected decoded RGBA bytes for independent comparison.
+;   Loads the expected decoded RGBA bytes for independent comparison.
 (define rgba-input (file->bytes (build-path fixtures "reference.rgba")))
 
 ; payload : bytes?
-;;   Loads deterministic arbitrary stream data for copy and interruption probes.
+;   Loads deterministic arbitrary stream data for copy and interruption probes.
 (define payload (file->bytes (build-path fixtures "payload.bin")))
 
 ; reports : hash?
-;;   Accumulates per-operation callback notes and transfer counts keyed by probe name.
+;   Accumulates per-operation callback notes and transfer counts keyed by probe name.
 (define reports (make-hasheq))
 
 ; capture : (-> any) -> list?
-;;   Collects all values from one native callback operation into the probe reply layout.
+;   Collects all values from one native callback operation into the probe reply layout.
 (define (capture thunk) (call-with-values thunk list))
 
 ; notes : list? -> hash?
-;;   Reads callback notes from the second slot of a captured reply.
+;   Reads callback notes from the second slot of a captured reply.
 (define (notes reply) (cadr reply))
 
 ; save : path-string? bytes? -> exact-nonnegative-integer?
-;;   Writes a new binary artifact under the evidence directory.
+;   Writes a new binary artifact under the evidence directory.
 (define (save name bytes)
   (call-with-output-file (build-path directory name)
     (lambda (out) (write-bytes bytes out)) #:mode 'binary #:exists 'error))
 
 ; record : symbol? list? -> void?
-;;   Copies callback notes and read/written counters into the per-probe report.
+;   Copies callback notes and read/written counters into the per-probe report.
 (define (record key reply)
   (hash-set! reports key
              (hasheq 'notes (notes reply) 'read (caddr reply) 'written (cadddr reply))))
 
 ; check-clean : list? exact-nonnegative-integer? exact-nonnegative-integer? -> void?
-;;   Requires zero active operations, observed callbacks, and matching stream destruction counts.
+;   Requires zero active operations, observed callbacks, and matching stream destruction counts.
 (define (check-clean reply inputs outputs)
   (check-equal? (active-operation-count) 0)
   (check-true (positive? (hash-ref (notes reply) 'callbacks 0)))
@@ -92,7 +92,7 @@
   (check-equal? (hash-ref (notes reply) 'output-destroyed 0) outputs))
 
 ; check-failed-clean : exact-nonnegative-integer? exact-nonnegative-integer? -> void?
-;;   Checks cleanup and failure reporting after an interrupted or failed native operation.
+;   Checks cleanup and failure reporting after an interrupted or failed native operation.
 (define (check-failed-clean inputs outputs)
   (check-equal? (active-operation-count) 0)
   (define report (last-operation-report))
@@ -101,7 +101,7 @@
   (check-equal? (hash-ref (hash-ref report 'notes) 'output-destroyed 0) outputs))
 
 ; wait-for : (-> any) string? -> void?
-;;   Waits up to five seconds for asynchronous probe state, then raises the supplied failure.
+;   Waits up to five seconds for asynchronous probe state, then raises the supplied failure.
 (define (wait-for pred message)
   (define end (+ (current-inexact-milliseconds) 5000))
   (let loop ()
@@ -111,7 +111,7 @@
       (loop))))
 
 ; partial-output : output-port? exact-positive-integer? [procedure?] -> output-port?
-;;   Creates a port that accepts bounded partial writes and optionally observes each callback.
+;   Creates a port that accepts bounded partial writes and optionally observes each callback.
 (define (partial-output destination maximum [observe void])
   (make-output-port
    'partial always-evt
@@ -127,7 +127,7 @@
 ;;;
 
 ; tests : test-suite?
-;;   Collects the regression cases for compiler-free FFI with real m119 Skia.
+;   Collects the regression cases for compiler-free FFI with real m119 Skia.
 (define tests
   (test-suite
    "compiler-free FFI with real m119 Skia"
@@ -360,11 +360,11 @@
      (check-equal? (active-operation-count) 0))))
 
 ; failures : exact-nonnegative-integer?
-;;   Stores the RackUnit failure count for the probe process exit and receipt.
+;   Stores the RackUnit failure count for the probe process exit and receipt.
 (define failures (run-tests tests))
 
 ; report : hash?
-;;   Records probe identity, outcomes, and per-operation callback evidence for external inspection.
+;   Records probe identity, outcomes, and per-operation callback evidence for external inspection.
 (define report
   (hasheq 'schema 1 'stage "0.75b-pure-ffi-probe" 'status (if (zero? failures) "passed" "failed")
           'run_token token 'racket_version (version) 'vm (symbol->string (system-type 'vm))

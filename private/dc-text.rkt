@@ -31,8 +31,8 @@
 ;;   source order and share the callback-scoped fonts/shaper used by call-with-text.
 
 ; font-options : dc-font-spec? typeface? -> font?
-;;   Creates a native font with the request's size, antialiasing, and aligned or linear metric
-;;   behavior.
+;   Creates a native font with the request's size, antialiasing, and aligned or linear metric
+;   behavior.
 (define (font-options f tf)
   (sk:make-font tf #:size (max 1e-6 (dc-font-spec-size f))
                 #:edging (dc-font-spec-edging f)
@@ -41,7 +41,7 @@
                 #:linear-metrics? (eq? (dc-font-spec-hinting f) 'unaligned)))
 
 ; call-with-fonts : dc-font-spec? procedure? -> any
-;;   Scopes a matching typeface, font, and font manager while the callback performs native text work.
+;   Scopes a matching typeface, font, and font manager while the callback performs native text work.
 (define (call-with-fonts f proc)
   (sk:with-skia ([fm (sk:make-font-manager)]
                 [tf (sk:typeface-from-family (dc-font-spec-family f)
@@ -51,8 +51,8 @@
     (proc fm font)))
 
 ; call-with-text : dc-text-spec? procedure? -> any
-;;   Supplies ordered shaped units, width/height/descent/leading extent, shaper, manager, baseline,
-;;   and font metrics within their resource scope.
+;   Supplies ordered shaped units, width/height/descent/leading extent, shaper, manager, baseline,
+;   and font metrics within their resource scope.
 (define (call-with-text request proc)
   (define spec (dc-text-spec-font request))
   (define size (dc-font-spec-size spec))
@@ -100,8 +100,8 @@
 ;;;
 
 ; dc-measure-text : any/c (or/c dc-font-spec? dc-text-spec?) -> (values real? real? real? real?)
-;;   Returns width, height, descent, and leading; font-only requests use average character width and
-;;   font metrics.
+;   Returns width, height, descent, and leading; font-only requests use average character width and
+;   font metrics.
 (define (dc-measure-text _surface request)
   (if (dc-font-spec? request)
       (if (zero? (dc-font-spec-size request)) (values 0.0 0.0 0.0 0.0)
@@ -120,15 +120,15 @@
 
 ; dc-render-text! : surface? dc-text-spec? vector? (or/c #f dc-clip?) real? real? real? vector?
 ; vector? boolean? -> void?
-;;   Renders a normalized text request through the target surface's canvas.
+;   Renders a normalized text request through the target surface's canvas.
 (define (dc-render-text! surface request matrix clip x y angle foreground background solid?)
   (dc-render-text-on-canvas! (sk:surface-canvas surface) request matrix clip
                            x y angle foreground background solid?))
 
 ; dc-render-text-on-canvas! : canvas? dc-text-spec? vector? (or/c #f dc-clip?) real? real? real?
 ; vector? vector? boolean? -> void?
-;;   Draws shaped units at the requested top-left position and rotation, with optional background and
-;;   underline decoration.
+;   Draws shaped units at the requested top-left position and rotation, with optional background and
+;   underline decoration.
 (define (dc-render-text-on-canvas! c request matrix clip x y angle foreground background solid?)
   (call-with-text
    request
@@ -160,7 +160,7 @@
   (void))
 
 ; dc-glyph-exists? : any/c dc-font-spec? char? -> boolean?
-;;   Checks the requested face and then the matching fallback face for a nonzero character glyph.
+;   Checks the requested face and then the matching fallback face for a nonzero character glyph.
 (define (dc-glyph-exists? _surface spec character)
   (unless (char? character) (raise-argument-error 'glyph-exists? "char?" character))
   (call-with-fonts

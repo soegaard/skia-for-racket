@@ -24,7 +24,7 @@
 ;;;
 
 ; gpu-output-doctor! : path-string? ... -> exact-integer?
-;;   Checks bounded GPU document fallback and serializes retained PDF/SVG output after GPU teardown.
+;   Checks bounded GPU document fallback and serializes retained PDF/SVG output after GPU teardown.
 (define (gpu-output-doctor! prefix #:backend [backend 'opengl] #:host [host-mode 'gui]
                             #:egl-platform [platform 'surfaceless] #:egl-device-index [index 0]
                             #:egl-surface [binding-surface 'surfaceless]
@@ -141,7 +141,7 @@
       close-documents!)))
 
 ; format-name : symbol? symbol? symbol? -> string?
-;;   Builds a scene/variant/format suffix for related document artifacts.
+;   Builds a scene/variant/format suffix for related document artifacts.
 (define (format-name name variant format)
   (string-append "." (symbol->string name) "." (symbol->string variant) "." (symbol->string format)))
 
@@ -152,37 +152,43 @@
   ;;;
 
   ; prefix : path-string?
-  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  ;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-output-0.44")
+
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'opengl)
+
   ; host-mode : symbol?
-  ;;   Selects the GUI, EGL, or owned backend host used to activate the GPU context.
+  ;   Selects the GUI, EGL, or owned backend host used to activate the GPU context.
   (define host-mode 'gui)
 
   ; platform : symbol?
-  ;;   Selects the EGL platform, initially the display-server-free surfaceless platform.
+  ;   Selects the EGL platform, initially the display-server-free surfaceless platform.
   (define platform 'surfaceless)
+
   ; index : exact-nonnegative-integer?
-  ;;   Selects the zero-based EGL device for device-platform contexts.
+  ;   Selects the zero-based EGL device for device-platform contexts.
   (define index 0)
+
   ; binding-surface : symbol?
-  ;;   Selects the EGL binding surface kind, initially surfaceless.
+  ;   Selects the EGL binding surface kind, initially surfaceless.
   (define binding-surface 'surfaceless)
 
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter #f)
+
   ; adapter-index : (or/c exact-nonnegative-integer? #f)
-  ;;   Optionally selects a zero-based Direct3D adapter within the requested adapter policy.
+  ;   Optionally selects a zero-based Direct3D adapter within the requested adapter policy.
   (define adapter-index #f)
 
   ; required? : boolean?
-  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  ;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
+
   ; hardware? : boolean?
-  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  ;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]

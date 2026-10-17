@@ -17,32 +17,39 @@
 ;;;
 
 ; blue : rgba?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue (rgb 50 100 220))
+
 ; teal : rgba?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal (rgb 14 149 142))
+
 ; orange : rgba?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange (rgb 240 160 32))
+
 ; ink : rgba?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink (rgb 32 52 78))
+
 ; names : list?
-;;   Orders the comparison cases used to name the generated pages.
+;   Orders the comparison cases used to name the generated pages.
 (define names '("stride" "canvas" "snapshots"))
+
 ; titles : list?
-;;   Orders page headings to match the page registry.
+;   Orders page headings to match the page registry.
 (define titles '("Rows have a stride; views have a lifetime"
                  "One allocation, two ways to change pixels"
                  "Snapshots are independent of mutable storage"))
+
 ; subtitles : list?
-;;   Orders explanatory subtitles to match the page registry.
+;   Orders explanatory subtitles to match the page registry.
 (define subtitles '("Explicit row bytes, strict integer subsets, and checked temporary access."
                      "The canvas borrows native pixels directly; pixmap edits use the same allocation."
                      "Every image shown here remains valid after its source buffer has been closed."))
+
 ; notes : list?
-;;   Orders page-specific observations to match the displayed comparison cases.
+;   Orders page-specific observations to match the displayed comparison cases.
 (define notes
   '(("160 x 96 RGBA pixels use 704 bytes per row: 640 active bytes plus 64 bytes of padding."
      "The writable 80 x 48 subset keeps the parent stride. It is not a packed copy."
@@ -53,36 +60,44 @@
     ("Left: a copied image from the original card. Right: the modified buffer, scaled into new storage."
      "The original snapshot is not a live view. Picture replay can retain it without retaining mutable pixels."
      "These are source images, not vector art. No additional panel-sized fallback is introduced.")))
+
 ; current-decisions : parameter?
-;;   Selects decisions for the dynamically scoped rendering operation.
+;   Selects decisions for the dynamically scoped rendering operation.
 (define current-decisions (make-parameter #f))
+
 ; rgba-list : rgba? -> list?
-;;   Returns the color's red, green, blue, and alpha channels in that order.
+;   Returns the color's red, green, blue, and alpha channels in that order.
 (define (rgba-list c) (define v (color->rgba c)) (list (rgba-red v) (rgba-green v) (rgba-blue v)
   (rgba-alpha v)))
+
 ; write-json-file : path-string? any/c -> void?
-;;   Writes the report data as JSON, replacing an existing report file.
+;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
   (call-with-output-file path (lambda (out) (write-json data out) (newline out)) #:exists 'replace))
+
 ; rejects? : procedure? -> boolean?
-;;   Reports whether the supplied operation raises a failure exception.
+;   Reports whether the supplied operation raises a failure exception.
 (define (rejects? thunk) (with-handlers ([exn:fail? (lambda (_) #t)]) (thunk) #f))
+
 ; raw-pixel : bytes? real? real? real? -> list?
-;;   Reads one RGBA pixel from a tightly packed byte string.
+;   Reads one RGBA pixel from a tightly packed byte string.
 (define (raw-pixel bs w x y) (bytes->list (subbytes bs (* 4 (+ x (* w y))) (* 4 (+ 1 x (* w y))))))
+
 ; buffer-pixel : raster-buffer? real? real? -> list?
-;;   Reads one pixel through a scoped raster-buffer view.
+;   Reads one pixel through a scoped raster-buffer view.
 (define (buffer-pixel b x y)
   (call-with-raster-buffer-pixmap b (lambda (v) (rgba-list (pixmap-pixel v x y)))))
+
 ; padding-zero? : raster-buffer? -> boolean?
-;;   Checks that row padding remains zero rather than being treated as active pixels.
+;   Checks that row padding remains zero rather than being treated as active pixels.
 (define (padding-zero? b)
   (define bs (raster-buffer->storage-bytes b))
   (define rb (raster-buffer-row-bytes b)) (define active (* 4 (raster-buffer-width b)))
   (for/and ([y (in-range (raster-buffer-height b))])
     (equal? (subbytes bs (+ (* y rb) active) (* (add1 y) rb)) (make-bytes (- rb active)))))
+
 ; stripe-bytes : -> bytes?
-;;   Builds the active RGBA rows and padding used in the stride demonstration.
+;   Builds the active RGBA rows and padding used in the stride demonstration.
 (define (stripe-bytes)
   (define bs (make-bytes (* 160 96 4)))
   (for* ([y (in-range 96)] [x (in-range 160)])
@@ -91,16 +106,18 @@
     (for ([value (in-list (append (take (rgba-list c) 3) (list (if (< y 64) 255 128))))]
           [i (in-naturals)]) (bytes-set! bs (+ off i) value)))
   bs)
+
 ; card : canvas? any/c -> void?
-;;   Draws the card comparison in the current canvas coordinate system.
+;   Draws the card comparison in the current canvas coordinate system.
 (define (card c color)
   (with-skia ([p (make-paint #:color color)] [q (make-paint #:color orange)]
               [lines (make-paint #:color 'white #:stroke-width 3)])
     (draw-rounded-rect c 4 4 152 88 12 12 p)
     (draw-circle c 40 48 23 q)
     (for ([y '(32 48 64)]) (draw-line c 82 y 142 y lines))))
+
 ; make-assets : -> (values list? hash?)
-;;   Constructs assets for the example's drawing pipeline.
+;   Constructs assets for the example's drawing pipeline.
 (define (make-assets)
   (define trace (make-hasheq))
   (define first
@@ -157,13 +174,15 @@
     (raster-buffer-write-rgba! b (bytes 255 128 64 128))
     (hash-set! trace 'premultiplied (bytes->list (subbytes (raster-buffer->storage-bytes b) 0 4))))
   (values (list first second third) trace))
+
 ; label : canvas? string? real? real? [real?] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 10])
   (with-skia ([font (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color ink)]) (draw-simple-text c text x y font p)))
+
 ; checker : canvas? real? real? -> void?
-;;   Draws a checkerboard that makes transparent pixels visible.
+;   Draws a checkerboard that makes transparent pixels visible.
 (define (checker c x y)
   (with-skia ([a (make-paint #:color (rgb 242 245 248) #:antialias? #f)]
               [b (make-paint #:color (rgb 225 232 240) #:antialias? #f)])
@@ -171,8 +190,9 @@
     (for* ([row (in-range 12)] [col (in-range 19)] #:when (odd? (+ row col)))
       (draw-rect c (+ x (* col 16)) (+ y (* row 16))
                  (min 16 (- 300 (* col 16))) (min 16 (- 180 (* row 16))) b))))
+
 ; draw-page : canvas? exact-nonnegative-integer? list? boolean? -> void?
-;;   Draws the page component in the current canvas coordinate system.
+;   Draws the page component in the current canvas coordinate system.
 (define (draw-page c index images document?)
   (with-skia ([p (make-paint #:color teal)]) (draw-rect c 0 0 34 2 p))
   (label c (list-ref titles index) 0 32 21)
@@ -197,8 +217,9 @@
   (for ([text (in-list (list-ref notes index))] [y '(340 368 396)]) (label c text 0 y 9))
   (label c "RACKET / SKIA   |   OWNED RASTER BUFFERS AND SCOPED PIXMAPS" 0 444 9)
   (label c (number->string (add1 index)) 652 444 9))
+
 ; escape-html : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (escape-html s)
   (for/fold ([s s]) ([p '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" . "&quot;"))])
     (string-replace s (car p) (cdr p))))
@@ -207,19 +228,23 @@
 ;;;
 
 (module+ main
+
   ; args : vector?
-  ;;   Retains the command-line argument vector used to select output paths.
+  ;   Retains the command-line argument vector used to select output paths.
   (define args (current-command-line-arguments))
   (when (> (vector-length args) 1) (error 'raster-buffers "expected optional output prefix"))
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix (if (zero? (vector-length args)) "output/raster-buffers-0.37" (vector-ref args 0)))
+
   ; file : any/c -> string?
-  ;;   Appends an output suffix to the selected filename prefix.
+  ;   Appends an output suffix to the selected filename prefix.
   (define (file suffix) (string-append prefix suffix))
   (make-directory* (or (path-only (string->path prefix)) (current-directory)))
+
   ; (assets trace) : (values list? hash?)
-  ;;   Receives the drawing assets and the metadata used to explain their buffer layout.
+  ;   Receives the drawing assets and the metadata used to explain their buffer layout.
   (define-values (assets trace) (make-assets))
   (dynamic-wind void
     (lambda ()

@@ -20,16 +20,16 @@
 ;;;
 
 ; triangle : (listof (listof real?))
-;;   Provides three ordered vertices for triangle-mode validation and drawing.
+;   Provides three ordered vertices for triangle-mode validation and drawing.
 (define triangle '((0 0) (20 0) (0 20)))
 
 ; square-patch : (listof (listof real?))
-;;   Orders twelve boundary control points clockwise around a square Coons patch.
+;   Orders twelve boundary control points clockwise around a square Coons patch.
 (define square-patch '((0 0) (10 0) (20 0) (30 0) (30 10) (30 20)
                        (30 30) (20 30) (10 30) (0 30) (0 20) (0 10)))
 
 ; validate-vertices : symbol? list? [#:tex any/c #:colors any/c #:indices any/c] -> list?
-;;   Collects checked vertex geometry and optional attribute/index data without native allocation.
+;   Collects checked vertex geometry and optional attribute/index data without native allocation.
 (define (validate-vertices mode ps #:tex [tex #f] #:colors [colors #f] #:indices [indices #f])
   (call-with-values (lambda () (geometry-vertices 'test mode ps tex colors indices)) list))
 
@@ -38,8 +38,8 @@
 ;;;
 
 ; geometry-pure-tests : test-suite?
-;;   Collects the regression cases for structured geometry: pure contracts and immutable
-;;   specifications.
+;   Collects the regression cases for structured geometry: pure contracts and immutable
+;   specifications.
 (define geometry-pure-tests
   (test-suite
    "Structured geometry: pure contracts and immutable specifications"

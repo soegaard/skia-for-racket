@@ -31,7 +31,7 @@
 ;;;
 
 ; racket-draw-pure-tests : test-suite?
-;;   Collects the regression cases for skia/racket-draw pure boundary and detached conversions.
+;   Collects the regression cases for skia/racket-draw pure boundary and detached conversions.
 (define racket-draw-pure-tests
   (test-suite
    "skia/racket-draw pure boundary and detached conversions"
@@ -85,6 +85,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests racket-draw-pure-tests))
   (unless (zero? failures) (error 'racket-draw-pure-test "~a failures" failures)))

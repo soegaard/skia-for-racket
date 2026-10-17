@@ -19,15 +19,15 @@
 ;;;
 
 ; has? : output-audit-report? symbol? symbol? -> boolean?
-;;   Finds an audit event matching both the requested feature and disposition.
+;   Finds an audit event matching both the requested feature and disposition.
 (define (has? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature)
          (eq? (output-audit-event-status e) status))))
 
 ; picture-doctor! : -> void?
-;;   Checks picture serialization, replay, retained shaders, metadata, and conservative audit
-;;   handling of imported pictures.
+;   Checks picture serialization, replay, retained shaders, metadata, and conservative audit
+;   handling of imported pictures.
 (define (picture-doctor!)
   (define (draw c)
     (with-skia ([a (make-paint #:color 'red #:antialias? #f)]

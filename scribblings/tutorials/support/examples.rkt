@@ -22,7 +22,7 @@
 ;;;
 
 ; check-source : path-string? string? -> path?
-;;   Resolves a source file and rejects missing files or paths outside the repository.
+;   Resolves a source file and rejects missing files or paths outside the repository.
 (define (check-source root relative)
   (define source (tutorial-source-path relative root))
   (define normalized-root (simplify-path (path->complete-path root) #f))
@@ -41,7 +41,7 @@
   source)
 
 ; copy-tutorial-example : string? path-string? #:root [path-string?] -> path?
-;;   Copies the complete catalog source set into a new destination without overwriting it.
+;   Copies the complete catalog source set into a new destination without overwriting it.
 (define (copy-tutorial-example id destination #:root [root repository-root])
   (define entry (tutorial-by-id id))
   (define files (hash-ref entry 'files))

@@ -22,8 +22,8 @@
 ;;;
 
 ; public-value-shape : any/c -> hash?
-;;   Describes callable arities and keywords or class/interface/value kind without invoking the
-;;   exported value.
+;   Describes callable arities and keywords or class/interface/value kind without invoking the
+;   exported value.
 (define (public-value-shape value)
   (cond
     [(procedure? value)
@@ -40,7 +40,7 @@
 
 
 ; gui-instantiated? : -> boolean?
-;;   Detects whether reflection has already instantiated racket/gui/base in the current namespace.
+;   Detects whether reflection has already instantiated racket/gui/base in the current namespace.
 (define (gui-instantiated?)
   (with-handlers ([exn:fail? (lambda (_) #f)])
     (module->namespace 'racket/gui/base)
@@ -48,8 +48,8 @@
 
 
 ; reflect-public-module : module-path? string? -> hash?
-;;   Loads a module and returns sorted, unique export descriptors for public API inventory
-;;   comparison.
+;   Loads a module and returns sorted, unique export descriptors for public API inventory
+;   comparison.
 (define (reflect-public-module module-path display-path)
   (dynamic-require module-path #f)
   (define-values (variables syntaxes) (module->exports module-path))

@@ -21,12 +21,12 @@
 ;;;
 
 ; current-mock : parameter?
-;;   Marks the current synthetic activation so fixture operations can reject out-of-scope use.
+;   Marks the current synthetic activation so fixture operations can reject out-of-scope use.
 (define current-mock (make-parameter #f))
 
 ; make-mock : [#:key any/c #:create any/c #:describe any/c #:release any/c] -> any
-;;   Builds a recording provider and driver with configurable creation, description, and release
-;;   behavior.
+;   Builds a recording provider and driver with configurable creation, description, and release
+;   behavior.
 (define (make-mock #:key [key (gensym 'host)] #:create [create #f]
                    #:describe [describe #f] #:release [release #f])
   (define log (box '()))
@@ -56,7 +56,7 @@
   (values provider driver log abandoned?))
 
 ; call-with-mock : procedure? -> any
-;;   Creates a synthetic GPU domain for a callback and always closes it afterward.
+;   Creates a synthetic GPU domain for a callback and always closes it afterward.
 (define (call-with-mock proc)
   (define-values (provider driver log abandoned?) (make-mock))
   (define domain (make-gpu-domain provider driver))
@@ -64,7 +64,7 @@
                 (lambda () (domain-close! domain))))
 
 ; mock-resource : gpu-domain? box? box? [symbol?] -> any/c
-;;   Registers a mock owned child and records release only under valid activation or abandonment.
+;   Registers a mock owned child and records release only under valid activation or abandonment.
 (define (mock-resource domain log abandoned? [kind 'child])
   (domain-new-resource
    domain kind (lambda () (gensym kind))
@@ -74,16 +74,16 @@
      (set-box! log (cons kind (unbox log))))))
 
 ; events : box? -> list?
-;;   Returns the newest-first event log in execution order.
+;   Returns the newest-first event log in execution order.
 (define (events log) (reverse (unbox log)))
 
 ; event-count : box? any/c -> exact-nonnegative-integer?
-;;   Counts occurrences of a particular synthetic lifecycle event.
+;   Counts occurrences of a particular synthetic lifecycle event.
 (define (event-count log event)
   (for/sum ([item (in-list (unbox log))]) (if (eq? item event) 1 0)))
 
 ; in-worker : (-> any) -> any/c
-;;   Runs a callback on another thread and returns its failure or completion marker with a timeout.
+;   Runs a callback on another thread and returns its failure or completion marker with a timeout.
 (define (in-worker thunk)
   (define channel (make-channel))
   (define worker
@@ -97,7 +97,7 @@
   value)
 
 ; collect-until : (-> any) -> boolean?
-;;   Retries a predicate across a bounded number of GC cycles to observe deferred finalization.
+;   Retries a predicate across a bounded number of GC cycles to observe deferred finalization.
 (define (collect-until pred)
   (let loop ([remaining 40])
     (cond [(pred) #t]

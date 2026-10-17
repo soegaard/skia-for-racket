@@ -30,7 +30,7 @@
 ;; source and destination. All validation precedes the first write.
 
 ; rgba->argb! : bytes? bytes? -> void?
-;;   Reorders equal-sized premultiplied buffers, allowing the mutable destination to alias the source.
+;   Reorders equal-sized premultiplied buffers, allowing the mutable destination to alias the source.
 (define (rgba->argb! rgba argb)
   (unless (bytes? rgba)
     (raise-argument-error 'rgba->argb! "bytes?" rgba))
@@ -60,8 +60,8 @@
 
 ; check-presentation-size : symbol? exact-positive-integer? exact-positive-integer?
 ; [exact-nonnegative-integer?] -> exact-positive-integer?
-;;   Checks peak presentation storage, including retained replacement buffers, and returns one RGBA
-;;   buffer's byte count.
+;   Checks peak presentation storage, including retained replacement buffers, and returns one RGBA
+;   buffer's byte count.
 (define (check-presentation-size who pixel-width pixel-height [retained-bytes 0])
   (define n (check-dimensions who pixel-width pixel-height))
   (define needed (max (* 3 n) (+ retained-bytes (* 2 n))))
@@ -73,7 +73,7 @@
 
 ; make-presentation : symbol? exact-positive-integer? exact-positive-integer? real?
 ; exact-positive-integer? -> (values (is-a?/c bitmap%) bytes?)
-;;   Allocates a logical-size bitmap at the backing scale and its physical-pixel ARGB transfer buffer.
+;   Allocates a logical-size bitmap at the backing scale and its physical-pixel ARGB transfer buffer.
 (define (make-presentation who width height backing bytes-count)
   ;; Allocate before touching an existing DC. A failed bitmap allocation cannot
   ;; leave the native surface and the presentation bitmap at different sizes.
@@ -88,8 +88,8 @@
 ;;;
 
 ; canvas-backing% : class?
-;;   Owns a persistent DC, presentation bitmap, and transfer buffer on one thread; resizing preserves
-;;   DC identity.
+;   Owns a persistent DC, presentation bitmap, and transfer buffer on one thread; resizing preserves
+;   DC identity.
 (define canvas-backing%
   (class object%
     (init [width 1] [height 1] [backing-scale 1.0]

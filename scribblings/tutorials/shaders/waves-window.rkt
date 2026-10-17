@@ -27,7 +27,7 @@
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
-;;   Chooses the platform's preferred explicitly requested GPU backend.
+;   Chooses the platform's preferred explicitly requested GPU backend.
 (define (preferred-gpu-backend)
   (case (system-type 'os)
     [(macosx) 'metal]
@@ -36,7 +36,7 @@
     [else #f]))
 
 ; open-waves-window : symbol? -> #f
-;;   Opens animated waves with controls for shader parameters and rendering backend.
+;   Opens animated waves with controls for shader parameters and rendering backend.
 (define (open-waves-window renderer)
   (unless (memq renderer '(raster gpu))
     (raise-argument-error 'open-waves-window "'raster or 'gpu" renderer))
@@ -175,8 +175,9 @@
 ;;;
 
 (module+ main
+
   ; renderer : symbol?
-  ;;   Selects renderer for the example.
+  ;   Selects renderer for the example.
   (define renderer 'gpu)
   (command-line
    #:program "waves-window.rkt" #:once-each

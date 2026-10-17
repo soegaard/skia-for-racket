@@ -22,11 +22,11 @@
 ;;;
 
 ; gpu-metal-interop-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-metal-interop-native-test-count 33)
 
 ; metal-pattern : [boolean? (listof real?)] -> bytes?
-;;   Builds expected producer pixels, optionally including the premultiplied magenta overlay.
+;   Builds expected producer pixels, optionally including the premultiplied magenta overlay.
 (define (metal-pattern [painted? #f] [rect '(3 4 6 5)])
   (define x0 (car rect)) (define y0 (cadr rect)) (define w (caddr rect)) (define h (cadddr rect))
   (apply bytes-append
@@ -41,31 +41,31 @@
                 (if right? a 0) (if (and (not right?) bottom?) a 0) a)]))))
 
 ; draw-metal-overlay : canvas? -> void?
-;;   Draws a half-alpha magenta rectangle with source replacement for independent readback checks.
+;   Draws a half-alpha magenta rectangle with source replacement for independent readback checks.
 (define (draw-metal-overlay canvas)
   (with-skia ([p (make-paint #:color (rgba 255 0 255 128) #:blend-mode 'src #:antialias? #f)])
     (draw-rect canvas 3 4 6 5 p)))
 
 ; metal-handoff : gpu-context? fixture? [#:premultiplied? boolean? #:timeout-ms real?] ->
 ; gpu-external-texture?
-;;   Imports the producer texture with its command-buffer completion dependency.
+;   Imports the producer texture with its command-buffer completion dependency.
 (define (metal-handoff context f #:premultiplied? [pm? #t] #:timeout-ms [timeout 5000])
   (make-metal-external-texture context (metal-fixture-texture f)
     #:producer-command-buffer (metal-fixture-producer f) #:premultiplied? pm? #:timeout-ms timeout))
 
 ; with-metal-fixture : gpu-context? procedure? [exact-nonnegative-integer?] -> any
-;;   Scopes the independent Metal producer and closes it after the callback.
+;   Scopes the independent Metal producer and closes it after the callback.
 (define (with-metal-fixture context proc [variant 0])
   (define f (make-metal-fixture context variant))
   (dynamic-wind void (lambda () (proc f)) (lambda () (close-metal-fixture! f))))
 
 ; interop-error-reason? : symbol? -> (any/c -> boolean?)
-;;   Builds a predicate matching a Metal interop exception's structured reason.
+;   Builds a predicate matching a Metal interop exception's structured reason.
 (define ((interop-error-reason? reason) e)
   (and (exn:fail:metal-interop? e) (eq? (exn:fail:metal-interop-reason e) reason)))
 
 ; make-gpu-metal-interop-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for independent Metal producer, Skia handoff and consumer.
+;   Builds the parameterized suite for independent Metal producer, Skia handoff and consumer.
 (define (make-gpu-metal-interop-native-tests context other)
   (define (using proc [variant 0])
     (call-with-gpu-context context (lambda () (with-metal-fixture context proc variant))))

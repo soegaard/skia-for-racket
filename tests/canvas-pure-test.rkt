@@ -19,7 +19,7 @@
 ;;;
 
 ; canvas-pure-tests : test-suite?
-;;   Collects the regression cases for canvas primitives: validation without native loading.
+;   Collects the regression cases for canvas primitives: validation without native loading.
 (define canvas-pure-tests
   (test-suite
    "Canvas primitives: validation without native loading"

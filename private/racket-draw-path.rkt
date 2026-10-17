@@ -31,15 +31,15 @@
 ;;;
 
 ; draw-fill-style : symbol? symbol? -> symbol?
-;;   Accepts the Racket odd-even or winding fill rule before translating it to Skia.
+;   Accepts the Racket odd-even or winding fill rule before translating it to Skia.
 (define (draw-fill-style who value)
   (unless (memq value '(odd-even winding))
     (raise-argument-error who "'odd-even or 'winding" value))
   value)
 
 ; path-budget : symbol? exact-nonnegative-integer? -> void?
-;;   Checks a conservative 64-byte-per-command conversion budget before constructing destination
-;;   paths.
+;   Checks a conservative 64-byte-per-command conversion budget before constructing destination
+;   paths.
 (define (path-budget who count)
   ;; Detached segment records, generated cubic commands, and their point data
   ;; are charged conservatively before a dc-path% is constructed.
@@ -50,8 +50,8 @@
                            "limit" (current-skia-byte-limit))))
 
 ; dc-path->skia-path/checked : (is-a?/c dc-path%) symbol? -> path?
-;;   Snapshots checked Racket path commands into a caller-owned native Skia path with the requested
-;;   fill rule.
+;   Snapshots checked Racket path commands into a caller-owned native Skia path with the requested
+;   fill rule.
 (define (dc-path->skia-path/checked path fill-style)
   (define who 'dc-path->skia-path)
   (draw-fill-style who fill-style)
@@ -76,8 +76,8 @@
 
 
 ; split-contours : symbol? (listof path-segment?) -> (listof draw-contour?)
-;;   Validates move/close topology and groups raw segments in order, allowing an open contour only at
-;;   the end.
+;   Validates move/close topology and groups raw segments in order, allowing an open contour only at
+;   the end.
 (define (split-contours who segments)
   (define current '())
   (define contours '())
@@ -116,7 +116,7 @@
   contours)
 
 ; point-coordinate : symbol? (or/c list? vector?) (or/c 0 1) -> real?
-;;   Reads and validates one coordinate from a two-element detached point list or vector.
+;   Reads and validates one coordinate from a two-element detached point list or vector.
 (define (point-coordinate who point index)
   ;; Raw path snapshots use two-element lists; conic->quadratics returns
   ;; immutable two-element vectors. Keep the conversion boundary detached while
@@ -128,16 +128,16 @@
   (scalar who value))
 
 ; point-x : symbol? (or/c list? vector?) -> real?
-;;   Returns a detached point's checked x coordinate for path conversion.
+;   Returns a detached point's checked x coordinate for path conversion.
 (define (point-x who point) (point-coordinate who point 0))
 
 ; point-y : symbol? (or/c list? vector?) -> real?
-;;   Returns a detached point's checked y coordinate for path conversion.
+;   Returns a detached point's checked y coordinate for path conversion.
 (define (point-y who point) (point-coordinate who point 1))
 
 ; cubic-for-quadratic : symbol? any/c any/c any/c -> (listof real?)
-;;   Converts start/control/end quadratic points to cubic control1/control2/end coordinates in xy
-;;   order.
+;   Converts start/control/end quadratic points to cubic control1/control2/end coordinates in xy
+;   order.
 (define (cubic-for-quadratic who p0 q p2)
   (define x0 (point-x who p0)) (define y0 (point-y who p0))
   (define qx (point-x who q)) (define qy (point-y who q))
@@ -149,7 +149,7 @@
         x2 y2))
 
 ; checked-conic-power : symbol? (or/c #f exact-integer?) -> (or/c #f exact-integer?)
-;;   Accepts no approximation or a subdivision power from zero through five.
+;   Accepts no approximation or a subdivision power from zero through five.
 (define (checked-conic-power who power)
   (unless (or (not power) (and (exact-integer? power) (<= 0 power 5)))
     (raise-argument-error who "#f or exact integer from 0 through 5" power))
@@ -157,8 +157,8 @@
 
 ; predicted-output-count : symbol? (listof draw-contour?) (or/c #f exact-integer?) ->
 ; exact-nonnegative-integer?
-;;   Counts commands after conic expansion and rejects non-unit conics without an explicit subdivision
-;;   power.
+;   Counts commands after conic expansion and rejects non-unit conics without an explicit subdivision
+;   power.
 (define (predicted-output-count who contours power)
   (for/sum ([contour (in-list contours)])
     (for/sum ([segment (in-list (draw-contour-segments contour))])
@@ -179,8 +179,8 @@
                                      "verb" (path-segment-verb segment))]))))
 
 ; segment->draw-commands : symbol? path-segment? (or/c #f exact-integer?) -> list?
-;;   Converts one detached segment to Racket move/line/cubic/close commands, approximating conics only
-;;   when requested.
+;   Converts one detached segment to Racket move/line/cubic/close commands, approximating conics only
+;   when requested.
 (define (segment->draw-commands who segment power)
   (define verb (path-segment-verb segment))
   (define points (path-segment-points segment))
@@ -230,8 +230,8 @@
 ;;;
 
 ; skia-path->dc-path/checked : path? (or/c #f exact-integer?) -> (values (is-a?/c dc-path%) symbol?)
-;;   Validates a raw Skia snapshot and expansion budget, then returns a detached Racket path and
-;;   translated fill rule.
+;   Validates a raw Skia snapshot and expansion budget, then returns a detached Racket path and
+;   translated fill rule.
 (define (skia-path->dc-path/checked path power)
   (define who 'skia-path->dc-path)
   (checked-conic-power who power)

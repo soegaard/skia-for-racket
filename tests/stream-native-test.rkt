@@ -20,11 +20,11 @@
 ;;;
 
 ; stream-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define stream-native-test-count 39) ; replaced from actual source case count
 
 ; with-file : bytes? procedure? -> any
-;;   Writes a temporary binary input and removes it after the streaming callback.
+;   Writes a temporary binary input and removes it after the streaming callback.
 (define (with-file bytes proc)
   (define path (make-temporary-file "skia-stream-~a.bin"))
   (dynamic-wind
@@ -33,13 +33,13 @@
     (lambda () (delete-file path))))
 
 ; fixture-png : -> bytes?
-;;   Encodes a small deterministic image for buffered stream round trips.
+;   Encodes a small deterministic image for buffered stream round trips.
 (define (fixture-png)
   (with-skia ([im (rgba-bytes->image 2 2 (apply bytes-append (make-list 4 (bytes 255 0 0 255))))])
     (image->png-bytes im)))
 
 ; fixture-picture : -> picture?
-;;   Records a deterministic picture for stream serialization checks.
+;   Records a deterministic picture for stream serialization checks.
 (define (fixture-picture)
   (call-with-picture 16 12
     (lambda (c) (with-skia ([p (make-paint #:color 'red)]) (draw-rect c 0 0 16 12 p)))))
@@ -49,7 +49,7 @@
 ;;;
 
 ; stream-native-tests : test-suite?
-;;   Collects the regression cases for native streams and buffered port consumers.
+;   Collects the regression cases for native streams and buffered port consumers.
 (define stream-native-tests
   (test-suite "Native streams and buffered port consumers"
     (test-case "empty memory input"
@@ -285,7 +285,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests stream-native-tests))
   (printf "stream-native: ~a cases, ~a failures\n" stream-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

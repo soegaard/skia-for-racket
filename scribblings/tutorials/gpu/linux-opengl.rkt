@@ -26,18 +26,20 @@
 ;;;
 
 (module+ main
+
   ; gl-config : (is-a?/c gl-config%)
-  ;;   Requests an OpenGL configuration for the tutorial's explicit host context.
+  ;   Requests an OpenGL configuration for the tutorial's explicit host context.
   (define gl-config (new gl-config%))
   (send gl-config set-legacy? #f)
 
   ; gl-frame : (is-a?/c frame%)
-  ;;   Hosts the Racket OpenGL canvas used to make the context current.
+  ;   Hosts the Racket OpenGL canvas used to make the context current.
   (define gl-frame
     (new frame% [label "OpenGL host"]
          [width 320] [height 240]))
+
   ; gl-canvas : (is-a?/c canvas%)
-  ;;   Owns the GUI canvas that supplies the OpenGL context for the tutorial.
+  ;   Owns the GUI canvas that supplies the OpenGL context for the tutorial.
   (define gl-canvas
     (new canvas% [parent gl-frame]
          [style '(gl no-autoclear)]

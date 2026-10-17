@@ -21,31 +21,34 @@
          skia-render-window%)
 
 ; raster-module : path?
-;;   Locates canvas.rkt for lazy loading of the selected implementation.
+;   Locates canvas.rkt for lazy loading of the selected implementation.
 (define-runtime-path raster-module "canvas.rkt")
+
 ; gpu-module : path?
-;;   Locates gpu-canvas.rkt for lazy loading of the selected implementation.
+;   Locates gpu-canvas.rkt for lazy loading of the selected implementation.
 (define-runtime-path gpu-module "gpu-canvas.rkt")
+
 ; skia-render-canvas<%> : interface?
-;;   Defines the shared callback-oriented raster/GPU canvas interface.
+;   Defines the shared callback-oriented raster/GPU canvas interface.
 (define skia-render-canvas<%>
   (interface () get-renderer get-backend get-render-capabilities get-render-info
                 get-dc get-raster-dc set-paint-callback refresh refresh-now
                 present close-skia close closed?))
+
 ; skia-render-canvas? : any/c -> boolean?
-;;   Returns whether v implements skia-render-canvas<%>.
+;   Returns whether v implements skia-render-canvas<%>.
 (define (skia-render-canvas? value) (is-a? value skia-render-canvas<%>))
 
 ; handler! : symbol? -> void?
-;;   Requires construction on the current eventspace handler thread outside a future.
+;   Requires construction on the current eventspace handler thread outside a future.
 (define (handler! who)
   (unless (and (eq? (current-thread) (gui:eventspace-handler-thread (gui:current-eventspace)))
                (not (current-future)))
     (error who "create render canvases on their eventspace handler thread (queue-callback)")))
 
 ; callback-canvas-class : class? boolean? -> class?
-;;   Adds shared callback lifetime, renderer diagnostics, and close semantics to a concrete canvas
-;;   class.
+;   Adds shared callback lifetime, renderer diagnostics, and close semantics to a concrete canvas
+;   class.
 (define (callback-canvas-class base% raster?)
   (class* base% (skia-render-canvas<%>)
     (inherit/super closed? get-skia-info)
@@ -157,11 +160,12 @@
     (set! facade-ready? #t)))
 
 ; raster-class : promise?
-;;   Lazily constructs the raster implementation of the unified render-canvas facade.
+;   Lazily constructs the raster implementation of the unified render-canvas facade.
 (define raster-class
   (delay/sync (callback-canvas-class (dynamic-require raster-module 'skia-canvas%) #t)))
+
 ; gpu-class : promise?
-;;   Lazily constructs the GPU implementation with matching close and status methods.
+;   Lazily constructs the GPU implementation with matching close and status methods.
 (define gpu-class
   (delay/sync
     (let ([gpu% (dynamic-require gpu-module 'skia-gpu-canvas%)])
@@ -184,7 +188,7 @@
 ;   draw:color%))] [#:smoothing (or/c 'unsmoothed 'smoothed 'aligned)] [#:min-width
 ;   exact-nonnegative-integer?] [#:min-height exact-nonnegative-integer?] -> (and/c (is-a?/c
 ;   canvas%) skia-render-canvas?)
-;;   Creates a canvas implementing skia-render-canvas<%> on the current eventspace handler thread.
+;   Creates a canvas implementing skia-render-canvas<%> on the current eventspace handler thread.
 (define (make-skia-render-canvas parent
           #:renderer [renderer 'auto] #:backend [backend 'auto]
           #:adapter [adapter #f] #:adapter-index [adapter-index #f] #:sync-interval [sync-interval #f]
@@ -209,7 +213,7 @@
        [background background] [smoothing smoothing] [min-width min-width] [min-height min-height]))
 
 ; skia-render-window% : class?
-;;   Hosts a selected render canvas and closes it before hiding the containing window.
+;   Hosts a selected render canvas and closes it before hiding the containing window.
 (define skia-render-window%
   (class gui:frame%
     (init [label "Skia render canvas"] [width 640] [height 480]

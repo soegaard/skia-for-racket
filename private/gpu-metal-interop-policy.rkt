@@ -16,18 +16,20 @@
 ;;   fields hold the diagnostic message and continuation marks.
 
 ; metal-interop-fail : any/c any/c any/c ... -> none/c
-;;   Raises a Metal-specific failure with a stable reason tag for diagnostics.
+;   Raises a Metal-specific failure with a stable reason tag for diagnostics.
 (define (metal-interop-fail reason message . xs)
   (raise (exn:fail:metal-interop (apply format message xs)
                                (current-continuation-marks) reason)))
+
 ; metal-timeout! : exact-positive-integer? -> exact-positive-integer?
-;;   Checks the finite timeout accepted by native command-buffer completion waits.
+;   Checks the finite timeout accepted by native command-buffer completion waits.
 (define (metal-timeout! n)
   (unless (and (exact-positive-integer? n) (<= n 60000))
     (raise-argument-error 'metal-interop "exact timeout in [1, 60000] milliseconds" n))
   n)
+
 ; metal-check-texture! : hash? [any/c] -> hash?
-;;   Validates external texture shape, format, usage, and optional render-target requirements.
+;   Validates external texture shape, format, usage, and optional render-target requirements.
 (define (metal-check-texture! d [render? #f])
   (unless (and (hash? d)
                (for/and ([k '(width height depth levels array_length samples format texture_type
@@ -61,10 +63,11 @@
 ;; Every status/error query is one short native call. No native pool spans
 ;; sleep, a callback or the whole polling interval. The private injection
 ;; points make exact deadline/status behavior testable without a GPU.
+
 ; metal-wait-completed! : any/c procedure? exact-positive-integer? [#:clock any/c] [#:pause
 ;   procedure?] -> any
-;;   Polls command-buffer status until completion, failure, or the bounded timeout, preserving
-;;   native error text.
+;   Polls command-buffer status until completion, failure, or the bounded timeout, preserving
+;   native error text.
 (define (metal-wait-completed! status error-text timeout
                                #:clock [clock current-inexact-monotonic-milliseconds]
                                #:pause [pause sleep])

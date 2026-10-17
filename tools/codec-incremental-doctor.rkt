@@ -22,8 +22,8 @@
 ;;;
 
 ; generate-codec-incremental-evidence : path-string? string? -> void?
-;;   Captures row/pass progress, truncation, cancellation, and session cleanup for incremental PNG
-;;   decoding.
+;   Captures row/pass progress, truncation, cancellation, and session cleanup for incremental PNG
+;   decoding.
 (define (generate-codec-incremental-evidence directory token)
   (make-directory* directory)
   (define seen '())
@@ -91,11 +91,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") path "New evidence directory" (set! directory path)]

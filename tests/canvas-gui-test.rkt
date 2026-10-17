@@ -25,15 +25,15 @@
 ;;;
 
 ; test-custodian : custodian?
-;;   Owns the GUI test eventspace and its resources for final shutdown.
+;   Owns the GUI test eventspace and its resources for final shutdown.
 (define test-custodian (make-custodian))
 
 ; uncaught-eventspace-error : box?
-;;   Retains the first uncaught callback message/exception pair until the next handler check.
+;   Retains the first uncaught callback message/exception pair until the next handler check.
 (define uncaught-eventspace-error (box #f))
 
 ; test-eventspace : eventspace?
-;;   Runs test windows in an isolated eventspace with captured asynchronous errors.
+;   Runs test windows in an isolated eventspace with captured asynchronous errors.
 (define test-eventspace
   (parameterize ([current-custodian test-custodian]
                  [error-display-handler
@@ -46,7 +46,7 @@
     (gui:make-eventspace)))
 
 ; call-with-check-exceptions : (-> any) -> any
-;;   Makes RackUnit failures propagate through the eventspace result channel.
+;   Makes RackUnit failures propagate through the eventspace result channel.
 (define (call-with-check-exceptions thunk)
   ;; A separately created eventspace does not inherit RackUnit's active test
   ;; parameters. Its default check handler prints failures and keeps running.
@@ -54,7 +54,7 @@
   (parameterize ([current-check-around (lambda (check) (check))]) (thunk)))
 
 ; on-handler : (-> any) -> any
-;;   Runs a callback on the GUI handler and propagates its values or exception with a timeout.
+;   Runs a callback on the GUI handler and propagates its values or exception with a timeout.
 (define (on-handler thunk)
   (define answer-channel (make-channel))
   (parameterize ([gui:current-eventspace test-eventspace])
@@ -91,7 +91,7 @@
 ;; The frame and canvas are created, queried, and closed on the test eventspace.
 
 ; make-window : [#:style list? #:paint procedure?] -> test-window?
-;;   Shows a test window whose paint callback records DCs, completion, and errors.
+;   Shows a test window whose paint callback records DCs, completion, and errors.
 (define (make-window #:style [style '()] #:paint [paint (lambda (_canvas _dc) (void))])
   (on-handler
    (lambda ()
@@ -113,25 +113,25 @@
      (test-window frame canvas paints ready callback-dcs errors))))
 
 ; raise-callback-error! : test-window? -> void?
-;;   Raises the oldest recorded paint failure so asynchronous errors cannot be lost.
+;   Raises the oldest recorded paint failure so asynchronous errors cannot be lost.
 (define (raise-callback-error! window)
   (unless (null? (unbox (test-window-errors window)))
     (raise (last (unbox (test-window-errors window))))))
 
 ; await-paint! : test-window? -> void?
-;;   Waits at most fifteen seconds for painting and then checks callback failures.
+;   Waits at most fifteen seconds for painting and then checks callback failures.
 (define (await-paint! window)
   (unless (sync/timeout 15 (test-window-ready window))
     (error 'canvas-gui-test "a shown window did not receive a paint callback within 15 seconds"))
   (raise-callback-error! window))
 
 ; drain-paints! : test-window? -> void?
-;;   Consumes queued paint notifications before a test triggers the next repaint.
+;   Consumes queued paint notifications before a test triggers the next repaint.
 (define (drain-paints! window)
   (let loop () (when (sync/timeout 0 (test-window-ready window)) (loop))))
 
 ; with-window : procedure? [#:style list? #:paint procedure?] -> any
-;;   Runs a test with a shown window and always closes its Skia storage and hides its frame.
+;   Runs a test with a shown window and always closes its Skia storage and hides its frame.
 (define (with-window proc #:style [style '()] #:paint [paint (lambda (_canvas _dc) (void))])
   (define window (make-window #:style style #:paint paint))
   (dynamic-wind
@@ -145,14 +145,14 @@
                             (send (test-window-frame window) show #f))))))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc color [x 0] [y 0] [width 20] [height 12])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y width height))
 
 ; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Reads a premultiplied device pixel in red, green, blue, alpha order.
+;   Reads a premultiplied device pixel in red, green, blue, alpha order.
 (define (pixel dc x y)
   (define-values (w h) (send dc get-pixel-size))
   (define bytes (send dc get-rgba-bytes #:premultiplied? #t))
@@ -164,8 +164,8 @@
 ;;;
 
 ; canvas-gui-tests : test-suite?
-;;   Collects the regression cases for required real-window Skia canvas eventspace, exposure and
-;;   lifecycle tests.
+;   Collects the regression cases for required real-window Skia canvas eventspace, exposure and
+;   lifecycle tests.
 (define canvas-gui-tests
   (test-suite
    "Required real-window Skia canvas eventspace, exposure and lifecycle tests"
@@ -380,7 +380,7 @@
 
 
 ; canvas-gui-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define canvas-gui-test-count 15)
 (module+ main
   (require rackunit/text-ui)
@@ -390,7 +390,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures
     (dynamic-wind void (lambda () (run-tests canvas-gui-tests))
                   (lambda () (custodian-shutdown-all test-custodian))))

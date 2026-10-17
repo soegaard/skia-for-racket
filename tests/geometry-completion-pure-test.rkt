@@ -23,7 +23,7 @@
 ;;;
 
 ; bad : (-> any) -> void?
-;;   Requires exn:fail:contract? for the deliberately invalid operation.
+;   Requires exn:fail:contract? for the deliberately invalid operation.
 (define (bad f) (check-exn exn:fail:contract? f))
 
 ;;;
@@ -31,7 +31,7 @@
 ;;;
 
 ; geometry-completion-pure-tests : test-suite?
-;;   Collects the regression cases for pure geometry domains and paint provenance.
+;   Collects the regression cases for pure geometry domains and paint provenance.
 (define geometry-completion-pure-tests
   (test-suite
    "0.67 pure geometry domains and paint provenance"

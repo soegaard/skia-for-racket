@@ -19,14 +19,14 @@
 ;;;
 
 ; native-color : vector? -> rgba?
-;;   Converts RGB-byte/unit-alpha DC colors to Skia colors with rounded byte alpha.
+;   Converts RGB-byte/unit-alpha DC colors to Skia colors with rounded byte alpha.
 (define (native-color v)
   (sk:rgba (vector-ref v 0) (vector-ref v 1) (vector-ref v 2)
            (inexact->exact (round (* 255 (vector-ref v 3))))))
 
 ; call-with-path : (listof vector?) symbol? procedure? -> any
-;;   Builds a temporary native path for a callback, translating the Racket odd-even fill rule and
-;;   releasing the path afterward.
+;   Builds a temporary native path for a callback, translating the Racket odd-even fill rule and
+;   releasing the path afterward.
 (define (call-with-path commands rule proc)
   (sk:with-skia ([p (sk:make-path #:fill-rule (if (eq? rule 'odd-even) 'even-odd 'winding))])
     (for ([v (in-list commands)])
@@ -41,15 +41,15 @@
     (proc p)))
 
 ; set-matrix! : canvas? vector? -> void?
-;;   Installs the six affine coefficients in Racket xx/yx/xy/yy/x0/y0 order on the native canvas.
+;   Installs the six affine coefficients in Racket xx/yx/xy/yy/x0/y0 order on the native canvas.
 (define (set-matrix! c m)
   (sk:canvas-set-matrix3! c
     (sk:make-matrix3 (vector-ref m 0) (vector-ref m 2) (vector-ref m 4)
                      (vector-ref m 1) (vector-ref m 3) (vector-ref m 5) 0 0 1)))
 
 ; install-clip! : canvas? (or/c #f dc-clip?) -> void?
-;;   Resets the transform and intersects device-coordinate clip paths; #f adds no clip, while an empty
-;;   clip excludes everything.
+;   Resets the transform and intersects device-coordinate clip paths; #f adds no clip, while an empty
+;   clip excludes everything.
 (define (install-clip! c clip)
   (sk:canvas-reset-transform! c)
   (when clip

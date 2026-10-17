@@ -19,8 +19,8 @@
 ;;;
 
 ; runtime-doctor! : -> void?
-;;   Checks runtime-effect reflection layouts, shader/filter/blender creation, retained inputs, and
-;;   compiler diagnostics.
+;   Checks runtime-effect reflection layouts, shader/filter/blender creation, retained inputs, and
+;   compiler diagnostics.
 (define (runtime-doctor!)
   (with-skia ([reflection (make-runtime-effect reflection-sksl)]
               [effect (make-runtime-effect solid-sksl)]

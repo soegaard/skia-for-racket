@@ -19,26 +19,26 @@
 ;;;
 
 ; triangle : (listof (listof real?))
-;;   Provides three ordered vertices for triangle-mode validation and drawing.
+;   Provides three ordered vertices for triangle-mode validation and drawing.
 (define triangle '((0 0) (30 0) (0 30)))
 
 ; square-patch : (listof (listof real?))
-;;   Orders twelve boundary control points clockwise around a square Coons patch.
+;   Orders twelve boundary control points clockwise around a square Coons patch.
 (define square-patch '((0 0) (10 0) (20 0) (30 0) (30 10) (30 20)
                        (30 30) (20 30) (10 30) (0 30) (0 20) (0 10)))
 
 ; page : (canvas? -> any) -> output-page?
-;;   Wraps a drawing in a fixed 100-by-80-unit page for output-audit checks.
+;   Wraps a drawing in a fixed 100-by-80-unit page for output-audit checks.
 (define (page f) (make-output-page 100 80 f))
 
 ; has-feature? : output-audit-report? symbol? symbol? -> boolean?
-;;   Finds the requested feature/status pair in a document audit.
+;   Finds the requested feature/status pair in a document audit.
 (define (has-feature? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? feature (output-audit-event-feature e)) (eq? status (output-audit-event-status e)))))
 
 ; test-image : -> image?
-;;   Creates an owned image with a red border and green center for scaling and patch probes.
+;   Creates an owned image with a red border and green center for scaling and patch probes.
 (define (test-image)
   (define b (make-bytes (* 24 24 4)))
   (for* ([y (in-range 24)] [x (in-range 24)])
@@ -53,8 +53,8 @@
 ;;;
 
 ; geometry-native-tests : test-suite?
-;;   Collects the regression cases for structured geometry and advanced image drawing: native
-;;   backends.
+;   Collects the regression cases for structured geometry and advanced image drawing: native
+;   backends.
 (define geometry-native-tests
   (test-suite "Structured geometry and advanced image drawing: native backends"
    (test-case "empty region is an owned resource with empty snapshots"

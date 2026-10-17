@@ -25,7 +25,7 @@
 ;;;
 
 ; expand-layer : list? -> syntax?
-;;   Expands layer-scoping forms in a fresh module that imports only canvas primitives.
+;   Expands layer-scoping forms in a fresh module that imports only canvas primitives.
 (define (expand-layer forms)
   (parameterize ([current-namespace (make-base-namespace)])
     (expand `(module layer-form racket/base

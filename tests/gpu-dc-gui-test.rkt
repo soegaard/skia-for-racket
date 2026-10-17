@@ -22,23 +22,23 @@
 ;;;
 
 ; backend : parameter?
-;;   Selects the requested GPU backend, with auto resolved by the window implementation.
+;   Selects the requested GPU backend, with auto resolved by the window implementation.
 (define backend (make-parameter 'auto))
 
 ; adapter : parameter?
-;;   Carries optional Direct3D adapter selection into eventspace callbacks.
+;   Carries optional Direct3D adapter selection into eventspace callbacks.
 (define adapter (make-parameter #f))
 
 ; test-custodian : custodian?
-;;   Owns the isolated GUI eventspace so the runner can shut it down reliably.
+;   Owns the isolated GUI eventspace so the runner can shut it down reliably.
 (define test-custodian (make-custodian))
 
 ; uncaught : box?
-;;   Retains the first uncaught eventspace message/exception pair for propagation.
+;   Retains the first uncaught eventspace message/exception pair for propagation.
 (define uncaught (box #f))
 
 ; space : eventspace?
-;;   Runs the GPU test windows with a captured asynchronous-error handler.
+;   Runs the GPU test windows with a captured asynchronous-error handler.
 (define space
   (parameterize ([current-custodian test-custodian]
                  [error-display-handler
@@ -47,7 +47,7 @@
     (gui:make-eventspace)))
 
 ; on-handler : (-> any) -> any
-;;   Dispatches to the GUI handler while preserving backend options and propagating failures.
+;   Dispatches to the GUI handler while preserving backend options and propagating failures.
 (define (on-handler thunk)
   (define requested-backend (backend))
   (define requested-adapter (adapter))
@@ -80,7 +80,7 @@
 ;; All widget operations run on the fixture's eventspace handler thread.
 
 ; make-window : procedure? -> window?
-;;   Shows a GPU canvas that records paints, borrowed DCs, and callback failures.
+;   Shows a GPU canvas that records paints, borrowed DCs, and callback failures.
 (define (make-window paint)
   (on-handler
    (lambda ()
@@ -103,24 +103,24 @@
      (window f c paints dcs ready errors))))
 
 ; check-errors : window? -> void?
-;;   Raises the oldest recorded callback failure on the GUI handler.
+;   Raises the oldest recorded callback failure on the GUI handler.
 (define (check-errors w)
   (on-handler (lambda ()
     (unless (null? (unbox (window-errors w))) (raise (last (unbox (window-errors w))))))))
 
 ; await-paint : window? -> void?
-;;   Waits for a GPU paint, then drains prior handler work and checks failures.
+;   Waits for a GPU paint, then drains prior handler work and checks failures.
 (define (await-paint w)
   (unless (sync/timeout 20 (window-ready w))
     (error 'gpu-dc-gui "shown GPU window produced no frame within 20 seconds"))
   (on-handler void) (check-errors w))
 
 ; drain : window? -> void?
-;;   Consumes pending paint notifications before the next explicit repaint check.
+;   Consumes pending paint notifications before the next explicit repaint check.
 (define (drain w) (let loop () (when (sync/timeout 0 (window-ready w)) (loop))))
 
 ; with-window : procedure? [#:paint procedure?] -> any
-;;   Scopes a shown GPU window and always closes its resources on the handler.
+;   Scopes a shown GPU window and always closes its resources on the handler.
 (define (with-window proc #:paint [paint (lambda (_c _dc) (void))])
   (define w (make-window paint))
   (dynamic-wind void
@@ -129,8 +129,8 @@
       (on-handler (lambda () (send (window-canvas w) close-skia) (send (window-frame w) show #f))))))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc color)
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle 2 3 10 8))
@@ -140,7 +140,7 @@
 ;;;
 
 ; gpu-dc-gui-tests : test-suite?
-;;   Collects the regression cases for real-window GPU DC facade and eventspace lifetime.
+;   Collects the regression cases for real-window GPU DC facade and eventspace lifetime.
 (define gpu-dc-gui-tests
   (test-suite
    "Real-window GPU DC facade and eventspace lifetime"
@@ -228,7 +228,7 @@
          (check-exn exn:fail? (lambda () (send c refresh-now))))))))))
 
 ; gpu-dc-gui-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-dc-gui-test-count 10)
 (module+ main
   (require rackunit/text-ui)
@@ -242,7 +242,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures
     (dynamic-wind void (lambda () (run-tests gpu-dc-gui-tests))
       (lambda () (custodian-shutdown-all test-custodian))))

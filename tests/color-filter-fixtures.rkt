@@ -22,44 +22,44 @@
 ;;;
 
 ; identity-hsla : (listof real?)
-;;   Stores a row-major 4-by-5 HSLA identity matrix with normalized channel offsets.
+;   Stores a row-major 4-by-5 HSLA identity matrix with normalized channel offsets.
 (define identity-hsla '(1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0))
 
 ; hue-third-hsla : (listof real?)
-;;   Adds one third of a hue turn while preserving saturation, lightness, and alpha.
+;   Adds one third of a hue turn while preserving saturation, lightness, and alpha.
 (define hue-third-hsla '(1 0 0 0 1/3  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0))
 
 ; saturation-zero-hsla : (listof real?)
-;;   Zeros HSL saturation without altering lightness or alpha.
+;   Zeros HSL saturation without altering lightness or alpha.
 (define saturation-zero-hsla '(1 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0))
 
 ; lightness-invert-hsla : (listof real?)
-;;   Maps normalized HSL lightness to one minus lightness.
+;   Maps normalized HSL lightness to one minus lightness.
 (define lightness-invert-hsla '(1 0 0 0 0  0 1 0 0 0  0 0 -1 0 1  0 0 0 1 0))
 
 ; identity-table : bytes?
-;;   Maps all 256 channel values to themselves.
+;   Maps all 256 channel values to themselves.
 (define identity-table (bytes->immutable-bytes (apply bytes (build-list 256 values))))
 
 ; inverse-table : bytes?
-;;   Maps each byte channel value to 255 minus that value.
+;   Maps each byte channel value to 255 minus that value.
 (define inverse-table (bytes->immutable-bytes (apply bytes (build-list 256 (lambda (x) (- 255 x))))))
 
 ; threshold-table : bytes?
-;;   Maps values below 128 to zero and the remaining values to 255.
+;   Maps values below 128 to zero and the remaining values to 255.
 (define threshold-table
   (bytes->immutable-bytes (apply bytes (build-list 256 (lambda (x) (if (< x 128) 0 255))))))
 
 ; filter-swatch-color : rgba?
-;;   Supplies distinct opaque channels for color-filter comparisons.
+;   Supplies distinct opaque channels for color-filter comparisons.
 (define filter-swatch-color (rgba 72 144 216 255))
 
 ; rgba-list : rgba? -> (listof byte?)
-;;   Extracts red, green, blue, and alpha channels in that order.
+;   Extracts red, green, blue, and alpha channels in that order.
 (define (rgba-list c) (list (rgba-red c) (rgba-green c) (rgba-blue c) (rgba-alpha c)))
 
 ; filter-pixel : color-filter? color? -> rgba?
-;;   Renders a filtered solid swatch and samples its center pixel.
+;   Renders a filtered solid swatch and samples its center pixel.
 (define (filter-pixel cf color)
   (with-skia ([s (make-surface 3 3)]
               [p (make-paint #:color color #:color-filter cf #:antialias? #f)])
@@ -69,7 +69,7 @@
 ;; No native objects are allocated when this module is required.
 
 ; make-probe-color-filter : symbol? -> color-filter?
-;;   Creates the named filter fixture, retaining composed children before their wrappers close.
+;   Creates the named filter fixture, retaining composed children before their wrappers close.
 (define (make-probe-color-filter name)
   (case name
     [(identity) (make-hsla-matrix-filter identity-hsla)]

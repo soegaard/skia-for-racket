@@ -24,11 +24,13 @@
 ;;;
 
 (module+ test
+
   ; created : list?
-  ;;   Tracks temporary figure files so the regression test can clean them up.
+  ;   Tracks temporary figure files so the regression test can clean them up.
   (define created '())
+
   ; keep : any/c -> image-element?
-  ;;   Records a generated figure's temporary path and returns the figure unchanged.
+  ;   Records a generated figure's temporary path and returns the figure unchanged.
   (define (keep figure)
     (set! created (cons (image-element-path figure) created))
     figure)

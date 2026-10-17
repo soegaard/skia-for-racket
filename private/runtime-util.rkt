@@ -49,15 +49,17 @@
 
 
 ; runtime-uniform-array? : runtime-uniform? -> boolean?
-;;   Returns whether the declaration is an array.
+;   Returns whether the declaration is an array.
 (define (runtime-uniform-array? u)
   (not (zero? (bitwise-and (runtime-uniform-flags u) #x01))))
+
 ; runtime-uniform-color? : runtime-uniform? -> boolean?
-;;   Returns whether the declaration has layout(color).
+;   Returns whether the declaration has layout(color).
 (define (runtime-uniform-color? u)
   (not (zero? (bitwise-and (runtime-uniform-flags u) #x02))))
+
 ; runtime-uniform-half-precision? : runtime-uniform? -> boolean?
-;;   Returns whether the declaration carries the half-precision flag.
+;   Returns whether the declaration carries the half-precision flag.
 (define (runtime-uniform-half-precision? u)
   (not (zero? (bitwise-and (runtime-uniform-flags u) #x10))))
 
@@ -66,14 +68,14 @@
 ;;;
 
 ; runtime-kind : symbol? any/c -> symbol?
-;;   Checks the shader, color-filter, or blender role requested for a runtime effect.
+;   Checks the shader, color-filter, or blender role requested for a runtime effect.
 (define (runtime-kind who v)
   (unless (memq v '(shader color-filter blender))
     (raise-argument-error who "'shader, 'color-filter, or 'blender" v))
   v)
 
 ; runtime-source : symbol? string? -> (values string? bytes?)
-;;   Snapshots nonempty NUL-free SkSL source and its UTF-8 encoding within the current byte budget.
+;   Snapshots nonempty NUL-free SkSL source and its UTF-8 encoding within the current byte budget.
 (define (runtime-source who source)
   (unless (string? source) (raise-argument-error who "string?" source))
   (when (or (zero? (string-length source))
@@ -90,7 +92,7 @@
   (values text encoded))
 
 ; raise-sksl-error : symbol? string? string? -> none/c
-;;   Raises the structured SkSL compilation exception with immutable native diagnostics.
+;   Raises the structured SkSL compilation exception with immutable native diagnostics.
 (define (raise-sksl-error kind source diagnostics)
   (define text (string->immutable-string diagnostics))
   (raise
@@ -103,22 +105,24 @@
 ;;;
 
 ; uniform-types : (vectorof symbol?)
-;;   Maps native uniform type codes 0 through 10 to reflected numeric type symbols; ordering matches
-;;   type-components.
+;   Maps native uniform type codes 0 through 10 to reflected numeric type symbols; ordering matches
+;   type-components.
 (define uniform-types
   '#(float float2 float3 float4 float2x2 float3x3 float4x4 int int2 int3 int4))
+
 ; type-components : (vectorof exact-positive-integer?)
-;;   Gives scalar counts for the corresponding uniform-types entries, including flattened matrix
-;;   components.
+;   Gives scalar counts for the corresponding uniform-types entries, including flattened matrix
+;   components.
 (define type-components '#(1 2 3 4 4 9 16 1 2 3 4))
+
 ; uniform-type-index : symbol? symbol? -> exact-nonnegative-integer?
-;;   Finds a reflected numeric type's native index or rejects an unknown type.
+;   Finds a reflected numeric type's native index or rejects an unknown type.
 (define (uniform-type-index who t)
   (or (for/or ([v (in-vector uniform-types)] [i (in-naturals)]) (and (eq? v t) i))
       (raise-argument-error who "reflected numeric uniform type" t)))
 
 ; checked-name : symbol? string? -> string?
-;;   Snapshots a nonempty NUL-free reflected uniform or child name.
+;   Snapshots a nonempty NUL-free reflected uniform or child name.
 (define (checked-name who name)
   (unless (and (string? name) (positive? (string-length name))
                (not (regexp-match? #rx"\u0000" name)))
@@ -128,8 +132,8 @@
 ; checked-runtime-uniform : symbol? string? exact-nonnegative-integer? exact-integer?
 ;   exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ;   runtime-uniform?
-;;   Checks native type, flags, count, alignment, and buffer range before constructing a reflected
-;;   uniform record.
+;   Checks native type, flags, count, alignment, and buffer range before constructing a reflected
+;   uniform record.
 (define (checked-runtime-uniform who name offset type-code count flags total)
   (unless (and (exact-integer? type-code) (<= 0 type-code 10))
     (error who "unexpected native uniform type ~a" type-code))
@@ -152,8 +156,8 @@
                   count flags size))
 
 ; checked-runtime-child : symbol? string? exact-integer? exact-nonnegative-integer? -> runtime-child?
-;;   Checks a reflected child's shader/filter/blender kind and native index before retaining its
-;;   immutable name.
+;   Checks a reflected child's shader/filter/blender kind and native index before retaining its
+;   immutable name.
 (define (checked-runtime-child who name type-code index)
   (unless (and (exact-integer? type-code) (<= 0 type-code 2))
     (error who "unexpected native child kind ~a" type-code))
@@ -164,8 +168,8 @@
 
 ; validate-runtime-layout : symbol? exact-nonnegative-integer? (listof runtime-uniform?) (listof
 ;   runtime-child?) -> void?
-;;   Requires unique names, gap-free packed four-byte uniform components, full buffer coverage, and
-;;   contiguous child indices in reflection order.
+;   Requires unique names, gap-free packed four-byte uniform components, full buffer coverage, and
+;   contiguous child indices in reflection order.
 (define (validate-runtime-layout who total uniforms children)
   (unless (and (exact-nonnegative-integer? total) (zero? (modulo total 4))
                (<= total (current-skia-byte-limit)))
@@ -199,8 +203,8 @@
 ;;;
 
 ; runtime-bindings : symbol? symbol? (listof string?) hash? -> hash?
-;;   Normalizes symbol or string binding keys to immutable strings, rejecting unknown, duplicate, or
-;;   missing reflected names.
+;   Normalizes symbol or string binding keys to immutable strings, rejecting unknown, duplicate, or
+;   missing reflected names.
 (define (runtime-bindings who label names input)
   (unless (hash? input) (raise-argument-error who "hash? with uniform/child names as keys" input))
   (define out
@@ -220,8 +224,8 @@
   out)
 
 ; uniform-components : symbol? runtime-uniform? any/c -> list?
-;;   Normalizes a scalar or flat list/vector to the exact reflected component count, without
-;;   reordering vectors, matrices, or arrays.
+;   Normalizes a scalar or flat list/vector to the exact reflected component count, without
+;   reordering vectors, matrices, or arrays.
 (define (uniform-components who u value)
   (define n (quotient (runtime-uniform-byte-size u) 4))
   (cond
@@ -237,8 +241,8 @@
      xs]))
 
 ; runtime-pack-uniforms : symbol? exact-nonnegative-integer? (listof runtime-uniform?) hash? -> bytes?
-;;   Packs checked signed integers or native floats at reflected offsets in host byte order and
-;;   returns immutable uniform bytes.
+;   Packs checked signed integers or native floats at reflected offsets in host byte order and
+;   returns immutable uniform bytes.
 (define (runtime-pack-uniforms who total uniforms input)
   (validate-runtime-layout who total uniforms '())
   (define values-by-name (runtime-bindings who 'uniform (map runtime-uniform-name uniforms) input))

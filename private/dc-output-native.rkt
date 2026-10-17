@@ -27,14 +27,14 @@
 ;;;
 
 ; concat-dc-matrix! : canvas? vector? -> void?
-;;   Concatenates the DC affine transform while preserving the receiver's existing page placement.
+;   Concatenates the DC affine transform while preserving the receiver's existing page placement.
 (define (concat-dc-matrix! c m)
   (sk:canvas-concat-matrix3! c
     (sk:make-matrix3 (vector-ref m 0) (vector-ref m 2) (vector-ref m 4)
                      (vector-ref m 1) (vector-ref m 3) (vector-ref m 5) 0 0 1)))
 
 ; relative-state : canvas? vector? (or/c #f dc-clip?) procedure? -> any
-;;   Scopes a DC clip and transform relative to the receiving document canvas's current coordinates.
+;   Scopes a DC clip and transform relative to the receiving document canvas's current coordinates.
 (define (relative-state c matrix clip thunk)
   (sk:call-with-canvas-state c
     (lambda ()
@@ -54,8 +54,8 @@
 ;;;
 
 ; replay-output-dc : canvas? real? real? (listof output-dc-command?) symbol? real? -> (listof hash?)
-;;   Replays captured operations with the requested vector/raster policy and returns ordered detached
-;;   group reports.
+;   Replays captured operations with the requested vector/raster policy and returns ordered detached
+;   group reports.
 (define (replay-output-dc c width height commands policy scale)
   (define reports '())
   (define (retain! report)

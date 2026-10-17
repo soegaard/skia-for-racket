@@ -20,18 +20,18 @@
 ;;;
 
 ; live-stream-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define live-stream-pure-test-count 26)
 
 ; options : input-port? output-port? [#:length any/c #:seekable? boolean? #:limit real? #:cancel
 ; any/c] -> any
-;;   Validates live-port bounds and capabilities without entering native callback code.
+;   Validates live-port bounds and capabilities without entering native callback code.
 (define (options in out #:length [n #f] #:seekable? [seek? #f] #:limit [limit 1024] #:cancel
           [cancel #f])
   (live-port-options 'test in out n seek? #f #f limit cancel))
 
 ; short-input : bytes? -> input-port?
-;;   Creates an input port returning at most one byte per read to expose partial-read handling.
+;   Creates an input port returning at most one byte per read to expose partial-read handling.
 (define (short-input bs)
   (define at 0)
   (make-input-port 'short (lambda (buffer)
@@ -43,7 +43,7 @@
 ;;;
 
 ; live-stream-pure-tests : test-suite?
-;;   Collects the regression cases for live port utilities; no native execution.
+;   Collects the regression cases for live port utilities; no native execution.
 (define live-stream-pure-tests
  (test-suite "Live port utilities; no native execution"
   (test-case "pin denies access until released"
@@ -133,7 +133,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests live-stream-pure-tests))
   (printf "live-stream-pure: ~a cases, ~a failures\n" live-stream-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

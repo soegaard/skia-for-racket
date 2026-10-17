@@ -19,12 +19,12 @@
 ;;;
 
 ; write-bytes-file : path-string? bytes? -> exact-nonnegative-integer?
-;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
+;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (write-bytes-file path data)
   (call-with-output-file path (lambda (out) (write-bytes data out)) #:exists 'error))
 
 ; effect-page : symbol? box? box? [#:policy symbol?] -> output-page?
-;;   Places an effect in a bounded output group while recording strategy reports and callback count.
+;   Places an effect in a bounded output group while recording strategy reports and callback count.
 (define (effect-page name reports calls #:policy [policy 'raster])
   (make-output-page 96 72
     (lambda (c)
@@ -46,12 +46,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
 
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") path "New output directory" (set! directory path)]
@@ -62,7 +62,7 @@
   (make-directory* directory)
 
   ; rows : (listof hash?)
-  ;;   Accumulates output filenames and rendering metadata for the effect-fixture manifest.
+  ;   Accumulates output filenames and rendering metadata for the effect-fixture manifest.
   (define rows '())
   (for ([name (in-list effect-scene-names)])
     (define prefix (symbol->string name))

@@ -21,17 +21,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
   ; report-path : (or/c path-string? #f)
-  ;;   Holds the destination for this run's machine-readable evidence report.
+  ;   Holds the destination for this run's machine-readable evidence report.
   (define report-path #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
@@ -44,7 +47,7 @@
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
 
   ; ctx : gpu-context?
-  ;;   Owns the primary native GPU context used by the fixture run.
+  ;   Owns the primary native GPU context used by the fixture run.
   (define ctx
     (case backend
       [(egl) (make-egl-gpu-context)]
@@ -53,32 +56,35 @@
       [else (error 'font-query-gpu "unsupported backend")]))
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
+
   ; frames : exact-nonnegative-integer?
-  ;;   Counts successfully rendered fixture frames for the evidence report.
+  ;   Counts successfully rendered fixture frames for the evidence report.
   (define frames 0)
+
   ; drawing-reads : exact-nonnegative-integer?
-  ;;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
-  ;;   zero.
+  ;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
+  ;   zero.
   (define drawing-reads 0)
+
   ; inspection-reads : exact-nonnegative-integer?
-  ;;   Counts explicit readbacks used only to inspect rendered fixture pixels.
+  ;   Counts explicit readbacks used only to inspect rendered fixture pixels.
   (define inspection-reads 0)
 
   ; completed : (listof string?)
-  ;;   Collects completed scene labels for coverage evidence.
+  ;   Collects completed scene labels for coverage evidence.
   (define completed '())
 
   ; reads : box? -> exact-nonnegative-integer?
-  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
-  ;;   inspection.
+  ;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;   inspection.
   (define (reads ledger)
     (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
 
   ; scenes-suite : test-suite?
-  ;;   Checks font mutations, retained snapshots, and outline scenes while distinguishing drawing
-  ;;   from inspection readbacks.
+  ;   Checks font mutations, retained snapshots, and outline scenes while distinguishing drawing
+  ;   from inspection readbacks.
   (define scenes-suite
     (test-suite "GPU font mutation, snapshots and batch outlines"
       (test-case "each scene renders without hidden CPU readbacks"
@@ -105,11 +111,11 @@
     (lambda () (gpu-context-close! ctx)))
 
   ; closed? : boolean?
-  ;;   Records whether context teardown completed with no live or failed resource releases.
+  ;   Records whether context teardown completed with no live or failed resource releases.
   (define closed? (eq? (gpu-context-state ctx) 'closed))
 
   ; passed? : boolean?
-  ;;   Combines test assertions and required evidence/cleanup checks into the final run status.
+  ;   Combines test assertions and required evidence/cleanup checks into the final run status.
   (define passed? (and (zero? failures) closed? (= frames (length font-query-scenes))))
   (call-with-output-file report-path
     (lambda (out)

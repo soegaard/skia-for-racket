@@ -21,36 +21,40 @@
 ;;;
 
 ; fixture-directory : path?
-;;   Locates fixture directory relative to this module rather than the current directory.
+;   Locates fixture directory relative to this module rather than the current directory.
 (define-runtime-path fixture-directory "fixtures")
 
 ; width : exact-integer?
-;;   Specifies width in the drawing's local coordinate units.
+;   Specifies width in the drawing's local coordinate units.
 (define width 900)
+
 ; height : exact-integer?
-;;   Specifies height in the drawing's local coordinate units.
+;   Specifies height in the drawing's local coordinate units.
 (define height 600)
 
 ; background-color : string?
-;;   Specifies the background color color used by this drawing.
+;   Specifies the background color color used by this drawing.
 (define background-color "#ECE8DF")
+
 ; card-color : string?
-;;   Specifies the card color color used by this drawing.
+;   Specifies the card color color used by this drawing.
 (define card-color "#FFFFFF")
+
 ; frame-color : string?
-;;   Specifies the frame color color used by this drawing.
+;   Specifies the frame color color used by this drawing.
 (define frame-color "#CBD0D4")
+
 ; text-color : string?
-;;   Specifies the text color color used by this drawing.
+;   Specifies the text color color used by this drawing.
 (define text-color "#26333D")
 
 ; fixture : any/c -> path?
-;;   Resolves a local image fixture relative to the tutorial source directory.
+;   Resolves a local image fixture relative to the tutorial source directory.
 (define (fixture name)
   (build-path fixture-directory name))
 
 ; draw-image-fit : canvas? image? real? real? real? real? #:sampling [symbol?] -> void?
-;;   Fits the whole image inside a destination rectangle without changing its aspect ratio.
+;   Fits the whole image inside a destination rectangle without changing its aspect ratio.
 (define (draw-image-fit canvas image x y width height
                         #:sampling [sampling 'linear])
   (define scale
@@ -67,7 +71,7 @@
                    #:sampling sampling))
 
 ; draw-cell : canvas? image? any/c real? real? #:sampling [symbol?] -> void?
-;;   Draws the cell component in the current canvas coordinate system.
+;   Draws the cell component in the current canvas coordinate system.
 (define (draw-cell canvas image label x y
                    #:sampling [sampling 'linear])
   (define card (make-paint #:color card-color))
@@ -87,7 +91,7 @@
                     font text))
 
 ; draw-contact-sheet : canvas? any/c any/c any/c any/c any/c any/c -> void?
-;;   Draws the contact sheet component in the current canvas coordinate system.
+;   Draws the contact sheet component in the current canvas coordinate system.
 (define (draw-contact-sheet canvas
                             mountains flower pattern pixels
                             mountain-crop flower-crop)
@@ -100,7 +104,7 @@
   (draw-cell canvas flower-crop "flower crop" 610 320))
 
 ; save-contact-sheet : path-string? -> void?
-;;   Renders the contact sheet example to the selected output destination.
+;   Renders the contact sheet example to the selected output destination.
 (define (save-contact-sheet filename)
   (define mountains (image-from-file (fixture "mountains.jpg")))
   (define flower (image-from-file (fixture "flower.png")))

@@ -23,15 +23,15 @@
 ;;;
 
 ; test-font : font%
-;;   Provides a fixed Arial pixel-sized font for request translation.
+;   Provides a fixed Arial pixel-sized font for request translation.
 (define test-font (rd:make-font #:face "Arial" #:size 16 #:size-in-pixels? #t))
 
 ; request : string? [any/c exact-nonnegative-integer?] -> dc-text-request?
-;;   Builds a checked text request for the shared fixture font.
+;   Builds a checked text request for the shared fixture font.
 (define (request text [mode #f] [offset 0]) (dc-text-description 'test text test-font mode offset))
 
 ; bitmap : exact-positive-integer? exact-positive-integer? bytes? [boolean? real?] -> bitmap%
-;;   Loads unscaled ARGB bytes into a bitmap whose backing dimensions are rounded upward.
+;   Loads unscaled ARGB bytes into a bitmap whose backing dimensions are rounded upward.
 (define (bitmap w h pixels [alpha? #t] [backing 1.0])
   (define bm (rd:make-bitmap w h alpha? #:backing-scale backing))
   (send bm set-argb-pixels 0 0 (inexact->exact (ceiling (* w backing)))
@@ -39,15 +39,15 @@
   bm)
 
 ; red : color%
-;;   Provides an opaque Racket Draw red fixture.
+;   Provides an opaque Racket Draw red fixture.
 (define red (make-object rd:color% 255 0 0))
 
 ; blue : color%
-;;   Provides an opaque Racket Draw blue fixture.
+;   Provides an opaque Racket Draw blue fixture.
 (define blue (make-object rd:color% 0 0 255))
 
 ; fresh : -> (values dc<%> box?)
-;;   Creates a recording-only DC and its event log for compatibility checks.
+;   Creates a recording-only DC and its event log for compatibility checks.
 (define (fresh)
   (define events (box '()))
   (define (record . e) (set-box! events (cons e (unbox events))) (void))
@@ -64,7 +64,7 @@
   (values (new (make-skia-dc-class renderer) [width 64] [height 48]) events))
 
 ; first-clip-point : dc-clip? -> any/c
-;;   Extracts the first command of the first stored clipping path.
+;   Extracts the first command of the first stored clipping path.
 (define (first-clip-point clip)
   (car (dc-clip-path-commands (car (dc-clip-paths clip)))))
 
@@ -73,8 +73,8 @@
 ;;;
 
 ; dc-compat-pure-tests : test-suite?
-;;   Collects the regression cases for dC compatibility contracts; recording renderer, no Skia
-;;   pixels.
+;   Collects the regression cases for dC compatibility contracts; recording renderer, no Skia
+;   pixels.
 (define dc-compat-pure-tests
   (test-suite
    "DC compatibility contracts; recording renderer, no Skia pixels"
@@ -228,5 +228,5 @@
      (send dc copy 0 0 1 1 2 2) (check-equal? (unbox e) '()) (send dc close))))
 
 ; dc-compat-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-compat-pure-test-count 36)

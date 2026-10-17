@@ -20,22 +20,22 @@
 ;;;
 
 ; check-matrix-close : any/c any/c -> void?
-;;   Compares projective matrix coefficients within native precision tolerance.
+;   Compares projective matrix coefficients within native precision tolerance.
 (define (check-matrix-close a b)
   (for ([x (in-vector (matrix4->vector a))] [y (in-vector (matrix4->vector b))]) (check-= x y 1e-5)))
 
 ; page : procedure? -> output-page?
-;;   Wraps a projective drawing in a fixed output page for audit comparisons.
+;   Wraps a projective drawing in a fixed output page for audit comparisons.
 (define (page f) (make-output-page 100 80 f))
 
 ; has-feature? : output-audit-report? symbol? symbol? -> boolean?
-;;   Finds a feature with the expected projective-output classification.
+;   Finds a feature with the expected projective-output classification.
 (define (has-feature? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature) (eq? (output-audit-event-status e) status))))
 
 ; projective-drawing : canvas? -> any
-;;   Draws the shared perspective-transformed scene for raster/vector behavior checks.
+;   Draws the shared perspective-transformed scene for raster/vector behavior checks.
 (define (projective-drawing c)
   (canvas-concat-matrix3! c (matrix3-perspective 1/32 0))
   (with-skia ([p (make-paint #:color 'red)]) (draw-rect c 16 16 32 32 p)))
@@ -45,8 +45,8 @@
 ;;;
 
 ; projective-native-tests : test-suite?
-;;   Collects the regression cases for general canvas matrices: native storage, lifetime, and
-;;   document policies.
+;   Collects the regression cases for general canvas matrices: native storage, lifetime, and
+;   document policies.
 (define projective-native-tests
   (test-suite "General canvas matrices: native storage, lifetime, and document policies"
    (test-case "row-major public data crosses the column-major ABI"

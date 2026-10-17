@@ -19,14 +19,17 @@
 ;;;
 
 (module+ test
+
   ; parts : hash?
-  ;;   Keeps the named intermediate paths used to explain the badge construction.
+  ;   Keeps the named intermediate paths used to explain the badge construction.
   (define parts (make-badge-parts))
+
   ; a : path?
-  ;;   Selects the disk operand for path-operation regression tests.
+  ;   Selects the disk operand for path-operation regression tests.
   (define a (hash-ref parts 'disk))
+
   ; b : path?
-  ;;   Selects the cross operand for path-operation regression tests.
+  ;   Selects the cross operand for path-operation regression tests.
   (define b (hash-ref parts 'cross))
   (test-case "union, intersection, difference, and xor obey set membership"
     (define both (path-intersect a b))

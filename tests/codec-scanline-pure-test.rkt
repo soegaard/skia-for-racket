@@ -22,12 +22,12 @@
 ;;;
 
 ; codec-scanline-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define codec-scanline-pure-test-count 32)
 
 ; layout : symbol? exact-nonnegative-integer? exact-nonnegative-integer? exact-nonnegative-integer?
 ; exact-nonnegative-integer? -> list?
-;;   Collects row-placement results for a requested scanline batch.
+;   Collects row-placement results for a requested scanline batch.
 (define (layout order height position request decoded)
   (call-with-values (lambda () (scanline-batch-layout 'test order height position request decoded))
     list))
@@ -37,7 +37,7 @@
 ;;;
 
 ; codec-scanline-pure-tests : test-suite?
-;;   Collects the regression cases for pure scanline contracts.
+;   Collects the regression cases for pure scanline contracts.
 (define codec-scanline-pure-tests
   (test-suite "0.76b pure scanline contracts"
    (test-case "positive scales round to C float"
@@ -145,7 +145,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-scanline-pure-tests))
   (printf "codec-scanline-pure: ~a cases, ~a failures\n" codec-scanline-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

@@ -23,11 +23,11 @@
 ;;;
 
 ; ptr : exact-nonnegative-integer? -> cpointer?
-;;   Makes a synthetic pointer token for resolver tests; it must never be dereferenced.
+;   Makes a synthetic pointer token for resolver tests; it must never be dereferenced.
 (define (ptr n) (cast n _uintptr _pointer))
 
 ; provider : [symbol? procedure?] -> gpu-provider?
-;;   Builds an always-current synthetic OpenGL provider with an injected symbol resolver.
+;   Builds an always-current synthetic OpenGL provider with an injected symbol resolver.
 (define (provider [name 'diagnostic-test] [resolver (lambda (_) (ptr 99))])
   (make-gpu-provider #:name name #:backend 'opengl #:key (gensym)
     #:current? (lambda () #t) #:call-as-current (lambda (thunk) (thunk))
@@ -35,7 +35,7 @@
 
 ; interface-double : procedure? [#:native? boolean? #:version string? #:assembled? boolean?
 ; #:callback? boolean?] -> any
-;;   Injects interface discovery results and records dispatch during a callback.
+;   Injects interface discovery results and records dispatch during a callback.
 (define (interface-double thunk #:native? [native? #t] #:version [version "4.5 Mesa"]
                            #:assembled? [assembled? #t] #:callback? [callback? #f])
   (define log (box '()))
@@ -54,7 +54,7 @@
     (thunk log)))
 
 ; with-context : symbol? procedure? -> any
-;;   Supplies a synthetic activated context for backend-specific diagnostic contracts.
+;   Supplies a synthetic activated context for backend-specific diagnostic contracts.
 (define (with-context backend thunk)
   (define on? (box #f))
   (define p (make-gpu-provider #:name 'diagnostic-domain #:backend backend #:key (gensym)
@@ -68,14 +68,14 @@
     (lambda () (unless (eq? (domain-state d) 'closed) (domain-close! d)))))
 
 ; collector-report : [symbol?] -> any
-;;   Builds a detached one-resource memory report with an explicit accounting scope.
+;   Builds a detached one-resource memory report with an explicit accounting scope.
 (define (collector-report [scope 'gpu-context-skia-resources])
   (define c (make-memory-collector 10 1024 #f #f))
   (collector-add! c 'numeric #"skia/gpu_resources/resource_1" #"size" #"bytes" 1024)
   (collector-finish c #:scope scope))
 
 ; gpu-diagnostics-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-diagnostics-pure-test-count 38)
 
 ;;;
@@ -83,7 +83,7 @@
 ;;;
 
 ; gpu-diagnostics-pure-tests : test-suite?
-;;   Collects the regression cases for gPU diagnostics: native-free contracts and ownership doubles.
+;   Collects the regression cases for gPU diagnostics: native-free contracts and ownership doubles.
 (define gpu-diagnostics-pure-tests
   (test-suite "GPU diagnostics: native-free contracts and ownership doubles"
     (test-case "known interface modes"
@@ -283,7 +283,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-diagnostics-pure-tests))
   (printf "gpu-diagnostics-pure: ~a cases, ~a failures\n" gpu-diagnostics-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

@@ -22,8 +22,8 @@
 ;;;
 
 ; gpu-performance-doctor! : hash? -> exact-integer?
-;;   Measures completed GPU workloads and release stress under validated options, publishing
-;;   attributable evidence.
+;   Measures completed GPU workloads and release stress under validated options, publishing
+;   attributable evidence.
 (define (gpu-performance-doctor! options)
   (define prefix (hash-ref options 'prefix)) (define backend (hash-ref options 'backend))
   (define config (hash-ref options 'config)) (define started? #f) (define failures #f)

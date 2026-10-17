@@ -11,18 +11,20 @@
 (require "gpu-native.rkt" "gpu-domain.rkt" "gpu-gl-interface.rkt"
          "graphics-trace-native.rkt")
 (provide gpu-diagnostics-dispatch/native)
+
 ; checked-pointer : symbol? gpu-domain? -> cpointer?
-;;   Detects native context abandonment and requests domain shutdown before any diagnostic query
-;;   proceeds.
+;   Detects native context abandonment and requests domain shutdown before any diagnostic query
+;   proceeds.
 (define (checked-pointer who domain)
   (define pointer (domain-pointer domain))
   (when (gr_direct_context_is_abandoned pointer)
     (domain-request-shutdown! domain 'native-abandoned)
     (error who "native GPU context is abandoned; retire the execution domain"))
   pointer)
+
 ; gpu-diagnostics-dispatch/native : symbol? gpu-domain? any/c ... -> any
-;;   Collects memory or GL interface evidence with live-stream guards and without implicit flush,
-;;   submission, or readback.
+;   Collects memory or GL interface evidence with live-stream guards and without implicit flush,
+;   submission, or readback.
 (define (gpu-diagnostics-dispatch/native operation domain . arguments)
   (case operation
     [(memory)

@@ -25,8 +25,8 @@
 (provide image->pict surface->pict picture->pict)
 
 ; bitmap->pict : (is-a?/c bitmap%) real? real? -> pict?
-;;   Scales a physical bitmap to logical pict dimensions while preserving the bitmap baseline
-;;   convention.
+;   Scales a physical bitmap to logical pict dimensions while preserving the bitmap baseline
+;   convention.
 (define (bitmap->pict bitmap logical-width logical-height)
   (define physical-width (send bitmap get-width))
   (define physical-height (send bitmap get-height))
@@ -39,8 +39,8 @@
                 (/ logical-height physical-height))))
 
 ; read-image-pixels : image? -> bytes?
-;;   Reads premultiplied pixels, converting tagged input to sRGB and preserving untagged numeric
-;;   samples.
+;   Reads premultiplied pixels, converting tagged input to sRGB and preserving untagged numeric
+;   samples.
 (define (read-image-pixels im)
   ;; Tagged input is rendered into owned sRGB. Untagged samples have no profile
   ;; interpretation to preserve, so their numerical RGBA values are copied.
@@ -53,7 +53,7 @@
     [else (image->rgba-bytes im #:premultiplied? #t)]))
 
 ; image->pict/geometry : symbol? image? integer? integer? real? real? -> pict?
-;;   Creates an independent bitmap pict after enforcing explicit CPU image residency.
+;   Creates an independent bitmap pict after enforcing explicit CPU image residency.
 (define (image->pict/geometry who im width height logical-width logical-height)
   ;; Metadata inspection happens only after the explicit CPU-residency gate.
   ;; The RGBA byte vector and its ARGB copy coexist only while this call builds
@@ -63,7 +63,7 @@
                 logical-width logical-height))
 
 ; image->pict : image? [#:backing-scale (and/c real? (>/c 0))] -> pict:pict?
-;;   Returns an ordinary Racket pict containing an eager copy of the CPU image.
+;   Returns an ordinary Racket pict containing an eager copy of the CPU image.
 (define (image->pict im #:backing-scale [backing-scale 1])
   (define who 'image->pict)
   (unless (image? im) (raise-argument-error who "image?" im))
@@ -81,7 +81,7 @@
   (image->pict/geometry who im width height logical-width logical-height))
 
 ; surface->pict : surface? [#:backing-scale (and/c real? (>/c 0))] -> pict:pict?
-;;   Returns a pict from an eager snapshot of the CPU surface's current pixels.
+;   Returns a pict from an eager snapshot of the CPU surface's current pixels.
 (define (surface->pict surface #:backing-scale [backing-scale 1])
   (define who 'surface->pict)
   (unless (surface? surface) (raise-argument-error who "surface?" surface))
@@ -93,7 +93,7 @@
 
 ; picture->pict : picture? [#:bounds (or/c #f (vector/c real? real? (and/c real? (>/c 0)) (and/c
 ;   real? (>/c 0))))] [#:raster-scale (and/c real? (>/c 0))] -> pict:pict?
-;;   Returns an ordinary pict by replaying picture once into a transparent CPU sRGB surface.
+;   Returns an ordinary pict by replaying picture once into a transparent CPU sRGB surface.
 (define (picture->pict picture #:bounds [requested-bounds #f] #:raster-scale [raster-scale 1])
   (define who 'picture->pict)
   (unless (picture? picture) (raise-argument-error who "picture?" picture))

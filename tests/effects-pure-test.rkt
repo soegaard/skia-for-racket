@@ -20,7 +20,7 @@
 ;;;
 
 ; effects-pure-tests : test-suite?
-;;   Collects the regression cases for effect validation without loading Skia.
+;   Collects the regression cases for effect validation without loading Skia.
 (define effects-pure-tests
   (test-suite
    "0.66 effect validation without loading Skia"

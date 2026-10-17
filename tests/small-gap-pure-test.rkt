@@ -22,22 +22,22 @@
 ;;;
 
 ; I : vector?
-;;   Provides valid identity coefficients before individual invalid-input mutations.
+;   Provides valid identity coefficients before individual invalid-input mutations.
 (define I '(1 0 0 0 1 0 0 0 1))
 
 ; bad-input : any/c -> void?
-;;   Checks that invalid matrix coefficients are rejected before native use.
+;   Checks that invalid matrix coefficients are rejected before native use.
 (define (bad-input v)
   (check-exn exn:fail:contract? (lambda () (xyz-d50-invert v)))
   (check-exn exn:fail:contract? (lambda () (xyz-d50-concat v I)))
   (check-exn exn:fail:contract? (lambda () (xyz-d50-concat I v))))
 
 ; replace-first : any/c -> vector?
-;;   Copies the identity fixture with its first coefficient replaced.
+;   Copies the identity fixture with its first coefficient replaced.
 (define (replace-first value) (cons value (cdr I)))
 
 ; small-gap-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define small-gap-pure-test-count 20)
 
 ;;;
@@ -45,7 +45,7 @@
 ;;;
 
 ; small-gap-pure-tests : test-suite?
-;;   Collects the regression cases for small-gap pure contracts.
+;   Collects the regression cases for small-gap pure contracts.
 (define small-gap-pure-tests
   (test-suite "small-gap pure contracts"
     (test-case "public helpers have exact ordinary arity"
@@ -101,7 +101,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests small-gap-pure-tests))
   (printf "small-gap-pure: ~a cases, ~a failures\n" small-gap-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

@@ -18,7 +18,7 @@
 ;;;
 
 ; encoded : bytes?
-;;   Contains the JPEG input bytes used by the scanline decoder.
+;   Contains the JPEG input bytes used by the scanline decoder.
 (define encoded
   (with-skia ([image (rgba-bytes->image 16 12 (make-bytes (* 16 12 4) 255))])
     (image->jpeg-bytes image #:quality 95)))

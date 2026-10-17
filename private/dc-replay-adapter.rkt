@@ -27,8 +27,8 @@
 ;;;
 
 ; dc-replay-mixin : class? -> class?
-;;   Routes racket/draw's private replay member identities through the DC's validated pen and brush
-;;   setters.
+;   Routes racket/draw's private replay member identities through the DC's validated pen and brush
+;   setters.
 (define (dc-replay-mixin %)
   (class %
     (super-new)
@@ -38,8 +38,8 @@
     (define/public (replay-set-brush! b) (send this set-brush b))))
 
 ; make-dc-style-lease : object? -> vector?
-;;   Creates weak pen/brush slots in that order and releases their locks when the owning DC is
-;;   collected.
+;   Creates weak pen/brush slots in that order and releases their locks when the owning DC is
+;   collected.
 (define (make-dc-style-lease dc)
   (define lease (vector #f #f))
   ;; Do not keep selected-object -> DC cycles alive through the finalizer.
@@ -47,13 +47,13 @@
   lease)
 
 ; selected : vector? (or/c 0 1) -> (or/c #f object?)
-;;   Resolves a live weak selection from pen slot zero or brush slot one.
+;   Resolves a live weak selection from pen slot zero or brush slot one.
 (define (selected lease slot)
   (define w (vector-ref lease slot)) (and w (weak-box-value w)))
 
 ; dc-style-select! : vector? (or/c 0 1) object? procedure? procedure? -> void?
-;;   Atomically validates and locks a replacement style, unlocks the previous selection, and commits
-;;   DC state.
+;   Atomically validates and locks a replacement style, unlocks the previous selection, and commits
+;   DC state.
 (define (dc-style-select! lease slot object validate commit)
   (call-as-atomic
    (lambda ()
@@ -67,7 +67,7 @@
   (void))
 
 ; dc-style-release! : vector? -> void?
-;;   Clears both weak selection slots and releases each still-live pen or brush lock.
+;   Clears both weak selection slots and releases each still-live pen or brush lock.
 (define (dc-style-release! lease)
   (call-as-atomic
    (lambda ()

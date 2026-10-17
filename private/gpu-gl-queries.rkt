@@ -18,8 +18,9 @@
 ;; Core desktop GL >=3.3; caller supplies THIS provider's procedure resolver.
 ;; Query functions deliberately reject unsupported storage, rather than guessing
 ;; from width/height/format supplied by the caller.
+
 ; make-gl-queries : any/c -> gl-queries?
-;;   Binds provider-resolved GL queries and pairs temporary binding changes with restoration.
+;   Binds provider-resolved GL queries and pairs temporary binding changes with restoration.
 (define (make-gl-queries resolve)
   (define (bind name type)
     (define p (resolve name))

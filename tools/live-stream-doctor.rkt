@@ -19,8 +19,8 @@
 ;;;
 
 ; generate : path-string? string? -> void?
-;;   Checks callback-based native stream support, saves stream and document evidence, and reports
-;;   service-thread activity.
+;   Checks callback-based native stream support, saves stream and document evidence, and reports
+;   service-thread activity.
 (define (generate directory token)
   (live-streams-check!) (make-directory* directory)
   (define (save name bytes)
@@ -82,11 +82,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each [("--directory") p "Fresh evidence directory" (set! directory p)]
                 [("--token") t "Run identity" (set! token t)])

@@ -20,13 +20,13 @@
 ;;;
 
 ; point-close? : (listof real?) (listof real?) -> boolean?
-;;   Compares equal-length point coordinates within a hundredth of a drawing unit.
+;   Compares equal-length point coordinates within a hundredth of a drawing unit.
 (define (point-close? a b)
   (and (= (length a) (length b)) (for/and ([x (in-list a)] [y (in-list b)]) (< (abs (- x y)) 0.01))))
 ;; Use the existing path segment snapshots for an independent endpoint oracle.
 
 ; last-xy : path? -> any/c
-;;   Returns the final point of the last raw path segment containing coordinates.
+;   Returns the final point of the last raw path segment containing coordinates.
 (define (last-xy p)
   (last (path-segment-points
          (last (filter (lambda (s) (pair? (path-segment-points s))) (path-segments p #:mode 'raw))))))
@@ -36,7 +36,7 @@
 ;;;
 
 ; geometry-completion-native-tests : test-suite?
-;;   Collects the regression cases for native path, region, rounded-rectangle and paint geometry.
+;   Collects the regression cases for native path, region, rounded-rectangle and paint geometry.
 (define geometry-completion-native-tests
   (test-suite
    "0.67 native path, region, rounded-rectangle and paint geometry"

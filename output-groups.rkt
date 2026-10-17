@@ -72,14 +72,15 @@
 ;; an unrelated recorder cannot acquire a backend from ambient dynamic state.
 
 ; enclosing-target : (parameter/c (or/c #f capture-target?))
-;;   Identifies the currently active output-group capture for checked nesting.
+;   Identifies the currently active output-group capture for checked nesting.
 (define enclosing-target (make-parameter #f))
+
 ; enclosing-children : (parameter/c (or/c #f box?))
-;;   Accumulates child reports in reverse capture order until the parent finishes.
+;   Accumulates child reports in reverse capture order until the parent finishes.
 (define enclosing-children (make-parameter #f))
 
 ; output-group-report->jsexpr : output-group-report? -> (and/c hash? immutable?)
-;;   Returns a detached JSON-compatible hash of the report.
+;   Returns a detached JSON-compatible hash of the report.
 (define (output-group-report->jsexpr report)
   (unless (output-group-report? report)
     (raise-argument-error 'output-group-report->jsexpr "output-group-report?" report))
@@ -98,7 +99,7 @@
           'captured_children (map output-group-report->jsexpr (output-group-report-children report))))
 
 ; reject-group! : output-group-report? -> none/c
-;;   Raises a policy exception carrying a group that was not replayed to its target.
+;   Raises a policy exception carrying a group that was not replayed to its target.
 (define (reject-group! report)
   (raise (exn:fail:output-group
           (format "draw-output-group: ~a (~a, ~a); no group was drawn to the destination"
@@ -110,8 +111,8 @@
 ;   any) [#:policy (or/c 'prefer-vector 'require-vector 'raster)] [#:padding (or/c real? list?)]
 ;   [#:scale (real-in 1/1024 1024)] [#:color-space (or/c #f color-space?)] [#:label (or/c #f
 ;   string?)] [#:raster-executor (or/c #f 'cpu output-raster-executor?)] -> output-group-report?
-;;   Captures draw with a borrowed recording canvas whose local origin is placed at x and y on the
-;;   destination.
+;   Captures draw with a borrowed recording canvas whose local origin is placed at x and y on the
+;   destination.
 (define (draw-output-group c x y width height draw
                            #:policy [policy 'prefer-vector]
                            #:padding [padding 0]

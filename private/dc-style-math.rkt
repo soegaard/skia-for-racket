@@ -23,24 +23,24 @@
 ;;;
 
 ; dc-pen-styles : (listof symbol?)
-;;   Lists accepted solid, transparent, highlight, dash, and legacy xor pen styles.
+;   Lists accepted solid, transparent, highlight, dash, and legacy xor pen styles.
 (define dc-pen-styles
   '(solid transparent xor hilite dot long-dash short-dash dot-dash
           xor-dot xor-long-dash xor-short-dash xor-dot-dash))
 
 ; dc-hatch-styles : (listof symbol?)
-;;   Lists the supported repeating line-hatch brush patterns.
+;   Lists the supported repeating line-hatch brush patterns.
 (define dc-hatch-styles
   '(horizontal-hatch vertical-hatch cross-hatch bdiagonal-hatch fdiagonal-hatch crossdiag-hatch))
 
 ; dc-brush-styles : (listof symbol?)
-;;   Combines the accepted ordinary brush modes with the supported hatch patterns.
+;   Combines the accepted ordinary brush modes with the supported hatch patterns.
 (define dc-brush-styles
   (append '(solid transparent opaque xor hilite panel) dc-hatch-styles))
 
 ; dc-dash-spec : symbol? real? [any/c] -> (values (listof real?) real?)
-;;   Returns alternating on/off dash lengths and phase; solid and legacy xor styles use an empty
-;;   dash list, while stippled pens retain their selected dash pattern.
+;   Returns alternating on/off dash lengths and phase; solid and legacy xor styles use an empty
+;   dash list, while stippled pens retain their selected dash pattern.
 (define (dc-dash-spec style width [stipple? #f])
   ;; Upstream 8.18 accepts the legacy xor-* names but renders them solid;
   ;; it does not implement bitwise XOR. Preserve that behavior, not the name.
@@ -61,8 +61,8 @@
 ;;;
 
 ; dc-inverse : symbol? vector? -> vector?
-;;   Inverts a checked affine matrix with an exact determinant calculation and rejects singular or
-;;   overflowing results.
+;   Inverts a checked affine matrix with an exact determinant calculation and rejects singular or
+;   overflowing results.
 (define (dc-inverse who m)
   (define a (dc-matrix who m))
   ;; Exact arithmetic avoids a binary64 determinant underflow producing a
@@ -78,8 +78,8 @@
                         (- (+ (* bb (vector-ref x 4)) (* dd (vector-ref x 5)))))))
 
 ; dc-style-local-matrix : vector? (or/c #f vector?) real? -> vector?
-;;   Maps source pixels into drawing-local coordinates, accounting for a brush transform and source
-;;   backing scale.
+;   Maps source pixels into drawing-local coordinates, accounting for a brush transform and source
+;   backing scale.
 (define (dc-style-local-matrix drawing brush-transform source-backing)
   ;; Drawing is in logical coordinates; both transforms share the destination
   ;; backing scale, so that factor cancels. Stipple coordinates are physical
@@ -94,7 +94,7 @@
   (dc-multiply base (vector (/ 1.0 b) 0 0 (/ 1.0 b) 0 0)))
 
 ; dc-axis-scales : vector? real? -> (values real? real?)
-;;   Returns the effective x/y row-norm scales multiplied by the explicit alignment scale.
+;   Returns the effective x/y row-norm scales multiplied by the explicit alignment scale.
 (define (dc-axis-scales m alignment)
   ;; These row norms match racket/draw's effective-scale calculation. They
   ;; remain positive for rotations, reflections and nonsingular shear.
@@ -105,8 +105,8 @@
 
 ; dc-alignment-functions : symbol? vector? real? real? symbol? -> (values procedure? procedure? real?
 ; real?)
-;;   Returns x/y snapping functions and logical stroke adjustments; smoothed drawing uses identity
-;;   functions and zero adjustment.
+;   Returns x/y snapping functions and logical stroke adjustments; smoothed drawing uses identity
+;   functions and zero adjustment.
 (define (dc-alignment-functions who m alignment width smoothing)
   (cond
     [(eq? smoothing 'smoothed) (values values values 0.0 0.0)]
@@ -129,8 +129,8 @@
 ;;;
 
 ; dc-hatch-lines : symbol? -> (listof vector?)
-;;   Returns x1/y1/x2/y2 segments for a 12-by-12 hatch tile, keeping crossings in one path for uniform
-;;   opacity.
+;   Returns x1/y1/x2/y2 segments for a 12-by-12 hatch tile, keeping crossings in one path for uniform
+;   opacity.
 (define (dc-hatch-lines style)
   ;; A 12x12 repeating tile, using racket/draw's line positions. Color and
   ;; opacity are applied by the renderer; crosses form one stroke, not two
@@ -144,8 +144,8 @@
     [else (raise-argument-error 'dc-hatch-lines "hatch brush style" style)]))
 
 ; dc-gradient-stops : symbol? list? exact-nonnegative-integer? -> list?
-;;   Validates and copies offset/color pairs, then stably sorts offsets so equal-position
-;;   discontinuities retain their order.
+;   Validates and copies offset/color pairs, then stably sorts offsets so equal-position
+;   discontinuities retain their order.
 (define (dc-gradient-stops who stops limit)
   ;; Input uses immutable RGBA vectors. Stable sort preserves a discontinuity
   ;; represented by adjacent equal-offset stops. Zero and one stop are valid.

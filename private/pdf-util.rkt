@@ -13,29 +13,30 @@
 
 ;; Page dimensions are points, NOT pixels: do not apply check-dimensions or
 ;; charge a width*height*4 raster to the byte limit for an otherwise vector page.
+
 ; pdf-page-dimension : symbol? real? -> inexact-real?
-;;   Checks a PDF page dimension from 1/1000 to 14400 points and converts it for native calls.
+;   Checks a PDF page dimension from 1/1000 to 14400 points and converts it for native calls.
 (define (pdf-page-dimension who v)
   (unless (and (real? v) (<= 1/1000 v 14400))
     (raise-argument-error who "finite real from 0.001 through 14400 PDF points" v))
   (exact->inexact v))
 
 ; pdf-raster-dpi : symbol? real? -> inexact-real?
-;;   Checks a raster fallback resolution from 1 to 9600 dots per inch.
+;   Checks a raster fallback resolution from 1 to 9600 dots per inch.
 (define (pdf-raster-dpi who v)
   (unless (and (real? v) (<= 1 v 9600))
     (raise-argument-error who "finite raster DPI from 1 through 9600" v))
   (exact->inexact v))
 
 ; pdf-encoding-quality : symbol? exact-integer? -> exact-integer?
-;;   Checks the PDF image quality range 0 through 101, where 101 requests lossless encoding.
+;   Checks the PDF image quality range 0 through 101, where 101 requests lossless encoding.
 (define (pdf-encoding-quality who v)
   (unless (and (exact-integer? v) (<= 0 v 101))
     (raise-argument-error who "exact integer from 0 through 101 (101 is lossless)" v))
   v)
 
 ; pdf-metadata-bytes : symbol? (listof string?) -> (listof bytes?)
-;;   Encodes NUL-free metadata in UTF-8 while enforcing the aggregate byte budget.
+;   Encodes NUL-free metadata in UTF-8 while enforcing the aggregate byte budget.
 (define (pdf-metadata-bytes who strings)
   (define fields
     (for/list ([s (in-list strings)])
@@ -48,14 +49,14 @@
   fields)
 
 ; leap-year? : exact-integer? -> boolean?
-;;   Applies the Gregorian century exception when validating PDF calendar dates.
+;   Applies the Gregorian century exception when validating PDF calendar dates.
 (define (leap-year? y)
   (and (zero? (modulo y 4))
        (or (not (zero? (modulo y 100))) (zero? (modulo y 400)))))
 
 ; pdf-date-time : symbol? (or/c #f date?) -> (or/c #f sk-pdf-datetime?)
-;;   Checks calendar fields and a whole-minute UTC offset, then prepares the native date record
-;;   whose fields are copied during document creation.
+;   Checks calendar fields and a whole-minute UTC offset, then prepares the native date record
+;   whose fields are copied during document creation.
 (define (pdf-date-time who d)
   (cond
     [(not d) #f]
@@ -81,8 +82,8 @@
                            (date-hour d) (date-minute d) (date-second d))]))
 
 ; pdf-output-path : symbol? path-string? symbol? -> path?
-;;   Resolves a NUL-free output path, requires an existing parent directory, and checks the
-;;   error-or-replace policy before rendering.
+;   Resolves a NUL-free output path, requires an existing parent directory, and checks the
+;   error-or-replace policy before rendering.
 (define (pdf-output-path who filename exists)
   (unless (path-string? filename)
     (raise-argument-error who "path-string?" filename))
@@ -101,8 +102,8 @@
   target)
 
 ; write-pdf-file-bytes! : symbol? bytes? path-string? symbol? -> void?
-;;   Publishes completed PDF bytes through a same-directory temporary file and atomic rename,
-;;   rechecking replacement policy and cleaning up on escape.
+;   Publishes completed PDF bytes through a same-directory temporary file and atomic rename,
+;   rechecking replacement policy and cleaning up on escape.
 (define (write-pdf-file-bytes! who bs filename exists)
   (unless (bytes? bs) (raise-argument-error who "bytes?" bs))
   (define target (pdf-output-path who filename exists))

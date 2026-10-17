@@ -22,7 +22,7 @@
 ;;;
 
 ; output-file : path-string?
-;;   Selects the destination used by this example's output.
+;   Selects the destination used by this example's output.
 (define output-file
   (command-line
    #:program "pict-bridge"
@@ -30,7 +30,7 @@
    filename))
 
 ; picture : pict?
-;;   Retains a pict whose copied bitmap outlives the closed Skia surface.
+;   Retains a pict whose copied bitmap outlives the closed Skia surface.
 (define picture
   (with-skia ([surface (make-surface 240 140 #:background 'white)]
               [blue (make-paint #:color 'blue #:antialias? #t)]
@@ -42,7 +42,7 @@
     (surface->pict surface #:backing-scale 2)))
 
 ; bitmap : (is-a?/c bitmap%)
-;;   Retains the Racket bitmap used by the interoperability example.
+;   Retains the Racket bitmap used by the interoperability example.
 (define bitmap (pict:pict->bitmap picture))
 (unless (send bitmap save-file output-file 'png)
   (error 'pict-bridge "could not write PNG: ~a" output-file))

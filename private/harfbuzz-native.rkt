@@ -20,26 +20,27 @@
          harfbuzz-native-library-path)
 
 ; harfbuzz-package-version : string?
-;;   Pins the HarfBuzzSharp package whose embedded HarfBuzz version and ABI this binding expects.
+;   Pins the HarfBuzzSharp package whose embedded HarfBuzz version and ABI this binding expects.
 (define harfbuzz-package-version "8.3.1.2")
+
 ; native-root : path?
-;;   Locates bundled platform-native libraries relative to this module rather than the process
-;;   working directory.
+;   Locates bundled platform-native libraries relative to this module rather than the process
+;   working directory.
 (define-runtime-path native-root "../native")
 
 ; harfbuzz-platform : -> (or/c #f string?)
-;;   Maps the interpreter's operating system and architecture to the supported native package
-;;   identifier.
+;   Maps the interpreter's operating system and architecture to the supported native package
+;   identifier.
 (define (harfbuzz-platform)
   (native-rid (system-type 'os) (system-type 'arch)))
 
 ; harfbuzz-filename : -> string?
-;;   Chooses the HarfBuzzSharp shared-library filename for the interpreter's operating system.
+;   Chooses the HarfBuzzSharp shared-library filename for the interpreter's operating system.
 (define (harfbuzz-filename)
   (native-library-name 'harfbuzz (system-type 'os)))
 
 ; linux-loader : promise?
-;;   Lazily resolves dlopen, dlclose, and dlerror in that order for isolated Linux HarfBuzz loading.
+;   Lazily resolves dlopen, dlclose, and dlerror in that order for isolated Linux HarfBuzz loading.
 (define linux-loader
   (delay/sync
     (vector (get-ffi-obj 'dlopen #f (_fun _path _int -> _pointer))
@@ -47,8 +48,8 @@
             (get-ffi-obj 'dlerror #f (_fun -> _string/utf-8)))))
 
 ; linux-library-candidates : any/c -> list?
-;;   Preserves versionless FFI search order across Racket library directories, loader names, and
-;;   absolute current-directory paths.
+;   Preserves versionless FFI search order across Racket library directories, loader names, and
+;   absolute current-directory paths.
 (define (linux-library-candidates candidate)
   ;; Preserve ffi-lib's default, versionless search: configured Racket library
   ;; directories, OS loader search, then the current directory. Explicit
@@ -70,8 +71,8 @@
       (path->string (path->complete-path name))))))
 
 ; load-harfbuzz-library : path-string? -> ffi-lib?
-;;   Loads HarfBuzz locally and, on Linux, uses deep binding to prevent incompatible GTK/Pango
-;;   symbol interposition.
+;   Loads HarfBuzz locally and, on Linux, uses deep binding to prevent incompatible GTK/Pango
+;   symbol interposition.
 (define (load-harfbuzz-library candidate)
   (cond
     [(eq? (system-type 'os*) 'linux)
@@ -116,8 +117,8 @@
     [else (ffi-lib candidate #:global? #f)]))
 
 ; hb-library : promise?
-;;   Selects an override, bundled, or system HarfBuzzSharp library and requires native HarfBuzz
-;;   version 8.3.1.
+;   Selects an override, bundled, or system HarfBuzzSharp library and requires native HarfBuzz
+;   version 8.3.1.
 (define hb-library
   (delay/sync
     (define override (getenv "RACKET_HARFBUZZ_LIBRARY"))
@@ -168,12 +169,13 @@
     found))
 
 ; hb-bindings : list?
-;;   Accumulates named shaping-symbol promises in reverse declaration order for a later complete
-;;   readiness check.
+;   Accumulates named shaping-symbol promises in reverse declaration order for a later complete
+;   readiness check.
 (define hb-bindings '())
+
 ; define-hb-native : syntax transformer
-;;   Declares a lazily resolved native procedure and registers its symbol for readiness and
-;;   inventory checks.
+;   Declares a lazily resolved native procedure and registers its symbol for readiness and
+;   inventory checks.
 (define-syntax-rule (define-hb-native name signature)
   (begin
     (provide name)
@@ -184,93 +186,119 @@
     (define (name . args) (apply (force delayed-procedure) args))))
 
 ; hb_version : (_fun _pointer _pointer _pointer -> _void) (FFI)
-;;   Calls the native hb_version entry point using the declared FFI layout.
+;   Calls the native hb_version entry point using the declared FFI layout.
 (define-hb-native hb_version (_fun _pointer _pointer _pointer -> _void))
+
 ; hb_blob_create : (_fun _bytes _uint32 _int _pointer _pointer -> _pointer) (FFI)
-;;   Calls the native hb_blob_create entry point using the declared FFI layout.
+;   Calls the native hb_blob_create entry point using the declared FFI layout.
 (define-hb-native hb_blob_create
   (_fun _bytes _uint32 _int _pointer _pointer -> _pointer))
+
 ; hb_blob_destroy : (_fun _pointer -> _void) (FFI)
-;;   Calls the native hb_blob_destroy entry point using the declared FFI layout.
+;   Calls the native hb_blob_destroy entry point using the declared FFI layout.
 (define-hb-native hb_blob_destroy (_fun _pointer -> _void))
+
 ; hb_face_create : (_fun _pointer _uint32 -> _pointer) (FFI)
-;;   Calls the native hb_face_create entry point using the declared FFI layout.
+;   Calls the native hb_face_create entry point using the declared FFI layout.
 (define-hb-native hb_face_create (_fun _pointer _uint32 -> _pointer))
+
 ; hb_face_destroy : (_fun _pointer -> _void) (FFI)
-;;   Calls the native hb_face_destroy entry point using the declared FFI layout.
+;   Calls the native hb_face_destroy entry point using the declared FFI layout.
 (define-hb-native hb_face_destroy (_fun _pointer -> _void))
+
 ; hb_face_set_upem : (_fun _pointer _uint32 -> _void) (FFI)
-;;   Calls the native hb_face_set_upem entry point using the declared FFI layout.
+;   Calls the native hb_face_set_upem entry point using the declared FFI layout.
 (define-hb-native hb_face_set_upem (_fun _pointer _uint32 -> _void))
+
 ; hb_font_create : (_fun _pointer -> _pointer) (FFI)
-;;   Calls the native hb_font_create entry point using the declared FFI layout.
+;   Calls the native hb_font_create entry point using the declared FFI layout.
 (define-hb-native hb_font_create (_fun _pointer -> _pointer))
+
 ; hb_font_destroy : (_fun _pointer -> _void) (FFI)
-;;   Calls the native hb_font_destroy entry point using the declared FFI layout.
+;   Calls the native hb_font_destroy entry point using the declared FFI layout.
 (define-hb-native hb_font_destroy (_fun _pointer -> _void))
+
 ; hb_font_set_scale : (_fun _pointer _int _int -> _void) (FFI)
-;;   Calls the native hb_font_set_scale entry point using the declared FFI layout.
+;   Calls the native hb_font_set_scale entry point using the declared FFI layout.
 (define-hb-native hb_font_set_scale (_fun _pointer _int _int -> _void))
+
 ; hb_ot_font_set_funcs : (_fun _pointer -> _void) (FFI)
-;;   Calls the native hb_ot_font_set_funcs entry point using the declared FFI layout.
+;   Calls the native hb_ot_font_set_funcs entry point using the declared FFI layout.
 (define-hb-native hb_ot_font_set_funcs (_fun _pointer -> _void))
+
 ; hb_buffer_create : (_fun -> _pointer) (FFI)
-;;   Calls the native hb_buffer_create entry point using the declared FFI layout.
+;   Calls the native hb_buffer_create entry point using the declared FFI layout.
 (define-hb-native hb_buffer_create (_fun -> _pointer))
+
 ; hb_buffer_destroy : (_fun _pointer -> _void) (FFI)
-;;   Calls the native hb_buffer_destroy entry point using the declared FFI layout.
+;   Calls the native hb_buffer_destroy entry point using the declared FFI layout.
 (define-hb-native hb_buffer_destroy (_fun _pointer -> _void))
+
 ; hb_buffer_add_utf8 : (_fun _pointer _bytes _int _uint32 _int -> _void) (FFI)
-;;   Calls the native hb_buffer_add_utf8 entry point using the declared FFI layout.
+;   Calls the native hb_buffer_add_utf8 entry point using the declared FFI layout.
 (define-hb-native hb_buffer_add_utf8
   (_fun _pointer _bytes _int _uint32 _int -> _void))
+
 ; hb_buffer_guess_segment_properties : (_fun _pointer -> _void) (FFI)
-;;   Calls the native hb_buffer_guess_segment_properties entry point using the declared FFI layout.
+;   Calls the native hb_buffer_guess_segment_properties entry point using the declared FFI layout.
 (define-hb-native hb_buffer_guess_segment_properties (_fun _pointer -> _void))
+
 ; hb_buffer_set_direction : (_fun _pointer _int -> _void) (FFI)
-;;   Calls the native hb_buffer_set_direction entry point using the declared FFI layout.
+;   Calls the native hb_buffer_set_direction entry point using the declared FFI layout.
 (define-hb-native hb_buffer_set_direction (_fun _pointer _int -> _void))
+
 ; hb_buffer_set_script : (_fun _pointer _uint32 -> _void) (FFI)
-;;   Calls the native hb_buffer_set_script entry point using the declared FFI layout.
+;   Calls the native hb_buffer_set_script entry point using the declared FFI layout.
 (define-hb-native hb_buffer_set_script (_fun _pointer _uint32 -> _void))
+
 ; hb_buffer_set_language : (_fun _pointer _pointer -> _void) (FFI)
-;;   Calls the native hb_buffer_set_language entry point using the declared FFI layout.
+;   Calls the native hb_buffer_set_language entry point using the declared FFI layout.
 (define-hb-native hb_buffer_set_language (_fun _pointer _pointer -> _void))
+
 ; hb_buffer_get_length : (_fun _pointer -> _uint32) (FFI)
-;;   Calls the native hb_buffer_get_length entry point using the declared FFI layout.
+;   Calls the native hb_buffer_get_length entry point using the declared FFI layout.
 (define-hb-native hb_buffer_get_length (_fun _pointer -> _uint32))
+
 ; hb_buffer_get_glyph_infos : (_fun _pointer _pointer -> _pointer) (FFI)
-;;   Calls the native hb_buffer_get_glyph_infos entry point using the declared FFI layout.
+;   Calls the native hb_buffer_get_glyph_infos entry point using the declared FFI layout.
 (define-hb-native hb_buffer_get_glyph_infos (_fun _pointer _pointer -> _pointer))
+
 ; hb_buffer_get_glyph_positions : (_fun _pointer _pointer -> _pointer) (FFI)
-;;   Calls the native hb_buffer_get_glyph_positions entry point using the declared FFI layout.
+;   Calls the native hb_buffer_get_glyph_positions entry point using the declared FFI layout.
 (define-hb-native hb_buffer_get_glyph_positions (_fun _pointer _pointer -> _pointer))
+
 ; hb_direction_from_string : (_fun _bytes _int -> _int) (FFI)
-;;   Calls the native hb_direction_from_string entry point using the declared FFI layout.
+;   Calls the native hb_direction_from_string entry point using the declared FFI layout.
 (define-hb-native hb_direction_from_string (_fun _bytes _int -> _int))
+
 ; hb_script_from_string : (_fun _bytes _int -> _uint32) (FFI)
-;;   Calls the native hb_script_from_string entry point using the declared FFI layout.
+;   Calls the native hb_script_from_string entry point using the declared FFI layout.
 (define-hb-native hb_script_from_string (_fun _bytes _int -> _uint32))
+
 ; hb_language_from_string : (_fun _bytes _int -> _pointer) (FFI)
-;;   Calls the native hb_language_from_string entry point using the declared FFI layout.
+;   Calls the native hb_language_from_string entry point using the declared FFI layout.
 (define-hb-native hb_language_from_string (_fun _bytes _int -> _pointer))
+
 ; hb_feature_from_string : (_fun _bytes _int _pointer -> _stdbool) (FFI)
-;;   Calls the native hb_feature_from_string entry point using the declared FFI layout.
+;   Calls the native hb_feature_from_string entry point using the declared FFI layout.
 (define-hb-native hb_feature_from_string (_fun _bytes _int _pointer -> _stdbool))
 ;; Borrowed default Unicode property provider; do not destroy it.
+
 ; hb_unicode_funcs_get_default : (_fun -> _pointer) (FFI)
-;;   Calls the native hb_unicode_funcs_get_default entry point using the declared FFI layout.
+;   Calls the native hb_unicode_funcs_get_default entry point using the declared FFI layout.
 (define-hb-native hb_unicode_funcs_get_default (_fun -> _pointer))
+
 ; hb_unicode_script : (_fun _pointer _uint32 -> _uint32) (FFI)
-;;   Calls the native hb_unicode_script entry point using the declared FFI layout.
+;   Calls the native hb_unicode_script entry point using the declared FFI layout.
 (define-hb-native hb_unicode_script (_fun _pointer _uint32 -> _uint32))
+
 ; hb_shape : (_fun _pointer _pointer _pointer _uint32 -> _void) (FFI)
-;;   Calls the native hb_shape entry point using the declared FFI layout.
+;   Calls the native hb_shape entry point using the declared FFI layout.
 (define-hb-native hb_shape (_fun _pointer _pointer _pointer _uint32 -> _void))
 
 ; hb-ready : promise?
-;;   Memoizes successful library/version validation and resolution of every required shaping entry
-;;   point.
+;   Memoizes successful library/version validation and resolution of every required shaping entry
+;   point.
 (define hb-ready
   (delay/sync
     (force hb-library)
@@ -279,18 +307,20 @@
     #t))
 
 ; harfbuzz-check! : -> void?
-;;   Loads the selected HarfBuzz library, verifies its native version, and resolves the required
-;;   shaping entry points.
+;   Loads the selected HarfBuzz library, verifies its native version, and resolves the required
+;   shaping entry points.
 (define (harfbuzz-check!) (force hb-ready) (void))
+
 ; harfbuzz-available? : -> boolean?
-;;   Reports whether library selection, version checks, and required shaping-symbol resolution
-;;   succeed.
+;   Reports whether library selection, version checks, and required shaping-symbol resolution
+;   succeed.
 (define (harfbuzz-available?)
   (with-handlers ([exn:fail? (lambda (_) #f)])
     (harfbuzz-check!) #t))
+
 ; harfbuzz-native-version : -> string?
-;;   Returns the loaded native HarfBuzz version as a dotted major/minor/micro string after
-;;   preflight, not the package version.
+;   Returns the loaded native HarfBuzz version as a dotted major/minor/micro string after
+;   preflight, not the package version.
 (define (harfbuzz-native-version)
   (harfbuzz-check!)
   (define major (malloc _uint32 'atomic))
@@ -299,8 +329,9 @@
   (hb_version major minor micro)
   (format "~a.~a.~a" (ptr-ref major _uint32)
           (ptr-ref minor _uint32) (ptr-ref micro _uint32)))
+
 ; harfbuzz-native-library-path : -> path-string?
-;;   Returns the selected HarfBuzz library request after preflight.
+;   Returns the selected HarfBuzz library request after preflight.
 (define (harfbuzz-native-library-path)
   (harfbuzz-check!)
   (cdr (force hb-library)))

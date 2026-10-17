@@ -37,7 +37,7 @@
 ;; allowed, while inversion reports an unavailable result with #f.
 
 ; component : symbol? real? -> real?
-;;   Validates a drawing scalar and rounds it to the native binary32 boundary.
+;   Validates a drawing scalar and rounds it to the native binary32 boundary.
 (define (component who x)
   (unless (and (real? x) (<= -3.402823e38 x 3.402823e38))
     (raise-argument-error who "finite real representable as a C float" x))
@@ -45,48 +45,50 @@
   (floating-point-bytes->real (real->floating-point-bytes x 4 #f) #f))
 
 ; checked : symbol? matrix? -> matrix?
-;;   Checks an affine value and attributes a type error to the calling operation.
+;   Checks an affine value and attributes a type error to the calling operation.
 (define (checked who m)
   (unless (matrix? m) (raise-argument-error who "matrix?" m))
   m)
 
 ; make-matrix : [real?] [real?] [real?] [real?] [real?] [real?] -> matrix?
-;;   Returns an affine matrix with the given coefficients.
+;   Returns an affine matrix with the given coefficients.
 (define (make-matrix [xx 1] [yx 0] [xy 0] [yy 1] [x0 0] [y0 0])
   (apply matrix-record
          (map (lambda (v) (component 'make-matrix v)) (list xx yx xy yy x0 y0))))
 
 ; matrix-identity : matrix?
-;;   Leaves points and vectors unchanged under affine mapping.
+;   Leaves points and vectors unchanged under affine mapping.
 (define matrix-identity (make-matrix))
 
 ; matrix->vector : matrix? -> (vectorof real?)
-;;   Returns an immutable six-element vector in the order xx, yx, xy, yy, x0, y0.
+;   Returns an immutable six-element vector in the order xx, yx, xy, yy, x0, y0.
 (define (matrix->vector m)
   (checked 'matrix->vector m)
   (vector-immutable (matrix-xx m) (matrix-yx m) (matrix-xy m)
                     (matrix-yy m) (matrix-x0 m) (matrix-y0 m)))
 
 ; vector->matrix : (vector/c real? real? real? real? real? real?) -> matrix?
-;;   Returns a matrix from the six coefficients in v, applying the same checks and
-;;   rounding as make-matrix.
+;   Returns a matrix from the six coefficients in v, applying the same checks and
+;   rounding as make-matrix.
 (define (vector->matrix v)
   (unless (and (vector? v) (= (vector-length v) 6))
     (raise-argument-error 'vector->matrix "vector of six affine coefficients" v))
   (apply make-matrix (vector->list v)))
 
 ; matrix-translate : real? real? -> matrix?
-;;   Returns a translation matrix.
+;   Returns a translation matrix.
 (define (matrix-translate x y) (make-matrix 1 0 0 1 x y))
+
 ; matrix-scale : real? [real?] -> matrix?
-;;   Returns an axis-aligned scaling matrix.
+;   Returns an axis-aligned scaling matrix.
 (define (matrix-scale x [y x]) (make-matrix x 0 0 y 0 0))
+
 ; matrix-skew : real? real? -> matrix?
-;;   Returns a shear matrix with horizontal factor x and vertical factor y.
+;   Returns a shear matrix with horizontal factor x and vertical factor y.
 (define (matrix-skew x y) (make-matrix 1 y x 1 0 0))
 
 ; matrix-rotate : real? -> matrix?
-;;   Returns a rotation about the origin.
+;   Returns a rotation about the origin.
 (define (matrix-rotate radians)
   (define angle (component 'matrix-rotate radians))
   (define c (cos angle))
@@ -94,7 +96,7 @@
   (make-matrix c s (- s) c))
 
 ; matrix-rotate-degrees : real? -> matrix?
-;;   Like matrix-rotate, with the angle measured in degrees.
+;   Like matrix-rotate, with the angle measured in degrees.
 (define (matrix-rotate-degrees degrees)
   (define angle (component 'matrix-rotate-degrees degrees))
   ;; Reduce first, and keep quarter turns exact. Avoid needless pi-rounding.
@@ -106,7 +108,7 @@
         [else (matrix-rotate (* reduced (/ pi 180.0)))]))
 
 ; multiply : matrix? matrix? -> matrix?
-;;   Forms A times B, so the resulting mapping applies B before A.
+;   Forms A times B, so the resulting mapping applies B before A.
 (define (multiply a b)
   (make-matrix
    (+ (* (matrix-xx a) (matrix-xx b)) (* (matrix-xy a) (matrix-yx b)))
@@ -117,14 +119,14 @@
    (+ (* (matrix-yx a) (matrix-x0 b)) (* (matrix-yy a) (matrix-y0 b)) (matrix-y0 a))))
 
 ; matrix-compose : matrix? ... -> matrix?
-;;   Returns the product of the supplied matrices in argument order.
+;   Returns the product of the supplied matrices in argument order.
 (define (matrix-compose . matrices)
   (for ([m (in-list matrices)]) (checked 'matrix-compose m))
   ;; A*B maps with B first, then A. canvas-concat! uses current*new.
   (for/fold ([out matrix-identity]) ([m (in-list matrices)]) (multiply out m)))
 
 ; matrix-invert : matrix? -> (or/c matrix? #f)
-;;   Returns the inverse of m, rounded to the matrix representation.
+;   Returns the inverse of m, rounded to the matrix representation.
 (define (matrix-invert m)
   (checked 'matrix-invert m)
   (define a (matrix-xx m))
@@ -152,7 +154,7 @@
           (apply make-matrix values))]))
 
 ; map-xy : symbol? matrix? real? real? boolean? -> (values real? real?)
-;;   Maps two coordinates, optionally adding translation, and checks the results.
+;   Maps two coordinates, optionally adding translation, and checks the results.
 (define (map-xy who m x y translate?)
   (checked who m)
   (define fx (component who x))
@@ -163,16 +165,17 @@
                             (if translate? (matrix-y0 m) 0)))))
 
 ; matrix-map-point : matrix? real? real? -> (values real? real?)
-;;   Returns the transformed point as two values, including the translation terms.
+;   Returns the transformed point as two values, including the translation terms.
 (define (matrix-map-point m x y) (map-xy 'matrix-map-point m x y #t))
+
 ; matrix-map-vector : matrix? real? real? -> (values real? real?)
-;;   Returns the transformed displacement as two values, omitting translation.
+;   Returns the transformed displacement as two values, omitting translation.
 (define (matrix-map-vector m x y) (map-xy 'matrix-map-vector m x y #f))
 
 ; matrix-map-rect : matrix? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) -> (values
 ;   real? real? real? real?)
-;;   Returns the axis-aligned bounding rectangle of the four transformed corners, as left, top,
-;;   width, and height.
+;   Returns the axis-aligned bounding rectangle of the four transformed corners, as left, top,
+;   width, and height.
 (define (matrix-map-rect m x y width height)
   (checked 'matrix-map-rect m)
   (define w (component 'matrix-map-rect width))

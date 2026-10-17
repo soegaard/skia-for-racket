@@ -17,10 +17,11 @@
 ;;;
 
 ; none : any/c -> boolean?
-;;   Models an input state in which no key is held.
+;   Models an input state in which no key is held.
 (define (none _) #f)
+
 ; keys : any/c ... -> procedure?
-;;   Builds a held-key predicate for deterministic simulation tests.
+;   Builds a held-key predicate for deterministic simulation tests.
 (define (keys . names) (lambda (name) (and (member name names) #t)))
 ;;;
 ;;; Regression Checks

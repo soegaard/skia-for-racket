@@ -23,7 +23,7 @@
 ;;;
 
 ; header : [#:version exact-integer? #:kind exact-integer? #:bounds list?] -> bytes?
-;;   Builds a synthetic serialized-picture header for version, kind, and bounds rejection tests.
+;   Builds a synthetic serialized-picture header for version, kind, and bounds rejection tests.
 (define (header #:version [version 103] #:kind [kind 1] #:bounds [bounds '(0 0 20 10)])
   (bytes-append #"skiapict" (integer->integer-bytes version 4 #f (system-big-endian?))
     (apply bytes-append
@@ -31,13 +31,13 @@
                 (bytes kind)))
 
 ; temporary-directory : procedure? -> any
-;;   Scopes an isolated destination directory for serialization validation.
+;   Scopes an isolated destination directory for serialization validation.
 (define (temporary-directory proc)
   (define dir (make-temporary-file "skia-picture-pure-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
 
 ; fake-picture : symbol? -> any/c
-;;   Constructs a synthetic picture resource for wrapper validation without decoding native bytes.
+;   Constructs a synthetic picture resource for wrapper validation without decoding native bytes.
 (define (fake-picture who)
   (audit-allocate who 'picture (lambda () (gensym 'picture))))
 
@@ -46,8 +46,8 @@
 ;;;
 
 ; picture-pure-tests : test-suite?
-;;   Collects the regression cases for persistent pictures: bounded framing, file publication, and
-;;   conservative policy.
+;   Collects the regression cases for persistent pictures: bounded framing, file publication, and
+;   conservative policy.
 (define picture-pure-tests
   (test-suite "Persistent pictures: bounded framing, file publication, and conservative policy"
    (test-case "the standard native header records version and cull bounds"

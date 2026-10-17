@@ -25,13 +25,15 @@
 ;;;
 
 ; initializers : (listof procedure?)
-;;   Collects lazy native binding installers until the reviewed Skia library is initialized.
+;   Collects lazy native binding installers until the reviewed Skia library is initialized.
 (define initializers '())
+
 ; native-symbols : (listof symbol?)
-;;   Records required native entry-point names for readiness diagnostics.
+;   Records required native entry-point names for readiness diagnostics.
 (define native-symbols '())
+
 ; define-raw : syntax (define-raw name ffi-type)
-;;   Declares a private native slot and queues its library-specific initializer and inventory name.
+;   Declares a private native slot and queues its library-specific initializer and inventory name.
 (define-syntax-rule (define-raw name type)
   (begin
     (define name #f)
@@ -112,169 +114,217 @@
 ;;   remain live through document creation.
 
 ; sk_version_get_milestone : (_fun -> _int) (FFI)
-;;   Reads the native milestone for the pre-layout ABI compatibility check.
+;   Reads the native milestone for the pre-layout ABI compatibility check.
 (define-raw sk_version_get_milestone (_fun -> _int))
+
 ; sk_version_get_increment : (_fun -> _int) (FFI)
-;;   Reads the native increment for the pre-layout ABI compatibility check.
+;   Reads the native increment for the pre-layout ABI compatibility check.
 (define-raw sk_version_get_increment (_fun -> _int))
+
 ; sk_managedstream_set_procs : (_fun _read-procs -> _void) (FFI)
-;;   Installs the process-wide input callback table, whose closures remain rooted after
-;;   initialization.
+;   Installs the process-wide input callback table, whose closures remain rooted after
+;   initialization.
 (define-raw sk_managedstream_set_procs (_fun _read-procs -> _void))
+
 ; sk_managedwstream_set_procs : (_fun _write-procs -> _void) (FFI)
-;;   Installs the process-wide output callback table used by managed sinks.
+;   Installs the process-wide output callback table used by managed sinks.
 (define-raw sk_managedwstream_set_procs (_fun _write-procs -> _void))
+
 ; sk_managedstream_new : (_fun #:blocking? #t _pointer -> _pointer) (FFI)
-;;   Creates a managed input stream carrying a null live-operation context or a registered
-;;   incremental-input context.
+;   Creates a managed input stream carrying a null live-operation context or a registered
+;   incremental-input context.
 (define-raw sk_managedstream_new (_fun #:blocking? #t _pointer -> _pointer))
+
 ; sk_managedstream_destroy : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Destroys a managed input stream and invokes its registered destruction callback.
+;   Destroys a managed input stream and invokes its registered destruction callback.
 (define-raw sk_managedstream_destroy (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_managedwstream_new : (_fun #:blocking? #t _pointer -> _pointer) (FFI)
-;;   Creates a managed output stream backed by the active operation's borrowed Racket port.
+;   Creates a managed output stream backed by the active operation's borrowed Racket port.
 (define-raw sk_managedwstream_new (_fun #:blocking? #t _pointer -> _pointer))
+
 ; sk_managedwstream_destroy : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Destroys a managed output stream after its last native write and teardown callback.
+;   Destroys a managed output stream after its last native write and teardown callback.
 (define-raw sk_managedwstream_destroy (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_stream_read : (_fun #:blocking? #t _pointer _pointer _size -> _size) (FFI)
-;;   Reads or skips requested bytes through managed input callbacks, returning the count consumed.
+;   Reads or skips requested bytes through managed input callbacks, returning the count consumed.
 (define-raw sk_stream_read (_fun #:blocking? #t _pointer _pointer _size -> _size))
+
 ; sk_stream_seek : (_fun #:blocking? #t _pointer _size -> _stdbool) (FFI)
-;;   Requests an absolute position within the declared managed input extent.
+;   Requests an absolute position within the declared managed input extent.
 (define-raw sk_stream_seek (_fun #:blocking? #t _pointer _size -> _stdbool))
+
 ; sk_wstream_write : (_fun #:blocking? #t _pointer _pointer _size -> _stdbool) (FFI)
-;;   Publishes bytes through the output callbacks and reports whether the write succeeded.
+;   Publishes bytes through the output callbacks and reports whether the write succeeded.
 (define-raw sk_wstream_write (_fun #:blocking? #t _pointer _pointer _size -> _stdbool))
+
 ; sk_wstream_flush : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Requests the sink's flush callback; borrowed Racket output ports are intentionally not flushed
-;;   here.
+;   Requests the sink's flush callback; borrowed Racket output ports are intentionally not flushed
+;   here.
 (define-raw sk_wstream_flush (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_codec_new_from_stream : (_fun #:blocking? #t _pointer _pointer -> _pointer) (FFI)
-;;   Constructs a codec and consumes the input stream even when codec creation fails, returning a
-;;   native result code through the output pointer.
+;   Constructs a codec and consumes the input stream even when codec creation fails, returning a
+;   native result code through the output pointer.
 (define-raw sk_codec_new_from_stream (_fun #:blocking? #t _pointer _pointer -> _pointer))
+
 ; sk_codec_get_info : (_fun #:blocking? #t _pointer _pointer -> _void) (FFI)
-;;   Copies codec dimensions, format, and a color-space reference into worker-owned image-info
-;;   storage.
+;   Copies codec dimensions, format, and a color-space reference into worker-owned image-info
+;   storage.
 (define-raw sk_codec_get_info (_fun #:blocking? #t _pointer _pointer -> _void))
+
 ; sk_codec_get_origin : (_fun #:blocking? #t _pointer -> _int) (FFI)
-;;   Reads the encoded orientation used to validate or normalize decoded pixel coordinates.
+;   Reads the encoded orientation used to validate or normalize decoded pixel coordinates.
 (define-raw sk_codec_get_origin (_fun #:blocking? #t _pointer -> _int))
+
 ; sk_codec_get_pixels : (_fun #:blocking? #t _pointer _pointer _pointer _size _pointer -> _int)
 ;   (FFI)
-;;   Decodes into caller-owned pixels with the supplied image-info and row stride, returning the
-;;   native decode status.
+;   Decodes into caller-owned pixels with the supplied image-info and row stride, returning the
+;   native decode status.
 (define-raw sk_codec_get_pixels
   (_fun #:blocking? #t _pointer _pointer _pointer _size _pointer -> _int))
+
 ; sk_codec_destroy : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Releases a decoder and the managed input it owns after decoding completes or fails.
+;   Releases a decoder and the managed input it owns after decoding completes or fails.
 (define-raw sk_codec_destroy (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_colorspace_unref : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Releases a color-space reference obtained while preparing decoded image metadata.
+;   Releases a color-space reference obtained while preparing decoded image metadata.
 (define-raw sk_colorspace_unref (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_data_new_uninitialized : (_fun #:blocking? #t _size -> _pointer) (FFI)
-;;   Allocates owned native byte storage for a bounded pixel destination.
+;   Allocates owned native byte storage for a bounded pixel destination.
 (define-raw sk_data_new_uninitialized (_fun #:blocking? #t _size -> _pointer))
+
 ; sk_data_get_data : (_fun #:blocking? #t _pointer -> _pointer) (FFI)
-;;   Borrows the data object's storage pointer for synchronous pixel access.
+;   Borrows the data object's storage pointer for synchronous pixel access.
 (define-raw sk_data_get_data (_fun #:blocking? #t _pointer -> _pointer))
+
 ; sk_data_unref : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Releases native data storage after dependent pixel copying is complete.
+;   Releases native data storage after dependent pixel copying is complete.
 (define-raw sk_data_unref (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_image_new_raster_copy : (_fun #:blocking? #t _pointer _pointer _size -> _pointer) (FFI)
-;;   Creates an independent image by copying the supplied pixel storage and row layout.
+;   Creates an independent image by copying the supplied pixel storage and row layout.
 (define-raw sk_image_new_raster_copy (_fun #:blocking? #t _pointer _pointer _size -> _pointer))
+
 ; sk_image_unref : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Releases the independent native image reference retained by a worker or lease.
+;   Releases the independent native image reference retained by a worker or lease.
 (define-raw sk_image_unref (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_image_peek_pixels : (_fun #:blocking? #t _pointer _pointer -> _stdbool) (FFI)
-;;   Borrows an image's raster pixels through a pixmap descriptor while the image remains live.
+;   Borrows an image's raster pixels through a pixmap descriptor while the image remains live.
 (define-raw sk_image_peek_pixels (_fun #:blocking? #t _pointer _pointer -> _stdbool))
+
 ; sk_pixmap_new : (_fun #:blocking? #t -> _pointer) (FFI)
-;;   Allocates a temporary descriptor for raster pixels borrowed from an image.
+;   Allocates a temporary descriptor for raster pixels borrowed from an image.
 (define-raw sk_pixmap_new (_fun #:blocking? #t -> _pointer))
+
 ; sk_pixmap_destructor : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Releases a temporary pixmap descriptor without owning the image pixels it describes.
+;   Releases a temporary pixmap descriptor without owning the image pixels it describes.
 (define-raw sk_pixmap_destructor (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_pngencoder_encode : (_fun #:blocking? #t _pointer _pointer _pointer -> _stdbool) (FFI)
-;;   Encodes the borrowed pixmap as PNG into the managed sink with checked compression options.
+;   Encodes the borrowed pixmap as PNG into the managed sink with checked compression options.
 (define-raw sk_pngencoder_encode (_fun #:blocking? #t _pointer _pointer _pointer -> _stdbool))
+
 ; sk_jpegencoder_encode : (_fun #:blocking? #t _pointer _pointer _pointer -> _stdbool) (FFI)
-;;   Encodes the borrowed pixmap as JPEG into the managed sink with checked quality and alpha
-;;   options.
+;   Encodes the borrowed pixmap as JPEG into the managed sink with checked quality and alpha
+;   options.
 (define-raw sk_jpegencoder_encode (_fun #:blocking? #t _pointer _pointer _pointer -> _stdbool))
+
 ; sk_webpencoder_encode : (_fun #:blocking? #t _pointer _pointer _pointer -> _stdbool) (FFI)
-;;   Encodes the borrowed pixmap as WebP into the managed sink with checked compression and quality
-;;   options.
+;   Encodes the borrowed pixmap as WebP into the managed sink with checked compression and quality
+;   options.
 (define-raw sk_webpencoder_encode (_fun #:blocking? #t _pointer _pointer _pointer -> _stdbool))
+
 ; sk_document_create_pdf_from_stream_with_metadata : (_fun #:blocking? #t _pointer _pointer ->
 ;   _pointer) (FFI)
-;;   Creates an owned PDF document borrowing the output stream and copying the supplied metadata.
+;   Creates an owned PDF document borrowing the output stream and copying the supplied metadata.
 (define-raw sk_document_create_pdf_from_stream_with_metadata
   (_fun #:blocking? #t _pointer _pointer -> _pointer))
+
 ; sk_document_begin_page : (_fun #:blocking? #t _pointer _float _float _pointer -> _pointer) (FFI)
-;;   Begins a PDF page and borrows its canvas until page completion.
+;   Begins a PDF page and borrows its canvas until page completion.
 (define-raw sk_document_begin_page (_fun #:blocking? #t _pointer _float _float _pointer -> _pointer))
+
 ; sk_document_end_page : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Finishes the active PDF page before another page or document finalization.
+;   Finishes the active PDF page before another page or document finalization.
 (define-raw sk_document_end_page (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_document_close : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Finalizes a successful document, allowing final output callbacks before its reference is
-;;   released.
+;   Finalizes a successful document, allowing final output callbacks before its reference is
+;   released.
 (define-raw sk_document_close (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_document_abort : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Aborts an unsuccessful document without claiming the partially published output is complete.
+;   Aborts an unsuccessful document without claiming the partially published output is complete.
 (define-raw sk_document_abort (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_document_unref : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Releases the document after close or abort has completed.
+;   Releases the document after close or abort has completed.
 (define-raw sk_document_unref (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_svgcanvas_create_with_stream : (_fun #:blocking? #t _pointer _pointer -> _pointer) (FFI)
-;;   Creates an owned SVG canvas for native bounds and a borrowed managed output stream.
+;   Creates an owned SVG canvas for native bounds and a borrowed managed output stream.
 (define-raw sk_svgcanvas_create_with_stream (_fun #:blocking? #t _pointer _pointer -> _pointer))
+
 ; sk_canvas_destroy : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Destroys the owned SVG canvas, emitting its closing XML before the stream is destroyed.
+;   Destroys the owned SVG canvas, emitting its closing XML before the stream is destroyed.
 (define-raw sk_canvas_destroy (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_paint_new : (_fun #:blocking? #t -> _pointer) (FFI)
-;;   Allocates the acceptance harness's temporary rectangle paint.
+;   Allocates the acceptance harness's temporary rectangle paint.
 (define-raw sk_paint_new (_fun #:blocking? #t -> _pointer))
+
 ; sk_paint_delete : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Deletes the acceptance harness's paint after its drawing commands complete.
+;   Deletes the acceptance harness's paint after its drawing commands complete.
 (define-raw sk_paint_delete (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_paint_set_color : (_fun #:blocking? #t _pointer _uint32 -> _void) (FFI)
-;;   Sets the harness paint's packed ARGB color.
+;   Sets the harness paint's packed ARGB color.
 (define-raw sk_paint_set_color (_fun #:blocking? #t _pointer _uint32 -> _void))
+
 ; sk_canvas_draw_rect : (_fun #:blocking? #t _pointer _pointer _pointer -> _void) (FFI)
-;;   Draws the harness rectangle using borrowed bounds and paint.
+;   Draws the harness rectangle using borrowed bounds and paint.
 (define-raw sk_canvas_draw_rect (_fun #:blocking? #t _pointer _pointer _pointer -> _void))
 
 ; sk_colorspace_ref : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Retains a color-space reference independently of the metadata object that supplied it.
+;   Retains a color-space reference independently of the metadata object that supplied it.
 (define-raw sk_colorspace_ref (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_image_make_raster_image : (_fun #:blocking? #t _pointer -> _pointer) (FFI)
-;;   Acquires a CPU raster image reference suitable for worker use outside the public borrow scope.
+;   Acquires a CPU raster image reference suitable for worker use outside the public borrow scope.
 (define-raw sk_image_make_raster_image (_fun #:blocking? #t _pointer -> _pointer))
+
 ; sk_picture_ref : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Retains a picture for an independent worker lease.
+;   Retains a picture for an independent worker lease.
 (define-raw sk_picture_ref (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_picture_unref : (_fun #:blocking? #t _pointer -> _void) (FFI)
-;;   Releases a retained or newly deserialized picture reference.
+;   Releases a retained or newly deserialized picture reference.
 (define-raw sk_picture_unref (_fun #:blocking? #t _pointer -> _void))
+
 ; sk_picture_serialize_to_stream : (_fun #:blocking? #t _pointer _pointer -> _void) (FFI)
-;;   Serializes the immutable picture into the borrowed managed output stream.
+;   Serializes the immutable picture into the borrowed managed output stream.
 (define-raw sk_picture_serialize_to_stream (_fun #:blocking? #t _pointer _pointer -> _void))
+
 ; sk_picture_deserialize_from_stream : (_fun #:blocking? #t _pointer -> _pointer) (FFI)
-;;   Deserializes a trusted picture while borrowing the input stream; the caller still destroys that
-;;   stream.
+;   Deserializes a trusted picture while borrowing the input stream; the caller still destroys that
+;   stream.
 (define-raw sk_picture_deserialize_from_stream (_fun #:blocking? #t _pointer -> _pointer))
+
 ; sk_stream_peek : (_fun #:blocking? #t _pointer _pointer _size -> _size) (FFI)
-;;   Copies a bounded input prefix without advancing the stream, for picture header validation.
+;   Copies a bounded input prefix without advancing the stream, for picture header validation.
 (define-raw sk_stream_peek (_fun #:blocking? #t _pointer _pointer _size -> _size))
+
 ; sk_canvas_draw_picture : (_fun #:blocking? #t _pointer _pointer _pointer _pointer -> _void) (FFI)
-;;   Replays a retained picture into a borrowed document canvas with optional matrix and paint.
+;   Replays a retained picture into a borrowed document canvas with optional matrix and paint.
 (define-raw sk_canvas_draw_picture (_fun #:blocking? #t _pointer _pointer _pointer _pointer -> _void))
+
 ; sk_wstream_bytes_written : (_fun #:blocking? #t _pointer -> _size) (FFI)
-;;   Reads the native sink's published byte count for write verification and output diagnostics.
+;   Reads the native sink's published byte count for write verification and output diagnostics.
 (define-raw sk_wstream_bytes_written (_fun #:blocking? #t _pointer -> _size))
 
 ;;;
@@ -282,58 +332,72 @@
 ;;;
 
 ; dispatch-managed-callback : procedure? -> any/c
-;;   Dispatches callbacks through the live-operation service, but handles memory-only incremental
-;;   streams directly when no live operation is active.
+;   Dispatches callbacks through the live-operation service, but handles memory-only incremental
+;   streams directly when no live operation is active.
 (define (dispatch-managed-callback thunk)
   (if (zero? (active-operation-count)) (thunk) (dispatch-callback thunk)))
+
 ; _read-cb : ctype?
-;;   Describes a managed read/peek callback: stream, context, destination, and byte count to bytes
-;;   consumed.
+;   Describes a managed read/peek callback: stream, context, destination, and byte count to bytes
+;   consumed.
 (define _read-cb
   (_fun #:async-apply dispatch-managed-callback _pointer _pointer _pointer _size -> _size))
+
 ; _bool-cb : ctype?
-;;   Describes a managed stream/context callback returning a native boolean.
+;   Describes a managed stream/context callback returning a native boolean.
 (define _bool-cb (_fun #:async-apply dispatch-managed-callback _pointer _pointer -> _stdbool))
+
 ; _size-cb : ctype?
-;;   Describes a managed stream/context callback returning a native size or position.
+;   Describes a managed stream/context callback returning a native size or position.
 (define _size-cb (_fun #:async-apply dispatch-managed-callback _pointer _pointer -> _size))
+
 ; _seek-cb : ctype?
-;;   Describes absolute-position callbacks using a native size_t offset.
+;   Describes absolute-position callbacks using a native size_t offset.
 (define _seek-cb (_fun #:async-apply dispatch-managed-callback _pointer _pointer _size -> _stdbool))
+
 ; _move-cb : ctype?
-;;   Describes relative-position callbacks using a signed native long displacement.
+;   Describes relative-position callbacks using a signed native long displacement.
 (define _move-cb (_fun #:async-apply dispatch-managed-callback _pointer _pointer _long -> _stdbool))
+
 ; _clone-cb : ctype?
-;;   Describes stream duplication/fork callbacks returning a native pointer or null.
+;   Describes stream duplication/fork callbacks returning a native pointer or null.
 (define _clone-cb (_fun #:async-apply dispatch-managed-callback _pointer _pointer -> _pointer))
+
 ; _void-cb : ctype?
-;;   Describes stream destruction and flush callbacks with no native result.
+;   Describes stream destruction and flush callbacks with no native result.
 (define _void-cb (_fun #:async-apply dispatch-managed-callback _pointer _pointer -> _void))
+
 ; _write-cb : ctype?
-;;   Describes a managed write callback receiving source bytes and returning success.
+;   Describes a managed write callback receiving source bytes and returning success.
 (define _write-cb
   (_fun #:async-apply dispatch-managed-callback _pointer _pointer _pointer _size -> _stdbool))
+
 ; current-output-transform : (parameter/c procedure?)
-;;   Transforms copied native output chunks on the service thread, for example when rewriting an SVG
-;;   root.
+;   Transforms copied native output chunks on the service thread, for example when rewriting an SVG
+;   root.
 (define current-output-transform (make-parameter values))
 (provide current-output-transform)
+
 ; callback-roots : (listof procedure?)
-;;   Keeps all installed Racket callback closures reachable for the process-wide native callback
-;;   tables.
+;   Keeps all installed Racket callback closures reachable for the process-wide native callback
+;   tables.
 (define callback-roots '())
+
 ; callback-pointers : (listof cpointer?)
-;;   Retains converted FFI callback pointers alongside their rooted procedures.
+;   Retains converted FFI callback pointers alongside their rooted procedures.
 (define callback-pointers '())
+
 ; callback-tables : (or/c #f list?)
-;;   Retains the installed input/output callback records after one-time initialization.
+;   Retains the installed input/output callback records after one-time initialization.
 (define callback-tables #f)
+
 ; library : (or/c #f ffi-lib?)
-;;   Retains the successfully initialized pinned native library and acts as its readiness marker.
+;   Retains the successfully initialized pinned native library and acts as its readiness marker.
 (define library #f)
+
 ; cb : ctype? any/c procedure? [any/c] -> cpointer?
-;;   Roots and converts a guarded callback, routing non-null incremental-input contexts to the
-;;   memory-only callback dispatcher.
+;   Roots and converts a guarded callback, routing non-null incremental-input contexts to the
+;   memory-only callback dispatcher.
 (define (cb type fallback proc [input-kind #f])
   (define ordinary (guarded-callback fallback proc))
   (define wrapped
@@ -345,16 +409,18 @@
   (set! callback-roots (cons wrapped callback-roots))
   (set! callback-pointers (cons pointer callback-pointers))
   pointer)
+
 ; remaining : operation? -> exact-nonnegative-integer?
-;;   Returns declared unread bytes, or one byte beyond the remaining logical budget to detect
-;;   oversized undeclared input.
+;   Returns declared unread bytes, or one byte beyond the remaining logical budget to detect
+;   oversized undeclared input.
 (define (remaining j)
   (if (operation-length j)
       (- (operation-length j) (operation-position j))
       (add1 (- (operation-limit j) (operation-position j)))))
+
 ; read-chunk : operation? exact-nonnegative-integer? boolean? -> (values bytes? boolean?)
-;;   Reads or peeks a bounded binary chunk, waiting without spinning on an already-peeked prefix and
-;;   returning an EOF flag.
+;   Reads or peeks a bounded binary chunk, waiting without spinning on an already-peeked prefix and
+;   returning an EOF flag.
 (define (read-chunk j n peek?)
   (define buffer (make-bytes n))
   (let loop ([at 0])
@@ -378,10 +444,11 @@
                            (operation-input j)))
           (loop at)]
          [else (loop (+ at got))])])) )
+
 ; read-callback : operation? cpointer? any/c any/c exact-nonnegative-integer? ->
 ;   exact-nonnegative-integer?
-;;   Copies or skips bounded input chunks and advances the relative cursor, rejecting early EOF
-;;   against a declared length.
+;   Copies or skips bounded input chunks and advances the relative cursor, rejecting early EOF
+;   against a declared length.
 (define (read-callback j _stream _context destination n)
   (operation-note! 'reads)
   (let loop ([total 0])
@@ -400,9 +467,10 @@
        (when (and eof? (operation-length j) (< (operation-position j) (operation-length j)))
          (error 'live-ffi "input ended before declared length"))
        (if eof? (+ total got) (loop (+ total got)))])))
+
 ; peek-callback : operation? cpointer? any/c any/c exact-nonnegative-integer? ->
 ;   exact-nonnegative-integer?
-;;   Copies a bounded input prefix without advancing the cursor and checks the logical byte budget.
+;   Copies a bounded input prefix without advancing the cursor and checks the logical byte budget.
 (define (peek-callback j _stream _context destination n)
   (operation-note! 'peeks)
   (check-cancel! j)
@@ -417,9 +485,10 @@
      (when (positive? got) (memcpy destination bytes got))
      (when (and (zero? got) eof?) (set-operation-eof?! j #t))
      got]))
+
 ; seek-callback : operation? cpointer? any/c exact-nonnegative-integer? -> boolean?
-;;   Seeks within the declared input extent and verifies the underlying port reached base plus
-;;   offset.
+;   Seeks within the declared input extent and verifies the underlying port reached base plus
+;   offset.
 (define (seek-callback j _stream _context offset)
   (check-cancel! j)
   (and (operation-seekable? j)
@@ -432,9 +501,10 @@
          (set-operation-eof?! j #f)
          (operation-note! 'seeks)
          #t)))
+
 ; write-callback : operation? cpointer? any/c cpointer? exact-nonnegative-integer? -> boolean?
-;;   Copies, optionally transforms, and completely publishes bounded native output chunks while
-;;   preserving cancellation and published-byte accounting.
+;   Copies, optionally transforms, and completely publishes bounded native output chunks while
+;   preserving cancellation and published-byte accounting.
 (define (write-callback j _stream _context source n)
   (operation-note! 'writes)
   (check-cancel! j)
@@ -466,8 +536,8 @@
 ;;;
 
 ; initialize-native! : path-string? -> void?
-;;   Checks 64-bit Racket CS and pinned ABI layouts, then claims and installs process-wide
-;;   managed-stream callbacks exactly once.
+;   Checks 64-bit Racket CS and pinned ABI layouts, then claims and installs process-wide
+;   managed-stream callbacks exactly once.
 (define (initialize-native! path)
   (unless (and (eq? (system-type 'vm) 'chez-scheme)
                (os-thread-enabled?)
@@ -524,13 +594,14 @@
   (void))
 
 ; checked-ready : -> void?
-;;   Rejects native operation attempts before callback and library initialization succeeds.
+;   Rejects native operation attempts before callback and library initialization succeeds.
 (define (checked-ready)
   (unless library (error 'live-ffi "initialize-native! must succeed first")))
+
 ; checked-result : vector? hash? exact-nonnegative-integer? exact-nonnegative-integer? -> (values
 ;   vector? hash? exact-nonnegative-integer? exact-nonnegative-integer?)
-;;   Requires the worker's success tag before passing result, notes, input position, and written
-;;   count to its caller.
+;   Requires the worker's success tag before passing result, notes, input position, and written
+;   count to its caller.
 (define (checked-result answer stats read written)
   (unless (and (vector? answer) (eq? (vector-ref answer 0) 'ok))
     (error 'live-ffi "native operation rejected input or allocation: ~s" answer))
@@ -542,8 +613,8 @@
 ; native-copy : input-port? output-port? [#:limit exact-positive-integer?] [#:cancel-evt any/c]
 ;   [#:finish procedure?] -> (values vector? hash? exact-nonnegative-integer?
 ;   exact-nonnegative-integer?)
-;;   Exercises managed input/output copying in the acceptance harness with bounded scratch storage
-;;   and normal service cleanup.
+;   Exercises managed input/output copying in the acceptance harness with bounded scratch storage
+;   and normal service cleanup.
 (define (native-copy in out #:limit [limit (* 16 1024 1024)]
                      #:cancel-evt [cancel #f] #:finish [finish void])
   (checked-ready)
@@ -566,11 +637,12 @@
         (vector (if okay 'ok 'native-failure)))
       #:input in #:output out #:limit limit #:cancel-evt cancel #:finish finish))
    checked-result))
+
 ; native-seek-copy : input-port? output-port? exact-nonnegative-integer? exact-nonnegative-integer?
 ;   [#:limit exact-positive-integer?] -> (values vector? hash? exact-nonnegative-integer?
 ;   exact-nonnegative-integer?)
-;;   Exercises a checked native seek followed by managed copying for the retained acceptance
-;;   harness.
+;   Exercises a checked native seek followed by managed copying for the retained acceptance
+;   harness.
 (define (native-seek-copy in out length offset #:limit [limit (* 16 1024 1024)])
   (checked-ready)
   (unless (and (exact-nonnegative-integer? offset) (<= offset length))
@@ -594,11 +666,12 @@
         (vector (if okay 'ok 'native-failure)))
       #:input in #:output out #:length length #:seekable? #t #:limit limit))
    checked-result))
+
 ; native-decode : input-port? [#:limit exact-positive-integer?] [#:length any/c] [#:seekable?
 ;   boolean?] [#:cancel-evt any/c] -> (values vector? hash? exact-nonnegative-integer?
 ;   exact-nonnegative-integer?)
-;;   Probes managed-stream decoding to copied premultiplied RGBA pixels, accepting only top-left
-;;   orientation in this test-only path.
+;   Probes managed-stream decoding to copied premultiplied RGBA pixels, accepting only top-left
+;   orientation in this test-only path.
 (define (native-decode in #:limit [limit (* 16 1024 1024)] #:length [length #f]
                        #:seekable? [seekable? #f] #:cancel-evt [cancel #f])
   (checked-ready)
@@ -641,11 +714,12 @@
         answer)
       #:input in #:limit limit #:length length #:seekable? seekable? #:cancel-evt cancel))
    checked-result))
+
 ; native-encode : bytes? exact-positive-integer? exact-positive-integer? output-port? [#:format
 ;   symbol?] [#:limit exact-positive-integer?] [#:cancel-evt any/c] -> (values vector? hash?
 ;   exact-nonnegative-integer? exact-nonnegative-integer?)
-;;   Probes PNG, JPEG, or WebP encoding of a copied unpremultiplied RGBA image through managed
-;;   output.
+;   Probes PNG, JPEG, or WebP encoding of a copied unpremultiplied RGBA image through managed
+;   output.
 (define (native-encode bytes width height out #:format [format 'png]
                        #:limit [limit (* 16 1024 1024)] #:cancel-evt [cancel #f])
   (checked-ready)
@@ -679,10 +753,11 @@
         (vector (if okay 'ok 'native-encode-failure)))
       #:output out #:limit limit #:cancel-evt cancel))
    checked-result))
+
 ; native-document : output-port? symbol? [#:limit exact-positive-integer?] [#:cancel-evt any/c] ->
 ;   (values vector? hash? exact-nonnegative-integer? exact-nonnegative-integer?)
-;;   Renders the acceptance harness's fixed rectangle into PDF or SVG while recording finalization
-;;   callback evidence.
+;   Renders the acceptance harness's fixed rectangle into PDF or SVG while recording finalization
+;   callback evidence.
 (define (native-document out format #:limit [limit (* 16 1024 1024)] #:cancel-evt [cancel #f])
   (checked-ready)
   (unless (memq format '(pdf svg)) (error 'native-document "expected pdf or svg"))
@@ -737,23 +812,27 @@
 ;; OS worker. Leases are retained through its last call, then released by the
 ;; service-owned finish hook. Default probe operations above remain available
 ;; only for the retained acceptance harness.
+
 ; make-raster-reference : cpointer? -> native-reference?
-;;   Acquires an independent CPU raster image reference before dispatching an immutable image to a
-;;   native worker.
+;   Acquires an independent CPU raster image reference before dispatching an immutable image to a
+;   native worker.
 (define (make-raster-reference pointer)
   (make-native-reference (sk_image_make_raster_image pointer) sk_image_unref))
+
 ; make-picture-reference : cpointer? -> native-reference?
-;;   Retains an independent picture reference for worker use beyond the caller's borrow scope.
+;   Retains an independent picture reference for worker use beyond the caller's borrow scope.
 (define (make-picture-reference pointer)
   (sk_picture_ref pointer)
   (make-native-reference pointer sk_picture_unref))
+
 ; native-output-count : cpointer? -> exact-nonnegative-integer?
-;;   Reads the byte position of an exclusively pinned native output sink.
+;   Reads the byte position of an exclusively pinned native output sink.
 (define (native-output-count pointer) (sk_wstream_bytes_written pointer))
+
 ; native-output-write! : cpointer? bytes? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ;   exact-nonnegative-integer?
-;;   Writes a checked byte slice to a pinned native sink, verifying its byte-count advance and
-;;   reporting possible partial output on failure.
+;   Writes a checked byte slice to a pinned native sink, verifying its byte-count advance and
+;   reporting possible partial output on failure.
 (define (native-output-write! pointer bytes start end)
   ;; This sink is called on the Racket service thread. It never invokes user
   ;; code or managed streams: pointer is an exclusively pinned file/memory sink.
@@ -770,8 +849,8 @@
 ; native-encode-image : native-reference? output-port? symbol? real? exact-integer? exact-integer?
 ;   exact-integer? boolean? exact-positive-integer? any/c procedure? -> (values vector? hash?
 ;   exact-nonnegative-integer? exact-nonnegative-integer?)
-;;   Encodes a retained CPU image with validated format options; the service finish hook releases
-;;   leases after all native calls end.
+;   Encodes a retained CPU image with validated format options; the service finish hook releases
+;   leases after all native calls end.
 (define (native-encode-image ref out format quality compression downsample alpha lossless?
                              limit cancel finish)
   (checked-ready)
@@ -797,10 +876,11 @@
         (vector (if okay 'ok 'native-encode-failure)))
       #:output out #:limit limit #:cancel-evt cancel #:finish finish))
    checked-result))
+
 ; native-write-picture : native-reference? output-port? exact-positive-integer? any/c procedure? ->
 ;   (values vector? hash? exact-nonnegative-integer? exact-nonnegative-integer?)
-;;   Serializes a retained picture through managed output, requiring nonempty native output before
-;;   reporting success.
+;   Serializes a retained picture through managed output, requiring nonempty native output before
+;   reporting success.
 (define (native-write-picture ref out limit cancel finish)
   (checked-ready)
   (define pointer (reference-pointer ref))
@@ -821,8 +901,8 @@
 
 ; native-decode-image : input-port? any/c boolean? exact-positive-integer? any/c procedure?
 ;   procedure? -> (values vector? hash? exact-nonnegative-integer? exact-nonnegative-integer?)
-;;   Decodes to premultiplied RGBA, normalizes encoded orientation on the service thread, and
-;;   returns a retained independent raster image.
+;   Decodes to premultiplied RGBA, normalizes encoded orientation on the service thread, and
+;   returns a retained independent raster image.
 (define (native-decode-image in length seekable? limit cancel normalize finish)
   (checked-ready)
   (define info (make-info #f 0 0 0 0))
@@ -875,10 +955,11 @@
       #:input in #:length length #:seekable? seekable?
       #:limit limit #:cancel-evt cancel #:finish finish))
    checked-result))
+
 ; native-load-picture : input-port? any/c boolean? exact-positive-integer? any/c procedure?
 ;   procedure? -> (values vector? hash? exact-nonnegative-integer? exact-nonnegative-integer?)
-;;   Checks the SKP header on the service thread before native deserialization and returns a
-;;   retained picture without transferring the borrowed input stream.
+;   Checks the SKP header on the service thread before native deserialization and returns a
+;   retained picture without transferring the borrowed input stream.
 (define (native-load-picture in length seekable? limit cancel check-header finish)
   (checked-ready)
   (define header (malloc 29 'atomic-interior))
@@ -911,11 +992,12 @@
       #:input in #:length length #:seekable? seekable?
       #:limit limit #:cancel-evt cancel #:finish finish))
    checked-result))
+
 ; native-write-pages : (listof native-reference?) list? output-port? symbol? real?
 ;   exact-positive-integer? any/c procedure? -> (values vector? hash? exact-nonnegative-integer?
 ;   exact-nonnegative-integer?)
-;;   Replays retained pictures into PDF pages or a single SVG canvas, pairing references and sizes
-;;   in page order and finalizing before cleanup.
+;   Replays retained pictures into PDF pages or a single SVG canvas, pairing references and sizes
+;   in page order and finalizing before cleanup.
 (define (native-write-pages refs sizes out format dpi limit cancel finish)
   (checked-ready)
   (define pointers (map reference-pointer refs))
@@ -962,9 +1044,10 @@
 
 ;; Private retained-memory sources share the process-global provider with live
 ;; ports. Their non-null context selects only bounded, nonblocking memory work.
+
 ; make-incremental-source/native : incremental-input? -> cpointer?
-;;   Registers retained incremental input and constructs its managed stream, undoing registration if
-;;   native construction fails.
+;   Registers retained incremental input and constructs its managed stream, undoing registration if
+;   native construction fails.
 (define (make-incremental-source/native input)
   (checked-ready)
   (define context (incremental-source-register! input))

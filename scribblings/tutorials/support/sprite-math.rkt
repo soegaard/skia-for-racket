@@ -22,34 +22,40 @@
 ;;;
 
 ; fixed-step : real?
-;;   Sets the simulation interval to one 120th of a second.
+;   Sets the simulation interval to one 120th of a second.
 (define fixed-step (/ 1.0 120))
+
 ; cell-size : exact-integer?
-;;   Sets the square artwork dimensions in atlas pixels, excluding the gutter.
+;   Sets the square artwork dimensions in atlas pixels, excluding the gutter.
 (define cell-size 48)
+
 ; cell-gap : exact-integer?
-;;   Sets the transparent gutter on each side of an atlas cell in pixels.
+;   Sets the transparent gutter on each side of an atlas cell in pixels.
 (define cell-gap 4)
+
 ; cell-pitch : real?
-;;   Adds both gutters to the artwork size to obtain the atlas cell spacing.
+;   Adds both gutters to the artwork size to obtain the atlas cell spacing.
 (define cell-pitch (+ cell-size (* 2 cell-gap)))
+
 ; atlas-columns : exact-integer?
-;;   Sets the number of cells in each atlas row.
+;   Sets the number of cells in each atlas row.
 (define atlas-columns 4)
+
 ; atlas-width : real?
-;;   Specifies atlas width in the drawing's local coordinate units.
+;   Specifies atlas width in the drawing's local coordinate units.
 (define atlas-width (* atlas-columns cell-pitch))
+
 ; sprite-anchor : list?
-;;   Centers atlas transforms on the cell's x and y midpoint.
+;   Centers atlas transforms on the cell's x and y midpoint.
 (define sprite-anchor (list (/ cell-size 2) (/ cell-size 2)))
 
 ; atlas-height : exact-nonnegative-integer? -> real?
-;;   Computes the atlas height including cell gutters and a partial final row.
+;   Computes the atlas height including cell gutters and a partial final row.
 (define (atlas-height count)
   (* cell-pitch (quotient (+ count (sub1 atlas-columns)) atlas-columns)))
 
 ; sprite-source : exact-nonnegative-integer? -> list?
-;;   Returns the cell's x, y, width, and height in row-major atlas order.
+;   Returns the cell's x, y, width, and height in row-major atlas order.
 (define (sprite-source index)
   (unless (exact-nonnegative-integer? index)
     (raise-argument-error 'sprite-source "exact-nonnegative-integer?" index))
@@ -59,15 +65,16 @@
 
 ;; Return the number of fixed simulation steps and the fractional remainder.
 ;; Discard elapsed time beyond 0.1 seconds: do not catch up minutes after a stall.
+
 ; advance-clock : any/c real? -> (values exact-nonnegative-integer? real?)
-;;   Returns bounded fixed-step catch-up and the fractional time remainder.
+;   Returns bounded fixed-step catch-up and the fractional time remainder.
 (define (advance-clock remainder seconds)
   (define total (+ remainder (min 0.1 (max 0 seconds))))
   (define steps (min 12 (inexact->exact (floor (/ total fixed-step)))))
   (values steps (max 0.0 (- total (* steps fixed-step)))))
 
 ; fit-viewport : real? real? real? real? -> (values real? real? real?)
-;;   Returns a uniform scale and centered offsets for aspect-preserving letterboxing.
+;   Returns a uniform scale and centered offsets for aspect-preserving letterboxing.
 (define (fit-viewport width height scene-width scene-height)
   (define scale (min (/ width scene-width) (/ height scene-height)))
   (values scale

@@ -20,18 +20,18 @@
 ;;;
 
 ; bad : (-> any) -> void?
-;;   Requires exn:fail? for the deliberately invalid operation.
+;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail? thunk))
 
 ; info : symbol? [any/c] -> image-info?
-;;   Builds small storage metadata with an appropriate default alpha interpretation.
+;   Builds small storage metadata with an appropriate default alpha interpretation.
 (define (info color [alpha #f])
   (make-image-info 3 2 #:color-type color
                    #:alpha-type
     (or alpha (if (memq color '(rgb-888x rgb-565 gray-8)) 'opaque 'premul))))
 
 ; layout : image-info? [any/c] -> list?
-;;   Collects validated stride, row, and allocation sizes for detached storage metadata.
+;   Collects validated stride, row, and allocation sizes for detached storage metadata.
 (define (layout i [rb #f])
   (call-with-values (lambda () (image-info-storage-layout i #:row-bytes rb)) list))
 
@@ -40,7 +40,7 @@
 ;;;
 
 ; integer-pixel-pure-tests : test-suite?
-;;   Collects the regression cases for image information and integer samples (pure).
+;   Collects the regression cases for image information and integer samples (pure).
 (define integer-pixel-pure-tests
   (test-suite
    "Image information and integer samples (pure)"

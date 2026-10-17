@@ -20,38 +20,39 @@
 ;;;
 
 ; codec-scanline-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define codec-scanline-native-test-count 47) ; regenerated from actual test forms
 
 ; W : exact-positive-integer?
-;;   Aliases the fixture width used to calculate packed RGBA row offsets.
+;   Aliases the fixture width used to calculate packed RGBA row offsets.
 (define W scanline-fixture-width)
+
 ; H : exact-positive-integer?
-;;   Aliases the fixture height used by cursor and batch-boundary checks.
+;   Aliases the fixture height used by cursor and batch-boundary checks.
 (define H scanline-fixture-height)
 
 ; bytes-slice : exact-nonnegative-integer? exact-nonnegative-integer? -> bytes?
-;;   Selects complete logical RGBA rows from the expected fixture image.
+;   Selects complete logical RGBA rows from the expected fixture image.
 (define (bytes-slice y count) (subbytes (scanline-fixture-rgba) (* y W 4) (* (+ y count) W 4)))
 
 ; whole : bytes? -> bytes?
-;;   Decodes an entire image without origin normalization as the scanline comparison oracle.
+;   Decodes an entire image without origin normalization as the scanline comparison oracle.
 (define (whole bytes)
   (with-skia ([codec (codec-from-bytes bytes)] [image (codec->image codec #:normalize-origin? #f)])
     (image->rgba-bytes image)))
 
 ; with-bmp : procedure? [#:top-down? boolean?] -> any
-;;   Scopes a BMP scanline decoder around a callback and releases it afterward.
+;   Scopes a BMP scanline decoder around a callback and releases it afterward.
 (define (with-bmp proc #:top-down? [td? #f])
   (with-skia ([s (codec-scanline-from-bytes (scanline-fixture-bmp #:top-down? td?))]) (proc s)))
 
 ; batch-rgba : scanline-batch? -> bytes?
-;;   Converts a detached batch to canonical RGBA through a temporary raster buffer.
+;   Converts a detached batch to canonical RGBA through a temporary raster buffer.
 (define (batch-rgba batch)
   (with-skia ([b (scanline-batch->raster-buffer batch)]) (raster-buffer->rgba-bytes b)))
 
 ; with-input-file : bytes? (path? -> any) -> any
-;;   Writes a temporary BMP fixture and removes it even when the callback fails.
+;   Writes a temporary BMP fixture and removes it even when the callback fails.
 (define (with-input-file bytes proc)
   (define path (make-temporary-file "skia-scanlines-~a.bmp"))
   (dynamic-wind
@@ -61,7 +62,7 @@
     (lambda () (delete-file path))))
 
 ; other-thread-error : (-> any) -> void?
-;;   Requires a worker-thread ownership error within a bounded wait.
+;   Requires a worker-thread ownership error within a bounded wait.
 (define (other-thread-error thunk)
   (define answer (make-channel))
   (define worker
@@ -75,7 +76,7 @@
 ;;;
 
 ; codec-scanline-native-tests : test-suite?
-;;   Collects the regression cases for native scanline decoding and cursor ownership.
+;   Collects the regression cases for native scanline decoding and cursor ownership.
 (define codec-scanline-native-tests
   (test-suite "0.76b native scanline decoding and cursor ownership"
     (test-case "session is an ordinary owned resource"
@@ -347,7 +348,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-scanline-native-tests))
   (printf "codec-scanline-native: ~a cases, ~a failures\n" codec-scanline-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

@@ -33,25 +33,28 @@
 ;;   counters survive.
 
 ; signature : bytes?
-;;   Identifies the eight-byte PNG header before enabling complete-chunk exposure.
+;   Identifies the eight-byte PNG header before enabling complete-chunk exposure.
 (define signature #"\211PNG\r\n\32\n")
+
 ; make-incremental-input : exact-positive-integer? -> incremental-input?
-;;   Creates empty retained input with a bounded capacity and initial eight-byte header boundary.
+;   Creates empty retained input with a bounded capacity and initial eight-byte header boundary.
 (define (make-incremental-input limit)
   (unless (and (exact-positive-integer? limit) (<= limit #x7fffffff))
     (raise-argument-error 'make-incremental-input "positive 31-bit byte limit" limit))
   (make-input #"" 0 0 #f 'unknown 8 limit #f 0 0))
+
 ; incremental-input-slice : incremental-input? exact-nonnegative-integer? exact-nonnegative-integer?
 ;   -> bytes?
-;;   Copies a checked start-inclusive/end-exclusive range of retained encoded input.
+;   Copies a checked start-inclusive/end-exclusive range of retained encoded input.
 (define (incremental-input-slice input start end)
   (unless (and (exact-nonnegative-integer? start) (exact-nonnegative-integer? end)
                (<= start end (incremental-input-size input)))
     (error 'incremental-input-slice "invalid retained-input range"))
   (subbytes (incremental-input-storage input) start end))
+
 ; frame! : incremental-input? -> void?
-;;   Exposes complete PNG chunks, or the entire sealed tail, so native reads never see partial live
-;;   chunks.
+;   Exposes complete PNG chunks, or the entire sealed tail, so native reads never see partial live
+;   chunks.
 (define (frame! input)
   (define data (incremental-input-storage input))
   (define size (incremental-input-size input))
@@ -81,10 +84,11 @@
      ;; audited promise. Their incremental mode can still be attempted on a
      ;; sealed input and must return native success, without a decode fallback.
      (set-incremental-input-visible! input 0)]))
+
 ; incremental-input-append! : incremental-input? bytes? boolean? [exact-positive-integer?] ->
 ;   exact-nonnegative-integer?
-;;   Copies a new chunk, checks aggregate limits before mutation, and updates the decoder-visible
-;;   boundary.
+;   Copies a new chunk, checks aggregate limits before mutation, and updates the decoder-visible
+;   boundary.
 (define (incremental-input-append! input data final? [limit #x7fffffff])
   (unless (bytes? data) (raise-argument-error 'codec-incremental-feed! "bytes?" data))
   (unless (boolean? final?) (raise-argument-error 'codec-incremental-feed! "boolean?" final?))
@@ -107,9 +111,10 @@
   (set-incremental-input-final?! input final?)
   (frame! input)
   (bytes-length data))
+
 ; incremental-input-discard! : incremental-input? -> void?
-;;   Releases retained bytes after native streams are destroyed, preserving logical diagnostic
-;;   counters.
+;   Releases retained bytes after native streams are destroyed, preserving logical diagnostic
+;   counters.
 (define (incremental-input-discard! input)
   ;; Logical counters survive for detached diagnostics; no later read is legal
   ;; after the owning codec and all its native streams have been destroyed.

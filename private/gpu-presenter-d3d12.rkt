@@ -21,12 +21,14 @@
 (provide make-d3d12-presentation-adapter)
 ;; Explicit test-only capture: D3D12 CopyTextureRegion + READBACK heap, not a
 ;; Skia surface read. Never installed by the production GUI/presenter factory.
+
 ; current-dxgi-capture-hook : parameter?
-;;   Provides an optional diagnostic receiver for explicitly captured DXGI frame pixels.
+;   Provides an optional diagnostic receiver for explicitly captured DXGI frame pixels.
 (define current-dxgi-capture-hook (make-parameter #f))
 (module* testing #f (provide current-dxgi-capture-hook))
+
 ; make-d3d12-presentation-adapter : any/c any/c any/c any/c any/c any/c any/c -> any
-;;   Connects DXGI back-buffer acquisition and fence completion to the common presenter protocol.
+;   Connects DXGI back-buffer acquisition and fence completion to the common presenter protocol.
 (define (make-d3d12-presentation-adapter hwnd gui-measure post background selection index sync)
   (dxgi-sync-interval! sync)
   (n:gpu-native-check! 'dxgi)

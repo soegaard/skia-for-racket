@@ -19,7 +19,7 @@
 ;;;
 
 ; gpu-format-native-tests : test-suite?
-;;   Collects the regression cases for surface properties (native; no GPU required).
+;   Collects the regression cases for surface properties (native; no GPU required).
 (define gpu-format-native-tests
   (test-suite "Surface properties (native; no GPU required)"
     (test-case "native properties preserve all reviewed flag and geometry combinations"

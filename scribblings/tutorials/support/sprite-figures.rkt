@@ -21,7 +21,7 @@
 ;;;
 
 ; draw-checker : canvas? real? real? [exact-nonnegative-integer?] -> void?
-;;   Draws a checkerboard that makes transparent pixels visible.
+;   Draws a checkerboard that makes transparent pixels visible.
 (define (draw-checker canvas width height [cell 16])
   (with-skia ([first (make-paint #:color "#E9EEF4")]
               [second (make-paint #:color "#CED9E4")])
@@ -30,7 +30,7 @@
                  (if (even? (+ (quotient x cell) (quotient y cell))) first second)))))
 
 ; atlas-pict : image? exact-nonnegative-integer? -> pict?
-;;   Shows the actual atlas with enlarged cell boundaries and index labels.
+;   Shows the actual atlas with enlarged cell boundaries and index labels.
 (define (atlas-pict atlas count)
   (define width (* 2 (image-width atlas)))
   (define height (* 2 (image-height atlas)))

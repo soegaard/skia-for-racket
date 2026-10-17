@@ -21,14 +21,14 @@
 ;;;
 
 ; with-fixture : syntax
-;;   Scopes the generated text-fixture typeface and font around a test body.
+;   Scopes the generated text-fixture typeface and font around a test body.
 (define-syntax-rule (with-fixture (f face) body ...)
   (with-skia ([face (typeface-from-bytes (fixture-font-bytes))]
               [f (make-font face #:size 20 #:hinting 'none #:linear-metrics? #t
                             #:subpixel? #t #:baseline-snap? #f #:edging 'alias)]) body ...))
 
 ; with-layout-fixture : syntax
-;;   Scopes the generated font and shaper needed by text-layout tests.
+;   Scopes the generated font and shaper needed by text-layout tests.
 (define-syntax-rule (with-layout-fixture (f sh) body ...)
   (with-skia ([face (typeface-from-bytes (text-blob-fixture-font-bytes))]
               [f (make-font face #:size 20 #:hinting 'none #:linear-metrics? #t
@@ -36,13 +36,13 @@
               [sh (make-shaper f)]) body ...))
 
 ; near : (listof real?) (listof real?) -> void?
-;;   Compares text coordinates with native float tolerance.
+;   Compares text coordinates with native float tolerance.
 (define (near xs ys)
   (check-equal? (length xs) (length ys))
   (for ([x (in-list xs)] [y (in-list ys)]) (check-= x y 0.005)))
 
 ; render : text-blob? [symbol?] -> bytes?
-;;   Captures a blob using native glyphs or outline mode for pixel comparisons.
+;   Captures a blob using native glyphs or outline mode for pixel comparisons.
 (define (render blob [mode 'native])
   (with-skia ([surface (make-surface 192 128 #:background 'white)]
               [ink (make-paint #:color 'black #:antialias? #f)])
@@ -51,18 +51,18 @@
     (surface->rgba-bytes surface)))
 
 ; rectangle : path? -> list?
-;;   Collects an outline path's rectangular bounds.
+;   Collects an outline path's rectangular bounds.
 (define (rectangle p) (call-with-values (lambda () (path-bounds p)) list))
 
 ; one-blob : font? [list?] -> text-blob?
-;;   Builds one positioned glyph run using the supplied font and point sequence.
+;   Builds one positioned glyph run using the supplied font and point sequence.
 (define (one-blob f [positions '((10 40) (30 40))])
   (with-skia ([b (make-text-blob-builder)])
     (text-blob-builder-add-positioned-run! b f '(2 3) positions)
     (text-blob-builder-finish! b)))
 
 ; one-info : text-blob? -> any/c
-;;   Reads the single run's detached metadata for ownership and layout assertions.
+;   Reads the single run's detached metadata for ownership and layout assertions.
 (define (one-info blob) (vector-ref (text-blob-runs blob) 0))
 
 ;;;
@@ -70,7 +70,7 @@
 ;;;
 
 ; text-blob-native-tests : test-suite?
-;;   Collects the regression cases for multi-run text blobs (native).
+;   Collects the regression cases for multi-run text blobs (native).
 (define text-blob-native-tests
   (test-suite
    "Multi-run text blobs (native)"

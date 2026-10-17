@@ -18,7 +18,7 @@
 ;;;
 
 ; choice : symbol? symbol? any/c -> list?
-;;   Collects the strategy and reason selected for backend, policy, and feature inputs.
+;   Collects the strategy and reason selected for backend, policy, and feature inputs.
 (define (choice b p fs) (call-with-values (lambda () (group-strategy b p fs)) list))
 
 (provide output-group-pure-tests)
@@ -28,7 +28,7 @@
 ;;;
 
 ; output-group-pure-tests : test-suite?
-;;   Collects the regression cases for bounded output groups: pure decisions.
+;   Collects the regression cases for bounded output groups: pure decisions.
 (define output-group-pure-tests
   (test-suite "Bounded output groups: pure decisions"
     (test-case "policies are explicit"

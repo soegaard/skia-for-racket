@@ -29,7 +29,7 @@
 ;;;
 
 ; figure-pictures : real? -> list?
-;;   Collects convertible pictures from evaluated Scribble content.
+;   Collects convertible pictures from evaluated Scribble content.
 (define (figure-pictures value)
   (cond
     [(convertible? value) (list value)]
@@ -39,7 +39,7 @@
     [else (error 'tutorial-figure "expected a picture or an evaluated picture, got ~e" value)]))
 
 ; tutorial-figure : string? real? -> image-element?
-;;   Renders one evaluated picture and requires meaningful alternative text.
+;   Renders one evaluated picture and requires meaningful alternative text.
 (define (tutorial-figure alternative value)
   (unless (and (string? alternative)
                (not (string=? (string-trim alternative) ""))
@@ -68,8 +68,9 @@
 ;; The opening can display the completed figure without evaluating later definitions
 ;; early, importing a second scene, or drawing the finished result a second time.
 ;; Each document gets its own slot; there is no shared cross-document figure registry.
+
 ; make-figure-preview : -> (values procedure? procedure?)
-;;   Returns paired preview and completion helpers that share the finished figure.
+;   Returns paired preview and completion helpers that share the finished figure.
 (define (make-figure-preview)
   (define finished #f)
   (define (require-finished)

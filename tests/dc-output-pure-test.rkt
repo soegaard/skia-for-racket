@@ -22,20 +22,20 @@
 ;;;
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc [color "red"])
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush color 'solid)
   (send dc draw-rectangle 2 3 8 6))
 
 ; captured : procedure? [exact-positive-integer? exact-positive-integer?] -> list?
-;;   Records output-DC commands without replaying them through a native backend.
+;   Records output-DC commands without replaying them through a native backend.
 (define (captured draw [w 32] [h 24])
   (define-values (ops _count) (capture-output-dc w h draw)) ops)
 
 ; kinds : (listof output-dc-command?) -> (listof symbol?)
-;;   Extracts command kinds in capture order.
+;   Extracts command kinds in capture order.
 (define (kinds ops) (map output-dc-command-kind ops))
 
 ;;;
@@ -43,7 +43,7 @@
 ;;;
 
 ; dc-output-pure-tests : test-suite?
-;;   Collects the regression cases for document DC capture, lifetime and explicit pixel boundary.
+;   Collects the regression cases for document DC capture, lifetime and explicit pixel boundary.
 (define dc-output-pure-tests
   (test-suite
    "Document DC capture, lifetime and explicit pixel boundary"
@@ -178,7 +178,7 @@
      (check-exn exn:fail? (lambda () (output-dc-special! (new object%) 'url '()))))))
 
 ; dc-output-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-output-pure-test-count 34)
 (module+ main
   (require rackunit/text-ui)
@@ -188,7 +188,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests dc-output-pure-tests))
   (printf "dc-output-pure: ~a cases, ~a failures\n" dc-output-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

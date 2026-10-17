@@ -17,7 +17,7 @@
 (require rackunit racket/list racket/vector skia)
 
 ; expansion-anchor : namespace-anchor?
-;;   Anchors geometry-form expansion in the namespace containing this module's imports.
+;   Anchors geometry-form expansion in the namespace containing this module's imports.
 (define-namespace-anchor expansion-anchor)
 
 ;;;
@@ -25,7 +25,7 @@
 ;;;
 
 ; expand-geometry-form : any/c -> syntax?
-;;   Expands a geometry form in the test module namespace without invoking native drawing.
+;   Expands a geometry form in the test module namespace without invoking native drawing.
 (define (expand-geometry-form form)
   (parameterize ([current-namespace (namespace-anchor->namespace expansion-anchor)])
     (expand (datum->syntax #f form))))

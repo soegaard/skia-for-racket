@@ -11,8 +11,9 @@
 (provide run-metal-construction-probe)
 ;; The legacy 0.38 diagnostic deliberately remains construction-only. Actual
 ;; Metal rendering is independently exercised by the 0.41 lifecycle/scene tests.
+
 ; run-metal-construction-probe : -> hash?
-;;   Tests owned Metal context construction and closure without claiming a rendering benchmark.
+;   Tests owned Metal context construction and closure without claiming a rendering benchmark.
 (define (run-metal-construction-probe)
   (define-values (provider driver) (make-owned-metal-components))
   (define domain (make-gpu-domain provider driver))

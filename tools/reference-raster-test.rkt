@@ -23,13 +23,13 @@
 ;;;
 
 ; sample-at : raster-buffer? exact-nonnegative-integer? exact-nonnegative-integer? -> any
-;;   Samples a pixel through a callback-scoped read-only pixmap.
+;   Samples a pixel through a callback-scoped read-only pixmap.
 (define (sample-at buffer x y)
   (call-with-raster-buffer-pixmap buffer (lambda (view) (pixmap-sample view x y))))
 
 
 ; with-writable : raster-buffer? procedure? -> any
-;;   Gives the callback a writable pixmap whose borrow expires when the scope exits.
+;   Gives the callback a writable pixmap whose borrow expires when the scope exits.
 (define (with-writable buffer proc)
   (call-with-raster-buffer-pixmap buffer proc #:writable? #t))
 

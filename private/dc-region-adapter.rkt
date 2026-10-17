@@ -32,12 +32,12 @@
 ;;;
 
 ; dc-region-query-info : local-member-name binding
-;;   Reserves the private query-state method shared by the DC class and region adapter.
+;   Reserves the private query-state method shared by the DC class and region adapter.
 (define-local-member-name dc-region-query-info)
 
 ; dc-region-mixin : class? -> class?
-;;   Adds racket/draw's private region-member identities using transformed clip state and query-only
-;;   Cairo contexts.
+;   Adds racket/draw's private region-member identities using transformed clip state and query-only
+;   Cairo contexts.
 (define (dc-region-mixin %)
   (class %
     (super-new)
@@ -57,15 +57,15 @@
 ;; collected without explicit close. Native surface finalization stays separate.
 
 ; make-dc-region-lease : object? -> box?
-;;   Creates a weak selected-region lease that releases its region lock when the owning DC is
-;;   collected.
+;   Creates a weak selected-region lease that releases its region lock when the owning DC is
+;   collected.
 (define (make-dc-region-lease dc)
   (define lease (box #f))
   (register-finalizer dc (lambda (_dc) (dc-region-install! lease #f)))
   lease)
 
 ; dc-region-install! : box? (or/c #f (is-a?/c region%)) [procedure?] -> void?
-;;   Atomically replaces the weak region selection and adjusts lock counts before committing DC state.
+;   Atomically replaces the weak region selection and adjusts lock counts before committing DC state.
 (define (dc-region-install! lease r [commit void])
   ;; Lock-count and DC selection must change together, including finalization.
   (call-as-atomic
@@ -80,8 +80,8 @@
 
 ; dc-region-select! : symbol? box? (or/c #f (is-a?/c region%)) object? vector? real? procedure? ->
 ; void?
-;;   Atomically validates and snapshots a region, checks backing-scaled coordinates, then locks and
-;;   commits the selection.
+;   Atomically validates and snapshots a region, checks backing-scaled coordinates, then locks and
+;   commits the selection.
 (define (dc-region-select! who lease r dc matrix backing commit)
   ;; Keep the snapshot, validation, lock acquisition and selection in one
   ;; atomic section: another thread cannot mutate an unassociated region
@@ -94,15 +94,15 @@
   (void))
 
 ; dc-region-snapshot : symbol? (or/c #f (is-a?/c region%)) object? vector? -> (or/c #f dc-clip?)
-;;   Copies a region's paths atomically so thread mutations cannot split the detached clip snapshot.
+;   Copies a region's paths atomically so thread mutations cannot split the detached clip snapshot.
 (define (dc-region-snapshot who r dc matrix)
   ;; Snapshot mutable Racket paths without an intervening thread mutation.
   ;; This does not invoke Cairo or a native renderer.
   (call-as-atomic (lambda () (snapshot-region who r dc matrix))))
 
 ; snapshot-region : symbol? (or/c #f (is-a?/c region%)) object? vector? -> (or/c #f dc-clip?)
-;;   Builds ordered intersection constraints, freezing unassociated regions with the installation
-;;   transform.
+;   Builds ordered intersection constraints, freezing unassociated regions with the installation
+;   transform.
 (define (snapshot-region who r dc matrix)
   (cond
     [(not r) #f]

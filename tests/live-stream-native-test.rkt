@@ -20,36 +20,36 @@
 ;;;
 
 ; live-stream-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define live-stream-native-test-count 42)
 
 ; pixels : bytes?
-;;   Stores a 2-by-2 opaque red, green, blue, and white image in row-major RGBA order.
+;   Stores a 2-by-2 opaque red, green, blue, and white image in row-major RGBA order.
 (define pixels (bytes 255 0 0 255 0 255 0 255 0 0 255 255 255 255 255 255))
 
 ; with-image : procedure? -> any
-;;   Scopes the deterministic four-pixel source image around a streaming test.
+;   Scopes the deterministic four-pixel source image around a streaming test.
 (define (with-image proc) (with-skia ([im (rgba-bytes->image 2 2 pixels)]) (proc im)))
 
 ; png : -> bytes?
-;;   Encodes the shared source image as a complete PNG reference.
+;   Encodes the shared source image as a complete PNG reference.
 (define (png) (with-image image->png-bytes))
 
 ; draw-red : canvas? -> void?
-;;   Draws the opaque red page used to compare streamed document and picture output.
+;   Draws the opaque red page used to compare streamed document and picture output.
 (define (draw-red c)
   (with-skia ([p (make-paint #:color 'red #:antialias? #f)]) (draw-rect c 0 0 64 48 p)))
 
 ; page : [procedure?] -> output-page?
-;;   Builds a 64-by-48-unit output page from the selected drawing callback.
+;   Builds a 64-by-48-unit output page from the selected drawing callback.
 (define (page [draw draw-red]) (make-output-page 64 48 draw))
 
 ; picture : -> picture?
-;;   Records the red fixture into a caller-owned picture.
+;   Records the red fixture into a caller-owned picture.
 (define (picture) (call-with-picture 64 48 draw-red))
 
 ; with-path : (path? -> any) -> any
-;;   Provides a fresh nonexisting output path and removes any produced file afterward.
+;   Provides a fresh nonexisting output path and removes any produced file afterward.
 (define (with-path proc)
   (define path (make-temporary-file "skia-live-~a.bin")) (delete-file path)
   (dynamic-wind void (lambda () (proc path))
@@ -60,7 +60,7 @@
 ;;;
 
 ; live-stream-native-tests : test-suite?
-;;   Collects the regression cases for live ports and native consumers; real Skia required.
+;   Collects the regression cases for live ports and native consumers; real Skia required.
 (define live-stream-native-tests
  (test-suite "Live ports and native consumers; real Skia required"
   (test-case "pure-FFI bridge ready and no jobs" (live-streams-check!)
@@ -319,7 +319,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests live-stream-native-tests))
   (printf "live-stream-native: ~a cases, ~a failures\n" live-stream-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

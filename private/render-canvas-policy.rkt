@@ -19,7 +19,7 @@
 ;;;
 
 ; native-backend : symbol? symbol? -> (or/c #f symbol?)
-;;   Selects the platform's default Metal, Direct3D, or OpenGL backend without probing a driver.
+;   Selects the platform's default Metal, Direct3D, or OpenGL backend without probing a driver.
 (define (native-backend os arch)
   (cond [(eq? os 'macosx) 'metal]
         [(and (eq? os 'windows) (eq? arch 'x86_64)) 'direct3d]
@@ -28,8 +28,8 @@
 
 ; resolve-render-canvas-policy : symbol? symbol? (or/c #f symbol?) (or/c #f exact-integer?) (or/c #f
 ; exact-integer?) [#:os symbol? #:arch symbol?] -> hash?
-;;   Validates renderer/backend/adapter choices and resolves platform defaults without enabling
-;;   runtime fallback.
+;   Validates renderer/backend/adapter choices and resolves platform defaults without enabling
+;   runtime fallback.
 (define (resolve-render-canvas-policy renderer backend adapter adapter-index sync-interval
                                      #:os [os (system-type 'os)]
                                      #:arch [arch (system-type 'arch)])
@@ -93,8 +93,8 @@
 ;;;
 
 ; render-canvas-capabilities : hash? -> hash?
-;;   Describes callback lifetime, retained drawing state, and presentation behavior for a resolved
-;;   renderer policy.
+;   Describes callback lifetime, retained drawing state, and presentation behavior for a resolved
+;   renderer policy.
 (define (render-canvas-capabilities policy)
   (define raster? (eq? (hash-ref policy 'renderer) 'raster))
   (hasheq 'renderer (hash-ref policy 'renderer) 'backend (hash-ref policy 'backend)

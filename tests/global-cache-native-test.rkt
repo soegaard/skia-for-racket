@@ -19,7 +19,7 @@
 ;;;
 
 ; global-cache-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define global-cache-native-test-count 31)
 
 ;;;
@@ -27,7 +27,7 @@
 ;;;
 
 ; global-cache-native-tests : test-suite?
-;;   Collects the regression cases for native global caches and memory statistics.
+;   Collects the regression cases for native global caches and memory statistics.
 (define global-cache-native-tests
   (test-suite "Native global caches and memory statistics"
    (test-case "explicit initialization is idempotent"
@@ -246,7 +246,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (with-restored-limits (lambda () (run-tests global-cache-native-tests))))
   (printf "global-cache-native: ~a cases, ~a failures\n" global-cache-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

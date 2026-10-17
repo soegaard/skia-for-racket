@@ -20,12 +20,12 @@
 ;;;
 
 ; with-face : procedure? -> any
-;;   Scopes a generated fixture typeface around the test callback.
+;   Scopes a generated fixture typeface around the test callback.
 (define (with-face proc)
   (with-skia ([face (typeface-from-bytes (fixture-font-bytes))]) (proc face)))
 
 ; raster : typeface? -> bytes?
-;;   Renders fixture glyphs for detached ownership and serialization comparisons.
+;   Renders fixture glyphs for detached ownership and serialization comparisons.
 (define (raster face)
   (with-skia ([font (make-font face #:size 40 #:hinting 'none #:edging 'alias)]
               [paint (make-paint #:color 'black #:antialias? #f)]
@@ -34,12 +34,12 @@
     (surface->rgba-bytes surface #:premultiplied? #t)))
 
 ; ink? : bytes? -> boolean?
-;;   Recognizes visible glyph ink in a captured raster.
+;   Recognizes visible glyph ink in a captured raster.
 (define (ink? data)
   (for/or ([i (in-range 0 (bytes-length data) 4)]) (< (bytes-ref data i) 50)))
 
 ; wrong-thread : procedure? -> any
-;;   Runs a typeface operation on another thread to check its ownership boundary.
+;   Runs a typeface operation on another thread to check its ownership boundary.
 (define (wrong-thread thunk)
   (define result (box #f))
   (thread-wait
@@ -53,7 +53,7 @@
 ;;;
 
 ; typeface-native-tests : test-suite?
-;;   Collects the regression cases for native typeface resources, metadata and detached data.
+;   Collects the regression cases for native typeface resources, metadata and detached data.
 (define typeface-native-tests
   (test-suite
    "0.68a native typeface resources, metadata and detached data"

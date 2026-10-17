@@ -19,25 +19,25 @@
 ;;;
 
 ; blue : canvas? -> void?
-;;   Draws the vector-safe bounded rectangle used as a group baseline.
+;   Draws the vector-safe bounded rectangle used as a group baseline.
 (define (blue c)
   (with-skia ([paint (make-paint #:color 'blue)]) (draw-rect c 0 0 30 20 paint)))
 
 ; runtime-red : canvas? -> void?
-;;   Draws a red runtime effect that forces the output-group policy to consider rasterization.
+;   Draws a red runtime effect that forces the output-group policy to consider rasterization.
 (define (runtime-red c)
   (with-skia ([e (make-runtime-effect "half4 main(float2 p) { return half4(1,0,0,1); }")]
               [s (runtime-effect->shader e)] [p (make-paint #:shader s)])
     (draw-rect c 0 0 30 20 p)))
 
 ; text : canvas? -> void?
-;;   Draws a short native text label for group text-mode checks.
+;   Draws a short native text label for group text-mode checks.
 (define (text c)
   (with-skia ([font (make-font #f #:size 12)] [p (make-paint #:color 'black)])
     (draw-simple-text c "TEXT" 0 15 font p)))
 
 ; export-group : procedure? ... -> any
-;;   Exports a bounded group while capturing the chosen strategy and callback count.
+;   Exports a bounded group while capturing the chosen strategy and callback count.
 (define (export-group draw #:format [format 'svg] #:policy [policy 'prefer-vector]
                       #:audit [audit 'error] #:scale [scale 2] #:padding [padding 0]
                       #:mode [mode 'auto])
@@ -53,13 +53,13 @@
   (values bs report calls ar))
 
 ; g-error : procedure? -> any
-;;   Extracts the structured output-group failure report, or false if the operation succeeds.
+;   Extracts the structured output-group failure report, or false if the operation succeeds.
 (define (g-error thunk)
   (with-handlers ([exn:fail:output-group? exn:fail:output-group-report])
     (call-with-values thunk (lambda ignored #f))))
 
 ; with-loaded : procedure? -> any
-;;   Scopes a picture deserialized from a trusted fixture stream for retained-output checks.
+;   Scopes a picture deserialized from a trusted fixture stream for retained-output checks.
 (define (with-loaded proc)
   (with-skia ([p (call-with-picture 30 20 blue)]
               [loaded (picture-from-bytes (picture->bytes p) #:trusted? #t)])
@@ -72,7 +72,7 @@
 ;;;
 
 ; output-group-native-tests : test-suite?
-;;   Collects the regression cases for bounded output groups: native backends.
+;   Collects the regression cases for bounded output groups: native backends.
 (define output-group-native-tests
   (test-suite "Bounded output groups: native backends"
     (test-case "plain SVG group runs once and stays vector"

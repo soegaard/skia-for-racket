@@ -20,16 +20,17 @@
          path-measure-matrix)
 
 ;; Skia's path/shader interface uses a row-major nine-float sk_matrix_t.
+
 ; native-m33 : symbol? matrix? -> sk-matrix?
-;;   Embeds the affine transform in Skia's row-major nine-float path and shader matrix layout.
+;   Embeds the affine transform in Skia's row-major nine-float path and shader matrix layout.
 (define (native-m33 who m)
   (unless (matrix? m) (raise-argument-error who "matrix?" m))
   (make-sk-matrix (matrix-xx m) (matrix-xy m) (matrix-x0 m)
                   (matrix-yx m) (matrix-yy m) (matrix-y0 m) 0.0 0.0 1.0))
 
 ; from-m33 : symbol? sk-matrix? -> matrix?
-;;   Copies an affine native 3-by-3 matrix while rejecting perspective terms that the public matrix
-;;   cannot represent.
+;   Copies an affine native 3-by-3 matrix while rejecting perspective terms that the public matrix
+;   cannot represent.
 (define (from-m33 who m)
   (unless (and (= (sk-matrix-p0 m) 0) (= (sk-matrix-p1 m) 0) (= (sk-matrix-p2 m) 1))
     (error who "native matrix is not affine"))
@@ -41,9 +42,10 @@
 ;; despite the misleading row-major field-name comment in include/c/sk_types.h.
 ;; Translation is at float indices 12 and 13. A native translate/readback test
 ;; checks this independently of our write-side conversion.
+
 ; native-m44 : symbol? matrix? -> sk-m44?
-;;   Embeds a two-dimensional affine transform in the column-major SkM44 storage required by canvas
-;;   operations.
+;   Embeds a two-dimensional affine transform in the column-major SkM44 storage required by canvas
+;   operations.
 (define (native-m44 who m)
   (unless (matrix? m) (raise-argument-error who "matrix?" m))
   (make-sk-m44 (matrix-xx m) (matrix-yx m) 0.0 0.0
@@ -52,8 +54,8 @@
                (matrix-x0 m) (matrix-y0 m) 0.0 1.0))
 
 ; from-m44 : symbol? sk-m44? -> matrix?
-;;   Copies a native canvas transform only when all 3D and perspective terms match a two-dimensional
-;;   affine matrix.
+;   Copies a native canvas transform only when all 3D and perspective terms match a two-dimensional
+;   affine matrix.
 (define (from-m44 who m)
   ;; The public layer is affine 2D. Never silently discard 3D/perspective terms.
   (unless (and (= (sk-m44-c0r2 m) 0) (= (sk-m44-c0r3 m) 0)
@@ -66,7 +68,7 @@
                (sk-m44-c1r1 m) (sk-m44-c3r0 m) (sk-m44-c3r1 m)))
 
 ; canvas-transform : canvas? -> matrix?
-;;   Returns a detached snapshot of the current two-dimensional affine transform.
+;   Returns a detached snapshot of the current two-dimensional affine transform.
 (define (canvas-transform c)
   (define who 'canvas-transform)
   (define m (native-m44 who matrix-identity))
@@ -74,22 +76,22 @@
   (from-m44 who m))
 
 ; canvas-set-transform! : canvas? matrix? -> void?
-;;   Replaces the current transform with matrix.
+;   Replaces the current transform with matrix.
 (define (canvas-set-transform! c m)
   (define native (native-m44 'canvas-set-transform! m))
   (call-on-canvas 'canvas-set-transform! c '()
     (lambda (cp) (sk_canvas_set_matrix cp native))))
 
 ; canvas-concat! : canvas? matrix? -> void?
-;;   Concatenates matrix after the current transform, using the product C M, where C is the current
-;;   transform and M is matrix.
+;   Concatenates matrix after the current transform, using the product C M, where C is the current
+;   transform and M is matrix.
 (define (canvas-concat! c m)
   (define native (native-m44 'canvas-concat! m))
   (call-on-canvas 'canvas-concat! c '()
     (lambda (cp) (sk_canvas_concat cp native))))
 
 ; path-transform : skia-path? matrix? -> skia-path?
-;;   Returns a new owned path containing the affine transformation of path.
+;   Returns a new owned path containing the affine transformation of path.
 (define (path-transform p m)
   (define who 'path-transform)
   (define h (path-h who p))
@@ -103,7 +105,7 @@
     out))
 
 ; path-transform! : skia-path? matrix? -> void?
-;;   Applies the affine transform to path in place.
+;   Applies the affine transform to path in place.
 (define (path-transform! p m)
   (define h (path-h 'path-transform! p))
   (define native (native-m33 'path-transform! m))
@@ -111,7 +113,7 @@
     (lambda (pp) (sk_path_transform pp native))))
 
 ; shader-with-local-matrix : shader? matrix? -> shader?
-;;   Returns a new shader whose local mapping includes matrix.
+;   Returns a new shader whose local mapping includes matrix.
 (define (shader-with-local-matrix shader m)
   (define who 'shader-with-local-matrix)
   (define h (shader-h who shader))
@@ -139,17 +141,18 @@
 
 
 ; verb-names : vector?
-;;   Maps native path verb codes zero through five to move, line, quad, conic, cubic, and close in
-;;   ABI order.
+;   Maps native path verb codes zero through five to move, line, quad, conic, cubic, and close in
+;   ABI order.
 (define verb-names '#(move line quad conic cubic close))
+
 ; verb-point-counts : vector?
-;;   Gives the native iterator point count for each corresponding verb, including segment starts and
-;;   control points.
+;   Gives the native iterator point count for each corresponding verb, including segment starts and
+;   control points.
 (define verb-point-counts '#(1 2 3 3 4 0))
 
 ; snapshot-segments : symbol? skia-path? (or/c 'normal 'raw) boolean? -> (listof path-segment?)
-;;   Copies bounded path segments while the native iterator and source are retained, so later
-;;   traversal needs no native lease.
+;   Copies bounded path segments while the native iterator and source are retained, so later
+;   traversal needs no native lease.
 (define (snapshot-segments who p mode force-closed?)
   (define h (path-h who p))
   (unless (memq mode '(normal raw))
@@ -198,19 +201,19 @@
 
 ; path-segments : skia-path? [#:mode (or/c 'normal 'raw)] [#:force-closed? boolean?] -> (listof
 ;   path-segment?)
-;;   Returns a snapshot of path segments.
+;   Returns a snapshot of path segments.
 (define (path-segments p #:mode [mode 'normal] #:force-closed? [force-closed? #f])
   (snapshot-segments 'path-segments p mode force-closed?))
 
 ; in-path-segments : skia-path? [#:mode (or/c 'normal 'raw)] [#:force-closed? boolean?] -> sequence?
-;;   Returns a sequence over the same detached snapshot as path-segments.
+;   Returns a sequence over the same detached snapshot as path-segments.
 (define (in-path-segments p #:mode [mode 'normal] #:force-closed? [force-closed? #f])
   ;; Snapshot NOW. Source mutation/closure before the first for iteration is safe.
   (in-list (snapshot-segments 'in-path-segments p mode force-closed?)))
 
 ; path->commands : skia-path? -> list?
-;;   Returns a detached list of commands accepted by make-path, derived from raw native path
-;;   iteration.
+;   Returns a detached list of commands accepted by make-path, derived from raw native path
+;   iteration.
 (define (path->commands p)
   (for/list ([segment (in-list (snapshot-segments 'path->commands p 'raw #f))])
     (define verb (path-segment-verb segment))
@@ -222,7 +225,7 @@
 
 ; path-contours : skia-path? [#:mode (or/c 'normal 'raw)] [#:force-closed? boolean?] -> (listof
 ;   path-contour?)
-;;   Groups a detached segment snapshot into contours.
+;   Groups a detached segment snapshot into contours.
 (define (path-contours p #:mode [mode 'normal] #:force-closed? [force-closed? #f])
   (define segments (snapshot-segments 'path-contours p mode force-closed?))
   (define (finish rev)
@@ -237,7 +240,7 @@
 
 ; path-measure-matrix : path-measure? (and/c real? (>=/c 0)) [#:mode (or/c 'position 'tangent
 ;   'position+tangent)] -> (or/c matrix? #f)
-;;   Returns a detached placement matrix at distance.
+;   Returns a detached placement matrix at distance.
 (define (path-measure-matrix measure distance #:mode [mode 'position+tangent])
   (define who 'path-measure-matrix)
   (define h (path-measure-h who measure))

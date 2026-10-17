@@ -19,24 +19,29 @@
 ;;;
 
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20344E")
+
 ; muted : string?
-;;   Specifies the muted color used by this drawing.
+;   Specifies the muted color used by this drawing.
 (define muted "#50657C")
+
 ; blue : string?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue "#3168CF")
+
 ; teal : string?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal "#12988C")
+
 ; orange : string?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange "#F0A02B")
 
 ;; Outlined labels make these parts independent of the SVG viewer's fonts.
+
 ; label : canvas? string? real? real? [real?] [any/c] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 14] [color muted])
   (with-skia ([f (make-font #:size size)]
               [p (make-paint #:color color)]
@@ -44,7 +49,7 @@
     (draw-path c path p)))
 
 ; heading : canvas? real? real? string? string? exact-nonnegative-integer? -> void?
-;;   Draws the page heading and its explanatory subtitle.
+;   Draws the page heading and its explanatory subtitle.
 (define (heading c width height title subtitle index)
   (with-skia ([white (make-paint #:color 'white)] [accent (make-paint #:color teal)])
     (draw-rect c 0 0 width height white)
@@ -55,7 +60,7 @@
   (label c (number->string index) (- width 40) (- height 20) 11 ink))
 
 ; draw-vectors : canvas? -> void?
-;;   Draws the vectors component in the current canvas coordinate system.
+;   Draws the vectors component in the current canvas coordinate system.
 (define (draw-vectors c)
   (heading c 720 520 "A canvas, now in SVG"
            "Paths, a linear gradient, clipping and independent transforms. All labels are outlines."
@@ -93,7 +98,7 @@
       (draw-line c 0 -30 0 30 border))))
 
 ; draw-sun : canvas? -> void?
-;;   Draws the sun component in the current canvas coordinate system.
+;   Draws the sun component in the current canvas coordinate system.
 (define (draw-sun c)
   (with-skia ([rays (make-paint #:color blue #:style 'stroke #:stroke-width 7 #:cap 'round)]
               [center (make-paint #:color orange)])
@@ -105,7 +110,7 @@
     (draw-circle c 40 40 14 center)))
 
 ; draw-text-images : canvas? -> void?
-;;   Draws the text images component in the current canvas coordinate system.
+;   Draws the text images component in the current canvas coordinate system.
 (define (draw-text-images c)
   (heading c 800 540 "Text, images and recorded drawing"
            "Native text is editable; outlined shaped text preserves glyph geometry, not text semantics." 2)
@@ -143,7 +148,7 @@
     (draw-picture c pic #:x 646 #:y 356 #:width 114 #:height 114)))
 
 ; draw-effects : canvas? -> void?
-;;   Draws the effects component in the current canvas coordinate system.
+;   Draws the effects component in the current canvas coordinate system.
 (define (draw-effects c)
   (heading c 720 480 "Explicit rasterized groups"
            "The two effect panels become embedded PNGs; labels and the dashed path remain vectors." 3)
@@ -172,7 +177,7 @@
     (draw-line c 40 410 675 410 p)))
 
 ; html-escape : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (html-escape s)
   (regexp-replace* #rx"[&<>\"]" s
                    (lambda (v)
@@ -180,7 +185,7 @@
                            [(string=? v ">") "&gt;"] [else "&quot;"]))))
 
 ; render-svg-probes : any/c -> void?
-;;   Renders the svg probes example to the selected output destination.
+;   Renders the svg probes example to the selected output destination.
 (define (render-svg-probes prefix)
   (define full (path->string (path->complete-path prefix)))
   (define entries '())
@@ -222,8 +227,9 @@
 ;;;
 
 (module+ main
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix
     (command-line #:program "svg-documents.rkt"
                   #:args ([output-prefix "svg-documents"]) output-prefix))

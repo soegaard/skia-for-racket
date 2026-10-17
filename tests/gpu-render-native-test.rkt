@@ -27,7 +27,7 @@
 
 ; make-gpu-render-native-tests : #:backend symbol? [#:provider (or/c gpu-provider? #f) #:adapter
 ; (or/c symbol? #f)] -> test-suite?
-;;   Builds the parameterized suite for one-shot GPU render on the explicitly selected backend.
+;   Builds the parameterized suite for one-shot GPU render on the explicitly selected backend.
 (define (make-gpu-render-native-tests #:backend backend
                                       #:provider [provider #f]
                                       #:adapter [adapter #f])

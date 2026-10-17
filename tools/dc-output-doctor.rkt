@@ -23,8 +23,8 @@
 ;;;
 
 ; generate-dc-output-evidence : path-string? string? -> hash?
-;;   Exports DC-authored document cases into a new directory and returns the tagged evidence
-;;   receipt.
+;   Exports DC-authored document cases into a new directory and returns the tagged evidence
+;   receipt.
 (define (generate-dc-output-evidence directory token)
   (unless (and (string? token) (positive? (string-length token)))
     (raise-argument-error 'dc-output-doctor "nonempty run token" token))
@@ -108,11 +108,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") value "new evidence directory" (set! directory value)]

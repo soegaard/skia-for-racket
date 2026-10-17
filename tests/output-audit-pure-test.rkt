@@ -21,11 +21,11 @@
 ;;;
 
 ; fake : symbol? [symbol?] -> any/c
-;;   Registers a synthetic resource with the audit layer without native allocation.
+;   Registers a synthetic resource with the audit layer without native allocation.
 (define (fake kind [who 'test]) (audit-allocate who kind (lambda () (box kind))))
 
 ; attach! : any/c any/c [symbol?] -> any
-;;   Records a synthetic native setter so paint-child provenance can be tested.
+;   Records a synthetic native setter so paint-child provenance can be tested.
 (define (attach! p s [setter 'sk_paint_set_shader])
   (define pp (box 'p))
   (define sp (and s (box 's)))
@@ -33,19 +33,19 @@
     (lambda () (audit-native-call setter (list pp sp) void))))
 
 ; draw : any/c [symbol? procedure? symbol?] -> any
-;;   Routes a synthetic drawing through the canvas audit scope and selected native-operation tag.
+;   Routes a synthetic drawing through the canvas audit scope and selected native-operation tag.
 (define (draw p [backend 'svg] [thunk void] [op 'sk_canvas_draw_rect])
   (audit-on-canvas 'draw-rect 'owner backend (fake 'surface) (if p (list p) '())
     (lambda () (audit-native-call op '() thunk))))
 
 ; capture : procedure? [symbol? symbol? boolean?] -> output-audit-report?
-;;   Collects a detached audit report under the chosen backend, policy, and dry-run mode.
+;   Collects a detached audit report under the chosen backend, policy, and dry-run mode.
 (define (capture thunk [backend 'svg] [policy 'report] [dry? #f])
   (define-values (_ report) (call-with-audit-collector backend policy dry? 1 thunk))
   report)
 
 ; has-feature? : output-audit-report? symbol? [symbol?] -> boolean?
-;;   Finds a feature event, optionally requiring a specific classification status.
+;   Finds a feature event, optionally requiring a specific classification status.
 (define (has-feature? report feature [status #f])
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature)
@@ -57,7 +57,7 @@
 ;;;
 
 ; output-audit-pure-tests : test-suite?
-;;   Collects the regression cases for output audit: pure policies and provenance.
+;   Collects the regression cases for output audit: pure policies and provenance.
 (define output-audit-pure-tests
   (test-suite
    "Output audit: pure policies and provenance"

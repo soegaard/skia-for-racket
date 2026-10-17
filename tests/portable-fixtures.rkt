@@ -20,7 +20,7 @@
 ;;;
 
 ; make-portable-test-image : -> image?
-;;   Creates a deterministic border/center image for portable drawing and tiling comparisons.
+;   Creates a deterministic border/center image for portable drawing and tiling comparisons.
 (define (make-portable-test-image)
   ;; Nine solid, distinct 3x3 blocks. Nearest-neighbor reference comparisons
   ;; avoid renderer-specific edge sampling while still exposing wrong cells.

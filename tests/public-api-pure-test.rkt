@@ -20,15 +20,15 @@
 ;;;
 
 ; fixture : path?
-;;   Locates public-api-fixture.rkt relative to this module, independent of the invoking directory.
+;   Locates public-api-fixture.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path fixture "public-api-fixture.rkt")
 
 ; exports : -> any
-;;   Reflects the isolated synthetic fixture module without invoking its exported bindings.
+;   Reflects the isolated synthetic fixture module without invoking its exported bindings.
 (define (exports) (hash-ref (reflect-public-module fixture "public-api-fixture.rkt") 'exports))
 
 ; entry : string? [string?] -> any/c
-;;   Selects one reflected export by its public name and phase.
+;   Selects one reflected export by its public name and phase.
 (define (entry name [phase "0"])
   (or (for/first ([row (in-list (exports))]
                  #:when (and (equal? name (hash-ref row 'name))
@@ -36,7 +36,7 @@
       (error 'fixture "missing export ~a at phase ~a" name phase)))
 
 ; public-api-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define public-api-pure-test-count 22)
 
 ;;;
@@ -44,7 +44,7 @@
 ;;;
 
 ; public-api-pure-tests : test-suite?
-;;   Collects the regression cases for public API reflection.
+;   Collects the regression cases for public API reflection.
 (define public-api-pure-tests
   (test-suite "public API reflection"
     (test-case "fixed arity" (check-equal? (hash-ref (entry "fixed") 'arity_mask) "8"))
@@ -92,7 +92,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests public-api-pure-tests))
   (printf "public-api-pure: ~a cases, ~a failures\n" public-api-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

@@ -27,7 +27,7 @@
 ;;;
 
 ; make-render-fixture : [#:fail any/c #:draw procedure?] -> any
-;;   Builds an instrumented one-shot renderer with failure injection at lifecycle steps.
+;   Builds an instrumented one-shot renderer with failure injection at lifecycle steps.
 (define (make-render-fixture #:fail [failure #f] #:draw [body void])
   (define events '())
   (define active? #f)
@@ -80,13 +80,13 @@
 
 
 ; normal-events : (listof symbol?)
-;;   Lists required context, surface, drawing, readback, and cleanup events in execution order.
+;   Lists required context, surface, drawing, readback, and cleanup events in execution order.
 (define normal-events
   '(create-context enter create-surface draw readback close-surface leave close-context))
 
 
 ; raises-value? : any/c -> (any/c -> boolean?)
-;;   Matches a deliberately raised value by identity during cleanup-precedence tests.
+;   Matches a deliberately raised value by identity during cleanup-precedence tests.
 (define (raises-value? expected)
   (lambda (value) (eq? value expected)))
 
@@ -96,7 +96,7 @@
 ;;;
 
 ; gpu-render-pure-tests : test-suite?
-;;   Collects the regression cases for one-shot GPU render: arguments and lifetime worker.
+;   Collects the regression cases for one-shot GPU render: arguments and lifetime worker.
 (define gpu-render-pure-tests
   (test-suite
    "One-shot GPU render: arguments and lifetime worker"

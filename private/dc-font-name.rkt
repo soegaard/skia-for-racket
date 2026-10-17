@@ -28,16 +28,16 @@
 ;;   The record holds detached request values, not an installed-font match or native font.
 
 ; parser-module : path?
-;;   Locates the parsing-only native bridge without loading it for ordinary family names.
+;   Locates the parsing-only native bridge without loading it for ordinary family names.
 (define-runtime-path parser-module "dc-font-name-native.rkt")
 
 ; description-parser : promise?
-;;   Caches a synchronized lazy lookup of parse-font-description for comma-style font descriptions.
+;   Caches a synchronized lazy lookup of parse-font-description for comma-style font descriptions.
 (define description-parser
   (delay/sync (dynamic-require parser-module 'parse-font-description)))
 
 ; weights : hash?
-;;   Maps racket/draw weight names to Skia's numeric weight scale.
+;   Maps racket/draw weight names to Skia's numeric weight scale.
 (define weights
   (hasheq 'thin 100 'ultralight 200 'light 300 'semilight 350 'book 380
           'normal 400 'medium 500 'semibold 600 'bold 700 'ultrabold 800
@@ -48,7 +48,7 @@
 ;;;
 
 ; checked-name : symbol? any/c -> (and/c string? immutable?)
-;;   Copies a NUL-free font name after bounding its UTF-8 bytes, including the native terminator.
+;   Copies a NUL-free font name after bounding its UTF-8 bytes, including the native terminator.
 (define (checked-name who value)
   (unless (and (string? value) (not (regexp-match? #rx"\u0000" value)))
     (raise-argument-error who "NUL-free font-name string" value))
@@ -58,7 +58,7 @@
   (string->immutable-string value))
 
 ; weight-number : symbol? (or/c symbol? exact-integer?) -> exact-integer?
-;;   Normalizes a named or numeric font weight into the inclusive range zero through one thousand.
+;   Normalizes a named or numeric font weight into the inclusive range zero through one thousand.
 (define (weight-number who value)
   (define w (if (symbol? value) (hash-ref weights value #f) value))
   (unless (and (exact-integer? w) (<= 0 w 1000))
@@ -66,15 +66,15 @@
   w)
 
 ; slant-value : symbol? symbol? -> symbol?
-;;   Maps Racket normal, italic, and slant styles to Skia upright, italic, and oblique.
+;   Maps Racket normal, italic, and slant styles to Skia upright, italic, and oblique.
 (define (slant-value who value)
   (case value
     [(normal) 'upright] [(italic) 'italic] [(slant) 'oblique]
     [else (raise-argument-error who "'normal, 'italic, or 'slant" value)]))
 
 ; dc-face-from-description : symbol? vector? (or/c symbol? exact-integer?) symbol? -> dc-face?
-;;   Validates the six parsed Pango fields and applies explicit weight/style overrides to one
-;;   supported family.
+;   Validates the six parsed Pango fields and applies explicit weight/style overrides to one
+;   supported family.
 (define (dc-face-from-description who fields weight style)
   ;; The native bridge returns copied values only, in this fixed order:
   ;; family, weight, style, stretch, variant, explicitly-set-field mask.
@@ -112,7 +112,7 @@
            (add1 stretch)))
 
 ; dc-font-face : symbol? string? (or/c symbol? exact-integer?) symbol? -> dc-face?
-;;   Resolves a plain family or lazily parsed comma description without probing installed fonts.
+;   Resolves a plain family or lazily parsed comma description without probing installed fonts.
 (define (dc-font-face who name weight style)
   (define checked (checked-name who name))
   ;; Validate explicit overrides before forcing the optional parser.

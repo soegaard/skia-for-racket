@@ -20,7 +20,7 @@
 ;;;
 
 ; render-advanced-codecs : path-string? -> void?
-;;   Renders the advanced codecs example to the selected output destination.
+;   Renders the advanced codecs example to the selected output destination.
 (define (render-advanced-codecs filename)
   (with-skia ([out (make-surface 1120 740 #:background "#F0F2F5")]
               [ink (make-paint #:color "#182330")]
@@ -77,8 +77,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "advanced-codecs.rkt"
                   #:args ([output "advanced-codecs.png"]) output))

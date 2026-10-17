@@ -20,13 +20,13 @@
 ;;;
 
 ; write-data : path-string? bytes? -> exact-nonnegative-integer?
-;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
+;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (write-data path data)
   (call-with-output-file path (lambda (out) (write-bytes data out)) #:exists 'error))
 
 ; generate-integer-pixel-documents : path-string? string? -> void?
-;;   Creates fresh PDF/SVG integer-pixel fixtures and records native execution evidence for
-;;   independent inspection.
+;   Creates fresh PDF/SVG integer-pixel fixtures and records native execution evidence for
+;   independent inspection.
 (define (generate-integer-pixel-documents directory token)
   (when (directory-exists? directory) (error 'integer-pixel-doctor "output directory already exists"))
   (make-directory* directory)
@@ -72,11 +72,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") value "New evidence directory" (set! directory value)]

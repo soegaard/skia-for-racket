@@ -20,15 +20,17 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
+
   ; source-file : (or/c path-string? #f)
-  ;;   Optionally supplies a GPU RGBA capture to embed in the document evidence instead of drawing a
-  ;;   CPU fixture.
+  ;   Optionally supplies a GPU RGBA capture to embed in the document evidence instead of drawing a
+  ;   CPU fixture.
   (define source-file #f)
   (command-line #:once-each
     [("--directory") path "Fresh output directory" (set! directory path)]
@@ -40,8 +42,8 @@
   (make-directory* directory)
 
   ; image : image?
-  ;;   Owns the validated GPU-capture image or CPU-rendered advanced-layer snapshot used by the
-  ;;   output fixtures.
+  ;   Owns the validated GPU-capture image or CPU-rendered advanced-layer snapshot used by the
+  ;   output fixtures.
   (define image
     (if source-file
         (let ([data (file->bytes source-file)])
@@ -52,7 +54,7 @@
           (draw-advanced-layer (surface-canvas s)) (surface-snapshot s))))
 
   ; rows : (listof hash?)
-  ;;   Accumulates document filenames and scene evidence for the output manifest.
+  ;   Accumulates document filenames and scene evidence for the output manifest.
   (define rows '())
   (with-skia ([im image] [d (call-with-drawable advanced-width advanced-height draw-advanced-vector)])
     (for* ([mode '(vector layer)] [kind '(pdf svg)])

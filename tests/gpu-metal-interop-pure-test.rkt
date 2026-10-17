@@ -22,8 +22,8 @@
 ;;;
 
 ; desc : hash?
-;;   Describes a valid synthetic 2D Metal texture, including storage, usage, swizzle, and device
-;;   identity.
+;   Describes a valid synthetic 2D Metal texture, including storage, usage, swizzle, and device
+;   identity.
 (define desc
   (hasheq 'width 37 'height 29 'depth 1 'levels 1 'array_length 1 'samples 1
           'format 70 'texture_type 2 'usage 5 'storage_mode 2 'hazard_tracking_mode 2
@@ -32,13 +32,13 @@
           'producer_retained_references #t))
 
 ; reason : symbol? -> (any/c -> boolean?)
-;;   Builds a predicate for a specific structured Metal interop failure.
+;   Builds a predicate for a specific structured Metal interop failure.
 (define (reason r)
   (lambda (e) (and (exn:fail:metal-interop? e) (eq? (exn:fail:metal-interop-reason e) r))))
 
 ; fixture : [#:producer-status procedure? #:tail-status procedure? #:retain procedure? #:release
 ; procedure? #:tail procedure? #:commit procedure? #:description hash? #:timeout real?] -> any
-;;   Injects producer/tail completion and ownership operations into a native-free interop token.
+;   Injects producer/tail completion and ownership operations into a native-free interop token.
 (define (fixture #:producer-status [ps (lambda () 4)] #:tail-status [ts (lambda () 4)]
                  #:retain [retain values] #:release [release void]
                  #:tail [tail (lambda () 'tail)] #:commit [commit void]
@@ -59,7 +59,7 @@
 ;;;
 
 ; gpu-metal-interop-pure-tests : test-suite?
-;;   Collects the regression cases for metal external-resource contracts without native/GUI loading.
+;   Collects the regression cases for metal external-resource contracts without native/GUI loading.
 (define gpu-metal-interop-pure-tests
  (test-suite "Metal external-resource contracts without native/GUI loading"
   (test-case "valid private descriptor"

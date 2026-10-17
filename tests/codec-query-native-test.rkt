@@ -20,22 +20,22 @@
 ;;;
 
 ; with-codec : symbol? (codec? -> any) -> any
-;;   Creates a fixture codec and closes it after the callback.
+;   Creates a fixture codec and closes it after the callback.
 (define (with-codec format proc)
   (with-skia ([codec (codec-from-bytes (query-fixture-bytes format))]) (proc codec)))
 
 ; dimensions : codec? real? -> (listof exact-nonnegative-integer?)
-;;   Collects the native width and height negotiated for a scale.
+;   Collects the native width and height negotiated for a scale.
 (define (dimensions codec scale)
   (call-with-values (lambda () (codec-scaled-dimensions codec scale)) list))
 
 ; decoded : codec? -> bytes?
-;;   Copies decoded pixels without normalizing the encoded origin.
+;   Copies decoded pixels without normalizing the encoded origin.
 (define (decoded codec)
   (with-skia ([image (codec->image codec #:normalize-origin? #f)]) (image->rgba-bytes image)))
 
 ; other-thread-error : (-> any) -> void?
-;;   Requires a worker-thread ownership error, with a bounded wait for the reply.
+;   Requires a worker-thread ownership error, with a bounded wait for the reply.
 (define (other-thread-error thunk)
   (define answer (make-channel))
   (define worker
@@ -49,7 +49,7 @@
 ;;;
 
 ; codec-query-native-tests : test-suite?
-;;   Collects the regression cases for native codec size and subset negotiation.
+;   Collects the regression cases for native codec size and subset negotiation.
 (define codec-query-native-tests
   (test-suite "0.76a native codec size and subset negotiation"
     (test-case "all formats report original size at scale one"
@@ -153,7 +153,7 @@
           (check-equal? (codec-supported-subset c 0 0 1 1) (and (eq? format 'webp) '#(0 0 1 1))))))))
 
 ; codec-query-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define codec-query-native-test-count 26)
 (module+ main
   (skia-check!)
@@ -163,7 +163,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-query-native-tests))
   (printf "codec-query-native: ~a cases, ~a failures\n" codec-query-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

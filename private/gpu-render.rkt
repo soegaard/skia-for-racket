@@ -13,9 +13,10 @@
 ;; Private lifetime worker. Injected operations allow failure-path tests without
 ;; a driver, while the public entry point supplies only the real GPU operations.
 ;; Factories must clean up their own partially constructed resources on failure.
+
 ; call-with-rendered-gpu-image : any/c any/c any/c any/c any/c any/c any/c -> any
-;;   Scopes context and surface creation, drawing, explicit readback, and cleanup through injected
-;;   operations.
+;   Scopes context and surface creation, drawing, explicit readback, and cleanup through injected
+;   operations.
 (define (call-with-rendered-gpu-image make-context activate make-surface
                                       draw readback close-resource close-context)
   (define image #f)

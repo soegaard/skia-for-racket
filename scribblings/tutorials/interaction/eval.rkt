@@ -30,18 +30,19 @@
 ;;;
 
 ; scene-module : path?
-;;   Locates scene module relative to this module rather than the current directory.
+;   Locates scene module relative to this module rather than the current directory.
 (define-runtime-path scene-module "scene.rkt")
 
 ; interaction-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define interaction-eval (make-base-eval))
 (interaction-eval '(require racket))
 (interaction-eval `(require (file ,(path->string scene-module))))
 
 ;; A source figure should never be allowed to degrade into a black rectangle.
+
 ; check-editor-figure : surface? -> void?
-;;   Checks the rendered editor figure's expected drawing and background pixels.
+;   Checks the rendered editor figure's expected drawing and background pixels.
 (define (check-editor-figure surface)
   (define pixels (surface->rgba-bytes surface))
   (define (channel x y offset)
@@ -55,8 +56,9 @@
            "the Skia figure is missing its colored background or endpoint")))
 
 ;; Use the same geometry helpers as the editor for the progressive figures.
+
 ; editor-stage-pict : any/c #:scale [real?] -> pict?
-;;   Renders the editor stage illustration from the tutorial's drawing code.
+;   Renders the editor stage illustration from the tutorial's drawing code.
 (define (editor-stage-pict stage #:scale [scale 0.60])
   (unless (memq stage '(curve guides))
     (raise-argument-error 'editor-stage-pict "'curve or 'guides" stage))
@@ -73,8 +75,9 @@
 
 ;; This is a geometric diagram, not a second rendering implementation. The
 ;; outlined selection area is shown at 3x scale; the editor does not draw it.
+
 ; editor-hit-area-pict : #:scale [real?] -> pict?
-;;   Renders the editor hit area illustration from the tutorial's drawing code.
+;   Renders the editor hit area illustration from the tutorial's drawing code.
 (define (editor-hit-area-pict #:scale [scale 1])
   (define enlargement 3)
   (with-skia ([surface (make-surface 400 210 #:background editor-background)]
@@ -95,7 +98,7 @@
     (surface-picture surface scale)))
 
 ; surface-picture : surface? real? -> pict?
-;;   Builds the surface picture illustration from the tutorial's actual drawing.
+;   Builds the surface picture illustration from the tutorial's actual drawing.
 (define (surface-picture surface scale)
   (pict:scale
    (pict:bitmap
@@ -106,7 +109,7 @@
 
 ; editor-frame-pict : [list?] #:selected [(or/c exact-nonnegative-integer? #f)] #:scale [real?] ->
 ; pict?
-;;   Renders the editor frame illustration from the tutorial's drawing code.
+;   Renders the editor frame illustration from the tutorial's drawing code.
 (define (editor-frame-pict [points initial-control-points]
                            #:selected [selected #f]
                            #:scale [scale 0.68])
@@ -119,12 +122,12 @@
     (surface-picture surface scale)))
 
 ; captioned : any/c pict? -> pict?
-;;   Builds the captioned illustration from the tutorial's actual drawing.
+;   Builds the captioned illustration from the tutorial's actual drawing.
 (define (captioned label picture)
   (pict:vc-append 8 (pict:text label) picture))
 
 ; editor-before-and-after-pict : -> pict?
-;;   Renders the editor before and after illustration from the tutorial's drawing code.
+;   Renders the editor before and after illustration from the tutorial's drawing code.
 (define (editor-before-and-after-pict)
   (define moved (move-control-point initial-control-points 1 302 150))
   (pict:ht-append
@@ -135,6 +138,6 @@
               (editor-frame-pict moved #:selected 1 #:scale 0.39))))
 
 ; interaction-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (interaction-interaction expression ...)
   (interaction #:eval interaction-eval expression ...))

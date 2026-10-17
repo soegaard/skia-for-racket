@@ -20,7 +20,7 @@
 ;;;
 
 ; render-path-effects : path-string? -> void?
-;;   Renders the path effects example to the selected output destination.
+;   Renders the path effects example to the selected output destination.
 (define (render-path-effects filename)
   (with-skia ([s (make-surface 1000 700 #:background "#F3F5F9")]
               [card (make-paint #:color 'white)]
@@ -126,8 +126,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "path-effects.rkt"
                   #:args ([output "path-effects.png"])

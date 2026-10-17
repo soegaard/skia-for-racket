@@ -24,11 +24,11 @@
 ;;;
 
 ; reference-image-directory : path?
-;;   Locates reference image directory relative to this module rather than the current directory.
+;   Locates reference image directory relative to this module rather than the current directory.
 (define-runtime-path reference-image-directory "../images")
 
 ; reference-figure : path-string? string? -> image-element?
-;;   Embeds a reference image after checking its filename and alternative text.
+;   Embeds a reference image after checking its filename and alternative text.
 (define (reference-figure filename alternative)
   (unless (and (string? filename)
                (regexp-match? #px"^[A-Za-z0-9][A-Za-z0-9._-]*\\.png$" filename))

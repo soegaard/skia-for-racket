@@ -26,7 +26,7 @@
 
 ; render-pict : real? real? procedure? #:scale [real?] #:background [any/c] #:color-space [(or/c
 ; color-space? #f)] -> pict?
-;;   Draws onto a temporary surface and returns a presentation-scaled pict.
+;   Draws onto a temporary surface and returns a presentation-scaled pict.
 (define (render-pict width height draw
                      #:scale [scale 1]
                      #:background [background 'white]
@@ -41,8 +41,9 @@
      scale)))
 
 ;; Magnification happens in Skia, not in the HTML/CSS image scaler.
+
 ; image-pict : image? real? #:sampling [symbol?] #:color-space [(or/c color-space? #f)] -> pict?
-;;   Renders an image at the requested enlargement with explicit sampling.
+;   Renders an image at the requested enlargement with explicit sampling.
 (define (image-pict image factor #:sampling [sampling 'nearest]
                     #:color-space [color-space #f])
   (define width (* factor (image-width image)))
@@ -53,11 +54,11 @@
                #:color-space color-space))
 
 ; captioned-pict : string? pict? -> pict?
-;;   Places a textual caption beneath the supplied pict.
+;   Places a textual caption beneath the supplied pict.
 (define (captioned-pict caption picture)
   (pict:vc-append 8 picture (pict:text caption)))
 
 ; figure-row : any/c ... -> pict?
-;;   Builds the figure row illustration from the tutorial's actual drawing.
+;   Builds the figure row illustration from the tutorial's actual drawing.
 (define (figure-row . pictures)
   (apply pict:ht-append 16 pictures))

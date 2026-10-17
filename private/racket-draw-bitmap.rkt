@@ -37,13 +37,13 @@
 
 
 ; mul255 : byte? byte? -> byte?
-;;   Multiplies a premultiplied component by mask coverage with nearest-integer rounding.
+;   Multiplies a premultiplied component by mask coverage with nearest-integer rounding.
 (define (mul255 component coverage)
   (quotient (+ (* component coverage) 127) 255))
 
 ; positive-bitmap-dimensions : symbol? (is-a?/c bitmap%) -> (values exact-positive-integer?
 ; exact-positive-integer?)
-;;   Reads and validates the bitmap's logical dimensions before any backing-scale conversion.
+;   Reads and validates the bitmap's logical dimensions before any backing-scale conversion.
 (define (positive-bitmap-dimensions who bitmap)
   (define width (send bitmap get-width))
   (define height (send bitmap get-height))
@@ -54,8 +54,8 @@
 
 ; bitmap-spec : symbol? (is-a?/c bitmap%) symbol? -> (values exact-positive-integer?
 ; exact-positive-integer? real? exact-positive-integer? exact-positive-integer? boolean?)
-;;   Returns selected pixel width/height, backing scale, logical width/height, and the unscaled-read
-;;   flag for physical or logical resolution.
+;   Returns selected pixel width/height, backing scale, logical width/height, and the unscaled-read
+;   flag for physical or logical resolution.
 (define (bitmap-spec who bitmap resolution)
   (unless (is-a? bitmap rd:bitmap%)
     (raise-argument-error who "bitmap% object" bitmap))
@@ -78,7 +78,7 @@
 
 ; read-argb : (is-a?/c bitmap%) exact-positive-integer? exact-positive-integer? boolean? boolean? ->
 ; bytes?
-;;   Copies premultiplied ARGB or alpha-mask pixels at the selected logical/physical read resolution.
+;   Copies premultiplied ARGB or alpha-mask pixels at the selected logical/physical read resolution.
 (define (read-argb bitmap width height just-alpha? unscaled?)
   (define result (make-bytes (* 4 width height)))
   (send bitmap get-argb-pixels 0 0 width height result just-alpha? #t
@@ -87,8 +87,8 @@
 
 ; resolve-mask : symbol? (is-a?/c bitmap%) (or/c #f 'loaded (is-a?/c bitmap%)) -> (or/c #f (is-a?/c
 ; bitmap%))
-;;   Resolves one explicitly selected or loaded mask and validates it without recursively following
-;;   loaded masks.
+;   Resolves one explicitly selected or loaded mask and validates it without recursively following
+;   loaded masks.
 (define (resolve-mask who bitmap mask)
   (define resolved
     (cond [(eq? mask 'loaded) (send bitmap get-loaded-mask)]
@@ -102,8 +102,8 @@
 
 ; checked-budget : symbol? exact-positive-integer? exact-positive-integer? exact-nonnegative-integer?
 ; exact-nonnegative-integer? -> void?
-;;   Bounds source ARGB, result RGBA, native construction allowance, and optional mask-copy storage
-;;   before allocation.
+;   Bounds source ARGB, result RGBA, native construction allowance, and optional mask-copy storage
+;   before allocation.
 (define (checked-budget who source-width source-height mask-width mask-height)
   ;; Source ARGB, final RGBA, an image-sized construction allowance, and an
   ;; optional mask ARGB buffer coexist. This is an admission check, not a
@@ -121,8 +121,8 @@
 
 ; racket-draw-bitmap-snapshot : symbol? (is-a?/c bitmap%) symbol? (or/c #f 'loaded (is-a?/c bitmap%))
 ; -> racket-draw-bitmap-data?
-;;   Copies checked premultiplied RGBA pixels, scaling optional mask sampling across unequal backing
-;;   scales and canonicalizing transparent RGB.
+;   Copies checked premultiplied RGBA pixels, scaling optional mask sampling across unequal backing
+;   scales and canonicalizing transparent RGB.
 (define (racket-draw-bitmap-snapshot who bitmap resolution mask)
   (define-values (width height backing logical-width logical-height unscaled?)
     (bitmap-spec who bitmap resolution))

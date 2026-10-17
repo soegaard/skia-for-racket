@@ -20,7 +20,7 @@
 ;;;
 
 ; native-abi-native-tests : test-suite?
-;;   Collects the regression cases for native ABI diagnostics on the accepted library.
+;   Collects the regression cases for native ABI diagnostics on the accepted library.
 (define native-abi-native-tests
   (test-suite
    "native ABI diagnostics on the accepted library"
@@ -60,6 +60,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests native-abi-native-tests))
   (unless (zero? failures) (error 'native-abi-native-tests "tests failed")))

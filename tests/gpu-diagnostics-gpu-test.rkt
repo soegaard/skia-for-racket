@@ -24,19 +24,19 @@
 ;;;
 
 ; WIDTH : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define WIDTH 32)
 
 ; HEIGHT : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define HEIGHT 24)
 
 ; GPU-CASES : exact-nonnegative-integer?
-;;   Records the expected number of real-GPU checks in the evidence receipt.
+;   Records the expected number of real-GPU checks in the evidence receipt.
 (define GPU-CASES 20)
 
 ; paint-pattern : canvas? -> void?
-;;   Draws the shared control pattern for diagnostic capture comparisons.
+;   Draws the shared control pattern for diagnostic capture comparisons.
 (define (paint-pattern canvas)
   (canvas-clear! canvas (rgb 17 34 51))
   (with-skia ([red (make-paint #:color (rgb 229 41 53) #:antialias? #f)]
@@ -45,7 +45,7 @@
     (draw-rect canvas 15 10 13 10 green)))
 
 ; native-string : cpointer? [exact-positive-integer?] -> string?
-;;   Copies a NUL-terminated GL string with a bound that rejects runaway native reads.
+;   Copies a NUL-terminated GL string with a bound that rejects runaway native reads.
 (define (native-string pointer [cap 65536])
   (unless pointer (error 'gpu-diagnostics-test "null native GL string"))
   (define n (let loop ([i 0])
@@ -57,7 +57,7 @@
   (bytes->string/utf-8 result #f))
 
 ; host-gl-resolver : -> procedure?
-;;   Resolves GL symbols through EGL first and the host GL library as fallback.
+;   Resolves GL symbols through EGL first and the host GL library as fallback.
 (define (host-gl-resolver)
   ;; Look up host GL symbols without borrowing an already-owned EGL context.
   ;; This is not a GPU provider and never creates a second Ganesh wrapper.
@@ -73,7 +73,7 @@
         (and gl (get-ffi-obj name gl _fpointer (lambda () #f))))))
 
 ; first-host-extension : -> any/c
-;;   Reads an indexed host GL extension for comparison with reported capabilities.
+;   Reads an indexed host GL extension for comparison with reported capabilities.
 (define (first-host-extension)
   ;; Independently query the active native driver rather than the Skia interface.
   ;; Required Linux EGL uses a desktop context with indexed GL extensions.
@@ -98,17 +98,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
   ; report-path : (or/c path-string? #f)
-  ;;   Holds the destination for this run's machine-readable evidence report.
+  ;   Holds the destination for this run's machine-readable evidence report.
   (define report-path #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") b "egl, metal or direct3d" (set! backend (string->symbol b))]
@@ -122,48 +125,55 @@
   (unless (memq adapter '(hardware warp)) (error 'gpu-diagnostics "invalid adapter"))
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory (path-only report-path)) (make-directory* directory)
 
   ; labels : (listof string?)
-  ;;   Records executed test labels in execution order.
+  ;   Records executed test labels in execution order.
   (define labels '())
+
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
+
   ; cleanup-errors : (listof string?)
-  ;;   Collects teardown failures without preventing cleanup of later resources.
+  ;   Collects teardown failures without preventing cleanup of later resources.
   (define cleanup-errors '())
 
   ; contexts : (listof gpu-context?)
-  ;;   Tracks owned contexts newest first so every created context is included in cleanup.
+  ;   Tracks owned contexts newest first so every created context is included in cleanup.
   (define contexts '())
+
   ; resources : (listof skia-resource?)
-  ;;   Tracks retained resources newest first for cleanup before their parent contexts close.
+  ;   Tracks retained resources newest first for cleanup before their parent contexts close.
   (define resources '())
+
   ; captures : (listof hash?)
-  ;;   Collects capture filenames and pixel-layout metadata for independent inspection.
+  ;   Collects capture filenames and pixel-layout metadata for independent inspection.
   (define captures '())
+
   ; traces : (listof hash?)
-  ;;   Records named GPU I/O event traces in execution order.
+  ;   Records named GPU I/O event traces in execution order.
   (define traces '())
 
   ; reports : hash?
-  ;;   Stores named detached diagnostic reports for later serialization and validation.
+  ;   Stores named detached diagnostic reports for later serialization and validation.
   (define reports (make-hasheq))
+
   ; interface-rows : (listof hash?)
-  ;;   Records GL-interface selection evidence for each requested assembly mode.
+  ;   Records GL-interface selection evidence for each requested assembly mode.
   (define interface-rows '())
+
   ; extension : (or/c string? #f)
-  ;;   Names a real host GL extension queried independently of Skia for interface-query comparison.
+  ;   Names a real host GL extension queried independently of Skia for interface-query comparison.
   (define extension #f)
 
   ; lifecycle : hash?
-  ;;   Stores named context lifecycle observations from diagnostics and cleanup.
+  ;   Stores named context lifecycle observations from diagnostics and cleanup.
   (define lifecycle (make-hasheq))
 
   ; fresh : [symbol?] -> gpu-context?
-  ;;   Creates and records a context, applying the requested GL interface mode only to EGL.
+  ;   Creates and records a context, applying the requested GL interface mode only to EGL.
   (define (fresh [mode 'default])
     (define c (case backend
       [(egl) (make-egl-gpu-context #:gl-interface mode)]
@@ -172,18 +182,18 @@
     (set! contexts (cons c contexts)) c)
 
   ; retain : skia-resource? -> skia-resource?
-  ;;   Registers an owned resource for reverse-creation-order cleanup and returns it unchanged.
+  ;   Registers an owned resource for reverse-creation-order cleanup and returns it unchanged.
   (define (retain v) (set! resources (cons v resources)) v)
 
   ; test! : string? procedure? -> void?
-  ;;   Runs one named acceptance case and accumulates its failure count for final reporting.
+  ;   Runs one named acceptance case and accumulates its failure count for final reporting.
   (define (test! label thunk)
     (set! labels (append labels (list label)))
     (set! failures (+ failures (run-tests (test-suite label (test-case label (thunk)))))))
 
   ; trace! : string? procedure? -> any/c
-  ;;   Records a diagnostic call's events, requires no GPU I/O or cache operations, and returns its
-  ;;   result.
+  ;   Records a diagnostic call's events, requires no GPU I/O or cache operations, and returns its
+  ;   result.
   (define (trace! name thunk)
     (define ledger (box '()))
     (define result (parameterize ([current-gpu-io-ledger ledger]) (thunk)))
@@ -193,13 +203,13 @@
     result)
 
   ; save! : path-string? bytes? -> exact-nonnegative-integer?
-  ;;   Writes one capture artifact in the run directory, refusing to replace an existing file.
+  ;   Writes one capture artifact in the run directory, refusing to replace an existing file.
   (define (save! name bytes)
     (call-with-output-file (build-path directory name) (lambda (out) (write-bytes bytes out))
       #:exists 'error #:mode 'binary))
 
   ; pixels! : string? gpu-surface? -> void?
-  ;;   Saves an explicit RGBA surface capture and records its filename and dimensions.
+  ;   Saves an explicit RGBA surface capture and records its filename and dimensions.
   (define (pixels! name s)
     (define bytes (gpu-surface->rgba-bytes s))
     (save! (string-append name ".rgba") bytes)
@@ -207,24 +217,28 @@
                                                 'width WIDTH 'height HEIGHT)))))
 
   ; c : (or/c gpu-context? #f)
-  ;;   Retains the primary context whose diagnostic and lifecycle behavior is inspected.
+  ;   Retains the primary context whose diagnostic and lifecycle behavior is inspected.
   (define c #f)
+
   ; s : (or/c gpu-surface? #f)
-  ;;   Retains the primary GPU surface used to compare pixels before and after diagnostics.
+  ;   Retains the primary GPU surface used to compare pixels before and after diagnostics.
   (define s #f)
+
   ; im : (or/c gpu-image? #f)
-  ;;   Retains a GPU snapshot used by image and memory diagnostics.
+  ;   Retains a GPU snapshot used by image and memory diagnostics.
   (define im #f)
+
   ; kept : (or/c memory-statistics? #f)
-  ;;   Keeps a detached memory-statistics report for validity checks after resource mutation or
-  ;;   closure.
+  ;   Keeps a detached memory-statistics report for validity checks after resource mutation or
+  ;   closure.
   (define kept #f)
+
   ; saved-data : (or/c bytes? #f)
-  ;;   Keeps captured pixels for comparisons proving that diagnostic calls do not mutate rendering.
+  ;   Keeps captured pixels for comparisons proving that diagnostic calls do not mutate rendering.
   (define saved-data #f)
 
   ; active : procedure? -> any
-  ;;   Runs a diagnostic callback while the primary GPU context is current.
+  ;   Runs a diagnostic callback while the primary GPU context is current.
   (define (active thunk) (call-with-gpu-context c thunk))
   (dynamic-wind void
     (lambda ()
@@ -416,7 +430,7 @@
           (gpu-context-close! context)))))
 
   ; passed? : boolean?
-  ;;   Combines test assertions and required evidence/cleanup checks into the final run status.
+  ;   Combines test assertions and required evidence/cleanup checks into the final run status.
   (define passed? (and (= (length labels) GPU-CASES) (zero? failures) (null? cleanup-errors)))
   (call-with-output-file report-path
     (lambda (out)

@@ -19,7 +19,7 @@
 ;;;
 
 ; describe-current-gpu : gpu-context? -> hash?
-;;   Returns context, cache, and memory diagnostics as a JSON-compatible hash.
+;   Returns context, cache, and memory diagnostics as a JSON-compatible hash.
 (define (describe-current-gpu context)
   (hasheq 'context (gpu-context-info context)
           'budgeted_cache (gpu-cache-info context)
@@ -31,11 +31,13 @@
 ;;;
 
 (module+ main
+
   ; backend : symbol?
-  ;;   Selects backend for the example.
+  ;   Selects backend for the example.
   (define backend 'auto)
+
   ; adapter : symbol?
-  ;;   Selects the requested GPU adapter, or leaves backend selection at its default.
+  ;   Selects the requested GPU adapter, or leaves backend selection at its default.
   (define adapter 'hardware)
   (command-line #:once-each
     [("--backend") b "egl, metal, direct3d" (set! backend (string->symbol b))]
@@ -44,8 +46,9 @@
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
   (unless (memq adapter '(hardware warp)) (error 'gpu-diagnostics "invalid adapter"))
+
   ; context : gpu-context?
-  ;;   Owns the explicitly selected GPU context for the example's rendering work.
+  ;   Owns the explicitly selected GPU context for the example's rendering work.
   (define context
     (case backend
       [(egl) (make-egl-gpu-context #:gl-interface 'auto)]

@@ -18,11 +18,13 @@
 ;;;
 
 (module+ main
+
   ; packed : real?
-  ;;   Supplies the packed ARGB value used to verify lossless color conversion.
+  ;   Supplies the packed ARGB value used to verify lossless color conversion.
   (define packed #x80402010)
+
   ; value : color4f?
-  ;;   Retains the floating-point color produced from the packed ARGB sample.
+  ;   Retains the floating-point color produced from the packed ARGB sample.
   (define value (color->color4f packed))
   (unless (= (color->argb (color4f->rgba value)) packed)
     (error 'public-value-example "packed-color round trip failed"))

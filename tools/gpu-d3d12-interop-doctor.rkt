@@ -21,13 +21,13 @@
 ;;;
 
 ; publish : path-string? path-string? any/c -> void?
-;;   Writes a named JSON receipt under the selected interop evidence directory.
+;   Writes a named JSON receipt under the selected interop evidence directory.
 (define (publish directory name data)
   (write-gpu-json (build-path directory name) data))
 
 ; base : path? symbol? (or/c exact-nonnegative-integer? #f) -> hash?
-;;   Builds runtime/adapter identity fields without claiming unmeasured hardware or presentation
-;;   behavior.
+;   Builds runtime/adapter identity fields without claiming unmeasured hardware or presentation
+;   behavior.
 (define (base directory selection index)
   (hasheq 'schema 1 'stage "0.51" 'validation_run (path->string (file-name-from-path directory))
     'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
@@ -39,8 +39,8 @@
 
 ; gpu-d3d12-interop-doctor! : path? path-string? symbol? (or/c exact-nonnegative-integer? #f) ->
 ; exact-integer?
-;;   Runs independent producer/consumer handoffs and records ownership, pixels, and repeated-context
-;;   teardown.
+;   Runs independent producer/consumer handoffs and records ownership, pixels, and repeated-context
+;   teardown.
 (define (gpu-d3d12-interop-doctor! directory dll selection index)
   (define cycles '()) (define captures '()) (define pending '())
   (define failures #f) (define suite-contexts '())
@@ -157,8 +157,8 @@
 
 ; gpu-d3d12-interop-timeout-doctor! : path? path-string? symbol? (or/c exact-nonnegative-integer?
 ; #f) -> exact-integer?
-;;   Forces an unsignaled-fence timeout and checks quarantine without submitting the graphics
-;;   handoff.
+;   Forces an unsignaled-fence timeout and checks quarantine without submitting the graphics
+;   handoff.
 (define (gpu-d3d12-interop-timeout-doctor! directory dll selection index)
   ;; Disposable child: intentional quarantine, not a leak-free success. It
   ;; exits normally; no SIGABRT, core dump or Crash Reporter fixture.
@@ -196,20 +196,24 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; dll : (or/c path-string? #f)
-  ;;   Selects the external Direct3D producer fixture DLL used for texture and fence ownership
-  ;;   checks.
+  ;   Selects the external Direct3D producer fixture DLL used for texture and fence ownership
+  ;   checks.
   (define dll #f)
+
   ; selection : symbol?
-  ;;   Chooses the Direct3D adapter policy; WARP is the default for reproducible software execution.
+  ;   Chooses the Direct3D adapter policy; WARP is the default for reproducible software execution.
   (define selection 'warp)
+
   ; index : exact-nonnegative-integer?
-  ;;   Selects the zero-based Direct3D adapter within the chosen adapter policy.
+  ;   Selects the zero-based Direct3D adapter within the chosen adapter policy.
   (define index 0)
+
   ; timeout? : boolean?
-  ;;   Selects the deliberately blocked producer/consumer case used to validate timeout handling.
+  ;   Selects the deliberately blocked producer/consumer case used to validate timeout handling.
   (define timeout? #f)
   (command-line #:once-each
     [("--directory") p "Fresh evidence directory" (set! directory (string->path p))]

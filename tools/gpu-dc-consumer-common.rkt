@@ -24,21 +24,21 @@
 ;;;
 
 ; workload-id : consumer-workload? list? string? -> string?
-;;   Combines target, scene, replay mode, and extent label into a stable capture identifier.
+;   Combines target, scene, replay mode, and extent label into a stable capture identifier.
 (define (workload-id workload extent target)
   (string-append target "-" (consumer-workload-scene workload) "-"
                  (consumer-workload-mode workload) "-" (car extent)))
 
 ; extent->json : list? -> hash?
-;;   Names physical and logical extent fields separately in a JSON-ready record.
+;   Names physical and logical extent fields separately in a JSON-ready record.
 (define (extent->json extent)
   (hasheq 'name (car extent) 'pixel_width (list-ref extent 1) 'pixel_height (list-ref extent 2)
           'logical_width (list-ref extent 3) 'logical_height (list-ref extent 4)))
 
 ; observe-consumer-io! : procedure? [#:capture? boolean? #:present? boolean?] -> (values any/c
 ; list?)
-;;   Checks explicit-readback/presentation counts and returns the callback result with ordered I/O
-;;   events.
+;   Checks explicit-readback/presentation counts and returns the callback result with ordered I/O
+;   events.
 (define (observe-consumer-io! proc #:capture? [capture? #f] #:present? [present? #f])
   (define ledger (box '()))
   (define result (parameterize ([current-gpu-io-ledger ledger]) (proc)))
@@ -57,7 +57,7 @@
 
 ; write-consumer-capture! : path-string? consumer-workload? list? string? bytes? any/c list? ->
 ; hash?
-;;   Checks RGBA extent, writes a fresh capture, and returns its layout and drawing-I/O metadata.
+;   Checks RGBA extent, writes a fresh capture, and returns its layout and drawing-I/O metadata.
 (define (write-consumer-capture! directory workload extent target data layout events)
   (define id (workload-id workload extent target))
   (ensure-consumer! (= (bytes-length data) (* 4 (list-ref extent 1) (list-ref extent 2)))
@@ -69,7 +69,7 @@
           'target target 'extent (extent->json extent) 'file file 'layout layout 'draw_io events))
 
 ; finish-consumer-report! : path-string? string? string? any/c list? any/c -> void?
-;;   Writes the completed tagged consumer receipt without claiming physical-display verification.
+;   Writes the completed tagged consumer receipt without claiming physical-display verification.
 (define (finish-consumer-report! directory name token backend captures checks)
   (define report
     (hasheq 'schema 1 'stage "0.60" 'suite name 'status "passed" 'run_token token

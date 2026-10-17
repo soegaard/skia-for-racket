@@ -23,14 +23,14 @@
 ;;;
 
 ; sample-png : -> bytes?
-;;   Encodes a two-by-three red raster image for image and codec examples.
+;   Encodes a two-by-three red raster image for image and codec examples.
 (define (sample-png)
   (with-skia ([surface (make-surface 2 3 #:background 'red)])
     (surface->png-bytes surface)))
 
 
 ; bottom-up-bmp : -> bytes?
-;;   Builds a two-by-three 24-bit BMP with padded bottom-up rows and distinguishable pixel colors.
+;   Builds a two-by-three 24-bit BMP with padded bottom-up rows and distinguishable pixel colors.
 (define (bottom-up-bmp)
   ;; Two pixels per row, three rows, uncompressed BGR24, four-byte row alignment.
   ;; Top-to-bottom colors: red/green, blue/white, yellow/black.

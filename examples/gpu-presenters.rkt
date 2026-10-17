@@ -19,16 +19,18 @@
 ;;;
 
 (module+ main
+
   ; requested : symbol?
-  ;;   Selects requested for the example.
+  ;   Selects requested for the example.
   (define requested (if (eq? (system-type 'os) 'macosx) 'both 'opengl))
   (command-line #:once-each
     [("--backend") b "auto, opengl, metal, or both (macOS)" (set! requested (string->symbol b))]
     #:args () (void))
   (unless (memq requested '(auto opengl metal both))
     (raise-argument-error 'gpu-presenters "auto, opengl, metal, or both" requested))
+
   ; backends : list?
-  ;;   Lists the explicitly selected presenters to open for comparison.
+  ;   Lists the explicitly selected presenters to open for comparison.
   (define backends (if (eq? requested 'both) '(opengl metal) (list requested)))
   (when (and (memq 'metal backends) (not (eq? (system-type 'os) 'macosx)))
     (error 'gpu-presenters "Metal window presentation requires macOS"))

@@ -20,7 +20,7 @@
 ;;;
 
 ; bad : (-> any) -> void?
-;;   Requires exn:fail:contract? for the deliberately invalid operation.
+;   Requires exn:fail:contract? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail:contract? thunk))
 
 ;;;
@@ -28,7 +28,7 @@
 ;;;
 
 ; typeface-pure-tests : test-suite?
-;;   Collects the regression cases for pure typeface values, ranges and original generated fixtures.
+;   Collects the regression cases for pure typeface values, ranges and original generated fixtures.
 (define typeface-pure-tests
   (test-suite
    "0.68a pure typeface values, ranges and original generated fixtures"

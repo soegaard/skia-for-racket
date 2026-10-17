@@ -15,9 +15,10 @@
          (submod "core.rkt" gpu-surface-internals)
          (submod "gpu-presenter.rkt" adapter-internals))
 (provide make-metal-presentation-adapter)
+
 ; make-metal-presentation-adapter : any/c any/c any/c -> any
-;;   Connects layer acquisition, Skia wrapping, presentation, and teardown to the common frame
-;;   protocol.
+;   Connects layer acquisition, Skia wrapping, presentation, and teardown to the common frame
+;   protocol.
 (define (make-metal-presentation-adapter view post background)
   (presentation-native-check!)
   (define context (make-gpu-context #:backend 'metal))

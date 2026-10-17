@@ -29,19 +29,19 @@
 ;;;
 
 ; png-signature : bytes?
-;;   Holds the eight-byte PNG magic value used to identify converted output.
+;   Holds the eight-byte PNG magic value used to identify converted output.
 (define png-signature #"\211PNG\r\n\032\n")
 
 
 ; png-size : bytes? -> (listof exact-nonnegative-integer?)
-;;   Reads IHDR width and height from a PNG fixture.
+;   Reads IHDR width and height from a PNG fixture.
 (define (png-size png)
   (list (integer-bytes->integer png #f #t 16 20)
         (integer-bytes->integer png #f #t 20 24)))
 
 
 ; png-pixel : bytes? exact-nonnegative-integer? exact-nonnegative-integer? -> bytes?
-;;   Decodes a PNG with Racket Draw and reads one ARGB pixel as an independent oracle.
+;   Decodes a PNG with Racket Draw and reads one ARGB pixel as an independent oracle.
 (define (png-pixel png x y)
   (define bitmap (read-bitmap (open-input-bytes png) 'png/alpha))
   (check-true (send bitmap ok?))
@@ -51,13 +51,13 @@
 
 
 ; blank-page : document? -> any
-;;   Adds an empty 20-by-12-point page to a PDF fixture.
+;   Adds an empty 20-by-12-point page to a PDF fixture.
 (define (blank-page document)
   (call-with-document-page document 20 12 (lambda (_) (void))))
 
 
 ; finished-pdf : -> document?
-;;   Creates and finishes a one-page PDF, leaving its wrapper for the caller to close.
+;   Creates and finishes a one-page PDF, leaving its wrapper for the caller to close.
 (define (finished-pdf)
   (define document (make-pdf-document))
   (blank-page document)
@@ -66,7 +66,7 @@
 
 
 ; finished-svg : -> svg-document?
-;;   Creates and finishes an empty SVG, leaving its wrapper for the caller to close.
+;   Creates and finishes an empty SVG, leaving its wrapper for the caller to close.
 (define (finished-svg)
   (define document (make-svg-document 20 12))
   (svg-document-finish! document)
@@ -74,29 +74,29 @@
 
 
 ; all-files : path-string? -> (listof path?)
-;;   Lists output files recursively, excluding directories.
+;   Lists output files recursively, excluding directories.
 (define (all-files directory)
   (find-files (lambda (path) (not (directory-exists? path))) directory))
 
 
 ; has-extension? : path-string? regexp? -> boolean?
-;;   Checks whether Scribble emitted any file matching the requested output suffix.
+;   Checks whether Scribble emitted any file matching the requested output suffix.
 (define (has-extension? directory pattern)
   (for/or ([path (in-list (all-files directory))])
     (regexp-match? pattern (path->string path))))
 
 
 ; fixture-directory : path?
-;;   Locates . relative to this module, independent of the invoking directory.
+;   Locates . relative to this module, independent of the invoking directory.
 (define-runtime-path fixture-directory ".")
 
 ; fixture-path : path-string? -> path?
-;;   Resolves a Scribble conversion fixture beside this test module.
+;   Resolves a Scribble conversion fixture beside this test module.
 (define (fixture-path name) (build-path fixture-directory name))
 
 
 ; render-fixture : module-path? procedure? string? procedure? -> any
-;;   Renders a fixture in a temporary directory, checks its artifacts, and removes them afterward.
+;   Renders a fixture in a temporary directory, checks its artifacts, and removes them afterward.
 (define (render-fixture file renderer name check)
   (define directory (make-temporary-file "skia-convertible-scribble-~a" 'directory))
   (dynamic-wind
@@ -113,7 +113,7 @@
 ;;;
 
 ; convertible-native-tests : test-suite?
-;;   Collects the regression cases for file/convertible live Skia interoperability.
+;   Collects the regression cases for file/convertible live Skia interoperability.
 (define convertible-native-tests
   (test-suite
    "file/convertible live Skia interoperability"
@@ -252,6 +252,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests convertible-native-tests))
   (unless (zero? failures) (error 'convertible-native-test "~a failures" failures)))

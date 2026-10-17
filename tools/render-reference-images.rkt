@@ -37,18 +37,18 @@
 ;;;
 
 ; output-directory : path?
-;;   Locates ../scribblings/reference/images relative to this module, independent of the invoking
-;;   directory.
+;   Locates ../scribblings/reference/images relative to this module, independent of the invoking
+;   directory.
 (define-runtime-path output-directory "../scribblings/reference/images")
 
 
 ; device-scale : exact-positive-integer?
-;;   Sets the PNG backing resolution to twice the logical dimensions used in manual examples.
+;   Sets the PNG backing resolution to twice the logical dimensions used in manual examples.
 (define device-scale 2)
 
 
 ; output-path : path-string? -> path?
-;;   Resolves a generated image filename beneath the Reference image directory.
+;   Resolves a generated image filename beneath the Reference image directory.
 (define (output-path filename)
   (build-path output-directory filename))
 
@@ -57,13 +57,13 @@
 ;; derived from the fixture below rather than being hand-drawn after rendering.
 
 ; one-decimal : real? -> string?
-;;   Formats measured diagram values rounded to one decimal place.
+;   Formats measured diagram values rounded to one decimal place.
 (define (one-decimal value)
   (number->string (/ (round (* 10.0 value)) 10.0)))
 
 
 ; draw-arrow : canvas? real? real? real? real? paint? -> void?
-;;   Draws a directed line and a filled triangular head at its second endpoint.
+;   Draws a directed line and a filled triangular head at its second endpoint.
 (define (draw-arrow canvas x1 y1 x2 y2 paint)
   (draw-line canvas x1 y1 x2 y2 paint)
   (define angle (atan (- y2 y1) (- x2 x1)))
@@ -75,7 +75,7 @@
 
 
 ; draw-corner-bracket : canvas? real? real? real? real? paint? -> void?
-;;   Marks a rectangle's four corners without obscuring the content inside it.
+;   Marks a rectangle's four corners without obscuring the content inside it.
 (define (draw-corner-bracket canvas x y width height paint)
   (define size 7)
   (for ([x0 (list x (+ x width))] [sx '(1 -1)])
@@ -85,8 +85,8 @@
 
 
 ; make-reference-surface : exact-positive-integer? exact-positive-integer? [any/c] -> surface?
-;;   Creates an owned raster surface at the presentation scale, optionally initializing its
-;;   background.
+;   Creates an owned raster surface at the presentation scale, optionally initializing its
+;   background.
 (define (make-reference-surface width height [background #f])
   (if background
       (make-surface (* device-scale width)
@@ -98,7 +98,7 @@
 
 ; render-reference-image : path-string? exact-positive-integer? exact-positive-integer? procedure?
 ; [#:background any/c] -> void?
-;;   Draws in logical coordinates on a scaled surface and replaces the named Reference PNG.
+;   Draws in logical coordinates on a scaled surface and replaces the named Reference PNG.
 (define (render-reference-image filename width height draw
                                 #:background [background #f])
   (make-directory* output-directory)
@@ -117,8 +117,8 @@
 
 ; render-native-scale-reference-image : path-string? exact-positive-integer? exact-positive-integer?
 ; procedure? [#:background any/c #:sampling symbol?] -> void?
-;;   Renders at literal example dimensions before enlarging the completed image, preserving examples
-;;   that reset the canvas matrix.
+;   Renders at literal example dimensions before enlarging the completed image, preserving examples
+;   that reset the canvas matrix.
 (define (render-native-scale-reference-image filename width height draw
                                               #:background [background #f]
                                               #:sampling [sampling 'nearest])
@@ -143,8 +143,8 @@
 ;; native versions used for a regenerated fixture.
 
 ; call-with-hebrew-font : string? real? string? procedure? -> any
-;;   Scopes a fallback face and font covering the requested Hebrew text and records the chosen
-;;   native versions.
+;   Scopes a fallback face and font covering the requested Hebrew text and records the chosen
+;   native versions.
 (define (call-with-hebrew-font label size text proc)
   (with-skia ([manager (make-font-manager)])
     (define face
@@ -161,8 +161,8 @@
 
 
 ; make-reference-bottom-up-bmp : -> bytes?
-;;   Builds a two-by-three bottom-up 24-bit BMP with distinct colors and padded rows for decoder
-;;   diagrams.
+;   Builds a two-by-three bottom-up 24-bit BMP with distinct colors and padded rows for decoder
+;   diagrams.
 (define (make-reference-bottom-up-bmp)
   ;; Two pixels per row, three rows, uncompressed BGR24, four-byte row alignment.
   ;; Top-to-bottom colors: red/green, blue/white, yellow/black.
@@ -844,8 +844,8 @@
 
 
 ; make-nine-patch-source : -> image?
-;;   Returns an owned yellow image with blue top and bottom bands that reveal fixed versus stretched
-;;   regions.
+;   Returns an owned yellow image with blue top and bottom bands that reveal fixed versus stretched
+;   regions.
 (define (make-nine-patch-source)
   (with-skia ([surface (make-surface 30 30 #:background "#F4D35E")]
               [blue (make-paint #:color "#326DE6")])
@@ -862,7 +862,7 @@
 
 
 ; make-atlas-source : -> image?
-;;   Returns an owned red/blue two-cell atlas for source-rectangle and transform examples.
+;   Returns an owned red/blue two-cell atlas for source-rectangle and transform examples.
 (define (make-atlas-source)
   (with-skia ([surface (make-surface 32 16 #:background 'red)]
               [blue (make-paint #:color "#326DE6")])
@@ -1946,7 +1946,7 @@
 
 
 ; face-label : typeface? -> string?
-;;   Truncates a font family label to fit compact comparison panels.
+;   Truncates a font family label to fit compact comparison panels.
 (define (face-label face)
   (define family (typeface-family-name face))
   (if (> (string-length family) 16)
@@ -2215,7 +2215,7 @@
 
 
 ; draw-reference-checkerboard : canvas? real? real? real? real? [real?] -> void?
-;;   Draws a clipped light/dark grid that makes transparency visible behind examples.
+;   Draws a clipped light/dark grid that makes transparency visible behind examples.
 (define (draw-reference-checkerboard canvas x y width height [cell 10])
   (with-skia ([light (make-paint #:color "#F1F3F5")]
               [dark (make-paint #:color "#D9DEE4")])
@@ -2230,8 +2230,8 @@
 
 
 ; make-reference-quadrant-image : -> image?
-;;   Returns an owned four-color image whose quadrant placement reveals sampling and coordinate
-;;   behavior.
+;   Returns an owned four-color image whose quadrant placement reveals sampling and coordinate
+;   behavior.
 (define (make-reference-quadrant-image)
   (with-skia ([surface (make-surface 4 4 #:background 'red)]
               [green (make-paint #:color 'green)]
@@ -2245,8 +2245,8 @@
 
 
 ; make-reference-motif-image : -> image?
-;;   Returns an owned yellow image with distinct circle and rectangle motifs for cropping and
-;;   placement examples.
+;   Returns an owned yellow image with distinct circle and rectangle motifs for cropping and
+;   placement examples.
 (define (make-reference-motif-image)
   (with-skia ([surface (make-surface 40 30 #:background "#F4D35E")]
               [blue (make-paint #:color "#326DE6")]
@@ -2258,7 +2258,7 @@
 
 
 ; make-reference-overlap-path : symbol? -> path?
-;;   Returns an owned Boolean path result from two overlapping circles.
+;   Returns an owned Boolean path result from two overlapping circles.
 (define (make-reference-overlap-path operation)
   (with-skia ([left (make-path)] [right (make-path)])
     (path-add-circle! left 65 50 34)
@@ -2267,7 +2267,7 @@
 
 
 ; make-reference-region-result : symbol? -> region?
-;;   Returns an owned region-operation result from two overlapping integer rectangles.
+;   Returns an owned region-operation result from two overlapping integer rectangles.
 (define (make-reference-region-result operation)
   (with-skia ([a (make-region '((20 15 90 55)))]
               [b (make-region '((70 30 80 50)))])

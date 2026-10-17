@@ -33,19 +33,21 @@
 ;;   guarantee of final decoded pixels; initialized-rows may be #f.
 
 ; incremental-terminal? : any/c -> boolean?
-;;   Recognizes states that permit no further decoding, including sealed incomplete input.
+;   Recognizes states that permit no further decoding, including sealed incomplete input.
 (define (incremental-terminal? status)
   (and (memq status '(complete incomplete failed cancelled closed)) #t))
+
 ; incremental-result-state : exact-integer? boolean? -> symbol?
-;;   Distinguishes temporary needs-input from terminal incomplete results using the final-input
-;;   flag.
+;   Distinguishes temporary needs-input from terminal incomplete results using the final-input
+;   flag.
 (define (incremental-result-state code final?)
   (cond [(zero? code) 'complete]
         [(= code 1) (if final? 'incomplete 'needs-input)]
         [else 'failed]))
+
 ; incremental-options : symbol? symbol? symbol? any/c any/c exact-positive-integer? -> image-info?
-;;   Validates supported byte formats, alpha interpretation, aligned stride, and retained-input
-;;   budget.
+;   Validates supported byte formats, alpha interpretation, aligned stride, and retained-input
+;   budget.
 (define (incremental-options who color alpha space row-bytes limit)
   (unless (and (exact-positive-integer? limit)
                (<= limit (min #x7fffffff (current-skia-byte-limit))))

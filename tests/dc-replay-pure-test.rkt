@@ -23,7 +23,7 @@
 ;;;
 
 ; fresh : [#:fail-create any/c #:fail-compose any/c] -> (values dc<%> box?)
-;;   Creates a recording alpha-capable DC with injectable allocation and merge failures.
+;   Creates a recording alpha-capable DC with injectable allocation and merge failures.
 (define (fresh #:fail-create [fail-create #f] #:fail-compose [fail-compose #f])
   (define events (box '())) (define next 0)
   (define (event . xs) (set-box! events (cons xs (unbox events))) (void))
@@ -46,17 +46,17 @@
   (values (new (make-skia-dc-class r) [width 64] [height 48]) events))
 
 ; with-fresh : syntax
-;;   Binds a fresh DC and event log and guarantees closure after the test body.
+;   Binds a fresh DC and event log and guarantees closure after the test body.
 (define-syntax-rule (with-fresh (dc e) body ...)
   (let-values ([(dc e) (fresh)])
     (dynamic-wind void (lambda () body ...) (lambda () (send dc close)))))
 
 ; events-of : box? symbol? -> list?
-;;   Returns matching renderer events in execution order.
+;   Returns matching renderer events in execution order.
 (define (events-of e kind) (filter (lambda (x) (eq? (car x) kind)) (reverse (unbox e))))
 
 ; simple : dc<%> -> void?
-;;   Draws one red rectangle to exercise recorded replay without unrelated state changes.
+;   Draws one red rectangle to exercise recorded replay without unrelated state changes.
 (define (simple dc)
   (send dc set-pen "black" 1 'transparent) (send dc set-brush "red" 'solid)
   (send dc draw-rectangle 2 3 8 9))
@@ -66,8 +66,8 @@
 ;;;
 
 ; dc-replay-pure-tests : test-suite?
-;;   Collects the regression cases for dC replay, locking and alpha protocol (recording renderer; no
-;;   Skia pixels).
+;   Collects the regression cases for dC replay, locking and alpha protocol (recording renderer; no
+;   Skia pixels).
 (define dc-replay-pure-tests
   (test-suite
    "DC replay, locking and alpha protocol (recording renderer; no Skia pixels)"
@@ -235,5 +235,5 @@
      (check-equal? (run-dc-alpha-tests) dc-alpha-test-count))))
 
 ; dc-replay-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-replay-pure-test-count 28)

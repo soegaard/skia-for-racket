@@ -18,65 +18,78 @@
 ;;;
 
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20344e")
+
 ; blue : string?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue "#3269d5")
+
 ; teal : string?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal "#10988e")
+
 ; orange : string?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
+
 ; solid-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define solid-source
   "layout(color) uniform half4 color; half4 main(float2 p) { return half4(color.rgb*color.a,color.a); }")
+
 ; wave-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define wave-source
   (string-append
    "uniform float2x2 basis; uniform float phase; layout(color) uniform half4 low; layout(color) uniform half4 high;\n"
    "half4 main(float2 p) { float2 q=basis*p; half t=half(0.5+0.5*sin(q.x*0.055+q.y*0.025+phase));\n"
    "half4 c=mix(low,high,t); return half4(c.rgb*c.a,c.a); }"))
+
 ; palette-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define palette-source
   (string-append
    "uniform int enabled; layout(color) uniform half4 palette[2]; uniform float cell;\n"
    "half4 main(float2 p) { float k=mod(floor(p.x/cell)+floor(p.y/cell),2.0);\n"
    "half4 c=(enabled==0 || k<1.0) ? palette[0] : palette[1]; return half4(c.rgb*c.a,c.a); }"))
+
 ; pass-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define pass-source "uniform shader child; half4 main(float2 p) { return child.eval(p); }")
+
 ; warp-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define warp-source
   "uniform shader child; uniform float amount; half4 main(float2 p) { return child.eval(p+float2(0,amount*sin(p.x*0.045))); }")
+
 ; mixed-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define mixed-source
   "uniform shader image; uniform colorFilter filter; uniform blender blend; half4 main(float2 p) { return blend.eval(filter.eval(image.eval(p)),half4(0,0,1,1)); }")
+
 ; invert-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define invert-source "half4 main(half4 c) { return half4(c.a-c.rgb,c.a); }")
+
 ; mix-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define mix-source "uniform float amount; half4 main(half4 s, half4 d) { return mix(s,d,amount); }")
 
 ; label : canvas? string? real? real? real? [any/c] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y size [color ink])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color color)])
     (draw-simple-text c text x y f p)))
+
 ; fill-shader : canvas? shader? -> void?
-;;   Draws the fill shader comparison in the current canvas coordinate system.
+;   Draws the fill shader comparison in the current canvas coordinate system.
 (define (fill-shader c sh)
   (with-skia ([p (make-paint #:shader sh)]) (draw-paint c p)))
+
 ; motif : canvas? [any/c] -> void?
-;;   Draws the motif comparison in the current canvas coordinate system.
+;   Draws the motif comparison in the current canvas coordinate system.
 (define (motif c [cf #f])
   (with-skia ([a (make-paint #:color blue #:color-filter cf)]
               [b (make-paint #:color orange #:color-filter cf)]
@@ -85,16 +98,18 @@
     (draw-line c 52 32 186 75 t)
     (draw-line c 111 20 138 86 t)
     (draw-circle c 239 74 31 b)))
+
 ; checker : canvas? real? real? -> void?
-;;   Draws a checkerboard that makes transparent pixels visible.
+;   Draws a checkerboard that makes transparent pixels visible.
 (define (checker c x y)
   (with-skia ([light (make-paint #:color "#f1f4f7")]
               [dark (make-paint #:color "#e2e7ee")])
     (draw-rect c x y 312 112 light)
     (for* ([row (in-range 7)] [col (in-range 20)] #:when (odd? (+ row col)))
       (draw-rect c (+ x (* col 16)) (+ y (* row 16)) (min 16 (- 312 (* col 16))) 16 dark))))
+
 ; panel : canvas? real? real? string? string? procedure? -> void?
-;;   Draws one labeled comparison panel using the example's shared layout.
+;   Draws one labeled comparison panel using the example's shared layout.
 (define (panel c x y title description draw)
   (label c title x (- y 11) 12)
   (checker c x y)
@@ -104,8 +119,9 @@
   (with-skia ([border (make-paint #:color "#cbd5e2" #:style 'stroke #:stroke-width 0.5)])
     (draw-rect c x y 312 112 border))
   (label c description x (+ y 130) 9))
+
 ; page : string? string? list? -> output-page?
-;;   Builds the page output page and its drawing callback.
+;   Builds the page output page and its drawing callback.
 (define (page title subtitle panels)
   (make-output-page
    720 500
@@ -119,13 +135,15 @@
      (label c "Four bounded raster panels; surrounding labels and checkerboards stay vector." 0 430
        9))
    #:margins 24 #:background 'white))
+
 ; waves : runtime-effect? real? [any/c] -> shader?
-;;   Binds the wave effect's uniforms for the selected animation phase.
+;   Binds the wave effect's uniforms for the selected animation phase.
 (define (waves e phase [basis '(1 0 0 1)])
   (runtime-effect->shader e #:uniforms
      (hash 'basis basis 'phase phase 'low '(0.20 0.41 0.84 1) 'high '(0.94 0.63 0.17 1))))
+
 ; make-tile : -> image?
-;;   Constructs tile for the example's drawing pipeline.
+;   Constructs tile for the example's drawing pipeline.
 (define (make-tile)
   (with-skia ([s (make-surface 32 32 #:background teal)]
               [a (make-paint #:color blue)] [b (make-paint #:color orange)])
@@ -133,8 +151,9 @@
     (draw-rect c 0 0 16 16 a) (draw-rect c 16 16 16 16 a)
     (draw-circle c 16 16 8 b)
     (surface-snapshot s)))
+
 ; reflection-entry : any/c any/c -> hash?
-;;   Serializes the runtime effect's uniform and child descriptions.
+;   Serializes the runtime effect's uniform and child descriptions.
 (define (reflection-entry name e)
   (hasheq 'name name 'kind (symbol->string (runtime-effect-kind e))
           'uniform_bytes (runtime-effect-uniform-byte-size e)
@@ -149,13 +168,15 @@
             (hasheq 'name (runtime-child-name child)
                     'kind (symbol->string (runtime-child-kind child))
                     'index (runtime-child-index child)))))
+
 ; escaped : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (escaped s)
   (string-replace (string-replace (string-replace (string-replace s "&" "&amp;")
                                                   "<" "&lt;") ">" "&gt;") "\"" "&quot;"))
+
 ; basename : any/c -> string?
-;;   Returns an HTML-safe filename for a generated report link.
+;   Returns an HTML-safe filename for a generated report link.
 (define (basename p) (escaped (path->string (file-name-from-path p))))
 
 ;;;
@@ -163,12 +184,14 @@
 ;;;
 
 (module+ main
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix (command-line #:program "runtime-effects.rkt"
                               #:args ([prefix "runtime-effects-0.28"]) prefix))
+
   ; name : any/c -> string?
-  ;;   Constructs an output filename from the selected prefix.
+  ;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
   ;; Compile once, create independent uniform/child snapshots for each draw.

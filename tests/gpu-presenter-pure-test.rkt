@@ -23,8 +23,8 @@
 ;;;
 
 ; make-mock-presenter : [procedure? symbol?] -> (values gpu-presenter? box? box? box? box?)
-;;   Builds a synthetic presenter with mutable metrics, queued callbacks, and injected failure
-;;   state.
+;   Builds a synthetic presenter with mutable metrics, queued callbacks, and injected failure
+;   state.
 (define (make-mock-presenter [render void] [backend 'metal])
   (define metrics (box (presentation-metrics 100 80 50 40)))
   (define log (box '())) (define queued (box '())) (define fail (box #f))
@@ -57,11 +57,11 @@
           metrics log queued fail))
 
 ; event-count* : box? any/c -> exact-nonnegative-integer?
-;;   Counts a selected lifecycle event in the presenter's recorded log.
+;   Counts a selected lifecycle event in the presenter's recorded log.
 (define (event-count* log e) (count (lambda (v) (eq? v e)) (unbox log)))
 
 ; dispatch! : box? -> void?
-;;   Runs queued redraw callbacks with a finite budget that detects runaway rescheduling.
+;   Runs queued redraw callbacks with a finite budget that detects runaway rescheduling.
 (define (dispatch! queue)
   (let loop ([fuel 50])
     (when (pair? (unbox queue))
@@ -70,7 +70,7 @@
       (f) (loop (sub1 fuel)))))
 
 ; with-presenter : procedure? [procedure?] -> any
-;;   Scopes a synthetic presenter and disables injected failures before guaranteed cleanup.
+;   Scopes a synthetic presenter and disables injected failures before guaranteed cleanup.
 (define (with-presenter proc [render void])
   (define-values (p m log queue fail) (make-mock-presenter render))
   (dynamic-wind void (lambda () (proc p m log queue fail))
@@ -81,8 +81,8 @@
 ;;;
 
 ; gpu-presenter-pure-tests : test-suite?
-;;   Collects the regression cases for presentation lifecycle and scheduling with synthetic
-;;   adapters.
+;   Collects the regression cases for presentation lifecycle and scheduling with synthetic
+;   adapters.
 (define gpu-presenter-pure-tests
   (test-suite
    "Presentation lifecycle and scheduling with synthetic adapters"

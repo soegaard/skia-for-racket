@@ -24,8 +24,8 @@
 ;;;
 
 ; document-with-prefix : part? module-path? -> part?
-;;   Adds a module-derived tag prefix and top tag so separately rendered manuals retain stable
-;;   cross-reference identities.
+;   Adds a module-derived tag prefix and top tag so separately rendered manuals retain stable
+;   cross-reference identities.
 (define (document-with-prefix document module)
   (unless (part? document)
     (raise-argument-error 'document-with-prefix "part?" document))
@@ -47,39 +47,39 @@
   ;;;
 
   ; destination : (or/c path-string? #f)
-  ;;   Selects the generated HTML output directory.
+  ;   Selects the generated HTML output directory.
   (define destination #f)
 
   ; name : (or/c string? #f)
-  ;;   Overrides the generated document's output name when supplied.
+  ;   Overrides the generated document's output name when supplied.
   (define name #f)
 
   ; info-out : (or/c path-string? #f)
-  ;;   Selects a file to receive freshly generated Scribble cross-reference data.
+  ;   Selects a file to receive freshly generated Scribble cross-reference data.
   (define info-out #f)
 
   ; info-in : (listof path-string?)
-  ;;   Accumulates companion cross-reference inputs in reverse command-line order.
+  ;   Accumulates companion cross-reference inputs in reverse command-line order.
   (define info-in '())
 
   ; main-xref? : boolean?
-  ;;   Enables installed documentation cross-references in addition to companion inputs.
+  ;   Enables installed documentation cross-references in addition to companion inputs.
   (define main-xref? #f)
 
   ; lib? : boolean?
-  ;;   Selects collection-based document loading for this renderer.
+  ;   Selects collection-based document loading for this renderer.
   (define lib? #f)
 
   ; multiple? : boolean?
-  ;;   Selects a multi-page manual instead of a single HTML page.
+  ;   Selects a multi-page manual instead of a single HTML page.
   (define multiple? #f)
 
   ; redirect : (or/c string? #f)
-  ;;   Optionally supplies the external cross-reference redirect URL.
+  ;   Optionally supplies the external cross-reference redirect URL.
   (define redirect #f)
 
   ; module-name : string?
-  ;;   Names the document module parsed with the renderer's command-line options.
+  ;   Names the document module parsed with the renderer's command-line options.
   (define module-name
     (command-line
      #:program "reference-render.rkt"
@@ -100,17 +100,17 @@
     (raise-user-error 'reference-render "--lib, --dest, and --dest-name are required"))
 
   ; module : module-path?
-  ;;   Wraps the document name as a collection-based module path.
+  ;   Wraps the document name as a collection-based module path.
   (define module `(lib ,module-name))
 
   ; document : part?
-  ;;   Loads the document with an empty argument vector so it cannot consume renderer options.
+  ;   Loads the document with an empty argument vector so it cannot consume renderer options.
   (define document
     (parameterize ([current-command-line-arguments #()])
       (dynamic-require module 'doc)))
 
   ; multi-mixin : class? -> class?
-  ;;   Combines Scribble's HTML renderer and multipage mixins.
+  ;   Combines Scribble's HTML renderer and multipage mixins.
   (define (multi-mixin %) (html:render-multi-mixin (html:render-mixin %)))
   (render (list (document-with-prefix document module)) (list name)
           #:dest-dir destination
@@ -130,18 +130,18 @@
   ;;;
 
   ; target-module : module-path?
-  ;;   Identifies the synthetic destination module used by cross-reference regression checks.
+  ;   Identifies the synthetic destination module used by cross-reference regression checks.
   (define target-module '(lib "scribble/base.rkt"))
 
   ; target : part?
-  ;;   Provides a titled destination with a section tag but no top tag for prefix-normalization
-  ;;   checks.
+  ;   Provides a titled destination with a section tag but no top tag for prefix-normalization
+  ;   checks.
   (define target
     (part #f '((part "heading")) '("Destination") plain '()
           (list (para "A real destination.")) '()))
 
   ; adjusted : part?
-  ;;   Holds the destination after its module prefix and top tag have been installed.
+  ;   Holds the destination after its module prefix and top tag have been installed.
   (define adjusted (document-with-prefix target target-module))
   (check-equal? (hash-ref (part-tag-prefix adjusted) 'tag-prefix)
                 (module-path-prefix->string target-module))
@@ -152,23 +152,23 @@
              (lambda () (document-with-prefix adjusted '(lib "scribble/manual.rkt"))))
 
   ; configured : part?
-  ;;   Preserves an unrelated tag-prefix setting to check non-destructive prefix updates.
+  ;   Preserves an unrelated tag-prefix setting to check non-destructive prefix updates.
   (define configured
     (struct-copy part target [tag-prefix (hash 'example-setting "kept")]))
   (check-equal? (hash-ref (part-tag-prefix (document-with-prefix configured target-module))
                          'example-setting) "kept")
 
   ; link : element?
-  ;;   Links to the synthetic destination's top tag using its module identity.
+  ;   Links to the synthetic destination's top tag using its module identity.
   (define link (seclink "top" #:doc target-module "Destination"))
 
   ; origin : part?
-  ;;   Contains the synthetic source document whose link must resolve to the adjusted destination.
+  ;   Contains the synthetic source document whose link must resolve to the adjusted destination.
   (define origin
     (part #f '((part "origin")) '("Origin") plain '() (list (para link)) '()))
 
   ; directory : path?
-  ;;   Owns the temporary render directory used by the cross-reference regression test.
+  ;   Owns the temporary render directory used by the cross-reference regression test.
   (define directory (make-temporary-file "reference-prefix-~a" 'directory))
   (dynamic-wind
     void

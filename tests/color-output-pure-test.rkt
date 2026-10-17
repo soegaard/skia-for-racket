@@ -21,19 +21,19 @@
 ;;;
 
 ; identity-xyz : (vectorof real?)
-;;   Supplies the row-major identity matrix for RGB-to-XYZ validation.
+;   Supplies the row-major identity matrix for RGB-to-XYZ validation.
 (define identity-xyz '#(1 0 0 0 1 0 0 0 1))
 
 ; linear : transfer-function?
-;;   Supplies a unit-gamma transfer function for detached color-space checks.
+;   Supplies a unit-gamma transfer function for detached color-space checks.
 (define linear (make-transfer-function 1 1 0 0 0 0 0))
 
 ; u32! : bytes? exact-nonnegative-integer? exact-nonnegative-integer? -> void?
-;;   Overwrites a big-endian ICC field at an absolute byte offset.
+;   Overwrites a big-endian ICC field at an absolute byte offset.
 (define (u32! bs at n) (bytes-copy! bs at (integer->integer-bytes n 4 #f #t)))
 
 ; reject : (bytes? -> any) -> void?
-;;   Mutates a fresh valid ICC profile and checks that validation rejects it.
+;   Mutates a fresh valid ICC profile and checks that validation rejects it.
 (define (reject mutation)
   (define p (fixture-icc)) (mutation p)
   (check-exn exn:fail? (lambda () (checked-encoding-profile 'test p))))
@@ -44,7 +44,7 @@
 ;;;
 
 ; color-output-pure-tests : test-suite?
-;;   Collects the regression cases for color output: pure values and validation.
+;   Collects the regression cases for color output: pure values and validation.
 (define color-output-pure-tests
   (test-suite
    "Color output: pure values and validation"

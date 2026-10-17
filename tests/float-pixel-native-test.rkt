@@ -20,7 +20,7 @@
 ;;;
 
 ; near : (or/c list? vector?) (or/c list? vector?) [real?] -> void?
-;;   Compares samples componentwise while allowing float-format quantization.
+;   Compares samples componentwise while allowing float-format quantization.
 (define (near actual expected [tolerance 0.002])
   (define a (if (vector? actual) (vector->list actual) actual))
   (define e (if (vector? expected) (vector->list expected) expected))
@@ -28,16 +28,16 @@
   (for ([x (in-list a)] [y (in-list e)]) (check-= x y tolerance)))
 
 ; sample : raster-buffer? [exact-nonnegative-integer? exact-nonnegative-integer?] -> vector?
-;;   Reads a sample only while its borrowed pixmap view is valid.
+;   Reads a sample only while its borrowed pixmap view is valid.
 (define (sample b [x 0] [y 0]) (call-with-raster-buffer-pixmap b (lambda (p) (pixmap-sample p x y))))
 
 ; put : raster-buffer? vector? [exact-nonnegative-integer? exact-nonnegative-integer?] -> any
-;;   Writes one sample through an explicitly writable borrowed pixmap.
+;   Writes one sample through an explicitly writable borrowed pixmap.
 (define (put b value [x 0] [y 0])
   (call-with-raster-buffer-pixmap b (lambda (p) (pixmap-set-sample! p x y value)) #:writable? #t))
 
 ; image-page : image? -> output-page?
-;;   Places a fixture image at the origin of a white comparison page.
+;   Places a fixture image at the origin of a white comparison page.
 (define (image-page im)
   (make-output-page 64 32 (lambda (c) (draw-image c im 0 0)) #:background 'white))
 
@@ -46,7 +46,7 @@
 ;;;
 
 ; float-pixel-native-tests : test-suite?
-;;   Collects the regression cases for floating pixels and colors (native).
+;   Collects the regression cases for floating pixels and colors (native).
 (define float-pixel-native-tests
   (test-suite
    "Floating pixels and colors (native)"

@@ -18,24 +18,28 @@
          memory-statistics-scope memory-statistics->jsexpr
          make-memory-collector collector-room collector-full? collector-drop!
          collector-add! collector-finish)
+
 ; size-max : exact-positive-integer?
-;;   Bounds byte budgets by the unsigned size_t range of the running platform.
+;   Bounds byte budgets by the unsigned size_t range of the running platform.
 (define size-max (sub1 (expt 2 (* 8 (ctype-sizeof _size)))))
+
 ; cache-byte-limit : symbol? exact-nonnegative-integer? -> exact-nonnegative-integer?
-;;   Checks a nonnegative byte limit that can cross the native size_t boundary without truncation.
+;   Checks a nonnegative byte limit that can cross the native size_t boundary without truncation.
 (define (cache-byte-limit who value)
   (unless (and (exact-nonnegative-integer? value) (<= value size-max))
     (raise-argument-error who "exact nonnegative integer representable as size_t" value))
   value)
+
 ; cache-count-limit : symbol? exact-nonnegative-integer? -> exact-nonnegative-integer?
-;;   Checks a nonnegative cache count within the native signed 32-bit range.
+;   Checks a nonnegative cache count within the native signed 32-bit range.
 (define (cache-count-limit who value)
   (unless (and (exact-nonnegative-integer? value) (<= value #x7fffffff))
     (raise-argument-error who "exact integer from 0 through 2147483647" value))
   value)
+
 ; memory-options : symbol? any/c any/c any/c any/c any/c -> void?
-;;   Checks snapshot flags and cumulative entry/string budgets before installing native memory
-;;   callbacks.
+;   Checks snapshot flags and cumulative entry/string budgets before installing native memory
+;   callbacks.
 (define (memory-options who detailed? wrapped? entries string-limit byte-limit)
   (for ([v (in-list (list detailed? wrapped?))])
     (unless (boolean? v) (raise-argument-error who "boolean?" v)))
@@ -69,7 +73,7 @@
 
 ; memory-statistics-scope : memory-statistics? -> (or/c 'process-global-skia-caches
 ;   'gpu-context-skia-resources)
-;;   Returns the origin of the report.
+;   Returns the origin of the report.
 (define (memory-statistics-scope report)
   (unless (memory-statistics? report)
     (raise-argument-error 'memory-statistics-scope "memory-statistics?" report))
@@ -86,21 +90,25 @@
 ;;   arrival order.
 
 ; make-memory-collector : any/c any/c any/c any/c -> memory-collector?
-;;   Starts an empty bounded collector with independent entry and copied-string budgets.
+;   Starts an empty bounded collector with independent entry and copied-string budgets.
 (define (make-memory-collector limit byte-limit detailed? wrapped?)
   (memory-collector limit byte-limit detailed? wrapped? '() 0 0 0))
+
 ; collector-room : memory-collector? -> any
-;;   Reports the unspent copied-string byte budget for the next native statistic.
+;   Reports the unspent copied-string byte budget for the next native statistic.
 (define (collector-room c) (- (memory-collector-byte-limit c) (memory-collector-bytes c)))
+
 ; collector-full? : memory-collector? -> boolean?
-;;   Reports whether the accepted-entry limit prevents storing another statistic.
+;   Reports whether the accepted-entry limit prevents storing another statistic.
 (define (collector-full? c) (>= (memory-collector-count c) (memory-collector-limit c)))
+
 ; collector-drop! : memory-collector? -> any
-;;   Counts an omitted statistic without consuming accepted-entry or string-byte budget.
+;   Counts an omitted statistic without consuming accepted-entry or string-byte budget.
 (define (collector-drop! c) (set-memory-collector-dropped! c (add1 (memory-collector-dropped c))))
+
 ; collector-add! : memory-collector? any/c bytes? bytes? any/c any/c -> void?
-;;   Validates copied callback values and stores an immutable statistic only if both budgets permit
-;;   it.
+;   Validates copied callback values and stores an immutable statistic only if both budgets permit
+;   it.
 (define (collector-add! c kind name key units value)
   ;; Arguments have already been bounded/copied by the private callback. Store
   ;; immutable strings, so returned evidence cannot alias native storage.
@@ -122,9 +130,10 @@
          (set-memory-collector-count! c (add1 (memory-collector-count c)))
          (set-memory-collector-bytes! c (+ n (memory-collector-bytes c)))])
   (void))
+
 ; collector-finish : memory-collector? [#:scope any/c] -> any
-;;   Returns a detached immutable-vector report in callback arrival order with truncation and scope
-;;   evidence.
+;   Returns a detached immutable-vector report in callback arrival order with truncation and scope
+;   evidence.
 (define (collector-finish c #:scope [scope 'process-global-skia-caches])
   (unless (memq scope '(process-global-skia-caches gpu-context-skia-resources))
     (raise-argument-error 'collector-finish "known native memory-statistics scope" scope))
@@ -137,9 +146,10 @@
                      (memory-collector-detailed? c) (memory-collector-wrapped? c)
                      (positive? (memory-collector-dropped c)) (memory-collector-dropped c)
                      (memory-collector-bytes c)))
+
 ; memory-statistics->jsexpr : memory-statistics? -> (and/c hash? immutable?)
-;;   Returns a detached JSON-compatible hash with scope, an explicit false atomic flag, requested
-;;   options, truncation information, string-byte count, and a list of entries.
+;   Returns a detached JSON-compatible hash with scope, an explicit false atomic flag, requested
+;   options, truncation information, string-byte count, and a list of entries.
 (define (memory-statistics->jsexpr report)
   (unless (memory-statistics? report)
     (raise-argument-error 'memory-statistics->jsexpr "memory-statistics?" report))

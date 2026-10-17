@@ -20,8 +20,8 @@
 ;;;
 
 ; color-filter-doctor! : -> void?
-;;   Checks high-contrast ABI layout and actual HSLA, gamma, table, luma, and retained-filter
-;;   results.
+;   Checks high-contrast ABI layout and actual HSLA, gamma, table, luma, and retained-filter
+;   results.
 (define (color-filter-doctor!)
   (unless (= (ctype-sizeof _sk-high-contrast-config) 12)
     (error 'doctor "high-contrast ABI is not 12 bytes"))

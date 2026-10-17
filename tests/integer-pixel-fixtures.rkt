@@ -21,21 +21,21 @@
 ;;;
 
 ; integer-fixture-width : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define integer-fixture-width 80)
 
 ; integer-fixture-height : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define integer-fixture-height 64)
 
 ; integer-fixture-info : symbol? [exact-positive-integer? exact-positive-integer?] -> image-info?
-;;   Chooses opaque alpha only for integer formats without an alpha channel.
+;   Chooses opaque alpha only for integer formats without an alpha channel.
 (define (integer-fixture-info format [width 4] [height 2])
   (make-image-info width height #:color-type format
                    #:alpha-type (if (memq format '(rgb-888x gray-8 rgb-565)) 'opaque 'premul)))
 
 ; integer-fixture-samples : symbol? -> (vectorof vector?)
-;;   Returns four canonical color samples in the selected format's channel ranges.
+;   Returns four canonical color samples in the selected format's channel ranges.
 (define (integer-fixture-samples format)
   (case format
     [(rgba-8888 bgra-8888) '#(#(255 0 0 255) #(0 255 0 255) #(0 0 255 255) #(255 255 255 255))]
@@ -46,7 +46,7 @@
     [else (error 'integer-fixture-samples "unknown fixture")]))
 
 ; fill-integer-fixture! : raster-buffer? symbol? -> any
-;;   Writes two rows of format-native samples through a writable pixmap.
+;   Writes two rows of format-native samples through a writable pixmap.
 (define (fill-integer-fixture! buffer format)
   (call-with-raster-buffer-pixmap buffer
     (lambda (view)
@@ -55,7 +55,7 @@
     #t))
 
 ; draw-integer-fixture : canvas? image? [#:scale real?] -> void?
-;;   Draws a green placement marker and a nearest-neighbor image at the declared scale.
+;   Draws a green placement marker and a nearest-neighbor image at the declared scale.
 (define (draw-integer-fixture canvas image #:scale [scale 16])
   (with-skia ([marker (make-paint #:color (rgb 0 255 0) #:antialias? #f)])
     (draw-rect canvas 2 2 4 4 marker))
@@ -69,7 +69,7 @@
 ;; drawn 1:1, so PDF/SVG viewer interpolation is not part of the storage oracle.
 
 ; make-integer-fixture-image : symbol? -> image?
-;;   Converts native integer samples into an enlarged RGBA image for shared output tests.
+;   Converts native integer samples into an enlarged RGBA image for shared output tests.
 (define (make-integer-fixture-image format)
   (with-skia ([source (make-raster-buffer-from-info (integer-fixture-info format))]
               [staging (make-raster-buffer-from-info (make-image-info 64 32))])

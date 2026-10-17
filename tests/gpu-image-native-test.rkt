@@ -22,11 +22,11 @@
 ;;;
 
 ; gpu-image-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-image-native-test-count 42)
 
 ; image-test-pixels : bytes?
-;;   Supplies distinct RGBA source pixels for upload, copy, and detached-image checks.
+;   Supplies distinct RGBA source pixels for upload, copy, and detached-image checks.
 (define image-test-pixels
   (apply bytes
     (append*
@@ -36,7 +36,7 @@
              [else (if (< x 3) '(0 0 255 255) '(255 255 0 255))])))))
 
 ; call-with-gpu-io-trace : (-> any) -> any
-;;   Runs a callback with a fresh I/O ledger so hidden transfers can be counted.
+;   Runs a callback with a fresh I/O ledger so hidden transfers can be counted.
 (define (call-with-gpu-io-trace thunk)
   (define ledger (box '()))
   (define result (parameterize ([current-gpu-io-ledger ledger]) (thunk)))
@@ -44,8 +44,8 @@
 
 
 ; make-gpu-image-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for gPU images: live uploads, snapshots, transitive graphs, and
-;;   explicit transfers.
+;   Builds the parameterized suite for gPU images: live uploads, snapshots, transitive graphs, and
+;   explicit transfers.
 (define (make-gpu-image-native-tests gpu other)
   (define (cpu-image) (rgba-bytes->image 8 8 image-test-pixels #:premultiplied? #t))
   (define (uploaded proc)

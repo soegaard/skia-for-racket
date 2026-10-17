@@ -20,8 +20,8 @@
 ;;;
 
 ; generate-cache-evidence : path-string? string? -> void?
-;;   Captures cache limits, memory reports, truncation bounds, and drawing stability while restoring
-;;   global settings.
+;   Captures cache limits, memory reports, truncation bounds, and drawing stability while restoring
+;   global settings.
 (define (generate-cache-evidence directory token)
   (make-directory* directory)
   (define (save name bytes)
@@ -86,11 +86,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") path "New evidence directory" (set! directory path)]

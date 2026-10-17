@@ -32,35 +32,40 @@
          exn:fail:codec-scanline-result exn:fail:codec-scanline-native-code)
 
 ; codec-scanline-session? : any/c -> boolean?
-;;   Returns #t for a scanline session, including a closed one, and #f otherwise.
+;   Returns #t for a scanline session, including a closed one, and #f otherwise.
 (define codec-scanline-session? scanline-session-record?)
+
 ; session : symbol? any/c -> codec-scanline-session?
-;;   Checks the session wrapper and its creating Racket thread.
+;   Checks the session wrapper and its creating Racket thread.
 (define (session who value)
   (unless (codec-scanline-session? value)
     (raise-argument-error who "codec-scanline-session?" value))
   (unless (eq? (current-thread) (scanline-session-record-creator value))
     (error who "scanline session belongs to another Racket thread"))
   value)
+
 ; on-session : symbol? codec-scanline-session? procedure? -> any/c
-;;   Locks the private codec while a callback accesses the session and native cursor.
+;   Locks the private codec while a callback accesses the session and native cursor.
 (define (on-session who value proc)
   (define s (session who value))
   (call-with-owned who (list (scanline-session-record-handle s))
     (lambda (ptr) (proc s ptr))))
+
 ; session-height : codec-scanline-session? -> exact-positive-integer?
-;;   Returns the destination height used to bound scanline progress.
+;   Returns the destination height used to bound scanline progress.
 (define (session-height s) (image-info-height (scanline-session-record-info s)))
+
 ; require-progress-state : symbol? codec-scanline-session? -> void?
-;;   Allows cursor operations only for ready or complete sessions.
+;   Allows cursor operations only for ready or complete sessions.
 (define (require-progress-state who s)
   (unless (memq (scanline-session-record-status s) '(ready complete))
     (error who "scanline session is ~a; close it and construct a new session"
            (scanline-session-record-status s))))
+
 ; check-native-position! : symbol? codec-scanline-session? cpointer? exact-nonnegative-integer? ->
 ;   void?
-;;   Checks row-order mapping against the native cursor without making an out-of-range end-of-image
-;;   query.
+;   Checks row-order mapping against the native cursor without making an out-of-range end-of-image
+;   query.
 (define (check-native-position! who s ptr position)
   ;; Calling nextScanline at height can assert inside Skia. EOF is a wrapper
   ;; state, never a native out-of-range query.
@@ -70,8 +75,8 @@
       (error who "native next-row position disagrees with the scanline order"))))
 
 ; start-session : symbol? procedure? real? image-info? -> codec-scanline-session?
-;;   Creates a private codec, validates scaled geometry and row order, and adopts the scanline
-;;   cursor.
+;   Creates a private codec, validates scaled geometry and row order, and adopts the scanline
+;   cursor.
 (define (start-session who create-codec scale template)
   ;; This codec is private: no public codec can reset the scanline cursor, and
   ;; closing a caller's native stream cannot invalidate its private duplicate.
@@ -108,7 +113,7 @@
 ;   'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32)] [#:alpha-type
 ;   (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c #f 'srgb 'linear-srgb bytes?)] ->
 ;   codec-scanline-session?
-;;   Starts a session from copied, nonempty encoded bytes.
+;   Starts a session from copied, nonempty encoded bytes.
 (define (codec-scanline-from-bytes bytes #:scale [scale 1]
                                    #:color-type [color 'rgba-8888]
                                    #:alpha-type [alpha 'unpremul]
@@ -117,11 +122,12 @@
   (unless (bytes? bytes) (raise-argument-error who "bytes?" bytes))
   (define-values (requested template) (scanline-options who scale color alpha space))
   (start-session who (lambda () (codec-from-bytes bytes)) requested template))
+
 ; codec-scanline-from-stream : skia-input-stream? [#:scale (and/c real? (>/c 0))] [#:color-type
 ;   (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565 'rgba-1010102 'rgba-f16
 ;   'rgba-f32)] [#:alpha-type (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c #f 'srgb
 ;   'linear-srgb bytes?)] -> codec-scanline-session?
-;;   Starts a session through a private duplicate at byte zero.
+;   Starts a session through a private duplicate at byte zero.
 (define (codec-scanline-from-stream stream #:scale [scale 1]
                                     #:color-type [color 'rgba-8888]
                                     #:alpha-type [alpha 'unpremul]
@@ -130,12 +136,13 @@
   (unless (skia-input-stream? stream) (raise-argument-error who "skia-input-stream?" stream))
   (define-values (requested template) (scanline-options who scale color alpha space))
   (start-session who (lambda () (codec-from-stream stream)) requested template))
+
 ; codec-scanline-from-port/buffered : input-port? [#:scale (and/c real? (>/c 0))] [#:color-type
 ;   (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565 'rgba-1010102 'rgba-f16
 ;   'rgba-f32)] [#:alpha-type (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c #f 'srgb
 ;   'linear-srgb bytes?)] [#:limit exact-positive-integer?] [#:close? boolean?] [#:cancel-evt (or/c
 ;   evt? #f)] -> codec-scanline-session?
-;;   Validates the requested output options, buffers the unread port input, and starts a session.
+;   Validates the requested output options, buffers the unread port input, and starts a session.
 (define (codec-scanline-from-port/buffered in #:scale [scale 1]
                                            #:color-type [color 'rgba-8888]
                                            #:alpha-type [alpha 'unpremul]
@@ -150,32 +157,38 @@
 
 ; codec-scanline-state : codec-scanline-session? -> (or/c 'ready 'complete 'incomplete 'failed
 ;   'closed)
-;;   Returns the session state.
+;   Returns the session state.
 (define (codec-scanline-state value)
   (define s (session 'codec-scanline-state value))
   (if (owned-closed? (scanline-session-record-handle s)) 'closed
       (scanline-session-record-status s)))
+
 ; metadata : symbol? codec-scanline-session? procedure? -> any/c
-;;   Checks session ownership and liveness before reading retained metadata.
+;   Checks session ownership and liveness before reading retained metadata.
 (define (metadata who s get) (on-session who s (lambda (s _ptr) (get s))))
+
 ; codec-scanline-info : codec-scanline-session? -> image-info?
-;;   Returns the detached full-output pixel description, using negotiated dimensions and the
-;;   selected output color/alpha format.
+;   Returns the detached full-output pixel description, using negotiated dimensions and the
+;   selected output color/alpha format.
 (define (codec-scanline-info s) (metadata 'codec-scanline-info s scanline-session-record-info))
+
 ; codec-scanline-source-info : codec-scanline-session? -> encoded-image-info?
-;;   Returns detached metadata for the original encoded source, before scaling and orientation
-;;   normalization.
+;   Returns detached metadata for the original encoded source, before scaling and orientation
+;   normalization.
 (define (codec-scanline-source-info s)
   (metadata 'codec-scanline-source-info s scanline-session-record-source-info))
+
 ; codec-scanline-order : codec-scanline-session? -> (or/c 'top-down 'bottom-up)
-;;   Returns the native row consumption order.
+;   Returns the native row consumption order.
 (define (codec-scanline-order s) (metadata 'codec-scanline-order s scanline-session-record-order))
+
 ; codec-scanline-position : codec-scanline-session? -> exact-nonnegative-integer?
-;;   Returns the number of requested rows consumed by reads and skips.
+;   Returns the number of requested rows consumed by reads and skips.
 (define (codec-scanline-position s)
   (metadata 'codec-scanline-position s scanline-session-record-position))
+
 ; codec-scanline-next-row : codec-scanline-session? -> (or/c exact-nonnegative-integer? #f)
-;;   Returns the output row that would be consumed next, or #f at the end.
+;   Returns the output row that would be consumed next, or #f at the end.
 (define (codec-scanline-next-row s)
   (define who 'codec-scanline-next-row)
   (on-session who s
@@ -184,9 +197,10 @@
       (define at (scanline-session-record-position s))
       (and (< at (session-height s))
            (begin (check-native-position! who s ptr at) (sk_codec_next_scanline ptr))))))
+
 ; codec-scanline-output-row : codec-scanline-session? exact-nonnegative-integer? ->
 ;   exact-nonnegative-integer?
-;;   Maps a zero-based consumption-order index to its output row.
+;   Maps a zero-based consumption-order index to its output row.
 (define (codec-scanline-output-row s input-row)
   (define who 'codec-scanline-output-row)
   (on-session who s
@@ -202,7 +216,7 @@
 
 ; codec-scanline-read! : codec-scanline-session? [exact-positive-integer?] [#:row-bytes (or/c
 ;   exact-nonnegative-integer? #f)] -> scanline-batch?
-;;   Requests count rows and returns a detached batch.
+;   Requests count rows and returns a detached batch.
 (define (codec-scanline-read! s [count 1] #:row-bytes [row-bytes #f])
   (define who 'codec-scanline-read!)
   (on-session who s
@@ -247,7 +261,7 @@
             (lambda () (when memory (free memory) (set! memory #f)))))))))
 
 ; codec-scanline-skip! : codec-scanline-session? exact-nonnegative-integer? -> boolean?
-;;   Skips a count no greater than the remaining rows.
+;   Skips a count no greater than the remaining rows.
 (define (codec-scanline-skip! s count)
   (define who 'codec-scanline-skip!)
   (on-session who s
@@ -269,8 +283,8 @@
                skipped?)]))))
 
 ; scanline-batch->raster-buffer : scanline-batch? -> raster-buffer?
-;;   Copies a nonempty batch into an independently owned raster buffer, preserving its format and
-;;   stride.
+;   Copies a nonempty batch into an independently owned raster buffer, preserving its format and
+;   stride.
 (define (scanline-batch->raster-buffer batch)
   (define who 'scanline-batch->raster-buffer)
   (unless (scanline-batch? batch) (raise-argument-error who "scanline-batch?" batch))

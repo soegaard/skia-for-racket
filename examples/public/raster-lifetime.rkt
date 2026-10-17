@@ -19,11 +19,13 @@
 ;;;
 
 (module+ main
+
   ; borrowed : (or/c canvas? #f)
-  ;;   Remembers a borrowed canvas so its invalidity after surface cleanup can be checked.
+  ;   Remembers a borrowed canvas so its invalidity after surface cleanup can be checked.
   (define borrowed #f)
+
   ; copied : (or/c bytes? #f)
-  ;;   Retains detached RGBA bytes that remain valid after the surface is closed.
+  ;   Retains detached RGBA bytes that remain valid after the surface is closed.
   (define copied #f)
   (with-skia ([surface (make-surface 8 8)])
     (set! borrowed (surface-canvas surface))
@@ -33,8 +35,9 @@
       (error 'public-raster-example "unexpected raster pixels")))
   (unless (and (skia-closed? borrowed) (= (bytes-length copied) (* 8 8 4)))
     (error 'public-raster-example "borrowed/copy lifetime contract failed"))
+
   ; rejected? : #f
-  ;;   Starts rejected unset until the example establishes its value.
+  ;   Starts rejected unset until the example establishes its value.
   (define rejected?
     (with-handlers ([exn:fail? (lambda (_) #t)])
       (canvas-clear! borrowed (rgb 0 0 0))

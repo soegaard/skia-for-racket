@@ -13,13 +13,15 @@
          native-library-report native-library-profile native-symbol-inventory)
 
 ; native-root : path?
-;;   Locates platform libraries installed beside the package source.
+;   Locates platform libraries installed beside the package source.
 (define-runtime-path native-root "../native")
+
 ; native-platform : -> (or/c #f string?)
-;;   Selects the bundled native runtime directory for this host OS and architecture.
+;   Selects the bundled native runtime directory for this host OS and architecture.
 (define (native-platform) (native-rid (system-type 'os) (system-type 'arch)))
+
 ; native-filename : -> string?
-;;   Returns the platform-specific SkiaSharp shared-library filename.
+;   Returns the platform-specific SkiaSharp shared-library filename.
 (define (native-filename) (native-library-name 'skia (system-type 'os)))
 (struct selection (library requested milestone increment profile) #:transparent)
 ;; Fields:
@@ -32,9 +34,10 @@
 
 ;; One process-local selection is shared by every CPU and lazy GPU registry.
 ;; Only the two reviewed scalar bootstrap functions run before ABI selection.
+
 ; selected-library : promise?
-;;   Synchronizes one lazy library selection, preferring an explicit override and rejecting
-;;   unsupported ABI versions before use.
+;   Synchronizes one lazy library selection, preferring an explicit override and rejecting
+;   unsupported ABI versions before use.
 (define selected-library
   (delay/sync
     (define override (getenv "RACKET_SKIA_LIBRARY"))
@@ -71,19 +74,22 @@
     found))
 
 ;; Preserve the private CPU registry's pair interface, without reopening a path.
+
 ; native-library : promise?
-;;   Exposes the selected library handle and original request as a lazy pair for native binding
-;;   modules.
+;   Exposes the selected library handle and original request as a lazy pair for native binding
+;   modules.
 (define native-library
   (delay/sync
     (define selected (force selected-library))
     (cons (selection-library selected) (selection-requested selected))))
+
 ; native-library-profile : -> hash?
-;;   Forces library selection and returns its validated ABI profile.
+;   Forces library selection and returns its validated ABI profile.
 (define (native-library-profile) (selection-profile (force selected-library)))
+
 ; native-library-report : -> hash?
-;;   Reports selected library and ABI evidence without claiming package identity, optional GPU
-;;   capability, or hardware acceleration.
+;   Reports selected library and ABI evidence without claiming package identity, optional GPU
+;   capability, or hardware acceleration.
 (define (native-library-report)
   (define selected (force selected-library))
   (define requested (selection-requested selected))
@@ -98,8 +104,8 @@
           'hardware_acceleration_verified #f))
 
 ; native-symbol-inventory : (listof symbol?) -> (listof hash?)
-;;   Reports entry-point address availability without invoking optional symbols or treating stubs as
-;;   implemented backends.
+;   Reports entry-point address availability without invoking optional symbols or treating stubs as
+;   implemented backends.
 (define (native-symbol-inventory names)
   (unless (and (list? names) (andmap symbol? names))
     (raise-argument-error 'native-symbol-inventory "(listof symbol?)" names))

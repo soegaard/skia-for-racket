@@ -20,13 +20,13 @@
 ;;;
 
 ; ball-colors : list?
-;;   Orders the ball colors used by the comparison or drawing.
+;   Orders the ball colors used by the comparison or drawing.
 (define ball-colors
   '("#58DCF2" "#FFB65A" "#B895FA" "#FF769C"
     "#81E7A0" "#6CA9FF" "#FFEA78" "#F18CFF"))
 
 ; make-ball-atlas : -> image?
-;;   Constructs ball atlas for the example's drawing pipeline.
+;   Constructs ball atlas for the example's drawing pipeline.
 (define (make-ball-atlas)
   (with-skia ([surface (make-surface atlas-width (atlas-height 8)
                                      #:background 'transparent)])

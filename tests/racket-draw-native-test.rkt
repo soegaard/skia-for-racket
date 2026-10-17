@@ -24,19 +24,19 @@
 ;;;
 
 ; mul255 : byte? byte? -> byte?
-;;   Multiplies a channel by byte coverage with integer rounding.
+;   Multiplies a channel by byte coverage with integer rounding.
 (define (mul255 component coverage)
   (quotient (+ (* component coverage) 127) 255))
 
 
 ; rgba-at : image? -> any/c
-;;   Reads the converted image's RGBA sample for bitmap-bridge assertions.
+;   Reads the converted image's RGBA sample for bitmap-bridge assertions.
 (define (rgba-at image)
   (image->rgba-bytes image #:premultiplied? #t))
 
 
 ; source-bitmap : bytes? [exact-positive-integer? exact-positive-integer?] -> bitmap%
-;;   Builds a source bitmap from explicitly supplied ARGB storage.
+;   Builds a source bitmap from explicitly supplied ARGB storage.
 (define (source-bitmap argb [width 2] [height 1])
   (define bitmap (rd:make-bitmap width height #t))
   (send bitmap set-argb-pixels 0 0 width height argb #f #t)
@@ -48,7 +48,7 @@
 ;;;
 
 ; racket-draw-native-tests : test-suite?
-;;   Collects the regression cases for skia/racket-draw owned raster and vector conversions.
+;   Collects the regression cases for skia/racket-draw owned raster and vector conversions.
 (define racket-draw-native-tests
   (test-suite
    "skia/racket-draw owned raster and vector conversions"
@@ -128,6 +128,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests racket-draw-native-tests))
   (unless (zero? failures) (error 'racket-draw-native-test "~a failures" failures)))

@@ -21,7 +21,7 @@
 ;;;
 
 ; results : procedure? -> list?
-;;   Collects multiple return values into a list for exact Reference assertions.
+;   Collects multiple return values into a list for exact Reference assertions.
 (define (results thunk) (call-with-values thunk list))
 
 (module+ test

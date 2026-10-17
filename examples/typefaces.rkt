@@ -18,8 +18,9 @@
 ;;;
 
 (module+ main
+
   ; filename : (or/c path-string? #f)
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename #f)
   (command-line #:args (font-file) (set! filename font-file))
   (with-skia ([face (typeface-from-bytes (file->bytes filename))])

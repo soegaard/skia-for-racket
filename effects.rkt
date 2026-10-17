@@ -28,14 +28,14 @@
          make-arithmetic-blender make-blender-image-filter)
 
 ; blender-h : symbol? blender? -> (or/c owned? domain-resource?)
-;;   Checks the blender resource wrapper and retrieves its managed native handle.
+;   Checks the blender resource wrapper and retrieves its managed native handle.
 (define (blender-h who v)
   (unless (blender-resource? v) (raise-argument-error who "blender?" v))
   (blender-resource-handle v))
 
 ; make-1d-path-effect : skia-path? (and/c real? (>/c 0)) [real?] [#:style (or/c 'translate 'rotate
 ;   'morph)] -> path-effect?
-;;   Returns an effect that repeats the supplied stamp path along the drawn path.
+;   Returns an effect that repeats the supplied stamp path along the drawn path.
 (define (make-1d-path-effect path advance [phase 0] #:style [style 'translate])
   (define who 'make-1d-path-effect)
   (define step (effect-positive who advance))
@@ -48,8 +48,8 @@
                   (lambda () (sk_path_effect_create_1d_path p step offset mode))))))
 
 ; make-2d-line-path-effect : (and/c real? (>/c 0)) matrix? -> path-effect?
-;;   Returns an effect that covers the input region with parallel strokes using the lattice defined
-;;   by matrix.
+;   Returns an effect that covers the input region with parallel strokes using the lattice defined
+;   by matrix.
 (define (make-2d-line-path-effect width matrix)
   (define who 'make-2d-line-path-effect)
   (define w (effect-positive who width))
@@ -57,8 +57,8 @@
   (new-path-effect who (lambda () (sk_path_effect_create_2d_line w m))))
 
 ; make-2d-path-effect : matrix? skia-path? -> path-effect?
-;;   Returns an effect that places copies of a stamp path on a two-dimensional lattice within the
-;;   input region.
+;   Returns an effect that places copies of a stamp path on a two-dimensional lattice within the
+;   input region.
 (define (make-2d-path-effect matrix path)
   (define who 'make-2d-path-effect)
   (define m (effect-matrix who matrix))
@@ -69,26 +69,29 @@
                   (lambda () (sk_path_effect_create_2d_path m p))))))
 
 ; make-table-mask-filter : bytes? -> mask-filter?
-;;   Returns a coverage remapping specified by exactly 256 bytes.
+;   Returns a coverage remapping specified by exactly 256 bytes.
 (define (make-table-mask-filter table)
   (define who 'make-table-mask-filter)
   (define copied (effect-table who table))
   (new-mask-filter who (lambda () (sk_maskfilter_new_table copied))))
+
 ; make-gamma-mask-filter : (and/c real? (>/c 0)) -> mask-filter?
-;;   Returns a coverage remapping using a power curve with the given exponent.
+;   Returns a coverage remapping using a power curve with the given exponent.
 (define (make-gamma-mask-filter gamma)
   (define who 'make-gamma-mask-filter)
   (define g (effect-positive who gamma))
   (new-mask-filter who (lambda () (sk_maskfilter_new_gamma g))))
+
 ; make-clip-mask-filter : byte? byte? -> mask-filter?
-;;   Returns a coverage remapping with coverage below the lower threshold mapped to zero and
-;;   coverage above the upper threshold mapped to full coverage.
+;   Returns a coverage remapping with coverage below the lower threshold mapped to zero and
+;   coverage above the upper threshold mapped to full coverage.
 (define (make-clip-mask-filter lo hi)
   (define who 'make-clip-mask-filter)
   (define-values (a b) (effect-clip who lo hi))
   (new-mask-filter who (lambda () (sk_maskfilter_new_clip a b))))
+
 ; make-shader-mask-filter : shader? -> mask-filter?
-;;   Returns a mask filter using the shader's alpha to modulate shape coverage.
+;   Returns a mask filter using the shader's alpha to modulate shape coverage.
 (define (make-shader-mask-filter shader)
   (define who 'make-shader-mask-filter)
   (define h (shader-h who shader))
@@ -96,39 +99,44 @@
     (lambda (p) (new-mask-filter who (lambda () (sk_maskfilter_new_shader p))))))
 
 ; noise-shader : symbol? procedure? real? real? exact-integer? real? any/c -> shader?
-;;   Validates noise parameters and constructs an owned shader with the selected native factory.
+;   Validates noise parameters and constructs an owned shader with the selected native factory.
 (define (noise-shader who native x y octaves seed tile)
   (define-values (fx fy count sd ts) (effect-noise who x y octaves seed tile))
   (new-shader who (lambda () (native fx fy count sd ts))))
+
 ; make-fractal-noise-shader : real? real? (integer-in 0 255) [real?] [#:tile-size (or/c #f (list/c
 ;   (integer-in 1 32768) (integer-in 1 32768)) (vector/c (integer-in 1 32768) (integer-in 1
 ;   32768)))] -> shader?
-;;   Returns a Perlin fractal-noise shader.
+;   Returns a Perlin fractal-noise shader.
 (define (make-fractal-noise-shader x y octaves [seed 0] #:tile-size [tile #f])
   (noise-shader 'make-fractal-noise-shader sk_shader_new_perlin_noise_fractal_noise
                 x y octaves seed tile))
+
 ; make-turbulence-shader : real? real? (integer-in 0 255) [real?] [#:tile-size (or/c #f (list/c
 ;   (integer-in 1 32768) (integer-in 1 32768)) (vector/c (integer-in 1 32768) (integer-in 1
 ;   32768)))] -> shader?
-;;   Returns a turbulence shader using the magnitudes of successive noise octaves rather than their
-;;   signed contributions.
+;   Returns a turbulence shader using the magnitudes of successive noise octaves rather than their
+;   signed contributions.
 (define (make-turbulence-shader x y octaves [seed 0] #:tile-size [tile #f])
   (noise-shader 'make-turbulence-shader sk_shader_new_perlin_noise_turbulence
                 x y octaves seed tile))
+
 ; make-empty-shader : -> shader?
-;;   Returns an owned shader that draws nothing.
+;   Returns an owned shader that draws nothing.
 (define (make-empty-shader)
   (new-shader 'make-empty-shader sk_shader_new_empty))
+
 ; shader-with-color-filter : shader? color-filter? -> shader?
-;;   Returns a shader applying the color filter to the source shader's output.
+;   Returns a shader applying the color filter to the source shader's output.
 (define (shader-with-color-filter shader filter)
   (define who 'shader-with-color-filter)
   (define sh (shader-h who shader))
   (define fh (color-filter-h who filter))
   (call-with-owned who (list sh fh)
     (lambda (s f) (new-shader who (lambda () (sk_shader_with_color_filter s f))))))
+
 ; make-blender-shader : blender? shader? shader? -> shader?
-;;   Returns a shader combining two shader results through a retained blender.
+;   Returns a shader combining two shader results through a retained blender.
 (define (make-blender-shader blender destination source)
   (define who 'make-blender-shader)
   (define bh (blender-h who blender))
@@ -136,9 +144,10 @@
   (define sh (shader-h who source))
   (call-with-owned who (list bh dh sh)
     (lambda (b d s) (new-shader who (lambda () (sk_shader_new_blender b d s))))))
+
 ; make-arithmetic-blender : real? real? real? real? [#:enforce-premul? boolean?] -> blender?
-;;   Returns a blender computing k1 S D + k2 S + k3 D + k4 for each normalized premultiplied
-;;   component, where S is source and D is destination.
+;   Returns a blender computing k1 S D + k2 S + k3 D + k4 for each normalized premultiplied
+;   component, where S is source and D is destination.
 (define (make-arithmetic-blender k1 k2 k3 k4 #:enforce-premul? [enforce? #t])
   (define who 'make-arithmetic-blender)
   (define ks (map (lambda (v) (filter-float who v)) (list k1 k2 k3 k4)))
@@ -151,7 +160,7 @@
 
 ; make-blender-image-filter : blender? (or/c image-filter? #f) (or/c image-filter? #f) [#:crop (or/c
 ;   #f (list/c real? real? real? real?) (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns a filter using the supplied blender to combine foreground and background.
+;   Returns a filter using the supplied blender to combine foreground and background.
 (define (make-blender-image-filter blender background foreground #:crop [crop #f])
   (define who 'make-blender-image-filter)
   (define bh (blender-h who blender))

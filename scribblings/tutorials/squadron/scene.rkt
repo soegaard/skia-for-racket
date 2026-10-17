@@ -23,14 +23,14 @@
 ;;;
 
 ; travel-heading : real? real? real? real? -> real?
-;;   Converts travel direction to degrees relative to artwork that initially points down.
+;   Converts travel direction to degrees relative to artwork that initially points down.
 (define (travel-heading x y next-x next-y)
   (if (and (= x next-x) (= y next-y))
       0
       (- (* (/ 180 pi) (atan (- next-y y) (- next-x x))) 90)))
 
 ; enemy-angle : enemy? exact-nonnegative-integer? -> real?
-;;   Uses the enemy's next position to align artwork with its travel direction.
+;   Uses the enemy's next position to align artwork with its travel direction.
 (define (enemy-angle sprite ticks)
   (define attack (enemy-dive sprite))
   (cond
@@ -43,8 +43,9 @@
      (travel-heading x y next-x next-y)]))
 
 ;; Each entry is (cell x y degrees scale). This render list contains only data.
+
 ; game-sprites : game? -> list?
-;;   Builds atlas placements in drawing order from enemies, player, shots, and blasts.
+;   Builds atlas placements in drawing order from enemies, player, shots, and blasts.
 (define (game-sprites world)
   (define tick (game-ticks world))
   (define frame (modulo (quotient tick 12) 2))
@@ -63,7 +64,7 @@
            (blast-x effect) (blast-y effect) 0 1.4))))
 
 ; draw-game : canvas? image? game? -> void?
-;;   Draws the game component in the current canvas coordinate system.
+;   Draws the game component in the current canvas coordinate system.
 (define (draw-game canvas atlas world)
   (define sprites (game-sprites world))
   (define (transform sprite)

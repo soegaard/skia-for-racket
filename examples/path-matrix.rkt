@@ -20,47 +20,55 @@
 ;;;
 
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20344e")
+
 ; blue : string?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue "#3269d5")
+
 ; teal : string?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal "#10988e")
+
 ; orange : string?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
+
 ; gray : string?
-;;   Specifies the gray color used by this drawing.
+;   Specifies the gray color used by this drawing.
 (define gray "#9aabbc")
+
 ; label : canvas? string? real? real? real? [any/c] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y size [color ink])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color color)])
     (draw-simple-text c text x y f p)))
+
 ; line : canvas? real? real? real? real? real? [any/c] -> void?
-;;   Draws the line comparison in the current canvas coordinate system.
+;   Draws the line comparison in the current canvas coordinate system.
 (define (line c x1 y1 x2 y2 width [color ink])
   (with-skia ([p (make-paint #:color color #:style 'stroke #:stroke-width width)])
     (draw-line c x1 y1 x2 y2 p)))
+
 ; heading : canvas? string? string? -> void?
-;;   Draws the page heading and its explanatory subtitle.
+;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (line c 0 0 34 0 3 teal)
   (label c title 0 31 23)
   (label c subtitle 0 53 10.5)
   (label c "RACKET / SKIA   |   PATH INSPECTION AND AFFINE MATRICES" 0 435 9))
+
 ; specimen : list?
-;;   Defines the path commands shared by the matrix comparison pages.
+;   Defines the path commands shared by the matrix comparison pages.
 (define specimen
   '((move 20 110) (line 70 35) (quad 105 0 140 55)
     (conic 185 120 220 35 0.5) (cubic 255 -10 285 145 320 80) (close)
     (move 385 105) (line 440 30) (quad 490 0 565 105)))
 
 ; inspect-page : output-page?
-;;   Describes the inspect page drawing and its export dimensions.
+;   Describes the inspect page drawing and its export dimensions.
 (define inspect-page
   (make-output-page
    720 500
@@ -97,7 +105,7 @@
    #:margins 28 #:background 'white))
 
 ; frame-page : output-page?
-;;   Describes the frame page drawing and its export dimensions.
+;   Describes the frame page drawing and its export dimensions.
 (define frame-page
   (make-output-page
    720 500
@@ -130,7 +138,7 @@
    #:margins 28 #:background 'white))
 
 ; shader-page : output-page?
-;;   Describes the shader page drawing and its export dimensions.
+;   Describes the shader page drawing and its export dimensions.
 (define shader-page
   (make-output-page
    720 500
@@ -181,28 +189,32 @@
    #:margins 28 #:background 'white))
 
 ; registry : list?
-;;   Keeps the shared scene/page order used by the exported documents and raster references.
+;   Keeps the shared scene/page order used by the exported documents and raster references.
 (define registry (list (cons "inspection" inspect-page) (cons "frames" frame-page) (cons "shaders"
   shader-page)))
+
 ; escaped : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (escaped s)
   (string-replace (string-replace (string-replace (string-replace s "&" "&amp;") "<" "&lt;")
                                   ">" "&gt;") "\"" "&quot;"))
+
 ; base-name : path-string? -> string?
-;;   Returns an HTML-safe filename for a generated report link.
+;   Returns an HTML-safe filename for a generated report link.
 (define (base-name path) (escaped (path->string (file-name-from-path path))))
 ;;;
 ;;; Command-Line Entry Point
 ;;;
 
 (module+ main
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix (command-line #:program "path-matrix.rkt" #:args ([prefix "path-matrix-0.24"])
     prefix))
+
   ; name : any/c -> string?
-  ;;   Constructs an output filename from the selected prefix.
+  ;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
   (save-output (map cdr registry) (name ".pdf") 'pdf #:exists 'replace

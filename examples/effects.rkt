@@ -19,8 +19,9 @@
 
 (module+ main
   (make-directory* "output/effects-example")
+
   ; page : output-page?
-  ;;   Describes the page drawing and its export dimensions.
+  ;   Describes the page drawing and its export dimensions.
   (define page
     (make-output-page 300 180
       (lambda (c)

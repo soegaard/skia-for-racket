@@ -14,10 +14,11 @@
          (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-owned-d3d12-components)
+
 ; make-owned-d3d12-components : any/c any/c [#:receive-handles procedure?] [#:options any/c] ->
 ;   any
-;;   Constructs owned Direct3D backend components and optionally reports retained handles to private
-;;   consumers.
+;   Constructs owned Direct3D backend components and optionally reports retained handles to private
+;   consumers.
 (define (make-owned-d3d12-components selection index #:receive-handles [receive void]
                                       #:options [options #f])
   (check-optional-context-options 'make-owned-d3d12-components options)

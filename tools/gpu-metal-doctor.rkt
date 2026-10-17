@@ -23,7 +23,7 @@
 
 ; gpu-metal-doctor! : path-string? [#:required? boolean? #:require-hardware? boolean?] ->
 ; exact-integer?
-;;   Checks owned Metal queues, native activation, GC retirement, and repeated context teardown.
+;   Checks owned Metal queues, native activation, GC retirement, and repeated context teardown.
 (define (gpu-metal-doctor! prefix #:required? [required? #t] #:require-hardware? [hardware? #f])
   (define started? #f) (define cycles '()) (define failures #f)
   (define (report status message)
@@ -78,13 +78,15 @@
   ;;;
 
   ; prefix : path-string?
-  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  ;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-metal-0.41")
+
   ; required? : boolean?
-  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  ;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
+
   ; hardware? : boolean?
-  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  ;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]

@@ -26,7 +26,7 @@
 ;;   rules.
 
 ; d3d12-selection! : any/c exact-nonnegative-integer? -> void?
-;;   Validates adapter-selection mode and index before enumerating hardware or WARP adapters.
+;   Validates adapter-selection mode and index before enumerating hardware or WARP adapters.
 (define (d3d12-selection! adapter index)
   (unless (memq adapter '(hardware warp))
     (raise-argument-error 'make-gpu-context "'hardware or 'warp" adapter))
@@ -38,8 +38,8 @@
 
 ; make-d3d12-components : d3d12-platform-ops? d3d12-context-ops? any/c exact-nonnegative-integer? ->
 ;   (values gpu-provider? gpu-driver?)
-;;   Combines injected device and Ganesh operations with balanced adapter, device, and queue
-;;   ownership.
+;   Combines injected device and Ganesh operations with balanced adapter, device, and queue
+;   ownership.
 (define (make-d3d12-components platform native selection index)
   (d3d12-selection! selection index)
   (unless (d3d12-platform-ops? platform)

@@ -23,7 +23,7 @@
 ;;;
 
 ; provider : procedure? procedure? [any/c] -> gpu-provider?
-;;   Builds an OpenGL provider from activation/currentness callbacks and a stable host identity.
+;   Builds an OpenGL provider from activation/currentness callbacks and a stable host identity.
 (define (provider activate current? [key (gensym 'host)])
   (make-gpu-provider #:name 'test #:backend 'opengl #:key key
                      #:call-as-current activate #:current? current?))
@@ -33,8 +33,8 @@
 ;;;
 
 ; gpu-pure-tests : test-suite?
-;;   Collects the regression cases for gPU foundation: pure mock-provider, ownership, lifecycle, and
-;;   ABI tests.
+;   Collects the regression cases for gPU foundation: pure mock-provider, ownership, lifecycle, and
+;   ABI tests.
 (define gpu-pure-tests
   (test-suite
    "GPU foundation: pure mock-provider, ownership, lifecycle, and ABI tests"

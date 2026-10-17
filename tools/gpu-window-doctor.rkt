@@ -26,8 +26,8 @@
 
 ; gpu-window-doctor! : path-string? [#:interactive? boolean? #:required? boolean?
 ; #:require-hardware? boolean?] -> exact-integer?
-;;   Exercises visible OpenGL window submission and resize, writes lifecycle evidence, and returns a
-;;   process status.
+;   Exercises visible OpenGL window submission and resize, writes lifecycle evidence, and returns a
+;   process status.
 (define (gpu-window-doctor! prefix #:interactive? [interactive? #f]
                            #:required? [required? #t] #:require-hardware? [hardware? #f])
   (define started? #f)
@@ -170,17 +170,19 @@
   ;;;
 
   ; prefix : path-string?
-  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  ;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-window-0.39")
 
   ; interactive? : boolean?
-  ;;   Keeps visible window checks interactive when requested by the operator.
+  ;   Keeps visible window checks interactive when requested by the operator.
   (define interactive? #f)
+
   ; required? : boolean?
-  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  ;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
+
   ; hardware? : boolean?
-  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  ;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
   (command-line #:program "gpu-window-doctor" #:once-each
     [("--prefix") value "Artifact prefix" (set! prefix value)]

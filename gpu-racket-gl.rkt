@@ -17,8 +17,9 @@
 (provide make-racket-gl-provider)
 ;; This adapter borrows an existing Racket GL host. It owns neither its window
 ;; nor its event loop, and it does not swap buffers or draw through the host DC.
+
 ; make-racket-gl-provider : (is-a?/c gl-context<%>) -> gpu-provider?
-;;   Adapts an existing Racket gl-context<%> as an OpenGL GPU provider.
+;   Adapts an existing Racket gl-context<%> as an OpenGL GPU provider.
 (define (make-racket-gl-provider gl)
   (unless (is-a? gl gl-context<%>)
     (raise-argument-error 'make-racket-gl-provider "gl-context<%>" gl))

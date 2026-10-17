@@ -18,7 +18,7 @@
   ;;;
 
   ; p : path?
-  ;;   Records the loaded Skia native library path for cross-process stream-service identity checks.
+  ;   Records the loaded Skia native library path for cross-process stream-service identity checks.
   (define p (skia-native-library-path))
   (write-json (hasheq 'path (if (path? p) (path->string p) p)
                       'racket_version (version) 'vm (symbol->string (system-type 'vm))

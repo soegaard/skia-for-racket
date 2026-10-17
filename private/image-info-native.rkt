@@ -12,9 +12,10 @@
          (submod "core.rkt" color-internals))
 (provide color-space->descriptor descriptor->color-space
          call-with-image-info-native borrowed-color-space->descriptor)
+
 ; descriptor->color-space : (or/c #f 'srgb 'linear-srgb bytes?) -> (or/c #f color-space?)
-;;   Returns #f for an absent description, or a newly owned native color space for a named
-;;   description or copied ICC bytes.
+;   Returns #f for an absent description, or a newly owned native color space for a named
+;   description or copied ICC bytes.
 (define (descriptor->color-space descriptor)
   (define d (copy-descriptor 'descriptor->color-space descriptor))
   (case d
@@ -22,8 +23,9 @@
     [(srgb) (make-srgb-color-space)]
     [(linear-srgb) (make-linear-srgb-color-space)]
     [else (color-space-from-icc-bytes d)]))
+
 ; color-space->descriptor : color-space? -> (or/c 'srgb 'linear-srgb (and/c bytes? immutable?))
-;;   Returns a detached color-space description.
+;   Returns a detached color-space description.
 (define (color-space->descriptor space)
   (unless (color-space? space) (raise-argument-error 'color-space->descriptor "color-space?" space))
   (cond
@@ -32,17 +34,19 @@
      (with-skia ([linear (make-linear-srgb-color-space)])
        (if (color-space=? space linear) 'linear-srgb
            (copy-descriptor 'color-space->descriptor (color-space->icc-bytes space))))]))
+
 ; borrowed-color-space->descriptor : symbol? (or/c #f cpointer?) -> (or/c #f symbol? bytes?)
-;;   Temporarily retains a borrowed native color space while copying its detached named or ICC
-;;   description.
+;   Temporarily retains a borrowed native color space while copying its detached named or ICC
+;   description.
 (define (borrowed-color-space->descriptor who pointer)
   (and pointer
        (with-skia ([space (wrap-owned-color-space who
                             (lambda () (sk_colorspace_ref pointer) pointer))])
          (color-space->descriptor space))))
+
 ; call-with-image-info-native : symbol? image-info? procedure? -> any
-;;   Builds a native image-info record and keeps its optional color-space pointer alive throughout
-;;   the callback.
+;   Builds a native image-info record and keeps its optional color-space pointer alive throughout
+;   the callback.
 (define (call-with-image-info-native who info proc)
   (check-info who info)
   (define space (descriptor->color-space (image-info-color-space info)))

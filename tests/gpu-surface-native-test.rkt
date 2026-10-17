@@ -24,8 +24,8 @@
 ;;;
 
 ; make-gpu-surface-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for gPU surfaces: live Ganesh drawing, leases, submission, and
-;;   transfers.
+;   Builds the parameterized suite for gPU surfaces: live Ganesh drawing, leases, submission, and
+;   transfers.
 (define (make-gpu-surface-native-tests gpu other)
   (define backend (gpu-context-backend gpu))
   (define backend-id (case backend [(opengl) 0] [(metal) 2] [(direct3d) 3]

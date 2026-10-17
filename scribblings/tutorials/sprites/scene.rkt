@@ -21,7 +21,7 @@
 ;;;
 
 ; ball-transform : ball? -> atlas-transform?
-;;   Builds an atlas transform centered on the ball's local artwork.
+;   Builds an atlas transform centered on the ball's local artwork.
 (define (ball-transform sprite)
   (make-atlas-transform (ball-x sprite) (ball-y sprite)
                         #:scale (ball-scale sprite)
@@ -29,7 +29,7 @@
                         #:anchor sprite-anchor))
 
 ; draw-balls : canvas? image? ball-world? -> void?
-;;   Draws the balls component in the current canvas coordinate system.
+;   Draws the balls component in the current canvas coordinate system.
 (define (draw-balls canvas atlas world)
   (define sprites (ball-world-balls world))
   (canvas-clear! canvas "#091426")

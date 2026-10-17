@@ -31,7 +31,7 @@
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
-;;   Chooses the platform's preferred explicitly requested GPU backend.
+;   Chooses the platform's preferred explicitly requested GPU backend.
 (define (preferred-gpu-backend)
   (case (system-type 'os)
     [(macosx) 'metal]
@@ -42,7 +42,7 @@
     [else #f]))
 
 ; open-animation-window : symbol? -> #f
-;;   Opens the orbiting-light animation with the explicitly requested renderer.
+;   Opens the orbiting-light animation with the explicitly requested renderer.
 (define (open-animation-window renderer)
   (unless (memq renderer '(raster gpu))
     (raise-argument-error 'open-animation-window "'raster or 'gpu" renderer))
@@ -163,8 +163,9 @@
 ;;;
 
 (module+ main
+
   ; renderer : symbol?
-  ;;   Selects renderer for the example.
+  ;   Selects renderer for the example.
   (define renderer 'raster)
   (command-line
    #:program "orbiting-lights.rkt"

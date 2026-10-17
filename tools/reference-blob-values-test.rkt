@@ -21,8 +21,8 @@
 ;;;
 
 ; map-point : atlas-transform? real? real? -> (values real? real?)
-;;   Applies scale/rotation and translation coefficients to an anchor for transformed-blob
-;;   assertions.
+;   Applies scale/rotation and translation coefficients to an anchor for transformed-blob
+;   assertions.
 (define (map-point transform x y)
   (define cs (atlas-transform-coefficients transform))
   (values (+ (* (vector-ref cs 0) x) (- (* (vector-ref cs 1) y)) (vector-ref cs 2))

@@ -22,8 +22,8 @@
 
 ; gpu-cross-backend-doctor! : path-string? [#:required? boolean? #:require-hardware? boolean?] ->
 ; exact-integer?
-;;   Checks OpenGL/Metal isolation and explicit two-way CPU transfers, publishing teardown evidence
-;;   and exit status.
+;   Checks OpenGL/Metal isolation and explicit two-way CPU transfers, publishing teardown evidence
+;   and exit status.
 (define (gpu-cross-backend-doctor! prefix #:required? [required? #t] #:require-hardware?
           [hardware? #f])
   (define gl #f) (define metal #f) (define gl-info #f) (define metal-info #f)
@@ -77,13 +77,15 @@
   ;;;
 
   ; prefix : path-string?
-  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  ;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-cross-backend-0.41")
+
   ; required? : boolean?
-  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  ;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
+
   ; hardware? : boolean?
-  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  ;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]

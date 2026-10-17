@@ -22,7 +22,7 @@
 ;;;
 
 ; near-vector : vector? vector? [real?] -> void?
-;;   Checks color-component vectors with a configurable absolute tolerance.
+;   Checks color-component vectors with a configurable absolute tolerance.
 (define (near-vector actual expected [tolerance 0.0001])
   (check-equal? (vector-length actual) (vector-length expected))
   (for ([a (in-vector actual)] [e (in-vector expected)]) (check-= a e tolerance)))

@@ -26,50 +26,58 @@
 ;;   paint attachment names to feature lists. No field retains a native pointer or child resource.
 
 ; resources : hash?
-;;   Associates weak lifetime-cell keys with detached provenance, never retaining native pointers or
-;;   child resources.
+;   Associates weak lifetime-cell keys with detached provenance, never retaining native pointers or
+;   child resources.
 (define resources (make-weak-hasheq))
+
 ; empty-slots : hash?
-;;   Supplies the immutable empty attachment map for fresh paint and non-paint provenance records.
+;   Supplies the immutable empty attachment map for fresh paint and non-paint provenance records.
 (define empty-slots (hasheq))
+
 ; summary : any/c -> any
-;;   Looks up detached resource provenance and conservatively labels untracked handles as unknown.
+;   Looks up detached resource provenance and conservatively labels untracked handles as unknown.
 (define (summary h)
   (hash-ref resources h (lambda () (provenance 'unknown '(unknown-resource) empty-slots))))
+
 ; features : any/c -> any
-;;   Combines a paint's current attachment features or returns the resource's retained feature
-;;   summary.
+;   Combines a paint's current attachment features or returns the resource's retained feature
+;   summary.
 (define (features h)
   (define p (summary h))
   (if (eq? (provenance-kind p) 'paint)
       (remove-duplicates (append* (hash-values (provenance-slots p))))
       (provenance-features p)))
+
 ; union : any/c ... -> list?
-;;   Combines feature lists without duplicates while preserving their first-occurrence order.
+;   Combines feature lists without duplicates while preserving their first-occurrence order.
 (define (union . lists) (remove-duplicates (append* lists)))
 ;; Dynamic pointer associations exist only within synchronous FFI scopes.
 ;; They are never put into a report or into the persistent provenance table.
 ;; Capture authoring into a picture without publishing temporary operations in
 ;; the receiving document's collector. Resource provenance still accumulates.
+
 ; audit-resource-features : any/c -> any
-;;   Exposes detached provenance features without exposing the resource's native pointer or child
-;;   wrappers.
+;   Exposes detached provenance features without exposing the resource's native pointer or child
+;   wrappers.
 (define (audit-resource-features handle) (features handle))
+
 ; call-with-output-capture : procedure? -> any
-;;   Suppresses destination audit events while authored picture content continues accumulating
-;;   resource provenance.
+;   Suppresses destination audit events while authored picture content continues accumulating
+;   resource provenance.
 (define (call-with-output-capture thunk)
   (parameterize ([collecting #f] [raster-groups '()] [gpu-raster-target #f]) (thunk)))
 
 ;; Explicit rasterization into a recording must not erase unknown resources or
 ;; discarded annotations. Each sink belongs to one recorder; no pointer escapes.
+
 ; raster-loss-sinks : parameter?
-;;   Holds recorder-specific boxes that retain unknown or discarded semantics across explicit
-;;   rasterization.
+;   Holds recorder-specific boxes that retain unknown or discarded semantics across explicit
+;   rasterization.
 (define raster-loss-sinks (make-parameter '()))
+
 ; retain-raster-losses! : list? -> void?
-;;   Carries raster-unsupported, discarded, and unknown features into every active recording loss
-;;   sink.
+;   Carries raster-unsupported, discarded, and unknown features into every active recording loss
+;   sink.
 (define (retain-raster-losses! fs)
   (for ([sink (in-list (raster-loss-sinks))])
     (for ([f (in-list fs)])
@@ -79,8 +87,8 @@
         (set-box! sink (union (unbox sink) (list loss)))))))
 
 ; uses : parameter?
-;;   Associates lifetime cells with borrowed native pointers only for the current synchronous FFI
-;;   scope.
+;   Associates lifetime cells with borrowed native pointers only for the current synchronous FFI
+;   scope.
 (define uses (make-parameter '())) ; pairs (lifetime-cell . native-pointer)
 (struct allocation (who kind deps special) #:transparent)
 ;; Fields:
@@ -89,36 +97,42 @@
 ;;   during the allocation scope.
 
 ; allocating : parameter?
-;;   Identifies the allocation currently accumulating dependency and special-case provenance.
+;   Identifies the allocation currently accumulating dependency and special-case provenance.
 (define allocating (make-parameter #f))
+
 ; handle-for : any/c -> any
-;;   Finds a native pointer's lifetime cell only among currently borrowed synchronous arguments.
+;   Finds a native pointer's lifetime cell only among currently borrowed synchronous arguments.
 (define (handle-for p)
   (and p (for/first ([entry (in-list (uses))] #:when (eq? p (cdr entry))) (car entry))))
+
 ; handle-kind : any/c -> any
-;;   Returns the tracked resource kind, including the conservative unknown kind for untracked cells.
+;   Returns the tracked resource kind, including the conservative unknown kind for untracked cells.
 (define (handle-kind h) (provenance-kind (summary h)))
+
 ; paint-slot : any/c any/c -> any
-;;   Reads one paint attachment's features and conservatively marks an untracked attachment as
-;;   unknown.
+;   Reads one paint attachment's features and conservatively marks an untracked attachment as
+;   unknown.
 (define (paint-slot h slot)
   (hash-ref (provenance-slots (summary h)) slot '(unknown-resource)))
+
 ; put-slot! : any/c any/c any/c -> void?
-;;   Replaces one detached paint attachment summary without retaining the attached native resource.
+;   Replaces one detached paint attachment summary without retaining the attached native resource.
 (define (put-slot! h slot fs)
   (define old (summary h))
   (hash-set! resources h
              (provenance 'paint '() (hash-set (provenance-slots old) slot fs))))
+
 ; getter-slots : hash?
-;;   Maps public paint getters to the attachment slot whose provenance their returned wrapper
-;;   inherits.
+;   Maps public paint getters to the attachment slot whose provenance their returned wrapper
+;   inherits.
 (define getter-slots
   (hasheq 'paint-shader 'shader 'paint-path-effect 'path-effect
           'paint-color-filter 'color-filter 'paint-mask-filter 'mask-filter
           'paint-image-filter 'image-filter 'paint-blender 'blend))
+
 ; base-features : symbol? any/c -> list?
-;;   Classifies constructor/resource pairs into conservative output-capability features before
-;;   adding child dependencies.
+;   Classifies constructor/resource pairs into conservative output-capability features before
+;   adding child dependencies.
 (define (base-features who kind)
   (case kind
     [(shader)
@@ -156,9 +170,10 @@
     [(drawable) '(drawable)]
     [(paint picture-recorder) '()]
     [else '()]))
+
 ; audit-allocate : symbol? any/c any/c -> any
-;;   Captures constructor dependencies and special paint/picture cases into a new weakly keyed
-;;   provenance record.
+;   Captures constructor dependencies and special paint/picture cases into a new weakly keyed
+;   provenance record.
 (define (audit-allocate who kind thunk)
   (define a (allocation who kind (box '()) (box #f)))
   (define initial-paint
@@ -183,9 +198,10 @@
   (define special (unbox (allocation-special a)))
   (hash-set! resources h (provenance kind (or special fs) slots))
   h)
+
 ; collect-dependencies! : list? -> void?
-;;   Propagates relevant child features and floating-point precision requirements into the active
-;;   allocation.
+;   Propagates relevant child features and floating-point precision requirements into the active
+;   allocation.
 (define (collect-dependencies! hs)
   (define a (allocating))
   (when (and a (memq (allocation-kind a) '(shader color-filter image-filter mask-filter path-effect
@@ -205,9 +221,10 @@
                (and (memq (handle-kind h) '(image raster-image surface))
                     (memq 'float-pixels (features h)))))
     (set-box! (allocation-deps a) (union (unbox (allocation-deps a)) '(float-pixels)))))
+
 ; audit-use : list? any/c procedure? -> any
-;;   Registers ordered handle/pointer associations and collects allocation dependencies for one
-;;   synchronous operation.
+;   Registers ordered handle/pointer associations and collects allocation dependencies for one
+;   synchronous operation.
 (define (audit-use hs ps thunk)
   (collect-dependencies! hs)
   (parameterize ([uses (append (map cons hs ps) (uses))]) (thunk)))
@@ -219,8 +236,8 @@
 ;;   this synchronous drawing call.
 
 ; canvas : parameter?
-;;   Carries the active drawing destination and auxiliary handles only through the immediate native
-;;   operation.
+;   Carries the active drawing destination and auxiliary handles only through the immediate native
+;   operation.
 (define canvas (make-parameter #f))
 ;; A GPU target keeps its actual GPU lifetime/affinity checks in core.rkt.
 ;; Only an explicitly selected bounded output raster may use raster *document
@@ -233,11 +250,12 @@
 ;;   flag, cleared on exit so captured continuations cannot reuse the raster scope.
 
 ; gpu-raster-target : parameter?
-;;   Identifies the exact live GPU target authorized to use bounded raster-output capability rules.
+;   Identifies the exact live GPU target authorized to use bounded raster-output capability rules.
 (define gpu-raster-target (make-parameter #f))
+
 ; call-with-audit-gpu-raster : any/c any/c -> any
-;;   Grants raster-output audit treatment to one owner-thread target and expires the grant on scope
-;;   exit.
+;   Grants raster-output audit treatment to one owner-thread target and expires the grant on scope
+;   exit.
 (define (call-with-audit-gpu-raster handle thunk)
   (define scope (gpu-raster-scope handle (current-thread) #t))
   (call-with-continuation-barrier
@@ -249,9 +267,10 @@
              (error 'output-audit "GPU raster audit scope has expired")))
          thunk
          (lambda () (set-gpu-raster-scope-live?! scope #f)))))))
+
 ; audit-on-canvas : any/c any/c any/c any/c any/c procedure? -> any
-;;   Installs drawing provenance and checks any target-specific GPU raster authorization before the
-;;   native call.
+;   Installs drawing provenance and checks any target-specific GPU raster authorization before the
+;   native call.
 (define (audit-on-canvas operation owner backend handle others thunk)
   (define scope (gpu-raster-target))
   (define bounded?
@@ -275,41 +294,47 @@
 ;;   current-output-audit-event-limit.
 
 ; collecting : parameter?
-;;   Holds the optional owner-thread collector receiving output-policy events in the current dynamic
-;;   extent.
+;   Holds the optional owner-thread collector receiving output-policy events in the current dynamic
+;   extent.
 (define collecting (make-parameter #f))
+
 ; audit-page-index : parameter?
-;;   Supplies the one-based page number attached to newly emitted audit events.
+;   Supplies the one-based page number attached to newly emitted audit events.
 (define audit-page-index (make-parameter 1))
+
 ; audit-labels : parameter?
-;;   Stores nested output labels innermost first; emission reverses them into outer-to-inner scope
-;;   order.
+;   Stores nested output labels innermost first; emission reverses them into outer-to-inner scope
+;   order.
 (define audit-labels (make-parameter '()))
+
 ; raster-groups : parameter?
-;;   Tracks nested raster group identifiers innermost first for event scope and fallback-policy
-;;   interpretation.
+;   Tracks nested raster group identifiers innermost first for event scope and fallback-policy
+;   interpretation.
 (define raster-groups (make-parameter '()))
+
 ; current-output-audit-event-limit : parameter?
-;;   Caps emitted events so oversized audits fail instead of returning an incomplete report as
-;;   complete.
+;   Caps emitted events so oversized audits fail instead of returning an incomplete report as
+;   complete.
 (define current-output-audit-event-limit
   (make-parameter 100000
     (lambda (n)
       (unless (exact-positive-integer? n)
         (raise-argument-error 'current-output-audit-event-limit "exact-positive-integer?" n))
       n)))
+
 ; checked-collector : -> any
-;;   Returns the active collector only on its creating Racket thread.
+;   Returns the active collector only on its creating Racket thread.
 (define (checked-collector)
   (define c (collecting))
   (when (and c (not (eq? (current-thread) (collector-creator c))))
     (error 'output-audit "an audit scope cannot be used from another Racket thread"))
   c)
+
 ; call-with-audit-collector : symbol? (or/c 'report 'error 'vector-only) boolean?
 ;   exact-nonnegative-integer? procedure?
 ;   -> (values any/c output-audit-report?)
-;;   Runs authoring with isolated audit state and returns its result plus an arrival-ordered
-;;   preflight or export report.
+;   Runs authoring with isolated audit state and returns its result plus an arrival-ordered
+;   preflight or export report.
 (define (call-with-audit-collector backend policy dry? pages thunk)
   (check-backend 'output-audit backend)
   (unless (memq policy '(report error vector-only))
@@ -321,9 +346,10 @@
        (define result (thunk))
        (values result (output-audit-report backend pages (reverse (collector-events c))
                                           (if dry? 'preflight 'export)))))))
+
 ; emit! : any/c any/c any/c [any/c] -> void?
-;;   Emits bounded, feature-sorted events for the receiving backend and enforces its strict output
-;;   policy.
+;   Emits bounded, feature-sorted events for the receiving backend and enforces its strict output
+;   policy.
 (define (emit! op backend fs [details (hasheq)])
   (define c (checked-collector))
   (when (and c (or (eq? backend (collector-backend c))
@@ -353,21 +379,23 @@
 ;; Only the synchronous matrix FFI call is wrapped, never user drawing code.
 ;; This also records non-affine matrix use in picture provenance when no audit
 ;; collector is installed. The policy is deliberately operation-conservative.
+
 ; matrix-features : parameter?
-;;   Carries projective-transform evidence through the immediate matrix FFI call, including picture
-;;   recording.
+;   Carries projective-transform evidence through the immediate matrix FFI call, including picture
+;   recording.
 (define matrix-features (make-parameter '()))
+
 ; call-with-audit-matrix : boolean? procedure? -> any
-;;   Marks general matrix operations as projective for the duration of their synchronous native
-;;   call.
+;   Marks general matrix operations as projective for the duration of their synchronous native
+;   call.
 (define (call-with-audit-matrix general? thunk)
   (unless (boolean? general?)
     (raise-argument-error 'call-with-audit-matrix "boolean?" general?))
   (parameterize ([matrix-features (if general? '(projective-transform) '())]) (thunk)))
 
 ; native-feature : symbol? list? -> any
-;;   Classifies reviewed native canvas operations and arguments into output features, marking
-;;   unknown drawing calls conservatively.
+;   Classifies reviewed native canvas operations and arguments into output features, marking
+;   unknown drawing calls conservatively.
 (define (native-feature name args)
   (case name
     [(sk_canvas_draw_paint sk_canvas_draw_line sk_canvas_draw_rect sk_canvas_draw_round_rect
@@ -406,24 +434,27 @@
     [(sk_canvas_set_matrix sk_canvas_concat) (append '(transform) (matrix-features))]
     [else
      (and (string-prefix? (symbol->string name) "sk_canvas_draw_") '(unknown-operation))]))
+
 ; drawable? : symbol? -> any
-;;   Recognizes native pixel-drawing operations that dry-run auditing may suppress, excluding
-;;   annotations whose metadata must still be recorded.
+;   Recognizes native pixel-drawing operations that dry-run auditing may suppress, excluding
+;   annotations whose metadata must still be recorded.
 (define (drawable? name)
   (and (or (memq name '(sk_canvas_clear sk_canvas_clear_color4f sk_drawable_draw))
            (string-prefix? (symbol->string name) "sk_canvas_draw_"))
        (not (memq name '(sk_canvas_draw_url_annotation sk_canvas_draw_named_destination_annotation
                         sk_canvas_draw_link_destination_annotation)))))
+
 ; setter-slots : hash?
-;;   Maps native paint attachment setters to the provenance slot they replace after successful
-;;   mutation.
+;   Maps native paint attachment setters to the provenance slot they replace after successful
+;   mutation.
 (define setter-slots
   (hasheq 'sk_paint_set_shader 'shader 'sk_paint_set_path_effect 'path-effect
           'sk_paint_set_colorfilter 'color-filter 'sk_paint_set_maskfilter 'mask-filter
           'sk_paint_set_imagefilter 'image-filter 'sk_paint_set_blender 'blend))
+
 ; after-native! : any/c any/c -> void?
-;;   Updates detached provenance after successful setters, resets, transformations, and recording
-;;   initialization.
+;   Updates detached provenance after successful setters, resets, transformations, and recording
+;   initialization.
 (define (after-native! name args)
   (define slot (hash-ref setter-slots name #f))
   (cond
@@ -468,9 +499,10 @@
      (define h (handle-for (car args)))
      (when h (hash-set! resources h (provenance 'picture-recorder '() empty-slots)))]
     [else (void)]))
+
 ; audit-native-call : any/c any/c procedure? -> any
-;;   Records operation and dependency features before native work, suppressing drawing in dry runs
-;;   and updating successful mutations.
+;   Records operation and dependency features before native work, suppressing drawing in dry runs
+;   and updating successful mutations.
 (define (audit-native-call name args thunk)
   (define cx (canvas))
   (define fs (and cx (native-feature name args)))
@@ -499,8 +531,8 @@
       (begin0 (thunk) (after-native! name args))))
 
 ; call-with-audit-raster : any/c any/c any/c any/c any/c [#:recording-handle any/c] -> any
-;;   Reports an explicit raster group and carries semantic losses into an optional enclosing picture
-;;   recording.
+;   Reports an explicit raster group and carries semantic losses into an optional enclosing picture
+;   recording.
 (define (call-with-audit-raster backend width height details thunk
                                 #:recording-handle [recording-handle #f])
   (define losses (box '()))
@@ -525,9 +557,10 @@
                (hash-set (hash-set details 'pixel_width width) 'pixel_height height))
         (parameterize ([raster-groups (cons id (raster-groups))]) (run)))
       (run)))
+
 ; audit-raster-annotation! : any/c any/c -> void?
-;;   Records annotation loss even when the raster annotation API intentionally emits no native
-;;   drawing call.
+;   Records annotation loss even when the raster annotation API intentionally emits no native
+;   drawing call.
 (define (audit-raster-annotation! operation backend)
   (retain-raster-losses! '(annotation))
   ;; The public annotation layer intentionally makes raster annotations no-ops.
@@ -543,9 +576,10 @@
 ;; A single decision event complements the ordinary replay/resource events.
 ;; It is emitted before destination drawing, so an outer strict policy can veto
 ;; a raster strategy even when the local group policy permits that strategy.
+
 ; audit-output-group! : any/c any/c any/c -> any
-;;   Emits the representation decision before drawing so an enclosing strict policy can reject
-;;   raster fallback.
+;   Emits the representation decision before drawing so an enclosing strict policy can reject
+;   raster fallback.
 (define (audit-output-group! backend raster? details)
   (emit! 'draw-output-group backend
          (list (if raster? 'raster-group 'output-group)) details))
@@ -553,18 +587,20 @@
 ;; This event is separate from the policy decision above. It records actual
 ;; raster execution/transfer after a detached image exists, not GPU availability
 ;; inferred merely from a symbol table. A failed export returns no report/bytes.
+
 ; audit-output-group-execution! : any/c any/c -> any
-;;   Records actual completed raster execution and transfer separately from the earlier
-;;   representation decision.
+;   Records actual completed raster execution and transfer separately from the earlier
+;   representation decision.
 (define (audit-output-group-execution! backend details)
   (emit! 'execute-output-group backend '(raster-group) details))
 
 ;; Private precision tag, installed while the new resource is still owned.
 ;; Native buffers stay F16/F32; direct PDF/SVG encoding must not silently
 ;; quantize them. Explicit conversion to an integer image ends this requirement.
+
 ; audit-mark-float-pixels! : any/c -> void?
-;;   Adds a precision requirement without changing a resource's other features or paint attachment
-;;   summaries.
+;   Adds a precision requirement without changing a resource's other features or paint attachment
+;   summaries.
 (define (audit-mark-float-pixels! handle)
   (define old (summary handle))
   (hash-set! resources handle
@@ -575,9 +611,10 @@
 
 ;; Precision requirements survive explicit filter evaluation and owned aliases.
 ;; Integer pixel conversion is still the explicitly authorized loss boundary.
+
 ; audit-inherit-image-precision! : any/c list? -> void?
-;;   Propagates floating-point color or pixel requirements through image aliases and filter
-;;   evaluation.
+;   Propagates floating-point color or pixel requirements through image aliases and filter
+;   evaluation.
 (define (audit-inherit-image-precision! target sources)
   (when (for/or ([source (in-list sources)])
           (or (memq 'float-pixels (features source)) (memq 'float-color (features source))))
@@ -585,13 +622,15 @@
 
 
 ;; Dynamic options cover just the immediate native call, not application code.
+
 ; layer-rec-features : parameter?
-;;   Carries save-layer options only through their immediate native call, not through user drawing
-;;   callbacks.
+;   Carries save-layer options only through their immediate native call, not through user drawing
+;   callbacks.
 (define layer-rec-features (make-parameter '()))
+
 ; call-with-audit-layer-rec : exact-nonnegative-integer? boolean? procedure? -> any
-;;   Checks reviewed layer flags and records backdrop, initialization, LCD-text, and floating-point
-;;   requirements.
+;   Checks reviewed layer flags and records backdrop, initialization, LCD-text, and floating-point
+;   requirements.
 (define (call-with-audit-layer-rec flags backdrop? thunk)
   (unless (and (exact-nonnegative-integer? flags) (= 0 (bitwise-and flags (bitwise-not 22)))
                (boolean? backdrop?))
@@ -602,9 +641,10 @@
                          (if (zero? (bitwise-and flags 2)) '() '(layer-lcd-text))
                          (if (zero? (bitwise-and flags 16)) '() '(float-pixels)))])
     (thunk)))
+
 ; audit-specialized-scope! : -> void?
-;;   Prevents diagnostic multi-sink canvases from inheriting a bounded raster target's fallback
-;;   authority.
+;   Prevents diagnostic multi-sink canvases from inheriting a bounded raster target's fallback
+;   authority.
 (define (audit-specialized-scope!)
   ;; A native multi-sink wrapper is not the exact bounded raster target named
   ;; by the output policy. It must not inherit that target's fallback authority.

@@ -31,7 +31,7 @@
 ;; or exceed one; interpreting those values requires a separate color space.
 
 ; make-color4f : real? real? real? [real?] -> color4f?
-;;   Validates extended RGB and bounded alpha without clipping or premultiplying.
+;   Validates extended RGB and bounded alpha without clipping or premultiplying.
 (define (make-color4f red green blue [alpha 1])
   (define who 'make-color4f)
   (define (component v)
@@ -44,8 +44,9 @@
   (unless (<= 0 a 1) (raise-argument-error who "finite alpha in [0,1]" alpha))
   ;; Negative/extended RGB are intentional. Do not route through packed colors.
   (make-color4f-record r g b a))
+
 ; checked-color4f : symbol? color4f? -> color4f?
-;;   Checks a detached color and attributes a type error to the calling operation.
+;   Checks a detached color and attributes a type error to the calling operation.
 (define (checked-color4f who c)
   (unless (color4f? c) (raise-argument-error who "color4f?" c))
   c)
@@ -54,18 +55,20 @@
 ;;;
 
 ; color4f->vector : color4f? -> vector?
-;;   Copies the red, green, blue, and alpha components into an immutable vector.
+;   Copies the red, green, blue, and alpha components into an immutable vector.
 (define (color4f->vector c)
   (checked-color4f 'color4f->vector c)
   (vector-immutable (color4f-red c) (color4f-green c) (color4f-blue c) (color4f-alpha c)))
+
 ; color->color4f : color? -> color4f?
-;;   Converts byte channels to unit-range values without changing color space.
+;   Converts byte channels to unit-range values without changing color space.
 (define (color->color4f c)
   (define v (color->rgba c))
   (make-color4f (/ (rgba-red v) 255) (/ (rgba-green v) 255)
                 (/ (rgba-blue v) 255) (/ (rgba-alpha v) 255)))
+
 ; color4f->rgba : color4f? [#:out-of-range (or/c 'error 'clip)] -> rgba?
-;;   Quantizes normalized channels to bytes, rejecting or explicitly clipping RGB.
+;   Quantizes normalized channels to bytes, rejecting or explicitly clipping RGB.
 (define (color4f->rgba c #:out-of-range [policy 'error])
   (define who 'color4f->rgba)
   (checked-color4f who c)

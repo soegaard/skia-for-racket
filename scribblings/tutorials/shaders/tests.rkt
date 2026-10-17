@@ -19,11 +19,13 @@
 ;;;
 
 (module+ test
+
   ; effect : runtime-effect?
-  ;;   Retains the compiled wave effect reused by the tutorial figures or checks.
+  ;   Retains the compiled wave effect reused by the tutorial figures or checks.
   (define effect (make-runtime-effect wave-source))
+
   ; render : any/c #:premultiplied? [boolean?] -> bytes?
-  ;;   Renders a small shader sample for pixel-level regression checks.
+  ;   Renders a small shader sample for pixel-level regression checks.
   (define (render shader #:premultiplied? [premultiplied? #f])
     (with-skia ([surface (make-surface 96 64)] [paint (make-paint #:shader shader)])
       (draw-rect (surface-canvas surface) 0 0 96 64 paint)

@@ -20,33 +20,39 @@
 ;;;
 
 ; width : exact-integer?
-;;   Specifies width in the drawing's local coordinate units.
+;   Specifies width in the drawing's local coordinate units.
 (define width 900)
+
 ; height : exact-integer?
-;;   Specifies height in the drawing's local coordinate units.
+;   Specifies height in the drawing's local coordinate units.
 (define height 780)
 
 ; paper-color : string?
-;;   Specifies the paper color color used by this drawing.
+;   Specifies the paper color color used by this drawing.
 (define paper-color "#F4F6F9")
+
 ; ink-color : string?
-;;   Specifies the ink color color used by this drawing.
+;   Specifies the ink color color used by this drawing.
 (define ink-color "#20304C")
+
 ; guide-color : string?
-;;   Specifies the guide color color used by this drawing.
+;   Specifies the guide color color used by this drawing.
 (define guide-color "#CBD5E1")
+
 ; blue-color : string?
-;;   Specifies the blue color color used by this drawing.
+;   Specifies the blue color color used by this drawing.
 (define blue-color "#326DE6")
+
 ; teal-color : string?
-;;   Specifies the teal color color used by this drawing.
+;   Specifies the teal color color used by this drawing.
 (define teal-color "#18A999")
+
 ; orange-color : string?
-;;   Specifies the orange color color used by this drawing.
+;   Specifies the orange color color used by this drawing.
 (define orange-color "#F38C42")
 
 ; require-script-face : any/c any/c string? string? #:match [any/c] -> typeface?
-;;   Finds a font supporting the sample and reports a useful error when none is available.
+;   Finds a font supporting the sample and reports a useful error when none is available.
 (define (require-script-face manager representative sample language
                              #:match [match font-manager-match-character])
   (define face (match manager representative #:languages (list language)))
@@ -63,48 +69,57 @@
   face)
 
 ; arabic-sample : string?
-;;   Supplies the Arabic phrase used to demonstrate right-to-left shaping.
+;   Supplies the Arabic phrase used to demonstrate right-to-left shaping.
 (define arabic-sample "مرحبا بالعالم")
+
 ; hebrew-sample : string?
-;;   Supplies the Hebrew phrase used to demonstrate right-to-left shaping.
+;   Supplies the Hebrew phrase used to demonstrate right-to-left shaping.
 (define hebrew-sample "שלום עולם")
+
 ; font-manager : font-manager?
-;;   Queries installed faces to find real fonts supporting the tutorial samples.
+;   Queries installed faces to find real fonts supporting the tutorial samples.
 (define font-manager (default-font-manager))
+
 ; latin-face : typeface?
-;;   Retains the latin face used by the specimen's fonts.
+;   Retains the latin face used by the specimen's fonts.
 (define latin-face (make-typeface))
+
 ; arabic-face : typeface?
-;;   Retains the arabic face used by the specimen's fonts.
+;   Retains the arabic face used by the specimen's fonts.
 (define arabic-face
   (require-script-face font-manager #\م arabic-sample "ar"))
+
 ; hebrew-face : typeface?
-;;   Retains the hebrew face used by the specimen's fonts.
+;   Retains the hebrew face used by the specimen's fonts.
 (define hebrew-face
   (require-script-face font-manager #\ש hebrew-sample "he"))
 
 ; latin-font : font?
-;;   Selects the latin font used by the scene.
+;   Selects the latin font used by the scene.
 (define latin-font (make-font latin-face #:size 48))
+
 ; arabic-font : font?
-;;   Selects the arabic font used by the scene.
+;   Selects the arabic font used by the scene.
 (define arabic-font (make-font arabic-face #:size 54))
+
 ; hebrew-font : font?
-;;   Selects the hebrew font used by the scene.
+;   Selects the hebrew font used by the scene.
 (define hebrew-font (make-font hebrew-face #:size 50))
 
 ; latin-shaper : shaper?
-;;   Retains the latin shaper used to position the corresponding script.
+;   Retains the latin shaper used to position the corresponding script.
 (define latin-shaper (make-shaper latin-font))
+
 ; arabic-shaper : shaper?
-;;   Retains the arabic shaper used to position the corresponding script.
+;   Retains the arabic shaper used to position the corresponding script.
 (define arabic-shaper (make-shaper arabic-font))
+
 ; hebrew-shaper : shaper?
-;;   Retains the hebrew shaper used to position the corresponding script.
+;   Retains the hebrew shaper used to position the corresponding script.
 (define hebrew-shaper (make-shaper hebrew-font))
 
 ; right-aligned-run-x : any/c real? -> real?
-;;   Computes the baseline origin that aligns a shaped run to the requested right edge.
+;   Computes the baseline origin that aligns a shaped run to the requested right edge.
 (define (right-aligned-run-x run right-edge)
   (define advance (shaped-run-advance-x run))
   (if (negative? advance)
@@ -112,7 +127,7 @@
       (- right-edge advance)))
 
 ; draw-rule : canvas? real? -> void?
-;;   Draws the rule component in the current canvas coordinate system.
+;   Draws the rule component in the current canvas coordinate system.
 (define (draw-rule canvas y)
   (define paint
     (make-paint #:color guide-color
@@ -121,14 +136,14 @@
   (draw-line canvas 54 y (- width 54) y paint))
 
 ; draw-label : canvas? string? real? real? -> void?
-;;   Draws the label component in the current canvas coordinate system.
+;   Draws the label component in the current canvas coordinate system.
 (define (draw-label canvas text x y)
   (define font (make-font latin-face #:size 14))
   (define paint (make-paint #:color ink-color))
   (draw-simple-text canvas text x y font paint))
 
 ; draw-header : canvas? -> void?
-;;   Draws the header component in the current canvas coordinate system.
+;   Draws the header component in the current canvas coordinate system.
 (define (draw-header canvas)
   (define kicker-font (make-font latin-face #:size 14))
   (define title-font (make-font latin-face #:size 52))
@@ -145,7 +160,7 @@
   (draw-rule canvas 150))
 
 ; draw-latin-row : canvas? -> void?
-;;   Draws the latin row component in the current canvas coordinate system.
+;   Draws the latin row component in the current canvas coordinate system.
 (define (draw-latin-row canvas)
   (define paint (make-paint #:color blue-color))
   (define run
@@ -161,7 +176,7 @@
               58 280))
 
 ; draw-arabic-row : canvas? -> void?
-;;   Draws the arabic row component in the current canvas coordinate system.
+;   Draws the arabic row component in the current canvas coordinate system.
 (define (draw-arabic-row canvas)
   (define paint (make-paint #:color orange-color))
   (define run
@@ -181,7 +196,7 @@
               58 420))
 
 ; draw-hebrew-row : canvas? -> void?
-;;   Draws the hebrew row component in the current canvas coordinate system.
+;   Draws the hebrew row component in the current canvas coordinate system.
 (define (draw-hebrew-row canvas)
   (define paint (make-paint #:color teal-color))
   (define run
@@ -201,7 +216,7 @@
               58 560))
 
 ; draw-feature-row : canvas? -> void?
-;;   Draws the feature row component in the current canvas coordinate system.
+;   Draws the feature row component in the current canvas coordinate system.
 (define (draw-feature-row canvas)
   (define default-paint
     (make-paint #:color blue-color))
@@ -226,7 +241,7 @@
   (draw-label canvas "liga=0" 570 714))
 
 ; draw-sampler : canvas? -> void?
-;;   Draws the sampler component in the current canvas coordinate system.
+;   Draws the sampler component in the current canvas coordinate system.
 (define (draw-sampler canvas)
   (draw-header canvas)
   (draw-latin-row canvas)
@@ -239,8 +254,9 @@
 ;;;
 
 (module+ main
+
   ; surface : surface?
-  ;;   Owns the raster drawing target used to produce the example's output.
+  ;   Owns the raster drawing target used to produce the example's output.
   (define surface
     (make-surface width height
                   #:background paper-color))
@@ -256,8 +272,9 @@
 (module+ test
   (require rackunit)
   ;; Force a missing match without changing the host's installed fonts.
+
   ; missing-match : any/c any/c #:languages any/c -> #f
-  ;;   Models an unavailable font match so the diagnostic path can be tested.
+  ;   Models an unavailable font match so the diagnostic path can be tested.
   (define (missing-match _manager _representative #:languages _languages) #f)
   (check-exn
    #rx"Install a font"

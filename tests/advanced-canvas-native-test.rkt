@@ -19,17 +19,17 @@
 ;;;
 
 ; rectangle : canvas? real? real? real? real? color -> void?
-;;   Draws an unantialiased filled rectangle for exact interior-pixel checks.
+;   Draws an unantialiased filled rectangle for exact interior-pixel checks.
 (define (rectangle c x y w h color)
   (with-skia ([p (make-paint #:color color #:antialias? #f)]) (draw-rect c x y w h p)))
 
 ; scene : canvas? -> void?
-;;   Draws distinct small red and blue shapes for specialized-canvas comparisons.
+;   Draws distinct small red and blue shapes for specialized-canvas comparisons.
 (define (scene c)
   (rectangle c 1 2 5 4 'red) (rectangle c 8 1 4 7 'blue))
 
 ; pixel-alpha : surface? exact-nonnegative-integer? exact-nonnegative-integer? -> byte?
-;;   Reads coverage at a device-pixel position.
+;   Reads coverage at a device-pixel position.
 (define (pixel-alpha s x y) (rgba-alpha (surface-pixel s x y)))
 
 ;;;
@@ -37,7 +37,7 @@
 ;;;
 
 ; advanced-canvas-native-tests : test-suite?
-;;   Collects the regression cases for advanced layers, native drawables and specialized canvases.
+;   Collects the regression cases for advanced layers, native drawables and specialized canvases.
 (define advanced-canvas-native-tests
   (test-suite
    "Advanced layers, native drawables and specialized canvases"

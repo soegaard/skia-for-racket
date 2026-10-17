@@ -20,8 +20,8 @@
 ;;;
 
 ; output-doctor! : -> void?
-;;   Checks physical page sizing, multipage PDF output, outlined SVG text, and independent text-blob
-;;   snapshots.
+;   Checks physical page sizing, multipage PDF output, outlined SVG text, and independent text-blob
+;   snapshots.
 (define (output-doctor!)
   (define page
     (make-output-page

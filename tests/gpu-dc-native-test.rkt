@@ -24,22 +24,22 @@
 ;;;
 
 ; backend : parameter?
-;;   Selects auto, EGL, Metal, or Direct3D for the native frame-DC suite.
+;   Selects auto, EGL, Metal, or Direct3D for the native frame-DC suite.
 (define backend (make-parameter 'auto))
 
 ; adapter : parameter?
-;;   Selects the Direct3D hardware or WARP adapter requested by the runner.
+;   Selects the Direct3D hardware or WARP adapter requested by the runner.
 (define adapter (make-parameter 'hardware))
 
 ; selected-backend : -> symbol?
-;;   Resolves auto to the platform's native offscreen test backend.
+;   Resolves auto to the platform's native offscreen test backend.
 (define (selected-backend)
   (if (eq? (backend) 'auto)
       (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])
       (backend)))
 
 ; with-context : procedure? -> any
-;;   Creates a selected GPU context and closes it after the callback.
+;   Creates a selected GPU context and closes it after the callback.
 (define (with-context proc)
   (define ctx
     (case (selected-backend)
@@ -52,31 +52,31 @@
     (lambda () (gpu:gpu-context-close! ctx))))
 
 ; with-surface : procedure? [exact-positive-integer? exact-positive-integer?] -> any
-;;   Scopes a GPU surface and its context around the drawing test.
+;   Scopes a GPU surface and its context around the drawing test.
 (define (with-surface proc [w 64] [h 48])
   (with-context (lambda (ctx)
     (sk:with-skia ([s (gpu:make-gpu-surface ctx w h)]) (proc ctx s)))))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc color [x 0] [y 0] [w 8] [h 6])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
 
 ; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ; (listof byte?)
-;;   Extracts a row-major RGBA pixel from an explicit capture.
+;   Extracts a row-major RGBA pixel from an explicit capture.
 (define (pixel bytes width x y)
   (define p (* 4 (+ x (* width y)))) (bytes->list (subbytes bytes p (+ p 4))))
 
 ; read-pixel : surface? exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Explicitly reads a GPU surface and selects one premultiplied pixel.
+;   Explicitly reads a GPU surface and selects one premultiplied pixel.
 (define (read-pixel s x y)
   (pixel (gpu:gpu-surface->rgba-bytes s #:premultiplied? #t) (sk:surface-width s) x y))
 
 ; opaque-color? : (listof byte?) (listof byte?) -> boolean?
-;;   Checks RGB within one byte while requiring fully opaque alpha.
+;   Checks RGB within one byte while requiring fully opaque alpha.
 (define (opaque-color? actual rgb)
   (and (for/and ([a (in-list (take actual 3))] [b (in-list rgb)]) (<= (abs (- a b)) 1))
        (= (last actual) 255)))
@@ -84,7 +84,7 @@
 ;; substitutes only window acquisition/presentation, NOT drawing or GPU storage.
 
 ; with-presenter : procedure? -> any
-;;   Scopes an offscreen presenter and real GPU final target for frame-DC lifetime tests.
+;   Scopes an offscreen presenter and real GPU final target for frame-DC lifetime tests.
 (define (with-presenter proc)
   (define ctx
     (case (selected-backend)
@@ -126,8 +126,8 @@
 ;;;
 
 ; gpu-dc-native-tests : test-suite?
-;;   Collects the regression cases for native Ganesh GPU DC: coordinates, residency, transfer and
-;;   frame lifetime.
+;   Collects the regression cases for native Ganesh GPU DC: coordinates, residency, transfer and
+;   frame lifetime.
 (define gpu-dc-native-tests
   (test-suite
    "Native Ganesh GPU DC: coordinates, residency, transfer and frame lifetime"
@@ -268,7 +268,7 @@
        (check-eq? (gpu:gpu-presenter-state p) 'closed))))))
 
 ; gpu-dc-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-dc-native-test-count 15)
 (module+ main
   (require rackunit/text-ui)
@@ -283,7 +283,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-dc-native-tests))
   (printf "gpu-dc-native: ~a cases, ~a failures; native GPU targets and presenter lifecycle, no GUI.\n"
           gpu-dc-native-test-count failures)

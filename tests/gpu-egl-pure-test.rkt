@@ -21,7 +21,7 @@
 ;;;
 
 ; fixture : procedure? [#:fail any/c] -> any
-;;   Supplies injected EGL operations and records ownership/activation behavior without native EGL.
+;   Supplies injected EGL operations and records ownership/activation behavior without native EGL.
 (define (fixture proc #:fail [failure #f])
   (define log (box '()))
   (define (record item) (set-box! log (append (unbox log) (list item))))
@@ -71,7 +71,7 @@
 ;;;
 
 ; gpu-egl-pure-tests : test-suite?
-;;   Collects the regression cases for eGL ownership, callback scopes and GL interop contracts.
+;   Collects the regression cases for eGL ownership, callback scopes and GL interop contracts.
 (define gpu-egl-pure-tests
   (test-suite
    "EGL ownership, callback scopes and GL interop contracts"

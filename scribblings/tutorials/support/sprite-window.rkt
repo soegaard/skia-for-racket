@@ -22,7 +22,7 @@
   (provide open-sprite-window)
 
   ; preferred-backend : -> (or/c symbol? #f)
-  ;;   Returns the supported platform GPU choice, or #f when no choice is defined.
+  ;   Returns the supported platform GPU choice, or #f when no choice is defined.
   (define (preferred-backend)
     (case (system-type 'os)
       [(macosx) 'metal]
@@ -32,7 +32,7 @@
 
   ; open-sprite-window : string? real? real? any/c any/c any/c any/c #:renderer [symbol?]
   ; #:instructions [any/c] #:smoke? [boolean?] -> (is-a?/c frame%)
-  ;;   Creates the shared sprite host with fixed-step updates and scoped renderer cleanup.
+  ;   Creates the shared sprite host with fixed-step updates and scoped renderer cleanup.
   (define (open-sprite-window title scene-width scene-height
                               make-atlas make-world step-world! draw-world
                               #:renderer [renderer 'gpu]

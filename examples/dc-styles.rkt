@@ -18,12 +18,14 @@
 ;;;
 
 (module+ main
+
   ; output : string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define output "dc-styles.png")
   (command-line #:args ([path "dc-styles.png"]) (set! output path))
+
   ; dc : (is-a?/c skia-dc%)
-  ;;   Owns the raster Skia drawing context used to save the style corpus.
+  ;   Owns the raster Skia drawing context used to save the style corpus.
   (define dc (new skia-dc% [width 64] [height 64]))
   (dynamic-wind void
     (lambda () (style-oracle dc)

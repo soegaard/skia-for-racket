@@ -22,7 +22,7 @@
   ;;;
 
   ; color : color?
-  ;;   Provides a half-transparent RGBA sample for color accessor and conversion assertions.
+  ;   Provides a half-transparent RGBA sample for color accessor and conversion assertions.
   (define color (rgba 50 109 230 128))
   (check-true (rgba? color))
   (check-true (struct-type? struct:rgba))

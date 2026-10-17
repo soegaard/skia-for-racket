@@ -20,7 +20,7 @@
 ;;;
 
 ; run-dc-style-math-tests : -> exact-nonnegative-integer?
-;;   Runs native-free gradient, stipple, and hatch math assertions and returns the checked count.
+;   Runs native-free gradient, stipple, and hatch math assertions and returns the checked count.
 (define (run-dc-style-math-tests)
   (define count 0)
   (define (yes label v)

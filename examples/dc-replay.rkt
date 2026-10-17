@@ -19,18 +19,20 @@
 ;;;
 
 ; make-dc-recording : procedure? -> (values procedure? procedure?)
-;;   Constructs dc recording for the example's drawing pipeline.
+;   Constructs dc recording for the example's drawing pipeline.
 (define (make-dc-recording draw)
   (define recorder (new rd:record-dc% [width 96] [height 72]))
   (draw recorder)
   (values (send recorder get-recorded-procedure)
           (rd:recorded-datum->procedure (send recorder get-recorded-datum))))
+
 ; fill : (is-a?/c dc<%>) any/c real? real? real? real? -> void?
-;;   Fills a rectangle using the drawing-context brush API.
+;   Fills a rectangle using the drawing-context brush API.
 (define (fill dc color x y w h)
   (send dc set-brush color 'solid) (send dc draw-rectangle x y w h))
+
 ; draw-dc-replay-oracle : (is-a?/c dc<%>) -> void?
-;;   Draws the dc replay oracle component in the current canvas coordinate system.
+;   Draws the dc replay oracle component in the current canvas coordinate system.
 (define (draw-dc-replay-oracle dc)
   ;; No erase inside a recording: record-dc% may prune commands before erase.
   (send dc set-smoothing 'smoothed)
@@ -57,8 +59,9 @@
   (send dc end-alpha) (send dc set-clipping-region #f)
   (fill dc (make-object rd:color% 10 20 30) 0 0 2 2)
   (fill dc (make-object rd:color% 20 200 70) 46 30 2 2))
+
 ; draw-dc-replay-scene : (is-a?/c dc<%>) -> void?
-;;   Draws the dc replay scene component in the current canvas coordinate system.
+;   Draws the dc replay scene component in the current canvas coordinate system.
 (define (draw-dc-replay-scene dc)
   (send dc set-smoothing 'smoothed)
   (send dc set-pen "black" 1 'transparent)

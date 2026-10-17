@@ -30,7 +30,7 @@
 ;; allocation is attached to this record.
 
 ; make-probe : [#:bad-close? boolean? #:bad-create? boolean?] -> (values dc-renderer? box?)
-;;   Builds an event-recording renderer with injectable allocation and cleanup failures.
+;   Builds an event-recording renderer with injectable allocation and cleanup failures.
 (define (make-probe #:bad-close? [bad-close? #f] #:bad-create? [bad-create? #f])
   (define events (box '()))
   (define (record tag . args) (set-box! events (cons (cons tag args) (unbox events))))
@@ -58,16 +58,16 @@
   (values renderer events))
 
 ; extent : frame-size?
-;;   Supplies an 80-by-60-pixel frame with a 40-by-20 logical coordinate extent.
+;   Supplies an 80-by-60-pixel frame with a 40-by-20 logical coordinate extent.
 (define extent (checked-frame-size 80 60 40 20))
 
 ; entries : box? symbol? -> list?
-;;   Returns matching renderer events in execution order.
+;   Returns matching renderer events in execution order.
 (define (entries events tag)
   (filter (lambda (event) (eq? (car event) tag)) (reverse (unbox events))))
 
 ; scope : procedure? [#:extent frame-size? #:clear? boolean?] -> box?
-;;   Runs a frame-DC scope and returns drawing, commit, and cleanup events.
+;   Runs a frame-DC scope and returns drawing, commit, and cleanup events.
 (define (scope proc #:extent [size extent] #:clear? [clear? #f])
   (define-values (renderer events) (make-probe))
   (call-with-frame-dc/renderer renderer size proc
@@ -76,15 +76,15 @@
   events)
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush "blue" 'solid)
   (send dc draw-rectangle 1 2 8 6))
 
 ; draw-command : box? -> any/c
-;;   Extracts the first draw-command payload from the ordered event log.
+;   Extracts the first draw-command payload from the ordered event log.
 (define (draw-command events) (caddr (car (entries events 'draw))))
 
 ;;;
@@ -92,8 +92,8 @@
 ;;;
 
 ; gpu-dc-pure-tests : test-suite?
-;;   Collects the regression cases for frame-scoped GPU DC state, scaling and lifetime (no native
-;;   renderer).
+;   Collects the regression cases for frame-scoped GPU DC state, scaling and lifetime (no native
+;   renderer).
 (define gpu-dc-pure-tests
   (test-suite
    "Frame-scoped GPU DC state, scaling and lifetime (no native renderer)"
@@ -287,7 +287,7 @@
      (check-exn exn:fail? (lambda () (k 'resume))))))
 
 ; gpu-dc-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-dc-pure-test-count 33)
 (module+ main
   (require rackunit/text-ui)
@@ -297,7 +297,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-dc-pure-tests))
   (printf "gpu-dc-pure: ~a cases, ~a failures; real DC class, instrumented renderer, no GPU.\n"
           gpu-dc-pure-test-count failures)

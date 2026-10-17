@@ -21,29 +21,29 @@
 ;;;
 
 ; plan : any/c any/c -> output-raster-plan?
-;;   Creates a synthetic Metal plan with fixed generation metadata and no actual rendering.
+;   Creates a synthetic Metal plan with fixed generation metadata and no actual rendering.
 (define (plan c p)
   (output-raster-plan 'metal 17 #f (lambda (w h cs replay consume) (void))))
 
 ; unavailable : -> gpu-unavailable?
-;;   Constructs the explicit unavailable-device result used to test fallback policy.
+;   Constructs the explicit unavailable-device result used to test fallback policy.
 (define (unavailable) (gpu-unavailable 'test-device "synthetic unavailable device"))
 
 ; lazy : procedure? ... -> any
-;;   Runs the lazy-executor lifecycle with injectable create, check, plan, close, and unavailable
-;;   policy.
+;   Runs the lazy-executor lifecycle with injectable create, check, plan, close, and unavailable
+;   policy.
 (define (lazy proc #:create [create (lambda () 'context)] #:check [check void]
               #:plan [make-plan plan] #:close [close void] #:policy [policy 'error])
   (call-with-lazy-output-raster-executor create check make-plan close proc #:on-unavailable policy))
 
 ; drawing-event : any/c symbol? -> any
-;;   Emits a synthetic rectangle operation through the audit boundary for a selected backend.
+;   Emits a synthetic rectangle operation through the audit boundary for a selected backend.
 (define (drawing-event handle backend)
   (audit-on-canvas 'probe 'owner backend handle '()
     (lambda () (audit-native-call 'sk_canvas_draw_rect '() void))))
 
 ; geometry-events : (-> any) -> list?
-;;   Collects only geometry audit events produced within a bounded raster scope.
+;   Collects only geometry audit events produced within a bounded raster scope.
 (define (geometry-events thunk)
   (define-values (_ report)
     (call-with-audit-collector 'svg 'report #f 1
@@ -57,8 +57,8 @@
 ;;;
 
 ; gpu-output-pure-tests : test-suite?
-;;   Collects the regression cases for gPU document execution: pure protocol, lazy ownership and
-;;   scoped audit.
+;   Collects the regression cases for gPU document execution: pure protocol, lazy ownership and
+;   scoped audit.
 (define gpu-output-pure-tests
   (test-suite
    "GPU document execution: pure protocol, lazy ownership and scoped audit"

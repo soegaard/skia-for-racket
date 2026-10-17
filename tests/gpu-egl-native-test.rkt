@@ -19,11 +19,11 @@
 ;;;
 
 ; gpu-egl-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-egl-native-test-count 10)
 
 ; make-gpu-egl-native-tests : procedure? -> test-suite?
-;;   Builds the parameterized suite for eGL native ownership and true headless contexts.
+;   Builds the parameterized suite for eGL native ownership and true headless contexts.
 (define (make-gpu-egl-native-tests factory)
   ;; This function is called only by the explicit Linux/headless doctor.
   (define egl (ffi-lib "libEGL.so.1"))

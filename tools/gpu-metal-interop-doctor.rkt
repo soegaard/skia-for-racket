@@ -24,8 +24,8 @@
 ;;;
 
 ; gpu-metal-interop-doctor! : path? path-string? [#:timeout-case? boolean?] -> exact-integer?
-;;   Runs independent Metal handoffs or an isolated timeout/quarantine scenario and publishes the
-;;   corresponding receipt.
+;   Runs independent Metal handoffs or an isolated timeout/quarantine scenario and publishes the
+;   corresponding receipt.
 (define (gpu-metal-interop-doctor! directory fixture-path #:timeout-case? [timeout-case? #f])
   (define run (path->string (file-name-from-path (simplify-path directory))))
   (define file (build-path directory
@@ -176,13 +176,15 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; fixture : (or/c path-string? #f)
-  ;;   Selects the external Metal producer fixture library used for retained texture handoff checks.
+  ;   Selects the external Metal producer fixture library used for retained texture handoff checks.
   (define fixture #f)
+
   ; timeout? : boolean?
-  ;;   Selects the deliberately blocked producer/consumer case used to validate timeout handling.
+  ;   Selects the deliberately blocked producer/consumer case used to validate timeout handling.
   (define timeout? #f)
   (command-line #:once-each
     [("--directory") p "Fresh evidence directory" (set! directory (string->path p))]

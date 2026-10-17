@@ -18,7 +18,7 @@
 ;;;
 
 ; render-bitmap : path-string? -> void?
-;;   Saves a detached Racket bitmap without replacing an existing destination.
+;   Saves a detached Racket bitmap without replacing an existing destination.
 (define (render-bitmap filename)
   ;; The returned bitmap owns a copy and can outlive the Skia surface.
   (define bm
@@ -37,8 +37,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "bitmap-bridge.rkt" #:args ([output "bitmap.png"]) output))
   (render-bitmap filename)

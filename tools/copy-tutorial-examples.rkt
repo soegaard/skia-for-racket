@@ -22,11 +22,11 @@
 ;;;
 
 ; list-only? : boolean?
-;;   Selects catalog listing without copying tutorial programs.
+;   Selects catalog listing without copying tutorial programs.
 (define list-only? #f)
 
 ; arguments : (listof string?)
-;;   Stores positional command-line arguments used to select a tutorial and output destination.
+;   Stores positional command-line arguments used to select a tutorial and output destination.
 (define arguments
   (command-line
    #:program (short-program+command-name)

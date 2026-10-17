@@ -24,7 +24,7 @@
 ;;;
 
 ; argb-at : pict? exact-nonnegative-integer? exact-nonnegative-integer? -> bytes?
-;;   Renders a pict through Racket Draw and samples one ARGB pixel.
+;   Renders a pict through Racket Draw and samples one ARGB pixel.
 (define (argb-at picture x y)
   (define bitmap (pict:pict->bitmap picture))
   (define bytes (make-bytes 4))
@@ -33,7 +33,7 @@
 
 
 ; thread-result : procedure? -> any/c
-;;   Captures the result or exception of a pict operation on a different thread.
+;   Captures the result or exception of a pict operation on a different thread.
 (define (thread-result thunk)
   (define reply (make-channel))
   (thread (lambda ()
@@ -43,7 +43,7 @@
 
 
 ; source-pict : -> pict?
-;;   Builds the small colored pict used to check the Skia conversion bridge.
+;   Builds the small colored pict used to check the Skia conversion bridge.
 (define (source-pict)
   (with-skia ([paint (make-paint #:color 'red #:antialias? #f)]
               [picture (call-with-picture 101 71
@@ -56,7 +56,7 @@
 ;;;
 
 ; pict-native-tests : test-suite?
-;;   Collects the regression cases for skia/pict eager CPU snapshots.
+;   Collects the regression cases for skia/pict eager CPU snapshots.
 (define pict-native-tests
   (test-suite
    "skia/pict eager CPU snapshots"
@@ -160,6 +160,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pict-native-tests))
   (unless (zero? failures) (error 'pict-native-test "~a failures" failures)))

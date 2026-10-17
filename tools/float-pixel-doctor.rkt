@@ -20,11 +20,11 @@
 ;;;
 
 ; save-bytes : path-string? bytes? -> exact-nonnegative-integer?
-;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
+;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (save-bytes p b) (call-with-output-file p (lambda (o) (write-bytes b o)) #:exists 'error))
 
 ; generate-float-pixel-documents : path-string? string? -> void?
-;;   Writes float-color documents and pre-quantization storage for independent inspection.
+;   Writes float-color documents and pre-quantization storage for independent inspection.
 (define (generate-float-pixel-documents directory token)
   (when (directory-exists? directory) (error 'float-pixel-doctor "output directory must be new"))
   (make-directory* directory)
@@ -82,11 +82,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") d "Fresh evidence directory" (set! directory d)]

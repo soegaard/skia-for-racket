@@ -20,43 +20,43 @@
 ;;;
 
 ; font : font%
-;;   Provides a pixel-sized, unaligned font for native DC text comparisons.
+;   Provides a pixel-sized, unaligned font for native DC text comparisons.
 (define font (rd:make-font #:size 16 #:size-in-pixels? #t #:hinting 'unaligned))
 
 ; with-dc : procedure? [exact-positive-integer? exact-positive-integer? real?] -> any
-;;   Scopes a native DC with the test font and requested backing scale.
+;   Scopes a native DC with the test font and requested backing scale.
 (define (with-dc proc [w 160] [h 64] [backing 1])
   (define dc (new skia-dc% [width w] [height h] [backing-scale backing] [smoothing 'unsmoothed]))
   (dynamic-wind void (lambda () (send dc set-font font) (proc dc)) (lambda () (send dc close))))
 
 ; extent : dc<%> string? [any/c exact-nonnegative-integer?] -> (listof real?)
-;;   Collects width, height, descent, and leading for a combined or uncombined text request.
+;   Collects width, height, descent, and leading for a combined or uncombined text request.
 (define (extent dc str [mode #f] [offset 0])
   (call-with-values (lambda () (send dc get-text-extent str #f mode offset)) list))
 
 ; at : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Reads one premultiplied RGBA device pixel from the DC.
+;   Reads one premultiplied RGBA device pixel from the DC.
 (define (at dc x y)
   (define-values (w h) (send dc get-pixel-size))
   (define bs (send dc get-rgba-bytes #:premultiplied? #t))
   (define i (* 4 (+ x (* y w)))) (bytes->list (subbytes bs i (+ i 4))))
 
 ; bitmap : exact-positive-integer? exact-positive-integer? bytes? [boolean? real?] -> bitmap%
-;;   Builds a Racket bitmap from unscaled ARGB storage at the chosen backing scale.
+;   Builds a Racket bitmap from unscaled ARGB storage at the chosen backing scale.
 (define (bitmap w h argb [alpha #t] [backing 1])
   (define bm (rd:make-bitmap w h alpha #:backing-scale backing))
   (send bm set-argb-pixels 0 0 (* w backing) (* h backing) argb #f #f #:unscaled? #t) bm)
 
 ; solid : byte? byte? byte? [byte?] -> bitmap%
-;;   Builds a one-pixel bitmap, converting RGBA arguments to ARGB storage order.
+;   Builds a one-pixel bitmap, converting RGBA arguments to ARGB storage order.
 (define (solid r g b [a 255]) (bitmap 1 1 (bytes a r g b)))
 
 ; red : color%
-;;   Provides the Racket Draw red color object used by bitmap and text checks.
+;   Provides the Racket Draw red color object used by bitmap and text checks.
 (define red (make-object rd:color% 255 0 0))
 
 ; ink-count : dc<%> -> exact-nonnegative-integer?
-;;   Counts pixels with nonzero alpha in a DC capture.
+;   Counts pixels with nonzero alpha in a DC capture.
 (define (ink-count dc)
   (define b (send dc get-rgba-bytes))
   (for/sum ([i (in-range 3 (bytes-length b) 4)] #:when (> (bytes-ref b i) 0)) 1))
@@ -66,7 +66,7 @@
 ;;;
 
 ; dc-compat-native-tests : test-suite?
-;;   Collects the regression cases for skia DC text, bitmap and region native execution.
+;   Collects the regression cases for skia DC text, bitmap and region native execution.
 (define dc-compat-native-tests
   (test-suite
    "Skia DC text, bitmap and region native execution"
@@ -218,5 +218,5 @@
                 (check-equal? (send dc get-rgba-bytes) before))))))
 
 ; dc-compat-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-compat-native-test-count 34)

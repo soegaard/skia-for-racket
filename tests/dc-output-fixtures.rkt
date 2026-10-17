@@ -26,21 +26,21 @@
 ;;;
 
 ; output-fill : dc<%> color real? real? real? real? -> void?
-;;   Draws a solid rectangle without a visible pen.
+;   Draws a solid rectangle without a visible pen.
 (define (output-fill dc color x y w h)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
 
 ; output-label : dc<%> [string? real? real?] -> void?
-;;   Draws a fixed-style label used to inspect document text output.
+;   Draws a fixed-style label used to inspect document text output.
 (define (output-label dc [text "SkiaDC063"] [x 8] [y 44])
   (send dc set-font (rd:make-font #:family 'swiss #:size 12 #:size-in-pixels? #t))
   (send dc set-text-foreground "black")
   (send dc draw-text text x y #t))
 
 ; draw-output-vector-scene : dc<%> -> any
-;;   Draws geometry, clipping, and a label that should remain vector content.
+;   Draws geometry, clipping, and a label that should remain vector content.
 (define (draw-output-vector-scene dc)
   (send dc set-background "white") (send dc clear)
   (output-fill dc "red" 8 8 24 18)
@@ -61,7 +61,7 @@
   (hash))
 
 ; draw-output-mixed-scene : dc<%> [procedure?] -> any
-;;   Combines ordinary vector marks with an alpha group that exercises raster fallback.
+;   Combines ordinary vector marks with an alpha group that exercises raster fallback.
 (define (draw-output-mixed-scene dc [raster-callback void])
   (send dc set-background "white") (send dc clear)
   (output-fill dc "red" 8 8 24 18)
@@ -83,13 +83,13 @@
   (hash))
 
 ; draw-output-style-scene : dc<%> -> hash?
-;;   Draws the shared brush-style oracle and returns an empty layout record.
+;   Draws the shared brush-style oracle and returns an empty layout record.
 (define (draw-output-style-scene dc)
   (styles:style-oracle dc)
   (hash))
 
 ; make-output-consumers : -> list?
-;;   Prepares pict and plot drawing callbacks using a scoped Skia DC for text metrics.
+;   Prepares pict and plot drawing callbacks using a scoped Skia DC for text metrics.
 (define (make-output-consumers)
   (define metric-dc (new skia-dc% [width 320] [height 240] [smoothing 'smoothed]))
   (define picture

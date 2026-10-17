@@ -21,18 +21,18 @@
 ;;;
 
 ; desc : hash?
-;;   Describes a synthetic single-level, single-sample RGBA Direct3D texture and its heap flags.
+;   Describes a synthetic single-level, single-sample RGBA Direct3D texture and its heap flags.
 (define desc
   (hasheq 'dimension 3 'width 37 'height 29 'depth 1 'levels 1 'format 28
           'samples 1 'quality 0 'layout 0 'flags 1 'heap_type 1 'heap_flags 0))
 
 ; ctx : symbol?
-;;   Provides a unique context identity token with no native allocation.
+;   Provides a unique context identity token with no native allocation.
 (define ctx (gensym 'context))
 
 ; fixture : [#:check procedure? #:operate procedure? #:retire procedure?] -> gpu-external-texture?
-;;   Builds a synthetic external-texture token with injectable validation, operation, and
-;;   retirement.
+;   Builds a synthetic external-texture token with injectable validation, operation, and
+;   retirement.
 (define (fixture #:check [check void] #:operate [operate (lambda (mode p) (if p (p 'canvas) 'image))]
                  #:retire [retire void])
   (make-external-texture 'direct3d ctx 71 (hasheq 'ownership "synthetic")
@@ -43,8 +43,8 @@
 ;;;
 
 ; gpu-interop-pure-tests : test-suite?
-;;   Collects the regression cases for external resource handoff contracts; no Windows/native
-;;   loading.
+;   Collects the regression cases for external resource handoff contracts; no Windows/native
+;   loading.
 (define gpu-interop-pure-tests
   (test-suite "External resource handoff contracts; no Windows/native loading"
     (test-case "all named states have the reviewed native values"

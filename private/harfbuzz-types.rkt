@@ -52,8 +52,9 @@
 
 
 ; hb-memory-mode-duplicate : exact-nonnegative-integer?
-;;   Requests a HarfBuzz-owned copy of blob input bytes so caller storage need not outlive the blob.
+;   Requests a HarfBuzz-owned copy of blob input bytes so caller storage need not outlive the blob.
 (define hb-memory-mode-duplicate 0)
+
 ; hb-font-size-scale : exact-nonnegative-integer?
-;;   Converts drawing-unit font sizes into the fixed 512-unit scale used for shaping positions.
+;   Converts drawing-unit font sizes into the fixed 512-unit scale used for shaping positions.
 (define hb-font-size-scale 512)

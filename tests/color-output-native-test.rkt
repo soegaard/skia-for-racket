@@ -19,11 +19,11 @@
 ;;;
 
 ; sample : bytes?
-;;   Provides two RGBA pixels with different alpha values for profile-preserving encode checks.
+;   Provides two RGBA pixels with different alpha values for profile-preserving encode checks.
 (define sample (bytes 128 96 64 255 64 128 96 128))
 
 ; close-color : color-space? color-space? [real?] -> void?
-;;   Compares D50 matrices and sampled transfer functions after profile round trips.
+;   Compares D50 matrices and sampled transfer functions after profile round trips.
 (define (close-color a b [eps 3e-4])
   (define x (color-space-xyz-d50 a))
   (define y (color-space-xyz-d50 b))
@@ -36,13 +36,13 @@
     (check-= (transfer-function-evaluate ta n) (transfer-function-evaluate tb n) 1e-3)))
 
 ; with-temp : (path? -> any) -> any
-;;   Provides an isolated output directory and removes it after the test.
+;   Provides an isolated output directory and removes it after the test.
 (define (with-temp proc)
   (define dir (make-temporary-file "skia-color-test-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
 
 ; encode-check : symbol? -> void?
-;;   Checks embedded ICC metadata and decoded color meaning for the chosen image format.
+;   Checks embedded ICC metadata and decoded color meaning for the chosen image format.
 (define (encode-check format)
   (with-skia ([cs (make-rgb-color-space 'srgb 'display-p3)]
               [im (rgba-bytes->image 2 1 sample #:color-space cs)])
@@ -65,7 +65,7 @@
 ;;;
 
 ; color-output-native-tests : test-suite?
-;;   Collects the regression cases for color output native regression.
+;   Collects the regression cases for color output native regression.
 (define color-output-native-tests
   (test-suite
    "Color output native regression"

@@ -22,7 +22,7 @@
   ;;;
 
   ; expected : exact-positive-integer?
-  ;;   Parses the deliberately incompatible milestone supplied to the rejection probe.
+  ;   Parses the deliberately incompatible milestone supplied to the rejection probe.
   (define expected
     (command-line #:args (milestone)
       (define n (string->number milestone))
@@ -30,7 +30,7 @@
       n))
 
   ; rejected : boolean?
-  ;;   Records whether the native compatibility gate rejected the mismatched milestone.
+  ;   Records whether the native compatibility gate rejected the mismatched milestone.
   (define rejected #f)
   (with-handlers ([exn:fail:native-abi?
                    (lambda (e)

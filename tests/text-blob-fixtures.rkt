@@ -22,26 +22,26 @@
 ;;;
 
 ; u16 : exact-nonnegative-integer? -> bytes?
-;;   Encodes an unsigned 16-bit OpenType field in big-endian byte order.
+;   Encodes an unsigned 16-bit OpenType field in big-endian byte order.
 (define (u16 n) (integer->integer-bytes n 2 #f #t))
 
 ; u32 : exact-nonnegative-integer? -> bytes?
-;;   Encodes an unsigned 32-bit OpenType field in big-endian byte order.
+;   Encodes an unsigned 32-bit OpenType field in big-endian byte order.
 (define (u32 n) (integer->integer-bytes n 4 #f #t))
 
 ; us : (listof exact-nonnegative-integer?) -> bytes?
-;;   Concatenates unsigned 16-bit OpenType fields in their declared order.
+;   Concatenates unsigned 16-bit OpenType fields in their declared order.
 (define (us xs) (apply bytes-append (map u16 xs)))
 
 ; pad : bytes? -> bytes?
-;;   Appends zero bytes to align a font table to the next four-byte boundary.
+;   Appends zero bytes to align a font table to the next four-byte boundary.
 (define (pad bs) (bytes-append bs (make-bytes (modulo (- (bytes-length bs)) 4))))
 ;; A distinct family/PostScript identity avoids sharing a native font-cache
 ;; identity with the simpler 0.68a fixture that has no Unicode/GSUB extension.
 
 ; text-fixture-name-table : -> bytes?
-;;   Builds a distinct font identity so extended cmap/GSUB fixtures cannot alias the base font
-;;   cache.
+;   Builds a distinct font identity so extended cmap/GSUB fixtures cannot alias the base font
+;   cache.
 (define (text-fixture-name-table)
   (define fields
     '((1 . "Skia Racket Text Fixture") (2 . "Regular")
@@ -61,8 +61,8 @@
                 (apply bytes-append records) (apply bytes-append (reverse strings))))
 
 ; text-blob-fixture-font-bytes : -> bytes?
-;;   Extends the generated font with Unicode mappings and an fi ligature, rebuilding offsets and
-;;   checksums.
+;   Extends the generated font with Unicode mappings and an fi ligature, rebuilding offsets and
+;   checksums.
 (define (text-blob-fixture-font-bytes)
   (define base (fixture-font-bytes))
   (define (read16 at) (integer-bytes->integer base #f #t at (+ at 2)))

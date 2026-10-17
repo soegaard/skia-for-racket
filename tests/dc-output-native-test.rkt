@@ -21,25 +21,25 @@
 ;;;
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc [color "blue"] [x 2] [y 3] [w 8] [h 6])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
 
 ; page : procedure? [#:policy symbol?] -> output-page?
-;;   Builds a white document page with the requested representation policy.
+;   Builds a white document page with the requested representation policy.
 (define (page draw #:policy [policy 'prefer-vector])
   (make-dc-output-page 80 60 draw #:background 'white #:policy policy))
 
 ; export : procedure? symbol? [#:policy symbol?] -> bytes?
-;;   Executes the DC-authored page through the selected output encoder.
+;   Executes the DC-authored page through the selected output encoder.
 (define (export draw format #:policy [policy 'prefer-vector])
   (sk:output->bytes (page draw #:policy policy) format))
 
 ; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ; (listof byte?)
-;;   Extracts one row-major RGBA pixel from an output capture.
+;   Extracts one row-major RGBA pixel from an output capture.
 (define (pixel bytes width x y)
   (define n (* 4 (+ x (* width y)))) (bytes->list (subbytes bytes n (+ n 4))))
 
@@ -48,8 +48,8 @@
 ;;;
 
 ; dc-output-native-tests : test-suite?
-;;   Collects the regression cases for shared authoring on actual PDF, SVG and raster output
-;;   canvases.
+;   Collects the regression cases for shared authoring on actual PDF, SVG and raster output
+;   canvases.
 (define dc-output-native-tests
   (test-suite
    "Shared authoring on actual PDF, SVG and raster output canvases"
@@ -173,7 +173,7 @@
      (check-true (regexp-match? #rx#"<image" bytes)))))
 
 ; dc-output-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-output-native-test-count 22)
 (module+ main
   (require rackunit/text-ui)
@@ -184,7 +184,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests dc-output-native-tests))
   (printf "dc-output-native: ~a cases, ~a failures\n" dc-output-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

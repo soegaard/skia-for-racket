@@ -22,8 +22,8 @@
 ;;;
 
 ; dc-style-doctor! : path? -> void?
-;;   Checks style math and native rendering, then writes direct, replayed, and reference style
-;;   captures.
+;   Checks style math and native rendering, then writes direct, replayed, and reference style
+;   captures.
 (define (dc-style-doctor! directory)
   (define (file name) (build-path directory name))
   (define base (hasheq 'schema 1 'stage "0.57" 'validation_run

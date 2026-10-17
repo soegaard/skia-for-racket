@@ -22,17 +22,17 @@
 ;;;
 
 ; parts : (listof bytes?)
-;;   Keeps the ordered PNG header and row chunks used by staged-feed tests.
+;   Keeps the ordered PNG header and row chunks used by staged-feed tests.
 (define parts (incremental-fixture-parts))
 
 ; prefix : codec-incremental? -> incremental-progress?
-;;   Feeds the header and first row, then advances the decoder once.
+;   Feeds the header and first row, then advances the decoder once.
 (define (prefix s)
   (codec-incremental-feed! s (bytes-append (car parts) (cadr parts)))
   (codec-incremental-step! s))
 
 ; finish : codec-incremental? [(listof bytes?)] -> void?
-;;   Feeds the remaining chunks with final-input marking and checks completion.
+;   Feeds the remaining chunks with final-input marking and checks completion.
 (define (finish s [remaining (cddr parts)])
   (for ([p (in-list remaining)] [i (in-naturals)])
     (codec-incremental-feed! s p #:final? (= i (sub1 (length remaining))))
@@ -40,19 +40,19 @@
   (check-equal? (codec-incremental-state s) 'complete))
 
 ; complete : codec-incremental? -> incremental-progress?
-;;   Feeds a complete PNG at once and returns the resulting decode progress.
+;   Feeds a complete PNG at once and returns the resulting decode progress.
 (define (complete s)
   (codec-incremental-feed! s (incremental-fixture-bytes) #:final? #t)
   (codec-incremental-step! s))
 
 ; snapshot-rgba : codec-incremental? -> bytes?
-;;   Copies the current detached decode snapshot into canonical RGBA bytes.
+;   Copies the current detached decode snapshot into canonical RGBA bytes.
 (define (snapshot-rgba s)
   (with-skia ([b (incremental-snapshot->raster-buffer (codec-incremental-snapshot s))])
     (raster-buffer->rgba-bytes b)))
 
 ; wrong-thread : (-> any) -> void?
-;;   Checks that a worker-thread use fails the decoder's ownership contract.
+;   Checks that a worker-thread use fails the decoder's ownership contract.
 (define (wrong-thread thunk)
   (define answer (box #f))
   (thread-wait (thread (lambda ()
@@ -64,7 +64,7 @@
 ;;;
 
 ; codec-incremental-native-tests : test-suite?
-;;   Collects the regression cases for retained incremental codec, feed framing and pixel ownership.
+;   Collects the regression cases for retained incremental codec, feed framing and pixel ownership.
 (define codec-incremental-native-tests
   (test-suite "Retained incremental codec, feed framing and pixel ownership"
     (test-case "session is an ordinary owned resource"
@@ -310,7 +310,7 @@
         (check-equal? (image->rgba-bytes image) (incremental-fixture-pixels))))))
 
 ; codec-incremental-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define codec-incremental-native-test-count 38)
 (module+ main
 
@@ -319,7 +319,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-incremental-native-tests))
   (printf "codec-incremental-native: ~a cases, ~a failures\n" codec-incremental-native-test-count
     failures)

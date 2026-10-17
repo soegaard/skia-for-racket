@@ -21,31 +21,31 @@
   ;;;
 
   ; args : (vectorof string?)
-  ;;   Supplies the serialized picture path, output prefix, and raster dimensions.
+  ;   Supplies the serialized picture path, output prefix, and raster dimensions.
   (define args (current-command-line-arguments))
   (unless (= (vector-length args) 4)
     (error 'replay-picture-probe "expected trusted-cache.skp output-prefix width height"))
 
   ; source : path-string?
-  ;;   Selects the serialized picture bytes to replay in this isolated process.
+  ;   Selects the serialized picture bytes to replay in this isolated process.
   (define source (vector-ref args 0))
 
   ; prefix : path-string?
-  ;;   Sets the common path prefix for replay output and evidence files.
+  ;   Sets the common path prefix for replay output and evidence files.
   (define prefix (vector-ref args 1))
 
   ; width : exact-positive-integer?
-  ;;   Sets the replay target width in pixels.
+  ;   Sets the replay target width in pixels.
   (define width (string->number (vector-ref args 2)))
 
   ; height : exact-positive-integer?
-  ;;   Sets the replay target height in pixels.
+  ;   Sets the replay target height in pixels.
   (define height (string->number (vector-ref args 3)))
   (unless (and (exact-positive-integer? width) (exact-positive-integer? height))
     (error 'replay-picture-probe "width and height must be positive exact integers"))
 
   ; out : string? any/c boolean? -> any
-  ;;   Writes binary capture bytes or newline-terminated JSON beneath the selected output prefix.
+  ;   Writes binary capture bytes or newline-terminated JSON beneath the selected output prefix.
   (define (out suffix data binary?)
     (call-with-output-file (string-append prefix suffix)
       (lambda (port)

@@ -20,7 +20,7 @@
 ;;;
 
 ; test-picture : [#:spatial-index symbol?] -> picture?
-;;   Records adjacent red and blue halves with the requested spatial-index policy.
+;   Records adjacent red and blue halves with the requested spatial-index policy.
 (define (test-picture #:spatial-index [index 'none])
   (call-with-picture 32 24
     (lambda (c)
@@ -30,24 +30,24 @@
     #:spatial-index index))
 
 ; pixels : picture? [exact-positive-integer? exact-positive-integer?] -> bytes?
-;;   Rasterizes a picture and copies pixels before closing the temporary image.
+;   Rasterizes a picture and copies pixels before closing the temporary image.
 (define (pixels pic [w 32] [h 24])
   (with-skia ([image (picture->image pic w h)]) (image->rgba-bytes image)))
 
 ; has? : output-audit-report? symbol? symbol? -> boolean?
-;;   Finds the selected feature/status pair in the picture replay audit.
+;   Finds the selected feature/status pair in the picture replay audit.
 (define (has? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature) (eq? (output-audit-event-status e) status))))
 
 ; temp-dir : procedure? -> any
-;;   Scopes an isolated picture-file directory and removes it after the test.
+;   Scopes an isolated picture-file directory and removes it after the test.
 (define (temp-dir proc)
   (define dir (make-temporary-file "skia-picture-native-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
 
 ; thread-rejects? : procedure? -> boolean?
-;;   Reports whether a cross-thread picture operation raises a failure.
+;   Reports whether a cross-thread picture operation raises a failure.
 (define (thread-rejects? thunk)
   (define ch (make-channel))
   (thread (lambda ()
@@ -55,7 +55,7 @@
   (channel-get ch))
 
 ; stripe-tile : -> picture?
-;;   Records a small red/blue stripe tile for repeated picture-shader playback.
+;   Records a small red/blue stripe tile for repeated picture-shader playback.
 (define (stripe-tile)
   (call-with-picture 8 4
     (lambda (c)
@@ -64,7 +64,7 @@
         (draw-rect c 0 0 4 4 a) (draw-rect c 4 0 4 4 b)))))
 
 ; runtime-picture : [#:spatial-index symbol?] -> picture?
-;;   Records a runtime-shaded rectangle and retains its effect after source wrappers close.
+;   Records a runtime-shaded rectangle and retains its effect after source wrappers close.
 (define (runtime-picture #:spatial-index [index 'none])
   (with-skia ([effect
                 (make-runtime-effect
@@ -78,8 +78,8 @@
 ;;;
 
 ; picture-native-tests : test-suite?
-;;   Collects the regression cases for persistent pictures: native streams, retained resources,
-;;   spatial indexing, and audit.
+;   Collects the regression cases for persistent pictures: native streams, retained resources,
+;   spatial indexing, and audit.
 (define picture-native-tests
   (test-suite "Persistent pictures: native streams, retained resources, spatial indexing, and audit"
    (test-case "roundtrip returns the ordinary owned picture type"

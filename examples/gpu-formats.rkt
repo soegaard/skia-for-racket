@@ -20,7 +20,7 @@
 ;;;
 
 ; render-half-float-image : gpu-context? -> image?
-;;   Returns a detached CPU image while preserving the rendered half-float samples.
+;   Returns a detached CPU image while preserving the rendered half-float samples.
 (define (render-half-float-image context)
   (call-with-gpu-context context
     (lambda ()

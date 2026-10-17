@@ -23,7 +23,7 @@
 ;;;
 
 ; fresh : [exact-positive-integer? exact-positive-integer? real?] -> (values dc<%> box?)
-;;   Builds a recording renderer and DC, preserving emitted operations for assertions.
+;   Builds a recording renderer and DC, preserving emitted operations for assertions.
 (define (fresh [width 32] [height 24] [scale 1])
   (define events (box '()))
   (define (event v) (set-box! events (cons v (unbox events))))
@@ -39,17 +39,17 @@
   (values dc events))
 
 ; draws : box? -> list?
-;;   Returns drawing-event payloads in execution order.
+;   Returns drawing-event payloads in execution order.
 (define (draws e) (for/list ([x (in-list (reverse (unbox e)))] #:when (eq? (car x) 'draw)) (cdr x)))
 
 ; paint-only : dc<%> -> void?
-;;   Selects a red brush and transparent pen for path-command tests.
+;   Selects a red brush and transparent pen for path-command tests.
 (define (paint-only dc)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush "red" 'solid))
 
 ; fails? : (-> any) -> void?
-;;   Requires the declared unsupported-DC-operation exception.
+;   Requires the declared unsupported-DC-operation exception.
 (define (fails? thunk) (check-exn exn:fail:skia-dc:unsupported? thunk))
 
 ;;;
@@ -57,7 +57,7 @@
 ;;;
 
 ; dc-pure-tests : test-suite?
-;;   Collects the regression cases for skia-dc foundation (recording renderer; no Skia pixels).
+;   Collects the regression cases for skia-dc foundation (recording renderer; no Skia pixels).
 (define dc-pure-tests
   (test-suite
    "skia-dc foundation (recording renderer; no Skia pixels)"
@@ -346,5 +346,5 @@
 
 
 ; dc-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-pure-test-count 60)

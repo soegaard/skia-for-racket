@@ -18,8 +18,8 @@
 ;;;
 
 ; write-gpu-json : path-string? jsexpr? -> void?
-;;   Publishes JSON by renaming a same-directory temporary file, so readers never see a partial
-;;   report.
+;   Publishes JSON by renaming a same-directory temporary file, so readers never see a partial
+;   report.
 (define (write-gpu-json path value)
   (define directory (or (path-only path) (current-directory)))
   (make-directory* directory)
@@ -32,8 +32,8 @@
     (lambda () (when (file-exists? temporary) (delete-file temporary)))))
 
 ; check-gpu-teardown! : hash? -> void?
-;;   Rejects teardown reports with a nonclosed context or outstanding, pending, or failed child
-;;   releases.
+;   Rejects teardown reports with a nonclosed context or outstanding, pending, or failed child
+;   releases.
 (define (check-gpu-teardown! info)
   (unless (and (equal? (hash-ref info 'state) "closed")
                (zero? (hash-ref info 'live_children))
@@ -42,7 +42,7 @@
     (error 'gpu-validation "incomplete context teardown: ~a" info)))
 
 ; close-gpu-contexts! : list? procedure? -> void?
-;;   Attempts cleanup for every nonfalse context, then re-raises the first cleanup failure.
+;   Attempts cleanup for every nonfalse context, then re-raises the first cleanup failure.
 (define (close-gpu-contexts! contexts close!)
   ;; Attempt both cleanups, preserving the first error. Never retry a failed
   ;; native destructor or force abandonment of an unknown set of children.

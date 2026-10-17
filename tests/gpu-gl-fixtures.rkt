@@ -33,7 +33,7 @@
 ;; record does not close the borrowed context.
 
 ; gl-pattern-bytes : exact-positive-integer? exact-positive-integer? -> bytes?
-;;   Builds four opaque colored quadrants in row-major RGBA storage.
+;   Builds four opaque colored quadrants in row-major RGBA storage.
 (define (gl-pattern-bytes w h)
   (apply bytes
     (for*/list ([y (in-range h)] [x (in-range w)] [k (in-range 4)])
@@ -41,12 +41,12 @@
                      [else (if (< x (quotient w 2)) '(0 0 255 255) '(255 255 0 255))]) k))))
 
 ; raw-bind : gl-fixture? string? ctype? -> procedure?
-;;   Resolves a GL entry point through the fixture's context-specific binding bundle.
+;   Resolves a GL entry point through the fixture's context-specific binding bundle.
 (define (raw-bind fixture name type) ((gl-queries-bind (gl-fixture-queries fixture)) name type))
 
 ; make-gl-fixture : gpu-context? [exact-positive-integer? exact-positive-integer?] -> gl-fixture?
-;;   Allocates a texture, framebuffer, and depth/stencil attachment, cleaning partial construction
-;;   on failure.
+;   Allocates a texture, framebuffer, and depth/stencil attachment, cleaning partial construction
+;   on failure.
 (define (make-gl-fixture context [w 8] [h 8])
   (define queries (make-gl-queries (domain-gl-resolver (context-domain 'test context))))
   (define bind (gl-queries-bind queries))
@@ -95,7 +95,7 @@
               ((bind name (_fun _int _pointer -> _void)) 1 p))))))))
 
 ; delete-gl-fixture! : gl-fixture? -> void?
-;;   Deletes owned GL objects once while their context is active, then marks the fixture closed.
+;   Deletes owned GL objects once while their context is active, then marks the fixture closed.
 (define (delete-gl-fixture! f)
   (unless (gl-fixture-closed? f)
     (call-with-gpu-external-gl (gl-fixture-context f)
@@ -109,7 +109,7 @@
         (set-gl-fixture-closed?! f #t)) #:wait? #t)))
 
 ; gl-fixture-alive? : gl-fixture? -> boolean?
-;;   Checks that texture, framebuffer, and renderbuffer names remain live in their owning context.
+;   Checks that texture, framebuffer, and renderbuffer names remain live in their owning context.
 (define (gl-fixture-alive? f)
   (call-with-gpu-external-gl (gl-fixture-context f)
     (lambda ()
@@ -118,7 +118,7 @@
            ((raw-bind f "glIsRenderbuffer" (_fun _uint32 -> _stdbool)) (gl-fixture-stencil f))))))
 
 ; gl-fixture-fill! : gl-fixture? real? real? real? real? -> any
-;;   Clears the external framebuffer with explicit color-mask, scissor, and sRGB state.
+;   Clears the external framebuffer with explicit color-mask, scissor, and sRGB state.
 (define (gl-fixture-fill! f red green blue alpha)
   (call-with-gpu-external-gl (gl-fixture-context f)
     (lambda ()
@@ -131,7 +131,7 @@
       ((raw-bind f "glClear" (_fun _uint32 -> _void)) #x4000))))
 
 ; gl-fixture-pixels : gl-fixture? -> bytes?
-;;   Reads tightly packed RGBA bytes with explicit pack state and waits for completion.
+;   Reads tightly packed RGBA bytes with explicit pack state and waits for completion.
 (define (gl-fixture-pixels f)
   (call-with-gpu-external-gl (gl-fixture-context f)
     (lambda ()

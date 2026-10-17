@@ -20,32 +20,36 @@
 ;;;
 
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20344e")
+
 ; blue : string?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue "#3269d5")
+
 ; teal : string?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal "#10988e")
+
 ; orange : string?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
 
 ; label : canvas? string? real? real? real? [any/c] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y size [color ink])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)] [p
     (make-paint #:color color)])
     (draw-simple-text c text x y f p)))
+
 ; line : canvas? real? real? real? real? real? [any/c] -> void?
-;;   Draws the line comparison in the current canvas coordinate system.
+;   Draws the line comparison in the current canvas coordinate system.
 (define (line c x1 y1 x2 y2 width [color ink])
   (with-skia ([p (make-paint #:color color #:style 'stroke #:stroke-width width)])
     (draw-line c x1 y1 x2 y2 p)))
 
 ; units-page : output-page?
-;;   Describes the units page drawing and its export dimensions.
+;   Describes the units page drawing and its export dimensions.
 (define units-page
   (make-output-page
    210 140
@@ -73,7 +77,7 @@
    #:unit 'mm #:margins 10 #:background 'white))
 
 ; text-page : output-page?
-;;   Describes the text page drawing and its export dimensions.
+;   Describes the text page drawing and its export dimensions.
 (define text-page
   (make-output-page
    600 400
@@ -117,7 +121,7 @@
    #:margins 24 #:background 'white))
 
 ; effects-page : output-page?
-;;   Describes the effects page drawing and its export dimensions.
+;   Describes the effects page drawing and its export dimensions.
 (define effects-page
   (make-output-page
    180 125
@@ -150,16 +154,18 @@
    #:unit 'mm #:margins 8 #:background 'white))
 
 ; registry : list?
-;;   Keeps the shared scene/page order used by the exported documents and raster references.
+;   Keeps the shared scene/page order used by the exported documents and raster references.
 (define registry (list (cons "units" units-page) (cons "text" text-page) (cons "effects"
   effects-page)))
+
 ; escaped : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (escaped text)
   (string-replace (string-replace (string-replace (string-replace text "&" "&amp;") "<" "&lt;")
                                   ">" "&gt;") "\"" "&quot;"))
+
 ; base-name : path-string? -> string?
-;;   Returns an HTML-safe filename for a generated report link.
+;   Returns an HTML-safe filename for a generated report link.
 (define (base-name path) (escaped (path->string (file-name-from-path path))))
 
 ;;;
@@ -167,13 +173,15 @@
 ;;;
 
 (module+ main
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix
     (command-line #:program "vector-output.rkt"
                   #:args ([prefix "vector-output-0.23"]) prefix))
+
   ; name : any/c -> string?
-  ;;   Constructs an output filename from the selected prefix.
+  ;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
   (save-output (map cdr registry) (name ".pdf") 'pdf #:exists 'replace

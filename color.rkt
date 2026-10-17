@@ -31,11 +31,11 @@
 ;; The guard validates every channel; the immutable fields have no native owner.
 
 ; rgb : byte? byte? byte? -> rgba?
-;;   Constructs an opaque color from its red, green, and blue channels.
+;   Constructs an opaque color from its red, green, and blue channels.
 (define (rgb r g b) (rgba r g b 255))
 
 ; names : (hash/c symbol? exact-nonnegative-integer?)
-;;   Maps the supported color names to packed ARGB values, including transparency.
+;   Maps the supported color names to packed ARGB values, including transparency.
 (define names
   (hasheq 'transparent #x00000000
           'black #xff000000 'white #xffffffff
@@ -49,7 +49,7 @@
 ;;;
 
 ; argb->rgba : exact-nonnegative-integer? -> rgba?
-;;   Extracts the four byte channels from the low 32 bits of a packed ARGB value.
+;   Extracts the four byte channels from the low 32 bits of a packed ARGB value.
 (define (argb->rgba n)
   (rgba (bitwise-and #xff (arithmetic-shift n -16))
         (bitwise-and #xff (arithmetic-shift n -8))
@@ -57,7 +57,7 @@
         (bitwise-and #xff (arithmetic-shift n -24))))
 
 ; color->rgba : color? -> rgba?
-;;   Resolves a color value, name, hexadecimal string, or packed integer to RGBA.
+;   Resolves a color value, name, hexadecimal string, or packed integer to RGBA.
 (define (color->rgba c)
   (cond
     [(rgba? c) c]
@@ -80,7 +80,7 @@
       c)]))
 
 ; color->argb : color? -> exact-nonnegative-integer?
-;;   Packs a supported color into a 32-bit alpha-red-green-blue integer.
+;   Packs a supported color into a 32-bit alpha-red-green-blue integer.
 (define (color->argb c)
   (define v (color->rgba c))
   (bitwise-ior (arithmetic-shift (rgba-alpha v) 24)
@@ -89,7 +89,7 @@
                (rgba-blue v)))
 
 ; color? : any/c -> boolean?
-;;   Tests whether a value can be normalized by the public color conversion.
+;   Tests whether a value can be normalized by the public color conversion.
 (define (color? c)
   (with-handlers ([exn:fail? (lambda (_) #f)])
     (color->rgba c) #t))

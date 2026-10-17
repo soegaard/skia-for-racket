@@ -22,7 +22,7 @@
 ;;;
 
 ; fixture-icc : -> bytes?
-;;   Builds a minimal RGB matrix/TRC ICC profile with explicit offsets for validation mutations.
+;   Builds a minimal RGB matrix/TRC ICC profile with explicit offsets for validation mutations.
 (define (fixture-icc)
   (define (u16 n) (integer->integer-bytes n 2 #f #t))
   (define (u32 n) (integer->integer-bytes n 4 #f #t))

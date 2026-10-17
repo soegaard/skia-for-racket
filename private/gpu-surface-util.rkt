@@ -10,10 +10,11 @@
 (require "check.rkt")
 (provide gpu-surface-options gpu-transfer-shape! gpu-presentation-format
          gpu-presentation-srgb? gpu-window-wrap-format)
+
 ; gpu-surface-options : symbol? any/c any/c exact-nonnegative-integer? boolean? boolean? any/c ->
 ;   hash?
-;;   Checks surface dimensions and sampling, rejecting transparent backgrounds for opaque GPU
-;;   targets.
+;   Checks surface dimensions and sampling, rejecting transparent backgrounds for opaque GPU
+;   targets.
 (define (gpu-surface-options who w h samples opaque? budgeted? background-alpha)
   (check-dimensions who w h)
   (unless (and (exact-nonnegative-integer? samples) (<= samples 64))
@@ -29,8 +30,9 @@
           'sample_count_note
             "The pinned C API does not expose the sample count of this Skia-owned target."
           'budgeted budgeted? 'storage "gpu" 'target_kind "offscreen"))
+
 ; gpu-transfer-shape! : symbol? any/c any/c any/c any/c -> void?
-;;   Requires identical source and destination extents before whole-surface pixel transfer.
+;   Requires identical source and destination extents before whole-surface pixel transfer.
 (define (gpu-transfer-shape! who source-width source-height destination-width destination-height)
   (unless (and (= source-width destination-width) (= source-height destination-height))
     (raise-arguments-error who "source and destination dimensions must match exactly"
@@ -41,17 +43,18 @@
 ;; samples are encoded. Keep that fact separate from the backend-format token:
 ;; Skia's own GLWindowContext wraps framebuffer 0 as RGBA8 even when the
 ;; platform window has no separately addressable alpha attachment.
+
 ; gpu-presentation-srgb? : any/c -> (or/c #f #t)
-;;   Interprets queried GL color encoding without inferring it from platform or framebuffer
-;;   identity.
+;   Interprets queried GL color encoding without inferring it from platform or framebuffer
+;   identity.
 (define (gpu-presentation-srgb? encoding)
   (cond [(= encoding #x2601) #f] ; GL_LINEAR
         [(= encoding #x8C40) #t] ; GL_SRGB
         [else (error 'gpu-window "unsupported color encoding ~a" encoding)]))
 
 ; gpu-window-wrap-format : exact-nonnegative-integer? any/c -> any
-;;   Uses Skia's RGBA8 wrapping convention for the platform back buffer while preserving queried FBO
-;;   formats.
+;   Uses Skia's RGBA8 wrapping convention for the platform back buffer while preserving queried FBO
+;   formats.
 (define (gpu-window-wrap-format framebuffer-id queried-format)
   (unless (exact-nonnegative-integer? framebuffer-id)
     (raise-argument-error 'gpu-window "exact-nonnegative-integer?" framebuffer-id))
@@ -62,9 +65,10 @@
 
 ;; Checked public-sized format description for the diagnostic framebuffer.
 ;; GL component encoding is queried, never inferred from the OS or FBO number.
+
 ; gpu-presentation-format : any/c any/c any/c any/c any/c any/c -> exact-nonnegative-integer?
-;;   Accepts only queried normalized RGB8/RGBA8 buffers and derives their linear or sRGB format
-;;   token.
+;   Accepts only queried normalized RGB8/RGBA8 buffers and derives their linear or sRGB format
+;   token.
 (define (gpu-presentation-format red green blue alpha encoding component-type)
   (unless (and (= red 8) (= green 8) (= blue 8) (memv alpha '(0 8))
                (= component-type #x8C17)) ; GL_UNSIGNED_NORMALIZED

@@ -31,7 +31,7 @@
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
-;;   Chooses the platform's preferred explicitly requested GPU backend.
+;   Chooses the platform's preferred explicitly requested GPU backend.
 (define (preferred-gpu-backend)
   (case (system-type 'os)
     [(macosx) 'metal]
@@ -41,12 +41,12 @@
     [else #f]))
 
 ; clamp : real? real? real? -> real?
-;;   Restricts a real value to the closed interval between the two bounds.
+;   Restricts a real value to the closed interval between the two bounds.
 (define (clamp value low high)
   (max low (min high value)))
 
 ; open-bezier-editor : symbol? -> #f
-;;   Opens the draggable control-point editor with the selected rendering backend.
+;   Opens the draggable control-point editor with the selected rendering backend.
 (define (open-bezier-editor renderer)
   (unless (memq renderer '(raster gpu))
     (raise-argument-error 'open-bezier-editor "'raster or 'gpu" renderer))
@@ -173,8 +173,9 @@
 ;;;
 
 (module+ main
+
   ; renderer : symbol?
-  ;;   Selects renderer for the example.
+  ;   Selects renderer for the example.
   (define renderer 'raster)
   (command-line
    #:program "bezier-editor.rkt"

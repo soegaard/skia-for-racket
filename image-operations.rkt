@@ -32,23 +32,28 @@
 ;;;
 
 ; image-query : symbol? image? procedure? -> any/c
-;;   Runs a native image query while holding the managed image handle.
+;   Runs a native image query while holding the managed image handle.
 (define (image-query who im native)
   (call-with-owned who (list (image-h who im)) native))
+
 ; image-unique-id : image? -> exact-nonnegative-integer?
-;;   Returns the native image's process-local identifier.
+;   Returns the native image's process-local identifier.
 (define (image-unique-id im) (image-query 'image-unique-id im sk_image_get_unique_id))
+
 ; image-alpha-only? : image? -> boolean?
-;;   Reports whether the image has an alpha-only native format.
+;   Reports whether the image has an alpha-only native format.
 (define (image-alpha-only? im) (image-query 'image-alpha-only? im sk_image_is_alpha_only))
+
 ; image-lazy-generated? : image? -> boolean?
-;;   Reports whether the image uses deferred generation.
+;   Reports whether the image uses deferred generation.
 (define (image-lazy-generated? im) (image-query 'image-lazy-generated? im sk_image_is_lazy_generated))
+
 ; image-texture-backed? : image? -> boolean?
-;;   Reports whether the native image is texture-backed.
+;   Reports whether the native image is texture-backed.
 (define (image-texture-backed? im) (image-query 'image-texture-backed? im sk_image_is_texture_backed))
+
 ; image-valid? : image? -> boolean?
-;;   Queries native validity, using the image's GPU context when applicable.
+;   Queries native validity, using the image's GPU context when applicable.
 (define (image-valid? im)
   (define who 'image-valid?)
   (define ih (image-h who im))
@@ -56,8 +61,9 @@
     (lambda (ip)
       (define d (owned-gpu-domain ih))
       (sk_image_is_valid ip (and d (domain-pointer d))))))
+
 ; image-pixels-available? : image? -> boolean?
-;;   Reports whether native pixel storage can be inspected immediately.
+;   Reports whether native pixel storage can be inspected immediately.
 (define (image-pixels-available? im)
   (define who 'image-pixels-available?)
   (call-with-owned who (list (image-h who im))
@@ -72,22 +78,24 @@
 ;;;
 
 ; cpu-image-h : symbol? image? -> (or/c owned? domain-resource?)
-;;   Rejects GPU-affine images before returning a handle for CPU operations.
+;   Rejects GPU-affine images before returning a handle for CPU operations.
 (define (cpu-image-h who im)
   (define ih (image-h who im))
   (when (owned-gpu-domain ih)
     (error who "GPU images require an explicit gpu-image->raster-image transfer first"))
   ih)
+
 ; require-native-cpu-image : symbol? cpointer? -> void?
-;;   Rejects native texture-backed images to prevent implicit GPU readback.
+;   Rejects native texture-backed images to prevent implicit GPU readback.
 (define (require-native-cpu-image who ip)
   (when (sk_image_is_texture_backed ip)
     (error who "a CPU image operation cannot perform an implicit texture readback")))
 
 ;; An owned handle must already be installed before inspecting a native result.
 ;; Caller catches errors and releases that handle on every failed validation.
+
 ; operation-image-record : symbol? (or/c owned? domain-resource?) cpointer? integer? -> image?
-;;   Checks result size and storage precision before adopting an image and its audit provenance.
+;   Checks result size and storage precision before adopting an image and its audit provenance.
 (define (operation-image-record who handle ip source-color)
   (define width (sk_image_get_width ip)) (define height (sk_image_get_height ip))
   (operation-budget who width height)
@@ -96,8 +104,9 @@
     (error who "native image operation reduced float storage precision; convert explicitly first"))
   (when (memv color '(14 15 16)) (audit-mark-float-pixels! handle))
   (make-image-record handle width height))
+
 ; cpu-image-result : symbol? integer? procedure? -> image?
-;;   Adopts a newly owned CPU image, closing its handle if validity or precision checks fail.
+;   Adopts a newly owned CPU image, closing its handle if validity or precision checks fail.
 (define (cpu-image-result who source-color create)
   (define h (new-owned who 'image create sk_image_unref))
   (with-handlers ([(lambda (_) #t) (lambda (e) (owned-close! who h) (raise e))])
@@ -109,7 +118,7 @@
         (operation-image-record who h ip source-color)))))
 
 ; materialize-image : symbol? image? procedure? boolean? -> image?
-;;   Creates a checked CPU image and optionally requires directly available raster pixels.
+;   Creates a checked CPU image and optionally requires directly available raster pixels.
 (define (materialize-image who im native raster?)
   (define ih (cpu-image-h who im))
   (call-with-owned who (list ih)
@@ -122,18 +131,20 @@
           (error who "native materialization did not return directly available raster pixels"))
         (audit-inherit-image-precision! (image-h who result) (list ih))
         result))))
+
 ; image->non-texture-image : image? -> image?
-;;   Returns an independently owned non-texture image.
+;   Returns an independently owned non-texture image.
 (define (image->non-texture-image im)
   (materialize-image 'image->non-texture-image im sk_image_make_non_texture_image #f))
+
 ; image->raster-image : image? -> image?
-;;   Returns an independently owned, non-lazy CPU image with immediately available pixels.
+;   Returns an independently owned, non-lazy CPU image with immediately available pixels.
 (define (image->raster-image im)
   (materialize-image 'image->raster-image im sk_image_make_raster_image #t))
 
 ; check-conversion-spaces : symbol? cpointer? sk-image-info? -> void?
-;;   Rejects implicit tagged/untagged color-space conversion and releases the temporary source
-;;   reference.
+;   Rejects implicit tagged/untagged color-space conversion and releases the temporary source
+;   reference.
 (define (check-conversion-spaces who ip info)
   ;; get_colorspace returns one owned reference, not a borrowed pointer.
   (define source-space (sk_image_get_colorspace ip))
@@ -143,12 +154,14 @@
         (error who
                "tagged/untagged conversion requires an explicit source interpretation; no implicit sRGB relabeling")))
     (lambda () (when source-space (sk_colorspace_unref source-space)))))
+
 ; caching-hint : symbol? boolean? -> (or/c 0 1)
-;;   Maps the checked cache preference to the native allow/disallow caching enumeration.
+;   Maps the checked cache preference to the native allow/disallow caching enumeration.
 (define (caching-hint who cache?) (if (boolean who cache?) 0 1))
+
 ; image-read-pixmap! : image? pixmap? [#:source-x exact-nonnegative-integer?] [#:source-y
 ;   exact-nonnegative-integer?] [#:cache? boolean?] -> void?
-;;   Copies an image rectangle to the entire destination view without resizing.
+;   Copies an image rectangle to the entire destination view without resizing.
 (define (image-read-pixmap! im destination #:source-x [x 0] #:source-y [y 0] #:cache? [cache? #f])
   (define who 'image-read-pixmap!)
   (define ih (cpu-image-h who im))
@@ -168,9 +181,10 @@
           (unless (sk_image_read_pixels_into_pixmap ip pm x y hint)
             (error who "native image read/conversion failed; destination unchanged"))))))
   (void))
+
 ; image-scale-pixmap! : image? pixmap? [#:sampling (or/c 'nearest 'linear)] [#:cache? boolean?] ->
 ;   void?
-;;   Resizes the entire image to the destination view's dimensions, with the specified sampling.
+;   Resizes the entire image to the destination view's dimensions, with the specified sampling.
 (define (image-scale-pixmap! im destination #:sampling [mode 'linear] #:cache? [cache? #f])
   (define who 'image-scale-pixmap!)
   (define ih (cpu-image-h who im))
@@ -187,10 +201,11 @@
             (error who "native image scaling/conversion failed; destination unchanged"))))
       (void/reference-sink sm)))
   (void))
+
 ; image->raster-buffer : image? [#:info (or/c #f image-info?)] [#:row-bytes (or/c #f
 ;   exact-positive-integer?)] [#:sampling (or/c 'nearest 'linear)] [#:cache? boolean?] ->
 ;   raster-buffer?
-;;   Returns a new owned mutable buffer.
+;   Returns a new owned mutable buffer.
 (define (image->raster-buffer im #:info [requested #f] #:row-bytes [row-bytes #f]
                               #:sampling [mode 'linear] #:cache? [cache? #f])
   (define who 'image->raster-buffer)
@@ -213,12 +228,13 @@
 ;;;
 
 ; native-operation-rect : vector? -> sk-irect?
-;;   Converts checked integer x/y/width/height bounds to native edge coordinates.
+;   Converts checked integer x/y/width/height bounds to native edge coordinates.
 (define (native-operation-rect r)
   (make-sk-irect (vector-ref r 0) (vector-ref r 1)
                  (+ (vector-ref r 0) (vector-ref r 2)) (+ (vector-ref r 1) (vector-ref r 3))))
+
 ; prepare-image-filter : symbol? image? any/c any/c -> (values sk-irect? sk-irect? vector?)
-;;   Checks subset, clip, allocation budgets, and intermediate coordinate ranges before filtering.
+;   Checks subset, clip, allocation budgets, and intermediate coordinate ranges before filtering.
 (define (prepare-image-filter who im subset clip)
   (image-h who im)
   (define s (operation-subset who subset (image-width im) (image-height im)))
@@ -231,9 +247,10 @@
                                    (- (vector-ref c 1) (vector-ref s 1))
                                    (vector-ref c 2) (vector-ref c 3)))
   (values (native-operation-rect s) (native-operation-rect c) c))
+
 ; finish-image-filter : symbol? image? sk-irect? sk-ipoint? vector? list? -> (values image? vector?
 ;   vector?)
-;;   Validates result geometry and preserves precision provenance, closing the image on failure.
+;   Validates result geometry and preserves precision provenance, closing the image on failure.
 (define (finish-image-filter who result out-subset out-offset clip sources)
   (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! result) (raise e))])
     (define-values (subset offset)
@@ -244,12 +261,13 @@
         (vector (sk-ipoint-x out-offset) (sk-ipoint-y out-offset)) clip))
     (audit-inherit-image-precision! (image-h who result) sources)
     (values result subset offset)))
+
 ; image-apply-filter : image? image-filter? [#:subset (or/c #f list? vector?)] #:clip (or/c list?
 ;   vector?) -> (values image? (and/c (vector/c exact-integer? exact-integer?
 ;   exact-positive-integer? exact-positive-integer?) immutable?) (and/c (vector/c exact-integer?
 ;   exact-integer?) immutable?))
-;;   Applies a CPU filter and returns an owned result image, an immutable source rectangle within
-;;   that image, and an immutable placement offset.
+;   Applies a CPU filter and returns an owned result image, an immutable source rectangle within
+;   that image, and an immutable placement offset.
 (define (image-apply-filter im filter #:subset [subset #f] #:clip clip)
   (define who 'image-apply-filter)
   (define ih (cpu-image-h who im)) (define fh (image-filter-h who filter))
@@ -274,7 +292,7 @@
 ;;;
 
 ; raw-local-matrix : symbol? (or/c #f matrix?) -> (or/c #f sk-matrix?)
-;;   Converts an optional invertible affine local matrix to native layout.
+;   Converts an optional invertible affine local matrix to native layout.
 (define (raw-local-matrix who value)
   (cond [(not value) #f]
         [else
@@ -282,10 +300,11 @@
          (unless (matrix-invert value) (error who "local matrix must be invertible"))
          (make-sk-matrix (matrix-xx value) (matrix-xy value) (matrix-x0 value)
                          (matrix-yx value) (matrix-yy value) (matrix-y0 value) 0.0 0.0 1.0)]))
+
 ; make-raw-image-shader : image? [#:tile-x (or/c 'clamp 'repeat 'mirror 'decal)] [#:tile-y (or/c
 ;   'clamp 'repeat 'mirror 'decal)] [#:sampling (or/c 'nearest 'linear)] [#:matrix (or/c #f
 ;   matrix?)] -> shader?
-;;   Creates an owned shader that treats image channels as raw numeric samples.
+;   Creates an owned shader that treats image channels as raw numeric samples.
 (define (make-raw-image-shader im #:tile-x [tile-x 'clamp] #:tile-y [tile-y 'clamp]
                                 #:sampling [mode 'nearest] #:matrix [matrix #f])
   (define who 'make-raw-image-shader)

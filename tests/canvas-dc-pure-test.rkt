@@ -27,7 +27,7 @@
 ;;;
 
 ; recording-renderer : [(listof exact-positive-integer?)] -> (values dc-renderer? box? box?)
-;;   Builds an instrumented renderer with allocation and selected-release failure injection.
+;   Builds an instrumented renderer with allocation and selected-release failure injection.
 (define (recording-renderer [fail-releases '()])
   (define events (box '()))
   (define fail-next (box #f))
@@ -56,36 +56,36 @@
   (values renderer events fail-next))
 
 ; fresh : [(listof exact-positive-integer?)] -> (values dc<%> box? box?)
-;;   Creates a fresh recording DC, event log, and next-allocation failure control.
+;   Creates a fresh recording DC, event log, and next-allocation failure control.
 (define (fresh [fail-releases '()])
   (define-values (renderer events fail-next) (recording-renderer fail-releases))
   (values (new (make-skia-dc-class renderer) [width 20] [height 12]) events fail-next))
 
 ; with-fresh : syntax
-;;   Binds a fresh recording DC and controls, guaranteeing DC closure after the body.
+;   Binds a fresh recording DC and controls, guaranteeing DC closure after the body.
 (define-syntax-rule (with-fresh (dc e fail) body ...)
   (let-values ([(dc e fail) (fresh)])
     (dynamic-wind void (lambda () body ...) (lambda () (send dc close)))))
 
 ; events-of : box? symbol? -> list?
-;;   Returns matching renderer events in execution order, reversing the newest-first log.
+;   Returns matching renderer events in execution order, reversing the newest-first log.
 (define (events-of events kind)
   (filter (lambda (x) (eq? (car x) kind)) (reverse (unbox events))))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush "red" 'solid)
   (send dc draw-rectangle 1 2 3 4))
 
 ; size : dc<%> -> (listof real?)
-;;   Collects the logical width and height reported by a DC.
+;   Collects the logical width and height reported by a DC.
 (define (size dc) (call-with-values (lambda () (send dc get-size)) list))
 
 ; pixel-size : dc<%> -> (listof exact-nonnegative-integer?)
-;;   Collects the backing width and height in device pixels.
+;   Collects the backing width and height in device pixels.
 (define (pixel-size dc) (call-with-values (lambda () (send dc get-pixel-size)) list))
 
 
@@ -94,8 +94,8 @@
 ;;;
 
 ; canvas-dc-pure-tests : test-suite?
-;;   Collects the regression cases for canvas DC ownership, resizing, paint recovery and direct
-;;   pixel bridge (headless).
+;   Collects the regression cases for canvas DC ownership, resizing, paint recovery and direct
+;   pixel bridge (headless).
 (define canvas-dc-pure-tests
   (test-suite
    "Canvas DC ownership, resizing, paint recovery and direct pixel bridge (headless)"
@@ -421,7 +421,7 @@
 
 
 ; canvas-dc-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define canvas-dc-pure-test-count 38)
 (module+ main
   (require rackunit/text-ui)
@@ -431,7 +431,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests canvas-dc-pure-tests))
   (printf "canvas-dc-pure: ~a cases, ~a failures; no native pixels or GUI.\n"
           canvas-dc-pure-test-count failures)

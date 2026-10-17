@@ -21,25 +21,25 @@
 ;;;
 
 ; rect-svg : canvas? -> void?
-;;   Draws the rectangle used by SVG finishing and metadata tests.
+;   Draws the rectangle used by SVG finishing and metadata tests.
 (define (rect-svg c)
   (with-skia ([p (make-paint #:color 'blue)])
     (draw-rect c 5 5 30 20 p)))
 
 
 ; has? : regexp? bytes? -> boolean?
-;;   Checks generated SVG for an expected XML or metadata marker.
+;   Checks generated SVG for an expected XML or metadata marker.
 (define (has? pattern bs) (regexp-match? pattern bs))
 
 ; in-temp-directory : procedure? -> any
-;;   Scopes a temporary SVG-output directory and removes it after the callback.
+;   Scopes a temporary SVG-output directory and removes it after the callback.
 (define (in-temp-directory proc)
   (define dir (make-temporary-file "skia-svg-test-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
 
 
 ; foreign-error : (-> any) -> (or/c exn? #f)
-;;   Runs the operation on another thread and returns its exception, or false on success.
+;   Runs the operation on another thread and returns its exception, or false on success.
 (define (foreign-error thunk)
   (define ch (make-channel))
   (define worker
@@ -57,7 +57,7 @@
 ;;;
 
 ; svg-native-tests : test-suite?
-;;   Collects the regression cases for sVG native document output.
+;   Collects the regression cases for sVG native document output.
 (define svg-native-tests
   (test-suite
    "SVG native document output"

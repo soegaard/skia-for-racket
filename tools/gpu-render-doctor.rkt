@@ -23,11 +23,11 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend #f)
 
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter #f)
   (command-line
    #:program "gpu-render-doctor.rkt"
@@ -44,7 +44,7 @@
     (raise-user-error 'gpu-render-doctor "--adapter hardware/warp requires Direct3D"))
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures
     (run-tests (make-gpu-render-native-tests #:backend backend #:adapter adapter)))
   (unless (zero? failures)

@@ -23,8 +23,8 @@
 ;;;
 
 ; fixture : [any/c symbol? exact-nonnegative-integer?] -> any
-;;   Builds synthetic Direct3D platform/context operations with an ordered release log and injected
-;;   failure.
+;   Builds synthetic Direct3D platform/context operations with an ordered release log and injected
+;   failure.
 (define (fixture [failure #f] [selection 'warp] [flags 2])
   (define log (box '()))
   (define lost (box 0))
@@ -57,13 +57,13 @@
   (values provider driver log lost))
 
 ; exercise : any/c procedure? -> any
-;;   Supplies a failure-configured Direct3D provider, driver, log, and loss control to a test.
+;   Supplies a failure-configured Direct3D provider, driver, log, and loss control to a test.
 (define (exercise failure proc)
   (define-values (provider driver log lost) (fixture failure))
   (proc provider driver log lost))
 
 ; released : box? -> list?
-;;   Filters the synthetic COM release events while preserving their recorded order.
+;   Filters the synthetic COM release events while preserving their recorded order.
 (define (released log)
   (filter (lambda (x) (and (pair? x) (eq? (car x) 'release))) (unbox log)))
 
@@ -73,7 +73,7 @@
 ;;;
 
 ; gpu-d3d12-pure-tests : test-suite?
-;;   Collects the regression cases for d3D12 ownership and ABI without native libraries.
+;   Collects the regression cases for d3D12 ownership and ABI without native libraries.
 (define gpu-d3d12-pure-tests
   (test-suite
    "D3D12 ownership and ABI without native libraries"

@@ -22,12 +22,12 @@
 ;;;
 
 ; gpu-presenter-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-presenter-native-test-count 28)
 
 ; make-gpu-presenter-native-tests : symbol? procedure? procedure? -> test-suite?
-;;   Builds the parameterized suite for live shared presenter/frame API (submission, not
-;;   visible-pixel certification).
+;   Builds the parameterized suite for live shared presenter/frame API (submission, not
+;   visible-pixel certification).
 (define (make-gpu-presenter-native-tests backend make-window settle)
   (define (fixture body [render void])
     (define w (make-window render #f))

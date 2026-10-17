@@ -26,19 +26,19 @@
 ;;;
 
 ; backend : parameter?
-;;   Selects the requested real-GPU backend for persistent-target measurements.
+;   Selects the requested real-GPU backend for persistent-target measurements.
 (define backend (make-parameter 'auto))
 
 ; adapter : parameter?
-;;   Selects hardware or WARP when the backend is Direct3D.
+;   Selects hardware or WARP when the backend is Direct3D.
 (define adapter (make-parameter 'hardware))
 
 ; measurements : box?
-;;   Accumulates completed steady-state measurement records, newest first.
+;   Accumulates completed steady-state measurement records, newest first.
 (define measurements (box '()))
 
 ; selected : -> symbol?
-;;   Resolves auto to Metal, Direct3D, or EGL according to the host platform.
+;   Resolves auto to Metal, Direct3D, or EGL according to the host platform.
 (define (selected)
   (if (eq? (backend) 'auto)
       (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])
@@ -55,7 +55,7 @@
 ;; This fixture models an offscreen final target, not a physical display window.
 
 ; with-fixture : procedure? -> any
-;;   Scopes a real GPU final target, presenter, and context with adapter-owned teardown.
+;   Scopes a real GPU final target, presenter, and context with adapter-owned teardown.
 (define (with-fixture proc)
   (define ctx
     (case (selected)
@@ -101,49 +101,49 @@
    (lambda () (if presenter (gpu:gpu-presenter-close! presenter) (close-adapter)))))
 
 ; draw : fixture? procedure? -> any
-;;   Renders one frame through a fresh frame-scoped DC.
+;   Renders one frame through a fresh frame-scoped DC.
 (define (draw f proc)
   ((fixture-render f) (lambda (frame) (call-with-gpu-frame-dc frame proc))))
 
 ; size! : fixture? real? real? real? real? [boolean?] -> void?
-;;   Changes physical and logical metrics without conflating their independent scales.
+;   Changes physical and logical metrics without conflating their independent scales.
 (define (size! f pw ph lw lh [visible? #t]) ((fixture-resize f) pw ph lw lh visible?))
 
 ; stats : fixture? -> hash?
-;;   Reads the presenter's detached frame-target-cache statistics.
+;   Reads the presenter's detached frame-target-cache statistics.
 (define (stats f) (hash-ref (gpu:gpu-presenter-info (fixture-presenter f)) 'frame_target_cache))
 
 ; stat : fixture? symbol? -> any/c
-;;   Reads a selected cache statistic from the fixture's presenter.
+;   Reads a selected cache statistic from the fixture's presenter.
 (define (stat f key) (hash-ref (stats f) key))
 
 ; read-target : fixture? -> bytes?
-;;   Explicitly captures the current final target as premultiplied RGBA pixels.
+;   Explicitly captures the current final target as premultiplied RGBA pixels.
 (define (read-target f)
   (gpu:call-with-gpu-context (fixture-context f)
     (lambda () (gpu:gpu-surface->rgba-bytes ((fixture-target f)) #:premultiplied? #t))))
 
 ; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ; (listof byte?)
-;;   Extracts one pixel from a tightly packed RGBA capture.
+;   Extracts one pixel from a tightly packed RGBA capture.
 (define (pixel data width x y)
   (define i (* 4 (+ x (* width y)))) (bytes->list (subbytes data i (+ i 4))))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc color [x 2] [y 2] [w 8] [h 6])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
 
 ; kind-count : list? string? -> exact-nonnegative-integer?
-;;   Counts a named I/O event in a capture ledger.
+;   Counts a named I/O event in a capture ledger.
 (define (kind-count events name)
   (count (lambda (e) (equal? (hash-ref e 'kind) name)) events))
 
 ; measure-steady : boolean? -> void?
-;;   Compares 32-frame reuse or fresh-allocation behavior and records post-close retirement
-;;   evidence.
+;   Compares 32-frame reuse or fresh-allocation behavior and records post-close retirement
+;   evidence.
 (define (measure-steady reuse?)
   (define result #f) (define saved-fixture #f)
   (with-fixture
@@ -177,8 +177,8 @@
 ;;;
 
 ; gpu-frame-target-native-tests : test-suite?
-;;   Collects the regression cases for cached GPU frame staging: constructor reduction, pixels and
-;;   retirement.
+;   Collects the regression cases for cached GPU frame staging: constructor reduction, pixels and
+;   retirement.
 (define gpu-frame-target-native-tests
   (test-suite
    "Cached GPU frame staging: constructor reduction, pixels and retirement"
@@ -307,7 +307,7 @@
        (check-equal? (stat f 'creations) 1))))))
 
 ; gpu-frame-target-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-frame-target-native-test-count 14)
 (module+ main
   (require rackunit/text-ui)
@@ -321,7 +321,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-frame-target-native-tests))
   (when (zero? failures)
     (for ([m (in-list (reverse (unbox measurements)))])

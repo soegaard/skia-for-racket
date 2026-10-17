@@ -20,7 +20,7 @@
 ;;;
 
 ; bad : (-> any) -> void?
-;;   Requires exn:fail:contract? for the deliberately invalid operation.
+;   Requires exn:fail:contract? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail:contract? thunk))
 
 ;;;
@@ -28,7 +28,7 @@
 ;;;
 
 ; filter-graph-pure-tests : test-suite?
-;;   Collects the regression cases for filter graphs: validation without native loading.
+;   Collects the regression cases for filter graphs: validation without native loading.
 (define filter-graph-pure-tests
   (test-suite
    "Filter graphs: validation without native loading"

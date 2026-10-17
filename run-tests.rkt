@@ -18,17 +18,20 @@
 (require "tests/racket-draw-pure-test.rkt")
 (require "tests/gpu-render-pure-test.rkt")
 (require racket/runtime-path "tests/small-gap-pure-test.rkt")
+
 ; small-gap-native-tests-file : path?
-;;   Locates the small gap native test suite for explicit dynamic loading.
+;   Locates the small gap native test suite for explicit dynamic loading.
 (define-runtime-path small-gap-native-tests-file "tests/small-gap-native-test.rkt")
 (require "tests/release-scope-pure-test.rkt")
 (require racket/runtime-path "tests/gpu-diagnostics-pure-test.rkt")
+
 ; gpu-diagnostics-native-tests-file : path?
-;;   Locates the gpu diagnostics native test suite for explicit dynamic loading.
+;   Locates the gpu diagnostics native test suite for explicit dynamic loading.
 (define-runtime-path gpu-diagnostics-native-tests-file "tests/gpu-diagnostics-native-test.rkt")
 (require racket/runtime-path "tests/gpu-context-control-pure-test.rkt")
+
 ; gpu-context-control-native-tests-file : path?
-;;   Locates the gpu context control native test suite for explicit dynamic loading.
+;   Locates the gpu context control native test suite for explicit dynamic loading.
 (define-runtime-path gpu-context-control-native-tests-file
   "tests/gpu-context-control-native-test.rkt")
 (require "tests/global-cache-pure-test.rkt")
@@ -97,166 +100,200 @@
          "tests/dc-compat-pure-test.rkt"
          "tests/dc-replay-pure-test.rkt"
          "tests/dc-style-pure-test.rkt")
+
 ; live-stream-native-tests-file : path?
-;;   Locates the live stream native test suite for explicit dynamic loading.
+;   Locates the live stream native test suite for explicit dynamic loading.
 (define-runtime-path live-stream-native-tests-file "tests/live-stream-native-test.rkt")
+
 ; stream-native-tests-file : path?
-;;   Locates the stream native test suite for explicit dynamic loading.
+;   Locates the stream native test suite for explicit dynamic loading.
 (define-runtime-path stream-native-tests-file "tests/stream-native-test.rkt")
+
 ; advanced-canvas-native-tests-file : path?
-;;   Locates the advanced canvas native test suite for explicit dynamic loading.
+;   Locates the advanced canvas native test suite for explicit dynamic loading.
 (define-runtime-path advanced-canvas-native-tests-file "tests/advanced-canvas-native-test.rkt")
+
 ; gpu-format-native-tests-file : path?
-;;   Locates the gpu format native test suite for explicit dynamic loading.
+;   Locates the gpu format native test suite for explicit dynamic loading.
 (define-runtime-path gpu-format-native-tests-file "tests/gpu-format-native-test.rkt")
+
 ; image-operation-native-tests-file : path?
-;;   Locates the image operation native test suite for explicit dynamic loading.
+;   Locates the image operation native test suite for explicit dynamic loading.
 (define-runtime-path image-operation-native-tests-file "tests/image-operation-native-test.rkt")
+
 ; float-pixel-native-tests-file : path?
-;;   Locates the float pixel native test suite for explicit dynamic loading.
+;   Locates the float pixel native test suite for explicit dynamic loading.
 (define-runtime-path float-pixel-native-tests-file "tests/float-pixel-native-test.rkt")
+
 ; integer-pixel-native-tests-file : path?
-;;   Locates the integer pixel native test suite for explicit dynamic loading.
+;   Locates the integer pixel native test suite for explicit dynamic loading.
 (define-runtime-path integer-pixel-native-tests-file "tests/integer-pixel-native-test.rkt")
+
 ; text-blob-native-tests-file : path?
-;;   Locates the text blob native test suite for explicit dynamic loading.
+;   Locates the text blob native test suite for explicit dynamic loading.
 (define-runtime-path text-blob-native-tests-file "tests/text-blob-native-test.rkt")
+
 ; font-query-native-tests-file : path?
-;;   Locates the font query native test suite for explicit dynamic loading.
+;   Locates the font query native test suite for explicit dynamic loading.
 (define-runtime-path font-query-native-tests-file "tests/font-query-native-test.rkt")
+
 ; typeface-native-tests-file : path?
-;;   Locates the typeface native test suite for explicit dynamic loading.
+;   Locates the typeface native test suite for explicit dynamic loading.
 (define-runtime-path typeface-native-tests-file "tests/typeface-native-test.rkt")
+
 ; geometry-completion-native-tests-file : path?
-;;   Locates the geometry completion native test suite for explicit dynamic loading.
+;   Locates the geometry completion native test suite for explicit dynamic loading.
 (define-runtime-path geometry-completion-native-tests-file
   "tests/geometry-completion-native-test.rkt")
+
 ; effects-native-tests-file : path?
-;;   Locates the effects native test suite for explicit dynamic loading.
+;   Locates the effects native test suite for explicit dynamic loading.
 (define-runtime-path effects-native-tests-file "tests/effects-native-test.rkt")
+
 ; dc-closure-native-tests-file : path?
-;;   Locates the dc closure native test suite for explicit dynamic loading.
+;   Locates the dc closure native test suite for explicit dynamic loading.
 (define-runtime-path dc-closure-native-tests-file "tests/dc-closure-native-test.rkt")
+
 ; dc-output-native-tests-file : path?
-;;   Locates the dc output native test suite for explicit dynamic loading.
+;   Locates the dc output native test suite for explicit dynamic loading.
 (define-runtime-path dc-output-native-tests-file "tests/dc-output-native-test.rkt")
+
 ; dc-native-tests-file : path?
-;;   Locates the dc native test suite for explicit dynamic loading.
+;   Locates the dc native test suite for explicit dynamic loading.
 (define-runtime-path dc-native-tests-file "tests/dc-native-test.rkt")
+
 ; dc-compat-native-tests-file : path?
-;;   Locates the dc compat native test suite for explicit dynamic loading.
+;   Locates the dc compat native test suite for explicit dynamic loading.
 (define-runtime-path dc-compat-native-tests-file "tests/dc-compat-native-test.rkt")
+
 ; dc-replay-native-tests-file : path?
-;;   Locates the dc replay native test suite for explicit dynamic loading.
+;   Locates the dc replay native test suite for explicit dynamic loading.
 (define-runtime-path dc-replay-native-tests-file "tests/dc-replay-native-test.rkt")
+
 ; dc-style-native-tests-file : path?
-;;   Locates the dc style native test suite for explicit dynamic loading.
+;   Locates the dc style native test suite for explicit dynamic loading.
 (define-runtime-path dc-style-native-tests-file "tests/dc-style-native-test.rkt")
+
 ; canvas-dc-native-tests-file : path?
-;;   Locates the canvas dc native test suite for explicit dynamic loading.
+;   Locates the canvas dc native test suite for explicit dynamic loading.
 (define-runtime-path canvas-dc-native-tests-file "tests/canvas-dc-native-test.rkt")
+
 ; native-abi-native-tests-file : path?
-;;   Locates the native abi native test suite for explicit dynamic loading.
+;   Locates the native abi native test suite for explicit dynamic loading.
 (define-runtime-path native-abi-native-tests-file "tests/native-abi-native-test.rkt")
+
 ; native-tests-file : path?
-;;   Locates the native test suite for explicit dynamic loading.
+;   Locates the native test suite for explicit dynamic loading.
 (define-runtime-path native-tests-file "tests/native-test.rkt")
+
 ; codec-native-tests-file : path?
-;;   Locates the codec native test suite for explicit dynamic loading.
+;   Locates the codec native test suite for explicit dynamic loading.
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
+
 ; pdf-native-tests-file : path?
-;;   Locates the pdf native test suite for explicit dynamic loading.
+;   Locates the pdf native test suite for explicit dynamic loading.
 (define-runtime-path pdf-native-tests-file "tests/pdf-native-test.rkt")
+
 ; svg-native-tests-file : path?
-;;   Locates the svg native test suite for explicit dynamic loading.
+;   Locates the svg native test suite for explicit dynamic loading.
 (define-runtime-path svg-native-tests-file "tests/svg-native-test.rkt")
+
 ; output-native-tests-file : path?
-;;   Locates the output native test suite for explicit dynamic loading.
+;   Locates the output native test suite for explicit dynamic loading.
 (define-runtime-path output-native-tests-file "tests/output-native-test.rkt")
+
 ; convertible-native-tests-file : path?
-;;   Locates the convertible native test suite for explicit dynamic loading.
+;   Locates the convertible native test suite for explicit dynamic loading.
 (define-runtime-path convertible-native-tests-file "tests/convertible-native-test.rkt")
+
 ; pict-native-tests-file : path?
-;;   Locates the pict native test suite for explicit dynamic loading.
+;   Locates the pict native test suite for explicit dynamic loading.
 (define-runtime-path pict-native-tests-file "tests/pict-native-test.rkt")
+
 ; racket-draw-native-tests-file : path?
-;;   Locates the racket draw native test suite for explicit dynamic loading.
+;   Locates the racket draw native test suite for explicit dynamic loading.
 (define-runtime-path racket-draw-native-tests-file "tests/racket-draw-native-test.rkt")
+
 ; racket-draw-consumer-tests-file : path?
-;;   Locates the racket draw consumer test suite for explicit dynamic loading.
+;   Locates the racket draw consumer test suite for explicit dynamic loading.
 (define-runtime-path racket-draw-consumer-tests-file "tests/racket-draw-consumer-test.rkt")
 
 ; path-matrix-native-tests-file : path?
-;;   Locates the path matrix native test suite for explicit dynamic loading.
+;   Locates the path matrix native test suite for explicit dynamic loading.
 (define-runtime-path path-matrix-native-tests-file "tests/path-matrix-native-test.rkt")
 
 ; filter-graph-native-tests-file : path?
-;;   Locates the filter graph native test suite for explicit dynamic loading.
+;   Locates the filter graph native test suite for explicit dynamic loading.
 (define-runtime-path filter-graph-native-tests-file "tests/filter-graph-native-test.rkt")
 
 ; color-output-native-tests-file : path?
-;;   Locates the color output native test suite for explicit dynamic loading.
+;   Locates the color output native test suite for explicit dynamic loading.
 (define-runtime-path color-output-native-tests-file "tests/color-output-native-test.rkt")
 
 ; annotation-native-tests-file : path?
-;;   Locates the annotation native test suite for explicit dynamic loading.
+;   Locates the annotation native test suite for explicit dynamic loading.
 (define-runtime-path annotation-native-tests-file "tests/annotation-native-test.rkt")
 
 ; runtime-native-tests-file : path?
-;;   Locates the runtime native test suite for explicit dynamic loading.
+;   Locates the runtime native test suite for explicit dynamic loading.
 (define-runtime-path runtime-native-tests-file "tests/runtime-native-test.rkt")
+
 ; output-audit-native-tests-file : path?
-;;   Locates the output audit native test suite for explicit dynamic loading.
+;   Locates the output audit native test suite for explicit dynamic loading.
 (define-runtime-path output-audit-native-tests-file "tests/output-audit-native-test.rkt")
 
 ; canvas-native-tests-file : path?
-;;   Locates the canvas native test suite for explicit dynamic loading.
+;   Locates the canvas native test suite for explicit dynamic loading.
 (define-runtime-path canvas-native-tests-file "tests/canvas-native-test.rkt")
 
 ; geometry-native-tests-file : path?
-;;   Locates the geometry native test suite for explicit dynamic loading.
+;   Locates the geometry native test suite for explicit dynamic loading.
 (define-runtime-path geometry-native-tests-file "tests/geometry-native-test.rkt")
 
 ; projective-native-tests-file : path?
-;;   Locates the projective native test suite for explicit dynamic loading.
+;   Locates the projective native test suite for explicit dynamic loading.
 (define-runtime-path projective-native-tests-file "tests/projective-native-test.rkt")
 
 ; picture-native-tests-file : path?
-;;   Locates the picture native test suite for explicit dynamic loading.
+;   Locates the picture native test suite for explicit dynamic loading.
 (define-runtime-path picture-native-tests-file "tests/picture-native-test.rkt")
+
 ; output-group-native-tests-file : path?
-;;   Locates the output group native test suite for explicit dynamic loading.
+;   Locates the output group native test suite for explicit dynamic loading.
 (define-runtime-path output-group-native-tests-file "tests/output-group-native-test.rkt")
+
 ; portable-native-tests-file : path?
-;;   Locates the portable native test suite for explicit dynamic loading.
+;   Locates the portable native test suite for explicit dynamic loading.
 (define-runtime-path portable-native-tests-file "tests/portable-native-test.rkt")
+
 ; color-filter-native-tests-file : path?
-;;   Locates the color filter native test suite for explicit dynamic loading.
+;   Locates the color filter native test suite for explicit dynamic loading.
 (define-runtime-path color-filter-native-tests-file "tests/color-filter-native-test.rkt")
 
 ; raster-buffer-native-tests-file : path?
-;;   Locates the raster buffer native test suite for explicit dynamic loading.
+;   Locates the raster buffer native test suite for explicit dynamic loading.
 (define-runtime-path raster-buffer-native-tests-file "tests/raster-buffer-native-test.rkt")
 
 ; codec-query-native-tests-file : path?
-;;   Locates the codec query native test suite for explicit dynamic loading.
+;   Locates the codec query native test suite for explicit dynamic loading.
 (define-runtime-path codec-query-native-tests-file "tests/codec-query-native-test.rkt")
 
 ; codec-scanline-native-tests-file : path?
-;;   Locates the codec scanline native test suite for explicit dynamic loading.
+;   Locates the codec scanline native test suite for explicit dynamic loading.
 (define-runtime-path codec-scanline-native-tests-file "tests/codec-scanline-native-test.rkt")
 
 ; codec-incremental-native-tests-file : path?
-;;   Locates the codec incremental native test suite for explicit dynamic loading.
+;   Locates the codec incremental native test suite for explicit dynamic loading.
 (define-runtime-path codec-incremental-native-tests-file "tests/codec-incremental-native-test.rkt")
 
 ; global-cache-native-tests-file : path?
-;;   Locates the global cache native test suite for explicit dynamic loading.
+;   Locates the global cache native test suite for explicit dynamic loading.
 (define-runtime-path global-cache-native-tests-file "tests/global-cache-native-test.rkt")
 
 (module+ main
+
   ; pure-only? : boolean?
-  ;;   Records whether command-line selection excludes suites requiring the native library.
+  ;   Records whether command-line selection excludes suites requiring the native library.
   (define pure-only? #f)
   (command-line
    #:program "racket run-tests.rkt"
@@ -264,8 +301,9 @@
    [("--pure") "Run only tests that do not load libSkiaSharp"
                  (set! pure-only? #t)]
    #:args () (void))
+
   ; failures : exact-nonnegative-integer?
-  ;;   Accumulates failure counts from the pure suites before any optional native test run.
+  ;   Accumulates failure counts from the pure suites before any optional native test run.
   (define failures
     (+
      (run-tests public-api-pure-tests)

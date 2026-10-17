@@ -21,19 +21,23 @@
 ;;;
 
 (module+ test
+
   ; root : path?
-  ;;   Owns the temporary source root used by the copier regression checks.
+  ;   Owns the temporary source root used by the copier regression checks.
   (define root (make-temporary-file "skia-reader-test~a" 'directory))
+
   ; fixtures : path?
-  ;;   Names the temporary fixture subtree used by the copier tests.
+  ;   Names the temporary fixture subtree used by the copier tests.
   (define fixtures (build-path root "package"))
+
   ; copies : path?
-  ;;   Names the destination subtree used by the copier tests.
+  ;   Names the destination subtree used by the copier tests.
   (define copies (build-path root "copies"))
   (make-directory* fixtures)
   (make-directory* copies)
+
   ; files : list?
-  ;;   Collects each catalog source path once for completeness checks.
+  ;   Collects each catalog source path once for completeness checks.
   (define files (remove-duplicates (append-map (lambda (row) (hash-ref row 'files)) tutorials)))
   (dynamic-wind
     void

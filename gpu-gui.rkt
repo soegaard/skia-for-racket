@@ -20,37 +20,44 @@
          (only-in "private/gpu-d3d12-util.rkt" d3d12-selection!)
          (submod "private/gpu-presenter.rkt" adapter-internals))
 (provide gpu-canvas% gpu-window%)
+
 ; gl-adapter : path?
-;;   Locates private/gpu-presenter-gl.rkt for lazy loading of the selected implementation.
+;   Locates private/gpu-presenter-gl.rkt for lazy loading of the selected implementation.
 (define-runtime-path gl-adapter "private/gpu-presenter-gl.rkt")
+
 ; metal-adapter : path?
-;;   Locates private/gpu-presenter-metal.rkt for lazy loading of the selected implementation.
+;   Locates private/gpu-presenter-metal.rkt for lazy loading of the selected implementation.
 (define-runtime-path metal-adapter "private/gpu-presenter-metal.rkt")
+
 ; d3d12-adapter : path?
-;;   Locates private/gpu-presenter-d3d12.rkt for lazy loading of the selected implementation.
+;   Locates private/gpu-presenter-d3d12.rkt for lazy loading of the selected implementation.
 (define-runtime-path d3d12-adapter "private/gpu-presenter-d3d12.rkt")
+
 ; backend-choice : symbol? -> symbol?
-;;   Resolves auto to Metal on macOS and OpenGL elsewhere, preserving explicit backend choices.
+;   Resolves auto to Metal on macOS and OpenGL elsewhere, preserving explicit backend choices.
 (define (backend-choice requested)
   (case requested
     [(auto) (if (eq? (system-type 'os) 'macosx) 'metal 'opengl)]
     [(opengl metal direct3d) requested]
     [else (raise-argument-error 'gpu-canvas% "'auto, 'opengl, 'metal, or 'direct3d" requested)]))
+
 ; handler! : symbol? eventspace? -> void?
-;;   Requires the widget's eventspace handler thread and excludes future execution.
+;   Requires the widget's eventspace handler thread and excludes future execution.
 (define (handler! who space)
   (unless (and (eq? (current-thread) (eventspace-handler-thread space)) (not (current-future)))
     (error who "create/use GPU widgets on their eventspace handler thread (queue-callback)")))
+
 ; visible-to-root? : object? -> boolean?
-;;   Checks that the window and each window ancestor are shown.
+;   Checks that the window and each window ancestor are shown.
 (define (visible-to-root? window)
   (and (or (not (is-a? window window<%>)) (send window is-shown?))
        (or (not (is-a? window subarea<%>))
            (visible-to-root? (send window get-parent)))))
 ;; Poll only geometry/visibility. A weak reference prevents this timer from
 ;; retaining a discarded canvas indefinitely. No draw/readback is done here.
+
 ; make-geometry-monitor : weak-box? -> (is-a?/c timer%)
-;;   Polls live canvas geometry without retaining the canvas and stops when it is collected.
+;   Polls live canvas geometry without retaining the canvas and stops when it is collected.
 (define (make-geometry-monitor weak-canvas)
   (define timer #f)
   (set! timer
@@ -60,8 +67,9 @@
             (define canvas (weak-box-value weak-canvas))
             (if canvas (send canvas check-gpu-geometry) (send timer stop)))]))
   timer)
+
 ; gpu-canvas% : class?
-;;   Owns a GUI GPU presenter, scheduling frame callbacks and retiring resources on close.
+;   Owns a GUI GPU presenter, scheduling frame callbacks and retiring resources on close.
 (define gpu-canvas%
   (class canvas%
     ;; The GL host belongs to canvas%, not to a DC-oriented subclass. Such a
@@ -220,8 +228,9 @@
       (when (and initialized? automatic-value) (send this request-gpu-render)))
     (set! initialized? #t)
     (when automatic-value (set! monitor (make-geometry-monitor weak-self)))))
+
 ; gpu-window% : class?
-;;   Hosts a GPU canvas and closes its presenter when the containing window closes.
+;   Hosts a GPU canvas and closes its presenter when the containing window closes.
 (define gpu-window%
   (class frame%
     (init [label "Skia GPU"] [width 640] [height 480]

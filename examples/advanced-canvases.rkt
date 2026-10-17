@@ -18,7 +18,7 @@
 ;;;
 
 ; make-advanced-canvas-example : -> image?
-;;   Returns a snapshot illustrating recorded drawables and compositing layers.
+;   Returns a snapshot illustrating recorded drawables and compositing layers.
 (define (make-advanced-canvas-example)
   ;; Capture application drawing once as a genuine native recorded drawable.
   ;; Each replay retains the captured picture, not this Racket callback.

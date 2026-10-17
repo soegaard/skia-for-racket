@@ -21,16 +21,17 @@
 ;;;
 
 ; model-source : path?
-;;   Locates model source relative to this module rather than the current directory.
+;   Locates model source relative to this module rather than the current directory.
 (define-runtime-path model-source "model.rkt")
+
 ; navigation-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define navigation-eval (make-base-eval))
 (navigation-eval '(require racket))
 (navigation-eval `(require (file ,(path->string model-source))))
 
 ; navigation-pict : [view-state?] #:scale [real?] -> pict?
-;;   Renders the navigation illustration from the tutorial's drawing code.
+;   Renders the navigation illustration from the tutorial's drawing code.
 (define (navigation-pict [view home-view] #:scale [scale 0.8])
   (render-pict editor-width editor-height
                (lambda (canvas)
@@ -38,7 +39,7 @@
                #:scale scale))
 
 ; navigation-coordinate-pict : -> pict?
-;;   Renders the navigation coordinate illustration from the tutorial's drawing code.
+;   Renders the navigation coordinate illustration from the tutorial's drawing code.
 (define (navigation-coordinate-pict)
   (define view (view-state 2 40 -30))
   (define model-x 120)
@@ -85,7 +86,7 @@
                   12 377 font ink))))
 
 ; navigation-views : -> pict?
-;;   Builds the navigation views illustration from the tutorial's actual drawing.
+;   Builds the navigation views illustration from the tutorial's actual drawing.
 (define (navigation-views)
   (figure-row
    (captioned-pict "Before: zoom 1" (navigation-pict home-view #:scale 0.39))
@@ -93,7 +94,7 @@
                    (navigation-pict (view-state 1.5 0 0) #:scale 0.39))))
 
 ; navigation-anchor-pair : -> pict?
-;;   Builds the navigation anchor pair illustration from the tutorial's actual drawing.
+;   Builds the navigation anchor pair illustration from the tutorial's actual drawing.
 (define (navigation-anchor-pair)
   ;; Anchor a visible model point, not an unmarked position in empty space.
   (define point (cadr initial-points))
@@ -112,7 +113,7 @@
    (captioned-pict "After: zoom 2, P1 stays put" (one (zoom-at home-view x y 2)))))
 
 ; navigation-handle-sizes : -> pict?
-;;   Builds the navigation handle sizes illustration from the tutorial's actual drawing.
+;   Builds the navigation handle sizes illustration from the tutorial's actual drawing.
 (define (navigation-handle-sizes)
   (define point (cadr initial-points))
   (define (one zoom)
@@ -134,6 +135,6 @@
            (captioned-pict (format "Zoom ~a / hit radius 18" zoom) (one zoom)))))
 
 ; navigation-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (navigation-interaction expression ...)
   (interaction #:eval navigation-eval expression ...))

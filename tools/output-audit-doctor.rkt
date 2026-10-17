@@ -19,8 +19,8 @@
 ;;;
 
 ; output-audit-doctor! : -> void?
-;;   Checks retained provenance, strict SVG export rejection, and explicitly rasterized output for
-;;   unsupported effects.
+;   Checks retained provenance, strict SVG export rejection, and explicitly rasterized output for
+;   unsupported effects.
 (define (output-audit-doctor!)
   (define source "half4 main(float2 p) { return half4(.2,.4,.8,1); }")
   (with-skia ([effect (make-runtime-effect source)]

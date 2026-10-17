@@ -17,33 +17,39 @@
          session-copy-source! session-begin-target! session-return-target!
          session-complete! session-close! session-quarantine! session-info
          resource-description/native same-device/native?)
+
 ; iid-unknown : bytes?
-;;   Identifies IUnknown for canonical COM object-identity comparisons.
+;   Identifies IUnknown for canonical COM object-identity comparisons.
 (define iid-unknown #"\000\000\000\000\000\000\000\000\300\000\000\000\000\000\000\106")
+
 ; platform! : -> any
-;;   Requires Windows x64 and the reviewed Direct3D/DXGI record layouts before COM access.
+;   Requires Windows x64 and the reviewed Direct3D/DXGI record layouts before COM access.
 (define (platform!)
   (unless (and (eq? (system-type 'os) 'windows) (eq? (system-type 'arch) 'x86_64))
     (gpu-unavailable 'd3d12-interop-platform "Direct3D interop requires Windows x64"))
   (check-dxgi-layouts!))
+
 ; checked : any/c any/c -> void?
-;;   Rejects a failing HRESULT while preserving the native status as hexadecimal diagnostic text.
+;   Rejects a failing HRESULT while preserving the native status as hexadecimal diagnostic text.
 (define (checked step hr)
   (unless (zero? hr)
     (error 'd3d12-interop "~a failed: HRESULT 0x~a" step
            (number->string (bitwise-and hr #xffffffff) 16))))
+
 ; query : any/c any/c -> any
-;;   Obtains one owned COM interface reference through QueryInterface.
+;   Obtains one owned COM interface reference through QueryInterface.
 (define (query p iid)
   (out-interface 'QueryInterface
     (lambda (out) ((method p 0 (_fun _pointer _bytes _pointer -> _int32)) p iid out))))
+
 ; child-device : any/c -> any
-;;   Obtains the device interface that owns a queue, texture, or fence.
+;   Obtains the device interface that owns a queue, texture, or fence.
 (define (child-device child)
   (out-interface 'GetDevice
     (lambda (out) ((method child 7 (_fun _pointer _bytes _pointer -> _int32)) child iid-device out))))
+
 ; same-device/native? : any/c any/c -> any
-;;   Compares canonical IUnknown identities and releases every temporary interface reference.
+;   Compares canonical IUnknown identities and releases every temporary interface reference.
 (define (same-device/native? child device)
   (define cd #f) (define ci #f) (define di #f)
   (dynamic-wind void
@@ -52,9 +58,10 @@
         iid-unknown))
       (= (cast ci _pointer _uintptr) (cast di _pointer _uintptr)))
     (lambda () (when di (release di)) (when ci (release ci)) (when cd (release cd)))))
+
 ; resource-description/native : any/c -> any
-;;   Copies a Direct3D resource and heap description using the Windows aggregate-return calling
-;;   convention.
+;   Copies a Direct3D resource and heap description using the Windows aggregate-return calling
+;   convention.
 (define (resource-description/native resource)
   (platform!)
   (raw 56
@@ -96,20 +103,24 @@
 ;;   quarantined rather than released.
 
 ; session-description : interop-session? -> any
-;;   Exposes the session's checked detached texture description without lending a native interface.
+;   Exposes the session's checked detached texture description without lending a native interface.
 (define session-description interop-session-description)
+
 ; session-resource : interop-session? -> any
-;;   Exposes the retained source texture pointer to the private session implementation.
+;   Exposes the retained source texture pointer to the private session implementation.
 (define session-resource interop-session-resource)
+
 ; session-bridge : interop-session? -> any
-;;   Exposes the optional intermediate copy resource used by the private import path.
+;   Exposes the optional intermediate copy resource used by the private import path.
 (define session-bridge interop-session-bridge)
+
 ; quarantined-sessions : list?
-;;   Keeps sessions with uncertain in-flight ownership alive until process exit instead of retrying
-;;   destruction.
+;   Keeps sessions with uncertain in-flight ownership alive until process exit instead of retrying
+;   destruction.
 (define quarantined-sessions '())
+
 ; session-quarantine! : interop-session? any/c -> void?
-;;   Records the first failure and roots the session when native completion or cleanup is uncertain.
+;   Records the first failure and roots the session when native completion or cleanup is uncertain.
 (define (session-quarantine! s e)
   (unless (interop-session-broken s)
     (set-interop-session-broken! s
@@ -118,9 +129,10 @@
     ;; Never let an abandoned descriptor or finalizer free an in-flight source,
     ;; allocator or command list. This exceptional retention lasts to process exit.
     (set! quarantined-sessions (cons s quarantined-sessions))))
+
 ; session-info : interop-session? -> hash?
-;;   Reports synchronization milestones, state declarations, and native-copy counts as detached
-;;   values.
+;   Reports synchronization milestones, state declarations, and native-copy counts as detached
+;   values.
 (define (session-info s)
   (hasheq 'state (symbol->string (interop-session-state s))
           'producer_completion_verified (interop-session-producer-complete? s)
@@ -134,8 +146,9 @@
           'quarantined (and (interop-session-broken s) #t)
           'error (interop-session-broken s)
           'cpu_pixel_readbacks 0))
+
 ; make-interop-session : any/c any/c any/c any/c any/c any/c any/c any/c -> any
-;;   Retains same-device COM interfaces and initializes explicit resource-state/fence ownership.
+;   Retains same-device COM interfaces and initializes explicit resource-state/fence ownership.
 (define (make-interop-session device queue resource producer value incoming outgoing timeout)
   (platform!) (interop-fence-value! value) (interop-state incoming) (interop-state outgoing)
   (interop-timeout! timeout)
@@ -159,20 +172,23 @@
                                   #f 0 '() #f 'ready (interop-state incoming) #f #f #f #f 0 0 0))
         (set! ok? #t) s)
       (lambda () (unless ok? (for ([p (in-list refs)]) (release p)))))))
+
 ; open! : interop-session? -> void?
-;;   Rejects closed or quarantined Direct3D sessions before native work.
+;   Rejects closed or quarantined Direct3D sessions before native work.
 (define (open! s)
   (when (or (eq? (interop-session-state s) 'closed) (interop-session-broken s))
     (error 'd3d12-interop "native external-resource session is ~a" (interop-session-state s))))
+
 ; device! : interop-session? -> any
-;;   Checks device removal before further interoperation work or synchronization.
+;   Checks device removal before further interoperation work or synchronization.
 (define (device! s)
   (checked 'GetDeviceRemovedReason
     ((method (interop-session-device s) device-removed-reason-slot (_fun _pointer -> _int32))
      (interop-session-device s))))
+
 ; wait-fence! : interop-session? any/c any/c -> any
-;;   Waits for the required fence value within the session timeout and records completion
-;;   diagnostics.
+;   Waits for the required fence value within the session timeout and records completion
+;   diagnostics.
 (define (wait-fence! s fence value)
   (define deadline (+ (current-inexact-monotonic-milliseconds) (interop-session-timeout s)))
   (define counted? #f)
@@ -188,8 +204,9 @@
       ;; No kernel event registration can outlive a timeout. Sleep yields Racket
       ;; scheduling, not a nested GUI event loop. Owner/context guards stay live.
       (sleep 0.001) (loop))))
+
 ; producer-ready! : interop-session? -> void?
-;;   Verifies the declared producer fence has completed before Skia touches the shared resource.
+;   Verifies the declared producer fence has completed before Skia touches the shared resource.
 (define (producer-ready! s)
   (open! s)
   (unless (interop-session-producer-complete? s)
@@ -200,8 +217,9 @@
       ((method (interop-session-queue s) 15 (_fun _pointer _pointer _uint64 -> _int32))
        (interop-session-queue s) (interop-session-producer s) (interop-session-value s)))
     (set-interop-session-producer-complete?! s #t)))
+
 ; ensure-fence! : interop-session? -> void?
-;;   Creates the session's completion fence lazily so submitted command jobs can be retired safely.
+;   Creates the session's completion fence lazily so submitted command jobs can be retired safely.
 (define (ensure-fence! s)
   (unless (interop-session-fence s)
     (set-interop-session-fence! s
@@ -210,15 +228,17 @@
           ((method (interop-session-device s) device-create-fence-slot
                    (_fun _pointer _uint64 _uint32 _bytes _pointer -> _int32))
            (interop-session-device s) 0 0 iid-fence out))))))
+
 ; release-jobs! : interop-session? -> any
-;;   Releases retained command allocators and lists only after their submitted work has completed.
+;   Releases retained command allocators and lists only after their submitted work has completed.
 (define (release-jobs! s)
   (let loop ()
     (unless (null? (interop-session-jobs s))
       (define p (car (interop-session-jobs s)))
       (set-interop-session-jobs! s (cdr (interop-session-jobs s))) (release p) (loop))))
+
 ; session-complete! : interop-session? -> any
-;;   Waits for outstanding session submissions before releasing command jobs or external resources.
+;   Waits for outstanding session submissions before releasing command jobs or external resources.
 (define (session-complete! s)
   (open! s) (ensure-fence! s)
   (when (>= (interop-session-serial s) #xfffffffffffffffe) (error 'd3d12-interop "fence overflow"))
@@ -231,9 +251,10 @@
   (wait-fence! s (interop-session-fence s) value)
   (set-interop-session-in-flight?! s #f)
   (release-jobs! s))
+
 ; commands! : interop-session? procedure? -> any
-;;   Records and submits a private command list while retaining its allocator until fence
-;;   completion.
+;   Records and submits a private command list while retaining its allocator until fence
+;   completion.
 (define (commands! s record)
   (open! s) (device! s)
   (define device (interop-session-device s))
@@ -259,16 +280,18 @@
      (interop-session-queue s) 1 p)))
   (set-interop-session-submissions! s (add1 (interop-session-submissions s)))
   (session-complete! s))
+
 ; barrier! : any/c any/c any/c any/c -> void?
-;;   Emits a transition barrier only when the before and after resource states differ.
+;   Emits a transition barrier only when the before and after resource states differ.
 (define (barrier! list resource before after)
   (unless (= before after)
     (define b (make-d3d12-transition 0 0 resource #xffffffff before after))
     ((method list list-barrier-slot (_fun _pointer _uint32 _d3d12-transition-pointer -> _void)) list 1
       b)))
+
 ; make-bridge! : interop-session? -> any
-;;   Creates a compatible private texture for importing source pixels without changing external
-;;   ownership.
+;   Creates a compatible private texture for importing source pixels without changing external
+;   ownership.
 (define (make-bridge! s)
   (define d (interop-session-description s))
   (define desc (make-d3d12-resource-desc 3 0 (hash-ref d 'width) (hash-ref d 'height) 1 1 28 1 0 0 0))
@@ -280,9 +303,10 @@
                  (_fun _pointer _d3d12-heap-properties-pointer _uint32 _d3d12-resource-desc-pointer
                        _uint32 _pointer _bytes _pointer -> _int32))
          (interop-session-device s) heap 0 desc d3d12-state-copy-dest #f iid-resource out)))))
+
 ; session-copy-source! : interop-session? -> any
-;;   Transitions and copies the producer-complete texture into the private bridge, then restores the
-;;   declared outgoing state.
+;   Transitions and copies the producer-complete texture into the private bridge, then restores the
+;   declared outgoing state.
 (define (session-copy-source! s)
   (parameterize-break #f
     (producer-ready! s) (make-bridge! s)
@@ -299,9 +323,10 @@
     (set-interop-session-current-state! s (interop-state (interop-session-outgoing s)))
     (set-interop-session-returned?! s #t)
     (set-interop-session-state! s 'copied)))
+
 ; session-begin-target! : interop-session? -> any
-;;   Establishes the producer-complete render-target state before lending the external texture to
-;;   Skia.
+;   Establishes the producer-complete render-target state before lending the external texture to
+;   Skia.
 (define (session-begin-target! s)
   (parameterize-break #f
     (producer-ready! s)
@@ -310,8 +335,9 @@
         d3d12-state-render-target)))
     (set-interop-session-current-state! s d3d12-state-render-target)
     (set-interop-session-state! s 'drawing)))
+
 ; session-return-target! : interop-session? -> any
-;;   Transitions a borrowed render target back to the caller's declared outgoing state.
+;   Transitions a borrowed render target back to the caller's declared outgoing state.
 (define (session-return-target! s)
   ;; The high-level adapter normalizes via a distinct snapshot + full src draw,
   ;; completes Ganesh work and destroys BOTH wrappers before this transition.
@@ -322,9 +348,10 @@
     (set-interop-session-current-state! s (interop-state (interop-session-outgoing s)))
     (set-interop-session-returned?! s #t)
     (set-interop-session-state! s 'returned)))
+
 ; session-close! : interop-session? -> void?
-;;   Releases session-owned native interfaces only after outstanding work and return transitions are
-;;   settled.
+;   Releases session-owned native interfaces only after outstanding work and return transitions are
+;   settled.
 (define (session-close! s)
   (unless (eq? (interop-session-state s) 'closed)
     (open! s)

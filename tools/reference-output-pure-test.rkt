@@ -17,8 +17,9 @@
 
 ;; Expand the actual imported macro in this module's namespace. Do not evaluate
 ;; the supplied form: even the document and dimension expressions may raise.
+
 ; expansion-anchor : namespace-anchor?
-;;   Anchors page-form expansion in the namespace containing this module's imports.
+;   Anchors page-form expansion in the namespace containing this module's imports.
 (define-namespace-anchor expansion-anchor)
 
 ;;;
@@ -26,7 +27,7 @@
 ;;;
 
 ; expand-page-form : any/c -> syntax?
-;;   Expands a page-scoping form in the test namespace without generating a native document.
+;   Expands a page-scoping form in the test namespace without generating a native document.
 (define (expand-page-form form)
   (parameterize ([current-namespace (namespace-anchor->namespace expansion-anchor)])
     (expand (datum->syntax #f form))))

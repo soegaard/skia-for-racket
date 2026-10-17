@@ -26,7 +26,7 @@
 ;;   provider's device/queue and obey its activation and lost-context rules.
 
 ; make-metal-components : metal-platform-ops? metal-context-ops? -> (values gpu-provider? gpu-driver?)
-;;   Combines injected Metal platform and context operations with balanced handle ownership.
+;   Combines injected Metal platform and context operations with balanced handle ownership.
 (define (make-metal-components platform native)
   (unless (metal-platform-ops? platform)
     (raise-argument-error 'make-metal-components "metal-platform-ops?" platform))

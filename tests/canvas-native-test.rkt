@@ -19,24 +19,24 @@
 ;;;
 
 ; page : (canvas? -> any) -> output-page?
-;;   Wraps a drawing callback in a 100-by-80-unit output page.
+;   Wraps a drawing callback in a 100-by-80-unit output page.
 (define (page f) (make-output-page 100 80 f))
 
 ; has-feature? : output-audit-report? symbol? [symbol?] -> boolean?
-;;   Finds an audit feature, optionally requiring a particular outcome.
+;   Finds an audit feature, optionally requiring a particular outcome.
 (define (has-feature? r feature [status #f])
   (for/or ([e (in-list (output-audit-report-events r))])
     (and (eq? feature (output-audit-event-feature e))
          (or (not status) (eq? status (output-audit-event-status e))))))
 
 ; opaque-pair : canvas? -> void?
-;;   Draws overlapping opaque red and blue rectangles.
+;   Draws overlapping opaque red and blue rectangles.
 (define (opaque-pair c)
   (with-skia ([p (make-paint #:color 'red)] [q (make-paint #:color 'blue)])
     (draw-rect c 0 0 20 20 p) (draw-rect c 10 0 20 20 q)))
 
 ; layer-pair : canvas? -> void?
-;;   Composites the overlapping pair through a half-opacity save layer.
+;   Composites the overlapping pair through a half-opacity save layer.
 (define (layer-pair c)
   (with-skia ([p (make-paint #:color (rgba 0 0 0 128))])
     (with-canvas-layer c #:paint p (opaque-pair c))))
@@ -46,7 +46,7 @@
 ;;;
 
 ; canvas-native-tests : test-suite?
-;;   Collects the regression cases for canvas primitives: native geometry, queries, and layers.
+;   Collects the regression cases for canvas primitives: native geometry, queries, and layers.
 (define canvas-native-tests
   (test-suite
    "Canvas primitives: native geometry, queries, and layers"

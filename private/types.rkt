@@ -278,33 +278,41 @@
 
 
 ; rgba-8888 : exact-nonnegative-integer?
-;;   Selects Skia's four-byte red/green/blue/alpha color-type layout.
+;   Selects Skia's four-byte red/green/blue/alpha color-type layout.
 (define rgba-8888 4)
+
 ; alpha-premul : exact-nonnegative-integer?
-;;   Selects premultiplied alpha in Skia's native alpha-type enumeration.
+;   Selects premultiplied alpha in Skia's native alpha-type enumeration.
 (define alpha-premul 2)
+
 ; alpha-unpremul : exact-nonnegative-integer?
-;;   Selects straight, unpremultiplied alpha in Skia's native alpha-type enumeration.
+;   Selects straight, unpremultiplied alpha in Skia's native alpha-type enumeration.
 (define alpha-unpremul 3)
+
 ; png-all-filters : exact-nonnegative-integer?
-;;   Enables all reviewed PNG row-filter choices in the native encoder bitmask.
+;   Enables all reviewed PNG row-filter choices in the native encoder bitmask.
 (define png-all-filters 248)
 
 ;; sk_text_encoding_t
+
 ; text-encoding-utf8 : exact-nonnegative-integer?
-;;   Declares that text buffers passed to native text APIs contain UTF-8 bytes.
+;   Declares that text buffers passed to native text APIs contain UTF-8 bytes.
 (define text-encoding-utf8 0)
 
 ;; sk_fontmetrics_t flags
+
 ; font-metric-underline-thickness-valid : exact-nonnegative-integer?
-;;   Marks the underline-thickness field as valid in a native font-metrics record.
+;   Marks the underline-thickness field as valid in a native font-metrics record.
 (define font-metric-underline-thickness-valid #x1)
+
 ; font-metric-underline-position-valid : exact-nonnegative-integer?
-;;   Marks the underline-position field as valid in a native font-metrics record.
+;   Marks the underline-position field as valid in a native font-metrics record.
 (define font-metric-underline-position-valid #x2)
+
 ; font-metric-strikeout-thickness-valid : exact-nonnegative-integer?
-;;   Marks the strikeout-thickness field as valid in a native font-metrics record.
+;   Marks the strikeout-thickness field as valid in a native font-metrics record.
 (define font-metric-strikeout-thickness-valid #x4)
+
 ; font-metric-strikeout-position-valid : exact-nonnegative-integer?
-;;   Marks the strikeout-position field as valid in a native font-metrics record.
+;   Marks the strikeout-position field as valid in a native font-metrics record.
 (define font-metric-strikeout-position-valid #x8)

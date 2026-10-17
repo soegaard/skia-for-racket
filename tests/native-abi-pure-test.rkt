@@ -20,15 +20,15 @@
 ;;;
 
 ; profile : hash?
-;;   Selects the expected 64-bit Skia m119 ABI profile for detached contract tests.
+;   Selects the expected 64-bit Skia m119 ABI profile for detached contract tests.
 (define profile (native-abi-profile-for 119 0 8))
 
 ; layouts : hash?
-;;   Maps ABI structure names to the selected profile's expected byte sizes.
+;   Maps ABI structure names to the selected profile's expected byte sizes.
 (define layouts (hash-ref profile 'layout_sizes))
 
 ; contracts : hash?
-;;   Holds feature-level native contracts extracted from the same profile.
+;   Holds feature-level native contracts extracted from the same profile.
 (define contracts (hash-ref profile 'contracts))
 
 ;;;
@@ -36,7 +36,7 @@
 ;;;
 
 ; native-abi-pure-tests : test-suite?
-;;   Collects the regression cases for native ABI policy (no native library).
+;   Collects the regression cases for native ABI policy (no native library).
 (define native-abi-pure-tests
   (test-suite
    "native ABI policy (no native library)"
@@ -105,6 +105,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests native-abi-pure-tests))
   (unless (zero? failures) (error 'native-abi-pure-tests "tests failed")))

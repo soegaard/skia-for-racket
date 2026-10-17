@@ -19,25 +19,25 @@
 ;;;
 
 ; render : procedure? -> bytes?
-;;   Captures a portable drawing on the fixed CPU comparison surface.
+;   Captures a portable drawing on the fixed CPU comparison surface.
 (define (render draw)
   (with-skia ([s (make-surface 40 32)])
     (draw (surface-canvas s))
     (surface->rgba-bytes s)))
 
 ; check-buffers-close : bytes? bytes? real? -> void?
-;;   Requires equally sized captures and bounded per-channel rendering differences.
+;   Requires equally sized captures and bounded per-channel rendering differences.
 (define (check-buffers-close a b tolerance)
   (check-equal? (bytes-length a) (bytes-length b))
   (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) tolerance))))
 
 ; export : procedure? [symbol? symbol?] -> any
-;;   Exports the portable drawing through the chosen vector backend and audit policy.
+;   Exports the portable drawing through the chosen vector backend and audit policy.
 (define (export draw [format 'svg] [policy 'error])
   (output->bytes/audit (make-output-page 40 32 draw) format #:policy policy))
 
 ; check-no-fallback : output-audit-report? -> void?
-;;   Requires the portable drawing's audit to contain no unexpected raster fallback.
+;   Requires the portable drawing's audit to contain no unexpected raster fallback.
 (define (check-no-fallback report)
   (check-false (output-audit-report-blocking? report))
   (check-false (for/or ([e (in-list (output-audit-report-events report))])
@@ -48,7 +48,7 @@
 ;;;
 
 ; portable-native-tests : test-suite?
-;;   Collects the regression cases for portable drawing: native resources and vector backends.
+;   Collects the regression cases for portable drawing: native resources and vector backends.
 (define portable-native-tests
   (test-suite
    "Portable drawing: native resources and vector backends"

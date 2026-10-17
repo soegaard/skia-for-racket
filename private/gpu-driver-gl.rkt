@@ -11,8 +11,9 @@
          "gpu-types.rkt" (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-gl-driver)
+
 ; make-gl-driver : any/c [#:options any/c] [#:interface any/c] -> gpu-driver?
-;;   Builds Ganesh lifecycle operations around a provider-owned GL interface and activation scope.
+;   Builds Ganesh lifecycle operations around a provider-owned GL interface and activation scope.
 (define (make-gl-driver provider #:options [options #f] #:interface [interface-mode 'default])
   (check-gl-interface-mode 'make-gl-driver interface-mode)
   (check-optional-context-options 'make-gl-driver options)

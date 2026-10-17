@@ -21,17 +21,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
@@ -47,59 +50,65 @@
   (make-directory* directory)
 
   ; create : -> gpu-context?
-  ;;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
+  ;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
   (define (create)
     (case backend [(egl) (make-egl-gpu-context)]
       [(metal) (make-gpu-context #:backend 'metal)]
       [else (make-gpu-context #:backend 'direct3d #:adapter adapter)]))
 
   ; context : gpu-context?
-  ;;   Owns the primary native GPU context used by the fixture run.
+  ;   Owns the primary native GPU context used by the fixture run.
   (define context (create))
+
   ; other : (or/c gpu-context? #f)
-  ;;   Owns a second context used to verify cross-context resource rejection.
+  ;   Owns a second context used to verify cross-context resource rejection.
   (define other #f)
+
   ; foreign : (or/c drawable? #f)
-  ;;   Retains a drawable recording whose backdrop filter uses the secondary context, testing replay
-  ;;   affinity.
+  ;   Retains a drawable recording whose backdrop filter uses the secondary context, testing replay
+  ;   affinity.
   (define foreign #f)
+
   ; foreign-filter : (or/c image-filter? #f)
-  ;;   Retains a filter using another context's image to test context-affinity rejection.
+  ;   Retains a filter using another context's image to test context-affinity rejection.
   (define foreign-filter #f)
 
   ; cases : exact-nonnegative-integer?
-  ;;   Counts acceptance cases attempted by the local test wrapper.
+  ;   Counts acceptance cases attempted by the local test wrapper.
   (define cases 0)
+
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
+
   ; rows : (listof hash?)
-  ;;   Accumulates capture and operation evidence for the run's JSON manifest.
+  ;   Accumulates capture and operation evidence for the run's JSON manifest.
   (define rows '())
+
   ; checks : hash?
-  ;;   Stores named acceptance outcomes included in the final report.
+  ;   Stores named acceptance outcomes included in the final report.
   (define checks (make-hasheq))
 
   ; test! : string? procedure? -> void?
-  ;;   Runs one named acceptance case and accumulates its failure count for final reporting.
+  ;   Runs one named acceptance case and accumulates its failure count for final reporting.
   (define (test! name thunk)
     (set! cases (add1 cases))
     (set! failures (+ failures (run-tests (test-suite name (test-case name (thunk)))))))
 
   ; reads : list? -> exact-nonnegative-integer?
-  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
-  ;;   inspection.
+  ;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;   inspection.
   (define (reads events) (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) events))
 
   ; save! : path-string? bytes? -> exact-nonnegative-integer?
-  ;;   Writes one capture artifact in the run directory, refusing to replace an existing file.
+  ;   Writes one capture artifact in the run directory, refusing to replace an existing file.
   (define (save! name data)
     (call-with-output-file (build-path directory name) (lambda (out) (write-bytes data out))
       #:exists 'error))
 
   ; capture! : string? procedure? -> void?
-  ;;   Renders a scene, requires zero implicit drawing readbacks, and saves explicit capture pixels
-  ;;   with target metadata.
+  ;   Renders a scene, requires zero implicit drawing readbacks, and saves explicit capture pixels
+  ;   with target metadata.
   (define (capture! name draw)
     (define ledger (box '()))
     (with-skia ([s (make-gpu-surface context advanced-width advanced-height #:background 'white)])
@@ -240,13 +249,13 @@
       (gpu-context-close! context)))
 
   ; closed? : boolean?
-  ;;   Records whether context teardown completed with no live or failed resource releases.
+  ;   Records whether context teardown completed with no live or failed resource releases.
   (define closed? (and (eq? (gpu-context-state context) 'closed)
                        other (eq? (gpu-context-state other) 'closed)))
 
   ; report : hash?
-  ;;   Combines assertions, captures, run identity, byte order, and context cleanup without claiming
-  ;;   display or HDR validation.
+  ;   Combines assertions, captures, run identity, byte order, and context cleanup without claiming
+  ;   display or HDR validation.
   (define report
     (hasheq 'schema 1 'stage "0.74" 'run_token token 'status
       (if (and (zero? failures) closed?) "passed" "failed")

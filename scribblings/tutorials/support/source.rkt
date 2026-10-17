@@ -23,7 +23,7 @@
 ;;;
 
 ; source-definition : path-string? any/c -> string?
-;;   Returns the actual source text of a named definition without evaluating it.
+;   Returns the actual source text of a named definition without evaluating it.
 (define (source-definition path name)
   (define source (file->string path))
   (define (find-definition form)
@@ -54,11 +54,13 @@
 
 (module+ test
   (require rackunit racket/runtime-path)
+
   ; model : path?
-  ;;   Locates model relative to this module rather than the current directory.
+  ;   Locates model relative to this module rather than the current directory.
   (define-runtime-path model "../navigation/model.rkt")
+
   ; window : path?
-  ;;   Locates window relative to this module rather than the current directory.
+  ;   Locates window relative to this module rather than the current directory.
   (define-runtime-path window "../navigation/navigate.rkt")
   (check-equal? (caadr (read (open-input-string (source-definition model 'zoom-at)))) 'zoom-at)
   (check-equal? (caadr (read (open-input-string (source-definition window 'drag-to!)))) 'drag-to!)

@@ -24,14 +24,14 @@
 ;;;
 
 ; with-backing : procedure? [exact-positive-integer? exact-positive-integer? real?] -> any
-;;   Calls the test with a backing object and its DC, closing the backing afterward.
+;   Calls the test with a backing object and its DC, closing the backing afterward.
 (define (with-backing proc [w 20] [h 12] [scale 1])
   (define backing (new canvas-backing% [width w] [height h] [backing-scale scale]))
   (dynamic-wind void (lambda () (proc backing (send backing get-dc)))
     (lambda () (send backing close))))
 
 ; rgba-pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Reads one premultiplied device pixel in red, green, blue, alpha order.
+;   Reads one premultiplied device pixel in red, green, blue, alpha order.
 (define (rgba-pixel dc x y)
   (define-values (w h) (send dc get-pixel-size))
   (define bytes (send dc get-rgba-bytes #:premultiplied? #t))
@@ -39,15 +39,15 @@
 
 ; bitmap-argb-pixel : bitmap% exact-nonnegative-integer? exact-nonnegative-integer? -> (listof
 ; byte?)
-;;   Reads one unscaled bitmap pixel in alpha, red, green, blue order.
+;   Reads one unscaled bitmap pixel in alpha, red, green, blue order.
 (define (bitmap-argb-pixel bitmap x y)
   (define bytes (make-bytes 4))
   (send bitmap get-argb-pixels x y 1 1 bytes #f #t #:unscaled? #t)
   (bytes->list bytes))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc color [x 0] [y 0] [w 20] [h 12])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
@@ -58,8 +58,8 @@
 ;;;
 
 ; canvas-dc-native-tests : test-suite?
-;;   Collects the regression cases for canvas backing storage and native Skia-to-bitmap transfer (no
-;;   GUI).
+;   Collects the regression cases for canvas backing storage and native Skia-to-bitmap transfer (no
+;   GUI).
 (define canvas-dc-native-tests
   (test-suite
    "Canvas backing storage and native Skia-to-bitmap transfer (no GUI)"
@@ -192,7 +192,7 @@
 
 
 ; canvas-dc-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define canvas-dc-native-test-count 14)
 (module+ main
   (require rackunit/text-ui)
@@ -203,7 +203,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests canvas-dc-native-tests))
   (printf "canvas-dc-native: ~a cases, ~a failures; native Skia pixels, no GUI.\n"
           canvas-dc-native-test-count failures)

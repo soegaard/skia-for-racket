@@ -24,33 +24,39 @@
 ;;;
 
 ; card-width : exact-integer?
-;;   Specifies card width in the drawing's local coordinate units.
+;   Specifies card width in the drawing's local coordinate units.
 (define card-width 920)
+
 ; card-height : exact-integer?
-;;   Specifies card height in the drawing's local coordinate units.
+;   Specifies card height in the drawing's local coordinate units.
 (define card-height 740)
 
 ; paper-color : string?
-;;   Specifies the paper color color used by this drawing.
+;   Specifies the paper color color used by this drawing.
 (define paper-color "#EDF2F7")
+
 ; card-color : string?
-;;   Specifies the card color color used by this drawing.
+;   Specifies the card color color used by this drawing.
 (define card-color "#FFFFFF")
+
 ; ink-color : string?
-;;   Specifies the ink color color used by this drawing.
+;   Specifies the ink color color used by this drawing.
 (define ink-color "#20304C")
+
 ; blue-color : string?
-;;   Specifies the blue color color used by this drawing.
+;   Specifies the blue color color used by this drawing.
 (define blue-color "#326DE6")
+
 ; muted-color : string?
-;;   Specifies the muted color color used by this drawing.
+;   Specifies the muted color color used by this drawing.
 (define muted-color "#697A90")
+
 ; callout-color : string?
-;;   Specifies the callout color color used by this drawing.
+;   Specifies the callout color color used by this drawing.
 (define callout-color "#F0F5FC")
 
 ; draw-article-card : canvas? -> void?
-;;   Draws the article card component in the current canvas coordinate system.
+;   Draws the article card component in the current canvas coordinate system.
 (define (draw-article-card canvas)
   (define face (make-typeface))
   (define font-manager (default-font-manager))
@@ -108,8 +114,9 @@
 ;;;
 
 (module+ main
+
   ; surface : surface?
-  ;;   Owns the raster drawing target used to produce the example's output.
+  ;   Owns the raster drawing target used to produce the example's output.
   (define surface
     (make-surface card-width card-height
                   #:background paper-color))

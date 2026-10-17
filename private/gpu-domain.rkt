@@ -64,15 +64,17 @@
 ;;   resource never migrates between generations.
 
 ; active : parameter?
-;;   Identifies the dynamically active domain lease; #f means no GPU execution scope is entered.
+;   Identifies the dynamically active domain lease; #f means no GPU execution scope is entered.
 (define active (make-parameter #f))
 ;; Private GUI scheduling notifications, never native destruction or user
 ;; drawing callbacks. Weak keys do not keep an optional GUI module alive.
+
 ; idle-notifiers : hash?
-;;   Keeps weak scheduler callbacks to wake deferred GUI work after GPU scopes finish.
+;   Keeps weak scheduler callbacks to wake deferred GUI work after GPU scopes finish.
 (define idle-notifiers (make-weak-hasheq))
+
 ; notify-domain-idle! : -> void?
-;;   Notifies schedulers only after leaving GPU execution, without replacing an earlier failure.
+;   Notifies schedulers only after leaving GPU execution, without replacing an earlier failure.
 (define (notify-domain-idle!)
   (unless (active)
     (for ([notify (in-list (hash-keys idle-notifiers))])
@@ -80,60 +82,74 @@
       (with-handlers ([(lambda (_) #t) (lambda (_) (void))]) (notify)))))
 (module* presentation-internals #f
   (provide domain-execution-active? register-domain-idle-notifier!)
+
   ; domain-execution-active? : -> boolean?
-  ;;   Reports whether any GPU activation is currently entered on this dynamic path.
+  ;   Reports whether any GPU activation is currently entered on this dynamic path.
   (define (domain-execution-active?) (and (active) #t))
+
   ; register-domain-idle-notifier! : procedure? -> void?
-  ;;   Registers a weak zero-argument scheduling callback without retaining an optional GUI module.
+  ;   Registers a weak zero-argument scheduling callback without retaining an optional GUI module.
   (define (register-domain-idle-notifier! notify)
     (unless (and (procedure? notify) (procedure-arity-includes? notify 0))
       (raise-argument-error 'register-domain-idle-notifier! "zero-argument scheduler" notify))
     (hash-set! idle-notifiers notify #t)))
+
 ; roots : hash?
-;;   Retains domains awaiting explicit owner-thread teardown without retaining public wrappers.
+;   Retains domains awaiting explicit owner-thread teardown without retaining public wrappers.
 (define roots (make-hasheq))
+
 ; claims : hash?
-;;   Prevents two live domains from claiming the same backend and host-context identity.
+;   Prevents two live domains from claiming the same backend and host-context identity.
 (define claims (make-hash))
+
 ; next-generation : exact-nonnegative-integer?
-;;   Provides monotonically increasing generation identities for newly created GPU domains.
+;   Provides monotonically increasing generation identities for newly created GPU domains.
 (define next-generation 0)
+
 ; domain-backend : gpu-domain? -> symbol?
-;;   Returns the provider's backend tag without activating the native context.
+;   Returns the provider's backend tag without activating the native context.
 (define (domain-backend d) (gpu-provider-backend (gpu-domain-provider d)))
+
 ; domain-generation : gpu-domain? -> exact-positive-integer?
-;;   Exposes the domain generation used to invalidate stale resources and leases.
+;   Exposes the domain generation used to invalidate stale resources and leases.
 (define domain-generation gpu-domain-generation)
+
 ; domain-state : gpu-domain? -> symbol?
-;;   Exposes detached lifecycle state without querying native context memory.
+;   Exposes detached lifecycle state without querying native context memory.
 (define domain-state gpu-domain-state)
+
 ; domain-live-count : gpu-domain? -> exact-nonnegative-integer?
-;;   Exposes the number of child resources whose native references remain owned.
+;   Exposes the number of child resources whose native references remain owned.
 (define domain-live-count gpu-domain-live)
+
 ; domain-pending-count : gpu-domain? -> exact-nonnegative-integer?
-;;   Counts native destructors queued for later owner-thread draining.
+;   Counts native destructors queued for later owner-thread draining.
 (define (domain-pending-count d) (length (gpu-domain-pending d)))
+
 ; claim-key : gpu-provider? -> pair?
-;;   Combines backend and provider identity so independent backends cannot collide in the claim
-;;   table.
+;   Combines backend and provider identity so independent backends cannot collide in the claim
+;   table.
 (define (claim-key p) (cons (gpu-provider-backend p) (gpu-provider-key p)))
+
 ; owner! : symbol? gpu-domain? -> void?
-;;   Rejects another Racket thread or a future before inspecting owner-affine GPU state.
+;   Rejects another Racket thread or a future before inspecting owner-affine GPU state.
 (define (owner! who d)
   (unless (gpu-domain? d) (raise-argument-error who "gpu-domain?" d))
   (unless (and (eq? (gpu-domain-owner d) (current-thread)) (not (current-future)))
     (error who "GPU domain belongs to another execution owner; futures are not supported")))
+
 ; usable! : symbol? gpu-domain? -> void?
-;;   Requires a ready, unrequested-shutdown domain and rejects forbidden interoperation reentry.
+;   Requires a ready, unrequested-shutdown domain and rejects forbidden interoperation reentry.
 (define (usable! who d)
   (check-skia-gpu-access! who)
   (owner! who d)
   (unless (and (eq? (domain-state d) 'ready) (not (gpu-domain-requested d)))
     (error who "GPU domain is ~a~a" (domain-state d)
            (if (gpu-domain-requested d) " (shutdown requested)" ""))))
+
 ; current! : symbol? gpu-domain? -> void?
-;;   Requires a live activation of the same domain generation and the provider's current native
-;;   context.
+;   Requires a live activation of the same domain generation and the provider's current native
+;   context.
 (define (current! who d)
   (owner! who d)
   (define a (active))
@@ -141,8 +157,9 @@
                (= (domain-generation d) (activation-generation a))
                ((gpu-provider-current? (gpu-domain-provider d))))
     (error who "GPU operation requires a live scope with the correct native context")))
+
 ; domain-pointer : gpu-domain? -> cpointer?
-;;   Returns the native context pointer only after readiness and current-activation checks.
+;   Returns the native context pointer only after readiness and current-activation checks.
 (define (domain-pointer d)
   (usable! 'domain-pointer d) (current! 'domain-pointer d)
   (gpu-domain-pointer d))
@@ -151,17 +168,19 @@
 ;; retain public context/resource wrappers. GC/custodian callbacks only request
 ;; shutdown or append release jobs, never activate a provider or call a driver.
 ;; A dead owner leaves a quarantined domain, not an unsafe off-thread destructor.
+
 ; domain-request-shutdown! : gpu-domain? [symbol?] -> void?
-;;   Records a shutdown request atomically without activating a provider or calling native
-;;   destructors.
+;   Records a shutdown request atomically without activating a provider or calling native
+;   destructors.
 (define (domain-request-shutdown! d [reason 'requested])
   (call-as-atomic
    (lambda ()
      (unless (eq? (domain-state d) 'closed)
        (set-gpu-domain-requested! d reason))))
   (void))
+
 ; forget! : gpu-domain? -> void?
-;;   Removes a closed domain's root and claim without disturbing a newer owner's claim.
+;   Removes a closed domain's root and claim without disturbing a newer owner's claim.
 (define (forget! d)
   (call-as-atomic
    (lambda ()
@@ -170,8 +189,8 @@
      (when (eq? d (hash-ref claims key #f)) (hash-remove! claims key)))))
 
 ; make-gpu-domain : gpu-provider? gpu-driver? -> gpu-domain?
-;;   Claims one host context, constructs its native driver context, and safely records partial setup
-;;   failures.
+;   Claims one host context, constructs its native driver context, and safely records partial setup
+;   failures.
 (define (make-gpu-domain provider driver)
   (check-skia-gpu-access! 'make-gpu-domain)
   (unless (gpu-provider? provider)
@@ -235,7 +254,7 @@
             (begin (set-gpu-domain-state! d 'closed) (forget! d)))))))
 
 ; domain-info : gpu-domain? -> (and/c hash? immutable?)
-;;   Combines detached native diagnostics with lifecycle, generation, and release-queue counts.
+;   Combines detached native diagnostics with lifecycle, generation, and release-queue counts.
 (define (domain-info d)
   (owner! 'domain-info d)
   (hash-set* (gpu-domain-info d)
@@ -249,8 +268,8 @@
              'shutdown_requested (and (gpu-domain-requested d) #t)))
 
 ; drain! : gpu-domain? -> exact-nonnegative-integer?
-;;   Detaches queued release jobs and destroys them in queue order without retrying uncertain
-;;   failures.
+;   Detaches queued release jobs and destroys them in queue order without retrying uncertain
+;   failures.
 (define (drain! d)
   ;; Taking jobs off the queue and running their destructors must not be
   ;; interrupted by an asynchronous break that would strand detached jobs.
@@ -275,8 +294,9 @@
       ((release-job-release job) (release-job-pointer job))))
   (when first-error (raise first-error))
   (length jobs)))
+
 ; domain-drain! : gpu-domain? -> exact-nonnegative-integer?
-;;   Drains deferred native releases inside a checked domain activation.
+;   Drains deferred native releases inside a checked domain activation.
 (define (domain-drain! d)
   (check-skia-gpu-access! 'domain-drain!)
   (owner! 'domain-drain! d)
@@ -285,7 +305,7 @@
   (drain! d))
 
 ; domain-call : gpu-domain? procedure? -> any
-;;   Activates the provider, resets native cached state, and scopes a generation-checked GPU lease.
+;   Activates the provider, resets native cached state, and scopes a generation-checked GPU lease.
 (define (domain-call d thunk)
   (usable! 'call-with-gpu-context d)
   (unless (and (procedure? thunk) (procedure-arity-includes? thunk 0))
@@ -338,8 +358,8 @@
        notify-domain-idle!)]))
 
 ; enqueue-resource! : domain-resource? -> void?
-;;   Detaches a child pointer and queues its destructor without invoking native code from
-;;   finalization.
+;   Detaches a child pointer and queues its destructor without invoking native code from
+;   finalization.
 (define (enqueue-resource! h)
   ;; Called by the FFI allocator's finalizer in atomic mode. No provider,
   ;; backend call, lock acquisition, GPU wait, or application callback here.
@@ -352,9 +372,10 @@
     (set-gpu-domain-pending!
      d (cons (release-job p (domain-resource-release h) (domain-resource-kind h))
              (gpu-domain-pending d)))))
+
 ; allocate-resource : gpu-domain? symbol? procedure? procedure? any/c -> domain-resource?
-;;   Creates and registers one native child reference atomically with the domain's live-resource
-;;   count.
+;   Creates and registers one native child reference atomically with the domain's live-resource
+;   count.
 (define allocate-resource
   ((allocator enqueue-resource!)
    (lambda (d kind create release keepalive)
@@ -362,28 +383,32 @@
      (unless p (error 'domain-new-resource "native ~a allocation returned null" kind))
      (set-gpu-domain-live! d (add1 (gpu-domain-live d)))
      (domain-resource d (domain-generation d) p release kind keepalive))))
+
 ; domain-new-resource : gpu-domain? symbol? procedure? procedure? [#:keepalive any/c] ->
 ;   domain-resource?
-;;   Allocates a child only within the matching live domain and retains the optional public context.
+;   Allocates a child only within the matching live domain and retains the optional public context.
 (define (domain-new-resource d kind create release #:keepalive [keepalive #f])
   (usable! 'domain-new-resource d) (current! 'domain-new-resource d)
   (allocate-resource d kind create (capture-gpu-native-release release) keepalive))
+
 ; cancel-and-enqueue! : domain-resource? -> void?
-;;   Cancels the allocator finalizer before explicitly scheduling a child's native release.
+;   Cancels the allocator finalizer before explicitly scheduling a child's native release.
 (define cancel-and-enqueue! ((deallocator) enqueue-resource!))
 ;; Internal finalizer entry point: unlike public close, it must not check the
 ;; current thread. It cancels this registration and ONLY queues destruction.
+
 ; domain-resource-retire! : domain-resource? -> void?
-;;   Enqueues a resource's reference without requiring an immediate native destructor call.
+;   Enqueues a resource's reference without requiring an immediate native destructor call.
 (define (domain-resource-retire! h)
   (cancel-and-enqueue! h)
   (void))
 ;; Transfer a native reference back to ordinary CPU ownership only after the
 ;; caller has removed its last GPU dependency (a paint setter, or a finished
 ;; recorder). This is NOT a release and must happen with the domain current.
+
 ; take-resource! : domain-resource? -> cpointer?
-;;   Detaches a native reference from domain finalization without destroying it, transferring
-;;   release responsibility.
+;   Detaches a native reference from domain finalization without destroying it, transferring
+;   release responsibility.
 (define take-resource!
   ((deallocator)
    (lambda (h)
@@ -394,28 +419,31 @@
      (define d (domain-resource-domain h))
      (set-gpu-domain-live! d (sub1 (gpu-domain-live d)))
      p)))
+
 ; domain-resource-take! : domain-resource? -> cpointer?
-;;   Transfers a live resource pointer out of domain ownership after owner checks.
+;   Transfers a live resource pointer out of domain ownership after owner checks.
 (define (domain-resource-take! h)
   (checked-resource-pointer h)
   (take-resource! h))
 
 ; domain-resource-close! : domain-resource? -> void?
-;;   Retires a child and drains its release under the owning domain's valid execution rules.
+;   Retires a child and drains its release under the owning domain's valid execution rules.
 (define (domain-resource-close! h)
   (unless (domain-resource? h)
     (raise-argument-error 'domain-resource-close! "domain-resource?" h))
   (owner! 'domain-resource-close! (domain-resource-domain h))
   (cancel-and-enqueue! h)
   (void))
+
 ; domain-resource-closed? : domain-resource? -> boolean?
-;;   Reports whether the child has relinquished its native pointer.
+;   Reports whether the child has relinquished its native pointer.
 (define (domain-resource-closed? h) (not (domain-resource-pointer h)))
 ;; Checked access is exported under a separate internal name below. The raw
 ;; struct accessor remains local to finalization.
+
 ; checked-resource-pointer : domain-resource? -> cpointer?
-;;   Rejects closed children, stale generations, and missing context activation before returning a
-;;   pointer.
+;   Rejects closed children, stale generations, and missing context activation before returning a
+;   pointer.
 (define (checked-resource-pointer h)
   (unless (domain-resource? h)
     (raise-argument-error 'domain-resource-pointer "domain-resource?" h))
@@ -426,13 +454,14 @@
   (or (domain-resource-pointer h) (error 'domain-resource-pointer "resource is closed")))
 
 ; inactive! : symbol? gpu-domain? -> void?
-;;   Forbids context teardown while this or another GPU execution scope is active.
+;   Forbids context teardown while this or another GPU execution scope is active.
 (define (inactive! who d)
   (owner! who d)
   (when (or (positive? (gpu-domain-depth d)) (active))
     (error who "context teardown is not allowed inside a GPU execution scope")))
+
 ; domain-abandon! : gpu-domain? -> void?
-;;   Marks a lost native context abandoned without attempting to activate an invalid host context.
+;   Marks a lost native context abandoned without attempting to activate an invalid host context.
 (define (domain-abandon! d)
   (inactive! 'gpu-context-abandon! d)
   (when (eq? (domain-state d) 'release-failed)
@@ -446,9 +475,10 @@
       ((gpu-driver-abandon (gpu-domain-driver d)) (gpu-domain-pointer d))
       (set-gpu-domain-state! d 'abandoned)))
   (void))
+
 ; domain-close! : gpu-domain? -> void?
-;;   Releases an inactive domain only after children and release jobs are settled; uncertain
-;;   destruction is never retried.
+;   Releases an inactive domain only after children and release jobs are settled; uncertain
+;   destruction is never retried.
 (define (domain-close! d)
   (inactive! 'gpu-context-close! d)
   (unless (eq? (domain-state d) 'closed)
@@ -500,7 +530,7 @@
   (void))
 
 ; drain-pending-domains! : [#:abandon? (or/c #f boolean?)] -> list?
-;;   Processes requested shutdowns owned by the current thread and returns detached outcome reports.
+;   Processes requested shutdowns owned by the current thread and returns detached outcome reports.
 (define (drain-pending-domains! #:abandon? [abandon? #f])
   (unless (boolean? abandon?)
     (raise-argument-error 'gpu-drain-pending-contexts! "boolean?" abandon?))
@@ -524,15 +554,17 @@
 
 ;; A canvas borrowed in an inner activation cannot outlive that activation,
 ;; even if the same domain is active again (or its outer activation survives).
+
 ; domain-capture-lease : gpu-domain? -> activation?
-;;   Captures the exact live activation so a borrowed canvas cannot outlive an inner scope.
+;   Captures the exact live activation so a borrowed canvas cannot outlive an inner scope.
 (define (domain-capture-lease d)
   (usable! 'surface-canvas d)
   (current! 'surface-canvas d)
   (active))
+
 ; domain-lease-expired? : activation? -> boolean?
-;;   Checks activation validity, generation, domain readiness, and pending shutdown without native
-;;   access.
+;   Checks activation validity, generation, domain readiness, and pending shutdown without native
+;   access.
 (define (domain-lease-expired? lease)
   (or (not (activation? lease))
       (not (activation-live? lease))
@@ -540,8 +572,9 @@
               (domain-generation (activation-domain lease))))
       (not (eq? (domain-state (activation-domain lease)) 'ready))
       (and (gpu-domain-requested (activation-domain lease)) #t)))
+
 ; domain-check-lease! : symbol? activation? -> void?
-;;   Requires both an unexpired borrow lease and a currently usable matching GPU activation.
+;   Requires both an unexpired borrow lease and a currently usable matching GPU activation.
 (define (domain-check-lease! who lease)
   (when (domain-lease-expired? lease)
     (error who "borrowed GPU canvas scope has expired"))
@@ -554,8 +587,9 @@
 ;; context. No raw context pointer is exposed by the public GPU module.
 (module* gl-interop-internals #f
   (provide domain-gl-resolver)
+
   ; domain-gl-resolver : gpu-domain? -> procedure?
-  ;;   Returns the active GL provider's procedure resolver rather than assuming a system GL context.
+  ;   Returns the active GL provider's procedure resolver rather than assuming a system GL context.
   (define (domain-gl-resolver d)
     (usable! 'gpu-gl-interop d)
     (current! 'gpu-gl-interop d)
@@ -568,9 +602,10 @@
 (provide domain-release-and-abandon!)
 ;; Healthy-host teardown: unlike domain-abandon!, this MUST activate the host.
 ;; Native context lifetime is retained until children retire and domain-close!.
+
 ; domain-release-and-abandon! : gpu-domain? procedure? -> void?
-;;   Releases healthy-host resources under activation, then abandons the context while retaining
-;;   teardown ownership.
+;   Releases healthy-host resources under activation, then abandons the context while retaining
+;   teardown ownership.
 (define (domain-release-and-abandon! d release-and-abandon)
   (define who 'gpu-context-release-and-abandon!)
   (inactive! who d)

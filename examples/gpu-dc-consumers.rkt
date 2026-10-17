@@ -19,10 +19,11 @@
 ;;;
 
 ; backend : parameter?
-;;   Selects backend for the dynamically scoped rendering operation.
+;   Selects backend for the dynamically scoped rendering operation.
 (define backend (make-parameter 'auto))
+
 ; make-window : -> void?
-;;   Creates and shows an interactive drawing window with its own resource lifetime.
+;   Creates and shows an interactive drawing window with its own resource lifetime.
 (define (make-window)
   (define workloads (make-consumer-workloads))
   (define selected 0)

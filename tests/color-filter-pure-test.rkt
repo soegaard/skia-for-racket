@@ -20,15 +20,15 @@
 ;;;
 
 ; identity : (listof real?)
-;;   Provides a valid 4-by-5 identity matrix before argument mutations.
+;   Provides a valid 4-by-5 identity matrix before argument mutations.
 (define identity '(1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0))
 
 ; table : bytes?
-;;   Provides an identity channel lookup for validation-only filter construction.
+;   Provides an identity channel lookup for validation-only filter construction.
 (define table (apply bytes (build-list 256 values)))
 
 ; fail : (-> any) -> void?
-;;   Requires the operation to reject invalid filter arguments.
+;   Requires the operation to reject invalid filter arguments.
 (define (fail thunk) (check-exn exn:fail? thunk))
 
 ;;;
@@ -36,7 +36,7 @@
 ;;;
 
 ; color-filter-pure-tests : test-suite?
-;;   Collects the regression cases for cPU color filters: validation without native loading.
+;   Collects the regression cases for cPU color filters: validation without native loading.
 (define color-filter-pure-tests
   (test-suite
    "CPU color filters: validation without native loading"

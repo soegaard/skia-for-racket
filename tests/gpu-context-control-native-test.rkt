@@ -21,11 +21,11 @@
 ;;;
 
 ; field : cpointer? ctype? exact-nonnegative-integer? -> any/c
-;;   Reads a native ABI field at an absolute byte offset.
+;   Reads a native ABI field at an absolute byte offset.
 (define (field p type offset) (ptr-ref p type 'abs offset))
 
 ; gpu-context-control-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-context-control-native-test-count 12)
 
 ;;;
@@ -33,8 +33,8 @@
 ;;;
 
 ; gpu-context-control-native-tests : test-suite?
-;;   Collects the regression cases for gPU context control ABI and symbol resolution (no GPU
-;;   execution).
+;   Collects the regression cases for gPU context control ABI and symbol resolution (no GPU
+;   execution).
 (define gpu-context-control-native-tests
   (test-suite "GPU context control ABI and symbol resolution (no GPU execution)"
     (test-case "pinned native baseline resolves" (skia-check!))
@@ -102,7 +102,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-context-control-native-tests))
   (printf "gpu-context-control-native: ~a cases, ~a failures\n"
     gpu-context-control-native-test-count failures)

@@ -24,7 +24,7 @@
 ;;;
 
 ; fixture : procedure? -> any
-;;   Supplies a mock context and image ownership state without allocating GPU memory.
+;   Supplies a mock context and image ownership state without allocating GPU memory.
 (define (fixture proc)
   (call-with-mock
    (lambda (d provider driver log abandoned?)
@@ -48,14 +48,14 @@
          (void/reference-sink context))))))
 
 ; setter : symbol? any/c any/c -> any
-;;   Routes a synthetic paint-child assignment through the audit/retention boundary.
+;   Routes a synthetic paint-child assignment through the audit/retention boundary.
 (define (setter name paint child)
   (call-with-owned 'setter (if child (list paint child) (list paint))
     (lambda (pp . cps)
       (lifetime-native-call name (list pp (and child (car cps))) void))))
 
 ; record-image : any/c any/c -> any
-;;   Records a synthetic image use so picture retention and context propagation can be checked.
+;   Records a synthetic image use so picture retention and context propagation can be checked.
 (define (record-image recorder image)
   (call-with-owned 'record (list recorder image)
     (lambda (rp ip)
@@ -67,8 +67,8 @@
 ;;;
 
 ; gpu-image-pure-tests : test-suite?
-;;   Collects the regression cases for gPU images: pure transitive affinity, setters, recording and
-;;   deferred ownership.
+;   Collects the regression cases for gPU images: pure transitive affinity, setters, recording and
+;   deferred ownership.
 (define gpu-image-pure-tests
   (test-suite
    "GPU images: pure transitive affinity, setters, recording and deferred ownership"

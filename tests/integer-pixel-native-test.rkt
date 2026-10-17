@@ -20,7 +20,7 @@
 ;;;
 
 ; with-buffer : symbol? procedure? -> any
-;;   Scopes a populated integer buffer with extra row padding and supplies its metadata.
+;   Scopes a populated integer buffer with extra row padding and supplies its metadata.
 (define (with-buffer format proc)
   (define info (integer-fixture-info format))
   (with-skia ([b
@@ -30,12 +30,12 @@
 
 ; pixel : bytes? exact-nonnegative-integer? exact-nonnegative-integer? [exact-positive-integer?] ->
 ; (listof byte?)
-;;   Extracts a tightly packed RGBA pixel from a display capture.
+;   Extracts a tightly packed RGBA pixel from a display capture.
 (define (pixel bytes x y [width 80])
   (bytes->list (subbytes bytes (* 4 (+ x (* y width))) (* 4 (+ 1 x (* y width))))))
 
 ; set-padding! : raster-buffer? byte? -> any
-;;   Fills only storage bytes beyond each logical row with a sentinel value.
+;   Fills only storage bytes beyond each logical row with a sentinel value.
 (define (set-padding! b value)
   (define raw (raster-buffer->storage-bytes b))
   (define i (raster-buffer-image-info b))
@@ -45,7 +45,7 @@
   (raster-buffer-write-storage! b raw))
 
 ; check-padding : raster-buffer? byte? -> void?
-;;   Verifies that pixel operations left every row-padding sentinel unchanged.
+;   Verifies that pixel operations left every row-padding sentinel unchanged.
 (define (check-padding b value)
   (define raw (raster-buffer->storage-bytes b)) (define i (raster-buffer-image-info b))
   (define rb (raster-buffer-row-bytes b))
@@ -57,7 +57,7 @@
 ;;;
 
 ; integer-pixel-native-tests : test-suite?
-;;   Collects the regression cases for general integer pixel storage (native).
+;   Collects the regression cases for general integer pixel storage (native).
 (define integer-pixel-native-tests
   (test-suite
    "General integer pixel storage (native)"

@@ -9,8 +9,9 @@
 
 (require ffi/unsafe ffi/unsafe/atomic "types.rkt")
 (provide call-with-gpu-raw call-with-gpu-image-info)
+
 ; call-with-gpu-raw : any/c any/c -> any
-;;   Allocates temporary native storage and frees it after a synchronous callback on every exit.
+;   Allocates temporary native storage and frees it after a synchronous callback on every exit.
 (define (call-with-gpu-raw size proc)
   (define p #f)
   (dynamic-wind
@@ -22,8 +23,9 @@
          (unless p (error 'gpu-transfer "raw allocation failed"))))
       (proc p))
     (lambda () (when p (free p) (set! p #f)))))
+
 ; call-with-gpu-image-info : any/c any/c any/c any/c any/c any/c -> any
-;;   Keeps a native image-info record alive while its color space and dimensions are borrowed.
+;   Keeps a native image-info record alive while its color space and dimensions are borrowed.
 (define (call-with-gpu-image-info colorspace width height color-type alpha-type proc)
   (call-with-gpu-raw
    (ctype-sizeof _sk-image-info)

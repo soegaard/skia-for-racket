@@ -21,16 +21,16 @@
 ;;;
 
 ; host-module : path?
-;;   Locates gpu-gui-host.rkt relative to this module, independent of the invoking directory.
+;   Locates gpu-gui-host.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path host-module "gpu-gui-host.rkt")
 
 ; metal-module : path?
-;;   Locates ../private/gpu-metal-probe.rkt relative to this module, independent of the invoking
-;;   directory.
+;   Locates ../private/gpu-metal-probe.rkt relative to this module, independent of the invoking
+;   directory.
 (define-runtime-path metal-module "../private/gpu-metal-probe.rkt")
 
 ; write-json-atomically : path? any/c -> void?
-;;   Publishes JSON through a sibling temporary file and cleans up failed writes.
+;   Publishes JSON through a sibling temporary file and cleans up failed writes.
 (define (write-json-atomically path value)
   (make-directory* (or (path-only path) (current-directory)))
   (define temporary
@@ -45,8 +45,8 @@
 
 ; gpu-doctor! : [#:backend symbol? #:required? boolean? #:require-hardware? boolean? #:cycles
 ; exact-positive-integer? #:prefix path-string?] -> exact-integer?
-;;   Runs repeated GPU creation/drawing/teardown cycles and publishes a diagnostic receipt, not a
-;;   performance claim.
+;   Runs repeated GPU creation/drawing/teardown cycles and publishes a diagnostic receipt, not a
+;   performance claim.
 (define (gpu-doctor! #:backend [backend 'opengl] #:required? [required? #t]
                      #:require-hardware? [require-hardware? #f] #:cycles [cycles 3]
                      #:prefix [prefix "output/gpu-0.38"])
@@ -150,23 +150,23 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'opengl)
 
   ; required? : boolean?
-  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  ;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
 
   ; hardware? : boolean?
-  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  ;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
 
   ; prefix : path-string?
-  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  ;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-0.38")
 
   ; cycles : exact-positive-integer?
-  ;;   Sets the number of context creation, rendering, and cleanup cycles.
+  ;   Sets the number of context creation, rendering, and cleanup cycles.
   (define cycles 3)
   (command-line
    #:program "gpu-doctor"

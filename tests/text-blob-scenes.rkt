@@ -21,19 +21,19 @@
 ;;;
 
 ; text-blob-scene-names : (listof symbol?)
-;;   Lists the retained-run fixtures used for native, outline, CPU, and GPU comparisons.
+;   Lists the retained-run fixtures used for native, outline, CPU, and GPU comparisons.
 (define text-blob-scene-names '(multi transformed curve))
 
 ; text-blob-scene-width : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define text-blob-scene-width 192)
 
 ; text-blob-scene-height : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define text-blob-scene-height 128)
 
 ; make-text-blob-scene : symbol? -> text-blob?
-;;   Creates the requested owned blob using deterministic generated font data.
+;   Creates the requested owned blob using deterministic generated font data.
 (define (make-text-blob-scene name)
   (unless (memq name text-blob-scene-names)
     (raise-argument-error 'make-text-blob-scene "known scene" name))
@@ -63,7 +63,7 @@
            "AAA"))])))
 
 ; draw-text-blob-scene : canvas? text-blob? -> any
-;;   Draws the retained blob at the common scene origin for capture comparisons.
+;   Draws the retained blob at the common scene origin for capture comparisons.
 (define (draw-text-blob-scene canvas blob)
   (with-skia ([ink (make-paint #:color (rgb 24 64 192) #:antialias? #f)]
               [marker (make-paint #:color (rgb 0 255 0) #:antialias? #f)])

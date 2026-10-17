@@ -19,11 +19,13 @@
          (submod "core.rkt" gpu-surface-internals)
          (submod "core.rkt" gpu-image-internals))
 (provide make-d3d12-external-texture call-with-gpu-d3d12-device)
+
 ; quarantined-operations : list?
-;;   Roots operations whose private wrappers or synchronization state cannot safely be destroyed.
+;   Roots operations whose private wrappers or synchronization state cannot safely be destroyed.
 (define quarantined-operations '())
+
 ; context! : symbol? any/c -> any
-;;   Requires a Direct3D context before exposing device handles or accepting external textures.
+;   Requires a Direct3D context before exposing device handles or accepting external textures.
 (define (context! who context)
   (when (or (current-external-operation) (current-external-native?) (current-external-gl?)
     (current-gl-borrow?))
@@ -32,9 +34,10 @@
   (unless (eq? (domain-backend d) 'direct3d) (error who "an active Direct3D context is required"))
   (domain-pointer d)
   d)
+
 ; call-with-gpu-d3d12-device : gpu-context? (-> cpointer? any) -> any
-;;   Calls proc with the borrowed ID3D12Device used by an active Direct3D context and returns the
-;;   callback's values.
+;   Calls proc with the borrowed ID3D12Device used by an active Direct3D context and returns the
+;   callback's values.
 (define (call-with-gpu-d3d12-device context proc)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error 'call-with-gpu-d3d12-device "one-argument procedure" proc))
@@ -45,17 +48,19 @@
       ;; and resources. It cannot use private Ganesh resources or reenter Skia.
       (call-with-continuation-barrier
         (lambda () (parameterize ([current-external-native? #t]) (proc device)))))))
+
 ; space-pointer : any/c -> any
-;;   Borrows an optional color-space pointer for the native texture wrapper's scope.
+;   Borrows an optional color-space pointer for the native texture wrapper's scope.
 (define (space-pointer space)
   (and space (call-with-owned 'd3d12-interop (list (color-space-h 'd3d12-interop space)) values)))
+
 ; make-d3d12-external-texture : gpu-context? cpointer? #:producer-fence cpointer? #:producer-value
 ;   (integer-in 1 18446744073709551614) #:incoming-state (or/c 'common 'render-target
 ;   'pixel-shader-resource 'shader-read 'copy-dest 'copy-source) #:outgoing-state (or/c 'common
 ;   'render-target 'pixel-shader-resource 'shader-read 'copy-dest 'copy-source) [#:timeout-ms
 ;   (integer-in 1 60000)] [#:premultiplied? boolean?] [#:color-space (or/c color-space? #f)] ->
 ;   gpu-external-texture?
-;;   Creates a single-use handoff for a live ID3D12Resource.
+;   Creates a single-use handoff for a live ID3D12Resource.
 (define (make-d3d12-external-texture context resource
           #:producer-fence producer #:producer-value value
           #:incoming-state incoming #:outgoing-state outgoing
@@ -112,9 +117,10 @@
       (unless ready?
         (cond [pin (domain-resource-close! pin) (domain-drain! d)]
               [session (session-close! session)])))))
+
 ; run-operation : any/c any/c any/c any/c any/c any/c any/c any/c any/c any/c -> any
-;;   Coordinates context activation, native resource wrapping, synchronization, and quarantined
-;;   cleanup for one handoff.
+;   Coordinates context activation, native resource wrapping, synchronization, and quarantined
+;   cleanup for one handoff.
 (define (run-operation context d session pin w h space premultiplied? mode proc)
   (define descriptor #f) (define handle #f) (define borrowed-surface #f)
   (define canvas #f) (define out #f) (define body-ok? #f)

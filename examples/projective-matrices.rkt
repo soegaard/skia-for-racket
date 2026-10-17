@@ -17,44 +17,54 @@
 ;;;
 
 ; blue : rgba?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue (rgb 48 103 211))
+
 ; teal : rgba?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal (rgb 14 149 142))
+
 ; orange : rgba?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange (rgb 239 161 37))
+
 ; ink : rgba?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink (rgb 32 52 78))
+
 ; target : parameter?
-;;   Selects target for the dynamically scoped rendering operation.
+;   Selects target for the dynamically scoped rendering operation.
 (define target (make-parameter 'raster))
+
 ; trace : box?
-;;   Collects rendering observations for the example's generated report.
+;   Collects rendering observations for the example's generated report.
 (define trace (box '()))
+
 ; label : canvas? string? real? real? [real?] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11])
   (with-skia ([font (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [paint (make-paint #:color ink)])
     (draw-simple-text c text x y font paint)))
+
 ; heading : canvas? string? string? -> void?
-;;   Draws the page heading and its explanatory subtitle.
+;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (with-skia ([p (make-paint #:color teal)]) (draw-rect c 0 0 34 2 p))
   (label c title 0 32 23) (label c subtitle 0 56 10))
+
 ; footer : canvas? exact-nonnegative-integer? -> void?
-;;   Adds the page identification beneath the example drawing.
+;   Adds the page identification beneath the example drawing.
 (define (footer c n)
   (label c "RACKET / SKIA   |   PERSPECTIVE AND GENERAL CANVAS MATRICES" 0 444 9)
   (label c (number->string n) 652 444 9))
+
 ; at : canvas? real? real? procedure? -> any/c
-;;   Runs a drawing callback at a translated origin and restores canvas state afterward.
+;   Runs a drawing callback at a translated origin and restores canvas state afterward.
 (define (at c x y f) (with-canvas-state c (canvas-translate! c x y) (f c)))
+
 ; checker : canvas? real? real? -> void?
-;;   Draws a checkerboard that makes transparent pixels visible.
+;   Draws a checkerboard that makes transparent pixels visible.
 (define (checker c x y)
   (with-skia ([a (make-paint #:color (rgb 240 243 247))]
               [b (make-paint #:color (rgb 224 230 238))])
@@ -62,8 +72,9 @@
     (for* ([row (in-range 12)] [col (in-range 19)] #:when (odd? (+ row col)))
       (draw-rect c (+ x (* col 16)) (+ y (* row 16))
                  (min 16 (- 300 (* col 16))) (min 16 (- 180 (* row 16))) b))))
+
 ; panel : canvas? real? procedure? #:general? [boolean?] -> any/c
-;;   Uses bounded raster fallback for general projective transforms on vector backends.
+;   Uses bounded raster fallback for general projective transforms on vector backends.
 (define (panel c x f #:general? [general? #t])
   (checker c x 110)
   (parameterize ([target (canvas-annotation-backend c)])
@@ -72,8 +83,9 @@
     (if (and general? (memq (target) '(pdf svg)))
         (draw-rasterized c x 110 300 180 f #:scale 2)
         (at c x 110 f))))
+
 ; remember : canvas? any/c any/c any/c -> void?
-;;   Draws the remember comparison in the current canvas coordinate system.
+;   Draws the remember comparison in the current canvas coordinate system.
 (define (remember c local name before)
   (set-box! trace
     (cons (hasheq 'backend (symbol->string (target)) 'name name
@@ -81,15 +93,17 @@
                    'local (vector->list (matrix4->vector local))
                    'after (vector->list (matrix4->vector (canvas-matrix4 c))))
           (unbox trace))))
+
 ; under : canvas? any/c any/c procedure? -> any/c
-;;   Runs drawing under a scoped matrix while recording the matrix state for the report.
+;   Runs drawing under a scoped matrix while recording the matrix state for the report.
 (define (under c m name draw)
   (define before (canvas-matrix4 c))
   (with-canvas-matrix c m
     (remember c (if (matrix3? m) (matrix3->matrix4 m) m) name before)
     (draw c)))
+
 ; grid : canvas? -> void?
-;;   Draws the grid comparison in the current canvas coordinate system.
+;   Draws the grid comparison in the current canvas coordinate system.
 (define (grid c)
   (with-skia ([sh (make-linear-gradient-shader 30 0 270 0 (list blue teal))]
               [p (make-paint #:shader sh)]
@@ -99,25 +113,29 @@
     (for ([x (in-range 30 271 40)]) (draw-line c x 20 x 160 lines))
     (for ([y (in-range 20 161 35)]) (draw-line c 30 y 270 y lines))
     (draw-circle c 150 90 17 dot)))
+
 ; affine : matrix4?
-;;   Combines centered rotation and scale as the affine comparison transform.
+;   Combines centered rotation and scale as the affine comparison transform.
 (define affine (matrix->matrix4 (matrix-compose (matrix-translate 150 90)
                                                (matrix-rotate-degrees -10) (matrix-scale 0.9)
                                                (matrix-translate -150 -90))))
+
 ; homography : matrix3?
-;;   Combines perspective with center translations as the projective comparison transform.
+;   Combines perspective with center translations as the projective comparison transform.
 (define homography
   (matrix3-compose (matrix->matrix3 (matrix-translate 150 90))
                     (matrix3-perspective 0.0012 0.0006)
                     (matrix->matrix3 (matrix-translate -150 -90))))
+
 ; tilt : real? -> matrix4?
-;;   Builds the centered perspective transform for the supplied y-axis rotation.
+;   Builds the centered perspective transform for the supplied y-axis rotation.
 (define (tilt degrees)
   (matrix4-compose (matrix4-translate 150 90) (matrix4-scale 0.9)
                     (matrix4-perspective 380) (matrix4-rotate-y-degrees degrees)
                     (matrix4-rotate-x-degrees 18) (matrix4-translate -150 -90)))
+
 ; homography-page : canvas? -> void?
-;;   Draws the homography page comparison in the current canvas coordinate system.
+;   Draws the homography page comparison in the current canvas coordinate system.
 (define (homography-page c)
   (heading c "Perspective is a homogeneous divide"
              "Affine values remain available. A 3 x 3 matrix additionally carries the projective denominator W.")
@@ -134,8 +152,9 @@
   (label c "Matrix coefficients are copied, immutable, and stored at native single precision." 0 407
     10)
   (footer c 1))
+
 ; image-card : canvas? -> void?
-;;   Draws the image card comparison in the current canvas coordinate system.
+;   Draws the image card comparison in the current canvas coordinate system.
 (define (image-card c)
   (with-skia ([s (make-surface 120 70)] [p (make-paint #:color blue)] [q (make-paint #:color orange)]
               [r (make-paint #:color teal)])
@@ -143,8 +162,9 @@
     (draw-rect sc 0 0 120 70 p) (draw-rect sc 0 0 60 70 r)
     (draw-circle sc 60 35 21 q)
     (with-skia ([im (surface-snapshot s)]) (draw-image-rect c im 30 20 240 140 #:sampling 'linear))))
+
 ; depth-page : canvas? -> void?
-;;   Draws the depth page comparison in the current canvas coordinate system.
+;   Draws the depth page comparison in the current canvas coordinate system.
 (define (depth-page c)
   (heading c "Keep depth until the final projection"
              "A 4 x 4 matrix retains Z contributions that can affect a later perspective transformation.")
@@ -161,8 +181,9 @@
   (label c
     "This transforms 2D drawing; it does not add a depth buffer, lighting, or hidden-surface removal." 0 407 10)
   (footer c 2))
+
 ; restored : canvas? -> void?
-;;   Draws the restored comparison in the current canvas coordinate system.
+;   Draws the restored comparison in the current canvas coordinate system.
 (define (restored c)
   (define local (matrix3->matrix4 homography))
   (define before (canvas-matrix4 c))
@@ -174,8 +195,9 @@
         (canvas-clip-rect! c 0 0 1 1) (error 'probe "intentional scope exit")))
     (unless (equal? saved (canvas-matrix4 c)) (error 'probe "matrix scope did not restore"))
     (grid c)))
+
 ; clipped : canvas? -> void?
-;;   Draws the clipped comparison in the current canvas coordinate system.
+;   Draws the clipped comparison in the current canvas coordinate system.
 (define (clipped c)
   (with-canvas-state c
     ;; Clip before the projective matrix: its device-space footprint stays put.
@@ -183,8 +205,9 @@
     (under c (tilt 40) "clipped" grid))
   (with-skia ([p (make-paint #:color orange #:style 'stroke #:stroke-width 1)])
     (draw-rect c 65 35 170 110 p)))
+
 ; scope-page : canvas? -> void?
-;;   Draws the scope page comparison in the current canvas coordinate system.
+;   Draws the scope page comparison in the current canvas coordinate system.
 (define (scope-page c)
   (heading c "Matrix state is scoped; horizons are not finite"
              "Queries return detached values. Replacing a matrix leaves the existing device-space clip intact.")
@@ -201,12 +224,14 @@
   (label c
     "Put the matrix inside the raster callback. Rasterizing later does not repair outer perspective." 0 407 10)
   (footer c 3))
+
 ; write-json-file : path-string? any/c -> void?
-;;   Writes the report data as JSON, replacing an existing report file.
+;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
   (call-with-output-file path (lambda (o) (write-json data o) (newline o)) #:exists 'replace))
+
 ; html-escape : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (html-escape s)
   (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
     "&quot;")))])
@@ -216,28 +241,34 @@
 ;;;
 
 (module+ main
+
   ; args : vector?
-  ;;   Retains the command-line argument vector used to select output paths.
+  ;   Retains the command-line argument vector used to select output paths.
   (define args (current-command-line-arguments))
   (when (> (vector-length args) 1) (error 'projective-matrices "expected optional output prefix"))
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix (if (zero? (vector-length args)) "output/projective-matrices-0.32" (vector-ref args
     0)))
+
   ; file : any/c -> string?
-  ;;   Appends an output suffix to the selected filename prefix.
+  ;   Appends an output suffix to the selected filename prefix.
   (define (file suffix) (string-append prefix suffix))
   (make-directory* (or (path-only (string->path prefix)) (current-directory)))
+
   ; registry : list?
-  ;;   Keeps the shared scene/page order used by the exported documents and raster references.
+  ;   Keeps the shared scene/page order used by the exported documents and raster references.
   (define registry (list (cons "homography" homography-page) (cons "depth" depth-page) (cons "scope"
     scope-page)))
+
   ; pages : list?
-  ;;   Collects output-page descriptions in document order.
+  ;   Collects output-page descriptions in document order.
   (define pages (map (lambda (p) (make-output-page 720 500 (cdr p) #:margins 24 #:background
     'white)) registry))
+
   ; report : output-audit-report?
-  ;;   Retains the export audit report for the generated metadata file.
+  ;   Retains the export audit report for the generated metadata file.
   (define report (save-output/audit pages (file ".pdf") 'pdf #:policy 'error #:exists 'replace
                                     #:title "Perspective and general canvas matrices"))
   (write-json-file (file ".pdf.audit.json") (output-audit-report->jsexpr report))
@@ -249,16 +280,18 @@
     (with-skia ([im (output-page->image page #:dpi 144)])
       (save-image im (file (string-append stem ".reference.png")) 'png #:exists 'replace)))
   (write-json-file (file ".matrices.json") (reverse (unbox trace)))
+
   ; unsafe : output-page?
-  ;;   Describes the unsafe drawing and its export dimensions.
+  ;   Describes the unsafe drawing and its export dimensions.
   (define unsafe
     (make-output-page 30 30 (lambda (c) (canvas-concat-matrix3! c (matrix3-perspective 1/32 0))
                               (with-skia ([p (make-paint)]) (draw-rect c 0 0 20 20 p)))))
   (write-json-file (file ".unsafe.audit.json")
                    (for/list ([backend '(pdf svg)]) (output-audit-report->jsexpr
                      (analyze-output-page unsafe backend))))
+
   ; base : string?
-  ;;   Escapes the output prefix for links in the generated HTML report.
+  ;   Escapes the output prefix for links in the generated HTML report.
   (define base (html-escape (path->string (file-name-from-path prefix))))
   (call-with-output-file (file ".review.html")
     (lambda (o)

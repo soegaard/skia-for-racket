@@ -21,7 +21,7 @@
 ;;;
 
 ; open-review : symbol? symbol? symbol? -> void?
-;;   Opens a rendering-backend review window using the shared consumer workloads.
+;   Opens a rendering-backend review window using the shared consumer workloads.
 (define (open-review renderer backend adapter)
   (define workloads (make-consumer-workloads))
   (define selected 0)
@@ -63,14 +63,17 @@
 
 (module+ main
   ;; Mutable options belong to this submodule, not to its enclosing module.
+
   ; renderer : symbol?
-  ;;   Selects renderer for the example.
+  ;   Selects renderer for the example.
   (define renderer 'auto)
+
   ; backend : symbol?
-  ;;   Selects backend for the example.
+  ;   Selects backend for the example.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects the requested GPU adapter, or leaves backend selection at its default.
+  ;   Selects the requested GPU adapter, or leaves backend selection at its default.
   (define adapter #f)
   (command-line #:once-each
     [("--renderer") name "auto, raster or gpu" (set! renderer (string->symbol name))]

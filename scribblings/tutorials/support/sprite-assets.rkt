@@ -33,7 +33,7 @@
 ;; A closed texture is not reusable; closing does not reset its context identity.
 
 ; make-sprite-texture : image? -> sprite-texture?
-;;   Takes ownership of a live CPU atlas and initializes an empty GPU cache.
+;   Takes ownership of a live CPU atlas and initializes an empty GPU cache.
 (define (make-sprite-texture cpu)
   (unless (and (image? cpu) (eq? (image-residency cpu) 'cpu))
     (raise-argument-error 'make-sprite-texture "live CPU image" cpu))
@@ -41,7 +41,7 @@
   (make-texture-record cpu #f #f 0))
 
 ; sprite-texture-for-frame! : sprite-texture? gpu-frame? -> image?
-;;   Uploads the atlas once and rejects later use from a different GPU context.
+;   Uploads the atlas once and rejects later use from a different GPU context.
 (define (sprite-texture-for-frame! texture frame)
   (define context (gpu-frame-context frame))
   (cond
@@ -57,7 +57,7 @@
   (sprite-texture-gpu texture))
 
 ; close-sprite-texture! : sprite-texture? -> void?
-;;   Closes the GPU wrapper before releasing the owned CPU atlas.
+;   Closes the GPU wrapper before releasing the owned CPU atlas.
 (define (close-sprite-texture! texture)
   ;; Close the context-bound wrapper before asking the presenter to close.
   ;; Skia queues its native release for the context's owner to drain.

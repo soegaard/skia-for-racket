@@ -20,24 +20,24 @@
 ;;;
 
 ; WIDTH : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define WIDTH 32)
 
 ; HEIGHT : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define HEIGHT 24)
 
 ; GPU-CASES : exact-nonnegative-integer?
-;;   Records the expected number of real-GPU checks in the evidence receipt.
+;   Records the expected number of real-GPU checks in the evidence receipt.
 (define GPU-CASES 20)
 
 ; read-count : list? -> exact-nonnegative-integer?
-;;   Counts explicit readback records without treating drawing as transfer.
+;   Counts explicit readback records without treating drawing as transfer.
 (define (read-count entries)
   (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) entries))
 
 ; paint-pattern : canvas? -> void?
-;;   Draws a high-contrast fixed pattern for context-control capture comparisons.
+;   Draws a high-contrast fixed pattern for context-control capture comparisons.
 (define (paint-pattern canvas)
   (canvas-clear! canvas (rgb 17 34 51))
   (with-skia ([red (make-paint #:color (rgb 229 41 53) #:antialias? #f)]
@@ -51,20 +51,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
 
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
 
   ; report-path : (or/c path-string? #f)
-  ;;   Holds the destination for this run's machine-readable evidence report.
+  ;   Holds the destination for this run's machine-readable evidence report.
   (define report-path #f)
 
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") b "egl, metal, direct3d" (set! backend (string->symbol b))]
@@ -78,48 +78,48 @@
   (unless (memq adapter '(hardware warp)) (error 'gpu-context-controls "unknown adapter"))
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory (path-only report-path))
   (make-directory* directory)
 
   ; contexts : (listof gpu-context?)
-  ;;   Tracks owned contexts newest first so every created context is included in cleanup.
+  ;   Tracks owned contexts newest first so every created context is included in cleanup.
   (define contexts '())
 
   ; resources : (listof skia-resource?)
-  ;;   Tracks retained resources newest first for cleanup before their parent contexts close.
+  ;   Tracks retained resources newest first for cleanup before their parent contexts close.
   (define resources '())
 
   ; labels : (listof string?)
-  ;;   Records executed test labels in execution order.
+  ;   Records executed test labels in execution order.
   (define labels '())
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
 
   ; captures : (listof hash?)
-  ;;   Collects capture filenames and pixel-layout metadata for independent inspection.
+  ;   Collects capture filenames and pixel-layout metadata for independent inspection.
   (define captures '())
 
   ; traces : (listof hash?)
-  ;;   Records named GPU I/O event traces in execution order.
+  ;   Records named GPU I/O event traces in execution order.
   (define traces '())
 
   ; lifecycle : (or/c hash? #f)
-  ;;   Captures context state transitions for reset and cleanup evidence.
+  ;   Captures context state transitions for reset and cleanup evidence.
   (define lifecycle #f)
 
   ; cleanup-errors : (listof string?)
-  ;;   Collects teardown failures without preventing cleanup of later resources.
+  ;   Collects teardown failures without preventing cleanup of later resources.
   (define cleanup-errors '())
 
   ; retain : skia-resource? -> skia-resource?
-  ;;   Registers an owned resource for reverse-creation-order cleanup and returns it unchanged.
+  ;   Registers an owned resource for reverse-creation-order cleanup and returns it unchanged.
   (define (retain v) (set! resources (cons v resources)) v)
 
   ; fresh : [(or/c gpu-context-options? #f)] -> gpu-context?
-  ;;   Creates and records a selected-backend context with the requested immutable options.
+  ;   Creates and records a selected-backend context with the requested immutable options.
   (define (fresh [options #f])
     (define c (case backend
       [(egl) (make-egl-gpu-context #:options options)]
@@ -128,21 +128,21 @@
     (set! contexts (cons c contexts)) c)
 
   ; test! : string? procedure? -> void?
-  ;;   Runs one named acceptance case and accumulates its failure count for final reporting.
+  ;   Runs one named acceptance case and accumulates its failure count for final reporting.
   (define (test! label thunk)
     (set! labels (append labels (list label)))
     (set! failures (+ failures (run-tests (test-suite label (test-case label (thunk)))))))
 
   ; surface : gpu-context? -> gpu-surface?
-  ;;   Creates a fixture-sized surface and registers it for cleanup before its parent context.
+  ;   Creates a fixture-sized surface and registers it for cleanup before its parent context.
   (define (surface c) (retain (make-gpu-surface c WIDTH HEIGHT)))
 
   ; snapshot : gpu-surface? -> gpu-image?
-  ;;   Retains a surface snapshot and registers the owned wrapper for cleanup.
+  ;   Retains a surface snapshot and registers the owned wrapper for cleanup.
   (define (snapshot s) (retain (gpu-surface-snapshot s)))
 
   ; trace! : string? procedure? -> list?
-  ;;   Records a named operation's chronological GPU I/O events and returns that event sequence.
+  ;   Records a named operation's chronological GPU I/O events and returns that event sequence.
   (define (trace! name thunk)
     (define ledger (box '()))
     (parameterize ([current-gpu-io-ledger ledger]) (thunk))
@@ -151,19 +151,19 @@
     entries)
 
   ; tuned : gpu-context-options?
-  ;;   Exercises nondefault stencil, program-cache, glyph-cache, path-mask, and buffer-mapping
-  ;;   settings.
+  ;   Exercises nondefault stencil, program-cache, glyph-cache, path-mask, and buffer-mapping
+  ;   settings.
   (define tuned (make-gpu-context-options #:avoid-stencil-buffers? #t #:runtime-program-cache-size 16
                   #:glyph-cache-texture-maximum-bytes 1048576 #:allow-path-mask-caching? #f
                   #:buffer-map-threshold 4096))
 
   ; manual : gpu-context-options?
-  ;;   Exercises manual mipmapping together with immediate buffer mapping.
+  ;   Exercises manual mipmapping together with immediate buffer mapping.
   (define manual (make-gpu-context-options #:manual-mipmapping? #t #:buffer-map-threshold 0))
 
   ; capture! : string? (or/c gpu-context-options? #f) -> void?
-  ;;   Renders with selected context options, verifies targeted flush/readback accounting, and saves
-  ;;   capture evidence.
+  ;   Renders with selected context options, verifies targeted flush/readback accounting, and saves
+  ;   capture evidence.
   (define (capture! name options)
     (define c (fresh options))
     (define info (gpu-context-info c))
@@ -192,27 +192,27 @@
               'drawing_readbacks 0 'readbacks 1 'events (reverse (unbox ledger)))))))
 
   ; primary : (or/c gpu-context? #f)
-  ;;   Retains the primary context used by control and state-transition assertions.
+  ;   Retains the primary context used by control and state-transition assertions.
   (define primary #f)
 
   ; other : (or/c gpu-context? #f)
-  ;;   Owns a second context used to verify cross-context resource rejection.
+  ;   Owns a second context used to verify cross-context resource rejection.
   (define other #f)
 
   ; s : (or/c gpu-surface? #f)
-  ;;   Retains the primary surface for targeted flush and lifecycle checks.
+  ;   Retains the primary surface for targeted flush and lifecycle checks.
   (define s #f)
 
   ; im : (or/c gpu-image? #f)
-  ;;   Retains the primary surface snapshot for targeted image-flush checks.
+  ;   Retains the primary surface snapshot for targeted image-flush checks.
   (define im #f)
 
   ; foreign-s : (or/c gpu-surface? #f)
-  ;;   Retains a secondary-context surface for cross-context rejection checks.
+  ;   Retains a secondary-context surface for cross-context rejection checks.
   (define foreign-s #f)
 
   ; foreign-im : (or/c gpu-image? #f)
-  ;;   Retains a secondary-context snapshot for cross-context rejection checks.
+  ;   Retains a secondary-context snapshot for cross-context rejection checks.
   (define foreign-im #f)
   (dynamic-wind void
     (lambda ()
@@ -317,7 +317,7 @@
           (gpu-context-close! c)))))
 
   ; passed? : boolean?
-  ;;   Combines test assertions and required evidence/cleanup checks into the final run status.
+  ;   Combines test assertions and required evidence/cleanup checks into the final run status.
   (define passed? (and (= (length labels) GPU-CASES) (zero? failures) (null? cleanup-errors)))
   (call-with-output-file report-path
     (lambda (out)

@@ -12,9 +12,10 @@
 ;; must not return to its pool while unsubmitted Ganesh work still targets it.
 ;; Normal presented frames require no CPU completion wait.
 (provide call-with-presentation-cleanup)
+
 ; call-with-presentation-cleanup : any/c any/c any/c any/c -> any
-;;   Orders abort, release, and quarantine actions without replacing the original presentation
-;;   failure.
+;   Orders abort, release, and quarantine actions without replacing the original presentation
+;   failure.
 (define (call-with-presentation-cleanup proc abort! release! quarantine!)
   (define entered? #f) (define retired? #f) (define presented? #f)
   (define (mark-presented!)

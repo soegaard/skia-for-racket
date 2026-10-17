@@ -21,12 +21,12 @@
 ;;;
 
 ; gpu-gl-interop-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-gl-interop-native-test-count 32)
 
 ; make-gpu-gl-interop-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for external GL: borrowed framebuffer, owned texture copy and
-;;   state handoff.
+;   Builds the parameterized suite for external GL: borrowed framebuffer, owned texture copy and
+;   state handoff.
 (define (make-gpu-gl-interop-native-tests gpu other)
   (define (fixture proc)
     (call-with-gpu-context gpu

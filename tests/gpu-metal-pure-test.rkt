@@ -22,7 +22,7 @@
 ;;;
 
 ; failed-construction : symbol? -> void?
-;;   Injects a construction failure and checks balanced pool scope and zero retained references.
+;   Injects a construction failure and checks balanced pool scope and zero retained references.
 (define (failed-construction fail)
   (define f (make-metal-fixture fail))
   (check-exn exn:fail?
@@ -36,8 +36,8 @@
 ;;;
 
 ; gpu-metal-pure-tests : test-suite?
-;;   Collects the regression cases for metal ownership and native-call scopes: pure mocked
-;;   operations.
+;   Collects the regression cases for metal ownership and native-call scopes: pure mocked
+;   operations.
 (define gpu-metal-pure-tests
   (test-suite
    "Metal ownership and native-call scopes: pure mocked operations"

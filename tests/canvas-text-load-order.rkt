@@ -21,25 +21,25 @@
 ;;;
 
 ; dc-module : path?
-;;   Locates ../dc.rkt relative to this module, independent of the invoking directory.
+;   Locates ../dc.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path dc-module "../dc.rkt")
 
 ; sample : string?
-;;   Provides shaping-sensitive text shared by the Skia and Pango load-order probes.
+;   Provides shaping-sensitive text shared by the Skia and Pango load-order probes.
 (define sample "Skia and Racket office 123")
 
 ; ensure : any/c string? -> void?
-;;   Fails the isolated load-order probe when an expected condition is false.
+;   Fails the isolated load-order probe when an expected condition is false.
 (define (ensure value message)
   (unless value (error 'canvas-text-load-order message)))
 
 ; has-ink? : bytes? exact-nonnegative-integer? -> boolean?
-;;   Finds a nonwhite red channel in either RGBA or ARGB pixel storage.
+;   Finds a nonwhite red channel in either RGBA or ARGB pixel storage.
 (define (has-ink? bytes red-offset)
   (for/or ([i (in-range red-offset (bytes-length bytes) 4)]) (< (bytes-ref bytes i) 240)))
 
 ; check-skia-text! : -> void?
-;;   Checks Skia DC text metrics and raster ink after dynamic loading.
+;   Checks Skia DC text metrics and raster ink after dynamic loading.
 (define (check-skia-text!)
   (define skia-dc% (dynamic-require dc-module 'skia-dc%))
   (define make-font (dynamic-require 'racket/draw 'make-font))
@@ -58,7 +58,7 @@
    (lambda () (send dc close))))
 
 ; check-racket-text! : -> void?
-;;   Checks Racket/Pango metrics and raster ink under the selected library load order.
+;   Checks Racket/Pango metrics and raster ink under the selected library load order.
 (define (check-racket-text!)
   (define make-bitmap (dynamic-require 'racket/draw 'make-bitmap))
   (define bitmap-dc% (dynamic-require 'racket/draw 'bitmap-dc%))
@@ -85,7 +85,7 @@
   ;;;
 
   ; order : string?
-  ;;   Selects which of the canvas and text modules is imported first in this isolated process.
+  ;   Selects which of the canvas and text modules is imported first in this isolated process.
   (define order
     (command-line #:program "canvas-text-load-order"
                   #:args (order) order))

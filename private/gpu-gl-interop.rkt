@@ -16,8 +16,9 @@
          (submod "core.rkt" gpu-surface-internals)
          (submod "core.rkt" gpu-image-internals))
 (provide call-with-gpu-external-gl call-with-gpu-gl-framebuffer gpu-copy-gl-texture)
+
 ; context! : symbol? any/c -> any
-;;   Requires an OpenGL context and its matching active execution domain for interoperation.
+;   Requires an OpenGL context and its matching active execution domain for interoperation.
 (define (context! who context)
   (when (or (current-gl-borrow?) (current-external-gl?))
     (error who "nested external GL handoff/borrowing is not supported"))
@@ -28,17 +29,20 @@
     (domain-request-shutdown! d 'external-gl-context-lost)
     (error who "native GL context has been lost"))
   d)
+
 ; procedure! : symbol? procedure? exact-nonnegative-integer? -> void?
-;;   Checks callback arity before lending native GL objects to application code.
+;   Checks callback arity before lending native GL objects to application code.
 (define (procedure! who thunk n)
   (unless (and (procedure? thunk) (procedure-arity-includes? thunk n))
     (raise-argument-error who (format "procedure accepting ~a arguments" n) thunk)))
+
 ; reset! : any/c -> any
-;;   Invalidates Ganesh's cached GL state after external code may have changed the context.
+;   Invalidates Ganesh's cached GL state after external code may have changed the context.
 (define (reset! d) (n:gr_direct_context_reset_context (domain-pointer d) #xffffffff))
+
 ; call-with-gpu-external-gl : gpu-context? (-> any) [#:wait? boolean?] -> any
-;;   Flushes and submits queued Skia work, then calls proc while the same native OpenGL context
-;;   remains current.
+;   Flushes and submits queued Skia work, then calls proc while the same native OpenGL context
+;   remains current.
 (define (call-with-gpu-external-gl context proc #:wait? [wait? #f])
   (define who 'call-with-gpu-external-gl)
   (procedure! who proc 0)
@@ -59,19 +63,21 @@
            (record-gpu-io! (hasheq 'kind "external-gl-end" 'skia_state_invalidated #t))))))))
 
 ; colorspace-pointer : symbol? any/c -> any
-;;   Returns a checked borrowed color-space pointer only for the surrounding native wrapping
-;;   operation.
+;   Returns a checked borrowed color-space pointer only for the surrounding native wrapping
+;   operation.
 (define (colorspace-pointer who space)
   (and space (call-with-owned who (list (color-space-h who space)) values)))
+
 ; close-borrow! : any/c list? -> any
-;;   Closes temporary Skia wrappers while the borrowed GL context is still valid.
+;   Closes temporary Skia wrappers while the borrowed GL context is still valid.
 (define (close-borrow! context handles)
   (define d (context-domain 'gpu-gl-interop context))
   (parameterize-break #f
     (for ([h (in-list handles)] #:when h) (domain-resource-close! h))
     (domain-drain! d)))
+
 ; with-state : any/c gl-queries? any/c -> any
-;;   Preserves queried GL bindings and resets Ganesh state around external-resource operations.
+;   Preserves queried GL bindings and resets Ganesh state around external-resource operations.
 (define (with-state d queries thunk)
   ;; On a native-context mismatch do not issue restoration calls into another
   ;; context. The caller violated the borrowing contract and must recover or
@@ -81,8 +87,8 @@
 ; call-with-gpu-gl-framebuffer : gpu-context? (integer-in 1 4294967295) (integer-in 1 2147483647)
 ;   (integer-in 1 2147483647) (-> canvas? any) [#:origin (or/c 'bottom-left 'top-left)]
 ;   [#:color-space (or/c color-space? #f)] [#:wait? boolean?] -> any
-;;   Temporarily wraps a host-owned framebuffer and calls proc with an ordinary borrowed Skia
-;;   canvas.
+;   Temporarily wraps a host-owned framebuffer and calls proc with an ordinary borrowed Skia
+;   canvas.
 (define (call-with-gpu-gl-framebuffer context name width height proc
                                       #:origin [origin 'bottom-left]
                                       #:color-space [space #f]
@@ -174,8 +180,8 @@
 ; gpu-copy-gl-texture : gpu-context? (integer-in 1 4294967295) (integer-in 1 2147483647) (integer-in
 ;   1 2147483647) [#:origin (or/c 'bottom-left 'top-left)] [#:premultiplied? boolean?]
 ;   [#:color-space (or/c color-space? #f)] [#:wait? boolean?] -> gpu-image?
-;;   Validates and temporarily borrows the host's level-zero GL_RGBA8 2D texture, then copies it on
-;;   the GPU into a new Skia-owned image.
+;   Validates and temporarily borrows the host's level-zero GL_RGBA8 2D texture, then copies it on
+;   the GPU into a new Skia-owned image.
 (define (gpu-copy-gl-texture context name width height
                              #:origin [origin 'bottom-left]
                              #:premultiplied? [premultiplied? #t]

@@ -289,13 +289,13 @@
   ;;;
 
   ; line-break-conformance-smoke : unicode-conformance-result?
-  ;;   Records a minimal Unicode line-break data parser and algorithm smoke check.
+  ;   Records a minimal Unicode line-break data parser and algorithm smoke check.
   (define line-break-conformance-smoke
     (run-line-break-conformance-port
      (open-input-string "÷ 0041 × 0020 ÷ 0042 ÷\n")))
 
   ; bidi-conformance-smoke : unicode-conformance-result?
-  ;;   Records a minimal Unicode bidi-character data parser and algorithm smoke check.
+  ;   Records a minimal Unicode bidi-character data parser and algorithm smoke check.
   (define bidi-conformance-smoke
     (run-bidi-character-conformance-port
      (open-input-string "05D0 0041; 2; 1; 1 2; 1 0\n")))

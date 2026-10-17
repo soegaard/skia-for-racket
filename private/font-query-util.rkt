@@ -13,7 +13,7 @@
          font-break-prefix-length collect-glyph-path-results)
 
 ; font-query-budget : symbol? exact-nonnegative-integer? -> exact-nonnegative-integer?
-;;   Checks temporary font-query storage against the logical wrapper byte budget.
+;   Checks temporary font-query storage against the logical wrapper byte budget.
 (define (font-query-budget who bytes)
   (unless (and (exact-nonnegative-integer? bytes)
                (<= bytes (current-skia-byte-limit)))
@@ -23,7 +23,7 @@
   bytes)
 
 ; font-query-glyphs : symbol? (or/c list? vector?) exact-nonnegative-integer? -> vector?
-;;   Copies checked uint16 glyph IDs after charging input, output, and detached-result storage.
+;   Copies checked uint16 glyph IDs after charging input, output, and detached-result storage.
 (define (font-query-glyphs who glyphs bytes-per-glyph)
   (define count
     (cond [(vector? glyphs) (vector-length glyphs)]
@@ -41,7 +41,7 @@
        (for/vector ([g (in-list glyphs)]) (glyph-id who g)))))
 
 ; font-query-origin : symbol? (or/c list? vector?) -> list?
-;;   Checks a two-component glyph origin and returns x then y as native-range scalars.
+;   Checks a two-component glyph origin and returns x then y as native-range scalars.
 (define (font-query-origin who origin)
   (define xs
     (cond [(and (list? origin) (= (length origin) 2)) origin]
@@ -50,7 +50,7 @@
   (list (scalar who (car xs)) (scalar who (cadr xs))))
 
 ; font-query-text : symbol? string? -> bytes?
-;;   Snapshots text as UTF-8 after bounding scalar count and conservative query storage.
+;   Snapshots text as UTF-8 after bounding scalar count and conservative query storage.
 (define (font-query-text who text)
   (unless (string? text) (raise-argument-error who "string?" text))
   (define n (string-length text))
@@ -63,7 +63,7 @@
   (string->bytes/utf-8 (string->immutable-string text)))
 
 ; font-break-prefix-length : symbol? bytes? exact-nonnegative-integer? -> exact-nonnegative-integer?
-;;   Converts a native UTF-8 byte prefix to a Racket string index, rejecting split scalars.
+;   Converts a native UTF-8 byte prefix to a Racket string index, rejecting split scalars.
 (define (font-break-prefix-length who utf8 count)
   (unless (and (exact-nonnegative-integer? count) (<= count (bytes-length utf8)))
     (error who "native break-text returned an invalid byte count: ~a" count))
@@ -74,8 +74,8 @@
     (string-length (bytes->string/utf-8 utf8 #f 0 count))))
 
 ; collect-glyph-path-results : symbol? integer? procedure? procedure? procedure? -> vector?
-;;   Copies synchronous glyph callbacks in order, deferring failures until C returns and cleaning
-;;   partial results.
+;   Copies synchronous glyph callbacks in order, deferring failures until C returns and cleaning
+;   partial results.
 (define (collect-glyph-path-results who count invoke copy-path dispose)
   ;; Internal only: invoke calls receive synchronously; no application callback
   ;; is run from a C frame. All callback failures, including non-exn raised

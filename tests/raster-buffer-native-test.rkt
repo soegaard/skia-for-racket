@@ -19,16 +19,16 @@
 ;;;
 
 ; pixel : raster-buffer? [exact-nonnegative-integer? exact-nonnegative-integer?] -> any/c
-;;   Reads a buffer pixel through a scoped borrowed pixmap.
+;   Reads a buffer pixel through a scoped borrowed pixmap.
 (define (pixel b [x 0] [y 0]) (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-pixel v x y))))
 
 ; fill! : raster-buffer? color -> any
-;;   Fills the buffer through an explicitly writable pixmap borrow.
+;   Fills the buffer through an explicitly writable pixmap borrow.
 (define (fill! b color)
   (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-fill! v color)) #:writable? #t))
 
 ; thread-rejects? : procedure? -> boolean?
-;;   Reports whether a worker-thread buffer operation is rejected.
+;   Reports whether a worker-thread buffer operation is rejected.
 (define (thread-rejects? thunk)
   (define result (make-channel))
   (thread (lambda () (with-handlers ([exn:fail? (lambda (_) (channel-put result #t))])
@@ -40,8 +40,8 @@
 ;;;
 
 ; raster-buffer-native-tests : test-suite?
-;;   Collects the regression cases for raster buffers: native storage, scoped borrowing, and
-;;   snapshots.
+;   Collects the regression cases for raster buffers: native storage, scoped borrowing, and
+;   snapshots.
 (define raster-buffer-native-tests
   (test-suite
    "Raster buffers: native storage, scoped borrowing, and snapshots"

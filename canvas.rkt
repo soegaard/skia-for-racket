@@ -21,20 +21,20 @@
 (provide skia-canvas% skia-canvas?)
 
 ; handler! : symbol? gui:eventspace? -> void?
-;;   Requires the canvas's eventspace handler thread and excludes future execution.
+;   Requires the canvas's eventspace handler thread and excludes future execution.
 (define (handler! who space)
   (unless (and (eq? (current-thread) (gui:eventspace-handler-thread space))
                (not (current-future)))
     (error who "use skia-canvas% on its eventspace handler thread (queue-callback)")))
 
 ; callback! : symbol? procedure? exact-nonnegative-integer? -> void?
-;;   Checks that a supplied callback accepts the arguments delivered by the canvas.
+;   Checks that a supplied callback accepts the arguments delivered by the canvas.
 (define (callback! who proc arity)
   (unless (and (procedure? proc) (procedure-arity-includes? proc arity))
     (raise-argument-error who (format "procedure accepting ~a arguments" arity) proc)))
 
 ; canvas-color : (or/c string? (is-a?/c rd:color%)) -> (is-a?/c rd:color%)
-;;   Resolves a background color name or copies a supplied color object.
+;   Resolves a background color name or copies a supplied color object.
 (define (canvas-color value)
   (cond [(is-a? value rd:color%)
          (make-object rd:color% (send value red) (send value green)
@@ -45,15 +45,16 @@
         [else (raise-argument-error 'skia-canvas% "color% object or color name" value)]))
 
 ; opaque-window-color : (is-a?/c rd:color%) -> (is-a?/c rd:color%)
-;;   Drops alpha for the opaque GUI window underlay while retaining the configured RGB components.
+;   Drops alpha for the opaque GUI window underlay while retaining the configured RGB components.
 (define (opaque-window-color color)
   (make-object rd:color% (send color red) (send color green) (send color blue)))
 
 ;; A monitor is necessary for a backing-scale change that does not also
 ;; deliver on-size. It never retains an otherwise discarded canvas.
+
 ; make-geometry-monitor : weak-box? -> (is-a?/c gui:timer%)
-;;   Polls backing-scale changes without retaining the canvas and stops after the canvas is
-;;   collected.
+;   Polls backing-scale changes without retaining the canvas and stops after the canvas is
+;   collected.
 (define (make-geometry-monitor weak-canvas)
   (define monitor #f)
   (set! monitor
@@ -67,8 +68,8 @@
   monitor)
 
 ; skia-canvas% : class?
-;;   Owns a persistent raster drawing context and presents its completed bitmap through a GUI
-;;   canvas.
+;   Owns a persistent raster drawing context and presents its completed bitmap through a GUI
+;   canvas.
 (define skia-canvas%
   (class gui:canvas%
     (inherit/super make-bitmap)
@@ -300,5 +301,5 @@
     (set! monitor (make-geometry-monitor (make-weak-box this)))))
 
 ; skia-canvas? : any/c -> boolean?
-;;   Returns whether v is an instance of skia-canvas%.
+;   Returns whether v is an instance of skia-canvas%.
 (define (skia-canvas? value) (is-a? value skia-canvas%))

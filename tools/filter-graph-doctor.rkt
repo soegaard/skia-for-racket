@@ -19,8 +19,8 @@
 ;;;
 
 ; filter-graph-doctor! : -> void?
-;;   Checks native filter ABI layouts, retained children, merge placement, crop, and convolution
-;;   results.
+;   Checks native filter ABI layouts, retained children, merge placement, crop, and convolution
+;   results.
 (define (filter-graph-doctor!)
   (unless (and (= (ctype-sizeof _sk-isize) 8) (= (ctype-sizeof _sk-ipoint) 8)
                (= (ctype-sizeof _sk-point3) 12))

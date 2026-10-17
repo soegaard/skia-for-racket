@@ -21,11 +21,13 @@
 ;;;
 
 (module+ main
+
   ; backend : symbol?
-  ;;   Selects backend for the example.
+  ;   Selects backend for the example.
   (define backend 'raster)
+
   ; output : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define output
     (command-line
      #:program "render-scene.rkt"
@@ -37,8 +39,9 @@
   (unless (memq backend '(raster metal direct3d))
     (raise-user-error 'render-scene
                       "choose raster, metal, or direct3d; Linux OpenGL uses linux-opengl.rkt"))
+
   ; image : image?
-  ;;   Retains the rendered image for output after the drawing operation completes.
+  ;   Retains the rendered image for output after the drawing operation completes.
   (define image
     (case backend
       [(raster)

@@ -34,8 +34,8 @@
 ;;   marks.
 
 ; dc-unsupported : symbol? any/c [string?] -> none/c
-;;   Raises a structured compatibility-boundary exception naming the requested method, feature, and
-;;   stage.
+;   Raises a structured compatibility-boundary exception naming the requested method, feature, and
+;   stage.
 (define (dc-unsupported who feature [stage "deferred"])
   (raise (exn:fail:skia-dc:unsupported
           (format "~a: ~a is outside skia-dc% 0.57; compatibility boundary ~a"
@@ -43,21 +43,21 @@
           (current-continuation-marks) who feature stage)))
 
 ; dc-real : symbol? any/c -> real?
-;;   Validates the finite Skia binary32 coordinate range and returns an inexact real.
+;   Validates the finite Skia binary32 coordinate range and returns an inexact real.
 (define (dc-real who v)
   (unless (and (real? v) (<= -3.402823e38 v 3.402823e38))
     (raise-argument-error who "finite real in the Skia binary32 coordinate range" v))
   (exact->inexact v))
 
 ; dc-unit : symbol? any/c -> real?
-;;   Returns a checked inexact real in the inclusive interval from zero through one.
+;   Returns a checked inexact real in the inclusive interval from zero through one.
 (define (dc-unit who v)
   (define n (dc-real who v))
   (unless (<= 0 n 1) (raise-argument-error who "real in [0,1]" v))
   n)
 
 ; dc-extent : symbol? any/c -> real?
-;;   Returns a checked nonnegative inexact extent within the native coordinate range.
+;   Returns a checked nonnegative inexact extent within the native coordinate range.
 (define (dc-extent who v)
   (define n (dc-real who v))
   (when (< n 0) (raise-argument-error who "nonnegative finite real" v))
@@ -68,19 +68,19 @@
 ;;;
 
 ; dc-identity : (and/c vector? immutable?)
-;;   Stores the identity affine transform in xx/yx/xy/yy/x0/y0 coefficient order.
+;   Stores the identity affine transform in xx/yx/xy/yy/x0/y0 coefficient order.
 (define dc-identity '#(1.0 0.0 0.0 1.0 0.0 0.0))
 
 ; dc-matrix : symbol? vector? -> (and/c vector? immutable?)
-;;   Copies six finite affine coefficients into immutable inexact storage in Racket's matrix order.
+;   Copies six finite affine coefficients into immutable inexact storage in Racket's matrix order.
 (define (dc-matrix who v)
   (unless (and (vector? v) (= (vector-length v) 6))
     (raise-argument-error who "vector of six finite affine coefficients" v))
   (vector->immutable-vector (for/vector ([n (in-vector v)]) (dc-real who n))))
 
 ; dc-transformation : symbol? vector? -> (and/c vector? immutable?)
-;;   Validates and copies matrix, origin-x, origin-y, scale-x, scale-y, and rotation-in-radians
-;;   fields.
+;   Validates and copies matrix, origin-x, origin-y, scale-x, scale-y, and rotation-in-radians
+;   fields.
 (define (dc-transformation who v)
   (unless (and (vector? v) (= (vector-length v) 6))
     (raise-argument-error who "#(matrix origin-x origin-y scale-x scale-y rotation)" v))
@@ -91,8 +91,8 @@
 ;; Column-vector algebra, with Racket's #(xx yx xy yy x0 y0) ordering.
 
 ; dc-multiply : vector? vector? -> vector?
-;;   Composes column-vector affine transforms as a times b, applying b first and checking result
-;;   coordinates.
+;   Composes column-vector affine transforms as a times b, applying b first and checking result
+;   coordinates.
 (define (dc-multiply a b)
   (define (r i) (vector-ref a i))
   (define (s i) (vector-ref b i))
@@ -105,8 +105,8 @@
            (+ (* (r 1) (s 4)) (* (r 3) (s 5)) (r 5)))))
 
 ; dc-effective : vector? -> vector?
-;;   Combines the initial matrix, origin, scales, and counterclockwise Racket rotation into one affine
-;;   transform.
+;   Combines the initial matrix, origin, scales, and counterclockwise Racket rotation into one affine
+;   transform.
 (define (dc-effective t)
   (define a (vector-ref t 5))
   (define c (cos a))
@@ -119,21 +119,21 @@
    (vector c (- s) s c 0 0)))
 
 ; dc-point : vector? real? real? -> (values real? real?)
-;;   Applies an affine matrix to one xy point and validates both resulting coordinates.
+;   Applies an affine matrix to one xy point and validates both resulting coordinates.
 (define (dc-point m x y)
   (values (dc-real 'skia-dc-point (+ (* (vector-ref m 0) x) (* (vector-ref m 2) y) (vector-ref m 4)))
           (dc-real 'skia-dc-point (+ (* (vector-ref m 1) x) (* (vector-ref m 3) y) (vector-ref m
             5)))))
 
 ; dc-singular? : vector? -> boolean?
-;;   Tests whether the linear part of an affine transform has zero determinant.
+;   Tests whether the linear part of an affine transform has zero determinant.
 (define (dc-singular? m)
   (zero? (- (* (vector-ref m 0) (vector-ref m 3)) (* (vector-ref m 1) (vector-ref m 2)))))
 
 ; dc-physical-size : symbol? exact-positive-integer? exact-positive-integer? real? -> (values
 ; exact-positive-integer? exact-positive-integer? real?)
-;;   Rounds scaled logical dimensions upward to positive signed-32-bit pixel dimensions and returns
-;;   the checked backing scale.
+;   Rounds scaled logical dimensions upward to positive signed-32-bit pixel dimensions and returns
+;   the checked backing scale.
 (define (dc-physical-size who width height backing)
   (unless (and (exact-positive-integer? width) (exact-positive-integer? height))
     (raise-arguments-error who "logical dimensions must be positive exact integers"
@@ -149,8 +149,8 @@
 ;; Internal immutable commands: #(move x y), #(line x y), #(cubic ...), #(close).
 
 ; dc-path-map : (listof vector?) procedure? -> (listof vector?)
-;;   Maps every command coordinate pair through a two-value callback while preserving verbs and
-;;   command order.
+;   Maps every command coordinate pair through a two-value callback while preserving verbs and
+;   command order.
 (define (dc-path-map commands point-proc)
   (for/list ([v (in-list commands)])
     (define values-list
@@ -212,8 +212,8 @@
 ;;   contour geometry; clips store these coordinates in the owning DC's device space.
 
 ; dc-scale-clip : (or/c #f dc-clip?) real? -> (or/c #f dc-clip?)
-;;   Scales detached clip coordinates for a backing store while preserving fill rules and unrestricted
-;;   #f clips.
+;   Scales detached clip coordinates for a backing store while preserving fill rules and unrestricted
+;   #f clips.
 (define (dc-scale-clip clip backing)
   (and clip
        (dc-clip
@@ -257,8 +257,8 @@
 ;;;
 
 ; dc-capabilities : -> (and/c hash? immutable?)
-;;   Reports the baseline DC implementation's declared features and limits without probing native or
-;;   GUI facilities.
+;   Reports the baseline DC implementation's declared features and limits without probing native or
+;   GUI facilities.
 (define (dc-capabilities)
   (hasheq 'schema 1 'stage "0.57" 'scope "wrapper-declarations" 'class "skia-dc%" 'interface "dc<%>"
           'storage "persistent-cpu-raster" 'native_probe_performed #f

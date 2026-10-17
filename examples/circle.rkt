@@ -18,7 +18,7 @@
 ;;;
 
 ; render-circle : path-string? -> void?
-;;   Renders a red circle and saves the surface as a PNG.
+;   Renders a red circle and saves the surface as a PNG.
 (define (render-circle filename)
   (with-skia ([s (make-surface 640 480 #:background 'white)]
               [p (make-paint #:color 'red)])
@@ -30,8 +30,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "circle.rkt" #:args ([output "circle.png"]) output))
   (render-circle filename)

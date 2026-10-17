@@ -20,20 +20,20 @@
 ;;;
 
 ; uri : string?
-;;   Exercises URL query punctuation that must survive document serialization.
+;   Exercises URL query punctuation that must survive document serialization.
 (define uri "https://example.invalid/manual?a=1&b=2")
 
 ; has? : regexp? bytes? -> boolean?
-;;   Checks emitted document bytes for a structural marker.
+;   Checks emitted document bytes for a structural marker.
 (define (has? pattern bs) (regexp-match? pattern bs))
 
 ; svg-anchors : bytes? -> (listof string?)
-;;   Extracts complete SVG anchor elements for annotation geometry checks.
+;   Extracts complete SVG anchor elements for annotation geometry checks.
 (define (svg-anchors bs)
   (regexp-match* #px"<a[^>]*>(?s:.*?)</a>" (bytes->string/utf-8 bs)))
 
 ; rect-of : string? -> (listof real?)
-;;   Reads an anchor rectangle in x, y, width, height order, defaulting omitted values to zero.
+;   Reads an anchor rectangle in x, y, width, height order, defaulting omitted values to zero.
 (define (rect-of anchor)
   (define r (car (regexp-match #px"<rect[^>]*>" anchor)))
   (for/list ([key '("x" "y" "width" "height")])
@@ -41,17 +41,17 @@
     (if found (string->number (cadr found)) 0)))
 
 ; check-rect : (listof real?) (listof real?) -> void?
-;;   Compares annotation rectangles with a small serialization tolerance.
+;   Compares annotation rectangles with a small serialization tolerance.
 (define (check-rect actual expected)
   (for ([a (in-list actual)] [b (in-list expected)]) (check-= a b 0.01)))
 
 ; pdf-bytes : (canvas? -> any) -> bytes?
-;;   Finishes a single 200-by-160-point PDF page drawn by the callback.
+;   Finishes a single 200-by-160-point PDF page drawn by the callback.
 (define (pdf-bytes draw)
   (call-with-pdf-bytes (lambda (d) (call-with-document-page d 200 160 draw))))
 
 ; foreign-error : (-> any) -> (or/c exn? #f)
-;;   Captures the exception from a worker thread, or false when the operation succeeds.
+;   Captures the exception from a worker thread, or false when the operation succeeds.
 (define (foreign-error proc)
   (define ch (make-channel))
   (define t (thread (lambda ()
@@ -65,7 +65,7 @@
 ;;;
 
 ; annotation-native-tests : test-suite?
-;;   Collects the regression cases for document links and destinations: native backends.
+;   Collects the regression cases for document links and destinations: native backends.
 (define annotation-native-tests
   (test-suite
    "Document links and destinations: native backends"

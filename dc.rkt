@@ -18,13 +18,16 @@
          "private/dc-compatibility.rkt")
 (provide skia-dc% skia-dc? skia-dc-capabilities skia-dc-compatibility
          (struct-out exn:fail:skia-dc:unsupported))
+
 ; skia-dc% : class?
-;;   Instantiates the shared drawing-context implementation with the raster Skia renderer.
+;   Instantiates the shared drawing-context implementation with the raster Skia renderer.
 (define skia-dc% (make-skia-dc-class skia-dc-renderer))
+
 ; skia-dc? : any/c -> boolean?
-;;   Returns whether v is an instance of skia-dc%.
+;   Returns whether v is an instance of skia-dc%.
 (define (skia-dc? value) (is-a? value skia-dc%))
+
 ; skia-dc-capabilities : -> (and/c hash? immutable?)
-;;   Returns detached declarations for the historical raster-DC capability surface, including
-;;   supported drawing families and explicit exclusions.
+;   Returns detached declarations for the historical raster-DC capability surface, including
+;   supported drawing families and explicit exclusions.
 (define skia-dc-capabilities dc-capabilities)

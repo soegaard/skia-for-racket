@@ -45,8 +45,9 @@
 ;; Procedures in ops are short synchronous callouts; user rendering never runs
 ;; with a Cocoa autorelease pool pushed. Method IMPs returning CGRect use the
 ;; platform's normal C ABI (including x86_64 struct-return conventions).
+
 ; make-metal-layer-host : any/c any/c -> any
-;;   Retains a view-backed Metal layer and its queue resources for owner-thread presentation.
+;   Retains a view-backed Metal layer and its queue resources for owner-thread presentation.
 (define (make-metal-layer-host context view)
   (unless (and (eq? (system-type 'os) 'macosx) (= (ctype-sizeof _pointer) 8))
     (gpu-unavailable 'metal-presentation-platform "Metal presentation requires 64-bit macOS"))
@@ -246,8 +247,9 @@
                 (when layer (act layer "removeFromSuperlayer") (act layer "release"))
                 (when retained-view? (act view "release"))
                 (when space (release-space space)))))))))))
+
 ; layer-call : symbol? metal-layer-host? any/c any/c ... -> any
-;;   Dispatches a layer operation under the host's ownership and native activation checks.
+;   Dispatches a layer operation under the host's ownership and native activation checks.
 (define (layer-call who h name . args)
   (unless (metal-layer-host? h) (raise-argument-error who "private Metal layer host" h))
   (unless (and (eq? (current-thread) (metal-layer-host-owner h))
@@ -257,30 +259,37 @@
   (parameterize ([current-gpu-native-scope (metal-layer-host-scope h)])
     (call-with-gpu-native-scope
      (lambda () (apply (hash-ref (metal-layer-host-ops h) name) h args)))))
+
 ; metal-layer-measure : metal-layer-host? -> any
-;;   Copies the layer's current drawable and logical extents into detached presentation metrics.
+;   Copies the layer's current drawable and logical extents into detached presentation metrics.
 (define (metal-layer-measure h) (layer-call 'gpu-presenter h 'measure))
+
 ; metal-layer-acquire! : metal-layer-host? any/c -> any
-;;   Acquires and tracks one retained drawable lease for the measured frame configuration.
+;   Acquires and tracks one retained drawable lease for the measured frame configuration.
 (define (metal-layer-acquire! h m) (layer-call 'gpu-presenter h 'acquire m))
+
 ; metal-layer-present! : metal-layer-host? metal-drawable? -> any
-;;   Queues presentation of a live drawable once and updates submission bookkeeping.
+;   Queues presentation of a live drawable once and updates submission bookkeeping.
 (define (metal-layer-present! h token)
   (unless (eq? h (metal-drawable-host token)) (error 'gpu-presenter "foreign Metal drawable"))
   (layer-call 'gpu-presenter h 'present token))
+
 ; metal-layer-release! : metal-layer-host? metal-drawable? -> any
-;;   Releases the retained drawable and invalidates its borrowed texture access.
+;   Releases the retained drawable and invalidates its borrowed texture access.
 (define (metal-layer-release! h token)
   (unless (eq? h (metal-drawable-host token)) (error 'gpu-presenter "foreign Metal drawable"))
   (layer-call 'gpu-presenter h 'release token))
+
 ; metal-layer-finish! : metal-layer-host? -> any
-;;   Completes outstanding layer submission work before resources can be retired.
+;   Completes outstanding layer submission work before resources can be retired.
 (define (metal-layer-finish! h) (layer-call 'gpu-presenter-close! h 'finish))
+
 ; metal-layer-close! : metal-layer-host? -> any
-;;   Releases layer-owned native objects only after live drawable work has been settled.
+;   Releases layer-owned native objects only after live drawable work has been settled.
 (define (metal-layer-close! h) (layer-call 'gpu-presenter-close! h 'close))
+
 ; metal-layer-info : metal-layer-host? -> hash?
-;;   Copies layer identity, live leases, and presentation counters for diagnostics.
+;   Copies layer identity, live leases, and presentation counters for diagnostics.
 (define (metal-layer-info h)
   (hasheq 'layer_closed (not (metal-layer-host-layer h)) 'live_drawables (metal-layer-host-live h)
           'presents_requested (metal-layer-host-presents h)

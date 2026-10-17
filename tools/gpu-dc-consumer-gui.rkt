@@ -23,8 +23,8 @@
 ;;;
 
 ; run-gui : path-string? string? symbol? any/c -> void?
-;;   Exercises real window callbacks, separate inspection frames, and expiration of retained
-;;   consumer DCs.
+;   Exercises real window callbacks, separate inspection frames, and expiration of retained
+;   consumer DCs.
 (define (run-gui directory token backend adapter)
   (define custodian (make-custodian))
   (define space (parameterize ([current-custodian custodian]) (gui:make-eventspace)))
@@ -132,17 +132,20 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
+
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'opengl)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
   (command-line #:once-each
     [("--directory") value "New capture directory" (set! directory value)]

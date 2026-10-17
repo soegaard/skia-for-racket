@@ -24,8 +24,8 @@
 
 ; gpu-presenter-doctor! : path-string? symbol? [#:required? boolean? #:require-hardware? boolean?]
 ; -> exact-integer?
-;;   Exercises presenter frame acquisition, submission, resize, and teardown, publishing diagnostic
-;;   evidence and a process status.
+;   Exercises presenter frame acquisition, submission, resize, and teardown, publishing diagnostic
+;   evidence and a process status.
 (define (gpu-presenter-doctor! prefix backend #:required? [required? #t]
                                #:require-hardware? [hardware? #f])
   (unless (memq backend '(opengl metal))
@@ -138,17 +138,19 @@
   ;;;
 
   ; prefix : path-string?
-  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  ;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/presentation-0.42")
+
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'opengl)
 
   ; required? : boolean?
-  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  ;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
+
   ; hardware? : boolean?
-  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  ;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]

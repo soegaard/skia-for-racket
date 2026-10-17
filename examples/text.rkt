@@ -19,7 +19,7 @@
 ;;;
 
 ; output : path-string?
-;;   Selects the destination used by this example's output.
+;   Selects the destination used by this example's output.
 (define output
   (command-line
    #:program "text.rkt"

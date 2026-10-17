@@ -32,30 +32,34 @@
          incremental-snapshot-bytes incremental-snapshot-progress)
 
 ; codec-incremental-session? : any/c -> boolean?
-;;   Returns #t for an incremental session, including a closed wrapper, and #f otherwise.
+;   Returns #t for an incremental session, including a closed wrapper, and #f otherwise.
 (define codec-incremental-session? incremental-session-record?)
+
 ; session : symbol? any/c -> codec-incremental-session?
-;;   Checks the session wrapper and its creating Racket thread.
+;   Checks the session wrapper and its creating Racket thread.
 (define (session who value)
   (unless (codec-incremental-session? value)
     (raise-argument-error who "codec-incremental-session?" value))
   (unless (eq? (current-thread) (incremental-session-record-creator value))
     (error who "incremental session belongs to another Racket thread"))
   value)
+
 ; on-session : symbol? codec-incremental-session? procedure? -> any/c
-;;   Locks the session handle while a callback accesses its retained decoder state.
+;   Locks the session handle while a callback accesses its retained decoder state.
 (define (on-session who value proc)
   (define s (session who value))
   (call-with-owned who (list (incremental-session-record-handle s))
     (lambda (_token) (proc (incremental-session-record-cell s)))))
+
 ; progress : incremental-cell? -> incremental-progress?
-;;   Copies current status, native result, and optional initialized-row count into detached
-;;   progress.
+;   Copies current status, native result, and optional initialized-row count into detached
+;   progress.
 (define (progress c)
   (make-incremental-progress (incremental-cell-status c) (incremental-cell-result c)
                             (incremental-cell-rows c)))
+
 ; destroy-codec! : incremental-cell? -> void?
-;;   Destroys a retained native codec once, clearing the cell before native cleanup.
+;   Destroys a retained native codec once, clearing the cell before native cleanup.
 (define (destroy-codec! c)
   (define p (incremental-cell-codec c))
   (when p
@@ -63,33 +67,38 @@
     ;; Its stream destructor routes by non-null context to memory-only code,
     ;; never to the live-port service, even when run by a resource finalizer.
     (sk_codec_destroy p)))
+
 ; release-pixels! : incremental-cell? -> void?
-;;   Frees retained destination storage once and clears the cell's pointer.
+;   Frees retained destination storage once and clears the cell's pointer.
 (define (release-pixels! c)
   (define p (incremental-cell-pixels c))
   (when p (set-incremental-cell-pixels! c #f) (free p)))
+
 ; release-cell! : incremental-cell? -> void?
-;;   Destroys the codec before freeing pixels it may retain, then discards buffered source bytes.
+;   Destroys the codec before freeing pixels it may retain, then discards buffered source bytes.
 (define (release-cell! c)
   ;; Skia retains this destination between incremental calls. Destroy the codec
   ;; BEFORE freeing pixels on explicit close, failure, cancellation, or GC.
   (destroy-codec! c)
   (release-pixels! c)
   (incremental-input-discard! (incremental-cell-input c)))
+
 ; finish-native! : incremental-cell? -> void?
-;;   Retires native decoding and source input while preserving destination pixels for snapshots.
+;   Retires native decoding and source input while preserving destination pixels for snapshots.
 (define (finish-native! c)
   (destroy-codec! c)
   (incremental-input-discard! (incremental-cell-input c)))
+
 ; raise-source-error! : incremental-cell? -> void?
-;;   Re-raises a source callback failure on the Racket caller's side of the native boundary.
+;   Re-raises a source callback failure on the Racket caller's side of the native boundary.
 (define (raise-source-error! c)
   (define failed (incremental-input-error (incremental-cell-input c)))
   (when failed (raise (cdr failed))))
+
 ; make-codec-incremental : [#:color-type (or/c 'rgba-8888 'bgra-8888)] [#:alpha-type (or/c 'premul
 ;   'unpremul)] [#:color-space (or/c #f 'srgb 'linear-srgb bytes?)] [#:row-bytes (or/c
 ;   exact-positive-integer? #f)] [#:limit exact-positive-integer?] -> codec-incremental-session?
-;;   Returns a session in 'awaiting-input state with no decoded destination.
+;   Returns a session in 'awaiting-input state with no decoded destination.
 (define (make-codec-incremental #:color-type [color 'rgba-8888]
                                #:alpha-type [alpha 'unpremul]
                                #:color-space [space 'srgb]
@@ -105,9 +114,10 @@
    (new-owned who 'codec-incremental (lambda () (malloc 1 'raw))
      (lambda (token) (release-cell! c) (free token)))
    (current-thread) c))
+
 ; codec-incremental-feed! : codec-incremental-session? bytes? [#:final? boolean?] ->
 ;   exact-nonnegative-integer?
-;;   Appends a copy of data and returns the number of bytes accepted.
+;   Appends a copy of data and returns the number of bytes accepted.
 (define (codec-incremental-feed! s bytes #:final? [final? #f])
   (define who 'codec-incremental-feed!)
   (unless (bytes? bytes) (raise-argument-error who "bytes?" bytes))
@@ -128,24 +138,28 @@
                            (finish-native! c))
                          (raise e))])
         (incremental-input-append! input bytes final? (current-skia-byte-limit))))))
+
 ; codec-incremental-state : codec-incremental-session? -> (or/c 'awaiting-input 'needs-input
 ;   'complete 'incomplete 'failed 'cancelled 'closed)
-;;   Returns the session state.
+;   Returns the session state.
 (define (codec-incremental-state value)
   (define s (session 'codec-incremental-state value))
   (if (owned-closed? (incremental-session-record-handle s)) 'closed
       (incremental-cell-status (incremental-session-record-cell s))))
+
 ; codec-incremental-info : codec-incremental-session? -> (or/c image-info? #f)
-;;   Returns the detached output description once dimensions are known, or #f beforehand.
+;   Returns the detached output description once dimensions are known, or #f beforehand.
 (define (codec-incremental-info s)
   (on-session 'codec-incremental-info s incremental-cell-info))
+
 ; codec-incremental-origin : codec-incremental-session? -> (or/c #f 'top-left 'top-right
 ;   'bottom-right 'bottom-left 'left-top 'right-top 'right-bottom 'left-bottom)
-;;   Returns the encoded orientation once known, or #f beforehand.
+;   Returns the encoded orientation once known, or #f beforehand.
 (define (codec-incremental-origin s)
   (on-session 'codec-incremental-origin s incremental-cell-origin))
+
 ; codec-incremental-statistics : codec-incremental-session? -> (and/c hash? immutable?)
-;;   Returns a detached immutable hash with diagnostic counters.
+;   Returns a detached immutable hash with diagnostic counters.
 (define (codec-incremental-statistics s)
   (on-session 'codec-incremental-statistics s
     (lambda (c)
@@ -160,8 +174,9 @@
               'stream-destructions (incremental-input-destroys input)
               'decoder-retained? (and (incremental-cell-codec c) #t)
               'pixel-bytes (if (incremental-cell-pixels c) (incremental-cell-size c) 0)))))
+
 ; cancel-cell! : incremental-cell? -> incremental-progress?
-;;   Moves nonterminal decoding to cancelled, releases its resources, and returns detached progress.
+;   Moves nonterminal decoding to cancelled, releases its resources, and returns detached progress.
 (define (cancel-cell! c)
   (unless (incremental-terminal? (incremental-cell-status c))
     (set-incremental-cell-status! c 'cancelled)
@@ -169,13 +184,15 @@
     (set-incremental-cell-rows! c #f)
     (release-cell! c))
   (progress c))
+
 ; codec-incremental-cancel! : codec-incremental-session? -> incremental-progress?
-;;   Cancels a nonterminal session, releases its decoder and destination, and returns progress with
-;;   state and result 'cancelled.
+;   Cancels a nonterminal session, releases its decoder and destination, and returns progress with
+;   state and result 'cancelled.
 (define (codec-incremental-cancel! s)
   (on-session 'codec-incremental-cancel! s cancel-cell!))
+
 ; report-result! : incremental-cell? exact-integer? [any/c] -> incremental-progress?
-;;   Maps a checked native result to session status, retiring native decoding at terminal states.
+;   Maps a checked native result to session status, retiring native decoding at terminal states.
 (define (report-result! c code [rows #f])
   (unless (and (exact-integer? code) (<= 0 code 9))
     (error 'codec-incremental-step! "unknown native codec result: ~a" code))
@@ -185,9 +202,10 @@
     (incremental-result-state code (incremental-input-final? (incremental-cell-input c))))
   (when (incremental-terminal? (incremental-cell-status c)) (finish-native! c))
   (progress c))
+
 ; make-native-codec! : incremental-cell? -> exact-integer?
-;;   Attempts header decoding from retained input and adopts any codec returned by the native
-;;   factory.
+;   Attempts header decoding from retained input and adopts any codec returned by the native
+;   factory.
 (define (make-native-codec! c)
   (set-incremental-cell-header-attempts! c (add1 (incremental-cell-header-attempts c)))
   (define code (malloc _int 'atomic-interior))
@@ -199,9 +217,10 @@
   (when codec (set-incremental-cell-codec! c codec))
   (raise-source-error! c)
   (if codec 0 (ptr-ref code _int)))
+
 ; allocate-destination! : incremental-cell? -> void?
-;;   Checks decoded dimensions and allocates fully initialized strided storage retained across
-;;   decode steps.
+;   Checks decoded dimensions and allocates fully initialized strided storage retained across
+;   decode steps.
 (define (allocate-destination! c)
   (define who 'codec-incremental-step!)
   (define cp (incremental-cell-codec c))
@@ -233,8 +252,9 @@
     (lambda ()
       (when (sk-image-info-colorspace source)
         (sk_colorspace_unref (sk-image-info-colorspace source))))))
+
 ; start-native! : incremental-cell? -> exact-integer?
-;;   Starts incremental decoding with stable image-info storage and the retained pixel destination.
+;   Starts incremental decoding with stable image-info storage and the retained pixel destination.
 (define (start-native! c)
   (unless (incremental-cell-pixels c) (allocate-destination! c))
   (set-incremental-cell-starts! c (add1 (incremental-cell-starts c)))
@@ -253,9 +273,10 @@
   (raise-source-error! c)
   (when (zero? result) (set-incremental-cell-started?! c #t))
   result)
+
 ; decode-native! : incremental-cell? -> incremental-progress?
-;;   Advances decoding and reports only initialized-row counts that the native result makes
-;;   meaningful.
+;   Advances decoding and reports only initialized-row counts that the native result makes
+;   meaningful.
 (define (decode-native! c)
   (define rows (malloc _int 'atomic-interior))
   (ptr-set! rows _int -1)
@@ -273,10 +294,11 @@
                  [else (error 'codec-incremental-step! "invalid initialized-row count: ~a" count)])]
           [else #f]))
   (report-result! c code initialized))
+
 ; codec-incremental-step! : codec-incremental-session? [#:cancel-evt (or/c evt? #f)] ->
 ;   incremental-progress?
-;;   Attempts header construction, native incremental start, or continued decoding and returns
-;;   detached progress.
+;   Attempts header construction, native incremental start, or continued decoding and returns
+;   detached progress.
 (define (codec-incremental-step! s #:cancel-evt [cancel #f])
   (define who 'codec-incremental-step!)
   (unless (or (not cancel) (evt? cancel))
@@ -318,9 +340,10 @@
                       [else
                        (define started (if (incremental-cell-started? c) 0 (start-native! c)))
                        (if (zero? started) (decode-native! c) (report-result! c started))])])))]))))
+
 ; codec-incremental-snapshot : codec-incremental-session? -> incremental-snapshot?
-;;   Returns a detached immutable copy of the whole destination, including padding, with its pixel
-;;   description and current progress.
+;   Returns a detached immutable copy of the whole destination, including padding, with its pixel
+;   description and current progress.
 (define (codec-incremental-snapshot s)
   (define who 'codec-incremental-snapshot)
   (on-session who s
@@ -334,9 +357,10 @@
       (memcpy bytes (incremental-cell-pixels c) (bytes-length bytes))
       (make-incremental-snapshot (incremental-cell-info c) (incremental-cell-stride c)
                                 (bytes->immutable-bytes bytes) (progress c)))))
+
 ; incremental-snapshot->raster-buffer : incremental-snapshot? -> raster-buffer?
-;;   Copies the snapshot into an independently owned raster buffer, preserving its format and
-;;   stride.
+;   Copies the snapshot into an independently owned raster buffer, preserving its format and
+;   stride.
 (define (incremental-snapshot->raster-buffer snapshot)
   (unless (incremental-snapshot? snapshot)
     (raise-argument-error 'incremental-snapshot->raster-buffer "incremental-snapshot?" snapshot))

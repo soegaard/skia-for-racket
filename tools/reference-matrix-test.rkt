@@ -22,7 +22,7 @@
 ;;;
 
 ; results : procedure? -> list?
-;;   Collects multiple matrix-operation results for exact list comparisons.
+;   Collects multiple matrix-operation results for exact list comparisons.
 (define (results thunk) (call-with-values thunk list))
 
 (module+ test

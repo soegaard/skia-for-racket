@@ -20,8 +20,8 @@
 ;;;
 
 ; annotation-doctor! : -> void?
-;;   Checks PDF links/destinations, SVG escaping/views, and annotation no-op behavior on raster
-;;   surfaces.
+;   Checks PDF links/destinations, SVG escaping/views, and annotation no-op behavior on raster
+;   surfaces.
 (define (annotation-doctor!)
   (define pdf
     (call-with-pdf-bytes

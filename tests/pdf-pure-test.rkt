@@ -21,7 +21,7 @@
 ;;;
 
 ; with-temp-dir : procedure? -> any
-;;   Scopes a temporary destination directory for validation-only path checks.
+;   Scopes a temporary destination directory for validation-only path checks.
 (define (with-temp-dir proc)
   (define d (make-temporary-file "skia-pdf-test-~a" 'directory))
   (dynamic-wind void (lambda () (proc d)) (lambda () (delete-directory/files d))))
@@ -32,7 +32,7 @@
 ;;;
 
 ; pdf-pure-tests : test-suite?
-;;   Collects the regression cases for pDF pure validation and ABI.
+;   Collects the regression cases for pDF pure validation and ABI.
 (define pdf-pure-tests
   (test-suite
    "PDF pure validation and ABI"
@@ -130,6 +130,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pdf-pure-tests))
   (unless (zero? failures) (error 'pdf-pure-test "~a failures" failures)))

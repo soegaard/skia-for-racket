@@ -20,7 +20,7 @@
 ;;;
 
 ; codec-doctor! : -> void?
-;;   Checks codec ABI sizes, animation disposal pixels, and all eight EXIF orientation mappings.
+;   Checks codec ABI sizes, animation disposal pixels, and all eight EXIF orientation mappings.
 (define (codec-doctor!)
   (unless (and (= (ctype-sizeof _sk-codec-options)
                   (if (= (ctype-sizeof _pointer) 8) 24 16))

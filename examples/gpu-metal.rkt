@@ -19,7 +19,7 @@
 ;;;
 
 ; render-metal-example : path-string? [any/c] -> path?
-;;   Renders a named shared scene through Metal and saves the raster readback.
+;   Renders a named shared scene through Metal and saves the raster readback.
 (define (render-metal-example path [scene 'gradients])
   (unless (memq scene gpu-scene-names)
     (raise-argument-error 'render-metal-example "name from gpu-scene-names" scene))
@@ -42,8 +42,9 @@
 ;;;
 
 (module+ main
+
   ; scene : symbol?
-  ;;   Draws the described-font scene through the public drawing-context interface.
+  ;   Draws the described-font scene through the public drawing-context interface.
   (define scene 'gradients)
   (command-line #:once-each
     [("--scene") name "Shared scene name" (set! scene (string->symbol name))]

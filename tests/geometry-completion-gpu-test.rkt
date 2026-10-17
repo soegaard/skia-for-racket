@@ -21,17 +21,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
   ; report-path : (or/c path-string? #f)
-  ;;   Holds the destination for this run's machine-readable evidence report.
+  ;   Holds the destination for this run's machine-readable evidence report.
   (define report-path #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
@@ -43,7 +46,7 @@
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
 
   ; create : -> gpu-context?
-  ;;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
+  ;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
   (define (create)
     (case backend [(egl) (make-egl-gpu-context)]
       [(metal) (make-gpu-context #:backend 'metal)]
@@ -52,43 +55,49 @@
   ;; Construction and entry of different domains are never nested.
 
   ; ctx : gpu-context?
-  ;;   Owns the primary native GPU context used by the fixture run.
+  ;   Owns the primary native GPU context used by the fixture run.
   (define ctx (create))
+
   ; other : (or/c gpu-context? #f)
-  ;;   Owns a second context used to verify cross-context resource rejection.
+  ;   Owns a second context used to verify cross-context resource rejection.
   (define other #f)
+
   ; held : (or/c image? #f)
-  ;;   Retains a GPU snapshot to test cross-context rejection and lifecycle behavior.
+  ;   Retains a GPU snapshot to test cross-context rejection and lifecycle behavior.
   (define held #f)
+
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
 
   ; frames : exact-nonnegative-integer?
-  ;;   Counts successfully rendered fixture frames for the evidence report.
+  ;   Counts successfully rendered fixture frames for the evidence report.
   (define frames 0)
+
   ; readbacks : exact-nonnegative-integer?
-  ;;   Counts explicit GPU-to-CPU transfers used to inspect rendered output.
+  ;   Counts explicit GPU-to-CPU transfers used to inspect rendered output.
   (define readbacks 0)
+
   ; drawing-reads : exact-nonnegative-integer?
-  ;;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
-  ;;   zero.
+  ;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
+  ;   zero.
   (define drawing-reads 0)
 
   ; reset-reads : exact-nonnegative-integer?
-  ;;   Counts explicit readbacks after backend-state reset.
+  ;   Counts explicit readbacks after backend-state reset.
   (define reset-reads 0)
+
   ; reset-drawing-reads : exact-nonnegative-integer?
-  ;;   Counts unexpected readbacks during the post-reset drawing pass.
+  ;   Counts unexpected readbacks during the post-reset drawing pass.
   (define reset-drawing-reads 0)
 
   ; completed : (listof string?)
-  ;;   Collects completed scene labels for coverage evidence.
+  ;   Collects completed scene labels for coverage evidence.
   (define completed '())
 
   ; reads : box? -> exact-nonnegative-integer?
-  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
-  ;;   inspection.
+  ;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;   inspection.
   (define (reads ledger)
     (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
   (dynamic-wind void
@@ -163,7 +172,7 @@
             (lambda () (gpu-context-close! ctx)))))))
 
   ; closed? : boolean?
-  ;;   Records whether context teardown completed with no live or failed resource releases.
+  ;   Records whether context teardown completed with no live or failed resource releases.
   (define closed?
     (and (eq? (gpu-context-state ctx) 'closed) other (eq? (gpu-context-state other) 'closed)))
   (call-with-output-file report-path

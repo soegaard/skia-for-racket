@@ -19,37 +19,46 @@
 ;;;
 
 ; current-probe-backend : parameter?
-;;   Selects probe backend for the dynamically scoped rendering operation.
+;   Selects probe backend for the dynamically scoped rendering operation.
 (define current-probe-backend (make-parameter 'raster))
+
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20344e")
+
 ; blue : string?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue "#3269d5")
+
 ; teal : string?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal "#10988e")
+
 ; orange : string?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
+
 ; PW : exact-integer?
-;;   Sets the filter comparison panel width in local drawing units.
+;   Sets the filter comparison panel width in local drawing units.
 (define PW 208)
+
 ; PH : exact-integer?
-;;   Sets the filter comparison panel height in local drawing units.
+;   Sets the filter comparison panel height in local drawing units.
 (define PH 128)
+
 ; crop : list?
-;;   Sets the filter crop rectangle as x, y, width, and height.
+;   Sets the filter crop rectangle as x, y, width, and height.
 (define crop '(48 16 96 96))
+
 ; label : canvas? string? real? real? real? [any/c] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y size [color ink])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color color)])
     (draw-simple-text c text x y f p)))
+
 ; stamp : canvas? -> void?
-;;   Draws the stamp comparison in the current canvas coordinate system.
+;   Draws the stamp comparison in the current canvas coordinate system.
 (define (stamp c)
   (with-skia ([p (make-paint #:color blue)] [q (make-paint #:color orange)]
               [stroke (make-paint #:color teal #:style 'stroke #:stroke-width 5)])
@@ -57,16 +66,19 @@
     (draw-circle c 139 83 23 q)
     (draw-line c 42 39 112 71 stroke)
     (draw-line c 67 30 86 82 stroke)))
+
 ; source-filter : any/c any/c -> image-filter?
-;;   Creates an image-filter source with the selected color and bounds.
+;   Creates an image-filter source with the selected color and bounds.
 (define (source-filter color bounds)
   (with-skia ([sh (make-color-shader color)]) (make-shader-image-filter sh #:crop bounds)))
+
 ; paint-filter : canvas? any/c -> void?
-;;   Draws the paint filter comparison in the current canvas coordinate system.
+;   Draws the paint filter comparison in the current canvas coordinate system.
 (define (paint-filter c f)
   (with-skia ([p (make-paint #:image-filter f)]) (draw-paint c p)))
+
 ; render-case : canvas? any/c -> void?
-;;   Draws the render case comparison in the current canvas coordinate system.
+;   Draws the render case comparison in the current canvas coordinate system.
 (define (render-case c key)
   (with-skia ([pic (call-with-picture PW PH stamp)] [src (make-picture-image-filter pic)])
     (case key
@@ -131,8 +143,9 @@
                            #:surface-scale 16 #:coefficient 3 #:shininess 8
                            #:input bump #:crop '(8 8 192 112)))])
          (paint-filter c f))])))
+
 ; panel : canvas? real? real? string? any/c any/c -> void?
-;;   Draws one labeled comparison panel using the example's shared layout.
+;   Draws one labeled comparison panel using the example's shared layout.
 (define (panel c x y title note key)
   (label c title x y 11)
   (define top (+ y 12))
@@ -152,8 +165,9 @@
   (with-skia ([p (make-paint #:color "#bdcad7" #:style 'stroke #:stroke-width 0.5)])
     (draw-rect c x top PW PH p))
   (label c note x (+ top PH 17) 8.4))
+
 ; make-probe : string? string? list? -> output-page?
-;;   Constructs probe for the example's drawing pipeline.
+;   Constructs probe for the example's drawing pipeline.
 (define (make-probe title subtitle cases)
   (make-output-page
    720 560
@@ -168,8 +182,9 @@
        "PDF: native filter graphs. SVG: six explicit 416 x 256 PNG groups; labels and grid stay vector." 0 461 9)
      (label c "RACKET / SKIA   |   ADVANCED FILTER GRAPHS" 0 502 9))
    #:margins 24 #:background 'white))
+
 ; registry : list?
-;;   Keeps the shared scene/page order used by the exported documents and raster references.
+;   Keeps the shared scene/page order used by the exported documents and raster references.
 (define registry
   (list
    (cons "graphs"
@@ -199,26 +214,30 @@
          ("04  Tiled subset" "Repeat a 20 x 20 source region." tile)
          ("05  Distant diffuse lighting" "Soft alpha supplies the height field." diffuse)
          ("06  Spot specular lighting" "Position, target, and shininess." specular))))))
+
 ; escaped : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (escaped s)
   (for/fold ([s s]) ([pair (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
     "&quot;")))])
     (string-replace s (car pair) (cdr pair))))
+
 ; base-name : any/c -> string?
-;;   Returns an HTML-safe filename for a generated report link.
+;   Returns an HTML-safe filename for a generated report link.
 (define (base-name s) (escaped (path->string (file-name-from-path s))))
 ;;;
 ;;; Command-Line Entry Point
 ;;;
 
 (module+ main
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix (command-line #:program "filter-graphs.rkt" #:args ([prefix "filter-graphs-0.25"])
     prefix))
+
   ; name : any/c -> string?
-  ;;   Constructs an output filename from the selected prefix.
+  ;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
   (parameterize ([current-probe-backend 'pdf])

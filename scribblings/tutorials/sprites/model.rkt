@@ -21,10 +21,11 @@
 ;;;
 
 ; scene-width : exact-integer?
-;;   Specifies scene width in the drawing's local coordinate units.
+;   Specifies scene width in the drawing's local coordinate units.
 (define scene-width 800)
+
 ; scene-height : exact-integer?
-;;   Specifies scene height in the drawing's local coordinate units.
+;   Specifies scene height in the drawing's local coordinate units.
 (define scene-height 480)
 (struct ball (x y vx vy angle spin cell scale) #:transparent)
 ;; x, y: real center coordinates in the fixed scene coordinate system.
@@ -43,7 +44,7 @@
 ;; The world contains only Racket data and does not retain atlas or renderer resources.
 
 ; make-ball-world : [exact-nonnegative-integer?] -> ball-world?
-;;   Creates a reproducible world with 1 through 2000 balls inside their collision bounds.
+;   Creates a reproducible world with 1 through 2000 balls inside their collision bounds.
 (define (make-ball-world [count 30])
   (unless (and (exact-positive-integer? count) (<= count 2000))
     (raise-argument-error 'make-ball-world "integer from 1 through 2000" count))
@@ -76,8 +77,9 @@
 
 ;; Reflect the unfolded position into the interval. This also handles an update
 ;; that crosses more than one wall; clamping would lose that travel distance.
+
 ; reflect-axis : real? real? real? real? real? -> (values real? real?)
-;;   Reflects traveled distance into an interval, including crossings of multiple walls.
+;   Reflects traveled distance into an interval, including crossings of multiple walls.
 (define (reflect-axis position velocity low high seconds)
   (define span (- high low))
   (define travel (+ (- position low) (* velocity seconds)))
@@ -89,7 +91,7 @@
     [else (values (- high (- cycle span)) (- velocity))]))
 
 ; step-balls! : ball-world? real? procedure? -> void?
-;;   Advances the ball list and simulation tick without allocating native drawing resources.
+;   Advances the ball list and simulation tick without allocating native drawing resources.
 (define (step-balls! world seconds _held?)
   (set-ball-world-balls!
    world

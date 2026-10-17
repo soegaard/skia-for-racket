@@ -22,28 +22,29 @@
 ;;;
 
 ; WIDTH : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define WIDTH 8)
+
 ; HEIGHT : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define HEIGHT 6)
 
 ; reads : box? -> exact-nonnegative-integer?
-;;   Counts explicit readbacks in the GPU I/O ledger.
+;   Counts explicit readbacks in the GPU I/O ledger.
 (define (reads ledger)
   (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
 
 ; save : path-string? bytes? -> exact-nonnegative-integer?
-;;   Writes a fresh binary capture, refusing to overwrite existing evidence.
+;   Writes a fresh binary capture, refusing to overwrite existing evidence.
 (define (save path bytes)
   (call-with-output-file path (lambda (o) (write-bytes bytes o)) #:exists 'error))
 
 ; alpha-for : symbol? -> symbol?
-;;   Chooses opaque alpha for alpha-less storage formats and premultiplied alpha otherwise.
+;   Chooses opaque alpha for alpha-less storage formats and premultiplied alpha otherwise.
 (define (alpha-for color) (if (memq color '(rgb-888x rgb-565 gray-8)) 'opaque 'premul))
 
 ; draw-pattern : canvas? symbol? -> any
-;;   Draws format-sensitive samples, including values that expose float precision and clipping.
+;   Draws format-sensitive samples, including values that expose float precision and clipping.
 (define (draw-pattern c color)
   (cond
     [(memq color '(rgba-f16 rgba-f32))
@@ -62,14 +63,14 @@
        (draw-rect c 4 0 4 6 p))]))
 
 ; make-context : symbol? symbol? -> gpu-context?
-;;   Creates the requested EGL, Metal, or Direct3D context for a format probe.
+;   Creates the requested EGL, Metal, or Direct3D context for a format probe.
 (define (make-context backend adapter)
   (case backend [(egl) (make-egl-gpu-context)] [(metal) (make-gpu-context #:backend 'metal)]
     [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
     [else (error 'gpu-formats "unsupported selected backend")]))
 
 ; write-documents : path-string? string? image? symbol? -> list?
-;;   Exports a captured image with vector markers and returns document evidence records.
+;   Exports a captured image with vector markers and returns document evidence records.
 (define (write-documents directory token im color)
   (for/list ([kind '(pdf svg)])
     (define page (make-output-page 40 28
@@ -90,17 +91,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
   ; report-path : (or/c path-string? #f)
-  ;;   Holds the destination for this run's machine-readable evidence report.
+  ;   Holds the destination for this run's machine-readable evidence report.
   (define report-path #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") b "egl, metal, direct3d" (set! backend (string->symbol b))]
@@ -112,54 +116,61 @@
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory (path-only (path->complete-path report-path)))
 
   ; context : gpu-context?
-  ;;   Owns the primary native GPU context used by the fixture run.
+  ;   Owns the primary native GPU context used by the fixture run.
   (define context (make-context backend adapter))
 
   ; other : (or/c gpu-context? #f)
-  ;;   Owns a second context used to verify cross-context resource rejection.
+  ;   Owns a second context used to verify cross-context resource rejection.
   (define other #f)
+
   ; foreign-image : (or/c gpu-image? #f)
-  ;;   Retains an image from another context for format-transfer affinity checks.
+  ;   Retains an image from another context for format-transfer affinity checks.
   (define foreign-image #f)
 
   ; cases : exact-nonnegative-integer?
-  ;;   Counts acceptance cases attempted by the local test wrapper.
+  ;   Counts acceptance cases attempted by the local test wrapper.
   (define cases 0)
+
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
+
   ; rows : (listof hash?)
-  ;;   Accumulates capture and operation evidence for the run's JSON manifest.
+  ;   Accumulates capture and operation evidence for the run's JSON manifest.
   (define rows '())
+
   ; documents : (listof hash?)
-  ;;   Collects PDF/SVG export evidence for validated GPU format captures.
+  ;   Collects PDF/SVG export evidence for validated GPU format captures.
   (define documents '())
 
   ; drawing-reads : exact-nonnegative-integer?
-  ;;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
-  ;;   zero.
+  ;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
+  ;   zero.
   (define drawing-reads 0)
+
   ; rejected : exact-nonnegative-integer?
-  ;;   Counts rejected unsupported requests before they can produce invalid GPU output.
+  ;   Counts rejected unsupported requests before they can produce invalid GPU output.
   (define rejected 0)
+
   ; survivor : (or/c image? #f)
-  ;;   Keeps a detached CPU image to verify usability after GPU resources are closed.
+  ;   Keeps a detached CPU image to verify usability after GPU resources are closed.
   (define survivor #f)
 
   ; cache-result : (or/c hash? #f)
-  ;;   Stores cache-control evidence collected without changing the rendering assertions.
+  ;   Stores cache-control evidence collected without changing the rendering assertions.
   (define cache-result #f)
+
   ; symbols : (listof hash?)
-  ;;   Records native backend-resource symbol names and availability for the format acceptance
-  ;;   report.
+  ;   Records native backend-resource symbol names and availability for the format acceptance
+  ;   report.
   (define symbols '())
 
   ; test! : string? procedure? -> void?
-  ;;   Runs one named acceptance case and accumulates its failure count for final reporting.
+  ;   Runs one named acceptance case and accumulates its failure count for final reporting.
   (define (test! label thunk)
     (set! cases (add1 cases))
     (set! failures (+ failures (run-tests (test-suite label (test-case label (thunk)))))))
@@ -377,7 +388,7 @@
           (check-true (bytes? (raster-buffer->storage-bytes b)))))))
 
   ; closed? : boolean?
-  ;;   Records whether context teardown completed with no live or failed resource releases.
+  ;   Records whether context teardown completed with no live or failed resource releases.
   (define closed?
     (and (eq? (gpu-context-state context) 'closed) other (eq? (gpu-context-state other) 'closed)))
   (call-with-output-file report-path

@@ -21,25 +21,25 @@
 ;;;
 
 ; near-vector : (vectorof real?) (vectorof real?) [real?] -> void?
-;;   Checks equal-length detached sample vectors within float conversion tolerance.
+;   Checks equal-length detached sample vectors within float conversion tolerance.
 (define (near-vector actual expected [tolerance 0.00001])
   (check-equal? (vector-length actual) (vector-length expected))
   (for ([a (in-vector actual)] [b (in-vector expected)]) (check-= a b tolerance)))
 
 ; first-sample : raster-buffer? -> vector?
-;;   Copies the top-left sample while a borrowed pixmap is in scope.
+;   Copies the top-left sample while a borrowed pixmap is in scope.
 (define (first-sample b)
   (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-sample v 0 0))))
 
 ; with-applied : image-filter? procedure? [#:subset any/c #:clip vector?] -> any
-;;   Applies a filter and scopes its owned output while exposing valid subset and offset metadata.
+;   Applies a filter and scopes its owned output while exposing valid subset and offset metadata.
 (define (with-applied filter proc #:subset [subset #f] #:clip [clip '#(-8 -8 48 40)])
   (with-skia ([source (make-operation-source)])
     (define-values (out valid offset) (image-apply-filter source filter #:subset subset #:clip clip))
     (with-skia ([result out]) (proc result valid offset))))
 
 ; render-source : image? image-filter? -> bytes?
-;;   Captures ordinary filtered drawing at a fixed placement on white.
+;   Captures ordinary filtered drawing at a fixed placement on white.
 (define (render-source source filter)
   (with-skia ([surface (make-surface 96 64 #:background 'white)]
               [paint (make-paint #:image-filter filter #:antialias? #f)])
@@ -47,7 +47,7 @@
     (surface->rgba-bytes surface)))
 
 ; render-result : image? vector? vector? -> bytes?
-;;   Captures the explicit filtered result using its valid subset and returned placement offset.
+;   Captures the explicit filtered result using its valid subset and returned placement offset.
 (define (render-result result valid offset)
   (with-skia ([visible (apply image-subset result (vector->list valid))]
               [surface (make-surface 96 64 #:background 'white)])
@@ -61,7 +61,7 @@
 ;;;
 
 ; image-operation-native-tests : test-suite?
-;;   Collects the regression cases for direct image operations (native).
+;   Collects the regression cases for direct image operations (native).
 (define image-operation-native-tests
   (test-suite
    "Direct image operations (native)"

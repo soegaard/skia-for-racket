@@ -21,7 +21,7 @@
 ;;;
 
 ; render-gradients : path-string? -> void?
-;;   Renders the gradients example to the selected output destination.
+;   Renders the gradients example to the selected output destination.
 (define (render-gradients filename)
   (define checker
     (bytes 50 109 230 255   226 234 250 255
@@ -81,8 +81,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "gradients.rkt"
                   #:args ([output "gradients.png"])

@@ -11,13 +11,15 @@
          "gpu-native.rkt" "gpu-domain.rkt" "gpu-types.rkt"
          "gpu-diagnostics.rkt" "types.rkt")
 (provide run-gpu-smoke)
+
 ; pointer=? : (or/c #f cpointer?) (or/c #f cpointer?) -> boolean?
-;;   Checks native context identity by address rather than pointer-wrapper identity.
+;   Checks native context identity by address rather than pointer-wrapper identity.
 (define (pointer=? a b)
   (and a b (= (cast a _pointer _uintptr) (cast b _pointer _uintptr))))
+
 ; run-gpu-smoke : any/c -> any
-;;   Verifies backend/context ownership and exact scene pixels using explicit synchronous GPU
-;;   readback.
+;   Verifies backend/context ownership and exact scene pixels using explicit synchronous GPU
+;   readback.
 (define (run-gpu-smoke domain)
   (domain-call
    domain

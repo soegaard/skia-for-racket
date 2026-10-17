@@ -20,18 +20,18 @@
 ;;;
 
 ; close-color? : rgba? rgba? [real?] -> void?
-;;   Checks each RGBA channel against the allowed byte-level rendering tolerance.
+;   Checks each RGBA channel against the allowed byte-level rendering tolerance.
 (define (close-color? actual expected [tolerance 2])
   (for ([a (in-list (rgba-list actual))] [b (in-list (rgba-list expected))])
     (check-= a b tolerance)))
 
 ; one : (-> color-filter?) color color [real?] -> void?
-;;   Scopes a filter factory result and checks its rendered swatch.
+;   Scopes a filter factory result and checks its rendered swatch.
 (define (one make color expected [tolerance 2])
   (with-skia ([cf (make)]) (close-color? (filter-pixel cf color) expected tolerance)))
 
 ; filtered-page : color-filter? -> output-page?
-;;   Builds a page whose colored rectangle exposes vector-output filter policy.
+;   Builds a page whose colored rectangle exposes vector-output filter policy.
 (define (filtered-page cf)
   (make-output-page 48 32
     (lambda (c)
@@ -43,8 +43,8 @@
 ;;;
 
 ; color-filter-native-tests : test-suite?
-;;   Collects the regression cases for cPU color filters: native results, ownership, and output
-;;   policy.
+;   Collects the regression cases for cPU color filters: native results, ownership, and output
+;   policy.
 (define color-filter-native-tests
   (test-suite
    "CPU color filters: native results, ownership, and output policy"

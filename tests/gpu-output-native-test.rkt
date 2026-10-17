@@ -22,29 +22,29 @@
 ;;;
 
 ; gpu-output-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-output-native-test-count 42)
 
 ; blue : canvas? -> void?
-;;   Draws a vector-safe blue rectangle as the output-group baseline.
+;   Draws a vector-safe blue rectangle as the output-group baseline.
 (define (blue c)
   (with-skia ([p (make-paint #:color 'blue #:antialias? #f)]) (draw-rect c 0 0 24 16 p)))
 
 ; effect : canvas? -> void?
-;;   Draws a runtime-shader rectangle that requires a representation-policy decision.
+;   Draws a runtime-shader rectangle that requires a representation-policy decision.
 (define (effect c)
   (with-skia ([e (make-runtime-effect "half4 main(float2 p) { return half4(1,0,0,1); }")]
               [s (runtime-effect->shader e)] [p (make-paint #:shader s)])
     (draw-rect c 0 0 24 16 p)))
 
 ; text : canvas? -> void?
-;;   Draws a short label to test text handling inside bounded output groups.
+;   Draws a short label to test text handling inside bounded output groups.
 (define (text c)
   (with-skia ([f (make-font #:size 10)] [p (make-paint #:color 'black)])
     (draw-simple-text c "TEXT" 0 12 f p)))
 
 ; export : procedure? output-raster-executor? ... -> any
-;;   Exports one bounded group and returns emitted bytes together with strategy/call evidence.
+;   Exports one bounded group and returns emitted bytes together with strategy/call evidence.
 (define (export draw executor #:format [format 'svg] #:policy [policy 'prefer-vector]
                 #:audit [audit 'error] #:mode [mode 'auto] #:scale [scale 2]
                 #:padding [padding 0] #:width [w 24] #:height [h 16])
@@ -60,7 +60,7 @@
   (values bytes result calls audit-report))
 
 ; preview : procedure? output-raster-executor? -> bytes?
-;;   Renders a bounded raster group over a green CPU preview background.
+;   Renders a bounded raster group over a green CPU preview background.
 (define (preview draw executor)
   (with-skia ([s (make-surface 48 36 #:background 'green)])
     (draw-output-group (surface-canvas s) 8 10 24 16 draw #:policy 'raster
@@ -68,27 +68,27 @@
     (surface->rgba-bytes s)))
 
 ; group-error : (-> any) -> any
-;;   Returns a structured output-group failure report, or false when no such error occurs.
+;   Returns a structured output-group failure report, or false when no such error occurs.
 (define (group-error thunk)
   (with-handlers ([exn:fail:output-group? exn:fail:output-group-report])
     (call-with-values thunk (lambda _ #f))))
 
 ; run-with-ledger : procedure? -> list?
-;;   Returns I/O events in execution order for a drawing/export callback.
+;   Returns I/O events in execution order for a drawing/export callback.
 (define (run-with-ledger proc)
   (define ledger (box '()))
   (parameterize ([current-gpu-io-ledger ledger]) (proc))
   (reverse (unbox ledger)))
 
 ; readbacks : list? -> list?
-;;   Keeps only readback entries from an ordered GPU I/O ledger.
+;   Keeps only readback entries from an ordered GPU I/O ledger.
 (define (readbacks events)
   (filter (lambda (e) (equal? (hash-ref e 'kind) "readback")) events))
 
 
 ; make-gpu-output-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for bounded GPU document fallbacks with unchanged representation
-;;   policies.
+;   Builds the parameterized suite for bounded GPU document fallbacks with unchanged representation
+;   policies.
 (define (make-gpu-output-native-tests context other)
   (define executor (make-gpu-raster-executor context))
   (define backend (symbol->string (gpu-context-backend context)))

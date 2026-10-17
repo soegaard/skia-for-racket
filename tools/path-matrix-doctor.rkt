@@ -20,8 +20,8 @@
 ;;;
 
 ; path-matrix-doctor! : -> void?
-;;   Checks matrix ABI sizes, path snapshots, expired-source safety, affine transforms, and
-;;   path-measure frames.
+;   Checks matrix ABI sizes, path snapshots, expired-source safety, affine transforms, and
+;   path-measure frames.
 (define (path-matrix-doctor!)
   (unless (and (= (ctype-sizeof _sk-matrix) 36) (= (ctype-sizeof _sk-m44) 64))
     (error 'doctor "incorrect matrix struct layout"))

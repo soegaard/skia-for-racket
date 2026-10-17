@@ -16,9 +16,10 @@
          "core.rkt" (submod "core.rkt" gpu-surface-internals)
          (prefix-in n: "gpu-native.rkt"))
 (provide make-window-gl-access call-with-window-target draw-gpu-target-to-window!)
+
 ; make-window-gl-access : -> any
-;;   Constructs GUI-owned GL activation and framebuffer access without exposing them through public
-;;   frame values.
+;   Constructs GUI-owned GL activation and framebuffer access without exposing them through public
+;   frame values.
 (define (make-window-gl-access)
   (define-values (key describe resolve) (make-system-gl-tools))
   (define (bind name type)
@@ -98,8 +99,9 @@
         (bind-framebuffer #x8CA9 previous-draw)
         (bind-framebuffer #x8CA8 previous-read))))
   with-target)
+
 ; call-with-window-target : any/c any/c any/c -> any
-;;   Scopes a Skia wrapper around the current window target with its checked format description.
+;   Scopes a Skia wrapper around the current window target with its checked format description.
 (define (call-with-window-target context description proc)
   (define d (context-domain 'gpu-window context))
   (define p (domain-pointer d))
@@ -148,9 +150,10 @@
         (when handle (domain-resource-close! handle) (domain-drain! d))
         (when descriptor (delete-backend-target/native descriptor))
         (when space (skia-close! space))))))
+
 ; draw-gpu-target-to-window! : gpu-surface? gpu-surface? -> any
-;;   Copies a GPU-rendered source into the live presentation target without an implicit CPU
-;;   readback.
+;   Copies a GPU-rendered source into the live presentation target without an implicit CPU
+;   readback.
 (define (draw-gpu-target-to-window! source destination)
   (unless (and (gpu-surface? source) (gpu-surface? destination))
     (error 'gpu-window "expected two GPU surfaces"))

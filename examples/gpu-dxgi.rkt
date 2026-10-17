@@ -22,18 +22,21 @@
 ;;;
 
 (module+ main
+
   ; selection : symbol?
-  ;;   Selects selection for the example.
+  ;   Selects selection for the example.
   (define selection 'warp)
+
   ; index : exact-integer?
-  ;;   Selects the device or adapter enumeration index requested by the command line.
+  ;   Selects the device or adapter enumeration index requested by the command line.
   (define index 0)
   (command-line #:once-each
     [("--adapter") name "warp or hardware" (set! selection (string->symbol name))]
     [("--adapter-index") n "hardware enumeration index" (set! index (string->number n))]
     #:args () (void))
+
   ; draw : gpu-frame? -> void?
-  ;;   Draws the demonstration directly into the currently active presenter frame.
+  ;   Draws the demonstration directly into the currently active presenter frame.
   (define (draw frame)
     (define c (gpu-frame-canvas frame))
     (define w (gpu-frame-width frame)) (define h (gpu-frame-height frame))

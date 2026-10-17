@@ -22,7 +22,7 @@
 ;;;
 
 ; mock-domain : procedure? -> any
-;;   Supplies a recording provider/domain that exposes context-control calls without GPU creation.
+;   Supplies a recording provider/domain that exposes context-control calls without GPU creation.
 (define (mock-domain proc)
   (define log (box '()))
   (define current? (box #f))
@@ -42,7 +42,7 @@
     (lambda () (unless (memq (domain-state d) '(closed release-failed)) (domain-close! d)))))
 
 ; gpu-context-control-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-context-control-pure-test-count 22)
 
 ;;;
@@ -50,7 +50,7 @@
 ;;;
 
 ; gpu-context-control-pure-tests : test-suite?
-;;   Collects the regression cases for gPU context options and pure lifecycle.
+;   Collects the regression cases for gPU context options and pure lifecycle.
 (define gpu-context-control-pure-tests
   (test-suite "GPU context options and pure lifecycle"
     (test-case "six defaults"
@@ -194,7 +194,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-context-control-pure-tests))
   (printf "gpu-context-control-pure: ~a cases, ~a failures\n" gpu-context-control-pure-test-count
     failures)

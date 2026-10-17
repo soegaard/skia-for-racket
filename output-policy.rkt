@@ -63,10 +63,11 @@
 ;; meanings. This exception does not stand in for unrelated native failures.
 
 ; output-backends : (listof symbol?)
-;;   Lists the receiving representations accepted by the static capability policy.
+;   Lists the receiving representations accepted by the static capability policy.
 (define output-backends '(pdf svg raster))
+
 ; specifications : list?
-;;   Associates each feature with PDF status, SVG status, and an explanatory reason.
+;   Associates each feature with PDF status, SVG status, and an explanatory reason.
 (define specifications
   ;; feature       PDF                  SVG                  explanation
   '((output-group   vector               vector
@@ -181,15 +182,18 @@
      "Resource provenance was not recognized. This is not a claim of backend support.")
     (unknown-operation unknown           unknown
      "A native canvas operation is outside the audited operation table.")))
+
 ; output-feature-names : (listof symbol?)
-;;   Lists the feature names in capability-specification order.
+;   Lists the feature names in capability-specification order.
 (define output-feature-names (map car specifications))
+
 ; check-backend : symbol? any/c -> void?
-;;   Requires a supported PDF, SVG, or raster output backend.
+;   Requires a supported PDF, SVG, or raster output backend.
 (define (check-backend who b)
   (unless (memq b output-backends) (raise-argument-error who "'pdf, 'svg, or 'raster" b)))
+
 ; output-capability-for : (or/c 'pdf 'svg 'raster) symbol? -> output-capability?
-;;   Returns the capability entry for the backend and a symbol in output-feature-names.
+;   Returns the capability entry for the backend and a symbol in output-feature-names.
 (define (output-capability-for backend feature)
   (check-backend 'output-capability-for backend)
   (define row (assq feature specifications))
@@ -217,30 +221,35 @@
          [(and (eq? backend 'pdf) (eq? feature 'point-sprites))
           "Native PDF point geometry; cap and stroke settings determine the point shape."]
          [else (list-ref row 3)]))))
+
 ; blocking-statuses : (listof symbol?)
-;;   Lists capability outcomes that block policies requiring faithful native output.
+;   Lists capability outcomes that block policies requiring faithful native output.
 (define blocking-statuses '(needs-raster unsupported unknown discarded))
+
 ; blocking-status? : any/c -> boolean?
-;;   Recognizes a capability outcome that blocks strict output.
+;   Recognizes a capability outcome that blocks strict output.
 (define (blocking-status? s) (and (memq s blocking-statuses) #t))
+
 ; output-audit-report-blocking? : output-audit-report? -> boolean?
-;;   Reports whether any event has a blocking status: needs-raster, unsupported, unknown, or
-;;   discarded.
+;   Reports whether any event has a blocking status: needs-raster, unsupported, unknown, or
+;   discarded.
 (define (output-audit-report-blocking? r)
   (unless (output-audit-report? r)
     (raise-argument-error 'output-audit-report-blocking? "output-audit-report?" r))
   (for/or ([e (in-list (output-audit-report-events r))])
     (blocking-status? (output-audit-event-status e))))
+
 ; output-audit-report-vector-only? : output-audit-report? -> boolean?
-;;   Reports whether every event has status 'vector.
+;   Reports whether every event has status 'vector.
 (define (output-audit-report-vector-only? r)
   (unless (output-audit-report? r)
     (raise-argument-error 'output-audit-report-vector-only? "output-audit-report?" r))
   (for/and ([e (in-list (output-audit-report-events r))])
     (eq? (output-audit-event-status e) 'vector)))
+
 ; output-audit-report->jsexpr : output-audit-report? -> (and/c hash? immutable?)
-;;   Returns a detached JSON-compatible hash containing the backend, mode, page count, blocking and
-;;   vector-only summaries, scope qualification, and event details.
+;   Returns a detached JSON-compatible hash containing the backend, mode, page count, blocking and
+;   vector-only summaries, scope qualification, and event details.
 (define (output-audit-report->jsexpr r)
   (unless (output-audit-report? r)
     (raise-argument-error 'output-audit-report->jsexpr "output-audit-report?" r))

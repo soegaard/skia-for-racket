@@ -22,24 +22,24 @@
 
 ; float-fixture-info : symbol? [exact-positive-integer? exact-positive-integer? symbol? any/c] ->
 ; image-info?
-;;   Builds explicit float storage metadata for size, alpha interpretation, and color space.
+;   Builds explicit float storage metadata for size, alpha interpretation, and color space.
 (define (float-fixture-info format [width 64] [height 32] [alpha 'premul] [space 'srgb])
   (make-image-info width height #:color-type format #:alpha-type alpha #:color-space space))
 
 ; with-float-buffer : symbol? procedure? [#:width exact-positive-integer? #:height
 ; exact-positive-integer? #:alpha-type symbol? #:color-space any/c] -> any
-;;   Scopes a float raster buffer with the requested storage interpretation.
+;   Scopes a float raster buffer with the requested storage interpretation.
 (define (with-float-buffer format proc #:width [width 4] #:height [height 2]
                            #:alpha-type [alpha 'premul] #:color-space [space 'srgb])
   (with-skia ([b (make-raster-buffer-from-info (float-fixture-info format width height alpha space))])
     (proc b)))
 
 ; float-scene-names : (listof symbol?)
-;;   Lists clear and shader scenes used for CPU/GPU float-color comparisons.
+;   Lists clear and shader scenes used for CPU/GPU float-color comparisons.
 (define float-scene-names '(clear solid linear radial sweep conical))
 
 ; draw-float-scene : symbol? canvas? -> any
-;;   Draws a shared floating-color scene without converting its colors to byte arguments.
+;   Draws a shared floating-color scene without converting its colors to byte arguments.
 (define (draw-float-scene name canvas)
   (define fixed (make-color4f 0.125 0.375 0.625))
   (define same (list fixed fixed))
@@ -64,7 +64,7 @@
            (draw-rect canvas 0 0 64 32 p))))]))
 
 ; make-float-fixture-buffer : symbol? symbol? -> raster-buffer?
-;;   Creates an owned float buffer containing the requested sample or drawing scene.
+;   Creates an owned float buffer containing the requested sample or drawing scene.
 (define (make-float-fixture-buffer format scene)
   (define b (make-raster-buffer-from-info (float-fixture-info format)))
   (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! b) (raise e))])
@@ -82,7 +82,7 @@
     b))
 
 ; make-float-fixture-image : symbol? symbol? -> image?
-;;   Converts the float fixture explicitly to an sRGB integer image for ordinary output.
+;   Converts the float fixture explicitly to an sRGB integer image for ordinary output.
 (define (make-float-fixture-image format scene)
   (with-skia ([source (make-float-fixture-buffer format scene)]
               [integer (raster-buffer-convert source (make-image-info 64 32 #:color-space 'srgb))])

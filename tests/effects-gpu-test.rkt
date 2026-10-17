@@ -22,20 +22,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
 
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
 
   ; report-path : (or/c path-string? #f)
-  ;;   Holds the destination for this run's machine-readable evidence report.
+  ;   Holds the destination for this run's machine-readable evidence report.
   (define report-path #f)
 
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line
    #:once-each
@@ -49,7 +49,7 @@
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
 
   ; new-context : -> gpu-context?
-  ;;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
+  ;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
   (define (new-context)
     (case backend
       [(egl) (make-egl-gpu-context)]
@@ -61,34 +61,34 @@
   ;; ownership check instead of the scope-construction guard.
 
   ; ctx : gpu-context?
-  ;;   Owns the primary native GPU context used by the fixture run.
+  ;   Owns the primary native GPU context used by the fixture run.
   (define ctx (new-context))
 
   ; other : (or/c gpu-context? #f)
-  ;;   Owns a second context used to verify cross-context resource rejection.
+  ;   Owns a second context used to verify cross-context resource rejection.
   (define other (new-context))
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
 
   ; frames : exact-nonnegative-integer?
-  ;;   Counts successfully rendered fixture frames for the evidence report.
+  ;   Counts successfully rendered fixture frames for the evidence report.
   (define frames 0)
 
   ; readbacks : exact-nonnegative-integer?
-  ;;   Counts explicit GPU-to-CPU transfers used to inspect rendered output.
+  ;   Counts explicit GPU-to-CPU transfers used to inspect rendered output.
   (define readbacks 0)
 
   ; count-reads : box? -> exact-nonnegative-integer?
-  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
-  ;;   inspection.
+  ;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;   inspection.
   (define (count-reads ledger)
     (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
 
   ; render : procedure? -> bytes?
-  ;;   Renders an effect fixture without implicit readbacks, then performs exactly one explicit RGBA
-  ;;   capture.
+  ;   Renders an effect fixture without implicit readbacks, then performs exactly one explicit RGBA
+  ;   capture.
   (define (render draw)
     (with-skia ([s (make-gpu-surface ctx effect-width effect-height)])
       (define ledger (box '()))

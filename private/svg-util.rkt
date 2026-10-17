@@ -18,29 +18,29 @@
 ;;;
 
 ; svg-dimension : symbol? real? -> inexact-real?
-;;   Checks an SVG extent from 1/1000 through 32768 units and converts it for native calls.
+;   Checks an SVG extent from 1/1000 through 32768 units and converts it for native calls.
 (define (svg-dimension who v)
   (unless (and (real? v) (<= 1/1000 v 32768))
     (raise-argument-error who "finite real from 0.001 through 32768 SVG units" v))
   (exact->inexact v))
 
 ; check-svg-size : symbol? exact-nonnegative-integer? -> void?
-;;   Enforces the current byte budget during SVG construction and rewriting.
+;   Enforces the current byte budget during SVG construction and rewriting.
 (define (check-svg-size who n)
   (unless (<= n (current-skia-byte-limit))
     (raise-arguments-error who "SVG output exceeds current-skia-byte-limit"
                            "required bytes" n "limit" (current-skia-byte-limit))))
 
 ; xml-character? : char? -> boolean?
-;;   Recognizes XML 1.0 character ranges before inserting user metadata into generated SVG.
+;   Recognizes XML 1.0 character ranges before inserting user metadata into generated SVG.
 (define (xml-character? ch)
   (define n (char->integer ch))
   (or (= n 9) (= n 10) (= n 13)
       (<= #x20 n #xd7ff) (<= #xe000 n #xfffd) (<= #x10000 n #x10ffff)))
 
 ; escape-svg-metadata : symbol? string? -> bytes?
-;;   Validates XML characters and escapes user metadata as bounded UTF-8, leaving already generated
-;;   native XML outside this operation.
+;   Validates XML characters and escapes user metadata as bounded UTF-8, leaving already generated
+;   native XML outside this operation.
 (define (escape-svg-metadata who s)
   (unless (string? s) (raise-argument-error who "XML-compatible string" s))
   (unless (for/and ([ch (in-string s)]) (xml-character? ch))
@@ -59,7 +59,7 @@
   (get-output-bytes out))
 
 ; svg-metadata : symbol? string? string? -> (values bytes? bytes?)
-;;   Returns escaped title and description bytes after checking their combined budget.
+;   Returns escaped title and description bytes after checking their combined budget.
 (define (svg-metadata who title description)
   (define t (escape-svg-metadata who title))
   (define d (escape-svg-metadata who description))
@@ -67,7 +67,7 @@
   (values t d))
 
 ; svg-id-prefix : symbol? string? -> bytes?
-;;   Checks a 1-to-64-character ASCII identifier prefix with a letter or underscore first.
+;   Checks a 1-to-64-character ASCII identifier prefix with a letter or underscore first.
 (define (svg-id-prefix who v)
   (unless (and (string? v) (<= 1 (string-length v) 64)
                (regexp-match? #rx"^[A-Za-z_][A-Za-z0-9_.-]*$" v))
@@ -82,7 +82,7 @@
 ;;;
 
 ; limited-replace* : symbol? byte-regexp? bytes? procedure? -> bytes?
-;;   Performs byte replacements while checking each incremental output against the SVG budget.
+;   Performs byte replacements while checking each incremental output against the SVG budget.
 (define (limited-replace* who pattern input replace)
   (define size (bytes-length input))
   (check-svg-size who size)
@@ -95,8 +95,8 @@
      bs)))
 
 ; canonical-svg-ids : symbol? bytes? bytes? -> bytes?
-;;   Renumbers IDs in generated SVG definition order and rewrites local references, rejecting
-;;   duplicate or unresolved IDs while preserving external URIs and text.
+;   Renumbers IDs in generated SVG definition order and rewrites local references, rejecting
+;   duplicate or unresolved IDs while preserving external URIs and text.
 (define (canonical-svg-ids who input prefix)
   ;; The pinned backend uses process-global clip generation IDs. Renumber ALL
   ;; native resource IDs in definition order and update their attribute refs.
@@ -134,8 +134,8 @@
      (bytes-append name #"=\"" replacement #"\""))))
 
 ; finish-svg-xml : symbol? bytes? real? real? bytes? bytes? bytes? -> bytes?
-;;   Finalizes native SVG with canonical IDs, explicit dimensions and viewBox, and escaped
-;;   title/description metadata; returns an immutable byte snapshot.
+;   Finalizes native SVG with canonical IDs, explicit dimensions and viewBox, and escaped
+;   title/description metadata; returns an immutable byte snapshot.
 (define (finish-svg-xml who input width height title description prefix)
   (unless (bytes? input) (raise-argument-error who "bytes?" input))
   (check-svg-size who (bytes-length input))
@@ -173,8 +173,8 @@
 ;;;
 
 ; svg-output-path : symbol? path-string? symbol? -> path?
-;;   Checks a complete NUL-free destination, existing parent, and error-or-replace policy before SVG
-;;   publication.
+;   Checks a complete NUL-free destination, existing parent, and error-or-replace policy before SVG
+;   publication.
 (define (svg-output-path who filename exists)
   (unless (path-string? filename) (raise-argument-error who "path-string?" filename))
   (unless (memq exists '(error replace))
@@ -191,8 +191,8 @@
   target)
 
 ; write-svg-file-bytes! : symbol? bytes? path-string? symbol? -> void?
-;;   Publishes bounded SVG bytes by same-directory atomic rename and removes temporary output on
-;;   unsuccessful exit.
+;   Publishes bounded SVG bytes by same-directory atomic rename and removes temporary output on
+;   unsuccessful exit.
 (define (write-svg-file-bytes! who bs filename exists)
   (unless (bytes? bs) (raise-argument-error who "bytes?" bs))
   (check-svg-size who (bytes-length bs))
@@ -221,8 +221,8 @@
 
 ; rasterized-dimensions : symbol? real? real? real? -> (values exact-positive-integer?
 ;   exact-positive-integer?)
-;;   Rounds scaled positive logical extents up to pixel dimensions and checks the resulting RGBA
-;;   allocation.
+;   Rounds scaled positive logical extents up to pixel dimensions and checks the resulting RGBA
+;   allocation.
 (define (rasterized-dimensions who width height scale)
   (define w (positive-scalar who width))
   (define h (positive-scalar who height))

@@ -17,17 +17,21 @@
 ;;;
 
 (module+ main
+
   ; output : string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define output "output/egl-headless.png")
+
   ; platform : symbol?
-  ;;   Selects platform for the example.
+  ;   Selects platform for the example.
   (define platform 'surfaceless)
+
   ; index : exact-integer?
-  ;;   Selects the device or adapter enumeration index requested by the command line.
+  ;   Selects the device or adapter enumeration index requested by the command line.
   (define index 0)
+
   ; binding-surface : symbol?
-  ;;   Selects binding surface for the example.
+  ;   Selects binding surface for the example.
   (define binding-surface 'surfaceless)
   (command-line #:once-each
     [("--output") path "PNG destination" (set! output path)]
@@ -35,12 +39,14 @@
     [("--egl-device-index") value "Device enumeration index" (set! index (string->number value))]
     [("--egl-surface") name "surfaceless or pbuffer" (set! binding-surface (string->symbol name))]
     #:args () (void))
+
   ; context : gpu-context?
-  ;;   Owns the explicitly selected GPU context for the example's rendering work.
+  ;   Owns the explicitly selected GPU context for the example's rendering work.
   (define context (make-egl-gpu-context #:platform platform #:device-index index #:surface
     binding-surface))
+
   ; image : image?
-  ;;   Retains the rendered image for output after the drawing operation completes.
+  ;   Retains the rendered image for output after the drawing operation completes.
   (define image
     (dynamic-wind
       void

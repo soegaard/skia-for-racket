@@ -50,7 +50,7 @@
 ;; caller keeps any resources captured by draw valid for every rendering.
 
 ; unit->points : real? [(or/c 'pt 'in 'mm 'cm 'px)] -> real?
-;;   Converts a length to points.
+;   Converts a length to points.
 (define (unit->points value [unit 'pt])
   (define factor (output-unit-factor 'unit->points unit))
   (scalar 'unit->points value)
@@ -61,7 +61,7 @@
 ; make-output-page : (and/c real? (>/c 0)) (and/c real? (>/c 0)) (-> canvas? any) [#:unit (or/c 'pt
 ;   'in 'mm 'cm 'px)] [#:margins (or/c real? list?)] [#:background (or/c color? #f)] [#:clip?
 ;   boolean?] -> output-page?
-;;   Returns a page description without invoking draw or allocating native storage.
+;   Returns a page description without invoking draw or allocating native storage.
 (define (make-output-page width height draw #:unit [unit 'pt]
                           #:margins [margins 0] #:background [background #f]
                           #:clip? [clip? #t])
@@ -83,20 +83,20 @@
   (make-output-page-record width height unit insets bg clip? draw))
 
 ; check-page : symbol? output-page? -> output-page?
-;;   Checks a reusable page description without running its drawing callback.
+;   Checks a reusable page description without running its drawing callback.
 (define (check-page who p)
   (unless (output-page? p) (raise-argument-error who "output-page?" p))
   p)
 
 ; output-page-size-in-points : output-page? -> (values real? real?)
-;;   Returns the full page width and height converted to points, without subtracting margins.
+;   Returns the full page width and height converted to points, without subtracting margins.
 (define (output-page-size-in-points page)
   (check-page 'output-page-size-in-points page)
   (define factor (output-unit-factor 'output-page-size-in-points (output-page-unit page)))
   (values (* (output-page-width page) factor) (* (output-page-height page) factor)))
 
 ; output-page-content-size : output-page? -> (values real? real?)
-;;   Returns width and height after subtracting margins, in the page's own units, not points.
+;   Returns width and height after subtracting margins, in the page's own units, not points.
 (define (output-page-content-size page)
   (check-page 'output-page-content-size page)
   (define m (output-page-margins page))
@@ -104,14 +104,14 @@
           (- (output-page-height page) (cadr m) (cadddr m))))
 
 ; page-raster-scale : symbol? output-page? real? -> real?
-;;   Converts document DPI to a checked pixel scale in the page's logical units.
+;   Converts document DPI to a checked pixel scale in the page's logical units.
 (define (page-raster-scale who page dpi)
   (define scale (* (/ dpi 72) (output-unit-factor who (output-page-unit page))))
   (raster-output-scale who scale))
 
 ; draw-output-page : canvas? output-page? [#:text-mode (or/c 'native 'outline)] [#:raster-dpi
 ;   (real-in 1 9600)] -> void?
-;;   Draws the page on a canvas whose current coordinate unit is treated as a point.
+;   Draws the page on a canvas whose current coordinate unit is treated as a point.
 (define (draw-output-page c page #:text-mode [mode 'native] #:raster-dpi [dpi 144])
   (define who 'draw-output-page)
   (check-page who page)
@@ -138,7 +138,7 @@
 
 ; output-page->image : output-page? [#:dpi (real-in 1 9600)] [#:text-mode (or/c 'native 'outline)]
 ;   [#:color-space (or/c color-space? #f)] -> image?
-;;   Returns an owned raster image of the page.
+;   Returns an owned raster image of the page.
 (define (output-page->image page #:dpi [dpi 96] #:text-mode [mode 'native]
                             #:color-space [cs #f])
   (define who 'output-page->image)
@@ -158,14 +158,14 @@
     (surface-snapshot surface)))
 
 ; check-format : symbol? any/c -> (or/c 'pdf 'svg)
-;;   Checks and returns the requested document output format.
+;   Checks and returns the requested document output format.
 (define (check-format who format)
   (unless (memq format '(pdf svg))
     (raise-argument-error who "'pdf or 'svg" format))
   format)
 
 ; output-pages : symbol? any/c symbol? -> (listof output-page?)
-;;   Normalizes pages in authoring order and requires exactly one viewport for SVG.
+;   Normalizes pages in authoring order and requires exactly one viewport for SVG.
 (define (output-pages who source format)
   (check-format who format)
   (define pages
@@ -182,7 +182,7 @@
 ;   [#:description string?] [#:text-mode (or/c 'auto 'native 'outline)] [#:raster-dpi (real-in 1
 ;   9600)] [#:id-prefix (or/c string? #f)] [#:encoding-quality (or/c (integer-in 0 101) #f)]
 ;   [#:pdfa? boolean?] -> (and/c bytes? (not/c immutable?))
-;;   Returns a completed PDF or SVG byte string.
+;   Returns a completed PDF or SVG byte string.
 (define (output->bytes source format #:title [title ""] #:description [description ""]
                        #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
                        #:id-prefix [prefix #f] #:encoding-quality [quality #f]
@@ -229,7 +229,7 @@
 ;   (or/c 'error 'replace)] [#:title string?] [#:description string?] [#:text-mode (or/c 'auto
 ;   'native 'outline)] [#:raster-dpi (real-in 1 9600)] [#:id-prefix (or/c string? #f)]
 ;   [#:encoding-quality (or/c (integer-in 0 101) #f)] [#:pdfa? boolean?] -> void?
-;;   Exports as in output->bytes and publishes the completed file.
+;   Exports as in output->bytes and publishes the completed file.
 (define (save-output source filename format #:exists [exists 'error]
                      #:title [title ""] #:description [description ""]
                      #:text-mode [mode 'auto] #:raster-dpi [dpi 144]

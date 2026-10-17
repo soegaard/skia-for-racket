@@ -25,14 +25,15 @@
 
 ; layer-arguments : symbol? layer-options? (or/c #f paint?) (or/c #f image-filter?)
 ;                   -> (values any/c any/c any/c)
-;;   Validates layer inputs and returns optional native bounds and owned handles.
+;   Validates layer inputs and returns optional native bounds and owned handles.
 (define (layer-arguments who options paint backdrop)
   (unless (layer-options? options) (raise-argument-error who "layer-options?" options))
   (values (and (layer-options-bounds options)
                (apply rect who (vector->list (layer-options-bounds options))))
           (and paint (paint-h who paint)) (and backdrop (image-filter-h who backdrop))))
+
 ; save-layer : symbol? canvas? layer-options? any/c any/c any/c -> exact-integer?
-;;   Saves the native layer while pinning dependencies and reporting its audit flags.
+;   Saves the native layer while pinning dependencies and reporting its audit flags.
 (define (save-layer who c options bounds ph bh)
   (define handles (append (if ph (list ph) '()) (if bh (list bh) '())))
   (call-on-canvas who c handles
@@ -52,17 +53,18 @@
 ; canvas-save-layer-rec! : canvas? [#:options layer-options?]
 ;                          [#:paint (or/c #f paint?)]
 ;                          [#:backdrop (or/c #f image-filter?)] -> exact-integer?
-;;   Pushes an explicitly configured layer and returns the prior canvas save count.
+;   Pushes an explicitly configured layer and returns the prior canvas save count.
 (define (canvas-save-layer-rec! c #:options [options (make-layer-options)]
                                 #:paint [paint #f] #:backdrop [backdrop #f])
   (define who 'canvas-save-layer-rec!)
   (define-values (bounds ph bh) (layer-arguments who options paint backdrop))
   (save-layer who c options bounds ph bh))
+
 ; call-with-canvas-layer-rec : canvas? (-> any) [#:options layer-options?]
 ;                             [#:paint (or/c #f paint?)]
 ;                             [#:backdrop (or/c #f image-filter?)]
 ;                             [#:clip (or/c #f list? vector?)] -> any
-;;   Runs a callback in a protected layer and composites it when the scope exits.
+;   Runs a callback in a protected layer and composites it when the scope exits.
 (define (call-with-canvas-layer-rec c thunk #:options [options (make-layer-options)]
                                     #:paint [paint #f] #:backdrop [backdrop #f]
                                     #:clip [clip #f])
@@ -102,8 +104,9 @@
       (call-with-canvas-state c
         (lambda () (apply canvas-clip-rect! c (vector->list checked-clip)) (run)))
       (run)))
+
 ; canvas-discard! : canvas? -> void?
-;;   Marks prior canvas contents as disposable before a complete overwrite.
+;   Marks prior canvas contents as disposable before a complete overwrite.
 (define (canvas-discard! c)
   ;; Discard is a content-invalidating optimization hint, NOT a clear. A
   ;; complete overwrite must precede any subsequent use of discarded pixels.

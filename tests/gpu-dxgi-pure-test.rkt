@@ -22,8 +22,8 @@
 ;;;
 
 ; fixture : procedure? [procedure?] -> any
-;;   Supplies a synthetic presenter with mutable metrics, acquisition counters, and queued
-;;   callbacks.
+;   Supplies a synthetic presenter with mutable metrics, acquisition counters, and queued
+;   callbacks.
 (define (fixture proc [render void])
   (define outcome (box 'occluded))
   (define metrics (box (presentation-metrics 120 80 60 40)))
@@ -50,8 +50,8 @@
 ;;;
 
 ; gpu-dxgi-pure-tests : test-suite?
-;;   Collects the regression cases for dXGI policy and shared presenter semantics; no Windows/Skia
-;;   calls.
+;   Collects the regression cases for dXGI policy and shared presenter semantics; no Windows/Skia
+;   calls.
 (define gpu-dxgi-pure-tests
   (test-suite
    "DXGI policy and shared presenter semantics; no Windows/Skia calls"

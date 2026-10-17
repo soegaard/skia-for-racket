@@ -21,18 +21,18 @@
 ;;;
 
 ; dc-consumer-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-consumer-native-test-count 16)
 
 ; using : procedure? [real?] -> any
-;;   Scopes a cleared consumer-sized Skia DC at the requested backing scale.
+;   Scopes a cleared consumer-sized Skia DC at the requested backing scale.
 (define (using f [backing 1])
   (define dc (new skia-dc% [width consumer-width] [height consumer-height]
                  [backing-scale backing] [smoothing 'smoothed]))
   (dynamic-wind void (lambda () (send dc clear) (f dc)) (lambda () (send dc close))))
 
 ; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Copies one RGBA pixel from the consumer's captured backing store.
+;   Copies one RGBA pixel from the consumer's captured backing store.
 (define (pixel dc x y)
   (define data (send dc get-rgba-bytes))
   (define-values (w h) (send dc get-pixel-size))
@@ -41,13 +41,13 @@
 
 ; near-pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? (listof byte?) [real?] ->
 ; void?
-;;   Checks a consumer probe pixel within the allowed channel tolerance.
+;   Checks a consumer probe pixel within the allowed channel tolerance.
 (define (near-pixel dc x y expected [tolerance 2])
   (for ([a (in-list (pixel dc x y))] [e (in-list expected)])
     (check-true (<= (abs (- a e)) tolerance))))
 
 ; pict-ink : dc<%> [real?] -> void?
-;;   Checks colored pict landmarks after accounting for backing scale.
+;   Checks colored pict landmarks after accounting for backing scale.
 (define (pict-ink dc [b 1])
   (near-pixel dc (* b 24) (* b 24) '(255 0 0 255))
   (near-pixel dc (* b 18) (* b 72) '(255 128 128 255))
@@ -56,15 +56,15 @@
   (near-pixel dc (* b 164) (* b 16) '(20 180 60 255)))
 
 ; blue? : byte? byte? byte? -> boolean?
-;;   Recognizes blue plot ink while allowing antialiasing variation.
+;   Recognizes blue plot ink while allowing antialiasing variation.
 (define (blue? r g b) (and (> b 160) (< r 100) (< g 100)))
 
 ; red? : byte? byte? byte? -> boolean?
-;;   Recognizes red plot ink while allowing antialiasing variation.
+;   Recognizes red plot ink while allowing antialiasing variation.
 (define (red? r g b) (and (> r 160) (< g 100) (< b 100)))
 
 ; plot-ink : dc<%> hash? [real?] -> void?
-;;   Searches near mapped plot landmarks for the expected red or blue ink.
+;   Searches near mapped plot landmarks for the expected red or blue ink.
 (define (plot-ink dc layout [backing 1])
   (define data (send dc get-rgba-bytes))
   (define-values (w h) (send dc get-pixel-size))
@@ -84,7 +84,7 @@
      (format "missing plot ink near data coordinate ~a,~a" (car entry) (cadr entry)))))
 
 ; both-recordings : procedure? -> void?
-;;   Compares pixels from procedural and datum-based replay of one consumer drawing.
+;   Compares pixels from procedural and datum-based replay of one consumer drawing.
 (define (both-recordings draw)
   (define-values (proc datum _) (record-consumer draw))
   (define a (using (lambda (dc) (proc dc) (send dc get-rgba-bytes #:premultiplied? #t))))
@@ -93,11 +93,11 @@
   (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) 2))))
 
 ; picture : -> pict?
-;;   Constructs the consumer pict using a temporarily live Skia metrics DC.
+;   Constructs the consumer pict using a temporarily live Skia metrics DC.
 (define (picture) (using make-consumer-pict))
 
 ; drawing : pict? -> procedure?
-;;   Adapts a prepared pict to the one-argument drawing callback used by replay tests.
+;   Adapts a prepared pict to the one-argument drawing callback used by replay tests.
 (define (drawing p) (lambda (dc) (draw-consumer-pict dc p)))
 
 ;;;
@@ -105,8 +105,8 @@
 ;;;
 
 ; dc-consumer-native-tests : test-suite?
-;;   Collects the regression cases for direct pict and plot/no-gui consumers on the existing Skia DC
-;;   subset.
+;   Collects the regression cases for direct pict and plot/no-gui consumers on the existing Skia DC
+;   subset.
 (define dc-consumer-native-tests
   (test-suite
    "Direct pict and plot/no-gui consumers on the existing Skia DC subset"

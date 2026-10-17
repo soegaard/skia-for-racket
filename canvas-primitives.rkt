@@ -33,27 +33,31 @@
 ;;                              is a nonnegative drawing scalar.
 ;; The specification preserves requested radii. Native normalization may reduce
 ;; overlapping radii when the rectangle is submitted or explicitly normalized.
+
 ; sequence-list : symbol? (or/c list? vector?) -> list?
-;;   Normalizes ordered coordinate sequences to lists.
+;   Normalizes ordered coordinate sequences to lists.
 (define (sequence-list who v)
   (cond [(list? v) v] [(vector? v) (vector->list v)]
         [else (raise-argument-error who "list? or vector?" v)]))
+
 ; rectangle-spec : symbol? any/c -> sk-rect?
-;;   Validates a four-element x/y/width/height rectangle and converts it to native edges.
+;   Validates a four-element x/y/width/height rectangle and converts it to native edges.
 (define (rectangle-spec who v)
   (define xs (sequence-list who v))
   (unless (= (length xs) 4)
     (raise-argument-error who "four-element (x y width height) list/vector" v))
   (apply rect who xs))
+
 ; rect-values : sk-rect? -> vector?
-;;   Copies native rectangle edges into an immutable x/y/width/height vector.
+;   Copies native rectangle edges into an immutable x/y/width/height vector.
 (define (rect-values r)
   (vector-immutable (sk-rect-left r) (sk-rect-top r)
                     (- (sk-rect-right r) (sk-rect-left r))
                     (- (sk-rect-bottom r) (sk-rect-top r))))
+
 ; make-rounded-rect : real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:radii (or/c real?
 ;   list? vector?)] -> rounded-rect?
-;;   Returns a copied specification.
+;   Returns a copied specification.
 (define (make-rounded-rect x y width height #:radii [radii 0])
   (define who 'make-rounded-rect)
   (define rr (rect who x y width height))
@@ -71,13 +75,15 @@
   (make-rounded-rect-record (rect-values rr)
                             (vector->immutable-vector
                              (list->vector (map (lambda (xy) (apply vector-immutable xy)) rs)))))
+
 ; check-rounded-rect : symbol? any/c -> void?
-;;   Requires a detached rounded-rectangle value before native conversion.
+;   Requires a detached rounded-rectangle value before native conversion.
 (define (check-rounded-rect who rr)
   (unless (rounded-rect? rr) (raise-argument-error who "rounded-rect?" rr)))
+
 ; call-with-rrect : symbol? rounded-rect? procedure? -> any/c
-;;   Lends a temporary native rounded rectangle and retains its corner-radius buffer through the
-;;   call.
+;   Lends a temporary native rounded rectangle and retains its corner-radius buffer through the
+;   call.
 (define (call-with-rrect who rr proc)
   (define bounds (rectangle-spec who (rounded-rect-bounds rr)))
   (define radii (malloc 32 'atomic))
@@ -95,10 +101,11 @@
 ;;;
 
 ; point-modes : (hash/c symbol? exact-nonnegative-integer?)
-;;   Maps public point-drawing modes to their native ABI enumeration.
+;   Maps public point-drawing modes to their native ABI enumeration.
 (define point-modes (hasheq 'points 0 'lines 1 'polygon 2))
+
 ; checked-points : symbol? any/c symbol? -> list?
-;;   Checks point shape, native coordinate ranges, pair counts, and expanded polygon buffer budgets.
+;   Checks point shape, native coordinate ranges, pair counts, and expanded polygon buffer budgets.
 (define (checked-points who points mode)
   (define xs (sequence-list who points))
   (define n (length xs))
@@ -116,16 +123,18 @@
     (unless (= (length xy) 2)
       (raise-argument-error who "two-element point list/vector" point))
     (map (lambda (v) (scalar who v)) xy)))
+
 ; draw-point : canvas? real? real? paint? -> void?
-;;   Draws a point using the paint's stroke width and cap.
+;   Draws a point using the paint's stroke width and cap.
 (define (draw-point c x y paint)
   (define who 'draw-point)
   (define fx (scalar who x))
   (define fy (scalar who y))
   (call-on-canvas who c (list (paint-h who paint))
                   (lambda (cp pp) (sk_canvas_draw_point cp fx fy pp))))
+
 ; draw-points : canvas? (or/c list? vector?) paint? [#:mode (or/c 'points 'lines 'polygon)] -> void?
-;;   Draws a list or vector of two-coordinate point lists or vectors.
+;   Draws a list or vector of two-coordinate point lists or vectors.
 (define (draw-points c points paint #:mode [mode 'points])
   (define who 'draw-points)
   (define requested-mode (choice who mode point-modes))
@@ -151,9 +160,10 @@
        (sk_canvas_draw_points cp m n data pp)
        (void/reference-sink data xy))))
   (void))
+
 ; draw-arc : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) real? real? paint?
 ;   [#:use-center? boolean?] -> void?
-;;   Draws an arc of the oval bounds.
+;   Draws an arc of the oval bounds.
 (define (draw-arc c x y width height start sweep paint #:use-center? [use-center? #f])
   (define who 'draw-arc)
   (define bounds (rect who x y width height))
@@ -162,15 +172,17 @@
   (boolean who use-center?)
   (call-on-canvas who c (list (paint-h who paint))
                   (lambda (cp pp) (sk_canvas_draw_arc cp bounds a b use-center? pp))))
+
 ; draw-rrect : canvas? rounded-rect? paint? -> void?
-;;   Draws the native-normalized rounded rectangle with the paint's fill/stroke style.
+;   Draws the native-normalized rounded rectangle with the paint's fill/stroke style.
 (define (draw-rrect c rr paint)
   (define who 'draw-rrect)
   (check-rounded-rect who rr)
   (call-on-canvas who c (list (paint-h who paint))
     (lambda (cp pp) (call-with-rrect who rr (lambda (rp) (sk_canvas_draw_rrect cp rp pp))))))
+
 ; draw-double-rounded-rect : canvas? rounded-rect? rounded-rect? paint? -> void?
-;;   Draws the outer rounded rectangle with the inner shape removed.
+;   Draws the outer rounded rectangle with the inner shape removed.
 (define (draw-double-rounded-rect c outer inner paint)
   (define who 'draw-double-rounded-rect)
   (check-rounded-rect who outer)
@@ -195,11 +207,12 @@
                                     "inner bounds" (rounded-rect-bounds inner)))
            (call-with-rrect who inner (lambda (ip) (sk_canvas_draw_drrect cp op ip pp)))])))))
   (void))
+
 ; draw-color : canvas? color? [#:blend-mode (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in
 ;   'dst-in 'src-out 'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken
 ;   'lighten 'color-dodge 'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue
 ;   'saturation 'color 'luminosity)] -> void?
-;;   Blends the color across the current device clip, independently of the current local transform.
+;   Blends the color across the current device clip, independently of the current local transform.
 (define (draw-color c color #:blend-mode [mode 'src-over])
   (define argb (color->argb color))
   (define m (choice 'draw-color mode blend-values))
@@ -210,9 +223,10 @@
    c (lambda ()
        (canvas-reset-transform! c)
        (call-on-canvas 'draw-color c '() (lambda (cp) (sk_canvas_draw_color cp argb m))))))
+
 ; canvas-clip-rounded-rect! : canvas? rounded-rect? [#:operation (or/c 'intersect 'difference)]
 ;   [#:antialias? boolean?] -> void?
-;;   Combines the current clip with the native-normalized rounded boundary in local coordinates.
+;   Combines the current clip with the native-normalized rounded boundary in local coordinates.
 (define (canvas-clip-rounded-rect! c rr #:operation [operation 'intersect]
                                    #:antialias? [aa? #f])
   (define who 'canvas-clip-rounded-rect!)
@@ -238,18 +252,20 @@
 
 ;; Query rectangles are detached values. Local bounds may be conservatively
 ;; expanded; device bounds are integral and do not follow the current CTM.
+
 ; canvas-local-clip-bounds : canvas? -> (or/c #f (and/c (vector/c real? real? real? real?)
 ;   immutable?))
-;;   Returns detached conservative clip bounds in current local coordinates, or #f when native
-;;   bounds are unavailable.
+;   Returns detached conservative clip bounds in current local coordinates, or #f when native
+;   bounds are unavailable.
 (define (canvas-local-clip-bounds c)
   (define bounds (make-sk-rect 0.0 0.0 0.0 0.0))
   (call-on-canvas 'canvas-local-clip-bounds c '()
     (lambda (cp) (and (sk_canvas_get_local_clip_bounds cp bounds) (rect-values bounds)))))
+
 ; canvas-device-clip-bounds : canvas? -> (or/c #f (and/c (vector/c exact-integer? exact-integer?
 ;   exact-integer? exact-integer?) immutable?))
-;;   Returns detached integer clip bounds in device coordinates, or #f when native bounds are
-;;   unavailable.
+;   Returns detached integer clip bounds in device coordinates, or #f when native bounds are
+;   unavailable.
 (define (canvas-device-clip-bounds c)
   (define bounds (make-sk-irect 0 0 0 0))
   (call-on-canvas 'canvas-device-clip-bounds c '()
@@ -258,17 +274,20 @@
            (vector-immutable (sk-irect-left bounds) (sk-irect-top bounds)
                              (- (sk-irect-right bounds) (sk-irect-left bounds))
                              (- (sk-irect-bottom bounds) (sk-irect-top bounds)))))))
+
 ; canvas-clip-empty? : canvas? -> boolean?
-;;   Reports whether the current clip is empty.
+;   Reports whether the current clip is empty.
 (define (canvas-clip-empty? c)
   (call-on-canvas 'canvas-clip-empty? c '() sk_canvas_is_clip_empty))
+
 ; canvas-clip-rect? : canvas? -> boolean?
-;;   Reports whether the current clip is represented as a nonempty rectangle.
+;   Reports whether the current clip is represented as a nonempty rectangle.
 (define (canvas-clip-rect? c)
   (call-on-canvas 'canvas-clip-rect? c '() sk_canvas_is_clip_rect))
+
 ; canvas-quick-reject? : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) ->
 ;   boolean?
-;;   Returns #t when the transformed local rectangle can be rejected against the current clip.
+;   Returns #t when the transformed local rectangle can be rejected against the current clip.
 (define (canvas-quick-reject? c x y width height)
   (define bounds (rect 'canvas-quick-reject? x y width height))
   (call-on-canvas 'canvas-quick-reject? c '() (lambda (cp) (sk_canvas_quick_reject cp bounds))))
@@ -279,23 +298,26 @@
 ;;;
 
 ; layer-arguments : symbol? any/c any/c -> (values any/c any/c)
-;;   Converts optional layer bounds and paint to a native rectangle and managed handle.
+;   Converts optional layer bounds and paint to a native rectangle and managed handle.
 (define (layer-arguments who bounds paint)
   (values (and bounds (rectangle-spec who bounds)) (and paint (paint-h who paint))))
+
 ; save-layer/checked : symbol? canvas? any/c any/c -> exact-positive-integer?
-;;   Saves a native layer while holding the canvas and any supplied paint handle.
+;   Saves a native layer while holding the canvas and any supplied paint handle.
 (define (save-layer/checked who c bounds ph)
   (call-on-canvas who c (if ph (list ph) '())
     (lambda (cp . ps) (sk_canvas_save_layer cp bounds (and ph (car ps))))))
+
 ; canvas-save-layer! : canvas? [#:bounds (or/c #f list? vector?)] [#:paint (or/c paint? #f)] ->
 ;   exact-positive-integer?
-;;   Saves a layer and returns the save count from before the push.
+;   Saves a layer and returns the save count from before the push.
 (define (canvas-save-layer! c #:bounds [bounds #f] #:paint [paint #f])
   (define-values (b ph) (layer-arguments 'canvas-save-layer! bounds paint))
   (save-layer/checked 'canvas-save-layer! c b ph))
+
 ; call-with-canvas-layer : canvas? (-> any) [#:bounds (or/c #f list? vector?)] [#:paint (or/c paint?
 ;   #f)] -> any
-;;   Calls a zero-argument function inside a layer, preserving its return values.
+;   Calls a zero-argument function inside a layer, preserving its return values.
 (define (call-with-canvas-layer c thunk #:bounds [bounds #f] #:paint [paint #f])
   (define who 'call-with-canvas-layer)
   (define owner (canvas-owner who c))
@@ -322,8 +344,9 @@
                  (call-on-canvas who c '()
                    (lambda (cp) (sk_canvas_restore_to_count cp old-count)))))
              (lambda () (set-owner-floors! owner (cdr (owner-floors owner)))))))))))
+
 ; with-canvas-layer : syntax (canvas [#:bounds rectangle] [#:paint paint] body ...)
-;;   Runs body forms in a compositing layer and restores the prior canvas state on exit.
+;   Runs body forms in a compositing layer and restores the prior canvas state on exit.
 (define-syntax with-canvas-layer
   (syntax-rules ()
     [(_ c #:bounds b #:paint p body ...)

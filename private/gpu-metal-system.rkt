@@ -13,8 +13,9 @@
 
 ;; No Objective-C/framework access at module instantiation or compilation.
 ;; There is no AppKit, MTKView, CAMetalLayer, GL context or window in this path.
+
 ; load-metal-platform : -> metal-platform-ops?
-;;   Lazily binds Objective-C device, queue, activation, and diagnostic operations for Metal.
+;   Lazily binds Objective-C device, queue, activation, and diagnostic operations for Metal.
 (define (load-metal-platform)
   (unless (and (eq? (system-type 'os) 'macosx)
                (memq (system-type 'arch) '(aarch64 x86_64))

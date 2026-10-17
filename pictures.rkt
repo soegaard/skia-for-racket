@@ -21,7 +21,7 @@
          picture-approximate-bytes-used make-picture-shader)
 
 ; native-cull-bounds : symbol? cpointer? -> vector?
-;;   Copies native picture cull bounds into a checked x/y/width/height vector.
+;   Copies native picture cull bounds into a checked x/y/width/height vector.
 (define (native-cull-bounds who pp)
   (define bounds (make-sk-rect 0.0 0.0 0.0 0.0))
   (sk_picture_get_cull_rect pp bounds)
@@ -33,32 +33,35 @@
                        (nonnegative-scalar who (- bottom y))))
 
 ; picture-cull-bounds : picture? -> (and/c (vector/c real? real? real? real?) immutable?)
-;;   Returns a detached four-element vector containing the native culling rectangle's x coordinate,
-;;   y coordinate, width, and height.
+;   Returns a detached four-element vector containing the native culling rectangle's x coordinate,
+;   y coordinate, width, and height.
 (define (picture-cull-bounds pic)
   (define who 'picture-cull-bounds)
   (call-with-owned who (list (raw:picture-h who pic))
     (lambda (pp) (native-cull-bounds who pp))))
+
 ; picture-unique-id : picture? -> exact-positive-integer?
-;;   Returns the native picture identifier.
+;   Returns the native picture identifier.
 (define (picture-unique-id pic)
   (define who 'picture-unique-id)
   (call-with-owned who (list (raw:picture-h who pic)) sk_picture_get_unique_id))
+
 ; picture-approximate-op-count : picture? [#:nested? boolean?] -> exact-nonnegative-integer?
-;;   Returns the native estimate of the number of recorded operations.
+;   Returns the native estimate of the number of recorded operations.
 (define (picture-approximate-op-count pic #:nested? [nested? #f])
   (define who 'picture-approximate-op-count)
   (boolean who nested?)
   (call-with-owned who (list (raw:picture-h who pic))
     (lambda (pp) (sk_picture_approximate_op_count pp nested?))))
+
 ; picture-approximate-bytes-used : picture? -> exact-nonnegative-integer?
-;;   Returns the native estimate of picture storage.
+;   Returns the native estimate of picture storage.
 (define (picture-approximate-bytes-used pic)
   (define who 'picture-approximate-bytes-used)
   (call-with-owned who (list (raw:picture-h who pic)) sk_picture_approximate_bytes_used))
 
 ; picture->bytes : picture? -> (and/c bytes? (not/c immutable?))
-;;   Returns an independent mutable SKP byte string for an open CPU-compatible picture.
+;   Returns an independent mutable SKP byte string for an open CPU-compatible picture.
 (define (picture->bytes pic)
   (define who 'picture->bytes)
   (call-with-owned who (list (raw:picture-h who pic))
@@ -72,8 +75,8 @@
          out)))))
 
 ; load-snapshot : symbol? bytes? (or/c #f vector?) -> picture?
-;;   Deserializes trusted SKP bytes into an owned picture, preserving optional nominal size
-;;   metadata.
+;   Deserializes trusted SKP bytes into an owned picture, preserving optional nominal size
+;   metadata.
 (define (load-snapshot who bs size)
   (skia-check!)
   (define handle
@@ -98,24 +101,26 @@
 
 ; picture-from-bytes : bytes? [#:trusted? boolean?] [#:width (or/c #f (and/c real? (>=/c 0)))]
 ;   [#:height (or/c #f (and/c real? (>=/c 0)))] -> picture?
-;;   Returns an owned picture decoded from a copied snapshot of trusted SKP data.
+;   Returns an owned picture decoded from a copied snapshot of trusted SKP data.
 (define (picture-from-bytes bs #:trusted? [trusted? #f]
                             #:width [width #f] #:height [height #f])
   (define who 'picture-from-bytes)
   (check-picture-trust who trusted?)
   (define size (picture-size-override who width height))
   (load-snapshot who (picture-data-snapshot who bs) size))
+
 ; picture-from-file : path-string? [#:trusted? boolean?] [#:width (or/c #f (and/c real? (>=/c 0)))]
 ;   [#:height (or/c #f (and/c real? (>=/c 0)))] -> picture?
-;;   Reads a bounded snapshot from a binary file and decodes it as in picture-from-bytes.
+;   Reads a bounded snapshot from a binary file and decodes it as in picture-from-bytes.
 (define (picture-from-file filename #:trusted? [trusted? #f]
                            #:width [width #f] #:height [height #f])
   (define who 'picture-from-file)
   (check-picture-trust who trusted?)
   (define size (picture-size-override who width height))
   (load-snapshot who (read-picture-file-bytes who filename) size))
+
 ; save-picture : picture? path-string? [#:exists (or/c 'error 'replace)] -> void?
-;;   Serializes the picture and publishes the completed SKP file.
+;   Serializes the picture and publishes the completed SKP file.
 (define (save-picture pic filename #:exists [exists 'error])
   (define who 'save-picture)
   (raw:picture-h who pic)
@@ -123,7 +128,7 @@
   (write-picture-file-bytes! who (picture->bytes pic) target exists))
 
 ; picture-local-matrix : symbol? (or/c #f matrix?) -> (or/c #f sk-matrix?)
-;;   Converts an optional affine picture transform after checking its representable inverse.
+;   Converts an optional affine picture transform after checking its representable inverse.
 (define (picture-local-matrix who m)
   (cond [(not m) #f]
         [else
@@ -132,8 +137,9 @@
            (raise-arguments-error who "local matrix must have a representable inverse" "matrix" m))
          (make-sk-matrix (matrix-xx m) (matrix-xy m) (matrix-x0 m)
                          (matrix-yx m) (matrix-yy m) (matrix-y0 m) 0.0 0.0 1.0)]))
+
 ; picture-tile-rect : symbol? any/c -> (or/c #f sk-rect?)
-;;   Validates optional nonempty x/y/width/height tile bounds and converts them to native edges.
+;   Validates optional nonempty x/y/width/height tile bounds and converts them to native edges.
 (define (picture-tile-rect who tile)
   (cond [(not tile) #f]
         [else
@@ -148,10 +154,11 @@
                       (< (sk-rect-top r) (sk-rect-bottom r)))
            (raise-argument-error who "nonempty tile rectangle" tile))
          r]))
+
 ; make-picture-shader : picture? [#:tile-x (or/c 'clamp 'repeat 'mirror 'decal)] [#:tile-y (or/c
 ;   'clamp 'repeat 'mirror 'decal)] [#:sampling (or/c 'nearest 'linear)] [#:local-matrix (or/c
 ;   matrix? #f)] [#:tile-rect (or/c list? vector? #f)] -> shader?
-;;   Returns an owned shader that samples the recorded picture.
+;   Returns an owned shader that samples the recorded picture.
 (define (make-picture-shader pic #:tile-x [tile-x 'clamp] #:tile-y [tile-y 'clamp]
                              #:sampling [mode 'nearest] #:local-matrix [matrix #f]
                              #:tile-rect [tile #f])

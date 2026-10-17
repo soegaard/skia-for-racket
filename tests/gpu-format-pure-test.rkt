@@ -21,12 +21,12 @@
 ;;;
 
 ; key : [symbol? any/c exact-nonnegative-integer? surface-properties?] -> any/c
-;;   Builds a staging-cache key that includes format, color space, samples, and surface properties.
+;   Builds a staging-cache key that includes format, color space, samples, and surface properties.
 (define (key [color 'rgba-8888] [space #f] [samples 0] [p (make-surface-properties)])
   (gpu-staging-key 'test 8 6 color space samples p))
 
 ; with-cache : procedure? -> any
-;;   Supplies an instrumented target cache with constructor and retirement counters.
+;   Supplies an instrumented target cache with constructor and retirement counters.
 (define (with-cache proc)
   (define cache (make-frame-target-cache))
   (define made 0) (define retired '())
@@ -42,7 +42,7 @@
 ;;;
 
 ; gpu-format-pure-tests : test-suite?
-;;   Collects the regression cases for gPU format and surface property contracts (pure).
+;   Collects the regression cases for gPU format and surface property contracts (pure).
 (define gpu-format-pure-tests
   (test-suite "GPU format and surface property contracts (pure)"
     (test-case "default properties retain unknown geometry and zero flags"

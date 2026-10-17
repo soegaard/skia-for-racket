@@ -22,8 +22,8 @@
 ;;;
 
 ; with-source-shader : dc-paint-source? boolean? procedure? -> any
-;;   Scopes a native gradient, repeating stipple, or hatch shader and all temporary resources used by
-;;   the callback.
+;   Scopes a native gradient, repeating stipple, or hatch shader and all temporary resources used by
+;   the callback.
 (define (with-source-shader source antialias? proc)
   (define data (dc-paint-source-data source))
   (case (dc-paint-source-kind source)
@@ -60,8 +60,8 @@
     [else (error 'skia-dc-style "invalid private paint source")]))
 
 ; call-with-dc-paint : dc-ink? boolean? procedure? -> any
-;;   Scopes a native paint with stroke, dash, and source settings, preserving shader provenance when
-;;   the local matrix is identity.
+;   Scopes a native paint with stroke, dash, and source settings, preserving shader provenance when
+;   the local matrix is identity.
 (define (call-with-dc-paint ink antialias? proc)
   (define source (and (dc-ink/style? ink) (dc-ink/style-source ink)))
   (define (paint shader [rgba (dc-ink-rgba ink)])

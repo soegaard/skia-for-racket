@@ -33,7 +33,7 @@
 ;; Public construction validates bounds and permits only those three flag bits.
 
 ; checked-bounds : symbol? (or/c #f list? vector?) -> (or/c #f vector?)
-;;   Copies optional position-and-size bounds into validated native coordinates.
+;   Copies optional position-and-size bounds into validated native coordinates.
 (define (checked-bounds who bounds)
   (cond
     [(not bounds) #f]
@@ -47,11 +47,12 @@
      (vector-immutable (sk-rect-left r) (sk-rect-top r)
                        (- (sk-rect-right r) (sk-rect-left r))
                        (- (sk-rect-bottom r) (sk-rect-top r)))]))
+
 ; make-layer-options : [#:bounds (or/c #f list? vector?)]
 ;                      [#:preserve-lcd-text? boolean?]
 ;                      [#:initialize-with-previous? boolean?]
 ;                      [#:f16? boolean?] -> layer-options?
-;;   Constructs the bounds and flag mask used when saving a canvas layer.
+;   Constructs the bounds and flag mask used when saving a canvas layer.
 (define (make-layer-options #:bounds [bounds #f]
                             #:preserve-lcd-text? [lcd? #f]
                             #:initialize-with-previous? [previous? #f]
@@ -65,18 +66,21 @@
 ;;;
 
 ; flag? : symbol? layer-options? exact-positive-integer? -> boolean?
-;;   Checks whether an options value contains the requested native flag bit.
+;   Checks whether an options value contains the requested native flag bit.
 (define (flag? who v bit)
   (unless (layer-options? v) (raise-argument-error who "layer-options?" v))
   (not (zero? (bitwise-and bit (layer-options-flags v)))))
+
 ; layer-options-preserve-lcd-text? : layer-options? -> boolean?
-;;   Reports whether the saved layer requests preservation of LCD text.
+;   Reports whether the saved layer requests preservation of LCD text.
 (define (layer-options-preserve-lcd-text? v) (flag? 'layer-options-preserve-lcd-text? v 2))
+
 ; layer-options-initialize-with-previous? : layer-options? -> boolean?
-;;   Reports whether the layer begins with the previous canvas contents.
+;   Reports whether the layer begins with the previous canvas contents.
 (define (layer-options-initialize-with-previous? v)
   (flag? 'layer-options-initialize-with-previous? v 4))
+
 ; layer-options-f16? : layer-options? -> boolean?
-;;   Reports whether the saved layer requests a floating-point backing format.
+;   Reports whether the saved layer requests a floating-point backing format.
 (define (layer-options-f16? v) (flag? 'layer-options-f16? v 16))
 (module* internals #f (provide checked-bounds))

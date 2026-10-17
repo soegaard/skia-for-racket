@@ -22,14 +22,14 @@
 ;;;
 
 ; circle-path : real? -> path?
-;;   Creates the circular path operand with the requested radius.
+;   Creates the circular path operand with the requested radius.
 (define (circle-path radius)
   (define path (make-path))
   (path-add-circle! path 160 160 radius)
   path)
 
 ; cross-path : -> path?
-;;   Creates the cross-shaped operand used in the badge's Boolean path operations.
+;   Creates the cross-shaped operand used in the badge's Boolean path operations.
 (define (cross-path)
   (define path (make-path))
   (path-add-rect! path 16 138 288 44)
@@ -37,7 +37,7 @@
   path)
 
 ; make-badge-parts : -> hash?
-;;   Constructs badge parts for the example's drawing pipeline.
+;   Constructs badge parts for the example's drawing pipeline.
 (define (make-badge-parts)
   (define disk (circle-path 92))
   (define cross (cross-path))
@@ -53,12 +53,12 @@
         'joined joined 'trimmed trimmed 'cutout cutout 'rim rim 'badge badge))
 
 ; make-badge : -> path?
-;;   Constructs badge for the example's drawing pipeline.
+;   Constructs badge for the example's drawing pipeline.
 (define (make-badge)
   (hash-ref (make-badge-parts) 'badge))
 
 ; draw-checker : canvas? real? real? -> void?
-;;   Draws a checkerboard that makes transparent pixels visible.
+;   Draws a checkerboard that makes transparent pixels visible.
 (define (draw-checker canvas width height)
   (define light (make-paint #:color "#FAF4E8"))
   (define dark (make-paint #:color "#E4DAC9"))
@@ -68,7 +68,7 @@
                (if (even? (+ row column)) light dark))))
 
 ; draw-shape : canvas? path? -> void?
-;;   Draws the shape component in the current canvas coordinate system.
+;   Draws the shape component in the current canvas coordinate system.
 (define (draw-shape canvas path)
   (define fill (make-paint #:color "#23796F"))
   (define outline (make-paint #:color "#153E3C" #:style 'stroke #:stroke-width 2))
@@ -76,7 +76,7 @@
   (draw-path canvas path outline))
 
 ; draw-badge-sheet : canvas? any/c -> void?
-;;   Draws the badge sheet component in the current canvas coordinate system.
+;   Draws the badge sheet component in the current canvas coordinate system.
 (define (draw-badge-sheet canvas parts)
   (define ink (make-paint #:color "#193F3D"))
   (define faint (make-paint #:color "#AB7C41" #:style 'stroke #:stroke-width 2))
@@ -105,11 +105,13 @@
 ;;;
 
 (module+ main
+
   ; parts : hash?
-  ;;   Keeps the named intermediate paths used to explain the badge construction.
+  ;   Keeps the named intermediate paths used to explain the badge construction.
   (define parts (make-badge-parts))
+
   ; surface : surface?
-  ;;   Owns the raster drawing target used to produce the example's output.
+  ;   Owns the raster drawing target used to produce the example's output.
   (define surface (make-surface 720 468))
   (draw-badge-sheet (surface-canvas surface) parts)
   (save-png surface "cutout-badge.png" #:exists 'replace))

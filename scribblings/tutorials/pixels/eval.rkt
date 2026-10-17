@@ -20,27 +20,31 @@
 ;;;
 
 ; program-source : path?
-;;   Locates program source relative to this module rather than the current directory.
+;   Locates program source relative to this module rather than the current directory.
 (define-runtime-path program-source "pixel-lab.rkt")
+
 ; program-directory : path?
-;;   Locates program directory relative to this module rather than the current directory.
+;   Locates program directory relative to this module rather than the current directory.
 (define-runtime-path program-directory ".")
+
 ; pixels-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define pixels-eval (make-base-eval))
 (pixels-eval `(current-directory ,(path->string program-directory)))
 (pixels-eval '(require racket skia))
 (pixels-eval `(require (file ,(path->string program-source))))
+
 ; images : list?
-;;   Keeps the comparison images in the order expected by the corresponding drawing function.
+;   Keeps the comparison images in the order expected by the corresponding drawing function.
 (define images (make-study-images))
 
 ; pixel-study-pict : -> pict?
-;;   Renders the pixel study illustration from the tutorial's drawing code.
+;   Renders the pixel study illustration from the tutorial's drawing code.
 (define (pixel-study-pict)
   (render-pict 780 360 (lambda (canvas) (draw-pixel-study canvas images)) #:scale 0.84))
+
 ; pixel-preview : image? #:region? [boolean?] -> pict?
-;;   Builds the pixel preview illustration from the tutorial's actual drawing.
+;   Builds the pixel preview illustration from the tutorial's actual drawing.
 (define (pixel-preview image #:region? [region? #f])
   (define width (* 2 pixel-width))
   (define height (* 2 pixel-height))
@@ -54,23 +58,25 @@
                    (draw-rect canvas (* 2 145) (* 2 100) (* 2 32) (* 2 20) guide)))))
 
 ; source-pict : -> pict?
-;;   Renders the source illustration from the tutorial's drawing code.
+;   Renders the source illustration from the tutorial's drawing code.
 (define (source-pict) (pixel-preview (car images)))
+
 ; processed-pict : -> pict?
-;;   Renders the processed illustration from the tutorial's drawing code.
+;   Renders the processed illustration from the tutorial's drawing code.
 (define (processed-pict) (pixel-preview (cadr images)))
+
 ; stamped-pict : -> pict?
-;;   Renders the stamped illustration from the tutorial's drawing code.
+;   Renders the stamped illustration from the tutorial's drawing code.
 (define (stamped-pict) (pixel-preview (caddr images) #:region? #t))
 
 ; tiny-pixel-pict : -> pict?
-;;   Renders the tiny pixel illustration from the tutorial's drawing code.
+;   Renders the tiny pixel illustration from the tutorial's drawing code.
 (define (tiny-pixel-pict)
   (with-skia ([buffer (make-tiny-buffer)] [image (raster-buffer->image buffer)])
     (image-pict image 48)))
 
 ; tiny-layout-pict : -> pict?
-;;   Renders the tiny layout illustration from the tutorial's drawing code.
+;   Renders the tiny layout illustration from the tutorial's drawing code.
 (define (tiny-layout-pict)
   (with-skia ([buffer (make-tiny-buffer)])
     (define storage (raster-buffer->storage-bytes buffer))
@@ -104,10 +110,11 @@
                                      14 228 font ink)))))
 
 ; pixels-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (pixels-interaction expression ...)
   (interaction #:eval pixels-eval expression ...))
+
 ; pixels-racketblock+eval : syntax -> syntax
-;;   Displays a code block and evaluates the same expressions for the tutorial.
+;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (pixels-racketblock+eval expression ...)
   (racketblock+eval #:eval pixels-eval expression ...))

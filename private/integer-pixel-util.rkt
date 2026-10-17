@@ -13,8 +13,8 @@
          integer-tight-input)
 
 ; integer-sample-check : symbol? image-info? any/c -> vector?
-;;   Copies logical channels after checking bit depths, opaque alpha, and scaled premultiplied
-;;   bounds.
+;   Copies logical channels after checking bit depths, opaque alpha, and scaled premultiplied
+;   bounds.
 (define (integer-sample-check who info sample)
   (unless (image-info? info) (raise-argument-error who "image-info?" info))
   (define xs (cond [(vector? sample) (vector->list sample)]
@@ -36,8 +36,9 @@
         (unless (<= (* c amax) (* a (sub1 (arithmetic-shift 1 b))))
           (error who "premultiplied color sample exceeds alpha")))))
   (vector->immutable-vector (list->vector xs)))
+
 ; integer-black-sample : image-info? -> vector?
-;;   Returns zero logical color channels and the format's maximum alpha when opaque.
+;   Returns zero logical color channels and the format's maximum alpha when opaque.
 (define (integer-black-sample info)
   (define bits (image-info-channel-bits info))
   (define n (vector-length bits))
@@ -46,9 +47,10 @@
   (vector->immutable-vector
    (for/vector ([b (in-vector bits)] [i (in-naturals)])
      (if (and opaque? alpha? (= i (sub1 n))) (sub1 (arithmetic-shift 1 b)) 0))))
+
 ; integer-sample->bytes : symbol? image-info? any/c -> bytes?
-;;   Packs checked logical channels into byte-order or native-endian integer storage, setting RGBX
-;;   padding to 255.
+;   Packs checked logical channels into byte-order or native-endian integer storage, setting RGBX
+;   padding to 255.
 (define (integer-sample->bytes who info sample)
   (define v (integer-sample-check who info sample))
   (define (c i) (vector-ref v i))
@@ -65,9 +67,10 @@
      (integer->integer-bytes (bitwise-ior (c 0) (arithmetic-shift (c 1) 10)
                                           (arithmetic-shift (c 2) 20) (arithmetic-shift (c 3) 30))
                              4 #f (system-big-endian?))]))
+
 ; integer-bytes->sample : symbol? image-info? bytes? [exact-nonnegative-integer?] -> vector?
-;;   Unpacks one bounded integer pixel into logical channel order, independently of stored byte
-;;   order.
+;   Unpacks one bounded integer pixel into logical channel order, independently of stored byte
+;   order.
 (define (integer-bytes->sample who info data [offset 0])
   (unless (image-info? info) (raise-argument-error who "image-info?" info))
   (define bpp (image-info-bytes-per-pixel info))
@@ -88,9 +91,10 @@
                            (bitwise-bit-field n 0 5))
          (vector-immutable (bitwise-bit-field n 0 10) (bitwise-bit-field n 10 20)
                            (bitwise-bit-field n 20 30) (bitwise-bit-field n 30 32)))]))
+
 ; integer-sample-alpha : image-info? vector? -> byte?
-;;   Extracts alpha on the 8-bit scale, expanding two-bit alpha and returning 255 for alpha-free
-;;   formats.
+;   Extracts alpha on the 8-bit scale, expanding two-bit alpha and returning 255 for alpha-free
+;   formats.
 (define (integer-sample-alpha info sample)
   (case (image-info-color-type info)
     [(alpha-8) (vector-ref sample 0)]
@@ -99,9 +103,10 @@
     [else 255]))
 ;; Validate a detached copy BEFORE any destination write. Full allocation-sized
 ;; buffer input preserves padding; view input needs only the final row's pixels.
+
 ; integer-storage-input : symbol? image-info? bytes? integer? [#:full? boolean?] -> bytes?
-;;   Copies checked strided storage and validates every logical pixel, optionally requiring the full
-;;   allocation.
+;   Copies checked strided storage and validates every logical pixel, optionally requiring the full
+;   allocation.
 (define (integer-storage-input who info data rb #:full? [full? #f])
   (unless (bytes? data) (raise-argument-error who "bytes?" data))
   (define-values (_ minimum allocation) (image-info-storage-layout info #:row-bytes rb))
@@ -113,8 +118,9 @@
   (for* ([y (in-range (image-info-height info))] [x (in-range (image-info-width info))])
     (integer-sample-check who info (integer-bytes->sample who info copy (+ (* y rb) (* x bpp)))))
   copy)
+
 ; integer-tight-input : symbol? image-info? bytes? integer? -> bytes?
-;;   Copies validated integer rows into tightly packed storage without source padding.
+;   Copies validated integer rows into tightly packed storage without source padding.
 (define (integer-tight-input who info data rb)
   (define input (integer-storage-input who info data rb))
   (define tight (image-info-min-row-bytes info))

@@ -28,7 +28,7 @@
 ;;;
 
 ; pictures-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define pictures-eval (make-base-eval))
 
 (void
@@ -56,23 +56,24 @@
        scale)))))
 
 ; pictures-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (pictures-interaction expression ...)
   (interaction #:eval pictures-eval expression ...))
 
 ; pictures-racketblock+eval : syntax -> syntax
-;;   Displays a code block and evaluates the same expressions for the tutorial.
+;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (pictures-racketblock+eval expression ...)
   (racketblock+eval #:eval pictures-eval expression ...))
 
 ; pictures-image : syntax -> syntax
-;;   Evaluates the figure expression using the tutorial's shared drawing environment.
+;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (pictures-image expression)
   (interaction-eval-show #:eval pictures-eval expression))
 
 ;; The first and last figures use the same drawing function as the standalone file.
+
 ; pictures-finished-pict : #:scale [real?] -> pict?
-;;   Renders the pictures finished illustration from the tutorial's drawing code.
+;   Renders the pictures finished illustration from the tutorial's drawing code.
 (define (pictures-finished-pict #:scale [scale 0.63])
   (with-skia ([surface (make-surface sheet-width sheet-height
                                     #:background sheet-background)])

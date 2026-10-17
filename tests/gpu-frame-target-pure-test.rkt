@@ -21,7 +21,7 @@
 ;;;
 
 ; fixture : procedure? -> any
-;;   Supplies an instrumented target cache and synthetic creation/retirement controls.
+;   Supplies an instrumented target cache and synthetic creation/retirement controls.
 (define (fixture proc)
   (define cache (make-frame-target-cache))
   (define made 0) (define retired '())
@@ -35,11 +35,11 @@
                  (close-frame-target-cache! cache)))))
 
 ; stat : frame-target-cache? symbol? -> any/c
-;;   Reads a selected counter from detached cache information.
+;   Reads a selected counter from detached cache information.
 (define (stat cache key) (hash-ref (frame-target-cache-info cache) key))
 
 ; in-worker : (-> any) -> any/c
-;;   Captures the result or exception of a worker-thread cache operation.
+;   Captures the result or exception of a worker-thread cache operation.
 (define (in-worker thunk)
   (define ch (make-channel))
   (thread (lambda ()
@@ -51,8 +51,8 @@
 ;;;
 
 ; gpu-frame-target-pure-tests : test-suite?
-;;   Collects the regression cases for presenter staging target cache: bounded ownership and
-;;   single-use scopes.
+;   Collects the regression cases for presenter staging target cache: bounded ownership and
+;   single-use scopes.
 (define gpu-frame-target-pure-tests
   (test-suite
    "Presenter staging target cache: bounded ownership and single-use scopes"
@@ -214,7 +214,7 @@
          (check-equal? (hash-ref e 'pixel_width) 8)))))))
 
 ; gpu-frame-target-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-frame-target-pure-test-count 32)
 (module+ main
   (require rackunit/text-ui)
@@ -224,7 +224,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-frame-target-pure-tests))
   (printf "gpu-frame-target-pure: ~a cases, ~a failures; no native GPU or GUI.\n"
           gpu-frame-target-pure-test-count failures)

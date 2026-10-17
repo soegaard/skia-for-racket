@@ -23,8 +23,8 @@
 ;;;
 
 ; dc-push-layer! : local-member-name bindings
-;;   Reserves private layer and backing operations so ordinary symbol-based dc<%> dispatch cannot
-;;   invoke them.
+;   Reserves private layer and backing operations so ordinary symbol-based dc<%> dispatch cannot
+;   invoke them.
 (define-local-member-name dc-push-layer! dc-pop-layer!
                           dc-replace-backing! dc-paint-scope dc-clear-root!)
 
@@ -36,19 +36,19 @@
 
   ; dc-resize-backing! : (is-a?/c dc<%>) exact-positive-integer? exact-positive-integer? real? ->
   ; boolean?
-  ;;   Replaces the DC backing transactionally; returns #f when its logical size and backing scale are
-  ;;   unchanged.
+  ;   Replaces the DC backing transactionally; returns #f when its logical size and backing scale are
+  ;   unchanged.
   (define (dc-resize-backing! dc width height backing-scale)
     (send dc dc-replace-backing! width height backing-scale))
 
   ; call-with-dc-canvas-paint : (is-a?/c dc<%>) procedure? -> any
-  ;;   Runs a paint callback with root-target entry and unfinished-layer cleanup on every exit.
+  ;   Runs a paint callback with root-target entry and unfinished-layer cleanup on every exit.
   (define (call-with-dc-canvas-paint dc thunk)
     (send dc dc-paint-scope thunk))
 
   ; dc-clear-backing! : (is-a?/c dc<%>) -> void?
-  ;;   Clears the root to transparent and then to the selected background, ignoring ordinary drawing
-  ;;   state.
+  ;   Clears the root to transparent and then to the selected background, ignoring ordinary drawing
+  ;   state.
   (define (dc-clear-backing! dc)
     (send dc dc-clear-root!)))
 
@@ -57,7 +57,7 @@
 ;;;
 
 ; color-value : symbol? (or/c string? (is-a?/c color%)) -> vector?
-;;   Copies a named or object color into immutable RGB-byte/unit-alpha form; unknown names use black.
+;   Copies a named or object color into immutable RGB-byte/unit-alpha form; unknown names use black.
 (define (color-value who v)
   (define c
     (cond [(string? v) (or (send rd:the-color-database find-color v)
@@ -67,27 +67,27 @@
   (vector-immutable (send c red) (send c green) (send c blue) (dc-unit who (send c alpha))))
 
 ; color-object : vector? -> (is-a?/c color%)
-;;   Builds a detached public color object so callers cannot mutate the DC's stored color.
+;   Builds a detached public color object so callers cannot mutate the DC's stored color.
 (define (color-object v)
   ;; A detached public object: mutating a returned color cannot change the DC.
   (make-object rd:color% (vector-ref v 0) (vector-ref v 1) (vector-ref v 2) (vector-ref v 3)))
 
 ; with-opacity : vector? real? -> vector?
-;;   Preserves the RGB bytes and multiplies the color's unit alpha by the current draw opacity.
+;   Preserves the RGB bytes and multiplies the color's unit alpha by the current draw opacity.
 (define (with-opacity rgba alpha)
   (vector-immutable (vector-ref rgba 0) (vector-ref rgba 1) (vector-ref rgba 2)
                     (* (vector-ref rgba 3) alpha)))
 
 ; check-pen : (is-a?/c pen%) -> (is-a?/c pen%)
-;;   Shares the pen validator used before selecting and locking mutable drawing styles.
+;   Shares the pen validator used before selecting and locking mutable drawing styles.
 (define check-pen dc-check-pen)
 
 ; check-brush : (is-a?/c brush%) -> (is-a?/c brush%)
-;;   Shares the brush validator used before selecting and locking mutable drawing styles.
+;   Shares the brush validator used before selecting and locking mutable drawing styles.
 (define check-brush dc-check-brush)
 
 ; smoothing-value : symbol? -> symbol?
-;;   Accepts only the dc<%> smoothing modes unsmoothed, smoothed, and aligned.
+;   Accepts only the dc<%> smoothing modes unsmoothed, smoothed, and aligned.
 (define (smoothing-value s)
   (unless (memq s '(unsmoothed smoothed aligned))
     (raise-argument-error 'set-smoothing "'unsmoothed, 'smoothed, or 'aligned" s)) s)
@@ -97,8 +97,8 @@
 ;;;
 
 ; make-skia-dc-class : dc-renderer? -> class?
-;;   Builds a thread-owned dc<%> class with renderer-backed drawing, selection locks, and isolated
-;;   alpha groups.
+;   Builds a thread-owned dc<%> class with renderer-backed drawing, selection locks, and isolated
+;   alpha groups.
 (define (make-skia-dc-class renderer)
   (unless (dc-renderer? renderer) (raise-argument-error 'make-skia-dc-class "private DC renderer"
     renderer))

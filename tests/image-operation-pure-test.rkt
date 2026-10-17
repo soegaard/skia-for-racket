@@ -20,11 +20,11 @@
 ;;;
 
 ; package-root : path?
-;;   Locates .. relative to this module, independent of the invoking directory.
+;   Locates .. relative to this module, independent of the invoking directory.
 (define-runtime-path package-root "..")
 
 ; bad : (-> any) -> void?
-;;   Requires exn:fail? for the deliberately invalid operation.
+;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad proc) (check-exn exn:fail? proc))
 
 ;;;
@@ -32,7 +32,7 @@
 ;;;
 
 ; image-operation-pure-tests : test-suite?
-;;   Collects the regression cases for direct image operations (pure).
+;   Collects the regression cases for direct image operations (pure).
 (define image-operation-pure-tests
   (test-suite
    "Direct image operations (pure)"

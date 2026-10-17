@@ -19,7 +19,7 @@
 ;;;
 
 ; draw-presentation-scene : gpu-frame? -> void?
-;;   Draws the presentation scene component in the current canvas coordinate system.
+;   Draws the presentation scene component in the current canvas coordinate system.
 (define (draw-presentation-scene frame)
   (define c (gpu-frame-canvas frame))
   (define w (gpu-frame-width frame)) (define h (gpu-frame-height frame))

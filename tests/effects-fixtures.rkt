@@ -21,49 +21,49 @@
 ;;;
 
 ; effect-width : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define effect-width 64)
 
 ; effect-height : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define effect-height 48)
 
 ; effect-scene-names : (listof symbol?)
-;;   Lists supported effect fixtures in the order used by capture and comparison drivers.
+;   Lists supported effect fixtures in the order used by capture and comparison drivers.
 (define effect-scene-names
   '(stamp-1d stamp-2d line-2d table-mask gamma-mask clip-mask shader-mask
     fractal-noise turbulence shader-color-filter shader-blender runtime-blender
     arithmetic-blender image-blender picture-target empty-shader))
 
 ; effect-pixel : bytes? exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Extracts one RGBA pixel using the shared effect-scene row width.
+;   Extracts one RGBA pixel using the shared effect-scene row width.
 (define (effect-pixel bs x y)
   (define at (* 4 (+ x (* effect-width y))))
   (bytes->list (subbytes bs at (+ at 4))))
 
 ; cpu-render : (canvas? -> any) -> bytes?
-;;   Renders a fixture on a temporary CPU surface and copies premultiplied RGBA storage.
+;   Renders a fixture on a temporary CPU surface and copies premultiplied RGBA storage.
 (define (cpu-render draw)
   (with-skia ([s (make-surface effect-width effect-height)])
     (draw (surface-canvas s))
     (surface->rgba-bytes s #:premultiplied? #t)))
 
 ; current-effects-renderer : parameter?
-;;   Selects the fixture renderer so the same drawings can run on CPU and GPU targets.
+;   Selects the fixture renderer so the same drawings can run on CPU and GPU targets.
 (define current-effects-renderer (make-parameter cpu-render))
 
 ; capture-effect-scene : symbol? -> bytes?
-;;   Captures the named scene through the dynamically selected renderer.
+;   Captures the named scene through the dynamically selected renderer.
 (define (capture-effect-scene name)
   ((current-effects-renderer) (lambda (c) (draw-effect-scene name c))))
 
 ; fill : canvas? paint? -> void?
-;;   Paints the complete fixture extent with the supplied effect-bearing paint.
+;   Paints the complete fixture extent with the supplied effect-bearing paint.
 (define (fill c paint)
   (draw-rect c 0 0 effect-width effect-height paint))
 
 ; masked-shape : canvas? mask-filter? -> void?
-;;   Draws an angled path after closing the original mask wrapper to verify paint retention.
+;   Draws an angled path after closing the original mask wrapper to verify paint retention.
 (define (masked-shape c mask)
   (with-skia ([p (make-paint #:color 'red #:mask-filter mask)]
               [shape (make-path '((move 8.25 6.25) (line 56.25 8.25)
@@ -73,7 +73,7 @@
     (draw-path c shape p)))
 
 ; draw-effect-scene : symbol? canvas? -> any
-;;   Draws the requested effect fixture with scoped native children and a shared geometry.
+;   Draws the requested effect fixture with scoped native children and a shared geometry.
 (define (draw-effect-scene name c)
   (case name
     [(stamp-1d)

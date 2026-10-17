@@ -29,7 +29,7 @@
 ;;;
 
 ; fake-gpu-surface : gpu-domain? box? box? -> gpu-surface?
-;;   Wraps a mock owned surface so conversion dispatch can be checked without GPU allocation.
+;   Wraps a mock owned surface so conversion dispatch can be checked without GPU allocation.
 (define (fake-gpu-surface domain log abandoned?)
   (make-gpu-surface-record (mock-resource domain log abandoned? 'surface) 8 8 '()
                            'mock-context domain #f (hasheq 'storage "gpu")))
@@ -40,7 +40,7 @@
 ;;;
 
 ; convertible-pure-tests : test-suite?
-;;   Collects the regression cases for file/convertible dispatch without native loading.
+;   Collects the regression cases for file/convertible dispatch without native loading.
 (define convertible-pure-tests
   (test-suite
    "file/convertible dispatch without native loading"
@@ -87,6 +87,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests convertible-pure-tests))
   (unless (zero? failures) (error 'convertible-pure-test "~a failures" failures)))

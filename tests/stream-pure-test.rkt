@@ -20,21 +20,21 @@
 ;;;
 
 ; stream-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define stream-pure-test-count 35) ; replaced from actual source case count
 
 ; read-buffer : input-port? [real? boolean? any/c] -> any
-;;   Exercises bounded buffered reads with explicit port-closure and cancellation policy.
+;   Exercises bounded buffered reads with explicit port-closure and cancellation policy.
 (define (read-buffer in [limit 32] [close? #f] [cancel #f])
   (read-port-buffered 'stream-test in limit close? cancel))
 
 ; write-buffer : bytes? output-port? [boolean? any/c] -> any
-;;   Exercises buffered writes with explicit ownership and cancellation policy.
+;   Exercises buffered writes with explicit ownership and cancellation policy.
 (define (write-buffer bs out [close? #f] [cancel #f])
   (write-port-buffered 'stream-test bs out close? cancel))
 
 ; short-input : bytes? -> input-port?
-;;   Creates a deliberately short-reading input port for retry and progress checks.
+;   Creates a deliberately short-reading input port for retry and progress checks.
 (define (short-input bs)
   (define position 0)
   (make-input-port 'short
@@ -49,7 +49,7 @@
 ;;;
 
 ; stream-pure-tests : test-suite?
-;;   Collects the regression cases for stream buffers (pure Racket; no native callbacks).
+;   Collects the regression cases for stream buffers (pure Racket; no native callbacks).
 (define stream-pure-tests
   (test-suite "Stream buffers (pure Racket; no native callbacks)"
     (test-case "positive limit"
@@ -190,7 +190,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests stream-pure-tests))
   (printf "stream-pure: ~a cases, ~a failures\n" stream-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

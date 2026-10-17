@@ -26,7 +26,7 @@
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
-;;   Chooses the platform's preferred explicitly requested GPU backend.
+;   Chooses the platform's preferred explicitly requested GPU backend.
 (define (preferred-gpu-backend)
   (case (system-type 'os)
     [(macosx) 'metal]
@@ -35,7 +35,7 @@
     [else #f]))
 
 ; open-navigation-window : symbol? -> #f
-;;   Opens the pan-and-zoom editor with the explicitly selected rendering backend.
+;   Opens the pan-and-zoom editor with the explicitly selected rendering backend.
 (define (open-navigation-window renderer)
   (unless (memq renderer '(raster gpu))
     (raise-argument-error 'open-navigation-window "'raster or 'gpu" renderer))
@@ -188,8 +188,9 @@
 ;;;
 
 (module+ main
+
   ; renderer : symbol?
-  ;;   Selects renderer for the example.
+  ;   Selects renderer for the example.
   (define renderer 'raster)
   (command-line #:once-each
                 [("--renderer") name "raster or gpu" (set! renderer (string->symbol name))]

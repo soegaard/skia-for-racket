@@ -25,31 +25,31 @@
 ;;;
 
 ; f : font%
-;;   Provides a fixed pixel-sized font for single-line request validation.
+;   Provides a fixed pixel-sized font for single-line request validation.
 (define f (rd:make-font #:face "Arial" #:size 12 #:size-in-pixels? #t))
 
 ; request : string? [any/c exact-nonnegative-integer?] -> dc-text-request?
-;;   Builds a checked text request using the shared font and supplied combine mode.
+;   Builds a checked text request using the shared font and supplied combine mode.
 (define (request text [mode #t] [offset 0])
   (dc-text-description 'closure-test text f mode offset))
 
 ; fields : vector?
-;;   Stores family, weight, style, stretch, variant, and field-mask values in native-description
-;;   order.
+;   Stores family, weight, style, stretch, variant, and field-mask values in native-description
+;   order.
 (define fields '#("Arial" 700 2 4 0 63))
 
 ; parse : [vector? any/c any/c] -> any
-;;   Translates a native-style font-description vector with requested weight/style fallbacks.
+;   Translates a native-style font-description vector with requested weight/style fallbacks.
 (define (parse [v fields] [weight 'normal] [style 'normal])
   (dc-face-from-description 'closure-test v weight style))
 
 ; edited : exact-nonnegative-integer? any/c -> vector?
-;;   Copies the description fields while replacing one value for rejection checks.
+;   Copies the description fields while replacing one value for rejection checks.
 (define (edited index value)
   (for/vector ([x (in-vector fields)] [i (in-naturals)]) (if (= i index) value x)))
 
 ; with-dummy : procedure? [box?] -> any
-;;   Scopes a non-native recording DC and optionally records drawing events.
+;   Scopes a non-native recording DC and optionally records drawing events.
 (define (with-dummy proc [events #f])
   (define (record kind)
     (when events (set-box! events (cons kind (unbox events))))
@@ -71,8 +71,8 @@
 ;;;
 
 ; dc-closure-pure-tests : test-suite?
-;;   Collects the regression cases for declared DC contract, font translation and single-line
-;;   boundaries.
+;   Collects the regression cases for declared DC contract, font translation and single-line
+;   boundaries.
 (define dc-closure-pure-tests
   (test-suite
    "0.64 declared DC contract, font translation and single-line boundaries"
@@ -211,7 +211,7 @@
        (check-false (send dc ok?)))))))
 
 ; dc-closure-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-closure-pure-test-count 35)
 (module+ main
   (require rackunit/text-ui)
@@ -221,7 +221,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests dc-closure-pure-tests))
   (printf "dc-closure-pure: ~a cases, ~a failures\n" dc-closure-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

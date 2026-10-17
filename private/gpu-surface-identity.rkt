@@ -13,10 +13,11 @@
 ;; the live recording context's pointer against the owning domain. Backend,
 ;; generation and geometry come from that validation, never a constructor's
 ;; descriptive hash. This prevents the 0.49 missing-backend regression.
+
 ; gpu-surface-identity/validated : hash? symbol? any/c exact-nonnegative-integer? any/c any/c ->
 ;   hash?
-;;   Combines checked backend, generation, native identity, and extents into detached surface
-;;   identity data.
+;   Combines checked backend, generation, native identity, and extents into detached surface
+;   identity data.
 (define (gpu-surface-identity/validated description backend generation native width height)
   (unless (and (hash? description) (immutable? description))
     (raise-argument-error 'gpu-surface-info "immutable description hash" description))

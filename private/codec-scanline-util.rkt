@@ -24,7 +24,7 @@
 ;;   message and continuation marks retain the original failure context.
 
 ; raise-scanline-result : symbol? exact-integer? -> none/c
-;;   Raises a structured start failure retaining the native result code and name.
+;   Raises a structured start failure retaining the native result code and name.
 (define (raise-scanline-result who code)
   (define name (codec-result-name code))
   (raise (exn:fail:codec-scanline
@@ -45,42 +45,46 @@
 ;;   excluded. Bottom-up batches arrive in reverse vertical order and must be placed by first-row.
 
 ; scanline-batch-complete? : scanline-batch? -> boolean?
-;;   Returns whether decoded count equals requested count for this batch.
+;   Returns whether decoded count equals requested count for this batch.
 (define (scanline-batch-complete? batch)
   (unless (scanline-batch? batch)
     (raise-argument-error 'scanline-batch-complete? "scanline-batch?" batch))
   (= (scanline-batch-requested-count batch) (scanline-batch-decoded-count batch)))
 
 ; scanline-options : symbol? real? symbol? symbol? any/c -> (values inexact-real? image-info?)
-;;   Checks scale and copies a detached format template before input or native allocation.
+;   Checks scale and copies a detached format template before input or native allocation.
 (define (scanline-options who scale color alpha space)
   (define requested (codec-query-scale who scale))
   ;; Validate/copy a detached descriptor before any native input or port I/O.
   (define template
     (make-image-info 1 1 #:color-type color #:alpha-type alpha #:color-space space))
   (values requested template))
+
 ; scanline-count : symbol? exact-integer? exact-nonnegative-integer? [#:zero? boolean?] ->
 ;   exact-nonnegative-integer?
-;;   Bounds requested rows by remaining rows, optionally permitting zero.
+;   Bounds requested rows by remaining rows, optionally permitting zero.
 (define (scanline-count who n remaining #:zero? [zero? #f])
   (unless (and (exact-integer? n) (<= (if zero? 0 1) n remaining))
     (raise-arguments-error who "row count is outside the remaining scanlines"
                            "count" n "remaining" remaining "zero allowed" zero?))
   n)
+
 ; scanline-index : symbol? exact-integer? exact-positive-integer? -> exact-nonnegative-integer?
-;;   Requires a zero-based row strictly below the decoded height.
+;   Requires a zero-based row strictly below the decoded height.
 (define (scanline-index who n height)
   (unless (and (exact-integer? n) (<= 0 n) (< n height))
     (raise-arguments-error who "row index is outside the decoded image"
                            "row" n "height" height))
   n)
+
 ; scanline-order-name : symbol? exact-integer? -> symbol?
-;;   Maps known native order codes to top-down or bottom-up.
+;   Maps known native order codes to top-down or bottom-up.
 (define (scanline-order-name who native)
   (case native [(0) 'top-down] [(1) 'bottom-up]
     [else (error who "unknown native scanline order: ~a" native)]))
+
 ; scanline-row : symbol? symbol? integer? integer? -> exact-nonnegative-integer?
-;;   Maps decode-order position to the image's top-origin row.
+;   Maps decode-order position to the image's top-origin row.
 (define (scanline-row who order height index)
   (scanline-index who index height)
   (case order [(top-down) index] [(bottom-up) (- height index 1)]
@@ -88,8 +92,8 @@
 
 ; scanline-batch-layout : symbol? symbol? integer? integer? integer? integer? -> (values integer?
 ;   any/c)
-;;   Locates valid rows in a requested batch and their image origin, excluding native partial-read
-;;   fill.
+;   Locates valid rows in a requested batch and their image origin, excluding native partial-read
+;   fill.
 (define (scanline-batch-layout who order height position requested decoded)
   (scanline-index who position height)
   (scanline-count who requested (- height position))
@@ -103,8 +107,9 @@
     [(bottom-up) (values (- requested decoded)
                         (and (positive? decoded) (- height position decoded)))]
     [else (error who "unknown scanline order: ~a" order)]))
+
 ; scanline-read-state : integer? integer? integer? integer? -> symbol?
-;;   Classifies a checked batch as incomplete, complete, or ready for another read.
+;   Classifies a checked batch as incomplete, complete, or ready for another read.
 (define (scanline-read-state height position requested decoded)
   (cond [(< decoded requested) 'incomplete]
         [(= (+ position requested) height) 'complete]

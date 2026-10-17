@@ -18,20 +18,23 @@
 ;;;
 
 ; bg : string?
-;;   Specifies the bg color used by this drawing.
+;   Specifies the bg color used by this drawing.
 (define bg "#F4F6F9")
+
 ; panel-fill : string?
-;;   Specifies the panel fill color used by this drawing.
+;   Specifies the panel fill color used by this drawing.
 (define panel-fill "#FFFFFF")
+
 ; frame-color : string?
-;;   Specifies the frame color color used by this drawing.
+;   Specifies the frame color color used by this drawing.
 (define frame-color "#CBD5E1")
+
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20304C")
 
 ; panel : canvas? real? real? real? real? string? -> void?
-;;   Draws one labeled comparison panel using the example's shared layout.
+;   Draws one labeled comparison panel using the example's shared layout.
 (define (panel c x y w h title)
   (with-skia ([fill (make-paint #:color panel-fill)]
               [stroke (make-paint #:color frame-color #:style 'stroke #:stroke-width 2)]
@@ -42,14 +45,14 @@
     (draw-simple-text c title (+ x 18) (+ y 30) font text)))
 
 ; line-label : any/c -> string?
-;;   Summarizes line-layout information for the gallery caption.
+;   Summarizes line-layout information for the gallery caption.
 (define (line-label layout)
   (format "~a line~a"
           (mixed-text-layout-line-count layout)
           (if (= (mixed-text-layout-line-count layout) 1) "" "s")))
 
 ; main : any/c -> void?
-;;   Renders the example gallery and writes it to the requested output file.
+;   Renders the example gallery and writes it to the requested output file.
 (define (main out)
   (with-skia ([surface (make-surface 1000 700 #:background bg)]
               [fm (default-font-manager)]
@@ -124,8 +127,9 @@
 ;;;
 
 (module+ main
+
   ; out : path-string?
-  ;;   Names the destination image selected by the command line.
+  ;   Names the destination image selected by the command line.
   (define out
     (if (zero? (vector-length (current-command-line-arguments)))
         "line-breaking.png"

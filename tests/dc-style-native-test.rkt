@@ -22,44 +22,44 @@
 ;;;
 
 ; using : procedure? -> any
-;;   Scopes an unsmoothed 64-by-64 native DC for exact style comparisons.
+;   Scopes an unsmoothed 64-by-64 native DC for exact style comparisons.
 (define (using proc)
   (define dc (new skia-dc% [width 64] [height 64] [smoothing 'unsmoothed]))
   (dynamic-wind void (lambda () (proc dc)) (lambda () (send dc close))))
 
 ; render : procedure? -> bytes?
-;;   Captures a style drawing as premultiplied RGBA bytes.
+;   Captures a style drawing as premultiplied RGBA bytes.
 (define (render draw) (using (lambda (dc) (draw dc) (send dc get-rgba-bytes #:premultiplied? #t))))
 
 ; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Reads one premultiplied pixel from the fixed-width style capture.
+;   Reads one premultiplied pixel from the fixed-width style capture.
 (define (pixel dc x y)
   (define b (send dc get-rgba-bytes #:premultiplied? #t))
   (bytes->list (subbytes b (* 4 (+ x (* y 64))) (* 4 (+ 1 x (* y 64))))))
 
 ; near : (listof real?) (listof real?) [real?] -> void?
-;;   Checks equal-length color or metric lists with the requested tolerance.
+;   Checks equal-length color or metric lists with the requested tolerance.
 (define (near actual expected [tolerance 2])
   (check-equal? (length actual) (length expected))
   (for ([a actual] [e expected])
     (check-true (<= (abs (- a e)) tolerance) (format "~s versus ~s" actual expected))))
 
 ; near-bytes : bytes? bytes? real? -> void?
-;;   Compares equally sized raster storage with a per-byte tolerance.
+;   Compares equally sized raster storage with a per-byte tolerance.
 (define (near-bytes a b tolerance)
   (check-equal? (bytes-length a) (bytes-length b))
   (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) tolerance))))
 
 ; near-values : (-> any) (listof real?) -> void?
-;;   Collects a multi-valued query and compares it with expected metrics.
+;   Collects a multi-valued query and compares it with expected metrics.
 (define (near-values thunk expected) (near (call-with-values thunk list) expected 0.01))
 
 ; rectangle-path : -> dc-path%
-;;   Builds the fixed rectangle used to query path bounds and fill behavior.
+;   Builds the fixed rectangle used to query path bounds and fill behavior.
 (define (rectangle-path) (define p (new rd:dc-path%)) (send p rectangle 2 3 10 8) p)
 
 ; dc-style-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-style-native-test-count 40)
 
 ;;;
@@ -67,7 +67,7 @@
 ;;;
 
 ; dc-style-native-tests : test-suite?
-;;   Collects the regression cases for dC native styles and compatibility queries.
+;   Collects the regression cases for dC native styles and compatibility queries.
 (define dc-style-native-tests
  (test-suite "DC native styles and compatibility queries"
   (test-case "linear gradient paints its spatial endpoints"

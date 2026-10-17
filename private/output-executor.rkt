@@ -29,26 +29,29 @@
 ;;   perform native rendering.
 
 ; cpu-output-raster-plan : output-raster-plan?
-;;   Selects ordinary CPU rasterization without a GPU generation, fallback record, or deferred
-;;   renderer.
+;   Selects ordinary CPU rasterization without a GPU generation, fallback record, or deferred
+;   renderer.
 (define cpu-output-raster-plan (output-raster-plan 'raster #f #f #f))
+
 ; accepts! : symbol? procedure? exact-nonnegative-integer? -> void?
-;;   Checks the positional callback protocol before a deferred executor can allocate native
-;;   resources.
+;   Checks the positional callback protocol before a deferred executor can allocate native
+;   resources.
 (define (accepts! who proc n)
   (unless (and (procedure? proc) (procedure-arity-includes? proc n)
                (let-values ([(required allowed) (procedure-keywords proc)])
                  (null? required)))
     (raise-argument-error who (format "procedure accepting ~a arguments without required keywords" n)
       proc)))
+
 ; make-output-raster-executor : procedure? procedure? -> output-raster-executor?
-;;   Captures the owner thread together with preflight and deferred plan-construction callbacks.
+;   Captures the owner thread together with preflight and deferred plan-construction callbacks.
 (define (make-output-raster-executor check prepare)
   (accepts! 'make-output-raster-executor check 0)
   (accepts! 'make-output-raster-executor prepare 1)
   (output-raster-executor (current-thread) check prepare))
+
 ; check-output-raster-executor! : symbol? output-raster-executor? -> void?
-;;   Accepts the CPU sentinel or checks the private executor's owner and current lifecycle state.
+;   Accepts the CPU sentinel or checks the private executor's owner and current lifecycle state.
 (define (check-output-raster-executor! who executor)
   (unless (or (eq? executor 'cpu) (output-raster-executor? executor))
     (raise-argument-error who "'cpu or output-raster-executor?" executor))
@@ -57,9 +60,10 @@
       (error who "raster executor belongs to another Racket thread"))
     ((output-raster-executor-check executor)))
   (void))
+
 ; prepare-output-raster : output-raster-executor? any/c -> any
-;;   Obtains a checked raster plan and requires a positive context generation and renderer for GPU
-;;   plans.
+;   Obtains a checked raster plan and requires a positive context generation and renderer for GPU
+;   plans.
 (define (prepare-output-raster executor picture)
   (check-output-raster-executor! 'draw-output-group executor)
   (define plan
@@ -77,8 +81,8 @@
 
 ; output-execution-details : any/c symbol? symbol? [#:plan (or/c #f output-raster-plan?)] [#:target
 ;   any/c] -> hash?
-;;   Builds detached execution evidence, distinguishing requested backend, fallback, phase, and
-;;   completed readback.
+;   Builds detached execution evidence, distinguishing requested backend, fallback, phase, and
+;   completed readback.
 (define (output-execution-details executor phase backend
                                   #:plan [plan #f] #:target [target #f])
   (define gpu? (and plan (gpu-backend? (output-raster-plan-backend plan))))
@@ -97,10 +101,11 @@
 ;; audit policies have accepted rasterization. Unavailability is distinct from
 ;; invalid context state, failed rendering, allocation limits, and user errors.
 ;; No failure after preparation may trigger a second render or authoring pass.
+
 ; call-with-lazy-output-raster-executor : procedure? procedure? procedure? procedure? procedure?
 ;   [#:on-unavailable any/c] -> any
-;;   Delays owned GPU creation until accepted raster work and permits CPU fallback only for factory
-;;   unavailability.
+;   Delays owned GPU creation until accepted raster work and permits CPU fallback only for factory
+;   unavailability.
 (define (call-with-lazy-output-raster-executor create check make-plan close proc
                                                #:on-unavailable [policy 'error])
   (define who 'call-with-gpu-raster-executor)

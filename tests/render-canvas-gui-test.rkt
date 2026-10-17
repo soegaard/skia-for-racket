@@ -23,27 +23,27 @@
 ;;;
 
 ; request : parameter?
-;;   Carries renderer, backend, and optional adapter selection into GUI callbacks.
+;   Carries renderer, backend, and optional adapter selection into GUI callbacks.
 (define request (make-parameter (list 'raster 'auto #f)))
 
 ; output-directory : parameter?
-;;   Selects the optional directory where GUI evidence captures are written.
+;   Selects the optional directory where GUI evidence captures are written.
 (define output-directory (make-parameter #f))
 
 ; captures : box?
-;;   Accumulates capture metadata in reverse completion order for the final receipt.
+;   Accumulates capture metadata in reverse completion order for the final receipt.
 (define captures (box '()))
 
 ; test-custodian : custodian?
-;;   Owns the dedicated GUI eventspace and its resources for final shutdown.
+;   Owns the dedicated GUI eventspace and its resources for final shutdown.
 (define test-custodian (make-custodian))
 
 ; uncaught : box?
-;;   Retains the first uncaught asynchronous message/exception pair until the next dispatch.
+;   Retains the first uncaught asynchronous message/exception pair until the next dispatch.
 (define uncaught (box #f))
 
 ; space : eventspace?
-;;   Runs all test widgets under the isolated error-reporting handler.
+;   Runs all test widgets under the isolated error-reporting handler.
 (define space
   (parameterize ([current-custodian test-custodian]
                  [error-display-handler
@@ -52,18 +52,18 @@
     (gui:make-eventspace)))
 
 ; expected : -> hash?
-;;   Resolves the requested renderer/backend/adapter tuple to its expected policy.
+;   Resolves the requested renderer/backend/adapter tuple to its expected policy.
 (define (expected)
   (resolve-render-canvas-policy (car (request)) (cadr (request)) (caddr (request)) #f #f))
 
 ; gpu-mode? : -> boolean?
-;;   Reports whether the resolved choice uses expiring GPU frame DCs rather than persistent raster
-;;   DCs.
+;   Reports whether the resolved choice uses expiring GPU frame DCs rather than persistent raster
+;   DCs.
 (define (gpu-mode?) (eq? (hash-ref (expected) 'renderer) 'gpu))
 
 ; on-handler : (-> any) -> any
-;;   Dispatches a callback with captured options and propagates asynchronous or synchronous
-;;   failures.
+;   Dispatches a callback with captured options and propagates asynchronous or synchronous
+;   failures.
 (define (on-handler thunk)
   (define opts (request))
   (define directory (output-directory))
@@ -93,7 +93,7 @@
 ;; between callbacks, whereas GPU frame DCs must expire at callback return.
 
 ; make-window : [procedure?] -> window?
-;;   Shows a unified canvas and records callback DCs, readiness, and renderer errors.
+;   Shows a unified canvas and records callback DCs, readiness, and renderer errors.
 (define (make-window [paint void])
   (on-handler
    (lambda ()
@@ -117,67 +117,67 @@
      (window f c ready errors seen))))
 
 ; check-errors : window? -> void?
-;;   Raises the oldest recorded renderer error from the handler thread.
+;   Raises the oldest recorded renderer error from the handler thread.
 (define (check-errors w)
   (on-handler (lambda ()
     (unless (null? (unbox (window-errors w))) (raise (last (unbox (window-errors w))))))))
 
 ; await-paint : window? -> void?
-;;   Waits up to thirty seconds for a callback and checks all preceding handler errors.
+;   Waits up to thirty seconds for a callback and checks all preceding handler errors.
 (define (await-paint w)
   (unless (sync/timeout 30 (window-ready w))
     (error 'render-canvas-gui "shown window produced no callback"))
   (on-handler void) (check-errors w))
 
 ; close-window : window? -> void?
-;;   Closes the renderer and hides the frame on its owning eventspace.
+;   Closes the renderer and hides the frame on its owning eventspace.
 (define (close-window w)
   (on-handler (lambda () (send (window-canvas w) close) (send (window-frame w) show #f))))
 
 ; with-window : procedure? [#:paint procedure?] -> any
-;;   Scopes a shown unified canvas and guarantees renderer/window cleanup.
+;   Scopes a shown unified canvas and guarantees renderer/window cleanup.
 (define (with-window proc #:paint [paint void])
   (define w (make-window paint))
   (dynamic-wind void (lambda () (await-paint w) (proc w) (check-errors w))
     (lambda () (close-window w))))
 
 ; reset-dc : dc<%> -> void?
-;;   Restores identity coordinates, full clipping, opaque alpha, and a white clear.
+;   Restores identity coordinates, full clipping, opaque alpha, and a white clear.
 (define (reset-dc dc)
   (send dc set-transformation '#(#(1 0 0 1 0 0) 0 0 1 1 0))
   (send dc set-clipping-region #f) (send dc set-alpha 1)
   (send dc set-background "white") (send dc clear))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc color x y w h)
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
 
 ; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ; (listof byte?)
-;;   Extracts one tightly packed RGBA device pixel from a capture.
+;   Extracts one tightly packed RGBA device pixel from a capture.
 (define (pixel data width x y)
   (define p (* 4 (+ x (* width y)))) (bytes->list (subbytes data p (+ p 4))))
 
 ; extent : dc<%> string? -> hash?
-;;   Records logical and physical dimensions separately with a capture label.
+;   Records logical and physical dimensions separately with a capture label.
 (define (extent dc label)
   (define-values (w h) (send dc get-size))
   (define-values (pw ph) (send dc get-pixel-size))
   (hasheq 'name label 'logical_width w 'logical_height h 'pixel_width pw 'pixel_height ph))
 
 ; kinds : list? -> list?
-;;   Extracts I/O event kinds in their recorded order.
+;   Extracts I/O event kinds in their recorded order.
 (define (kinds entries) (map (lambda (v) (hash-ref v 'kind)) entries))
 
 ; readback-count : list? -> exact-nonnegative-integer?
-;;   Counts explicit GPU readbacks without counting ordinary drawing operations.
+;   Counts explicit GPU readbacks without counting ordinary drawing operations.
 (define (readback-count entries) (count (lambda (e) (equal? (hash-ref e 'kind) "readback")) entries))
 
 ; check-after : dc<%> -> void?
-;;   Checks callback-return lifetime: GPU DCs expire, while raster DCs remain usable.
+;   Checks callback-return lifetime: GPU DCs expire, while raster DCs remain usable.
 (define (check-after dc)
   (if (gpu-mode?)
       (begin (check-false (send dc ok?))
@@ -190,7 +190,7 @@
 ;;;
 
 ; render-canvas-gui-tests : test-suite?
-;;   Collects the regression cases for unified callback API on real raster and GPU canvas% objects.
+;   Collects the regression cases for unified callback API on real raster and GPU canvas% objects.
 (define render-canvas-gui-tests
   (test-suite
    "Unified callback API on real raster and GPU canvas% objects"
@@ -402,11 +402,11 @@
 ))
 
 ; render-canvas-gui-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define render-canvas-gui-test-count 20)
 
 ; json-value : any/c -> any/c
-;;   Normalizes capture/report values into the representation accepted by the JSON writer.
+;   Normalizes capture/report values into the representation accepted by the JSON writer.
 (define (json-value value)
   (cond [(symbol? value) (symbol->string value)]
         [(hash? value) (for/hasheq ([(k v) (in-hash value)]) (values k (json-value v)))]
@@ -421,21 +421,24 @@
   ;;;
 
   ; renderer : symbol?
-  ;;   Selects the raster or GPU renderer used by the visible canvas regression run.
+  ;   Selects the raster or GPU renderer used by the visible canvas regression run.
   (define renderer 'raster)
+
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter #f)
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token "manual")
   (command-line #:once-each
     [("--renderer") v "raster, gpu or auto" (set! renderer (string->symbol v))]
@@ -447,7 +450,7 @@
   (when directory (make-directory directory))
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures
     (parameterize ([request (list renderer backend adapter)] [output-directory directory])
       (dynamic-wind void (lambda () (run-tests render-canvas-gui-tests))

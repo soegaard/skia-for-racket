@@ -21,18 +21,18 @@
 ;;;
 
 ; check-vector-close : (vectorof real?) (vectorof real?) real? -> void?
-;;   Checks equal-sized coefficient vectors within an explicit numerical tolerance.
+;   Checks equal-sized coefficient vectors within an explicit numerical tolerance.
 (define (check-vector-close a b tolerance)
   (check-equal? (vector-length a) (vector-length b))
   (for ([x (in-vector a)] [y (in-vector b)]) (check-= x y tolerance)))
 
 ; capture : symbol? symbol? procedure? -> any
-;;   Collects the audit behavior of a projective operation for a backend and policy.
+;   Collects the audit behavior of a projective operation for a backend and policy.
 (define (capture backend policy thunk)
   (define-values (_ report) (call-with-audit-collector backend policy #f 1 thunk)) report)
 
 ; fake-matrix-call : symbol? boolean? procedure? -> any
-;;   Injects affine or general-matrix provenance into a synthetic native-call audit.
+;   Injects affine or general-matrix provenance into a synthetic native-call audit.
 (define (fake-matrix-call backend general? thunk)
   (define h (audit-allocate 'make-surface 'surface (lambda () (box 'surface))))
   (audit-on-canvas 'canvas-concat-matrix4! 'owner backend h '()
@@ -44,8 +44,8 @@
 ;;;
 
 ; projective-pure-tests : test-suite?
-;;   Collects the regression cases for perspective and general matrices: pure values and audit
-;;   policy.
+;   Collects the regression cases for perspective and general matrices: pure values and audit
+;   policy.
 (define projective-pure-tests
   (test-suite "Perspective and general matrices: pure values and audit policy"
    (test-case "new matrix types leave the affine type unchanged"

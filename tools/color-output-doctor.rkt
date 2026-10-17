@@ -19,8 +19,8 @@
 ;;;
 
 ; color-output-doctor! : -> void?
-;;   Checks color-space layouts, linear-to-sRGB conversion, image ICC embedding, and PDF output
-;;   intent.
+;   Checks color-space layouts, linear-to-sRGB conversion, image ICC embedding, and PDF output
+;   intent.
 (define (color-output-doctor!)
   (unless (and (= (ctype-sizeof _sk-transfer) 28) (= (ctype-sizeof _sk-xyz) 36)
                (= (ctype-sizeof _sk-primaries) 32)) (error 'doctor "color ABI mismatch"))

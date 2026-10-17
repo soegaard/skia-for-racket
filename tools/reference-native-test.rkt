@@ -21,8 +21,8 @@
 ;;;
 
 ; reference-directory : path?
-;;   Locates ../scribblings/reference relative to this module, independent of the invoking
-;;   directory.
+;   Locates ../scribblings/reference relative to this module, independent of the invoking
+;   directory.
 (define-runtime-path reference-directory "../scribblings/reference")
 
 ;; Read and execute the displayed native examples, instead of maintaining copies.
@@ -31,7 +31,7 @@
 ;; namespace isolation used by this test historically.
 
 ; live-native-symbols : (listof symbol?)
-;;   Identifies callback-based stream APIs whose displayed examples require process isolation.
+;   Identifies callback-based stream APIs whose displayed examples require process isolation.
 (define live-native-symbols
   '(make-codec-incremental
     image-from-port picture-from-port copy-port/streaming
@@ -40,8 +40,8 @@
 
 
 ; uses-live-native-callbacks? : any/c -> any/c
-;;   Finds references to live callback APIs recursively; returns a nonfalse membership tail when
-;;   present.
+;   Finds references to live callback APIs recursively; returns a nonfalse membership tail when
+;   present.
 (define (uses-live-native-callbacks? form)
   (cond
     [(symbol? form) (memq form live-native-symbols)]
@@ -51,8 +51,8 @@
 
 
 ; run-example-in-fresh-process : path-string? list? -> void?
-;;   Runs a displayed example in a temporary standalone module, isolating native callback service
-;;   state and deleting the module afterward.
+;   Runs a displayed example in a temporary standalone module, isolating native callback service
+;   state and deleting the module afterward.
 (define (run-example-in-fresh-process directory example)
   (define source (make-temporary-file "skia-reference-native-example-~a.rkt" #f directory))
   (dynamic-wind
@@ -87,7 +87,7 @@
 
 
 ; run-example-in-fresh-namespace : path-string? list? -> void?
-;;   Evaluates a displayed example in a fresh namespace and the designated output directory.
+;   Evaluates a displayed example in a fresh namespace and the designated output directory.
 (define (run-example-in-fresh-namespace directory example)
   (parameterize ([current-namespace (make-base-namespace)]
                  [current-directory directory])
@@ -98,8 +98,8 @@
 ;; Every block runs twice without inheriting another chapter's example state.
 
 ; run-displayed-examples : path-string? -> void?
-;;   Runs each Reference racketblock twice with namespace or process isolation appropriate to its
-;;   native callback use.
+;   Runs each Reference racketblock twice with namespace or process isolation appropriate to its
+;   native callback use.
 (define (run-displayed-examples directory)
   (define (blocks form)
     (cond
@@ -132,7 +132,7 @@
   ;;;
 
   ; directory : path?
-  ;;   Owns a temporary working directory for displayed-example artifacts, removed after the run.
+  ;   Owns a temporary working directory for displayed-example artifacts, removed after the run.
   (define directory (make-temporary-file "skia-reference-native-~a" 'directory))
   (dynamic-wind
     void

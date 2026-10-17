@@ -21,17 +21,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
@@ -45,7 +48,7 @@
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
 
   ; ctx : gpu-context?
-  ;;   Owns the primary native GPU context used by the fixture run.
+  ;   Owns the primary native GPU context used by the fixture run.
   (define ctx
     (case backend [(egl) (make-egl-gpu-context)]
       [(metal) (make-gpu-context #:backend 'metal)]
@@ -53,28 +56,32 @@
       [else (error 'integer-pixel-gpu "unsupported backend")]))
 
   ; frames : exact-nonnegative-integer?
-  ;;   Counts successfully rendered fixture frames for the evidence report.
+  ;   Counts successfully rendered fixture frames for the evidence report.
   (define frames 0)
+
   ; reads : exact-nonnegative-integer?
-  ;;   Counts explicit readbacks used to inspect integer-pixel fixtures.
+  ;   Counts explicit readbacks used to inspect integer-pixel fixtures.
   (define reads 0)
+
   ; draw-reads : exact-nonnegative-integer?
-  ;;   Counts unexpected readbacks while integer-pixel fixtures are drawn.
+  ;   Counts unexpected readbacks while integer-pixel fixtures are drawn.
   (define draw-reads 0)
+
   ; rejections : exact-nonnegative-integer?
-  ;;   Counts unsupported integer-pixel requests rejected by the GPU path.
+  ;   Counts unsupported integer-pixel requests rejected by the GPU path.
   (define rejections 0)
 
   ; rows : (listof hash?)
-  ;;   Accumulates capture and operation evidence for the run's JSON manifest.
+  ;   Accumulates capture and operation evidence for the run's JSON manifest.
   (define rows '())
+
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
 
   ; read-count : box? -> exact-nonnegative-integer?
-  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
-  ;;   inspection.
+  ;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;   inspection.
   (define (read-count ledger)
     (count (lambda (entry) (equal? (hash-ref entry 'kind #f) "readback")) (unbox ledger)))
   (dynamic-wind void
@@ -121,7 +128,7 @@
     (lambda () (gpu-context-close! ctx)))
 
   ; closed? : boolean?
-  ;;   Records whether context teardown completed with no live or failed resource releases.
+  ;   Records whether context teardown completed with no live or failed resource releases.
   (define closed? (eq? (gpu-context-state ctx) 'closed))
   (call-with-output-file (build-path directory "gpu.json")
     (lambda (out)

@@ -21,15 +21,17 @@
 ;;;
 
 (module+ main
+
   ; directory : string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define directory "output/dc-output-example")
   (command-line #:once-each
     [("--directory") value "destination directory" (set! directory value)]
     #:args () (void))
   (make-directory* directory)
+
   ; page : output-page?
-  ;;   Describes the page drawing and its export dimensions.
+  ;   Describes the page drawing and its export dimensions.
   (define page (make-dc-output-page 200 160 draw-output-mixed-scene #:background 'white))
   (for ([fmt '(pdf svg)])
     (define target (build-path directory (format "shared-scene.~a" fmt)))

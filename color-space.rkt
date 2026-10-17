@@ -33,7 +33,7 @@
 ;; after float conversion. Native query results are copied out of native storage.
 
 ; make-transfer-function : real? real? real? real? real? real? real? -> transfer-function?
-;;   Returns a transfer function with the seven supplied coefficients.
+;   Returns a transfer function with the seven supplied coefficients.
 (define (make-transfer-function g a b c d e f)
   (define who 'make-transfer-function)
   (define v (color-sequence who (list g a b c d e f) 7 "seven transfer coefficients"))
@@ -48,47 +48,54 @@
   (transfer-record v))
 
 ; check-transfer : symbol? transfer-function? -> vector?
-;;   Validates a transfer-function value and returns coefficients in g, a, b, c, d, e, f order.
+;   Validates a transfer-function value and returns coefficients in g, a, b, c, d, e, f order.
 (define (check-transfer who tf)
   (unless (transfer-function? tf) (raise-argument-error who "transfer-function?" tf))
   (transfer-function-coefficients tf))
+
 ; transfer-native : symbol? transfer-function? -> sk-transfer?
-;;   Copies checked transfer coefficients into the native transfer-function layout.
+;   Copies checked transfer coefficients into the native transfer-function layout.
 (define (transfer-native who tf)
   (apply make-sk-transfer (vector->list (check-transfer who tf))))
+
 ; transfer-value : sk-transfer? -> transfer-function?
-;;   Copies native transfer coefficients into an immutable public value.
+;   Copies native transfer coefficients into an immutable public value.
 (define (transfer-value n)
   (transfer-record
    (vector-immutable (sk-transfer-g n) (sk-transfer-a n) (sk-transfer-b n)
                      (sk-transfer-c n) (sk-transfer-d n) (sk-transfer-e n) (sk-transfer-f n))))
+
 ; blank-transfer : -> sk-transfer?
-;;   Allocates a zeroed native transfer-function result buffer.
+;   Allocates a zeroed native transfer-function result buffer.
 (define (blank-transfer) (make-sk-transfer 0.0 0.0 0.0 0.0 0.0 0.0 0.0))
+
 ; blank-xyz : -> sk-xyz?
-;;   Allocates a zeroed native 3-by-3 XYZ result buffer.
+;   Allocates a zeroed native 3-by-3 XYZ result buffer.
 (define (blank-xyz) (make-sk-xyz 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0))
+
 ; xyz-value : sk-xyz? -> vector?
-;;   Copies an XYZ matrix into an immutable vector in row-major order.
+;   Copies an XYZ matrix into an immutable vector in row-major order.
 (define (xyz-value m)
   (vector-immutable (sk-xyz-m00 m) (sk-xyz-m01 m) (sk-xyz-m02 m)
                     (sk-xyz-m10 m) (sk-xyz-m11 m) (sk-xyz-m12 m)
                     (sk-xyz-m20 m) (sk-xyz-m21 m) (sk-xyz-m22 m)))
 
 ; transfer-names : (listof symbol?)
-;;   Lists the transfer-function names accepted by the named factory.
+;   Lists the transfer-function names accepted by the named factory.
 (define transfer-names '(srgb linear gamma-2.2 rec2020))
+
 ; gamut-names : (listof symbol?)
-;;   Lists the RGB gamut names accepted by the named factory.
+;   Lists the RGB gamut names accepted by the named factory.
 (define gamut-names '(srgb adobe-rgb display-p3 rec2020 xyz))
+
 ; check-name : symbol? any/c (listof symbol?) -> void?
-;;   Rejects names outside the supplied closed set before crossing the native boundary.
+;   Rejects names outside the supplied closed set before crossing the native boundary.
 (define (check-name who v allowed)
   (unless (memq v allowed)
     (raise-arguments-error who "unknown named color value" "given" v "allowed" allowed)))
 
 ; named-transfer-function : (or/c 'srgb 'linear 'gamma-2.2 'rec2020) -> transfer-function?
-;;   Returns a detached copy of the named native transfer coefficients.
+;   Returns a detached copy of the named native transfer coefficients.
 (define (named-transfer-function name)
   (define who 'named-transfer-function)
   (check-name who name transfer-names)
@@ -103,8 +110,9 @@
 
 ;; Evaluate the SDR formula on its nonnegative domain in Racket, without
 ;; loading Skia. This is not an HDR transfer function or a tone mapper.
+
 ; transfer-function-evaluate : transfer-function? (real-in 0 3.402823e+38) -> real?
-;;   Returns the transfer formula evaluated at x.
+;   Returns the transfer formula evaluated at x.
 (define (transfer-function-evaluate tf x)
   (define who 'transfer-function-evaluate)
   (define v (check-transfer who tf))
@@ -123,8 +131,8 @@
   y)
 
 ; transfer-function-invert : transfer-function? -> (or/c transfer-function? #f)
-;;   Returns detached coefficients for the native inverse, or #f when the native inversion reports
-;;   failure.
+;   Returns detached coefficients for the native inverse, or #f when the native inversion reports
+;   failure.
 (define (transfer-function-invert tf)
   (define n (transfer-native 'transfer-function-invert tf))
   (skia-check!)
@@ -133,7 +141,7 @@
 
 ; named-xyz-d50 : (or/c 'srgb 'adobe-rgb 'display-p3 'rec2020 'xyz) -> (and/c (vectorof real?)
 ;   immutable?)
-;;   Returns the named native RGB-to-XYZ-D50 matrix as nine row-major coefficients.
+;   Returns the named native RGB-to-XYZ-D50 matrix as nine row-major coefficients.
 (define (named-xyz-d50 name)
   (define who 'named-xyz-d50)
   (check-name who name gamut-names)
@@ -150,8 +158,8 @@
 ; primaries->xyz-d50 : (or/c (list/c real? real?) (vector/c real? real?)) (or/c (list/c real? real?)
 ;   (vector/c real? real?)) (or/c (list/c real? real?) (vector/c real? real?)) (or/c (list/c real?
 ;   real?) (vector/c real? real?)) -> (and/c (vectorof real?) immutable?)
-;;   Returns a nine-coefficient matrix for the supplied RGB primary chromaticities and source white,
-;;   adapted to D50 by the native implementation.
+;   Returns a nine-coefficient matrix for the supplied RGB primary chromaticities and source white,
+;   adapted to D50 by the native implementation.
 (define (primaries->xyz-d50 red green blue white)
   (define who 'primaries->xyz-d50)
   (define vals
@@ -167,7 +175,7 @@
 
 ; make-rgb-color-space : (or/c transfer-function? 'srgb 'linear 'gamma-2.2 'rec2020) (or/c 'srgb
 ;   'adobe-rgb 'display-p3 'rec2020 'xyz (listof real?) (vectorof real?)) -> color-space?
-;;   Returns an owned RGB color-space resource with the supplied transfer function and gamut.
+;   Returns an owned RGB color-space resource with the supplied transfer function and gamut.
 (define (make-rgb-color-space transfer gamut)
   (define who 'make-rgb-color-space)
   ;; Validate names/types on BOTH sides before named helpers load the library.
@@ -184,8 +192,8 @@
   (wrap-owned-color-space who (lambda () (sk_colorspace_new_rgb n m))))
 
 ; color-space-transfer-function : color-space? -> (or/c transfer-function? #f)
-;;   Returns a detached numerical transfer description for an open color space, or #f when no such
-;;   description is available.
+;   Returns a detached numerical transfer description for an open color space, or #f when no such
+;   description is available.
 (define (color-space-transfer-function cs)
   (define who 'color-space-transfer-function)
   (call-with-owned who (list (color-space-h who cs))
@@ -194,8 +202,8 @@
       (and (sk_colorspace_is_numerical_transfer_fn cp n) (transfer-value n)))))
 
 ; color-space-xyz-d50 : color-space? -> (or/c #f (and/c (vectorof real?) immutable?))
-;;   Returns nine detached row-major coefficients for an open space's XYZ-D50 matrix, or #f when the
-;;   native query cannot supply one.
+;   Returns nine detached row-major coefficients for an open space's XYZ-D50 matrix, or #f when the
+;   native query cannot supply one.
 (define (color-space-xyz-d50 cs)
   (define who 'color-space-xyz-d50)
   (call-with-owned who (list (color-space-h who cs))
@@ -208,13 +216,13 @@
 (provide xyz-d50-concat xyz-d50-invert)
 
 ; xyz-finite? : (vectorof real?) -> boolean?
-;;   Checks that every XYZ coefficient excludes infinities and NaN.
+;   Checks that every XYZ coefficient excludes infinities and NaN.
 (define (xyz-finite? v)
   (for/and ([x (in-vector v)]) (< -inf.0 x +inf.0)))
 
 ; xyz-d50-concat : (or/c (listof real?) (vectorof real?)) (or/c (listof real?) (vectorof real?)) ->
 ;   (and/c (vectorof real?) immutable?)
-;;   Returns the matrix product a b as nine row-major binary32 coefficients.
+;   Returns the matrix product a b as nine row-major binary32 coefficients.
 (define (xyz-d50-concat a b)
   (define who 'xyz-d50-concat)
   ;; Unlike a gamut accepted by make-rgb-color-space, a matrix participating in
@@ -236,8 +244,8 @@
 
 ; xyz-d50-invert : (or/c (listof real?) (vectorof real?)) -> (or/c #f (and/c (vectorof real?)
 ;   immutable?))
-;;   Returns the native inverse as nine row-major coefficients, or #f when inversion fails or
-;;   produces nonfinite coefficients.
+;   Returns the native inverse as nine row-major coefficients, or #f when inversion fails or
+;   produces nonfinite coefficients.
 (define (xyz-d50-invert matrix)
   (define who 'xyz-d50-invert)
   (define v (color-sequence who matrix 9 "nine finite row-major XYZ-D50 coefficients"))

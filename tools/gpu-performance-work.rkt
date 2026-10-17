@@ -22,11 +22,11 @@
 ;;;
 
 ; benchmark-scenes : (listof symbol?)
-;;   Selects path, text, and runtime-effect workloads for repeated picture replay.
+;   Selects path, text, and runtime-effect workloads for repeated picture replay.
 (define benchmark-scenes '(paths text runtime))
 
 ; benchmark-pattern-pixels : [exact-positive-integer? exact-positive-integer?] -> bytes?
-;;   Builds a deterministic four-quadrant RGBA image for upload and retention stress.
+;   Builds a deterministic four-quadrant RGBA image for upload and retention stress.
 (define (benchmark-pattern-pixels [w 128] [h 128])
   (define bs (make-bytes (* w h 4)))
   (for* ([y (in-range h)] [x (in-range w)])
@@ -35,7 +35,7 @@
     (for ([v (in-list color)] [i (in-naturals (* 4 (+ x (* y w))))]) (bytes-set! bs i v))) bs)
 
 ; completed : gpu-context? procedure? -> hash?
-;;   Separates work, flush, submit, and wait timing while recording ordered GPU I/O events.
+;   Separates work, flush, submit, and wait timing while recording ordered GPU I/O events.
 (define (completed context work)
   (define io (box '()))
   (define timing
@@ -46,8 +46,8 @@
   (hash-set timing 'io_events (reverse (unbox io))))
 
 ; benchmark-scene! : gpu-context? symbol? hash? string? -> any
-;;   Measures first-use and repeated replay, retaining a detached capture for post-context
-;;   inspection.
+;   Measures first-use and repeated replay, retaining a detached capture for post-context
+;   inspection.
 (define (benchmark-scene! context name config prefix)
   (define width (hash-ref config 'width)) (define height (hash-ref config 'height))
   (define n (hash-ref config 'samples))
@@ -141,8 +141,8 @@
 
 
 ; await-retirement! : gpu-context? exact-nonnegative-integer? (listof weak-box?) -> void?
-;;   Waits through bounded GC/owner-drain cycles until temporary wrappers and native children
-;;   retire.
+;   Waits through bounded GC/owner-drain cycles until temporary wrappers and native children
+;   retire.
 (define (await-retirement! context expected weak)
   (define deadline (+ (current-inexact-monotonic-milliseconds) 5000))
   (let loop ()
@@ -158,8 +158,8 @@
           [else (loop)])))
 
 ; release-stress! : gpu-context? hash? -> hash?
-;;   Exercises retained effect graphs under bounded allocation/cache pressure and records cleanup
-;;   high-water marks.
+;   Exercises retained effect graphs under bounded allocation/cache pressure and records cleanup
+;   high-water marks.
 (define (release-stress! context config)
   (define target #f) (define checkpoints '()) (define weak '()) (define dropped 0)
   (define before #f) (define highwater 0)

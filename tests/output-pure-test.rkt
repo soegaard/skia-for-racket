@@ -21,7 +21,7 @@
 ;;;
 
 ; blank-page : -> output-page?
-;;   Builds an empty page for public output argument and policy validation.
+;   Builds an empty page for public output argument and policy validation.
 (define (blank-page) (make-output-page 72 72 void))
 
 ;;;
@@ -29,7 +29,7 @@
 ;;;
 
 ; output-pure-tests : test-suite?
-;;   Collects the regression cases for shared vector output: pure contracts.
+;   Collects the regression cases for shared vector output: pure contracts.
 (define output-pure-tests
   (test-suite
    "Shared vector output: pure contracts"

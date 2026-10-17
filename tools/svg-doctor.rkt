@@ -20,7 +20,7 @@
 ;;;
 
 ; svg-doctor! : -> void?
-;;   Checks vector XML, deterministic IDs, embedded raster images, and document-canvas invalidation.
+;   Checks vector XML, deterministic IDs, embedded raster images, and document-canvas invalidation.
 (define (svg-doctor!)
   (define stale #f)
   (define (render)

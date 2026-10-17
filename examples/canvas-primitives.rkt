@@ -17,75 +17,89 @@
 ;;;
 
 ; blue : rgba?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue (rgb 48 103 211))
+
 ; teal : rgba?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal (rgb 14 149 142))
+
 ; orange : rgba?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange (rgb 239 161 37))
+
 ; ink : rgba?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink (rgb 32 52 78))
+
 ; query-trace : box?
-;;   Collects rendering observations for the example's generated report.
+;   Collects rendering observations for the example's generated report.
 (define query-trace (box '()))
+
 ; label : canvas? string? real? real? [real?] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color ink)]) (draw-simple-text c text x y f p)))
+
 ; heading : canvas? string? string? -> void?
-;;   Draws the page heading and its explanatory subtitle.
+;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (with-skia ([p (make-paint #:color teal)]) (draw-rect c 0 0 34 2 p))
   (label c title 0 32 23) (label c subtitle 0 55 10))
+
 ; footer : canvas? exact-nonnegative-integer? -> void?
-;;   Adds the page identification beneath the example drawing.
+;   Adds the page identification beneath the example drawing.
 (define (footer c n)
   (label c "RACKET / SKIA   |   CANVAS PRIMITIVES AND COMPOSITING LAYERS" 0 442 9)
   (label c (number->string n) 648 442 9))
+
 ; at : canvas? real? real? procedure? -> any/c
-;;   Runs a drawing callback at a translated origin and restores canvas state afterward.
+;   Runs a drawing callback at a translated origin and restores canvas state afterward.
 (define (at c x y f)
   (with-canvas-state c (canvas-translate! c x y) (f c)))
+
 ; backend-panel : canvas? real? real? procedure? -> void?
-;;   Draws the backend panel comparison in the current canvas coordinate system.
+;   Draws the backend panel comparison in the current canvas coordinate system.
 (define (backend-panel c x y f)
   (if (eq? (canvas-annotation-backend c) 'svg)
       (draw-rasterized c x y 300 112 f #:scale 2)
       (at c x y f)))
+
 ; points : canvas? -> void?
-;;   Draws round and square point sprites so cap-dependent geometry can be compared.
+;   Draws round and square point sprites so cap-dependent geometry can be compared.
 (define (points c)
   (with-skia ([p (make-paint #:color blue #:cap 'round #:stroke-width 14)]
               [q (make-paint #:color teal #:cap 'square #:stroke-width 14)])
     (draw-points c '((20 28) (65 28) (110 28) (155 28) (200 28) (245 28)) p)
     (draw-points c '((20 80) (65 80) (110 80) (155 80) (200 80) (245 80)) q)))
+
 ; lines : canvas? -> void?
-;;   Draws the lines comparison in the current canvas coordinate system.
+;   Draws the lines comparison in the current canvas coordinate system.
 (define (lines c)
   (with-skia ([p (make-paint #:color blue #:cap 'round #:stroke-width 5)]
               [q (make-paint #:color teal #:stroke-width 5)])
     (draw-points c '((10 22) (80 42) (105 22) (175 42) (200 22) (270 42)) p #:mode 'lines)
     (draw-points c '((10 96) (65 60) (130 96) (195 60) (270 96)) q #:mode 'polygon)))
+
 ; arcs : canvas? -> void?
-;;   Draws the arcs comparison in the current canvas coordinate system.
+;   Draws the arcs comparison in the current canvas coordinate system.
 (define (arcs c)
   (with-skia ([p (make-paint #:color orange)]
               [q (make-paint #:color blue #:style 'stroke #:stroke-width 5 #:cap 'round)])
     (draw-arc c 5 8 100 90 10 260 p #:use-center? #t)
     (draw-arc c 150 8 120 90 -140 250 q)))
+
 ; rounded : canvas? -> void?
-;;   Draws the rounded comparison in the current canvas coordinate system.
+;   Draws the rounded comparison in the current canvas coordinate system.
 (define (rounded c)
   (with-skia ([p (make-paint #:color teal)] [q (make-paint #:color orange)])
     (draw-rrect c (make-rounded-rect 0 12 125 88 #:radii '((0 0) (34 25) (12 12) (25 34))) p)
     (draw-double-rounded-rect c (make-rounded-rect 155 12 130 88 #:radii 18)
                                (make-rounded-rect 170 27 100 58 #:radii 10) q)))
+
 ; geometry-page : canvas? -> void?
-;;   Draws the geometry page comparison in the current canvas coordinate system.
+;   Draws the geometry page comparison in the current canvas coordinate system.
 (define (geometry-page c)
   (heading c "Small primitives, explicit geometry"
     "Native points, independent line pairs, open polylines, arcs, and four-corner rounded rectangles.")
@@ -100,8 +114,9 @@
   (label c "SVG: only point sprites are rasterized here (600 x 224). Other geometry remains vector."
     0 413 10)
   (footer c 1))
+
 ; clip-page : canvas? -> void?
-;;   Draws the clip page comparison in the current canvas coordinate system.
+;   Draws the clip page comparison in the current canvas coordinate system.
 (define (clip-page c)
   (heading c "Clipping and coordinates can be queried"
     "Bounds are conservative rectangles. Quick rejection is not an exact hit-test or a paint-bounds calculation.")
@@ -139,20 +154,23 @@
   (label c "The query trace records each backend separately. No automatic culling is installed." 0
     413 10)
   (footer c 2))
+
 ; pair : canvas? [real?] -> void?
-;;   Draws the pair comparison in the current canvas coordinate system.
+;   Draws the pair comparison in the current canvas coordinate system.
 (define (pair c [alpha 255])
   (with-skia ([p (make-paint #:color (rgba 48 103 211 alpha))]
               [q (make-paint #:color (rgba 239 161 37 alpha))])
     (draw-rounded-rect c 8 10 220 90 15 15 p)
     (draw-circle c 230 60 46 q)))
+
 ; group : canvas? -> void?
-;;   Draws the group comparison in the current canvas coordinate system.
+;   Draws the group comparison in the current canvas coordinate system.
 (define (group c)
   (with-skia ([p (make-paint #:color (rgba 0 0 0 128))])
     (with-canvas-layer c #:paint p (pair c))))
+
 ; filtered : canvas? -> void?
-;;   Draws the filtered comparison in the current canvas coordinate system.
+;   Draws the filtered comparison in the current canvas coordinate system.
 (define (filtered c)
   (with-skia ([f (make-blur-image-filter 3 3)] [p (make-paint #:image-filter f)])
     (with-canvas-layer c #:bounds '(0 0 300 112) #:paint p
@@ -161,8 +179,9 @@
         (canvas-translate! c 10 5)
         (canvas-scale! c 0.9 0.9)
         (pair c)))))
+
 ; hint : canvas? -> void?
-;;   Draws the hint comparison in the current canvas coordinate system.
+;   Draws the hint comparison in the current canvas coordinate system.
 (define (hint c)
   (with-skia ([p (make-paint #:color teal)] [border (make-paint #:color ink #:style 'stroke
     #:stroke-width 1.5)])
@@ -170,8 +189,9 @@
       (draw-rounded-rect c 12 16 266 80 12 12 p))
     ;; The pinned unfiltered path can restrict content to these bounds.
     (draw-rect c 90 25 90 55 border)))
+
 ; layer-page : canvas? -> void?
-;;   Draws the layer page comparison in the current canvas coordinate system.
+;   Draws the layer page comparison in the current canvas coordinate system.
 (define (layer-page c)
   (heading c "Group opacity is not per-object opacity"
     "A layer composites on restore. Its paint applies once to the completed group, not to each primitive.")
@@ -186,8 +206,9 @@
   (label c
     "PDF receives native layers. SVG explicitly rasterizes three 600 x 224 panels; labels remain vector." 0 413 10)
   (footer c 3))
+
 ; write-json-file : path-string? any/c -> void?
-;;   Writes the report data as JSON, replacing an existing report file.
+;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file f value)
   (call-with-output-file f (lambda (o) (write-json value o) (newline o)) #:exists 'replace))
 ;;;
@@ -195,28 +216,34 @@
 ;;;
 
 (module+ main
+
   ; args : vector?
-  ;;   Retains the command-line argument vector used to select output paths.
+  ;   Retains the command-line argument vector used to select output paths.
   (define args (current-command-line-arguments))
   (when (> (vector-length args) 1) (error 'canvas-primitives "expected an optional output prefix"))
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix (if (zero? (vector-length args)) "output/canvas-primitives-0.30" (vector-ref args
     0)))
+
   ; file : any/c -> string?
-  ;;   Appends an output suffix to the selected filename prefix.
+  ;   Appends an output suffix to the selected filename prefix.
   (define (file suffix) (string-append prefix suffix))
   (make-directory* (or (path-only (string->path prefix)) (current-directory)))
+
   ; registry : list?
-  ;;   Keeps the shared scene/page order used by the exported documents and raster references.
+  ;   Keeps the shared scene/page order used by the exported documents and raster references.
   (define registry (list (cons "geometry" geometry-page) (cons "clips" clip-page) (cons "layers"
     layer-page)))
+
   ; pages : list?
-  ;;   Collects output-page descriptions in document order.
+  ;   Collects output-page descriptions in document order.
   (define pages (map (lambda (entry) (make-output-page 720 500 (cdr entry) #:margins 24 #:background
     'white)) registry))
+
   ; report : output-audit-report?
-  ;;   Retains the export audit report for the generated metadata file.
+  ;   Retains the export audit report for the generated metadata file.
   (define report (save-output/audit pages (file ".pdf") 'pdf #:policy 'error #:exists 'replace
     #:title "Canvas primitives and layers"))
   (write-json-file (file ".pdf.audit.json") (output-audit-report->jsexpr report))
@@ -228,8 +255,9 @@
     (with-skia ([im (output-page->image p #:dpi 144)])
       (save-image im (file (string-append stem ".reference.png")) 'png #:exists 'replace)))
   (write-json-file (file ".queries.json") (reverse (unbox query-trace)))
+
   ; base : string?
-  ;;   Escapes the output prefix for links in the generated HTML report.
+  ;   Escapes the output prefix for links in the generated HTML report.
   (define base (path->string (file-name-from-path prefix)))
   (call-with-output-file (file ".review.html")
     (lambda (o)

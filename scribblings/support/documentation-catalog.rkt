@@ -46,7 +46,7 @@
 ;; Enabled collections require nonempty module-path and output-directory strings.
 
 ; documentation-collections : list?
-;;   Orders the Reference, Guide, and Tutorials records used by the navigation band.
+;   Orders the Reference, Guide, and Tutorials records used by the navigation band.
 (define documentation-collections
   (list
    (documentation-collection
@@ -60,7 +60,7 @@
     "skia/scribblings/tutorials/index.scrbl" "skia-tutorials" 'tutorials)))
 
 ; documentation-collection-by-id : symbol? -> documentation-collection?
-;;   Looks up a documentation collection and rejects an unknown ID.
+;   Looks up a documentation collection and rejects an unknown ID.
 (define (documentation-collection-by-id id)
   (or (for/first ([entry (in-list documentation-collections)]
                   #:when (eq? id (documentation-collection-id entry)))
@@ -70,17 +70,17 @@
                              "id" id)))
 
 ; available-documentation-collections : -> (listof documentation-collection?)
-;;   Returns only collections that currently have enabled destinations.
+;   Returns only collections that currently have enabled destinations.
 (define (available-documentation-collections)
   (filter documentation-collection-available? documentation-collections))
 
 ; tutorial-id : hash? -> string?
-;;   Extracts the stable ID from a tutorial metadata record.
+;   Extracts the stable ID from a tutorial metadata record.
 (define (tutorial-id entry)
   (hash-ref entry 'id))
 
 ; tutorial-output-directory : string? -> string?
-;;   Returns the registered output-directory name for a known tutorial.
+;   Returns the registered output-directory name for a known tutorial.
 (define (tutorial-output-directory id)
   ;; These names are the public manual identities registered in info.rkt.  The
   ;; catalog ID is deliberately used rather than inferring from the source
@@ -89,14 +89,14 @@
   (string-append "skia-tutorial-" id))
 
 ; tutorial-shortcut-groups : -> list?
-;;   Returns subject-based shortcuts without deriving membership from reading routes.
+;   Returns subject-based shortcuts without deriving membership from reading routes.
 (define (tutorial-shortcut-groups)
   ;; Categories describe subject browsing. Reading routes may overlap and do
   ;; not decide the navigation menu's order or membership.
   (tutorial-category-groups))
 
 ; validate-documentation-collections! : [list?] -> void?
-;;   Checks unique collection IDs and destinations for every enabled collection.
+;   Checks unique collection IDs and destinations for every enabled collection.
 (define (validate-documentation-collections! [collections documentation-collections])
   (define ids (map documentation-collection-id collections))
   (unless (= (length ids) (length (remove-duplicates ids)))
@@ -112,7 +112,7 @@
   (void))
 
 ; validate-documentation-catalog! : -> void?
-;;   Validates the shared collection metadata and the referenced tutorial catalog.
+;   Validates the shared collection metadata and the referenced tutorial catalog.
 (define (validate-documentation-catalog!)
   (validate-documentation-collections!)
   (validate-tutorial-catalog!)
@@ -137,8 +137,9 @@
                 '(reference guide tutorials))
   (check-equal? (map documentation-collection-id (available-documentation-collections))
                 '(reference tutorials))
+
   ; synthetic-guide : documentation-collection?
-  ;;   Supplies an enabled Guide record solely to test destination validation.
+  ;   Supplies an enabled Guide record solely to test destination validation.
   (define synthetic-guide
     (documentation-collection 'guide "Guide" #t
                               "skia/scribblings/guide/guide.scrbl" "skia-guide" 'guide))
@@ -167,8 +168,9 @@
                   "Recording and Export"
                   "Windows and Interaction"
                   "Sprites and Games"))
+
   ; grouped-ids : list?
-  ;;   Collects tutorial IDs in subject-menu order for completeness and uniqueness checks.
+  ;   Collects tutorial IDs in subject-menu order for completeness and uniqueness checks.
   (define grouped-ids
     (append-map (lambda (group) (map tutorial-id (cdr group)))
                 (tutorial-shortcut-groups)))

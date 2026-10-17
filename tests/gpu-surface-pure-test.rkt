@@ -24,13 +24,13 @@
 
 ; options : [#:w real? #:h real? #:samples any/c #:opaque? any/c #:budgeted? any/c #:alpha any/c] ->
 ; any
-;;   Validates a synthetic surface request without allocating native GPU storage.
+;   Validates a synthetic surface request without allocating native GPU storage.
 (define (options #:w [w 8] #:h [h 8] #:samples [samples 0]
                  #:opaque? [opaque? #f] #:budgeted? [budgeted? #t] #:alpha [alpha 0])
   (gpu-surface-options 'test w h samples opaque? budgeted? alpha))
 
 ; fake-surface : gpu-domain? box? box? -> gpu-surface?
-;;   Wraps a mock owned surface with its domain and detached allocation options.
+;   Wraps a mock owned surface with its domain and detached allocation options.
 (define (fake-surface d log abandoned?)
   (make-gpu-surface-record (mock-resource d log abandoned? 'surface) 8 8 '()
                           'mock-context d #f (options)))
@@ -40,8 +40,8 @@
 ;;;
 
 ; gpu-surface-pure-tests : test-suite?
-;;   Collects the regression cases for gPU surfaces: pure options, generic handles, and activation
-;;   leases.
+;   Collects the regression cases for gPU surfaces: pure options, generic handles, and activation
+;   leases.
 (define gpu-surface-pure-tests
   (test-suite
    "GPU surfaces: pure options, generic handles, and activation leases"

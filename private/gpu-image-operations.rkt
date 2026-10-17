@@ -16,11 +16,12 @@
          (submod "gpu-images.rkt" image-operation-internals)
          (submod "../image-operations.rkt" internals))
 (provide gpu-image-apply-filter)
+
 ; gpu-image-apply-filter : gpu-image? image-filter? [#:subset (or/c list? vector? #f)] #:clip (or/c
 ;   list? vector?) -> (values gpu-image? (and/c (vector/c exact-nonnegative-integer?
 ;   exact-nonnegative-integer? exact-positive-integer? exact-positive-integer?) immutable?) (and/c
 ;   (vector/c exact-integer? exact-integer?) immutable?))
-;;   Applies filter in the image's active context.
+;   Applies filter in the image's active context.
 (define (gpu-image-apply-filter im filter #:subset [subset #f] #:clip clip)
   (define who 'gpu-image-apply-filter)
   (define ih (gpu-h who im)) (define fh (image-filter-h who filter))

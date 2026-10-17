@@ -20,11 +20,11 @@
 ;;;
 
 ; gpu-cache-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-cache-native-test-count 20)
 
 ; make-gpu-cache-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for live GPU cache control.
+;   Builds the parameterized suite for live GPU cache control.
 (define (make-gpu-cache-native-tests context other)
   (define (using proc)
     (call-with-gpu-context context

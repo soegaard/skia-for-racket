@@ -22,11 +22,11 @@
 ;;;
 
 ; gpu-interop-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-interop-native-test-count 29)
 
 ; interop-pattern : exact-positive-integer? exact-positive-integer? -> bytes?
-;;   Reconstructs the independent producer's expected row-major RGBA pattern.
+;   Reconstructs the independent producer's expected row-major RGBA pattern.
 (define (interop-pattern w h)
   (apply bytes-append
     (for*/list ([y (in-range h)] [x (in-range w)])
@@ -36,20 +36,20 @@
                (modulo (+ (* x 5) (* y 11)) 256) 255)))))
 
 ; interop-red : exact-positive-integer? exact-positive-integer? [real? real? real? real?] -> bytes?
-;;   Overlays the expected red rectangle on the producer's reference pattern.
+;   Overlays the expected red rectangle on the producer's reference pattern.
 (define (interop-red w h [x 1] [y 2] [width 5] [height 4])
   (define b (interop-pattern w h))
   (for* ([j (in-range y (+ y height))] [i (in-range x (+ x width))])
     (bytes-copy! b (* 4 (+ i (* j w))) (bytes 255 0 0 255))) b)
 
 ; draw-interop-red : canvas? -> void?
-;;   Draws the red rectangle used to verify Skia writes through an imported surface.
+;   Draws the red rectangle used to verify Skia writes through an imported surface.
 (define (draw-interop-red c)
   (with-skia ([p (make-paint #:color 'red #:antialias? #f)]) (draw-rect c 1 2 5 4 p)))
 
 ; interop-handoff : gpu-context? cpointer? [#:incoming symbol? #:premultiplied? boolean?] ->
 ; gpu-external-texture?
-;;   Declares an external Direct3D texture's incoming/outgoing states and producer synchronization.
+;   Declares an external Direct3D texture's incoming/outgoing states and producer synchronization.
 (define (interop-handoff c f #:incoming [incoming 'pixel-shader-resource] #:premultiplied? [pm? #t])
   (make-d3d12-external-texture c (fixture-texture f)
     #:producer-fence (fixture-fence f) #:producer-value 1
@@ -57,13 +57,13 @@
 
 ; with-interop-fixture : gpu-context? procedure? [exact-nonnegative-integer? exact-positive-integer?
 ; exact-positive-integer?] -> any
-;;   Scopes an independently owned Direct3D fixture around an interop callback.
+;   Scopes an independently owned Direct3D fixture around an interop callback.
 (define (with-interop-fixture c proc [kind 0] [w 37] [h 29])
   (define f (make-fixture c w h kind))
   (dynamic-wind void (lambda () (proc f)) (lambda () (close-fixture f))))
 
 ; make-gpu-interop-native-tests : gpu-context? gpu-context? -> test-suite?
-;;   Builds the parameterized suite for real D3D12 producer, Skia handoff, independent consumer.
+;   Builds the parameterized suite for real D3D12 producer, Skia handoff, independent consumer.
 (define (make-gpu-interop-native-tests c other)
   (define (using proc [kind 0])
     (call-with-gpu-context c (lambda () (with-interop-fixture c proc kind))))

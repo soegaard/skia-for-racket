@@ -32,7 +32,7 @@
 ;; reference counts and pool entries, including after injected failures.
 
 ; make-metal-fixture : [any/c] -> metal-fixture?
-;;   Builds synthetic Metal platform/context operations with pool and reference-count assertions.
+;   Builds synthetic Metal platform/context operations with pool and reference-count assertions.
 (define (make-metal-fixture [fail #f])
   (define events (box '()))
   (define context-token (gensym 'metal-context))
@@ -82,22 +82,22 @@
   (metal-fixture provider driver scope events refs failure in-pool))
 
 ; with-metal-fixture : procedure? -> any
-;;   Scopes a GPU domain over the synthetic Metal provider and guarantees domain closure.
+;   Scopes a GPU domain over the synthetic Metal provider and guarantees domain closure.
 (define (with-metal-fixture proc)
   (define f (make-metal-fixture))
   (define d (make-gpu-domain (metal-fixture-provider f) (metal-fixture-driver f)))
   (dynamic-wind void (lambda () (proc f d)) (lambda () (domain-close! d))))
 
 ; metal-events : metal-fixture? -> list?
-;;   Returns recorded Metal lifecycle events in execution order.
+;   Returns recorded Metal lifecycle events in execution order.
 (define (metal-events f) (reverse (unbox (metal-fixture-events f))))
 
 ; metal-event-count : metal-fixture? any/c -> exact-nonnegative-integer?
-;;   Counts occurrences of a selected synthetic Metal event.
+;   Counts occurrences of a selected synthetic Metal event.
 (define (metal-event-count f event)
   (for/sum ([x (in-list (metal-events f))]) (if (eq? x event) 1 0)))
 
 ; metal-live-refs : metal-fixture? -> (listof exact-nonnegative-integer?)
-;;   Returns outstanding device, queue, and context reference counts in that order.
+;   Returns outstanding device, queue, and context reference counts in that order.
 (define (metal-live-refs f)
   (for/list ([key '(device queue context)]) (hash-ref (metal-fixture-refs f) key)))

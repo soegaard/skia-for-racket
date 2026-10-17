@@ -18,16 +18,16 @@
 ;;;
 
 ; root : path?
-;;   Locates .. relative to this module, independent of the invoking directory.
+;   Locates .. relative to this module, independent of the invoking directory.
 (define-runtime-path root "..")
 
 ; info : procedure?
-;;   Looks up package metadata fields from the repository's info.rkt.
+;   Looks up package metadata fields from the repository's info.rkt.
 (define info (get-info/full root))
 (unless info (error 'package-version "package metadata could not be read"))
 
 ; value : (or/c string? #f)
-;;   Holds the declared version before the command validates and prints it.
+;   Holds the declared version before the command validates and prints it.
 (define value (info 'version (lambda () #f)))
 (unless (valid-version? value)
   (error 'package-version "invalid Racket package version: ~e" value))

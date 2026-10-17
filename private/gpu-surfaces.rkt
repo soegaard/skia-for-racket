@@ -31,14 +31,16 @@
          gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
          gpu-surface->rgba-bytes gpu-surface->raster-image
          gpu-surface-read-raster-buffer!)
+
 ; gpu-surface-domain/checked : symbol? gpu-surface? -> any
-;;   Checks that a surface is GPU-backed before returning its execution domain.
+;   Checks that a surface is GPU-backed before returning its execution domain.
 (define (gpu-surface-domain/checked who s)
   (unless (gpu-surface? s) (raise-argument-error who "gpu-surface?" s))
   (resource-pointer (surface-h who s))
   (gpu-surface-domain s))
+
 ; native-context : symbol? any/c -> any
-;;   Requires a live context and returns its pointer only inside the matching GPU domain.
+;   Requires a live context and returns its pointer only inside the matching GPU domain.
 (define (native-context who context)
   (define d (context-domain who context))
   (define p (domain-pointer d))
@@ -46,16 +48,18 @@
     (domain-request-shutdown! d 'native-context-lost)
     (error who "native context is lost or abandoned; abandon/close this execution domain"))
   p)
+
 ; gpu-flush! : gpu-context? -> void?
-;;   Flushes pending Skia work for the context.
+;   Flushes pending Skia work for the context.
 (define (gpu-flush! context)
   (define p (native-context 'gpu-flush! context))
   (gpu-surface-native-check!)
   (record-gpu-io! (hasheq 'kind "flush"))
   (flush/native p)
   (void))
+
 ; gpu-submit! : gpu-context? [#:wait? boolean?] -> void?
-;;   Submits previously flushed work.
+;   Submits previously flushed work.
 (define (gpu-submit! context #:wait? [wait? #f])
   (boolean 'gpu-submit! wait?)
   (define p (native-context 'gpu-submit! context))
@@ -64,25 +68,29 @@
   (unless (submit/native p wait?)
     (error 'gpu-submit! "native submission failed (no CPU rendering fallback)"))
   (void))
+
 ; gpu-flush-and-submit! : gpu-context? [#:wait? boolean?] -> void?
-;;   Flushes the context, then submits its work with the given wait request.
+;   Flushes the context, then submits its work with the given wait request.
 (define (gpu-flush-and-submit! context #:wait? [wait? #f])
   (boolean 'gpu-flush-and-submit! wait?)
   (gpu-flush! context)
   (gpu-submit! context #:wait? wait?))
+
 ; gpu-wait! : gpu-context? -> void?
-;;   Flushes pending work, submits it, and requests CPU-visible completion without presenting a frame.
+;   Flushes pending work, submits it, and requests CPU-visible completion without presenting a frame.
 (define (gpu-wait! context)
   ;; Wait includes pending Skia commands as well as submitted backend work.
   ;; Presentation is a separate operation, not implied by this boundary.
   (gpu-flush-and-submit! context #:wait? #t))
+
 ; pointer=? : (or/c #f cpointer?) (or/c #f cpointer?) -> boolean?
-;;   Checks native surface/context identity by address rather than Racket pointer-wrapper identity.
+;   Checks native surface/context identity by address rather than Racket pointer-wrapper identity.
 (define (pointer=? a b)
   (and a b (= (cast a _pointer _uintptr) (cast b _pointer _uintptr))))
+
 ; gpu-surface-format-info : gpu-context? (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
 ;   'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32) -> (and/c hash? immutable?)
-;;   Queries the active context's native format limits.
+;   Queries the active context's native format limits.
 (define (gpu-surface-format-info context color-type)
   (define who 'gpu-surface-format-info)
   ;; Validation is native-free until a reviewed color symbol is established.
@@ -99,12 +107,13 @@
           'renderable (positive? maximum) 'max_sample_count maximum
           'max_render_target_size (n:gr_recording_context_max_render_target_size cp)
           'allocation_verified #f 'actual_sample_count #f))
+
 ; make-gpu-surface : gpu-context? (integer-in 1 32768) (integer-in 1 32768) [#:background color?]
 ;   [#:color-space (or/c color-space? #f)] [#:sample-count (integer-in 0 64)] [#:opaque? boolean?]
 ;   [#:budgeted? boolean?] [#:color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
 ;   'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32)] [#:alpha-type (or/c 'premul 'opaque #f)]
 ;   [#:surface-properties surface-properties?] -> gpu-surface?
-;;   Creates and initializes an owned surface in context.
+;   Creates and initializes an owned surface in context.
 (define (make-gpu-surface context width height
                           #:background [background 'transparent]
                           #:color-space [colorspace #f]
@@ -198,9 +207,10 @@
       (unless completed?
         (when handle (domain-resource-close! handle))
         (domain-drain! d)))))
+
 ; gpu-surface-info : gpu-surface? -> (and/c hash? immutable?)
-;;   Returns detached metadata after checking the live surface's native context and backend
-;;   association.
+;   Returns detached metadata after checking the live surface's native context and backend
+;   association.
 (define (gpu-surface-info s)
   (define who 'gpu-surface-info)
   (define d (gpu-surface-domain/checked who s))
@@ -214,8 +224,9 @@
   (gpu-surface-identity/validated (gpu-surface-description s)
                                 (domain-backend d) (domain-generation d) native-backend
                                 (surface-width s) (surface-height s)))
+
 ; ready-for-read! : symbol? gpu-surface? -> any
-;;   Flushes/submits the source under its owning domain before a synchronous pixel readback.
+;   Flushes/submits the source under its owning domain before a synchronous pixel readback.
 (define (ready-for-read! who s)
   (gpu-surface-domain/checked who s)
   (gpu-surface-native-check!)
@@ -223,9 +234,10 @@
   (unless (= 1 (canvas-save-count/native (n:sk_surface_get_canvas sp)))
     (error who "readback requires a balanced canvas save/layer stack"))
   sp)
+
 ; read-into! : symbol? any/c any/c any/c any/c any/c -> void?
-;;   Copies a GPU surface into caller-supplied native row storage with explicit color and alpha
-;;   settings.
+;   Copies a GPU surface into caller-supplied native row storage with explicit color and alpha
+;   settings.
 (define (read-into! who s pixels row-bytes colorspace alpha-type)
   (define sp (ready-for-read! who s))
   (record-gpu-io! (hasheq 'kind "readback" 'width (surface-width s)
@@ -238,9 +250,10 @@
        (error who "GPU readback failed; destination writes are not transactional"))))
   (void/reference-sink s)
   (void))
+
 ; gpu-surface->rgba-bytes : gpu-surface? [#:premultiplied? boolean?] [#:color-space (or/c
 ;   color-space? #f)] -> bytes?
-;;   Returns a new mutable, tightly packed eight-bit RGBA byte string.
+;   Returns a new mutable, tightly packed eight-bit RGBA byte string.
 (define (gpu-surface->rgba-bytes s #:premultiplied? [premultiplied? #f]
                                    #:color-space [colorspace #f])
   (define who 'gpu-surface->rgba-bytes)
@@ -260,15 +273,17 @@
      (memcpy out p size)))
   (void/reference-sink colorspace)
   out)
+
 ; gpu-surface->raster-image : gpu-surface? -> image?
-;;   Returns an independently owned CPU image through a typed buffer readback.
+;   Returns an independently owned CPU image through a typed buffer readback.
 (define (gpu-surface->raster-image s)
   ;; Preserve target format and color interpretation. RGBA-byte helpers remain
   ;; the explicit eight-bit conversion route, not hidden staging for F16/F32.
   (with-skia ([buffer (gpu-surface->raster-buffer s)])
     (r:raster-buffer->image buffer)))
+
 ; gpu-surface-read-raster-buffer! : gpu-surface? raster-buffer? -> void?
-;;   Reads into an idle, owned CPU buffer of exactly matching dimensions.
+;   Reads into an idle, owned CPU buffer of exactly matching dimensions.
 (define (gpu-surface-read-raster-buffer! s buffer)
   (define who 'gpu-surface-read-raster-buffer!)
   (gpu-surface-domain/checked who s)
@@ -281,8 +296,9 @@
 
 ;; Detached metadata is verified against a temporary native snapshot, not just
 ;; echoed constructor arguments. No pixel readback is involved.
+
 ; gpu-surface->image-info : gpu-surface? -> image-info?
-;;   Returns a detached pixel description.
+;   Returns a detached pixel description.
 (define (gpu-surface->image-info s)
   (define who 'gpu-surface->image-info)
   (gpu-surface-domain/checked who s)
@@ -306,8 +322,9 @@
               (make-image-info (sk_image_get_width ip) (sk_image_get_height ip)
                                #:color-type color #:alpha-type alpha #:color-space descriptor))))))
     (lambda () (when space (skia-close! space)))))
+
 ; gpu-surface-read-pixmap! : gpu-surface? pixmap? -> void?
-;;   Reads the full surface into a live writable pixmap of exactly matching dimensions.
+;   Reads the full surface into a live writable pixmap of exactly matching dimensions.
 (define (gpu-surface-read-pixmap! s destination)
   (define who 'gpu-surface-read-pixmap!)
   (gpu-surface-domain/checked who s)
@@ -340,9 +357,10 @@
             (error who "GPU readback/conversion failed; destination unchanged"))))))
   (void/reference-sink s)
   (void))
+
 ; gpu-surface->raster-buffer : gpu-surface? [#:info (or/c image-info? #f)] [#:row-bytes (or/c
 ;   exact-nonnegative-integer? #f)] -> raster-buffer?
-;;   Returns a new owned CPU raster buffer after a synchronous typed readback.
+;   Returns a new owned CPU raster buffer after a synchronous typed readback.
 (define (gpu-surface->raster-buffer s #:info [requested #f] #:row-bytes [row-bytes #f])
   (define who 'gpu-surface->raster-buffer)
   (gpu-surface-domain/checked who s)

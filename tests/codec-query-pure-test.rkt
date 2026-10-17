@@ -21,7 +21,7 @@
 ;;;
 
 ; size-list : any/c ... -> list?
-;;   Collects the detached negotiated width and height returned by the query validator.
+;   Collects the detached negotiated width and height returned by the query validator.
 (define (size-list . args)
   (call-with-values (lambda () (apply codec-query-scaled-result 'test args)) list))
 
@@ -30,7 +30,7 @@
 ;;;
 
 ; codec-query-pure-tests : test-suite?
-;;   Collects the regression cases for codec query arguments and detached results.
+;   Collects the regression cases for codec query arguments and detached results.
 (define codec-query-pure-tests
   (test-suite "0.76a codec query arguments and detached results"
     (test-case "public query arities"
@@ -102,7 +102,7 @@
       (check-equal? (ctype-sizeof _sk-irect) 16))))
 
 ; codec-query-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define codec-query-pure-test-count 31)
 (module+ main
 
@@ -111,7 +111,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-query-pure-tests))
   (printf "codec-query-pure: ~a cases, ~a failures\n" codec-query-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

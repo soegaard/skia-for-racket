@@ -17,8 +17,8 @@
 ;;   is a packed native channel mapping, not RGBA sample values.
 
 ; load-metal-interop-ops : any/c any/c -> metal-interop-ops?
-;;   Builds Objective-C texture inspection and command-buffer operations for the selected device and
-;;   queue.
+;   Builds Objective-C texture inspection and command-buffer operations for the selected device and
+;   queue.
 (define (load-metal-interop-ops device queue)
   (unless (and (eq? (system-type 'os) 'macosx)
                (memq (system-type 'arch) '(aarch64 x86_64)) (= (ctype-sizeof _pointer) 8))

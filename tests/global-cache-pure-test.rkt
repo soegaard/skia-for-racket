@@ -22,7 +22,7 @@
 ;;;
 
 ; global-cache-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define global-cache-pure-test-count 28)
 
 ;;;
@@ -30,7 +30,7 @@
 ;;;
 
 ; global-cache-pure-tests : test-suite?
-;;   Collects the regression cases for global cache values and bounded memory collector.
+;   Collects the regression cases for global cache values and bounded memory collector.
 (define global-cache-pure-tests
   (test-suite "Global cache values and bounded memory collector"
    (test-case "byte limits accept zero"
@@ -176,7 +176,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests global-cache-pure-tests))
   (printf "global-cache-pure: ~a cases, ~a failures\n" global-cache-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

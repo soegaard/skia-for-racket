@@ -21,7 +21,7 @@
 ;;;
 
 ; check-rgba-near : rgba? rgba? [real?] -> void?
-;;   Compares rendered RGBA channels within the allowed native rounding tolerance.
+;   Compares rendered RGBA channels within the allowed native rounding tolerance.
 (define (check-rgba-near actual expected [tolerance 2])
   (for ([a (in-list (list (rgba-red actual) (rgba-green actual)
                           (rgba-blue actual) (rgba-alpha actual)))]
@@ -29,14 +29,14 @@
     (check-= a e tolerance)))
 
 ; shader-pixel : shader? [real? real?] -> any/c
-;;   Renders a shader and samples a requested fixture pixel.
+;   Renders a shader and samples a requested fixture pixel.
 (define (shader-pixel sh [x 0] [y 0])
   (with-skia ([s (make-surface 24 24)] [p (make-paint #:shader sh)])
     (draw-paint (surface-canvas s) p)
     (surface-pixel s x y)))
 
 ; filter-pixel : color-filter? -> any/c
-;;   Renders the fixed color-filter input and returns its output sample.
+;   Renders the fixed color-filter input and returns its output sample.
 (define (filter-pixel cf)
   (with-skia ([s (make-surface 2 2)]
               [p (make-paint #:color 'red #:color-filter cf)])
@@ -44,7 +44,7 @@
     (surface-pixel s 0 0)))
 
 ; blend-pixel : blender? -> any/c
-;;   Renders the fixed source/destination pair through a runtime blender.
+;   Renders the fixed source/destination pair through a runtime blender.
 (define (blend-pixel b)
   (with-skia ([s (make-surface 2 2 #:background 'blue)]
               [p (make-paint #:color 'red)])
@@ -53,7 +53,7 @@
     (surface-pixel s 0 0)))
 
 ; in-other-thread : procedure? -> any/c
-;;   Captures a runtime-effect operation's worker-thread result or failure.
+;   Captures a runtime-effect operation's worker-thread result or failure.
 (define (in-other-thread thunk)
   (define ch (make-channel))
   (define t
@@ -69,8 +69,8 @@
 ;;;
 
 ; runtime-native-tests : test-suite?
-;;   Collects the regression cases for runtime effects: native compilation, rendering, and
-;;   ownership.
+;   Collects the regression cases for runtime effects: native compilation, rendering, and
+;   ownership.
 (define runtime-native-tests
   (test-suite
    "Runtime effects: native compilation, rendering, and ownership"

@@ -21,17 +21,20 @@
   ;;;
 
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
@@ -45,29 +48,32 @@
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
 
   ; ctx : gpu-context?
-  ;;   Owns the primary native GPU context used by the fixture run.
+  ;   Owns the primary native GPU context used by the fixture run.
   (define ctx
     (case backend [(egl) (make-egl-gpu-context)] [(metal) (make-gpu-context #:backend 'metal)]
       [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
       [else (error 'text-blob-gpu "unsupported backend")]))
 
   ; frames : exact-nonnegative-integer?
-  ;;   Counts successfully rendered fixture frames for the evidence report.
+  ;   Counts successfully rendered fixture frames for the evidence report.
   (define frames '())
+
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
+
   ; drawing-reads : exact-nonnegative-integer?
-  ;;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
-  ;;   zero.
+  ;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
+  ;   zero.
   (define drawing-reads 0)
+
   ; inspection-reads : exact-nonnegative-integer?
-  ;;   Counts explicit readbacks used only to inspect rendered fixture pixels.
+  ;   Counts explicit readbacks used only to inspect rendered fixture pixels.
   (define inspection-reads 0)
 
   ; reads : box? -> exact-nonnegative-integer?
-  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
-  ;;   inspection.
+  ;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;   inspection.
   (define (reads box) (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox box)))
   (dynamic-wind void
     (lambda ()
@@ -108,7 +114,7 @@
     (lambda () (gpu-context-close! ctx)))
 
   ; closed? : boolean?
-  ;;   Records whether context teardown completed with no live or failed resource releases.
+  ;   Records whether context teardown completed with no live or failed resource releases.
   (define closed? (eq? (gpu-context-state ctx) 'closed))
   (call-with-output-file (build-path directory "gpu.json")
     (lambda (out)

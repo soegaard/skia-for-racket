@@ -20,8 +20,8 @@
 ;;;
 
 ; call-with-gpu-test-host : procedure? -> any
-;;   Provides a current GUI OpenGL context and host metadata, hiding the owned frame after the
-;;   callback.
+;   Provides a current GUI OpenGL context and host metadata, hiding the owned frame after the
+;   callback.
 (define (call-with-gpu-test-host proc)
   ;; Even compiling this module on a CPU-only machine does not require gui-lib.
   (define-values (frame% canvas% sleep/yield)

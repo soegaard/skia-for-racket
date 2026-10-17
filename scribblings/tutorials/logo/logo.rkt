@@ -20,21 +20,23 @@
 ;;;
 
 ; size : exact-integer?
-;;   Specifies size in the drawing's local coordinate units.
+;   Specifies size in the drawing's local coordinate units.
 (define size 500)
 
 ; background-color : string?
-;;   Specifies the background color color used by this drawing.
+;   Specifies the background color color used by this drawing.
 (define background-color "#F4F0E7")
+
 ; fill-color : string?
-;;   Specifies the fill color color used by this drawing.
+;   Specifies the fill color color used by this drawing.
 (define fill-color "#246B5A")
+
 ; outline-color : string?
-;;   Specifies the outline color color used by this drawing.
+;   Specifies the outline color color used by this drawing.
 (define outline-color "#173B35")
 
 ; logo-commands : list?
-;;   Orders the path segments forming the logo's closed outline.
+;   Orders the path segments forming the logo's closed outline.
 (define logo-commands
   '((move 250 50)
     (cubic 405 85 440 280 250 440)
@@ -47,12 +49,12 @@
     (close)))
 
 ; make-logo-path : -> path?
-;;   Constructs logo path for the example's drawing pipeline.
+;   Constructs logo path for the example's drawing pipeline.
 (define (make-logo-path)
   (make-path logo-commands #:fill-rule 'even-odd))
 
 ; draw-logo : canvas? -> void?
-;;   Draws the logo component in the current canvas coordinate system.
+;   Draws the logo component in the current canvas coordinate system.
 (define (draw-logo canvas)
   (define path (make-logo-path))
   (define fill (make-paint #:color fill-color))
@@ -64,7 +66,7 @@
   (draw-path canvas path outline))
 
 ; save-raster : path-string? -> void?
-;;   Renders the raster example to the selected output destination.
+;   Renders the raster example to the selected output destination.
 (define (save-raster filename)
   (define surface (make-surface size size
     #:background background-color))
@@ -72,7 +74,7 @@
   (save-png surface filename #:exists 'replace))
 
 ; save-vector : path-string? -> void?
-;;   Exports the drawing through the output-page API to a vector document.
+;   Exports the drawing through the output-page API to a vector document.
 (define (save-vector filename)
   (define page
     (make-output-page size size draw-logo

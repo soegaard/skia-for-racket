@@ -24,13 +24,15 @@
 ;;;
 
 ; scene-width : exact-integer?
-;;   Specifies scene width in the drawing's local coordinate units.
+;   Specifies scene width in the drawing's local coordinate units.
 (define scene-width 640)
+
 ; scene-height : exact-integer?
-;;   Specifies scene height in the drawing's local coordinate units.
+;   Specifies scene height in the drawing's local coordinate units.
 (define scene-height 760)
+
 ; player-y : exact-integer?
-;;   Specifies player y in the drawing's local coordinate units.
+;   Specifies player y in the drawing's local coordinate units.
 (define player-y 690)
 (struct dive (age x y target-x side) #:transparent)
 ;; age: exact nonnegative simulation ticks since the attack started.
@@ -71,33 +73,33 @@
 ;; objects.
 
 ; make-fleet : -> (listof enemy?)
-;;   Creates the initial ordered fleet with guards followed by scouts.
+;   Creates the initial ordered fleet with guards followed by scouts.
 (define (make-fleet)
   (for/list ([id (in-range 21)])
     (define kind (if (< id 7) 'guard 'scout))
     (enemy id kind (if (eq? kind 'guard) 2 1) #f)))
 
 ; make-game : -> game?
-;;   Creates a new playing state with three lives and the first enemy wave.
+;   Creates a new playing state with three lives and the first enemy wave.
 (define (make-game)
   (game 0 320.0 3 0 1 'playing 0 0 (make-fleet) '() '() 0))
 
 ; formation-position : any/c exact-nonnegative-integer? -> (values real? real?)
-;;   Returns the oscillating formation position for an enemy ID and tick.
+;   Returns the oscillating formation position for an enemy ID and tick.
 (define (formation-position id ticks)
   (define seconds (* ticks fixed-step))
   (values (+ 110 (* 70 (modulo id 7)) (* 26 (sin (* 0.8 seconds))))
           (+ 128 (* 58 (quotient id 7)) (* 6 (sin (+ (* 1.2 seconds) (* id 0.3)))))))
 
 ; cubic : real? real? real? real? real? -> real?
-;;   Evaluates one scalar cubic Bézier component at the supplied interpolation amount.
+;   Evaluates one scalar cubic Bézier component at the supplied interpolation amount.
 (define (cubic a b c d amount)
   (define rest (- 1 amount))
   (+ (* rest rest rest a) (* 3 rest rest amount b)
      (* 3 rest amount amount c) (* amount amount amount d)))
 
 ; dive-point : dive? -> (values real? real?)
-;;   Returns the outgoing dive position from its age and captured target.
+;   Returns the outgoing dive position from its age and captured target.
 (define (dive-point attack)
   (define amount (min 1 (/ (dive-age attack) 288.0)))
   (define side (dive-side attack))
@@ -109,7 +111,7 @@
    (cubic (dive-y attack) 370 510 820 amount)))
 
 ; enemy-position : enemy? exact-nonnegative-integer? -> (values real? real?)
-;;   Returns an enemy's formation, dive, or re-entry position.
+;   Returns an enemy's formation, dive, or re-entry position.
 (define (enemy-position sprite ticks)
   (define attack (enemy-dive sprite))
   (cond
@@ -123,7 +125,7 @@
              (cubic -60 -20 (- home-y 50) home-y amount))]))
 
 ; begin-dive! : game? -> void?
-;;   Chooses an available enemy deterministically and captures the player's current position.
+;   Chooses an available enemy deterministically and captures the player's current position.
 (define (begin-dive! world)
   (define available (filter (lambda (sprite) (not (enemy-dive sprite))) (game-enemies world)))
   (unless (null? available)
@@ -139,7 +141,7 @@
           (game-enemies world)))))
 
 ; fire-player! : game? -> void?
-;;   Adds a player shot only while playing and after the firing cooldown expires.
+;   Adds a player shot only while playing and after the firing cooldown expires.
 (define (fire-player! world)
   (when (and (eq? (game-mode world) 'playing) (zero? (game-cooldown world)))
     (set-game-shots! world
@@ -148,7 +150,7 @@
     (set-game-cooldown! world 18)))
 
 ; aimed-shot : real? real? real? real? -> shot?
-;;   Creates a hostile shot aimed toward the player's horizontal position.
+;   Creates a hostile shot aimed toward the player's horizontal position.
 (define (aimed-shot x y target-x speed)
   (define dx (- target-x x))
   (define dy (max 40 (- player-y y)))
@@ -157,8 +159,9 @@
 
 ;; Swept projectile against a circle at the current simulation position.
 ;; This avoids missing a small target simply because a fast shot crosses it.
+
 ; swept-hit? : real? real? real? real? real? real? real? -> boolean?
-;;   Tests a traveled projectile segment against a circular target to avoid tunneling.
+;   Tests a traveled projectile segment against a circular target to avoid tunneling.
 (define (swept-hit? x0 y0 x1 y1 center-x center-y radius)
   (define dx (- x1 x0))
   (define dy (- y1 y0))
@@ -172,7 +175,7 @@
       (sqr radius)))
 
 ; hit-player! : game? -> void?
-;;   Consumes one unshielded life, resets position, and enters game-over when needed.
+;   Consumes one unshielded life, resets position, and enters game-over when needed.
 (define (hit-player! world)
   (when (and (eq? (game-mode world) 'playing) (zero? (game-shield world)))
     (set-game-blasts! world
@@ -183,7 +186,7 @@
     (when (zero? (game-lives world)) (set-game-mode! world 'game-over))))
 
 ; damage-enemy! : game? enemy? -> void?
-;;   Updates remaining hit points or removes the enemy and awards its score.
+;   Updates remaining hit points or removes the enemy and awards its score.
 (define (damage-enemy! world target)
   (define remaining (sub1 (enemy-hp target)))
   (cond
@@ -203,7 +206,7 @@
                                (game-enemies world)))]))
 
 ; step-shots! : game? real? -> void?
-;;   Advances shots, applies swept collisions, and preserves surviving shot order.
+;   Advances shots, applies swept collisions, and preserves surviving shot order.
 (define (step-shots! world seconds)
   (define survivors
     (for/fold ([result '()]) ([bullet (in-list (game-shots world))])
@@ -228,7 +231,7 @@
   (set-game-shots! world (reverse survivors)))
 
 ; step-enemies! : game? -> void?
-;;   Advances dives, schedules deterministic enemy fire, and checks player collisions.
+;   Advances dives, schedules deterministic enemy fire, and checks player collisions.
 (define (step-enemies! world)
   (set-game-enemies!
    world
@@ -261,7 +264,7 @@
       (hit-player! world))))
 
 ; step-game! : game? real? procedure? -> void?
-;;   Advances exactly one fixed simulation step and handles play, wave-clear, and game-over.
+;   Advances exactly one fixed simulation step and handles play, wave-clear, and game-over.
 (define (step-game! world seconds held?)
   ;; The shared window always supplies fixed-step; direct callers must do so too.
   (unless (= seconds fixed-step) (error 'step-game! "expected the fixed 1/120-second step"))
@@ -297,8 +300,9 @@
     [else (void)]))
 
 ;; A reproducible illustrated state, not a claim of a captured play session.
+
 ; demonstration-game : -> game?
-;;   Creates a reproducible illustrated state for figures rather than a captured play session.
+;   Creates a reproducible illustrated state for figures rather than a captured play session.
 (define (demonstration-game)
   (define world (make-game))
   (set-game-ticks! world 200)

@@ -20,15 +20,15 @@
 ;;;
 
 ; query-fixture-width : exact-positive-integer?
-;;   Sets the default encoded-query image width in pixels.
+;   Sets the default encoded-query image width in pixels.
 (define query-fixture-width 16)
 
 ; query-fixture-height : exact-positive-integer?
-;;   Sets the default encoded-query image height in pixels.
+;   Sets the default encoded-query image height in pixels.
 (define query-fixture-height 12)
 
 ; query-fixture-pixels : [exact-positive-integer? exact-positive-integer?] -> bytes?
-;;   Generates an opaque coordinate pattern for decode-size and subset checks.
+;   Generates an opaque coordinate pattern for decode-size and subset checks.
 (define (query-fixture-pixels [width query-fixture-width] [height query-fixture-height])
   (apply bytes-append
     (for*/list ([y (in-range height)] [x (in-range width)])
@@ -36,7 +36,7 @@
              (modulo (+ (* x 7) (* y 11)) 256) 255))))
 
 ; query-fixture-bytes : symbol? [exact-positive-integer? exact-positive-integer?] -> bytes?
-;;   Encodes the query pattern as PNG, full-quality JPEG, or lossless WebP.
+;   Encodes the query pattern as PNG, full-quality JPEG, or lossless WebP.
 (define (query-fixture-bytes format [width query-fixture-width] [height query-fixture-height])
   (with-skia ([image (rgba-bytes->image width height (query-fixture-pixels width height))])
     (case format

@@ -27,8 +27,8 @@
 ;;;
 
 ; dc-doctor! : path? -> void?
-;;   Runs DC integration suites and saves snapshots that remain encodable after the originating DC
-;;   closes.
+;   Runs DC integration suites and saves snapshots that remain encodable after the originating DC
+;   closes.
 (define (dc-doctor! directory)
   (define (file name) (build-path directory name))
   (define base
@@ -112,7 +112,7 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
   (command-line #:program "dc-doctor.rkt" #:once-each
                 [("--directory") path "Fresh output directory" (set! directory (string->path path))]

@@ -29,11 +29,11 @@
 ;;;
 
 ; emblem-size : exact-integer?
-;;   Sets the local recording dimensions used by the reusable emblem.
+;   Sets the local recording dimensions used by the reusable emblem.
 (define emblem-size 120)
 
 ; draw-emblem : canvas? -> void?
-;;   Draws the emblem component in the current canvas coordinate system.
+;   Draws the emblem component in the current canvas coordinate system.
 (define (draw-emblem canvas)
   (define blue (make-paint #:color "#326BC4"))
   (define teal (make-paint #:color "#1EA7A0"))
@@ -58,12 +58,12 @@
     (draw-circle canvas 0 -8 5 highlight)))
 
 ; record-emblem : -> picture?
-;;   Records the emblem once so placements can reuse the same drawing.
+;   Records the emblem once so placements can reuse the same drawing.
 (define (record-emblem)
   (call-with-picture emblem-size emblem-size draw-emblem))
 
 ; draw-placed-emblem : canvas? picture? real? real? real? real? -> void?
-;;   Draws the placed emblem component in the current canvas coordinate system.
+;   Draws the placed emblem component in the current canvas coordinate system.
 (define (draw-placed-emblem canvas picture center-x center-y size angle)
   (with-canvas-state canvas
     (canvas-translate! canvas center-x center-y)
@@ -75,17 +75,19 @@
                   #:height size)))
 
 ; sheet-width : exact-integer?
-;;   Specifies sheet width in the drawing's local coordinate units.
+;   Specifies sheet width in the drawing's local coordinate units.
 (define sheet-width 1000)
+
 ; sheet-height : exact-integer?
-;;   Specifies sheet height in the drawing's local coordinate units.
+;   Specifies sheet height in the drawing's local coordinate units.
 (define sheet-height 760)
+
 ; sheet-background : string?
-;;   Specifies the sheet background color used by this drawing.
+;   Specifies the sheet background color used by this drawing.
 (define sheet-background "#EDF2F7")
 
 ; draw-pattern-sheet : canvas? -> void?
-;;   Draws the pattern sheet component in the current canvas coordinate system.
+;   Draws the pattern sheet component in the current canvas coordinate system.
 (define (draw-pattern-sheet canvas)
   (define picture (record-emblem))
   (define paper (make-paint #:color "#FFFFFF"))
@@ -122,8 +124,9 @@
 ;;;
 
 (module+ main
+
   ; surface : surface?
-  ;;   Owns the raster drawing target used to produce the example's output.
+  ;   Owns the raster drawing target used to produce the example's output.
   (define surface
     (make-surface sheet-width sheet-height
                   #:background sheet-background))

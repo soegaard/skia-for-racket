@@ -25,8 +25,9 @@
 (provide live-streams-check! live-streams-available?
          image-from-port picture-from-port copy-port/streaming image->port picture->port output->port
          image-write-stream! picture-write-stream! output-write-stream!)
+
 ; initialized? : boolean?
-;;   Records whether the process-wide live-stream callback bridge has been initialized.
+;   Records whether the process-wide live-stream callback bridge has been initialized.
 (define initialized? #f)
 
 ;;;
@@ -34,7 +35,7 @@
 ;;;
 
 ; live-streams-check! : -> void?
-;;   Initializes and checks the live-stream support library and its native bridge.
+;   Initializes and checks the live-stream support library and its native bridge.
 (define (live-streams-check!)
   (when (in-port-service?) (error 'live-streams-check! "live port operations cannot re-enter"))
   ;; Resolve the pinned library on the Racket thread, never on an OS worker.
@@ -47,8 +48,9 @@
          (worker:initialize-native! path)
          (set! initialized? #t)))))
   (void))
+
 ; live-streams-available? : -> boolean?
-;;   Calls live-streams-check!
+;   Calls live-streams-check!
 (define (live-streams-available?)
   (with-handlers ([exn:fail? (lambda (_) #f)]) (live-streams-check!) #t))
 
@@ -57,7 +59,7 @@
 ;;;
 
 ; options! : symbol? any/c any/c any/c boolean? boolean? boolean? any/c any/c -> void?
-;;   Validates live-port options and cancellation before requiring an idle callback bridge.
+;   Validates live-port options and cancellation before requiring an idle callback bridge.
 (define (options! who in out length seek? close-in? close-out? limit cancel)
   (live-port-options who in out length seek? close-in? close-out? limit cancel)
   (check-live-cancel who cancel)
@@ -67,9 +69,10 @@
 ;; The protected service thread calls finish once after native teardown, even
 ;; when the initiating thread is killed. Validation errors do not take ownership
 ;; of the user's ports. Always finish every cleanup; preserve the first error.
+
 ; make-finish : any/c any/c boolean? boolean? list? [procedure?] -> procedure?
-;;   Builds cleanup that releases references and selected ports, preserving the first cleanup
-;;   failure.
+;   Builds cleanup that releases references and selected ports, preserving the first cleanup
+;   failure.
 (define (make-finish in out close-in? close-out? refs [after void])
   (lambda (okay?)
     (define first #f)
@@ -81,11 +84,13 @@
     (when (and close-in? in (not (port-closed? in))) (attempt (lambda () (close-input-port in))))
     (when (and close-out? out (not (port-closed? out))) (attempt (lambda () (close-output-port out))))
     (when first (raise (cdr first)))))
+
 ; written-result : any/c any/c any/c exact-nonnegative-integer? -> exact-nonnegative-integer?
-;;   Selects the written-byte count from a completed live-stream operation.
+;   Selects the written-byte count from a completed live-stream operation.
 (define (written-result _answer _stats _read written) written)
+
 ; with-ref : any/c procedure? -> any/c
-;;   Ensures a retained native reference is released even if launch fails or control escapes.
+;   Ensures a retained native reference is released even if launch fails or control escapes.
 (define (with-ref ref proc)
   ;; finish owns release after launch; this covers errors before launch. Both
   ;; paths are idempotent. A private finalizer covers forced caller termination.
@@ -98,7 +103,7 @@
 ; image-from-port : input-port? [#:length (or/c exact-nonnegative-integer? #f)] [#:seekable?
 ;   boolean?] [#:normalize-origin? boolean?] [#:limit exact-positive-integer?] [#:close? boolean?]
 ;   [#:cancel-evt (or/c evt? #f)] -> image?
-;;   Decodes the first image from live input and returns an independently owned CPU image.
+;   Decodes the first image from live input and returns an independently owned CPU image.
 (define (image-from-port in #:length [length #f] #:seekable? [seek? #f]
                          #:normalize-origin? [normalize? #t] #:limit [limit (current-skia-byte-limit)]
                          #:close? [close? #f] #:cancel-evt [cancel #f])
@@ -124,10 +129,11 @@
       (raw:make-image-record
        (new-owned who 'image (lambda () (adopt-reference! lease)) sk_image_unref)
        (vector-ref answer 2) (vector-ref answer 3)))))
+
 ; picture-from-port : input-port? [#:trusted? boolean?] [#:width (or/c real? #f)] [#:height (or/c
 ;   real? #f)] [#:length (or/c exact-nonnegative-integer? #f)] [#:seekable? boolean?] [#:limit
 ;   exact-positive-integer?] [#:close? boolean?] [#:cancel-evt (or/c evt? #f)] -> picture?
-;;   Loads a picture from trusted live SKP input.
+;   Loads a picture from trusted live SKP input.
 (define (picture-from-port in #:trusted? [trusted? #f] #:width [width #f] #:height [height #f]
                            #:length [length #f] #:seekable? [seek? #f]
                            #:limit [limit (current-skia-byte-limit)]
@@ -152,9 +158,10 @@
             (lambda (p) (raw:stream-picture-bounds who p))))
         (raw:make-picture-record handle (if size (vector-ref size 0) (vector-ref bounds 2))
                                    (if size (vector-ref size 1) (vector-ref bounds 3)))))))
+
 ; copy-port/streaming : input-port? output-port? [#:limit exact-positive-integer?] [#:close-input?
 ;   boolean?] [#:close-output? boolean?] [#:cancel-evt (or/c evt? #f)] -> exact-nonnegative-integer?
-;;   Copies input through EOF to a distinct output port and returns the number of bytes written.
+;   Copies input through EOF to a distinct output port and returns the number of bytes written.
 (define (copy-port/streaming in out #:limit [limit (current-skia-byte-limit)]
                             #:close-input? [close-in? #f]
                             #:close-output? [close-out? #f]
@@ -174,7 +181,7 @@
 
 ; encoding : symbol? symbol? exact-integer? exact-integer? symbol? symbol? boolean? -> (values
 ;   integer? integer?)
-;;   Validates format options and returns the JPEG downsampling and alpha ABI values.
+;   Validates format options and returns the JPEG downsampling and alpha ABI values.
 (define (encoding who format quality compression downsample alpha lossless?)
   (unless (memq format '(png jpeg webp)) (raise-argument-error who "'png, 'jpeg or 'webp" format))
   (quality-integer who quality)
@@ -182,22 +189,25 @@
     (raise-argument-error who "PNG compression integer 0 through 9" compression))
   (boolean who lossless?)
   (values (choice who downsample jpeg-downsample-values) (choice who alpha jpeg-alpha-values)))
+
 ; raster-reference : symbol? image? -> any/c
-;;   Pins a CPU-only raster image reference without converting its pixel format or color space.
+;   Pins a CPU-only raster image reference without converting its pixel format or color space.
 (define (raster-reference who image)
   ;; Execute the established CPU-only gate before obtaining a private immutable
   ;; raster reference. Float/color-space storage remains native, not RGBA8 staging.
   (call-with-owned 'image->encoded-bytes (list (raw:image-h who image)) worker:make-raster-reference))
+
 ; picture-reference : symbol? picture? -> any/c
-;;   Acquires a worker-owned picture reference while its managed handle is locked.
+;   Acquires a worker-owned picture reference while its managed handle is locked.
 (define (picture-reference who picture)
   (call-with-owned 'picture->bytes (list (raw:picture-h who picture)) worker:make-picture-reference))
+
 ; image->port : image? output-port? (or/c 'png 'jpeg 'webp) [#:quality (integer-in 0 100)]
 ;   [#:png-compression (integer-in 0 9)] [#:jpeg-downsample (or/c 'yuv-420 'yuv-422 'yuv-444)]
 ;   [#:jpeg-alpha (or/c 'ignore 'blend-on-black)] [#:webp-lossless? boolean?] [#:limit
 ;   exact-positive-integer?] [#:close? boolean?] [#:cancel-evt (or/c evt? #f)] ->
 ;   exact-nonnegative-integer?
-;;   Encodes a CPU-compatible image directly to a Racket port and returns the bytes written.
+;   Encodes a CPU-compatible image directly to a Racket port and returns the bytes written.
 (define (image->port image out format #:quality [quality 90] #:png-compression [compression 6]
                      #:jpeg-downsample [downsample 'yuv-420] #:jpeg-alpha [alpha 'ignore]
                      #:webp-lossless? [lossless? #f] #:limit [limit (current-skia-byte-limit)]
@@ -213,9 +223,10 @@
          (worker:native-encode-image ref out format quality compression ds a lossless? limit cancel
                                      (make-finish #f out #f close? (list ref))))
        written-result))))
+
 ; picture->port : picture? output-port? [#:limit exact-positive-integer?] [#:close? boolean?]
 ;   [#:cancel-evt (or/c evt? #f)] -> exact-nonnegative-integer?
-;;   Serializes a CPU-compatible picture as SKP to a Racket port and returns the bytes written.
+;   Serializes a CPU-compatible picture as SKP to a Racket port and returns the bytes written.
 (define (picture->port picture out
                        #:limit [limit (current-skia-byte-limit)]
                        #:close? [close? #f]
@@ -237,8 +248,8 @@
 
 ; call-with-recorded-pages : symbol? any/c symbol? symbol? symbol? real? exact-positive-integer?
 ;   procedure? -> any/c
-;;   Captures authoring once, preflights retained page commands, and closes pictures after the
-;;   callback.
+;   Captures authoring once, preflights retained page commands, and closes pictures after the
+;   callback.
 (define (call-with-recorded-pages who source format policy mode dpi limit proc)
   (unless (memq format '(pdf svg)) (raise-argument-error who "'pdf or 'svg" format))
   (define pages
@@ -282,8 +293,9 @@
        (lambda ignored (void)))
       (proc pictures sizes))
     (lambda () (for ([picture (in-list captured)]) (skia-close! picture)))))
+
 ; call-with-page-references : symbol? (listof picture?) procedure? -> any/c
-;;   Retains page pictures in page order for a callback and releases every reference afterward.
+;   Retains page pictures in page order for a callback and releases every reference afterward.
 (define (call-with-page-references who pictures proc)
   (define refs '())
   (dynamic-wind void
@@ -293,11 +305,12 @@
          (lambda () (set! refs (cons (picture-reference who picture) refs)))))
       (proc (reverse refs)))
     (lambda () (for ([ref (in-list refs)]) (reference-close! ref)))))
+
 ; output->port : (or/c output-page? (cons/c output-page? (listof output-page?))) output-port? (or/c
 ;   'pdf 'svg) [#:policy (or/c 'report 'error 'vector-only)] [#:text-mode (or/c 'auto 'native
 ;   'outline)] [#:raster-dpi (real-in 1 9600)] [#:limit exact-positive-integer?] [#:close? boolean?]
 ;   [#:cancel-evt (or/c evt? #f)] -> exact-nonnegative-integer?
-;;   Exports output pages to a Racket port and returns the byte count.
+;   Exports output pages to a Racket port and returns the byte count.
 (define (output->port source out format #:policy [policy 'error] #:text-mode [mode 'auto]
                       #:raster-dpi [dpi 144] #:limit [limit (current-skia-byte-limit)]
                       #:close? [close? #f] #:cancel-evt [cancel #f])
@@ -333,7 +346,7 @@
 ;;;
 
 ; native-publication : symbol? any/c list? procedure? -> any/c
-;;   Pins a budgeted native destination for live output, poisoning partial failures before release.
+;   Pins a budgeted native destination for live output, poisoning partial failures before release.
 (define (native-publication who stream refs execute)
   (define-values (pin remaining)
     (with-output who stream
@@ -360,11 +373,12 @@
     (lambda ()
       (release-live-pin! pin)
       (unless (port-closed? out) (close-output-port out)))))
+
 ; image-write-stream! : image? skia-output-stream? (or/c 'png 'jpeg 'webp) [#:quality (integer-in 0
 ;   100)] [#:png-compression (integer-in 0 9)] [#:jpeg-downsample (or/c 'yuv-420 'yuv-422 'yuv-444)]
 ;   [#:jpeg-alpha (or/c 'ignore 'blend-on-black)] [#:webp-lossless? boolean?] ->
 ;   exact-nonnegative-integer?
-;;   Encodes a CPU-compatible image to a memory or file output stream.
+;   Encodes a CPU-compatible image to a memory or file output stream.
 (define (image-write-stream! image stream format
                              #:quality [quality 90] #:png-compression [compression 6]
                              #:jpeg-downsample [downsample 'yuv-420] #:jpeg-alpha [alpha 'ignore]
@@ -382,8 +396,9 @@
              (worker:native-encode-image ref out format quality compression ds a lossless?
                                          limit #f finish))
            written-result))))))
+
 ; picture-write-stream! : picture? skia-output-stream? -> exact-nonnegative-integer?
-;;   Serializes a CPU-compatible picture to a memory or file output stream.
+;   Serializes a CPU-compatible picture to a memory or file output stream.
 (define (picture-write-stream! picture stream)
   (define who 'picture-write-stream!)
   (with-output who stream (lambda (_p _n) (void)))
@@ -395,10 +410,11 @@
           (call-with-values
            (lambda () (worker:native-write-picture ref out limit #f finish))
            written-result))))))
+
 ; output-write-stream! : (or/c output-page? (cons/c output-page? (listof output-page?)))
 ;   skia-output-stream? [#:policy (or/c 'report 'error 'vector-only)] [#:text-mode (or/c 'auto
 ;   'native 'outline)] [#:raster-dpi (real-in 1 9600)] -> exact-nonnegative-integer?
-;;   Publishes one through 1024 output pages as PDF to a native output stream.
+;   Publishes one through 1024 output pages as PDF to a native output stream.
 (define (output-write-stream! source stream
                               #:policy [policy 'error]
                               #:text-mode [mode 'auto]

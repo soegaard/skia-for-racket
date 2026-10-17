@@ -19,24 +19,28 @@
 ;;   enter preserves/restores the previous native context.
 
 ; gate : semaphore?
-;;   Serializes EGL display/context bookkeeping shared by provider construction and teardown.
+;   Serializes EGL display/context bookkeeping shared by provider construction and teardown.
 (define gate (make-semaphore 1))
+
 ; inside-gate? : parameter?
-;;   Marks reentrant calls already inside the EGL bookkeeping lock.
+;   Marks reentrant calls already inside the EGL bookkeeping lock.
 (define inside-gate? (make-parameter #f))
+
 ; call-with-egl-lock : any/c -> any
-;;   Serializes EGL bookkeeping without deadlocking nested calls on the same dynamic path.
+;   Serializes EGL bookkeeping without deadlocking nested calls on the same dynamic path.
 (define (call-with-egl-lock proc)
   (when (inside-gate?)
     (error 'egl-provider "nested EGL provider activation is not supported"))
   (call-with-semaphore gate (lambda () (parameterize ([inside-gate? (current-thread)]) (proc)))))
+
 ; egl-extension? : any/c any/c -> any
-;;   Matches a complete EGL extension token rather than a substring of another extension name.
+;   Matches a complete EGL extension token rather than a substring of another extension name.
 (define (egl-extension? text name)
   (and (string? text)
        (for/or ([s (in-list (regexp-split #px"\\s+" text))]) (string=? s name))))
+
 ; check-egl-options : symbol? any/c exact-nonnegative-integer? any/c -> void?
-;;   Checks requested EGL platform, device index, and surface mode before loading native services.
+;   Checks requested EGL platform, device index, and surface mode before loading native services.
 (define (check-egl-options who platform index surface)
   (unless (memq platform '(surfaceless device))
     (raise-argument-error who "'surfaceless or 'device" platform))
@@ -48,7 +52,7 @@
     (raise-argument-error who "'surfaceless or 'pbuffer" surface)))
 
 ; make-egl-components : egl-platform-ops? any/c -> (values any/c gpu-driver?)
-;;   Combines injected EGL host operations with a GL driver while preserving failure cleanup.
+;   Combines injected EGL host operations with a GL driver while preserving failure cleanup.
 (define (make-egl-components ops make-driver)
   (unless (egl-platform-ops? ops)
     (raise-argument-error 'make-egl-components "egl-platform-ops?" ops))

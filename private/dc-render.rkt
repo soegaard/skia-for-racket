@@ -29,12 +29,12 @@
 ;;;
 
 ; draw! : surface? dc-draw? -> void?
-;;   Draws one detached path request on the target surface's canvas.
+;   Draws one detached path request on the target surface's canvas.
 (define (draw! surface command)
   (draw-on-canvas! (sk:surface-canvas surface) command))
 
 ; draw-on-canvas! : canvas? dc-draw? -> void?
-;;   Scopes the request's clip, transform, temporary path, and paint for native path drawing.
+;   Scopes the request's clip, transform, temporary path, and paint for native path drawing.
 (define (draw-on-canvas! c command)
   (define ink (dc-draw-ink command))
   (sk:call-with-canvas-state c
@@ -47,7 +47,7 @@
             (lambda (paint) (sk:draw-path c p paint))))))))
 
 ; clear! : surface? (or/c #f dc-clip?) vector? boolean? -> void?
-;;   Fills the device-coordinate clip with a DC color, or clears it transparently when erasing.
+;   Fills the device-coordinate clip with a DC color, or clears it transparently when erasing.
 (define (clear! surface clip rgba erase?)
   (define c (sk:surface-canvas surface))
   (sk:call-with-canvas-state c
@@ -59,14 +59,14 @@
         (sk:draw-paint c paint)))))
 
 ; bitmap! : surface? dc-bitmap-data? vector? vector? (or/c #f dc-clip?) real? symbol? -> void?
-;;   Draws a detached bitmap subrectangle through the surface's native canvas.
+;   Draws a detached bitmap subrectangle through the surface's native canvas.
 (define (bitmap! surface data rect matrix clip opacity sampling)
   (bitmap-on-canvas! (sk:surface-canvas surface) data rect matrix clip opacity sampling))
 
 ; bitmap-on-canvas! : canvas? dc-bitmap-data? vector? vector? (or/c #f dc-clip?) real? symbol? ->
 ; void?
-;;   Draws physical-source/logical-destination bitmap coordinates with the captured matrix, clip,
-;;   opacity, and sampling.
+;   Draws physical-source/logical-destination bitmap coordinates with the captured matrix, clip,
+;   opacity, and sampling.
 (define (bitmap-on-canvas! c data rect matrix clip opacity sampling)
   (sk:with-skia ([image (sk:rgba-bytes->image
                         (dc-bitmap-data-width data) (dc-bitmap-data-height data)
@@ -83,8 +83,8 @@
   (void))
 
 ; copy! : procedure? surface? vector? (or/c #f dc-clip?) real? real? real? real? real? real? -> void?
-;;   Copies a transformed source rectangle using a native snapshot so overlapping destinations cannot
-;;   feed back.
+;   Copies a transformed source rectangle using a native snapshot so overlapping destinations cannot
+;   feed back.
 (define (copy! snapshot surface matrix clip x y width height x2 y2)
   ;; Immutable native snapshot prevents overlap feedback. Both source and
   ;; destination are in the same DC coordinate system, hence their physical
@@ -108,8 +108,8 @@
   (void))
 
 ; composite! : procedure? surface? surface? (or/c #f dc-clip?) real? -> void?
-;;   Composites a completed child in physical coordinates, applying its parent clip and opacity
-;;   exactly once.
+;   Composites a completed child in physical coordinates, applying its parent clip and opacity
+;   exactly once.
 (define (composite! snapshot parent child clip opacity)
   ;; The completed child is sampled in physical coordinates. The current DC
   ;; transform and per-draw alpha must not be applied a second time.
@@ -129,8 +129,8 @@
 
 ; make-surface-dc-renderer : procedure? procedure? procedure? procedure? procedure?
 ; [#:internal-snapshot procedure?] -> dc-renderer/styles?
-;;   Combines storage callbacks with shared Skia drawing; internal snapshots preserve residency for
-;;   copies and alpha groups.
+;   Combines storage callbacks with shared Skia drawing; internal snapshots preserve residency for
+;   copies and alpha groups.
 (define (make-surface-dc-renderer create close snapshot rgba png
                                   #:internal-snapshot [internal-snapshot snapshot])
   ;; Internal copies and alpha composition must retain native residency.
@@ -143,8 +143,8 @@
    dc-path-ink-bounds))
 
 ; skia-dc-renderer : dc-renderer/styles?
-;;   Supplies the default persistent CPU-raster target callbacks without creating a surface at module
-;;   load.
+;   Supplies the default persistent CPU-raster target callbacks without creating a surface at module
+;   load.
 (define skia-dc-renderer
   (make-surface-dc-renderer
    (lambda (w h) (sk:make-surface w h #:background 'transparent))

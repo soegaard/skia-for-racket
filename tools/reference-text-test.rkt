@@ -24,14 +24,14 @@
 ;;;
 
 ; test-face : -> typeface?
-;;   Creates the configured Reference test face or the default face when no override is supplied.
+;   Creates the configured Reference test face or the default face when no override is supplied.
 (define (test-face)
   (define filename (getenv "SKIA_REFERENCE_TEST_FONT"))
   (if filename (typeface-from-file filename) (make-typeface)))
 
 
 ; same-run : shaped-run? shaped-run? -> void?
-;;   Checks equal glyphs, clusters, positions, and horizontal advance between shaped runs.
+;   Checks equal glyphs, clusters, positions, and horizontal advance between shaped runs.
 (define (same-run a b)
   (check-equal? (shaped-run-glyphs a) (shaped-run-glyphs b))
   (check-equal? (shaped-run-clusters a) (shaped-run-clusters b))

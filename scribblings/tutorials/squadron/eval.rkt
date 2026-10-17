@@ -21,26 +21,28 @@
 ;;;
 
 ; model-source : path?
-;;   Locates model source relative to this module rather than the current directory.
+;   Locates model source relative to this module rather than the current directory.
 (define-runtime-path model-source "model.rkt")
+
 ; evaluator : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define evaluator (make-base-eval))
 (evaluator `(require racket (file ,(path->string model-source))))
 
 ; game-pict : -> pict?
-;;   Renders the game illustration from the tutorial's drawing code.
+;   Renders the game illustration from the tutorial's drawing code.
 (define (game-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict scene-width scene-height
                  (lambda (canvas) (draw-game canvas atlas (demonstration-game))) #:scale 0.72)))
+
 ; game-atlas-pict : -> pict?
-;;   Renders the game atlas illustration from the tutorial's drawing code.
+;   Renders the game atlas illustration from the tutorial's drawing code.
 (define (game-atlas-pict)
   (with-skia ([atlas (make-game-atlas)]) (atlas-pict atlas 16)))
 
 ; ship-pict : -> pict?
-;;   Renders the ship illustration from the tutorial's drawing code.
+;   Renders the ship illustration from the tutorial's drawing code.
 (define (ship-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -54,7 +56,7 @@
                    (map sprite-source '(0 1 6)) #:sampling 'nearest)))))
 
 ; fleet-pict : -> pict?
-;;   Renders the fleet illustration from the tutorial's drawing code.
+;   Renders the fleet illustration from the tutorial's drawing code.
 (define (fleet-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -70,7 +72,7 @@
                    #:sampling 'linear)))))
 
 ; dive-pict : -> pict?
-;;   Renders the dive illustration from the tutorial's drawing code.
+;   Renders the dive illustration from the tutorial's drawing code.
 (define (dive-pict)
   (define diagram-scale 0.66)
   (with-skia ([atlas (make-game-atlas)])
@@ -105,7 +107,7 @@
      #:scale 0.75)))
 
 ; explosion-pict : -> pict?
-;;   Renders the explosion illustration from the tutorial's drawing code.
+;   Renders the explosion illustration from the tutorial's drawing code.
 (define (explosion-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -118,7 +120,7 @@
                    (map sprite-source '(8 9 10 11 12 13)) #:sampling 'nearest)))))
 
 ; collision-pict : -> pict?
-;;   Renders the collision illustration from the tutorial's drawing code.
+;   Renders the collision illustration from the tutorial's drawing code.
 (define (collision-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -145,7 +147,7 @@
          (draw-simple-text canvas "MISS: 45 units from center" 370 198 font ink))))))
 
 ; game-states-pict : -> pict?
-;;   Renders the game states illustration from the tutorial's drawing code.
+;   Renders the game states illustration from the tutorial's drawing code.
 (define (game-states-pict)
   (with-skia ([atlas (make-game-atlas)])
     (define (one mode)
@@ -164,6 +166,6 @@
                 (captioned-pict "After the last life" (one 'game-over)))))
 
 ; squadron-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (squadron-interaction expression ...)
   (interaction #:eval evaluator expression ...))

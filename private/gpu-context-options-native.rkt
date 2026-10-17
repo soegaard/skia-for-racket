@@ -23,8 +23,8 @@
 ;;   before construction.
 
 ; context-options-abi : -> hash?
-;;   Verifies reviewed 64-bit size, alignment, and scalar widths before constructing context
-;;   options.
+;   Verifies reviewed 64-bit size, alignment, and scalar widths before constructing context
+;   options.
 (define (context-options-abi)
   (unless (and (= (ctype-sizeof _pointer) 8) (= (ctype-sizeof _size) 8)
                (= (ctype-sizeof _int32) 4) (= (ctype-sizeof _stdbool) 1)
@@ -34,8 +34,9 @@
   (hasheq 'size (ctype-sizeof _gr-context-options) 'alignment (ctype-alignof _gr-context-options)
           'pointer_bytes (ctype-sizeof _pointer) 'bool_bytes (ctype-sizeof _stdbool)
           'offsets '(0 4 8 16 17 20)))
+
 ; call-with-native-context-options : symbol? any/c procedure? -> any
-;;   Lends a pinned options record to one native constructor, preserving #f for native defaults.
+;   Lends a pinned options record to one native constructor, preserving #f for native defaults.
 (define (call-with-native-context-options who options proc)
   (check-optional-context-options who options)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))

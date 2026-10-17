@@ -20,7 +20,7 @@
 ;;;
 
 ; text-page : -> output-page?
-;;   Builds a page with a short label for native-text versus outline output checks.
+;   Builds a page with a short label for native-text versus outline output checks.
 (define (text-page)
   (make-output-page
    216 144
@@ -29,25 +29,25 @@
        (draw-simple-text c "Vector output" 10 35 font paint)))))
 
 ; has-text? : bytes? -> boolean?
-;;   Recognizes a text element in generated SVG.
+;   Recognizes a text element in generated SVG.
 (define (has-text? bs) (regexp-match? #rx#"<text[ >]" bs))
 
 ; has-path? : bytes? -> boolean?
-;;   Recognizes a path element in generated SVG.
+;   Recognizes a path element in generated SVG.
 (define (has-path? bs) (regexp-match? #rx#"<path[ >]" bs))
 
 ; pdf-pages : bytes? -> exact-nonnegative-integer?
-;;   Counts PDF Page dictionaries without confusing them with the Pages tree.
+;   Counts PDF Page dictionaries without confusing them with the Pages tree.
 (define (pdf-pages bs) (length (regexp-match* #rx#"/Type /Page([^s]|$)" bs)))
 
 ; in-temp-dir : procedure? -> any
-;;   Scopes a temporary output directory and removes it after the test.
+;   Scopes a temporary output directory and removes it after the test.
 (define (in-temp-dir proc)
   (define dir (make-temporary-file "skia-output-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
 
 ; foreign-error : (-> any) -> (or/c exn? #f)
-;;   Runs the operation on another thread and returns its exception, or false on success.
+;   Runs the operation on another thread and returns its exception, or false on success.
 (define (foreign-error thunk)
   (define ch (make-channel))
   (define worker
@@ -64,7 +64,7 @@
 ;;;
 
 ; output-native-tests : test-suite?
-;;   Collects the regression cases for shared vector output: live rendering and lifetime.
+;   Collects the regression cases for shared vector output: live rendering and lifetime.
 (define output-native-tests
   (test-suite
    "Shared vector output: live rendering and lifetime"

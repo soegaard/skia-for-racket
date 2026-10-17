@@ -22,19 +22,19 @@
 ;;;
 
 ; I : vector?
-;;   Provides identity coefficients for native matrix-query comparisons.
+;   Provides identity coefficients for native matrix-query comparisons.
 (define I '#(1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0))
 
 ; A : vector?
-;;   Provides a nontrivial coefficient matrix for multiplication and inversion checks.
+;   Provides a nontrivial coefficient matrix for multiplication and inversion checks.
 (define A '#(1 2 3 0 1 4 5 6 0))
 
 ; D : vector?
-;;   Provides a second coefficient matrix whose product distinguishes operand order.
+;   Provides a second coefficient matrix whose product distinguishes operand order.
 (define D '#(2 0 0 0 3 0 0 0 4))
 
 ; near : any/c any/c [real?] -> void?
-;;   Compares matrix-query results within native floating-point tolerance.
+;   Compares matrix-query results within native floating-point tolerance.
 (define (near actual expected [epsilon 5e-6])
   (check-true (and (vector? actual) (= (vector-length actual) 9)))
   (when (and (vector? actual) (= (vector-length actual) 9))
@@ -43,7 +43,7 @@
 ;; Independent elementary oracle, not a call to the implementation under test.
 
 ; product : vector? vector? -> vector?
-;;   Computes the independent expected matrix product in the fixture's coefficient order.
+;   Computes the independent expected matrix product in the fixture's coefficient order.
 (define (product a b)
   (for/vector ([index (in-range 9)])
     (define row (quotient index 3)) (define col (remainder index 3))
@@ -51,7 +51,7 @@
       (* (vector-ref a (+ (* row 3) k)) (vector-ref b (+ (* k 3) col))))))
 
 ; small-gap-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define small-gap-native-test-count 24)
 
 ;;;
@@ -59,7 +59,7 @@
 ;;;
 
 ; small-gap-native-tests : test-suite?
-;;   Collects the regression cases for small-gap native acceptance.
+;   Collects the regression cases for small-gap native acceptance.
 (define small-gap-native-tests
   (test-suite "small-gap native acceptance"
     (test-case "existing native XYZ layout is 36 bytes" (check-equal? (ctype-sizeof _sk-xyz) 36))
@@ -173,7 +173,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests small-gap-native-tests))
   (printf "small-gap-native: ~a cases, ~a failures\n" small-gap-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

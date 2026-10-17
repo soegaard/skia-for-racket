@@ -21,22 +21,22 @@
 
 ; u : string? any/c exact-nonnegative-integer? exact-nonnegative-integer? exact-nonnegative-integer?
 ; [exact-nonnegative-integer?] -> any/c
-;;   Builds detached uniform metadata with explicit count, flags, byte extent, and offset.
+;   Builds detached uniform metadata with explicit count, flags, byte extent, and offset.
 (define (u name type count flags total [offset 0])
   (util:checked-runtime-uniform 'test name offset type count flags total))
 
 ; pack : exact-nonnegative-integer? list? any/c -> bytes?
-;;   Packs supplied uniform values against reflected layout metadata.
+;   Packs supplied uniform values against reflected layout metadata.
 (define (pack size fields values)
   (util:runtime-pack-uniforms 'test size fields values))
 
 ; read-float : bytes? [exact-nonnegative-integer?] -> real?
-;;   Reads a native-layout float from a packed uniform buffer at a byte offset.
+;   Reads a native-layout float from a packed uniform buffer at a byte offset.
 (define (read-float bs [at 0])
   (floating-point-bytes->real bs (system-big-endian?) at (+ at 4)))
 
 ; read-int : bytes? [exact-nonnegative-integer?] -> exact-integer?
-;;   Reads a native-layout signed integer from a packed uniform buffer.
+;   Reads a native-layout signed integer from a packed uniform buffer.
 (define (read-int bs [at 0])
   (integer-bytes->integer bs #t (system-big-endian?) at (+ at 4)))
 
@@ -45,7 +45,7 @@
 ;;;
 
 ; runtime-pure-tests : test-suite?
-;;   Collects the regression cases for runtime effects: pure validation and uniform packing.
+;   Collects the regression cases for runtime effects: pure validation and uniform packing.
 (define runtime-pure-tests
   (test-suite
    "Runtime effects: pure validation and uniform packing"

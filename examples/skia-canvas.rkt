@@ -22,11 +22,11 @@
 ;;;
 
 ; next-window : exact-integer?
-;;   Allocates a distinct index for each independently created review window.
+;   Allocates a distinct index for each independently created review window.
 (define next-window 0)
 
 ; make-window : -> void?
-;;   Creates and shows an interactive drawing window with its own resource lifetime.
+;   Creates and shows an interactive drawing window with its own resource lifetime.
 (define (make-window)
   (set! next-window (add1 next-window))
   (define index next-window)

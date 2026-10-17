@@ -18,20 +18,23 @@
 ;;;
 
 ; bg : string?
-;;   Specifies the bg color used by this drawing.
+;   Specifies the bg color used by this drawing.
 (define bg "#F3F5F8")
+
 ; panel-fill : string?
-;;   Specifies the panel fill color used by this drawing.
+;   Specifies the panel fill color used by this drawing.
 (define panel-fill "#FFFFFF")
+
 ; frame-color : string?
-;;   Specifies the frame color color used by this drawing.
+;   Specifies the frame color color used by this drawing.
 (define frame-color "#C8D1DC")
+
 ; label-color : string?
-;;   Specifies the label color color used by this drawing.
+;   Specifies the label color color used by this drawing.
 (define label-color "#20304C")
 
 ; panel : canvas? real? real? real? real? string? -> void?
-;;   Draws one labeled comparison panel using the example's shared layout.
+;   Draws one labeled comparison panel using the example's shared layout.
 (define (panel c x y w h title)
   (with-skia ([fill (make-paint #:color panel-fill)]
               [stroke (make-paint #:color frame-color #:style 'stroke #:stroke-width 2)]
@@ -42,7 +45,7 @@
     (draw-simple-text c title (+ x 20) (+ y 32) font text)))
 
 ; build-star-picture : -> picture?
-;;   Records the reusable star drawing without retaining the recording canvas.
+;   Records the reusable star drawing without retaining the recording canvas.
 (define (build-star-picture)
   (call-with-picture
    120 120
@@ -59,7 +62,7 @@
        (draw-circle c 60 60 14 center)))))
 
 ; build-badge-picture : -> picture?
-;;   Records the reusable badge drawing without retaining the recording canvas.
+;   Records the reusable badge drawing without retaining the recording canvas.
 (define (build-badge-picture)
   (call-with-picture
    100 100
@@ -73,7 +76,7 @@
        (draw-path c path tri)))))
 
 ; main : any/c -> void?
-;;   Renders the example gallery and writes it to the requested output file.
+;   Renders the example gallery and writes it to the requested output file.
 (define (main out)
   (with-skia ([surface (make-surface 1000 700 #:background bg)]
               [star (build-star-picture)]
@@ -117,8 +120,9 @@
 ;;;
 
 (module+ main
+
   ; out : path-string?
-  ;;   Names the destination image selected by the command line.
+  ;   Names the destination image selected by the command line.
   (define out
     (vector-ref (current-command-line-arguments) 0))
   (main out)

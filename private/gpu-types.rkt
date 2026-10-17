@@ -30,19 +30,23 @@
 ;;   for the complete Skia wrapping scope.
 
 ; gr-opengl : exact-nonnegative-integer?
-;;   Selects the reviewed native Ganesh backend identifier for OpenGL.
+;   Selects the reviewed native Ganesh backend identifier for OpenGL.
 (define gr-opengl (gpu-backend-native-id 'opengl))
+
 ; gr-metal : exact-nonnegative-integer?
-;;   Selects the reviewed native Ganesh backend identifier for Metal.
+;   Selects the reviewed native Ganesh backend identifier for Metal.
 (define gr-metal (gpu-backend-native-id 'metal))
+
 ; gr-direct3d : exact-nonnegative-integer?
-;;   Selects the reviewed native Ganesh backend identifier for Direct3D 12.
+;   Selects the reviewed native Ganesh backend identifier for Direct3D 12.
 (define gr-direct3d (gpu-backend-native-id 'direct3d))
+
 ; gr-top-left : exact-nonnegative-integer?
-;;   Identifies top-left surface origin in the native Ganesh origin enumeration.
+;   Identifies top-left surface origin in the native Ganesh origin enumeration.
 (define gr-top-left 0)
+
 ; gr-bottom-left : exact-nonnegative-integer?
-;;   Identifies bottom-left surface origin in the native Ganesh origin enumeration.
+;   Identifies bottom-left surface origin in the native Ganesh origin enumeration.
 (define gr-bottom-left 1)
 
 ;; Compare real native identity with the owning domain, not a fixed GL tag.

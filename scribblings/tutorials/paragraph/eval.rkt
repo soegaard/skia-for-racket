@@ -29,7 +29,7 @@
 ;;;
 
 ; paragraph-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define paragraph-eval (make-base-eval))
 
 (void
@@ -57,28 +57,29 @@
        scale)))))
 
 ; paragraph-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (paragraph-interaction expression ...)
   (interaction #:eval paragraph-eval expression ...))
 
 ; paragraph-interaction-eval : syntax -> syntax
-;;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
+;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
 (define-syntax-rule (paragraph-interaction-eval expression ...)
   (interaction-eval #:eval paragraph-eval expression ...))
 
 ; paragraph-racketblock+eval : syntax -> syntax
-;;   Displays a code block and evaluates the same expressions for the tutorial.
+;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (paragraph-racketblock+eval expression ...)
   (racketblock+eval #:eval paragraph-eval expression ...))
 
 ; paragraph-image : syntax -> syntax
-;;   Evaluates the figure expression using the tutorial's shared drawing environment.
+;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (paragraph-image expression)
   (interaction-eval-show #:eval paragraph-eval expression))
 
 ;; The final figure uses the very same drawing function as article-card.rkt.
+
 ; paragraph-article-pict : -> pict?
-;;   Renders the paragraph article illustration from the tutorial's drawing code.
+;   Renders the paragraph article illustration from the tutorial's drawing code.
 (define (paragraph-article-pict)
   (with-skia ([surface (make-surface card-width card-height
                                     #:background "#EDF2F7")])

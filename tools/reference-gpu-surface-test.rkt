@@ -27,48 +27,49 @@
 ;;;
 
 ; selected-backend : parameter?
-;;   Selects the explicit native GPU backend for the surface and transfer acceptance run.
+;   Selects the explicit native GPU backend for the surface and transfer acceptance run.
 (define selected-backend (make-parameter #f))
 
 ; selected-adapter : parameter?
-;;   Selects the Direct3D adapter policy, initially hardware.
+;   Selects the Direct3D adapter policy, initially hardware.
 (define selected-adapter (make-parameter 'hardware))
 
 ; output-path : parameter?
-;;   Holds the optional JSON report destination.
+;   Holds the optional JSON report destination.
 (define output-path (make-parameter #f))
 
 ; contexts : (listof gpu-context?)
-;;   Tracks owned contexts newest first for final teardown reporting.
+;   Tracks owned contexts newest first for final teardown reporting.
 (define contexts '())
 
 ; case-names : (listof string?)
-;;   Accumulates executed case labels newest first for the evidence report.
+;   Accumulates executed case labels newest first for the evidence report.
 (define case-names '())
 
 ; pixel-probes : exact-nonnegative-integer?
-;;   Counts completed exact RGBA pixel assertions.
+;   Counts completed exact RGBA pixel assertions.
 (define pixel-probes 0)
 
 ; completed-readbacks : exact-nonnegative-integer?
-;;   Counts successful explicit GPU-to-CPU transfers.
+;   Counts successful explicit GPU-to-CPU transfers.
 (define completed-readbacks 0)
 
 ; one-shot-successes : exact-nonnegative-integer?
-;;   Counts verified owned-backend one-shot renders.
+;   Counts verified owned-backend one-shot renders.
 (define one-shot-successes 0)
 
 ; reference-directory : path?
-;;   Locates ../scribblings/reference relative to this module, independent of the invoking
-;;   directory.
+;   Locates ../scribblings/reference relative to this module, independent of the invoking
+;   directory.
 (define-runtime-path reference-directory "../scribblings/reference")
+
 ; anchor : namespace-anchor?
-;;   Gives displayed GPU helpers access to the same imports as their native acceptance cases.
+;   Gives displayed GPU helpers access to the same imports as their native acceptance cases.
 (define-namespace-anchor anchor)
 
 
 ; new-context : -> gpu-context?
-;;   Creates a context for the selected backend and records it for teardown evidence.
+;   Creates a context for the selected backend and records it for teardown evidence.
 (define (new-context)
   (define context
     (case (selected-backend)
@@ -81,20 +82,20 @@
 
 
 ; with-context : procedure? -> any
-;;   Scopes a newly owned context and closes it on normal or exceptional exit.
+;   Scopes a newly owned context and closes it on normal or exceptional exit.
 (define (with-context proc)
   (define context (new-context))
   (dynamic-wind void (lambda () (proc context)) (lambda () (gpu-context-close! context))))
 
 
 ; with-active : procedure? -> any
-;;   Invokes the callback inside a fresh context's active scope.
+;   Invokes the callback inside a fresh context's active scope.
 (define (with-active proc)
   (with-context (lambda (context) (call-with-gpu-context context (lambda () (proc context))))))
 
 
 ; gpu-case : syntax
-;;   Defines a RackUnit case that also records its name in the acceptance report.
+;   Defines a RackUnit case that also records its name in the acceptance report.
 (define-syntax-rule (gpu-case name body ...)
   (test-case name
     (set! case-names (cons name case-names))
@@ -102,7 +103,7 @@
 
 
 ; read-surface : gpu-surface? -> bytes?
-;;   Reads tightly packed RGBA surface pixels and counts the completed transfer.
+;   Reads tightly packed RGBA surface pixels and counts the completed transfer.
 (define (read-surface surface)
   (define result (gpu-surface->rgba-bytes surface))
   (set! completed-readbacks (add1 completed-readbacks))
@@ -110,7 +111,7 @@
 
 
 ; read-image : gpu-image? -> bytes?
-;;   Reads tightly packed RGBA image pixels and counts the completed transfer.
+;   Reads tightly packed RGBA image pixels and counts the completed transfer.
 (define (read-image image)
   (define result (gpu-image->rgba-bytes image))
   (set! completed-readbacks (add1 completed-readbacks))
@@ -119,7 +120,7 @@
 
 ; probe : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? list?
 ; -> void?
-;;   Checks one packed RGBA pixel and increments the successful assertion count.
+;   Checks one packed RGBA pixel and increments the successful assertion count.
 (define (probe bytes width x y expected)
   (define offset (* 4 (+ x (* width y))))
   (check-equal? (subbytes bytes offset (+ offset 4)) (list->bytes expected))
@@ -127,8 +128,8 @@
 
 
 ; load-displayed-helpers : -> procedure?
-;;   Evaluates the actual displayed surface/image/transfer helpers and returns a lookup procedure
-;;   for those bindings.
+;   Evaluates the actual displayed surface/image/transfer helpers and returns a lookup procedure
+;   for those bindings.
 (define (load-displayed-helpers)
   ;; Read the actual displayed definitions, not separately maintained copies.
   (define namespace (namespace-anchor->namespace anchor))
@@ -151,8 +152,8 @@
 
 
 ; suite : -> test-suite?
-;;   Builds native surface, image, transfer, cache, and one-shot rendering acceptance cases for the
-;;   selected backend.
+;   Builds native surface, image, transfer, cache, and one-shot rendering acceptance cases for the
+;   selected backend.
 (define (suite)
   (test-suite
    "Reference GPU surfaces and transfers"
@@ -426,23 +427,23 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests (suite)))
 
   ; states : (listof symbol?)
-  ;;   Captures final context lifecycle states in newest-created-first order.
+  ;   Captures final context lifecycle states in newest-created-first order.
   (define states (map gpu-context-state contexts))
 
   ; closed : exact-nonnegative-integer?
-  ;;   Counts managed contexts that reached the closed state.
+  ;   Counts managed contexts that reached the closed state.
   (define closed (count (lambda (state) (eq? state 'closed)) states))
 
   ; expected-cases : exact-positive-integer?
-  ;;   Accounts for the owned-backend one-shot case omitted by external-host OpenGL runs.
+  ;   Accounts for the owned-backend one-shot case omitted by external-host OpenGL runs.
   (define expected-cases (if (eq? (selected-backend) 'opengl) 18 19))
 
   ; passed? : boolean?
-  ;;   Combines test assertions and required evidence/cleanup checks into the final run status.
+  ;   Combines test assertions and required evidence/cleanup checks into the final run status.
   (define passed?
     (and (zero? failures) (= expected-cases (length case-names))
          (pair? contexts) (= closed (length contexts))
@@ -450,8 +451,8 @@
          (= one-shot-successes (if (eq? (selected-backend) 'opengl) 0 1))))
 
   ; receipt : hash?
-  ;;   Records pixel probes, transfers, case coverage, and context teardown for the selected
-  ;;   backend.
+  ;   Records pixel probes, transfers, case coverage, and context teardown for the selected
+  ;   backend.
   (define receipt
     (hasheq 'schema 1 'status (if passed? "passed" "failed")
             'backend (symbol->string (selected-backend))

@@ -26,18 +26,18 @@
 ;;;
 
 ; context-status : cpointer? -> exact-integer?
-;;   Reads the native Cairo status of the scratch query context without touching drawing pixels.
+;   Reads the native Cairo status of the scratch query context without touching drawing pixels.
 (define context-status (get-ffi-obj 'cairo_status cairo-lib (_fun _pointer -> _int)))
 
 ; check-context! : cpointer? -> void?
-;;   Raises when Cairo reports a failure before or after a region query.
+;   Raises when Cairo reports a failure before or after a region query.
 (define (check-context! cr)
   (define status (context-status cr))
   (unless (zero? status) (error 'skia-dc-region-query "Cairo query context failed with status ~a"
     status)))
 
 ; install-commands : cpointer? (listof vector?) -> void?
-;;   Replaces the scratch context's current path with detached move/line/cubic/close commands.
+;   Replaces the scratch context's current path with detached move/line/cubic/close commands.
 (define (install-commands cr commands)
   (c:cairo_new_path cr)
   (for ([v (in-list commands)])
@@ -51,8 +51,8 @@
   (void))
 
 ; call-with-dc-region-query : real? real? vector? (or/c #f dc-clip?) procedure? -> any
-;;   Runs a query with a bounded recording surface, selected clip, and transform; destroys both native
-;;   objects afterward.
+;   Runs a query with a bounded recording surface, selected clip, and transform; destroys both native
+;   objects afterward.
 (define (call-with-dc-region-query width height matrix clip proc)
   ;; A continuation cannot resume with a destroyed native context. Breaks are
   ;; deferred over allocation and retirement; dynamic-wind handles exceptions.

@@ -18,8 +18,9 @@
 ;;;
 
 (module+ main
+
   ; directory : string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define directory "output/geometry-example")
   (command-line #:once-each [("--directory") path "New output directory" (set! directory path)]
     #:args () (void))

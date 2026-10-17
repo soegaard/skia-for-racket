@@ -22,40 +22,40 @@
 ;;;
 
 ; output-probe-names : (listof symbol?)
-;;   Lists pattern, effects, perspective, and nested document-fallback scenes.
+;   Lists pattern, effects, perspective, and nested document-fallback scenes.
 (define output-probe-names '(pattern effects perspective nested))
 
 ; output-probe-width : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define output-probe-width 120)
 
 ; output-probe-height : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define output-probe-height 72)
 
 ; output-probe-padding : (listof real?)
-;;   Specifies asymmetric left, top, right, and bottom padding for placement checks.
+;   Specifies asymmetric left, top, right, and bottom padding for placement checks.
 (define output-probe-padding '(8 10 12 14))
 
 ; output-probe-scale : positive-real?
-;;   Uses a fractional rasterization scale to expose incorrect rounding or offset calculations.
+;   Uses a fractional rasterization scale to expose incorrect rounding or offset calculations.
 (define output-probe-scale 3/2)
 
 ; output-document-width : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define output-document-width 240)
 
 ; output-document-height : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define output-document-height 180)
 
 ; rect : canvas? real? real? real? real? color -> void?
-;;   Draws an unantialiased colored rectangle for stable document landmarks.
+;   Draws an unantialiased colored rectangle for stable document landmarks.
 (define (rect c x y w h color)
   (with-skia ([p (make-paint #:color color #:antialias? #f)]) (draw-rect c x y w h p)))
 
 ; markers : canvas? -> void?
-;;   Draws four distinct edge markers to expose cropping, padding, and placement errors.
+;   Draws four distinct edge markers to expose cropping, padding, and placement errors.
 (define (markers c)
   (rect c 0 0 8 6 (rgb 255 0 0))
   (rect c 112 0 8 10 (rgb 0 255 0))
@@ -63,7 +63,7 @@
   (rect c 108 64 12 8 (rgb 255 255 0)))
 
 ; draw-output-probe : canvas? symbol? -> any
-;;   Draws the selected raster-fallback workload and its placement landmarks.
+;   Draws the selected raster-fallback workload and its placement landmarks.
 (define (draw-output-probe c name)
   (case name
     [(pattern) (rect c 16 16 56 32 (rgba 128 0 0 128))]
@@ -88,7 +88,7 @@
 ;; case rasterizes its inner child and replays the outer group natively.
 
 ; draw-output-document : canvas? symbol? output-raster-executor? box? -> any
-;;   Embeds the workload in a larger document while recording raster-executor calls.
+;   Embeds the workload in a larger document while recording raster-executor calls.
 (define (draw-output-document c name executor calls)
   (rect c 0 0 output-document-width output-document-height 'white)
   (with-skia ([font (make-font #:size 14 #:hinting 'none)]

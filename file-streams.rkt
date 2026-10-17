@@ -16,9 +16,10 @@
          "private/core.rkt" "private/native.rkt" "private/lifetime.rkt"
          "private/stream-resource.rkt" "private/stream-buffer.rkt")
 (provide make-file-output-stream output-stream-flush!)
+
 ; make-file-output-stream : path-string? [#:exists (or/c 'error 'replace)] [#:limit
 ;   exact-positive-integer?] -> skia-output-stream?
-;;   Opens a native file writer.
+;   Opens a native file writer.
 (define (make-file-output-stream filename
                                  #:exists [exists 'error]
                                  #:limit [limit (current-skia-byte-limit)])
@@ -43,7 +44,8 @@
        ptr)
      sk_filewstream_destroy)
    'output 'file limit))
+
 ; output-stream-flush! : skia-output-stream? -> void?
-;;   Requests a native flush of a memory or file output stream.
+;   Requests a native flush of a memory or file output stream.
 (define (output-stream-flush! stream)
   (with-output 'output-stream-flush! stream (lambda (p _n) (sk_wstream_flush p))) (void))

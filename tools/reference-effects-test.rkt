@@ -22,7 +22,7 @@
 ;;;
 
 ; red-matrix : (listof real?)
-;;   Stores a row-major 4-by-5 color matrix that fixes red at one while retaining input alpha.
+;   Stores a row-major 4-by-5 color matrix that fixes red at one while retaining input alpha.
 (define red-matrix
   '(0 0 0 0 1
     0 0 0 0 0
@@ -30,7 +30,7 @@
     0 0 0 1 0))
 
 ; swap-matrix : (listof real?)
-;;   Stores a row-major 4-by-5 matrix that exchanges red and blue while retaining green and alpha.
+;   Stores a row-major 4-by-5 matrix that exchanges red and blue while retaining green and alpha.
 (define swap-matrix
   '(0 0 1 0 0
     0 1 0 0 0
@@ -38,7 +38,7 @@
     0 0 0 1 0))
 
 ; filtered-color : color-filter? any/c -> color?
-;;   Renders a constant color through a filter and samples an interior pixel.
+;   Renders a constant color through a filter and samples an interior pixel.
 (define (filtered-color filter color)
   (with-skia ([surface (make-surface 4 4)]
               [paint (make-paint #:color color #:color-filter filter)])
@@ -46,14 +46,14 @@
     (surface-pixel surface 1 1)))
 
 ; shader-color : shader? -> color?
-;;   Renders a shader into a small surface and samples an interior pixel.
+;   Renders a shader into a small surface and samples an interior pixel.
 (define (shader-color shader)
   (with-skia ([surface (make-surface 4 4)] [paint (make-paint #:shader shader)])
     (draw-paint (surface-canvas surface) paint)
     (surface-pixel surface 1 1)))
 
 ; gain-source : string?
-;;   Provides a runtime shader with one scalar gain uniform for reflection and value checks.
+;   Provides a runtime shader with one scalar gain uniform for reflection and value checks.
 (define gain-source
   "uniform float gain; half4 main(float2 p) { return half4(gain,0,0,1); }")
 

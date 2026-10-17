@@ -24,7 +24,7 @@
 
 ; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
 ; (listof byte?)
-;;   Extracts a single RGBA pixel from a consumer capture.
+;   Extracts a single RGBA pixel from a consumer capture.
 (define (pixel bytes width x y)
   (define i (* 4 (+ x (* y width))))
   (subbytes bytes i (+ i 4)))
@@ -35,7 +35,7 @@
 ;;;
 
 ; racket-draw-consumer-tests : test-suite?
-;;   Collects the regression cases for skia/racket-draw ordinary consumer integration.
+;   Collects the regression cases for skia/racket-draw ordinary consumer integration.
 (define racket-draw-consumer-tests
   (test-suite
    "skia/racket-draw ordinary consumer integration"
@@ -105,6 +105,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests racket-draw-consumer-tests))
   (unless (zero? failures) (error 'racket-draw-consumer-test "~a failures" failures)))

@@ -20,11 +20,11 @@
 ;;;
 
 ; bad : (-> any) -> void?
-;;   Requires exn:fail? for the deliberately invalid operation.
+;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail? thunk))
 
 ; finfo : [symbol? symbol?] -> image-info?
-;;   Builds one-pixel float metadata for storage and alpha-contract checks.
+;   Builds one-pixel float metadata for storage and alpha-contract checks.
 (define (finfo [format 'rgba-f16] [alpha 'premul])
   (make-image-info 1 1 #:color-type format #:alpha-type alpha))
 
@@ -33,7 +33,7 @@
 ;;;
 
 ; float-pixel-pure-tests : test-suite?
-;;   Collects the regression cases for floating colors and storage (pure).
+;   Collects the regression cases for floating colors and storage (pure).
 (define float-pixel-pure-tests
   (test-suite
    "Floating colors and storage (pure)"

@@ -20,8 +20,9 @@
 ;;;
 
 (module+ main
+
   ; directory : string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define directory "output/dc-consumers")
   (command-line #:args ([path directory]) (set! directory path))
   (make-directory* directory)

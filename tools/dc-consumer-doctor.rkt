@@ -21,8 +21,8 @@
 ;;;
 
 ; dc-consumer-doctor! : path? -> void?
-;;   Runs real pict/plot consumer checks and writes direct/replayed/reference captures for
-;;   inspection.
+;   Runs real pict/plot consumer checks and writes direct/replayed/reference captures for
+;   inspection.
 (define (dc-consumer-doctor! directory)
   (define (file name) (build-path directory name))
   (define (publish data)

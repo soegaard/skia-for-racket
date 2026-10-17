@@ -21,19 +21,19 @@
 ;;;
 
 ; frame-pixels : codec? exact-nonnegative-integer? [#:normalize? boolean?] -> bytes?
-;;   Decodes a selected animation frame and releases the temporary image after copying pixels.
+;   Decodes a selected animation frame and releases the temporary image after copying pixels.
 (define (frame-pixels c index #:normalize? [normalize? #t])
   (with-skia ([im (codec->image c #:frame-index index #:normalize-origin? normalize?)])
     (image->rgba-bytes im)))
 
 ; reorder : bytes? (vectorof exact-nonnegative-integer?) -> bytes?
-;;   Permutes four-byte pixels using source indices in output order.
+;   Permutes four-byte pixels using source indices in output order.
 (define (reorder pixels order)
   (apply bytes-append
          (for/list ([i (in-vector order)]) (subbytes pixels (* 4 i) (+ (* 4 i) 4)))))
 
 ; make-test-jpeg : -> bytes?
-;;   Encodes six distinct pixels at full JPEG quality without chroma subsampling.
+;   Encodes six distinct pixels at full JPEG quality without chroma subsampling.
 (define (make-test-jpeg)
   (with-skia ([im (rgba-bytes->image 3 2
                     (bytes 255 0 0 255 0 255 0 255 0 0 255 255
@@ -46,7 +46,7 @@
 ;;;
 
 ; codec-native-tests : test-suite?
-;;   Collects the regression cases for advanced codecs: native checks.
+;   Collects the regression cases for advanced codecs: native checks.
 (define codec-native-tests
   (test-suite
    "Advanced codecs: native checks"
@@ -237,6 +237,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-native-tests))
   (unless (zero? failures) (error 'codec-native-test "~a tests failed" failures)))

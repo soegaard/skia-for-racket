@@ -27,18 +27,18 @@
 ;;;
 
 ; tutorial-navigation : string? #:index? [boolean?] -> paragraph?
-;;   Builds the tutorial collection band with the current page's identity.
+;   Builds the tutorial collection band with the current page's identity.
 (define (tutorial-navigation id #:index? [index? #f])
   (documentation-navigation-band 'tutorials #:index? index? #:tutorial-id id))
 
 ; api-link : -> element?
-;;   Links to the project's API overview.
+;   Links to the project's API overview.
 (define (api-link)
   (hyperlink "https://github.com/soegaard/skia-for-racket/blob/main/docs/API.md"
              "API reference"))
 
 ; tutorial-link : string? -> element?
-;;   Links to a tutorial using its canonical catalog title.
+;   Links to a tutorial using its canonical catalog title.
 (define (tutorial-link id)
   (define row (tutorial-by-id id))
   (elem #:style "skia-reader-navigation"
@@ -46,18 +46,19 @@
                  (hash-ref row 'title))))
 
 ; tutorial-index-link : [any/c] [any/c] -> element?
-;;   Links to a selected section of the tutorial index.
+;   Links to a selected section of the tutorial index.
 (define (tutorial-index-link [tag "top"] [label "Skia Tutorials"])
   (seclink tag #:doc '(lib "skia/scribblings/tutorials/index.scrbl") label))
 
 ;; Do not let Scribble turn the two ASCII hyphens of an option into an en dash.
+
 ; command-text : string? -> element?
-;;   Keeps command-line punctuation literal in rendered documentation.
+;   Keeps command-line punctuation literal in rendered documentation.
 (define (command-text text)
   (elem #:style "skia-command" (tt (literal text))))
 
 ; tutorial-entry : string? -> list?
-;;   Builds prerequisites, environment requirements, and example-running instructions.
+;   Builds prerequisites, environment requirements, and example-running instructions.
 (define (tutorial-entry id)
   (define row (tutorial-by-id id))
   (define prerequisites (hash-ref row 'prerequisites))
@@ -81,7 +82,7 @@
          " for installation and copying instructions.")))
 
 ; tutorial-next : string? -> list?
-;;   Builds suggested next steps without changing subject-category membership.
+;   Builds suggested next steps without changing subject-category membership.
 (define (tutorial-next id)
   (define row (tutorial-by-id id))
   (list
@@ -94,7 +95,7 @@
          " to browse all tutorials or choose a suggested reading route.")))
 
 ; tutorial-list : list? -> itemization?
-;;   Builds the ordered tutorial links from the supplied catalog records.
+;   Builds the ordered tutorial links from the supplied catalog records.
 (define (tutorial-list rows)
   (apply itemlist
          (for/list ([row (in-list rows)])
@@ -102,25 +103,25 @@
            (item (tutorial-link id) ". " (hash-ref row 'goal)))))
 
 ; tutorial-route : list? -> itemization?
-;;   Builds the supplied reading sequence in its explicitly requested order.
+;   Builds the supplied reading sequence in its explicitly requested order.
 (define (tutorial-route ids)
   (tutorial-list (map tutorial-by-id ids)))
 
 ; tutorial-category : string? -> itemization?
-;;   Builds a subject listing from the category's authoritative tutorial IDs.
+;   Builds a subject listing from the category's authoritative tutorial IDs.
 (define (tutorial-category id)
   (define category (tutorial-category-by-id id))
   (tutorial-list (map tutorial-by-id (hash-ref category 'lessons))))
 
 ; source-link : string? -> element?
-;;   Links to a downloadable example source while displaying its relative path.
+;   Links to a downloadable example source while displaying its relative path.
 (define (source-link relative)
   (elem #:style (style "skia-reader-source-link"
                       (list (link-resource (tutorial-source-path relative))))
         (filepath relative)))
 
 ; tutorial-sources : string? -> list?
-;;   Lists the complete example source set and its copy-and-run commands.
+;   Lists the complete example source set and its copy-and-run commands.
 (define (tutorial-sources id)
   (define row (tutorial-by-id id))
   (define directory (string-append "my-" id))

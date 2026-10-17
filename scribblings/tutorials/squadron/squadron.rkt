@@ -20,11 +20,11 @@
 ;;;
 
 ; host : path?
-;;   Locates host relative to this module rather than the current directory.
+;   Locates host relative to this module rather than the current directory.
 (define-runtime-path host "../support/sprite-window.rkt")
 
 ; open-squadron-window : symbol? #:smoke? [boolean?] -> (is-a?/c frame%)
-;;   Starts the game with the selected renderer through the shared sprite host.
+;   Starts the game with the selected renderer through the shared sprite host.
 (define (open-squadron-window renderer #:smoke? [smoke? #f])
   (define open-window (dynamic-require (list 'submod host 'gui) 'open-sprite-window))
   (open-window "Skia / Star Squadron" scene-width scene-height
@@ -37,14 +37,17 @@
 ;;;
 
 (module+ main
+
   ; renderer : symbol?
-  ;;   Selects renderer for the example.
+  ;   Selects renderer for the example.
   (define renderer 'gpu)
+
   ; snapshot : (or/c path-string? #f)
-  ;;   Optionally names a headless snapshot destination instead of opening the live window.
+  ;   Optionally names a headless snapshot destination instead of opening the live window.
   (define snapshot #f)
+
   ; smoke? : boolean?
-  ;;   Enables the bounded window smoke-run path when explicitly requested.
+  ;   Enables the bounded window smoke-run path when explicitly requested.
   (define smoke? #f)
   (command-line
    #:program "squadron.rkt" #:once-each

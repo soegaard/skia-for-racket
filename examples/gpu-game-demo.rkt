@@ -28,23 +28,27 @@
 ;;;
 
 ; W : real?
-;;   Sets the fixed scene width before scaling to the actual window dimensions.
+;   Sets the fixed scene width before scaling to the actual window dimensions.
 (define W 960.0)
+
 ; H : real?
-;;   Sets the fixed scene height before scaling to the actual window dimensions.
+;   Sets the fixed scene height before scaling to the actual window dimensions.
 (define H 600.0)
+
 ; CELL : exact-integer?
-;;   Sets the square sprite-cell size in atlas pixels.
+;   Sets the square sprite-cell size in atlas pixels.
 (define CELL 32)          ; sprite-sheet cell size in pixels
+
 ; CELLS : exact-integer?
-;;   Sets the number of artwork variants in the sprite sheet.
+;   Sets the number of artwork variants in the sprite sheet.
 (define CELLS 4)          ; number of sprite variants in the sheet
 
 ;;;
 ;;; Shader
 ;;;
+
 ; plasma-source : string?
-;;   Contains the SkSL source compiled by the runtime-effect example.
+;   Contains the SkSL source compiled by the runtime-effect example.
 (define plasma-source #<<SKSL
 uniform float2 resolution;
 uniform float time;
@@ -67,8 +71,9 @@ SKSL
 ;;;
 ;;; Static Layer
 ;;;
+
 ; record-static-layer : font? -> picture?
-;;   Records the fixed grid, border, and caption for reuse in every frame.
+;   Records the fixed grid, border, and caption for reuse in every frame.
 (define (record-static-layer font)
   (call-with-picture
    (inexact->exact W) (inexact->exact H)
@@ -87,8 +92,9 @@ SKSL
 ;;; Sprite Sheet
 ;;;
 ;; Drawn on the CPU once; uploaded to the GPU on the first frame.
+
 ; make-sprite-sheet : -> image?
-;;   Draws four sprite variants into a CPU image for one-time GPU upload.
+;   Draws four sprite variants into a CPU image for one-time GPU upload.
 (define (make-sprite-sheet)
   (define colors '(("#FFE066" "#F08C00") ("#74C0FC" "#1864AB")
                    ("#8CE99A" "#2B8A3E") ("#FFA8A8" "#C92A2A")))
@@ -108,7 +114,7 @@ SKSL
     (surface-snapshot s)))
 
 ; sprite-sources : list?
-;;   Orders source rectangles as x, y, width, and height for the atlas cells.
+;   Orders source rectangles as x, y, width, and height for the atlas cells.
 (define sprite-sources
   (for/list ([i (in-range CELLS)]) (list (* i CELL) 0 CELL CELL)))
 
@@ -123,8 +129,9 @@ SKSL
 ;; cell: vector of exact indices from 0 through CELLS - 1, selecting sprite-sources.
 ;; The same index in all vectors describes one sprite; updates preserve this alignment.
 ;; The record owns ordinary Racket arrays, not the separately managed atlas image.
+
 ; make-sprites : exact-nonnegative-integer? -> sprites?
-;;   Creates parallel position, velocity, rotation, and cell arrays for the requested count.
+;   Creates parallel position, velocity, rotation, and cell arrays for the requested count.
 (define (make-sprites n)
   (define (fv lo hi) (for/flvector #:length n ([_ (in-range n)]) (+ lo (* (random) (- hi lo)))))
   (sprites n (fv 20.0 (- W 20.0)) (fv 80.0 (- H 20.0))
@@ -133,7 +140,7 @@ SKSL
            (for/vector #:length n ([_ (in-range n)]) (random CELLS))))
 
 ; step! : sprites? real? -> void?
-;;   Advances sprite positions and rotations and reflects velocities at the scene boundaries.
+;   Advances sprite positions and rotations and reflects velocities at the scene boundaries.
 (define (step! s dt)
   (define-values (xs ys vxs vys as ss)
     (values (sprites-x s) (sprites-y s) (sprites-vx s) (sprites-vy s)
@@ -155,11 +162,13 @@ SKSL
 ;;;
 
 (module+ main
+
   ; sprite-count : exact-integer?
-  ;;   Selects the number of simulated sprites shown by the game-frame demo.
+  ;   Selects the number of simulated sprites shown by the game-frame demo.
   (define sprite-count 1500)
+
   ; backend : symbol?
-  ;;   Selects backend for the example.
+  ;   Selects backend for the example.
   (define backend 'auto)
   (command-line
    #:once-each

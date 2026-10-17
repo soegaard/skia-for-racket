@@ -25,14 +25,14 @@
 ;;;
 
 ; dc-style-color : symbol? (is-a?/c color%) -> vector?
-;;   Copies mutable Racket colors into immutable RGB-byte/unit-alpha vectors.
+;   Copies mutable Racket colors into immutable RGB-byte/unit-alpha vectors.
 (define (dc-style-color who color)
   (unless (is-a? color rd:color%) (raise-argument-error who "color% object" color))
   (vector-immutable (send color red) (send color green) (send color blue)
                     (dc-unit who (send color alpha))))
 
 ; check-stipple : symbol? (is-a?/c bitmap%) -> void?
-;;   Validates a stipple's liveness, backing scale, physical dimensions, and conservative copy budget.
+;   Validates a stipple's liveness, backing scale, physical dimensions, and conservative copy budget.
 (define (check-stipple who b)
   (unless (and (is-a? b rd:bitmap%) (send b ok?))
     (raise-argument-error who "valid stipple bitmap%" b))
@@ -47,7 +47,7 @@
 
 ; gradient-description : symbol? (or/c (is-a?/c linear-gradient%) (is-a?/c radial-gradient%)) ->
 ; vector?
-;;   Copies a checked gradient into kind, geometry, and stably ordered offset/color stops.
+;   Copies a checked gradient into kind, geometry, and stably ordered offset/color stops.
 (define (gradient-description who gradient)
   (define linear? (is-a? gradient rd:linear-gradient%))
   (unless (or linear? (is-a? gradient rd:radial-gradient%))
@@ -73,7 +73,7 @@
   (vector-immutable (if linear? 'linear 'radial) geometry checked))
 
 ; check-transform : symbol? (or/c #f vector?) -> void?
-;;   Checks an optional brush transform and its inverse before selecting a native paint source.
+;   Checks an optional brush transform and its inverse before selecting a native paint source.
 (define (check-transform who t)
   (when t
     (define m (dc-effective (dc-transformation who t)))
@@ -82,7 +82,7 @@
   (void))
 
 ; dc-check-pen : (is-a?/c pen%) -> (is-a?/c pen%)
-;;   Validates supported pen settings and optional stipple storage before the object becomes selected.
+;   Validates supported pen settings and optional stipple storage before the object becomes selected.
 (define (dc-check-pen p)
   (unless (is-a? p rd:pen%) (raise-argument-error 'set-pen "pen% object" p))
   (unless (memq (send p get-style) dc-pen-styles)
@@ -92,8 +92,8 @@
   p)
 
 ; dc-check-brush : (is-a?/c brush%) -> (is-a?/c brush%)
-;;   Validates brush colors, gradients, stipples, and transforms while rejecting native Cairo-handle
-;;   brushes.
+;   Validates brush colors, gradients, stipples, and transforms while rejecting native Cairo-handle
+;   brushes.
 (define (dc-check-brush b)
   (unless (is-a? b rd:brush%) (raise-argument-error 'set-brush "brush% object" b))
   (unless (memq (send b get-style) dc-brush-styles)
@@ -111,8 +111,8 @@
 ;;;
 
 ; dc-style-ink : object? boolean? dc-ink? (is-a?/c color%) real? vector? -> dc-ink/style?
-;;   Atomically snapshots mutable style inputs into detached ink, including dash phase and optional
-;;   gradient/stipple/hatch data.
+;   Atomically snapshots mutable style inputs into detached ink, including dash phase and optional
+;   gradient/stipple/hatch data.
 (define (dc-style-ink object stroke? old-ink background alpha drawing)
   ;; No native handles escape this function. Gradient colors/transform and
   ;; bitmap bytes are copied anew for each drawing operation. Locking a brush

@@ -9,8 +9,9 @@
 
 (require ffi/unsafe "gpu-provider.rkt" "gpu-diagnostics.rkt")
 (provide make-system-gl-tools)
+
 ; make-system-gl-tools : -> (values any/c any/c any/c)
-;;   Loads platform GL resolution functions only when a GL provider requests them.
+;   Loads platform GL resolution functions only when a GL provider requests them.
 (define (make-system-gl-tools)
   (define os (system-type 'os))
   ;; Windows x86 uses different GL calling conventions. Do not accidentally

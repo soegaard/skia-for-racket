@@ -34,41 +34,44 @@
 ;; still supply a nonzero positive zoom so screen->model remains defined.
 
 ; initial-points : list?
-;;   Orders the cubic's start, first handle, second handle, and end in model coordinates.
+;   Orders the cubic's start, first handle, second handle, and end in model coordinates.
 (define initial-points
   (list (control-point 120 365) (control-point 240 150)
         (control-point 560 170) (control-point 680 365)))
+
 ; home-view : view-state?
-;;   Defines the unscaled, untranslated initial editor view.
+;   Defines the unscaled, untranslated initial editor view.
 (define home-view (view-state 1 0 0))
+
 ; minimum-zoom : real?
-;;   Sets the smallest scale accepted by interactive zoom updates.
+;   Sets the smallest scale accepted by interactive zoom updates.
 (define minimum-zoom 1/4)
+
 ; maximum-zoom : exact-integer?
-;;   Sets the largest scale accepted by interactive zoom updates.
+;   Sets the largest scale accepted by interactive zoom updates.
 (define maximum-zoom 4)
 
 ; model->screen : view-state? real? real? -> (values real? real?)
-;;   Applies model scaling followed by screen-space pan and returns x then y.
+;   Applies model scaling followed by screen-space pan and returns x then y.
 (define (model->screen view x y)
   (values (+ (view-state-pan-x view) (* (view-state-zoom view) x))
           (+ (view-state-pan-y view) (* (view-state-zoom view) y))))
 
 ; screen->model : view-state? real? real? -> (values real? real?)
-;;   Inverts screen-space pan and zoom and returns model x then y.
+;   Inverts screen-space pan and zoom and returns model x then y.
 (define (screen->model view x y)
   (values (/ (- x (view-state-pan-x view)) (view-state-zoom view))
           (/ (- y (view-state-pan-y view)) (view-state-zoom view))))
 
 ; pan-view : view-state? real? real? -> view-state?
-;;   Returns a view translated by the supplied screen-coordinate displacement.
+;   Returns a view translated by the supplied screen-coordinate displacement.
 (define (pan-view view dx dy)
   (struct-copy view-state view
                [pan-x (+ (view-state-pan-x view) dx)]
                [pan-y (+ (view-state-pan-y view) dy)]))
 
 ; zoom-at : view-state? real? real? real? -> view-state?
-;;   Clamps zoom while keeping the model point under the screen anchor fixed.
+;   Clamps zoom while keeping the model point under the screen anchor fixed.
 (define (zoom-at view screen-x screen-y factor)
   (unless (and (real? factor) (< 0 factor +inf.0))
     (raise-argument-error 'zoom-at "positive finite real" factor))
@@ -78,7 +81,7 @@
   (view-state zoom (- screen-x (* zoom model-x)) (- screen-y (* zoom model-y))))
 
 ; hit-point : list? view-state? real? real? [real?] -> (or/c exact-nonnegative-integer? #f)
-;;   Finds the nearest control point within a screen-sized hit radius.
+;   Finds the nearest control point within a screen-sized hit radius.
 (define (hit-point points view screen-x screen-y [screen-radius 18])
   (define-values (x y) (screen->model view screen-x screen-y))
   (define model-radius (/ screen-radius (view-state-zoom view)))
@@ -91,7 +94,7 @@
         (values chosen nearest))))
 
 ; move-point : list? exact-nonnegative-integer? real? real? -> list?
-;;   Replaces one model-space control point without reordering the remaining points.
+;   Replaces one model-space control point without reordering the remaining points.
 (define (move-point points index x y)
   (unless (and (exact-nonnegative-integer? index) (< index (length points)))
     (raise-argument-error 'move-point "valid point index" index))

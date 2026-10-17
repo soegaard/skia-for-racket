@@ -22,12 +22,12 @@
 ;;;
 
 ; source-root : path?
-;;   Locates .. relative to this module, independent of the invoking directory.
+;   Locates .. relative to this module, independent of the invoking directory.
 (define-runtime-path source-root "..")
 
 ; clear-performance-results! : string? -> void?
-;;   Removes only prior inspection, review, and sample files associated with the selected output
-;;   prefix.
+;   Removes only prior inspection, review, and sample files associated with the selected output
+;   prefix.
 (define (clear-performance-results! prefix)
   (for ([suffix '(".inspection.json" ".review.html" ".samples.csv")])
     (define p (string->path (string-append prefix suffix)))
@@ -36,12 +36,12 @@
 ;; static local-require checker does not mistake data paths for module requires.
 
 ; rkt-source : string? -> string?
-;;   Adds the Racket source suffix to an inventory path.
+;   Adds the Racket source suffix to an inventory path.
 (define (rkt-source path) (string-append path ".rkt"))
 
 ; source-paths : (listof string?)
-;;   Lists the scene, cache, benchmark, and driver sources fingerprinted in each performance
-;;   receipt.
+;   Lists the scene, cache, benchmark, and driver sources fingerprinted in each performance
+;   receipt.
 (define source-paths
   (map rkt-source
        '("examples/gpu-scenes" "examples/gpu-presentation-scene"
@@ -50,7 +50,7 @@
          "tools/gpu-performance-doctor" "tools/gpu-redraw-doctor")))
 
 ; performance-source-fingerprints : -> list?
-;;   Records SHA-1 fingerprints of benchmark-relevant source files for evidence attribution.
+;   Records SHA-1 fingerprints of benchmark-relevant source files for evidence attribution.
 (define (performance-source-fingerprints)
   ;; File bytes only, including in headless mode: never import a GUI module.
   ;; SHA1 here is a reproducibility fingerprint, not a security attestation.
@@ -58,7 +58,7 @@
     (hasheq 'path p 'sha1 (call-with-input-file (build-path source-root p) sha1))))
 
 ; read-performance-options : string? -> hash?
-;;   Parses backend/host and measurement options, then validates the benchmark configuration.
+;   Parses backend/host and measurement options, then validates the benchmark configuration.
 (define (read-performance-options default-prefix)
   (define prefix default-prefix) (define backend 'opengl) (define host 'gui)
   (define platform 'surfaceless) (define index 0) (define surface 'surfaceless)

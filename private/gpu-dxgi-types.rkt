@@ -81,119 +81,152 @@
 
 
 ; dxgi-format-rgba8 : exact-nonnegative-integer?
-;;   Encodes dxgi format rgba8 using the native SDK value rather than a Racket-specific ordinal.
+;   Encodes dxgi format rgba8 using the native SDK value rather than a Racket-specific ordinal.
 (define dxgi-format-rgba8 28)
+
 ; dxgi-flip-discard : exact-nonnegative-integer?
-;;   Encodes dxgi flip discard using the native SDK value rather than a Racket-specific ordinal.
+;   Encodes dxgi flip discard using the native SDK value rather than a Racket-specific ordinal.
 (define dxgi-flip-discard 4)
+
 ; dxgi-render-target-usage : exact-nonnegative-integer?
-;;   Encodes dxgi render target usage using the native SDK value rather than a Racket-specific
-;;   ordinal.
+;   Encodes dxgi render target usage using the native SDK value rather than a Racket-specific
+;   ordinal.
 (define dxgi-render-target-usage #x20)
+
 ; dxgi-alpha-ignore : exact-nonnegative-integer?
-;;   Encodes dxgi alpha ignore using the native SDK value rather than a Racket-specific ordinal.
+;   Encodes dxgi alpha ignore using the native SDK value rather than a Racket-specific ordinal.
 (define dxgi-alpha-ignore 3)
+
 ; dxgi-buffer-count : exact-nonnegative-integer?
-;;   Selects two swap-chain buffers; parallel buffer, fence, allocator, and command-list arrays use
-;;   this count.
+;   Selects two swap-chain buffers; parallel buffer, fence, allocator, and command-list arrays use
+;   this count.
 (define dxgi-buffer-count 2)
+
 ; dxgi-status-occluded : exact-nonnegative-integer?
-;;   Encodes dxgi status occluded using the native SDK value rather than a Racket-specific ordinal.
+;   Encodes dxgi status occluded using the native SDK value rather than a Racket-specific ordinal.
 (define dxgi-status-occluded #x087a0001)
+
 ; dxgi-present-test : exact-nonnegative-integer?
-;;   Encodes dxgi present test using the native SDK value rather than a Racket-specific ordinal.
+;   Encodes dxgi present test using the native SDK value rather than a Racket-specific ordinal.
 (define dxgi-present-test 1)
+
 ; d3d12-state-present : exact-nonnegative-integer?
-;;   Encodes d3d12 state present using the native SDK value rather than a Racket-specific ordinal.
+;   Encodes d3d12 state present using the native SDK value rather than a Racket-specific ordinal.
 (define d3d12-state-present 0)
+
 ; d3d12-state-render-target : exact-nonnegative-integer?
-;;   Encodes d3d12 state render target using the native SDK value rather than a Racket-specific
-;;   ordinal.
+;   Encodes d3d12 state render target using the native SDK value rather than a Racket-specific
+;   ordinal.
 (define d3d12-state-render-target 4)
+
 ; d3d12-state-copy-source : exact-nonnegative-integer?
-;;   Encodes d3d12 state copy source using the native SDK value rather than a Racket-specific
-;;   ordinal.
+;   Encodes d3d12 state copy source using the native SDK value rather than a Racket-specific
+;   ordinal.
 (define d3d12-state-copy-source #x800)
+
 ; d3d12-state-copy-dest : exact-nonnegative-integer?
-;;   Encodes d3d12 state copy dest using the native SDK value rather than a Racket-specific ordinal.
+;   Encodes d3d12 state copy dest using the native SDK value rather than a Racket-specific ordinal.
 (define d3d12-state-copy-dest #x400)
+
 ; dxgi-fence-limit : exact-nonnegative-integer?
-;;   Bounds unsigned 64-bit fence values before signaling or testing completion.
+;   Bounds unsigned 64-bit fence values before signaling or testing completion.
 (define dxgi-fence-limit #xffffffffffffffff) ; also the device-removed sentinel
+
 ; dxgi-wait-milliseconds : exact-nonnegative-integer?
-;;   Bounds native fence waits to five seconds so stalled presentation can report failure.
+;   Bounds native fence waits to five seconds so stalled presentation can report failure.
 (define dxgi-wait-milliseconds 5000)
 
 ; factory-create-hwnd-slot : exact-nonnegative-integer?
-;;   Selects the factory create hwnd COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the factory create hwnd COM vtable entry; this index is fixed by the Windows ABI.
 (define factory-create-hwnd-slot 15)
+
 ; factory-window-association-slot : exact-nonnegative-integer?
-;;   Selects the factory window association COM vtable entry; this index is fixed by the Windows
-;;   ABI.
+;   Selects the factory window association COM vtable entry; this index is fixed by the Windows
+;   ABI.
 (define factory-window-association-slot 8)
+
 ; swapchain-present-slot : exact-nonnegative-integer?
-;;   Selects the swapchain present COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the swapchain present COM vtable entry; this index is fixed by the Windows ABI.
 (define swapchain-present-slot 8)
+
 ; swapchain-get-buffer-slot : exact-nonnegative-integer?
-;;   Selects the swapchain get buffer COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the swapchain get buffer COM vtable entry; this index is fixed by the Windows ABI.
 (define swapchain-get-buffer-slot 9)
+
 ; swapchain-resize-slot : exact-nonnegative-integer?
-;;   Selects the swapchain resize COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the swapchain resize COM vtable entry; this index is fixed by the Windows ABI.
 (define swapchain-resize-slot 13)
+
 ; swapchain-desc1-slot : exact-nonnegative-integer?
-;;   Selects the swapchain desc1 COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the swapchain desc1 COM vtable entry; this index is fixed by the Windows ABI.
 (define swapchain-desc1-slot 18)
+
 ; swapchain-current-buffer-slot : exact-nonnegative-integer?
-;;   Selects the swapchain current buffer COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the swapchain current buffer COM vtable entry; this index is fixed by the Windows ABI.
 (define swapchain-current-buffer-slot 36)
+
 ; device-create-allocator-slot : exact-nonnegative-integer?
-;;   Selects the device create allocator COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the device create allocator COM vtable entry; this index is fixed by the Windows ABI.
 (define device-create-allocator-slot 9)
+
 ; device-create-list-slot : exact-nonnegative-integer?
-;;   Selects the device create list COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the device create list COM vtable entry; this index is fixed by the Windows ABI.
 (define device-create-list-slot 12)
+
 ; device-create-resource-slot : exact-nonnegative-integer?
-;;   Selects the device create resource COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the device create resource COM vtable entry; this index is fixed by the Windows ABI.
 (define device-create-resource-slot 27)
+
 ; device-create-fence-slot : exact-nonnegative-integer?
-;;   Selects the device create fence COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the device create fence COM vtable entry; this index is fixed by the Windows ABI.
 (define device-create-fence-slot 36)
+
 ; allocator-reset-slot : exact-nonnegative-integer?
-;;   Selects the allocator reset COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the allocator reset COM vtable entry; this index is fixed by the Windows ABI.
 (define allocator-reset-slot 8)
+
 ; list-close-slot : exact-nonnegative-integer?
-;;   Selects the list close COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the list close COM vtable entry; this index is fixed by the Windows ABI.
 (define list-close-slot 9)
+
 ; list-reset-slot : exact-nonnegative-integer?
-;;   Selects the list reset COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the list reset COM vtable entry; this index is fixed by the Windows ABI.
 (define list-reset-slot 10)
+
 ; list-copy-texture-slot : exact-nonnegative-integer?
-;;   Selects the list copy texture COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the list copy texture COM vtable entry; this index is fixed by the Windows ABI.
 (define list-copy-texture-slot 16)
+
 ; list-barrier-slot : exact-nonnegative-integer?
-;;   Selects the list barrier COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the list barrier COM vtable entry; this index is fixed by the Windows ABI.
 (define list-barrier-slot 26)
+
 ; queue-execute-slot : exact-nonnegative-integer?
-;;   Selects the queue execute COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the queue execute COM vtable entry; this index is fixed by the Windows ABI.
 (define queue-execute-slot 10)
+
 ; queue-signal-slot : exact-nonnegative-integer?
-;;   Selects the queue signal COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the queue signal COM vtable entry; this index is fixed by the Windows ABI.
 (define queue-signal-slot 14)
+
 ; fence-completed-slot : exact-nonnegative-integer?
-;;   Selects the fence completed COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the fence completed COM vtable entry; this index is fixed by the Windows ABI.
 (define fence-completed-slot 8)
+
 ; fence-event-slot : exact-nonnegative-integer?
-;;   Selects the fence event COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the fence event COM vtable entry; this index is fixed by the Windows ABI.
 (define fence-event-slot 9)
+
 ; resource-map-slot : exact-nonnegative-integer?
-;;   Selects the resource map COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the resource map COM vtable entry; this index is fixed by the Windows ABI.
 (define resource-map-slot 8)
+
 ; resource-unmap-slot : exact-nonnegative-integer?
-;;   Selects the resource unmap COM vtable entry; this index is fixed by the Windows ABI.
+;   Selects the resource unmap COM vtable entry; this index is fixed by the Windows ABI.
 (define resource-unmap-slot 9)
 
 ; dxgi-layout-sizes : -> hash?
-;;   Reports the FFI record sizes used by the reviewed Windows presentation ABI.
+;   Reports the FFI record sizes used by the reviewed Windows presentation ABI.
 (define (dxgi-layout-sizes)
   (hasheq 'swap_desc (ctype-sizeof _dxgi-swap-desc)
           'rect (ctype-sizeof _dxgi-client-rect)
@@ -203,8 +236,9 @@
           'resource_desc (ctype-sizeof _d3d12-resource-desc)
           'copy_location (ctype-sizeof _d3d12-copy-location)
           'range (ctype-sizeof _d3d12-range)))
+
 ; check-dxgi-layouts! : -> void?
-;;   Checks native record sizes and platform widths before any swap-chain or readback call.
+;   Checks native record sizes and platform widths before any swap-chain or readback call.
 (define (check-dxgi-layouts!)
   (unless (and (= (ctype-sizeof _pointer) 8)
                (equal? (dxgi-layout-sizes)
@@ -213,18 +247,23 @@
     (error 'direct3d-presentation "unsupported DXGI layout; Windows x64 is required")))
 
 ;; GUIDs in little-endian Windows memory order, checked by guid.cpp.
+
 ; iid-swapchain3 : bytes?
-;;   Contains the binary COM interface identifier for swapchain3, in Windows GUID byte order.
+;   Contains the binary COM interface identifier for swapchain3, in Windows GUID byte order.
 (define iid-swapchain3 #"\333\233\331\224\370\361\260\112\262\066\175\240\027\016\332\261")
+
 ; iid-resource : bytes?
-;;   Contains the binary COM interface identifier for resource, in Windows GUID byte order.
+;   Contains the binary COM interface identifier for resource, in Windows GUID byte order.
 (define iid-resource #"\276\102\144\151\056\247\131\100\274\171\133\134\230\004\017\255")
+
 ; iid-allocator : bytes?
-;;   Contains the binary COM interface identifier for allocator, in Windows GUID byte order.
+;   Contains the binary COM interface identifier for allocator, in Windows GUID byte order.
 (define iid-allocator #"\344\336\002\141\131\257\011\113\271\231\264\115\163\360\233\044")
+
 ; iid-command-list : bytes?
-;;   Contains the binary COM interface identifier for command list, in Windows GUID byte order.
+;   Contains the binary COM interface identifier for command list, in Windows GUID byte order.
 (define iid-command-list #"\017\015\026\133\033\254\205\101\213\250\263\256\102\245\244\125")
+
 ; iid-fence : bytes?
-;;   Contains the binary COM interface identifier for fence, in Windows GUID byte order.
+;   Contains the binary COM interface identifier for fence, in Windows GUID byte order.
 (define iid-fence #"\317\075\165\012\330\304\221\113\255\366\276\132\140\331\132\166")

@@ -19,11 +19,11 @@
 ;;;
 
 ; scales : (listof real?)
-;;   Exercises full size, three reductions, and an above-one request in codec negotiation.
+;   Exercises full size, three reductions, and an above-one request in codec negotiation.
 (define scales '(1 0.5 0.25 0.125 2))
 
 ; generate-codec-query-evidence : path-string? string? -> void?
-;;   Records negotiated dimensions/subsets and confirms queries do not alter later decoded pixels.
+;   Records negotiated dimensions/subsets and confirms queries do not alter later decoded pixels.
 (define (generate-codec-query-evidence directory token)
   (make-directory* directory)
   (define (save name bytes)
@@ -71,11 +71,12 @@
   ;;;
 
   ; directory : (or/c path-string? #f)
-  ;;   Holds the evidence output directory selected for this run.
+  ;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
   ; token : (or/c string? #f)
-  ;;   Carries the caller's run identifier into evidence so independent validation can match
-  ;;   artifacts.
+  ;   Carries the caller's run identifier into evidence so independent validation can match
+  ;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") path "New evidence directory" (set! directory path)]

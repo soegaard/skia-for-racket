@@ -21,8 +21,8 @@
 ;;;
 
 ; gpu-redraw-doctor! : hash? -> exact-integer?
-;;   Runs configured redraw and recreation cycles, checking frame evidence and resource cleanup
-;;   before publishing a status.
+;   Runs configured redraw and recreation cycles, checking frame evidence and resource cleanup
+;   before publishing a status.
 (define (gpu-redraw-doctor! options)
   (define prefix (hash-ref options 'prefix)) (define backend (hash-ref options 'backend))
   (define config (hash-ref options 'config)) (define started? #f) (define windows '())

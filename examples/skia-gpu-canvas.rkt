@@ -20,7 +20,7 @@
 ;;;
 
 ; make-window : -> void?
-;;   Creates and shows an interactive drawing window with its own resource lifetime.
+;   Creates and shows an interactive drawing window with its own resource lifetime.
 (define (make-window)
   (define canvas #f) (define frames 0)
   (define window%

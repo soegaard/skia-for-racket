@@ -10,26 +10,30 @@
 (require "check.rkt" "../image-info.rkt" "../surface-properties.rkt")
 (provide gpu-format-request gpu-format-label gpu-format-name
          gpu-staging-key gpu-config-value? gpu-cache-budget!)
+
 ; names : hash?
-;;   Maps public pixel-format symbols to the native diagnostic labels used by GPU reports.
+;   Maps public pixel-format symbols to the native diagnostic labels used by GPU reports.
 (define names
   (hasheq 'rgba-8888 "RGBA8888" 'bgra-8888 "BGRA8888" 'rgb-888x "RGB888x"
           'alpha-8 "Alpha8" 'gray-8 "Gray8" 'rgb-565 "RGB565"
           'rgba-1010102 "RGBA1010102" 'rgba-f16 "RGBAF16" 'rgba-f32 "RGBAF32"))
+
 ; gpu-format-label : any/c -> any
-;;   Returns the reviewed native label for a public pixel-format symbol.
+;   Returns the reviewed native label for a public pixel-format symbol.
 (define (gpu-format-label color)
   (hash-ref names color (lambda () (raise-argument-error 'gpu-format-label "reviewed GPU pixel format"
     color))))
+
 ; gpu-format-name : any/c -> any
-;;   Converts a reviewed native diagnostic label back to its public pixel-format symbol.
+;   Converts a reviewed native diagnostic label back to its public pixel-format symbol.
 (define (gpu-format-name label)
   (or (for/first ([(k v) (in-hash names)] #:when (equal? v label)) k)
       (raise-argument-error 'gpu-format-name "reviewed GPU color label" label)))
+
 ; gpu-format-request : symbol? exact-positive-integer? exact-positive-integer? any/c any/c
 ;   exact-nonnegative-integer? any/c -> any
-;;   Validates nonempty render-target dimensions, premultiplied/opaque alpha, samples, and
-;;   format-aware byte budget.
+;   Validates nonempty render-target dimensions, premultiplied/opaque alpha, samples, and
+;   format-aware byte budget.
 (define (gpu-format-request who width height color alpha samples properties)
   (unless (and (exact-positive-integer? width) (exact-positive-integer? height))
     (raise-arguments-error who "GPU targets must be nonempty" "width" width "height" height))
@@ -43,10 +47,11 @@
   (define info (make-image-info width height #:color-type color #:alpha-type alpha))
   (image-info-storage-layout info) ; format-aware byte budget, including F32
   info)
+
 ; gpu-staging-key : symbol? exact-positive-integer? exact-positive-integer? any/c any/c
 ;   exact-nonnegative-integer? any/c -> vector?
-;;   Builds an immutable format/color-space/sampling key without retaining a closeable color-space
-;;   wrapper.
+;   Builds an immutable format/color-space/sampling key without retaining a closeable color-space
+;   wrapper.
 (define (gpu-staging-key who width height color space samples properties)
   ;; Staging alpha must represent the clear and nested transparent groups.
   (unless (memq color '(rgba-8888 bgra-8888 rgba-f16 rgba-f32))
@@ -57,9 +62,10 @@
   (vector-immutable color 'premul (image-info-color-space info) samples
                     (surface-properties-flags properties)
                     (surface-properties-pixel-geometry properties)))
+
 ; gpu-config-value? : vector? -> any
-;;   Recognizes detached six-field cache configurations with supported color, alpha, and
-;;   pixel-geometry values.
+;   Recognizes detached six-field cache configurations with supported color, alpha, and
+;   pixel-geometry values.
 (define (gpu-config-value? v)
   (or (not v)
       (and (vector? v) (immutable? v) (= (vector-length v) 6)
@@ -70,8 +76,9 @@
            (exact-nonnegative-integer? (vector-ref v 4)) (<= (vector-ref v 4) 7)
            (memq (vector-ref v 5) '(unknown rgb-h bgr-h rgb-v bgr-v))
            #t)))
+
 ; gpu-cache-budget! : symbol? vector? any/c any/c -> void?
-;;   Checks a cached target's format-aware storage requirement against the image allocation limit.
+;   Checks a cached target's format-aware storage requirement against the image allocation limit.
 (define (gpu-cache-budget! who configuration width height)
   (when configuration
     (unless (gpu-config-value? configuration)

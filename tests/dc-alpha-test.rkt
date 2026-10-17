@@ -20,20 +20,20 @@
 ;;;
 
 ; dc-alpha-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-alpha-test-count 24)
 
 ; assert : any/c [string?] -> void?
-;;   Raises a test failure when an alpha-protocol invariant does not hold.
+;   Raises a test failure when an alpha-protocol invariant does not hold.
 (define (assert value [message "assertion failed"]) (unless value (error 'dc-alpha-test message)))
 
 ; raises? : (-> any) -> boolean?
-;;   Reports whether an operation raises an ordinary failure exception.
+;   Reports whether an operation raises an ordinary failure exception.
 (define (raises? thunk)
   (with-handlers ([exn:fail? (lambda (_) #t)]) (thunk) #f))
 
 ; fixture : [real? any/c any/c any/c] -> (values dc-alpha? box?)
-;;   Builds a synthetic alpha stack with allocation, composition, and release failure controls.
+;   Builds a synthetic alpha stack with allocation, composition, and release failure controls.
 (define (fixture [limit +inf.0] [create-error #f] [compose-error #f] [release-error #f])
   (define events (box '()))
   (define n 0)
@@ -51,11 +51,11 @@
   (values s events))
 
 ; of-kind : box? symbol? -> list?
-;;   Selects matching alpha-stack events in execution order.
+;   Selects matching alpha-stack events in execution order.
 (define (of-kind e k) (filter (lambda (x) (eq? (car x) k)) (reverse (unbox e))))
 
 ; run-dc-alpha-tests : -> exact-nonnegative-integer?
-;;   Runs allocation, nesting, composition, and cleanup assertions without a renderer.
+;   Runs allocation, nesting, composition, and cleanup assertions without a renderer.
 (define (run-dc-alpha-tests)
   (define count 0)
   (define (test name thunk)

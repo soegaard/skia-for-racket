@@ -19,7 +19,7 @@
 ;;;
 
 ; clock : (listof real?) -> (-> real?)
-;;   Returns successive supplied timestamps so benchmark statistics can be tested deterministically.
+;   Returns successive supplied timestamps so benchmark statistics can be tested deterministically.
 (define (clock xs) (lambda () (begin0 (car xs) (set! xs (cdr xs)))))
 
 
@@ -28,7 +28,7 @@
 ;;;
 
 ; gpu-performance-pure-tests : test-suite?
-;;   Collects the regression cases for gpu-performance-pure-tests.
+;   Collects the regression cases for gpu-performance-pure-tests.
 (define gpu-performance-pure-tests
   (test-suite "gpu-performance-pure-tests"
     (test-case "defaults"

@@ -23,7 +23,7 @@
 ;; suite compares both the member set and each arity against the actual class.
 
 ; dc-interface-arities : (listof (cons/c symbol? (listof exact-nonnegative-integer?)))
-;;   Lists each dc<%> method followed by its accepted positional arities, excluding the receiver.
+;   Lists each dc<%> method followed by its accepted positional arities, excluding the receiver.
 (define dc-interface-arities
   '((cache-font-metrics-key 0) (clear 0) (copy 6) (draw-arc 6)
     (draw-bitmap 3 4 5 6) (draw-bitmap-section 7 8 9 10)
@@ -47,11 +47,12 @@
     (translate 2) (try-color 2)))
 
 ; noop-methods : (listof symbol?)
-;;   Identifies document and flush methods that validate lifetime but do not affect raster targets.
+;   Identifies document and flush methods that validate lifetime but do not affect raster targets.
 (define noop-methods '(start-doc end-doc start-page end-page flush suspend-flush resume-flush))
+
 ; skia-dc-compatibility : [(or/c 'raster 'gpu 'pdf 'svg)] -> (and/c hash? immutable?)
-;;   Returns the machine-readable compatibility declaration for the selected DC lifetime and output
-;;   target.
+;   Returns the machine-readable compatibility declaration for the selected DC lifetime and output
+;   target.
 (define (skia-dc-compatibility [target 'raster])
   (unless (memq target '(raster gpu pdf svg))
     (raise-argument-error 'skia-dc-compatibility "'raster, 'gpu, 'pdf, or 'svg" target))

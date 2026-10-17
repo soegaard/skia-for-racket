@@ -21,7 +21,7 @@
 ;;;
 
 ; advanced-canvas-pure-tests : test-suite?
-;;   Collects the regression cases for advanced canvases: pure argument, ABI and policy contracts.
+;   Collects the regression cases for advanced canvases: pure argument, ABI and policy contracts.
 (define advanced-canvas-pure-tests
   (test-suite
    "Advanced canvases: pure argument, ABI and policy contracts"

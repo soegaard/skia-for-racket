@@ -27,7 +27,7 @@
   ;;;
 
   ; gui-instantiated? : boolean?
-  ;;   Records whether the import smoke test unexpectedly instantiated racket/gui/base.
+  ;   Records whether the import smoke test unexpectedly instantiated racket/gui/base.
   (define gui-instantiated?
     (with-handlers ([exn:fail? (lambda (_) #f)])
       (module->namespace 'racket/gui/base)

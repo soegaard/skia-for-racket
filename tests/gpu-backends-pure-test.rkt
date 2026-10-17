@@ -21,7 +21,7 @@
 ;;;
 
 ; plan : symbol? [exact-nonnegative-integer? procedure?] -> output-raster-executor?
-;;   Creates a synthetic raster executor carrying explicit backend and generation metadata.
+;   Creates a synthetic raster executor carrying explicit backend and generation metadata.
 (define (plan backend [generation 7] [render (lambda (w h cs replay consume) (void))])
   (make-output-raster-executor void (lambda (_) (output-raster-plan backend generation #f render))))
 
@@ -30,8 +30,8 @@
 ;;;
 
 ; gpu-backends-pure-tests : test-suite?
-;;   Collects the regression cases for source-only backend policy and production output/metadata
-;;   boundaries.
+;   Collects the regression cases for source-only backend policy and production output/metadata
+;   boundaries.
 (define gpu-backends-pure-tests
   (test-suite
    "Source-only backend policy and production output/metadata boundaries"

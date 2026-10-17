@@ -25,8 +25,8 @@
 ;;;
 
 ; make-fake-presenter : [procedure?] -> (values any/c box? box? box? box?)
-;;   Returns a presenter and mutable metrics, event log, callback queue, and failure switch for
-;;   deterministic lifecycle checks.
+;   Returns a presenter and mutable metrics, event log, callback queue, and failure switch for
+;   deterministic lifecycle checks.
 (define (make-fake-presenter [render void])
   (define metrics (box (presentation-metrics 100 80 50 40)))
   (define log (box '()))
@@ -58,8 +58,8 @@
 
 
 ; dispatch! : box? -> void?
-;;   Drains the current callback batch before running it, keeping newly enqueued work for the next
-;;   dispatch.
+;   Drains the current callback batch before running it, keeping newly enqueued work for the next
+;   dispatch.
 (define (dispatch! queue)
   (for ([thunk (in-list (begin0 (unbox queue) (set-box! queue '())))]) (thunk)))
 

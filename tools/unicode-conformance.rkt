@@ -19,11 +19,11 @@
 ;;;
 
 ; line-break-path : (or/c path-string? #f)
-;;   Selects an external Unicode LineBreakTest data file from the command line.
+;   Selects an external Unicode LineBreakTest data file from the command line.
 (define line-break-path #f)
 
 ; bidi-path : (or/c path-string? #f)
-;;   Selects an external Unicode BidiCharacterTest data file from the command line.
+;   Selects an external Unicode BidiCharacterTest data file from the command line.
 (define bidi-path #f)
 
 (command-line
@@ -40,12 +40,12 @@
 
 
 ; failed? : boolean?
-;;   Accumulates whether any selected Unicode conformance suite reported a failure.
+;   Accumulates whether any selected Unicode conformance suite reported a failure.
 (define failed? #f)
 
 
 ; report : string? unicode-conformance-result? -> void?
-;;   Prints suite totals and bounded failure details while updating the process failure flag.
+;   Prints suite totals and bounded failure details while updating the process failure flag.
 (define (report label result)
   (define total (unicode-conformance-result-total result))
   (define passed (unicode-conformance-result-passed result))

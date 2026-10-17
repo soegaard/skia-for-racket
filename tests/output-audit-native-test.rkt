@@ -19,34 +19,34 @@
 ;;;
 
 ; solid : string?
-;;   Defines a constant-color SkSL shader used to trigger runtime-effect audit classification.
+;   Defines a constant-color SkSL shader used to trigger runtime-effect audit classification.
 (define solid "half4 main(float2 p) { return half4(0.1,0.3,0.7,1); }")
 
 ; plain : canvas? -> void?
-;;   Draws a vector-safe blue rectangle as the audit baseline.
+;   Draws a vector-safe blue rectangle as the audit baseline.
 (define (plain c)
   (with-skia ([p (make-paint #:color 'blue)]) (draw-rect c 5 5 40 25 p)))
 
 ; runtime : canvas? -> void?
-;;   Draws the same geometry using a runtime shader that requires backend-specific audit treatment.
+;   Draws the same geometry using a runtime shader that requires backend-specific audit treatment.
 (define (runtime c)
   (with-skia ([e (make-runtime-effect solid)] [s (runtime-effect->shader e)]
               [p (make-paint #:shader s)])
     (draw-rect c 5 5 40 25 p)))
 
 ; page : procedure? -> output-page?
-;;   Wraps an audit drawing in a fixed-size output page.
+;   Wraps an audit drawing in a fixed-size output page.
 (define (page f) (make-output-page 100 80 f))
 
 ; contains? : output-audit-report? symbol? [symbol?] -> boolean?
-;;   Finds an audit feature, optionally restricted to a requested status.
+;   Finds an audit feature, optionally restricted to a requested status.
 (define (contains? r f [s #f])
   (for/or ([e (in-list (output-audit-report-events r))])
     (and (eq? f (output-audit-event-feature e))
          (or (not s) (eq? s (output-audit-event-status e))))))
 
 ; with-temp : procedure? -> any
-;;   Scopes a temporary export directory and removes its contents after the test.
+;   Scopes a temporary export directory and removes its contents after the test.
 (define (with-temp proc)
   (define d (make-temporary-file "skia-audit-~a" 'directory))
   (dynamic-wind void (lambda () (proc d)) (lambda () (delete-directory/files d))))
@@ -57,7 +57,7 @@
 ;;;
 
 ; output-audit-native-tests : test-suite?
-;;   Collects the regression cases for output capability audit: actual drawing wrappers.
+;   Collects the regression cases for output capability audit: actual drawing wrappers.
 (define output-audit-native-tests
   (test-suite
    "Output capability audit: actual drawing wrappers"

@@ -19,7 +19,7 @@
 ;;;
 
 ; canvas-doctor! : -> void?
-;;   Checks native arcs, rounded rectangles, clip queries, layer opacity, and SVG layer auditing.
+;   Checks native arcs, rounded rectangles, clip queries, layer opacity, and SVG layer auditing.
 (define (canvas-doctor!)
   (with-skia ([s (make-surface 50 40 #:background 'white)]
               [red (make-paint #:color 'red)]

@@ -19,11 +19,11 @@
 ;;;
 
 ; layout : exact-nonnegative-integer? exact-nonnegative-integer? [any/c] -> list?
-;;   Collects validated RGBA dimensions, stride, and storage extent.
+;   Collects validated RGBA dimensions, stride, and storage extent.
 (define (layout w h [rb #f]) (call-with-values (lambda () (raster-layout 'test w h rb)) list))
 
 ; input : exact-nonnegative-integer? exact-nonnegative-integer? bytes? [any/c boolean?] -> any
-;;   Validates supplied pixel bytes and their stride/premultiplication declaration.
+;   Validates supplied pixel bytes and their stride/premultiplication declaration.
 (define (input w h bs [rb #f] [pm? #f]) (prepare-raster-input 'test w h bs rb pm?))
 
 ;;;
@@ -31,7 +31,7 @@
 ;;;
 
 ; raster-buffer-pure-tests : test-suite?
-;;   Collects the regression cases for raster storage: checked layout and detached input.
+;   Collects the regression cases for raster storage: checked layout and detached input.
 (define raster-buffer-pure-tests
   (test-suite
    "Raster storage: checked layout and detached input"

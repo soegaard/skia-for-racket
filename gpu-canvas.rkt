@@ -20,19 +20,22 @@
          (only-in "gpu.rkt" gpu-frame-info)
          (only-in "private/dc-support.rkt" dc-unsupported))
 (provide skia-gpu-canvas% skia-gpu-canvas? skia-gpu-window%)
+
 ; handler! : symbol? gui:eventspace? -> void?
-;;   Requires the canvas's eventspace handler thread and excludes future execution.
+;   Requires the canvas's eventspace handler thread and excludes future execution.
 (define (handler! who space)
   (unless (and (eq? (current-thread) (gui:eventspace-handler-thread space))
                (not (current-future)))
     (error who "use GPU canvases on their eventspace handler thread")))
+
 ; callback! : symbol? procedure? exact-nonnegative-integer? -> void?
-;;   Checks that a supplied callback accepts the arguments used by the canvas.
+;   Checks that a supplied callback accepts the arguments used by the canvas.
 (define (callback! who callback arity)
   (unless (and (procedure? callback) (procedure-arity-includes? callback arity))
     (raise-argument-error who (format "procedure accepting ~a arguments" arity) callback)))
+
 ; canvas-color : (or/c string? (is-a?/c rd:color%)) -> (is-a?/c rd:color%)
-;;   Resolves a background color name or copies a supplied color object.
+;   Resolves a background color name or copies a supplied color object.
 (define (canvas-color value)
   (cond
     [(is-a? value rd:color%)
@@ -43,7 +46,7 @@
     [else (raise-argument-error 'skia-gpu-canvas% "color% object or color name" value)]))
 
 ; skia-gpu-canvas% : class?
-;;   Adapts GPU presentation frames to short-lived Skia drawing contexts for GUI paint callbacks.
+;   Adapts GPU presentation frames to short-lived Skia drawing contexts for GUI paint callbacks.
 (define skia-gpu-canvas%
   (class gpu-canvas%
     (init parent [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f]
@@ -125,12 +128,13 @@
               'painting (and active-dc #t) 'frames_started frame-count 'last_frame last-frame
               'implicit_cpu_readback #f 'visible_pixels_verified #f 'performance_measured #f))
     (set! ready? #t)))
+
 ; skia-gpu-canvas? : any/c -> boolean?
-;;   Returns whether v is an instance of skia-gpu-canvas%.
+;   Returns whether v is an instance of skia-gpu-canvas%.
 (define (skia-gpu-canvas? value) (is-a? value skia-gpu-canvas%))
 
 ; skia-gpu-window% : class?
-;;   Hosts a Skia GPU canvas and closes its native presentation resources with the window.
+;   Hosts a Skia GPU canvas and closes its native presentation resources with the window.
 (define skia-gpu-window%
   (class gui:frame%
     (init [label "Skia GPU DC"] [width 640] [height 480]

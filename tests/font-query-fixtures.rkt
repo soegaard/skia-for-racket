@@ -22,19 +22,19 @@
 ;;;
 
 ; font-query-scenes : (listof symbol?)
-;;   Lists the snapshot, mutated-font, and batch-outline comparison scenes.
+;   Lists the snapshot, mutated-font, and batch-outline comparison scenes.
 (define font-query-scenes '(snapshot mutated batch))
 
 ; font-query-width : exact-positive-integer?
-;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define font-query-width 160)
 
 ; font-query-height : exact-positive-integer?
-;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define font-query-height 100)
 
 ; draw-font-query-scene : symbol? canvas? -> any
-;;   Draws deterministic glyphs using generated fixture fonts and the requested font-query scenario.
+;   Draws deterministic glyphs using generated fixture fonts and the requested font-query scenario.
 (define (draw-font-query-scene scene canvas)
   (unless (memq scene font-query-scenes)
     (raise-argument-error 'draw-font-query-scene "snapshot, mutated, or batch" scene))
@@ -77,7 +77,7 @@
          (lambda () (for ([p (in-vector paths)] #:when p) (skia-close! p))))])))
 
 ; probes : hash?
-;;   Maps each scene to x, y, expected-color triples in logical pixel coordinates.
+;   Maps each scene to x, y, expected-color triples in logical pixel coordinates.
 (define probes
   (hasheq
    'snapshot '((25 40 black) (50 36 black) (41 40 white) (70 40 white) (5 5 white))
@@ -85,7 +85,7 @@
    'batch    '((25 40 black) (36 40 black) (60 36 black) (44 40 white) (85 40 white) (5 5 white))))
 
 ; check-font-query-pixels : symbol? bytes? -> void?
-;;   Checks capture dimensions and scene-specific black/white landmark pixels.
+;   Checks capture dimensions and scene-specific black/white landmark pixels.
 (define (check-font-query-pixels scene data)
   (unless (and (bytes? data) (= (bytes-length data) (* font-query-width font-query-height 4)))
     (error 'font-query-pixels "wrong RGBA byte length"))

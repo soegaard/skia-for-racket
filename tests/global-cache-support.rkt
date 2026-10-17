@@ -20,13 +20,13 @@
 ;;;
 
 ; limit-settings : -> vector?
-;;   Snapshots font bytes, font count, resource bytes, and single-allocation limits in that order.
+;   Snapshots font bytes, font count, resource bytes, and single-allocation limits in that order.
 (define (limit-settings)
   (vector (skia-font-cache-limit) (skia-font-cache-count-limit)
           (skia-resource-cache-limit) (skia-resource-cache-single-allocation-limit)))
 
 ; restore-limits! : vector? -> void?
-;;   Restores the four cache limits from the matching ordered snapshot.
+;   Restores the four cache limits from the matching ordered snapshot.
 (define (restore-limits! values)
   (skia-set-font-cache-limit! (vector-ref values 0))
   (skia-set-font-cache-count-limit! (vector-ref values 1))
@@ -35,14 +35,14 @@
   (void))
 
 ; with-restored-limits : (-> any) -> any
-;;   Restores process-global cache policy even if a cache test fails.
+;   Restores process-global cache policy even if a cache test fails.
 (define (with-restored-limits thunk)
   ;; Restores configuration, not the contents evicted by lowering a limit.
   (define saved (limit-settings))
   (dynamic-wind void thunk (lambda () (restore-limits! saved))))
 
 ; warm-cache! : -> bytes?
-;;   Renders deterministic fixture text to populate font caches and returns the capture.
+;   Renders deterministic fixture text to populate font caches and returns the capture.
 (define (warm-cache!)
   (with-skia ([face (typeface-from-bytes (fixture-font-bytes))]
               [font (make-font face #:size 28)]
@@ -52,7 +52,7 @@
     (surface->rgba-bytes s)))
 
 ; cache-test-pixels : -> bytes?
-;;   Renders a small solid rectangle to verify that cache operations preserve drawing results.
+;   Renders a small solid rectangle to verify that cache operations preserve drawing results.
 (define (cache-test-pixels)
   (with-skia ([paint (make-paint #:color 'red #:antialias? #f)]
               [surface (make-surface 8 6 #:background 'white)])

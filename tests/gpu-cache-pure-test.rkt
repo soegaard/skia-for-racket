@@ -24,7 +24,7 @@
 ;;;
 
 ; with-mock : procedure? -> any
-;;   Injects mutable cache limits and a call log into a synthetic GPU context.
+;   Injects mutable cache limits and a call log into a synthetic GPU context.
 (define (with-mock proc)
   (call-with-mock
     (lambda (d provider driver log abandoned?)
@@ -38,7 +38,7 @@
         (lambda () (gpu-context-close! c))))))
 
 ; active : procedure? -> any
-;;   Runs the cache callback while its synthetic domain is activated.
+;   Runs the cache callback while its synthetic domain is activated.
 (define (active proc)
   (with-mock (lambda (c d calls) (domain-call d (lambda () (proc c d calls))))))
 
@@ -48,7 +48,7 @@
 ;;;
 
 ; gpu-cache-pure-tests : test-suite?
-;;   Collects the regression cases for gpu-cache-pure-tests.
+;   Collects the regression cases for gpu-cache-pure-tests.
 (define gpu-cache-pure-tests
   (test-suite "gpu-cache-pure-tests"
     (test-case "size_t zero and maximum"

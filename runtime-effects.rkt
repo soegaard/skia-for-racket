@@ -31,63 +31,82 @@
          blender? make-blend-mode-blender paint-blender paint-set-blender!)
 
 ;; Predicates and immutable reflection snapshots never enter native code.
+
 ; runtime-effect? : any/c -> boolean?
-;;   Returns #t for a runtime-effect resource and #f otherwise.
+;   Returns #t for a runtime-effect resource and #f otherwise.
 (define runtime-effect? raw:runtime-effect-resource?)
+
 ; blender? : any/c -> boolean?
-;;   Returns #t for a blender resource and #f otherwise.
+;   Returns #t for a blender resource and #f otherwise.
 (define blender? raw:blender-resource?)
+
 ; runtime-uniform? : any/c -> boolean?
-;;   Returns #t for a detached runtime-uniform description and #f otherwise.
+;   Returns #t for a detached runtime-uniform description and #f otherwise.
 (define runtime-uniform? meta:runtime-uniform?)
+
 ; runtime-uniform-name : runtime-uniform? -> string?
-;;   Returns the immutable, nonempty uniform name used by binding dictionaries.
+;   Returns the immutable, nonempty uniform name used by binding dictionaries.
 (define runtime-uniform-name meta:runtime-uniform-name)
+
 ; runtime-uniform-offset : runtime-uniform? -> exact-nonnegative-integer?
-;;   Returns the byte offset in the effect uniform buffer.
+;   Returns the byte offset in the effect uniform buffer.
 (define runtime-uniform-offset meta:runtime-uniform-offset)
+
 ; runtime-uniform-type : runtime-uniform? -> (or/c 'float 'float2 'float3 'float4 'float2x2
 ;   'float3x3 'float4x4 'int 'int2 'int3 'int4)
-;;   Returns the reflected numeric type.
+;   Returns the reflected numeric type.
 (define runtime-uniform-type meta:runtime-uniform-type)
+
 ; runtime-uniform-count : runtime-uniform? -> exact-positive-integer?
-;;   Returns the array length, or one for a nonarray uniform.
+;   Returns the array length, or one for a nonarray uniform.
 (define runtime-uniform-count meta:runtime-uniform-count)
+
 ; runtime-uniform-byte-size : runtime-uniform? -> exact-positive-integer?
-;;   Returns the complete byte size, including all array elements.
+;   Returns the complete byte size, including all array elements.
 (define runtime-uniform-byte-size meta:runtime-uniform-byte-size)
+
 ; runtime-uniform-array? : runtime-uniform? -> boolean?
-;;   Returns whether the declaration is an array.
+;   Returns whether the declaration is an array.
 (define runtime-uniform-array? meta:runtime-uniform-array?)
+
 ; runtime-uniform-color? : runtime-uniform? -> boolean?
-;;   Returns whether the declaration has layout(color).
+;   Returns whether the declaration has layout(color).
 (define runtime-uniform-color? meta:runtime-uniform-color?)
+
 ; runtime-uniform-half-precision? : runtime-uniform? -> boolean?
-;;   Returns whether the declaration carries the half-precision flag.
+;   Returns whether the declaration carries the half-precision flag.
 (define runtime-uniform-half-precision? meta:runtime-uniform-half-precision?)
+
 ; runtime-child? : any/c -> boolean?
-;;   Returns #t for a detached runtime-child description and #f otherwise.
+;   Returns #t for a detached runtime-child description and #f otherwise.
 (define runtime-child? meta:runtime-child?)
+
 ; runtime-child-name : runtime-child? -> string?
-;;   Returns the immutable, nonempty child name used by the child-binding hash.
+;   Returns the immutable, nonempty child name used by the child-binding hash.
 (define runtime-child-name meta:runtime-child-name)
+
 ; runtime-child-kind : runtime-child? -> (or/c 'shader 'color-filter 'blender)
-;;   Returns the required resource kind.
+;   Returns the required resource kind.
 (define runtime-child-kind meta:runtime-child-kind)
+
 ; runtime-child-index : runtime-child? -> exact-nonnegative-integer?
-;;   Returns the zero-based reflected slot index.
+;   Returns the zero-based reflected slot index.
 (define runtime-child-index meta:runtime-child-index)
+
 ; exn:fail:skia-sksl? : any/c -> boolean?
-;;   Returns #t for an SkSL compilation exception and #f otherwise.
+;   Returns #t for an SkSL compilation exception and #f otherwise.
 (define exn:fail:skia-sksl? meta:exn:fail:skia-sksl?)
+
 ; exn:fail:skia-sksl-kind : exn:fail:skia-sksl? -> (or/c 'shader 'color-filter 'blender)
-;;   Returns the stage requested by the unsuccessful compilation.
+;   Returns the stage requested by the unsuccessful compilation.
 (define exn:fail:skia-sksl-kind meta:exn:fail:skia-sksl-kind)
+
 ; exn:fail:skia-sksl-source : exn:fail:skia-sksl? -> string?
-;;   Returns the copied source string supplied to the compiler.
+;   Returns the copied source string supplied to the compiler.
 (define exn:fail:skia-sksl-source meta:exn:fail:skia-sksl-source)
+
 ; exn:fail:skia-sksl-diagnostics : exn:fail:skia-sksl? -> string?
-;;   Returns the immutable native compiler diagnostics.
+;   Returns the immutable native compiler diagnostics.
 (define exn:fail:skia-sksl-diagnostics meta:exn:fail:skia-sksl-diagnostics)
 
 
@@ -96,44 +115,50 @@
 ;;;
 
 ; checked-effect : symbol? any/c -> runtime-effect?
-;;   Checks the public runtime-effect wrapper before metadata or handle access.
+;   Checks the public runtime-effect wrapper before metadata or handle access.
 (define (checked-effect who e)
   (unless (runtime-effect? e) (raise-argument-error who "runtime-effect?" e))
   e)
+
 ; effect-h : symbol? runtime-effect? -> (or/c owned? domain-resource?)
-;;   Retrieves the managed native handle from a checked runtime effect.
+;   Retrieves the managed native handle from a checked runtime effect.
 (define (effect-h who e)
   (raw:runtime-effect-resource-handle (checked-effect who e)))
+
 ; blender-h : symbol? blender? -> (or/c owned? domain-resource?)
-;;   Checks the blender wrapper and retrieves its managed native handle.
+;   Checks the blender wrapper and retrieves its managed native handle.
 (define (blender-h who b)
   (unless (blender? b) (raise-argument-error who "blender?" b))
   (raw:blender-resource-handle b))
 
 ; runtime-effect-kind : runtime-effect? -> (or/c 'shader 'color-filter 'blender)
-;;   Returns the stage for which the effect was compiled.
+;   Returns the stage for which the effect was compiled.
 (define (runtime-effect-kind e)
   (raw:runtime-effect-resource-kind (checked-effect 'runtime-effect-kind e)))
+
 ; runtime-effect-source : runtime-effect? -> (and/c string? immutable?)
-;;   Returns the stored immutable source string.
+;   Returns the stored immutable source string.
 (define (runtime-effect-source e)
   (raw:runtime-effect-resource-source (checked-effect 'runtime-effect-source e)))
+
 ; runtime-effect-uniform-byte-size : runtime-effect? -> exact-nonnegative-integer?
-;;   Returns the size of the reflected uniform buffer in bytes.
+;   Returns the size of the reflected uniform buffer in bytes.
 (define (runtime-effect-uniform-byte-size e)
   (raw:runtime-effect-resource-byte-size (checked-effect 'runtime-effect-uniform-byte-size e)))
+
 ; runtime-effect-uniforms : runtime-effect? -> (listof runtime-uniform?)
-;;   Returns the stored ordered list of detached uniform descriptions.
+;   Returns the stored ordered list of detached uniform descriptions.
 (define (runtime-effect-uniforms e)
   (raw:runtime-effect-resource-uniforms (checked-effect 'runtime-effect-uniforms e)))
+
 ; runtime-effect-children : runtime-effect? -> (listof runtime-child?)
-;;   Returns the stored ordered list of detached child-slot descriptions.
+;   Returns the stored ordered list of detached child-slot descriptions.
 (define (runtime-effect-children e)
   (raw:runtime-effect-resource-children (checked-effect 'runtime-effect-children e)))
 
 ; runtime-count : symbol? exact-nonnegative-integer? exact-positive-integer? ->
 ;   exact-nonnegative-integer?
-;;   Bounds native reflection counts by the ABI integer range and logical metadata byte budget.
+;   Bounds native reflection counts by the ABI integer range and logical metadata byte budget.
 (define (runtime-count who count record-size)
   (unless (and (exact-nonnegative-integer? count) (<= count #x7fffffff)
                (<= (* count record-size) (current-skia-byte-limit)))
@@ -141,8 +166,8 @@
   count)
 
 ; reflect-effect : symbol? cpointer? -> (values integer? list? list?)
-;;   Copies and validates uniform and child reflection metadata without borrowing native string
-;;   views.
+;   Copies and validates uniform and child reflection metadata without borrowing native string
+;   views.
 (define (reflect-effect who ep)
   (define total (sk_runtimeeffect_get_uniform_byte_size ep))
   (unless (and (zero? (modulo total 4)) (<= total (current-skia-byte-limit)))
@@ -187,8 +212,8 @@
      (values total uniforms children))))
 
 ; make-runtime-effect : string? [#:kind (or/c 'shader 'color-filter 'blender)] -> runtime-effect?
-;;   Compiles a nonempty, NUL-free SkSL source string for the selected stage and returns an owned
-;;   effect.
+;   Compiles a nonempty, NUL-free SkSL source string for the selected stage and returns an owned
+;   effect.
 (define (make-runtime-effect source #:kind [kind 'shader])
   (define who 'make-runtime-effect)
   (meta:runtime-kind who kind)
@@ -224,7 +249,7 @@
 ;;;
 
 ; runtime-effect-uniform-bytes : runtime-effect? hash? -> (and/c bytes? immutable?)
-;;   Packs checked bindings into an immutable byte string using the retained uniform layout.
+;   Packs checked bindings into an immutable byte string using the retained uniform layout.
 (define (runtime-effect-uniform-bytes e bindings)
   (checked-effect 'runtime-effect-uniform-bytes e)
   ;; This is a pure diagnostic/packing operation on the stored snapshot. It
@@ -234,7 +259,7 @@
                              (runtime-effect-uniforms e) bindings))
 
 ; native-local-matrix : symbol? (or/c #f matrix?) -> (or/c #f sk-matrix?)
-;;   Converts an optional affine transform after checking that its inverse is representable.
+;   Converts an optional affine transform after checking that its inverse is representable.
 (define (native-local-matrix who m)
   (cond
     [(not m) #f]
@@ -246,8 +271,8 @@
                      (matrix-yx m) (matrix-yy m) (matrix-y0 m) 0.0 0.0 1.0)]))
 
 ; runtime-child-handles : symbol? runtime-effect? any/c -> (listof (or/c owned? domain-resource?))
-;;   Requires every child binding with its declared kind and returns handles in native declaration
-;;   order.
+;   Requires every child binding with its declared kind and returns handles in native declaration
+;   order.
 (define (runtime-child-handles who e bindings)
   (define children (runtime-effect-children e))
   (define table (meta:runtime-bindings who 'child (map runtime-child-name children) bindings))
@@ -262,7 +287,7 @@
 
 ; make-runtime-instance : symbol? runtime-effect? symbol? any/c any/c any/c procedure? procedure? ->
 ;   any/c
-;;   Packs uniforms and creates an owned pipeline instance while retaining all child handles.
+;   Packs uniforms and creates an owned pipeline instance while retaining all child handles.
 (define (make-runtime-instance who e kind bindings children local-matrix create wrap)
   (define eh (effect-h who e))
   (unless (eq? kind (runtime-effect-kind e))
@@ -292,7 +317,7 @@
 
 ; runtime-effect->shader : runtime-effect? [#:uniforms hash?] [#:children hash?] [#:local-matrix
 ;   (or/c matrix? #f)] -> shader?
-;;   Returns an owned shader instance of an open shader-kind effect.
+;   Returns an owned shader instance of an open shader-kind effect.
 (define (runtime-effect->shader e #:uniforms [uniforms (hash)] #:children [children (hash)]
                                 #:local-matrix [local-matrix #f])
   (make-runtime-instance 'runtime-effect->shader e 'shader uniforms children local-matrix
@@ -300,7 +325,7 @@
 
 ; runtime-effect->color-filter : runtime-effect? [#:uniforms hash?] [#:children hash?] ->
 ;   color-filter?
-;;   Returns an owned color-filter instance.
+;   Returns an owned color-filter instance.
 (define (runtime-effect->color-filter e #:uniforms [uniforms (hash)] #:children [children (hash)])
   (make-runtime-instance
    'runtime-effect->color-filter e 'color-filter uniforms children #f
@@ -313,13 +338,13 @@
 ;;;
 
 ; new-blender : symbol? procedure? -> blender?
-;;   Initializes the native library and adopts a new owned blender.
+;   Initializes the native library and adopts a new owned blender.
 (define (new-blender who create)
   (skia-check!)
   (raw:make-blender-record (new-owned who 'blender create sk_blender_unref)))
 
 ; runtime-effect->blender : runtime-effect? [#:uniforms hash?] [#:children hash?] -> blender?
-;;   Returns an owned blender instance.
+;   Returns an owned blender instance.
 (define (runtime-effect->blender e #:uniforms [uniforms (hash)] #:children [children (hash)])
   (make-runtime-instance
    'runtime-effect->blender e 'blender uniforms children #f
@@ -330,14 +355,14 @@
 ;   'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
 ;   'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation 'color
 ;   'luminosity) -> blender?
-;;   Returns an owned blender implementing the selected blend mode.
+;   Returns an owned blender implementing the selected blend mode.
 (define (make-blend-mode-blender mode)
   (define value (choice 'make-blend-mode-blender mode blend-values))
   (new-blender 'make-blend-mode-blender (lambda () (sk_blender_new_mode value))))
 
 ; paint-set-blender! : paint? (or/c blender? #f) -> void?
-;;   Replaces the paint's blender with a retained native reference, or restores implicit source-over
-;;   when blender is false.
+;   Replaces the paint's blender with a retained native reference, or restores implicit source-over
+;   when blender is false.
 (define (paint-set-blender! p blender)
   (define who 'paint-set-blender!)
   (define ph (raw:paint-h who p))
@@ -347,8 +372,8 @@
    (lambda (pp . bs) (sk_paint_set_blender pp (if bh (car bs) #f)))))
 
 ; paint-blender : paint? -> (or/c blender? #f)
-;;   Returns an independently owned reference to an explicit paint blender, or #f for the implicit
-;;   source-over case.
+;   Returns an independently owned reference to an explicit paint blender, or #f for the implicit
+;   source-over case.
 (define (paint-blender p)
   (define who 'paint-blender)
   (call-with-owned

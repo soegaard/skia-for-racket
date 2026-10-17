@@ -36,19 +36,20 @@
 ;;;
 
 ; navigation-css : path?
-;;   Locates navigation css relative to this module rather than the current directory.
+;   Locates navigation css relative to this module rather than the current directory.
 (define-runtime-path navigation-css "skia-doc-nav.css")
+
 ; navigation-js : path?
-;;   Locates navigation js relative to this module rather than the current directory.
+;   Locates navigation js relative to this module rather than the current directory.
 (define-runtime-path navigation-js "skia-doc-nav.js")
 
 ; html-attributes : any/c -> attributes?
-;;   Wraps attribute pairs as a Scribble HTML style property.
+;   Wraps attribute pairs as a Scribble HTML style property.
 (define (html-attributes pairs)
   (make-attributes pairs))
 
 ; navigation-element : any/c any/c any/c any/c ... -> element?
-;;   Builds a navigation element with an explicit HTML tag and attributes.
+;   Builds a navigation element with an explicit HTML tag and attributes.
 (define (navigation-element tag style-name pairs . content)
   (make-element
    (make-style style-name
@@ -57,7 +58,7 @@
    content))
 
 ; navigation-shell-element : any/c any/c any/c ... -> element?
-;;   Builds the navigation shell and attaches its shared CSS and JavaScript.
+;   Builds the navigation shell and attaches its shared CSS and JavaScript.
 (define (navigation-shell-element style-name pairs . content)
   (make-element
    (make-style style-name
@@ -68,7 +69,7 @@
    content))
 
 ; navigation-pretitle : any/c -> paragraph?
-;;   Places navigation before Scribble's document heading without adding another title.
+;   Places navigation before Scribble's document heading without adding another title.
 (define (navigation-pretitle content)
   ;; A `pretitle` block is rendered before Scribble's generated heading.  The
   ;; explicit `div` tag keeps the navigation structurally valid while making
@@ -81,7 +82,7 @@
    (list content)))
 
 ; styled-seclink : any/c any/c any/c #:all-tutorials? [boolean?] -> link-element?
-;;   Builds a collection link with the appropriate current-location attributes.
+;   Builds a collection link with the appropriate current-location attributes.
 (define (styled-seclink collection label current #:all-tutorials? [all-tutorials? #f])
   (define entry (documentation-collection-by-id collection))
   (define plain-link
@@ -104,7 +105,7 @@
    (link-element-tag plain-link)))
 
 ; tutorial-seclink : hash? [any/c] -> link-element?
-;;   Builds a tutorial shortcut using its short menu title and document target.
+;   Builds a tutorial shortcut using its short menu title and document target.
 (define (tutorial-seclink entry [current #f])
   (define plain-link
     (seclink "top"
@@ -120,12 +121,12 @@
    (link-element-tag plain-link)))
 
 ; collection-current : any/c any/c boolean? -> (or/c string? #f)
-;;   Chooses the current-page or current-location marker for the active collection.
+;   Chooses the current-page or current-location marker for the active collection.
 (define (collection-current collection active index?)
   (and (eq? collection active) (if index? "page" "location")))
 
 ; collection-destination : hash? any/c boolean? -> (or/c link-element? element?)
-;;   Builds a real destination link or a visibly disabled collection label.
+;   Builds a real destination link or a visibly disabled collection label.
 (define (collection-destination entry active index?)
   (define id (documentation-collection-id entry))
   (if (documentation-collection-available? entry)
@@ -141,7 +142,7 @@
        (documentation-collection-label entry))))
 
 ; collection-links : any/c boolean? any/c -> element?
-;;   Builds the collection band and attaches the tutorial disclosure content.
+;   Builds the collection band and attaches the tutorial disclosure content.
 (define (collection-links active index? tutorial-id)
   (apply navigation-element
          "div"
@@ -160,7 +161,7 @@
                               null))))))
 
 ; tutorial-list : list? any/c -> element?
-;;   Builds the shortcut list and marks the current tutorial link.
+;   Builds the shortcut list and marks the current tutorial link.
 (define (tutorial-list lessons tutorial-id)
   (apply navigation-element
          "ul"
@@ -176,7 +177,7 @@
                                    (equal? tutorial-id (hash-ref lesson 'id))))))))
 
 ; tutorial-group : any/c any/c -> element?
-;;   Builds a labeled subject group for the tutorial disclosure.
+;   Builds a labeled subject group for the tutorial disclosure.
 (define (tutorial-group group tutorial-id)
   (define heading (car group))
   (define lessons (cdr group))
@@ -188,7 +189,7 @@
    (tutorial-list lessons tutorial-id)))
 
 ; tutorial-panel : any/c -> element?
-;;   Builds the complete tutorial shortcut panel, including the index link.
+;   Builds the complete tutorial shortcut panel, including the index link.
 (define (tutorial-panel tutorial-id)
   (define all-tutorials
     (styled-seclink 'tutorials "All tutorials" #f #:all-tutorials? #t))
@@ -208,7 +209,7 @@
                groups)))
 
 ; documentation-navigation-band : any/c #:index? [boolean?] #:tutorial-id [any/c] -> paragraph?
-;;   Builds the shared band after validating the active collection and tutorial.
+;   Builds the shared band after validating the active collection and tutorial.
 (define (documentation-navigation-band active
                                        #:index? [index? #f]
                                        #:tutorial-id [tutorial-id #f])
@@ -244,12 +245,12 @@
       (collection-links active index? tutorial-id))))))
 
 ; tutorial-navigation-band : any/c -> paragraph?
-;;   Builds the shared navigation band for an individual tutorial.
+;   Builds the shared navigation band for an individual tutorial.
 (define (tutorial-navigation-band tutorial-id)
   (documentation-navigation-band 'tutorials #:tutorial-id tutorial-id))
 
 ; reference-page-part? : boolean? any/c -> boolean?
-;;   Identifies Scribble parts that will become distinct Reference HTML pages.
+;   Identifies Scribble parts that will become distinct Reference HTML pages.
 (define (reference-page-part? parent-is-toc? part)
   ;; Scribble's `multi-page` renderer gives a top-level `toc` group and its
   ;; direct title children their own files, and it also emits the index as its
@@ -260,7 +261,7 @@
       (eq? 'index (style-name (part-style part)))))
 
 ; decorate-reference-section : any/c -> part?
-;;   Adds one navigation band to each separately rendered Reference part.
+;   Adds one navigation band to each separately rendered Reference part.
 (define (decorate-reference-section document)
   (unless (part? document)
     (raise-argument-error 'include-reference-section "part?" document))
@@ -282,7 +283,7 @@
   (walk document #f))
 
 ; decorate-reference-index : any/c -> part?
-;;   Adds the shared navigation band to the generated Reference index page.
+;   Adds the shared navigation band to the generated Reference index page.
 (define (decorate-reference-index document)
   ;; `index-section` belongs to the Reference root rather than to an included
   ;; group, so the include decorator never sees it.  Decorate its generated
@@ -299,7 +300,7 @@
    (part-parts document)))
 
 ; include-reference-section : syntax -> syntax
-;;   Imports and decorates a Reference document while preserving its Scribble target.
+;   Imports and decorates a Reference document while preserving its Scribble target.
 (define-syntax (include-reference-section stx)
   (syntax-case stx ()
     [(_ module-path)

@@ -21,7 +21,7 @@
 ;;;
 
 ; make-fake : box? -> any/c
-;;   Creates a synthetic owned resource whose destructor increments the supplied counter.
+;   Creates a synthetic owned resource whose destructor increments the supplied counter.
 (define (make-fake released)
   (new-owned 'test 'synthetic-resource
              (lambda () 'synthetic-pointer)
@@ -33,7 +33,7 @@
 ;;;
 
 ; lifetime-tests : test-suite?
-;;   Collects the regression cases for ownership and scoped cleanup (no native library).
+;   Collects the regression cases for ownership and scoped cleanup (no native library).
 (define lifetime-tests
   (test-suite
    "Ownership and scoped cleanup (no native library)"
@@ -91,6 +91,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests lifetime-tests))
   (unless (zero? failures) (error 'lifetime-tests "~a failures" failures)))

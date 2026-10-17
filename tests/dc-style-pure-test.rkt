@@ -22,7 +22,7 @@
 ;;;
 
 ; with-dc : procedure? -> any
-;;   Scopes a recording-only style DC and exposes its ordered event log.
+;   Scopes a recording-only style DC and exposes its ordered event log.
 (define (with-dc proc)
   (define events (box '()))
   (define renderer (dc-renderer (lambda (w h) #t) void
@@ -32,15 +32,15 @@
   (dynamic-wind void (lambda () (proc dc events)) (lambda () (send dc close))))
 
 ; last-ink : box? -> any/c
-;;   Retrieves the prepared ink specification from the latest recorded drawing.
+;   Retrieves the prepared ink specification from the latest recorded drawing.
 (define (last-ink events) (dc-draw-ink (last (unbox events))))
 
 ; draw-brush : dc<%> brush% -> void?
-;;   Exercises brush preparation on one fixed-size fill rectangle.
+;   Exercises brush preparation on one fixed-size fill rectangle.
 (define (draw-brush dc b) (fill-with dc b 0 0 16 16))
 
 ; dc-style-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-style-pure-test-count 24)
 
 ;;;
@@ -48,7 +48,7 @@
 ;;;
 
 ; dc-style-pure-tests : test-suite?
-;;   Collects the regression cases for dC style preparation without Skia.
+;   Collects the regression cases for dC style preparation without Skia.
 (define dc-style-pure-tests
   (test-suite "DC style preparation without Skia"
    (test-case "45 production math cases" (check-equal? (run-dc-style-math-tests) 45))

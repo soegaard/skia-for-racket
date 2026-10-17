@@ -20,25 +20,25 @@
 ;;;
 
 ; using-dc : procedure? [exact-positive-integer? exact-positive-integer? real?] -> any
-;;   Scopes a native DC and closes it even when its test callback fails.
+;   Scopes a native DC and closes it even when its test callback fails.
 (define (using-dc proc [w 24] [h 20] [backing 1])
   (define dc (new skia-dc% [width w] [height h] [backing-scale backing]))
   (dynamic-wind void (lambda () (proc dc)) (lambda () (send dc close))))
 
 ; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Reads a premultiplied RGBA device pixel.
+;   Reads a premultiplied RGBA device pixel.
 (define (pixel dc x y)
   (define-values (w h) (send dc get-pixel-size))
   (define bs (send dc get-rgba-bytes #:premultiplied? #t))
   (for/list ([i (in-range (* 4 (+ x (* w y))) (+ 4 (* 4 (+ x (* w y)))))]) (bytes-ref bs i)))
 
 ; fill-mode : dc<%> [color] -> void?
-;;   Selects solid fill with no visible pen so pixel comparisons exclude outlines.
+;   Selects solid fill with no visible pen so pixel comparisons exclude outlines.
 (define (fill-mode dc [color "red"])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid))
 
 ; argb->rgba : bytes? -> bytes?
-;;   Rotates each four-byte pixel from Racket Draw's ARGB order to Skia's RGBA order.
+;   Rotates each four-byte pixel from Racket Draw's ARGB order to Skia's RGBA order.
 (define (argb->rgba b)
   (define out (make-bytes (bytes-length b)))
   (for ([i (in-range 0 (bytes-length b) 4)])
@@ -46,7 +46,7 @@
     (bytes-set! out (+ i 2) (bytes-ref b (+ i 3))) (bytes-set! out (+ i 3) (bytes-ref b i))) out)
 
 ; compare-with-racket : procedure? [real?] -> void?
-;;   Renders the same drawing with both DC implementations and compares channel values.
+;   Renders the same drawing with both DC implementations and compares channel values.
 (define (compare-with-racket draw [tolerance 0])
   (define bm (rd:make-bitmap 24 20 #t))
   (define reference (new rd:bitmap-dc% [bitmap bm]))
@@ -66,7 +66,7 @@
 ;;;
 
 ; dc-native-tests : test-suite?
-;;   Collects the regression cases for skia-dc persistent CPU raster native tests.
+;   Collects the regression cases for skia-dc persistent CPU raster native tests.
 (define dc-native-tests
   (test-suite
    "skia-dc persistent CPU raster native tests"
@@ -210,5 +210,5 @@
      (using-dc (lambda (dc) (replay dc) (check-equal? (pixel dc 4 5) '(255 0 0 255)))))))
 
 ; dc-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-native-test-count 31)

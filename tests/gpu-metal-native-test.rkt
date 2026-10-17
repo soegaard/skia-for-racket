@@ -20,21 +20,21 @@
 ;;;
 
 ; gpu-metal-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define gpu-metal-native-test-count 8)
 
 ; with-metal : procedure? -> any
-;;   Scopes a native Metal context and guarantees closure after the test.
+;   Scopes a native Metal context and guarantees closure after the test.
 (define (with-metal proc)
   (define context (make-gpu-context #:backend 'metal))
   (dynamic-wind void (lambda () (proc context)) (lambda () (gpu-context-close! context))))
 
 ; under : gpu-context? (-> any) -> any
-;;   Activates the selected Metal context around a callback.
+;   Activates the selected Metal context around a callback.
 (define (under context thunk) (call-with-gpu-context context thunk))
 
 ; make-gpu-metal-native-tests : -> test-suite?
-;;   Builds the parameterized suite for metal-specific owned queue, scope, GC, and abandonment.
+;   Builds the parameterized suite for metal-specific owned queue, scope, GC, and abandonment.
 (define (make-gpu-metal-native-tests)
   (test-suite
    "Metal-specific owned queue, scope, GC, and abandonment"

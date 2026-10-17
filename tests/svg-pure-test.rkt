@@ -21,19 +21,19 @@
 ;;;
 
 ; envelope : bytes? [string? string? string?] -> bytes?
-;;   Finishes raw SVG with escaped metadata and prefixed resource identifiers.
+;   Finishes raw SVG with escaped metadata and prefixed resource identifiers.
 (define (envelope bs [title ""] [description ""] [prefix "skia"])
   (define-values (t d) (svg-metadata 'test title description))
   (finish-svg-xml 'test bs 120.5 80.25 t d (svg-id-prefix 'test prefix)))
 
 
 ; raw-empty : bytes?
-;;   Provides native-shaped empty SVG for root-element finishing tests.
+;   Provides native-shaped empty SVG for root-element finishing tests.
 (define raw-empty
   #"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"121\" height=\"81\"/>")
 
 ; raw-body : bytes?
-;;   Provides native-shaped SVG content for metadata and resource-reference rewriting.
+;   Provides native-shaped SVG content for metadata and resource-reference rewriting.
 (define raw-body
   #"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"121\" height=\"81\"><rect x=\"7\" width=\"20\" height=\"30\"/></svg>")
 
@@ -43,7 +43,7 @@
 ;;;
 
 ; svg-pure-tests : test-suite?
-;;   Collects the regression cases for sVG pure validation and serialization.
+;   Collects the regression cases for sVG pure validation and serialization.
 (define svg-pure-tests
   (test-suite
    "SVG pure validation and serialization"

@@ -20,36 +20,43 @@
 ;;;
 
 ; ink : string?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink "#20344E")
+
 ; teal : string?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal "#10988E")
+
 ; label : canvas? string? real? real? [real?] [any/c] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11] [color ink])
   (with-skia ([font (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [paint (make-paint #:color color)])
     (draw-simple-text c text x y font paint)))
+
 ; heading : canvas? string? string? -> void?
-;;   Draws the page heading and its explanatory subtitle.
+;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (with-skia ([paint (make-paint #:color teal)]) (draw-rect c 0 0 34 2 paint))
   (label c title 0 32 23)
   (label c subtitle 0 53 10))
+
 ; footer : canvas? -> void?
-;;   Adds the page identification beneath the example drawing.
+;   Adds the page identification beneath the example drawing.
 (define (footer c)
   (label c "RACKET / SKIA   |   COLOR-MANAGED OUTPUT" 0 445 9))
+
 ; grey-bytes : -> bytes?
-;;   Creates opaque RGBA samples for all 256 grayscale channel values.
+;   Creates opaque RGBA samples for all 256 grayscale channel values.
 (define (grey-bytes)
   (apply bytes (append-map (lambda (n) (list n n n 255)) (range 256))))
+
 ; colors : list?
-;;   Orders the palette bands used by the image comparison.
+;   Orders the palette bands used by the image comparison.
 (define colors '((180 100 65) (70 155 100) (80 120 180) (160 90 160) (128 128 128)))
+
 ; palette-bytes : real? real? -> bytes?
-;;   Creates opaque vertical color bands in row-major RGBA byte order.
+;   Creates opaque vertical color bands in row-major RGBA byte order.
 (define (palette-bytes width height)
   (define out (make-bytes (* 4 width height)))
   (for* ([y (in-range height)] [x (in-range width)])
@@ -58,14 +65,15 @@
     (for ([value (in-list (append rgb '(255)))] [i (in-naturals at)])
       (bytes-set! out i value)))
   out)
+
 ; bytes-file : path-string? bytes? -> void?
-;;   Writes encoded image bytes to the selected file.
+;   Writes encoded image bytes to the selected file.
 (define (bytes-file path bs)
   (call-with-output-file path (lambda (out) (write-bytes bs out) (void)) #:mode 'binary #:exists
     'replace))
 
 ; gamma-page : output-page?
-;;   Describes the gamma page drawing and its export dimensions.
+;   Describes the gamma page drawing and its export dimensions.
 (define gamma-page
   (make-output-page
    720 500
@@ -94,7 +102,7 @@
    #:margins 24 #:background 'white))
 
 ; gamut-page : output-page?
-;;   Describes the gamut page drawing and its export dimensions.
+;   Describes the gamut page drawing and its export dimensions.
 (define gamut-page
   (make-output-page
    720 500
@@ -119,7 +127,7 @@
    #:margins 24 #:background 'white))
 
 ; encoded-page : list? -> output-page?
-;;   Builds the encoded page output page and its drawing callback.
+;   Builds the encoded page output page and its drawing callback.
 (define (encoded-page records)
   (make-output-page
    720 500
@@ -144,31 +152,36 @@
    #:margins 24 #:background 'white))
 
 ; escaped : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (escaped s)
   (string-replace (string-replace (string-replace (string-replace s "&" "&amp;") "<" "&lt;") ">"
     "&gt;") "\"" "&quot;"))
+
 ; base-name : any/c -> string?
-;;   Returns an HTML-safe filename for a generated report link.
+;   Returns an HTML-safe filename for a generated report link.
 (define (base-name s) (escaped (path->string (file-name-from-path s))))
 ;;;
 ;;; Command-Line Entry Point
 ;;;
 
 (module+ main
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix (command-line #:program "color-output.rkt" #:args ([prefix "color-output-0.26"])
     prefix))
+
   ; name : any/c -> string?
-  ;;   Constructs an output filename from the selected prefix.
+  ;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
+
   ; records : list?
-  ;;   Collects the encoded-image results and associated profile metadata.
+  ;   Collects the encoded-image results and associated profile metadata.
   (define records '())
+
   ; trace : list?
-  ;;   Collects color-space conversion observations for the report.
+  ;   Collects color-space conversion observations for the report.
   (define trace '())
   (with-skia ([p3 (make-rgb-color-space 'srgb 'display-p3)] [srgb (make-srgb-color-space)]
               [source (rgba-bytes->image 250 60 (palette-bytes 250 60) #:color-space p3)]
@@ -191,8 +204,9 @@
           bs)))))))
   (bytes-file (name ".trace.json") (jsexpr->bytes (hasheq 'spaces trace 'note
     "Native probe values, not display measurements")))
+
   ; registry : list?
-  ;;   Keeps the shared scene/page order used by the exported documents and raster references.
+  ;   Keeps the shared scene/page order used by the exported documents and raster references.
   (define registry (list (cons "gamma" gamma-page) (cons "gamuts" gamut-page)
                          (cons "encoded" (encoded-page records))))
   (save-output (map cdr registry) (name ".pdf") 'pdf #:exists 'replace #:title "Color output probe")

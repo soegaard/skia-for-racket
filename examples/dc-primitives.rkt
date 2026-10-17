@@ -21,7 +21,7 @@
 ;;;
 
 ; draw-dc-oracle : (is-a?/c dc<%>) -> void?
-;;   Draws the dc oracle component in the current canvas coordinate system.
+;   Draws the dc oracle component in the current canvas coordinate system.
 (define (draw-dc-oracle dc)
   (send dc set-smoothing 'unsmoothed)
   (send dc set-pen "black" 1 'transparent)
@@ -35,8 +35,9 @@
   (send dc set-origin 0 0)
   (send dc set-clipping-rect 18 15 4 3) (send dc erase)
   (send dc set-clipping-region #f))
+
 ; draw-dc-primitives : (is-a?/c dc<%>) -> void?
-;;   Draws the dc primitives component in the current canvas coordinate system.
+;   Draws the dc primitives component in the current canvas coordinate system.
 (define (draw-dc-primitives dc)
   (send dc set-smoothing 'smoothed)
   (send dc set-background "white") (send dc clear)
@@ -71,13 +72,15 @@
 ;;;
 
 (module+ main
+
   ; destination : string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define destination "dc-primitives.png")
   (command-line #:program "dc-primitives.rkt" #:args ([file "dc-primitives.png"])
                 (set! destination file))
+
   ; dc : (is-a?/c skia-dc%)
-  ;;   Owns the raster Skia drawing context used to save the example.
+  ;   Owns the raster Skia drawing context used to save the example.
   (define dc (new skia-dc% [width 460] [height 320] [backing-scale 2]))
   (dynamic-wind void
     (lambda ()

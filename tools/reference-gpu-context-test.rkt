@@ -26,24 +26,24 @@
 ;;;
 
 ; selected-backend : parameter?
-;;   Selects the explicitly requested native GPU backend for this Reference test run.
+;   Selects the explicitly requested native GPU backend for this Reference test run.
 (define selected-backend (make-parameter #f))
 
 ; selected-adapter : parameter?
-;;   Selects Direct3D hardware or software adapter policy; defaults to hardware.
+;   Selects Direct3D hardware or software adapter policy; defaults to hardware.
 (define selected-adapter (make-parameter 'hardware))
 
 ; output-path : parameter?
-;;   Holds the optional destination for the machine-readable test report.
+;   Holds the optional destination for the machine-readable test report.
 (define output-path (make-parameter #f))
 
 ; contexts : (listof gpu-context?)
-;;   Tracks created contexts newest first for final teardown evidence.
+;   Tracks created contexts newest first for final teardown evidence.
 (define contexts '())
 
 
 ; new-context : [(or/c gpu-context-options? #f)] -> gpu-context?
-;;   Creates and records an owned context for the selected backend and options.
+;   Creates and records an owned context for the selected backend and options.
 (define (new-context [options #f])
   (define context
     (case (selected-backend)
@@ -59,7 +59,7 @@
 
 
 ; with-context : procedure? [#:options (or/c gpu-context-options? #f)] -> any
-;;   Closes a newly created context after the callback, including exceptional exits.
+;   Closes a newly created context after the callback, including exceptional exits.
 (define (with-context proc #:options [options #f])
   (define context (new-context options))
   (dynamic-wind void
@@ -70,7 +70,7 @@
 
 
 ; make-child : gpu-context? -> gpu-surface?
-;;   Creates a two-by-two owned surface while its parent context is active.
+;   Creates a two-by-two owned surface while its parent context is active.
 (define (make-child context)
   (call-with-gpu-context context (lambda () (make-gpu-surface context 2 2))))
 
@@ -80,7 +80,7 @@
 ;;;
 
 ; suite : test-suite?
-;;   Collects the regression cases for reference GPU context native acceptance.
+;   Collects the regression cases for reference GPU context native acceptance.
 (define suite
   (test-suite
    "Reference GPU context native acceptance"
@@ -211,20 +211,20 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests suite))
 
   ; closed : exact-nonnegative-integer?
-  ;;   Counts created contexts that reached the closed state after acceptance checks.
+  ;   Counts created contexts that reached the closed state after acceptance checks.
   (define closed (count (lambda (context) (eq? (gpu-context-state context) 'closed)) contexts))
 
   ; passed? : boolean?
-  ;;   Combines test assertions and required evidence/cleanup checks into the final run status.
+  ;   Combines test assertions and required evidence/cleanup checks into the final run status.
   (define passed? (and (zero? failures) (= closed (length contexts)) (pair? contexts)))
 
   ; receipt : hash?
-  ;;   Records case results and native-context lifecycle evidence without claiming pixel or hardware
-  ;;   validation.
+  ;   Records case results and native-context lifecycle evidence without claiming pixel or hardware
+  ;   validation.
   (define receipt
     (hasheq 'schema 1 'status (if passed? "passed" "failed")
             'backend (symbol->string (selected-backend))

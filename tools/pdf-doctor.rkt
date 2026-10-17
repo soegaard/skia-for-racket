@@ -20,8 +20,8 @@
 ;;;
 
 ; pdf-doctor! : -> void?
-;;   Checks multipage PDF serialization, copied output bytes, native metadata layouts, and expired
-;;   page-canvas rejection.
+;   Checks multipage PDF serialization, copied output bytes, native metadata layouts, and expired
+;   page-canvas rejection.
 (define (pdf-doctor!)
   (define expired #f)
   (define bs

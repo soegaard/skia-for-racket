@@ -19,11 +19,13 @@
          (submod "core.rkt" gpu-surface-internals)
          (submod "core.rkt" gpu-image-internals))
 (provide make-metal-external-texture call-with-gpu-metal-device)
+
 ; quarantined-operations : list?
-;;   Retains failed operation closures whose native completion or cleanup remains uncertain.
+;   Retains failed operation closures whose native completion or cleanup remains uncertain.
 (define quarantined-operations '())
+
 ; context! : symbol? any/c -> any
-;;   Requires a Metal context before exposing device handles or importing Metal textures.
+;   Requires a Metal context before exposing device handles or importing Metal textures.
 (define (context! who context)
   (when (or (current-external-operation) (current-external-native?)
             (current-external-gl?) (current-gl-borrow?))
@@ -35,15 +37,17 @@
     (domain-request-shutdown! d 'metal-context-lost)
     (error who "native Metal context is lost"))
   d)
+
 ; procedure! : symbol? procedure? -> void?
-;;   Checks the callback shape required by external Metal texture operations.
+;   Checks the callback shape required by external Metal texture operations.
 (define (procedure! who proc)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1)
                (let-values ([(required allowed) (procedure-keywords proc)]) (null? required)))
     (raise-argument-error who "one-argument procedure without required keywords" proc)))
+
 ; call-with-gpu-metal-device : gpu-context? (-> cpointer? any) -> any
-;;   Calls proc with the borrowed MTLDevice used by an active Metal context and returns the
-;;   callback's values.
+;   Calls proc with the borrowed MTLDevice used by an active Metal context and returns the
+;   callback's values.
 (define (call-with-gpu-metal-device context proc)
   (procedure! 'call-with-gpu-metal-device proc)
   (define d (context! 'call-with-gpu-metal-device context))
@@ -53,14 +57,16 @@
       ;; queue; retaining this device beyond the callback is an unsafe contract.
       (call-with-continuation-barrier
         (lambda () (parameterize ([current-external-native? #t]) (proc device)))))))
+
 ; space-pointer : any/c -> any
-;;   Borrows the optional color-space pointer for the duration of native texture wrapping.
+;   Borrows the optional color-space pointer for the duration of native texture wrapping.
 (define (space-pointer space)
   (and space (call-with-owned 'metal-interop (list (color-space-h 'metal-interop space)) values)))
+
 ; make-metal-external-texture : gpu-context? cpointer? #:producer-command-buffer cpointer?
 ;   [#:timeout-ms (integer-in 1 60000)] [#:premultiplied? boolean?] [#:color-space (or/c
 ;   color-space? #f)] -> gpu-external-texture?
-;;   Creates a single-use handoff for a live MTLTexture.
+;   Creates a single-use handoff for a live MTLTexture.
 (define (make-metal-external-texture context texture
           #:producer-command-buffer producer
           #:timeout-ms [timeout 5000] #:premultiplied? [premultiplied? #t]
@@ -111,9 +117,10 @@
       (unless ready?
         (cond [pin (domain-resource-close! pin) (domain-drain! d)]
               [session (metal-session-close! session)])))))
+
 ; operate : any/c any/c any/c any/c any/c any/c any/c any/c any/c any/c -> any
-;;   Runs an image-copy or surface-borrow operation through the session's guarded synchronization
-;;   and cleanup protocol.
+;   Runs an image-copy or surface-borrow operation through the session's guarded synchronization
+;   and cleanup protocol.
 (define (operate context d session pin w h space premultiplied? mode proc)
   (define descriptor #f) (define handle #f) (define target #f) (define out #f)
   (define began? #f) (define body-ok? #f) (define quarantined? #f)

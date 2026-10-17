@@ -22,19 +22,19 @@
 ;;;
 
 ; white : rgba?
-;;   Provides opaque white for background and pixel comparisons.
+;   Provides opaque white for background and pixel comparisons.
 (define white (rgb 255 255 255))
 
 ; red : rgba?
-;;   Provides opaque red for drawing and channel-order comparisons.
+;   Provides opaque red for drawing and channel-order comparisons.
 (define red (rgb 255 0 0))
 
 ; blue : rgba?
-;;   Provides opaque blue for drawing and compositing comparisons.
+;   Provides opaque blue for drawing and compositing comparisons.
 (define blue (rgb 0 0 255))
 
 ; transparent : rgba?
-;;   Provides fully transparent black for empty-surface comparisons.
+;   Provides fully transparent black for empty-surface comparisons.
 (define transparent (rgba 0 0 0 0))
 
 
@@ -43,7 +43,7 @@
 ;;;
 
 ; native-tests : test-suite?
-;;   Collects the regression cases for live Skia rendering (requires the pinned native library).
+;   Collects the regression cases for live Skia rendering (requires the pinned native library).
 (define native-tests
   (test-suite
    "Live Skia rendering (requires the pinned native library)"
@@ -1663,7 +1663,7 @@ third"))
 
 
 ; make-list-of-red-pixels : exact-nonnegative-integer? -> (listof byte?)
-;;   Repeats opaque-red RGBA channels for a requested number of expected pixels.
+;   Repeats opaque-red RGBA channels for a requested number of expected pixels.
 (define (make-list-of-red-pixels count)
   (if (zero? count) '() (append '(255 0 0 255) (make-list-of-red-pixels (sub1 count)))))
 
@@ -1676,6 +1676,6 @@ third"))
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests native-tests))
   (unless (zero? failures) (error 'native-tests "~a failures" failures)))

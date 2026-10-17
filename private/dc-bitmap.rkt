@@ -31,11 +31,11 @@
 ;;   4 * width * height bytes; each RGB component is bounded by its pixel's alpha.
 
 ; mul255 : byte? byte? -> byte?
-;;   Multiplies a color component by byte-valued coverage with nearest-integer rounding.
+;   Multiplies a color component by byte-valued coverage with nearest-integer rounding.
 (define (mul255 a b) (quotient (+ (* a b) 127) 255))
 
 ; color-bytes : symbol? (is-a?/c color%) -> vector?
-;;   Copies RGB channels and converts the color's unit alpha into a rounded byte.
+;   Copies RGB channels and converts the color's unit alpha into a rounded byte.
 (define (color-bytes who c)
   (unless (is-a? c rd:color%) (raise-argument-error who "color% object" c))
   (vector (send c red) (send c green) (send c blue)
@@ -43,7 +43,7 @@
 
 ; physical : symbol? (is-a?/c bitmap%) -> (values exact-positive-integer? exact-positive-integer?
 ; real?)
-;;   Validates a bitmap's backing scale and returns its physical dimensions followed by that scale.
+;   Validates a bitmap's backing scale and returns its physical dimensions followed by that scale.
 (define (physical who bm)
   (define b (dc-real who (send bm get-backing-scale)))
   (unless (> b 0) (raise-arguments-error who "invalid bitmap backing scale" "scale" b))
@@ -53,7 +53,7 @@
   (values w h b))
 
 ; read-argb : (is-a?/c bitmap%) exact-positive-integer? exact-positive-integer? -> bytes?
-;;   Reads physical pixels into detached, straight-alpha ARGB storage.
+;   Reads physical pixels into detached, straight-alpha ARGB storage.
 (define (read-argb bm w h)
   (define bytes (make-bytes (* 4 w h)))
   (send bm get-argb-pixels 0 0 w h bytes #f #f #:unscaled? #t)
@@ -65,8 +65,8 @@
 
 ; dc-bitmap-snapshot : symbol? (is-a?/c bitmap%) symbol? (is-a?/c color%) (or/c #f (is-a?/c bitmap%))
 ; (is-a?/c color%) -> (or/c #f dc-bitmap-data?)
-;;   Copies a bitmap and optional mask into premultiplied RGBA, applying DC monochrome
-;;   foreground/background semantics.
+;   Copies a bitmap and optional mask into premultiplied RGBA, applying DC monochrome
+;   foreground/background semantics.
 (define (dc-bitmap-snapshot who source style color mask background)
   (unless (is-a? source rd:bitmap%) (raise-argument-error who "bitmap% object" source))
   (unless (memq style '(solid opaque xor)) (raise-argument-error who "'solid, 'opaque, or 'xor"
@@ -131,8 +131,8 @@
 
 ; dc-bitmap-source-rect : symbol? dc-bitmap-data? real? real? real? real? real? real? real? real? ->
 ; (or/c #f vector?)
-;;   Clips a logical source rectangle and adjusts its destination; returns physical source xywh then
-;;   logical destination xywh.
+;   Clips a logical source rectangle and adjusts its destination; returns physical source xywh then
+;   logical destination xywh.
 (define (dc-bitmap-source-rect who data sx sy sw sh dx dy dw dh)
   (for ([v (in-list (list sx sy dx dy))]) (dc-real who v))
   (for ([v (in-list (list sw sh dw dh))]) (dc-extent who v))

@@ -27,7 +27,7 @@
 ;;;
 
 ; render-metal-scene : path-string? -> path?
-;;   Renders the shared scene in Metal, saves its readback, and returns the output path.
+;   Renders the shared scene in Metal, saves its readback, and returns the output path.
 (define (render-metal-scene output-path)
   (define target (path->complete-path output-path))
   (define image
@@ -47,14 +47,16 @@
 ;;;
 
 (module+ main
+
   ; output-path : path-string?
-  ;;   Names the destination selected for the rendered tutorial image.
+  ;   Names the destination selected for the rendered tutorial image.
   (define output-path
     (command-line
      #:program "gpu-offscreen.rkt"
      #:args ([output "gpu-metal.png"])
      output))
+
   ; written : path?
-  ;;   Retains the completed image path for the command-line status message.
+  ;   Retains the completed image path for the command-line status message.
   (define written (render-metal-scene output-path))
   (printf "Wrote ~a using Metal\n" written))

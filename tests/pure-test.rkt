@@ -23,7 +23,7 @@
 ;;;
 
 ; pure-tests : test-suite?
-;;   Collects the regression cases for colors, validation, and ABI layouts (no native library).
+;   Collects the regression cases for colors, validation, and ABI layouts (no native library).
 (define pure-tests
   (test-suite
    "Colors, validation, and ABI layouts (no native library)"
@@ -513,6 +513,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pure-tests))
   (unless (zero? failures) (error 'pure-tests "~a failures" failures)))

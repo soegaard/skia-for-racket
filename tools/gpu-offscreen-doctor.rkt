@@ -22,8 +22,8 @@
 ;;;
 
 ; gpu-offscreen-doctor! : path-string? ... -> exact-integer?
-;;   Runs native surface suites and shared offscreen scenes, saving comparison captures and teardown
-;;   evidence.
+;   Runs native surface suites and shared offscreen scenes, saving comparison captures and teardown
+;   evidence.
 (define (gpu-offscreen-doctor! prefix #:backend [backend 'opengl] #:required? [required? #t]
                               #:require-hardware? [hardware? #f]
                               #:host [host-mode 'gui] #:egl-platform [platform 'surfaceless]
@@ -157,37 +157,43 @@
   ;;;
 
   ; prefix : path-string?
-  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  ;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-offscreen-0.41")
 
   ; required? : boolean?
-  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  ;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
+
   ; hardware? : boolean?
-  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  ;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
+
   ; backend : (or/c symbol? #f)
-  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  ;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'opengl)
 
   ; host-mode : symbol?
-  ;;   Selects the GUI, EGL, or owned backend host used to activate the GPU context.
+  ;   Selects the GUI, EGL, or owned backend host used to activate the GPU context.
   (define host-mode 'gui)
+
   ; platform : symbol?
-  ;;   Selects the EGL platform, initially the display-server-free surfaceless platform.
+  ;   Selects the EGL platform, initially the display-server-free surfaceless platform.
   (define platform 'surfaceless)
+
   ; device-index : exact-nonnegative-integer?
-  ;;   Selects the zero-based EGL device when the platform supports device enumeration.
+  ;   Selects the zero-based EGL device when the platform supports device enumeration.
   (define device-index 0)
+
   ; egl-surface : symbol?
-  ;;   Selects the EGL binding surface kind, initially surfaceless.
+  ;   Selects the EGL binding surface kind, initially surfaceless.
   (define egl-surface 'surfaceless)
 
   ; adapter : (or/c symbol? #f)
-  ;;   Selects Direct3D adapter policy when that backend is requested.
+  ;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter #f)
+
   ; adapter-index : (or/c exact-nonnegative-integer? #f)
-  ;;   Optionally selects a zero-based Direct3D adapter within the requested adapter policy.
+  ;   Optionally selects a zero-based Direct3D adapter within the requested adapter policy.
   (define adapter-index #f)
   (command-line #:program "gpu-offscreen-doctor" #:once-each
     [("--host") value "gui, egl, or owned" (set! host-mode (string->symbol value))]

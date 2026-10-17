@@ -13,7 +13,7 @@
          operation-result-geometry operation-precision-compatible?)
 
 ; operation-rectangle : symbol? any/c -> vector?
-;;   Checks nonempty integer x/y/width/height, dimensions up to 32768, and signed 32-bit endpoints.
+;   Checks nonempty integer x/y/width/height, dimensions up to 32768, and signed 32-bit endpoints.
 (define (operation-rectangle who value)
   (define xs (cond [(list? value) value] [(vector? value) (vector->list value)]
                   [else
@@ -32,7 +32,7 @@
   (vector-immutable x y w h))
 
 ; operation-subset : symbol? any/c integer? integer? -> vector?
-;;   Normalizes an optional subset and requires containment in the source image.
+;   Normalizes an optional subset and requires containment in the source image.
 (define (operation-subset who value width height)
   (define r (operation-rectangle who (or value (vector 0 0 width height))))
   (unless (and (>= (vector-ref r 0) 0) (>= (vector-ref r 1) 0)
@@ -43,8 +43,8 @@
   r)
 
 ; operation-budget : symbol? integer? integer? [integer?] -> exact-positive-integer?
-;;   Returns byte cost after checking dimensions, sample size, wrapper budget, and signed allocation
-;;   range.
+;   Returns byte cost after checking dimensions, sample size, wrapper budget, and signed allocation
+;   range.
 (define (operation-budget who width height [bytes-per-pixel 16])
   (unless (and (exact-integer? width) (<= 1 width 32768)
                (exact-integer? height) (<= 1 height 32768)
@@ -58,8 +58,8 @@
 
 ; operation-result-geometry : symbol? integer? integer? vector? vector? vector? -> (values vector?
 ;   vector?)
-;;   Checks native subset and placement offset against result dimensions and the requested
-;;   destination clip.
+;   Checks native subset and placement offset against result dimensions and the requested
+;   destination clip.
 (define (operation-result-geometry who width height subset offset clip)
   (define r (operation-subset who subset width height))
   (unless (and (vector? offset) (= (vector-length offset) 2)
@@ -77,8 +77,9 @@
 
 ;; m119 color-type enum values. An explicit destination format authorizes
 ;; conversion; implicit materialization/filtering does not authorize narrowing.
+
 ; operation-precision-compatible? : exact-integer? exact-integer? -> boolean?
-;;   Rejects native format changes that lower a floating image's storage precision.
+;   Rejects native format changes that lower a floating image's storage precision.
 (define (operation-precision-compatible? source result)
   (cond [(= source 16) (= result 16)]
         [(memv source '(14 15)) (and (memv result '(14 15 16)) #t)]

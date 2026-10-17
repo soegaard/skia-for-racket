@@ -28,15 +28,16 @@
 ;;   have a destination. Neither hash retains the document used as the weak key in states.
 
 ; states : hash?
-;;   Weakly associates document identities with destination definitions and references.
+;   Weakly associates document identities with destination definitions and references.
 (define states (make-weak-hasheq))
+
 ; state-for : any/c -> annotation-state?
-;;   Gets or initializes document annotation state without retaining the scope key.
+;   Gets or initializes document annotation state without retaining the scope key.
 (define (state-for scope)
   (hash-ref! states scope (lambda () (annotation-state (make-hash) (make-hash)))))
 
 ; check-size : symbol? exact-nonnegative-integer? -> void?
-;;   Rejects annotation payloads exceeding the current byte budget.
+;   Rejects annotation payloads exceeding the current byte budget.
 (define (check-size who size)
   (unless (<= size (current-skia-byte-limit))
     (raise-arguments-error who "annotation data exceeds current-skia-byte-limit"
@@ -47,7 +48,7 @@
 ;;;
 
 ; annotation-name : symbol? string? -> string?
-;;   Copies a case-sensitive destination name after checking characters and UTF-8 size.
+;   Copies a case-sensitive destination name after checking characters and UTF-8 size.
 (define (annotation-name who name)
   (unless (and (string? name) (positive? (string-length name)))
     (raise-argument-error who "nonempty destination-name string" name))
@@ -61,7 +62,7 @@
   (string->immutable-string name))
 
 ; annotation-name->id : symbol? string? -> string?
-;;   Hex-encodes UTF-8 names injectively as portable ASCII destination identifiers.
+;   Hex-encodes UTF-8 names injectively as portable ASCII destination identifiers.
 (define (annotation-name->id who name)
   (define s (annotation-name who name))
   (define bs (string->bytes/utf-8 s))
@@ -77,7 +78,7 @@
   (string->immutable-string (get-output-string out)))
 
 ; annotation-svg-id : symbol? string? string? -> string?
-;;   Combines a checked SVG prefix and destination ID within the byte budget.
+;   Combines a checked SVG prefix and destination ID within the byte budget.
 (define (annotation-svg-id who name prefix)
   (unless (and (string? prefix) (<= 1 (string-length prefix) 64)
                (regexp-match? #rx"^[A-Za-z_][A-Za-z0-9_.-]*$" prefix))
@@ -87,7 +88,7 @@
   (string->immutable-string id))
 
 ; annotation-uri : symbol? string? -> string?
-;;   Checks portable HTTP, HTTPS, mailto, or relative URI syntax without accessing the network.
+;   Checks portable HTTP, HTTPS, mailto, or relative URI syntax without accessing the network.
 (define (annotation-uri who uri)
   (unless (and (string? uri) (positive? (string-length uri)))
     (raise-argument-error who "nonempty URI string" uri))
@@ -123,7 +124,7 @@
   (string->immutable-string uri))
 
 ; annotation-c-string : symbol? string? -> bytes?
-;;   Encodes budgeted NUL-free UTF-8 annotation text with one native terminator.
+;   Encodes budgeted NUL-free UTF-8 annotation text with one native terminator.
 (define (annotation-c-string who text)
   (define bs (string->bytes/utf-8 text))
   (when (regexp-match? #rx#"\0" bs)
@@ -136,7 +137,7 @@
 ;;;
 
 ; annotation-define! : symbol? any/c string? real? real? -> void?
-;;   Records a unique document destination and its checked x/y point.
+;   Records a unique document destination and its checked x/y point.
 (define (annotation-define! who scope name x y)
   (define s (annotation-name who name))
   (define point (vector-immutable (scalar who x) (scalar who y)))
@@ -147,14 +148,14 @@
   (void))
 
 ; annotation-reference! : symbol? any/c string? -> void?
-;;   Records a named reference for document-finalization completeness checks.
+;   Records a named reference for document-finalization completeness checks.
 (define (annotation-reference! who scope name)
   (define s (annotation-name who name))
   (hash-set! (annotation-state-references (state-for scope)) s #t)
   (void))
 
 ; annotation-check! : symbol? any/c -> void?
-;;   Rejects unresolved destinations, reporting missing names in sorted order.
+;   Rejects unresolved destinations, reporting missing names in sorted order.
 (define (annotation-check! who scope)
   (define st (hash-ref states scope #f))
   (when st
@@ -167,7 +168,7 @@
   (void))
 
 ; annotation-forget! : any/c -> void?
-;;   Drops the annotation tables for a completed document scope.
+;   Drops the annotation tables for a completed document scope.
 (define (annotation-forget! scope)
   (hash-remove! states scope)
   (void))
@@ -177,17 +178,19 @@
 ;;;
 
 ; native-anchor-pattern : byte-regexp?
-;;   Matches complete anchors in finalized Skia-generated SVG, not arbitrary imported XML.
+;   Matches complete anchors in finalized Skia-generated SVG, not arbitrary imported XML.
 (define native-anchor-pattern #px#"<a(?:[ \t\r\n][^>]*)?>(?s:.*?)</a>")
+
 ; native-href-pattern : byte-regexp?
-;;   Recognizes the native writer's escaped xlink:href attribute.
+;   Recognizes the native writer's escaped xlink:href attribute.
 (define native-href-pattern #rx#" xlink:href=\"([^\"]*)\"")
+
 ; destination-token-pattern : byte-regexp?
-;;   Recognizes internal destination URI tokens carrying hex-encoded names.
+;   Recognizes internal destination URI tokens carrying hex-encoded names.
 (define destination-token-pattern #rx#"^urn:racket-skia:destination:(dest-[0-9a-f]+)$")
 
 ; finish-svg-annotations : symbol? any/c bytes? real? real? bytes? -> bytes?
-;;   Resolves destinations and moves native SVG links into an untransformed root overlay.
+;   Resolves destinations and moves native SVG links into an untransformed root overlay.
 (define (finish-svg-annotations who scope input width height prefix)
   ;; Called ONLY on finalized Skia-generated XML, after resource-ID rewriting.
   ;; It is not an SVG importer or sanitizer. Annotation rectangles are already

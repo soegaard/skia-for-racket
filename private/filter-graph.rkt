@@ -26,9 +26,10 @@
 ;; source when a native optimizer returns an input directly (e.g. Blend Src).
 ;; This keeps valid identity results owned, rather than misreporting NULL as an
 ;; allocation error. The native shim refs every retained child synchronously.
+
 ; graph-filter : symbol? any/c any/c -> any
-;;   Retains ordered child handles during construction and represents missing dynamic-source inputs
-;;   with an owned identity node.
+;   Retains ordered child handles during construction and represents missing dynamic-source inputs
+;   with an owned identity node.
 (define (graph-filter who handles create)
   (new-image-filter
    who
@@ -51,9 +52,10 @@
 
 ;; Native factories without crop arguments get an explicit output crop. Adopt
 ;; the intermediate reference before wrapping it so an exception cannot leak it.
+
 ; crop-result : symbol? any/c procedure? -> any
-;;   Scopes an intermediate filter while adding an output crop to a native factory that has no crop
-;;   argument.
+;   Scopes an intermediate filter while adding an output crop to a native factory that has no crop
+;   argument.
 (define (crop-result who crop create)
   (if crop
       (call-with-native-temporary who 'uncropped-filter create sk_imagefilter_unref
@@ -62,7 +64,7 @@
 
 ; make-crop-image-filter : (or/c (list/c real? real? real? real?) (vector/c real? real? real?
 ;   real?)) [#:input (or/c image-filter? #f)] -> image-filter?
-;;   Returns a filter that restricts its input to the specified rectangle.
+;   Returns a filter that restricts its input to the specified rectangle.
 (define (make-crop-image-filter rectangle #:input [input #f])
   (define who 'make-crop-image-filter)
   (define crop (filter-rectangle who rectangle))
@@ -72,7 +74,7 @@
 
 ; make-offset-image-filter : real? real? [#:input (or/c image-filter? #f)] [#:crop (or/c #f (list/c
 ;   real? real? real? real?) (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns a filter translating its input by the specified local displacement.
+;   Returns a filter translating its input by the specified local displacement.
 (define (make-offset-image-filter dx dy #:input [input #f] #:crop [crop #f])
   (define who 'make-offset-image-filter)
   (define x (filter-float who dx))
@@ -84,7 +86,7 @@
 ; make-merge-image-filter : (or/c (listof (or/c image-filter? #f)) (vectorof (or/c image-filter?
 ;   #f))) [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?))] ->
 ;   image-filter?
-;;   Returns a filter drawing its inputs in order with source-over blending.
+;   Returns a filter drawing its inputs in order with source-over blending.
 (define (make-merge-image-filter inputs #:crop [crop #f])
   (define who 'make-merge-image-filter)
   (define ins (filter-input-list who inputs))
@@ -102,7 +104,7 @@
 ;   'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation 'color
 ;   'luminosity) (or/c image-filter? #f) (or/c image-filter? #f) [#:crop (or/c #f (list/c real?
 ;   real? real? real?) (vector/c real? real? real? real?))] -> image-filter?
-;;   Blends foreground as source and background as destination using the requested blend mode.
+;   Blends foreground as source and background as destination using the requested blend mode.
 (define (make-blend-image-filter mode background foreground #:crop [crop #f])
   (define who 'make-blend-image-filter)
   (define bm (choice who mode blend-values))
@@ -115,8 +117,8 @@
 ; make-arithmetic-image-filter : real? real? real? real? (or/c image-filter? #f) (or/c image-filter?
 ;   #f) [#:enforce-premul? boolean?] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c
 ;   real? real? real? real?))] -> image-filter?
-;;   Returns a filter computing k1 S D + k2 S + k3 D + k4 per normalized premultiplied channel,
-;;   where S is foreground and D is background.
+;   Returns a filter computing k1 S D + k2 S + k3 D + k4 per normalized premultiplied channel,
+;   where S is foreground and D is background.
 (define (make-arithmetic-image-filter k1 k2 k3 k4 background foreground
                                       #:enforce-premul? [enforce? #t] #:crop [crop #f])
   (define who 'make-arithmetic-image-filter)
@@ -129,8 +131,8 @@
     (lambda (b f) (apply sk_imagefilter_new_arithmetic (append ks (list enforce? b f cr))))))
 
 ; morphology : symbol? any/c any/c any/c any/c any/c -> any
-;;   Checks nonnegative neighborhood radii and constructs a dilation or erosion node with retained
-;;   input and optional crop.
+;   Checks nonnegative neighborhood radii and constructs a dilation or erosion node with retained
+;   input and optional crop.
 (define (morphology who native rx ry input crop)
   (define x (filter-float who (nonnegative-scalar who rx)))
   (define y (filter-float who (nonnegative-scalar who ry)))
@@ -141,20 +143,21 @@
 ; make-dilate-image-filter : (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:input (or/c
 ;   image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real? real?
 ;   real?))] -> image-filter?
-;;   Returns a filter taking the component-wise maximum over a rectangular neighborhood.
+;   Returns a filter taking the component-wise maximum over a rectangular neighborhood.
 (define (make-dilate-image-filter rx ry #:input [input #f] #:crop [crop #f])
   (morphology 'make-dilate-image-filter sk_imagefilter_new_dilate rx ry input crop))
+
 ; make-erode-image-filter : (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:input (or/c
 ;   image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real? real?
 ;   real?))] -> image-filter?
-;;   Returns a filter taking the component-wise minimum over a rectangular neighborhood.
+;   Returns a filter taking the component-wise minimum over a rectangular neighborhood.
 (define (make-erode-image-filter rx ry #:input [input #f] #:crop [crop #f])
   (morphology 'make-erode-image-filter sk_imagefilter_new_erode rx ry input crop))
 
 ; make-displacement-map-image-filter : (or/c 'red 'green 'blue 'alpha) (or/c 'red 'green 'blue
 ;   'alpha) real? (or/c image-filter? #f) (or/c image-filter? #f) [#:crop (or/c #f (list/c real?
 ;   real? real? real?) (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns a filter resampling the color input according to channels from the displacement input.
+;   Returns a filter resampling the color input according to channels from the displacement input.
 (define (make-displacement-map-image-filter x-channel y-channel scale displacement color
                                            #:crop [crop #f])
   (define who 'make-displacement-map-image-filter)
@@ -173,7 +176,7 @@
 ;   [#:tile-mode (or/c 'decal 'clamp 'repeat)] [#:convolve-alpha? boolean?] [#:input (or/c
 ;   image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real? real?
 ;   real?))] -> image-filter?
-;;   Returns a convolution filter with exactly width * height row-major kernel coefficients.
+;   Returns a convolution filter with exactly width * height row-major kernel coefficients.
 (define (make-matrix-convolution-image-filter width height kernel
                                              #:offset [offset #f] #:gain [gain 1] #:bias [bias 0]
                                              #:tile-mode [mode 'decal] #:convolve-alpha? [alpha? #t]
@@ -194,8 +197,8 @@
         (void/reference-sink size off array)))))
 
 ; filter-matrix : symbol? any/c -> any
-;;   Converts an invertible affine matrix to Skia's row-major filter matrix without accepting
-;;   singular transforms.
+;   Converts an invertible affine matrix to Skia's row-major filter matrix without accepting
+;   singular transforms.
 (define (filter-matrix who m)
   (unless (matrix? m) (raise-argument-error who "matrix?" m))
   (unless (matrix-invert m)
@@ -206,7 +209,7 @@
 ; make-matrix-transform-image-filter : matrix? [#:sampling (or/c 'nearest 'linear)] [#:input (or/c
 ;   image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real? real?
 ;   real?))] -> image-filter?
-;;   Returns a filter transforming its input in local coordinates.
+;   Returns a filter transforming its input in local coordinates.
 (define (make-matrix-transform-image-filter m #:sampling [mode 'linear]
                                            #:input [input #f] #:crop [crop #f])
   (define who 'make-matrix-transform-image-filter)
@@ -221,7 +224,7 @@
 ;   real? real? real? real?))] [#:destination (or/c #f (list/c real? real? real? real?) (vector/c
 ;   real? real? real? real?))] [#:sampling (or/c 'nearest 'linear)] [#:crop (or/c #f (list/c real?
 ;   real? real? real?) (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns a filter that draws a retained image instead of the dynamic source.
+;   Returns a filter that draws a retained image instead of the dynamic source.
 (define (make-image-source-filter image #:source [source #f] #:destination [destination #f]
                                    #:sampling [mode 'linear] #:crop [crop #f])
   (define who 'make-image-source-filter)
@@ -241,7 +244,7 @@
 
 ; make-shader-image-filter : shader? [#:dither? boolean?] [#:crop (or/c #f (list/c real? real? real?
 ;   real?) (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns an image-filter source that evaluates the retained shader.
+;   Returns an image-filter source that evaluates the retained shader.
 (define (make-shader-image-filter shader #:dither? [dither? #f] #:crop [crop #f])
   (define who 'make-shader-image-filter)
   (define sh (shader-h who shader))
@@ -251,7 +254,7 @@
 
 ; make-picture-image-filter : picture? [#:target (or/c list? vector? #f)] [#:crop (or/c list?
 ;   vector? #f)] -> image-filter?
-;;   Returns an owned image-filter source that renders a recorded picture.
+;   Returns an owned image-filter source that renders a recorded picture.
 (define (make-picture-image-filter picture #:target [target #f] #:crop [crop #f])
   (define who 'make-picture-image-filter)
   (define ph (picture-h who picture))
@@ -268,7 +271,7 @@
 ;   real?)) (or/c (list/c real? real? real? real?) (vector/c real? real? real? real?)) [#:input
 ;   (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real?
 ;   real? real?))] -> image-filter?
-;;   Returns a filter repeating the source rectangle of its input across the destination rectangle.
+;   Returns a filter repeating the source rectangle of its input across the destination rectangle.
 (define (make-tile-image-filter source destination #:input [input #f] #:crop [crop #f])
   (define who 'make-tile-image-filter)
   (define src (filter-rectangle who source #:positive? #t))
@@ -282,7 +285,7 @@
 ;   real?)) real? [#:inset (and/c real? (>=/c 0))] [#:sampling (or/c 'nearest 'linear)] [#:input
 ;   (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real?
 ;   real? real?))] -> image-filter?
-;;   Returns a magnified view of the input inside the positive lens rectangle.
+;   Returns a magnified view of the input inside the positive lens rectangle.
 (define (make-magnifier-image-filter lens zoom #:inset [inset 0] #:sampling [mode 'linear]
                                     #:input [input #f] #:crop [crop #f])
   (define who 'make-magnifier-image-filter)
@@ -297,8 +300,8 @@
     (lambda (ip) (sk_imagefilter_new_magnifier bounds z i sm ip cr))))
 
 ; lighting : symbol? any/c any/c any/c any/c any/c any/c any/c any/c -> any
-;;   Validates shared lighting parameters and retains the input while constructing a diffuse or
-;;   specular filter.
+;   Validates shared lighting parameters and retains the input while constructing a diffuse or
+;   specular filter.
 (define (lighting who native geometry color surface-scale coefficient shininess input crop)
   (define argb (color->argb color))
   (define-values (s k shine) (filter-light-parameters who surface-scale coefficient shininess))
@@ -312,7 +315,7 @@
 ;   real?)) color? [#:surface-scale real?] [#:coefficient (and/c real? (>=/c 0))] [#:input (or/c
 ;   image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real? real?
 ;   real?))] -> image-filter?
-;;   Returns a diffuse lighting filter for a light with a fixed direction.
+;   Returns a diffuse lighting filter for a light with a fixed direction.
 (define (make-distant-lit-diffuse-image-filter direction color
                 #:surface-scale [surface-scale 1] #:coefficient [coefficient 1]
                 #:input [input #f] #:crop [crop #f])
@@ -325,7 +328,7 @@
 ;   real?)) color? [#:surface-scale real?] [#:coefficient (and/c real? (>=/c 0))] [#:input (or/c
 ;   image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real? real?
 ;   real?))] -> image-filter?
-;;   Returns a diffuse lighting filter for a point light at the given location.
+;   Returns a diffuse lighting filter for a point light at the given location.
 (define (make-point-lit-diffuse-image-filter location color
                 #:surface-scale [surface-scale 1] #:coefficient [coefficient 1]
                 #:input [input #f] #:crop [crop #f])
@@ -339,7 +342,7 @@
 ;   [#:cutoff-angle real?] [#:surface-scale real?] [#:coefficient (and/c real? (>=/c 0))] [#:input
 ;   (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c real? real?
 ;   real? real?))] -> image-filter?
-;;   Returns a diffuse lighting filter for a spotlight aimed from location to target.
+;   Returns a diffuse lighting filter for a spotlight aimed from location to target.
 (define (make-spot-lit-diffuse-image-filter location target color
                 #:exponent [exponent 1] #:cutoff-angle [cutoff 45]
                 #:surface-scale [surface-scale 1] #:coefficient [coefficient 1]
@@ -353,7 +356,7 @@
 ;   real?)) color? [#:surface-scale real?] [#:coefficient (and/c real? (>=/c 0))] [#:shininess
 ;   real?] [#:input (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?)
 ;   (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns a specular lighting filter for a light with a fixed direction.
+;   Returns a specular lighting filter for a light with a fixed direction.
 (define (make-distant-lit-specular-image-filter direction color
                 #:surface-scale [surface-scale 1] #:coefficient [coefficient 1]
                 #:shininess [shininess 16]
@@ -368,7 +371,7 @@
 ;   real?)) color? [#:surface-scale real?] [#:coefficient (and/c real? (>=/c 0))] [#:shininess
 ;   real?] [#:input (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?)
 ;   (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns a specular lighting filter for a point light at the given location.
+;   Returns a specular lighting filter for a point light at the given location.
 (define (make-point-lit-specular-image-filter location color
                 #:surface-scale [surface-scale 1] #:coefficient [coefficient 1]
                 #:shininess [shininess 16]
@@ -384,7 +387,7 @@
 ;   [#:cutoff-angle real?] [#:surface-scale real?] [#:coefficient (and/c real? (>=/c 0))]
 ;   [#:shininess real?] [#:input (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real?
 ;   real?) (vector/c real? real? real? real?))] -> image-filter?
-;;   Returns a specular lighting filter for a spotlight aimed from location to target.
+;   Returns a specular lighting filter for a spotlight aimed from location to target.
 (define (make-spot-lit-specular-image-filter location target color
                 #:exponent [exponent 1] #:cutoff-angle [cutoff 45]
                 #:surface-scale [surface-scale 1] #:coefficient [coefficient 1]

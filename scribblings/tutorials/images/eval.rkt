@@ -27,11 +27,11 @@
 ;;;
 
 ; fixture-directory : path?
-;;   Locates fixture directory relative to this module rather than the current directory.
+;   Locates fixture directory relative to this module rather than the current directory.
 (define-runtime-path fixture-directory "fixtures")
 
 ; images-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define images-eval (make-base-eval))
 
 (images-eval
@@ -61,31 +61,31 @@
        0.72))))
 
 ; images-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (images-interaction expression ...)
   (interaction #:eval images-eval expression ...))
 
 ; images-interaction-eval : syntax -> syntax
-;;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
+;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
 (define-syntax-rule (images-interaction-eval expression ...)
   (interaction-eval #:eval images-eval expression ...))
 
 ; images-racketmod+eval : syntax -> syntax
-;;   Displays a module example and evaluates its expressions in the tutorial evaluator.
+;   Displays a module example and evaluates its expressions in the tutorial evaluator.
 (define-syntax-rule (images-racketmod+eval expression ...)
   (racketmod+eval #:eval images-eval expression ...))
 
 ; images-racketblock+eval : syntax -> syntax
-;;   Displays a code block and evaluates the same expressions for the tutorial.
+;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (images-racketblock+eval expression ...)
   (racketblock+eval #:eval images-eval expression ...))
 
 ; images-def+int : syntax -> syntax
-;;   Displays definitions followed by their evaluated tutorial interaction.
+;   Displays definitions followed by their evaluated tutorial interaction.
 (define-syntax-rule (images-def+int expression ...)
   (def+int #:eval images-eval expression ...))
 
 ; images-image : syntax -> syntax
-;;   Evaluates the figure expression using the tutorial's shared drawing environment.
+;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (images-image expression)
   (interaction-eval-show #:eval images-eval expression))

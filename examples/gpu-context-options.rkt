@@ -19,7 +19,7 @@
 ;;;
 
 ; options : gpu-context-options?
-;;   Collects the explicit GPU context settings demonstrated by this example.
+;   Collects the explicit GPU context settings demonstrated by this example.
 (define options
   (make-gpu-context-options #:runtime-program-cache-size 128
                             #:glyph-cache-texture-maximum-bytes (* 4 1024 1024)

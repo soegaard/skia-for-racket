@@ -18,7 +18,7 @@
 (provide make-gpu-raster-executor call-with-gpu-raster-executor)
 
 ; check-context! : gpu-context? -> void?
-;;   Requires an owner-thread context whose detached state is ready and not shutting down.
+;   Requires an owner-thread context whose detached state is ready and not shutting down.
 (define (check-context! context)
   (unless (gpu-context? context)
     (raise-argument-error 'make-gpu-raster-executor "gpu-context?" context))
@@ -29,7 +29,7 @@
     (error 'make-gpu-raster-executor "GPU context is not ready (or shutdown was requested)")))
 
 ; context-plan : gpu-context? picture? -> output-raster-plan?
-;;   Builds a same-context GPU fallback plan with explicit CPU readback for document retention.
+;   Builds a same-context GPU fallback plan with explicit CPU readback for document retention.
 (define (context-plan context picture)
   (check-context! context)
   (define affinity (skia-resource-gpu-context picture))
@@ -54,7 +54,7 @@
              (consume image target))))))))
 
 ; make-gpu-raster-executor : gpu-context? -> output-raster-executor?
-;;   Creates an output raster executor that borrows context.
+;   Creates an output raster executor that borrows context.
 (define (make-gpu-raster-executor context)
   (check-context! context)
   (define generation (gpu-context-generation context))
@@ -67,7 +67,7 @@
 
 ; call-with-gpu-raster-executor : (-> gpu-context?) (-> output-raster-executor? any)
 ;   [#:on-unavailable (or/c 'error 'cpu)] -> any
-;;   Calls proc with a scoped output raster executor and returns its values.
+;   Calls proc with a scoped output raster executor and returns its values.
 (define (call-with-gpu-raster-executor make-context proc #:on-unavailable [policy 'error])
   (call-with-lazy-output-raster-executor
    make-context check-context! context-plan

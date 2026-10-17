@@ -31,8 +31,8 @@
 
 ; make-fake-token : [#:check procedure? #:operate procedure? #:retire procedure?] ->
 ; external-texture?
-;;   Creates a synthetic Metal texture token with injectable lifecycle callbacks for native-free
-;;   interop checks.
+;   Creates a synthetic Metal texture token with injectable lifecycle callbacks for native-free
+;   interop checks.
 (define (make-fake-token #:check [check void] #:operate [operate (lambda (mode proc) mode)]
                          #:retire [retire void])
   (make-external-texture 'metal 'context 7
@@ -41,8 +41,8 @@
 
 
 ; valid-metal-description : hash?
-;;   Describes a retained, two-dimensional single-sample Metal texture accepted by the pure
-;;   validator.
+;   Describes a retained, two-dimensional single-sample Metal texture accepted by the pure
+;   validator.
 (define valid-metal-description
   (hasheq 'width 4 'height 3 'depth 1 'levels 1 'array_length 1 'samples 1
           'format 70 'texture_type 2 'usage 1 'storage_mode 2 'hazard_tracking_mode 2

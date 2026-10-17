@@ -22,7 +22,7 @@
 ;;;
 
 ; check-pdf : bytes? exact-nonnegative-integer? -> void?
-;;   Checks PDF framing and the expected page count in emitted bytes.
+;   Checks PDF framing and the expected page count in emitted bytes.
 (define (check-pdf bs pages)
   (check-true (bytes? bs))
   (check-true (regexp-match? #rx#"^%PDF-" bs))
@@ -31,13 +31,13 @@
 
 
 ; blank-page : document? [real? real?] -> any
-;;   Adds an empty page with explicit point dimensions to a document.
+;   Adds an empty page with explicit point dimensions to a document.
 (define (blank-page d [w 200] [h 100])
   (call-with-document-page d w h (lambda (_) (void))))
 
 
 ; with-temp-dir : procedure? -> any
-;;   Scopes an isolated PDF-output directory and always removes it afterward.
+;   Scopes an isolated PDF-output directory and always removes it afterward.
 (define (with-temp-dir proc)
   (define d (make-temporary-file "skia-pdf-native-~a" 'directory))
   (dynamic-wind void (lambda () (proc d)) (lambda () (delete-directory/files d))))
@@ -48,7 +48,7 @@
 ;;;
 
 ; pdf-native-tests : test-suite?
-;;   Collects the regression cases for pDF documents and borrowed page canvases.
+;   Collects the regression cases for pDF documents and borrowed page canvases.
 (define pdf-native-tests
   (test-suite
    "PDF documents and borrowed page canvases"
@@ -293,6 +293,6 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pdf-native-tests))
   (unless (zero? failures) (error 'pdf-native-test "~a failures" failures)))

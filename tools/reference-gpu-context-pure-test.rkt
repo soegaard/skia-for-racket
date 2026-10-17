@@ -27,7 +27,7 @@
 ;;;
 
 ; fake-context : [any/c] -> (values gpu-context? any/c box?)
-;;   Builds a fake provider and driver with an event log for native-free context lifecycle checks.
+;   Builds a fake provider and driver with an event log for native-free context lifecycle checks.
 (define (fake-context [key (gensym 'reference-host)])
   (define events (box '()))
   (define active? (make-parameter #f))
@@ -51,7 +51,7 @@
 
 
 ; with-fake : procedure? -> any
-;;   Scopes a fake context, leaving release-failed state intact so tests can inspect failed cleanup.
+;   Scopes a fake context, leaving release-failed state intact so tests can inspect failed cleanup.
 (define (with-fake proc)
   (define-values (context domain events) (fake-context))
   (dynamic-wind void
@@ -64,8 +64,8 @@
 
 
 ; other-thread-result : procedure? -> list?
-;;   Runs one operation on a worker thread and returns a tagged result or raised value for affinity
-;;   checks.
+;   Runs one operation on a worker thread and returns a tagged result or raised value for affinity
+;   checks.
 (define (other-thread-result proc)
   (define result (box #f))
   (define worker
@@ -79,8 +79,8 @@
 
 
 ; provider-for : procedure? [procedure?] -> gpu-provider?
-;;   Builds a uniquely keyed fake OpenGL provider using supplied activation and current-context
-;;   checks.
+;   Builds a uniquely keyed fake OpenGL provider using supplied activation and current-context
+;   checks.
 (define (provider-for activate [current? (lambda () #t)])
   (make-gpu-provider #:name 'reference-test #:backend 'opengl #:key (gensym)
                      #:call-as-current activate #:current? current?))

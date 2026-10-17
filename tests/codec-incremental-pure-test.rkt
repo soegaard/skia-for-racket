@@ -21,15 +21,15 @@
 ;;;
 
 ; parts : (listof bytes?)
-;;   Keeps PNG pieces in feed order for input-framing tests.
+;   Keeps PNG pieces in feed order for input-framing tests.
 (define parts (incremental-fixture-parts))
 
 ; header : bytes?
-;;   Contains the signature and IHDR chunk before any image rows.
+;   Contains the signature and IHDR chunk before any image rows.
 (define header (car parts))
 
 ; first : bytes?
-;;   Contains the first IDAT piece used to test partial progress.
+;   Contains the first IDAT piece used to test partial progress.
 (define first (cadr parts))
 
 ;;;
@@ -37,7 +37,7 @@
 ;;;
 
 ; codec-incremental-pure-tests : test-suite?
-;;   Collects the regression cases for incremental input framing and detached progress.
+;   Collects the regression cases for incremental input framing and detached progress.
 (define codec-incremental-pure-tests
   (test-suite "Incremental input framing and detached progress"
     (test-case "empty input has no visible bytes"
@@ -181,7 +181,7 @@
         (check-equal? (incremental-input-visible s) (incremental-input-size s))))))
 
 ; codec-incremental-pure-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define codec-incremental-pure-test-count 36)
 (module+ main
 
@@ -190,7 +190,7 @@
   ;;;
 
   ; failures : exact-nonnegative-integer?
-  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  ;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-incremental-pure-tests))
   (printf "codec-incremental-pure: ~a cases, ~a failures\n" codec-incremental-pure-test-count
     failures)

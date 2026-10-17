@@ -28,7 +28,7 @@
 ;;;
 
 ; effects-eval : procedure?
-;;   Retains one evaluator so successive documentation examples share their bindings.
+;   Retains one evaluator so successive documentation examples share their bindings.
 (define effects-eval (make-base-eval))
 
 (void
@@ -56,23 +56,24 @@
        scale)))))
 
 ; effects-interaction : syntax -> syntax
-;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
+;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (effects-interaction expression ...)
   (interaction #:eval effects-eval expression ...))
 
 ; effects-racketblock+eval : syntax -> syntax
-;;   Displays a code block and evaluates the same expressions for the tutorial.
+;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (effects-racketblock+eval expression ...)
   (racketblock+eval #:eval effects-eval expression ...))
 
 ; effects-image : syntax -> syntax
-;;   Evaluates the figure expression using the tutorial's shared drawing environment.
+;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (effects-image expression)
   (interaction-eval-show #:eval effects-eval expression))
 
 ;; The opening image and final figure use the standalone drawing function.
+
 ; effects-finished-pict : #:scale [real?] -> pict?
-;;   Renders the effects finished illustration from the tutorial's drawing code.
+;   Renders the effects finished illustration from the tutorial's drawing code.
 (define (effects-finished-pict #:scale [scale 0.65])
   (with-skia ([surface (make-surface card-image-width card-image-height
                                     #:background background-color)])

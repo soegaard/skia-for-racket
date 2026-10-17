@@ -20,7 +20,7 @@
 ;;;
 
 ; render-filters : path-string? -> void?
-;;   Renders the filters example to the selected output destination.
+;   Renders the filters example to the selected output destination.
 (define (render-filters filename)
   (define grayscale
     '(0.2126 0.7152 0.0722 0 0
@@ -89,8 +89,9 @@
 ;;;
 
 (module+ main
+
   ; filename : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "filters.rkt"
                   #:args ([output "filters.png"])

@@ -21,41 +21,41 @@
 ;;;
 
 ; using : procedure? [exact-positive-integer? exact-positive-integer? real?] -> any
-;;   Scopes a smoothed native DC for recorded-procedure replay.
+;   Scopes a smoothed native DC for recorded-procedure replay.
 (define (using proc [w 96] [h 72] [backing 1])
   (define dc (new skia-dc% [width w] [height h] [backing-scale backing] [smoothing 'smoothed]))
   (dynamic-wind void (lambda () (proc dc)) (lambda () (send dc close))))
 
 ; pixels : dc<%> -> bytes?
-;;   Captures the full backing store in premultiplied RGBA order.
+;   Captures the full backing store in premultiplied RGBA order.
 (define (pixels dc) (send dc get-rgba-bytes #:premultiplied? #t))
 
 ; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
-;;   Selects one premultiplied RGBA pixel from the replay capture.
+;   Selects one premultiplied RGBA pixel from the replay capture.
 (define (pixel dc x y)
   (define-values (w h) (send dc get-pixel-size))
   (bytes->list (subbytes (pixels dc) (* 4 (+ x (* y w))) (* 4 (+ 1 x (* y w))))))
 
 ; near : (listof real?) (listof real?) [real?] -> void?
-;;   Checks equal-length channel lists with a small replay-rounding tolerance.
+;   Checks equal-length channel lists with a small replay-rounding tolerance.
 (define (near actual expected [tolerance 1])
   (check-equal? (length actual) (length expected))
   (for ([a actual] [b expected])
     (check-true (<= (abs (- a b)) tolerance) (format "~a versus ~a" actual expected))))
 
 ; fill : dc<%> ... -> void?
-;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
-;;   checks.
+;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;   checks.
 (define (fill dc color x y w h)
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
 
 ; simple : dc<%> -> void?
-;;   Draws the minimal red rectangle used by replay and locking tests.
+;   Draws the minimal red rectangle used by replay and locking tests.
 (define (simple dc) (send dc set-smoothing 'smoothed) (fill dc "red" 2 3 8 9))
 
 ; rich-ink! : dc<%> -> void?
-;;   Checks image landmarks and visible text ink in the rich replay fixture.
+;   Checks image landmarks and visible text ink in the rich replay fixture.
 (define (rich-ink! dc)
   (near (pixel dc 73 14) '(236 64 79 255) 2)
   (define bytes (pixels dc))
@@ -67,7 +67,7 @@
   (check-true (>= text-ink 10) "recorded text must produce real navy ink"))
 
 ; reference : procedure? [real?] -> void?
-;;   Compares native replay pixels with an independently rendered Racket bitmap.
+;   Compares native replay pixels with an independently rendered Racket bitmap.
 (define (reference draw [tolerance 2])
   (define bm (rd:make-bitmap 48 32 #t))
   (define rd-dc (new rd:bitmap-dc% [bitmap bm]))
@@ -89,8 +89,8 @@
 ;;;
 
 ; dc-replay-native-tests : test-suite?
-;;   Collects the regression cases for dC recorded replay and isolated raster alpha groups (native
-;;   Skia pixels).
+;   Collects the regression cases for dC recorded replay and isolated raster alpha groups (native
+;   Skia pixels).
 (define dc-replay-native-tests
   (test-suite
    "DC recorded replay and isolated raster alpha groups (native Skia pixels)"
@@ -225,5 +225,5 @@
          (near (pixel dc 4 5) '(128 0 0 128))))))))
 
 ; dc-replay-native-test-count : exact-nonnegative-integer?
-;;   Records the expected test count used by external acceptance-report checks.
+;   Records the expected test count used by external acceptance-report checks.
 (define dc-replay-native-test-count 28)

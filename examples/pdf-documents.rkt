@@ -20,7 +20,7 @@
 ;;;
 
 ; page-heading : canvas? real? real? string? string? any/c -> void?
-;;   Draws the page heading comparison in the current canvas coordinate system.
+;   Draws the page heading comparison in the current canvas coordinate system.
 (define (page-heading c w h title subtitle page)
   (with-skia ([white (make-paint #:color 'white)]
               [ink (make-paint #:color "#192B43")]
@@ -36,13 +36,13 @@
     (draw-simple-text c (number->string page) (- w 45) (- h 22) small ink)))
 
 ; label : canvas? string? real? real? -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y)
   (with-skia ([font (make-font #:size 13)] [paint (make-paint #:color "#526276")])
     (draw-simple-text c text x y font paint)))
 
 ; vectors-page : canvas? -> void?
-;;   Draws the vectors page comparison in the current canvas coordinate system.
+;   Draws the vectors page comparison in the current canvas coordinate system.
 (define (vectors-page c)
   (page-heading c 612 792 "A canvas, now on paper"
     "Paths, gradients, clipping, transforms and ordinary text." 1)
@@ -79,7 +79,7 @@
     (label c "The page canvas has the same top-left origin and y-down coordinates." 32 718)))
 
 ; demo-image : -> image?
-;;   Creates a small procedural image for document embedding.
+;   Creates a small procedural image for document embedding.
 (define (demo-image)
   (with-skia ([s (make-surface 128 128)]
               [gradient (make-linear-gradient-shader
@@ -91,7 +91,7 @@
     (surface-snapshot s)))
 
 ; demo-picture : -> picture?
-;;   Records a reusable drawing for the PDF content page.
+;   Records a reusable drawing for the PDF content page.
 (define (demo-picture)
   (call-with-picture
    100 100
@@ -106,7 +106,7 @@
        (draw-circle c 50 50 14 b)))))
 
 ; content-page : canvas? -> void?
-;;   Draws the content page comparison in the current canvas coordinate system.
+;   Draws the content page comparison in the current canvas coordinate system.
 (define (content-page c)
   (page-heading c 792 612 "Text, images and recorded drawing"
     "A landscape page with a different media box." 2)
@@ -136,7 +136,7 @@
     (label c "Font embedding and text extraction are checked separately from appearance." 32 552)))
 
 ; effects-page : canvas? -> void?
-;;   Draws the effects page comparison in the current canvas coordinate system.
+;   Draws the effects page comparison in the current canvas coordinate system.
 (define (effects-page c)
   (page-heading c 480 480 "Effects and fallback"
     "The backend decides which operations need rasterization." 3)
@@ -157,14 +157,14 @@
     (label c "Compare this page with the separate raster reference." 32 416)))
 
 ; page-specs : list?
-;;   Orders page dimensions, titles, and drawing callbacks for PDF generation.
+;   Orders page dimensions, titles, and drawing callbacks for PDF generation.
 (define page-specs
   (list (list 612 792 vectors-page)
         (list 792 612 content-page)
         (list 480 480 effects-page)))
 
 ; render-probe : path-string? -> void?
-;;   Renders the probe example to the selected output destination.
+;   Renders the probe example to the selected output destination.
 (define (render-probe filename)
   (call-with-pdf-file
    filename
@@ -187,8 +187,9 @@
 ;;;
 
 (module+ main
+
   ; output : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define output
     (command-line #:program "pdf-documents.rkt"
                   #:args ([output "pdf-documents.pdf"]) output))

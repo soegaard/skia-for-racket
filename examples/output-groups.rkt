@@ -18,33 +18,38 @@
 ;;;
 
 ; blue : rgba?
-;;   Specifies the blue color used by this drawing.
+;   Specifies the blue color used by this drawing.
 (define blue (rgb 48 103 211))
+
 ; teal : rgba?
-;;   Specifies the teal color used by this drawing.
+;   Specifies the teal color used by this drawing.
 (define teal (rgb 14 149 142))
+
 ; orange : rgba?
-;;   Specifies the orange color used by this drawing.
+;   Specifies the orange color used by this drawing.
 (define orange (rgb 239 161 37))
+
 ; ink : rgba?
-;;   Specifies the ink color used by this drawing.
+;   Specifies the ink color used by this drawing.
 (define ink (rgb 32 52 78))
+
 ; wash : rgba?
-;;   Specifies the wash color used by this drawing.
+;   Specifies the wash color used by this drawing.
 (define wash (rgb 237 240 244))
+
 ; pale : rgba?
-;;   Specifies the pale color used by this drawing.
+;   Specifies the pale color used by this drawing.
 (define pale (rgb 246 248 251))
 
 ; label : canvas? string? real? real? [real?] -> void?
-;;   Draws a text label at the supplied baseline in local canvas coordinates.
+;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11])
   (with-skia ([font (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [paint (make-paint #:color ink)])
     (draw-simple-text c text x y font paint)))
 
 ; heading : canvas? string? string? -> void?
-;;   Draws the page heading and its explanatory subtitle.
+;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (with-skia ([p (make-paint #:color teal)])
     (draw-rect c 0 0 34 2 p))
@@ -52,20 +57,20 @@
   (label c subtitle 0 56 10))
 
 ; footer : canvas? exact-nonnegative-integer? -> void?
-;;   Adds the page identification beneath the example drawing.
+;   Adds the page identification beneath the example drawing.
 (define (footer c n)
   (label c "RACKET / SKIA   |   BACKEND-AWARE BOUNDED OUTPUT GROUPS" 0 444 9)
   (label c (number->string n) 652 444 9))
 
 ; at : canvas? real? real? procedure? -> any/c
-;;   Runs a drawing callback at a translated origin and restores canvas state afterward.
+;   Runs a drawing callback at a translated origin and restores canvas state afterward.
 (define (at c x y draw)
   (with-canvas-state c
     (canvas-translate! c x y)
     (draw c)))
 
 ; panel-backdrop : canvas? real? real? real? real? -> void?
-;;   Draws the panel backdrop comparison in the current canvas coordinate system.
+;   Draws the panel backdrop comparison in the current canvas coordinate system.
 (define (panel-backdrop c x y w h)
   (with-skia ([bg (make-paint #:color wash)]
               [inner (make-paint #:color 'white)]
@@ -75,7 +80,7 @@
     (draw-rounded-rect c x y w h 10 10 stroke)))
 
 ; vector-card : canvas? -> void?
-;;   Draws the vector card comparison in the current canvas coordinate system.
+;   Draws the vector card comparison in the current canvas coordinate system.
 (define (vector-card c)
   (with-skia ([gradient (make-linear-gradient-shader 0 0 300 0 (list blue teal))]
               [fill (make-paint #:shader gradient)]
@@ -88,7 +93,7 @@
     (draw-line c 142 112 258 112 stroke)))
 
 ; runtime-card : canvas? paint? #:padding [any/c] -> void?
-;;   Draws the runtime card comparison in the current canvas coordinate system.
+;   Draws the runtime card comparison in the current canvas coordinate system.
 (define (runtime-card c runtime-paint #:padding [padding 0])
   (define full-w (+ 300 (* 2 padding)))
   (define full-h (+ 170 (* 2 padding)))
@@ -104,7 +109,7 @@
     (draw-line c 141 116 260 116 line)))
 
 ; blend-card : canvas? boolean? -> void?
-;;   Draws the blend card comparison in the current canvas coordinate system.
+;   Draws the blend card comparison in the current canvas coordinate system.
 (define (blend-card c multiply?)
   (with-skia ([bg (make-paint #:color pale)]
               [left (make-paint #:color blue)]
@@ -117,7 +122,7 @@
     (draw-line c 178 15 178 155 stroke)))
 
 ; inner-runtime-card : canvas? paint? -> void?
-;;   Draws the inner runtime card comparison in the current canvas coordinate system.
+;   Draws the inner runtime card comparison in the current canvas coordinate system.
 (define (inner-runtime-card c runtime-paint)
   (with-skia ([bg (make-paint #:color pale)]
               [dot (make-paint #:color teal)]
@@ -130,7 +135,7 @@
     (draw-line c 104 92 205 92 line)))
 
 ; outer-art : canvas? paint? #:group? [boolean?] -> void?
-;;   Draws the outer art comparison in the current canvas coordinate system.
+;   Draws the outer art comparison in the current canvas coordinate system.
 (define (outer-art c runtime-paint #:group? [group? #t])
   (with-skia ([gradient (make-linear-gradient-shader 0 0 652 0 (list (rgb 249 250 252) (rgb 232 239
     248)))]
@@ -150,18 +155,18 @@
       (at c 388 15 (lambda (g) (inner-runtime-card g runtime-paint)))))
 
 ; record! : any/c any/c -> output-group-report?
-;;   Appends a group report to the accumulator and returns the same report.
+;   Appends a group report to the accumulator and returns the same report.
 (define (record! sink report)
   (set-box! sink (cons report (unbox sink)))
   report)
 
 ; reports->jsexpr : any/c -> list?
-;;   Serializes captured group reports in their original execution order.
+;   Serializes captured group reports in their original execution order.
 (define (reports->jsexpr sink)
   (map output-group-report->jsexpr (reverse (unbox sink))))
 
 ; choice-page : paint? any/c -> output-page?
-;;   Builds the choice page output page and its drawing callback.
+;   Builds the choice page output page and its drawing callback.
 (define (choice-page runtime-paint sink)
   (make-output-page
    720 500
@@ -186,7 +191,7 @@
    #:margins 24 #:background 'white))
 
 ; choice-reference-page : paint? -> output-page?
-;;   Builds the choice reference page output page and its drawing callback.
+;   Builds the choice reference page output page and its drawing callback.
 (define (choice-reference-page runtime-paint)
   (make-output-page
    720 500
@@ -208,7 +213,7 @@
    #:margins 24 #:background 'white))
 
 ; isolation-page : any/c -> output-page?
-;;   Builds the isolation page output page and its drawing callback.
+;   Builds the isolation page output page and its drawing callback.
 (define (isolation-page sink)
   (make-output-page
    720 500
@@ -237,7 +242,7 @@
    #:margins 24 #:background 'white))
 
 ; isolation-reference-page : -> output-page?
-;;   Builds the isolation reference page output page and its drawing callback.
+;   Builds the isolation reference page output page and its drawing callback.
 (define (isolation-reference-page)
   (make-output-page
    720 500
@@ -263,7 +268,7 @@
    #:margins 24 #:background 'white))
 
 ; nested-page : paint? any/c -> output-page?
-;;   Builds the nested page output page and its drawing callback.
+;   Builds the nested page output page and its drawing callback.
 (define (nested-page runtime-paint sink)
   (make-output-page
    720 500
@@ -289,7 +294,7 @@
    #:margins 24 #:background 'white))
 
 ; nested-reference-page : paint? -> output-page?
-;;   Builds the nested reference page output page and its drawing callback.
+;   Builds the nested reference page output page and its drawing callback.
 (define (nested-reference-page runtime-paint)
   (make-output-page
    720 500
@@ -312,14 +317,14 @@
    #:margins 24 #:background 'white))
 
 ; write-json-file : path-string? any/c -> void?
-;;   Writes the report data as JSON, replacing an existing report file.
+;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
   (call-with-output-file path
     (lambda (out) (write-json data out) (newline out))
     #:exists 'replace))
 
 ; html-escape : string? -> string?
-;;   Escapes text before inserting it into the generated HTML report.
+;   Escapes text before inserting it into the generated HTML report.
 (define (html-escape s)
   (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
     "&quot;")))])
@@ -330,19 +335,22 @@
 ;;;
 
 (module+ main
+
   ; args : vector?
-  ;;   Retains the command-line argument vector used to select output paths.
+  ;   Retains the command-line argument vector used to select output paths.
   (define args (current-command-line-arguments))
   (when (> (vector-length args) 1)
     (error 'output-groups "expected optional output prefix"))
+
   ; prefix : path-string?
-  ;;   Selects the destination used by this example's output.
+  ;   Selects the destination used by this example's output.
   (define prefix
     (if (zero? (vector-length args))
         "output/output-groups-0.34"
         (vector-ref args 0)))
+
   ; file : any/c -> string?
-  ;;   Appends an output suffix to the selected filename prefix.
+  ;   Appends an output suffix to the selected filename prefix.
   (define (file suffix) (string-append prefix suffix))
   (make-directory* (or (path-only (string->path prefix)) (current-directory)))
 
