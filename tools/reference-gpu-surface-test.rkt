@@ -5,9 +5,12 @@
          syntax/modread skia skia/gpu skia/gpu-diagnostics
          "../private/gpu-io-trace.rkt")
 
-(define selected-backend #f)
-(define selected-adapter 'hardware)
-(define output-path #f)
+;; `module+ main` imports bindings from this module, so command-line state
+;; must live in mutable parameter values instead of module bindings set with
+;; `set!`.
+(define selected-backend (make-parameter #f))
+(define selected-adapter (make-parameter 'hardware))
+(define output-path (make-parameter #f))
 (define contexts '())
 (define case-names '())
 (define pixel-probes 0)
@@ -18,10 +21,10 @@
 
 (define (new-context)
   (define context
-    (case selected-backend
+    (case (selected-backend)
       [(opengl) ((dynamic-require 'skia/gpu-egl 'make-egl-gpu-context))]
       [(metal) (make-gpu-context #:backend 'metal)]
-      [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter selected-adapter)]
+      [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter (selected-adapter))]
       [else (error 'reference-gpu-surface "select a real backend")]))
   (set! contexts (cons context contexts))
   context)
@@ -81,7 +84,7 @@
      (with-active
        (lambda (context)
          (with-skia ([surface (make-gpu-surface context 4 3 #:background 'red)])
-           (check-equal? (surface-backend surface) selected-backend)
+           (check-equal? (surface-backend surface) (selected-backend))
            (check-equal? (image-info-color-type (gpu-surface->image-info surface)) 'rgba-8888)
            (check-false (hash-ref (gpu-surface-info surface) 'actual_sample_count))
            (probe (read-surface surface) 4 2 1 '(255 0 0 255))))))
@@ -305,7 +308,7 @@
                  (probe data 12 3 2 '(255 0 0 255))
                  (probe data 12 0 0 '(255 255 255 255)))))))))
 
-   (if (eq? selected-backend 'opengl)
+   (if (eq? (selected-backend) 'opengl)
        ;; This API requires a separately owned external host. It is explicitly
        ;; outside the owned-EGL surface suite, not an unavailable-backend skip.
        (test-suite "External-host one-shot acceptance is separate")
@@ -315,11 +318,11 @@
            (render-gpu->raster-image 2 2
              (lambda (canvas)
                (set! calls (add1 calls))
-               (check-equal? (canvas-execution-backend canvas) selected-backend)
+               (check-equal? (canvas-execution-backend canvas) (selected-backend))
                (canvas-clear! canvas 'blue)
                (values 1 2))
-             #:backend selected-backend
-             #:adapter (and (eq? selected-backend 'direct3d) selected-adapter)))
+             #:backend (selected-backend)
+             #:adapter (and (eq? (selected-backend) 'direct3d) (selected-adapter))))
          (call-with-skia-resource image
            (lambda (owned)
              (check-equal? calls 1)
@@ -331,39 +334,39 @@
   (command-line
    #:once-each
    [("--backend") name "Required: opengl, metal, or direct3d. OpenGL uses owned EGL."
-    (set! selected-backend (string->symbol name))]
+    (selected-backend (string->symbol name))]
    [("--adapter") name "Direct3D only: hardware or warp."
-    (set! selected-adapter (string->symbol name))]
-   [("--output") path "Write a JSON execution receipt." (set! output-path path)])
-  (unless (memq selected-backend '(opengl metal direct3d))
+    (selected-adapter (string->symbol name))]
+   [("--output") path "Write a JSON execution receipt." (output-path path)])
+  (unless (memq (selected-backend) '(opengl metal direct3d))
     (error 'reference-gpu-surface "--backend must select a real backend"))
-  (unless (and (memq selected-adapter '(hardware warp))
-               (or (eq? selected-backend 'direct3d) (eq? selected-adapter 'hardware)))
+  (unless (and (memq (selected-adapter) '(hardware warp))
+               (or (eq? (selected-backend) 'direct3d) (eq? (selected-adapter) 'hardware)))
     (error 'reference-gpu-surface "WARP requires Direct3D"))
   (define failures (run-tests (suite)))
   (define states (map gpu-context-state contexts))
   (define closed (count (lambda (state) (eq? state 'closed)) states))
-  (define expected-cases (if (eq? selected-backend 'opengl) 18 19))
+  (define expected-cases (if (eq? (selected-backend) 'opengl) 18 19))
   (define passed?
     (and (zero? failures) (= expected-cases (length case-names))
          (pair? contexts) (= closed (length contexts))
          (positive? pixel-probes) (positive? completed-readbacks)
-         (= one-shot-successes (if (eq? selected-backend 'opengl) 0 1))))
+         (= one-shot-successes (if (eq? (selected-backend) 'opengl) 0 1))))
   (define receipt
     (hasheq 'schema 1 'status (if passed? "passed" "failed")
-            'backend (symbol->string selected-backend)
-            'adapter (if (eq? selected-backend 'direct3d)
-                         (symbol->string selected-adapter) #f)
+            'backend (symbol->string (selected-backend))
+            'adapter (if (eq? (selected-backend) 'direct3d)
+                         (symbol->string (selected-adapter)) #f)
             'tests_run (length case-names) 'case_names (reverse case-names) 'failures failures
             'managed_contexts_created (length contexts) 'managed_contexts_closed closed
             'context_states (map symbol->string states)
             'pixel_probes_checked pixel-probes 'readbacks_completed completed-readbacks
             'one_shot_successes one-shot-successes
-            'one_shot_native_status (if (eq? selected-backend 'opengl)
+            'one_shot_native_status (if (eq? (selected-backend) 'opengl)
                                        "not-run-external-host-required" "passed")
             'float_allocation_tested #f 'presentation_tested #f
             'hardware_acceleration_verified #f))
-  (when output-path
-    (call-with-output-file output-path #:exists 'error
+  (when (output-path)
+    (call-with-output-file (output-path) #:exists 'error
       (lambda (out) (write-json receipt out) (newline out))))
   (exit (if passed? 0 1)))

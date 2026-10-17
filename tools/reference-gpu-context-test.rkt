@@ -5,19 +5,22 @@
 (require rackunit rackunit/text-ui json racket/cmdline racket/list
          skia skia/gpu)
 
-(define selected-backend #f)
-(define selected-adapter 'hardware)
-(define output-path #f)
+;; `module+ main` imports bindings from this module, so command-line state
+;; must live in mutable parameter values instead of module bindings set with
+;; `set!`.
+(define selected-backend (make-parameter #f))
+(define selected-adapter (make-parameter 'hardware))
+(define output-path (make-parameter #f))
 (define contexts '())
 
 (define (new-context [options #f])
   (define context
-    (case selected-backend
+    (case (selected-backend)
       [(opengl)
        ;; The owned EGL route supplies an actual desktop OpenGL host.
        ((dynamic-require 'skia/gpu-egl 'make-egl-gpu-context) #:options options)]
       [(direct3d)
-       (make-gpu-context #:backend 'direct3d #:adapter selected-adapter #:options options)]
+       (make-gpu-context #:backend 'direct3d #:adapter (selected-adapter) #:options options)]
       [(metal) (make-gpu-context #:backend 'metal #:options options)]
       [else (error 'reference-gpu-context "select a backend explicitly")]))
   (set! contexts (cons context contexts))
@@ -42,7 +45,7 @@
      (with-context
        (lambda (context)
          (check-true (gpu-context? context))
-         (check-equal? (gpu-context-backend context) selected-backend)
+         (check-equal? (gpu-context-backend context) (selected-backend))
          (check-equal? (gpu-context-state context) 'ready)
          (define info (gpu-context-info context))
          (check-equal? (hash-ref info 'context_options_source) "native-defaults")
@@ -123,7 +126,7 @@
          (check-pred hash? report)
          (check-false (hash-has-key? report 'shutdown_error))
          (check-equal? (hash-ref report 'state) "closed")
-         (check-equal? (gpu-context-backend context) selected-backend))))
+         (check-equal? (gpu-context-backend context) (selected-backend)))))
 
    (test-case "lost-host abandonment is distinct from child retirement and close"
      (with-context
@@ -148,30 +151,30 @@
    #:program "reference-gpu-context-test"
    #:once-each
    [("--backend") name "Required: opengl, metal, or direct3d. OpenGL uses owned EGL."
-    (set! selected-backend (string->symbol name))]
+    (selected-backend (string->symbol name))]
    [("--adapter") name "Direct3D only: hardware or warp."
-    (set! selected-adapter (string->symbol name))]
+    (selected-adapter (string->symbol name))]
    [("--output") path "Write a JSON execution receipt."
-    (set! output-path path)])
-  (unless (memq selected-backend '(opengl metal direct3d))
+    (output-path path)])
+  (unless (memq (selected-backend) '(opengl metal direct3d))
     (error 'reference-gpu-context "--backend must select opengl, metal, or direct3d"))
-  (unless (and (memq selected-adapter '(hardware warp))
-               (or (eq? selected-backend 'direct3d) (eq? selected-adapter 'hardware)))
+  (unless (and (memq (selected-adapter) '(hardware warp))
+               (or (eq? (selected-backend) 'direct3d) (eq? (selected-adapter) 'hardware)))
     (error 'reference-gpu-context "--adapter warp requires --backend direct3d"))
   (define failures (run-tests suite))
   (define closed (count (lambda (context) (eq? (gpu-context-state context) 'closed)) contexts))
   (define passed? (and (zero? failures) (= closed (length contexts)) (pair? contexts)))
   (define receipt
     (hasheq 'schema 1 'status (if passed? "passed" "failed")
-            'backend (symbol->string selected-backend)
-            'adapter (if (eq? selected-backend 'direct3d)
-                         (symbol->string selected-adapter) #f)
+            'backend (symbol->string (selected-backend))
+            'adapter (if (eq? (selected-backend) 'direct3d)
+                         (symbol->string (selected-adapter)) #f)
             'tests_run 10 'failures failures
             'native_contexts_created (length contexts) 'contexts_closed closed
             'pixel_validation_performed #f 'hardware_acceleration_verified #f
             'context_states (map (lambda (context) (symbol->string (gpu-context-state context)))
                                  (reverse contexts))))
-  (when output-path
-    (call-with-output-file output-path #:exists 'error
+  (when (output-path)
+    (call-with-output-file (output-path) #:exists 'error
       (lambda (out) (write-json receipt out) (newline out))))
   (exit (if passed? 0 1)))

@@ -27,8 +27,10 @@
   (for ([entry (in-list documents)])
     (check-true (file-exists? (build-path repository (car entry))))
     (check-true (regexp-match? #rx"^skia-" (fourth entry))))
-  (for ([dependency '("scribble-lib" "racket-doc" "draw-doc" "gui-doc")])
+  (for ([dependency '("racket-doc" "draw-doc" "gui-doc")])
     (check-not-false (member dependency (info 'build-deps (lambda () '())))))
+  (for ([dependency '("scribble-lib" "racket-index")])
+    (check-not-false (member dependency (info 'deps (lambda () '())))))
   ;; File-relative HTML links cannot describe both standalone and installed layouts.
   (for ([source '("scribblings/tutorials/index.scrbl"
                   "scribblings/tutorials/sprites/sprites.scrbl"
