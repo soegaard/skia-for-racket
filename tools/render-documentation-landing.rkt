@@ -61,14 +61,17 @@
   (string-append
    "<div class=\"skia-doc-nav__panel\" id=\"skia-doc-nav-tutorials\" data-skia-doc-nav-panel=\"tutorials\">\n"
    "<p class=\"skia-doc-nav__all\"><a class=\"skia-doc-nav__collection-link skia-doc-nav__collection-link--tutorials\" data-skia-doc-nav-all=\"tutorials\" href=\"skia-tutorials/index.html\">All tutorials</a></p>\n"
+   "<div class=\"skia-doc-nav__tutorial-groups\">\n"
    (string-join
     (for/list ([group (in-list (tutorial-shortcut-groups))])
       (string-append
-       "<h2 class=\"skia-doc-nav__group-heading\">" (escape-html (car group)) "</h2>\n"
+       "<div class=\"skia-doc-nav__tutorial-group\">\n"
+       "<p class=\"skia-doc-nav__group-heading\">" (escape-html (car group)) "</p>\n"
        "<ul class=\"skia-doc-nav__tutorial-list\">\n"
        (string-join (map tutorial-link (cdr group)) "\n")
-       "</ul>"))
+       "</ul>\n</div>"))
     "\n")
+   "\n</div>\n"
    "</div>"))
 
 (define (navigation-html)

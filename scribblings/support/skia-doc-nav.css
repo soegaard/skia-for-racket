@@ -171,15 +171,19 @@
   right: 0;
   box-sizing: border-box;
   width: min(45rem, calc(100vw - 1.5rem));
-  max-height: min(70vh, 35rem);
-  overflow: auto;
+  max-height: calc(100vh - 3rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: 0.85rem;
   border: 1px solid var(--skia-doc-border);
   border-radius: 0.45rem;
   background: #fff;
   box-shadow: 0 0.4rem 1.1rem rgb(31 41 55 / 18%);
-  column-width: 17rem;
-  column-gap: 1.25rem;
+  color: var(--skia-doc-text);
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.35;
 }
 
 /* Hover reveals the shortcuts without reserving space in the band.  The
@@ -196,7 +200,23 @@
 
 .skia-doc-nav__all { font-weight: 700; color: var(--skia-doc-tutorials); }
 .skia-doc-nav__tutorial-link[aria-current] { font-weight: 750; text-decoration: underline; text-decoration-thickness: 0.16rem; text-underline-offset: 0.2rem; color: var(--skia-doc-tutorials); }
-.skia-doc-nav__group-heading { margin: 0.8rem 0 0.15rem; break-after: avoid; font-weight: 750; color: var(--skia-doc-muted); }
+.skia-doc-nav__tutorial-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 1rem 1.25rem;
+  margin-block-start: 0.8rem;
+}
+.skia-doc-nav__tutorial-group { min-inline-size: 0; }
+.skia-doc-nav__group-heading {
+  margin: 0 0 0.2rem;
+  color: var(--skia-doc-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
 .skia-doc-nav__tutorial-list { break-inside: avoid; }
 
 .skia-doc-nav :is(a, button):focus-visible {
@@ -264,7 +284,8 @@
 @media (max-width: 32rem) {
   .skia-doc-nav-shell { margin-inline: 0; }
   .skia-doc-nav__collection-link { padding-inline: 0.42rem; }
-  .skia-doc-nav__panel { right: -0.1rem; width: calc(100vw - 1rem); max-height: 60vh; column-count: 1; }
+  .skia-doc-nav__panel { right: -0.1rem; width: calc(100vw - 1rem); max-height: 60vh; }
+  .skia-doc-nav__tutorial-groups { grid-template-columns: 1fr; }
 }
 
 @media (forced-colors: active) {

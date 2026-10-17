@@ -134,24 +134,33 @@
                               (and tutorial-id
                                    (equal? tutorial-id (hash-ref lesson 'id))))))))
 
+(define (tutorial-group group tutorial-id)
+  (define heading (car group))
+  (define lessons (cdr group))
+  (navigation-element
+   "div"
+   "skia-doc-nav__tutorial-group"
+   null
+   (navigation-element "p" "skia-doc-nav__group-heading" null heading)
+   (tutorial-list lessons tutorial-id)))
+
 (define (tutorial-panel tutorial-id)
   (define all-tutorials
     (styled-seclink 'tutorials "All tutorials" #f #:all-tutorials? #t))
+  (define groups
+    (apply navigation-element
+           "div"
+           "skia-doc-nav__tutorial-groups"
+           null
+           (for/list ([group (in-list (tutorial-shortcut-groups))])
+             (tutorial-group group tutorial-id))))
   (apply navigation-element
          "div"
          "skia-doc-nav__panel"
          (list (cons 'id "skia-doc-nav-tutorials")
                (cons 'data-skia-doc-nav-panel "tutorials"))
-         (append
-          (list (navigation-element "p" "skia-doc-nav__all" null all-tutorials))
-          (append-map
-           (lambda (group)
-             (define heading (car group))
-             (define lessons (cdr group))
-             (list
-              (navigation-element "p" "skia-doc-nav__group-heading" null heading)
-              (tutorial-list lessons tutorial-id)))
-           (tutorial-shortcut-groups)))))
+         (list (navigation-element "p" "skia-doc-nav__all" null all-tutorials)
+               groups)))
 
 (define (documentation-navigation-band active
                                        #:index? [index? #f]
