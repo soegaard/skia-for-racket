@@ -4235,6 +4235,23 @@
           "required_keywords": []
         },
         {
+          "allowed_keywords": [
+            "adapter",
+            "adapter-index",
+            "backend",
+            "background",
+            "provider"
+          ],
+          "arity_mask": "8",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "render-gpu->raster-image",
+          "phase": "0",
+          "required_keywords": [
+            "backend"
+          ]
+        },
+        {
           "allowed_keywords": [],
           "arity_mask": "2",
           "export_kind": "value",

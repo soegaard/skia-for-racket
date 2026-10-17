@@ -673,6 +673,7 @@ Experimental optional execution/integration API; existing backend, owner-thread 
 | make-gpu-context-options | experimental | 0 | procedure | 0 | none | #:allow-path-mask-caching?, #:avoid-stencil-buffers?, #:buffer-map-threshold, #:glyph-cache-texture-maximum-bytes, #:manual-mipmapping?, #:runtime-program-cache-size |
 | make-gpu-provider | experimental | 0 | procedure | 0 | #:backend, #:call-as-current, #:current?, #:key, #:name | #:backend, #:call-as-current, #:current?, #:describe, #:get-proc-address, #:key, #:name |
 | make-gpu-surface | experimental | 0 | procedure | 3 | none | #:alpha-type, #:background, #:budgeted?, #:color-space, #:color-type, #:opaque?, #:sample-count, #:surface-properties |
+| render-gpu->raster-image | experimental | 0 | procedure | 3 | #:backend | #:adapter, #:adapter-index, #:backend, #:background, #:provider |
 | skia-resource-gpu-context | experimental | 0 | procedure | 1 | none | none |
 ### graphics.rkt
 
