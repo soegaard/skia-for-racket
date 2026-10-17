@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  publish:
     name: Build Skia documentation
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -48,14 +48,6 @@ jobs:
         run: |
           raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
           raco setup --no-zo --pkgs skia-for-racket
-      - name: Check Reference coverage, bindings, and installed links
-        env:
-          PLTUSERHOME: ${{ runner.temp }}/racket-user
-        run: |
-          python3 -B tools/test-reference.py
-          python3 -B tools/check-reference.py \
-            --installed "$GITHUB_WORKSPACE/doc" --native \
-            --output "${{ runner.temp }}/reference-installed"
       - name: Collect the static site
         env:
           SITE: ${{ runner.temp }}/skia-for-racket-pages
@@ -107,33 +99,71 @@ jobs:
             test -f "$doc_dir/$manual/index.html"
             cp -a "$doc_dir/$manual" "$SITE/$manual"
           done
-          # Preserve binding targets while relocating our own installed-manual links.
-          python3 -B tools/check-reference.py \
-            --site "$SITE" --site-source "$doc_dir" \
-            --targets "${{ runner.temp }}/reference-installed/runtime.json" \
-            --output "${{ runner.temp }}/reference-site"
+          # Relocate installed-manual links before publishing the copied manuals.
+          PYTHONPATH="$GITHUB_WORKSPACE/tools" SITE="$SITE" DOC_DIR="$doc_dir" \
+            python3 -B -c 'import os; from pathlib import Path; from reference_support import prepare_site; edits = prepare_site(Path(os.environ["SITE"]), source_root=Path(os.environ["DOC_DIR"])); print(f"Relocated {edits} installed-manual link(s).")'
           python3 -B tools/check-documentation-navigation.py "$SITE" \
-            --output "${{ runner.temp }}/reference-site/navigation.json"
+            --output "${{ runner.temp }}/navigation.json"
           test -f "$SITE/skia-tutorials/index.html"
           test -z "$(find "$SITE" -type l -print -quit)"
-      - name: Retain Reference validation evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: skia-reference-${{ github.sha }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/reference-installed/
-            ${{ runner.temp }}/reference-site/
-          if-no-files-found: warn
-          retention-days: 14
       - name: Upload the GitHub Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: ${{ runner.temp }}/skia-for-racket-pages
 
+  validate-reference:
+    name: Validate Reference documentation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Racket and native runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            curl unzip fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core \
+            fonts-noto-cjk libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+            libgtk-3-0t64 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Verify the checked-in source inventory
+        run: python3 tools/update-source-sums.py --check
+      - name: Install pinned Skia and HarfBuzz libraries
+        run: |
+          bash tools/install-native.sh
+          bash tools/install-harfbuzz.sh
+      - name: Build registered Scribble manuals
+        env:
+          PLTUSERHOME: ${{ runner.temp }}/racket-user
+        run: |
+          raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
+          raco setup --no-zo --pkgs skia-for-racket
+      - name: Check Reference coverage, bindings, and installed links
+        env:
+          PLTUSERHOME: ${{ runner.temp }}/racket-user
+        run: |
+          python3 -B tools/test-reference.py
+          python3 -B tools/check-reference.py \
+            --installed "$GITHUB_WORKSPACE/doc" --native \
+            --output "${{ runner.temp }}/reference-installed"
+      - name: Retain Reference validation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: skia-reference-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/reference-installed/
+          if-no-files-found: warn
+          retention-days: 14
+
   deploy:
     name: Deploy Skia documentation
-    needs: build
+    needs: publish
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
