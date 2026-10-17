@@ -6,13 +6,13 @@ R=Path(__file__).resolve().parents[1]
 # Source checks must not inspect generated/developer trees.  These names mirror
 # the repository's ignored output/cache directories; in particular, an
 # extracted delivery bundle under downloads/ is not part of the package source.
-IGNORED_RACKET_TREES={'.git','compiled','output','downloads','__pycache__'}
+IGNORED_RACKET_TREES={'.git','compiled','doc','html','output','downloads','__pycache__'}
 racket_files=[p for p in R.rglob('*.rkt') if not (set(p.relative_to(R).parts) & IGNORED_RACKET_TREES)]
 errors=[mod.scan(p) for p in racket_files]; assert not any(errors), errors
 # Small structural reader: sufficient for counting test-suite contents and
 # recognizing top-level definitions, NOT a Racket reader or expander.
 def sexps(text):
-    toks=re.findall(r';[^\n]*|"(?:\\.|[^"\\])*"|[()\[\]{}]|[^\s()\[\]{}";]+', text)
+    toks=re.findall(r'#\\[^\s]|;[^\n]*|"(?:\\.|[^"\\])*"|[()\[\]{}]|[^\s()\[\]{}";]+', text)
     root=[]; stack=[root]
     for t in toks:
         if t.startswith(';'):continue
