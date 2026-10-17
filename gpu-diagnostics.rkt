@@ -18,6 +18,10 @@
          "private/graphics-data.rkt" "private/gpu-diagnostic-util.rkt")
 (provide gpu-memory-statistics gpu-gl-interface-info gpu-gl-has-extension?)
 
+;;;
+;;; Lazy Diagnostic Dispatch and Context Validation
+;;;
+
 ; native-module : path?
 ;   Locates private/gpu-diagnostics-native.rkt for lazy loading of the selected implementation.
 (define-runtime-path native-module "private/gpu-diagnostics-native.rkt")
@@ -44,6 +48,10 @@
   ;; rechecks after any library loading or collector-lock wait.
   (domain-pointer d)
   d)
+
+;;;
+;;; Memory and OpenGL Interface Queries
+;;;
 
 ; gpu-memory-statistics : gpu-context? [#:detailed? boolean?] [#:dump-wrapped? boolean?]
 ;   [#:max-entries (integer-in 0 65536)] [#:string-limit (integer-in 0 65536)] [#:byte-limit

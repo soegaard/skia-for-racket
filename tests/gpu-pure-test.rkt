@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit racket/list ffi/unsafe
          "gpu-fixtures.rkt" "../gpu.rkt"
          "../private/gpu-context.rkt" "../private/gpu-domain.rkt"
@@ -38,6 +39,11 @@
 (define gpu-pure-tests
   (test-suite
    "GPU foundation: pure mock-provider, ownership, lifecycle, and ABI tests"
+
+   ;;;
+   ;;; Provider Identity and Callback Contracts
+   ;;;
+
    (test-case "provider construction does not run callbacks"
      (define calls 0)
      (define p (provider (lambda (_) (set! calls (add1 calls))) (lambda () #f)))
@@ -98,6 +104,11 @@
    (test-case "diagnostics reject pointers and nonfinite data"
      (check-exn exn:fail? (lambda () (freeze-gpu-details (hasheq 'pointer (malloc 8 'atomic)))))
      (check-exn exn:fail? (lambda () (freeze-gpu-details +nan.0))))
+
+   ;;;
+   ;;; Context Construction and Activation Leases
+   ;;;
+
    (test-case "domain initializes and closes under its provider"
      (define-values (p driver log abandoned?) (make-mock))
      (define d (make-gpu-domain p driver))
@@ -222,6 +233,11 @@
         (define next (make-gpu-domain p driver))
         (check-true (> (domain-generation next) generation))
         (domain-close! next))))
+
+   ;;;
+   ;;; Child Ownership and Deferred Release
+   ;;;
+
    (test-case "child construction requires a current scope"
      (call-with-mock
       (lambda (d p driver log a)
@@ -320,6 +336,11 @@
         (check-equal? (event-count log 'child) 0)
         (domain-call d void)
         (check-equal? (event-count log 'child) 1))))
+
+   ;;;
+   ;;; Abandonment, Custodians, and Owner Cleanup
+   ;;;
+
    (test-case "abandon invalidates children without making GL current"
      (call-with-mock
       (lambda (d p driver log a)
@@ -392,6 +413,11 @@
         (custodian-shutdown-all custodian)
         (check-equal? (events log) before)
         (check-true (gpu-context? context)))))
+
+   ;;;
+   ;;; Public Validation, Diagnostics, and Native ABI
+   ;;;
+
    (test-case "public API rejects invalid contexts without native loading"
      (check-exn exn:fail:contract? (lambda () (call-with-gpu-context #f void)))
      (check-exn exn:fail:contract? (lambda () (make-gpu-context #f))))

@@ -10,6 +10,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Required selected GUI test. No unavailable-backend skip or CPU GPU fallback.
 (require rackunit racket/class racket/list racket/cmdline racket/file json
          (prefix-in gui: racket/gui/base) (prefix-in rd: racket/draw)
@@ -19,7 +20,7 @@
 (provide render-canvas-gui-tests render-canvas-gui-test-count)
 
 ;;;
-;;; Fixtures and Assertions
+;;; Backend Selection and Eventspace Fixtures
 ;;;
 
 ; request : parameter?
@@ -140,6 +141,10 @@
   (define w (make-window paint))
   (dynamic-wind void (lambda () (await-paint w) (proc w) (check-errors w))
     (lambda () (close-window w))))
+
+;;;
+;;; Drawing, Capture, and Expired-Context Assertions
+;;;
 
 ; reset-dc : dc<%> -> void?
 ;   Restores identity coordinates, full clipping, opaque alpha, and a white clear.
@@ -404,6 +409,10 @@
 ; render-canvas-gui-test-count : exact-nonnegative-integer?
 ;   Records the expected test count used by external acceptance-report checks.
 (define render-canvas-gui-test-count 20)
+
+;;;
+;;; JSON Evidence Serialization
+;;;
 
 ; json-value : any/c -> any/c
 ;   Normalizes capture/report values into the representation accepted by the JSON writer.

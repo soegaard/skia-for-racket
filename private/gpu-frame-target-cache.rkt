@@ -15,6 +15,10 @@
          close-frame-target-cache! frame-target-cache-info
          current-frame-target-reuse?)
 
+;;;
+;;; Cache State and Owner-Thread Guards
+;;;
+
 ;; Test/reference path only: not re-exported by skia/gpu or skia/gpu-dc.
 ;; Capture at entry, so a callback cannot change this operation's disposition.
 
@@ -74,6 +78,10 @@
    (hasheq 'kind "dc-frame-target" 'action action 'reason reason
            'pixel_width (target-entry-width entry) 'pixel_height (target-entry-height entry))))
 
+;;;
+;;; Target Retirement and Cache Diagnostics
+;;;
+
 ; retire! : frame-target-cache? any/c -> void?
 ;   Detaches the cached entry before disposal and quarantines uncertain cleanup outcomes.
 (define (retire! cache reason)
@@ -113,6 +121,10 @@
       (retire! cache "presenter-close")
       (set-frame-target-cache-closed?! cache #t)))
   (void))
+
+;;;
+;;; Scoped Target Reuse and Reconfiguration
+;;;
 
 ; call-with-frame-target : frame-target-cache? any/c any/c any/c any/c any/c [#:configuration any/c]
 ;   -> any

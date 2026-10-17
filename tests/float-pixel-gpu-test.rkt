@@ -11,13 +11,19 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline racket/file racket/list racket/path json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../private/gpu-io-trace.rkt"
          "float-pixel-fixtures.rkt")
+
+;;;
+;;; GPU Acceptance Run
+;;;
+
 (module+ main
 
   ;;;
-  ;;; Command-Line Run
+  ;;; Backend and Evidence Options
   ;;;
 
   ; backend : (or/c symbol? #f)
@@ -44,6 +50,10 @@
   (unless (and report-path token) (error 'float-pixel-gpu "--report and --token required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ;;;
+  ;;; Context and Capture Fixtures
+  ;;;
 
   ; context : gpu-context?
   ;   Owns the primary native GPU context used by the fixture run.
@@ -82,6 +92,11 @@
   ; directory : (or/c path-string? #f)
   ;   Holds the evidence output directory selected for this run.
   (define directory (path-only (path->complete-path report-path)))
+
+  ;;;
+  ;;; Floating-Point Rendering and Readback Checks
+  ;;;
+
   (dynamic-wind void
     (lambda ()
       (call-with-gpu-context context
@@ -119,6 +134,10 @@
                         (check-equal? (raster-buffer->storage-bytes buffer) before)
                         (set! rejected (add1 rejected))))))))))))
     (lambda () (gpu-context-close! context)))
+
+  ;;;
+  ;;; Teardown and Evidence Publication
+  ;;;
 
   ; closed? : boolean?
   ;   Records whether context teardown completed with no live or failed resource releases.

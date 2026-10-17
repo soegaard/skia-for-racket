@@ -20,6 +20,7 @@
 ;; samples a snapshot of it as an SkSL child shader.
 ;;
 ;; Run:  racket examples/gpu-breakout.rkt [--backend auto|opengl|metal|direct3d]
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -29,7 +30,7 @@
          "../main.rkt" "../gpu.rkt" "../gpu-gui.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Scene Dimensions
 ;;;
 
 ; W : real?
@@ -90,7 +91,7 @@ SKSL
   )
 
 ;;;
-;;; Level Data
+;;; Bricks, Particles, and Gameplay Geometry
 ;;;
 
 ; COLS : exact-integer?
@@ -177,9 +178,6 @@ SKSL
                          (exact-round (clamp (* 255 a) 0 255))))
 
 ;;;
-;;; Main
-;;;
-;;;
 ;;; Command-Line Entry Point
 ;;;
 
@@ -195,6 +193,11 @@ SKSL
 
   (queue-callback
    (lambda ()
+
+     ;;;
+     ;;; Handler-Thread Rendering Resources
+     ;;;
+
      ;; ---- long-lived resources (handler thread)
      (define small-font (make-font #:size 22))
      (define big-font (make-font #:size 48))
@@ -204,6 +207,10 @@ SKSL
      (define fill (make-paint))
      (define glow (make-paint #:mask-filter glow-filter))
      (define offscreen #f)           ; GPU surface, created on the first frame
+
+     ;;;
+     ;;; Game State and Simulation
+     ;;;
 
      ;; ---- game state
      (define bricks (make-level))
@@ -306,6 +313,10 @@ SKSL
        (set! squash (* squash (exp (* -12 dt))))
        (set! impact-age (+ impact-age dt)))
 
+     ;;;
+     ;;; Scene Drawing and CRT Post-Processing
+     ;;;
+
      (define (center-text c font text y color)
        (paint-set-color! fill color)
        (draw-simple-text c text (/ (- W (measure-simple-text font text)) 2) y font fill))
@@ -396,6 +407,10 @@ SKSL
             ;; Without the post-pass, approximate the flash directly.
             (paint-set-color! fill (rgba 255 255 255 (exact-round (* 90 flash))))
             (draw-rect c 0 0 W H fill))]))
+
+     ;;;
+     ;;; Input, Window Lifetime, and Scheduling
+     ;;;
 
      (define timer #f)
      (define canvas #f)

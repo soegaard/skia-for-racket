@@ -8,11 +8,9 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; The worker uses only public authoring APIs. No GUI window or implicit GPU.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/cmdline "../tools/geometry-completion-doctor.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

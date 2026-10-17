@@ -13,6 +13,10 @@
 (provide float-info? float-sample-check float-sample->bytes float-bytes->sample
          float-black-sample real->binary16 binary16->real)
 
+;;;
+;;; Floating-Point Formats and Binary16 Conversion
+;;;
+
 ; float-info? : any/c -> boolean?
 ;   Recognizes detached RGBA F16 or F32 storage descriptions.
 (define (float-info? info)
@@ -51,6 +55,10 @@
   (define magnitude (if (zero? e) (* f (expt 2 -24)) (* (+ 1024 f) (expt 2 (- e 25)))))
   (define value (exact->inexact magnitude))
   (if (bitwise-bit-set? word 15) (- value) value))
+
+;;;
+;;; Checked Samples and Pixel Storage
+;;;
 
 ; float-sample-check : symbol? image-info? any/c -> vector?
 ;   Copies finite RGBA channels while enforcing alpha range, opaque alpha, and canonical zero-alpha

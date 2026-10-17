@@ -14,7 +14,7 @@
 (require racket/match "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Paragraph Placement
 ;;;
 
 ; bg : string?
@@ -54,6 +54,10 @@
                               #:direction direction #:script script #:language language))
   (draw-text-layout c layout x y paint)
   layout)
+
+;;;
+;;; Paragraph Layout Comparisons
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

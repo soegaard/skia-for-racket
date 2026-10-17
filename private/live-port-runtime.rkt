@@ -18,6 +18,7 @@
          operation-eof? set-operation-eof?! operation-written set-operation-written!
          operation-note! operation-note-max! operation-error check-cancel! wait-port! CHUNK
          active-operation-count last-operation-report in-port-service? request-in-racket)
+
 ;;;
 ;;; Service State and Operation Records
 ;;;
@@ -94,6 +95,7 @@
   (when j
     (hash-set! (operation-notes j) key
                (max value (hash-ref (operation-notes j) key 0)))))
+
 ;;;
 ;;; Failure and Cancellation
 ;;;
@@ -134,6 +136,7 @@
   (sync (wrap-evt port (lambda (_) 'ready))
         (wrap-evt (stopped-evt j) (lambda (_) 'stopped)))
   (check-cancel! j))
+
 ;;;
 ;;; Callback Dispatch Across the Native Boundary
 ;;;
@@ -178,6 +181,7 @@
 (define (request-in-racket thunk)
   (os-async-channel-put requests (list 'request thunk replies))
   (os-async-channel-get replies))
+
 ;;;
 ;;; Operation Setup, Worker Execution, and Cleanup
 ;;;

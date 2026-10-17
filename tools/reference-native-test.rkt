@@ -17,7 +17,7 @@
 
 
 ;;;
-;;; Diagnostic Operations
+;;; Example Classification and Isolated Execution
 ;;;
 
 ; reference-directory : path?

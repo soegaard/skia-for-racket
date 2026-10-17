@@ -10,6 +10,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; This is a REQUIRED-GUI suite when selected. Failure to initialize a display,
 ;; expose a real window, or dispatch an eventspace callback is a test failure.
 ;; Keep it out of headless run-tests.rkt and package-wide implicit tests.
@@ -21,7 +22,7 @@
 
 
 ;;;
-;;; Fixtures and Assertions
+;;; Eventspace and Window Fixtures
 ;;;
 
 ; test-custodian : custodian?
@@ -143,6 +144,10 @@
    (lambda ()
      (on-handler (lambda () (send (test-window-canvas window) close-skia)
                             (send (test-window-frame window) show #f))))))
+
+;;;
+;;; Raster Drawing and Pixel Assertions
+;;;
 
 ; fill : dc<%> ... -> void?
 ;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel

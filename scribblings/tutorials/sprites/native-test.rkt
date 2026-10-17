@@ -12,6 +12,7 @@
 ;;;
 
 (require rackunit skia "atlas.rkt" "scene.rkt" "model.rkt" "../support/sprite-math.rkt")
+
 ;;;
 ;;; Regression Checks
 ;;;

@@ -16,11 +16,12 @@
 (require skia "model.rkt" "../support/sprite-math.rkt")
 (provide draw-game game-sprites enemy-angle travel-heading)
 
+;;;
+;;; Sprite Placement and Heading
+;;;
+
 ;; Enemy artwork points down (toward positive y) at zero rotation.
 ;; Convert the travel direction to a clockwise angle from that orientation.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; travel-heading : real? real? real? real? -> real?
 ;   Converts travel direction to degrees relative to artwork that initially points down.
@@ -62,6 +63,10 @@
    (for/list ([effect (in-list (game-blasts world))])
      (list (+ 8 (min 5 (quotient (blast-age effect) 8)))
            (blast-x effect) (blast-y effect) 0 1.4))))
+
+;;;
+;;; Scene and HUD Drawing
+;;;
 
 ; draw-game : canvas? image? game? -> void?
 ;   Draws the game component in the current canvas coordinate system.

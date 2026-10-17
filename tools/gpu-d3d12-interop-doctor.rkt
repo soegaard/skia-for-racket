@@ -10,6 +10,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline racket/file racket/path racket/list json rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt" "../unsafe/gpu-d3d12.rkt"
          "../tests/gpu-interop-native-test.rkt" "../tests/d3d12-interop-fixture.rkt"
@@ -154,6 +155,10 @@
                                           'encoded_after_context_teardown #t) captures)))
         (publish directory "interop.diagnostic.json" (report "passed")) 0)
       (lambda () (for ([entry (in-list pending)]) (skia-close! (car entry)))))))
+
+;;;
+;;; Unsignaled Fence Timeout Probe
+;;;
 
 ; gpu-d3d12-interop-timeout-doctor! : path? path-string? symbol? (or/c exact-nonnegative-integer?
 ; #f) -> exact-integer?

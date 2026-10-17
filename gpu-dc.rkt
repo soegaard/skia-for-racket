@@ -20,6 +20,10 @@
 (provide call-with-gpu-frame-dc call-with-gpu-surface-dc
          skia-gpu-dc? skia-gpu-dc-capabilities)
 
+;;;
+;;; Lazy Drawing-Context Bridge
+;;;
+
 ; native-module : path?
 ;   Locates private/gpu-dc-native.rkt for lazy loading of the selected implementation.
 (define-runtime-path native-module "private/gpu-dc-native.rkt")
@@ -30,6 +34,10 @@
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error who "procedure accepting one DC argument" proc))
   (when (gpu-dc-scope-active?) (error who "nested GPU DC scopes are not supported")))
+
+;;;
+;;; Frame and Surface Drawing Scopes
+;;;
 
 ; call-with-gpu-frame-dc : gpu-frame? (-> (is-a?/c draw:dc<%>) any) [#:background (or/c string?
 ;   (is-a?/c draw:color%))] [#:smoothing (or/c 'unsmoothed 'smoothed 'aligned)] [#:color-type (or/c

@@ -19,6 +19,10 @@
          (only-in scribble/core link-element-tag)
          (for-label (prefix-in main: skia) (prefix-in color: skia/color)))
 
+;;;
+;;; Constant Contract Checking
+;;;
+
 ;; This independent submodule can be tested without running the command-line worker.
 (module constant-contracts racket/base
   (provide constant-shape constant-value-valid?)
@@ -76,7 +80,7 @@
 
 
 ;;;
-;;; Diagnostic Operations
+;;; Command-Line Inputs and Checkout Identity
 ;;;
 
 ; root : path?
@@ -135,6 +139,10 @@
 (need (equal? (absolute (collection-file-path "main.rkt" "skia"))
               (absolute (build-path root "main.rkt")))
       "the skia collection must resolve to this checkout, not another installed copy")
+
+;;;
+;;; Scribble Declaration Inventory
+;;;
 
 ; source-report : hash?
 ;   Contains source declarations and manual-link expectations read from the checker JSON.
@@ -282,6 +290,10 @@
       "native reader and source checker disagree on the definition count")
 
 
+;;;
+;;; Runtime Binding Verification
+;;;
+
 ; live-specifications : (listof hash?)
 ;   Selects documented bindings whose runtime shapes can be checked in the normal worker.
 (define live-specifications
@@ -329,6 +341,10 @@
                     (equal? (map keyword->string required) (hash-ref spec 'required_keywords))
                     (equal? (map keyword->string allowed) (hash-ref spec 'allowed_keywords)))
                "live keyword mismatch: ~a / ~a" module name)])))))
+
+;;;
+;;; Label Bindings and Re-Export Identity
+;;;
 
 (need (identifier-binding #'main:with-skia #f) "with-skia has no imported label binding")
 (for ([pair (in-list (list (list #'main:color? #'color:color?)
@@ -381,6 +397,10 @@
                 '(1 2))
         "with-skia empty-body syntax/result regression"))
 
+
+;;;
+;;; Cross-Reference Target Verification
+;;;
 
 ; xref : (or/c xref? #f)
 ;   Holds installed or merged fresh-build cross-references when link verification is enabled.

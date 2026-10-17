@@ -19,7 +19,7 @@
          scene-background orbit-position draw-scene)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Scene Palette and Drawing Resources
 ;;;
 
 ; scene-width : exact-integer?
@@ -89,6 +89,10 @@
 ; violet-paints : list?
 ;   Keeps the layered paint set for the violet orbiting disc.
 (define violet-paints (disc-paints 177 138 232))
+
+;;;
+;;; Orbit Geometry and Drawing
+;;;
 
 ; orbit-position : real? real? real? real? real? -> (values real? real?)
 ;   Returns x and y on the selected ellipse at the supplied angle.

@@ -25,6 +25,10 @@
          matrix3->matrix4 matrix4->matrix3 matrix4-project-xy
          matrix4-map-homogeneous matrix4-map-point matrix4-map-rect)
 
+;;;
+;;; Matrix Representations and Numeric Limits
+;;;
+
 ;; These are separate types from the existing six-coefficient affine matrix.
 ;; Public storage is ROW-MAJOR; native SkM44 storage is converted at the FFI.
 ;; The backing vectors are immutable and contain only finite C-float values.
@@ -223,6 +227,10 @@
 (define (matrix4-invert m)
   (define v (inverse (matrix4->vector m) 4)) (and v (vector->matrix4 v)))
 
+;;;
+;;; Perspective Classification and Matrix Embedding
+;;;
+
 ; matrix3-perspective : real? real? -> matrix3?
 ;   Returns the identity with its last row replaced by px, py, 1.
 (define (matrix3-perspective px py) (make-matrix3 1 0 0 0 1 0 px py 1))
@@ -300,6 +308,10 @@
 (define (matrix4->matrix m)
   (and (matrix4-affine-2d? m) (matrix3->matrix (matrix4-project-xy m))))
 
+;;;
+;;; Spatial Transform Constructors
+;;;
+
 ; matrix4-translate : real? real? [real?] -> matrix4?
 ;   Returns a translation in three dimensions.
 (define (matrix4-translate x y [z 0]) (make-matrix4 1 0 0 x 0 1 0 y 0 0 1 z 0 0 0 1))
@@ -307,10 +319,6 @@
 ; matrix4-scale : real? [real?] [real?] -> matrix4?
 ;   Returns a three-dimensional scale.
 (define (matrix4-scale x [y x] [z 1]) (make-matrix4 x 0 0 0 0 y 0 0 0 0 z 0 0 0 0 1))
-
-;;;
-;;; Spatial Transform Constructors
-;;;
 
 ; rotation : real? -> (values real? real?)
 ;   Returns cosine and sine using the affine API's angle normalization and exact quarter turns.

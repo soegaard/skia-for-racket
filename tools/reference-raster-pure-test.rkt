@@ -33,6 +33,11 @@
                ,@forms))))
 
 (module+ test
+
+  ;;;
+  ;;; Pixel Format and Surface Property Declarations
+  ;;;
+
   (test-case "format inventories are immutable and complete"
     (check-true (immutable? integer-pixel-formats))
     (check-true (immutable? float-pixel-formats))
@@ -103,6 +108,10 @@
     (check-exn exn:fail:contract?
                (lambda () (make-surface-properties #:always-dither? 1))))
 
+  ;;;
+  ;;; Output Policies and Capability Claims
+  ;;;
+
   (test-case "output policies distinguish vector geometry and embedded samples"
     (check-equal? (output-capability-status (output-capability-for 'svg 'geometry)) 'vector)
     (check-equal? (output-capability-status (output-capability-for 'pdf 'image))
@@ -138,6 +147,10 @@
     (check-exn exn:fail:contract? (lambda () (skia-set-font-cache-count-limit! (expt 2 31))))
     (check-exn exn:fail? (lambda () (skia-memory-statistics #:max-entries 65537)))
     (check-exn exn:fail? (lambda () (skia-memory-statistics #:string-limit 65537))))
+
+  ;;;
+  ;;; Raster Layer Macro Expansion
+  ;;;
 
   (test-case "all five documented layer option forms expand"
     (for ([options (in-list '(() (#:bounds '(0 0 4 4)) (#:paint #f)

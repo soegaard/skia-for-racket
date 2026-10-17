@@ -9,6 +9,7 @@
 
 ;; Backend-independent drawing used by the image-workflow doctor. Sources are
 ;; ordinary image? values: the doctor supplies independent CPU or GPU images.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -17,8 +18,9 @@
 (provide image-workflow-names image-workflow-width image-workflow-height
          image-workflow-pixels make-image-workflow-source draw-image-workflow-source
          make-image-workflow-picture)
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Source Pixels and Scene Geometry
 ;;;
 
 ; image-workflow-names : list?
@@ -46,6 +48,10 @@
 ;   Constructs image workflow source for the example's drawing pipeline.
 (define (make-image-workflow-source)
   (rgba-bytes->image 8 8 image-workflow-pixels #:premultiplied? #t))
+
+;;;
+;;; Image Workflow Drawing
+;;;
 
 ; rectangle : canvas? real? real? real? real? any/c -> void?
 ;   Draws the rectangle comparison in the current canvas coordinate system.

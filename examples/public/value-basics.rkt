@@ -8,11 +8,9 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; Public modules only. This example needs neither Skia nor a display.
-;;;
-;;; Imports and Exports
-;;;
 
 (require "../../main.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Required selected Ganesh test; never a software-raster fallback. The adapter
 ;; supplies a real GPU final target, not a physical window. GUI acceptance is
 ;; separately inherited from 0.61 by the 0.62 validator.
@@ -22,7 +23,7 @@
 (provide gpu-frame-target-native-tests gpu-frame-target-native-test-count)
 
 ;;;
-;;; Fixtures and Assertions
+;;; Backend Selection and Target Fixtures
 ;;;
 
 ; backend : parameter?
@@ -140,6 +141,10 @@
 ;   Counts a named I/O event in a capture ledger.
 (define (kind-count events name)
   (count (lambda (e) (equal? (hash-ref e 'kind) name)) events))
+
+;;;
+;;; Steady-State Readback Measurements
+;;;
 
 ; measure-steady : boolean? -> void?
 ;   Compares 32-frame reuse or fresh-allocation behavior and records post-close retirement

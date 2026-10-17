@@ -16,7 +16,7 @@
 (require skia)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Poster Palette
 ;;;
 
 ; width : exact-integer?
@@ -54,6 +54,10 @@
 ; light-color : string?
 ;   Specifies the light color color used by this drawing.
 (define light-color "#F8F1E5")
+
+;;;
+;;; Layered Poster Artwork
+;;;
 
 ; draw-background : canvas? -> void?
 ;   Draws the background component in the current canvas coordinate system.
@@ -157,6 +161,10 @@
                 #:stroke-width 2))
   (draw-rounded-rect canvas 60 548 600 238 30 30 paint)
   (draw-rounded-rect canvas 60 548 600 238 30 30 border))
+
+;;;
+;;; Typography and Scene Assembly
+;;;
 
 ; draw-copy : canvas? -> void?
 ;   Draws the copy component in the current canvas coordinate system.

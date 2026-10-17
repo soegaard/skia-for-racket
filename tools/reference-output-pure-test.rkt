@@ -15,16 +15,16 @@
 ;; Native-free public API checks. No document or picture is allocated.
 (require rackunit racket/list skia)
 
+;;;
+;;; Page Syntax Expansion
+;;;
+
 ;; Expand the actual imported macro in this module's namespace. Do not evaluate
 ;; the supplied form: even the document and dimension expressions may raise.
 
 ; expansion-anchor : namespace-anchor?
 ;   Anchors page-form expansion in the namespace containing this module's imports.
 (define-namespace-anchor expansion-anchor)
-
-;;;
-;;; Diagnostic Operations
-;;;
 
 ; expand-page-form : any/c -> syntax?
 ;   Expands a page-scoping form in the test namespace without generating a native document.
@@ -33,6 +33,11 @@
     (expand (datum->syntax #f form))))
 
 (module+ test
+
+  ;;;
+  ;;; Page Dimensions, Replay, and Export Policies
+  ;;;
+
   (test-case "unit conversion preserves exact arithmetic and uses CSS pixels"
     (check-equal? (unit->points 1 'in) 72)
     (check-equal? (unit->points 127/5 'mm) 72)
@@ -102,6 +107,10 @@
     (check-exn exn:fail? (lambda () (make-pdf-document #:title "bad\0title")))
     (check-exn exn:fail? (lambda () (make-svg-document 0 10)))
     (check-exn exn:fail? (lambda () (make-svg-document 10 10 #:id-prefix "bad prefix"))))
+
+  ;;;
+  ;;; Page Macro Expansion
+  ;;;
 
   (test-case "page macro accepts one expression without evaluating any supplied expression"
     (check-not-exn

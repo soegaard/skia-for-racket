@@ -10,6 +10,11 @@
 (require ffi/unsafe ffi/unsafe/global racket/promise racket/string
          "gpu-provider.rkt" "gpu-egl-util.rkt" "gpu-diagnostics.rkt")
 (provide make-egl-platform-ops capture-current-egl-provider)
+
+;;;
+;;; EGL Libraries and Native Entry Points
+;;;
+
 ;; EGLBoolean and EGLenum are 32-bit, NOT C bool. EGLint is signed 32-bit.
 ;; GetPlatformDisplay is called with a NULL attribute list, avoiding the
 ;; EGLAttrib/intptr_t (core) versus EGLint (EXT) array ABI distinction.
@@ -131,6 +136,10 @@
 ;   Calls the native eglGetCurrentSurface entry point using the declared FFI layout.
 (egl eglGetCurrentSurface (_fun _int -> _pointer))
 
+;;;
+;;; Native Values and Extension Resolution
+;;;
+
 ; address : (or/c #f cpointer?) -> any
 ;   Converts a nullable native pointer to its numeric address for stable identity comparisons.
 (define (address p) (and p (cast p _pointer _uintptr)))
@@ -185,6 +194,10 @@
 (define (require-extension text name)
   (unless (egl-extension? text name)
     (gpu-unavailable 'egl-extension "required extension ~a is not advertised" name)))
+
+;;;
+;;; Shared Display Ownership
+;;;
 
 ;; EGL displays are NOT reference-counted by eglInitialize. Share one package
 ;; initialization across our contexts; terminate only after the last closes.
@@ -244,6 +257,11 @@
          (ok 'eglTerminate (eglTerminate (display-entry-pointer entry)))
          (hash-remove! displays (address (display-entry-pointer entry)))
          (set-display-entry-references! entry 0)]))
+
+;;;
+;;; Host Activation and Binding Restoration
+;;;
+
 (struct egl-host (entry context draw read details owned? [closed? #:mutable]))
 ;; Fields:
 ;;   entry: retained display-entry. context: EGL context handle. draw and read: draw/read surface
@@ -318,6 +336,10 @@
        (pointer=? (eglGetCurrentSurface #x3059) (egl-host-draw host))
        (pointer=? (eglGetCurrentSurface #x305A) (egl-host-read host))))
 
+;;;
+;;; Host Teardown and Diagnostics
+;;;
+
 ; close : egl-host? -> void?
 ;   Retires owned context, surface, and display references, retaining uncertain failures in
 ;   quarantine.
@@ -377,6 +399,10 @@
              'renderer_class_evidence "driver strings; not an independent hardware attestation"
              'profile_mask (gl-int #x9126)
              'host_samples (gl-int #x80A9) 'shading_language_version (gl-string #x8B8C)))
+
+;;;
+;;; Owned Context Construction
+;;;
 
 ; create : any/c any/c any/c -> any
 ;   Selects an EGL display and constructs a desktop GL host with checked platform, surface, and
@@ -471,6 +497,10 @@
            (when ctx (ok 'eglDestroyContext (eglDestroyContext d ctx)))
            (when buffer (ok 'eglDestroySurface (eglDestroySurface d buffer)))
            (when entry (release-display! entry))))))))
+
+;;;
+;;; Platform Operations and Borrowed Providers
+;;;
 
 ; make-egl-platform-ops : any/c any/c any/c -> egl-platform-ops?
 ;   Packages owned EGL creation, activation, inspection, and retirement operations for the backend

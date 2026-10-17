@@ -17,7 +17,7 @@
 (provide editor-width editor-height header-height footer-height draw-editor)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Viewport Geometry and Model Drawing
 ;;;
 
 ; editor-width : exact-integer?
@@ -64,6 +64,10 @@
                  (control-point-x b) (control-point-y b) guide))
     (with-skia ([path (curve-path points)])
       (draw-path canvas path curve))))
+
+;;;
+;;; Screen-Space Controls and Overlay
+;;;
 
 ; draw-handles : canvas? list? view-state? (or/c exact-nonnegative-integer? #f) -> void?
 ;   Draws the handles component in the current canvas coordinate system.

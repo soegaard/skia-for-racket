@@ -17,6 +17,10 @@
          audit-resource-features call-with-output-capture audit-output-group!
          call-with-audit-gpu-raster audit-output-group-execution!)
 
+;;;
+;;; Detached Resource Provenance
+;;;
+
 ;; Weak keys are lifetime cells. Values contain only immutable symbolic
 ;; summaries: no native pointer, owned cell, source program, or child wrapper.
 ;; This makes provenance survive explicit child closure without retaining it.
@@ -85,6 +89,10 @@
       (when (memq status '(unknown discarded unsupported))
         (define loss (if (eq? f 'annotation) 'rasterized-annotation f))
         (set-box! sink (union (unbox sink) (list loss)))))))
+
+;;;
+;;; Allocation Dependencies and Paint Attachments
+;;;
 
 ; uses : parameter?
 ;   Associates lifetime cells with borrowed native pointers only for the current synchronous FFI
@@ -229,6 +237,10 @@
   (collect-dependencies! hs)
   (parameterize ([uses (append (map cons hs ps) (uses))]) (thunk)))
 
+;;;
+;;; Canvas and GPU Raster Scopes
+;;;
+
 (struct canvas-context (operation owner backend handle others) #:transparent)
 ;; Fields:
 ;;   operation: drawing-operation symbol. owner: destination resource. backend: output backend
@@ -282,6 +294,10 @@
   (parameterize ([canvas (canvas-context operation owner (if bounded? 'raster backend)
                                          handle others)])
     (thunk)))
+
+;;;
+;;; Bounded Audit Reports
+;;;
 
 (struct collector (backend policy dry? creator pages events count next-group) #:mutable)
 ;; Fields:
@@ -375,6 +391,10 @@
                 (format "output-audit: ~a / ~a: ~a (~a)"
                         backend op feature (output-audit-event-status event))
                 (current-continuation-marks) event))))))
+
+;;;
+;;; Native Operation Classification
+;;;
 
 ;; Only the synchronous matrix FFI call is wrapped, never user drawing code.
 ;; This also records non-affine matrix use in picture provenance when no audit
@@ -529,6 +549,10 @@
          (eq? (canvas-context-backend cx) (collector-backend c))))
   (if skip? (void)
       (begin0 (thunk) (after-native! name args))))
+
+;;;
+;;; Explicit Raster Groups and Precision Annotations
+;;;
 
 ; call-with-audit-raster : any/c any/c any/c any/c any/c [#:recording-handle any/c] -> any
 ;   Reports an explicit raster group and carries semantic losses into an optional enclosing picture

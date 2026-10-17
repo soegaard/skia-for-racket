@@ -10,12 +10,13 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline
          "../private/unicode-conformance.rkt")
 
 
 ;;;
-;;; Diagnostic Operations
+;;; Conformance Input Selection
 ;;;
 
 ; line-break-path : (or/c path-string? #f)
@@ -38,6 +39,10 @@
 (unless (or line-break-path bidi-path)
   (error 'unicode-conformance "give --line-break and/or --bidi"))
 
+
+;;;
+;;; Conformance Results and Exit Status
+;;;
 
 ; failed? : boolean?
 ;   Accumulates whether any selected Unicode conformance suite reported a failure.

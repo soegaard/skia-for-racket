@@ -14,7 +14,7 @@
 (require racket/match "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling
 ;;;
 
 ; bg : string?
@@ -43,6 +43,10 @@
     (draw-rounded-rect c x y w h 16 16 fill)
     (draw-rounded-rect c x y w h 16 16 stroke)
     (draw-simple-text c title (+ x 20) (+ y 32) font text)))
+
+;;;
+;;; Reusable Picture Recordings
+;;;
 
 ; build-star-picture : -> picture?
 ;   Records the reusable star drawing without retaining the recording canvas.
@@ -74,6 +78,10 @@
        (draw-circle c 50 50 34 ring)
        (draw-circle c 50 50 22 inner)
        (draw-path c path tri)))))
+
+;;;
+;;; Picture Replay Gallery
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

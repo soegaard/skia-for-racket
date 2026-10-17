@@ -7,15 +7,13 @@
 ;; Copies between native streams and Racket ports while respecting borrowed ownership.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require "../main.rkt")
-;; Native-to-port publication. Ports are borrowed unless #:close? #t is selected.
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;
+
+;; Native-to-port publication. Ports are borrowed unless #:close? #t is selected.
 
 (module+ main
 

@@ -21,6 +21,10 @@
          make-spot-lit-diffuse-image-filter make-distant-lit-specular-image-filter
          make-point-lit-specular-image-filter make-spot-lit-specular-image-filter)
 
+;;;
+;;; Owned Filter Graphs and Composition
+;;;
+
 ;; Validate/retain all inputs through construction. Missing slots mean the
 ;; dynamic source, NOT an empty image. An identity Offset node represents that
 ;; source when a native optimizer returns an input directly (e.g. Blend Src).
@@ -130,6 +134,10 @@
   (graph-filter who (list bg fg)
     (lambda (b f) (apply sk_imagefilter_new_arithmetic (append ks (list enforce? b f cr))))))
 
+;;;
+;;; Morphology, Displacement, and Convolution
+;;;
+
 ; morphology : symbol? any/c any/c any/c any/c any/c -> any
 ;   Checks nonnegative neighborhood radii and constructs a dilation or erosion node with retained
 ;   input and optional crop.
@@ -195,6 +203,10 @@
       (for ([v (in-list coefficients)] [i (in-naturals)]) (ptr-set! array _float i v))
       (begin0 (sk_imagefilter_new_matrix_convolution size array g b off tile alpha? ip cr)
         (void/reference-sink size off array)))))
+
+;;;
+;;; Transformed and Generated Filter Inputs
+;;;
 
 ; filter-matrix : symbol? any/c -> any
 ;   Converts an invertible affine matrix to Skia's row-major filter matrix without accepting
@@ -298,6 +310,10 @@
   (define ih (optional-image-filter-h who input))
   (graph-filter who (list ih)
     (lambda (ip) (sk_imagefilter_new_magnifier bounds z i sm ip cr))))
+
+;;;
+;;; Diffuse and Specular Lighting
+;;;
 
 ; lighting : symbol? any/c any/c any/c any/c any/c any/c any/c any/c -> any
 ;   Validates shared lighting parameters and retains the input while constructing a diffuse or

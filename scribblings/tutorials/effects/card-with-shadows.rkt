@@ -27,7 +27,7 @@
          draw-card)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Card Geometry and Palette
 ;;;
 
 ; card-image-width : exact-integer?
@@ -73,6 +73,10 @@
 ; card-height : exact-integer?
 ;   Specifies card height in the drawing's local coordinate units.
 (define card-height 478)
+
+;;;
+;;; Shadows and Ring Artwork
+;;;
 
 ; draw-flat-card : canvas? -> void?
 ;   Draws the flat card component in the current canvas coordinate system.
@@ -135,6 +139,10 @@
   (draw-shadowed-card canvas)
   (draw-soft-accents canvas)
   (draw-ring-motif canvas))
+
+;;;
+;;; Labels and Scene Assembly
+;;;
 
 ; draw-card-labels : canvas? -> void?
 ;   Draws the card labels component in the current canvas coordinate system.

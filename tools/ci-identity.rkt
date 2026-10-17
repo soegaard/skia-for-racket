@@ -7,9 +7,6 @@
 ;; Prints the Racket version, VM, operating system, and architecture as structured evidence.
 ;; The CI runner uses this receipt to identify the runtime that performed its checks.
 
-;;;
-;;; Imports and Exports
-;;;
 ;; No Skia/GUI dependency: validate the selected interpreter before installing.
 (require json ffi/unsafe)
 (module+ main

@@ -86,6 +86,11 @@
                      #:call-as-current activate #:current? current?))
 
 (module+ test
+
+  ;;;
+  ;;; Backend Declarations and Context Options
+  ;;;
+
   (test-case "backend declarations do not claim runtime availability"
     (check-equal? (gpu-backends) '(opengl metal direct3d))
     (check-false (gpu-backend? 'vulkan))
@@ -138,6 +143,10 @@
                   (list 'returned (gpu-context-options->jsexpr b)))
     (check-exn exn:fail:contract?
       (lambda () (make-gpu-context-options #:manual-mipmapping? 1))))
+
+  ;;;
+  ;;; Provider Callback and Activation Contracts
+  ;;;
 
   (test-case "provider construction retains callbacks without invoking them"
     (define calls 0)
@@ -199,6 +208,10 @@
     (for ([value (in-list (list (hasheq 'bad 'symbol) (hash "bad" 1)
                                (hasheq 'bad #(1)) (hasheq 'bad +inf.0)))])
       (check-exn exn:fail? (lambda () (p:freeze-gpu-details value)))))
+
+  ;;;
+  ;;; Context Activation and Thread Ownership
+  ;;;
 
   (test-case "invalid public context choices fail without a native constructor"
     (check-exn exn:fail? (lambda () (make-gpu-context)))
@@ -278,6 +291,10 @@
         (check-equal? (gpu-context-state context) 'ready)
         (check-true (hash-ref (gpu-context-info context) 'shutdown_requested))
         (check-exn exn:fail? (lambda () (call-with-gpu-context context void))))))
+
+  ;;;
+  ;;; Child Retirement, Abandonment, and Shutdown
+  ;;;
 
   (test-case "live children block close and queued releases are counted separately"
     (with-fake

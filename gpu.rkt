@@ -33,6 +33,10 @@
          make-gpu-provider gpu-provider? gpu-provider-name gpu-provider-backend
          exn:fail:gpu:unavailable? exn:fail:gpu:unavailable-step)
 
+;;;
+;;; Backend Loading and Context Construction
+;;;
+
 ; gl-driver-module : path?
 ;   Locates private/gpu-driver-gl.rkt for lazy loading of the selected implementation.
 (define-runtime-path gl-driver-module "private/gpu-driver-gl.rkt")
@@ -99,6 +103,10 @@
        ((dynamic-require metal-driver-module 'make-owned-metal-components) #:options options))
      (wrap-gpu-domain (make-gpu-domain host driver))]))
 
+;;;
+;;; Context Scopes and State Queries
+;;;
+
 ; call-with-gpu-context : gpu-context? (-> any) -> any
 ;   Activates the context's provider, calls thunk without arguments, and returns its multiple
 ;   values.
@@ -127,6 +135,10 @@
 (define (gpu-context-info context)
   (domain-info (context-domain 'gpu-context-info context)))
 
+;;;
+;;; Context Shutdown and Deferred Releases
+;;;
+
 ; gpu-context-abandon! : gpu-context? -> void?
 ;   Marks a context abandoned on its owning thread, outside all GPU execution scopes.
 (define (gpu-context-abandon! context)
@@ -147,6 +159,10 @@
 ; gpu-drain-pending-contexts! : [#:abandon? boolean?] -> (listof (and/c hash? immutable?))
 ;   Attempts shutdown for pending contexts owned by the calling Racket thread.
 (define gpu-drain-pending-contexts! drain-pending-domains!)
+
+;;;
+;;; GPU Smoke Rendering
+;;;
 
 ; gpu-smoke-test : gpu-context? -> (and/c hash? immutable?)
 ;   Runs a fixed synchronous 8 by 8 GPU rendering diagnostic.
@@ -173,6 +189,10 @@
          (only-in "color.rkt" color->rgba)
          "private/gpu-render.rkt")
 (provide render-gpu->raster-image)
+
+;;;
+;;; Offscreen Rendering and Raster Readback
+;;;
 
 ; render-gpu->raster-image : (integer-in 1 32768) (integer-in 1 32768) (-> canvas? any) #:backend
 ;   (or/c 'opengl 'metal 'direct3d) [#:background color?] [#:provider (or/c gpu-provider? #f)]

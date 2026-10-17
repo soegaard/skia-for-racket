@@ -14,7 +14,7 @@
 (require racket/cmdline racket/file racket/path racket/string "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Page Styling and Linked Regions
 ;;;
 
 ; ink : string?
@@ -75,6 +75,10 @@
      (label c (number->string number) 652 437 9))
    #:margins 24 #:background 'white))
 
+;;;
+;;; File Links and URIs
+;;;
+
 ; escape-html : string? -> string?
 ;   Escapes text before inserting it into the generated HTML report.
 (define (escape-html s)
@@ -98,6 +102,10 @@
                (write-char (string-ref digits (quotient b 16)) out)
                (write-char (string-ref digits (remainder b 16)) out))))
   (get-output-string out))
+
+;;;
+;;; Linked Document Pages
+;;;
 
 ; make-registry : any/c -> list?
 ;   Constructs registry for the example's drawing pipeline.

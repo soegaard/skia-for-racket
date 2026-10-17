@@ -48,6 +48,7 @@
     (define/public (private-in-cairo-context proc)
       (define-values (w h m clip) (send this dc-region-query-info))
       (call-with-dc-region-query w h m clip proc))))
+
 ;;;
 ;;; Region Selection and Detached Snapshots
 ;;;

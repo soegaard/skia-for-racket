@@ -12,8 +12,9 @@
 ;;;
 
 (require rackunit "model.rkt" "../support/sprite-math.rkt")
+
 ;;;
-;;; Test Data and Helpers
+;;; Game Input Fixtures
 ;;;
 
 ; none : any/c -> boolean?
@@ -23,6 +24,7 @@
 ; keys : any/c ... -> procedure?
 ;   Builds a held-key predicate for deterministic simulation tests.
 (define (keys . names) (lambda (name) (and (member name names) #t)))
+
 ;;;
 ;;; Regression Checks
 ;;;

@@ -15,7 +15,7 @@
 (provide render-svg-probes)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Page Styling
 ;;;
 
 ; ink : string?
@@ -59,6 +59,10 @@
   (label c "RACKET / SKIA   |   SVG OUTPUT PROBE" 30 (- height 20) 11)
   (label c (number->string index) (- width 40) (- height 20) 11 ink))
 
+;;;
+;;; Vector Geometry Page
+;;;
+
 ; draw-vectors : canvas? -> void?
 ;   Draws the vectors component in the current canvas coordinate system.
 (define (draw-vectors c)
@@ -96,6 +100,10 @@
       (draw-rounded-rect c -52 -42 104 84 10 10 p)
       (draw-line c -40 0 40 0 border)
       (draw-line c 0 -30 0 30 border))))
+
+;;;
+;;; Text and Image Page
+;;;
 
 ; draw-sun : canvas? -> void?
 ;   Draws the sun component in the current canvas coordinate system.
@@ -147,6 +155,10 @@
     (draw-picture c pic #:x 535 #:y 377 #:width 72 #:height 72)
     (draw-picture c pic #:x 646 #:y 356 #:width 114 #:height 114)))
 
+;;;
+;;; Raster Effects Page
+;;;
+
 ; draw-effects : canvas? -> void?
 ;   Draws the effects component in the current canvas coordinate system.
 (define (draw-effects c)
@@ -175,6 +187,10 @@
   (with-skia ([dash (make-dash-path-effect '(10 6))]
               [p (make-paint #:color ink #:style 'stroke #:stroke-width 3 #:path-effect dash)])
     (draw-line c 40 410 675 410 p)))
+
+;;;
+;;; SVG Export and Review Files
+;;;
 
 ; html-escape : string? -> string?
 ;   Escapes text before inserting it into the generated HTML report.

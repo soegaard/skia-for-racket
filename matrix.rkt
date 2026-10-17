@@ -19,6 +19,10 @@
          matrix-translate matrix-scale matrix-rotate matrix-rotate-degrees matrix-skew
          matrix-compose matrix-invert matrix-map-point matrix-map-vector matrix-map-rect)
 
+;;;
+;;; Matrix Representation and Validation
+;;;
+
 ;; Public affine values use the SVG/Racket six-coefficient order:
 ;; [xx xy x0] [x]   [xx*x + xy*y + x0]
 ;; [yx yy y0] [y] = [yx*x + yy*y + y0]
@@ -50,6 +54,10 @@
   (unless (matrix? m) (raise-argument-error who "matrix?" m))
   m)
 
+;;;
+;;; Matrix Construction and Element Conversion
+;;;
+
 ; make-matrix : [real?] [real?] [real?] [real?] [real?] [real?] -> matrix?
 ;   Returns an affine matrix with the given coefficients.
 (define (make-matrix [xx 1] [yx 0] [xy 0] [yy 1] [x0 0] [y0 0])
@@ -74,6 +82,10 @@
   (unless (and (vector? v) (= (vector-length v) 6))
     (raise-argument-error 'vector->matrix "vector of six affine coefficients" v))
   (apply make-matrix (vector->list v)))
+
+;;;
+;;; Affine Transform Constructors
+;;;
 
 ; matrix-translate : real? real? -> matrix?
 ;   Returns a translation matrix.
@@ -106,6 +118,10 @@
         [(= reduced 180) (make-matrix -1 0 0 -1)]
         [(= reduced 270) (make-matrix 0 -1 1 0)]
         [else (matrix-rotate (* reduced (/ pi 180.0)))]))
+
+;;;
+;;; Composition and Inversion
+;;;
 
 ; multiply : matrix? matrix? -> matrix?
 ;   Forms A times B, so the resulting mapping applies B before A.
@@ -152,6 +168,10 @@
      ;; range is also unavailable, rather than a matrix containing infinities.
      (and (for/and ([v (in-list values)]) (<= -3.402823e38 v 3.402823e38))
           (apply make-matrix values))]))
+
+;;;
+;;; Point, Vector, and Rectangle Mapping
+;;;
 
 ; map-xy : symbol? matrix? real? real? boolean? -> (values real? real?)
 ;   Maps two coordinates, optionally adding translation, and checks the results.

@@ -8,14 +8,16 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; Shared recording corpus and independent-oracle scene. No GUI or GPU.
+
 ;;;
 ;;; Imports and Exports
 ;;;
 
 (require racket/class (prefix-in rd: racket/draw))
 (provide make-dc-recording draw-dc-replay-oracle draw-dc-replay-scene)
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Recorded Drawing and Oracle Scenes
 ;;;
 
 ; make-dc-recording : procedure? -> (values procedure? procedure?)

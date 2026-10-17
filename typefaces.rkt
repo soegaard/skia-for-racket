@@ -50,6 +50,10 @@
          typeface-kerning-pair-adjustments
          typeface->font-bytes)
 
+;;;
+;;; Typeface and Style-Set Ownership
+;;;
+
 ; font-style-set? : any/c -> boolean?
 ;   Returns #t for an owned font-style-set resource and #f otherwise.
 (define (font-style-set? v) (font-style-set-resource? v))
@@ -69,6 +73,10 @@
 ;   Adopts a newly owned native typeface.
 (define (new-face who create)
   (make-typeface-record (new-owned who 'typeface create sk_typeface_unref)))
+
+;;;
+;;; Copied Font Input
+;;;
 
 ; from-bytes : symbol? (or/c #f font-manager?) bytes? exact-nonnegative-integer? -> typeface?
 ;   Copies font data and selects a collection member, rewrapping TTC members for the macOS loader.
@@ -98,10 +106,6 @@
                (new-face who (lambda () (sk_fontmgr_create_from_data mp dp native-index)))))
            (new-face who (lambda () (sk_typeface_create_from_data dp native-index))))
        (void/reference-sink copied submitted)))))
-
-;;;
-;;; Copied Font Input
-;;;
 
 ; typeface-from-bytes : bytes? [#:index (integer-in 0 2147483647)] -> typeface?
 ;   Creates an owned typeface from copied font data.

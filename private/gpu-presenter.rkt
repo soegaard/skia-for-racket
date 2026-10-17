@@ -23,9 +23,15 @@
 (module* adapter-internals #f
   (provide (struct-out presentation-adapter) make-presenter presentation-metrics presentation-active?
            call-with-gpu-frame-target))
+
+;;;
+;;; Presenter, Adapter, and Frame State
+;;;
+
 ;; call-target(metrics, receive) calls receive(canvas, description, present!)
 ;; exactly once, or returns #f if no drawable is available. It must retire its
 ;; target on EVERY exit. post queues (never invokes inline) on the owner thread.
+
 (struct presentation-adapter (backend context measure call-target post close describe))
 ;; Fields:
 ;;   backend: backend symbol. context: retained public GPU context. measure: zero-argument immutable
@@ -62,6 +68,10 @@
 ;;   owner: callback's execution thread. canvas-value and context-value: mutable borrowed drawing
 ;;   handles, cleared at scope exit. info: immutable frame metrics and identity. live?: validity
 ;;   flag. targets: borrowed presenter cache, also cleared at exit.
+
+;;;
+;;; Owner-Thread Guards and Presentation Metrics
+;;;
 
 ; pending-cleanup : hash?
 ;   Roots only presenters whose shutdown has been requested until owner-thread cleanup runs.
@@ -161,6 +171,10 @@
           'adapter ((presentation-adapter-describe (gpu-presenter-adapter p)))
           'visible_pixels_verified #f 'performance_measured #f))
 
+;;;
+;;; Frame Leases and Target Access
+;;;
+
 ; gpu-frame-expired? : gpu-frame? -> boolean?
 ;   Reports whether the callback lease has ended.
 (define (gpu-frame-expired? f)
@@ -228,6 +242,10 @@
 ; gpu-frame-index : gpu-frame? -> exact-positive-integer?
 ;   Returns the monotonically increasing acquisition index for this presenter.
 (define (gpu-frame-index f) (hash-ref (gpu-frame-info f) 'frame_index))
+
+;;;
+;;; Redraw Scheduling and Presenter Construction
+;;;
 
 ; invalidate-queue! : gpu-presenter? -> any
 ;   Advances the scheduling ticket so previously queued redraw callbacks become harmless.
@@ -304,6 +322,10 @@
    (lambda (_)
      ;; Constructor registration runs atomically; caller owns error cleanup.
      (error 'make-presenter "current custodian has already shut down"))))
+
+;;;
+;;; Deferred Cleanup and Closure
+;;;
 
 ; post-cleanup! : gpu-presenter? -> void?
 ;   Posts owner-thread teardown at most once instead of destroying native resources from
@@ -399,6 +421,10 @@
   (for/list ([p (in-list candidates)])
     (with-handlers ([(lambda (_) #t) (lambda (e) (gpu-presenter-info p))])
       (gpu-presenter-close! p) (gpu-presenter-info p))))
+
+;;;
+;;; Frame Acquisition, Rendering, and Presentation
+;;;
 
 ; gpu-presenter-render! : gpu-presenter? -> (or/c 'present-requested 'skipped 'cancelled)
 ;   Performs one immediate presentation attempt on the presenter owner thread.

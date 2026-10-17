@@ -9,7 +9,7 @@
 ;; acceptance remains controlled by the dedicated test tools.
 
 ;;;
-;;; Test Suite Imports
+;;; Test Suite Imports and Deferred Native Modules
 ;;;
 
 (require "tests/public-api-pure-test.rkt")
@@ -290,7 +290,15 @@
 ;   Locates the global cache native test suite for explicit dynamic loading.
 (define-runtime-path global-cache-native-tests-file "tests/global-cache-native-test.rkt")
 
+;;;
+;;; Command-Line Selection and Suite Execution
+;;;
+
 (module+ main
+
+  ;;;
+  ;;; Command-Line Options
+  ;;;
 
   ; pure-only? : boolean?
   ;   Records whether command-line selection excludes suites requiring the native library.
@@ -301,6 +309,10 @@
    [("--pure") "Run only tests that do not load libSkiaSharp"
                  (set! pure-only? #t)]
    #:args () (void))
+
+  ;;;
+  ;;; Native-Free Test Suites
+  ;;;
 
   ; failures : exact-nonnegative-integer?
   ;   Accumulates failure counts from the pure suites before any optional native test run.
@@ -376,6 +388,11 @@
      (run-tests gpu-output-pure-tests)
      (run-tests gpu-cache-pure-tests)
      (run-tests gpu-performance-pure-tests)))
+
+  ;;;
+  ;;; Optional Native Test Suites and Exit Status
+  ;;;
+
   (cond
     [pure-only? (displayln "Native rendering tests NOT RUN (--pure).")]
     [else

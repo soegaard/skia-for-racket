@@ -10,6 +10,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/list
          rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
@@ -27,6 +28,11 @@
 (define pure-tests
   (test-suite
    "Colors, validation, and ABI layouts (no native library)"
+
+   ;;;
+   ;;; Color Values and Basic Constructor Validation
+   ;;;
+
    (test-case "byte colors and named colors"
      (check-equal? (rgb 1 2 3) (rgba 1 2 3 255))
      (check-equal? (color->argb 'red) #xffff0000)
@@ -64,6 +70,11 @@
    (test-case "byte-limit parameter rejects invalid settings"
      (for ([n '(0 -1 1.5 #f)])
        (check-exn exn:fail:contract? (lambda () (current-skia-byte-limit n)))))
+
+   ;;;
+   ;;; Native ABI Sizes, Field Order, and Padding
+   ;;;
+
    (test-case "C bool is one byte"
      (check-equal? (ctype-sizeof _stdbool) 1))
    (test-case "native struct sizes"
@@ -127,6 +138,11 @@
      (check-equal? (ptr-ref (ptr-add s 4) _uint8) 0)
      (check-equal? (ptr-ref (ptr-add s 16) _int) 1)
      (check-equal? (ptr-ref (ptr-add s 20) _int) 0))
+
+   ;;;
+   ;;; Font, Shader, Path, and Codec Argument Checks
+   ;;;
+
    (test-case "font and typeface options validate before native loading"
      (check-exn exn:fail:contract? (lambda () (make-font 'not-a-typeface)))
      (check-exn exn:fail:contract? (lambda () (make-font #:size 0)))
@@ -237,6 +253,11 @@
      (check-equal? (ptr-ref m _uint32) #x0f)
      (for ([expected (in-range 1 16)] [offset (in-range 4 64 4)])
        (check-= (ptr-ref (ptr-add m offset) _float) expected 0.001)))
+
+   ;;;
+   ;;; Filter, Picture, and Positioned Text Argument Checks
+   ;;;
+
    (test-case "filter constructors validate before native loading"
      (check-exn exn:fail:contract?
                 (lambda () (make-color-matrix-filter '(1 2 3))))
@@ -294,6 +315,11 @@
      (check-exn exn:fail:contract? (lambda () (text-blob-bounds 'not-a-blob)))
      (check-exn exn:fail:contract?
                 (lambda () (draw-text-blob 'not-a-canvas 'not-a-blob 0 0 'not-a-paint))))
+
+   ;;;
+   ;;; Shaping and Layout Argument Checks
+   ;;;
+
    (test-case "HarfBuzz shaping ABI struct sizes"
      (check-equal? (ctype-sizeof _hb-glyph-info) 20)
      (check-equal? (ctype-sizeof _hb-glyph-position) 20)
@@ -336,6 +362,11 @@
                 (lambda ()
                   (layout-mixed-text 'bad 'also-bad "alpha" #:width 40
                                      #:break-provider (lambda () '(2))))))
+
+   ;;;
+   ;;; Bidirectional Resolution and Conformance Fixtures
+   ;;;
+
    (test-case "bidi resolver separates ordinary LTR and RTL text"
      (define-values (levels direction) (bidi-resolve-levels "abc אבג" 'auto))
      (check-eq? direction 'ltr)
@@ -432,6 +463,11 @@
      ;; paragraph level by L1 even though the preceding isolate is RTL.
      (check-equal? (vector-ref levels (- first-line-end 1)) 0)
      (check-equal? (vector-ref levels (- first-line-end 2)) 0))
+
+   ;;;
+   ;;; Mixed Layout and Unicode Line Breaking
+   ;;;
+
    (test-case "mixed-layout arguments validate before native loading"
      (check-exn exn:fail:contract? (lambda () (layout-mixed-text 'bad 'also-bad 42)))
      (check-exn exn:fail:contract?
@@ -493,6 +529,11 @@
      (check-equal?
       (arabic-kashida-boundaries (string #\u0628 #\u200C #\u0628))
       '()))
+
+   ;;;
+   ;;; Color Space and Filesystem Predicates
+   ;;;
+
    (test-case "color-space validation does not require native loading"
      (check-exn exn:fail:contract?
                 (lambda () (make-surface 1 1 #:color-space 'not-a-color-space)))

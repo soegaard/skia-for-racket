@@ -12,8 +12,9 @@
 ;;;
 
 (require racket/file racket/path racket/list racket/string json "../main.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Comparison Panels and Query Trace
 ;;;
 
 ; blue : rgba?
@@ -102,6 +103,10 @@
     (remember c (if (matrix3? m) (matrix3->matrix4 m) m) name before)
     (draw c)))
 
+;;;
+;;; Affine and Projective Grids
+;;;
+
 ; grid : canvas? -> void?
 ;   Draws the grid comparison in the current canvas coordinate system.
 (define (grid c)
@@ -153,6 +158,10 @@
     10)
   (footer c 1))
 
+;;;
+;;; Retained Depth
+;;;
+
 ; image-card : canvas? -> void?
 ;   Draws the image card comparison in the current canvas coordinate system.
 (define (image-card c)
@@ -181,6 +190,10 @@
   (label c
     "This transforms 2D drawing; it does not add a depth buffer, lighting, or hidden-surface removal." 0 407 10)
   (footer c 2))
+
+;;;
+;;; State and Clipping
+;;;
 
 ; restored : canvas? -> void?
 ;   Draws the restored comparison in the current canvas coordinate system.
@@ -225,6 +238,10 @@
     "Put the matrix inside the raster callback. Rasterizing later does not repair outer perspective." 0 407 10)
   (footer c 3))
 
+;;;
+;;; Review Reports
+;;;
+
 ; write-json-file : path-string? any/c -> void?
 ;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
@@ -236,6 +253,7 @@
   (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
     "&quot;")))])
     (string-replace text (car p) (cdr p))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

@@ -27,7 +27,7 @@
 
 
 ;;;
-;;; Diagnostic Operations
+;;; Template Location and Command-Line Output
 ;;;
 
 ; landing-template : path?
@@ -50,6 +50,10 @@
 (unless output
   (raise-user-error 'render-documentation-landing.rkt "--output is required"))
 
+
+;;;
+;;; HTML Navigation Generation
+;;;
 
 ; html-replacements : (listof pair?)
 ;   Lists HTML escapes with ampersand first so later entity insertions are not escaped again.
@@ -129,6 +133,10 @@
    (string-join (map collection-link documentation-collections) "\n")
    "</div></div></nav></div>"))
 
+
+;;;
+;;; Template Expansion and Publication
+;;;
 
 ; template : string?
 ;   Contains the unmodified landing template before navigation insertion.

@@ -43,6 +43,11 @@
   (check-true (regexp-match? #rx#"</svg>" bytes)))
 
 (module+ test
+
+  ;;;
+  ;;; Picture Recording, Storage, and Retained Inputs
+  ;;;
+
   (test-case "a picture outlives the recording callback and its paint"
     (with-skia ([picture (call-with-picture 20 20 draw-square)]
                 [surface (make-surface 20 20)])
@@ -97,6 +102,10 @@
       (canvas-clear! (surface-canvas surface) 'transparent)
       (draw-rect (surface-canvas surface) 0 0 20 20 filtered)
       (check-equal? (color->argb (surface-pixel surface 5 5)) #xff0000ff)))
+
+  ;;;
+  ;;; PDF and SVG Document Lifecycles
+  ;;;
 
   (test-case "PDF lifecycle distinguishes page end finish byte copy and release"
     (with-skia ([document (make-pdf-document)])
@@ -202,6 +211,10 @@
                      (check-exn exn:fail?
                                 (lambda () (canvas-link-destination! canvas 0 0 1 1 "x")))))])
       (check-true (picture? picture))))
+
+  ;;;
+  ;;; Page Replay, Raster Fallback, and Atomic Publication
+  ;;;
 
   (test-case "output-page callbacks run again for each export with restored modes"
     (define seen '())

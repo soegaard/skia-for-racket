@@ -23,7 +23,7 @@
          images-image)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; fixture-directory : path?
@@ -59,6 +59,10 @@
          (open-input-bytes (surface->png-bytes surface))
          'png/alpha))
        0.72))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; images-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

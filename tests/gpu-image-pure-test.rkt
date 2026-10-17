@@ -11,17 +11,18 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit racket/list (only-in ffi/unsafe void/reference-sink)
          "gpu-fixtures.rkt" "../private/lifetime.rkt" "../private/gpu-domain.rkt"
          "../private/gpu-context.rkt" "../private/core.rkt" "../gpu.rkt"
          (submod "../private/core.rkt" gpu-image-internals))
 (provide gpu-image-pure-tests)
 
-;; Mock pointer values exercise real lifetime/affinity bookkeeping, not Skia.
-
 ;;;
 ;;; Fixtures and Assertions
 ;;;
+
+;; Mock pointer values exercise real lifetime/affinity bookkeeping, not Skia.
 
 ; fixture : procedure? -> any
 ;   Supplies a mock context and image ownership state without allocating GPU memory.
@@ -72,6 +73,11 @@
 (define gpu-image-pure-tests
   (test-suite
    "GPU images: pure transitive affinity, setters, recording and deferred ownership"
+
+   ;;;
+   ;;; Image Residency and Transitive Affinity
+   ;;;
+
    (test-case "CPU handles start independent"
      (fixture (lambda (d ctx log cpu image derive track)
                 (check-false (owned-gpu-domain (cpu 'paint)))
@@ -134,6 +140,11 @@
                 (owned-close! 'test source)
                 (check-eq? (owned-gpu-domain sh) d)
                 (check-not-exn (lambda () (call-with-owned 'query (list sh) void))))))
+
+   ;;;
+   ;;; Paint Slot Ownership and Mutation
+   ;;;
+
    (test-case "paint attachment promotes its existing lifetime cell"
      (fixture (lambda (d ctx log cpu image derive track)
                 (define p (cpu 'paint))
@@ -201,6 +212,11 @@
                         (lifetime-native-call 'sk_paint_set_shader (list pp sp)
                           (lambda () (error 'native "injected failure")))))))
                 (check-eq? (owned-gpu-domain p) d))))
+
+   ;;;
+   ;;; Drawing Targets and Recorded Graphs
+   ;;;
+
    (test-case "GPU graph cannot target CPU raster PDF or SVG"
      (fixture (lambda (d ctx log cpu image derive track)
                 (define src (image))
@@ -248,6 +264,11 @@
                             image->webp-bytes image->encoded-bytes image-convert-color-space
                             image-original-encoded-bytes image-subset picture->bytes picture->image)])
                   (check-exn exn:fail? (lambda () (call-with-owned op (list h) void)))))))
+
+   ;;;
+   ;;; Deferred Destruction and Context Lifetime
+   ;;;
+
    (test-case "explicit close queues derived destruction without provider acquisition"
      (fixture (lambda (d ctx log cpu image derive track)
                 (define h (derive 'shader 'shader (list (image))))

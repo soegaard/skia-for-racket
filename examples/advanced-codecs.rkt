@@ -13,11 +13,12 @@
 
 (require racket/cmdline "../main.rkt" "../tests/codec-fixtures.rkt")
 
+;;;
+;;; Animation Disposal and Orientation Gallery
+;;;
+
 ;; A deterministic contact sheet: animation disposal/blending above, all eight
 ;; normalized EXIF orientations below. All input images are local/in-memory.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-advanced-codecs : path-string? -> void?
 ;   Renders the advanced codecs example to the selected output destination.

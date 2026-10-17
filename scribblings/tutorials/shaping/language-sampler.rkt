@@ -16,7 +16,7 @@
 (require skia)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Sampler Dimensions and Palette
 ;;;
 
 ; width : exact-integer?
@@ -50,6 +50,10 @@
 ; orange-color : string?
 ;   Specifies the orange color color used by this drawing.
 (define orange-color "#F38C42")
+
+;;;
+;;; Script Font Selection and Shapers
+;;;
 
 ; require-script-face : any/c any/c string? string? #:match [any/c] -> typeface?
 ;   Finds a font supporting the sample and reports a useful error when none is available.
@@ -118,6 +122,10 @@
 ;   Retains the hebrew shaper used to position the corresponding script.
 (define hebrew-shaper (make-shaper hebrew-font))
 
+;;;
+;;; Labels and Alignment
+;;;
+
 ; right-aligned-run-x : any/c real? -> real?
 ;   Computes the baseline origin that aligns a shaped run to the requested right edge.
 (define (right-aligned-run-x run right-edge)
@@ -158,6 +166,10 @@
                     54 126
                     title-font ink)
   (draw-rule canvas 150))
+
+;;;
+;;; Script and Feature Rows
+;;;
 
 ; draw-latin-row : canvas? -> void?
 ;   Draws the latin row component in the current canvas coordinate system.
@@ -239,6 +251,10 @@
                    570 680 alternate-paint)
   (draw-label canvas "default" 250 714)
   (draw-label canvas "liga=0" 570 714))
+
+;;;
+;;; Sampler Assembly
+;;;
 
 ; draw-sampler : canvas? -> void?
 ;   Draws the sampler component in the current canvas coordinate system.

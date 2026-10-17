@@ -12,6 +12,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Original tiny fixtures, authored for this suite. No network, font, or
 ;; runtime image encoder is needed to load them. Canvas size is 3 by 2.
 (provide animated-gif animated-webp truncated-gif gif-expected-frames
@@ -19,7 +20,7 @@
 
 
 ;;;
-;;; Fixtures and Assertions
+;;; Animated Image Inputs and Expected Frames
 ;;;
 
 ; animated-gif : bytes?
@@ -112,6 +113,10 @@
 ; webp-expected-frames : (vectorof bytes?)
 ;   Indexes the three expected composited WebP rasters by zero-based frame number.
 (define webp-expected-frames (vector-immutable gif-frame-0 gif-frame-1 gif-frame-2))
+
+;;;
+;;; JPEG Orientation Fixtures
+;;;
 
 ;; Expected source-pixel orders for the asymmetric 3x2 raster [A B C; D E F].
 ;; These hand-written permutations are independent of the orientation code.

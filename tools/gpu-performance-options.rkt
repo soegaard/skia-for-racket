@@ -12,13 +12,14 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require "../private/gpu-backends.rkt" (only-in "../private/gpu-d3d12-util.rkt" d3d12-selection!))
 (require racket/cmdline racket/runtime-path racket/file file/sha1
   "../private/gpu-performance-util.rkt")
 (provide read-performance-options clear-performance-results! performance-source-fingerprints)
 
 ;;;
-;;; Diagnostic Operations
+;;; Evidence Files and Source Fingerprints
 ;;;
 
 ; source-root : path?
@@ -56,6 +57,10 @@
   ;; SHA1 here is a reproducibility fingerprint, not a security attestation.
   (for/list ([p (in-list source-paths)])
     (hasheq 'path p 'sha1 (call-with-input-file (build-path source-root p) sha1))))
+
+;;;
+;;; Benchmark Command-Line Options
+;;;
 
 ; read-performance-options : string? -> hash?
 ;   Parses backend/host and measurement options, then validates the benchmark configuration.

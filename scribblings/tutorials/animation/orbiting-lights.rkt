@@ -27,7 +27,7 @@
 (provide open-animation-window)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Renderer Selection and Animation Window
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
@@ -52,6 +52,11 @@
   (when (and (eq? renderer 'gpu) (not gpu-backend))
     (error 'open-animation-window
            "no supported GPU backend; use --renderer raster"))
+
+  ;;;
+  ;;; Window State and Cleanup
+  ;;;
+
   (define view #f)
   (define ticker #f)
   (define window #f)
@@ -80,6 +85,10 @@
   (define controls
     (new horizontal-panel% [parent panel]
          [stretchable-height #f]))
+
+  ;;;
+  ;;; Animation Clock and Frame Drawing
+  ;;;
 
   (define elapsed-seconds 0.0)
   (define previous-ms (current-inexact-monotonic-milliseconds))

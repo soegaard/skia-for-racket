@@ -31,6 +31,10 @@
          output-group-report-execution output-group-report->jsexpr
          exn:fail:output-group? exn:fail:output-group-report)
 
+;;;
+;;; Group Reports and Nested Capture State
+;;;
+
 (struct output-group-report
   (backend policy strategy reason bounds padded-bounds pixel-size scale
            features label children execution)
@@ -79,6 +83,10 @@
 ;   Accumulates child reports in reverse capture order until the parent finishes.
 (define enclosing-children (make-parameter #f))
 
+;;;
+;;; Report Serialization and Rejection
+;;;
+
 ; output-group-report->jsexpr : output-group-report? -> (and/c hash? immutable?)
 ;   Returns a detached JSON-compatible hash of the report.
 (define (output-group-report->jsexpr report)
@@ -106,6 +114,10 @@
                   (output-group-report-reason report)
                   (output-group-report-backend report) (output-group-report-policy report))
           (current-continuation-marks) report)))
+
+;;;
+;;; Group Capture, Policy Selection, and Replay
+;;;
 
 ; draw-output-group : canvas? real? real? (and/c real? (>/c 0)) (and/c real? (>/c 0)) (-> canvas?
 ;   any) [#:policy (or/c 'prefer-vector 'require-vector 'raster)] [#:padding (or/c real? list?)]

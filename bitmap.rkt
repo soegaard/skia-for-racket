@@ -8,10 +8,6 @@
 ;; This opt-in bridge connects native rendering results to Racket drawing consumers without exposing
 ;; native pixel storage.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require "main.rkt"
          "private/bitmap-transfer.rkt")
 (provide surface->bitmap image->bitmap)

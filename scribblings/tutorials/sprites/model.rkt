@@ -9,6 +9,7 @@
 
 
 ;; Plain Racket data. The simulation has no GPU resources.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -17,7 +18,7 @@
          scene-width scene-height make-ball-world reflect-axis step-balls!)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Ball World State
 ;;;
 
 ; scene-width : exact-integer?
@@ -75,8 +76,13 @@
            scale))
    0))
 
+;;;
+;;; Fixed-Step Motion and Reflection
+;;;
+
 ;; Reflect the unfolded position into the interval. This also handles an update
 ;; that crosses more than one wall; clamping would lose that travel distance.
+
 
 ; reflect-axis : real? real? real? real? real? -> (values real? real?)
 ;   Reflects traveled distance into an interval, including crossings of multiple walls.

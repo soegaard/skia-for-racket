@@ -10,8 +10,14 @@
 (require "gpu-provider.rkt" "gpu-domain.rkt")
 (provide (struct-out egl-platform-ops) make-egl-components egl-extension?
          check-egl-options call-with-egl-lock)
+
+;;;
+;;; Platform Protocol and Serialized Access
+;;;
+
 ;; No EGL, GL, GUI or Skia initialization. Operations are private synchronous
 ;; native procedures (or test doubles). enter returns a restoration thunk.
+
 (struct egl-platform-ops (create close enter current? describe resolve))
 ;; Fields:
 ;;   create, close, enter, current?, describe, and resolve: injected procedures for host
@@ -50,6 +56,10 @@
     (error who "device-index applies only to #:platform 'device"))
   (unless (memq surface '(surfaceless pbuffer))
     (raise-argument-error who "'surfaceless or 'pbuffer" surface)))
+
+;;;
+;;; Owned EGL Driver Construction
+;;;
 
 ; make-egl-components : egl-platform-ops? any/c -> (values any/c gpu-driver?)
 ;   Combines injected EGL host operations with a GL driver while preserving failure cleanup.

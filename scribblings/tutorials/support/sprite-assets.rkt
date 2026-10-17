@@ -10,6 +10,7 @@
 
 
 ;; Documentation-local ownership helper. The library API is unchanged.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -19,7 +20,7 @@
          sprite-texture-for-frame! close-sprite-texture!)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Sprite Texture Ownership and Upload
 ;;;
 
 (struct sprite-texture (cpu [gpu #:mutable] [context #:mutable] [uploads #:mutable])

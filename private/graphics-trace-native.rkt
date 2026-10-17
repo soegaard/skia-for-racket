@@ -14,6 +14,11 @@
          (only-in "live-port-runtime.rkt" in-port-service? active-operation-count))
 (provide global-memory-statistics/native collect-memory-statistics/native
          call-global-cache-native trace-binding-count)
+
+;;;
+;;; Native Trace Callback ABI
+;;;
+
 (define-cstruct _trace-procs ([numeric _fpointer] [string _fpointer])
   #:malloc-mode 'atomic-interior)
 ;; Fields:
@@ -55,6 +60,10 @@
 (define _string-callback
   (_fun #:atomic? #t _pointer _pointer _pointer _pointer _pointer -> _void))
 
+;;;
+;;; Global Cache Access
+;;;
+
 ; check-global-cache-idle! : symbol? -> void?
 ;   Rejects global cache access during live-port service or any active live-stream operation.
 (define (check-global-cache-idle! who)
@@ -73,6 +82,10 @@
   (skia-check!)
   (call-as-atomic
    (lambda () (check-global-cache-idle! who) (thunk))))
+
+;;;
+;;; Retained Provider and Bounded Callback Capture
+;;;
 
 ; roots : (or/c #f list?)
 ;   Retains installed callback procedures, function pointers, and the native table for the process
@@ -179,6 +192,10 @@
     (set! provider-marker marker)
     (set! roots (list numeric-callback string-callback numeric string table))
     (set-procs table)))
+
+;;;
+;;; Memory Dump Execution
+;;;
 
 ; global-memory-statistics/native : any/c any/c any/c any/c any/c -> any
 ;   Collects a bounded snapshot of Skia's process-global caches through the shared native dump

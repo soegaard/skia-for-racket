@@ -20,6 +20,10 @@
          named-xyz-d50 primaries->xyz-d50 make-rgb-color-space
          color-space-transfer-function color-space-xyz-d50)
 
+;;;
+;;; Transfer-Function Values and Native Conversion
+;;;
+
 ;; Detached values. Coefficients are in skcms/ICC function-4 order g,a,b,c,d,e,f.
 ;; Never expose a native pointer.
 (struct transfer-function (coefficients) #:transparent #:constructor-name transfer-record)
@@ -80,6 +84,10 @@
                     (sk-xyz-m10 m) (sk-xyz-m11 m) (sk-xyz-m12 m)
                     (sk-xyz-m20 m) (sk-xyz-m21 m) (sk-xyz-m22 m)))
 
+;;;
+;;; Named Transfers and Transfer Arithmetic
+;;;
+
 ; transfer-names : (listof symbol?)
 ;   Lists the transfer-function names accepted by the named factory.
 (define transfer-names '(srgb linear gamma-2.2 rec2020))
@@ -139,6 +147,10 @@
   (define inverse (blank-transfer))
   (and (sk_colorspace_transfer_fn_invert n inverse) (transfer-value inverse)))
 
+;;;
+;;; Color Gamut Matrices
+;;;
+
 ; named-xyz-d50 : (or/c 'srgb 'adobe-rgb 'display-p3 'rec2020 'xyz) -> (and/c (vectorof real?)
 ;   immutable?)
 ;   Returns the named native RGB-to-XYZ-D50 matrix as nine row-major coefficients.
@@ -172,6 +184,10 @@
     (raise-arguments-error who "primaries do not define a usable RGB gamut"
                            "red/green/blue/white" (list red green blue white)))
   (xyz-value m))
+
+;;;
+;;; RGB Color-Space Construction and Inspection
+;;;
 
 ; make-rgb-color-space : (or/c transfer-function? 'srgb 'linear 'gamma-2.2 'rec2020) (or/c 'srgb
 ;   'adobe-rgb 'display-p3 'rec2020 'xyz (listof real?) (vectorof real?)) -> color-space?
@@ -214,6 +230,10 @@
 ;; 0.78b: detached XYZ-D50 matrix arithmetic. These are color-space matrices,
 ;; not geometric/projective matrices and not an encoded-pixel conversion API.
 (provide xyz-d50-concat xyz-d50-invert)
+
+;;;
+;;; XYZ Matrix Composition and Inversion
+;;;
 
 ; xyz-finite? : (vectorof real?) -> boolean?
 ;   Checks that every XYZ coefficient excludes infinities and NaN.

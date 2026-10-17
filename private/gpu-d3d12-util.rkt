@@ -11,8 +11,13 @@
 (provide (struct-out d3d12-platform-ops) (struct-out d3d12-context-ops)
          d3d12-selection! make-d3d12-components)
 
+;;;
+;;; Injected Driver Operations and Adapter Selection
+;;;
+
 ;; Private synchronous operations. Tests supply doubles without Windows/Skia.
 ;; Adapter, device and queue factories return owned +1 COM references.
+
 (struct d3d12-platform-ops (adapter device queue release describe removed-reason))
 ;; Fields:
 ;;   adapter, device, and queue: native creation procedures. release: COM release procedure.
@@ -35,6 +40,10 @@
   (when (and (eq? adapter 'warp) (not (zero? index)))
     (raise-arguments-error 'make-gpu-context "WARP has no selectable adapter index" "index" index))
   (void))
+
+;;;
+;;; Owned Device and Context Construction
+;;;
 
 ; make-d3d12-components : d3d12-platform-ops? d3d12-context-ops? any/c exact-nonnegative-integer? ->
 ;   (values gpu-provider? gpu-driver?)

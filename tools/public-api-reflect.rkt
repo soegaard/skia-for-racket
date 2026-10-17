@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; API reflection only: never apply an exported procedure, read a parameter,
 ;; construct an exported class, or invoke a renderer to discover its signature.
 (require racket/class racket/list racket/format)
@@ -18,7 +19,7 @@
 
 
 ;;;
-;;; Diagnostic Operations
+;;; Value Shapes and Public Export Reflection
 ;;;
 
 ; public-value-shape : any/c -> hash?

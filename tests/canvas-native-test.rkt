@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit racket/list racket/file "../main.rkt")
 (provide canvas-native-tests)
 
@@ -50,6 +51,11 @@
 (define canvas-native-tests
   (test-suite
    "Canvas primitives: native geometry, queries, and layers"
+
+   ;;;
+   ;;; Points, Arcs, and Rounded Geometry
+   ;;;
+
    (test-case "round point paints its center"
      (with-skia ([s (make-surface 30 30)] [p (make-paint #:color 'red #:cap 'round #:stroke-width 8)])
        (draw-point (surface-canvas s) 10 10 p)
@@ -117,6 +123,11 @@
        (check-exn exn:fail:contract?
          (lambda () (draw-double-rounded-rect (surface-canvas s)
                       (make-rounded-rect 0 0 10 10) (make-rounded-rect 8 8 10 10) p)))))
+
+   ;;;
+   ;;; Clip Queries and Quick Rejection
+   ;;;
+
    (test-case "draw-color obeys clipping and source blend"
      (with-skia ([s (make-surface 20 20 #:background 'white)])
        (define c (surface-canvas s))
@@ -173,6 +184,11 @@
        (check-false (canvas-quick-reject? c 1 1 5 5))
        (canvas-translate! c 100 0)
        (check-true (canvas-quick-reject? c 1 1 5 5))))
+
+   ;;;
+   ;;; Layer State and Scoped Lifetime
+   ;;;
+
    (test-case "layer applies opacity once to the composite"
      (with-skia ([s (make-surface 40 25 #:background 'white)])
        (layer-pair (surface-canvas s))
@@ -239,6 +255,11 @@
        (define c (document-begin-page! d 100 80)) (document-end-page! d)
        (check-exn exn:fail? (lambda () (canvas-save-layer! c)))
        (check-exn exn:fail? (lambda () (canvas-clip-empty? c)))))
+
+   ;;;
+   ;;; Document Policy and Recorded Provenance
+   ;;;
+
    (test-case "SVG native point sprites are a blocking audit feature"
      (define r (analyze-output-page
                  (page (lambda (c)

@@ -19,7 +19,7 @@
          make-study-images draw-checker draw-pixel-study)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Source Buffers and Stride
 ;;;
 
 ; pixel-width : exact-integer?
@@ -66,6 +66,10 @@
    #:row-bytes 12)
   buffer)
 
+;;;
+;;; Pixel Processing and Snapshots
+;;;
+
 ; duotone-rgba : bytes? -> bytes?
 ;   Maps RGB channels to two inks while preserving alpha and the input bytes.
 (define (duotone-rgba source)
@@ -111,6 +115,10 @@
   (stamp-region! buffer)
   (define stamped (raster-buffer->image buffer))
   (list original processed stamped))
+
+;;;
+;;; Pixel Study Drawing
+;;;
 
 ; draw-checker : canvas? real? real? real? real? -> void?
 ;   Draws a checkerboard that makes transparent pixels visible.

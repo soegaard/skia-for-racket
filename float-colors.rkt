@@ -24,6 +24,10 @@
          make-radial-gradient-color4f-shader make-sweep-gradient-color4f-shader
          make-two-point-conical-gradient-color4f-shader)
 
+;;;
+;;; Floating-Point Paint Colors
+;;;
+
 ; paint-color4f : paint? -> color4f?
 ;   Returns the paint's stored unpremultiplied extended-sRGB color as a detached value.
 (define (paint-color4f paint)
@@ -66,6 +70,10 @@
     (paint-set-color4f! p color #:color-space descriptor)
     p))
 
+;;;
+;;; Solid-Color Drawing and Shaders
+;;;
+
 ; canvas-clear-color4f! : canvas? color4f? -> void?
 ;   Fills the current clip with the supplied unpremultiplied color using source replacement.
 (define (canvas-clear-color4f! canvas color)
@@ -92,6 +100,10 @@
   (define native (color4f-native who color))
   (call-with-float-source-space who space
     (lambda (cp) (new-shader who (lambda () (sk_shader_new_color4f native cp))))))
+
+;;;
+;;; Gradient Geometry and Color Preparation
+;;;
 
 ; point : symbol? (or/c list? vector?) -> sk-point?
 ;   Validates an x/y pair and converts it to a native point.
@@ -150,6 +162,10 @@
       (when ps (for ([v (in-list positions)] [i (in-naturals)]) (ptr-set! ps _float i v)))
       (begin0 (new-shader who (lambda () (build cs cp ps n mode lm)))
         (void/reference-sink cs ps lm xs positions)))))
+
+;;;
+;;; Gradient Shader Factories
+;;;
 
 ; make-linear-gradient-color4f-shader : (or/c (list/c real? real?) (vector/c real? real?)) (or/c
 ;   (list/c real? real?) (vector/c real? real?)) (or/c (listof color4f?) (vectorof color4f?))

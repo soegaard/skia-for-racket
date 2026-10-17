@@ -18,7 +18,7 @@
          save-color-study)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Tagged and Converted Color Samples
 ;;;
 
 ; ramp-bytes : -> bytes?
@@ -48,6 +48,10 @@
   (define converted-ramp (image-convert-color-space linear-ramp srgb))
   ;; Every image displayed by the comparison is now expressed in sRGB.
   (list encoded-gray converted-gray encoded-ramp converted-ramp))
+
+;;;
+;;; Comparison Sheet and Export
+;;;
 
 ; draw-color-study : canvas? list? -> void?
 ;   Draws the color study component in the current canvas coordinate system.

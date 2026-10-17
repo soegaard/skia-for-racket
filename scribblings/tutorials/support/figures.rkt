@@ -10,6 +10,7 @@
 
 
 ;; Presentation helpers only. Each caller supplies the real tutorial drawing.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -21,7 +22,7 @@
 (provide render-pict image-pict captioned-pict figure-row)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Raster Figure Composition
 ;;;
 
 ; render-pict : real? real? procedure? #:scale [real?] #:background [any/c] #:color-space [(or/c

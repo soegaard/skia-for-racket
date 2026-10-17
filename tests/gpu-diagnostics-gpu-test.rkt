@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Required real selected-backend execution. No CPU or synthetic fallback.
 (require racket/cmdline racket/file racket/path racket/list json rackunit rackunit/text-ui
          ffi/unsafe
@@ -128,6 +129,10 @@
   ;   Holds the evidence output directory selected for this run.
   (define directory (path-only report-path)) (make-directory* directory)
 
+  ;;;
+  ;;; Diagnostic State and Evidence Collection
+  ;;;
+
   ; labels : (listof string?)
   ;   Records executed test labels in execution order.
   (define labels '())
@@ -215,6 +220,10 @@
     (save! (string-append name ".rgba") bytes)
     (set! captures (append captures (list (hasheq 'name name 'file (string-append name ".rgba")
                                                 'width WIDTH 'height HEIGHT)))))
+
+  ;;;
+  ;;; Active Context Probes and Cleanup
+  ;;;
 
   ; c : (or/c gpu-context? #f)
   ;   Retains the primary context whose diagnostic and lifecycle behavior is inspected.
@@ -428,6 +437,10 @@
         (with-handlers
           ([exn:fail? (lambda (e) (set! cleanup-errors (cons (exn-message e) cleanup-errors)))])
           (gpu-context-close! context)))))
+
+  ;;;
+  ;;; Acceptance Result and Evidence Publication
+  ;;;
 
   ; passed? : boolean?
   ;   Combines test assertions and required evidence/cleanup checks into the final run status.

@@ -16,8 +16,9 @@
          "model.rkt" "scene.rkt" "../support/figures.rkt")
 (provide navigation-interaction navigation-pict navigation-views navigation-anchor-pair
          navigation-handle-sizes navigation-coordinate-pict)
+
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; model-source : path?
@@ -29,6 +30,10 @@
 (define navigation-eval (make-base-eval))
 (navigation-eval '(require racket))
 (navigation-eval `(require (file ,(path->string model-source))))
+
+;;;
+;;; Coordinate and Viewport Figures
+;;;
 
 ; navigation-pict : [view-state?] #:scale [real?] -> pict?
 ;   Renders the navigation illustration from the tutorial's drawing code.
@@ -133,6 +138,10 @@
   (apply figure-row
          (for/list ([zoom '(1/2 1 2)])
            (captioned-pict (format "Zoom ~a / hit radius 18" zoom) (one zoom)))))
+
+;;;
+;;; Scribble Interaction Form
+;;;
 
 ; navigation-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

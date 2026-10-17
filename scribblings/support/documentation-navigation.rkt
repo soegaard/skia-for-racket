@@ -32,7 +32,7 @@
          decorate-reference-index)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Shared Navigation Markup
 ;;;
 
 ; navigation-css : path?
@@ -80,6 +80,10 @@
                      (html-attributes
                       (list (cons 'class "skia-doc-nav-pretitle")))))
    (list content)))
+
+;;;
+;;; Collection and Tutorial Links
+;;;
 
 ; styled-seclink : any/c any/c any/c #:all-tutorials? [boolean?] -> link-element?
 ;   Builds a collection link with the appropriate current-location attributes.
@@ -160,6 +164,10 @@
                               (list (tutorial-panel tutorial-id))
                               null))))))
 
+;;;
+;;; Subject-Based Tutorial Menu
+;;;
+
 ; tutorial-list : list? any/c -> element?
 ;   Builds the shortcut list and marks the current tutorial link.
 (define (tutorial-list lessons tutorial-id)
@@ -208,6 +216,10 @@
          (list (navigation-element "p" "skia-doc-nav__all" null all-tutorials)
                groups)))
 
+;;;
+;;; Documentation Navigation Band
+;;;
+
 ; documentation-navigation-band : any/c #:index? [boolean?] #:tutorial-id [any/c] -> paragraph?
 ;   Builds the shared band after validating the active collection and tutorial.
 (define (documentation-navigation-band active
@@ -248,6 +260,10 @@
 ;   Builds the shared navigation band for an individual tutorial.
 (define (tutorial-navigation-band tutorial-id)
   (documentation-navigation-band 'tutorials #:tutorial-id tutorial-id))
+
+;;;
+;;; Reference Page Decoration
+;;;
 
 ; reference-page-part? : boolean? any/c -> boolean?
 ;   Identifies Scribble parts that will become distinct Reference HTML pages.

@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Workloads and measurements; no host/window is initialized by requiring this module.
 (require racket/list racket/path (only-in ffi/unsafe void/reference-sink)
          "../main.rkt" "../gpu.rkt" "../private/gpu-performance-util.rkt"
@@ -18,7 +19,7 @@
 (provide benchmark-scenes benchmark-scene! release-stress! benchmark-pattern-pixels)
 
 ;;;
-;;; Diagnostic Operations
+;;; Rendering Benchmarks and Completion Timing
 ;;;
 
 ; benchmark-scenes : (listof symbol?)
@@ -139,6 +140,10 @@
   ;; detached image boundary without mixing encoding with readback latency.
   (values result detached gpu-file))
 
+
+;;;
+;;; Deferred Release and Resource Pressure
+;;;
 
 ; await-retirement! : gpu-context? exact-nonnegative-integer? (listof weak-box?) -> void?
 ;   Waits through bounded GC/owner-drain cycles until temporary wrappers and native children

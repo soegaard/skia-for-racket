@@ -13,11 +13,12 @@
 
 (require racket/cmdline racket/path "../main.rkt")
 
+;;;
+;;; Page Styling
+;;;
+
 ;; The SAME three drawing procedures target PDF pages and raster surfaces.
 ;; The PNG files are raster references, NOT renderings of the generated PDF.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; page-heading : canvas? real? real? string? string? any/c -> void?
 ;   Draws the page heading comparison in the current canvas coordinate system.
@@ -40,6 +41,10 @@
 (define (label c text x y)
   (with-skia ([font (make-font #:size 13)] [paint (make-paint #:color "#526276")])
     (draw-simple-text c text x y font paint)))
+
+;;;
+;;; Vector Geometry Page
+;;;
 
 ; vectors-page : canvas? -> void?
 ;   Draws the vectors page comparison in the current canvas coordinate system.
@@ -77,6 +82,10 @@
       (draw-line c -48 0 48 0 line)
       (draw-line c 0 -48 0 48 line))
     (label c "The page canvas has the same top-left origin and y-down coordinates." 32 718)))
+
+;;;
+;;; Images and Recorded Pictures
+;;;
 
 ; demo-image : -> image?
 ;   Creates a small procedural image for document embedding.
@@ -135,6 +144,10 @@
     (draw-picture c pic #:x 611 #:y 369 #:width 132 #:height 132)
     (label c "Font embedding and text extraction are checked separately from appearance." 32 552)))
 
+;;;
+;;; Raster Effects Page
+;;;
+
 ; effects-page : canvas? -> void?
 ;   Draws the effects page comparison in the current canvas coordinate system.
 (define (effects-page c)
@@ -155,6 +168,10 @@
     (draw-line c 40 344 437 344 line)
     (label c "Not every Skia effect has an exact native PDF equivalent." 32 395)
     (label c "Compare this page with the separate raster reference." 32 416)))
+
+;;;
+;;; PDF and Reference Export
+;;;
 
 ; page-specs : list?
 ;   Orders page dimensions, titles, and drawing callbacks for PDF generation.

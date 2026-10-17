@@ -24,7 +24,7 @@
          printable-finished-pict)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; printable-eval : procedure?
@@ -52,6 +52,10 @@
          (open-input-bytes (image->png-bytes image))
          'png/alpha))
        scale)))))
+
+;;;
+;;; Scribble Forms and Preview Figure
+;;;
 
 ; printable-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

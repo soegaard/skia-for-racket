@@ -9,6 +9,7 @@
 
 ;; Explicit GUI example. Resize, cover/uncover, minimize/restore, and move the
 ;; window between monitors. Use New window to check independent lifetimes.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -18,7 +19,7 @@
          "../canvas.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Raster Canvas Review Windows
 ;;;
 
 ; next-window : exact-integer?

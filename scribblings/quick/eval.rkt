@@ -21,11 +21,12 @@
          skia-def+int
          skia-image)
 
+;;;
+;;; Quick Tutorial Evaluator
+;;;
+
 ;; Keep one evaluator for the whole tutorial. Later examples can use
 ;; definitions from earlier sections, just as they do in Racket's Quick guide.
-;;;
-;;; Evaluator and Figure Helpers
-;;;
 
 ; skia-eval : procedure?
 ;   Retains one evaluator so successive documentation examples share their bindings.
@@ -125,6 +126,10 @@
          (open-input-bytes (surface->png-bytes surface))
          'png/alpha))
        0.62)))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; skia-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

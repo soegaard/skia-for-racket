@@ -12,13 +12,14 @@
          picture-size-override picture-output-path
          read-picture-file-bytes write-picture-file-bytes!)
 
+;;;
+;;; Trust Acknowledgement and SKP Headers
+;;;
+
 ;; The pinned m119 SkPicture stream header is native-endian: magic[8],
 ;; uint32 version, four float cull coordinates, then a one-byte payload kind.
 ;; This is only a cheap framing check, NOT a validator/sandbox for the payload.
 ;; See SkPicture.cpp and SkPicturePriv.h at the pinned native revision.
-;;;
-;;; Trust Acknowledgement and SKP Headers
-;;;
 
 ; check-picture-trust : symbol? any/c -> void?
 ;   Requires an explicit true trust acknowledgement because deserializing SKP data may execute

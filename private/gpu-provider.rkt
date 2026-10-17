@@ -16,6 +16,10 @@
          exn:fail:gpu:unavailable? exn:fail:gpu:unavailable-step
          gpu-unavailable)
 
+;;;
+;;; Provider Contract and Availability Errors
+;;;
+
 (struct exn:fail:gpu:unavailable exn:fail (step) #:transparent)
 ;; Fields:
 ;;   step: symbolic backend-setup step that failed. Inherited exception fields preserve the
@@ -61,6 +65,10 @@
   (arity who activate 1) (arity who current? 0) (arity who describe 0)
   (when resolve (arity who resolve 1))
   (gpu-provider name backend key activate current? describe (current-thread) resolve))
+
+;;;
+;;; Activation, Restoration, and Detached Diagnostics
+;;;
 
 ;; Protect the activation contract independently of any provider's lock. The
 ;; thunk must run exactly once, synchronously, on this Racket thread. Saved

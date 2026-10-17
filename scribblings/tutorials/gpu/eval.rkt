@@ -28,7 +28,7 @@
          gpu-metal-reference-generated?)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; scene-module : path?
@@ -56,6 +56,10 @@
 
 (gpu-eval
  `(require (file ,(path->string scene-module))))
+
+;;;
+;;; CPU and Metal Comparison Figures
+;;;
 
 ; image-file->pict : path-string? real? -> pict?
 ;   Renders the image file to pict illustration from the tutorial's drawing code.
@@ -123,6 +127,10 @@
    (captioned
     metal-label
     (gpu-metal-reference-pict #:scale scale))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; gpu-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

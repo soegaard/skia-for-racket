@@ -9,14 +9,16 @@
 
 ;; One backend-independent registry. The same callback is run directly on CPU
 ;; and GPU surfaces; it does not use output groups or intermediate CPU panels.
+
 ;;;
 ;;; Imports and Exports
 ;;;
 
 (require racket/list "../main.rkt")
 (provide gpu-scene-names gpu-scene-width gpu-scene-height draw-gpu-scene)
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Shared Scene Dimensions and Framing
 ;;;
 
 ; gpu-scene-width : exact-integer?
@@ -53,6 +55,10 @@
   (box c 0 252 8 8 (rgb 0 0 255))
   (box c 412 252 8 8 (rgb 255 255 0))
   (label c (string-append "GPU / CPU   " (symbol->string name)) 28 42 17))
+
+;;;
+;;; Backend Comparison Scenes
+;;;
 
 ; source-image : -> image?
 ;   Builds the small procedural image sampled by the GPU comparison scenes.

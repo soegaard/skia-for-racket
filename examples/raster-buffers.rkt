@@ -12,8 +12,9 @@
 ;;;
 
 (require racket/file racket/path racket/list racket/string json "../main.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Comparison Cases and Captions
 ;;;
 
 ; blue : rgba?
@@ -64,6 +65,10 @@
 ; current-decisions : parameter?
 ;   Selects decisions for the dynamically scoped rendering operation.
 (define current-decisions (make-parameter #f))
+
+;;;
+;;; Buffer Fixtures and Probes
+;;;
 
 ; rgba-list : rgba? -> list?
 ;   Returns the color's red, green, blue, and alpha channels in that order.
@@ -175,6 +180,10 @@
     (hash-set! trace 'premultiplied (bytes->list (subbytes (raster-buffer->storage-bytes b) 0 4))))
   (values (list first second third) trace))
 
+;;;
+;;; Comparison Page Drawing
+;;;
+
 ; label : canvas? string? real? real? [real?] -> void?
 ;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 10])
@@ -218,11 +227,16 @@
   (label c "RACKET / SKIA   |   OWNED RASTER BUFFERS AND SCOPED PIXMAPS" 0 444 9)
   (label c (number->string (add1 index)) 652 444 9))
 
+;;;
+;;; Review File Markup
+;;;
+
 ; escape-html : string? -> string?
 ;   Escapes text before inserting it into the generated HTML report.
 (define (escape-html s)
   (for/fold ([s s]) ([p '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" . "&quot;"))])
     (string-replace s (car p) (cdr p))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

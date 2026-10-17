@@ -8,20 +8,11 @@
 ;; This module supports documentation assembly and shared examples rather than the public Skia
 ;; API.
 
-
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/runtime-path
          racket/string
          (only-in scribble/base image literal))
 
 (provide reference-figure)
-
-;;;
-;;; Documentation Data and Helpers
-;;;
 
 ; reference-image-directory : path?
 ;   Locates reference image directory relative to this module rather than the current directory.

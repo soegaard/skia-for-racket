@@ -18,13 +18,13 @@
          syntax/modread skia skia/gpu skia/gpu-diagnostics
          "../private/gpu-io-trace.rkt")
 
+;;;
+;;; Backend Selection and Evidence Counters
+;;;
+
 ;; `module+ main` imports bindings from this module, so command-line state
 ;; must live in mutable parameter values instead of module bindings set with
 ;; `set!`.
-
-;;;
-;;; Diagnostic Operations
-;;;
 
 ; selected-backend : parameter?
 ;   Selects the explicit native GPU backend for the surface and transfer acceptance run.
@@ -67,6 +67,10 @@
 ;   Gives displayed GPU helpers access to the same imports as their native acceptance cases.
 (define-namespace-anchor anchor)
 
+
+;;;
+;;; Context Scopes and Readback Assertions
+;;;
 
 ; new-context : -> gpu-context?
 ;   Creates a context for the selected backend and records it for teardown evidence.
@@ -127,6 +131,10 @@
   (set! pixel-probes (add1 pixel-probes)))
 
 
+;;;
+;;; Displayed Helper Loading
+;;;
+
 ; load-displayed-helpers : -> procedure?
 ;   Evaluates the actual displayed surface/image/transfer helpers and returns a lookup procedure
 ;   for those bindings.
@@ -150,6 +158,10 @@
   (lambda (name)
     (parameterize ([current-namespace namespace]) (namespace-variable-value name))))
 
+
+;;;
+;;; Surface and One-Shot Rendering Acceptance
+;;;
 
 ; suite : -> test-suite?
 ;   Builds native surface, image, transfer, cache, and one-shot rendering acceptance cases for the

@@ -10,8 +10,14 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Collection imports, run with cwd outside the source and installed package.
 (require json "../main.rkt")
+
+;;;
+;;; Installed Package Rendering Check
+;;;
+
 (module+ main
   ;; Resolve the public collection as well as this collection-invoked helper.
   (unless (eq? make-surface (dynamic-require 'skia 'make-surface))

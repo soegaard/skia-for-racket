@@ -17,6 +17,10 @@
          (submod "core.rkt" gpu-image-internals))
 (provide call-with-gpu-external-gl call-with-gpu-gl-framebuffer gpu-copy-gl-texture)
 
+;;;
+;;; Checked External GL Scopes
+;;;
+
 ; context! : symbol? any/c -> any
 ;   Requires an OpenGL context and its matching active execution domain for interoperation.
 (define (context! who context)
@@ -61,6 +65,10 @@
          (parameterize-break #f
            (reset! d)
            (record-gpu-io! (hasheq 'kind "external-gl-end" 'skia_state_invalidated #t))))))))
+
+;;;
+;;; Borrowed Framebuffer State and Restoration
+;;;
 
 ; colorspace-pointer : symbol? any/c -> any
 ;   Returns a checked borrowed color-space pointer only for the surrounding native wrapping
@@ -176,6 +184,10 @@
            ;; with-state restored the saved bindings. Make Skia notice that.
            (reset! d)
            (void/reference-sink space)))))))
+
+;;;
+;;; Copied Texture Images
+;;;
 
 ; gpu-copy-gl-texture : gpu-context? (integer-in 1 4294967295) (integer-in 1 2147483647) (integer-in
 ;   1 2147483647) [#:origin (or/c 'bottom-left 'top-left)] [#:premultiplied? boolean?]

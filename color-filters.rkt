@@ -22,6 +22,10 @@
          make-lerp-color-filter make-luma-color-filter make-high-contrast-color-filter
          make-table-color-filter make-table-argb-color-filter make-lighting-color-filter)
 
+;;;
+;;; Matrix, Gamma, and Contrast Filters
+;;;
+
 ; make-hsla-matrix-filter : (or/c list? vector?) -> color-filter?
 ;   Returns a filter that converts unpremultiplied RGB to hue, saturation, and lightness, applies a
 ;   four-row, five-column matrix to HSLA, then converts back to RGB.
@@ -79,6 +83,10 @@
   (begin0 (raw:new-color-filter who (lambda () (sk_colorfilter_new_high_contrast config)))
     (void/reference-sink config)))
 
+;;;
+;;; Lookup-Table Filters
+;;;
+
 ; table-buffer : (or/c #f bytes?) -> (or/c #f cpointer?)
 ;   Copies an already validated 256-entry channel table into native storage; #f means identity.
 (define (table-buffer table)
@@ -132,6 +140,10 @@
         (begin0
           (raw:new-color-filter who (lambda () (apply sk_colorfilter_new_table_argb buffers)))
           (void/reference-sink copies buffers)))))
+
+;;;
+;;; Lighting Filters
+;;;
 
 ; make-lighting-color-filter : color? color? -> color-filter?
 ;   Returns a filter that multiplies RGB by the normalized RGB channels of multiply, adds those of

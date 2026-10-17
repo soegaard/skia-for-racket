@@ -13,11 +13,12 @@
 
 (require racket/cmdline racket/file racket/path racket/list racket/string json "../main.rkt")
 
+;;;
+;;; Page Styling
+;;;
+
 ;; One visual registry, explicit sRGB normalization before document embedding.
 ;; Encoded P3 files below retain P3 samples and their ICC metadata for browsers.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; ink : string?
 ;   Specifies the ink color used by this drawing.
@@ -46,6 +47,10 @@
 (define (footer c)
   (label c "RACKET / SKIA   |   COLOR-MANAGED OUTPUT" 0 445 9))
 
+;;;
+;;; Color Samples and Encoded Fixtures
+;;;
+
 ; grey-bytes : -> bytes?
 ;   Creates opaque RGBA samples for all 256 grayscale channel values.
 (define (grey-bytes)
@@ -71,6 +76,10 @@
 (define (bytes-file path bs)
   (call-with-output-file path (lambda (out) (write-bytes bs out) (void)) #:mode 'binary #:exists
     'replace))
+
+;;;
+;;; Color-Space Comparison Pages
+;;;
 
 ; gamma-page : output-page?
 ;   Describes the gamma page drawing and its export dimensions.
@@ -151,6 +160,10 @@
      (footer c))
    #:margins 24 #:background 'white))
 
+;;;
+;;; Review File Links
+;;;
+
 ; escaped : string? -> string?
 ;   Escapes text before inserting it into the generated HTML report.
 (define (escaped s)
@@ -160,6 +173,7 @@
 ; base-name : any/c -> string?
 ;   Returns an HTML-safe filename for a generated report link.
 (define (base-name s) (escaped (path->string (file-name-from-path s))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

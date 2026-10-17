@@ -15,7 +15,7 @@
          "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Text Specimen Rendering
 ;;;
 
 ; output : path-string?

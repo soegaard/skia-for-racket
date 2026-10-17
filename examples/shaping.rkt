@@ -14,7 +14,7 @@
 (require racket/match "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling
 ;;;
 
 ; bg : string?
@@ -43,6 +43,10 @@
     (draw-rounded-rect c x y w h 16 16 fill)
     (draw-rounded-rect c x y w h 16 16 stroke)
     (draw-simple-text c title (+ x 18) (+ y 30) font text)))
+
+;;;
+;;; Shaped Text Comparisons
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

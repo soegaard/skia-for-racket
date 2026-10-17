@@ -9,11 +9,9 @@
 
 ;; Public-API example using the host's default font. No installed-font identity
 ;; or numerical metric is assumed here; acceptance uses procedural fixtures.
-;;;
-;;; Imports and Exports
-;;;
 
 (require "../main.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

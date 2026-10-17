@@ -10,7 +10,12 @@
 (require ffi/unsafe)
 (provide (all-defined-out))
 
+;;;
+;;; Drawing, Runtime Reflection, and Color Layouts
+;;;
+
 ;; m119 sk_color4f_t: RGBA, four floats, passed by VALUE by canvas clear/draw.
+
 (define-cstruct _sk-color4f ([r _float] [g _float] [b _float] [a _float]))
 ;; Fields:
 ;;   r, g, b, and a: single-precision red, green, blue, and alpha components in RGBA order. Alpha is
@@ -81,7 +86,12 @@
 ;;   chromaticity. Eight floats are ordered by primary, then white point.
 
 
+;;;
+;;; Integer Geometry and Transform Matrices
+;;;
+
 ;; Pinned sk_isize_t / sk_ipoint_t / sk_point3_t used by filter factories.
+
 (define-cstruct _sk-isize ([width _int32] [height _int32]))
 ;; Fields:
 ;;   width and height: signed 32-bit integer extents. Constructors validate the range appropriate to
@@ -122,8 +132,13 @@
 ;;   row corrupts canvas transforms.
 
 
+;;;
+;;; PDF Metadata Layouts
+;;;
+
 ;; Full sk_document_pdf_datetime_t and sk_document_pdf_metadata_t layouts.
 ;; Metadata's C bool is one byte, followed by padding before encoding-quality.
+
 (define-cstruct _sk-pdf-datetime
   ([zone-minutes _int16] [year _uint16] [month _uint8] [weekday _uint8]
    [day _uint8] [hour _uint8] [minute _uint8] [second _uint8]))
@@ -146,9 +161,14 @@
 ;;   ABI-significant.
 
 
+;;;
+;;; Image, Text-Run, and Codec Layouts
+;;;
+
 ;; These layouts match SkiaSharp v3.119.1's SkiaApi.generated.cs and
 ;; generated native structs.  Keep this module boring: the FFI boundary
 ;; depends on byte-for-byte agreement with the pinned native ABI.
+
 (define-cstruct _sk-image-info
   ([colorspace _pointer] [width _int32] [height _int32]
    [color-type _int] [alpha-type _int]))
@@ -209,6 +229,10 @@
 ;;   bounds, not a pointer. Boolean widths and inline rectangle layout are required for the pinned
 ;;   44-byte ABI.
 
+;;;
+;;; Encoder Options and Sampling
+;;;
+
 (define-cstruct _sk-png-options
   ([filter-flags _int] [zlib-level _int] [comments _pointer]
    [icc-profile _pointer] [icc-description _pointer]))
@@ -247,8 +271,13 @@
 ;;   by the sampling mode are active; declaration order and padding are ABI-significant.
 
 
+;;;
+;;; Font Metrics and ABI Constants
+;;;
+
 ;; sk_fontmetrics_t / SKFontMetrics.  The flags word says which of the
 ;; decoration metrics are meaningful; the remaining fields are floats.
+
 (define-cstruct _sk-font-metrics
   ([flags _uint32]
    [top _float]

@@ -12,6 +12,10 @@
 (provide native-package-version native-platform native-filename native-library
          native-library-report native-library-profile native-symbol-inventory)
 
+;;;
+;;; Platform Selection and Library Loading
+;;;
+
 ; native-root : path?
 ;   Locates platform libraries installed beside the package source.
 (define-runtime-path native-root "../native")
@@ -86,6 +90,10 @@
 ; native-library-profile : -> hash?
 ;   Forces library selection and returns its validated ABI profile.
 (define (native-library-profile) (selection-profile (force selected-library)))
+
+;;;
+;;; Detached Loader Diagnostics
+;;;
 
 ; native-library-report : -> hash?
 ;   Reports selected library and ABI evidence without claiming package identity, optional GPU

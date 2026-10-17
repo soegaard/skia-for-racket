@@ -21,6 +21,10 @@
            "sprite-assets.rkt" "sprite-math.rkt")
   (provide open-sprite-window)
 
+  ;;;
+  ;;; Backend Selection and Shared Window
+  ;;;
+
   ; preferred-backend : -> (or/c symbol? #f)
   ;   Returns the supported platform GPU choice, or #f when no choice is defined.
   (define (preferred-backend)
@@ -45,6 +49,11 @@
     (define backend (and (eq? renderer 'gpu) (preferred-backend)))
     (when (and (eq? renderer 'gpu) (not backend))
       (error 'open-sprite-window "no GPU backend; choose --renderer raster"))
+
+    ;;;
+    ;;; Owned Assets and Simulation State
+    ;;;
+
     (define texture (make-sprite-texture (make-atlas)))
     (define world (make-world))
     (define held (make-hasheq))
@@ -61,6 +70,10 @@
     (define remainder 0.0)
     (define frames 0)
     (define smoke-stage 0)
+
+    ;;;
+    ;;; Controls and Cleanup
+    ;;;
 
     (define (refresh-status)
       (when status
@@ -104,6 +117,10 @@
       (eprintf "~a: ~a\n" title (if (exn? error) (exn-message error) error))
       (when smoke? (close-window!) (exit 1)))
 
+    ;;;
+    ;;; Frame Scheduling and Smoke Checks
+    ;;;
+
     (define (schedule-next-tick)
       ;; Only one low-priority rearm can be queued. Input runs before rearming.
       (unless (or pending-arm? paused? closed? failed?)
@@ -144,6 +161,10 @@
                       renderer frames uploads)) #f)]))
       (schedule-next-tick))
 
+    ;;;
+    ;;; Raster and GPU Drawing
+    ;;;
+
     (define (paint-scene canvas atlas width height)
       (define-values (scale x y) (fit-viewport width height scene-width scene-height))
       (canvas-clear! canvas "#050B18")
@@ -164,6 +185,10 @@
         (paint-scene canvas atlas
                      (gpu-frame-logical-width frame) (gpu-frame-logical-height frame)))
       (after-frame))
+
+    ;;;
+    ;;; Input Classes and Widget Construction
+    ;;;
 
     (define (input-canvas% base%)
       (class base%

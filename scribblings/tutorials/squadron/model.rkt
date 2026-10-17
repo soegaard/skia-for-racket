@@ -9,6 +9,7 @@
 
 
 ;; Fixed-step game rules: no drawing, native objects, clock reads, or randomness.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -20,7 +21,7 @@
          swept-hit? fire-player! step-game! demonstration-game)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Game State and Initial Fleet
 ;;;
 
 ; scene-width : exact-integer?
@@ -84,6 +85,10 @@
 (define (make-game)
   (game 0 320.0 3 0 1 'playing 0 0 (make-fleet) '() '() 0))
 
+;;;
+;;; Formation and Dive Motion
+;;;
+
 ; formation-position : any/c exact-nonnegative-integer? -> (values real? real?)
 ;   Returns the oscillating formation position for an enemy ID and tick.
 (define (formation-position id ticks)
@@ -140,6 +145,10 @@
                 (struct-copy enemy sprite [dive attack]) sprite))
           (game-enemies world)))))
 
+;;;
+;;; Projectile Creation
+;;;
+
 ; fire-player! : game? -> void?
 ;   Adds a player shot only while playing and after the firing cooldown expires.
 (define (fire-player! world)
@@ -157,8 +166,13 @@
   (define distance (sqrt (+ (* dx dx) (* dy dy))))
   (shot x y (* speed (/ dx distance)) (* speed (/ dy distance)) #t))
 
+;;;
+;;; Collision and Damage
+;;;
+
 ;; Swept projectile against a circle at the current simulation position.
 ;; This avoids missing a small target simply because a fast shot crosses it.
+
 
 ; swept-hit? : real? real? real? real? real? real? real? -> boolean?
 ;   Tests a traveled projectile segment against a circular target to avoid tunneling.
@@ -204,6 +218,10 @@
      (set-game-enemies! world
                        (filter (lambda (sprite) (not (= (enemy-id sprite) (enemy-id target))))
                                (game-enemies world)))]))
+
+;;;
+;;; Fixed-Step Game Updates
+;;;
 
 ; step-shots! : game? real? -> void?
 ;   Advances shots, applies swept collisions, and preserves surviving shot order.
@@ -299,7 +317,12 @@
        (set-game-mode! world 'playing))]
     [else (void)]))
 
+;;;
+;;; Demonstration States
+;;;
+
 ;; A reproducible illustrated state, not a claim of a captured play session.
+
 
 ; demonstration-game : -> game?
 ;   Creates a reproducible illustrated state for figures rather than a captured play session.

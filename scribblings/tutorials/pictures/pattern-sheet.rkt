@@ -25,7 +25,7 @@
          draw-pattern-sheet)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Reusable Emblem Recording
 ;;;
 
 ; emblem-size : exact-integer?
@@ -73,6 +73,10 @@
                   #:y (- (/ size 2))
                   #:width size
                   #:height size)))
+
+;;;
+;;; Pattern Sheet Placement
+;;;
 
 ; sheet-width : exact-integer?
 ;   Specifies sheet width in the drawing's local coordinate units.

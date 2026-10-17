@@ -20,6 +20,10 @@
          (submod "private/core.rkt" advanced-canvas-internals))
 (provide call-with-nodraw-canvas call-with-nway-canvas call-with-overdraw-canvas)
 
+;;;
+;;; Callback and Surface Validation
+;;;
+
 ; callback! : symbol? procedure? -> void?
 ;   Requires a one-canvas callback with no required keyword arguments.
 (define (callback! who proc)
@@ -52,6 +56,10 @@
                "target must have a balanced root canvas, identity matrix and full rectangular clip"))
       (void/reference-sink m clip)))
   c)
+
+;;;
+;;; Shared Native Canvas Lifetime
+;;;
 
 ; call-special : symbol? symbol? integer? integer? list? list? procedure? procedure? procedure?
 ;   procedure? procedure? -> any/c
@@ -116,6 +124,10 @@
               (set! borrowed (make-canvas-record owner)))))
         (lambda () (call-with-output-capture (lambda () (proc borrowed))))
         cleanup!))))
+
+;;;
+;;; No-Draw, Fan-Out, and Overdraw Scopes
+;;;
 
 ; call-with-nodraw-canvas : (integer-in 1 32768) (integer-in 1 32768) (-> canvas? any) -> any
 ;   Calls the function with a native no-draw canvas of the given dimensions.

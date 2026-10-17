@@ -8,17 +8,8 @@
 ;; This shared tutorial drawing is used by the runnable program, documentation figures, and
 ;; checks.
 
-
-;;;
-;;; Imports and Exports
-;;;
-
 (require skia "model.rkt" "../support/sprite-math.rkt")
 (provide draw-balls ball-transform)
-
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; ball-transform : ball? -> atlas-transform?
 ;   Builds an atlas transform centered on the ball's local artwork.

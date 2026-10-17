@@ -8,12 +8,10 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; Run this example as a GUI program; each presenter uses the same callback.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/class racket/cmdline racket/gui/base
          "../gpu.rkt" "../gpu-gui.rkt" "gpu-presentation-scene.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

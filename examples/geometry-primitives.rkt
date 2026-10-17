@@ -12,8 +12,9 @@
 ;;;
 
 (require racket/file racket/path racket/list json "../main.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Page Styling and Comparison Panels
 ;;;
 
 ; blue : rgba?
@@ -76,6 +77,10 @@
   (if (or raster? (and svg-raster? (eq? (canvas-annotation-backend c) 'svg)))
       (draw-rasterized c x y 300 112 f #:scale 2)
       (at c x y f)))
+
+;;;
+;;; Region Geometry and Clipping
+;;;
 
 ; region-boolean : canvas? -> void?
 ;   Draws the region boolean comparison in the current canvas coordinate system.
@@ -142,6 +147,10 @@
   (label c "Use a path clip when transforms should apply." 352 396 10)
   (footer c 1
     "These region drawings stay vector. Direct canvas-clip-region! instead uses native device coordinates."))
+
+;;;
+;;; Image Grids and Atlases
+;;;
 
 ; border-image : -> image?
 ;   Builds the bordered source image used to make nine-patch stretching visible.
@@ -217,6 +226,10 @@
   (footer c 2
     "PDF submits image grids natively. SVG uses four explicit 600 x 224 PNG panels; atlas fallback is explicit in both."))
 
+;;;
+;;; Meshes and Coons Patches
+;;;
+
 ; mesh-colors : canvas? -> void?
 ;   Draws the mesh colors comparison in the current canvas coordinate system.
 (define (mesh-colors c)
@@ -275,10 +288,15 @@
   (footer c 3
     "Both PDF and SVG use four explicit 600 x 224 PNG panels. Labels and checkerboards remain vector."))
 
+;;;
+;;; Query Report Export
+;;;
+
 ; write-json-file : path-string? any/c -> void?
 ;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file f value)
   (call-with-output-file f (lambda (o) (write-json value o) (newline o)) #:exists 'replace))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

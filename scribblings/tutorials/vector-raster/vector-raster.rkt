@@ -21,7 +21,7 @@
          draw-study)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Comparison Layout
 ;;;
 
 ; sheet-width : exact-integer?
@@ -52,6 +52,10 @@
 ;   Specifies the teal color color used by this drawing.
 (define teal-color "#159F99")
 
+;;;
+;;; Vector Artwork
+;;;
+
 ; draw-vector-art : canvas? -> void?
 ;   Draws the vector art component in the current canvas coordinate system.
 (define (draw-vector-art canvas)
@@ -69,6 +73,10 @@
     (draw-circle canvas 100 89 radius ring))
   (draw-line canvas 27 142 173 142 ring)
   (draw-circle canvas 100 89 10 dot))
+
+;;;
+;;; Pixel Artwork
+;;;
 
 ; make-pixel-tile : -> image?
 ;   Constructs pixel tile for the example's drawing pipeline.
@@ -91,6 +99,10 @@
   (define tile (make-pixel-tile))
   (draw-image-rect canvas tile 4 0 192 192
                    #:sampling 'nearest))
+
+;;;
+;;; Explicit Raster Fallback
+;;;
 
 ; draw-filtered-badge : canvas? -> void?
 ;   Draws the filtered badge component in the current canvas coordinate system.
@@ -117,6 +129,10 @@
   (with-output-label "vector details"
     (draw-rounded-rect canvas 26 18 146 116 24 24 border)
     (draw-circle canvas 99 76 15 center)))
+
+;;;
+;;; Comparison Sheet Assembly
+;;;
 
 ; draw-study : canvas? -> void?
 ;   Draws the study component in the current canvas coordinate system.

@@ -9,12 +9,14 @@
 
 ;; Pure ownership/opacity controller for persistent raster alpha groups.
 ;; The production renderer supplies synchronous CPU allocation/compositing.
+
 ;;;
 ;;; Exports
 ;;;
 
 (provide make-dc-alpha dc-alpha-target dc-alpha-root dc-alpha-root-alpha dc-alpha-depth dc-alpha-clip
          dc-alpha-set-clip! dc-alpha-start! dc-alpha-end! dc-alpha-discard! dc-alpha-close!)
+
 ;;;
 ;;; Saved Layer State
 ;;;

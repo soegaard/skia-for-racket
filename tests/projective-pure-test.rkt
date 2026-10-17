@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/list "../matrix.rkt" "../projective-matrix.rkt"
          "../output-policy.rkt" "../private/audit-trace.rkt"
          (submod "../private/audit-trace.rkt" testing))
@@ -48,6 +49,11 @@
 ;   policy.
 (define projective-pure-tests
   (test-suite "Perspective and general matrices: pure values and audit policy"
+
+   ;;;
+   ;;; Matrix Representation and Binary32 Validation
+   ;;;
+
    (test-case "new matrix types leave the affine type unchanged"
      (check-true (matrix3? matrix3-identity))
      (check-true (matrix4? matrix4-identity))
@@ -109,6 +115,11 @@
        (check-exn exn:fail:contract? (lambda () (matrix3-ref matrix3-identity bad 0))))
      (check-exn exn:fail:contract? (lambda () (matrix4-ref matrix4-identity 0 4)))
    )
+
+   ;;;
+   ;;; Composition, Transpose, and Inversion
+   ;;;
+
    (test-case "empty composition is identity"
      (check-equal? (matrix3-compose) matrix3-identity)
      (check-equal? (matrix4-compose) matrix4-identity)
@@ -165,6 +176,11 @@
      (check-exn exn:fail:contract?
        (lambda () (matrix4-compose (matrix4-scale 1e30) (matrix4-scale 1e30))))
    )
+
+   ;;;
+   ;;; Affine Embedding and Plane Projection
+   ;;;
+
    (test-case "legacy six-coefficient conversion preserves order"
      (define m (make-matrix 2 3 4 5 6 7))
      (check-equal? (matrix3->vector (matrix->matrix3 m)) #(2.0 4.0 6.0 3.0 5.0 7.0 0.0 0.0 1.0))
@@ -205,6 +221,11 @@
      (define m (apply make-matrix4 (range 1 17)))
      (check-equal? (matrix3->vector (matrix4-project-xy m)) #(1.0 2.0 4.0 5.0 6.0 8.0 13.0 14.0 16.0))
    )
+
+   ;;;
+   ;;; Homogeneous Mapping and Horizon Bounds
+   ;;;
+
    (test-case "homogeneous 3x3 mapping does not divide"
      (check-equal? (matrix3-map-homogeneous (matrix3-perspective 0.5 0) 2 6) #(2.0 6.0 2.0))
    )
@@ -256,6 +277,11 @@
      (define m (matrix4-compose (matrix4-perspective 100) (matrix4-rotate-y-degrees 30)))
      (check-equal? (matrix4-map-rect m 0 0 20 20) (matrix3-map-rect (matrix4-project-xy m) 0 0 20 20))
    )
+
+   ;;;
+   ;;; Rotation and Camera Constructors
+   ;;;
+
    (test-case "quarter turns follow the documented axis signs"
      (check-equal? (matrix4-map-point (matrix4-rotate-x-degrees 90) 1 2 3) #(1.0 -3.0 2.0))
      (check-equal? (matrix4-map-point (matrix4-rotate-y-degrees 90) 1 2 3) #(3.0 2.0 -1.0))
@@ -288,6 +314,11 @@
      (check-true (matrix3-affine? p))
      (check-false (matrix4-affine-2d? (matrix3->matrix4 p)))
    )
+
+   ;;;
+   ;;; Output Policy and Recorded Provenance
+   ;;;
+
    (test-case "general matrix feature is scoped to its native call"
      (check-equal? (call-with-audit-matrix #t (lambda () (native-feature 'sk_canvas_concat '())))
        '(transform projective-transform))

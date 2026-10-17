@@ -21,6 +21,10 @@
          (submod "private/gpu-presenter.rkt" adapter-internals))
 (provide gpu-canvas% gpu-window%)
 
+;;;
+;;; Backend Selection and GUI Geometry
+;;;
+
 ; gl-adapter : path?
 ;   Locates private/gpu-presenter-gl.rkt for lazy loading of the selected implementation.
 (define-runtime-path gl-adapter "private/gpu-presenter-gl.rkt")
@@ -67,6 +71,10 @@
             (define canvas (weak-box-value weak-canvas))
             (if canvas (send canvas check-gpu-geometry) (send timer stop)))]))
   timer)
+
+;;;
+;;; GPU Presenter Canvas
+;;;
 
 ; gpu-canvas% : class?
 ;   Owns a GUI GPU presenter, scheduling frame callbacks and retiring resources on close.
@@ -228,6 +236,10 @@
       (when (and initialized? automatic-value) (send this request-gpu-render)))
     (set! initialized? #t)
     (when automatic-value (set! monitor (make-geometry-monitor weak-self)))))
+
+;;;
+;;; Presenter Window and Resource Cleanup
+;;;
 
 ; gpu-window% : class?
 ;   Hosts a GPU canvas and closes its presenter when the containing window closes.

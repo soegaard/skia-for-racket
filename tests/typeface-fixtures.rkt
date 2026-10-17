@@ -12,6 +12,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Original, procedural test fixtures, not copies of installed or third-party
 ;; fonts. No font binaries are checked in. Four glyphs: .notdef, space, A, V.
 (require racket/list)
@@ -19,7 +20,7 @@
          fixture-family fixture-postscript fixture-text)
 
 ;;;
-;;; Fixtures and Assertions
+;;; Fixture Identity and Font Table Encoding
 ;;;
 
 ; fixture-family : string?
@@ -65,6 +66,10 @@
   (define b (pad bs))
   (for/fold ([sum 0]) ([i (in-range 0 (bytes-length b) 4)])
     (bitwise-and #xffffffff (+ sum (integer-bytes->integer b #f #t i (+ i 4))))))
+
+;;;
+;;; Glyph Outlines and OpenType Tables
+;;;
 
 ; glyph : (listof (listof exact-integer?)) -> bytes?
 ;   Encodes a single-contour on-curve TrueType glyph with delta-coded coordinates.
@@ -139,6 +144,10 @@
         "maxp" (bytes-append (u32 #x10000) (us '(4 4 1 0 0 2 0 0 0 0 0 0 0 0)))
         "name" (name-table bold?)
         "post" (bytes-append (u32 #x30000) (u32 0) (ss '(-75 50)) (u32 1) (make-bytes 16))))
+
+;;;
+;;; Font and Collection Assembly
+;;;
 
 ; build-font : boolean? exact-nonnegative-integer? boolean? -> bytes?
 ;   Assembles sorted font tables using absolute base offsets and optional whole-font checksum

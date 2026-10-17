@@ -21,7 +21,7 @@
          "support/catalog.rkt")
 
 ;;;
-;;; Test Data and Helpers
+;;; Repository Fixture
 ;;;
 
 ; repository : path?

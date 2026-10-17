@@ -8,10 +8,6 @@
 ;; This public stream extension supplies filesystem-backed sinks to the same ownership protocol used
 ;; by memory streams.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/path "streams.rkt" (submod "streams.rkt" internals)
          "private/core.rkt" "private/native.rkt" "private/lifetime.rkt"
          "private/stream-resource.rkt" "private/stream-buffer.rkt")

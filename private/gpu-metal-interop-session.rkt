@@ -13,6 +13,11 @@
          metal-session-description metal-session-texture metal-session-info
          metal-session-begin! metal-session-complete! metal-session-close!
          metal-session-quarantine! metal-session-rethrow!)
+
+;;;
+;;; Session State and Quarantine
+;;;
+
 (struct metal-interop-ops (inspect retain release status error new-tail commit))
 ;; Fields:
 ;;   inspect, retain, release, status, error, new-tail, and commit: injected native procedures.
@@ -70,6 +75,10 @@
                    (lambda (e) (metal-session-quarantine! s e) (raise e))])
     (thunk)))
 
+;;;
+;;; Retained Producer and Texture References
+;;;
+
 ; make-metal-session : metal-interop-ops? any/c any/c any/c -> session?
 ;   Validates a committed producer and retains its texture and command buffer with rollback on
 ;   failure.
@@ -101,6 +110,10 @@
   (unless (and (session-texture-owned? s) (memq (session-state s) '(ready active completed)))
     (error 'metal-interop "texture is not available"))
   (session-texture s))
+
+;;;
+;;; Producer Synchronization and Session Retirement
+;;;
 
 ; wait! : session? any/c any/c -> any
 ;   Waits for one command buffer and records a phase-tagged completion report.

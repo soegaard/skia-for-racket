@@ -14,6 +14,10 @@
          owned-gpu-domain owned-gpu-context owned-clear-recording-affinity!
          call-with-owned-canvas lifetime-native-call)
 
+;;;
+;;; Owned Handles and Dependency Affinity
+;;;
+
 ;; A handle keeps exactly ONE native reference. Once GPU-affine, that reference
 ;; is managed by its gpu cell, never by an off-thread CPU destructor. Slots hold
 ;; detached affinity descriptions, NOT the original mutable/closeable handles.
@@ -144,6 +148,10 @@
          a (join (allocation-who a) (allocation-binding a)
                  (dependency (allocation-who a) h)))))))
 
+;;;
+;;; Allocation, Release, and Thread Ownership
+;;;
+
 ; release-owned! : owned? -> void?
 ;   Detaches native ownership before scheduling GPU release or calling the one CPU destructor.
 (define (release-owned! h)
@@ -238,6 +246,11 @@
   (cond [(domain-resource? h) (domain-resource-close! h)]
         [else (check-thread who h) (release-explicitly! h)])
   (void))
+
+;;;
+;;; Checked Resource and Canvas Borrows
+;;;
+
 ;; These existing entry points promise CPU pixels or a portable serialized
 ;; stream. A GPU graph must not trigger a hidden readback, texture loss, or SKP
 ;; serialization. Metadata and native retained getters are intentionally absent.
@@ -291,6 +304,10 @@
        (error who
          "GPU-dependent content cannot be drawn into a CPU/PDF/SVG target; detach explicitly")]))
   (parameterize ([destination (canvas-use who handle backend others)]) (thunk)))
+
+;;;
+;;; Native Attachment Tracking and Scoped Cleanup
+;;;
 
 ; pointer=? : (or/c #f cpointer?) (or/c #f cpointer?) -> boolean?
 ;   Compares native pointer identity without relying on Racket wrapper identity.

@@ -9,14 +9,12 @@
 
 ;; Run explicitly on a Windows x64 interactive desktop. WARP by default;
 ;; --adapter hardware selects the requested physical DXGI enumeration index.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/class
          (only-in racket/gui/base queue-callback)
          racket/cmdline
          "../main.rkt" "../gpu.rkt" "../gpu-gui.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

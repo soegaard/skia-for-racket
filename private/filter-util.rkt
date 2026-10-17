@@ -12,6 +12,10 @@
          filter-tile-mode filter-point3 filter-light-parameters filter-spot-parameters
          filter-input-list filter-float)
 
+;;;
+;;; Coordinates, Channels, and Crop Bounds
+;;;
+
 ;; These checks do not load Skia. Round before validating geometry so a positive
 ;; extent that disappears at the native float precision cannot pass unnoticed.
 
@@ -68,6 +72,10 @@
                            "tile-mode" mode))
   result)
 
+;;;
+;;; Graph Inputs and Convolution Kernels
+;;;
+
 ; filter-input-list : symbol? (or/c list? vector?) -> list?
 ;   Normalizes nonempty filter inputs after checking native count and pointer-array budgets.
 (define (filter-input-list who inputs)
@@ -111,6 +119,10 @@
   (values (make-sk-isize width height) (make-sk-ipoint ox oy)
           (for/list ([v (if (vector? kernel) (in-vector kernel) (in-list kernel))])
             (filter-float who v))))
+
+;;;
+;;; Three-Dimensional Lighting Parameters
+;;;
 
 ; filter-point3 : symbol? any/c [#:direction? boolean?] -> sk-point3?
 ;   Converts checked x/y/z components, rejecting a zero vector when used as a light direction.

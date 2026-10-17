@@ -8,15 +8,9 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; The exact same ordinary Skia draw callback serves both window backends.
-;;;
-;;; Imports and Exports
-;;;
 
 (require "../main.rkt" "../gpu.rkt" "gpu-scenes.rkt")
 (provide draw-presentation-scene)
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; draw-presentation-scene : gpu-frame? -> void?
 ;   Draws the presentation scene component in the current canvas coordinate system.

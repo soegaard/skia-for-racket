@@ -15,10 +15,11 @@
 (require skia "../support/sprite-math.rkt")
 (provide make-game-atlas sprite-names draw-game-cell)
 
+;;;
+;;; Game Sprite Atlas
+;;;
+
 ;; Original geometric artwork. No original Galaga graphics are used.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; sprite-names : vector?
 ;   Orders atlas cell names so drawing and animation choose the same artwork.

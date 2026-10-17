@@ -12,8 +12,9 @@
 ;;;
 
 (require racket/file racket/path json "../main.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Primitive Scenes
 ;;;
 
 ; blue : rgba?
@@ -86,6 +87,10 @@
 (define (translated c x y f)
   (with-canvas-state c (canvas-translate! c x y) (f c)))
 
+;;;
+;;; Audited Output Pages
+;;;
+
 ; page1 : canvas? -> void?
 ;   Draws the page1 comparison in the current canvas coordinate system.
 (define (page1 c)
@@ -142,10 +147,15 @@
   (with-output-label "unhandled-runtime" (wave-panel c))
   (with-output-label "unhandled-filter" (shadow-panel c)))
 
+;;;
+;;; Audit Report Export
+;;;
+
 ; write-json-file : path-string? any/c -> void?
 ;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path value)
   (call-with-output-file path (lambda (o) (write-json value o) (newline o)) #:exists 'replace))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

@@ -20,6 +20,10 @@
          drawable->picture drawable-bounds drawable-generation-id
          drawable-approximate-bytes-used drawable-notify-drawing-changed!)
 
+;;;
+;;; Drawable Ownership and Construction
+;;;
+
 ; drawable? : any/c -> boolean?
 ;   Returns #t for a drawable wrapper, including a closed one, and #f otherwise.
 (define drawable? recorded-drawable?)
@@ -68,6 +72,10 @@
                   (lambda () (call-with-picture width height draw)))])
     (picture->drawable p)))
 
+;;;
+;;; Bounds, Storage, and Change Notification
+;;;
+
 ; drawable-bounds : drawable? -> (and/c (vector/c real? real? real? real?) immutable?)
 ;   Returns detached native bounds as coordinates, width, and height.
 (define (drawable-bounds d)
@@ -100,6 +108,10 @@
   (call-with-owned 'drawable-notify-drawing-changed!
     (list (drawable-h 'drawable-notify-drawing-changed! d)) sk_drawable_notify_drawing_changed)
   (void))
+
+;;;
+;;; Picture Snapshots and Canvas Replay
+;;;
 
 ; drawable->picture : drawable? -> picture?
 ;   Returns an independently owned native picture snapshot with the drawable's nominal dimensions.

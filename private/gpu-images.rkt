@@ -22,6 +22,10 @@
          gpu-upload-image gpu-surface-snapshot gpu-image-subset gpu-image-info
          gpu-image->rgba-bytes gpu-image->raster-image gpu-image-read-raster-buffer!)
 
+;;;
+;;; Image Residency and Domain Ownership
+;;;
+
 ; gpu-image? : any/c -> boolean?
 ;   Returns whether v is an image whose wrapper has GPU ownership.
 (define (gpu-image? v)
@@ -76,6 +80,10 @@
       (error who
         "native result is not a valid texture-backed image for this context; no CPU fallback"))
     (make-image-record handle w h)))
+
+;;;
+;;; Upload, Snapshot, and Subset Construction
+;;;
 
 ; gpu-upload-image : gpu-context? image? [#:mipmapped? boolean?] [#:budgeted? boolean?] ->
 ;   gpu-image?
@@ -151,6 +159,10 @@
         (record-gpu-io! (hasheq 'kind "gpu-subset" 'x x 'y y 'width width 'height height))
         (void/reference-sink rect)))))
 
+;;;
+;;; Detached Image Metadata
+;;;
+
 ; gpu-image-info : gpu-image? -> (and/c hash? immutable?)
 ;   Returns detached metadata after verifying native texture backing and validity for the owning
 ;   active context.
@@ -171,6 +183,10 @@
               'context_matches valid? 'texture_backed texture?
               'unique_id (image-id/native ip)
               'readback_path "GPU staging surface; explicit synchronous transfer"))))
+
+;;;
+;;; Explicit CPU Readback
+;;;
 
 ;; m119's C sk_image_read_pixels and make_raster_image omit GrDirectContext.
 ;; Never pretend they provide a context-aware texture download. Instead draw

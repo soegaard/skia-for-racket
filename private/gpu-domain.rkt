@@ -20,6 +20,10 @@
          domain-resource-retire! domain-resource-take!
          domain-capture-lease domain-check-lease! domain-lease-expired?)
 
+;;;
+;;; Domain, Driver, and Resource State
+;;;
+
 ;; Driver procedures are PRIVATE native operations, not application callbacks.
 ;; create/describe/reset/release require a current provider. abandon must follow
 ;; the backend's lost-context contract. GL and Metal share this state machine.
@@ -62,6 +66,10 @@
 ;;   optional public context wrapper.
 ;;   Retirement detaches pointer and keepalive, then schedules the destructor through the domain; a
 ;;   resource never migrates between generations.
+
+;;;
+;;; Activation Tracking and Ownership Checks
+;;;
 
 ; active : parameter?
 ;   Identifies the dynamically active domain lease; #f means no GPU execution scope is entered.
@@ -163,6 +171,10 @@
 (define (domain-pointer d)
   (usable! 'domain-pointer d) (current! 'domain-pointer d)
   (gpu-domain-pointer d))
+
+;;;
+;;; Domain Construction and Shutdown Requests
+;;;
 
 ;; Domains remain rooted until explicit owner-thread teardown. Roots do NOT
 ;; retain public context/resource wrappers. GC/custodian callbacks only request
@@ -267,6 +279,10 @@
              'failed_releases (length (gpu-domain-failed d))
              'shutdown_requested (and (gpu-domain-requested d) #t)))
 
+;;;
+;;; Release Queues and Activated Calls
+;;;
+
 ; drain! : gpu-domain? -> exact-nonnegative-integer?
 ;   Detaches queued release jobs and destroys them in queue order without retrying uncertain
 ;   failures.
@@ -356,6 +372,10 @@
      (dynamic-wind void
        (lambda () (provider-call (gpu-domain-provider d) run-scope))
        notify-domain-idle!)]))
+
+;;;
+;;; Child Resource Allocation and Retirement
+;;;
 
 ; enqueue-resource! : domain-resource? -> void?
 ;   Detaches a child pointer and queues its destructor without invoking native code from
@@ -452,6 +472,10 @@
   (unless (= (domain-resource-generation h) (domain-generation d))
     (error 'domain-resource-pointer "stale resource generation"))
   (or (domain-resource-pointer h) (error 'domain-resource-pointer "resource is closed")))
+
+;;;
+;;; Domain Abandonment and Owner-Thread Teardown
+;;;
 
 ; inactive! : symbol? gpu-domain? -> void?
 ;   Forbids context teardown while this or another GPU execution scope is active.
@@ -551,6 +575,10 @@
 
 ;; Only the checked accessor is visible to other modules.
 (provide (rename-out [checked-resource-pointer resource-pointer]))
+
+;;;
+;;; Activation Leases and Backend Interoperation
+;;;
 
 ;; A canvas borrowed in an inner activation cannot outlive that activation,
 ;; even if the same domain is active again (or its outer activation survives).

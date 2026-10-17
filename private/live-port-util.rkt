@@ -12,6 +12,10 @@
 (provide live-port-options live-read-chunk live-write-all make-svg-header-filter
          check-live-cancel live-pause current-live-port-operation)
 
+;;;
+;;; Operation Options and Cancellation
+;;;
+
 ; current-live-port-operation : (parameter/c any/c)
 ;   Marks the public live-operation scope to reject reentry from user port callbacks.
 (define current-live-port-operation (make-parameter #f))
@@ -50,6 +54,10 @@
   (when (and seekable? (not (exact-nonnegative-integer? base)))
     (error who "input cannot report an exact position"))
   base)
+
+;;;
+;;; Port Transfers and SVG Header Filtering
+;;;
 
 ; live-read-chunk : symbol? input-port? exact-nonnegative-integer? boolean? any/c -> (values bytes?
 ;   boolean?)

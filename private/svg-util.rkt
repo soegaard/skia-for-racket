@@ -11,11 +11,12 @@
 (provide svg-dimension svg-metadata svg-id-prefix finish-svg-xml
          svg-output-path write-svg-file-bytes! rasterized-dimensions)
 
-;; SVG dimensions are user units, not an instruction to allocate an RGBA plane.
-;; Keep the rounded native device dimensions comfortably within signed int32.
 ;;;
 ;;; Dimensions, Metadata, and Byte Budgets
 ;;;
+
+;; SVG dimensions are user units, not an instruction to allocate an RGBA plane.
+;; Keep the rounded native device dimensions comfortably within signed int32.
 
 ; svg-dimension : symbol? real? -> inexact-real?
 ;   Checks an SVG extent from 1/1000 through 32768 units and converts it for native calls.

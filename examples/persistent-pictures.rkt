@@ -12,8 +12,9 @@
 ;;;
 
 (require racket/file racket/path racket/list racket/string json "../main.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Page Styling
 ;;;
 
 ; blue : rgba?
@@ -66,6 +67,10 @@
       (draw-rect c (+ x (* col 16)) (+ y (* row 16))
                  (min 16 (- 300 (* col 16))) (min 16 (- 180 (* row 16))) b))))
 
+;;;
+;;; Recorded Artwork
+;;;
+
 ; badge : canvas? -> void?
 ;   Draws the badge comparison in the current canvas coordinate system.
 (define (badge c)
@@ -96,6 +101,10 @@
               [dot (make-paint #:color orange)])
     (draw-rect c 0 0 32 48 a) (draw-rect c 32 0 32 48 b)
     (draw-circle c 18 24 10 dot)))
+
+;;;
+;;; Serialization and Indexed Replay
+;;;
 
 ; roundtrip-page : any/c any/c -> procedure?
 ;   Draws original and deserialized pictures side by side.
@@ -142,6 +151,10 @@
       "Operation and byte counts are estimates. These panels establish correctness, not a speedup claim." 0 407 10)
     (footer c 2)))
 
+;;;
+;;; Picture Shader Comparison
+;;;
+
 ; shader-panel : canvas? real? paint? -> void?
 ;   Draws the shader panel comparison in the current canvas coordinate system.
 (define (shader-panel c x paint)
@@ -171,6 +184,10 @@
       "Native object IDs are process-local; neither IDs nor operation counts are persistent cache keys." 0 407 10)
     (footer c 3)))
 
+;;;
+;;; Metadata and Review Reports
+;;;
+
 ; metadata : any/c picture? -> hash?
 ;   Collects picture identity, dimensions, and serialization metadata for the report.
 (define (metadata name picture)
@@ -192,6 +209,7 @@
   (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
     "&quot;")))])
     (string-replace text (car p) (cdr p))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

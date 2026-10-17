@@ -20,6 +20,7 @@
                   shaper-font call-with-choice-shaper fallback-choice-from-run)
          "dc-support.rkt" "dc-text-spec.rkt" "dc-native-util.rkt")
 (provide dc-measure-text dc-render-text! dc-glyph-exists?)
+
 ;;;
 ;;; Shaped Units and Scoped Font Resources
 ;;;

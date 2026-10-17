@@ -23,7 +23,7 @@
 (provide open-waves-window)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Backend Selection and Shader Window
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
@@ -44,6 +44,10 @@
   (when (and (eq? renderer 'gpu) (not backend))
     (error 'open-waves-window "no GPU backend for this platform; use --renderer raster"))
 
+  ;;;
+  ;;; Shader Resources and Animation State
+  ;;;
+
   ;; Compile once on the GUI handler thread; create shader instances per frame.
   (define effect (make-runtime-effect wave-source))
   (define frequency 5)
@@ -57,6 +61,10 @@
   (define ticker #f)
   (define window #f)
   (define frame-interval-ms 50)
+
+  ;;;
+  ;;; Frame Scheduling and Drawing
+  ;;;
 
   (define (request-frame)
     (when (and view (not closed?))
@@ -85,6 +93,10 @@
       (paint-frame canvas
                    (gpu-frame-logical-width frame)
                    (gpu-frame-logical-height frame))))
+
+  ;;;
+  ;;; Window Controls and Cleanup
+  ;;;
 
   (define (close-waves)
     (unless closed?

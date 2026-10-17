@@ -14,7 +14,7 @@
 (require racket/cmdline racket/file racket/path racket/string json "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Gallery Palette
 ;;;
 
 ; ink : string?
@@ -32,6 +32,10 @@
 ; orange : string?
 ;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
+
+;;;
+;;; Runtime Shader Programs
+;;;
 
 ; solid-source : string?
 ;   Contains the SkSL source compiled by the runtime-effect example.
@@ -75,6 +79,10 @@
 ; mix-source : string?
 ;   Contains the SkSL source compiled by the runtime-effect example.
 (define mix-source "uniform float amount; half4 main(half4 s, half4 d) { return mix(s,d,amount); }")
+
+;;;
+;;; Shader Comparison Drawing
+;;;
 
 ; label : canvas? string? real? real? real? [any/c] -> void?
 ;   Draws a text label at the supplied baseline in local canvas coordinates.
@@ -151,6 +159,10 @@
     (draw-rect c 0 0 16 16 a) (draw-rect c 16 16 16 16 a)
     (draw-circle c 16 16 8 b)
     (surface-snapshot s)))
+
+;;;
+;;; Reflection and Review Metadata
+;;;
 
 ; reflection-entry : any/c any/c -> hash?
 ;   Serializes the runtime effect's uniform and child descriptions.

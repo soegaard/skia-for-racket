@@ -15,8 +15,9 @@
 (require racket/runtime-path scribble/eval skia "color-study.rkt" "../support/figures.rkt")
 (provide colors-interaction colors-racketblock+eval color-study-pict gray-pair-pict ramp-pair-pict
          conversion-pict)
+
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; program-source : path?
@@ -33,6 +34,10 @@
 (colors-eval `(current-directory ,(path->string program-directory)))
 (colors-eval '(require racket skia))
 (colors-eval `(require (file ,(path->string program-source))))
+
+;;;
+;;; Color-Space Comparison Figures
+;;;
 
 ; srgb : color-space?
 ;   Retains the sRGB color-space value used by the comparison.
@@ -100,6 +105,10 @@
                    (draw-simple-text canvas (format "Input 128 -> sRGB output ~a" midpoint)
                                      284 (+ y 66) font ink)))
                #:color-space srgb))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; colors-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

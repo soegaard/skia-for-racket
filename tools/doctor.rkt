@@ -12,12 +12,18 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
          "../private/bidi.rkt" "../private/unicode-conformance.rkt"
          "codec-doctor.rkt" "pdf-doctor.rkt" "svg-doctor.rkt" "output-doctor.rkt"
          "path-matrix-doctor.rkt" "filter-graph-doctor.rkt" "color-output-doctor.rkt"
   "annotation-doctor.rkt" "runtime-doctor.rkt" "output-audit-doctor.rkt" "canvas-doctor.rkt"
   "geometry-doctor.rkt" "projective-doctor.rkt" "picture-doctor.rkt")
+
+;;;
+;;; Installation and Feature Checks
+;;;
+
 (module+ main
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
@@ -52,6 +58,11 @@
   (printf "HarfBuzzSharp native package: ~a\n" harfbuzz-package-version)
   (printf "HarfBuzz library: ~a\n" (harfbuzz-native-library-path))
   (printf "HarfBuzz version: ~a\n" (harfbuzz-native-version))
+
+  ;;;
+  ;;; Raster, Text, Shader, and Codec Smoke Checks
+  ;;;
+
   (with-skia ([s (make-surface 2 2 #:background 'red)])
     (unless (equal? (surface-pixel s 0 0) (rgb 255 0 0))
       (error 'doctor "pixel readback failed"))
@@ -90,6 +101,11 @@
         (unless (and (= (image-width decoded) 8) (= (image-height decoded) 8))
           (error 'doctor "~a decode failed" format))))
     (printf "Codecs passed; PNG/JPEG/WebP encode, probe, and decode verified\n"))
+
+  ;;;
+  ;;; Path Effects, Filters, and Recorded Pictures
+  ;;;
+
   (with-skia ([path (make-path '((move 0 0) (line 100 0)))]
               [measure (make-path-measure path)]
               [dash (make-dash-path-effect '(6 4))]
@@ -162,6 +178,11 @@
       (unless (string? (path->svg-path p))
         (error 'doctor "path SVG serialization failed"))
       (printf "Paths/SVG passed; relative commands, SVG conversion, and point queries verified\n")))
+
+  ;;;
+  ;;; Font Matching, Shaping, and Paragraph Layout
+  ;;;
+
   (with-skia ([fm (default-font-manager)])
     (define family-count (font-manager-family-count fm))
     (unless (exact-nonnegative-integer? family-count)
@@ -285,7 +306,7 @@
     (printf "Paragraph justification passed; justify/justify-all positioning and drawing verified\n"))
 
   ;;;
-  ;;; Command-Line Run
+  ;;; Unicode Conformance and Explicit Bidi Controls
   ;;;
 
   ; line-break-conformance-smoke : unicode-conformance-result?
@@ -345,6 +366,11 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "explicit-bidi rasterization failed"))
     (printf "Explicit bidi controls passed; embeddings, overrides, isolates, and wrapped scopes verified\n"))
+
+  ;;;
+  ;;; External Break Providers and Script-Aware Justification
+  ;;;
+
   (with-skia ([tf (make-typeface)]
               [font (make-font tf #:size 24)]
               [sh (make-shaper font)]
@@ -422,6 +448,11 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "script-aware justification rasterization failed"))
     (printf "Script-aware justification passed; CJK inter-character and Arabic kashida expansion verified\n"))
+
+  ;;;
+  ;;; Color Space and ICC Round Trips
+  ;;;
+
   (with-skia ([srgb (make-srgb-color-space)]
               [linear (make-linear-srgb-color-space)]
               [surface (make-surface 6 6 #:background "#808080" #:color-space srgb)]

@@ -11,6 +11,10 @@
 (provide performance-config performance-clock measure-one measure-completed
          sample-statistics finite-nonnegative-real? check-resource-envelope!)
 
+;;;
+;;; Benchmark Options and Clock Validation
+;;;
+
 ; performance-clock : parameter?
 ;   Supplies an injectable monotonic millisecond clock for repeatable timing tests.
 (define performance-clock (make-parameter current-inexact-monotonic-milliseconds))
@@ -46,6 +50,10 @@
           'width width 'height height 'sample_count sample-count 'checkpoint_interval 30
           'cache_limit_bytes (* 32 1024 1024) 'cache_growth_allowance_bytes (* 16 1024 1024)
           'cache_growth_allowance_resources 64 'cpu_pressure_bytes (* 4 1024 1024)))
+
+;;;
+;;; Completed Timing Samples and Resource Bounds
+;;;
 
 ; stamp : -> any
 ;   Reads the selected monotonic benchmark clock rather than wall-clock time.

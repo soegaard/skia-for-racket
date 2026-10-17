@@ -15,6 +15,10 @@
 ;; Pure R3a values and checks. Importing Skia does not construct native fonts.
 (require rackunit skia)
 
+;;;
+;;; Text Layout Argument Checks
+;;;
+
 (module+ test
   (test-case "font style names normalize to detached numeric values"
     (for ([name '(invisible thin extra-light light normal medium semi-bold

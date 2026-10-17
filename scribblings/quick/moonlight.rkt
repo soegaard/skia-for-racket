@@ -16,7 +16,7 @@
 (require skia)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Scene Dimensions and Palette
 ;;;
 
 ; width : exact-integer?
@@ -87,6 +87,10 @@
 ;   Specifies the text color color used by this drawing.
 (define text-color "#E8ECF5")
 
+;;;
+;;; Landscape Geometry
+;;;
+
 ; stars : list?
 ;   Orders star center coordinates and radii for the reproducible night sky.
 (define stars
@@ -141,6 +145,10 @@
     (414 88)
     (438 112)
     (466 140)))
+
+;;;
+;;; Sky, Mountains, and Water
+;;;
 
 ; draw-sky : canvas? -> void?
 ;   Draws the sky component in the current canvas coordinate system.
@@ -208,6 +216,10 @@
                            2 2
                            paint)))))
 
+;;;
+;;; Cabin and Trees
+;;;
+
 ; draw-cabin : canvas? real? real? -> void?
 ;   Draws the cabin component in the current canvas coordinate system.
 (define (draw-cabin canvas x y)
@@ -251,6 +263,10 @@
   (draw-tree-at canvas 735 lake-top 0.85)
   (draw-tree-at canvas 775 lake-top 0.65))
 
+;;;
+;;; Scene Assembly
+;;;
+
 ; draw-title : canvas? -> void?
 ;   Draws the title component in the current canvas coordinate system.
 (define (draw-title canvas)
@@ -278,6 +294,10 @@
   (draw-cabin canvas 545 270)
   (draw-trees canvas)
   (draw-title canvas))
+
+;;;
+;;; Raster and Vector Export
+;;;
 
 ; save-raster : path-string? -> void?
 ;   Renders the raster example to the selected output destination.

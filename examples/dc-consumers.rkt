@@ -9,12 +9,10 @@
 
 ;; Run from the source checkout: racket examples/dc-consumers.rkt [directory]
 ;; These are direct public clients of skia-dc%, not rasterized replacements.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/class racket/cmdline racket/file
          "../dc.rkt" "../tests/dc-consumer-fixtures.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

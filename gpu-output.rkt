@@ -17,6 +17,10 @@
          (submod "private/core.rkt" gpu-surface-internals))
 (provide make-gpu-raster-executor call-with-gpu-raster-executor)
 
+;;;
+;;; Executor Context Validation and Planning
+;;;
+
 ; check-context! : gpu-context? -> void?
 ;   Requires an owner-thread context whose detached state is ready and not shutting down.
 (define (check-context! context)
@@ -52,6 +56,10 @@
            ;; Readback is explicit, synchronous, and preserves the target space.
            (with-skia ([image (gpu-surface->raster-image surface)])
              (consume image target))))))))
+
+;;;
+;;; Raster Executor Construction and Scope
+;;;
 
 ; make-gpu-raster-executor : gpu-context? -> output-raster-executor?
 ;   Creates an output raster executor that borrows context.

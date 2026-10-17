@@ -15,6 +15,10 @@
 ;; Pure color contracts and examples; no native library or GUI is needed.
 (require rackunit skia/color)
 
+;;;
+;;; Color Value Examples
+;;;
+
 (module+ test
 
   ;;;

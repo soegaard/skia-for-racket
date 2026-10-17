@@ -10,11 +10,12 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Use Racket's real predicate, not a SemVer approximation, before compilation.
 (require setup/getinfo version/utils racket/runtime-path)
 
 ;;;
-;;; Diagnostic Operations
+;;; Package Metadata Validation
 ;;;
 
 ; root : path?

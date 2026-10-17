@@ -33,6 +33,11 @@
     (draw-rect canvas 2 2 8 8 ink)))
 
 (module+ test
+
+  ;;;
+  ;;; Path Operations and Rounded Geometry
+  ;;;
+
   (test-case "ordered path operations begin empty and do not mutate input"
     (with-skia ([outer (make-path)] [hole (make-path)])
       (path-add-rect! outer 0 0 40 30)
@@ -89,6 +94,10 @@
       (path-add-rrect! path normalized)
       (check-true (rounded-rect? (path-as-rounded-rect path)))))
 
+  ;;;
+  ;;; Regions and Device-Space Clipping
+  ;;;
+
   (test-case "regions use half-open coordinates and detached span snapshots"
     (with-skia ([region (make-region '((0 0 4 3) (6 0 2 3)))])
       (check-true (region-contains-point? region 0 0))
@@ -121,6 +130,10 @@
       (check-equal? (argb surface 2 2) #xffff0000)
       (check-equal? (argb surface 7 2) 0)
       (check-equal? (canvas-device-clip-bounds canvas) #(0 0 4 10))))
+
+  ;;;
+  ;;; Points, Vertices, and Scoped Canvas State
+  ;;;
 
   (test-case "points validate complete line pairs and portable markers use geometry"
     (with-skia ([surface (make-surface 16 16)]
@@ -184,6 +197,10 @@
       (check-equal? (argb surface 0 0) 0)
       (check-equal? (argb surface 5 5) #xff0000ff)
       (check-equal? (canvas-device-clip-bounds canvas) #(0 0 16 16))))
+
+  ;;;
+  ;;; Drawables and Specialized Canvases
+  ;;;
 
   (test-case "drawables capture once and keep independent picture snapshots"
     (define calls 0)

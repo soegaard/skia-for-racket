@@ -12,6 +12,10 @@
          (only-in (submod "gpu-presenter.rkt" adapter-internals) call-with-gpu-frame-target))
 (provide call-with-gpu-frame-dc/native call-with-gpu-surface-dc/native)
 
+;;;
+;;; GPU Renderer Assembly
+;;;
+
 ; gpu-renderer : any/c [any/c] [any/c] [any/c] [any/c] [any/c] -> any
 ;   Builds a same-context GPU renderer that may lend the caller's root surface once without taking
 ;   its ownership.
@@ -41,6 +45,10 @@
      (sk:with-skia ([image (gpu:gpu-surface->raster-image surface)])
        (sk:image->png-bytes image)))
    #:internal-snapshot gpu:gpu-surface-snapshot))
+
+;;;
+;;; Frame and Surface Drawing-Context Scopes
+;;;
 
 ; call-with-gpu-frame-dc/native : any/c any/c any/c any/c [any/c] [any/c] [any/c] [any/c] -> any
 ;   Renders a frame-scoped DC into a cached staging target and composites its GPU snapshot onto the

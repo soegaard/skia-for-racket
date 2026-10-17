@@ -17,6 +17,10 @@
          (prefix-in n: "gpu-native.rkt"))
 (provide make-window-gl-access call-with-window-target draw-gpu-target-to-window!)
 
+;;;
+;;; Window Context Access
+;;;
+
 ; make-window-gl-access : -> any
 ;   Constructs GUI-owned GL activation and framebuffer access without exposing them through public
 ;   frame values.
@@ -99,6 +103,10 @@
         (bind-framebuffer #x8CA9 previous-draw)
         (bind-framebuffer #x8CA8 previous-read))))
   with-target)
+
+;;;
+;;; Scoped Window Targets and Final Composition
+;;;
 
 ; call-with-window-target : any/c any/c any/c -> any
 ;   Scopes a Skia wrapper around the current window target with its checked format description.

@@ -25,6 +25,11 @@
 (define (results thunk) (call-with-values thunk list))
 
 (module+ test
+
+  ;;;
+  ;;; Paint and Canvas State
+  ;;;
+
   (test-case "unsupported blend modes are rejected without changing the paint"
     (check-exn exn:fail? (lambda () (make-paint #:blend-mode 'not-a-blend-mode)))
     (with-skia ([paint (make-paint)]
@@ -98,6 +103,11 @@
       (check-false (paint-shader copy))
       (check-equal? (paint-stroke-width copy) 0.0)
       (check-false (paint-antialias? copy))))
+
+  ;;;
+  ;;; Path Geometry and Measurement
+  ;;;
+
   (test-case "path snapshots, copies, fill reset, and curve bounds"
     (with-skia ([path (make-path '((move 0 0) (quad 50 100 100 0)) #:fill-rule 'even-odd)]
                 [copy (path-copy path)])
@@ -135,6 +145,11 @@
       (path-measure-set-path! measure #f)
       (check-equal? (path-measure-length measure) 0.0)
       (check-false (path-measure-matrix measure 0))))
+
+  ;;;
+  ;;; Image Snapshots and Encoders
+  ;;;
+
   (test-case "surface snapshots and raw-image copies are independent"
     (define samples (bytes 255 0 0 255 0 0 255 255))
     (with-skia ([image (rgba-bytes->image 2 1 samples)]
@@ -155,6 +170,10 @@
       (check-equal? (subbytes png 0 8) #"\211PNG\r\n\32\n")
       (check-exn exn:fail? (lambda () (image->encoded-bytes image 'gif)))
       (check-exn exn:fail? (lambda () (image->png-bytes image #:compression 10)))))
+
+  ;;;
+  ;;; Path Iteration and Native Paint Reset
+  ;;;
 
   (test-case "normal iteration exposes a closing line; raw iteration exposes stored verbs"
     (with-skia ([path (make-path '((move 10 20) (line 40 20) (line 40 50) (close)))])
@@ -180,6 +199,11 @@
       (check-equal? constructed '(1.0 #t))
       (check-equal? (list (paint-stroke-width paint) (paint-antialias? paint)) '(0.0 #f))
       (check-false (skia-closed? paint))))
+
+  ;;;
+  ;;; Color Spaces and Encoding Policies
+  ;;;
+
   (test-case "standard color spaces are independently owned and compared by description"
     (with-skia ([srgb (make-srgb-color-space)]
                 [another (make-srgb-color-space)]

@@ -18,6 +18,10 @@
          session-complete! session-close! session-quarantine! session-info
          resource-description/native same-device/native?)
 
+;;;
+;;; COM Identity and Resource Inspection
+;;;
+
 ; iid-unknown : bytes?
 ;   Identifies IUnknown for canonical COM object-identity comparisons.
 (define iid-unknown #"\000\000\000\000\000\000\000\000\300\000\000\000\000\000\000\106")
@@ -85,6 +89,11 @@
                       'quality (d3d12-resource-desc-quality d) 'layout (d3d12-resource-desc-layout d)
                       'flags (d3d12-resource-desc-flags d) 'heap_type (ptr-ref heap _int32)
                       'heap_flags (ptr-ref flags _uint32)))))))))
+
+;;;
+;;; Session Ownership and Quarantine
+;;;
+
 (struct interop-session
   (device queue resource producer value incoming outgoing timeout description
    [fence #:mutable] [serial #:mutable] [jobs #:mutable] [bridge #:mutable]
@@ -173,6 +182,10 @@
         (set! ok? #t) s)
       (lambda () (unless ok? (for ([p (in-list refs)]) (release p)))))))
 
+;;;
+;;; Device Checks and Producer Synchronization
+;;;
+
 ; open! : interop-session? -> void?
 ;   Rejects closed or quarantined Direct3D sessions before native work.
 (define (open! s)
@@ -251,6 +264,10 @@
   (wait-fence! s (interop-session-fence s) value)
   (set-interop-session-in-flight?! s #f)
   (release-jobs! s))
+
+;;;
+;;; Command Submission and Resource Transitions
+;;;
 
 ; commands! : interop-session? procedure? -> any
 ;   Records and submits a private command list while retaining its allocator until fence
@@ -348,6 +365,10 @@
     (set-interop-session-current-state! s (interop-state (interop-session-outgoing s)))
     (set-interop-session-returned?! s #t)
     (set-interop-session-state! s 'returned)))
+
+;;;
+;;; Session Retirement
+;;;
 
 ; session-close! : interop-session? -> void?
 ;   Releases session-owned native interfaces only after outstanding work and return transitions are

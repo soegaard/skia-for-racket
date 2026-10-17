@@ -20,6 +20,11 @@
          gpu-context-options-allow-path-mask-caching?
          gpu-context-options-manual-mipmapping?
          gpu-context-options-buffer-map-threshold gpu-context-options->jsexpr)
+
+;;;
+;;; Context Option Values and Validation
+;;;
+
 (struct gpu-context-options
   (avoid-stencil-buffers? runtime-program-cache-size glyph-cache-texture-maximum-bytes
    allow-path-mask-caching? manual-mipmapping? buffer-map-threshold)
@@ -65,6 +70,10 @@
   (integer! who threshold -1 #x7fffffff "exact buffer-map threshold -1 through 2147483647")
   (make-options-record stencil? programs glyphs paths? mipmaps? threshold))
 
+;;;
+;;; Detached Option Reports
+;;;
+
 ; gpu-context-options->jsexpr : gpu-context-options? -> (and/c hash? immutable?)
 ;   Returns an immutable JSON-compatible hash with keys 'avoid_stencil_buffers,
 ;   'runtime_program_cache_size, 'glyph_cache_texture_maximum_bytes, 'allow_path_mask_caching,
@@ -79,6 +88,11 @@
           'allow_path_mask_caching (gpu-context-options-allow-path-mask-caching? value)
           'manual_mipmapping (gpu-context-options-manual-mipmapping? value)
           'buffer_map_threshold (gpu-context-options-buffer-map-threshold value)))
+
+;;;
+;;; Internal Option Encoding
+;;;
+
 (module* internals #f
   (provide check-optional-context-options context-options-diagnostics add-context-options-diagnostics)
 

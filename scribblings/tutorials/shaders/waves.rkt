@@ -19,7 +19,7 @@
          make-wave-shader draw-wave-panel draw-wave-scene)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Scene Dimensions and Timing
 ;;;
 
 ; scene-width : exact-integer?
@@ -38,6 +38,10 @@
 ;   Converts elapsed seconds into the wave shader's animation phase.
 (define (phase-at seconds)
   (* phase-speed seconds))
+
+;;;
+;;; Shader Programs
+;;;
 
 ; solid-source : string?
 ;   Contains the SkSL source compiled by the runtime-effect example.
@@ -103,6 +107,10 @@ half4 main(float2 p) {
 }
 SKSL
   )
+
+;;;
+;;; Shader Uniforms and Drawing
+;;;
 
 ; make-wave-shader : runtime-effect? real? real? #:frequency [real?] #:bend [real?] #:phase
 ; [real?] #:hue [real?] #:glow [real?] -> shader?

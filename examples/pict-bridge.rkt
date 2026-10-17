@@ -9,17 +9,10 @@
 
 
 ;; Run with: racket examples/pict-bridge.rkt output/pict-bridge.png
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/class racket/cmdline
          (prefix-in pict: pict)
          skia skia/pict)
-
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; output-file : path-string?
 ;   Selects the destination used by this example's output.

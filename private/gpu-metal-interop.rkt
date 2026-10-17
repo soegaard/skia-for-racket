@@ -20,6 +20,10 @@
          (submod "core.rkt" gpu-image-internals))
 (provide make-metal-external-texture call-with-gpu-metal-device)
 
+;;;
+;;; Context and Device Access
+;;;
+
 ; quarantined-operations : list?
 ;   Retains failed operation closures whose native completion or cleanup remains uncertain.
 (define quarantined-operations '())
@@ -57,6 +61,10 @@
       ;; queue; retaining this device beyond the callback is an unsafe contract.
       (call-with-continuation-barrier
         (lambda () (parameterize ([current-external-native? #t]) (proc device)))))))
+
+;;;
+;;; External Metal Texture Tokens
+;;;
 
 ; space-pointer : any/c -> any
 ;   Borrows the optional color-space pointer for the duration of native texture wrapping.
@@ -117,6 +125,10 @@
       (unless ready?
         (cond [pin (domain-resource-close! pin) (domain-drain! d)]
               [session (metal-session-close! session)])))))
+
+;;;
+;;; Scoped Import and Surface Transactions
+;;;
 
 ; operate : any/c any/c any/c any/c any/c any/c any/c any/c any/c any/c -> any
 ;   Runs an image-copy or surface-borrow operation through the session's guarded synchronization

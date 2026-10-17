@@ -11,14 +11,20 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Explicit offscreen gate. Missing contexts and failed cleanup are failures.
 (require racket/cmdline racket/list racket/file json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt"
          "../private/gpu-io-trace.rkt" "effects-fixtures.rkt" "effects-native-test.rkt")
+
+;;;
+;;; GPU Acceptance Run
+;;;
+
 (module+ main
 
   ;;;
-  ;;; Command-Line Run
+  ;;; Backend and Evidence Options
   ;;;
 
   ; backend : (or/c symbol? #f)
@@ -47,6 +53,10 @@
   (unless (and report-path token) (error 'effects-gpu "--report and --token are required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ;;;
+  ;;; Context and Capture Fixtures
+  ;;;
 
   ; new-context : -> gpu-context?
   ;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
@@ -103,6 +113,11 @@
         (error 'effects-gpu "explicit capture must record exactly one readback"))
       (set! readbacks (add1 readbacks))
       pixels))
+
+  ;;;
+  ;;; Effect Rendering and Affinity Checks
+  ;;;
+
   (dynamic-wind
     void
     (lambda ()
@@ -169,6 +184,11 @@
     (lambda ()
       (gpu-context-close! other)
       (gpu-context-close! ctx)))
+
+  ;;;
+  ;;; Teardown and Evidence Publication
+  ;;;
+
   (unless (and (eq? (gpu-context-state ctx) 'closed)
                (eq? (gpu-context-state other) 'closed))
     (error 'effects-gpu "contexts did not close"))

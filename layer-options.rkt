@@ -19,6 +19,7 @@
 (provide layer-options? make-layer-options layer-options-bounds layer-options-flags
          layer-options-preserve-lcd-text? layer-options-initialize-with-previous?
          layer-options-f16?)
+
 ;;;
 ;;; Layer Representation and Construction
 ;;;
@@ -61,6 +62,7 @@
   (for ([flag (in-list (list lcd? previous? f16?))]) (boolean who flag))
   (make-options (checked-bounds who bounds)
                 (bitwise-ior (if lcd? 2 0) (if previous? 4 0) (if f16? 16 0))))
+
 ;;;
 ;;; Flag Queries
 ;;;

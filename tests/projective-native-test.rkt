@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/list ffi/unsafe "../main.rkt" "../private/types.rkt"
          (submod "../canvas-matrix.rkt" testing))
 (provide projective-native-tests)
@@ -49,6 +50,11 @@
 ;   document policies.
 (define projective-native-tests
   (test-suite "General canvas matrices: native storage, lifetime, and document policies"
+
+   ;;;
+   ;;; Native Matrix Layout and Composition
+   ;;;
+
    (test-case "row-major public data crosses the column-major ABI"
      (check-equal? (ctype-sizeof _sk-m44) 64)
      (define m (apply make-matrix4 (range 1 17)))
@@ -142,6 +148,11 @@
          (matrix4-compose (matrix4-perspective 100) (matrix4-rotate-y-degrees 30)))
        (check-equal? (canvas-device-clip-bounds c) bounds))
    )
+
+   ;;;
+   ;;; Scoped State, Validation, and Canvas Lifetime
+   ;;;
+
    (test-case "matrix scope composes and returns multiple values"
      (with-skia ([s (make-surface 80 80)])
        (define c (surface-canvas s)) (canvas-translate! c 3 4)
@@ -247,6 +258,11 @@
        (check-equal? saved (matrix4-translate 1 2 3))
        (check-true (immutable? (matrix4->vector saved))))
    )
+
+   ;;;
+   ;;; Document Policy and Recorded Perspective
+   ;;;
+
    (test-case "preflight records general matrices for each document backend"
      (for ([backend '(pdf svg)])
        (define r (analyze-output-page (page projective-drawing) backend))

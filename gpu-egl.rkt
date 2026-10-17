@@ -8,10 +8,6 @@
 ;; This opt-in public entry point connects Linux EGL context management to the common GPU provider
 ;; and ownership interfaces.
 
-;;;
-;;; Imports and Exports
-;;;
-
 ;; Explicit Linux EGL entry points. Importing this module initializes neither
 ;; EGL nor a GUI. Native platform loading happens only in these constructors.
 (require racket/runtime-path "private/gpu-context.rkt" "private/gpu-domain.rkt"

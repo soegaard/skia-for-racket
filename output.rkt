@@ -22,6 +22,10 @@
          output-page-size-in-points output-page-content-size
          draw-output-page output-page->image output->bytes save-output)
 
+;;;
+;;; Page Values, Units, and Content Geometry
+;;;
+
 ;; A page describes how to draw; it owns no native resource. The callback can
 ;; close over resources, whose lifetimes remain the caller's responsibility.
 (struct output-page (width height unit margins background clip? draw)
@@ -103,6 +107,10 @@
   (values (- (output-page-width page) (car m) (caddr m))
           (- (output-page-height page) (cadr m) (cadddr m))))
 
+;;;
+;;; Page Drawing and Rasterization
+;;;
+
 ; page-raster-scale : symbol? output-page? real? -> real?
 ;   Converts document DPI to a checked pixel scale in the page's logical units.
 (define (page-raster-scale who page dpi)
@@ -156,6 +164,10 @@
     (canvas-scale! c (/ pw w) (/ ph h))
     (draw-output-page c page #:text-mode mode #:raster-dpi dpi)
     (surface-snapshot surface)))
+
+;;;
+;;; Document Encoding and File Publication
+;;;
 
 ; check-format : symbol? any/c -> (or/c 'pdf 'svg)
 ;   Checks and returns the requested document output format.

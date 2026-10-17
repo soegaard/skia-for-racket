@@ -9,13 +9,11 @@
 
 ;; Generate PDF/SVG examples without opening a GUI or acquiring a GPU.
 ;; The same draw callback can also be used in a render-canvas paint callback.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/cmdline racket/file
          (prefix-in sk: "../main.rkt") "../dc-output.rkt"
          "../tests/dc-output-fixtures.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

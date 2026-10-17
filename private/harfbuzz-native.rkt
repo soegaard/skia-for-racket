@@ -19,6 +19,10 @@
          harfbuzz-check! harfbuzz-available? harfbuzz-native-version
          harfbuzz-native-library-path)
 
+;;;
+;;; Platform Selection and Isolated Loading
+;;;
+
 ; harfbuzz-package-version : string?
 ;   Pins the HarfBuzzSharp package whose embedded HarfBuzz version and ABI this binding expects.
 (define harfbuzz-package-version "8.3.1.2")
@@ -168,6 +172,10 @@
              harfbuzz-package-version (reverse failures)))
     found))
 
+;;;
+;;; Lazy HarfBuzz Registry and Shaping Bindings
+;;;
+
 ; hb-bindings : list?
 ;   Accumulates named shaping-symbol promises in reverse declaration order for a later complete
 ;   readiness check.
@@ -295,6 +303,10 @@
 ; hb_shape : (_fun _pointer _pointer _pointer _uint32 -> _void) (FFI)
 ;   Calls the native hb_shape entry point using the declared FFI layout.
 (define-hb-native hb_shape (_fun _pointer _pointer _pointer _uint32 -> _void))
+
+;;;
+;;; Readiness and Library Diagnostics
+;;;
 
 ; hb-ready : promise?
 ;   Memoizes successful library/version validation and resolution of every required shaping entry

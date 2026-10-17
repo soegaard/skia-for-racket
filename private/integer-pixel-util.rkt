@@ -12,6 +12,10 @@
          integer-black-sample integer-storage-input integer-sample-alpha
          integer-tight-input)
 
+;;;
+;;; Integer Samples and Channel Packing
+;;;
+
 ; integer-sample-check : symbol? image-info? any/c -> vector?
 ;   Copies logical channels after checking bit depths, opaque alpha, and scaled premultiplied
 ;   bounds.
@@ -101,6 +105,11 @@
     [(rgba-8888 bgra-8888) (vector-ref sample 3)]
     [(rgba-1010102) (* 85 (vector-ref sample 3))]
     [else 255]))
+
+;;;
+;;; Storage Layout and Tight Row Copies
+;;;
+
 ;; Validate a detached copy BEFORE any destination write. Full allocation-sized
 ;; buffer input preserves padding; view input needs only the final row's pixels.
 

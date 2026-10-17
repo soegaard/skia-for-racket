@@ -15,6 +15,11 @@
          metal-layer-measure metal-layer-acquire! metal-layer-present! metal-layer-release!
          metal-layer-finish! metal-layer-close! metal-layer-info metal-drawable-texture
            metal-drawable-info)
+
+;;;
+;;; Layer Host and Drawable Records
+;;;
+
 (define-cstruct _ca-size ([width _double] [height _double]))
 ;; Fields:
 ;;   width and height: double-precision Core Animation size components in the units expected by the
@@ -41,6 +46,10 @@
 ;;   host: owning layer host. pointer: mutable retained drawable pointer, cleared after release.
 ;;   texture: borrowed texture pointer whose lifetime is bounded by the drawable. info: detached
 ;;   dimensions/configuration. presented?: mutable flag preventing duplicate presentation.
+
+;;;
+;;; Owned Layer Construction and Frame Operations
+;;;
 
 ;; Procedures in ops are short synchronous callouts; user rendering never runs
 ;; with a Cocoa autorelease pool pushed. Method IMPs returning CGRect use the
@@ -247,6 +256,10 @@
                 (when layer (act layer "removeFromSuperlayer") (act layer "release"))
                 (when retained-view? (act view "release"))
                 (when space (release-space space)))))))))))
+
+;;;
+;;; Checked Layer Dispatch
+;;;
 
 ; layer-call : symbol? metal-layer-host? any/c any/c ... -> any
 ;   Dispatches a layer operation under the host's ownership and native activation checks.

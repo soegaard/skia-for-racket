@@ -7,9 +7,6 @@
 ;; Prints the runtime and native-library identity needed for live-stream validation receipts.
 ;; The callback validation workflow uses this probe to attribute evidence to the loaded binaries.
 
-;;;
-;;; Imports and Exports
-;;;
 (require json ffi/unsafe/os-thread "../private/native.rkt")
 (module+ main
 

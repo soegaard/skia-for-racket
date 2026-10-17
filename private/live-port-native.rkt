@@ -20,6 +20,7 @@
          native-decode-image native-load-picture native-encode-image native-write-picture
          native-write-pages native-output-write! native-output-count
          native-symbols)
+
 ;;;
 ;;; Lazy Registry and Callback ABI Layouts
 ;;;
@@ -531,6 +532,7 @@
               (begin (wait-port! j (operation-output j)) (write at)))))
       (chunks (+ offset amount))))
   #t)
+
 ;;;
 ;;; One-Time Native Callback Installation
 ;;;
@@ -606,6 +608,7 @@
   (unless (and (vector? answer) (eq? (vector-ref answer 0) 'ok))
     (error 'live-ffi "native operation rejected input or allocation: ~s" answer))
   (values answer stats read written))
+
 ;;;
 ;;; Retained Acceptance-Harness Operations
 ;;;

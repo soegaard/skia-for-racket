@@ -17,6 +17,7 @@
 (require racket/list racket/string racket/promise racket/runtime-path
          "dc-support.rkt" (only-in "check.rkt" current-skia-byte-limit))
 (provide (struct-out dc-face) dc-font-face dc-face-from-description)
+
 ;;;
 ;;; Detached Face Requests
 ;;;

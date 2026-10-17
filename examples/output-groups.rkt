@@ -14,7 +14,7 @@
 (require racket/file racket/path racket/list racket/string json "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Page Styling
 ;;;
 
 ; blue : rgba?
@@ -78,6 +78,10 @@
     (draw-rounded-rect c (- x 8) (- y 8) (+ w 16) (+ h 16) 13 13 bg)
     (draw-rounded-rect c x y w h 10 10 inner)
     (draw-rounded-rect c x y w h 10 10 stroke)))
+
+;;;
+;;; Reusable Group Artwork
+;;;
 
 ; vector-card : canvas? -> void?
 ;   Draws the vector card comparison in the current canvas coordinate system.
@@ -154,6 +158,10 @@
                          #:scale 2 #:label "inner-runtime")
       (at c 388 15 (lambda (g) (inner-runtime-card g runtime-paint)))))
 
+;;;
+;;; Output Decision Capture
+;;;
+
 ; record! : any/c any/c -> output-group-report?
 ;   Appends a group report to the accumulator and returns the same report.
 (define (record! sink report)
@@ -164,6 +172,10 @@
 ;   Serializes captured group reports in their original execution order.
 (define (reports->jsexpr sink)
   (map output-group-report->jsexpr (reverse (unbox sink))))
+
+;;;
+;;; Native or Raster Output
+;;;
 
 ; choice-page : paint? any/c -> output-page?
 ;   Builds the choice page output page and its drawing callback.
@@ -211,6 +223,10 @@
      (label c "The audit records both the decision event and the actual raster boundary." 0 407 10)
      (footer c 1))
    #:margins 24 #:background 'white))
+
+;;;
+;;; Backdrop Isolation
+;;;
 
 ; isolation-page : any/c -> output-page?
 ;   Builds the isolation page output page and its drawing callback.
@@ -267,6 +283,10 @@
      (footer c 2))
    #:margins 24 #:background 'white))
 
+;;;
+;;; Nested Output Groups
+;;;
+
 ; nested-page : paint? any/c -> output-page?
 ;   Builds the nested page output page and its drawing callback.
 (define (nested-page runtime-paint sink)
@@ -315,6 +335,10 @@
        407 10)
      (footer c 3))
    #:margins 24 #:background 'white))
+
+;;;
+;;; Review Reports
+;;;
 
 ; write-json-file : path-string? any/c -> void?
 ;   Writes the report data as JSON, replacing an existing report file.

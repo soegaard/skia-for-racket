@@ -27,7 +27,7 @@
 (provide open-bezier-editor)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Backend Selection and Editor Window
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
@@ -54,6 +54,10 @@
     (and (eq? renderer 'gpu) (preferred-gpu-backend)))
   (when (and (eq? renderer 'gpu) (not gpu-backend))
     (error 'open-bezier-editor "no supported GPU backend; use --renderer raster"))
+
+  ;;;
+  ;;; Control-Point State and Pointer Input
+  ;;;
 
   (define points initial-control-points)
   (define selected-index #f)
@@ -99,6 +103,10 @@
         (handle-pointer-event this event))
       (super-new)))
 
+  ;;;
+  ;;; Raster and GPU Drawing
+  ;;;
+
   (define (paint-cpu-frame widget dc)
     (define-values (width height) (send widget get-client-size))
     (when (and (positive? width) (positive? height))
@@ -119,6 +127,10 @@
                    (gpu-frame-logical-width frame)
                    (gpu-frame-logical-height frame)
                    selected-index)))
+
+  ;;;
+  ;;; Window Controls and Cleanup
+  ;;;
 
   (define (close-editor)
     (unless closed?

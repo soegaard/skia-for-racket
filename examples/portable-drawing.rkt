@@ -12,8 +12,9 @@
 ;;;
 
 (require racket/file racket/path racket/list racket/string json "../main.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Styling and Output Groups
 ;;;
 
 ; blue : rgba?
@@ -76,6 +77,10 @@
               (cons (cons page (output-group-report->jsexpr r)) (unbox (current-decisions)))))
   (void))
 
+;;;
+;;; Portable Point Markers
+;;;
+
 ; points : list?
 ;   Orders the marker centers used by the portable drawing comparison.
 (define points (for/list ([x '(28 76 124 172 220 268)]) (list x 27)))
@@ -115,6 +120,10 @@
         (draw-markers local (map (lambda (p) (list (car p) 48)) points) 38 p))))
   (label c "All four groups replay natively. This page contains no embedded images." 0 410 10)
   (footer c 1))
+
+;;;
+;;; Image Grid Scaling
+;;;
 
 ; make-grid-source : -> image?
 ;   Constructs grid source for the example's drawing pipeline.
@@ -158,6 +167,10 @@
     (label c
       "These are still raster source images, not vector artwork. A vector-only policy correctly rejects them." 0 409 10)
     (footer c 2)))
+
+;;;
+;;; Sprite Atlas Placement
+;;;
 
 ; atlas-boxes : list?
 ;   Orders source-cell rectangles as x, y, width, and height.
@@ -208,6 +221,10 @@
       "Filtering and edge antialiasing remain renderer-dependent; this is not a pixel-identical batch promise." 0 409 10)
     (footer c 3)))
 
+;;;
+;;; Output Decision Reports
+;;;
+
 ; write-json-file : path-string? any/c -> void?
 ;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
@@ -230,6 +247,7 @@
   (for/list ([name (in-list names)])
     (hasheq 'page name 'groups (for/list ([entry (in-list entries)] #:when (equal? (car entry)
       name)) (cdr entry)))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

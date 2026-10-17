@@ -11,6 +11,10 @@
 (provide pdf-page-dimension pdf-raster-dpi pdf-encoding-quality
          pdf-metadata-bytes pdf-date-time pdf-output-path write-pdf-file-bytes!)
 
+;;;
+;;; PDF Page and Metadata Validation
+;;;
+
 ;; Page dimensions are points, NOT pixels: do not apply check-dimensions or
 ;; charge a width*height*4 raster to the byte limit for an otherwise vector page.
 
@@ -80,6 +84,10 @@
      ;; The ABI copies these values synchronously during document construction.
      (make-sk-pdf-datetime (quotient zone 60) y m (date-week-day d) day
                            (date-hour d) (date-minute d) (date-second d))]))
+
+;;;
+;;; Atomic PDF File Publication
+;;;
 
 ; pdf-output-path : symbol? path-string? symbol? -> path?
 ;   Resolves a NUL-free output path, requires an existing parent directory, and checks the

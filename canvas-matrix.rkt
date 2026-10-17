@@ -19,6 +19,10 @@
          canvas-set-matrix3! canvas-concat-matrix3!
          call-with-canvas-matrix with-canvas-matrix)
 
+;;;
+;;; Native Matrix Conversion and Inspection
+;;;
+
 ;; Pinned m119 canvas calls reinterpret sk_matrix44_t as a column-major SkM44.
 ;; The public vectors are row-major. Do NOT copy them directly into this ABI.
 
@@ -48,6 +52,10 @@
 (define (canvas-matrix4 c)
   ;; call-on-canvas validates owner, thread, and borrowed-canvas lifetime first.
   (call-on-canvas 'canvas-matrix4 c '() read-native-matrix))
+
+;;;
+;;; Canvas Matrix Mutation
+;;;
 
 ; set-matrix : symbol? canvas? matrix4? -> void?
 ;   Replaces the canvas transform while recording non-affine use for output auditing.
@@ -104,6 +112,10 @@
   (unless (matrix3? m) (raise-argument-error 'canvas-concat-matrix3! "matrix3?" m))
   (concat-matrix 'canvas-concat-matrix3! c (matrix3->matrix4 m)))
 
+;;;
+;;; Scoped Canvas Transforms
+;;;
+
 ; call-with-canvas-matrix : canvas? (or/c matrix? matrix3? matrix4?) (-> any) [#:replace? boolean?]
 ;   -> any
 ;   Calls the zero-argument function under a protected canvas-state scope.
@@ -133,4 +145,9 @@
     [(_ c m #:replace? replace? body ...)
      (call-with-canvas-matrix c m (lambda () body ...) #:replace? replace?)]
     [(_ c m body ...) (call-with-canvas-matrix c m (lambda () body ...))]))
+
+;;;
+;;; Internal Test Exports
+;;;
+
 (module* testing #f (provide native-matrix4 from-native-matrix4))

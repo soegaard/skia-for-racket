@@ -12,11 +12,12 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/cmdline racket/file racket/port
          racket/list racket/runtime-path json "../../private/live-port-native.rkt")
 
 ;;;
-;;; Fixtures and Assertions
+;;; Command-Line Inputs and Native Initialization
 ;;;
 
 ; library-path : (or/c path-string? #f)
@@ -46,6 +47,10 @@
 (when (directory-exists? directory) (error 'probe "output directory already exists"))
 (make-directory* directory)
 (initialize-native! library-path)
+
+;;;
+;;; Callback Inputs, Evidence, and Cleanup Assertions
+;;;
 
 ; png-input : bytes?
 ;   Loads the encoded PNG input used by native callback decode probes.
@@ -131,6 +136,11 @@
 (define tests
   (test-suite
    "compiler-free FFI with real m119 Skia"
+
+   ;;;
+   ;;; Streaming, Partial Transfers, and Callback Retention
+   ;;;
+
    (test-case "binary copy uses real managed input and output"
      (define out (open-output-bytes))
      (define reply (capture (lambda () (native-copy (open-input-bytes payload) out))))
@@ -194,6 +204,11 @@
      (check-clean reply 1 1)
      (close-output-port out)
      (record 'gc reply))
+
+   ;;;
+   ;;; Callback Failures, Reentrancy, and Quotas
+   ;;;
+
    (test-case "input exception is re-raised after native stream destruction"
      (define sentinel (gensym 'input-failed))
      (define in (make-input-port 'throws (lambda (bytes) (raise sentinel))
@@ -243,6 +258,11 @@
      (check-exn #rx"byte limit"
        (lambda () (capture (lambda () (native-document (open-output-bytes) 'pdf #:limit 16)))))
      (check-failed-clean 0 1))
+
+   ;;;
+   ;;; Cancellation and Caller Termination
+   ;;;
+
    (test-case "cancellation releases a native worker blocked on input"
      (define-values (in out) (make-pipe 1))
      (define cancel (make-semaphore 0))
@@ -299,6 +319,11 @@
      (define reply (capture (lambda () (native-copy (open-input-bytes #"still alive") out))))
      (check-equal? (get-output-bytes out) #"still alive")
      (check-clean reply 1 1))
+
+   ;;;
+   ;;; Seeking, Codecs, and Document Publication
+   ;;;
+
    (test-case "seek is relative to the initial port position"
      (define in (open-input-bytes #"xxabcdef"))
      (file-position in 2)
@@ -358,6 +383,10 @@
        (close-output-port out)))
    (test-case "all worker operations and managed streams have finished"
      (check-equal? (active-operation-count) 0))))
+
+;;;
+;;; Probe Execution and Evidence Publication
+;;;
 
 ; failures : exact-nonnegative-integer?
 ;   Stores the RackUnit failure count for the probe process exit and receipt.

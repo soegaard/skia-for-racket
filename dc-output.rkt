@@ -27,6 +27,10 @@
          current-output-dc-command-limit draw-dc-raster-group
          dc-annotate-url! dc-define-destination! dc-link-destination!)
 
+;;;
+;;; Drawing-Context Capture and Output Pages
+;;;
+
 ; vector-only? : (parameter/c boolean?)
 ;   Tracks whether the current drawing scope forbids implicit raster fallbacks.
 (define vector-only? (make-parameter #f))
@@ -120,6 +124,10 @@
       (on-report (call-with-output-dc c cw ch draw #:smoothing smoothing #:policy policy)))
     #:unit unit #:margins margins #:background background #:clip? #t))
 
+;;;
+;;; Document Annotation Dispatch
+;;;
+
 ; live-dc! : symbol? any/c -> void?
 ;   Checks the drawing-context interface and probes its size before output operations.
 (define (live-dc! who dc)
@@ -167,6 +175,10 @@
   (annotation! 'dc-link-destination! dc 'link
     (append (annotation-rectangle 'dc-link-destination! x y width height)
             (list (annotation-name 'dc-link-destination! name)))))
+
+;;;
+;;; Explicit Raster Groups
+;;;
 
 ; draw-dc-raster-group : (is-a?/c draw:dc<%>) real? real? (and/c real? (>/c 0)) (and/c real? (>/c
 ;   0)) (-> (is-a?/c draw:dc<%>) any) [#:scale (real-in 1/1024 1024)] [#:label string?] -> void?

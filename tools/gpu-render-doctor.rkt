@@ -15,7 +15,12 @@
          rackunit/text-ui
          "../tests/gpu-render-native-test.rkt")
 
+;;;
+;;; One-Shot Rendering Check
+;;;
+
 ;; No fallback and no successful skip: an unavailable selected backend fails.
+
 (module+ main
 
   ;;;

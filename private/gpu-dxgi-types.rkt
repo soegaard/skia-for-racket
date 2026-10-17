@@ -11,6 +11,11 @@
 ;; against the Windows SDK, using checks that survive Release/NDEBUG builds.
 (require ffi/unsafe)
 (provide (all-defined-out))
+
+;;;
+;;; Swap-Chain, Resource, and Copy Layouts
+;;;
+
 (define-cstruct _dxgi-swap-desc
   ([width _uint32] [height _uint32] [format _int32] [stereo _int32]
    [samples _uint32] [quality _uint32] [usage _uint32] [buffers _uint32]
@@ -80,6 +85,10 @@
 ;;   empty range declares no CPU reads/writes as selected by the calling API.
 
 
+;;;
+;;; Presentation Modes and Resource States
+;;;
+
 ; dxgi-format-rgba8 : exact-nonnegative-integer?
 ;   Encodes dxgi format rgba8 using the native SDK value rather than a Racket-specific ordinal.
 (define dxgi-format-rgba8 28)
@@ -135,6 +144,10 @@
 ; dxgi-wait-milliseconds : exact-nonnegative-integer?
 ;   Bounds native fence waits to five seconds so stalled presentation can report failure.
 (define dxgi-wait-milliseconds 5000)
+
+;;;
+;;; COM Method Slots
+;;;
 
 ; factory-create-hwnd-slot : exact-nonnegative-integer?
 ;   Selects the factory create hwnd COM vtable entry; this index is fixed by the Windows ABI.
@@ -224,6 +237,10 @@
 ; resource-unmap-slot : exact-nonnegative-integer?
 ;   Selects the resource unmap COM vtable entry; this index is fixed by the Windows ABI.
 (define resource-unmap-slot 9)
+
+;;;
+;;; Layout Checks and Interface Identifiers
+;;;
 
 ; dxgi-layout-sizes : -> hash?
 ;   Reports the FFI record sizes used by the reviewed Windows presentation ABI.

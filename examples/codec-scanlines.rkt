@@ -8,14 +8,8 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; A public-API-only example. Real native JPEG input, three-row batches.
-;;;
-;;; Imports and Exports
-;;;
 
 (require "../main.rkt")
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; encoded : bytes?
 ;   Contains the JPEG input bytes used by the scanline decoder.

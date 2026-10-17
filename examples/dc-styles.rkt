@@ -8,11 +8,9 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; Writes the bounded style corpus; no GUI, GPU or reference-image fallback.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/class racket/cmdline "../dc.rkt" "../tests/dc-style-fixtures.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

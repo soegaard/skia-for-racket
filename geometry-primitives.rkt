@@ -30,6 +30,10 @@
          cubic-patch? make-cubic-patch cubic-patch-points cubic-patch-colors
          cubic-patch-texture-coordinates draw-patch)
 
+;;;
+;;; Native Geometry Buffers
+;;;
+
 ;; All public snapshots are ordinary immutable data. Native buffers below are
 ;; temporary, have no callback, and are kept reachable through each FFI call.
 
@@ -375,6 +379,10 @@
   (call-on-canvas who c (list (vertices-h who v) (paint-h who paint))
     (lambda (cp vp pp) (sk_canvas_draw_vertices cp vp mode pp))))
 
+;;;
+;;; Image Lattices and Nine-Patch Drawing
+;;;
+
 ;; Lattices are dimension-independent value specifications. Bounds/divisions
 ;; are checked against the actual image immediately before drawing.
 (struct image-lattice (x-divisions y-divisions bounds cell-types colors)
@@ -394,10 +402,6 @@
 ; cell-type-values : (hash/c symbol? exact-nonnegative-integer?)
 ;   Maps the public lattice-cell choices to their native enum values.
 (define cell-type-values (hasheq 'default 0 'transparent 1 'fixed-color 2))
-
-;;;
-;;; Image Lattices and Nine-Patch Drawing
-;;;
 
 ; make-image-lattice : (or/c list? vector?) (or/c list? vector?) [#:bounds (or/c #f list? vector?)]
 ;   [#:cell-types (or/c #f list? vector?)] [#:colors (or/c #f list? vector?)] -> image-lattice?
@@ -499,6 +503,10 @@
      (sk_canvas_draw_image_lattice cp ip lat dst f (if ph (car pps) #f))
      (void/reference-sink xb yb tb cb nb lat lattice))))
 
+;;;
+;;; Atlas Placement
+;;;
+
 ;; Each transform maps a sprite's local source origin (not atlas coordinates).
 (struct atlas-transform (coefficients) #:transparent #:constructor-name make-atlas-transform-record)
 ;; An atlas-transform is a detached native RSXform specification.
@@ -507,10 +515,6 @@
 ;;                                    and tx/ty map the sprite-local anchor.
 ;; All coefficients fit drawing-scalar bounds. The origin belongs to the selected
 ;; sprite rectangle, not the full atlas image; no native transform is retained.
-
-;;;
-;;; Atlas Placement
-;;;
 
 ; make-atlas-transform : real? real? [#:scale (and/c real? (>=/c 0))] [#:rotation real?] [#:anchor
 ;   (or/c (list/c real? real?) (vector/c real? real?))] -> atlas-transform?
@@ -572,6 +576,10 @@
        (void/reference-sink xb sb cb nb samp ts bs))))
   (void))
 
+;;;
+;;; Cubic Patches
+;;;
+
 (struct cubic-patch (points colors texture-coordinates)
   #:transparent #:constructor-name make-cubic-patch-record)
 ;; A cubic-patch is a detached twelve-point Coons boundary specification.
@@ -583,10 +591,6 @@
 ;;                                                coordinates in the same corner order.
 ;; Optional arrays have four entries, not twelve. Construction copies and checks
 ;; every coordinate; native submission buffers exist only while drawing.
-
-;;;
-;;; Cubic Patches
-;;;
 
 ; make-cubic-patch : (or/c list? vector?) [#:colors (or/c #f list? vector?)] [#:texture-coordinates
 ;   (or/c #f list? vector?)] -> cubic-patch?

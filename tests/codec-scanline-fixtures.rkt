@@ -12,6 +12,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Original deterministic BMP files, including both signed-height variants.
 ;; No installed fonts, network assets, or external encoder is needed for BMP.
 (require "../main.rkt")
@@ -20,7 +21,7 @@
          scanline-fixture-jpeg scanline-collect-bytes)
 
 ;;;
-;;; Fixtures and Assertions
+;;; Scanline Pixel Patterns and Encoded Inputs
 ;;;
 
 ; scanline-fixture-width : exact-positive-integer?
@@ -90,6 +91,10 @@
 (define (scanline-fixture-jpeg)
   (with-skia ([im (rgba-bytes->image 16 12 (scanline-fixture-rgba 16 12))])
     (image->jpeg-bytes im #:quality 100 #:downsample 'yuv-444)))
+
+;;;
+;;; Batch Collection in Output Row Order
+;;;
 
 ; scanline-collect-bytes : codec-scanline? [exact-positive-integer?] -> bytes?
 ;   Collects complete batches into their logical row positions, rejecting unexpected short reads.

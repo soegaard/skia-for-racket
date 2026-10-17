@@ -8,15 +8,9 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; Interactive review, not a timing benchmark or an automated screen oracle.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/class racket/cmdline (prefix-in gui: racket/gui/base)
          "../gpu-canvas.rkt" "../tests/gpu-dc-consumer-fixtures.rkt")
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; backend : parameter?
 ;   Selects backend for the dynamically scoped rendering operation.
@@ -47,6 +41,7 @@
            dc))]))
   (send window show #t)
   (void))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

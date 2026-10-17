@@ -10,10 +10,15 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Run in a fresh subprocess. This program writes only an observation, never the
 ;; checked-in expected snapshot. The Python gate verifies its token and coverage.
 (require racket/cmdline racket/file racket/path racket/list json
          "public-api-reflect.rkt")
+
+;;;
+;;; Public API Probe Worker
+;;;
 
 (module+ main
 

@@ -17,10 +17,11 @@
          initial-points home-view minimum-zoom maximum-zoom
          model->screen screen->model pan-view zoom-at hit-point move-point)
 
+;;;
+;;; Model and View State
+;;;
+
 ;; This module contains data and arithmetic only. It needs no native library.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 (struct control-point (x y) #:transparent)
 ;; x, y: real model-space coordinates, independent of screen pan and zoom.
@@ -51,6 +52,10 @@
 ;   Sets the largest scale accepted by interactive zoom updates.
 (define maximum-zoom 4)
 
+;;;
+;;; Coordinate Conversion, Pan, and Zoom
+;;;
+
 ; model->screen : view-state? real? real? -> (values real? real?)
 ;   Applies model scaling followed by screen-space pan and returns x then y.
 (define (model->screen view x y)
@@ -79,6 +84,10 @@
   (define zoom
     (max minimum-zoom (min maximum-zoom (* factor (view-state-zoom view)))))
   (view-state zoom (- screen-x (* zoom model-x)) (- screen-y (* zoom model-y))))
+
+;;;
+;;; Screen-Space Hit Testing and Edits
+;;;
 
 ; hit-point : list? view-state? real? real? [real?] -> (or/c exact-nonnegative-integer? #f)
 ;   Finds the nearest control point within a screen-sized hit radius.

@@ -13,11 +13,12 @@
 
 (require racket/cmdline "../main.rkt")
 
+;;;
+;;; Filter Comparison Gallery
+;;;
+
 ;; Visual smoke test for the 0.6 filter layer: color filters, mask blur,
 ;; image blur, drop shadows, and composed image-filter graphs.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-filters : path-string? -> void?
 ;   Renders the filters example to the selected output destination.

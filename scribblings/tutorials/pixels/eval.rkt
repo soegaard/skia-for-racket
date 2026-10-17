@@ -15,8 +15,9 @@
 (require racket/runtime-path scribble/eval skia "pixel-lab.rkt" "../support/figures.rkt")
 (provide pixels-interaction pixels-racketblock+eval pixel-study-pict source-pict processed-pict
          stamped-pict tiny-pixel-pict tiny-layout-pict)
+
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; program-source : path?
@@ -33,6 +34,10 @@
 (pixels-eval `(current-directory ,(path->string program-directory)))
 (pixels-eval '(require racket skia))
 (pixels-eval `(require (file ,(path->string program-source))))
+
+;;;
+;;; Pixel Processing Figures
+;;;
 
 ; images : list?
 ;   Keeps the comparison images in the order expected by the corresponding drawing function.
@@ -108,6 +113,10 @@
                                        66 (+ y 52) font ink))
                    (draw-simple-text canvas "Padding is stored, but it is not a fourth pixel."
                                      14 228 font ink)))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; pixels-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

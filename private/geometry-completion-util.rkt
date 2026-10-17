@@ -14,6 +14,10 @@
          geometry-start-index geometry-point-list geometry-conic-parameters
          geometry-span-range current-path-operation-limit geometry-operation-list)
 
+;;;
+;;; Coordinates, Transforms, and Conic Inputs
+;;;
+
 ; geometry-float : symbol? real? -> inexact-real?
 ;   Shares the filter helper's checked binary32 conversion for geometric coordinates.
 (define geometry-float filter-float)
@@ -76,6 +80,10 @@
   (define capacity (add1 (* 2 (arithmetic-shift 1 power))))
   (geometry-budget who capacity (* 8 capacity))
   (values points w capacity))
+
+;;;
+;;; Bounded Path Operations and Spans
+;;;
 
 ; current-path-operation-limit : (parameter/c exact-positive-integer?)
 ;   Limits ordered path-operation batches; defaults to 4096 operations.

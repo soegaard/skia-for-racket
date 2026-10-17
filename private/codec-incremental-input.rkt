@@ -16,6 +16,11 @@
          set-incremental-input-error! set-incremental-input-destroys!
          set-incremental-input-streams! incremental-input-append!
          incremental-input-slice incremental-input-discard!)
+
+;;;
+;;; Retained Input and Decoder Framing
+;;;
+
 (struct incremental-input ([storage #:mutable] [size #:mutable] [visible #:mutable]
                            [final? #:mutable] [kind #:mutable] [framed #:mutable]
                            limit [error #:mutable] [destroys #:mutable] [streams #:mutable])
@@ -51,6 +56,10 @@
                (<= start end (incremental-input-size input)))
     (error 'incremental-input-slice "invalid retained-input range"))
   (subbytes (incremental-input-storage input) start end))
+
+;;;
+;;; Framing, Appending, and Releasing Chunks
+;;;
 
 ; frame! : incremental-input? -> void?
 ;   Exposes complete PNG chunks, or the entire sealed tail, so native reads never see partial live

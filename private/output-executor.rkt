@@ -15,6 +15,10 @@
          (struct-out output-raster-plan) cpu-output-raster-plan
          output-execution-details call-with-lazy-output-raster-executor)
 
+;;;
+;;; Raster Executor and Plan Contracts
+;;;
+
 (struct output-raster-executor (creator check prepare))
 ;; Fields:
 ;;   creator: owner thread. check: preflight procedure. prepare: procedure producing an
@@ -61,6 +65,10 @@
     ((output-raster-executor-check executor)))
   (void))
 
+;;;
+;;; Preflight and Execution Details
+;;;
+
 ; prepare-output-raster : output-raster-executor? any/c -> any
 ;   Obtains a checked raster plan and requires a positive context generation and renderer for GPU
 ;   plans.
@@ -96,6 +104,10 @@
           'transfer (if (and gpu? complete?) "gpu-to-cpu" "none")
           'image_storage (and complete? "cpu-owned")
           'target target))
+
+;;;
+;;; Lazy Executor Acquisition and Cleanup
+;;;
 
 ;; An owned, lazy factory is invoked ONLY after the representation and outer
 ;; audit policies have accepted rasterization. Unavailability is distinct from

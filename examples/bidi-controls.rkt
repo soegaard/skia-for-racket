@@ -14,7 +14,7 @@
 (require racket/list racket/match "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Baseline Guides
 ;;;
 
 ; bg : string?
@@ -62,6 +62,10 @@
     (draw-line c x y x (+ y h) p)
     (draw-line c (+ x w) y (+ x w) (+ y h) p)))
 
+;;;
+;;; Explicit Bidi Control Characters
+;;;
+
 ; LRE : string?
 ;   Marks a left-to-right embedding in the Unicode bidi sample.
 (define LRE (string #\u202A))
@@ -97,6 +101,10 @@
 ; PDI : string?
 ;   Ends a Unicode bidi isolate.
 (define PDI (string #\u2069))
+
+;;;
+;;; Bidi Control Comparisons
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

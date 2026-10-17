@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/file racket/class racket/list
          (except-in racket/draw make-font)
          "../main.rkt" "../bitmap.rkt" "../private/bidi.rkt")
@@ -47,6 +48,11 @@
 (define native-tests
   (test-suite
    "Live Skia rendering (requires the pinned native library)"
+
+   ;;;
+   ;;; Native Loading and Raster Pixels
+   ;;;
+
    (test-case "load and preflight every native symbol"
      (check-not-exn skia-check!)
      (check-regexp-match #rx"^119[.]" (skia-native-version)))
@@ -107,6 +113,11 @@
        (paint-set-join! p 'bevel)
        (paint-set-miter-limit! p 3)
        (paint-set-blend-mode! p 'multiply)))
+
+   ;;;
+   ;;; Path Geometry and Fill Rules
+   ;;;
+
    (test-case "path bounds versus tight cubic bounds"
      (with-skia ([p (make-path '((move 0 0) (cubic 0 100 100 100 100 0)))])
        (check-equal? (call-with-values (lambda () (path-bounds p)) list) '(0.0 0.0 100.0 100.0))
@@ -152,6 +163,11 @@
        (check-true (path-contains? path 15 15))
        (draw-polygon (surface-canvas s) '((2 2) (8 2) (8 8) (2 8)) p)
        (check-equal? (surface-pixel s 5 5) blue)))
+
+   ;;;
+   ;;; Canvas Transforms, Clips, and Scoped State
+   ;;;
+
    (test-case "translation and scaling compose"
      (with-skia ([s (make-surface 30 30)] [p (make-paint #:color 'red #:antialias? #f)])
        (define c (surface-canvas s))
@@ -237,6 +253,11 @@
      (check-not-exn (lambda () (with-canvas-state c (skia-close! s))))
      (check-true (skia-closed? c))
      (skia-close! s))
+
+   ;;;
+   ;;; Resource Lifetime and Borrowed Canvases
+   ;;;
+
    (test-case "borrowed canvas keeps its surface alive across GC"
      (define-values (c weak)
        (let ([s (make-surface 4 4)])
@@ -268,6 +289,11 @@
                      [q (make-paint #:stroke-width -1)])
            (void))))
      (check-true (skia-closed? first)))
+
+   ;;;
+   ;;; Image Copies, Encoding, and Bitmap Interoperation
+   ;;;
+
    (test-case "image snapshot survives source mutation and closure"
      (define s (make-surface 2 2 #:background 'red))
      (with-skia ([im (surface-snapshot s)] [dest (make-surface 4 4)])
@@ -311,6 +337,11 @@
        (define argb (make-bytes 4))
        (send bm get-argb-pixels 0 0 1 1 argb #f #t)
        (check-equal? argb (bytes 128 128 0 0))))
+
+   ;;;
+   ;;; Validation and Thread Ownership
+   ;;;
+
    (test-case "invalid coordinates and options do not reach native drawing"
      (with-skia ([s (make-surface 8 8)] [p (make-paint)])
        (define c (surface-canvas s))
@@ -343,6 +374,11 @@
                 (surface-pixel s 0 0))))))
        (check-regexp-match #rx"another Racket thread" (channel-get results))
        (thread-wait worker)))
+
+   ;;;
+   ;;; Shaders and Gradients
+   ;;;
+
    (test-case "color shader paint attachment and reference ownership"
      (with-skia ([s (make-surface 12 4 #:background 'white)]
                  [sh (make-color-shader 'red)]
@@ -419,6 +455,11 @@
                  [p (make-paint #:shader blend #:antialias? #f)])
        (draw-paint (surface-canvas s) p)
        (check-equal? (surface-pixel s 1 1) (rgb 0 0 0))))
+
+   ;;;
+   ;;; Encoded Images and Region Drawing
+   ;;;
+
    (test-case "PNG encoding, metadata probing, and encoded decode round trip"
      (with-skia ([im (rgba-bytes->image
                       2 2
@@ -528,6 +569,11 @@
                   (lambda ()
                     (draw-image-subrect (surface-canvas s) im
                                         3 0 2 1 0 0 4 1)))))
+
+   ;;;
+   ;;; Path Effects, Measurements, and Boolean Operations
+   ;;;
+
    (test-case "dash path effects attach to paints and getters own a reference"
      (define effect (make-dash-path-effect '(6 4)))
      (define paint (make-paint #:color 'black #:style 'stroke #:stroke-width 2
@@ -665,6 +711,11 @@
      (check-exn #rx"closed" (lambda () (make-paint #:path-effect effect)))
      (check-exn #rx"closed" (lambda () (path-measure-length measure)))
      (skia-close! path))
+
+   ;;;
+   ;;; Color, Mask, and Image Filters
+   ;;;
+
    (test-case "paint owns color, mask and image filters independently"
      (define swap
        '(0 0 1 0 0
@@ -797,6 +848,11 @@
      (check-exn #rx"closed" (lambda () (make-paint #:color-filter cf)))
      (check-exn #rx"closed" (lambda () (make-paint #:mask-filter mf)))
      (check-exn #rx"closed" (lambda () (make-paint #:image-filter imf))))
+
+   ;;;
+   ;;; Typefaces, Fonts, and Simple Text
+   ;;;
+
    (test-case "default typeface introspection"
      (with-skia ([tf (make-typeface)])
        (check-true (string? (typeface-family-name tf)))
@@ -903,6 +959,11 @@
        (with-skia ([s (make-surface 16 16)] [p (make-paint #:color 'red)])
          (draw-circle (surface-canvas s) 8 8 5 p)
          (check-true (> (bytes-length (surface->png-bytes s)) 40)))))
+
+   ;;;
+   ;;; Picture Recording and Replay
+   ;;;
+
    (test-case "call-with-picture records and replays"
      (with-skia ([pic (call-with-picture
                        40 40
@@ -954,6 +1015,10 @@
        (check-equal? (surface-pixel s 20 20) red)
        (check-equal? (surface-pixel s 5 5) transparent)))
 
+   ;;;
+   ;;; Extended Path Commands and SVG Conversion
+   ;;;
+
    (test-case "relative path commands and point queries"
      (with-skia ([p (make-path '((move 10 10) (rline 20 0) (rline 0 15) (close)))])
        (check-equal? (path-point-count p) 3)
@@ -988,6 +1053,11 @@
        (check-true (> (string-length s) 0))
        (with-skia ([q (svg-path->path s)])
          (check-true (path-contains? q 10 5)))))
+
+   ;;;
+   ;;; Font Matching and Positioned Text Blobs
+   ;;;
+
    (test-case "font managers enumerate families and own references"
      (with-skia ([fm (default-font-manager)]
                  [fresh (make-font-manager)])
@@ -1054,6 +1124,11 @@
         (for/or ([i (in-range 3 (bytes-length bs) 4)])
           (> (bytes-ref bs i) 0))))
      (skia-close! blob))
+
+   ;;;
+   ;;; HarfBuzz Shaping and Retained Runs
+   ;;;
+
    (test-case "HarfBuzz shapes Latin text into glyph positions"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 36)]
@@ -1115,6 +1190,11 @@
               (check-true (positive? (shaped-run-glyph-count run)))
               (check-equal? (length (shaped-run-glyphs run))
                             (length (shaped-run-positions run)))))))))
+
+   ;;;
+   ;;; Paragraph Layout, Alignment, and Justification
+   ;;;
+
    (test-case "paragraph layout wraps and exposes line metrics"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 28)]
@@ -1269,6 +1349,11 @@ third"))
                    [p (make-paint #:color 'black)])
          (check-exn #rx"closed"
                     (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 p))))))
+
+   ;;;
+   ;;; Bidirectional Layout and Font Fallback
+   ;;;
+
    (test-case "mixed text interprets explicit overrides and omits controls"
      (with-skia ([fm (default-font-manager)]
                  [tf (make-typeface)]
@@ -1389,6 +1474,11 @@ third"))
                     (lambda ()
                       (draw-mixed-text-layout (surface-canvas surface) layout 0 0 p))))
        (skia-close! sh)))
+
+   ;;;
+   ;;; External Segmentation and Discretionary Breaks
+   ;;;
+
    (test-case "custom break provider segments an otherwise unbreakable word"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)]
@@ -1480,6 +1570,11 @@ third"))
        (check-true
         (for/or ([i (in-range 3 (bytes-length pixels) 4)])
           (> (bytes-ref pixels i) 0)))))
+
+   ;;;
+   ;;; CJK Wrapping and Script-Aware Justification
+   ;;;
+
    (test-case "mixed layout wraps unspaced CJK at UAX #14 opportunities"
      (with-skia ([fm (default-font-manager)]
                  [tf (make-typeface)]
@@ -1594,6 +1689,11 @@ third"))
        (check-true
         (for/or ([i (in-range 3 (bytes-length pixels) 4)])
           (> (bytes-ref pixels i) 0)))))
+
+   ;;;
+   ;;; Color Spaces, ICC Profiles, and Pixel Conversion
+   ;;;
+
    (test-case "sRGB and linear-sRGB color spaces expose gamma metadata"
      (with-skia ([srgb (make-srgb-color-space)]
                  [linear (make-linear-srgb-color-space)])
@@ -1634,6 +1734,11 @@ third"))
            (check-true (color-space=? ics srgb))))
        (check-equal? (bytes-length (surface->rgba-bytes surface #:color-space srgb))
                      (* 4 4 4))))
+
+   ;;;
+   ;;; Text Boundaries and Closed Dependencies
+   ;;;
+
    (test-case "paragraph layout recognizes all Unicode hard line separators"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)]
@@ -1661,6 +1766,10 @@ third"))
        (check-exn #rx"closed" (lambda () (text-blob-bounds blob)))))
   ))
 
+
+;;;
+;;; Raster Probe Assertion
+;;;
 
 ; make-list-of-red-pixels : exact-nonnegative-integer? -> (listof byte?)
 ;   Repeats opaque-red RGBA channels for a requested number of expected pixels.

@@ -14,7 +14,7 @@
 (require racket/match racket/list "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Glyph Captions
 ;;;
 
 ; bg : string?
@@ -50,6 +50,10 @@
   (if (> (string-length s) n)
       (string-append (substring s 0 n) "...")
       s))
+
+;;;
+;;; Retained Text Blob Gallery
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

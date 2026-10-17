@@ -21,7 +21,7 @@
          draw-scene)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Scene Dimensions and Background
 ;;;
 
 ; scene-width : exact-integer?
@@ -62,6 +62,10 @@
     (draw-line canvas x 28 x (- scene-height 28) grid))
   (for ([y (in-range 40 scene-height 40)])
     (draw-line canvas 28 y (- scene-width 28) y grid)))
+
+;;;
+;;; Orbit and Node Artwork
+;;;
 
 ; draw-orbit : canvas? -> void?
 ;   Draws the orbit component in the current canvas coordinate system.

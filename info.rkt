@@ -35,6 +35,10 @@
 ;   Declares the package's MIT license using Racket package metadata syntax.
 (define license 'MIT)
 
+;;;
+;;; Test and Compilation Exclusions
+;;;
+
 ; test-omit-paths : (listof string?)
 ;   Excludes opt-in GPU/GUI probes and tool/example trees from the default package test traversal.
 (define test-omit-paths
@@ -69,6 +73,10 @@
 (define compile-omit-paths '("native"))
 
 ;; Manuals use Scribble plus reference targets from Racket and the GUI libraries.
+
+;;;
+;;; Build, Documentation, and Command Registration
+;;;
 
 ; build-deps : (listof string?)
 ;   Declares documentation packages needed to build the installed manuals.

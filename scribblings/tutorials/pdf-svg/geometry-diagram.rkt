@@ -24,7 +24,7 @@
          make-diagram-page)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Page Geometry and Typography
 ;;;
 
 ; page-width : exact-integer?
@@ -68,6 +68,10 @@
              #:linear-metrics? #t
              #:subpixel? #t
              #:hinting 'none))
+
+;;;
+;;; Equilateral Triangle Construction
+;;;
 
 ; point-a-x : exact-integer?
 ;   Specifies point a x in the drawing's local coordinate units.
@@ -119,6 +123,10 @@
                         (list point-b-x point-y)
                         (list point-c-x point-c-y))])
     (draw-circle canvas (first position) (second position) 1.35 point)))
+
+;;;
+;;; Labels and Printable Page
+;;;
 
 ; draw-heading : canvas? -> void?
 ;   Draws the heading component in the current canvas coordinate system.

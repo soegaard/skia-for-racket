@@ -9,14 +9,8 @@
 
 ;; All operations are public. Basis conversion below assumes linear samples;
 ;; it does not decode transfer functions, clip, tone-map, or convert an image.
-;;;
-;;; Imports and Exports
-;;;
 
 (require "../main.rkt")
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; srgb : xyz-d50?
 ;   Retains the linear sRGB-to-XYZ-D50 basis matrix.

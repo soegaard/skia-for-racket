@@ -13,11 +13,12 @@
 
 (require racket/cmdline "../main.rkt")
 
+;;;
+;;; Path Effects and Geometry Gallery
+;;;
+
 ;; Visual smoke test for the 0.5 vector layer: dash/corner/discrete/trim path
 ;; effects, path measurement/segments/tangents, and boolean path operations.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-path-effects : path-string? -> void?
 ;   Renders the path effects example to the selected output destination.

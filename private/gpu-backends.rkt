@@ -13,6 +13,10 @@
 (provide gpu-backends gpu-backend? gpu-backend-capabilities
          check-gpu-backend! gpu-backend-native-id)
 
+;;;
+;;; Pinned Backend Registry
+;;;
+
 ; registry-file : path?
 ;   Locates the checked-in backend declaration catalog independently of the process working
 ;   directory.
@@ -57,6 +61,10 @@
                    (andmap boolean? (hash-values features)))
         (error 'gpu-backends "invalid wrapper capability row"))
       (values (string->symbol (hash-ref r 'backend)) (freeze r)))))
+
+;;;
+;;; Backend Selection and Capability Queries
+;;;
 
 ; gpu-backends : -> (listof (or/c 'opengl 'metal 'direct3d))
 ;   Returns '(opengl metal direct3d), the backend names supported by the wrapper.

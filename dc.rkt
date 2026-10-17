@@ -8,10 +8,6 @@
 ;; This opt-in entry point presents the supported Racket draw interface without exposing the private
 ;; class implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 ;; Opt-in Racket drawing compatibility. Do not re-export from skia/main:
 ;; callers choose this DC; no process-global drawing backend is replaced.
 (require racket/class "private/dc-class.rkt" "private/dc-render.rkt" "private/dc-support.rkt"

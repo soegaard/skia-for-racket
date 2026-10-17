@@ -7,15 +7,13 @@
 ;; Exports a drawing with explicit bounded raster fallback for a visual effect.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/file "../main.rkt")
-;; Public APIs only. Labels and other surrounding drawing can remain vector.
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;
+
+;; Public APIs only. Labels and other surrounding drawing can remain vector.
 
 (module+ main
   (make-directory* "output/effects-example")

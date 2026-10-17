@@ -7,15 +7,7 @@
 ;; Copies a Skia drawing into a Racket bitmap and saves the detached result.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/class racket/cmdline "../main.rkt" "../bitmap.rkt")
-
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-bitmap : path-string? -> void?
 ;   Saves a detached Racket bitmap without replacing an existing destination.

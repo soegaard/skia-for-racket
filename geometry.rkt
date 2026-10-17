@@ -39,6 +39,10 @@
          rounded-rect-type rounded-rect-offset rounded-rect-inset rounded-rect-outset
          rounded-rect-transform)
 
+;;;
+;;; Coordinate Conversion and Path Mutation Helpers
+;;;
+
 ; float-point : symbol? sk-point? -> vector?
 ;   Copies a native point into a checked immutable x/y vector.
 (define (float-point who p)

@@ -31,6 +31,10 @@
          incremental-snapshot? incremental-snapshot-info incremental-snapshot-row-bytes
          incremental-snapshot-bytes incremental-snapshot-progress)
 
+;;;
+;;; Session Ownership and Native Cleanup
+;;;
+
 ; codec-incremental-session? : any/c -> boolean?
 ;   Returns #t for an incremental session, including a closed wrapper, and #f otherwise.
 (define codec-incremental-session? incremental-session-record?)
@@ -95,6 +99,10 @@
   (define failed (incremental-input-error (incremental-cell-input c)))
   (when failed (raise (cdr failed))))
 
+;;;
+;;; Session Creation and Input
+;;;
+
 ; make-codec-incremental : [#:color-type (or/c 'rgba-8888 'bgra-8888)] [#:alpha-type (or/c 'premul
 ;   'unpremul)] [#:color-space (or/c #f 'srgb 'linear-srgb bytes?)] [#:row-bytes (or/c
 ;   exact-positive-integer? #f)] [#:limit exact-positive-integer?] -> codec-incremental-session?
@@ -139,6 +147,10 @@
                          (raise e))])
         (incremental-input-append! input bytes final? (current-skia-byte-limit))))))
 
+;;;
+;;; Progress and Metadata
+;;;
+
 ; codec-incremental-state : codec-incremental-session? -> (or/c 'awaiting-input 'needs-input
 ;   'complete 'incomplete 'failed 'cancelled 'closed)
 ;   Returns the session state.
@@ -175,6 +187,10 @@
               'decoder-retained? (and (incremental-cell-codec c) #t)
               'pixel-bytes (if (incremental-cell-pixels c) (incremental-cell-size c) 0)))))
 
+;;;
+;;; Session Cancellation
+;;;
+
 ; cancel-cell! : incremental-cell? -> incremental-progress?
 ;   Moves nonterminal decoding to cancelled, releases its resources, and returns detached progress.
 (define (cancel-cell! c)
@@ -190,6 +206,10 @@
 ;   state and result 'cancelled.
 (define (codec-incremental-cancel! s)
   (on-session 'codec-incremental-cancel! s cancel-cell!))
+
+;;;
+;;; Native Decode State Machine
+;;;
 
 ; report-result! : incremental-cell? exact-integer? [any/c] -> incremental-progress?
 ;   Maps a checked native result to session status, retiring native decoding at terminal states.
@@ -340,6 +360,10 @@
                       [else
                        (define started (if (incremental-cell-started? c) 0 (start-native! c)))
                        (if (zero? started) (decode-native! c) (report-result! c started))])])))]))))
+
+;;;
+;;; Snapshots and Raster Buffers
+;;;
 
 ; codec-incremental-snapshot : codec-incremental-session? -> incremental-snapshot?
 ;   Returns a detached immutable copy of the whole destination, including padding, with its pixel

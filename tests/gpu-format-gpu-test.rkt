@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/class racket/cmdline racket/file racket/list racket/path json rackunit
   rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../gpu-dc.rkt"
@@ -69,6 +70,10 @@
     [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
     [else (error 'gpu-formats "unsupported selected backend")]))
 
+;;;
+;;; Detached Image Document Exports
+;;;
+
 ; write-documents : path-string? string? image? symbol? -> list?
 ;   Exports a captured image with vector markers and returns document evidence records.
 (define (write-documents directory token im color)
@@ -118,6 +123,10 @@
   ; directory : (or/c path-string? #f)
   ;   Holds the evidence output directory selected for this run.
   (define directory (path-only (path->complete-path report-path)))
+
+  ;;;
+  ;;; Context Fixtures and Format Evidence
+  ;;;
 
   ; context : gpu-context?
   ;   Owns the primary native GPU context used by the fixture run.
@@ -174,6 +183,11 @@
   (define (test! label thunk)
     (set! cases (add1 cases))
     (set! failures (+ failures (run-tests (test-suite label (test-case label (thunk)))))))
+
+  ;;;
+  ;;; Format, Affinity, and Cache Checks
+  ;;;
+
   (dynamic-wind void
     (lambda ()
       (set! other (make-context backend adapter))
@@ -386,6 +400,10 @@
         (with-skia ([image survivor] [b (image->raster-buffer image)])
           (check-eq? (image-color-type image) 'rgba-f16)
           (check-true (bytes? (raster-buffer->storage-bytes b)))))))
+
+  ;;;
+  ;;; Teardown and Evidence Publication
+  ;;;
 
   ; closed? : boolean?
   ;   Records whether context teardown completed with no live or failed resource releases.

@@ -14,7 +14,7 @@
 (require racket/list racket/match "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Layout Guides
 ;;;
 
 ; bg : string?
@@ -60,6 +60,10 @@
 (define (small-label c text x y)
   (with-skia ([f (make-font #:size 12)] [p (make-paint #:color ink)])
     (draw-simple-text c text x y f p)))
+
+;;;
+;;; Justification Comparisons
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

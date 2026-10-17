@@ -10,13 +10,14 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require ffi/unsafe "../unsafe/gpu-metal.rkt")
 (provide load-metal-fixture! make-metal-fixture close-metal-fixture!
          metal-fixture-texture metal-fixture-producer metal-fixture-description
          metal-fixture-readback metal-fixture-unblock!)
 
 ;;;
-;;; Fixtures and Assertions
+;;; Fixture Library and Native Bindings
 ;;;
 
 ; library : (or/c ffi-lib? #f)
@@ -65,6 +66,11 @@
 ; smi_error : -> string?
 ;   Copies the fixture's last native error message for diagnostic failures.
 (define-call smi_error (_fun -> _string/utf-8))
+
+;;;
+;;; Fixture Ownership and Texture Operations
+;;;
+
 (struct fixture ([pointer #:mutable]))
 ;; pointer: mutable native fixture pointer, or #f once closed. The fixture owns
 ;; the producer's texture and command-buffer references; accessors lend those

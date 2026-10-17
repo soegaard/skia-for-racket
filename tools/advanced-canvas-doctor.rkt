@@ -11,8 +11,14 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline racket/file racket/path json "../main.rkt"
          "../tests/advanced-canvas-fixtures.rkt")
+
+;;;
+;;; Advanced Canvas Evidence Run
+;;;
+
 (module+ main
 
   ;;;

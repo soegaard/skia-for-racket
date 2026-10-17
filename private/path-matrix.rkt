@@ -19,6 +19,10 @@
          path-contour? path-contour-segments path-contour-closed? path-contours
          path-measure-matrix)
 
+;;;
+;;; Affine Matrix Conversion and Resource Transforms
+;;;
+
 ;; Skia's path/shader interface uses a row-major nine-float sk_matrix_t.
 
 ; native-m33 : symbol? matrix? -> sk-matrix?
@@ -124,6 +128,10 @@
      (make-shader-record
       (new-owned who 'shader (lambda () (sk_shader_with_local_matrix sp native))
                  sk_shader_unref)))))
+
+;;;
+;;; Detached Path Segments and Contours
+;;;
 
 (struct path-segment (verb points conic-weight closing-line?)
   #:transparent #:constructor-name make-path-segment-record)
@@ -237,6 +245,10 @@
       [(and (eq? (path-segment-verb (car rest)) 'move) (pair? current))
        (loop (cdr rest) (list (car rest)) (cons (finish current) out))]
       [else (loop (cdr rest) (cons (car rest) current) out)])))
+
+;;;
+;;; Path Measurement Transforms
+;;;
 
 ; path-measure-matrix : path-measure? (and/c real? (>=/c 0)) [#:mode (or/c 'position 'tangent
 ;   'position+tangent)] -> (or/c matrix? #f)

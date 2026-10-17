@@ -85,6 +85,11 @@
   (values outcome (reverse events)))
 
 (module+ test
+
+  ;;;
+  ;;; Surface Formats and Storage Budgets
+  ;;;
+
   (test-case "surface format requests retain all supported descriptions"
     (for ([color '(rgba-8888 bgra-8888 rgba-f16 rgba-f32)])
       (define info (gpu-format-request 'test 3 2 color 'premul 0 (make-surface-properties)))
@@ -120,6 +125,10 @@
                                       (make-surface-properties))))
     (check-exn exn:fail? (lambda () (gpu-format-label 'invented))))
 
+  ;;;
+  ;;; Cache and Cleanup Policies
+  ;;;
+
   (test-case "cache sizes accept zero but reject native overflow"
     (check-equal? (cache-size 'test 0) 0)
     (check-exn exn:fail? (lambda () (cache-size 'test -1)))
@@ -136,6 +145,10 @@
     (check-equal? (hash-ref report 'budgeted_resources) 2)
     (check-false (hash-ref report 'total_gpu_bytes))
     (check-false (hash-ref report 'limit_is_hard_allocation_cap)))
+
+  ;;;
+  ;;; One-Shot Rendering and Failure Cleanup
+  ;;;
 
   (test-case "one-shot public validation rejects malformed requests before construction"
     (check-exn exn:fail?
@@ -188,6 +201,10 @@
     (check-equal? (car out) 'raised)
     (check-equal? events
       '(context enter surface draw readback close-surface exit close-context close-image)))
+
+  ;;;
+  ;;; Displayed Helpers and Native-Free Predicates
+  ;;;
 
   (test-case "displayed GPU helpers compile using only their shown imports"
     (define blocks

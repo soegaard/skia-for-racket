@@ -11,6 +11,11 @@
          (only-in "native.rkt" skia-native-library-handle)
          "gpu-provider.rkt" "gpu-native-scope.rkt" "gpu-raw.rkt")
 (provide cache-dispatch/native gpu-cache-native-inventory)
+
+;;;
+;;; Lazy Cache Binding Registry
+;;;
+
 ;; Independent, lazy optional registry; ordinary CPU requirements are unchanged.
 
 ; library : promise?
@@ -31,6 +36,10 @@
     (define (name . args)
       (define call (force binding))
       (call-with-gpu-native-scope (lambda () (apply call args))))))
+
+;;;
+;;; Context Cache Operations
+;;;
 
 ; abandoned? : (_fun _pointer -> _stdbool) (FFI)
 ;   Calls the native gr_direct_context_is_abandoned entry point using the declared FFI layout.
@@ -76,6 +85,10 @@
 ;   layout.
 (define-cache-native free-resources gr_direct_context_free_gpu_resources
   (_fun #:blocking? #t _pointer -> _void))
+
+;;;
+;;; Readiness and Operation Dispatch
+;;;
 
 ; gpu-cache-native-inventory : -> list?
 ;   Resolves optional cache symbols and reports availability without claiming backend or rendering

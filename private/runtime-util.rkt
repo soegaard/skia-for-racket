@@ -195,12 +195,13 @@
       (error who "native child indices are not contiguous")))
   (void))
 
-;; Snapshot caller dictionaries outside the native ownership critical section.
-;; Both symbols and strings are convenient, but two keys normalizing to the
-;; same spelling must not silently overwrite each other.
 ;;;
 ;;; Binding Normalization and Packed Uniforms
 ;;;
+
+;; Snapshot caller dictionaries outside the native ownership critical section.
+;; Both symbols and strings are convenient, but two keys normalizing to the
+;; same spelling must not silently overwrite each other.
 
 ; runtime-bindings : symbol? symbol? (listof string?) hash? -> hash?
 ;   Normalizes symbol or string binding keys to immutable strings, rejecting unknown, duplicate, or

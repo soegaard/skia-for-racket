@@ -7,10 +7,6 @@
 ;; Inspects codec scaling suggestions without treating them as decoded images.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require "../main.rkt")
 ;; JPEG suggestions describe native downscaling, not a new decoded image.
 (with-skia ([surface (make-surface 16 12 #:background 'red)]

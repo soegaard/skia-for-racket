@@ -15,8 +15,9 @@
 
 (require racket/cmdline racket/runtime-path skia "atlas.rkt" "model.rkt" "scene.rkt")
 (provide open-squadron-window)
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Squadron Window
 ;;;
 
 ; host : path?

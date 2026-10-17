@@ -25,6 +25,10 @@
          skia-check! skia-available? skia-native-version skia-native-library-path
          skia-native-library-handle skia-native-capabilities skia-native-symbol-inventory)
 
+;;;
+;;; Lazy Native Registry and Version Queries
+;;;
+
 ; native-bindings : list?
 ;   Collects named CPU-symbol promises in reverse declaration order for the checked native
 ;   readiness boundary.
@@ -54,6 +58,10 @@
 ; sk_version_get_increment : (_fun -> _int) (FFI)
 ;   Calls the native sk_version_get_increment entry point using the declared FFI layout.
 (define-native sk_version_get_increment (_fun -> _int))
+
+;;;
+;;; Pattern Effects, Masks, and Procedural Shaders
+;;;
 
 ;; 0.66 m119 factories. Inputs are copied or synchronously ref-counted.
 
@@ -123,6 +131,10 @@
 ;   Calls the native sk_imagefilter_new_picture_with_rect entry point using the declared FFI
 ;   layout.
 (define-native sk_imagefilter_new_picture_with_rect (_fun _pointer _pointer -> _pointer))
+
+;;;
+;;; Extended Path Geometry and Operation Builders
+;;;
 
 ;; 0.67 geometry completion. Pointer outputs remain synchronous private buffers.
 
@@ -212,6 +224,10 @@
 ;   Calls the native sk_opbuilder_resolve entry point using the declared FFI layout.
 (define-native sk_opbuilder_resolve (_fun _pointer _pointer -> _stdbool))
 
+;;;
+;;; Paint Queries and Reset
+;;;
+
 ; sk_paint_get_blendmode : (_fun _pointer -> _int) (FFI)
 ;   Calls the native sk_paint_get_blendmode entry point using the declared FFI layout.
 (define-native sk_paint_get_blendmode (_fun _pointer -> _int))
@@ -247,6 +263,10 @@
 ; sk_paint_set_dither : (_fun _pointer _stdbool -> _void) (FFI)
 ;   Calls the native sk_paint_set_dither entry point using the declared FFI layout.
 (define-native sk_paint_set_dither (_fun _pointer _stdbool -> _void))
+
+;;;
+;;; Region Spans and Rounded-Rectangle Geometry
+;;;
 
 ; sk_region_cliperator_new : (_fun _pointer _pointer -> _pointer) (FFI)
 ;   Calls the native sk_region_cliperator_new entry point using the declared FFI layout.
@@ -347,6 +367,10 @@
 ; sk_rrect_is_valid : (_fun _pointer -> _stdbool) (FFI)
 ;   Calls the native sk_rrect_is_valid entry point using the declared FFI layout.
 (define-native sk_rrect_is_valid (_fun _pointer -> _stdbool))
+
+;;;
+;;; Owned Regions and Structured Geometry Drawing
+;;;
 
 ;; Structured geometry. Vertex arrays are copied by Skia. Lattice/atlas/patch
 ;; arrays remain alive for the complete synchronous canvas call.
@@ -491,6 +515,10 @@
 (define-native sk_canvas_draw_patch
   (_fun _pointer _pointer _pointer _pointer _int _pointer -> _void))
 
+;;;
+;;; Extended Canvas Primitives and Clip Queries
+;;;
+
 ;; Canvas primitives. Arrays and temporary rounded rectangles are borrowed only
 ;; during synchronous calls. Layer paint state is copied by Skia at save time.
 
@@ -563,6 +591,10 @@
 ; sk_rrect_contains : (_fun _pointer _sk-rect-pointer -> _stdbool) (FFI)
 ;   Calls the native sk_rrect_contains entry point using the declared FFI layout.
 (define-native sk_rrect_contains (_fun _pointer _sk-rect-pointer -> _stdbool))
+
+;;;
+;;; Runtime Effects, Reflection, and Blenders
+;;;
 
 ;; SkSL compiler/reflection. Use index queries only after validating the count:
 ;; the C shim's from-name queries dereference a null pointer on a missing name.
@@ -650,6 +682,10 @@
 ;   Calls the native sk_paint_get_blender entry point using the declared FFI layout.
 (define-native sk_paint_get_blender (_fun _pointer -> _pointer))
 
+;;;
+;;; Document Annotations
+;;;
+
 ;; Document annotations. SkData contains copied, NUL-terminated ASCII URI/ID
 ;; bytes. PDF and SVG consume the data synchronously; picture recordings ref it.
 
@@ -671,6 +707,10 @@
 ;   layout.
 (define-native sk_canvas_draw_link_destination_annotation
   (_fun _pointer _sk-rect-pointer _pointer -> _void))
+
+;;;
+;;; RGB Color-Space Construction and Colorimetry
+;;;
 
 ;; SDR RGB color-space construction and detached numerical inspection.
 
@@ -728,6 +768,10 @@
 ; sk_colorspace_xyz_named_xyz : (_fun _sk-xyz-pointer -> _void) (FFI)
 ;   Calls the native sk_colorspace_xyz_named_xyz entry point using the declared FFI layout.
 (define-native sk_colorspace_xyz_named_xyz (_fun _sk-xyz-pointer -> _void))
+
+;;;
+;;; Image Filter Graph Operations
+;;;
 
 ;; Advanced image filters. Every array/rect is consumed synchronously and every
 ;; retained input is ref-counted by the pinned C shim. Crop pointers are nullable.
@@ -847,6 +891,10 @@
   (_fun _sk-point3-pointer _sk-point3-pointer _float _float _uint32 _float _float _float _pointer
         _pointer -> _pointer))
 
+;;;
+;;; Affine Transforms and Path Iterators
+;;;
+
 ;; Affine matrix adapters. Canvas uses the 64-byte SkM44 storage; path,
 ;; shader and measurement functions use the 36-byte sk_matrix_t conversion.
 
@@ -920,6 +968,10 @@
 ;   Calls the native sk_path_rawiter_destroy entry point using the declared FFI layout.
 (define-native sk_path_rawiter_destroy (_fun _pointer -> _void))
 
+;;;
+;;; SVG and PDF Document Output
+;;;
+
 ;; SVG owns its canvas; surface/PDF canvases remain borrowed and must never
 ;; be passed to this destructor. The pinned SVG C shim has no flags argument.
 
@@ -965,6 +1017,10 @@
 ; sk_string_new_with_copy : (_fun _bytes _size -> _pointer) (FFI)
 ;   Calls the native sk_string_new_with_copy entry point using the declared FFI layout.
 (define-native sk_string_new_with_copy (_fun _bytes _size -> _pointer))
+
+;;;
+;;; Native Data and Codec Inspection
+;;;
 
 ;; Immutable native data and codec inspection.
 
@@ -1028,6 +1084,10 @@
 ; sk_codec_get_repetition_count : (_fun _pointer -> _int) (FFI)
 ;   Calls the native sk_codec_get_repetition_count entry point using the declared FFI layout.
 (define-native sk_codec_get_repetition_count (_fun _pointer -> _int))
+
+;;;
+;;; Color-Space Ownership and ICC Profiles
+;;;
 
 ;; Ref-counted color spaces plus ICC profile helpers. The two built-in sRGB
 ;; constructors return immortal singleton pointers; public wrappers take an
@@ -1104,6 +1164,10 @@
 (define-native sk_colorspace_to_xyzd50
   (_fun _pointer _pointer -> _stdbool))
 
+;;;
+;;; Borrowed Font Streams
+;;;
+
 ;; Stream access used by the HarfBuzz shaping bridge.
 
 ; sk_stream_asset_destroy : (_fun _pointer -> _void) (FFI)
@@ -1117,6 +1181,10 @@
 ; sk_stream_read : (_fun _pointer _bytes _size -> _size) (FFI)
 ;   Calls the native sk_stream_read entry point using the declared FFI layout.
 (define-native sk_stream_read (_fun _pointer _bytes _size -> _size))
+
+;;;
+;;; Raster Surfaces and Pixmap Storage
+;;;
 
 ;; Native-owned CPU surfaces. No Racket byte buffer is retained by Skia.
 
@@ -1179,6 +1247,10 @@
 ; sk_surface_peek_pixels : (_fun _pointer _pointer -> _stdbool) (FFI)
 ;   Calls the native sk_surface_peek_pixels entry point using the declared FFI layout.
 (define-native sk_surface_peek_pixels (_fun _pointer _pointer -> _stdbool))
+
+;;;
+;;; Canvas State and Basic Drawing
+;;;
 
 ; sk_canvas_clear : (_fun _pointer _uint32 -> _void) (FFI)
 ;   Calls the native sk_canvas_clear entry point using the declared FFI layout.
@@ -1298,6 +1370,10 @@
 (define-native sk_canvas_draw_text_blob
   (_fun _pointer _pointer _float _float _pointer -> _void))
 
+;;;
+;;; Paint Construction and Retained Attachments
+;;;
+
 ; sk_paint_new : (_fun -> _pointer) (FFI)
 ;   Calls the native sk_paint_new entry point using the declared FFI layout.
 (define-native sk_paint_new (_fun -> _pointer))
@@ -1385,6 +1461,10 @@
 ; sk_paint_set_imagefilter : (_fun _pointer _pointer -> _void) (FFI)
 ;   Calls the native sk_paint_set_imagefilter entry point using the declared FFI layout.
 (define-native sk_paint_set_imagefilter (_fun _pointer _pointer -> _void))
+
+;;;
+;;; Color, Mask, and Image Filters
+;;;
 
 ;; Color, mask, and image filter primitives. The factory functions return one
 ;; owned reference. Paint setters and image-filter graph constructors retain
@@ -1487,6 +1567,10 @@
 (define-native sk_imagefilter_new_drop_shadow_only
   (_fun _float _float _float _float _uint32 _pointer _pointer -> _pointer))
 
+;;;
+;;; Solid, Gradient, and Blend Shaders
+;;;
+
 ;; Shader/gradient primitives. Gradient arrays are consumed synchronously;
 ;; Skia constructs its own immutable shader state before these calls return.
 
@@ -1528,6 +1612,10 @@
 ;   Calls the native sk_shader_new_blend entry point using the declared FFI layout.
 (define-native sk_shader_new_blend
   (_fun _int _pointer _pointer -> _pointer))
+
+;;;
+;;; Mutable Paths and Geometry Queries
+;;;
 
 ; sk_path_new : (_fun -> _pointer) (FFI)
 ;   Calls the native sk_path_new entry point using the declared FFI layout.
@@ -1672,6 +1760,10 @@
 ;   Calls the native sk_path_set_filltype entry point using the declared FFI layout.
 (define-native sk_path_set_filltype (_fun _pointer _int -> _void))
 
+;;;
+;;; Composed Path Effects
+;;;
+
 ;; Path effects. These are SkRefCnt-derived and the constructors return one
 ;; owned reference. Paint setters retain their own reference.
 
@@ -1707,6 +1799,10 @@
 ;   Calls the native sk_path_effect_create_trim entry point using the declared FFI layout.
 (define-native sk_path_effect_create_trim
   (_fun _float _float _int -> _pointer))
+
+;;;
+;;; Path Measurement and Boolean Operations
+;;;
 
 ;; Path measurement. The public wrapper snapshots the source path because the
 ;; native SkPathMeasure stores a pointer to path data rather than retaining a
@@ -1765,6 +1861,10 @@
 ;   Calls the native sk_pathop_as_winding entry point using the declared FFI layout.
 (define-native sk_pathop_as_winding
   (_fun _pointer _pointer -> _stdbool))
+
+;;;
+;;; Recorded Pictures, Serialization, and Spatial Indexes
+;;;
 
 ;; Picture recording / replay.
 
@@ -1835,6 +1935,10 @@
 (define-native sk_picture_recorder_end_recording
   (_fun _pointer -> _pointer))
 
+
+;;;
+;;; Font Managers, Style Sets, and Typefaces
+;;;
 
 ;; Font manager, typeface, font, and text-blob primitives -------------------
 
@@ -2013,6 +2117,10 @@
 ;   Calls the native sk_fontstyle_delete entry point using the declared FFI layout.
 (define-native sk_fontstyle_delete (_fun _pointer -> _void))
 
+;;;
+;;; Font State, Metrics, and Glyph Queries
+;;;
+
 ; sk_font_new_with_values : (_fun _pointer _float _float _float -> _pointer) (FFI)
 ;   Calls the native sk_font_new_with_values entry point using the declared FFI layout.
 (define-native sk_font_new_with_values
@@ -2120,6 +2228,10 @@
 (define-native sk_text_utils_get_path
   (_fun _bytes _size _int _float _float _pointer _pointer -> _void))
 
+;;;
+;;; Positioned Text Blobs and Native Strings
+;;;
+
 ; sk_textblob_unref : (_fun _pointer -> _void) (FFI)
 ;   Calls the native sk_textblob_unref entry point using the declared FFI layout.
 (define-native sk_textblob_unref (_fun _pointer -> _void))
@@ -2165,6 +2277,10 @@
 ; sk_string_get_size : (_fun _pointer -> _size) (FFI)
 ;   Calls the native sk_string_get_size entry point using the declared FFI layout.
 (define-native sk_string_get_size (_fun _pointer -> _size))
+
+;;;
+;;; Raster Images, Pixels, and Image Shaders
+;;;
 
 ; sk_image_unref : (_fun _pointer -> _void) (FFI)
 ;   Calls the native sk_image_unref entry point using the declared FFI layout.
@@ -2227,6 +2343,10 @@
 (define-native sk_image_read_pixels
   (_fun _pointer _sk-image-info-pointer _bytes _size _int _int _int -> _stdbool))
 
+;;;
+;;; Pixmap Encoding and Memory Output Streams
+;;;
+
 ;; Native PNG encoder; no dependency on racket/draw's encoder.
 
 ; sk_pixmap_new : (_fun -> _pointer) (FFI)
@@ -2268,6 +2388,10 @@
 ;   Calls the native sk_webpencoder_encode entry point using the declared FFI layout.
 (define-native sk_webpencoder_encode
   (_fun _pointer _pointer _sk-webp-options-pointer -> _stdbool))
+
+;;;
+;;; Readiness, ABI Checks, and Library Diagnostics
+;;;
 
 ;; Pre-resolve *all* callouts before allocating objects. Destructors then
 ;; never need a first-time library lookup while a finalizer is running.
@@ -2332,6 +2456,10 @@
   (skia-check!)
   (cdr (force native-library)))
 
+;;;
+;;; Extended Font Controls and Batch Queries
+;;;
+
 ;; 0.68b SkFont controls/queries; synchronous checked private buffers.
 
 ; sk_font_is_force_auto_hinting : (_fun _pointer -> _stdbool) (FFI)
@@ -2383,6 +2511,10 @@
 ; sk_font_break_text : (_fun _pointer _bytes _size _int _float _pointer _pointer -> _size) (FFI)
 ;   Calls the native sk_font_break_text entry point using the declared FFI layout.
 (define-native sk_font_break_text (_fun _pointer _bytes _size _int _float _pointer _pointer -> _size))
+
+;;;
+;;; Multi-Run Text Blobs and Outline Queries
+;;;
 
 ;; 0.69 multi-run text; all native buffers remain private and synchronous.
 
@@ -2440,6 +2572,10 @@
 ;   Calls the native sk_text_utils_get_pos_path entry point using the declared FFI layout.
 (define-native sk_text_utils_get_pos_path
   (_fun _pointer _size _int _pointer _pointer _pointer -> _void))
+
+;;;
+;;; Pixel Opacity and Floating-Point Color
+;;;
 
 ;; 0.70: checked opaque-pixel inspection; no native pointer escapes.
 
@@ -2510,6 +2646,10 @@
 ;   Calls the native sk_pixmap_erase_color4f entry point using the declared FFI layout.
 (define-native sk_pixmap_erase_color4f (_fun _pointer _sk-color4f-pointer _pointer -> _stdbool))
 
+;;;
+;;; Image Metadata and CPU Conversion
+;;;
+
 ;; 0.72 image queries and CPU operations: pinned m119 signatures.
 ;; Three metadata symbols also have existing GPU registry entries. The combined
 ;; inventory counts them once; their CPU declarations are intentional.
@@ -2561,6 +2701,10 @@
   (_fun _pointer _pointer _sk-irect-pointer _sk-irect-pointer _sk-irect-pointer _sk-ipoint-pointer
         -> _pointer))
 
+;;;
+;;; Surface Properties
+;;;
+
 ;; 0.73: SkSurfaceProps is opaque; getters are scalar, get_props is borrowed.
 
 ; sk_surfaceprops_new : (_fun _uint32 _int -> _pointer) (FFI)
@@ -2582,6 +2726,10 @@
 ; sk_surface_get_props : (_fun _pointer -> _pointer) (FFI)
 ;   Calls the native sk_surface_get_props entry point using the declared FFI layout.
 (define-native sk_surface_get_props (_fun _pointer -> _pointer))
+
+;;;
+;;; Layer Records, Drawables, and Diagnostic Canvases
+;;;
 
 ;; 0.74: SaveLayerRec, recorded drawables, and scoped diagnostic canvases.
 ;; Pointer-only arguments keep the public boundary independent of C++ layout.
@@ -2666,6 +2814,10 @@
 ; sk_overdraw_canvas_destroy : (_fun _pointer -> _void) (FFI)
 ;   Calls the native sk_overdraw_canvas_destroy entry point using the declared FFI layout.
 (define-native sk_overdraw_canvas_destroy (_fun _pointer -> _void))
+
+;;;
+;;; Input Streams, Output Streams, and Stream Consumers
+;;;
 
 ;; 0.75a native stream foundations. All buffers are synchronously copied; no
 ;; Racket callbacks are installed in Skia's process-global managed-stream table.
@@ -2781,6 +2933,10 @@
 ;   Calls the native sk_wstream_flush entry point using the declared FFI layout.
 (define-native sk_wstream_flush (_fun _pointer -> _void))
 
+;;;
+;;; Codec Geometry, Scanline, and Incremental Sessions
+;;;
+
 ;; 0.76a: synchronous encoded-coordinate codec negotiation. Both outputs use
 ;; existing checked layouts; no address is retained by the native query.
 
@@ -2832,6 +2988,10 @@
 ;   Calls the native sk_codec_incremental_decode entry point using the declared FFI layout.
 (define-native sk_codec_incremental_decode
   (_fun _pointer _pointer -> _int))
+
+;;;
+;;; Process-Global Graphics Caches and Memory Diagnostics
+;;;
 
 ;; 0.77a: explicit process-global cache controls; no import-time mutations.
 
@@ -2906,6 +3066,10 @@
 ; sk_graphics_dump_memory_statistics : (_fun _pointer -> _void) (FFI)
 ;   Calls the native sk_graphics_dump_memory_statistics entry point using the declared FFI layout.
 (define-native sk_graphics_dump_memory_statistics (_fun _pointer -> _void))
+
+;;;
+;;; Color-Space Matrix Algebra
+;;;
 
 ;; 0.78b: existing 36-byte row-major sk_colorspace_xyz_t storage, no new layout.
 ;; Output buffers are distinct from inputs and live for the synchronous call.

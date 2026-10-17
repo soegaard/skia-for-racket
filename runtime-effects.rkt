@@ -32,6 +32,10 @@
 
 ;; Predicates and immutable reflection snapshots never enter native code.
 
+;;;
+;;; Effect, Uniform, Child, and Diagnostic Accessors
+;;;
+
 ; runtime-effect? : any/c -> boolean?
 ;   Returns #t for a runtime-effect resource and #f otherwise.
 (define runtime-effect? raw:runtime-effect-resource?)

@@ -24,6 +24,10 @@
 
 (provide image->pict surface->pict picture->pict)
 
+;;;
+;;; Bitmap and Image Conversion
+;;;
+
 ; bitmap->pict : (is-a?/c bitmap%) real? real? -> pict?
 ;   Scales a physical bitmap to logical pict dimensions while preserving the bitmap baseline
 ;   convention.
@@ -79,6 +83,10 @@
   ;; Do this before querying the image color space: a GPU image must follow its
   ;; existing explicit transfer route and never trigger bridge-side readback.
   (image->pict/geometry who im width height logical-width logical-height))
+
+;;;
+;;; Surface Snapshots and Picture Rendering
+;;;
 
 ; surface->pict : surface? [#:backing-scale (and/c real? (>/c 0))] -> pict:pict?
 ;   Returns a pict from an eager snapshot of the CPU surface's current pixels.

@@ -25,7 +25,12 @@ Use the following comment conventions, adapted from
 | `;   ` | A short purpose sentence following a contract comment. |
 
 Place the module description before imports. Use section headings to group
-related definitions.
+related definitions. Name each section for the operations or concepts it contains,
+and keep supporting helpers and data structures with their operations. An
+"Imports and Exports" section must end before implementation definitions begin.
+In a small, cohesive module, omit unnecessary section headings rather than adding
+one merely to balance an imports heading. Modules consisting only of imports and
+re-exports may keep that heading on its own.
 
 Give each top-level function and constant a contract comment and a brief purpose
 sentence. Put a blank line before each contract comment. Keep the contract,

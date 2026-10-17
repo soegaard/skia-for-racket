@@ -34,6 +34,10 @@
          image-info-supports?
          color-space-descriptor?)
 
+;;;
+;;; Image Descriptions and Pixel-Format Catalogs
+;;;
+
 (struct image-info (width height color-type alpha-type color-space)
   #:transparent #:constructor-name make-image-info-record)
 ;; An image-info value describes pixels without owning their storage.
@@ -74,6 +78,10 @@
           'rgba-1010102 '#(7 4 #(10 10 10 2) #t)
           'rgba-f16 '#(15 8 #(16 16 16 16) #t)
           'rgba-f32 '#(16 16 #(32 32 32 32) #t)))
+
+;;;
+;;; Descriptor Validation and Construction
+;;;
 
 ; check-info : symbol? image-info? -> image-info?
 ;   Checks an image description without inspecting or allocating pixel storage.
@@ -147,6 +155,10 @@
                    #:alpha-type (image-info-alpha-type info)
                    #:color-space (image-info-color-space info)))
 
+;;;
+;;; Pixel and Storage Layout Queries
+;;;
+
 ; image-info-bytes-per-pixel : image-info? -> exact-positive-integer?
 ;   Returns the storage bytes per pixel: 4 for RGBA8888, BGRA8888, RGBX8888, and RGBA1010102; 1 for
 ;   alpha or grayscale; 2 for RGB565; 8 for RGBA F16; and 16 for RGBA F32.
@@ -199,6 +211,10 @@
     (error who "layout exceeds native 31-bit storage range or current-skia-byte-limit"))
   (values rb minimum allocation))
 
+;;;
+;;; Supported Pixel Operations
+;;;
+
 ; operations : (listof symbol?)
 ;   Names the format-level capability queries accepted by image-info-supports?.
 (define operations
@@ -217,5 +233,10 @@
     [(gpu-readback) (and (eq? (image-info-color-type info) 'rgba-8888)
                          (eq? (image-info-alpha-type info) 'premul))]
     [else #t]))
+
+;;;
+;;; Internal Format Metadata
+;;;
+
 (module* internals #f
   (provide check-info copy-descriptor format-data))

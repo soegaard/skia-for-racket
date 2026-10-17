@@ -21,7 +21,16 @@
          (prefix-in inc: "../private/codec-incremental-util.rkt")
          (prefix-in input: "../private/codec-incremental-input.rkt"))
 
+;;;
+;;; Stream and Codec Argument Checks
+;;;
+
 (module+ test
+
+  ;;;
+  ;;; Pixel Descriptions and Storage Layout
+  ;;;
+
   (test-case "pixel descriptions accept empty dimensions without allocating pixels"
     (define info (make-image-info 0 4))
     (check-true (image-info? info))
@@ -77,6 +86,10 @@
     (check-equal? (image-info-height changed) 5)
     (check-exn exn:fail? (lambda () (image-info-supports? info 'unknown))))
 
+  ;;;
+  ;;; Buffered Stream Limits and Ownership
+  ;;;
+
   (test-case "stream byte limits and slices are checked before native entry"
     (parameterize ([current-skia-byte-limit 8])
       (check-equal? (buffer:stream-byte-limit 'test 8) 8)
@@ -111,6 +124,10 @@
         (check-equal? (file-position unowned) 0))
       (lambda () (close-input-port unowned))))
 
+  ;;;
+  ;;; Codec Queries and Scanline Layout
+  ;;;
+
   (test-case "codec scale uses rounded binary32 and subset endpoints are bounded"
     (check-exn exn:fail? (lambda () (query:codec-query-scale 'test 1e-100)))
     (check-equal? (query:codec-query-scale 'test 1) 1.0)
@@ -135,6 +152,10 @@
     (check-equal? (scanline-batch-decoded-count batch) 0)
     (check-false (scanline-batch-first-row batch))
     (check-exn exn:fail? (lambda () (scan:scanline-count 'test 0 3))))
+
+  ;;;
+  ;;; Incremental Input Visibility and Quotas
+  ;;;
 
   (test-case "incremental states distinguish more input from final truncation"
     (check-equal? (inc:incremental-result-state 1 #f) 'needs-input)

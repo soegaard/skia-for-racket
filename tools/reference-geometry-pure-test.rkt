@@ -16,13 +16,13 @@
 ;; Public value/expansion tests. These cases do not load the Skia native library.
 (require rackunit racket/list racket/vector skia)
 
+;;;
+;;; Geometry Syntax Expansion
+;;;
+
 ; expansion-anchor : namespace-anchor?
 ;   Anchors geometry-form expansion in the namespace containing this module's imports.
 (define-namespace-anchor expansion-anchor)
-
-;;;
-;;; Diagnostic Operations
-;;;
 
 ; expand-geometry-form : any/c -> syntax?
 ;   Expands a geometry form in the test module namespace without invoking native drawing.
@@ -31,6 +31,11 @@
     (expand (datum->syntax #f form))))
 
 (module+ test
+
+  ;;;
+  ;;; Projective Matrix Representation and Arithmetic
+  ;;;
+
   (test-case "projective matrices copy row-major coefficients"
     (define source (vector 1 0 3 0 1 4 0 0 1))
     (define matrix (vector->matrix3 source))
@@ -93,6 +98,10 @@
     (check-equal? (matrix4-map-point (matrix4-rotate-x-degrees 90) 0 1 0) #(0.0 0.0 1.0))
     (check-equal? (matrix4-map-point (matrix4-rotate-y-degrees 90) 1 0 0) #(0.0 0.0 -1.0)))
 
+  ;;;
+  ;;; Detached Geometry and Layer Specifications
+  ;;;
+
   (test-case "rounded rectangle specifications copy unnormalized radii"
     (define corner (vector 30 30))
     (define shape (make-rounded-rect 0 0 20 10 #:radii (vector corner corner corner corner)))
@@ -145,6 +154,10 @@
     (check-exn exn:fail? (lambda () (make-cubic-patch (make-list 11 point))))
     (check-exn exn:fail?
                (lambda () (make-cubic-patch (make-list 12 point) #:colors '(red)))))
+
+  ;;;
+  ;;; Scoped Syntax and Operation Limits
+  ;;;
 
   (test-case "scoped macro grammars require nonempty expression-ending bodies"
     (for ([form (in-list

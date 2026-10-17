@@ -8,12 +8,14 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; An explicitly selected backend executes only the bounded raster group.
+
 ;;;
 ;;; Imports and Exports
 ;;;
 
 (require racket/cmdline racket/file racket/path
          "../main.rkt" "../gpu.rkt" "../gpu-output.rkt" "../tools/gpu-test-host.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

@@ -26,7 +26,7 @@
          editor-before-and-after-pict)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; scene-module : path?
@@ -39,7 +39,12 @@
 (interaction-eval '(require racket))
 (interaction-eval `(require (file ,(path->string scene-module))))
 
+;;;
+;;; Editor Interaction Figures
+;;;
+
 ;; A source figure should never be allowed to degrade into a black rectangle.
+
 
 ; check-editor-figure : surface? -> void?
 ;   Checks the rendered editor figure's expected drawing and background pixels.
@@ -136,6 +141,10 @@
               (editor-frame-pict #:scale 0.39))
    (captioned "After dragging P1"
               (editor-frame-pict moved #:selected 1 #:scale 0.39))))
+
+;;;
+;;; Scribble Interaction Form
+;;;
 
 ; interaction-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

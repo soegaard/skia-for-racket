@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit racket/list
          "../main.rkt" "../gpu.rkt" "gpu-fixtures.rkt"
          "../private/gpu-io-trace.rkt")
@@ -65,6 +66,11 @@
       (make-image-shader im #:tile-x 'repeat #:tile-y 'repeat)))
   (test-suite
    "GPU images: live uploads, snapshots, transitive graphs, and explicit transfers"
+
+   ;;;
+   ;;; Uploads, Snapshots, and GPU Subsets
+   ;;;
+
    (test-case "upload returns an ordinary image with explicit GPU ownership"
      (uploaded (lambda (cpu im)
                  (check-true (image? im)) (check-true (gpu-image? im))
@@ -134,6 +140,11 @@
      (uploaded (lambda (cpu im)
                  (for ([box '((-1 0 1 1) (0 0 0 1) (7 7 2 2) (0.0 0 1 1))])
                    (check-exn exn:fail? (lambda () (apply gpu-image-subset im box)))))))
+
+   ;;;
+   ;;; Retained Shader, Filter, and Picture Graphs
+   ;;;
+
    (test-case "ordinary image and shader drawing do not require CPU readback"
      (uploaded (lambda (cpu im)
                  (with-skia ([s (make-gpu-surface gpu 8 8)]
@@ -254,6 +265,11 @@
                    (with-skia ([pic (picture-recorder-finish-recording! rec)])
                      (check-false (skia-resource-gpu-context rec))
                      (same-context pic))))))
+
+   ;;;
+   ;;; Affinity and Implicit Transfer Rejection
+   ;;;
+
    (test-case "GPU-dependent picture serialization and CPU rasterization are rejected"
      (uploaded (lambda (cpu im)
                  (with-skia ([pic (call-with-picture 8 8 (lambda (c) (draw-image c im 0 0)))])
@@ -300,6 +316,11 @@
            (lambda ()
              (with-skia ([p (make-paint #:shader sh)])
                (check-equal? (render-paint p) image-test-pixels)))))))
+
+   ;;;
+   ;;; Explicit Readback and Detached CPU Ownership
+   ;;;
+
    (test-case "explicit detachment permits CPU encoding and another-context upload"
      (define detached
        (call-with-gpu-context gpu

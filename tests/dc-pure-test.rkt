@@ -11,16 +11,18 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit racket/class racket/list racket/math racket/vector
          (prefix-in rd: racket/draw)
          "../private/dc-support.rkt" "../private/dc-class.rkt")
 (provide dc-pure-tests dc-pure-test-count)
-;; These are production-class tests with an injected recording renderer. They
-;; verify protocol/state/geometry, not native Skia pixel execution.
 
 ;;;
 ;;; Fixtures and Assertions
 ;;;
+
+;; These are production-class tests with an injected recording renderer. They
+;; verify protocol/state/geometry, not native Skia pixel execution.
 
 ; fresh : [exact-positive-integer? exact-positive-integer? real?] -> (values dc<%> box?)
 ;   Builds a recording renderer and DC, preserving emitted operations for assertions.
@@ -61,6 +63,11 @@
 (define dc-pure-tests
   (test-suite
    "skia-dc foundation (recording renderer; no Skia pixels)"
+
+   ;;;
+   ;;; Construction, Extents, and Resource Lifetime
+   ;;;
+
    (test-case "genuine interface on the running Racket version"
      (define-values (dc e) (fresh))
      ;; `class*` enforces the complete method contract when the class is built;
@@ -103,6 +110,11 @@
      (thread-wait worker)
      (check-true (exn:fail? (unbox answer)))
      (check-equal? (length (unbox e)) 1))
+
+   ;;;
+   ;;; Transforms and Coordinate Validation
+   ;;;
+
    (test-case "matrix layout is Racket column-affine layout"
      (check-equal? (call-with-values (lambda () (dc-point '#(2 3 5 7 11 13) 17 19)) list)
                    '(140.0 197.0)))
@@ -154,6 +166,11 @@
      (define-values (dc e) (fresh)) (send dc set-smoothing 'smoothed)
      (send dc set-initial-matrix '#(-1 0.2 0.3 1 20 0))
      (send dc draw-line 1 2 3 4) (check-equal? (length (draws e)) 1))
+
+   ;;;
+   ;;; Smoothing, Alpha, and Selected Styles
+   ;;;
+
    (test-case "unknown smoothing rejected without change"
      (define-values (dc e) (fresh))
      (check-exn exn:fail? (lambda () (send dc set-smoothing 'fast)))
@@ -203,6 +220,11 @@
      (send dc try-color (make-object rd:color% 3 7 11 0.5) dest)
      (check-equal? (list (send dest red) (send dest green) (send dest blue) (send dest alpha))
        '(3 7 11 0.5)))
+
+   ;;;
+   ;;; Drawing Primitive Translation
+   ;;;
+
    (test-case "fill precedes stroke"
      (define-values (dc e) (fresh)) (send dc draw-rectangle 1 2 10 12)
      (check-equal? (map (lambda (op) (dc-ink-stroke? (dc-draw-ink op))) (draws e)) '(#f #t)))
@@ -278,6 +300,11 @@
      (define-values (dc e) (fresh))
      (check-exn exn:fail? (lambda () (send dc draw-rectangle 0 0 -1 2)))
      (check-equal? (draws e) '()))
+
+   ;;;
+   ;;; Clipping, Clearing, and Renderer Capabilities
+   ;;;
+
    (test-case "clipping getter returns a real region"
      (define-values (dc e) (fresh)) (send dc set-clipping-rect 1 2 10 12)
      (check-true (is-a? (send dc get-clipping-region) rd:region%)))

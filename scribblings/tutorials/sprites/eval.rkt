@@ -15,8 +15,9 @@
 (require racket/runtime-path scribble/eval skia "atlas.rkt" "model.rkt" "scene.rkt"
          "../support/figures.rkt" "../support/sprite-figures.rkt" "../support/sprite-math.rkt")
 (provide sprites-interaction balls-pict balls-motion ball-atlas-pict one-ball-pict placements-pict)
+
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; model-source : path?
@@ -32,6 +33,10 @@
 (define evaluator (make-base-eval))
 (evaluator `(require racket (file ,(path->string model-source))
                       (file ,(path->string math-source))))
+
+;;;
+;;; Sprite Atlas and Motion Figures
+;;;
 
 ; balls-pict : [any/c] #:scale [real?] -> pict?
 ;   Renders the balls illustration from the tutorial's drawing code.
@@ -93,6 +98,10 @@
                    [font (make-font #:size 14)])
          (for ([x '(40 228 420)] [text '("1x / 0 degrees" "1.5x / 40 degrees" "2x / -35 degrees")])
            (draw-simple-text canvas text x 152 font ink)))))))
+
+;;;
+;;; Scribble Interaction Form
+;;;
 
 ; sprites-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

@@ -14,6 +14,10 @@
          native-abi-profile-for native-abi-require! native-abi-check-layouts!
          (struct-out exn:fail:native-abi))
 
+;;;
+;;; Pinned Package and ABI Catalog
+;;;
+
 ; version-file : path?
 ;   Locates the installed default native package-version metadata.
 (define-runtime-path version-file "native-default-version.txt")
@@ -58,6 +62,10 @@
 ; native-abi-profiles : -> (listof hash?)
 ;   Returns the supported profiles from the installed catalogue, as detached immutable data.
 (define (native-abi-profiles) profiles)
+
+;;;
+;;; Version, Symbol, and Layout Validation
+;;;
 
 (struct exn:fail:native-abi exn:fail (milestone increment pointer-bytes) #:transparent)
 ;; Fields:

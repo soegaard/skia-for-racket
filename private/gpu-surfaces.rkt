@@ -32,6 +32,10 @@
          gpu-surface->rgba-bytes gpu-surface->raster-image
          gpu-surface-read-raster-buffer!)
 
+;;;
+;;; Checked Context Access and Submission
+;;;
+
 ; gpu-surface-domain/checked : symbol? gpu-surface? -> any
 ;   Checks that a surface is GPU-backed before returning its execution domain.
 (define (gpu-surface-domain/checked who s)
@@ -82,6 +86,10 @@
   ;; Wait includes pending Skia commands as well as submitted backend work.
   ;; Presentation is a separate operation, not implied by this boundary.
   (gpu-flush-and-submit! context #:wait? #t))
+
+;;;
+;;; Surface Formats and Construction
+;;;
 
 ; pointer=? : (or/c #f cpointer?) (or/c #f cpointer?) -> boolean?
 ;   Checks native surface/context identity by address rather than Racket pointer-wrapper identity.
@@ -208,6 +216,10 @@
         (when handle (domain-resource-close! handle))
         (domain-drain! d)))))
 
+;;;
+;;; Surface Metadata and Readback Synchronization
+;;;
+
 ; gpu-surface-info : gpu-surface? -> (and/c hash? immutable?)
 ;   Returns detached metadata after checking the live surface's native context and backend
 ;   association.
@@ -250,6 +262,10 @@
        (error who "GPU readback failed; destination writes are not transactional"))))
   (void/reference-sink s)
   (void))
+
+;;;
+;;; Explicit Pixel Readback and Raster Results
+;;;
 
 ; gpu-surface->rgba-bytes : gpu-surface? [#:premultiplied? boolean?] [#:color-space (or/c
 ;   color-space? #f)] -> bytes?

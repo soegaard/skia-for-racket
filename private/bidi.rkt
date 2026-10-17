@@ -11,12 +11,13 @@
 (provide bidi-class bidi-resolve-levels bidi-reorder-items
          bidi-explicit-control? bidi-x9-removed? bidi-bracket-info)
 
-;; Generated from Python unicodedata 15.1.0. The ranges encode the
-;; Unicode Bidi_Class property. Unassigned scalar values use the ordinary
-;; left-to-right default here; assigned text is the supported input domain.
 ;;;
 ;;; Pinned Character Properties
 ;;;
+
+;; Generated from Python unicodedata 15.1.0. The ranges encode the
+;; Unicode Bidi_Class property. Unassigned scalar values use the ordinary
+;; left-to-right default here; assigned text is the supported input domain.
 
 ; bidi-ranges : vector?
 ;   Stores the pinned bidi-class partition as ordered inclusive code-point low/high/class triples
@@ -1773,12 +1774,13 @@
       (reset-tail (sub1 i))))
   (values levels base-dir))
 
-;; Version 0.16 full explicit-control resolver. The earlier ordinary-text
-;; resolver is retained above as bidi-resolve-levels/ordinary-legacy for
-;; source-level regression comparison, but this definition is the exported path.
 ;;;
 ;;; Explicit Embeddings and Isolates
 ;;;
+
+;; Version 0.16 full explicit-control resolver. The earlier ordinary-text
+;; resolver is retained above as bidi-resolve-levels/ordinary-legacy for
+;; source-level regression comparison, but this definition is the exported path.
 
 ; uax9-x9-type? : symbol? -> boolean?
 ;   Recognizes formatting classes removed from isolating-run construction by rule X9.

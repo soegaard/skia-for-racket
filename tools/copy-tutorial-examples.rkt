@@ -18,7 +18,7 @@
 
 
 ;;;
-;;; Diagnostic Operations
+;;; Tutorial Selection and Source Export
 ;;;
 
 ; list-only? : boolean?

@@ -17,7 +17,7 @@
          skia)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Fixtures and Sheet Layout
 ;;;
 
 ; fixture-directory : path?
@@ -52,6 +52,10 @@
 ;   Resolves a local image fixture relative to the tutorial source directory.
 (define (fixture name)
   (build-path fixture-directory name))
+
+;;;
+;;; Fitted Image Cells
+;;;
 
 ; draw-image-fit : canvas? image? real? real? real? real? #:sampling [symbol?] -> void?
 ;   Fits the whole image inside a destination rectangle without changing its aspect ratio.
@@ -89,6 +93,10 @@
   (draw-simple-text canvas label
                     (+ x 16) (+ y 229)
                     font text))
+
+;;;
+;;; Contact Sheet and Export
+;;;
 
 ; draw-contact-sheet : canvas? any/c any/c any/c any/c any/c any/c -> void?
 ;   Draws the contact sheet component in the current canvas coordinate system.

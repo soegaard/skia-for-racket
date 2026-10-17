@@ -9,6 +9,7 @@
 
 ;; The same callback can run on raster, Metal, OpenGL, or Direct3D.
 ;; Run from the checkout, or require skia/render-canvas when installed.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -17,7 +18,7 @@
          "../render-canvas.rkt" "../tests/gpu-dc-consumer-fixtures.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Renderer Review Window
 ;;;
 
 ; open-review : symbol? symbol? symbol? -> void?

@@ -25,7 +25,7 @@
          paragraph-article-pict)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; paragraph-eval : procedure?
@@ -55,6 +55,10 @@
          (open-input-bytes (surface->png-bytes surface))
          'png/alpha))
        scale)))))
+
+;;;
+;;; Scribble Forms and Preview Figure
+;;;
 
 ; paragraph-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

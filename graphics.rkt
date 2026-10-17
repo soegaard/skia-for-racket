@@ -39,6 +39,10 @@
          memory-statistics-dropped-count memory-statistics-string-bytes
          memory-statistics-scope memory-statistics->jsexpr)
 
+;;;
+;;; Cache Usage and Limit Queries
+;;;
+
 ; skia-font-cache-used : -> exact-nonnegative-integer?
 ;   Returns the current font-cache byte usage.
 (define (skia-font-cache-used)
@@ -102,6 +106,10 @@
        'skia-resource-cache-single-allocation-limit
        (sk_graphics_get_resource_cache_single_allocation_byte_limit)))))
 
+;;;
+;;; Cache Limit Configuration
+;;;
+
 ; skia-set-font-cache-limit! : exact-nonnegative-integer? -> exact-nonnegative-integer?
 ;   Sets the font-cache byte limit and returns its previous setting.
 (define (skia-set-font-cache-limit! value)
@@ -148,6 +156,10 @@
        'skia-set-resource-cache-single-allocation-limit!
        (sk_graphics_set_resource_cache_single_allocation_byte_limit value)))))
 
+;;;
+;;; Global Initialization and Cache Purging
+;;;
+
 ; skia-initialize! : -> void?
 ;   Explicitly initializes Skia's global graphics state.
 (define (skia-initialize!)
@@ -171,6 +183,10 @@
 (define (skia-purge-all-caches!)
   (call-global-cache-native 'skia-purge-all-caches!
     (lambda () (sk_graphics_purge_all_caches) (void))))
+
+;;;
+;;; Cache and Memory Reports
+;;;
 
 ; skia-cache-statistics : -> (and/c hash? immutable?)
 ;   Returns current cache observations in an immutable hash.

@@ -9,11 +9,9 @@
 
 ;; Public modules only. Run after installing the pinned Skia library.
 ;; The borrowed canvas is usable only while its owning surface remains live.
-;;;
-;;; Imports and Exports
-;;;
 
 (require "../../main.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

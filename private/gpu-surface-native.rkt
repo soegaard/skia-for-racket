@@ -16,6 +16,11 @@
          (only-in "native.rkt" skia-native-library-handle)
          "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-surface-native-check! gpu-surface-native-inventory)
+
+;;;
+;;; Lazy Surface Binding Registry
+;;;
+
 ;; Deliberately separate from the CPU symbol registry and the 0.38 probe.
 
 ; library : promise?
@@ -39,6 +44,11 @@
       (call-with-gpu-native-scope
         (lambda () (checked-backend-resource/native 'native-name args (lambda () (apply call
           args))))))))
+
+;;;
+;;; Submission, Readback, and Target Wrapping
+;;;
+
 ;; These calls cannot invoke application/Racket release callbacks in 0.39.
 ;; Native context pointers are not GC-managed. Readback descriptors and pixels
 ;; are explicitly malloc'ed raw storage, never moving Racket bytes/cstructs.
@@ -92,6 +102,10 @@
 (define-surface-native window draw-surface/native sk_surface_draw
   (_fun _pointer _pointer _float _float _pointer -> _void))
 
+;;;
+;;; Surface Registry Readiness
+;;;
+
 ; gpu-surface-native-check! : [any/c] -> void?
 ;   Requires surface symbols and, when requested, the separate window-target binding group.
 (define (gpu-surface-native-check! [window? #f])
@@ -112,6 +126,10 @@
     (hasheq 'name (symbol->string (cadr binding))
             'available (with-handlers ([exn:fail? (lambda (_) #f)])
                          (force (caddr binding)) #t))))
+
+;;;
+;;; Backend Texture and Target Inspection
+;;;
 
 ;; 0.73: scalar observation of native backend descriptors. These are not raw
 ;; resource ingress APIs. The constructors remain behind existing scoped hosts.
@@ -183,6 +201,10 @@
 (define-surface-native resource target-gl-info/native gr_backendrendertarget_get_gl_framebufferinfo
   (_fun _pointer _pointer -> _stdbool))
 (provide checked-backend-resource/native gpu-backend-resource-native-inventory)
+
+;;;
+;;; Backend Resource Identity Validation
+;;;
 
 ; gpu-backend-resource-native-inventory : -> list?
 ;   Reports scalar backend-descriptor query availability without exposing raw resource ingress.

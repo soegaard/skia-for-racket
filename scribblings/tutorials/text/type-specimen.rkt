@@ -16,7 +16,7 @@
 (require skia)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Specimen Palette and Typeface
 ;;;
 
 ; width : exact-integer?
@@ -58,6 +58,10 @@
 ; family-name : string?
 ;   Records the actual typeface family so the specimen identifies its font.
 (define family-name (typeface-family-name face))
+
+;;;
+;;; Text Rows and Metric Guides
+;;;
 
 ; draw-rule : canvas? real? -> void?
 ;   Draws the rule component in the current canvas coordinate system.
@@ -174,6 +178,10 @@
                     "Origin / baseline / advance / bounds / metrics"
                     58 952
                     font paint))
+
+;;;
+;;; Specimen Assembly
+;;;
 
 ; draw-specimen : canvas? -> void?
 ;   Draws the specimen component in the current canvas coordinate system.

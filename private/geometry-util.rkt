@@ -12,6 +12,10 @@
          geometry-rectangle geometry-irect geometry-int geometry-vertices
          geometry-divisions geometry-source-bounds)
 
+;;;
+;;; Detached Point, Color, and Rectangle Sequences
+;;;
+
 ; geometry-list : symbol? (or/c list? vector?) -> list?
 ;   Normalizes ordered geometry input without changing element order.
 (define (geometry-list who v)
@@ -64,6 +68,11 @@
   (vector-immutable (sk-rect-left r) (sk-rect-top r)
                     (- (sk-rect-right r) (sk-rect-left r))
                     (- (sk-rect-bottom r) (sk-rect-top r))))
+
+;;;
+;;; Integer Regions and Source Bounds
+;;;
+
 ;; Reserve SkRegion's INT_MAX sentinel and keep widths/differences in int32.
 ;; This is deliberately narrower than all int32 coordinates.
 
@@ -102,6 +111,10 @@
     (raise-arguments-error who "source rectangle must be nonempty and inside the image"
                            "rectangle" box "image width" width "image height" height))
   box)
+
+;;;
+;;; Vertex Topology and Lattice Divisions
+;;;
 
 ; geometry-vertices : symbol? symbol? any/c any/c any/c any/c -> (values vector? any/c any/c any/c)
 ;   Checks mesh topology, matching attribute arrays, uint16 indices, and aggregate native buffer

@@ -9,9 +9,6 @@
 
 ;; Native incremental PNG, supplied a complete encoded chunk at a time. The
 ;; production API also accepts arbitrary fragments and handles framing itself.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/list "../main.rkt" "../tests/codec-incremental-fixtures.rkt")
 (with-skia ([decoder (make-codec-incremental #:limit (* 1024 1024))])

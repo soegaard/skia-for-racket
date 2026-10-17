@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/list
          "../main.rkt" "codec-incremental-fixtures.rkt"
          (only-in "codec-scanline-fixtures.rkt" scanline-fixture-bmp)
@@ -67,6 +68,11 @@
 ;   Collects the regression cases for retained incremental codec, feed framing and pixel ownership.
 (define codec-incremental-native-tests
   (test-suite "Retained incremental codec, feed framing and pixel ownership"
+
+    ;;;
+    ;;; Incremental Session State and Input Visibility
+    ;;;
+
     (test-case "session is an ordinary owned resource"
       (define s (make-codec-incremental))
       (check-true (skia-resource? s)) (check-true (codec-incremental-session? s))
@@ -144,6 +150,11 @@
         (check-equal? (hash-ref stats 'header-attempts) 2)
         (check-equal? (hash-ref stats 'start-calls) 1)
         (check-equal? (hash-ref stats 'stream-creations) (hash-ref stats 'stream-destructions))))
+
+    ;;;
+    ;;; Snapshots, Pixel Layout, and Partial Results
+    ;;;
+
     (test-case "partial snapshots remain immutable as later rows decode"
       (with-skia ([s (make-codec-incremental)])
         (prefix s) (define earlier (codec-incremental-snapshot s))
@@ -231,6 +242,11 @@
         (check-equal? (codec-incremental-step! s) p)
         (check-equal? (codec-incremental-statistics s) stats)
         (check-exn exn:fail? (lambda () (codec-incremental-feed! s #"x")))))
+
+    ;;;
+    ;;; Cancellation, Limits, and Thread Ownership
+    ;;;
+
     (test-case "explicit cancellation releases decoder and pixels"
       (with-skia ([s (make-codec-incremental)])
         (prefix s) (codec-incremental-cancel! s)
@@ -276,6 +292,11 @@
               (in-list (list codec-incremental-info codec-incremental-statistics
                          codec-incremental-snapshot codec-incremental-step!))])
         (check-exn exn:fail? (lambda () (operation s)))))
+
+    ;;;
+    ;;; Suspended Decoder Lifetime and Isolation
+    ;;;
+
     (test-case "GC between steps preserves source and destination"
       (with-skia ([s (make-codec-incremental)])
         (prefix s) (collect-garbage) (collect-garbage) (finish s)

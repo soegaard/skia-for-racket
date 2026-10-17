@@ -18,6 +18,10 @@
          scanline-batch-decoded-count scanline-batch-bytes scanline-batch-complete?
          make-scanline-batch)
 
+;;;
+;;; Detached Batches and Failure Results
+;;;
+
 (struct exn:fail:codec-scanline exn:fail (result native-code) #:transparent)
 ;; Fields:
 ;;   result: symbolic codec result. native-code: corresponding native integer result. The inherited
@@ -50,6 +54,10 @@
   (unless (scanline-batch? batch)
     (raise-argument-error 'scanline-batch-complete? "scanline-batch?" batch))
   (= (scanline-batch-requested-count batch) (scanline-batch-decoded-count batch)))
+
+;;;
+;;; Decode Options and Row Placement
+;;;
 
 ; scanline-options : symbol? real? symbol? symbol? any/c -> (values inexact-real? image-info?)
 ;   Checks scale and copies a detached format template before input or native allocation.

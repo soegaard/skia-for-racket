@@ -10,11 +10,17 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require json racket/cmdline
          (only-in "../private/native.rkt" skia-check!)
          (only-in "../private/native-abi.rkt"
                   exn:fail:native-abi? exn:fail:native-abi-milestone
                   exn:fail:native-abi-increment))
+
+;;;
+;;; Foreign Library Rejection Check
+;;;
+
 (module+ main
 
   ;;;

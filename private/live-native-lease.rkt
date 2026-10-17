@@ -14,9 +14,14 @@
          pin-live-output! live-pin-pointer release-live-pin! poison-live-pin!
          check-live-pin! check-live-fault!)
 
+;;;
+;;; Native Reference Transfer
+;;;
+
 ;; An independent CPU native reference may outlive the original public wrapper.
 ;; The service thread releases it only after native completion. The finalizer is
 ;; a fallback for abandonment before launch or a result abandoned by its caller.
+
 (struct native-reference ([pointer #:mutable] release))
 ;; Fields:
 ;;   pointer: mutable retained cpointer or #f after release/transfer. release: matching one-pointer
@@ -58,6 +63,10 @@
   (define p (reference-pointer ref))
   (set-native-reference-pointer! ref #f)
   p)
+
+;;;
+;;; Pinned Output Operations and Failure State
+;;;
 
 ;; A native WStream is mutable and not ref-counted. Pin its existing owner while
 ;; a private Racket-port sink forwards bounded chunks to it. The lifetime layer

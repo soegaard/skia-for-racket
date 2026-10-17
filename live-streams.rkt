@@ -26,13 +26,13 @@
          image-from-port picture-from-port copy-port/streaming image->port picture->port output->port
          image-write-stream! picture-write-stream! output-write-stream!)
 
-; initialized? : boolean?
-;   Records whether the process-wide live-stream callback bridge has been initialized.
-(define initialized? #f)
-
 ;;;
 ;;; Callback Bridge Initialization
 ;;;
+
+; initialized? : boolean?
+;   Records whether the process-wide live-stream callback bridge has been initialized.
+(define initialized? #f)
 
 ; live-streams-check! : -> void?
 ;   Initializes and checks the live-stream support library and its native bridge.

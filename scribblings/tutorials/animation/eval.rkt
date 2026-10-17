@@ -24,7 +24,7 @@
          animation-frame-strip)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; scene-module : path?
@@ -37,7 +37,12 @@
 (animation-eval '(require racket))
 (animation-eval `(require (file ,(path->string scene-module))))
 
+;;;
+;;; Animation Frame Figures
+;;;
+
 ;; Catch an all-black or incorrectly colored figure during a documentation build.
+
 
 ; check-frame-colors : surface? -> void?
 ;   Checks that the rendered animation frame contains the expected scene colors.
@@ -85,6 +90,10 @@
    (captioned-frame 0.0)
    (captioned-frame 1.2)
    (captioned-frame 2.4)))
+
+;;;
+;;; Scribble Interaction Form
+;;;
 
 ; animation-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

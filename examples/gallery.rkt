@@ -13,11 +13,12 @@
 
 (require racket/cmdline racket/math "../main.rkt")
 
+;;;
+;;; Vector Drawing Gallery
+;;;
+
 ;; A visual smoke test: curves, compositing, fills, clipping, transforms,
 ;; and image snapshots. No fonts, external images, or text renderer needed.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-gallery : path-string? -> void?
 ;   Renders the gallery example to the selected output destination.

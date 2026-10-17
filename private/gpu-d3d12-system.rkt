@@ -13,6 +13,10 @@
 (module* dxgi-internals #f
   (provide method release raw hresult! out-interface))
 
+;;;
+;;; COM Calls and Owned Return Values
+;;;
+
 ;; Windows x64 has one calling convention for these C/COM calls. 32-bit and
 ;; ARM64 hosts are rejected BEFORE either DLL is loaded or a vtable is read.
 
@@ -54,6 +58,10 @@
            (hresult! step hr))
          (unless p (gpu-unavailable step "~a succeeded without returning an interface" step))
          p)))
+
+;;;
+;;; Platform Loading and Device Operations
+;;;
 
 ; dxgi-library : promise?
 ;   Loads DXGI lazily so importing platform-independent GPU modules does not load Windows DLLs.

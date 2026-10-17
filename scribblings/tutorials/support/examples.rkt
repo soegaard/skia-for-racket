@@ -10,6 +10,7 @@
 
 
 ;; Copy only the explicit source set. This module does not load Skia or a GUI.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -18,7 +19,7 @@
 (provide copy-tutorial-example)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Checked Source Publication
 ;;;
 
 ; check-source : path-string? string? -> path?

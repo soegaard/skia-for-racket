@@ -22,7 +22,7 @@
 (provide open-navigation-window)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Backend Selection and Navigation Window
 ;;;
 
 ; preferred-gpu-backend : -> symbol?
@@ -42,6 +42,11 @@
   (define backend (and (eq? renderer 'gpu) (preferred-gpu-backend)))
   (when (and (eq? renderer 'gpu) (not backend))
     (error 'open-navigation-window "no GPU backend for this platform; use --renderer raster"))
+
+  ;;;
+  ;;; View State and Pointer Interaction
+  ;;;
+
   (define points initial-points)
   (define view home-view)
   (define selected #f)
@@ -106,6 +111,10 @@
          (end-drag!)
          (request-frame)])))
 
+  ;;;
+  ;;; Keyboard and Wheel Navigation
+  ;;;
+
   (define (zoom! x y factor)
     (end-drag!)
     (set! view (zoom-at view x y factor))
@@ -128,6 +137,10 @@
       (define/override (on-char event) (handle-key-event this event))
       (super-new)))
 
+  ;;;
+  ;;; Raster and GPU Drawing
+  ;;;
+
   (define (paint-cpu target dc)
     (define-values (width height) (send target get-client-size))
     (when (and (positive? width) (positive? height))
@@ -142,6 +155,10 @@
       (canvas-scale! canvas (gpu-frame-scale-x frame) (gpu-frame-scale-y frame))
       (draw-editor canvas points view
                    (gpu-frame-logical-width frame) (gpu-frame-logical-height frame) selected)))
+
+  ;;;
+  ;;; Window Controls and Cleanup
+  ;;;
 
   (define (close-window)
     (unless closed?

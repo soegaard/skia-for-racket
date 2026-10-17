@@ -12,8 +12,9 @@
 ;;;
 
 (require racket/file racket/path json "../main.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Page Styling and Backend Panels
 ;;;
 
 ; blue : rgba?
@@ -66,6 +67,10 @@
       (draw-rasterized c x y 300 112 f #:scale 2)
       (at c x y f)))
 
+;;;
+;;; Primitive Geometry
+;;;
+
 ; points : canvas? -> void?
 ;   Draws round and square point sprites so cap-dependent geometry can be compared.
 (define (points c)
@@ -115,6 +120,10 @@
     0 413 10)
   (footer c 1))
 
+;;;
+;;; Clip Queries
+;;;
+
 ; clip-page : canvas? -> void?
 ;   Draws the clip page comparison in the current canvas coordinate system.
 (define (clip-page c)
@@ -154,6 +163,10 @@
   (label c "The query trace records each backend separately. No automatic culling is installed." 0
     413 10)
   (footer c 2))
+
+;;;
+;;; Compositing Layers
+;;;
 
 ; pair : canvas? [real?] -> void?
 ;   Draws the pair comparison in the current canvas coordinate system.
@@ -207,10 +220,15 @@
     "PDF receives native layers. SVG explicitly rasterizes three 600 x 224 panels; labels remain vector." 0 413 10)
   (footer c 3))
 
+;;;
+;;; Query Report Export
+;;;
+
 ; write-json-file : path-string? any/c -> void?
 ;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file f value)
   (call-with-output-file f (lambda (o) (write-json value o) (newline o)) #:exists 'replace))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

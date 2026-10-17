@@ -12,6 +12,10 @@
 (provide stream-byte-limit stream-count stream-slice check-stream-cancel
          read-port-buffered write-port-buffered)
 
+;;;
+;;; Byte Bounds and Cancellation Policy
+;;;
+
 ; stream-byte-limit : symbol? exact-positive-integer? -> exact-positive-integer?
 ;   Checks the operation limit against both the current allocation budget and native signed-int
 ;   maximum.
@@ -65,6 +69,10 @@
   (define wrapped (cancel-event who event))
   (when (eq? (if wrapped (sync port wrapped) (sync port)) 'cancelled)
     (cancel! who)))
+
+;;;
+;;; Port Ownership and Buffered Transfers
+;;;
 
 ; call-with-port-policy : symbol? port? boolean? boolean? procedure? -> any
 ;   Runs a transfer with explicit port-close policy and a continuation barrier, preserving the

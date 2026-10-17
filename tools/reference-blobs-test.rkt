@@ -55,6 +55,11 @@
 (module+ test
   (skia-check!)
   (harfbuzz-check!)
+
+  ;;;
+  ;;; Builder State and Append Validation
+  ;;;
+
   (test-case "an empty builder is consumed and cannot be finished twice"
     (with-skia ([builder (make-text-blob-builder)])
       (check-equal? (text-blob-builder-run-count builder) 0)
@@ -117,6 +122,11 @@
         (check-equal? (font-size second-font) 36.0)
         (check-equal? (text-run-info-positions (vector-ref (text-blob-runs blob) 0)) expected)
         (check-true (skia-closed? builder)))))
+
+  ;;;
+  ;;; Run Positioning, Metadata, and Ownership
+  ;;;
+
   (test-case "positioning modes preserve absolute coordinates and copied inputs"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [builder (make-text-blob-builder)])
@@ -224,6 +234,11 @@
                       (shaped-run-clusters run))
         (check-equal? (text-run-info-utf8 (vector-ref runs 0)) #"AB")
         (check-false (text-run-info-clusters (vector-ref runs 1))))))
+
+  ;;;
+  ;;; Outlines and Intercepts
+  ;;;
+
   (test-case "intercepts return detached intervals and reject transformed runs"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [builder (make-text-blob-builder)] [paint (make-paint #:style 'stroke)])
@@ -250,6 +265,11 @@
       (skia-close! font)
       (check-equal? (path->commands path) before)
       (check-false (skia-closed? path))))
+
+  ;;;
+  ;;; Text Placement Along Paths
+  ;;;
+
   (test-case "horizontal path placement captures its geometry and font"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [shaper (make-shaper font)]

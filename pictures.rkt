@@ -20,6 +20,10 @@
          picture-cull-bounds picture-unique-id picture-approximate-op-count
          picture-approximate-bytes-used make-picture-shader)
 
+;;;
+;;; Picture Bounds and Statistics
+;;;
+
 ; native-cull-bounds : symbol? cpointer? -> vector?
 ;   Copies native picture cull bounds into a checked x/y/width/height vector.
 (define (native-cull-bounds who pp)
@@ -59,6 +63,10 @@
 (define (picture-approximate-bytes-used pic)
   (define who 'picture-approximate-bytes-used)
   (call-with-owned who (list (raw:picture-h who pic)) sk_picture_approximate_bytes_used))
+
+;;;
+;;; Picture Serialization and Storage
+;;;
 
 ; picture->bytes : picture? -> (and/c bytes? (not/c immutable?))
 ;   Returns an independent mutable SKP byte string for an open CPU-compatible picture.
@@ -127,6 +135,10 @@
   (define target (picture-output-path who filename exists))
   (write-picture-file-bytes! who (picture->bytes pic) target exists))
 
+;;;
+;;; Picture Shaders
+;;;
+
 ; picture-local-matrix : symbol? (or/c #f matrix?) -> (or/c #f sk-matrix?)
 ;   Converts an optional affine picture transform after checking its representable inverse.
 (define (picture-local-matrix who m)
@@ -175,5 +187,9 @@
       ;; reference; the audit independently snapshots the symbolic dependencies.
       (raw:new-shader who
         (lambda () (sk_picture_make_shader pp tx ty filter local bounds))))))
+
+;;;
+;;; Internal Test Exports
+;;;
 
 (module* testing #f (provide picture-local-matrix picture-tile-rect))

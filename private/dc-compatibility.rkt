@@ -15,6 +15,7 @@
 
 (require racket/list)
 (provide skia-dc-compatibility dc-interface-arities)
+
 ;;;
 ;;; Declared Method Surface
 ;;;

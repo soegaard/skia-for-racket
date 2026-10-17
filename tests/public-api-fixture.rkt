@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Synthetic reflection fixtures. No Skia modules, renderer, GUI or FFI.
 (require racket/class racket/contract/base (for-syntax racket/base))
 (provide fixed optional variadic alternatives keywords all-keywords current-choice
@@ -20,7 +21,7 @@
          (for-syntax compile-value))
 
 ;;;
-;;; Fixtures and Assertions
+;;; Procedure Arity and Keyword Shapes
 ;;;
 
 ; never-call : any/c ... -> none/c
@@ -51,6 +52,10 @@
 ; all-keywords : procedure?
 ;   Accepts arbitrary keyword names so reflection can identify an unrestricted keyword procedure.
 (define all-keywords (make-keyword-procedure (lambda (ks vs . args) (never-call))))
+
+;;;
+;;; Parameters, Syntax, Structures, and Classes
+;;;
 
 ; current-choice : parameter?
 ;   Exposes a parameter binding with the initial symbolic value.

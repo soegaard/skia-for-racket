@@ -10,6 +10,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Test-only independent native producer/consumer. The runtime library never
 ;; imports this file or builds/loads this DLL.
 (require ffi/unsafe "../gpu.rkt" "../unsafe/gpu-d3d12.rkt")
@@ -18,7 +19,7 @@
          fixture-release fixture-foreign fixture-foreign-live fixture-foreign-desc-calls)
 
 ;;;
-;;; Fixtures and Assertions
+;;; Fixture Library Loading and Native Calls
 ;;;
 
 ; library : (or/c ffi-lib? #f)
@@ -49,6 +50,10 @@
 (define (out-pointer call)
   (define out (malloc _pointer 'atomic)) (ptr-set! out _pointer #f)
   (checked (call out)) (or (ptr-ref out _pointer) (error 'interop-fixture "null result")))
+
+;;;
+;;; Texture, Fence, and Foreign-Device Fixtures
+;;;
 
 ; make-fixture : gpu-context? [exact-positive-integer? exact-positive-integer?
 ; exact-nonnegative-integer?] -> cpointer?

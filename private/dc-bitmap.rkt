@@ -18,6 +18,7 @@
          (only-in "check.rkt" check-dimensions current-skia-byte-limit)
          "dc-support.rkt")
 (provide (struct-out dc-bitmap-data) dc-bitmap-snapshot dc-bitmap-source-rect)
+
 ;;;
 ;;; Detached Pixels and Geometry
 ;;;

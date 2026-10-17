@@ -13,8 +13,9 @@
 
 (require racket/class racket/list (prefix-in rd: racket/draw))
 (provide draw-dc-compat-oracle draw-dc-text-sample)
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Bitmap Compatibility Scene
 ;;;
 
 ; pattern : real? real? [any/c] -> (is-a?/c bitmap%)
@@ -77,6 +78,10 @@
   (send dc copy 2 32 6 4 4 32)
   (send dc set-alpha 1.0)
   (void))
+
+;;;
+;;; Text Compatibility Scene
+;;;
 
 ; draw-dc-text-sample : (is-a?/c dc<%>) -> void?
 ;   Draws the dc text sample component in the current canvas coordinate system.

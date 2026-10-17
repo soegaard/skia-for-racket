@@ -31,7 +31,7 @@
          validate-documentation-catalog!)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Documentation Collections and Tutorial Shortcuts
 ;;;
 
 (struct documentation-collection (id label available? module-path output-directory color-key)
@@ -94,6 +94,10 @@
   ;; Categories describe subject browsing. Reading routes may overlap and do
   ;; not decide the navigation menu's order or membership.
   (tutorial-category-groups))
+
+;;;
+;;; Catalog Consistency Checks
+;;;
 
 ; validate-documentation-collections! : [list?] -> void?
 ;   Checks unique collection IDs and destinations for every enabled collection.

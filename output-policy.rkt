@@ -25,6 +25,10 @@
          output-audit-report->jsexpr
          exn:fail:output-audit? exn:fail:output-audit-event)
 
+;;;
+;;; Capability and Audit Report Values
+;;;
+
 ;; A conservative m119 policy table, not runtime driver introspection. The
 ;; predicates describe *known serialization risks*, not visual equivalence.
 (struct output-capability (backend feature status reason) #:transparent)
@@ -61,6 +65,10 @@
 ;;  - event  output-audit-event?  The event that violated the selected policy.
 ;; The inherited message and continuation marks retain the ordinary exn:fail
 ;; meanings. This exception does not stand in for unrelated native failures.
+
+;;;
+;;; Backend Feature Catalog
+;;;
 
 ; output-backends : (listof symbol?)
 ;   Lists the receiving representations accepted by the static capability policy.
@@ -183,6 +191,10 @@
     (unknown-operation unknown           unknown
      "A native canvas operation is outside the audited operation table.")))
 
+;;;
+;;; Capability Lookup
+;;;
+
 ; output-feature-names : (listof symbol?)
 ;   Lists the feature names in capability-specification order.
 (define output-feature-names (map car specifications))
@@ -221,6 +233,10 @@
          [(and (eq? backend 'pdf) (eq? feature 'point-sprites))
           "Native PDF point geometry; cap and stroke settings determine the point shape."]
          [else (list-ref row 3)]))))
+
+;;;
+;;; Audit Report Classification and Serialization
+;;;
 
 ; blocking-statuses : (listof symbol?)
 ;   Lists capability outcomes that block policies requiring faithful native output.
@@ -269,6 +285,11 @@
                     'status (symbol->string (output-audit-event-status e))
                     'reason (output-audit-event-reason e)
                     'details (output-audit-event-details e)))))
+
+;;;
+;;; Internal Policy Exports
+;;;
+
 (module* internals #f
   (provide output-audit-event output-audit-report exn:fail:output-audit
            blocking-status? check-backend))

@@ -16,6 +16,11 @@
 (provide make-dxgi-host dxgi-host-acquire! dxgi-host-finish! dxgi-host-close!
          dxgi-host-info dxgi-client-size dxgi-token-resource dxgi-token-index
          dxgi-token-generation dxgi-host-pointer)
+
+;;;
+;;; Swap-Chain Host and Frame State
+;;;
+
 (struct dxgi-token (host resource index generation [live? #:mutable]))
 ;; Fields:
 ;;   host: owning swap-chain host. resource: borrowed back-buffer pointer. index: back-buffer slot.
@@ -42,6 +47,10 @@
 ;;   counters.
 ;;   last: latest detached frame information. readback: optional retained capture resources. Frame
 ;;   resources remain alive through their fence completion; teardown occurs on owner.
+
+;;;
+;;; Platform Access and Device Guards
+;;;
 
 ; win-api : promise?
 ;   Lazily resolves window, event, and DXGI procedures used by presentation and fence waiting.
@@ -123,6 +132,10 @@
   ;; destructor does not Release it; the owning context driver retains it.
   (dxgi-host-device h))
 
+;;;
+;;; Back-Buffer Retirement and Fence Synchronization
+;;;
+
 ; release-vector! : vector? -> void?
 ;   Clears and releases owned COM pointers held in parallel per-buffer storage.
 (define (release-vector! v)
@@ -172,6 +185,10 @@
   (set-dxgi-host-serial! h value)
   (vector-set! (dxgi-host-fences h) index value)
   value)
+
+;;;
+;;; Host Construction and Swap-Chain Configuration
+;;;
 
 ; make-host/native : any/c any/c any/c any/c -> any
 ;   Creates native swap-chain bookkeeping, command resources, fence, and event handles with failure
@@ -295,6 +312,10 @@
       (set-dxgi-host-resizes! h (add1 (dxgi-host-resizes h))))
     (lambda (e) (quarantine! h e))))
 
+;;;
+;;; Frame Acquisition and Readback Storage
+;;;
+
 ; acquire/native! : dxgi-host? any/c any/c any/c -> any
 ;   Returns a generation-tagged token for the current completed back buffer, resizing when needed.
 (define (acquire/native! h w height retire-skia)
@@ -376,6 +397,10 @@
           (define written (make-d3d12-range 0 0))
           ((method resource resource-unmap-slot (_fun _pointer _uint32 _d3d12-range-pointer -> _void))
            resource 0 written))))))
+
+;;;
+;;; Presentation Submission and Host Retirement
+;;;
 
 ; finish/native! : dxgi-host? dxgi-token? any/c any/c procedure? -> (values any/c any/c any/c)
 ;   Completes a frame token by transitioning, submitting, optionally presenting, and optionally
@@ -498,6 +523,10 @@
           'validation_readbacks (dxgi-host-captures h) 'last_submission (dxgi-host-last h)
           'quarantined (and (dxgi-host-broken h) #t)
           'visible_pixels_verified #f 'performance_measured #f))
+
+;;;
+;;; Break-Protected Host Operations
+;;;
 
 ;; Native transactions contain no application callbacks. Delay asynchronous
 ;; Racket breaks until owned return values and submission/fence state have

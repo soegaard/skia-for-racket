@@ -7,15 +7,7 @@
 ;; Renders a red circle to PNG using a surface, its borrowed canvas, and a paint.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/cmdline "../main.rkt")
-
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-circle : path-string? -> void?
 ;   Renders a red circle and saves the surface as a PNG.

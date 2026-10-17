@@ -14,7 +14,7 @@
 (require racket/list racket/match racket/string "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Line Summaries
 ;;;
 
 ; bg : string?
@@ -50,6 +50,10 @@
   (format "~a line~a"
           (mixed-text-layout-line-count layout)
           (if (= (mixed-text-layout-line-count layout) 1) "" "s")))
+
+;;;
+;;; Line-Break Comparisons
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

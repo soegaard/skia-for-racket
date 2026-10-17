@@ -14,7 +14,7 @@
 (require racket/list racket/match "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Baseline Guides
 ;;;
 
 ; bg : string?
@@ -62,6 +62,10 @@
     (draw-line c x y x (+ y h) p)
     (draw-line c (+ x w) y (+ x w) (+ y h) p)))
 
+;;;
+;;; Custom Break Providers
+;;;
+
 ; thai-word : string?
 ;   Supplies one known Thai word for the custom break-provider demonstration.
 (define thai-word "ภาษาไทย")
@@ -84,6 +88,10 @@
   (if (string=? paragraph "alphabeta")
       (list (make-layout-break-opportunity 5 "-"))
       '()))
+
+;;;
+;;; Line-Break Provider Comparisons
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

@@ -17,6 +17,7 @@
 (require "color.rkt" "private/check.rkt")
 (provide color4f? make-color4f color4f-red color4f-green color4f-blue color4f-alpha
          color4f->vector color->color4f color4f->rgba)
+
 ;;;
 ;;; Color Representation and Construction
 ;;;
@@ -50,6 +51,7 @@
 (define (checked-color4f who c)
   (unless (color4f? c) (raise-argument-error who "color4f?" c))
   c)
+
 ;;;
 ;;; Channel Conversion
 ;;;

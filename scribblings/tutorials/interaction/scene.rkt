@@ -22,7 +22,7 @@
          draw-curve draw-guides draw-points draw-editor)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Control-Point Model and Hit Testing
 ;;;
 
 ; editor-width : exact-integer?
@@ -84,7 +84,12 @@
   (for/list ([point (in-list points)] [i (in-naturals)])
     (if (= i index) (control-point x y) point)))
 
+;;;
+;;; Editor Drawing Resources
+;;;
+
 ;; Reuse ordinary CPU Skia paints across frames; no GPU resource is retained.
+
 
 ; grid-paint : paint?
 ;   Retains the grid paint for repeated drawing calls.
@@ -134,6 +139,10 @@
 ;   Selects the caption font used by the scene.
 (define caption-font (make-font #:size 13))
 
+;;;
+;;; Curve and Handle Drawing
+;;;
+
 ; draw-background : canvas? real? real? -> void?
 ;   Draws the background component in the current canvas coordinate system.
 (define (draw-background canvas width height)
@@ -169,8 +178,13 @@
                   ,(control-point-x end) ,(control-point-y end))))])
     (draw-path canvas path curve-paint)))
 
+;;;
+;;; Bounded Handle Labels
+;;;
+
 ;; Put P1 below/right and P2 below/left so their labels avoid the
 ;; subtitle and the diagonal control guide in the initial arrangement.
+
 
 ; control-point-label-position : control-point? exact-nonnegative-integer? -> (values real? real?)
 ;   Chooses a label position that distinguishes endpoints from curve handles.
@@ -219,6 +233,10 @@
     (when label-x
       (draw-simple-text canvas label label-x label-y label-font title-paint))))
 
+;;;
+;;; Editor Scene Assembly
+;;;
+
 ; draw-editor : canvas? list? real? real? [(or/c exact-nonnegative-integer? #f)] -> void?
 ;   Draws the editor component in the current canvas coordinate system.
 (define (draw-editor canvas points width height [selected #f])
@@ -247,7 +265,7 @@
   (save-png surface "bezier-editor.png" #:exists 'replace))
 
 ;;;
-;;; Regression Checks
+;;; Control-Point Interaction Checks
 ;;;
 
 (module+ test
@@ -285,7 +303,7 @@
   (check-false (hit-control-point initial-control-points 214 94)))
 
 ;;;
-;;; Regression Checks
+;;; Viewport Label Checks
 ;;;
 
 (module+ test
@@ -305,7 +323,7 @@
       (check-true (<= (+ label-y by bh) (- (second size) 40))))))
 
 ;;;
-;;; Regression Checks
+;;; Label-Fitting Boundary Checks
 ;;;
 
 (module+ test

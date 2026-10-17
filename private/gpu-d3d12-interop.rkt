@@ -20,6 +20,10 @@
          (submod "core.rkt" gpu-image-internals))
 (provide make-d3d12-external-texture call-with-gpu-d3d12-device)
 
+;;;
+;;; Context Access and Retained Interoperation State
+;;;
+
 ; quarantined-operations : list?
 ;   Roots operations whose private wrappers or synchronization state cannot safely be destroyed.
 (define quarantined-operations '())
@@ -48,6 +52,10 @@
       ;; and resources. It cannot use private Ganesh resources or reenter Skia.
       (call-with-continuation-barrier
         (lambda () (parameterize ([current-external-native? #t]) (proc device)))))))
+
+;;;
+;;; External Texture Tokens
+;;;
 
 ; space-pointer : any/c -> any
 ;   Borrows an optional color-space pointer for the native texture wrapper's scope.
@@ -117,6 +125,10 @@
       (unless ready?
         (cond [pin (domain-resource-close! pin) (domain-drain! d)]
               [session (session-close! session)])))))
+
+;;;
+;;; Scoped Texture Import and Surface Access
+;;;
 
 ; run-operation : any/c any/c any/c any/c any/c any/c any/c any/c any/c any/c -> any
 ;   Coordinates context activation, native resource wrapping, synchronization, and quarantined

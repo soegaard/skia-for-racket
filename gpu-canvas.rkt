@@ -21,6 +21,10 @@
          (only-in "private/dc-support.rkt" dc-unsupported))
 (provide skia-gpu-canvas% skia-gpu-canvas? skia-gpu-window%)
 
+;;;
+;;; GUI Thread, Callback, and Color Validation
+;;;
+
 ; handler! : symbol? gui:eventspace? -> void?
 ;   Requires the canvas's eventspace handler thread and excludes future execution.
 (define (handler! who space)
@@ -44,6 +48,10 @@
      (or (send rd:the-color-database find-color value)
          (raise-argument-error 'skia-gpu-canvas% "known color name" value))]
     [else (raise-argument-error 'skia-gpu-canvas% "color% object or color name" value)]))
+
+;;;
+;;; Frame-Scoped Drawing-Context Canvas
+;;;
 
 ; skia-gpu-canvas% : class?
 ;   Adapts GPU presentation frames to short-lived Skia drawing contexts for GUI paint callbacks.
@@ -132,6 +140,10 @@
 ; skia-gpu-canvas? : any/c -> boolean?
 ;   Returns whether v is an instance of skia-gpu-canvas%.
 (define (skia-gpu-canvas? value) (is-a? value skia-gpu-canvas%))
+
+;;;
+;;; Canvas Window and Resource Cleanup
+;;;
 
 ; skia-gpu-window% : class?
 ;   Hosts a Skia GPU canvas and closes its native presentation resources with the window.

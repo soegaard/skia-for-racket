@@ -7,17 +7,8 @@
 ;; Draws the original ball artwork into a padded CPU sprite atlas.
 ;; This original CPU artwork supplies the tutorial renderer and its documentation figures.
 
-
-;;;
-;;; Imports and Exports
-;;;
-
 (require skia "../support/sprite-math.rkt")
 (provide make-ball-atlas ball-colors)
-
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; ball-colors : list?
 ;   Orders the ball colors used by the comparison or drawing.

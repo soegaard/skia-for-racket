@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/list
          "../main.rkt" "runtime-fixtures.rkt")
 (provide runtime-native-tests)
@@ -74,6 +75,11 @@
 (define runtime-native-tests
   (test-suite
    "Runtime effects: native compilation, rendering, and ownership"
+
+   ;;;
+   ;;; Compilation, Reflection, and Uniform Layout
+   ;;;
+
    (test-case "shader compilation and empty reflection"
      (with-skia ([e (make-runtime-effect coordinate-sksl)])
        (check-true (runtime-effect? e))
@@ -125,6 +131,11 @@
      (check-equal? (bytes-length (runtime-effect-uniform-bytes e (hash 'color '(1 0 0 1)))) 16)
      (check-equal? (runtime-effect-source e) solid-sksl)
      (skia-close! e))
+
+   ;;;
+   ;;; Shader Instantiation, Coordinates, and Ownership
+   ;;;
+
    (test-case "uniform colors render as ordinary shaders"
      (with-skia ([e (make-runtime-effect solid-sksl)]
                  [red (runtime-effect->shader e #:uniforms (hash 'color '(1 0 0 1)))]
@@ -190,6 +201,11 @@
                   (lambda () (runtime-effect->shader e #:local-matrix (matrix-scale 0))))
        (check-exn exn:fail:contract?
                   (lambda () (runtime-effect->shader e #:local-matrix '(1 0 0 1 0 0))))))
+
+   ;;;
+   ;;; Typed Children and Retained Runtime Graphs
+   ;;;
+
    (test-case "child metadata is copied and names resolve to correct kinds"
      (with-skia ([e (make-runtime-effect mixed-child-sksl)])
        (check-equal? (map runtime-child-name (runtime-effect-children e)) '("image" "filter" "blend"))
@@ -229,6 +245,11 @@
      (with-skia ([e (make-runtime-effect pass-child-sksl)] [child (make-color-shader 'blue)])
        (skia-close! child)
        (check-exn exn:fail? (lambda () (runtime-effect->shader e #:children (hash 'child child))))))
+
+   ;;;
+   ;;; Color Filter and Blender Stages
+   ;;;
+
    (test-case "color-filter runtime compiles and changes pixels"
      (with-skia ([e (make-runtime-effect invert-sksl #:kind 'color-filter)]
                  [cf (runtime-effect->color-filter e)])
@@ -302,6 +323,11 @@
        (skia-close! p) (skia-close! sh) (skia-close! e)
        (draw-paint (surface-canvas s) copy)
        (check-rgba-near (surface-pixel s 0 0) '(0 255 255 255))))
+
+   ;;;
+   ;;; Thread Affinity, Limits, and Recorded Output
+   ;;;
+
    (test-case "effect factory access is rejected across Racket threads"
      (with-skia ([e (make-runtime-effect coordinate-sksl)])
        (check-true (exn:fail? (in-other-thread (lambda () (runtime-effect->shader e)))))

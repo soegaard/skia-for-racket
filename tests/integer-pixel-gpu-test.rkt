@@ -11,13 +11,19 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline racket/file racket/list json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../private/gpu-io-trace.rkt"
          "integer-pixel-fixtures.rkt")
+
+;;;
+;;; GPU Acceptance Run
+;;;
+
 (module+ main
 
   ;;;
-  ;;; Command-Line Run
+  ;;; Backend and Evidence Options
   ;;;
 
   ; backend : (or/c symbol? #f)
@@ -46,6 +52,10 @@
   (make-directory* directory)
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ;;;
+  ;;; Context and Capture Fixtures
+  ;;;
 
   ; ctx : gpu-context?
   ;   Owns the primary native GPU context used by the fixture run.
@@ -84,6 +94,11 @@
   ;   inspection.
   (define (read-count ledger)
     (count (lambda (entry) (equal? (hash-ref entry 'kind #f) "readback")) (unbox ledger)))
+
+  ;;;
+  ;;; Packed Pixel Rendering and Rejection Checks
+  ;;;
+
   (dynamic-wind void
     (lambda ()
       (call-with-gpu-context ctx
@@ -126,6 +141,10 @@
                                    rows))
                       (set! frames (add1 frames)))))))))))
     (lambda () (gpu-context-close! ctx)))
+
+  ;;;
+  ;;; Teardown and Evidence Publication
+  ;;;
 
   ; closed? : boolean?
   ;   Records whether context teardown completed with no live or failed resource releases.

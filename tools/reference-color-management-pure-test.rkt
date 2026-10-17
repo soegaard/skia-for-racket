@@ -19,6 +19,10 @@
          (only-in skia/color-space make-transfer-function transfer-function?
                   transfer-function-coefficients transfer-function-evaluate))
 
+;;;
+;;; Color Management Argument Checks
+;;;
+
 (module+ test
   (test-case "floating values are not byte colors and preserve unpremultiplied RGB"
     (define color (make-color4f 1.25 -0.25 0.5 0.25))

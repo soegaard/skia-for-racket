@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit racket/list racket/vector "../main.rkt" "typeface-fixtures.rkt"
          "text-blob-fixtures.rkt" "../private/text-run-data.rkt"
          (submod "../private/core.rkt" text-blob-internals))
@@ -74,6 +75,11 @@
 (define text-blob-native-tests
   (test-suite
    "Multi-run text blobs (native)"
+
+   ;;;
+   ;;; Builder State, Ownership, and Append Validation
+   ;;;
+
    (test-case "empty finish returns false and consumes the builder"
      (with-skia ([b (make-text-blob-builder)])
        (check-equal? (text-blob-builder-run-count b) 0)
@@ -179,6 +185,11 @@
                                                'unexpected)))))
          (check-eq? (channel-get c) 'rejected) (thread-wait worker)
          (check-equal? (text-blob-builder-run-count b) 0))))
+
+   ;;;
+   ;;; Detached Run Inspection and Metadata
+   ;;;
+
    (test-case "default run snapshots native unshaped positions including origin"
      (with-fixture (f face)
        (define expected (font-glyph-positions f '(2 3) #:origin '(10 40)))
@@ -224,6 +235,11 @@
          (skia-close! blob)
          (check-exn exn:fail? (lambda () (text-blob-runs blob)))
          (check-exn exn:fail? (lambda () (text-blob-intercepts blob -10 0))))))
+
+   ;;;
+   ;;; Intercepts and Transformed Outlines
+   ;;;
+
    (test-case "native intercepts include default horizontal and XY runs"
      (with-fixture (f face)
        (with-skia ([b (make-text-blob-builder)])
@@ -281,6 +297,11 @@
            (list (make-atlas-transform 30 40 #:rotation 90)))
          (with-skia ([blob (text-blob-builder-finish! b)] [path (text-blob->path blob)])
            (near (rectangle path) '(30 40 14 8))))))
+
+   ;;;
+   ;;; Native Run Storage and Shaped Clusters
+   ;;;
+
    (test-case "reallocation and native run coalescing do not corrupt earlier buffers"
      (with-fixture (f face)
        (with-skia ([b (make-text-blob-builder)])
@@ -323,6 +344,11 @@
            (check-equal? (text-run-info-glyphs (one-info blob))
              (list->vector (shaped-run-glyphs run)))
            (check-equal? (text-run-info-clusters (one-info blob)) '#(2 0))))))
+
+   ;;;
+   ;;; Text Placement Along Paths
+   ;;;
+
    (test-case "straight path placement keeps shaped advances and normal offsets"
      (with-layout-fixture (f sh)
        (define run (shape-text sh "AV" #:features '("liga=0")))

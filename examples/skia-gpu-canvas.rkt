@@ -9,14 +9,16 @@
 
 ;; Run on the desktop: auto selects Metal on macOS, OpenGL elsewhere.
 ;; This example never retains a frame DC and performs no CPU pixel readback.
+
 ;;;
 ;;; Imports and Exports
 ;;;
 
 (require racket/class racket/gui/base (prefix-in rd: racket/draw)
          "../gpu-canvas.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Frame-Scoped GPU Review Window
 ;;;
 
 ; make-window : -> void?
@@ -67,6 +69,7 @@
             (send dc draw-text "Ordinary drawing and presentation stay on GPU surfaces." 24 (- h 20)
               #t))]))
   (send window show #t) (void))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

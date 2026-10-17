@@ -8,11 +8,9 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; Standalone resource inspection. No GUI or implicit default-family replacement.
-;;;
-;;; Imports and Exports
-;;;
 
 (require racket/cmdline racket/file racket/list "../main.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

@@ -13,11 +13,12 @@
 
 (require racket/cmdline racket/file racket/path racket/string "../main.rkt")
 
+;;;
+;;; Page Styling
+;;;
+
 ;; This is one registry of drawing callbacks, exported through both backends.
 ;; The reference PNGs are separate Skia raster renders, NOT SVG/PDF renderings.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; ink : string?
 ;   Specifies the ink color used by this drawing.
@@ -48,6 +49,10 @@
   (with-skia ([p (make-paint #:color color #:style 'stroke #:stroke-width width)])
     (draw-line c x1 y1 x2 y2 p)))
 
+;;;
+;;; Coordinates and Units
+;;;
+
 ; units-page : output-page?
 ;   Describes the units page drawing and its export dimensions.
 (define units-page
@@ -75,6 +80,10 @@
        111 3)
      (label c "RACKET / SKIA   |   VECTOR OUTPUT REFINEMENT" 0 119 2.6))
    #:unit 'mm #:margins 10 #:background 'white))
+
+;;;
+;;; Text Placement
+;;;
 
 ; text-page : output-page?
 ;   Describes the text page drawing and its export dimensions.
@@ -120,6 +129,10 @@
      (label c "RACKET / SKIA   |   VECTOR OUTPUT REFINEMENT" 0 348 9))
    #:margins 24 #:background 'white))
 
+;;;
+;;; Effects and Fallbacks
+;;;
+
 ; effects-page : output-page?
 ;   Describes the effects page drawing and its export dimensions.
 (define effects-page
@@ -152,6 +165,10 @@
        (draw-line c 2 97 158 97 p))
      (label c "RACKET / SKIA   |   VECTOR OUTPUT REFINEMENT" 0 108 2.7))
    #:unit 'mm #:margins 8 #:background 'white))
+
+;;;
+;;; Page Registry and Review Files
+;;;
 
 ; registry : list?
 ;   Keeps the shared scene/page order used by the exported documents and raster references.

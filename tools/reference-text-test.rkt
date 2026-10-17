@@ -41,6 +41,11 @@
 (module+ test
   (skia-check!)
   (harfbuzz-check!)
+
+  ;;;
+  ;;; Font, Shaper, and Typeface Ownership
+  ;;;
+
   (test-case "font and shaper retain independent typeface and font state"
     (with-skia ([face (test-face)]
                 [font (make-font face #:size 24)]
@@ -99,6 +104,11 @@
       (check-false (typeface-table-bytes face absent))
       (check-exn exn:fail? (lambda () (typeface-table-bytes face absent #:start -1)))
       (check-exn exn:fail? (lambda () (typeface-table-bytes face absent #:start 2 #:end 1)))))
+
+  ;;;
+  ;;; Glyph Measurements, Clusters, and Positioned Blobs
+  ;;;
+
   (test-case "glyph measurements are detached and use the current font"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)])
       (define glyphs (font-text->glyphs font "AB"))
@@ -153,6 +163,11 @@
         (font-set-size! font 48)
         (skia-close! font)
         (check-equal? (call-with-values (lambda () (text-blob-bounds blob)) list) before))))
+
+  ;;;
+  ;;; Layout Boundaries and Retained Dependencies
+  ;;;
+
   (test-case "wrapping retains over-wide words and empty trailing lines"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [shaper (make-shaper font)])

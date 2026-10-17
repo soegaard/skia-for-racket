@@ -12,11 +12,13 @@
 ;;;
 
 (require racket/cmdline racket/file racket/path racket/string racket/list "../main.rkt")
+
+;;;
+;;; Filter Inputs and Case Rendering
+;;;
+
 ;; One registry; PDF receives native filter graphs. SVG receives explicit bounded
 ;; raster groups. Reference PNGs are independent native Skia raster drawings.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; current-probe-backend : parameter?
 ;   Selects probe backend for the dynamically scoped rendering operation.
@@ -144,6 +146,10 @@
                            #:input bump #:crop '(8 8 192 112)))])
          (paint-filter c f))])))
 
+;;;
+;;; Filter Comparison Pages
+;;;
+
 ; panel : canvas? real? real? string? any/c any/c -> void?
 ;   Draws one labeled comparison panel using the example's shared layout.
 (define (panel c x y title note key)
@@ -215,6 +221,10 @@
          ("05  Distant diffuse lighting" "Soft alpha supplies the height field." diffuse)
          ("06  Spot specular lighting" "Position, target, and shininess." specular))))))
 
+;;;
+;;; Review File Links
+;;;
+
 ; escaped : string? -> string?
 ;   Escapes text before inserting it into the generated HTML report.
 (define (escaped s)
@@ -225,6 +235,7 @@
 ; base-name : any/c -> string?
 ;   Returns an HTML-safe filename for a generated report link.
 (define (base-name s) (escaped (path->string (file-name-from-path s))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

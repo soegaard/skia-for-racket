@@ -10,6 +10,10 @@
 (require "types.rkt")
 (provide (all-defined-out))
 
+;;;
+;;; Allocation Bounds and Scalar Checks
+;;;
+
 ; current-skia-byte-limit : (parameter/c exact-positive-integer?)
 ;   Bounds explicit wrapper allocations and copied payloads; defaults to 256 MiB.
 (define current-skia-byte-limit
@@ -72,6 +76,10 @@
   (define fw (nonnegative-scalar who w))
   (define fh (nonnegative-scalar who h))
   (make-sk-rect fx fy (scalar who (+ fx fw)) (scalar who (+ fy fh))))
+
+;;;
+;;; Drawing and Encoding Enumerations
+;;;
 
 ; style-values : (hash/c symbol? exact-nonnegative-integer?)
 ;   Maps paint fill/stroke styles to native enumeration values.
@@ -180,6 +188,10 @@
               [n (in-naturals)])
     (values name n)))
 
+;;;
+;;; Sampling, Encoding Quality, and Source Rectangles
+;;;
+
 ; sampling : symbol? symbol? -> sk-sampling?
 ;   Builds nearest or linear sampling options with cubic filtering and mipmaps disabled.
 (define (sampling who mode)
@@ -247,6 +259,10 @@
                            "source" (list x y w h)
                            "image size" (list image-width image-height)))
   (make-sk-rect fx fy (+ fx fw) (+ fy fh)))
+
+;;;
+;;; Font Styles and Text Values
+;;;
 
 ;; Fonts --------------------------------------------------------------------
 

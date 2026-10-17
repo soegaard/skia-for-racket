@@ -20,7 +20,7 @@
          draw-article-card)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Article Card Layout and Typography
 ;;;
 
 ; card-width : exact-integer?

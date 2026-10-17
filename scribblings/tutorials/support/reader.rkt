@@ -10,6 +10,7 @@
 
 
 ;; Reader-facing navigation and source access; no drawing or native initialization.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -23,7 +24,7 @@
          command-text tutorial-index-link api-link tutorial-navigation)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Documentation Navigation Links
 ;;;
 
 ; tutorial-navigation : string? #:index? [boolean?] -> paragraph?
@@ -50,7 +51,12 @@
 (define (tutorial-index-link [tag "top"] [label "Skia Tutorials"])
   (seclink tag #:doc '(lib "skia/scribblings/tutorials/index.scrbl") label))
 
+;;;
+;;; Tutorial Entries and Next Steps
+;;;
+
 ;; Do not let Scribble turn the two ASCII hyphens of an option into an en dash.
+
 
 ; command-text : string? -> element?
 ;   Keeps command-line punctuation literal in rendered documentation.
@@ -94,6 +100,10 @@
          "Return to " (tutorial-index-link)
          " to browse all tutorials or choose a suggested reading route.")))
 
+;;;
+;;; Subject Categories and Reading Routes
+;;;
+
 ; tutorial-list : list? -> itemization?
 ;   Builds the ordered tutorial links from the supplied catalog records.
 (define (tutorial-list rows)
@@ -112,6 +122,10 @@
 (define (tutorial-category id)
   (define category (tutorial-category-by-id id))
   (tutorial-list (map tutorial-by-id (hash-ref category 'lessons))))
+
+;;;
+;;; Downloadable Sources
+;;;
 
 ; source-link : string? -> element?
 ;   Links to a downloadable example source while displaying its relative path.

@@ -160,6 +160,7 @@
                  (call-with-values (lambda () (point-proc (vector-ref v i) (vector-ref v (add1 i))))
                    list)))))
     (vector->immutable-vector (list->vector values-list))))
+
 ;;;
 ;;; Renderer Protocol and Detached Drawing Records
 ;;;

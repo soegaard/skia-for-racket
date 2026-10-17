@@ -47,6 +47,11 @@
   output)
 
 (module+ test
+
+  ;;;
+  ;;; Memory and File Stream Ownership
+  ;;;
+
   (test-case "memory input copies bytes and distinguishes zero reads from EOF"
     (define bytes (bytes-copy #"abc"))
     (with-skia ([input (make-memory-input-stream bytes)])
@@ -113,6 +118,10 @@
         (with-skia ([input (make-file-input-stream path)])
           (check-equal? (input-stream->bytes input) #"file data")))
       (lambda () (delete-directory/files directory))))
+
+  ;;;
+  ;;; Codec Inputs, Frames, and Scanline Batches
+  ;;;
 
   (test-case "codec stream construction reads byte zero without moving the original"
     (define png (sample-png))
@@ -235,6 +244,10 @@
                                      (scanline-batch-bytes upper-batch))
                         expected)))
 
+  ;;;
+  ;;; Incremental Decode State
+  ;;;
+
   (test-case "incremental feed waits for new visible input and owns its final snapshot"
     (define png (sample-png))
     (with-skia ([session (make-codec-incremental)])
@@ -278,6 +291,10 @@
       (check-equal? (incremental-progress-state cancelled) 'cancelled)
       (check-false (skia-closed? session))
       (check-exn exn:fail? (lambda () (codec-incremental-feed! session #"")))))
+
+  ;;;
+  ;;; Live Port Transfers and Publication
+  ;;;
 
   (test-case "live copy returns a count and closes only the selected port"
     (define input (open-input-bytes #"abc"))

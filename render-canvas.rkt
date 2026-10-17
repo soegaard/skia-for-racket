@@ -20,6 +20,10 @@
 (provide make-skia-render-canvas skia-render-canvas<%> skia-render-canvas?
          skia-render-window%)
 
+;;;
+;;; Lazy Implementations and Shared Canvas Interface
+;;;
+
 ; raster-module : path?
 ;   Locates canvas.rkt for lazy loading of the selected implementation.
 (define-runtime-path raster-module "canvas.rkt")
@@ -45,6 +49,10 @@
   (unless (and (eq? (current-thread) (gui:eventspace-handler-thread (gui:current-eventspace)))
                (not (current-future)))
     (error who "create render canvases on their eventspace handler thread (queue-callback)")))
+
+;;;
+;;; Callback Lifetime and Canvas Adaptation
+;;;
 
 ; callback-canvas-class : class? boolean? -> class?
 ;   Adds shared callback lifetime, renderer diagnostics, and close semantics to a concrete canvas
@@ -159,6 +167,10 @@
     (define/override (close) (send this close-skia))
     (set! facade-ready? #t)))
 
+;;;
+;;; Renderer Selection and Canvas Construction
+;;;
+
 ; raster-class : promise?
 ;   Lazily constructs the raster implementation of the unified render-canvas facade.
 (define raster-class
@@ -211,6 +223,10 @@
   (new (force (if (eq? (hash-ref policy 'renderer) 'raster) raster-class gpu-class))
        [parent parent] [policy policy] [paint-callback paint-callback] [on-error on-error]
        [background background] [smoothing smoothing] [min-width min-width] [min-height min-height]))
+
+;;;
+;;; Render Window and Resource Cleanup
+;;;
 
 ; skia-render-window% : class?
 ;   Hosts a selected render canvas and closes it before hiding the containing window.

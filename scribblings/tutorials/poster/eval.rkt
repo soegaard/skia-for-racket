@@ -22,7 +22,7 @@
          poster-image)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; poster-eval : procedure?
@@ -147,6 +147,10 @@
        (draw:read-bitmap
         (open-input-bytes (surface->png-bytes surface))
         'png/alpha))))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; poster-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

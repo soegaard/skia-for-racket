@@ -11,13 +11,19 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline racket/file racket/list racket/path json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../private/gpu-io-trace.rkt"
          "advanced-canvas-fixtures.rkt")
+
+;;;
+;;; GPU Acceptance Run
+;;;
+
 (module+ main
 
   ;;;
-  ;;; Command-Line Run
+  ;;; Backend and Evidence Options
   ;;;
 
   ; backend : (or/c symbol? #f)
@@ -48,6 +54,10 @@
                (or (eq? backend 'direct3d) (eq? adapter 'hardware)))
     (error 'advanced-gpu "invalid backend/adapter selection"))
   (make-directory* directory)
+
+  ;;;
+  ;;; Context and Capture Fixtures
+  ;;;
 
   ; create : -> gpu-context?
   ;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
@@ -123,6 +133,11 @@
                                'drawing_readbacks drawing-reads 'inspection_readbacks
                          (reads (unbox ledger))
                                'io (reverse (unbox ledger))) rows))))
+
+  ;;;
+  ;;; Layer, Drawable, and Canvas Checks
+  ;;;
+
   (dynamic-wind void
     (lambda ()
       ;; Foreign resources are constructed in a SEQUENTIAL activation.

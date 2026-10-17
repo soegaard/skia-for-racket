@@ -10,6 +10,7 @@
 
 
 ;; Documentation presentation only. The existing evaluators still draw every figure.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -22,11 +23,12 @@
 
 (provide tutorial-figure make-figure-preview)
 
+;;;
+;;; Accessible Figure Markup and Previews
+;;;
+
 ;; Scribble/eval wraps a pict in elements; the later lessons return the pict directly.
 ;; Refuse multiple results rather than silently dropping a panel or other content.
-;;;
-;;; Documentation Data and Helpers
-;;;
 
 ; figure-pictures : real? -> list?
 ;   Collects convertible pictures from evaluated Scribble content.

@@ -18,6 +18,10 @@
 (require rackunit racket/class
          skia/dc skia/dc-output skia/gpu-dc skia/output)
 
+;;;
+;;; Drawing Context Integration Checks
+;;;
+
 (module+ test
   (test-case "raster DC capabilities are detached declarations"
     (define info (skia-dc-capabilities))

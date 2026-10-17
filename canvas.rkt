@@ -20,6 +20,10 @@
          "dc.rkt" "private/canvas-backing.rkt")
 (provide skia-canvas% skia-canvas?)
 
+;;;
+;;; GUI Validation and Geometry Monitoring
+;;;
+
 ; handler! : symbol? gui:eventspace? -> void?
 ;   Requires the canvas's eventspace handler thread and excludes future execution.
 (define (handler! who space)
@@ -66,6 +70,10 @@
                 (send canvas check-skia-geometry)
                 (send monitor stop)))]))
   monitor)
+
+;;;
+;;; Raster Canvas Class
+;;;
 
 ; skia-canvas% : class?
 ;   Owns a persistent raster drawing context and presents its completed bitmap through a GUI

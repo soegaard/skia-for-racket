@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Required selected-backend execution. No mocks, automatic CPU fallback or skip.
 (require racket/cmdline racket/file racket/path racket/list json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../private/gpu-io-trace.rkt")
@@ -81,6 +82,10 @@
   ;   Holds the evidence output directory selected for this run.
   (define directory (path-only report-path))
   (make-directory* directory)
+
+  ;;;
+  ;;; Context Fixtures and Capture Accounting
+  ;;;
 
   ; contexts : (listof gpu-context?)
   ;   Tracks owned contexts newest first so every created context is included in cleanup.
@@ -190,6 +195,10 @@
       (hasheq 'name name 'file filename 'info info 'width WIDTH 'height HEIGHT
               'requested_options (and options (gpu-context-options->jsexpr options))
               'drawing_readbacks 0 'readbacks 1 'events (reverse (unbox ledger)))))))
+
+  ;;;
+  ;;; Context Control Acceptance Checks
+  ;;;
 
   ; primary : (or/c gpu-context? #f)
   ;   Retains the primary context used by control and state-transition assertions.
@@ -315,6 +324,10 @@
         (with-handlers
           ([exn:fail? (lambda (e) (set! cleanup-errors (cons (exn-message e) cleanup-errors)))])
           (gpu-context-close! c)))))
+
+  ;;;
+  ;;; Acceptance Result and Evidence Publication
+  ;;;
 
   ; passed? : boolean?
   ;   Combines test assertions and required evidence/cleanup checks into the final run status.

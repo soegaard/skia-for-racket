@@ -16,8 +16,9 @@
          "../support/figures.rkt" "../support/sprite-figures.rkt" "../support/sprite-math.rkt")
 (provide squadron-interaction game-pict game-atlas-pict fleet-pict ship-pict
          dive-pict explosion-pict collision-pict game-states-pict)
+
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; model-source : path?
@@ -28,6 +29,10 @@
 ;   Retains one evaluator so successive documentation examples share their bindings.
 (define evaluator (make-base-eval))
 (evaluator `(require racket (file ,(path->string model-source))))
+
+;;;
+;;; Game State and Sprite Figures
+;;;
 
 ; game-pict : -> pict?
 ;   Renders the game illustration from the tutorial's drawing code.
@@ -164,6 +169,10 @@
        #:scale 0.55))
     (figure-row (captioned-pict "After clearing a wave" (one 'wave-clear))
                 (captioned-pict "After the last life" (one 'game-over)))))
+
+;;;
+;;; Scribble Interaction Form
+;;;
 
 ; squadron-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

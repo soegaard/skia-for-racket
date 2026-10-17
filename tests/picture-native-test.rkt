@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/file racket/list
          "../main.rkt" "../private/picture-util.rkt")
 (provide picture-native-tests)
@@ -82,6 +83,11 @@
 ;   spatial indexing, and audit.
 (define picture-native-tests
   (test-suite "Persistent pictures: native streams, retained resources, spatial indexing, and audit"
+
+   ;;;
+   ;;; Serialization, Copies, and File Publication
+   ;;;
+
    (test-case "roundtrip returns the ordinary owned picture type"
      (with-skia ([source (test-picture)]
                  [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
@@ -167,6 +173,11 @@
        (define-values (v b) (picture-header 'test (picture->bytes source)))
        (check-equal? v 103) (check-equal? b #(0.0 0.0 32.0 24.0))
        (check-equal? (picture-cull-bounds source) b)))
+
+   ;;;
+   ;;; Metadata, Cull Bounds, and Indexed Recording
+   ;;;
+
    (test-case "metadata IDs are stable within a live object and distinct in the same process"
      (with-skia ([source (test-picture)]
                  [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
@@ -273,6 +284,11 @@
                'svg))
            (check-false (output-audit-report-blocking? r))
            (check-true (output-audit-report-vector-only? r))))))
+
+   ;;;
+   ;;; Loaded Provenance and Strict Output
+   ;;;
+
    (test-case "loaded pixels may be correct while provenance remains unknown"
      (with-skia
        ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
@@ -304,6 +320,11 @@
                                     (lambda (r) (draw-picture r loaded))))))
        (for ([backend '(pdf svg)])
          (check-true (has? (analyze-output-page page backend) 'deserialized-picture 'unknown)))))
+
+   ;;;
+   ;;; Picture Shaders, Tiling, and Retained Inputs
+   ;;;
+
    (test-case "ordinary picture-shader tiling renders repeated local coordinates"
      (with-skia ([p (stripe-tile)] [shader (make-picture-shader p #:tile-x 'repeat #:tile-y 'repeat)]
                  [paint (make-paint #:shader shader)] [s (make-surface 24 12)])
@@ -375,6 +396,11 @@
          (define r (analyze-output-page
                     (make-output-page 30 30 (lambda (c) (draw-rect c 0 0 16 16 paint))) backend))
          (check-true (has? r 'picture-shader-annotation 'discarded)))))
+
+   ;;;
+   ;;; Trusted Stream Contents and Repeated Round Trips
+   ;;;
+
    (test-case "the pinned default decoder can compile embedded trusted SkSL"
      (with-skia ([source (runtime-picture)]
                  [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])

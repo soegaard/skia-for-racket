@@ -10,6 +10,7 @@
 
 
 ;; Pure helpers shared by Tutorials 21 and 22; no Skia or GUI initialization.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -18,7 +19,7 @@
          atlas-columns atlas-width atlas-height sprite-source sprite-anchor)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Atlas Cell Geometry
 ;;;
 
 ; fixed-step : real?
@@ -63,8 +64,13 @@
         (+ cell-gap (* (quotient index atlas-columns) cell-pitch))
         cell-size cell-size))
 
+;;;
+;;; Fixed-Step Clock and Viewport
+;;;
+
 ;; Return the number of fixed simulation steps and the fractional remainder.
 ;; Discard elapsed time beyond 0.1 seconds: do not catch up minutes after a stall.
+
 
 ; advance-clock : any/c real? -> (values exact-nonnegative-integer? real?)
 ;   Returns bounded fixed-step catch-up and the fractional time remainder.

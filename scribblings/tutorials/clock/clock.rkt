@@ -16,7 +16,7 @@
 (require skia)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Dial Geometry and Palette
 ;;;
 
 ; size : exact-integer?
@@ -46,6 +46,10 @@
 ; second-color : string?
 ;   Specifies the second color color used by this drawing.
 (define second-color "#C94F3D")
+
+;;;
+;;; Clock Face and Tick Marks
+;;;
 
 ; draw-clock-face : canvas? -> void?
 ;   Draws the clock face component in the current canvas coordinate system.
@@ -84,6 +88,10 @@
       (if (zero? (remainder minute 5))
           (draw-hour-tick canvas hour-paint)
           (draw-minute-tick canvas minute-paint)))))
+
+;;;
+;;; Time and Hands
+;;;
 
 ; draw-hand : canvas? real? real? paint? -> void?
 ;   Draws the hand component in the current canvas coordinate system.
@@ -130,6 +138,10 @@
   (define inner (make-paint #:color second-color))
   (draw-circle canvas 0 0 11 outer)
   (draw-circle canvas 0 0 5 inner))
+
+;;;
+;;; Clock Placement
+;;;
 
 ; draw-clock-at-origin : canvas? real? real? real? -> void?
 ;   Draws the clock at origin component in the current canvas coordinate system.

@@ -16,6 +16,10 @@
 ;; Public argument validation only. No native initialization, drawing, or GPU context.
 (require rackunit racket/list skia)
 
+;;;
+;;; Effect Constructor Argument Checks
+;;;
+
 (module+ test
   (test-case "invalid runtime source and kind fail before compilation"
     (check-exn exn:fail? (lambda () (make-runtime-effect "")))

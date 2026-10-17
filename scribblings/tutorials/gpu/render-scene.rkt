@@ -15,10 +15,11 @@
 
 (require racket/cmdline skia skia/gpu "scene.rkt")
 
-;; Keep the platform choice explicit. There is no automatic renderer fallback.
 ;;;
 ;;; Command-Line Entry Point
 ;;;
+
+;; Keep the platform choice explicit. There is no automatic renderer fallback.
 
 (module+ main
 

@@ -11,13 +11,19 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline racket/list json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt"
          "../private/gpu-io-trace.rkt" "font-query-fixtures.rkt")
+
+;;;
+;;; GPU Acceptance Run
+;;;
+
 (module+ main
 
   ;;;
-  ;;; Command-Line Run
+  ;;; Backend and Evidence Options
   ;;;
 
   ; backend : (or/c symbol? #f)
@@ -45,6 +51,10 @@
   (unless (memq adapter '(hardware warp)) (error 'font-query-gpu "invalid adapter"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ;;;
+  ;;; Context and Capture Fixtures
+  ;;;
 
   ; ctx : gpu-context?
   ;   Owns the primary native GPU context used by the fixture run.
@@ -82,6 +92,10 @@
   (define (reads ledger)
     (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
 
+  ;;;
+  ;;; Glyph Rasterization Checks
+  ;;;
+
   ; scenes-suite : test-suite?
   ;   Checks font mutations, retained snapshots, and outline scenes while distinguishing drawing
   ;   from inspection readbacks.
@@ -109,6 +123,10 @@
       (call-with-gpu-context ctx
         (lambda () (set! failures (run-tests scenes-suite)))))
     (lambda () (gpu-context-close! ctx)))
+
+  ;;;
+  ;;; Teardown and Evidence Publication
+  ;;;
 
   ; closed? : boolean?
   ;   Records whether context teardown completed with no live or failed resource releases.

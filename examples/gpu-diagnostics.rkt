@@ -8,14 +8,16 @@
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
 ;; Public APIs only. This example really creates the explicitly selected backend.
+
 ;;;
 ;;; Imports and Exports
 ;;;
 
 (require racket/cmdline json "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt")
 (provide describe-current-gpu)
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Current GPU Context Diagnostics
 ;;;
 
 ; describe-current-gpu : gpu-context? -> hash?
@@ -26,6 +28,7 @@
           'memory_dump (memory-statistics->jsexpr (gpu-memory-statistics context))
           'gl_interface (and (eq? (gpu-context-backend context) 'opengl)
                              (gpu-gl-interface-info context))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

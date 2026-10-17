@@ -13,8 +13,9 @@
 
 (require racket/file racket/path racket/list racket/string json
          "../main.rkt" "../tests/color-filter-fixtures.rkt")
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Filter Cases and Captions
 ;;;
 
 ; ink : rgba?
@@ -70,6 +71,10 @@
      "At stored gray 128: gamma encoding is about 188; decoding is about 55. Alpha is unchanged.")
     ("Luma produces black with varying alpha, not gray RGB. Composition is outer(inner(source))."
      "The native parents retain their inputs. All four effect panels are explicitly bounded by the author.")))
+
+;;;
+;;; Filter Gallery Drawing
+;;;
 
 ; label : canvas? string? real? real? [real?] -> void?
 ;   Draws a text label at the supplied baseline in local canvas coordinates.
@@ -149,6 +154,10 @@
   (label c "RACKET / SKIA   |   CPU COLOR FILTERS" 0 444 9)
   (label c (number->string (add1 index)) 652 444 9))
 
+;;;
+;;; Audit Reports and Pixel Samples
+;;;
+
 ; write-json-file : path-string? any/c -> void?
 ;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
@@ -181,6 +190,7 @@
           'rgb_invert (probe (lambda () (make-probe-color-filter 'rgb-table)) (rgb 32 64 96))
           'all_channel_invert_white (probe (lambda () (make-table-color-filter inverse-table)) 'white)
           'roundtrip (probe (lambda () (make-probe-color-filter 'compose)) filter-swatch-color)))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

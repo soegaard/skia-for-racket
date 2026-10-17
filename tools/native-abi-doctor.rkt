@@ -7,9 +7,6 @@
 ;; Prints the active native ABI profile and resolved library information.
 ;; This diagnostic supplies release and compatibility checks with the actual loaded profile.
 
-;;;
-;;; Imports and Exports
-;;;
 (require json "../native-capabilities.rkt")
 (module+ main
 

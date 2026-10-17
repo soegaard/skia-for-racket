@@ -12,6 +12,7 @@
 ;;;
 
 (require rackunit "model.rkt" "../support/sprite-math.rkt")
+
 ;;;
 ;;; Regression Checks
 ;;;

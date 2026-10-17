@@ -9,6 +9,7 @@
 
 ;; One described-font callback, exported through the existing audited document
 ;; API and previewed as a PNG. No GUI or GPU initialization is requested.
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -16,6 +17,7 @@
 (require racket/class racket/cmdline racket/file racket/pretty
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt")
          "../dc.rkt" "../dc-output.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

@@ -7,15 +7,8 @@
 ;; Demonstrates native recorded drawables, canvas stacks, and compositing layers.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require "../main.rkt")
 (provide make-advanced-canvas-example)
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; make-advanced-canvas-example : -> image?
 ;   Returns a snapshot illustrating recorded drawables and compositing layers.
@@ -34,6 +27,7 @@
           (call-with-canvas-layer-rec c (lambda () (draw-drawable c d))
             #:paint opacity #:clip '(0 0 160 100)))))
     (surface-snapshot left)))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

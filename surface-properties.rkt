@@ -18,6 +18,11 @@
          surface-properties-device-independent-fonts?
          surface-properties-dynamic-msaa? surface-properties-always-dither?
          surface-properties->jsexpr)
+
+;;;
+;;; Surface Property Values and Construction
+;;;
+
 (struct surface-properties (pixel-geometry flags)
   #:transparent #:constructor-name properties)
 ;; A surface-properties value contains detached surface-rendering requests.
@@ -47,6 +52,10 @@
     (unless (boolean? v) (raise-argument-error 'make-surface-properties "boolean?" v)))
   (properties geometry (+ (if fonts? 1 0) (if msaa? 2 0) (if dither? 4 0))))
 
+;;;
+;;; Flag Queries and Detached Reports
+;;;
+
 ; flag? : surface-properties? exact-positive-integer? -> boolean?
 ;   Tests one requested surface-property mask in a detached value.
 (define (flag? p bit) (not (zero? (bitwise-and (surface-properties-flags p) bit))))
@@ -72,6 +81,11 @@
           'device_independent_fonts (surface-properties-device-independent-fonts? p)
           'dynamic_msaa (surface-properties-dynamic-msaa? p)
           'always_dither (surface-properties-always-dither? p)))
+
+;;;
+;;; Internal Property Validation and Encoding
+;;;
+
 (module* internals #f
   (provide properties->geometry-code properties-from-native)
 

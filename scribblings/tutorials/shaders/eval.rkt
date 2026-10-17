@@ -18,7 +18,7 @@
          frequency-variants phase-pair hue-pair glow-pair origin-pair)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; program-source : path?
@@ -35,6 +35,10 @@
 (shaders-eval `(current-directory ,(path->string program-directory)))
 (shaders-eval '(require racket skia))
 (shaders-eval `(require (file ,(path->string program-source))))
+
+;;;
+;;; Shader Parameter Figures
+;;;
 
 ; effect : runtime-effect?
 ;   Retains the compiled wave effect reused by the tutorial figures or checks.
@@ -171,6 +175,10 @@
   (figure-row
    (captioned-pict "Rectangle moved; origin unchanged" (one #f))
    (captioned-pict "Origin moved with the rectangle" (one #t))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; shaders-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

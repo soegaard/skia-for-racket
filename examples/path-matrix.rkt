@@ -13,11 +13,12 @@
 
 (require racket/cmdline racket/file racket/path racket/string racket/list "../main.rkt")
 
+;;;
+;;; Page Styling and Path Specimen
+;;;
+
 ;; All three pages are authored once. PNGs are raster REFERENCES, not renderings
 ;; of the PDF or SVG. Review actual vector files in their viewers as well.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; ink : string?
 ;   Specifies the ink color used by this drawing.
@@ -67,6 +68,10 @@
     (conic 185 120 220 35 0.5) (cubic 255 -10 285 145 320 80) (close)
     (move 385 105) (line 440 30) (quad 490 0 565 105)))
 
+;;;
+;;; Path Inspection
+;;;
+
 ; inspect-page : output-page?
 ;   Describes the inspect page drawing and its export dimensions.
 (define inspect-page
@@ -104,6 +109,10 @@
          0 399 10.5)))
    #:margins 28 #:background 'white))
 
+;;;
+;;; Geometry Transforms
+;;;
+
 ; frame-page : output-page?
 ;   Describes the frame page drawing and its export dimensions.
 (define frame-page
@@ -136,6 +145,10 @@
        (label c "Modes: position only, tangent only, or position+tangent. Empty contours return #f."
          0 391 11)))
    #:margins 28 #:background 'white))
+
+;;;
+;;; Shader Coordinates
+;;;
 
 ; shader-page : output-page?
 ;   Describes the shader page drawing and its export dimensions.
@@ -188,6 +201,10 @@
        10.5))
    #:margins 28 #:background 'white))
 
+;;;
+;;; Page Registry and Review Files
+;;;
+
 ; registry : list?
 ;   Keeps the shared scene/page order used by the exported documents and raster references.
 (define registry (list (cons "inspection" inspect-page) (cons "frames" frame-page) (cons "shaders"
@@ -202,6 +219,7 @@
 ; base-name : path-string? -> string?
 ;   Returns an HTML-safe filename for a generated report link.
 (define (base-name path) (escaped (path->string (file-name-from-path path))))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

@@ -25,6 +25,10 @@
 ;; Explicit lowering, before recording or serialization. Existing native batch
 ;; operations are unchanged. No raw SVG injection and no backend masquerading.
 
+;;;
+;;; Portable Marker Drawing
+;;;
+
 ; draw-markers : canvas? (or/c list? vector?) (and/c real? (>/c 0)) paint? [#:shape (or/c 'circle
 ;   'square)] -> void?
 ;   Draws a circle or square centered at each two-coordinate point.
@@ -39,6 +43,10 @@
     (apply (if (eq? shape 'circle) draw-oval draw-rect)
            c (append (vector->list b) (list paint))))
   (void))
+
+;;;
+;;; Image Slice Planning and Raster Fallbacks
+;;;
 
 ; image-lattice-plan : (integer-in 1 1073741823) (integer-in 1 1073741823) image-lattice? real?
 ;   real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) -> (listof image-grid-cell?)
@@ -126,6 +134,10 @@
 ;   Keeps visible cells in their original drawing order.
 (define (filter-visible plan) (filter visible-cell? plan))
 
+;;;
+;;; Portable Nine-Patch and Lattice Drawing
+;;;
+
 ; draw-image-nine/portable : canvas? image? (or/c (list/c exact-integer? exact-integer?
 ;   exact-integer? exact-integer?) (vector/c exact-integer? exact-integer? exact-integer?
 ;   exact-integer?)) real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:sampling (or/c
@@ -147,6 +159,10 @@
   (portable-alpha 'draw-image-lattice/portable alpha)
   (define plan (image-lattice-plan (image-width im) (image-height im) lattice x y width height))
   (draw-grid c im plan filter alpha))
+
+;;;
+;;; Portable Atlas Drawing
+;;;
 
 ; draw-atlas/portable : canvas? image? (or/c list? vector?) (or/c list? vector?) [#:sampling (or/c
 ;   'nearest 'linear)] [#:alpha byte?] -> void?

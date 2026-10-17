@@ -11,13 +11,19 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require racket/cmdline racket/file racket/list racket/path json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt"
          "../private/gpu-io-trace.rkt" "image-operation-fixtures.rkt")
+
+;;;
+;;; GPU Acceptance Run
+;;;
+
 (module+ main
 
   ;;;
-  ;;; Command-Line Run
+  ;;; Backend and Evidence Options
   ;;;
 
   ; backend : (or/c symbol? #f)
@@ -44,6 +50,10 @@
   (unless (and report-path token) (error 'image-gpu "--report and --token required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ;;;
+  ;;; Context and Capture Fixtures
+  ;;;
 
   ; create : -> gpu-context?
   ;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
@@ -98,6 +108,11 @@
   ; retained-tested? : boolean?
   ;   Records whether a retained filter input was exercised after its source wrapper closed.
   (define retained-tested? #f)
+
+  ;;;
+  ;;; Image Filtering and Affinity Checks
+  ;;;
+
   (dynamic-wind void
     (lambda ()
       ;; Construction and entry of different GPU domains are never nested.
@@ -192,6 +207,10 @@
         (lambda ()
           (dynamic-wind void (lambda () (when other (gpu-context-close! other)))
             (lambda () (gpu-context-close! ctx)))))))
+
+  ;;;
+  ;;; Teardown and Evidence Publication
+  ;;;
 
   ; closed? : boolean?
   ;   Records whether context teardown completed with no live or failed resource releases.

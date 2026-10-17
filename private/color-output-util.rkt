@@ -10,6 +10,10 @@
 (require racket/list "check.rkt")
 (provide (all-defined-out))
 
+;;;
+;;; Colorimetry Validation
+;;;
+
 ;; Copy and round at the boundary: native structures contain IEEE binary32.
 
 ; color-float : symbol? real? -> inexact-real?
@@ -51,6 +55,10 @@
     (raise-arguments-error who "invalid chromaticity (requires x >= 0, y > 0, x+y <= 1)"
                            "chromaticity" xy))
   v)
+
+;;;
+;;; ICC Metadata and Encoding Profiles
+;;;
 
 ; icc-description-bytes : symbol? any/c (or/c #f string?) -> (or/c #f bytes?)
 ;   Requires an ICC profile for a printable-ASCII description and adds its native NUL terminator.

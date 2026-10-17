@@ -8,17 +8,8 @@
 ;; This module supports documentation assembly and shared examples rather than the public Skia
 ;; API.
 
-
-;;;
-;;; Imports and Exports
-;;;
-
 (require skia "figures.rkt" "sprite-math.rkt")
 (provide atlas-pict draw-checker)
-
-;;;
-;;; Documentation Data and Helpers
-;;;
 
 ; draw-checker : canvas? real? real? [exact-nonnegative-integer?] -> void?
 ;   Draws a checkerboard that makes transparent pixels visible.

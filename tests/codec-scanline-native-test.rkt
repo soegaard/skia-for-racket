@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/file racket/list
          "../main.rkt" "codec-scanline-fixtures.rkt" "codec-fixtures.rkt")
 (provide codec-scanline-native-tests codec-scanline-native-test-count)
@@ -79,6 +80,11 @@
 ;   Collects the regression cases for native scanline decoding and cursor ownership.
 (define codec-scanline-native-tests
   (test-suite "0.76b native scanline decoding and cursor ownership"
+
+    ;;;
+    ;;; Session Metadata and Native Row Mapping
+    ;;;
+
     (test-case "session is an ordinary owned resource"
       (with-bmp (lambda (s)
         (check-true (codec-scanline-session? s)) (check-true (skia-resource? s))
@@ -108,6 +114,11 @@
       (with-bmp (lambda (s)
         (codec-scanline-output-row s 3)
         (check-equal? (codec-scanline-position s) 0))))
+
+    ;;;
+    ;;; Batch Ordering, Skipping, and Cursor Validation
+    ;;;
+
     (test-case "top-down one-row reads match known pixels"
       (with-bmp (lambda (s) (check-equal? (scanline-collect-bytes s 1) (scanline-fixture-rgba)))
         #:top-down? #t))
@@ -164,6 +175,11 @@
       (with-bmp (lambda (s)
         (for ([n (list -1 H 1.0)]) (check-exn exn:fail? (lambda () (codec-scanline-output-row s n))))
         (check-equal? (codec-scanline-position s) 0))))
+
+    ;;;
+    ;;; Destination Layout, Limits, and Format Negotiation
+    ;;;
+
     (test-case "padded scanline rows have zero padding"
       (with-bmp (lambda (s)
         (define batch (codec-scanline-read! s 2 #:row-bytes 32))
@@ -223,6 +239,11 @@
         (check-equal?
           (list (image-info-width (codec-scanline-info s))
             (image-info-height (codec-scanline-info s))) '(8 6))))
+
+    ;;;
+    ;;; Unsupported and Truncated Input
+    ;;;
+
     (test-case "unsupported PNG scanlines report native unimplemented"
       (define bytes (scanline-fixture-png))
       (check-exn (lambda (e) (and (exn:fail:codec-scanline? e)
@@ -266,6 +287,11 @@
         (check-false (codec-scanline-skip! s H))
         (check-equal? (codec-scanline-state s) 'failed)
         (check-exn exn:fail? (lambda () (codec-scanline-read! s 1)))))
+
+    ;;;
+    ;;; Session Ownership and Input Independence
+    ;;;
+
     (test-case "closing a session is idempotent"
       (define s (codec-scanline-from-bytes (scanline-fixture-bmp)))
       (skia-close! s) (skia-close! s)

@@ -13,11 +13,12 @@
 
 (require racket/cmdline "../main.rkt")
 
+;;;
+;;; Codec Comparison Gallery
+;;;
+
 ;; Visual smoke test for the 0.4 encoded-image layer. Everything is generated
 ;; in memory: render -> encode PNG/JPEG/WebP -> decode -> crop/subset -> render.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-codec-gallery : path-string? -> void?
 ;   Renders the codec gallery example to the selected output destination.

@@ -12,6 +12,10 @@
 (provide font-query-budget font-query-glyphs font-query-origin font-query-text
          font-break-prefix-length collect-glyph-path-results)
 
+;;;
+;;; Bounded Query Inputs
+;;;
+
 ; font-query-budget : symbol? exact-nonnegative-integer? -> exact-nonnegative-integer?
 ;   Checks temporary font-query storage against the logical wrapper byte budget.
 (define (font-query-budget who bytes)
@@ -61,6 +65,10 @@
   ;; scratch, and decoding a returned prefix. This is not a Skia cache quota.
   (font-query-budget who (* n 20))
   (string->bytes/utf-8 (string->immutable-string text)))
+
+;;;
+;;; Detached Prefix and Glyph-Path Results
+;;;
 
 ; font-break-prefix-length : symbol? bytes? exact-nonnegative-integer? -> exact-nonnegative-integer?
 ;   Converts a native UTF-8 byte prefix to a Racket string index, rejecting split scalars.

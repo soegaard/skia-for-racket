@@ -10,11 +10,17 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; The CI driver sets both native-library overrides to nonexistent paths and
 ;; unsets display variables. Import must not force either library or a GUI.
 ;; skia/canvas, skia/gpu-canvas and skia/gpu-gui are GUI-only entry points. The
 ;; headless imports below must not pull either of those modules in indirectly.
 (require json)
+
+;;;
+;;; Isolated Import Checks
+;;;
+
 (module+ main
   (for ([module
           '(skia skia/dc skia/gpu-dc skia/bitmap skia/racket-draw skia/native-capabilities skia/gpu

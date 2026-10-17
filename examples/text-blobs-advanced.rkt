@@ -7,11 +7,8 @@
 ;; Builds retained shaped text and places it along a path.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/file "../main.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

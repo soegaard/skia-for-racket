@@ -19,6 +19,10 @@
          output->bytes/audit save-output/audit
          call-with-output-label with-output-label)
 
+;;;
+;;; Audit Input and Label Scopes
+;;;
+
 ; source-count : symbol? any/c -> exact-positive-integer?
 ;   Validates a page or nonempty page list and returns the audit page count.
 (define (source-count who source)
@@ -41,6 +45,10 @@
 ;   Associates the body forms' audit observations with a copied output-scope label.
 (define-syntax-rule (with-output-label label body ...)
   (call-with-output-label label (lambda () body ...)))
+
+;;;
+;;; Page Preflight Analysis
+;;;
 
 ;; A preflight executes the callback once with the actual target backend.
 ;; Native resource creation, metrics, and graphics-state changes still happen;
@@ -66,6 +74,10 @@
                       #:text-mode mode #:raster-dpi dpi #:id-prefix prefix
                       #:encoding-quality quality #:pdfa? pdfa?))))
   report)
+
+;;;
+;;; Audited Encoding and File Publication
+;;;
 
 ;; The normal exporting variant draws once and returns both results. Policy
 ;; rejection occurs before the offending native operation, not after publishing.

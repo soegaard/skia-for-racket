@@ -22,7 +22,7 @@
          clock-image)
 
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; clock-eval : procedure?
@@ -168,6 +168,10 @@
          (open-input-bytes (surface->png-bytes surface))
          'png/alpha))
        0.70)))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; clock-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

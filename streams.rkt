@@ -25,6 +25,10 @@
          output-stream-detach-input! buffered-port->input-stream
          output-stream-write-port/buffered)
 
+;;;
+;;; Stream Ownership and Budgets
+;;;
+
 ; skia-input-stream? : any/c -> boolean?
 ;   Returns #t for a native input stream, including a closed one, and #f otherwise.
 (define (skia-input-stream? value)
@@ -34,10 +38,6 @@
 ;   Returns #t for a native output stream, including a closed one, and #f otherwise.
 (define (skia-output-stream? value)
   (and (native-stream? value) (eq? (native-stream-direction value) 'output)))
-
-;;;
-;;; Stream Ownership and Budgets
-;;;
 
 ; stream-h : symbol? any/c boolean? -> (or/c owned? domain-resource?)
 ;   Checks input/output stream direction and retrieves the managed native handle.
@@ -261,6 +261,10 @@
                      bytes)))
                (lambda () (owned-close! who data)))]))))
 
+;;;
+;;; Output Streams and Memory Snapshots
+;;;
+
 ; make-memory-output-stream : [#:limit exact-positive-integer?] -> skia-output-stream?
 ;   Returns an empty memory output stream.
 (define (make-memory-output-stream #:limit [limit (current-skia-byte-limit)])
@@ -270,10 +274,6 @@
    (new-owned 'make-memory-output-stream 'stream-output
               sk_dynamicmemorywstream_new sk_dynamicmemorywstream_destroy)
    'output 'memory limit))
-
-;;;
-;;; Output Writes and Memory Snapshots
-;;;
 
 ; with-output : symbol? skia-output-stream? procedure? -> any/c
 ;   Lends a locked native output pointer with its checked written-byte count.
@@ -338,6 +338,10 @@
     (lambda (ptr _n)
       (wrap-input who 'memory (budget stream)
         (lambda () (sk_dynamicmemorywstream_detach_as_stream ptr))))))
+
+;;;
+;;; Buffered Racket Port Adapters
+;;;
 
 ; buffered-port->input-stream : input-port? [#:limit exact-positive-integer?] [#:close? boolean?]
 ;   [#:cancel-evt (or/c evt? #f)] -> skia-input-stream?

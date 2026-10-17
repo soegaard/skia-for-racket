@@ -16,7 +16,7 @@
 (require skia)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Logo Geometry and Drawing
 ;;;
 
 ; size : exact-integer?
@@ -64,6 +64,10 @@
     #:join 'round))
   (draw-path canvas path fill)
   (draw-path canvas path outline))
+
+;;;
+;;; Raster and Vector Export
+;;;
 
 ; save-raster : path-string? -> void?
 ;   Renders the raster example to the selected output destination.

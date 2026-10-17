@@ -18,6 +18,10 @@
          checked-picture-pict-geometry
          checked-picture-bounds)
 
+;;;
+;;; Backing Scale and Raster Budgets
+;;;
+
 ; positive-float : symbol? real? string? -> real?
 ;   Checks that a positive value remains positive as a native scalar, preserving the original value
 ;   for logical geometry.
@@ -47,6 +51,10 @@
                            "required RGBA and ARGB bytes" required
                            "limit" (current-skia-byte-limit)))
   rgba-bytes)
+
+;;;
+;;; Image and Picture Placement Geometry
+;;;
 
 ; checked-image-pict-geometry : symbol? exact-positive-integer? exact-positive-integer? real? ->
 ;   (values real? real?)

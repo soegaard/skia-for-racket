@@ -10,6 +10,11 @@
 ;; Windows x64 layouts only. Importing this file never loads a DLL.
 (require ffi/unsafe)
 (provide (all-defined-out))
+
+;;;
+;;; Backend Context and Adapter Layouts
+;;;
+
 (define-cstruct _gr-d3d-backend-context
   ([adapter _pointer] [device _pointer] [queue _pointer]
    [allocator _pointer] [protected? _stdbool]))
@@ -36,6 +41,10 @@
 ;;   luid-low and luid-high: low unsigned and high signed halves of the adapter LUID. flags: adapter
 ;;   bitmask. The fixed array and native pointer-size fields determine ABI offsets.
 
+
+;;;
+;;; COM Slots, Interface Identifiers, and Layout Checks
+;;;
 
 ; d3d12-minimum-feature-level : exact-nonnegative-integer?
 ;   Encodes d3d12 minimum feature level using the native SDK value rather than a Racket-specific

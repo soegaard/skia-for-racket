@@ -14,7 +14,7 @@
 (require racket/list racket/match "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Layout Guides
 ;;;
 
 ; bg : string?
@@ -61,6 +61,10 @@
   (with-skia ([p (make-paint #:color guide-color #:style 'stroke #:stroke-width 1)])
     (draw-line c x y x (+ y h) p)
     (draw-line c (+ x w) y (+ x w) (+ y h) p)))
+
+;;;
+;;; Script-Aware Justification
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

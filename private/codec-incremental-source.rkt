@@ -15,6 +15,11 @@
 (require ffi/unsafe "codec-incremental-input.rkt")
 (provide incremental-source-register! incremental-source-unregister!
          incremental-source-callback incremental-source-count)
+
+;;;
+;;; Native Reader Registration
+;;;
+
 (struct source (input context [position #:mutable]))
 ;; Fields:
 ;;   input: incremental-input buffer. context: native registration context pointer. position:
@@ -52,6 +57,10 @@
     (set-incremental-input-destroys! input (add1 (incremental-input-destroys input)))
     (free (source-context s)))
   (void))
+
+;;;
+;;; Read and Seek Callback Dispatch
+;;;
 
 ; read! : source? (or/c #f cpointer?) exact-nonnegative-integer? boolean? ->
 ;   exact-nonnegative-integer?

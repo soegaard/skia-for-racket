@@ -14,11 +14,13 @@
 (require racket/class racket/cmdline racket/file racket/math
          (prefix-in rd: racket/draw) "../dc.rkt")
 (provide draw-dc-primitives draw-dc-oracle)
+
+;;;
+;;; Shared Geometry and Independent Oracle
+;;;
+
 ;; Both procedures consume the PUBLIC dc<%> API, not Skia drawing functions.
 ;; Deliberately no text or bitmap input: these belong to stage 0.54.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; draw-dc-oracle : (is-a?/c dc<%>) -> void?
 ;   Draws the dc oracle component in the current canvas coordinate system.
@@ -67,6 +69,7 @@
   (define ring (new rd:dc-path%))
   (send ring ellipse 320 248 95 55) (send ring ellipse 345 260 42 30)
   (send dc set-brush "lightblue" 'solid) (send dc draw-path ring 0 0 'odd-even))
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

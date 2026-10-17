@@ -19,6 +19,11 @@
          "dc-geometry.rkt" "dc-native-util.rkt" "dc-text.rkt"
          "dc-style-render.rkt" "dc-path-bounds.rkt")
 (provide skia-dc-renderer make-surface-dc-renderer)
+
+;;;
+;;; Private Canvas Bridge
+;;;
+
 ;; Private canvas entry points let document recording reuse native geometry
 ;; and bitmap handling. Existing surface callbacks and GPU copies are unchanged.
 (module* canvas-internals #f

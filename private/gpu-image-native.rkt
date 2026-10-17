@@ -11,6 +11,11 @@
          (only-in "native.rkt" skia-native-library-handle)
          "gpu-provider.rkt" "gpu-native-scope.rkt")
 (provide gpu-image-native-check! gpu-image-native-inventory)
+
+;;;
+;;; Lazy Image Binding Registry
+;;;
+
 ;; Pinned m119 C shim; intentionally not added to the CPU-required symbol set.
 ;; None of these calls invokes application release callbacks. Construction is
 ;; synchronous and kept atomic with reference registration by new-gpu-owned.
@@ -34,6 +39,10 @@
     (define (name . args)
       (define call (force delayed))
       (call-with-gpu-native-scope (lambda () (apply call args))))))
+
+;;;
+;;; GPU Image Operations
+;;;
 
 ; texture-image/native : (_fun _pointer _pointer _stdbool _stdbool -> _pointer) (FFI)
 ;   Calls the native sk_image_make_texture_image entry point using the declared FFI layout.
@@ -69,6 +78,10 @@
 ;   Calls the native sk_image_unref entry point using the declared FFI layout.
 (define-image-native image-unref/native sk_image_unref
   (_fun _pointer -> _void))
+
+;;;
+;;; Readiness and Optional Filter Binding
+;;;
 
 ; gpu-image-native-inventory : -> list?
 ;   Reports optional GPU-image symbol availability without performing image creation or transfer.

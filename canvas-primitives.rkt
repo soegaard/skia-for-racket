@@ -22,6 +22,10 @@
          canvas-clip-empty? canvas-clip-rect? canvas-quick-reject?
          canvas-save-layer! call-with-canvas-layer with-canvas-layer)
 
+;;;
+;;; Rounded-Rectangle Values and Native Conversion
+;;;
+
 ;; Pure immutable specifications; native normalization happens on submission.
 ;; No SkRRect pointer or native resource is retained by these values.
 (struct rounded-rect (bounds radii) #:transparent #:constructor-name make-rounded-rect-record)
@@ -223,6 +227,10 @@
    c (lambda ()
        (canvas-reset-transform! c)
        (call-on-canvas 'draw-color c '() (lambda (cp) (sk_canvas_draw_color cp argb m))))))
+
+;;;
+;;; Canvas Clipping and Bounds Queries
+;;;
 
 ; canvas-clip-rounded-rect! : canvas? rounded-rect? [#:operation (or/c 'intersect 'difference)]
 ;   [#:antialias? boolean?] -> void?

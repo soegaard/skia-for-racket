@@ -31,6 +31,10 @@
          scanline-batch->raster-buffer exn:fail:codec-scanline?
          exn:fail:codec-scanline-result exn:fail:codec-scanline-native-code)
 
+;;;
+;;; Session Validation and Construction
+;;;
+
 ; codec-scanline-session? : any/c -> boolean?
 ;   Returns #t for a scanline session, including a closed one, and #f otherwise.
 (define codec-scanline-session? scanline-session-record?)
@@ -155,6 +159,10 @@
                       in #:limit limit #:close? close? #:cancel-evt cancel)])
     (start-session who (lambda () (codec-from-stream stream)) requested template)))
 
+;;;
+;;; Session Metadata and Row Mapping
+;;;
+
 ; codec-scanline-state : codec-scanline-session? -> (or/c 'ready 'complete 'incomplete 'failed
 ;   'closed)
 ;   Returns the session state.
@@ -213,6 +221,10 @@
       (unless (= expected actual)
         (error who "native output-row mapping disagrees with scanline order"))
       actual)))
+
+;;;
+;;; Scanline Reading, Skipping, and Buffer Conversion
+;;;
 
 ; codec-scanline-read! : codec-scanline-session? [exact-positive-integer?] [#:row-bytes (or/c
 ;   exact-nonnegative-integer? #f)] -> scanline-batch?

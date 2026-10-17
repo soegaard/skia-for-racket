@@ -29,6 +29,10 @@
          color%->rgba rgba->color%
          dc-path->skia-path skia-path->dc-path)
 
+;;;
+;;; Bitmap Snapshots
+;;;
+
 ; bitmap->image : (is-a?/c draw:bitmap%) [#:resolution (or/c 'physical 'logical)] [#:mask (or/c
 ;   'loaded #f (is-a?/c draw:bitmap%))] -> image?
 ;   Returns an owned, CPU-resident, untagged Skia image containing a snapshot of the public pixels
@@ -40,6 +44,10 @@
                      (racket-draw-bitmap-data-pixels data)
                      #:premultiplied? #t
                      #:color-space #f))
+
+;;;
+;;; Color Conversion
+;;;
 
 ; color%->rgba : (is-a?/c draw:color%) -> rgba?
 ;   Returns an immutable rgba value with the red, green, and blue bytes reported by color.
@@ -65,6 +73,10 @@
   (make-object rd:color%
                (rgba-red color) (rgba-green color) (rgba-blue color)
                (/ (rgba-alpha color) 255.0)))
+
+;;;
+;;; Path Conversion
+;;;
 
 ; dc-path->skia-path : (is-a?/c draw:dc-path%) [#:fill-style (or/c 'odd-even 'winding)] ->
 ;   skia-path?

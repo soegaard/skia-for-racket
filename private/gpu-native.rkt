@@ -16,6 +16,11 @@
          (only-in "native.rkt" skia-native-library-handle) "types.rkt" "gpu-provider.rkt"
            "gpu-native-scope.rkt")
 (provide gpu-native-check! gpu-native-inventory gpu-symbol-names)
+
+;;;
+;;; Lazy Backend Binding Registry
+;;;
+
 ;; Separate lazy group: the CPU native-bindings registry remains unchanged.
 ;; Loading this module does not dlopen GL, Metal, a GUI, or even libSkiaSharp.
 
@@ -38,6 +43,10 @@
     (define (name . arguments)
       (define call (force promise))
       (call-with-gpu-native-scope (lambda () (apply call arguments))))))
+
+;;;
+;;; Context State and Backend Construction
+;;;
 
 ; _get-gl-proc : ctype?
 ;   Declares the GL resolver callback ABI: a user-data pointer and UTF-8 symbol name yield an
@@ -138,6 +147,10 @@
 (define-gpu-native direct3d gr_direct_context_make_direct3d
   (_fun _gr-d3d-backend-context -> _pointer))
 
+;;;
+;;; Render Targets and Smoke Drawing
+;;;
+
 ; sk_surface_new_render_target : (_fun _pointer _stdbool _sk-image-info-pointer _int _int _pointer
 ;   _stdbool -> _pointer) (FFI)
 ;   Calls the native sk_surface_new_render_target entry point using the declared FFI layout.
@@ -188,6 +201,10 @@
 ;   Calls the native sk_paint_set_antialias entry point using the declared FFI layout.
 (define-gpu-native probe sk_paint_set_antialias (_fun _pointer _stdbool -> _void))
 
+;;;
+;;; Direct3D Target Descriptors
+;;;
+
 ;; 0.49 optional DXGI group: offscreen Direct3D does not require these.
 
 ; gr_backendrendertarget_new_direct3d : (_fun _int _int _gr-d3d-texture-info-pointer -> _pointer)
@@ -232,6 +249,10 @@
 ;   layout.
 (define-gpu-native dxgi gr_direct_context_free_gpu_resources (_fun _pointer -> _void))
 
+;;;
+;;; Symbol Selection and Readiness
+;;;
+
 ; selected : symbol? -> list?
 ;   Selects common, probe, and requested-backend bindings in their original declaration order.
 (define (selected backend)
@@ -268,6 +289,10 @@
     (gpu-unavailable 'native-symbols "missing optional GPU bindings: ~a"
                      (map (lambda (row) (hash-ref row 'name)) missing)))
   (void))
+
+;;;
+;;; Context Options, Targeted Flushes, and Teardown
+;;;
 
 ;; 0.77b: the complete six-field m119 context-options descriptor is borrowed
 ;; synchronously. D3D's existing backend descriptor remains passed BY VALUE.
@@ -307,6 +332,10 @@
 ;   declared FFI layout.
 (define-gpu-native common gr_direct_context_release_resources_and_abandon_context
   (_fun #:blocking? #t _pointer -> _void))
+
+;;;
+;;; Memory Diagnostics and GL Interface Variants
+;;;
 
 ;; 0.77c: synchronous memory-only trace callbacks and GL interface helpers.
 ;; Deliberately not #:blocking?: these callbacks run synchronously on the owner.

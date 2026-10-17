@@ -22,6 +22,10 @@
          codec-from-port/buffered typeface-from-port/buffered
          image-from-port/buffered picture-from-port/buffered)
 
+;;;
+;;; Private Stream Duplication and Ownership Transfer
+;;;
+
 ; checked-index : symbol? exact-nonnegative-integer? -> exact-nonnegative-integer?
 ;   Bounds a collection index to the native signed 32-bit range.
 (define (checked-index who index)
@@ -58,6 +62,10 @@
               (constructor duplicate))
             (lambda () (unless transferred? (sk_stream_destroy duplicate)))))
         release))))
+
+;;;
+;;; Native Stream Resource Loaders
+;;;
 
 ; codec-from-stream : skia-input-stream? -> codec?
 ;   Returns an image codec using a private duplicate of stream.
@@ -127,6 +135,10 @@
       (raw:make-picture-record handle
         (if size (vector-ref size 0) (vector-ref bounds 2))
         (if size (vector-ref size 1) (vector-ref bounds 3))))))
+
+;;;
+;;; Buffered Racket Port Adapters
+;;;
 
 ; codec-from-port/buffered : input-port? [#:limit exact-positive-integer?] [#:close? boolean?]
 ;   [#:cancel-evt (or/c evt? #f)] -> codec?

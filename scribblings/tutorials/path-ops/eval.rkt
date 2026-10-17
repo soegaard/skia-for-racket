@@ -15,8 +15,9 @@
 (require racket/runtime-path scribble/eval skia "badge.rkt" "../support/figures.rkt")
 (provide paths-interaction paths-racketblock+eval badge-pict shape-pict operands-pict simplify-pict
          trim-pair difference-pair backgrounds-pict xor-comparison)
+
 ;;;
-;;; Evaluator and Figure Helpers
+;;; Tutorial Evaluator Setup
 ;;;
 
 ; program-source : path?
@@ -33,6 +34,10 @@
 (paths-eval `(current-directory ,(path->string program-directory)))
 (paths-eval '(require racket skia))
 (paths-eval `(require (file ,(path->string program-source))))
+
+;;;
+;;; Path Operation Figures
+;;;
 
 ; parts : hash?
 ;   Keeps the named intermediate paths used to explain the badge construction.
@@ -153,6 +158,10 @@
                  #:scale 0.8))
   (figure-row (captioned-pict "Same badge over a gradient" (one 'gradient))
               (captioned-pict "Same badge over stripes" (one 'stripes))))
+
+;;;
+;;; Scribble Interaction Forms
+;;;
 
 ; paths-interaction : syntax -> syntax
 ;   Displays and evaluates tutorial expressions in the shared documentation evaluator.

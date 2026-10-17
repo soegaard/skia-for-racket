@@ -110,6 +110,7 @@
       (init [(logical-width width) 640] [(logical-height height) 480]
             [(requested-backing backing-scale) 1.0]
             [background "white"] [smoothing 'unsmoothed])
+
       ;;;
       ;;; Owned Drawing State
       ;;;
@@ -279,6 +280,7 @@
                 ((dc-renderer-clear renderer) root #f background-state #f)
                 (void))
               (lambda () (set! backing-operation previous-operation)))))))
+
       ;;;
       ;;; Layer and Transform Helpers
       ;;;
@@ -317,6 +319,7 @@
         (for ([i (in-list indices)] [value (in-list values-list)]) (vector-set! v i value)) v)
       (define/private (aligners who)
         (dc-alignment-functions who (effective) alignment (send pen-state get-width) smoothing-state))
+
       ;;;
       ;;; Detached Ink and Geometry Submission
       ;;;
@@ -444,6 +447,7 @@
         (unless (boolean? premultiplied?) (raise-argument-error 'get-rgba-bytes "boolean?"
           premultiplied?))
         ((dc-renderer-rgba renderer) (dc-alpha-root groups) premultiplied?))
+
       ;;;
       ;;; Transform and Style Selection
       ;;;
@@ -522,6 +526,7 @@
           (raise-arguments-error 'try-color "source and destination must be color% objects" "source" c
             "destination" dest))
         (send dest set (send c red) (send c green) (send c blue) (send c alpha)) (void))
+
       ;;;
       ;;; Clipping and Basic Drawing
       ;;;
@@ -587,6 +592,7 @@
                            (vector 'cubic (/ (+ xa x2) 2) (/ (+ ya y2) 2)
                                    (/ (+ x2 xb) 2) (/ (+ y2 yb) 2) xb yb)
                            (vector 'line x3 y3)) 'winding #f #f))
+
       ;;;
       ;;; Document and Flush Compatibility
       ;;;
@@ -605,6 +611,7 @@
       ;; class. dc<%> supplies default implementations for those methods, so
       ;; defining them here would conflict when the final class attaches dc<%>.
       ;; The final class* below overrides the interface defaults instead.
+
       ;;;
       ;;; Text, Bitmaps, Copies, and Bounds
       ;;;

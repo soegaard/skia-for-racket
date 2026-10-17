@@ -14,7 +14,7 @@
 (require racket/list racket/match racket/string "../main.rkt")
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Panel Styling and Run Summaries
 ;;;
 
 ; bg : string?
@@ -61,6 +61,10 @@
   (if (> (string-length s) limit)
       (string-append (substring s 0 limit) "...")
       s))
+
+;;;
+;;; Mixed-Script Comparisons
+;;;
 
 ; main : any/c -> void?
 ;   Renders the example gallery and writes it to the requested output file.

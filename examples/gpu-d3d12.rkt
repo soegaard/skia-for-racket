@@ -12,6 +12,7 @@
 ;;;
 
 (require racket/cmdline racket/file racket/path json "../main.rkt" "../gpu.rkt")
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

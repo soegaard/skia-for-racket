@@ -22,7 +22,7 @@
          validate-tutorial-catalog!)
 
 ;;;
-;;; Documentation Data and Helpers
+;;; Tutorial Catalog Data
 ;;;
 
 ; catalog-path : path?
@@ -48,6 +48,10 @@
 ; routes : list?
 ;   Defines optional ordered reading sequences, which may share tutorials.
 (define routes (hash-ref catalog 'routes))
+
+;;;
+;;; Catalog Validation
+;;;
 
 ; nonempty-string? : any/c -> boolean?
 ;   Checks that a metadata field is a nonempty string.
@@ -105,6 +109,10 @@
   (void))
 
 (validate-tutorial-catalog!)
+
+;;;
+;;; Tutorial and Category Lookup
+;;;
 
 ; tutorial-by-id : string? -> hash?
 ;   Looks up one tutorial and raises an error for an unknown catalog ID.

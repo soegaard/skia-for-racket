@@ -23,7 +23,7 @@
 (provide render-metal-scene)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Offscreen Metal Rendering
 ;;;
 
 ; render-metal-scene : path-string? -> path?

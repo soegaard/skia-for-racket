@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit rackunit/text-ui racket/file racket/path
          "../main.rkt")
 (provide svg-native-tests)
@@ -61,6 +62,11 @@
 (define svg-native-tests
   (test-suite
    "SVG native document output"
+
+   ;;;
+   ;;; Document State, Canvas Lifetime, and Cleanup
+   ;;;
+
    (test-case "empty document finishes with fractional viewport dimensions"
      (with-skia ([d (make-svg-document 100.5 60.25)])
        (check-true (svg-document? d))
@@ -210,6 +216,11 @@
        (parameterize ([current-skia-byte-limit 16])
          (check-exn #rx"byte-limit" (lambda () (svg-document->bytes d))))
        (check-true (bytes? (svg-document->bytes d)))))
+
+   ;;;
+   ;;; SVG Content, Text, and Raster Fallback
+   ;;;
+
    (test-case "title and description are valid escaped UTF-8 metadata"
      (define s (call-with-svg-string 10 10 void
                                      #:title "A < B & C" #:description "Søgaard"))
@@ -319,6 +330,11 @@
      (check-true (skia-closed? saved))
      (check-equal? (length (regexp-match* #rx#"<image[ \t\r\n]" bs)) 1)
      (check-true (has? #rx#"<rect" bs)))
+
+   ;;;
+   ;;; Atomic File Publication
+   ;;;
+
    (test-case "explicit file save and early destination conflicts"
      (in-temp-directory
       (lambda (dir)

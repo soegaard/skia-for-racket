@@ -12,6 +12,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require ffi/unsafe racket/list "../gpu.rkt" "../gpu-gl-interop.rkt"
          "../private/gpu-gl-queries.rkt" "../private/gpu-context.rkt"
          (submod "../private/gpu-domain.rkt" gl-interop-internals))
@@ -19,8 +20,9 @@
          gl-fixture-alive? gl-pattern-bytes (struct-out gl-fixture))
 
 ;;;
-;;; Fixtures and Assertions
+;;; GL Resource Allocation and Ownership
 ;;;
+
 (struct gl-fixture (context queries texture framebuffer stencil width height [closed? #:mutable]))
 ;; context: borrowed GPU context; it must outlive every GL object in this fixture.
 ;; queries: GL query/binding bundle resolved for that context's native domain.
@@ -116,6 +118,10 @@
       (and ((raw-bind f "glIsTexture" (_fun _uint32 -> _stdbool)) (gl-fixture-texture f))
            ((raw-bind f "glIsFramebuffer" (_fun _uint32 -> _stdbool)) (gl-fixture-framebuffer f))
            ((raw-bind f "glIsRenderbuffer" (_fun _uint32 -> _stdbool)) (gl-fixture-stencil f))))))
+
+;;;
+;;; Texture Mutation and Readback
+;;;
 
 ; gl-fixture-fill! : gl-fixture? real? real? real? real? -> any
 ;   Clears the external framebuffer with explicit color-mask, scissor, and sRGB state.

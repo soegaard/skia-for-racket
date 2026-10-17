@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 ;; Headless lifecycle tests use the production DC with a recording renderer.
 ;; They do not claim native pixels or initialize racket/gui/base.
 (require rackunit racket/class racket/list racket/control
@@ -99,6 +100,11 @@
 (define canvas-dc-pure-tests
   (test-suite
    "Canvas DC ownership, resizing, paint recovery and direct pixel bridge (headless)"
+
+   ;;;
+   ;;; Backing Geometry and Transactional Resize
+   ;;;
+
    (test-case "canvas lifecycle entry points are private member identities"
      (with-fresh (dc e fail)
        (check-false (object-method-arity-includes? dc 'dc-resize-backing! 3))
@@ -177,6 +183,11 @@
        (check-exn exn:fail? (lambda () (dc-resize-backing! dc 22 14 1)))
        (check-equal? (send dc snapshot) 1)
        (check-equal? (events-of e 'close) '())))
+
+   ;;;
+   ;;; Drawing State Across Target Replacement
+   ;;;
+
    (test-case "resize preserves selected styles and the complete logical drawing state"
      (with-fresh (dc e fail)
        (define p (rd:make-pen #:color "red" #:width 3 #:immutable? #f))
@@ -260,6 +271,11 @@
                               (lambda () (dc-clear-backing! dc))
                               (lambda () (call-with-dc-canvas-paint dc void)))])
          (check-exn #rx"closed" operation))))
+
+   ;;;
+   ;;; Paint Scopes and Exceptional Cleanup
+   ;;;
+
    (test-case "paint scope preserves multiple return values and deliberate ordinary state changes"
      (with-fresh (dc e fail)
        (check-equal?
@@ -363,6 +379,11 @@
        (send dc start-alpha 0.5)
        (check-exn exn:fail? (lambda () (dc-clear-backing! dc)))
        (check-equal? (events-of e 'clear) '()) (check-equal? (events-of e 'merge) '())))
+
+   ;;;
+   ;;; Pixel Bridge and Final Retirement
+   ;;;
+
    (test-case "RGBA to ARGB bridge reorders unequal premultiplied channels exactly"
      (define rgba (bytes 17 31 47 63 100 150 200 255 0 0 0 0))
      (define before (bytes-copy rgba)) (define argb (make-bytes (bytes-length rgba) 255))

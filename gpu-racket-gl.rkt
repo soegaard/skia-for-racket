@@ -8,10 +8,6 @@
 ;; This opt-in bridge lets the shared GPU implementation execute within the toolkit's
 ;; context-activation callback.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/class racket/draw
          "private/gpu-provider.rkt" "private/gpu-gl-system.rkt")
 (provide make-racket-gl-provider)

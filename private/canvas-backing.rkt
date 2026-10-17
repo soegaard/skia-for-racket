@@ -95,6 +95,7 @@
     (init [width 1] [height 1] [backing-scale 1.0]
           [background "white"] [smoothing 'unsmoothed]
           [dc-class skia-dc%])
+
     ;;;
     ;;; Owned Presentation State
     ;;;

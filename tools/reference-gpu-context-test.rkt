@@ -17,13 +17,13 @@
 (require rackunit rackunit/text-ui json racket/cmdline racket/list
          skia skia/gpu)
 
+;;;
+;;; Backend Selection and Context Fixtures
+;;;
+
 ;; `module+ main` imports bindings from this module, so command-line state
 ;; must live in mutable parameter values instead of module bindings set with
 ;; `set!`.
-
-;;;
-;;; Diagnostic Operations
-;;;
 
 ; selected-backend : parameter?
 ;   Selects the explicitly requested native GPU backend for this Reference test run.

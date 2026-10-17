@@ -27,11 +27,19 @@
          make-empty-shader shader-with-color-filter make-blender-shader
          make-arithmetic-blender make-blender-image-filter)
 
+;;;
+;;; Blender Handle Validation
+;;;
+
 ; blender-h : symbol? blender? -> (or/c owned? domain-resource?)
 ;   Checks the blender resource wrapper and retrieves its managed native handle.
 (define (blender-h who v)
   (unless (blender-resource? v) (raise-argument-error who "blender?" v))
   (blender-resource-handle v))
+
+;;;
+;;; Path Effects
+;;;
 
 ; make-1d-path-effect : skia-path? (and/c real? (>/c 0)) [real?] [#:style (or/c 'translate 'rotate
 ;   'morph)] -> path-effect?
@@ -68,6 +76,10 @@
     (lambda (p) (new-path-effect who
                   (lambda () (sk_path_effect_create_2d_path m p))))))
 
+;;;
+;;; Mask Filters
+;;;
+
 ; make-table-mask-filter : bytes? -> mask-filter?
 ;   Returns a coverage remapping specified by exactly 256 bytes.
 (define (make-table-mask-filter table)
@@ -97,6 +109,10 @@
   (define h (shader-h who shader))
   (call-with-owned who (list h)
     (lambda (p) (new-mask-filter who (lambda () (sk_maskfilter_new_shader p))))))
+
+;;;
+;;; Noise and Composed Shaders
+;;;
 
 ; noise-shader : symbol? procedure? real? real? exact-integer? real? any/c -> shader?
 ;   Validates noise parameters and constructs an owned shader with the selected native factory.
@@ -144,6 +160,10 @@
   (define sh (shader-h who source))
   (call-with-owned who (list bh dh sh)
     (lambda (b d s) (new-shader who (lambda () (sk_shader_new_blender b d s))))))
+
+;;;
+;;; Arithmetic Blenders and Image Filters
+;;;
 
 ; make-arithmetic-blender : real? real? real? real? [#:enforce-premul? boolean?] -> blender?
 ;   Returns a blender computing k1 S D + k2 S + k3 D + k4 for each normalized premultiplied

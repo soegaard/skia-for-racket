@@ -19,6 +19,10 @@
          checked-frame-size (struct-out dc-frame-size)
          scale-dc-renderer call-with-frame-dc/renderer)
 
+;;;
+;;; Frame Drawing-Context Protocol and Dimensions
+;;;
+
 ; skia-gpu-dc<%> : interface?
 ;   Marks drawing-context objects whose lifetime is restricted to a GPU frame callback.
 (define skia-gpu-dc<%> (interface ()))
@@ -74,6 +78,10 @@
     'native_probe_performed #f 'gui_initialized 'not-probed
     'deferred '(native-handle-brushes arbitrary-combined-text-breaks persistent-gpu-dc)))
 
+;;;
+;;; Logical-to-Physical Renderer Scaling
+;;;
+
 ; scaled-clip : (or/c #f dc-clip?) real? real? -> (or/c #f dc-clip?)
 ;   Maps clip paths from logical coordinates into physical target coordinates without changing fill
 ;   rules.
@@ -123,6 +131,10 @@
      ;; Child pixels already have device scaling. Only the parent clip scales.
      ((dc-renderer/alpha-composite renderer) parent child (clip clipping) opacity))
    (dc-renderer/styles-path-bounds renderer)))
+
+;;;
+;;; Scoped Delivery and Drawing-Context Retirement
+;;;
 
 ; call-with-frame-dc/renderer : dc-renderer/styles? dc-frame-size? any/c any/c [#:background any/c]
 ;   [#:smoothing any/c] [#:clear? boolean?] -> any

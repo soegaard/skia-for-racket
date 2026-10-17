@@ -12,6 +12,11 @@
 (require ffi/unsafe "gpu-native.rkt" "gpu-provider.rkt" "gpu-diagnostic-util.rkt")
 (provide create-gl-interface/native register-gl-interface! release-gl-interface!
          gl-context-interface-info/native gl-context-has-extension?/native)
+
+;;;
+;;; Interface Registry and Native Dispatch
+;;;
+
 (struct interface-record (pointer requested factory))
 ;; Fields:
 ;;   pointer: owned native GL interface. requested: requested interface flavor. factory: selected
@@ -44,6 +49,10 @@
                [(version) resolver-version]
                [else (error 'gl-interface "unknown private operation")])
              arguments)))
+
+;;;
+;;; Resolver Inspection and Interface Assembly
+;;;
 
 ; resolver-version : any/c -> string?
 ;   Copies a bounded GL_VERSION string using the current provider's own glGetString resolver.
@@ -137,6 +146,10 @@
     (gpu-unavailable 'gl-interface
       "~a GL interface unavailable for this host; no different-standard fallback is performed" mode))
   (values interface factory))
+
+;;;
+;;; Registered Interface Lifetime and Queries
+;;;
 
 ; register-gl-interface! : any/c any/c any/c any/c -> void?
 ;   Associates an owned interface reference and selection metadata with one native context.

@@ -13,12 +13,13 @@
 
 (require racket/cmdline "../main.rkt")
 
+;;;
+;;; Gradient and Shader Gallery
+;;;
+
 ;; Visual smoke test for the shader layer: linear, radial, sweep, conical,
 ;; repeated-image, and blended shaders.  Coordinates are deliberately absolute
 ;; so each gradient's domain is visible directly in the panel where it is used.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-gradients : path-string? -> void?
 ;   Renders the gradients example to the selected output destination.

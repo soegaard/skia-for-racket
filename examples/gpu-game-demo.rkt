@@ -14,6 +14,7 @@
 ;;   4. Sprite batching - every sprite drawn by one draw-atlas call per frame.
 ;;
 ;; Run:  racket examples/gpu-game-demo.rkt [--sprites N] [--backend auto|opengl|metal|direct3d]
+
 ;;;
 ;;; Imports and Exports
 ;;;
@@ -22,10 +23,11 @@
          (only-in racket/gui/base frame% timer% queue-callback)
          "../main.rkt" "../gpu.rkt" "../gpu-gui.rkt")
 
+;;;
+;;; Scene and Atlas Dimensions
+;;;
+
 ;; Scene coordinates are fixed; each frame scales them to the real pixel size.
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; W : real?
 ;   Sets the fixed scene width before scaling to the actual window dimensions.
@@ -44,7 +46,7 @@
 (define CELLS 4)          ; number of sprite variants in the sheet
 
 ;;;
-;;; Shader
+;;; Animated Background Shader
 ;;;
 
 ; plasma-source : string?
@@ -69,7 +71,7 @@ SKSL
   )
 
 ;;;
-;;; Static Layer
+;;; Recorded Static Layer
 ;;;
 
 ; record-static-layer : font? -> picture?
@@ -89,8 +91,9 @@ SKSL
        (draw-simple-text c "skia-for-racket · sprite demo" 40 54 font ink)))))
 
 ;;;
-;;; Sprite Sheet
+;;; Sprite Atlas
 ;;;
+
 ;; Drawn on the CPU once; uploaded to the GPU on the first frame.
 
 ; make-sprite-sheet : -> image?
@@ -119,8 +122,9 @@ SKSL
   (for/list ([i (in-range CELLS)]) (list (* i CELL) 0 CELL CELL)))
 
 ;;;
-;;; Simulation
+;;; Sprite Motion
 ;;;
+
 (struct sprites (n x y vx vy angle spin cell))
 ;; n: exact nonnegative sprite count; every following vector has exactly this length.
 ;; x, y: mutable flvectors of scene-space center coordinates.
@@ -155,9 +159,6 @@ SKSL
     (flvector-set! as i (fl+ (flvector-ref as i) (fl* dt (flvector-ref ss i))))))
 
 ;;;
-;;; Main
-;;;
-;;;
 ;;; Command-Line Entry Point
 ;;;
 
@@ -178,6 +179,11 @@ SKSL
 
   (queue-callback
    (lambda ()
+
+     ;;;
+     ;;; Handler-Thread Resources
+     ;;;
+
      ;; Everything below is created on the eventspace handler thread, which is
      ;; also the thread that runs the render callback.
      (define font (make-font #:size 20))
@@ -192,6 +198,10 @@ SKSL
      (define t0 (current-inexact-milliseconds))
      (define last-t t0)
      (define fps 0.0)
+
+     ;;;
+     ;;; Animated Background and Batched Sprite Drawing
+     ;;;
 
      (define (render frame)
        (define c (gpu-frame-canvas frame))
@@ -232,6 +242,10 @@ SKSL
 
          (draw-simple-text c (format "~a sprites · ~a fps" (sprites-n world) (exact-round fps))
                            (- W 260) 54 font hud-paint)))
+
+     ;;;
+     ;;; Window Lifetime and Frame Scheduling
+     ;;;
 
      (define timer #f)
      (define (shutdown!)

@@ -45,13 +45,13 @@
          color-space->descriptor descriptor->color-space
          pixmap-color4f pixmap-alphaf pixmap-fill-color4f! pixmap-set-color4f!)
 
-; raster-buffer? : any/c -> boolean?
-;   Returns #t for a raster buffer, including a closed one, and #f otherwise.
-(define raster-buffer? raster-buffer-resource?)
-
 ;;;
 ;;; Buffer Ownership and Format Metadata
 ;;;
+
+; raster-buffer? : any/c -> boolean?
+;   Returns #t for a raster buffer, including a closed one, and #f otherwise.
+(define raster-buffer? raster-buffer-resource?)
 
 ; buffer-h : symbol? raster-buffer? -> (or/c owned? domain-resource?)
 ;   Checks a raster-buffer wrapper and retrieves its managed storage handle.
@@ -197,6 +197,10 @@
 
 ;; The exclusive lease and continuation barrier are the existing 0.37 protocol.
 
+;;;
+;;; Scoped Pixmap Access
+;;;
+
 ; call-exclusive : symbol? raster-buffer? any/c procedure? -> any/c
 ;   Claims a buffer scope token and clears it on every exit, preventing continuation reentry.
 (define (call-exclusive who b token thunk)
@@ -226,10 +230,6 @@
 ;;  - height-value  exact positive integer     View height in pixels.
 ;; Bounds stay within the owner. Subsets preserve its row stride rather than
 ;; repacking rows, and every access validates the shared lease before using memory.
-
-;;;
-;;; Scoped Pixmap Access
-;;;
 
 ; view-owner : symbol? pixmap? [boolean?] -> raster-buffer?
 ;   Checks thread, lease lifetime, and optional write permission before returning the backing

@@ -16,11 +16,12 @@
 (require racket/file)
 (provide source-definition)
 
+;;;
+;;; Source Definition Extraction
+;;;
+
 ;; Read, but do not evaluate, an example. Display its actual definition rather
 ;; than maintaining a second copy in the manual. Nested local helpers count.
-;;;
-;;; Documentation Data and Helpers
-;;;
 
 ; source-definition : path-string? any/c -> string?
 ;   Returns the actual source text of a named definition without evaluating it.

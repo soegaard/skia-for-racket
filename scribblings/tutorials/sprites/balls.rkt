@@ -16,8 +16,9 @@
 (require racket/cmdline racket/runtime-path skia
          "atlas.rkt" "model.rkt" "scene.rkt")
 (provide open-balls-window)
+
 ;;;
-;;; Drawing Data and Helpers
+;;; Ball Simulation Window
 ;;;
 
 ; host : path?

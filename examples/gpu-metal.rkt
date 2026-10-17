@@ -7,16 +7,9 @@
 ;; Renders a selected shared scene with Metal and saves a CPU-readable result.
 ;; This is an example-suite client of the project's drawing APIs, not library implementation.
 
-;;;
-;;; Imports and Exports
-;;;
-
 (require racket/cmdline racket/file racket/path
          "../main.rkt" "../gpu.rkt" "gpu-scenes.rkt")
 (provide render-metal-example)
-;;;
-;;; Drawing Data and Helpers
-;;;
 
 ; render-metal-example : path-string? [any/c] -> path?
 ;   Renders a named shared scene through Metal and saves the raster readback.
@@ -37,6 +30,7 @@
       (lambda () (gpu-context-close! context))))
   (with-skia ([detached image]) (save-image detached target 'png #:exists 'replace))
   target)
+
 ;;;
 ;;; Command-Line Entry Point
 ;;;

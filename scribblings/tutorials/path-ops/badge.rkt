@@ -18,7 +18,7 @@
          draw-checker draw-shape draw-badge-sheet)
 
 ;;;
-;;; Drawing Data and Helpers
+;;; Boolean Badge Construction
 ;;;
 
 ; circle-path : real? -> path?
@@ -56,6 +56,10 @@
 ;   Constructs badge for the example's drawing pipeline.
 (define (make-badge)
   (hash-ref (make-badge-parts) 'badge))
+
+;;;
+;;; Comparison Sheet Drawing
+;;;
 
 ; draw-checker : canvas? real? real? -> void?
 ;   Draws a checkerboard that makes transparent pixels visible.

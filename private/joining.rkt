@@ -11,6 +11,10 @@
 
 (provide joining-type arabic-kashida-boundaries)
 
+;;;
+;;; Pinned Unicode Joining Properties
+;;;
+
 ;; Unicode 15.1 joining data compacted from ArabicShaping-15.1.0.txt.
 ;; Only the joining types that can participate in cursive connections are
 ;; stored explicitly. Other spacing characters are U (non-joining); combining
@@ -64,6 +68,10 @@ JOINING-DATA
   (unless (char? ch) (raise-argument-error 'joining-type "char?" ch))
   (or (explicit-joining-type (char->integer ch))
       (if (memq (char-general-category ch) '(mn me)) 'T 'U)))
+
+;;;
+;;; Grapheme Clusters and Kashida Boundaries
+;;;
 
 (struct joining-cluster (start end type) #:transparent)
 ;; Fields:

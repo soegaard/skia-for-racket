@@ -59,6 +59,11 @@
 
 (module+ test
   (skia-check!)
+
+  ;;;
+  ;;; Retained Effects and Color Filter Composition
+  ;;;
+
   (test-case "paint retains a dash effect after its input wrapper closes"
     (with-skia ([surface (make-surface 40 8)]
                 [dash (make-dash-path-effect '(8 4))]
@@ -90,6 +95,11 @@
     (with-skia ([a (make-lighting-color-filter (rgba 255 255 255 0) (rgba 0 0 0 255))]
                 [b (make-lighting-color-filter 'white 'black)])
       (check-equal? (filtered-color a "#326DE6") (filtered-color b "#326DE6"))))
+
+  ;;;
+  ;;; Image Filter Graph Inputs
+  ;;;
+
   (test-case "merge false input is the dynamic source rather than an empty branch"
     (with-skia ([shift (make-offset-image-filter 10 0)]
                 [both (make-merge-image-filter (list #f shift))]
@@ -115,6 +125,11 @@
       (skia-close! image)
       (draw-paint (surface-canvas surface) paint)
       (check-equal? (surface-pixel surface 1 1) (color->rgba 'red))))
+
+  ;;;
+  ;;; Runtime Uniforms, Children, and Compilation
+  ;;;
+
   (test-case "runtime instances retain effects and copy uniform values"
     (define uniforms (make-hash (list (cons 'gain 0.5))))
     (with-skia ([effect (make-runtime-effect gain-source)]
@@ -175,6 +190,11 @@
                       (check-true (immutable? (exn:fail:skia-sksl-diagnostics e))))])
       (make-runtime-effect "not valid SkSL")
       (fail "Expected an SkSL compilation exception")))
+
+  ;;;
+  ;;; Custom Blender Ownership and Parameter Order
+  ;;;
+
   (test-case "blender getters are independently owned and false restores source-over"
     (with-skia ([blender (make-arithmetic-blender 0 1 0 0)]
                 [paint (make-paint)])

@@ -14,12 +14,13 @@
          line-break-opportunities
          split-hard-lines)
 
-;; Unicode 15.1 Line_Break property data, compacted from LineBreak-15.1.0.txt.
-;; Each token is START-END:CLASS in hexadecimal code-point order.  The table is
-;; private implementation data for the UAX #14 resolver below.
 ;;;
 ;;; Pinned Line-Break Properties
 ;;;
+
+;; Unicode 15.1 Line_Break property data, compacted from LineBreak-15.1.0.txt.
+;; Each token is START-END:CLASS in hexadecimal code-point order.  The table is
+;; private implementation data for the UAX #14 resolver below.
 
 ; packed-line-break-data : string?
 ;   Stores the pinned Unicode 15.1 line-break ranges as inclusive hexadecimal endpoints and class

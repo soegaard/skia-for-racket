@@ -34,6 +34,11 @@
   (call-with-raster-buffer-pixmap buffer proc #:writable? #t))
 
 (module+ test
+
+  ;;;
+  ;;; Buffer Storage, Padding, and Scoped Views
+  ;;;
+
   (test-case "legacy buffer allocation includes zeroed padding"
     (with-skia ([buffer (make-raster-buffer 2 2 #:row-bytes 12)])
       (check-equal? (raster-buffer-width buffer) 2)
@@ -120,6 +125,10 @@
       (check-equal? (subbytes after 8 12) (bytes 9 8 7 6))
       (check-equal? (subbytes after 20 24) (bytes 5 4 3 2))))
 
+  ;;;
+  ;;; Pixel Formats and Color Conversion
+  ;;;
+
   (test-case "BGRA stored order is distinct from logical sample order"
     (with-skia ([buffer (make-raster-buffer-from-info
                          (make-image-info 1 1 #:color-type 'bgra-8888))])
@@ -173,6 +182,10 @@
           (with-writable destination
             (lambda (dst) (check-exn exn:fail? (lambda () (pixmap-convert! dst src)))))))
       (check-equal? (raster-buffer->storage-bytes destination) before)))
+
+  ;;;
+  ;;; Image Materialization and Detached Results
+  ;;;
 
   (test-case "buffer drawing shares pixels but the resulting image owns a copy"
     (with-skia ([buffer (make-raster-buffer 2 2)])
@@ -252,6 +265,10 @@
       (check-true (surface-properties? properties))
       (check-true (immutable? (surface-properties->jsexpr properties)))))
 
+  ;;;
+  ;;; Output Audit and Raster Groups
+  ;;;
+
   (test-case "preflight and export are two separate authoring executions"
     (define count 0)
     (define page
@@ -311,6 +328,10 @@
       (check-true (output-group-report? rejected))
       (check-equal? (output-group-report-strategy rejected) 'reject)
       (check-equal? (output-group-report-reason rejected) 'vector-required)))
+
+  ;;;
+  ;;; Global Cache and Native Observations
+  ;;;
 
   (test-case "cache setters return previous settings and all changes are restored"
     (for ([get (in-list (list skia-font-cache-limit skia-font-cache-count-limit

@@ -11,6 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
+
 (require rackunit racket/list
          "../private/gpu-presenter.rkt"
          (submod "../private/gpu-presenter.rkt" adapter-internals)
@@ -86,6 +87,11 @@
 (define gpu-presenter-pure-tests
   (test-suite
    "Presentation lifecycle and scheduling with synthetic adapters"
+
+   ;;;
+   ;;; Geometry and Drawable Availability
+   ;;;
+
    (test-case "positive geometry records logical/pixel scale"
      (define m (presentation-metrics 600 300 300 150))
      (check-equal? (hash-ref m 'scale_x) 2.0) (check-true (hash-ref m 'drawable)))
@@ -103,6 +109,11 @@
        (check-exn exn:fail? (lambda () (presentation-metrics 1 1 n 1)))))
    (test-case "visibility is explicitly Boolean"
      (check-exn exn:fail? (lambda () (presentation-metrics 1 1 1 1 #:visible? 'yes))))
+
+   ;;;
+   ;;; Frame Acquisition, Expiration, and Target Generation
+   ;;;
+
    (test-case "initial presenter contains no fabricated presentation result"
      (with-presenter (lambda (p m log q fail)
        (check-eq? (gpu-presenter-state p) 'ready)
@@ -162,6 +173,11 @@
      (with-presenter (lambda (p m log q fail)
        (set-box! fail 'no-drawable) (gpu-presenter-render! p)
        (set-box! fail #f) (check-eq? (gpu-presenter-render! p) 'present-requested))))
+
+   ;;;
+   ;;; Redraw Scheduling and Callback Failures
+   ;;;
+
    (test-case "burst redraw requests coalesce"
      (with-presenter (lambda (p m log q fail)
        (for ([i (in-range 12)]) (gpu-presenter-request-render! p))
@@ -201,6 +217,11 @@
      (with-presenter (lambda (p m log q fail)
        (check-exn exn:fail? (lambda () (gpu-presenter-set-render! p 4)))
        (check-equal? (unbox q) '()))))
+
+   ;;;
+   ;;; Closure, Thread Affinity, and Deferred Cleanup
+   ;;;
+
    (test-case "close invalidates pending redraw and is idempotent"
      (with-presenter (lambda (p m log q fail)
        (gpu-presenter-request-render! p) (gpu-presenter-close! p) (gpu-presenter-close! p)
@@ -330,6 +351,11 @@
          (check-exn #rx"duplicate" (lambda () (register-metal-handles! key 'foreign 'foreign)))
          (check-equal? (call-with-metal-handles key list) '(device queue)))
        (lambda () (forget-metal-handles! key))))
+
+   ;;;
+   ;;; Presentation Completion and Quarantine
+   ;;;
+
    (test-case "presented target cleanup never invokes the abort wait"
      (define log '())
      (call-with-presentation-cleanup

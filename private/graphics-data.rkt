@@ -19,6 +19,10 @@
          make-memory-collector collector-room collector-full? collector-drop!
          collector-add! collector-finish)
 
+;;;
+;;; Cache Limits and Snapshot Budgets
+;;;
+
 ; size-max : exact-positive-integer?
 ;   Bounds byte budgets by the unsigned size_t range of the running platform.
 (define size-max (sub1 (expt 2 (* 8 (ctype-sizeof _size)))))
@@ -51,6 +55,11 @@
                (<= (+ (* entries 128) byte-limit) (current-skia-byte-limit)))
     (error who "snapshot limits exceed per-string/entry caps or current-skia-byte-limit"))
   (void))
+
+;;;
+;;; Detached Statistics and Scope Tags
+;;;
+
 (struct memory-statistic (kind name value-name units value) #:transparent)
 ;; Fields:
 ;;   kind: 'numeric or 'string. name and value-name: copied immutable names. units: immutable unit
@@ -80,6 +89,11 @@
   (if (scoped-memory-statistics? report)
       (scoped-memory-statistics-scope report)
       'process-global-skia-caches))
+
+;;;
+;;; Bounded Collection and Report Serialization
+;;;
+
 (struct memory-collector (limit byte-limit detailed? wrapped? [rows #:mutable]
                                 [count #:mutable] [bytes #:mutable] [dropped #:mutable]))
 ;; Fields:

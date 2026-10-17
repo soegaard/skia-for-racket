@@ -7,6 +7,10 @@
 ;; Implements owned resources, canvas operations, image codecs, documents, and text layout.
 ;; Connects the public Racket API to checked native calls and the shared lifetime protocol.
 
+;;;
+;;; Extension Imports and Private Resource Bridges
+;;;
+
 (require "codec-incremental-state.rkt")
 (require "codec-scanline-state.rkt")
 (require "stream-resource.rkt")
@@ -128,6 +132,10 @@
            new-shader new-color-filter shader-h color-filter-h paint-h
            copy-sk-string call-with-native-temporary))
 
+;;;
+;;; Image Color Conversion and Output Policy
+;;;
+
 ;; Convert *samples*, unlike an ICC metadata override. Untagged input requires
 ;; an explicit source declaration; never silently reinterpret it as sRGB.
 
@@ -195,6 +203,10 @@
 (define current-raster-output-scale
   (make-parameter 1
                   (lambda (v) (raster-output-scale 'current-raster-output-scale v))))
+
+;;;
+;;; Core Imports and Public Exports
+;;;
 
 (require ffi/unsafe
          file/convertible
@@ -319,6 +331,10 @@
          mixed-text-run-origin-x mixed-text-run-width mixed-text-run-direction
          mixed-text-run-level mixed-text-run-script mixed-text-run-family
          layout-mixed-text draw-mixed-text-layout)
+
+;;;
+;;; Surface, Canvas, and Resource Records
+;;;
 
 (struct surface (handle width height [floors #:mutable])
   #:constructor-name make-surface-record
@@ -488,6 +504,10 @@
 ;;   width and height: encoded pixel dimensions before orientation. format, color-type, alpha-type,
 ;;   and origin: codec metadata symbols. frame-count: reported number of image frames. These are
 ;;   detached values and own no decoder.
+
+;;;
+;;; Font, Shaping, and Layout Records
+;;;
 
 (struct font-manager (handle) #:constructor-name make-font-manager-record)
 ;; Fields:
@@ -968,6 +988,10 @@
          call-with-svg-bytes call-with-svg-string call-with-svg-file
          shaped-run->path draw-rasterized)
 
+;;;
+;;; SVG Document Lifecycle
+;;;
+
 ;; SVG output ---------------------------------------------------------------
 ;; Unlike PDF, Skia's SVG backend owns a canvas, not an SkDocument. Deleting
 ;; that canvas closes the XML root. One owned STREAM handle keeps everything
@@ -993,10 +1017,6 @@
 ;;   status: mutable document-state symbol. floors: protected canvas save-count stack. Drawing is
 ;;   legal only in the open document state; final XML is detached from native resources.
 
-
-;;;
-;;; SVG Document Lifecycle
-;;;
 
 ; svg-document-h : symbol? svg-document? -> (or/c owned? domain-resource?)
 ;   Checks svg-document? before returning the wrapper's private lifetime cell.
@@ -1272,6 +1292,10 @@
          call-with-document-page with-document-page
          call-with-pdf-bytes call-with-pdf-file)
 
+;;;
+;;; PDF Document and Page Lifecycle
+;;;
+
 ;; PDF documents ------------------------------------------------------------
 ;; One owned handle releases the document before its borrowed output stream.
 ;; The release closure captures storage, never the wrapper (no finalizer cycle).
@@ -1302,10 +1326,6 @@
 ;;   save-count stack. scoped?: whether the page is managed by a scoped helper. The pointer expires
 ;;   when this page ends, even if the document remains live.
 
-
-;;;
-;;; PDF Document and Page Lifecycle
-;;;
 
 ; document-h : symbol? document? -> (or/c owned? domain-resource?)
 ;   Checks document? before returning the wrapper's private lifetime cell.
@@ -1625,6 +1645,10 @@
      #:raster-dpi raster-dpi #:encoding-quality encoding-quality #:pdfa? pdfa?))
   (write-pdf-file-bytes! 'call-with-pdf-file bs target exists))
 
+;;;
+;;; Color-Space Ownership and ICC Conversion
+;;;
+
 ; optional-color-space-h : symbol? any/c -> any
 ;   Extracts a color-space lifetime cell or preserves #f for an unspecified color space.
 (define (optional-color-space-h who cs)
@@ -1886,11 +1910,11 @@
     (call-with-owned who (list (color-space-h who cs)) sk_colorspace_make_srgb_gamma))
   (wrap-owned-color-space who (lambda () ptr)))
 
-;; Surfaces -----------------------------------------------------------------
-
 ;;;
 ;;; Raster Surfaces and Picture Recording
 ;;;
+
+;; Surfaces -----------------------------------------------------------------
 
 ; make-surface : (integer-in 1 32768) (integer-in 1 32768) [#:background color?] [#:color-space
 ;   (or/c color-space? #f)] -> surface?
@@ -2125,11 +2149,11 @@
     (lambda (out) (write-bytes data out) (void))
     #:mode 'binary #:exists exists))
 
-;; Paint --------------------------------------------------------------------
-
 ;;;
 ;;; Paint State and Retained Attachments
 ;;;
+
+;; Paint --------------------------------------------------------------------
 
 ; make-paint : [#:color color?] [#:style (or/c 'fill 'stroke 'stroke-and-fill)] [#:stroke-width
 ;   (and/c real? (>=/c 0))] [#:antialias? boolean?] [#:cap (or/c 'butt 'round 'square)] [#:join
@@ -2404,6 +2428,10 @@
   (set-paint-filter! 'paint-set-image-filter! p imf image-filter? image-filter-h
                      "(or/c #f image-filter?)" sk_paint_set_imagefilter))
 
+;;;
+;;; Shaders and Gradients
+;;;
+
 ;; Shaders and gradients ----------------------------------------------------
 
 ; gradient-sequence : symbol? any/c any/c -> any
@@ -2472,10 +2500,6 @@
 (define (new-shader who create)
   (skia-check!)
   (make-shader-record (new-owned who 'shader create sk_shader_unref)))
-
-;;;
-;;; Shaders and Effects
-;;;
 
 ; make-color-shader : color? -> shader?
 ;   Returns a shader that produces the same color at every coordinate.
@@ -2622,6 +2646,10 @@
                  (lambda () (sk_shader_new_blend blend dp sp))
                  sk_shader_unref)))))
 
+;;;
+;;; Path Effects and Composition
+;;;
+
 ;; Path effects -------------------------------------------------------------
 
 ; new-path-effect : symbol? any/c -> path-effect?
@@ -2733,6 +2761,10 @@
    (lambda ()
      (call-with-owned who (list fh sh)
        (lambda (fp sp) (sk_path_effect_create_sum fp sp))))))
+
+;;;
+;;; Color, Mask, and Image Filters
+;;;
 
 ;; Color, mask, and image filters ------------------------------------------
 
@@ -2941,11 +2973,11 @@
               (lambda (fp) (sk_imagefilter_new_offset 0.0 0.0 fp cr)))
              (sk_imagefilter_new_compose op ip)))))))
 
-;; Canvas state -------------------------------------------------------------
-
 ;;;
 ;;; Canvas State and Primitive Drawing
 ;;;
+
+;; Canvas state -------------------------------------------------------------
 
 ; canvas-clear! : canvas? color? -> void?
 ;   Replaces the content inside the current clip with color, using source replacement rather than
@@ -3154,11 +3186,11 @@
   (with-skia ([path (make-path (if closed? (append commands '((close))) commands))])
     (draw-path c path p)))
 
-;; Paths --------------------------------------------------------------------
-
 ;;;
 ;;; Mutable Paths and Geometry
 ;;;
+
+;; Paths --------------------------------------------------------------------
 
 ; make-path : [list?] [#:fill-rule (or/c 'winding 'even-odd)] -> skia-path?
 ;   Returns a new path by applying commands in order.
@@ -3330,6 +3362,10 @@
   (call-with-owned who (list (path-h who dest) (path-h who src))
     (lambda (dp sp) (sk_path_add_path_reverse dp sp))))
 
+;;;
+;;; Path Inspection, Serialization, and Bounds
+;;;
+
 ; path-point-count : skia-path? -> exact-nonnegative-integer?
 ;   Returns the number of stored points, including curve controls.
 (define (path-point-count p)
@@ -3443,6 +3479,10 @@
   (call-with-owned 'path-set-fill-rule! (list (path-h 'path-set-fill-rule! p))
     (lambda (pp) (sk_path_set_filltype pp fill))))
 
+;;;
+;;; Boolean Path Operations
+;;;
+
 ;; Boolean path operations --------------------------------------------------
 
 ; path-result : symbol? procedure? -> any
@@ -3513,6 +3553,10 @@
      (call-with-owned who (list ph rh)
        (lambda (pp rp) (sk_pathop_as_winding pp rp))))))
 
+;;;
+;;; Path Measurement
+;;;
+
 ;; Path measurement ---------------------------------------------------------
 
 ; snapshot-native-path : symbol? any/c -> any
@@ -3523,10 +3567,6 @@
       (define snapshot (sk_path_clone pp))
       (unless snapshot (error who "native path snapshot failed"))
       snapshot)))
-
-;;;
-;;; Path Measurement
-;;;
 
 ; make-path-measure : skia-path? [#:force-closed? boolean?] [#:res-scale (and/c real? (>/c 0))] ->
 ;   path-measure?
@@ -3652,11 +3692,11 @@
                    (list (path-measure-h 'path-measure-next-contour! m))
                    sk_pathmeasure_next_contour))
 
-;; Font managers, typefaces, fonts, and text blobs --------------------------
-
 ;;;
 ;;; Font Discovery and Font State
 ;;;
+
+;; Font managers, typefaces, fonts, and text blobs --------------------------
 
 ; make-font-manager : -> font-manager?
 ;   Creates an owned manager using the platform's default font sources.
@@ -4108,6 +4148,10 @@
                     (sk-font-metrics-strikeout-position metrics))
    spacing))
 
+;;;
+;;; Simple Text Measurement and Outlines
+;;;
+
 ; call-with-font+paint : symbol? any/c procedure? any/c -> any
 ;   Supplies a live font pointer and optional paint pointer in the native call's required order.
 (define (call-with-font+paint who f p proc)
@@ -4233,6 +4277,10 @@
         (sk_text_utils_get_path bs (bytes-length bs) text-encoding-utf8
                                 fx fy fp pp)))
     p))
+
+;;;
+;;; Positioned Text Blobs and Drawing
+;;;
 
 ; glyph-sequence : symbol? any/c -> list?
 ;   Copies a glyph list or vector into checked sixteen-bit glyph identifiers.
@@ -4367,6 +4415,10 @@
        (lambda (cp bp pp) (sk_canvas_draw_text_blob cp bp fx fy pp)))]))
 
 
+;;;
+;;; HarfBuzz Shaping
+;;;
+
 ;; HarfBuzz shaping ---------------------------------------------------------
 
 ; copy-font-for-shaper : symbol? any/c any/c -> font?
@@ -4450,10 +4502,6 @@
              (hb_font_set_scale hp hb-font-size-scale hb-font-size-scale)
              (hb_ot_font_set_funcs hp)))
           hb-font))))))
-
-;;;
-;;; HarfBuzz Shaping
-;;;
 
 ; make-shaper : font? -> shaper?
 ;   Creates an owned shaper using a snapshot of font and its typeface data.
@@ -4666,6 +4714,10 @@
   run)
 
 
+;;;
+;;; Line Breaking and Single-Font Layout
+;;;
+
 ;; Paragraph text layout ----------------------------------------------------
 
 ; text-layout-line-count : text-layout? -> exact-nonnegative-integer?
@@ -4705,10 +4757,6 @@
     (and (not (bidi-explicit-control? ch))
          (not (memv ch '(#\newline #\return #\u000B #\u000C
                          #\u0085 #\u2028 #\u2029))))))
-
-;;;
-;;; Line Breaking and Single-Font Layout
-;;;
 
 ; make-layout-break-opportunity : exact-nonnegative-integer? [string?] -> layout-break-opportunity?
 ;   Returns an ordinary break-opportunity value.
@@ -4967,6 +5015,10 @@
                    (reverse (cons line acc))
                    (wrap next-start (cons line acc)))])])))]))
 
+;;;
+;;; Shaped Lines and Paragraph Alignment
+;;;
+
 ; run-horizontal-width : shaped-run? -> any
 ;   Converts signed horizontal run advance to a nonnegative layout width.
 (define (run-horizontal-width run)
@@ -5038,6 +5090,10 @@
     [(start justify justify-all)
      (if (eq? direction 'rtl) (- box-width line-width) 0.0)]
     [(end) (if (eq? direction 'rtl) 0.0 (- box-width line-width))]))
+
+;;;
+;;; Space, CJK, and Kashida Justification
+;;;
 
 ; justification-align? : any/c -> any
 ;   Identifies the two alignment modes that distribute extra horizontal space.
@@ -5522,6 +5578,10 @@
                      p))
   (void))
 
+;;;
+;;; Mixed-Script Shaping and Font Fallback
+;;;
+
 ;; Mixed-script / mixed-direction layout -----------------------------------
 
 ; mixed-text-layout-line-count : mixed-text-layout? -> exact-nonnegative-integer?
@@ -5884,6 +5944,10 @@
           width)))
   (wrap-at-line-breaks paragraph max-width measure))
 
+;;;
+;;; Mixed-Run Justification
+;;;
+
 ; mixed-run-choice : mixed-text-run? -> any
 ;   Reconstructs a detached fallback-font request from a mixed run's saved style fields.
 (define (mixed-run-choice r)
@@ -6040,7 +6104,7 @@
      (values placed target-width #t)]))
 
 ;;;
-;;; Mixed-Text Layout and Drawing
+;;; Mixed-Text Layout
 ;;;
 
 ; layout-mixed-text : shaper? font-manager? string? [#:width (or/c (and/c real? (>/c 0)) #f)]
@@ -6147,7 +6211,7 @@
   (mixed-text-layout sh fm lines box-width height line-step))
 
 ;;;
-;;; Mixed-Script Font Fallback
+;;; Mixed-Text Drawing
 ;;;
 
 ; fallback-choice-from-run : mixed-text-run? -> any
@@ -6213,6 +6277,10 @@
       (for ([sh (in-hash-values cache)]) (skia-close! sh))))
   (void))
 
+;;;
+;;; Image Construction and Encoded Data
+;;;
+
 ;; Images, encoded data, codecs, and copied pixel input ---------------------
 
 ; surface-snapshot : surface? -> image?
@@ -6225,10 +6293,6 @@
        (new-owned 'surface-snapshot 'image
                   (lambda () (sk_surface_new_image_snapshot sp)) sk_image_unref)
        (surface-width s) (surface-height s)))))
-
-;;;
-;;; Image Pixels, Decoding, and Encoding
-;;;
 
 ; rgba-bytes->image : (integer-in 1 32768) (integer-in 1 32768) bytes? [#:premultiplied? boolean?]
 ;   [#:color-space (or/c color-space? #f)] -> image?
@@ -6422,6 +6486,10 @@
   (call-with-encoded-data-from-file
    who filename (lambda (dp) (codec-info-from-data who dp))))
 
+;;;
+;;; Owned Codec Resources
+;;;
+
 ;; Advanced codecs ---------------------------------------------------------
 ;; These resources own immutable encoded data through SkCodec. Frame output
 ;; is an independent raster image; no prior-frame pixel buffer is retained.
@@ -6510,10 +6578,6 @@
        ;; Metadata is safe to inspect without allocating a decoded raster.
        (codec-info c)
        c))))
-
-;;;
-;;; Owned Codec Resources
-;;;
 
 ; codec-from-bytes : bytes? -> codec?
 ;   Constructs a codec from a copy of nonempty encoded bytes.
@@ -6740,6 +6804,10 @@
     (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space cs)))
 
 
+;;;
+;;; Image Metadata and Explicit Pixel Readback
+;;;
+
 ; image-color-type : image? -> symbol?
 ;   Returns the native pixel-format name, such as 'rgba-8888, 'bgra-8888, or 'rgba-f16.
 (define (image-color-type im)
@@ -6789,6 +6857,10 @@
                out (* 4 w) 0 0 0)
         (error who "native image pixel read failed"))))
   out)
+
+;;;
+;;; Image Encoding and Saving
+;;;
 
 ; call-with-image-pixmap : symbol? any/c any/c -> any
 ;   Scopes a raster image and borrowed pixmap so encoding never uses expired pixel storage.
@@ -6862,10 +6934,6 @@
                    (encode-pixmap-to-bytes who pixmap encoder options))))]
              [else
               (encode-pixmap-to-bytes who pixmap encoder options)]))))))))
-
-;;;
-;;; Image Encoding and Saving
-;;;
 
 ; image->png-bytes : image? [#:compression (integer-in 0 9)] [#:color-space (or/c color-space? #f)]
 ;   [#:icc-profile (or/c bytes? #f)] [#:icc-description (or/c string? #f)] -> bytes?
@@ -7061,6 +7129,10 @@
     (draw-picture (surface-canvas surface) pic #:width width #:height height)
     (surface-snapshot surface)))
 
+;;;
+;;; Multi-Run Text Outline Replay
+;;;
+
 ;; 0.69: retained multi-run replay. The legacy single-run route stays unchanged.
 
 ; path-native-verb-count : any/c -> any
@@ -7122,8 +7194,13 @@
               [else (void)])))
         result))))
 
+;;;
+;;; Specialized Canvas Ownership and Private Bridges
+;;;
+
 ;; 0.74 internal owners. No constructor, native handle, or lifetime token is
 ;; exported by main.rkt. A special canvas always expires at callback exit.
+
 (struct recorded-drawable (handle width height) #:constructor-name make-drawable-record)
 ;; Fields:
 ;;   handle: owned native drawable. width and height: recording extents in local drawing units.

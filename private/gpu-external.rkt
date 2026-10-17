@@ -12,6 +12,11 @@
 (require racket/future "gpu-backends.rkt")
 (provide gpu-external-texture? gpu-external-texture-info gpu-external-texture-close!
          gpu-import-image call-with-gpu-external-surface)
+
+;;;
+;;; Single-Use Texture Tokens
+;;;
+
 (struct external-texture
   (backend context generation owner description check operate retire observe [state #:mutable]))
 ;; Fields:
@@ -68,6 +73,10 @@
     (set-external-texture-state! t 'retired)
     ((external-texture-retire t)))
   (void))
+
+;;;
+;;; Checked External Texture Operations
+;;;
 
 ; run : symbol? any/c external-texture? any/c any/c -> any
 ;   Consumes one ready texture handoff in its exact context and expires the callback lease on every

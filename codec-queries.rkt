@@ -18,6 +18,10 @@
          (submod "private/core.rkt" codec-query-internals))
 (provide codec-scaled-dimensions codec-supported-subset)
 
+;;;
+;;; Scaled Dimensions and Supported Subsets
+;;;
+
 ; source-size : symbol? cpointer? -> (values exact-positive-integer? exact-positive-integer?)
 ;   Reads and validates the codec's source width and height.
 (define (source-size who ptr)
