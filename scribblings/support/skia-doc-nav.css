@@ -204,7 +204,7 @@
   outline-offset: 2px;
 }
 
-/* The wash is an optional, wide-screen identity cue.  Script applies the
+/* The edge bar is an optional, wide-screen identity cue.  Script applies the
    ready class only when there is a real unused right margin for it. */
 @media (min-width: 40rem) {
   @supports selector(body:has(.skia-doc-nav-shell)) {
@@ -220,17 +220,44 @@
       pointer-events: none;
     }
 
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--reference)::before,
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--guide)::before,
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--tutorials)::before {
+      content: "";
+      position: fixed;
+      z-index: 11;
+      top: 50%;
+      right: calc(var(--skia-doc-edge-wash-inset, 0px) + 1.5rem);
+      transform: translate(50%, -50%) rotate(-90deg);
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 750;
+      letter-spacing: 0.18em;
+      line-height: 1;
+      text-align: center;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
     html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--reference)::after {
       background: var(--skia-doc-reference);
     }
+
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--reference)::before { content: "REFERENCE"; }
 
     html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--guide)::after {
       background: var(--skia-doc-guide);
     }
 
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--guide)::before { content: "GUIDE"; }
+
     html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--tutorials)::after {
       background: var(--skia-doc-tutorials);
     }
+
+    html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--tutorials)::before { content: "TUTORIALS"; }
   }
 }
 
@@ -245,9 +272,12 @@
   .skia-doc-nav__collection-link { color: LinkText; border-bottom-color: CanvasText; }
   .skia-doc-nav__collection-link[aria-current] { color: HighlightText; background: Highlight; border-bottom-color: HighlightText; }
   .skia-doc-nav__panel { border-color: CanvasText; background: Canvas; color: CanvasText; box-shadow: none; }
+  body:has(.skia-doc-nav-shell)::before,
   body:has(.skia-doc-nav-shell)::after { display: none; }
 }
 
 @media print {
-  .skia-doc-nav-shell, body:has(.skia-doc-nav-shell)::after { display: none; }
+  .skia-doc-nav-shell,
+  body:has(.skia-doc-nav-shell)::before,
+  body:has(.skia-doc-nav-shell)::after { display: none; }
 }
