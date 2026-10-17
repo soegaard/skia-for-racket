@@ -1,6 +1,25 @@
 #lang racket/base
+
+;;;
+;;; Canvas Doctor
+;;;
+
+;; Exercises canvas state, geometric queries, clipping, and drawing and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt")
 (provide canvas-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; canvas-doctor! : -> void?
+;;   Checks native arcs, rounded rectangles, clip queries, layer opacity, and SVG layer auditing.
 (define (canvas-doctor!)
   (with-skia ([s (make-surface 50 40 #:background 'white)]
               [red (make-paint #:color 'red)]

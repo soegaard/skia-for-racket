@@ -1,9 +1,28 @@
 #lang racket/base
+
+;;;
+;;; DC Style Pure Test
+;;;
+
+;; Covers dC style preparation without Skia.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list (prefix-in rd: racket/draw)
          "../private/dc-class.rkt" "../private/dc-support.rkt" "../private/dc-styles.rkt"
          "../private/dc-bitmap.rkt" "../private/dc-style-math.rkt"
          "dc-style-math-test.rkt" "dc-style-fixtures.rkt")
 (provide dc-style-pure-tests dc-style-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; with-dc : procedure? -> any
+;;   Scopes a recording-only style DC and exposes its ordered event log.
 (define (with-dc proc)
   (define events (box '()))
   (define renderer (dc-renderer (lambda (w h) #t) void
@@ -11,9 +30,25 @@
                                 (lambda args (void)) values (lambda args #"") (lambda args #"")))
   (define dc (new (make-skia-dc-class renderer) [width 64] [height 64] [smoothing 'smoothed]))
   (dynamic-wind void (lambda () (proc dc events)) (lambda () (send dc close))))
+
+; last-ink : box? -> any/c
+;;   Retrieves the prepared ink specification from the latest recorded drawing.
 (define (last-ink events) (dc-draw-ink (last (unbox events))))
+
+; draw-brush : dc<%> brush% -> void?
+;;   Exercises brush preparation on one fixed-size fill rectangle.
 (define (draw-brush dc b) (fill-with dc b 0 0 16 16))
+
+; dc-style-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-style-pure-test-count 24)
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-style-pure-tests : test-suite?
+;;   Collects the regression cases for dC style preparation without Skia.
 (define dc-style-pure-tests
   (test-suite "DC style preparation without Skia"
    (test-case "45 production math cases" (check-equal? (run-dc-style-math-tests) 45))
@@ -34,12 +69,17 @@
                      '(8.0 24.0 0.0 8.0 24.0 8.0)))))
    (test-case "gradient stops are sorted stably"
      (with-dc (lambda (dc e)
-       (draw-brush dc (rd:make-brush #:gradient (linear (list (list 1 (color 0 0 255)) (list 0 (color 255 0 0))))))
-       (check-equal? (map car (vector-ref (dc-paint-source-data (dc-ink/style-source (last-ink e))) 2)) '(0.0 1.0)))))
+       (draw-brush dc
+         (rd:make-brush #:gradient (linear (list (list 1 (color 0 0 255)) (list 0 (color 255 0 0))))))
+       (check-equal?
+         (map car (vector-ref (dc-paint-source-data (dc-ink/style-source (last-ink e))) 2))
+         '(0.0 1.0)))))
    (test-case "zero stop gradient is supported"
      (check-not-exn (lambda () (dc-check-brush (rd:make-brush #:gradient (linear '()))))))
    (test-case "one stop gradient is supported"
-     (check-not-exn (lambda () (dc-check-brush (rd:make-brush #:gradient (linear (list (list 0.2 (color 1 2 3)))))))))
+     (check-not-exn
+       (lambda () (dc-check-brush
+                    (rd:make-brush #:gradient (linear (list (list 0.2 (color 1 2 3)))))))))
    (test-case "nonfinite gradient geometry is rejected before selection"
      (with-dc (lambda (dc e)
        (define old (send dc get-brush))
@@ -55,15 +95,18 @@
    (test-case "brush transformation replaces rather than composes with DC"
      (with-dc (lambda (dc e)
        (send dc set-origin 8 0) (send dc set-scale 2 2)
-       (draw-brush dc (rd:make-brush #:gradient (linear) #:transformation '#(#(1 0 0 1 0 0) 0 0 1 1 0)))
-       (check-equal? (dc-paint-source-matrix (dc-ink/style-source (last-ink e))) '#(0.5 0.0 0.0 0.5 -4.0 0.0)))))
+       (draw-brush dc
+         (rd:make-brush #:gradient (linear) #:transformation '#(#(1 0 0 1 0 0) 0 0 1 1 0)))
+       (check-equal? (dc-paint-source-matrix (dc-ink/style-source (last-ink e)))
+         '#(0.5 0.0 0.0 0.5 -4.0 0.0)))))
    (test-case "stipple uses immutable copied pixels"
      (with-dc (lambda (dc e) (draw-brush dc (rd:make-brush #:stipple (tile)))
        (define data (dc-paint-source-data (dc-ink/style-source (last-ink e))))
        (check-true (immutable? (dc-bitmap-data-pixels data))))))
    (test-case "stipple backing scale is not destination scale"
      (with-dc (lambda (dc e) (draw-brush dc (rd:make-brush #:stipple (tile 2)))
-       (check-equal? (dc-paint-source-matrix (dc-ink/style-source (last-ink e))) '#(0.5 0.0 0.0 0.5 0.0 0.0)))))
+       (check-equal? (dc-paint-source-matrix (dc-ink/style-source (last-ink e)))
+         '#(0.5 0.0 0.0 0.5 0.0 0.0)))))
    (test-case "gradient source wins over stipple"
      (with-dc (lambda (dc e) (draw-brush dc (rd:make-brush #:gradient (linear) #:stipple (tile)))
        (check-eq? (dc-paint-source-kind (dc-ink/style-source (last-ink e))) 'gradient))))
@@ -84,9 +127,11 @@
      (with-dc (lambda (dc e)
        (define bm (tile)) (define b (rd:make-brush #:stipple bm))
        (draw-brush dc b)
-       (define first (dc-bitmap-data-pixels (dc-paint-source-data (dc-ink/style-source (last-ink e)))))
+       (define first
+         (dc-bitmap-data-pixels (dc-paint-source-data (dc-ink/style-source (last-ink e)))))
        (send bm set-argb-pixels 0 0 1 1 (bytes 255 12 34 56)) (draw-brush dc b)
-       (check-not-equal? first (dc-bitmap-data-pixels (dc-paint-source-data (dc-ink/style-source (last-ink e))))))))
+       (check-not-equal? first
+         (dc-bitmap-data-pixels (dc-paint-source-data (dc-ink/style-source (last-ink e))))))))
    (test-case "gradient color mutation does not mutate earlier command"
      (with-dc (lambda (dc e)
        (define c (color 255 0 0)) (define b (rd:make-brush #:gradient (linear (list (list 0 c)))))
@@ -104,5 +149,6 @@
        (send dc close) (check-not-exn (lambda () (send b set-style 'solid))))))
    (test-case "monochrome xor pixels equal solid"
      (define bm (mono-tile))
-     (define (snapshot s) (dc-bitmap-data-pixels (dc-bitmap-snapshot 'test bm s (color 255 0 0) #f (color 0 0 255))))
+     (define (snapshot s)
+       (dc-bitmap-data-pixels (dc-bitmap-snapshot 'test bm s (color 255 0 0) #f (color 0 0 255))))
      (check-equal? (snapshot 'xor) (snapshot 'solid)))))

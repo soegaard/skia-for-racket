@@ -1,5 +1,143 @@
 # Racket Skia — 0.75
 
+## Source directory guide
+
+The root Racket modules are public entry points and detached value types.
+[main.rkt](main.rkt) assembles the default `skia` import; GUI, GPU, and
+interoperability entry points are selected explicitly. Implementations and native
+ownership machinery live in [private/](private/README.md). Source comments follow
+[house-style.md](house-style.md).
+
+| Directory | Contents |
+| --- | --- |
+| [private/](private/README.md) | Core implementation, validation, native bindings, resource lifetimes, and backend adapters. |
+| [unsafe/](unsafe/README.md) | Explicit native-pointer ingress for Metal and Direct3D interoperability. |
+| [examples/](examples/README.md) | Runnable demonstrations and public API usage examples. |
+| [scribblings/](scribblings/README.md) | Reference/tutorial sources, example modules, supporting code, and checked visual assets. |
+| [tests/](tests/README.md) | Pure regressions, native rendering checks, and opt-in GPU/GUI tests. |
+| [tools/](tools/README.md) | Installers, validators, ABI probes, evidence collectors, and documentation tooling. |
+| [docs/](docs/README.md) | Maintainer-facing design, contracts, compatibility notes, and validation instructions. |
+| [api/](api/README.md) | Reviewed capability, public-signature, Reference-coverage, and release-policy inventories. |
+| [native/](native/README.md) | Installation destination for separately obtained native libraries. |
+| [plans/](plans/README.md) | Implementation/editorial plans and progress records. |
+| [.github/](.github/README.md) | CI, opt-in acceptance, documentation publication, and dependency-update configuration. |
+
+### Root module map
+
+The modules below are grouped by responsibility, not by dependency order.
+Re-export facades may delegate their implementation to private modules; a public
+filename does not imply that it is included in the default import.
+
+<details>
+<summary>Entry points and package support</summary>
+
+| Module | Responsibility |
+| --- | --- |
+| [main.rkt](main.rkt) | Collects the default drawing, image, geometry, text, document, and stream interfaces. |
+| [info.rkt](info.rkt) | Declares package dependencies, registered manuals, test exclusions, and command-line tools. |
+| [run-tests.rkt](run-tests.rkt) | Runs the package's selected Racket test modules. |
+| [native-capabilities.rkt](native-capabilities.rkt) | Exposes the package's native capability declarations. |
+
+</details>
+
+<details>
+<summary>Drawing, geometry, and effects</summary>
+
+| Module | Responsibility |
+| --- | --- |
+| [canvas-primitives.rkt](canvas-primitives.rkt) | Draws points, arcs, rounded rectangles, and colors and manages canvas clips and layers. |
+| [advanced-layers.rkt](advanced-layers.rkt) | Applies checked layer options to native canvas save/restore scopes. |
+| [layer-options.rkt](layer-options.rkt) | Defines immutable layer bounds and compositing-flag requests. |
+| [specialized-canvases.rkt](specialized-canvases.rkt) | Supplies no-draw, multi-target, and overdraw canvases to bounded callbacks. |
+| [matrix.rkt](matrix.rkt) | Constructs and combines detached affine transformations and maps points, vectors, and rectangles. |
+| [projective-matrix.rkt](projective-matrix.rkt) | Constructs, combines, inverts, and applies detached 3-by-3 and 4-by-4 matrices. |
+| [canvas-matrix.rkt](canvas-matrix.rkt) | Reads and applies 3-by-3 and 4-by-4 canvas transformation matrices. |
+| [geometry.rkt](geometry.rkt) | Extends path construction, geometric inspection, paint queries, and region and rounded-rectangle operations. |
+| [geometry-primitives.rkt](geometry-primitives.rkt) | Constructs integer regions, vertex meshes, image lattices, atlas transforms, and cubic patches. |
+| [portable-drawing.rkt](portable-drawing.rkt) | Draws markers, sliced images, lattices, and atlases through explicit portable paths. |
+| [effects.rkt](effects.rkt) | Constructs additional path effects, masks, procedural shaders, and compositing effects. |
+| [runtime-effects.rkt](runtime-effects.rkt) | Compiles SkSL effects, reflects uniforms and children, and constructs shader, filter, or blender instances. |
+| [pictures.rkt](pictures.rkt) | Queries, serializes, loads, and samples recorded native pictures. |
+| [drawables.rkt](drawables.rkt) | Wraps recorded pictures as drawables and exposes drawing, bounds, and change queries. |
+
+</details>
+
+<details>
+<summary>Images, color, pixels, and codecs</summary>
+
+| Module | Responsibility |
+| --- | --- |
+| [color.rkt](color.rkt) | Normalizes named and packed colors into RGBA byte values. |
+| [color4f.rkt](color4f.rkt) | Defines detached extended-range float colors with explicit alpha semantics. |
+| [color-space.rkt](color-space.rkt) | Constructs transfer functions, RGB spaces, and XYZ-D50 conversion matrices. |
+| [color-filters.rkt](color-filters.rkt) | Constructs channel-table, gamma, lighting, luma, and contrast filters. |
+| [float-colors.rkt](float-colors.rkt) | Uses extended-range color values in paints, canvas fills, and gradient shaders. |
+| [image-info.rkt](image-info.rkt) | Describes image dimensions, pixel formats, alpha interpretation, and color-space metadata. |
+| [image-operations.rkt](image-operations.rkt) | Queries image properties and performs materialization, pixel transfers, scaling, and filtering. |
+| [raster-buffers.rkt](raster-buffers.rkt) | Owns formatted pixel storage and lends checked pixmap or canvas access to callbacks. |
+| [surface-properties.rkt](surface-properties.rkt) | Describes native pixel geometry and supported surface-rendering flags. |
+| [codec-queries.rkt](codec-queries.rkt) | Queries decoder-supported scaled dimensions and subset rectangles. |
+| [codec-scanlines.rkt](codec-scanlines.rkt) | Creates sequential decoder sessions and reads or skips output rows. |
+| [codec-incremental.rkt](codec-incremental.rkt) | Feeds encoded input to a stateful decoder and exposes progress and copied pixel snapshots. |
+| [graphics.rkt](graphics.rkt) | Queries and configures native font and resource caches and requests explicit cache purges. |
+
+</details>
+
+<details>
+<summary>Text, output, and streams</summary>
+
+| Module | Responsibility |
+| --- | --- |
+| [fonts.rkt](fonts.rkt) | Configures native font behavior and queries glyph metrics, positions, and outlines. |
+| [typefaces.rkt](typefaces.rkt) | Loads typefaces, queries font styles and tables, and copies native font data. |
+| [text-blobs.rkt](text-blobs.rkt) | Builds text blobs from ordered glyph runs and places shaped glyphs along paths. |
+| [output.rkt](output.rkt) | Describes physical output pages and renders them to images, PDF, or SVG. |
+| [output-policy.rkt](output-policy.rkt) | Describes backend capabilities and classifies output-audit events and reports. |
+| [output-audit.rkt](output-audit.rkt) | Analyzes output pages and returns reports alongside encoded or saved document output. |
+| [output-groups.rkt](output-groups.rkt) | Records a drawing group and chooses its permitted native or raster output representation. |
+| [annotations.rkt](annotations.rkt) | Adds PDF/SVG links and named destinations through validated canvas operations. |
+| [streams.rkt](streams.rkt) | Wraps native memory and file streams with checked seeking, copying, and byte transfer operations. |
+| [stream-inputs.rkt](stream-inputs.rkt) | Constructs codecs, typefaces, pictures, and images from native streams or buffered ports. |
+| [file-streams.rkt](file-streams.rkt) | Opens native output streams for files and exposes explicit flushing. |
+| [live-streams.rkt](live-streams.rkt) | Reads and writes encoded images, pictures, and documents through Racket ports. |
+
+</details>
+
+<details>
+<summary>Racket drawing and GUI bridges</summary>
+
+| Module | Responsibility |
+| --- | --- |
+| [bitmap.rkt](bitmap.rkt) | Copies Skia surfaces and images into Racket bitmap objects. |
+| [racket-draw.rkt](racket-draw.rkt) | Copies bitmaps, colors, and paths between Racket draw values and Skia values. |
+| [pict.rkt](pict.rkt) | Converts Skia images, surfaces, and recorded pictures into Racket pict values. |
+| [dc.rkt](dc.rkt) | Exposes the Skia-backed raster drawing-context class and its capability query. |
+| [dc-output.rkt](dc-output.rkt) | Supplies Skia drawing contexts to document callbacks and supports explicit raster groups and annotations. |
+| [canvas.rkt](canvas.rkt) | Presents a persistent Skia drawing context through Racket GUI canvas and window behavior. |
+| [render-canvas.rkt](render-canvas.rkt) | Selects a raster or GPU canvas implementation behind a common callback-oriented interface. |
+
+</details>
+
+<details>
+<summary>Opt-in GPU interfaces</summary>
+
+| Module | Responsibility |
+| --- | --- |
+| [gpu.rkt](gpu.rkt) | Creates and scopes GPU contexts and exposes rendering, state, and shutdown operations. |
+| [gpu-context-options.rkt](gpu-context-options.rkt) | Validates detached options used to construct native GPU contexts. |
+| [gpu-diagnostics.rkt](gpu-diagnostics.rkt) | Queries native memory statistics and OpenGL interface capabilities. |
+| [gpu-egl.rkt](gpu-egl.rkt) | Creates headless EGL contexts or providers for an already-current EGL context. |
+| [gpu-racket-gl.rkt](gpu-racket-gl.rkt) | Adapts a Racket GUI OpenGL context to a GPU provider. |
+| [gpu-interop.rkt](gpu-interop.rkt) | Re-exports common GPU interoperability operations and guarded transfer support. |
+| [gpu-gl-interop.rkt](gpu-gl-interop.rkt) | Exposes the supported OpenGL resource-sharing operations. |
+| [gpu-gui.rkt](gpu-gui.rkt) | Hosts GPU presenters in Racket GUI canvases and windows. |
+| [gpu-dc.rkt](gpu-dc.rkt) | Supplies drawing-context adapters during a GPU frame or surface callback. |
+| [gpu-canvas.rkt](gpu-canvas.rkt) | Presents frame-scoped Skia drawing contexts in Racket GUI canvases and windows. |
+| [gpu-output.rkt](gpu-output.rkt) | Runs explicit document raster-fallback work using a live GPU context. |
+
+</details>
+
+
 ## Integer pixel storage and image information
 
 [0.70 integer pixels](docs/INTEGER-PIXELS.md) adds detached image metadata,

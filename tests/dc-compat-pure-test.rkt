@@ -1,19 +1,53 @@
 #lang racket/base
+
+;;;
+;;; DC Compat Pure Test
+;;;
+
+;; Covers dC compatibility contracts; recording renderer, no Skia pixels.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list racket/vector
          (prefix-in rd: racket/draw)
          "../private/dc-support.rkt" "../private/dc-class.rkt"
          "../private/dc-text-spec.rkt" "../private/dc-bitmap.rkt"
          (only-in "../private/check.rkt" current-skia-byte-limit))
 (provide dc-compat-pure-tests dc-compat-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; test-font : font%
+;;   Provides a fixed Arial pixel-sized font for request translation.
 (define test-font (rd:make-font #:face "Arial" #:size 16 #:size-in-pixels? #t))
+
+; request : string? [any/c exact-nonnegative-integer?] -> dc-text-request?
+;;   Builds a checked text request for the shared fixture font.
 (define (request text [mode #f] [offset 0]) (dc-text-description 'test text test-font mode offset))
+
+; bitmap : exact-positive-integer? exact-positive-integer? bytes? [boolean? real?] -> bitmap%
+;;   Loads unscaled ARGB bytes into a bitmap whose backing dimensions are rounded upward.
 (define (bitmap w h pixels [alpha? #t] [backing 1.0])
   (define bm (rd:make-bitmap w h alpha? #:backing-scale backing))
   (send bm set-argb-pixels 0 0 (inexact->exact (ceiling (* w backing)))
         (inexact->exact (ceiling (* h backing))) pixels #f #f #:unscaled? #t)
   bm)
+
+; red : color%
+;;   Provides an opaque Racket Draw red fixture.
 (define red (make-object rd:color% 255 0 0))
+
+; blue : color%
+;;   Provides an opaque Racket Draw blue fixture.
 (define blue (make-object rd:color% 0 0 255))
+
+; fresh : -> (values dc<%> box?)
+;;   Creates a recording-only DC and its event log for compatibility checks.
 (define (fresh)
   (define events (box '()))
   (define (record . e) (set-box! events (cons e (unbox events))) (void))
@@ -28,8 +62,19 @@
      (lambda (_s . xs) (apply record 'bitmap xs))
      (lambda (_s . xs) (apply record 'copy xs))))
   (values (new (make-skia-dc-class renderer) [width 64] [height 48]) events))
+
+; first-clip-point : dc-clip? -> any/c
+;;   Extracts the first command of the first stored clipping path.
 (define (first-clip-point clip)
   (car (dc-clip-path-commands (car (dc-clip-paths clip)))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-compat-pure-tests : test-suite?
+;;   Collects the regression cases for dC compatibility contracts; recording renderer, no Skia
+;;   pixels.
 (define dc-compat-pure-tests
   (test-suite
    "DC compatibility contracts; recording renderer, no Skia pixels"
@@ -116,7 +161,8 @@
                    (bytes 195 0 0 195)))
    (test-case "bad mask size fails before drawing"
      (define bm (bitmap 1 1 (bytes 255 255 0 0)))
-     (check-exn exn:fail:contract? (lambda () (dc-bitmap-snapshot 'test bm 'solid red (rd:make-bitmap 2 1) blue))))
+     (check-exn exn:fail:contract?
+       (lambda () (dc-bitmap-snapshot 'test bm 'solid red (rd:make-bitmap 2 1) blue))))
    (test-case "bitmap snapshot detaches source mutation"
      (define bm (bitmap 1 1 (bytes 255 255 0 0)))
      (define before (dc-bitmap-snapshot 'test bm 'solid red #f blue))
@@ -129,7 +175,8 @@
      (check-equal? (list (dc-bitmap-data-width data) (dc-bitmap-data-height data)) '(2 2)))
    (test-case "partial source rectangle shifts destination without stretching"
      (define data (dc-bitmap-data 4 4 1 4 4 #""))
-     (check-equal? (dc-bitmap-source-rect 'test data -2 0 4 4 10 10 8 8) '#(0.0 0.0 2.0 4.0 14.0 10.0 4.0 8.0)))
+     (check-equal? (dc-bitmap-source-rect 'test data -2 0 4 4 10 10 8 8)
+       '#(0.0 0.0 2.0 4.0 14.0 10.0 4.0 8.0)))
    (test-case "outside source is empty"
      (check-false (dc-bitmap-source-rect 'test (dc-bitmap-data 4 4 1 4 4 #"") 10 0 2 2 0 0 2 2)))
    (test-case "bitmap method applies DC alpha, not text foreground"
@@ -156,7 +203,8 @@
      (send p rectangle 0 0 10 10) (send p rectangle 2 2 4 4)
      (define r (new rd:region%)) (send r set-path p 0 0 'odd-even)
      (send dc set-clipping-region r) (send dc clear)
-     (check-eq? (dc-clip-path-rule (car (dc-clip-paths (second (car (unbox e)))))) 'odd-even) (send dc close))
+     (check-eq? (dc-clip-path-rule (car (dc-clip-paths (second (car (unbox e)))))) 'odd-even)
+     (send dc close))
    (test-case "selected region locks and replacement unlocks"
      (define-values (dc e) (fresh)) (define r (new rd:region%)) (send r set-rectangle 0 0 1 1)
      (send dc set-clipping-region r)
@@ -178,4 +226,7 @@
      (define-values (dc e) (fresh)) (send dc set-scale 0 1)
      (send dc draw-text "x" 0 0) (send dc draw-bitmap (bitmap 1 1 (bytes 255 255 0 0)) 0 0)
      (send dc copy 0 0 1 1 2 2) (check-equal? (unbox e) '()) (send dc close))))
+
+; dc-compat-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-compat-pure-test-count 36)

@@ -1,7 +1,31 @@
 #lang racket
+
+;;;
+;;; Squadron Model Test
+;;;
+
+;; Checks Squadron tutorial behavior with focused regression tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit "model.rkt" "../support/sprite-math.rkt")
+;;;
+;;; Test Data and Helpers
+;;;
+
+; none : any/c -> boolean?
+;;   Models an input state in which no key is held.
 (define (none _) #f)
+; keys : any/c ... -> procedure?
+;;   Builds a held-key predicate for deterministic simulation tests.
 (define (keys . names) (lambda (name) (and (member name names) #t)))
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
   (test-case "new game has three lives and two enemy types"
     (define world (make-game))

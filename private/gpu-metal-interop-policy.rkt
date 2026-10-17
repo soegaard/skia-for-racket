@@ -1,21 +1,40 @@
 #lang racket/base
+
+;;;
+;;; Metal Interoperation Policy
+;;;
+
+;; Validates supported texture shapes, formats, and synchronization outcomes.
+;; Keeps Metal sharing constraints explicit before wrapping external textures.
+
 ;; Pure Metal 3-era MTLCommandQueue contracts; not Metal 4 queue interop.
 (provide metal-timeout! metal-check-texture! metal-wait-completed!
          (struct-out exn:fail:metal-interop) metal-interop-fail)
 (struct exn:fail:metal-interop exn:fail (reason) #:transparent)
+;; Fields:
+;;   reason: symbolic failure classification used in detached interoperation diagnostics. Inherited
+;;   fields hold the diagnostic message and continuation marks.
+
+; metal-interop-fail : any/c any/c any/c ... -> none/c
+;;   Raises a Metal-specific failure with a stable reason tag for diagnostics.
 (define (metal-interop-fail reason message . xs)
   (raise (exn:fail:metal-interop (apply format message xs)
                                (current-continuation-marks) reason)))
+; metal-timeout! : exact-positive-integer? -> exact-positive-integer?
+;;   Checks the finite timeout accepted by native command-buffer completion waits.
 (define (metal-timeout! n)
   (unless (and (exact-positive-integer? n) (<= n 60000))
     (raise-argument-error 'metal-interop "exact timeout in [1, 60000] milliseconds" n))
   n)
+; metal-check-texture! : hash? [any/c] -> hash?
+;;   Validates external texture shape, format, usage, and optional render-target requirements.
 (define (metal-check-texture! d [render? #f])
   (unless (and (hash? d)
                (for/and ([k '(width height depth levels array_length samples format texture_type
                                    usage storage_mode hazard_tracking_mode)])
                  (exact-nonnegative-integer? (hash-ref d k #f)))
-               (for/and ([k '(same_device framebuffer_only has_parent has_buffer has_heap has_iosurface shareable has_remote_storage
+               (for/and ([k '(same_device framebuffer_only has_parent has_buffer has_heap
+                 has_iosurface shareable has_remote_storage
                                          producer_retained_references)])
                  (boolean? (hash-ref d k 'missing))))
     (metal-interop-fail 'descriptor "incomplete native Metal texture description"))
@@ -31,7 +50,8 @@
                (positive? (bitwise-and (hash-ref d 'usage) 1)) ; explicit ShaderRead
                (zero? (bitwise-and (hash-ref d 'usage) (bitwise-not 5))) ; ShaderRead | RenderTarget
                (hash-ref d 'producer_retained_references)
-               (for/and ([k '(framebuffer_only has_parent has_buffer has_heap has_iosurface shareable has_remote_storage)])
+               (for/and ([k '(framebuffer_only has_parent has_buffer has_heap has_iosurface shareable
+                 has_remote_storage)])
                  (not (hash-ref d k))))
     (metal-interop-fail 'descriptor
       "requires tracked, non-view/non-heap, single-level/sample RGBA8Unorm 2D storage with explicit ShaderRead usage"))
@@ -41,6 +61,10 @@
 ;; Every status/error query is one short native call. No native pool spans
 ;; sleep, a callback or the whole polling interval. The private injection
 ;; points make exact deadline/status behavior testable without a GPU.
+; metal-wait-completed! : any/c procedure? exact-positive-integer? [#:clock any/c] [#:pause
+;   procedure?] -> any
+;;   Polls command-buffer status until completion, failure, or the bounded timeout, preserving
+;;   native error text.
 (define (metal-wait-completed! status error-text timeout
                                #:clock [clock current-inexact-monotonic-milliseconds]
                                #:pause [pause sleep])
@@ -54,5 +78,6 @@
       [(eqv? s 5) (metal-interop-fail 'command-error "Metal command buffer failed: ~a" (error-text))]
       [(not (memv s '(2 3)))
        (metal-interop-fail 'uncommitted "expected a committed Metal command buffer; status ~a" s)]
-      [(>= elapsed timeout) (metal-interop-fail 'timeout "Metal completion timed out after ~a ms" timeout)]
+      [(>= elapsed timeout) (metal-interop-fail 'timeout "Metal completion timed out after ~a ms"
+        timeout)]
       [else (pause (/ (min 1 (- timeout elapsed)) 1000.0)) (loop (add1 polls))])))

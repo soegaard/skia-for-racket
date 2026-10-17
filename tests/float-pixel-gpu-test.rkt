@@ -1,9 +1,38 @@
 #lang racket/base
+
+;;;
+;;; Float Pixel GPU Test
+;;;
+
+;; Covers float colors on existing RGBA GPU targets.
+;; This executable supplies backend-specific drawing and transfer evidence to the GPU validation
+;; workflow.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list racket/path json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../private/gpu-io-trace.rkt"
          "float-pixel-fixtures.rkt")
 (module+ main
-  (define backend 'auto) (define adapter 'hardware) (define report-path #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'auto)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter 'hardware)
+  ; report-path : (or/c path-string? #f)
+  ;;   Holds the destination for this run's machine-readable evidence report.
+  (define report-path #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--backend") b "auto, egl, metal, direct3d" (set! backend (string->symbol b))]
     [("--adapter") a "hardware or warp" (set! adapter (string->symbol a))]
@@ -12,13 +41,40 @@
   (unless (and report-path token) (error 'float-pixel-gpu "--report and --token required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ; context : gpu-context?
+  ;;   Owns the primary native GPU context used by the fixture run.
   (define context
     (case backend [(egl) (make-egl-gpu-context)] [(metal) (make-gpu-context #:backend 'metal)]
       [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
       [else (error 'float-pixel-gpu "unsupported backend")]))
-  (define failures 0) (define captures '()) (define rejected 0)
-  (define drawing-reads 0) (define inspection-reads 0)
-  (define (reads ledger) (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  (define failures 0)
+  ; captures : (listof hash?)
+  ;;   Collects capture filenames and pixel-layout metadata for independent inspection.
+  (define captures '())
+  ; rejected : exact-nonnegative-integer?
+  ;;   Counts rejected unsupported requests before they can produce invalid GPU output.
+  (define rejected 0)
+
+  ; drawing-reads : exact-nonnegative-integer?
+  ;;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
+  ;;   zero.
+  (define drawing-reads 0)
+  ; inspection-reads : exact-nonnegative-integer?
+  ;;   Counts explicit readbacks used only to inspect rendered fixture pixels.
+  (define inspection-reads 0)
+
+  ; reads : box? -> exact-nonnegative-integer?
+  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;;   inspection.
+  (define (reads ledger)
+    (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
   (define directory (path-only (path->complete-path report-path)))
   (dynamic-wind void
     (lambda ()
@@ -43,16 +99,23 @@
                       (define name (string-append (symbol->string scene) ".rgba"))
                       (call-with-output-file (build-path directory name)
                         (lambda (o) (write-bytes pixels o)) #:exists 'error)
-                      (set! captures (cons (hasheq 'scene (symbol->string scene) 'file name) captures)))))
+                      (set! captures (cons (hasheq 'scene (symbol->string scene) 'file name)
+                                       captures)))))
                 (test-case "legacy readback refuses both float destination layouts"
                   (with-skia ([surface (make-gpu-surface context 2 2)])
                     (for ([format-name (in-vector float-pixel-formats)])
-                      (with-skia ([buffer (make-raster-buffer-from-info (float-fixture-info format-name 2 2))])
+                      (with-skia ([buffer
+                                    (make-raster-buffer-from-info
+                                      (float-fixture-info format-name 2 2))])
                         (define before (raster-buffer->storage-bytes buffer))
-                        (check-exn exn:fail? (lambda () (gpu-surface-read-raster-buffer! surface buffer)))
+                        (check-exn exn:fail?
+                          (lambda () (gpu-surface-read-raster-buffer! surface buffer)))
                         (check-equal? (raster-buffer->storage-bytes buffer) before)
                         (set! rejected (add1 rejected))))))))))))
     (lambda () (gpu-context-close! context)))
+
+  ; closed? : boolean?
+  ;;   Records whether context teardown completed with no live or failed resource releases.
   (define closed? (eq? (gpu-context-state context) 'closed))
   (call-with-output-file report-path
     (lambda (o)

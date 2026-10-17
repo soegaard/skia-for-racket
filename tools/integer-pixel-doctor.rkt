@@ -1,9 +1,32 @@
 #lang racket/base
+
+;;;
+;;; Integer Pixel Doctor
+;;;
+
+;; Exercises integer pixel formats, channel packing, and padded row storage and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list json
          "../main.rkt" "../tests/integer-pixel-fixtures.rkt")
 (provide generate-integer-pixel-documents)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; write-data : path-string? bytes? -> exact-nonnegative-integer?
+;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (write-data path data)
   (call-with-output-file path (lambda (out) (write-bytes data out)) #:exists 'error))
+
+; generate-integer-pixel-documents : path-string? string? -> void?
+;;   Creates fresh PDF/SVG integer-pixel fixtures and records native execution evidence for
+;;   independent inspection.
 (define (generate-integer-pixel-documents directory token)
   (when (directory-exists? directory) (error 'integer-pixel-doctor "output directory already exists"))
   (make-directory* directory)
@@ -19,7 +42,8 @@
                  (set! count (add1 count))
                  (draw-integer-fixture c image #:scale 1)
                  (canvas-annotate-url! c 2 2 4 4
-                   (string-append "https://example.invalid/integer-pixels/" (symbol->string pixel-format))))
+                   (string-append "https://example.invalid/integer-pixels/"
+                     (symbol->string pixel-format))))
                #:background 'white))
            (define stem (format "~a-~a" pixel-format fmt))
            (with-skia ([reference (output-page->image page #:dpi 72)])
@@ -42,7 +66,18 @@
                           'gui_executed #f) out)) #:exists 'error)
   (printf "Integer pixels: ~a PDF/SVG documents; independent inspection required.\n" (length rows)))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") value "New evidence directory" (set! directory value)]
     [("--token") value "Invocation identity" (set! token value)] #:args () (void))

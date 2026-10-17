@@ -1,14 +1,37 @@
 #lang racket/base
 
+;;;
+;;; Reference Text Test
+;;;
+
+;; Checks font/shaper retention, glyph metrics, UTF-8 offsets, blob copying, wrapping, and
+;; mixed-layout lifetime.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Opt-in native CPU/HarfBuzz acceptance. No font binary is bundled.
 ;; Set SKIA_REFERENCE_TEST_FONT to a local font file to select the semantic-test face.
 ;; Displayed examples, executed by reference-native-test.rkt, use the default face.
 (require rackunit racket/file racket/list skia)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; test-face : -> typeface?
+;;   Creates the configured Reference test face or the default face when no override is supplied.
 (define (test-face)
   (define filename (getenv "SKIA_REFERENCE_TEST_FONT"))
   (if filename (typeface-from-file filename) (make-typeface)))
 
+
+; same-run : shaped-run? shaped-run? -> void?
+;;   Checks equal glyphs, clusters, positions, and horizontal advance between shaped runs.
 (define (same-run a b)
   (check-equal? (shaped-run-glyphs a) (shaped-run-glyphs b))
   (check-equal? (shaped-run-clusters a) (shaped-run-clusters b))

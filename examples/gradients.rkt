@@ -1,9 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Gradients Example
+;;;
+
+;; Renders a gallery of gradient, tiled-image, and blended shaders.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline "../main.rkt")
 
 ;; Visual smoke test for the shader layer: linear, radial, sweep, conical,
 ;; repeated-image, and blended shaders.  Coordinates are deliberately absolute
 ;; so each gradient's domain is visible directly in the panel where it is used.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-gradients : path-string? -> void?
+;;   Renders the gradients example to the selected output destination.
 (define (render-gradients filename)
   (define checker
     (bytes 50 109 230 255   226 234 250 255
@@ -58,7 +76,13 @@
     (draw-rounded-rect c 700 390 250 255 14 14 blend-paint)
     (save-png s filename)))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; filename : path-string?
+  ;;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "gradients.rkt"
                   #:args ([output "gradients.png"])

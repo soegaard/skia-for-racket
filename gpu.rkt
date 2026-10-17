@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; GPU Contexts and Rendering
+;;;
+
+;; Creates and scopes GPU contexts and exposes rendering, state, and shutdown operations.
+;; This public GPU entry point coordinates backend providers with the private domain, surface,
+;; image, and release protocols.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require "private/gpu-backends.rkt")
 (require racket/runtime-path (only-in ffi/unsafe void/reference-sink)
          "private/gpu-context.rkt" "private/gpu-presenter.rkt"
@@ -19,10 +32,24 @@
          gpu-drain-releases! gpu-drain-pending-contexts! gpu-smoke-test
          make-gpu-provider gpu-provider? gpu-provider-name gpu-provider-backend
          exn:fail:gpu:unavailable? exn:fail:gpu:unavailable-step)
+; gl-driver-module : path?
+;;   Locates private/gpu-driver-gl.rkt for lazy loading of the selected implementation.
 (define-runtime-path gl-driver-module "private/gpu-driver-gl.rkt")
+; smoke-module : path?
+;;   Locates private/gpu-smoke.rkt for lazy loading of the selected implementation.
 (define-runtime-path smoke-module "private/gpu-smoke.rkt")
+; metal-driver-module : path?
+;;   Locates private/gpu-driver-metal.rkt for lazy loading of the selected implementation.
 (define-runtime-path metal-driver-module "private/gpu-driver-metal.rkt")
+; d3d12-driver-module : path?
+;;   Locates private/gpu-driver-d3d12.rkt for lazy loading of the selected implementation.
 (define-runtime-path d3d12-driver-module "private/gpu-driver-d3d12.rkt")
+; make-gpu-context : [(or/c gpu-provider? #f)] [#:backend (or/c 'opengl 'metal 'direct3d #f)]
+;   [#:adapter (or/c 'hardware 'warp #f)] [#:adapter-index (or/c (integer-in 0 4294967294) #f)]
+;   [#:options (or/c gpu-context-options? #f)] [#:gl-interface (or/c 'default 'auto 'desktop 'gles
+;   'webgl)] -> gpu-context?
+;;   Creates a ready context on the current Racket thread and registers shutdown notification with
+;;   the current custodian.
 (define (make-gpu-context [provider #f] #:backend [requested #f]
                           #:adapter [adapter #f] #:adapter-index [index #f]
                           #:options [options #f]
@@ -66,24 +93,48 @@
      (define-values (host driver)
        ((dynamic-require metal-driver-module 'make-owned-metal-components) #:options options))
      (wrap-gpu-domain (make-gpu-domain host driver))]))
+; call-with-gpu-context : gpu-context? (-> any) -> any
+;;   Activates the context's provider, calls thunk without arguments, and returns its multiple
+;;   values.
 (define (call-with-gpu-context context thunk)
   (begin0 (domain-call (context-domain 'call-with-gpu-context context) thunk)
     (void/reference-sink context)))
+; gpu-context-backend : gpu-context? -> (or/c 'opengl 'metal 'direct3d)
+;;   Returns the selected backend.
 (define (gpu-context-backend context)
   (domain-backend (context-domain 'gpu-context-backend context)))
+; gpu-context-generation : gpu-context? -> exact-positive-integer?
+;;   Returns the context's generation identifier.
 (define (gpu-context-generation context)
   (domain-generation (context-domain 'gpu-context-generation context)))
+; gpu-context-state : gpu-context? -> (or/c 'initializing 'ready 'releasing 'release-failed
+;   'abandoned 'closing 'closed)
+;;   Returns the current wrapper state without requiring an active scope or owning thread.
 (define (gpu-context-state context)
   (domain-state (context-domain 'gpu-context-state context)))
+; gpu-context-info : gpu-context? -> (and/c hash? immutable?)
+;;   Returns detached context information on the owning Racket thread, outside a future.
 (define (gpu-context-info context)
   (domain-info (context-domain 'gpu-context-info context)))
+; gpu-context-abandon! : gpu-context? -> void?
+;;   Marks a context abandoned on its owning thread, outside all GPU execution scopes.
 (define (gpu-context-abandon! context)
   (domain-abandon! (context-domain 'gpu-context-abandon! context)))
+; gpu-context-request-shutdown! : gpu-context? -> void?
+;;   Requests shutdown without activating a provider, waiting for the GPU, releasing native objects,
+;;   or running application callbacks.
 (define (gpu-context-request-shutdown! context)
   (domain-request-shutdown! (context-domain 'gpu-context-request-shutdown! context)))
+; gpu-drain-releases! : gpu-context? -> exact-nonnegative-integer?
+;;   Drains queued child-resource releases on the owning thread and returns the number of release
+;;   jobs processed by that call.
 (define (gpu-drain-releases! context)
   (domain-drain! (context-domain 'gpu-drain-releases! context)))
+; gpu-drain-pending-contexts! : [#:abandon? boolean?] -> (listof (and/c hash? immutable?))
+;;   Attempts shutdown for pending contexts owned by the calling Racket thread.
 (define gpu-drain-pending-contexts! drain-pending-domains!)
+; gpu-smoke-test : gpu-context? -> (and/c hash? immutable?)
+;;   Runs a fixed synchronous 8 by 8 GPU rendering diagnostic.
 (define (gpu-smoke-test context)
   ;; Retained 0.38 fixed diagnostic, independent of the general surface API.
   ((dynamic-require smoke-module 'run-gpu-smoke)
@@ -108,6 +159,12 @@
          "private/gpu-render.rkt")
 (provide render-gpu->raster-image)
 
+; render-gpu->raster-image : (integer-in 1 32768) (integer-in 1 32768) (-> canvas? any) #:backend
+;   (or/c 'opengl 'metal 'direct3d) [#:background color?] [#:provider (or/c gpu-provider? #f)]
+;   [#:adapter (or/c 'hardware 'warp #f)] [#:adapter-index (or/c (integer-in 0 4294967294) #f)] ->
+;   image?
+;;   Creates a context and an RGBA8888 premultiplied offscreen surface, calls draw once with its
+;;   borrowed native Skia canvas, and returns an owned CPU image after readback.
 (define (render-gpu->raster-image width height draw
                                  #:backend backend
                                  #:background [background 'transparent]

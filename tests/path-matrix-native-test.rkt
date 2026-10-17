@@ -1,10 +1,35 @@
 #lang racket/base
+
+;;;
+;;; Path Matrix Native Test
+;;;
+
+;; Covers path inspection and affine native boundaries.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list "../main.rkt")
 (provide path-matrix-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; verbs : (listof path-segment?) -> (listof symbol?)
+;;   Extracts path segment verbs in iterator order.
 (define (verbs segments) (map path-segment-verb segments))
+
+; matrix-near : any/c any/c -> void?
+;;   Compares matrix coefficients with tolerance for native float representation.
 (define (matrix-near a b)
   (for ([x (in-vector (matrix->vector a))] [y (in-vector (matrix->vector b))])
     (check-= x y 0.0001)))
+
+; foreign-error : (-> any) -> (or/c exn? #f)
+;;   Runs the operation on another thread and returns its exception, or false on success.
 (define (foreign-error proc)
   (define ch (make-channel))
   (define worker (thread (lambda ()
@@ -13,11 +38,21 @@
   (define v (channel-get ch))
   (thread-wait worker)
   v)
+
+; all-commands : list?
+;;   Includes each supported path verb in one ordered path-construction fixture.
 (define all-commands
   '((move 0.0 0.0) (line 20.0 0.0) (quad 30.0 10.0 40.0 0.0)
     (conic 50.0 -10.0 60.0 0.0 0.5) (cubic 70.0 20.0 80.0 -20.0 90.0 0.0)
     (close)))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; path-matrix-native-tests : test-suite?
+;;   Collects the regression cases for path inspection and affine native boundaries.
 (define path-matrix-native-tests
   (test-suite
    "Path inspection and affine native boundaries"

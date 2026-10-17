@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Unicode Bidirectional Text
+;;;
+
+;; Classifies Unicode characters and resolves embedding levels and visual order.
+;; Supplies the bidirectional algorithm used by mixed-script text layout.
+
 (require racket/list racket/vector)
 (provide bidi-class bidi-resolve-levels bidi-reorder-items
          bidi-explicit-control? bidi-x9-removed? bidi-bracket-info)
@@ -6,6 +14,13 @@
 ;; Generated from Python unicodedata 15.1.0. The ranges encode the
 ;; Unicode Bidi_Class property. Unassigned scalar values use the ordinary
 ;; left-to-right default here; assigned text is the supported input domain.
+;;;
+;;; Pinned Character Properties
+;;;
+
+; bidi-ranges : vector?
+;;   Stores the pinned bidi-class partition as ordered inclusive code-point low/high/class triples
+;;   for binary search.
 (define bidi-ranges
   '#(
     #(0 8 BN)
@@ -1359,6 +1374,9 @@
     #(918000 1114111 L)
     ))
 
+; bidi-brackets : hash?
+;;   Maps paired bracket code points to their counterpart and open/close role for neutral
+;;   resolution.
 (define bidi-brackets
   (hasheqv
    40 (cons 41 'open)
@@ -1491,10 +1509,15 @@
    65379 (cons 65378 'close)
    ))
 
+; bidi-bracket-info : (or/c char? exact-integer?) -> (or/c #f pair?)
+;;   Returns a paired bracket's counterpart code point and open/close tag, or false for other
+;;   characters.
 (define (bidi-bracket-info ch-or-codepoint)
   (define cp (if (char? ch-or-codepoint) (char->integer ch-or-codepoint) ch-or-codepoint))
   (and (exact-integer? cp) (hash-ref bidi-brackets cp #f)))
 
+; bidi-class : (or/c char? exact-integer?) -> symbol?
+;;   Binary-searches the complete pinned code-point partition for a character's bidi class.
 (define (bidi-class ch-or-codepoint)
   (define cp (if (char? ch-or-codepoint) (char->integer ch-or-codepoint) ch-or-codepoint))
   (unless (and (exact-integer? cp) (<= 0 cp #x10ffff))
@@ -1512,14 +1535,26 @@
 ;; for both the retained ordinary-text regression resolver and the full UAX #9
 ;; resolver below. LRM/RLM/ALM are not formatting controls in this set; their
 ;; strong bidi classes continue to affect paragraph direction normally.
+; explicit-bidi-control-codepoints : hash?
+;;   Marks embedding, override, and isolate controls; directional marks such as LRM/RLM remain
+;;   ordinary strong characters.
 (define explicit-bidi-control-codepoints
   (hasheqv #x202a #t #x202b #t #x202c #t #x202d #t #x202e #t
            #x2066 #t #x2067 #t #x2068 #t #x2069 #t))
 
+; bidi-explicit-control? : (or/c char? exact-integer?) -> boolean?
+;;   Recognizes explicit embedding/override/isolate formatting controls used by both resolvers.
 (define (bidi-explicit-control? ch-or-codepoint)
   (define cp (if (char? ch-or-codepoint) (char->integer ch-or-codepoint) ch-or-codepoint))
   (and (exact-integer? cp) (hash-ref explicit-bidi-control-codepoints cp #f)))
 
+;;;
+;;; Retained Ordinary-Text Regression Resolver
+;;;
+
+; base-direction : vector? symbol? -> symbol?
+;;   Chooses the requested or first-strong direction for the retained ordinary-text regression
+;;   resolver.
 (define (base-direction classes requested)
   (case requested
     [(ltr) 'ltr]
@@ -1529,12 +1564,17 @@
            (case t [(L) 'ltr] [(R AL) 'rtl] [else #f]))
          'ltr)]))
 
+; strong-for-neutral : symbol? -> (or/c #f symbol?)
+;;   Maps ordinary strong and numeric classes to L/R for legacy neutral resolution.
 (define (strong-for-neutral t)
   (case t
     [(L) 'L]
     [(R EN AN) 'R]
     [else #f]))
 
+; previous-strong : vector? exact-nonnegative-integer? symbol? [#:include-al? boolean?] -> symbol?
+;;   Searches backward for the strong class used by legacy weak-type rules, optionally retaining
+;;   Arabic Letter.
 (define (previous-strong types i fallback #:include-al? [include-al? #f])
   (let loop ([j (sub1 i)])
     (cond
@@ -1546,6 +1586,9 @@
              [(and include-al? (eq? t 'AL)) 'AL]
              [else (loop (sub1 j))])])) )
 
+; matching-bracket-pairs : string? -> list?
+;;   Finds legacy open/close character-index pairs, discarding intervening unmatched openers and
+;;   sorting by opening index.
 (define (matching-bracket-pairs text)
   ;; Returns (open-index . close-index) pairs. The stack search tolerates
   ;; mismatched punctuation by discarding intervening unmatched openers.
@@ -1566,6 +1609,9 @@
              [else (find (cdr xs) (cons (car xs) skipped))]))])))
   (sort out < #:key car))
 
+; resolve-brackets! : string? vector? exact-nonnegative-integer? -> void?
+;;   Resolves bracket and following mark types for the retained ordinary non-isolate paragraph
+;;   algorithm.
 (define (resolve-brackets! text types base-level)
   ;; UAX #9 N0 for the ordinary, non-isolate paragraph sequence used here.
   (define embed (if (even? base-level) 'L 'R))
@@ -1601,6 +1647,9 @@
        (set-bracket-type! open resolved)
        (set-bracket-type! close resolved)])))
 
+; bidi-resolve-levels/ordinary-legacy : string? [symbol?] -> (values vector? symbol?)
+;;   Retains the earlier ordinary-text resolver for regression comparison, treating explicit
+;;   controls as BN rather than interpreting their structure.
 (define (bidi-resolve-levels/ordinary-legacy text [requested 'auto])
   ;; Implements the paragraph-direction, weak, bracket, neutral, implicit, and
   ;; line-reset portions of UAX #9 for ordinary text. Explicit embedding,
@@ -1726,33 +1775,56 @@
 ;; Version 0.16 full explicit-control resolver. The earlier ordinary-text
 ;; resolver is retained above as bidi-resolve-levels/ordinary-legacy for
 ;; source-level regression comparison, but this definition is the exported path.
+;;;
+;;; Explicit Embeddings and Isolates
+;;;
+
+; uax9-x9-type? : symbol? -> boolean?
+;;   Recognizes formatting classes removed from isolating-run construction by rule X9.
 (define (uax9-x9-type? t)
   (and (memq t '(RLE LRE RLO LRO PDF BN)) #t))
 
+; uax9-isolate-initiator-type? : symbol? -> boolean?
+;;   Recognizes LRI, RLI, and FSI as isolate openers.
 (define (uax9-isolate-initiator-type? t)
   (and (memq t '(LRI RLI FSI)) #t))
 
+; bidi-x9-removed? : (or/c char? exact-integer?) -> boolean?
+;;   Reports whether the pinned bidi class is removed by X9 during algorithmic resolution.
 (define (bidi-x9-removed? ch-or-codepoint)
   (uax9-x9-type? (bidi-class ch-or-codepoint)))
 
+; uax9-level-direction : exact-nonnegative-integer? -> symbol?
+;;   Maps even embedding levels to L and odd levels to R.
 (define (uax9-level-direction level)
   (if (even? level) 'L 'R))
 
+; uax9-strong-for-neutral : symbol? -> (or/c #f symbol?)
+;;   Treats European and Arabic numbers as R when resolving surrounding neutral types.
 (define (uax9-strong-for-neutral t)
   (case t
     [(L) 'L]
     [(R EN AN) 'R]
     [else #f]))
 
+; uax9-neutral-or-isolate? : symbol? -> boolean?
+;;   Recognizes neutral and isolate boundary types processed by N1/N2.
 (define (uax9-neutral-or-isolate? t)
   (and (memq t '(B S WS ON FSI LRI RLI PDI)) #t))
 
+; uax9-next-odd-level : exact-nonnegative-integer? -> exact-positive-integer?
+;;   Finds the least odd embedding level strictly greater than the current level.
 (define (uax9-next-odd-level level)
   (if (even? level) (add1 level) (+ level 2)))
 
+; uax9-next-even-level : exact-nonnegative-integer? -> exact-positive-integer?
+;;   Finds the least even embedding level strictly greater than the current level.
 (define (uax9-next-even-level level)
   (if (even? level) (+ level 2) (add1 level)))
 
+; uax9-determine-matching-isolates : vector? -> (values vector? vector?)
+;;   Builds opener-to-PDI and PDI-to-opener maps; unmatched entries use text length and -1
+;;   respectively.
 (define (uax9-determine-matching-isolates classes)
   (define n (vector-length classes))
   (define matching-pdis (make-vector n n))
@@ -1770,6 +1842,10 @@
        (vector-set! matching-initiators i opener)]))
   (values matching-pdis matching-initiators))
 
+; uax9-paragraph-level-between : vector? vector? exact-nonnegative-integer?
+; exact-nonnegative-integer? -> (integer-in 0 1)
+;;   Finds the first strong direction in a half-open interval while skipping nested isolate
+;;   contents, defaulting to level zero.
 (define (uax9-paragraph-level-between classes matching-pdis start end)
   ;; P2/P3: isolate contents do not influence their enclosing paragraph.
   (let loop ([i start])
@@ -1786,9 +1862,19 @@
          [else (loop (add1 i))])])) )
 
 (struct uax9-status (level override isolate?) #:transparent)
+;; Fields:
+;;   level: exact embedding level from 0 through 125; parity selects L/R direction. override:
+;;   'neutral, 'L, or 'R. isolate?: boolean distinguishing isolate from ordinary embedding entries.
+;;   The status stack is innermost-first, with a permanent paragraph-level entry at its bottom.
 
+
+; uax9-max-explicit-depth : exact-positive-integer?
+;;   Caps valid explicit embedding levels at the UAX #9 limit of 125.
 (define uax9-max-explicit-depth 125)
 
+; uax9-determine-explicit-levels : vector? vector? (integer-in 0 1) -> (values vector? vector?)
+;;   Applies X1-X8 with the directional stack and overflow counters, returning mutable
+;;   paragraph-coordinate types and levels.
 (define (uax9-determine-explicit-levels classes matching-pdis paragraph-level)
   ;; X1-X8. This follows the directional-status-stack algorithm, including
   ;; overflow isolate/embedding counts and FSI direction selection.
@@ -1874,6 +1960,12 @@
          (vector-set! result-types i (top-override)))]))
   (values result-types result-levels))
 
+;;;
+;;; Isolating Run Sequences
+;;;
+
+; uax9-determine-level-runs : vector? vector? -> list?
+;;   Groups retained logical character indices by embedding level after X9 removal.
 (define (uax9-determine-level-runs classes levels)
   ;; X9 removes embeddings/overrides/PDF/BN before level runs are built.
   (define runs '())
@@ -1896,7 +1988,17 @@
   (reverse runs))
 
 (struct uax9-sequence (indices types level sos eos) #:transparent)
+;; Fields:
+;;   indices: vector of original string-character indices in isolating-run order, excluding X9
+;;   controls. types: equally sized mutable vector of corresponding bidi-class symbols, progressively
+;;   resolved by W/N rules. level: shared explicit embedding level before I1/I2 increments.
+;;   sos and eos: 'L or 'R boundary directions derived from neighboring and embedding levels.
+;;   Indices retain logical character identity when resolved types and levels are copied back.
 
+
+; uax9-previous-non-x9 : vector? exact-nonnegative-integer? -> (or/c #f exact-nonnegative-integer?)
+;;   Finds the previous retained character index when deriving an isolating sequence's start
+;;   direction.
 (define (uax9-previous-non-x9 classes start)
   (let loop ([i (sub1 start)])
     (cond
@@ -1904,6 +2006,8 @@
       [(uax9-x9-type? (vector-ref classes i)) (loop (sub1 i))]
       [else i])))
 
+; uax9-next-non-x9 : vector? exact-nonnegative-integer? -> (or/c #f exact-nonnegative-integer?)
+;;   Finds the next retained character index when deriving an isolating sequence's end direction.
 (define (uax9-next-non-x9 classes start)
   (define n (vector-length classes))
   (let loop ([i (add1 start)])
@@ -1912,6 +2016,10 @@
       [(uax9-x9-type? (vector-ref classes i)) (loop (add1 i))]
       [else i])))
 
+; uax9-make-isolating-run-sequences : vector? vector? vector? vector? vector? (integer-in 0 1) ->
+; (listof uax9-sequence?)
+;;   Connects level runs across matching isolate/PDI boundaries and derives each sequence's boundary
+;;   directions.
 (define (uax9-make-isolating-run-sequences classes result-types result-levels
                                       matching-pdis matching-initiators
                                       paragraph-level)
@@ -1964,12 +2072,21 @@
                   sequences))))
   (reverse sequences))
 
+; uax9-sequence-find-run-limit : vector? exact-nonnegative-integer? procedure? ->
+; exact-nonnegative-integer?
+;;   Finds the exclusive end of consecutive sequence types satisfying a rule-specific predicate.
 (define (uax9-sequence-find-run-limit types start predicate?)
   (let loop ([i start])
     (if (and (< i (vector-length types)) (predicate? (vector-ref types i)))
         (loop (add1 i))
         i)))
 
+;;;
+;;; Weak, Bracket, and Neutral Resolution
+;;;
+
+; uax9-resolve-weak-types! : uax9-sequence? -> void?
+;;   Applies W1-W7 in place to one isolating sequence's marks, numbers, separators, and terminators.
 (define (uax9-resolve-weak-types! seq)
   (define types (uax9-sequence-types seq))
   (define n (vector-length types))
@@ -2032,11 +2149,17 @@
               (scan (sub1 j)))))
       (when (eq? prev-strong 'L) (vector-set! types i 'L)))))
 
+; uax9-bracket-match? : exact-nonnegative-integer? exact-nonnegative-integer? -> boolean?
+;;   Matches closing brackets, including the canonical U+232A/U+3009 equivalence required by bracket
+;;   resolution.
 (define (uax9-bracket-match? close-cp expected-cp)
   (or (= close-cp expected-cp)
       (and (= close-cp #x232a) (= expected-cp #x3009))
       (and (= close-cp #x3009) (= expected-cp #x232a))))
 
+; uax9-sequence-bracket-pairs : string? uax9-sequence? -> list?
+;;   Finds BD16 bracket pairs in sequence coordinates with at most 63 pending openers and increasing
+;;   opening-position order.
 (define (uax9-sequence-bracket-pairs text seq)
   ;; BD16: at most 63 open brackets are tracked per isolating run sequence.
   (define indices (uax9-sequence-indices seq))
@@ -2065,6 +2188,9 @@
                [else (find (cdr xs))]))]))))
   (if aborted? '() (sort pairs < #:key car)))
 
+; uax9-set-bracket-type! : string? uax9-sequence? exact-nonnegative-integer? symbol? -> void?
+;;   Sets a resolved bracket type and propagates it to immediately following original nonspacing
+;;   marks.
 (define (uax9-set-bracket-type! text seq pos resolved)
   (define indices (uax9-sequence-indices seq))
   (define types (uax9-sequence-types seq))
@@ -2076,6 +2202,8 @@
         (vector-set! types p resolved)
         (loop (add1 p))))))
 
+; uax9-resolve-brackets! : string? uax9-sequence? -> void?
+;;   Applies N0 within one isolating sequence using enclosed and preceding strong directions.
 (define (uax9-resolve-brackets! text seq)
   ;; N0, scoped to one isolating run sequence.
   (define types (uax9-sequence-types seq))
@@ -2105,6 +2233,9 @@
       (uax9-set-bracket-type! text seq open resolved)
       (uax9-set-bracket-type! text seq close resolved))))
 
+; uax9-resolve-neutral-types! : uax9-sequence? -> void?
+;;   Applies N1/N2, choosing matching surrounding directions or the embedding direction for neutral
+;;   runs.
 (define (uax9-resolve-neutral-types! seq)
   ;; N1/N2. EN/AN count as R when looking across a neutral sequence.
   (define types (uax9-sequence-types seq))
@@ -2128,6 +2259,13 @@
        (loop limit)]
       [else (loop (add1 i))])))
 
+;;;
+;;; Implicit Levels and Line Resets
+;;;
+
+; uax9-apply-sequence! : uax9-sequence? vector? vector? -> void?
+;;   Applies I1/I2 level increments and copies resolved sequence types and levels back to original
+;;   character coordinates.
 (define (uax9-apply-sequence! seq result-types result-levels)
   ;; I1/I2 and copy the resolved types/levels back to paragraph coordinates.
   (define indices (uax9-sequence-indices seq))
@@ -2143,6 +2281,9 @@
     (vector-set! result-types idx t)
     (vector-set! result-levels idx (+ embedding-level delta))))
 
+; uax9-assign-x9-levels! : vector? vector? vector? (integer-in 0 1) -> void?
+;;   Preserves removed controls in backing-string coordinates with preceding-character levels, or
+;;   the paragraph level at the start.
 (define (uax9-assign-x9-levels! classes result-types result-levels paragraph-level)
   ;; Retain formatting characters in the backing string while giving them the
   ;; level of the preceding character, as permitted by UAX #9 section 5.2.
@@ -2152,9 +2293,14 @@
       (vector-set! result-levels i
                    (if (zero? i) paragraph-level (vector-ref result-levels (sub1 i)))))))
 
+; uax9-l1-resettable? : symbol? -> boolean?
+;;   Recognizes whitespace and formatting types whose levels reset at separators or line ends.
 (define (uax9-l1-resettable? t)
   (and (memq t '(WS FSI LRI RLI PDI RLE LRE RLO LRO PDF BN)) #t))
 
+; uax9-apply-l1! : vector? vector? (integer-in 0 1) list? -> void?
+;;   Resets separators and trailing resettable characters to paragraph level using logical exclusive
+;;   line ends.
 (define (uax9-apply-l1! classes levels paragraph-level line-breaks)
   ;; L1 is line-specific. LINE-BREAKS contains logical end indices (exclusive).
   (define n (vector-length classes))
@@ -2174,6 +2320,14 @@
         (reset (sub1 j))))
     (set! start bounded)))
 
+;;;
+;;; Paragraph Resolution and Visual Reordering
+;;;
+
+; bidi-resolve-levels : string? [symbol?] [#:line-breaks (or/c #f list?)] -> (values vector?
+; symbol?)
+;;   Resolves full UAX #9 levels in logical character coordinates and returns the base ltr/rtl
+;;   direction, retaining controls in the result vector.
 (define (bidi-resolve-levels text [requested 'auto] #:line-breaks [line-breaks #f])
   ;; UAX #9 P2/P3, X1-X10, W1-W7, N0-N2, I1/I2, and line-specific L1.
   ;; Formatting controls are retained in paragraph coordinates but X9 controls
@@ -2212,6 +2366,9 @@
   (uax9-apply-l1! classes result-levels paragraph-level breaks)
   (values result-levels base-dir))
 
+; bidi-reorder-items : list? procedure? -> list?
+;;   Applies L2 visual reordering to items each covering one resolved level; each shaped item
+;;   remains responsible for its internal glyph order.
 (define (bidi-reorder-items items level-of)
   ;; UAX #9 L2 on already-segmented items. Each item must cover a single
   ;; resolved level. The item itself is responsible for rendering its own

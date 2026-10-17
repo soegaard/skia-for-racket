@@ -1,20 +1,55 @@
 #lang racket/base
+
+;;;
+;;; Stream Native Test
+;;;
+
+;; Covers native streams and buffered port consumers.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/list
          "../main.rkt" "typeface-fixtures.rkt")
 (provide stream-native-tests stream-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; stream-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define stream-native-test-count 39) ; replaced from actual source case count
+
+; with-file : bytes? procedure? -> any
+;;   Writes a temporary binary input and removes it after the streaming callback.
 (define (with-file bytes proc)
   (define path (make-temporary-file "skia-stream-~a.bin"))
   (dynamic-wind
     (lambda () (call-with-output-file path (lambda (out) (write-bytes bytes out)) #:exists 'truncate))
     (lambda () (proc path))
     (lambda () (delete-file path))))
+
+; fixture-png : -> bytes?
+;;   Encodes a small deterministic image for buffered stream round trips.
 (define (fixture-png)
   (with-skia ([im (rgba-bytes->image 2 2 (apply bytes-append (make-list 4 (bytes 255 0 0 255))))])
     (image->png-bytes im)))
+
+; fixture-picture : -> picture?
+;;   Records a deterministic picture for stream serialization checks.
 (define (fixture-picture)
   (call-with-picture 16 12
     (lambda (c) (with-skia ([p (make-paint #:color 'red)]) (draw-rect c 0 0 16 12 p)))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; stream-native-tests : test-suite?
+;;   Collects the regression cases for native streams and buffered port consumers.
 (define stream-native-tests
   (test-suite "Native streams and buffered port consumers"
     (test-case "empty memory input"
@@ -89,7 +124,8 @@
       (define s (make-memory-input-stream #"abc")) (skia-close! s)
       (check-true (skia-closed? s)) (skia-close! s)
       (for ([operation (in-list (list input-stream-length input-stream-position input-stream->bytes
-                                      input-stream-fork input-stream-duplicate input-stream-at-end?))])
+                                      input-stream-fork input-stream-duplicate
+                                  input-stream-at-end?))])
         (check-exn exn:fail? (lambda () (operation s)))))
     (test-case "input cross-thread access rejects"
       (with-skia ([s (make-memory-input-stream #"abc")])
@@ -154,7 +190,8 @@
         (skia-close! s) (collect-garbage)
         (with-skia ([image (codec->image codec)])
           (check-equal? (image-width image) 2)
-          (check-equal? (image->rgba-bytes image) (apply bytes-append (make-list 4 (bytes 255 0 0 255)))))))
+          (check-equal? (image->rgba-bytes image)
+            (apply bytes-append (make-list 4 (bytes 255 0 0 255)))))))
     (test-case "file-backed codec outlives its original stream"
       (with-file (fixture-png)
         (lambda (path)
@@ -224,7 +261,8 @@
         (with-skia ([copy (picture-from-stream s #:trusted? #t)])
           (check-equal? (input-stream-position s) 5) (skia-close! s)
           (with-skia ([image (picture->image copy 16 12)])
-            (check-equal? (image->rgba-bytes image) (apply bytes-append (make-list (* 16 12) (bytes 255 0 0 255))))))))
+            (check-equal? (image->rgba-bytes image)
+              (apply bytes-append (make-list (* 16 12) (bytes 255 0 0 255))))))))
     (test-case "untrusted picture is rejected before port I/O"
       (define in (open-input-bytes #"not read"))
       (check-exn exn:fail? (lambda () (picture-from-port/buffered in)))
@@ -235,10 +273,19 @@
         (check-equal? (input-stream-position s) 0)))
     (test-case "loaded picture keeps unknown audit provenance"
       (with-skia ([pic (fixture-picture)]
-                  [copy (picture-from-port/buffered (open-input-bytes (picture->bytes pic)) #:trusted? #t)])
+                   [copy (picture-from-port/buffered (open-input-bytes (picture->bytes pic))
+                           #:trusted? #t)])
         (define page (make-output-page 16 12 (lambda (c) (draw-picture c copy))))
-        (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit page 'pdf #:policy 'error)))))))
+        (check-exn exn:fail:output-audit?
+          (lambda () (output->bytes/audit page 'pdf #:policy 'error)))))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests stream-native-tests))
   (printf "stream-native: ~a cases, ~a failures\n" stream-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

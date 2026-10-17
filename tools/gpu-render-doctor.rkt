@@ -1,12 +1,33 @@
 #lang racket/base
 
+;;;
+;;; One-Shot GPU Render Diagnostic
+;;;
+
+;; Runs the native one-shot rendering suite and writes a result receipt.
+;; This command validates the public render convenience API on a selected GPU backend.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline
          rackunit/text-ui
          "../tests/gpu-render-native-test.rkt")
 
 ;; No fallback and no successful skip: an unavailable selected backend fails.
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend #f)
+
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter #f)
   (command-line
    #:program "gpu-render-doctor.rkt"
@@ -21,6 +42,9 @@
   (unless (or (not adapter)
               (and (eq? backend 'direct3d) (memq adapter '(hardware warp))))
     (raise-user-error 'gpu-render-doctor "--adapter hardware/warp requires Direct3D"))
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures
     (run-tests (make-gpu-render-native-tests #:backend backend #:adapter adapter)))
   (unless (zero? failures)

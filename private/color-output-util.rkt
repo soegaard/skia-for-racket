@@ -1,12 +1,24 @@
 #lang racket/base
+
+;;;
+;;; Color Output Validation
+;;;
+
+;; Validates color-space matrices, chromaticities, and encoder ICC metadata.
+;; Shares color-management checks across native color spaces and encoded output.
+
 (require racket/list "check.rkt")
 (provide (all-defined-out))
 
 ;; Copy and round at the boundary: native structures contain IEEE binary32.
+; color-float : symbol? real? -> inexact-real?
+;;   Rounds a checked color coefficient to its native binary32 value.
 (define (color-float who x)
   (define f (scalar who x))
   (floating-point-bytes->real (real->floating-point-bytes f 4 #f) #f))
 
+; color-sequence : symbol? (or/c list? vector?) exact-nonnegative-integer? string? -> vector?
+;;   Copies an exact-length ordered coefficient sequence into immutable binary32 storage.
 (define (color-sequence who xs count what)
   (define entries
     (cond [(vector? xs) (vector->list xs)] [(list? xs) xs]
@@ -15,6 +27,8 @@
   (vector->immutable-vector
    (list->vector (map (lambda (x) (color-float who x)) entries))))
 
+; checked-xyz-d50 : symbol? (or/c list? vector?) -> vector?
+;;   Copies nine row-major XYZ-D50 coefficients and rejects singularity after binary32 rounding.
 (define (checked-xyz-d50 who xs)
   (define v (color-sequence who xs 9 "nine row-major XYZ-D50 coefficients"))
   (define (at i) (vector-ref v i))
@@ -26,6 +40,8 @@
     (raise-arguments-error who "XYZ-D50 matrix is singular after float conversion" "matrix" xs))
   v)
 
+; checked-chromaticity : symbol? (or/c list? vector?) -> vector?
+;;   Checks x/y chromaticity with positive y and bounded x+y after float conversion.
 (define (checked-chromaticity who xy)
   (define v (color-sequence who xy 2 "two chromaticity coordinates (x y)"))
   (define x (vector-ref v 0))
@@ -35,6 +51,8 @@
                            "chromaticity" xy))
   v)
 
+; icc-description-bytes : symbol? any/c (or/c #f string?) -> (or/c #f bytes?)
+;;   Requires an ICC profile for a printable-ASCII description and adds its native NUL terminator.
 (define (icc-description-bytes who profile description)
   (when (and description (not profile))
     (raise-arguments-error who "#:icc-description requires #:icc-profile" "description" description))
@@ -51,11 +69,16 @@
        (error who "ICC description exceeds current-skia-byte-limit"))
      (bytes-append bs #"\0")]))
 
+; icc-u32 : bytes? exact-nonnegative-integer? -> exact-nonnegative-integer?
+;;   Reads an unsigned big-endian 32-bit word from an already bounded ICC range.
 (define (icc-u32 bs at) (integer-bytes->integer bs #f #t at (+ at 4)))
 
 ;; This gate protects the native profile *writer*, whose LUT paths assert on
 ;; unsupported mAB/mBA forms. Import through color-space-from-icc-bytes remains
 ;; unchanged. Encoding overrides deliberately accept only SDR RGB matrix/TRC.
+; checked-encoding-profile : symbol? (or/c #f bytes?) -> (or/c #f bytes?)
+;;   Copies and checks an RGB matrix/TRC ICC encoding profile, rejecting unsupported LUT/HDR
+;;   overrides.
 (define (checked-encoding-profile who value)
   (cond
     [(not value) #f]

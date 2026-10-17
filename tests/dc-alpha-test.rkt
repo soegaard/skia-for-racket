@@ -1,12 +1,39 @@
 #lang racket/base
+
+;;;
+;;; DC Alpha Test
+;;;
+
+;; Checks isolated alpha groups and renderer failure cleanup.
+;; This regression module protects the integration boundaries used by the package's drawing API.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Executable with Racket core alone: tests the PRODUCTION alpha controller,
 ;; with tracked allocation/compositing callbacks. Not native pixel evidence.
 (require racket/list "../private/dc-alpha.rkt")
 (provide run-dc-alpha-tests dc-alpha-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; dc-alpha-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-alpha-test-count 24)
+
+; assert : any/c [string?] -> void?
+;;   Raises a test failure when an alpha-protocol invariant does not hold.
 (define (assert value [message "assertion failed"]) (unless value (error 'dc-alpha-test message)))
+
+; raises? : (-> any) -> boolean?
+;;   Reports whether an operation raises an ordinary failure exception.
 (define (raises? thunk)
   (with-handlers ([exn:fail? (lambda (_) #t)]) (thunk) #f))
+
+; fixture : [real? any/c any/c any/c] -> (values dc-alpha? box?)
+;;   Builds a synthetic alpha stack with allocation, composition, and release failure controls.
 (define (fixture [limit +inf.0] [create-error #f] [compose-error #f] [release-error #f])
   (define events (box '()))
   (define n 0)
@@ -22,27 +49,42 @@
        (when compose-error (error 'merge "injected composition failure")))
      (lambda () limit)))
   (values s events))
+
+; of-kind : box? symbol? -> list?
+;;   Selects matching alpha-stack events in execution order.
 (define (of-kind e k) (filter (lambda (x) (eq? (car x) k)) (reverse (unbox e))))
+
+; run-dc-alpha-tests : -> exact-nonnegative-integer?
+;;   Runs allocation, nesting, composition, and cleanup assertions without a renderer.
 (define (run-dc-alpha-tests)
   (define count 0)
   (define (test name thunk)
     (with-handlers ([exn:fail? (lambda (e) (error 'dc-alpha-test "~a: ~a" name (exn-message e)))])
       (thunk) (set! count (add1 count))))
   (test "initial target and root" (lambda ()
-    (define-values (s e) (fixture)) (assert (eq? (dc-alpha-target s) 'root)) (assert (eq? (dc-alpha-root s) 'root))))
-  (test "initial stack empty" (lambda () (define-values (s e) (fixture)) (assert (zero? (dc-alpha-depth s)))))
+    (define-values (s e) (fixture)) (assert (eq? (dc-alpha-target s) 'root))
+                                    (assert (eq? (dc-alpha-root s) 'root))))
+  (test "initial stack empty"
+    (lambda () (define-values (s e) (fixture)) (assert (zero? (dc-alpha-depth s)))))
   (test "unmatched end has no effect" (lambda ()
-    (define-values (s e) (fixture)) (dc-alpha-end! s (lambda (_) (error 'bad "unexpected restoration"))) (assert (null? (unbox e)))))
+    (define-values (s e) (fixture))
+                                        (dc-alpha-end! s
+                                          (lambda (_) (error 'bad "unexpected restoration")))
+                                        (assert (null? (unbox e)))))
   (test "start resets opacity" (lambda ()
-    (define-values (s e) (fixture)) (assert (= 1 (dc-alpha-start! s 1/2 1/4))) (assert (= 1 (dc-alpha-depth s)))))
+    (define-values (s e) (fixture)) (assert (= 1 (dc-alpha-start! s 1/2 1/4)))
+                                 (assert (= 1 (dc-alpha-depth s)))))
   (test "root stays independent while open" (lambda ()
-    (define-values (s e) (fixture)) (dc-alpha-start! s 1/2 1) (assert (eq? (dc-alpha-root s) 'root)) (assert (= (dc-alpha-target s) 1))))
+    (define-values (s e) (fixture)) (dc-alpha-start! s 1/2 1)
+                                              (assert (eq? (dc-alpha-root s) 'root))
+                                              (assert (= (dc-alpha-target s) 1))))
   (test "opacity product and restoration" (lambda ()
     (define-values (s e) (fixture)) (define restored #f) (dc-alpha-start! s 1/2 1/4)
     (dc-alpha-end! s (lambda (a) (set! restored a))) (assert (= restored 1/4))
     (assert (equal? (of-kind e 'merge) '((merge root 1 #f 1/8))))))
   (test "one composite per group" (lambda ()
-    (define-values (s e) (fixture)) (dc-alpha-start! s 1/2 1) (dc-alpha-end! s void) (dc-alpha-end! s void)
+    (define-values (s e) (fixture)) (dc-alpha-start! s 1/2 1) (dc-alpha-end! s void)
+                                    (dc-alpha-end! s void)
     (assert (= 1 (length (of-kind e 'merge))))))
   (test "completed child released once" (lambda ()
     (define-values (s e) (fixture)) (dc-alpha-start! s 1/2 1) (dc-alpha-end! s void)
@@ -59,43 +101,54 @@
   (test "parent clip saved once" (lambda ()
     (define-values (s e) (fixture)) (dc-alpha-set-clip! s 'outer) (dc-alpha-start! s 1/2 1)
     (assert (not (dc-alpha-clip s))) (dc-alpha-set-clip! s 'inner) (dc-alpha-end! s void)
-    (assert (eq? (dc-alpha-clip s) 'outer)) (assert (equal? (of-kind e 'merge) '((merge root 1 outer 1/2))))))
+    (assert (eq? (dc-alpha-clip s) 'outer))
+                                   (assert (equal? (of-kind e 'merge) '((merge root 1 outer 1/2))))))
   (test "invalid opacity rejected before allocation" (lambda ()
     (define-values (s e) (fixture))
     (for ([a (list -1 2 +nan.0 +inf.0 #f)]) (assert (raises? (lambda () (dc-alpha-start! s a 1)))))
     (assert (null? (unbox e))) (assert (zero? (dc-alpha-depth s)))))
   (test "invalid saved opacity rejected" (lambda ()
-    (define-values (s e) (fixture)) (assert (raises? (lambda () (dc-alpha-start! s 1/2 +nan.0)))) (assert (null? (unbox e)))))
+    (define-values (s e) (fixture)) (assert (raises? (lambda () (dc-alpha-start! s 1/2 +nan.0))))
+                                           (assert (null? (unbox e)))))
   (test "budget includes root and child" (lambda ()
-    (define-values (s e) (fixture 95)) (assert (raises? (lambda () (dc-alpha-start! s 1/2 1)))) (assert (null? (unbox e)))))
+    (define-values (s e) (fixture 95)) (assert (raises? (lambda () (dc-alpha-start! s 1/2 1))))
+                                           (assert (null? (unbox e)))))
   (test "exact byte budget accepted" (lambda ()
     (define-values (s e) (fixture 96)) (dc-alpha-start! s 1/2 1) (assert (= (dc-alpha-depth s) 1))))
   (test "nested budget rejection preserves open group" (lambda ()
     (define-values (s e) (fixture 96)) (dc-alpha-start! s 1/2 1)
-    (assert (raises? (lambda () (dc-alpha-start! s 1/2 1)))) (assert (= (dc-alpha-target s) 1)) (assert (= (dc-alpha-depth s) 1))))
+    (assert (raises? (lambda () (dc-alpha-start! s 1/2 1)))) (assert (= (dc-alpha-target s) 1))
+                                                         (assert (= (dc-alpha-depth s) 1))))
   (test "allocation exception preserves state" (lambda ()
     (define-values (s e) (fixture +inf.0 #t)) (dc-alpha-set-clip! s 'clip)
     (assert (raises? (lambda () (dc-alpha-start! s 1/2 1))))
-    (assert (eq? (dc-alpha-target s) 'root)) (assert (eq? (dc-alpha-clip s) 'clip)) (assert (zero? (dc-alpha-depth s)))))
+    (assert (eq? (dc-alpha-target s) 'root)) (assert (eq? (dc-alpha-clip s) 'clip))
+                                                 (assert (zero? (dc-alpha-depth s)))))
   (test "composition exception restores and retires" (lambda ()
     (define-values (s e) (fixture +inf.0 #f #t)) (define restored #f) (dc-alpha-start! s 1/2 1/4)
     (assert (raises? (lambda () (dc-alpha-end! s (lambda (a) (set! restored a))))))
-    (assert (= restored 1/4)) (assert (zero? (dc-alpha-depth s))) (assert (equal? (of-kind e 'close) '((close 1))))))
+    (assert (= restored 1/4)) (assert (zero? (dc-alpha-depth s)))
+                                                       (assert (equal? (of-kind e 'close)
+                                                            '((close 1))))))
   (test "failed group cannot be composited twice" (lambda ()
     (define-values (s e) (fixture +inf.0 #f #t)) (dc-alpha-start! s 1/2 1)
     (assert (raises? (lambda () (dc-alpha-end! s void)))) (dc-alpha-end! s void)
     (assert (= 1 (length (of-kind e 'merge))))))
   (test "close discards all unfinished groups" (lambda ()
     (define-values (s e) (fixture)) (dc-alpha-start! s 1/2 1) (dc-alpha-start! s 1/2 1)
-    (dc-alpha-close! s) (assert (equal? (of-kind e 'close) '((close 2) (close 1) (close root)))) (assert (null? (of-kind e 'merge)))))
+    (dc-alpha-close! s) (assert (equal? (of-kind e 'close) '((close 2) (close 1) (close root))))
+                                                 (assert (null? (of-kind e 'merge)))))
   (test "close idempotent" (lambda ()
-    (define-values (s e) (fixture)) (dc-alpha-close! s) (dc-alpha-close! s) (assert (equal? (of-kind e 'close) '((close root))))))
+    (define-values (s e) (fixture)) (dc-alpha-close! s) (dc-alpha-close! s)
+                             (assert (equal? (of-kind e 'close) '((close root))))))
   (test "closed stack rejects use" (lambda ()
     (define-values (s e) (fixture)) (dc-alpha-close! s)
     (for ([f (list (lambda () (dc-alpha-start! s 1/2 1)) (lambda () (dc-alpha-end! s void))
-                   (lambda () (dc-alpha-root s)) (lambda () (dc-alpha-set-clip! s #f)))]) (assert (raises? f)))))
+                   (lambda () (dc-alpha-root s)) (lambda () (dc-alpha-set-clip! s #f)))])
+      (assert (raises? f)))))
   (test "release failure still attempts every target" (lambda ()
-    (define-values (s e) (fixture +inf.0 #f #f #t)) (dc-alpha-start! s 1/2 1) (dc-alpha-start! s 1/2 1)
+    (define-values (s e) (fixture +inf.0 #f #f #t)) (dc-alpha-start! s 1/2 1)
+                                                        (dc-alpha-start! s 1/2 1)
     (assert (raises? (lambda () (dc-alpha-close! s)))) (assert (= 3 (length (of-kind e 'close))))
     (dc-alpha-close! s) (assert (= 3 (length (of-kind e 'close))))))
   (test "zero and one opacity remain valid" (lambda ()

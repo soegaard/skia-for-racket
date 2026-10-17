@@ -1,16 +1,41 @@
 #lang racket/base
+
+;;;
+;;; GPU Performance Workloads
+;;;
+
+;; Defines rendering scenes and deferred-release stress workloads with completion-aware timing.
+;; The performance diagnostics use these shared workloads for CPU/GPU comparison and lifetime
+;; evidence.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Workloads and measurements; no host/window is initialized by requiring this module.
 (require racket/list racket/path (only-in ffi/unsafe void/reference-sink)
          "../main.rkt" "../gpu.rkt" "../private/gpu-performance-util.rkt"
          "../private/gpu-io-trace.rkt" "../examples/gpu-scenes.rkt" "gpu-report.rkt")
 (provide benchmark-scenes benchmark-scene! release-stress! benchmark-pattern-pixels)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; benchmark-scenes : (listof symbol?)
+;;   Selects path, text, and runtime-effect workloads for repeated picture replay.
 (define benchmark-scenes '(paths text runtime))
+
+; benchmark-pattern-pixels : [exact-positive-integer? exact-positive-integer?] -> bytes?
+;;   Builds a deterministic four-quadrant RGBA image for upload and retention stress.
 (define (benchmark-pattern-pixels [w 128] [h 128])
   (define bs (make-bytes (* w h 4)))
   (for* ([y (in-range h)] [x (in-range w)])
     (define color (cond [(< y (/ h 2)) (if (< x (/ w 2)) '(255 0 0 255) '(0 255 0 255))]
                         [else (if (< x (/ w 2)) '(0 0 255 255) '(255 255 0 255))]))
     (for ([v (in-list color)] [i (in-naturals (* 4 (+ x (* y w))))]) (bytes-set! bs i v))) bs)
+
+; completed : gpu-context? procedure? -> hash?
+;;   Separates work, flush, submit, and wait timing while recording ordered GPU I/O events.
 (define (completed context work)
   (define io (box '()))
   (define timing
@@ -19,6 +44,10 @@
                          (lambda () (gpu-submit! context #:wait? #f))
                          (lambda () (gpu-wait! context)))))
   (hash-set timing 'io_events (reverse (unbox io))))
+
+; benchmark-scene! : gpu-context? symbol? hash? string? -> any
+;;   Measures first-use and repeated replay, retaining a detached capture for post-context
+;;   inspection.
 (define (benchmark-scene! context name config prefix)
   (define width (hash-ref config 'width)) (define height (hash-ref config 'height))
   (define n (hash-ref config 'samples))
@@ -53,11 +82,14 @@
     (call-with-gpu-context context
       (lambda ()
         (gpu-set-cache-limit! context (hash-ref config 'cache_limit_bytes))
-        (with-skia ([surface (make-gpu-surface context width height #:sample-count (hash-ref config 'sample_count))])
+        (with-skia
+          ([surface (make-gpu-surface context width height #:sample-count
+                      (hash-ref config 'sample_count))])
           (define target (gpu-surface-info surface))
           (define (replay) (draw-picture (surface-canvas surface) picture))
           (define first (completed context replay))
-          (define warmups (for/list ([i (in-range (hash-ref config 'warmup))]) (completed context replay)))
+          (define warmups
+            (for/list ([i (in-range (hash-ref config 'warmup))]) (completed context replay)))
           (define replays (for/list ([i (in-range n)]) (completed context replay)))
           (define pattern (benchmark-pattern-pixels))
           (define upload-samples
@@ -68,7 +100,8 @@
                 (define uploaded #f)
                 (dynamic-wind void
                   (lambda ()
-                    (define row (completed context (lambda () (set! uploaded (gpu-upload-image context source)))))
+                    (define row (completed context
+                                  (lambda () (set! uploaded (gpu-upload-image context source)))))
                     (unless (equal? (gpu-image->rgba-bytes uploaded) pattern)
                       (error 'gpu-performance "upload roundtrip pixel mismatch"))
                     (hash-set* row 'fresh_cpu_identity #t 'width 128 'height 128 'bytes (* 128 128 4)
@@ -85,7 +118,8 @@
               (define-values (bytes row)
                 (parameterize ([current-gpu-io-ledger io])
                   (measure-one (lambda () (gpu-surface->rgba-bytes surface)))))
-              (unless (and (= (bytes-length bytes) (* width height 4)) (equal? bytes reference-readback))
+              (unless
+                (and (= (bytes-length bytes) (* width height 4)) (equal? bytes reference-readback))
                 (error 'gpu-performance "readback size or stable-source pixel mismatch"))
               (hash-set* row 'bytes (bytes-length bytes) 'source_precompleted #t 'pixels_verified #t
                               'io_events (reverse (unbox io)))))
@@ -95,14 +129,20 @@
                     'logical_size (list gpu-scene-width gpu-scene-height) 'target target
                     'authoring_recording authoring 'sksl_effect_construction compilation
                     'first_use first 'warmup_completed (length warmups) 'warmup_replay warmups
-                    'warm_replay replays 'cpu_raster cpu-times 'upload upload-samples 'readback download-samples
+                    'warm_replay replays 'cpu_raster cpu-times 'upload upload-samples 'readback
+              download-samples
                     'cpu_image (base cpu-file) 'gpu_image (base gpu-file)
-                    'first_use_scope "first picture replay in a new Ganesh context; OS/driver caches uncontrolled"
+                    'first_use_scope
+              "first picture replay in a new Ganesh context; OS/driver caches uncontrolled"
                     'isolated_driver_compile_ms #f 'cache_after (gpu-cache-info context)))))))
   ;; The caller closes the context before invoking this encoder; this tests the
   ;; detached image boundary without mixing encoding with readback latency.
   (values result detached gpu-file))
 
+
+; await-retirement! : gpu-context? exact-nonnegative-integer? (listof weak-box?) -> void?
+;;   Waits through bounded GC/owner-drain cycles until temporary wrappers and native children
+;;   retire.
 (define (await-retirement! context expected weak)
   (define deadline (+ (current-inexact-monotonic-milliseconds) 5000))
   (let loop ()
@@ -113,8 +153,13 @@
                 (zero? (hash-ref info 'pending_releases))
                 (andmap (lambda (w) (not (weak-box-value w))) weak)) (void)]
           [(>= (current-inexact-monotonic-milliseconds) deadline)
-           (error 'gpu-release-stress "GC/owner draining failed to retire temporary wrappers: ~a" info)]
+           (error 'gpu-release-stress "GC/owner draining failed to retire temporary wrappers: ~a"
+             info)]
           [else (loop)])))
+
+; release-stress! : gpu-context? hash? -> hash?
+;;   Exercises retained effect graphs under bounded allocation/cache pressure and records cleanup
+;;   high-water marks.
 (define (release-stress! context config)
   (define target #f) (define checkpoints '()) (define weak '()) (define dropped 0)
   (define before #f) (define highwater 0)
@@ -126,7 +171,8 @@
         (lambda ()
           (gpu-set-cache-limit! context (hash-ref config 'cache_limit_bytes))
           (set! target (make-gpu-surface context width height))
-          (gpu-wait! context) (gpu-free-resources! context) (gpu-wait! context) (gpu-purge-unlocked! context)
+          (gpu-wait! context) (gpu-free-resources! context) (gpu-wait! context)
+          (gpu-purge-unlocked! context)
           (set! before (gpu-cache-info context))))
       (for ([batch (in-range (quotient (hash-ref config 'frames) 30))])
         (define io (box '()))
@@ -137,7 +183,8 @@
                 (with-skia ([image (gpu-upload-image context source)]
                             [shader (make-image-shader image)]
                             [paint (make-paint #:shader shader)]
-                            [picture (call-with-picture 128 128 (lambda (c) (draw-rect c 0 0 128 128 paint)))])
+                             [picture (call-with-picture 128 128
+                                        (lambda (c) (draw-rect c 0 0 128 128 paint)))])
                   ;; Retained replay must survive closing its original wrappers.
                   (skia-close! paint) (skia-close! shader) (skia-close! image)
                   (draw-picture (surface-canvas target) picture))
@@ -172,7 +219,8 @@
                        (bytes->list (subbytes bytes offset (+ offset 4)))))
       (unless (equal? actual '((255 0 0 255) (0 255 0 255) (0 0 255 255) (255 255 0 255)))
         (error 'gpu-release-stress "retained graph content changed under pressure"))
-      (hasheq 'baseline_cache before 'checkpoints (reverse checkpoints) 'frames (hash-ref config 'frames)
+      (hasheq 'baseline_cache before 'checkpoints (reverse checkpoints) 'frames
+        (hash-ref config 'frames)
               'intentional_gc_wrappers dropped 'max_observed_live_children highwater
               'final_pixel_samples actual 'content_verified #t
               'heap_accounting "Racket managed-memory estimate, diagnostic only; not RSS/VRAM"

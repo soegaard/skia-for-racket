@@ -1,5 +1,21 @@
 #lang racket
+
+;;;
+;;; Squadron Native Test
+;;;
+
+;; Checks Squadron tutorial behavior with native rendering tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit skia "atlas.rkt" "scene.rkt" "model.rkt" "../support/sprite-math.rkt")
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
   (test-case "game atlas has 16 bounded cells"
     (with-skia ([atlas (make-game-atlas)])

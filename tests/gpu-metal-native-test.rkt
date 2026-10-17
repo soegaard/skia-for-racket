@@ -1,12 +1,40 @@
 #lang racket/base
+
+;;;
+;;; GPU Metal Native Test
+;;;
+
+;; Covers metal-specific owned queue, scope, GC, and abandonment.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit ffi/unsafe/atomic
          "../main.rkt" "../gpu.rkt" "gpu-fixtures.rkt")
 (provide make-gpu-metal-native-tests gpu-metal-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-metal-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-metal-native-test-count 8)
+
+; with-metal : procedure? -> any
+;;   Scopes a native Metal context and guarantees closure after the test.
 (define (with-metal proc)
   (define context (make-gpu-context #:backend 'metal))
   (dynamic-wind void (lambda () (proc context)) (lambda () (gpu-context-close! context))))
+
+; under : gpu-context? (-> any) -> any
+;;   Activates the selected Metal context around a callback.
 (define (under context thunk) (call-with-gpu-context context thunk))
+
+; make-gpu-metal-native-tests : -> test-suite?
+;;   Builds the parameterized suite for metal-specific owned queue, scope, GC, and abandonment.
 (define (make-gpu-metal-native-tests)
   (test-suite
    "Metal-specific owned queue, scope, GC, and abandonment"
@@ -55,14 +83,18 @@
           (under context
             (lambda () (with-skia ([s (make-gpu-surface context 8 8)])
                          (make-weak-box (gpu-surface-snapshot s))))))
-        (check-true (collect-until (lambda () (positive? (hash-ref (gpu-context-info context) 'pending_releases)))))
+        (check-true
+          (collect-until (lambda ()
+                           (positive? (hash-ref (gpu-context-info context) 'pending_releases)))))
         (under context (lambda () (gpu-drain-releases! context)))
         (check-true (collect-until (lambda () (not (weak-box-value weak)))))
         (check-equal? (hash-ref (gpu-context-info context) 'live_children) 0)
         (check-equal? (hash-ref (gpu-context-info context) 'pending_releases) 0))))
    (test-case "Metal shutdown request rejects new work but allows queued destruction"
      (define context (make-gpu-context #:backend 'metal))
-     (define image (under context (lambda () (with-skia ([s (make-gpu-surface context 8 8)]) (gpu-surface-snapshot s)))))
+     (define image
+       (under context (lambda ()
+                        (with-skia ([s (make-gpu-surface context 8 8)]) (gpu-surface-snapshot s)))))
      (dynamic-wind void
        (lambda ()
          (gpu-context-request-shutdown! context)
@@ -71,7 +103,9 @@
      (check-eq? (gpu-context-state context) 'closed))
    (test-case "Metal abandonment invalidates child use but preserves explicit cleanup"
      (define context (make-gpu-context #:backend 'metal))
-     (define image (under context (lambda () (with-skia ([s (make-gpu-surface context 8 8)]) (gpu-surface-snapshot s)))))
+     (define image
+       (under context (lambda ()
+                        (with-skia ([s (make-gpu-surface context 8 8)]) (gpu-surface-snapshot s)))))
      (dynamic-wind void
        (lambda ()
          (gpu-context-abandon! context)

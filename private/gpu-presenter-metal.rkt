@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Metal Presentation Adapter
+;;;
+
+;; Builds the presentation adapter around CAMetalLayer drawable leases.
+;; Connects macOS presentation to the common GPU frame API.
+
 (require ffi/unsafe "../gpu.rkt" "core.rkt" "types.rkt" "gpu-types.rkt"
          "gpu-domain.rkt" "gpu-context.rkt" "gpu-metal-layer.rkt" "lifetime.rkt"
          (only-in "check.rkt" color-type-values)
@@ -7,6 +15,9 @@
          (submod "core.rkt" gpu-surface-internals)
          (submod "gpu-presenter.rkt" adapter-internals))
 (provide make-metal-presentation-adapter)
+; make-metal-presentation-adapter : any/c any/c any/c -> any
+;;   Connects layer acquisition, Skia wrapping, presentation, and teardown to the common frame
+;;   protocol.
 (define (make-metal-presentation-adapter view post background)
   (presentation-native-check!)
   (define context (make-gpu-context #:backend 'metal))
@@ -48,11 +59,13 @@
                                 ;; the CAMetalLayer explicitly carries an sRGB tag.
                                 (presentation-target/wrap (domain-pointer d) descriptor gr-top-left
                                                           (hash-ref color-type-values 'bgra-8888)
-                                  (call-with-owned 'gpu-presenter (list (color-space-h 'gpu-presenter space)) values) #f))
+                                  (call-with-owned 'gpu-presenter (list (color-space-h 'gpu-presenter
+                                    space)) values) #f))
                               n:sk_surface_unref #:keepalive context))
                           (define surface
                             (make-gpu-surface-record handle w h '() context d
-                              (call-with-owned 'gpu-presenter (list (color-space-h 'gpu-presenter space)) values)
+                              (call-with-owned 'gpu-presenter (list (color-space-h 'gpu-presenter
+                                space)) values)
                               (hash-set* (metal-drawable-info token)
                                 'storage "gpu" 'target_kind "metal-drawable"
                                 'color_type "BGRA8888" 'context_generation (domain-generation d)
@@ -64,7 +77,8 @@
                           (receive c info
                             (lambda ()
                               (unless (= (canvas-save-count c) 1)
-                                (error 'gpu-presenter "render callback left unbalanced canvas saves/layers"))
+                                (error 'gpu-presenter
+                                  "render callback left unbalanced canvas saves/layers"))
                               (gpu-flush-and-submit! context)
                               (metal-layer-present! layer token)
                               (mark-presented!)
@@ -80,7 +94,8 @@
                                                   'wait_requested #t))
                           (n:gr_direct_context_flush native-context)
                           (unless (n:gr_direct_context_submit native-context #t)
-                            (error 'gpu-presenter "cancelled Metal frame could not complete; target quarantined")))
+                            (error 'gpu-presenter
+                              "cancelled Metal frame could not complete; target quarantined")))
                         (lambda ()
                           ;; Skia reference, backend descriptor, then drawable.
                           ;; Detach each variable before its one release attempt.
@@ -92,7 +107,8 @@
                             (presentation-target/delete b))
                           (metal-layer-release! layer token))
                         (lambda (e)
-                          (set! quarantined (cons (list handle descriptor token e) quarantined)))))))))
+                          (set! quarantined (cons (list handle descriptor token e)
+                            quarantined)))))))))
          post
          (lambda ()
            ;; Context close refuses live application resources and can be retried

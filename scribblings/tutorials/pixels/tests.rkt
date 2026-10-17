@@ -1,6 +1,22 @@
 #lang racket
 
+;;;
+;;; Pixels Tests
+;;;
+
+;; Checks Pixels tutorial behavior with focused regression tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit "pixel-lab.rkt" skia)
+
+;;;
+;;; Regression Checks
+;;;
 
 (module+ test
   (test-case "duotone leaves alpha and its input byte string unchanged"

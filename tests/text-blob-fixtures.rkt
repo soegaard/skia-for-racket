@@ -1,14 +1,47 @@
 #lang racket/base
+
+;;;
+;;; Text Blob Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for retained text runs, glyph positions, clusters,
+;; and serialization.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Original procedural fixture extension: add a Unicode cmap and fi ligature.
 ;; It uses the existing four original glyph shapes; no installed font is copied.
 (require racket/list "typeface-fixtures.rkt")
 (provide text-blob-fixture-font-bytes)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; u16 : exact-nonnegative-integer? -> bytes?
+;;   Encodes an unsigned 16-bit OpenType field in big-endian byte order.
 (define (u16 n) (integer->integer-bytes n 2 #f #t))
+
+; u32 : exact-nonnegative-integer? -> bytes?
+;;   Encodes an unsigned 32-bit OpenType field in big-endian byte order.
 (define (u32 n) (integer->integer-bytes n 4 #f #t))
+
+; us : (listof exact-nonnegative-integer?) -> bytes?
+;;   Concatenates unsigned 16-bit OpenType fields in their declared order.
 (define (us xs) (apply bytes-append (map u16 xs)))
+
+; pad : bytes? -> bytes?
+;;   Appends zero bytes to align a font table to the next four-byte boundary.
 (define (pad bs) (bytes-append bs (make-bytes (modulo (- (bytes-length bs)) 4))))
 ;; A distinct family/PostScript identity avoids sharing a native font-cache
 ;; identity with the simpler 0.68a fixture that has no Unicode/GSUB extension.
+
+; text-fixture-name-table : -> bytes?
+;;   Builds a distinct font identity so extended cmap/GSUB fixtures cannot alias the base font
+;;   cache.
 (define (text-fixture-name-table)
   (define fields
     '((1 . "Skia Racket Text Fixture") (2 . "Regular")
@@ -18,13 +51,18 @@
   (define offset 0) (define strings '())
   (define records
     (for/list ([field (in-list fields)])
-      (define data (apply bytes-append (for/list ([c (in-string (cdr field))]) (u16 (char->integer c)))))
+      (define data
+        (apply bytes-append (for/list ([c (in-string (cdr field))]) (u16 (char->integer c)))))
       (define record (us (list 3 1 #x409 (car field) (bytes-length data) offset)))
       (set! offset (+ offset (bytes-length data)))
       (set! strings (cons data strings))
       record))
   (bytes-append (us (list 0 (length fields) (+ 6 (* 12 (length fields)))))
                 (apply bytes-append records) (apply bytes-append (reverse strings))))
+
+; text-blob-fixture-font-bytes : -> bytes?
+;;   Extends the generated font with Unicode mappings and an fi ligature, rebuilding offsets and
+;;   checksums.
 (define (text-blob-fixture-font-bytes)
   (define base (fixture-font-bytes))
   (define (read16 at) (integer-bytes->integer base #f #t at (+ at 2)))
@@ -44,7 +82,8 @@
   (define features (bytes-append (u16 1) #"liga" (u16 8) (us '(0 1 0))))
   ;; Lookup type 4: glyph 2 followed by glyph 3 is replaced by glyph 2.
   (define lookup (us '(1 4 4 0 1 8 1 18 1 8 1 4 2 2 3 1 1 2)))
-  (unless (and (= (bytes-length scripts) 20) (= (bytes-length features) 14) (= (bytes-length lookup) 36))
+  (unless (and (= (bytes-length scripts) 20) (= (bytes-length features) 14)
+            (= (bytes-length lookup) 36))
     (error 'text-blob-fixture "invalid OpenType layout table lengths"))
   (define gsub (bytes-append (u32 #x10000) (us '(10 30 44)) scripts features lookup))
   (define head (bytes-copy (hash-ref tables "head")))
@@ -68,5 +107,6 @@
   (define result
     (bytes-append (u32 #x10000) (us (list n search power (- (* 16 n) search)))
                   (apply bytes-append directory) (apply bytes-append (reverse payload))))
-  (bytes-copy! result (+ head-offset 8) (u32 (bitwise-and #xffffffff (- #xb1b0afba (fixture-checksum result)))))
+  (bytes-copy! result (+ head-offset 8)
+    (u32 (bitwise-and #xffffffff (- #xb1b0afba (fixture-checksum result)))))
   result)

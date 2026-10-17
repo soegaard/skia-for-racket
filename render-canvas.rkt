@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; Unified Raster and GPU Canvas Factory
+;;;
+
+;; Selects a raster or GPU canvas implementation behind a common callback-oriented interface.
+;; This public GUI factory shares authoring callbacks while retaining the distinct lifetime rules of
+;; persistent raster and scoped GPU drawing contexts.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Unified factory, not a replacement for either existing concrete class.
 ;; This explicit GUI module imports only the selected raster/GPU implementation.
 (require racket/class racket/future racket/promise racket/runtime-path
@@ -7,19 +20,32 @@
 (provide make-skia-render-canvas skia-render-canvas<%> skia-render-canvas?
          skia-render-window%)
 
+; raster-module : path?
+;;   Locates canvas.rkt for lazy loading of the selected implementation.
 (define-runtime-path raster-module "canvas.rkt")
+; gpu-module : path?
+;;   Locates gpu-canvas.rkt for lazy loading of the selected implementation.
 (define-runtime-path gpu-module "gpu-canvas.rkt")
+; skia-render-canvas<%> : interface?
+;;   Defines the shared callback-oriented raster/GPU canvas interface.
 (define skia-render-canvas<%>
   (interface () get-renderer get-backend get-render-capabilities get-render-info
                 get-dc get-raster-dc set-paint-callback refresh refresh-now
                 present close-skia close closed?))
+; skia-render-canvas? : any/c -> boolean?
+;;   Returns whether v implements skia-render-canvas<%>.
 (define (skia-render-canvas? value) (is-a? value skia-render-canvas<%>))
 
+; handler! : symbol? -> void?
+;;   Requires construction on the current eventspace handler thread outside a future.
 (define (handler! who)
   (unless (and (eq? (current-thread) (gui:eventspace-handler-thread (gui:current-eventspace)))
                (not (current-future)))
     (error who "create render canvases on their eventspace handler thread (queue-callback)")))
 
+; callback-canvas-class : class? boolean? -> class?
+;;   Adds shared callback lifetime, renderer diagnostics, and close semantics to a concrete canvas
+;;   class.
 (define (callback-canvas-class base% raster?)
   (class* base% (skia-render-canvas<%>)
     (inherit/super closed? get-skia-info)
@@ -87,10 +113,12 @@
              (or (render-session-current-dc session)
                  (and raster? toolkit-dc-permitted?
                       (begin (set! toolkit-dc-permitted? #f) (super get-dc)))
-                 (error 'get-dc "DC is available only during the paint callback; use get-raster-dc for explicit persistent raster access"))]))
+                 (error 'get-dc
+                        "DC is available only during the paint callback; use get-raster-dc for explicit persistent raster access"))]))
     (define/public (get-raster-dc)
       (live! 'get-raster-dc)
-      (unless raster? (error 'get-raster-dc "persistent raster DC access is unavailable for a GPU canvas"))
+      (unless raster?
+        (error 'get-raster-dc "persistent raster DC access is unavailable for a GPU canvas"))
       (super get-dc))
     (define/public (set-paint-callback callback)
       (idle! 'set-paint-callback)
@@ -112,7 +140,8 @@
           (super on-paint)))
     (define/override (present)
       (idle! 'present)
-      (unless raster? (error 'present "cached pixel presentation is raster-only; request a GPU frame with refresh"))
+      (unless raster?
+        (error 'present "cached pixel presentation is raster-only; request a GPU frame with refresh"))
       (with-toolkit-access (lambda () (super present))))
     (define/override (close-skia)
       (render-session-idle! 'close-skia session)
@@ -127,8 +156,12 @@
     (define/override (close) (send this close-skia))
     (set! facade-ready? #t)))
 
+; raster-class : promise?
+;;   Lazily constructs the raster implementation of the unified render-canvas facade.
 (define raster-class
   (delay/sync (callback-canvas-class (dynamic-require raster-module 'skia-canvas%) #t)))
+; gpu-class : promise?
+;;   Lazily constructs the GPU implementation with matching close and status methods.
 (define gpu-class
   (delay/sync
     (let ([gpu% (dynamic-require gpu-module 'skia-gpu-canvas%)])
@@ -144,6 +177,14 @@
          (super-new))
        #f))))
 
+; make-skia-render-canvas : (is-a?/c area-container<%>) [#:renderer (or/c 'auto 'raster 'gpu)]
+;   [#:backend (or/c 'auto 'opengl 'metal 'direct3d)] [#:adapter (or/c 'hardware 'warp #f)]
+;   [#:adapter-index (or/c #f (integer-in 0 2147483647))] [#:sync-interval (or/c (integer-in 0 4)
+;   #f)] [#:paint-callback procedure?] [#:on-error procedure?] [#:background (or/c string? (is-a?/c
+;   draw:color%))] [#:smoothing (or/c 'unsmoothed 'smoothed 'aligned)] [#:min-width
+;   exact-nonnegative-integer?] [#:min-height exact-nonnegative-integer?] -> (and/c (is-a?/c
+;   canvas%) skia-render-canvas?)
+;;   Creates a canvas implementing skia-render-canvas<%> on the current eventspace handler thread.
 (define (make-skia-render-canvas parent
           #:renderer [renderer 'auto] #:backend [backend 'auto]
           #:adapter [adapter #f] #:adapter-index [adapter-index #f] #:sync-interval [sync-interval #f]
@@ -158,13 +199,17 @@
   (unless (memq smoothing '(unsmoothed smoothed aligned))
     (raise-argument-error 'make-skia-render-canvas "'unsmoothed, 'smoothed, or 'aligned" smoothing))
   (unless (exact-nonnegative-integer? min-width)
-    (raise-argument-error 'make-skia-render-canvas "exact-nonnegative-integer? minimum width" min-width))
+    (raise-argument-error
+     'make-skia-render-canvas "exact-nonnegative-integer? minimum width" min-width))
   (unless (exact-nonnegative-integer? min-height)
-    (raise-argument-error 'make-skia-render-canvas "exact-nonnegative-integer? minimum height" min-height))
+    (raise-argument-error
+     'make-skia-render-canvas "exact-nonnegative-integer? minimum height" min-height))
   (new (force (if (eq? (hash-ref policy 'renderer) 'raster) raster-class gpu-class))
        [parent parent] [policy policy] [paint-callback paint-callback] [on-error on-error]
        [background background] [smoothing smoothing] [min-width min-width] [min-height min-height]))
 
+; skia-render-window% : class?
+;;   Hosts a selected render canvas and closes it before hiding the containing window.
 (define skia-render-window%
   (class gui:frame%
     (init [label "Skia render canvas"] [width 640] [height 480]

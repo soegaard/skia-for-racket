@@ -1,9 +1,32 @@
 #lang racket/base
+
+;;;
+;;; GPU Gl Interop Native Test
+;;;
+
+;; Covers external GL: borrowed framebuffer, owned texture copy and state handoff.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe rackunit racket/list
          "../main.rkt" "../gpu.rkt" "../gpu-gl-interop.rkt" "gpu-gl-fixtures.rkt"
          "../private/gpu-gl-queries.rkt" "../private/gpu-io-trace.rkt")
 (provide make-gpu-gl-interop-native-tests gpu-gl-interop-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-gl-interop-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-gl-interop-native-test-count 32)
+
+; make-gpu-gl-interop-native-tests : gpu-context? gpu-context? -> test-suite?
+;;   Builds the parameterized suite for external GL: borrowed framebuffer, owned texture copy and
+;;   state handoff.
 (define (make-gpu-gl-interop-native-tests gpu other)
   (define (fixture proc)
     (call-with-gpu-context gpu
@@ -11,7 +34,8 @@
         (define f (make-gl-fixture gpu))
         (dynamic-wind void (lambda () (proc f)) (lambda () (delete-gl-fixture! f))))))
   (define (borrow f proc #:wait? [wait? #t])
-    (call-with-gpu-gl-framebuffer gpu (gl-fixture-framebuffer f) 8 8 proc #:origin 'top-left #:wait? wait?))
+    (call-with-gpu-gl-framebuffer gpu (gl-fixture-framebuffer f) 8 8 proc #:origin 'top-left
+      #:wait? wait?))
   (define (copy f #:origin [origin 'top-left] #:wait? [wait? #t])
     (gpu-copy-gl-texture gpu (gl-fixture-texture f) 8 8 #:origin origin #:wait? wait?))
   (define blue (apply bytes (apply append (make-list 64 '(0 0 255 255)))))
@@ -28,7 +52,8 @@
        (check-true (gl-fixture-alive? f)))))
    (test-case "framebuffer scope preserves multiple return values"
      (fixture (lambda (f)
-       (check-equal? (call-with-values (lambda () (borrow f (lambda (_) (values 3 7)))) list) '(3 7)))))
+       (check-equal? (call-with-values (lambda () (borrow f (lambda (_) (values 3 7)))) list)
+         '(3 7)))))
    (test-case "borrowed canvas expires at return inside a surviving outer activation"
      (fixture (lambda (f)
        (define c (borrow f values))
@@ -36,7 +61,8 @@
        (check-exn exn:fail? (lambda () (canvas-clear! c 'red))))))
    (test-case "callback exception retires the borrowed surface"
      (fixture (lambda (f)
-       (check-exn #rx"intentional" (lambda () (borrow f (lambda (c) (canvas-clear! c 'blue) (error 'test "intentional")))))
+       (check-exn #rx"intentional"
+         (lambda () (borrow f (lambda (c) (canvas-clear! c 'blue) (error 'test "intentional")))))
        (check-true (gl-fixture-alive? f))
        (check-equal? (hash-ref (gpu-context-info gpu) 'live_children) 0))))
    (test-case "unbalanced canvas state is rejected and cleaned"
@@ -44,26 +70,34 @@
        (check-exn #rx"unbalanced" (lambda () (borrow f (lambda (c) (canvas-save! c)))))
        (check-equal? (hash-ref (gpu-context-info gpu) 'pending_releases) 0))))
    (test-case "nested framebuffer borrows are rejected"
-     (fixture (lambda (f) (borrow f (lambda (_) (check-exn #rx"nested" (lambda () (borrow f void))))))))
+     (fixture (lambda (f)
+                (borrow f (lambda (_) (check-exn #rx"nested" (lambda () (borrow f void))))))))
    (test-case "external native mutation is rejected inside a framebuffer borrow"
-     (fixture (lambda (f) (borrow f (lambda (_) (check-exn #rx"nested" (lambda () (call-with-gpu-external-gl gpu void))))))))
+     (fixture (lambda (f)
+                (borrow f (lambda (_)
+                            (check-exn #rx"nested"
+                              (lambda () (call-with-gpu-external-gl gpu void))))))))
    (test-case "default framebuffer zero is not imported"
      (call-with-gpu-context gpu (lambda ()
        (check-exn exn:fail? (lambda () (call-with-gpu-gl-framebuffer gpu 0 8 8 void))))))
    (test-case "wrong declared framebuffer extent is rejected"
      (fixture (lambda (f)
-       (check-exn #rx"extent" (lambda () (call-with-gpu-gl-framebuffer gpu (gl-fixture-framebuffer f) 9 8 void))))))
+       (check-exn #rx"extent"
+         (lambda () (call-with-gpu-gl-framebuffer gpu (gl-fixture-framebuffer f) 9 8 void))))))
    (test-case "a missing external stencil attachment is not silently allocated"
      (fixture (lambda (f)
        (define bind (gl-queries-bind (gl-fixture-queries f)))
        (call-with-gpu-external-gl gpu (lambda ()
-         ((bind "glBindFramebuffer" (_fun _uint32 _uint32 -> _void)) #x8D40 (gl-fixture-framebuffer f))
-         ((bind "glFramebufferRenderbuffer" (_fun _uint32 _uint32 _uint32 _uint32 -> _void)) #x8D40 #x821A #x8D41 0)))
+         ((bind "glBindFramebuffer" (_fun _uint32 _uint32 -> _void)) #x8D40
+           (gl-fixture-framebuffer f))
+         ((bind "glFramebufferRenderbuffer" (_fun _uint32 _uint32 _uint32 _uint32 -> _void)) #x8D40
+           #x821A #x8D41 0)))
        (check-exn #rx"stencil" (lambda () (borrow f void))))))
    (test-case "explicit same-context nonwaiting framebuffer return performs no readback"
      (fixture (lambda (f)
        (define ledger (box '()))
-       (parameterize ([current-gpu-io-ledger ledger]) (borrow f (lambda (c) (canvas-clear! c 'blue)) #:wait? #f))
+       (parameterize ([current-gpu-io-ledger ledger])
+         (borrow f (lambda (c) (canvas-clear! c 'blue)) #:wait? #f))
        (check-false (for/or ([e (in-list (unbox ledger))]) (equal? (hash-ref e 'kind) "readback")))
        (check-false (for/or ([e (in-list (unbox ledger))]) (hash-ref e 'wait_requested #f))))))
    (test-case "texture copy yields an ordinary independently owned GPU image"
@@ -78,7 +112,8 @@
      (fixture (lambda (f) (with-skia ([im (copy f #:origin 'bottom-left)])
        (define pixels (gl-pattern-bytes 8 8))
        (check-equal? (gpu-image->rgba-bytes im)
-         (apply bytes-append (for/list ([y (in-range 7 -1 -1)]) (subbytes pixels (* y 32) (* (+ y 1) 32)))))))))
+         (apply bytes-append
+           (for/list ([y (in-range 7 -1 -1)]) (subbytes pixels (* y 32) (* (+ y 1) 32)))))))))
    (test-case "external source mutation does not alter the returned copy"
      (fixture (lambda (f) (with-skia ([im (copy f)])
        (gl-fixture-fill! f 0.0 0.0 1.0 1.0)
@@ -111,7 +146,8 @@
        (call-with-gpu-external-gl gpu (lambda ()
          ((bind "glBindTexture" (_fun _uint32 _uint32 -> _void)) #x0DE1 (gl-fixture-texture f))
          ((bind "glBindBuffer" (_fun _uint32 _uint32 -> _void)) #x88EC 0)
-         ((bind "glTexImage2D" (_fun _uint32 _int _int _int _int _int _uint32 _uint32 _pointer -> _void))
+         ((bind "glTexImage2D"
+            (_fun _uint32 _int _int _int _int _int _uint32 _uint32 _pointer -> _void))
           #x0DE1 0 #x8051 8 8 0 #x1907 #x1401 #f)))
        (check-exn #rx"GL_RGBA8" (lambda () (copy f))))))
    (test-case "unpremultiplied alpha is explicitly interpreted on GPU copy"
@@ -121,7 +157,8 @@
        (call-with-gpu-external-gl gpu (lambda ()
          ((bind "glBindTexture" (_fun _uint32 _uint32 -> _void)) #x0DE1 (gl-fixture-texture f))
          ((bind "glBindBuffer" (_fun _uint32 _uint32 -> _void)) #x88EC 0)
-         ((bind "glTexSubImage2D" (_fun _uint32 _int _int _int _int _int _uint32 _uint32 _bytes -> _void))
+         ((bind "glTexSubImage2D"
+            (_fun _uint32 _int _int _int _int _int _uint32 _uint32 _bytes -> _void))
           #x0DE1 0 0 0 8 8 #x1908 #x1401 red-alpha)))
        (with-skia ([im (gpu-copy-gl-texture gpu (gl-fixture-texture f) 8 8
                          #:origin 'top-left #:premultiplied? #f)])
@@ -134,14 +171,18 @@
      (fixture (lambda (f)
        (define ledger (box '()))
        (with-skia ([im (parameterize ([current-gpu-io-ledger ledger]) (copy f))])
-         (check-false (for/or ([e (in-list (unbox ledger))]) (equal? (hash-ref e 'kind) "readback")))))))
+         (check-false
+           (for/or ([e (in-list (unbox ledger))]) (equal? (hash-ref e 'kind) "readback")))))))
    (test-case "wrong currently active context is rejected"
      (fixture (lambda (f)
        (check-exn exn:fail? (lambda () (gpu-copy-gl-texture other (gl-fixture-texture f) 8 8)))
-       (check-exn exn:fail? (lambda () (call-with-gpu-gl-framebuffer other (gl-fixture-framebuffer f) 8 8 void))))))
+       (check-exn exn:fail?
+         (lambda () (call-with-gpu-gl-framebuffer other (gl-fixture-framebuffer f) 8 8 void))))))
    (test-case "external callback preserves multiple values"
      (call-with-gpu-context gpu (lambda ()
-       (check-equal? (call-with-values (lambda () (call-with-gpu-external-gl gpu (lambda () (values 4 9)))) list) '(4 9)))))
+       (check-equal?
+         (call-with-values (lambda () (call-with-gpu-external-gl gpu (lambda () (values 4 9))))
+           list) '(4 9)))))
    (test-case "external callback cannot invoke a Skia GPU operation"
      (fixture (lambda (f)
        (check-exn #rx"external OpenGL callback"

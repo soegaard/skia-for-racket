@@ -1,17 +1,45 @@
 #lang racket/base
+
+;;;
+;;; Typeface Native Test
+;;;
+
+;; Covers native typeface resources, metadata and detached data.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list racket/vector
          "../main.rkt" "../typefaces.rkt" "typeface-fixtures.rkt")
 (provide typeface-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; with-face : procedure? -> any
+;;   Scopes a generated fixture typeface around the test callback.
 (define (with-face proc)
   (with-skia ([face (typeface-from-bytes (fixture-font-bytes))]) (proc face)))
+
+; raster : typeface? -> bytes?
+;;   Renders fixture glyphs for detached ownership and serialization comparisons.
 (define (raster face)
   (with-skia ([font (make-font face #:size 40 #:hinting 'none #:edging 'alias)]
               [paint (make-paint #:color 'black #:antialias? #f)]
               [surface (make-surface 96 64 #:background 'white)])
     (draw-simple-text (surface-canvas surface) fixture-text 8 48 font paint)
     (surface->rgba-bytes surface #:premultiplied? #t)))
+
+; ink? : bytes? -> boolean?
+;;   Recognizes visible glyph ink in a captured raster.
 (define (ink? data)
   (for/or ([i (in-range 0 (bytes-length data) 4)]) (< (bytes-ref data i) 50)))
+
+; wrong-thread : procedure? -> any
+;;   Runs a typeface operation on another thread to check its ownership boundary.
 (define (wrong-thread thunk)
   (define result (box #f))
   (thread-wait
@@ -19,6 +47,13 @@
              (with-handlers ([exn:fail? (lambda (e) (set-box! result e))])
                (thunk)))))
   (check-pred exn:fail? (unbox result)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; typeface-native-tests : test-suite?
+;;   Collects the regression cases for native typeface resources, metadata and detached data.
 (define typeface-native-tests
   (test-suite
    "0.68a native typeface resources, metadata and detached data"
@@ -179,7 +214,8 @@
        (check-false (font-style-set-match s))))
    (test-case "invalid family/style indices fail before native indexing"
      (with-skia ([fm (make-font-manager)] [s (make-empty-font-style-set)])
-       (check-exn exn:fail:contract? (lambda () (font-manager-style-set-ref fm (font-manager-family-count fm))))
+       (check-exn exn:fail:contract?
+         (lambda () (font-manager-style-set-ref fm (font-manager-family-count fm))))
        (check-exn exn:fail:contract? (lambda () (font-style-set-ref s -1)))
        (check-exn exn:fail:contract? (lambda () (font-style-set-match s 'normal)))))
    (test-case "empty queries still validate lifetime and thread affinity"

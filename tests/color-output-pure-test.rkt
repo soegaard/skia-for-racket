@@ -1,15 +1,50 @@
 #lang racket/base
+
+;;;
+;;; Color Output Pure Test
+;;;
+
+;; Covers color output: pure values and validation.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui ffi/unsafe "../main.rkt"
          "../private/color-output-util.rkt" "../private/types.rkt"
          "color-output-fixtures.rkt")
 (provide color-output-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; identity-xyz : (vectorof real?)
+;;   Supplies the row-major identity matrix for RGB-to-XYZ validation.
 (define identity-xyz '#(1 0 0 0 1 0 0 0 1))
+
+; linear : transfer-function?
+;;   Supplies a unit-gamma transfer function for detached color-space checks.
 (define linear (make-transfer-function 1 1 0 0 0 0 0))
+
+; u32! : bytes? exact-nonnegative-integer? exact-nonnegative-integer? -> void?
+;;   Overwrites a big-endian ICC field at an absolute byte offset.
 (define (u32! bs at n) (bytes-copy! bs at (integer->integer-bytes n 4 #f #t)))
+
+; reject : (bytes? -> any) -> void?
+;;   Mutates a fresh valid ICC profile and checks that validation rejects it.
 (define (reject mutation)
   (define p (fixture-icc)) (mutation p)
   (check-exn exn:fail? (lambda () (checked-encoding-profile 'test p))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; color-output-pure-tests : test-suite?
+;;   Collects the regression cases for color output: pure values and validation.
 (define color-output-pure-tests
   (test-suite
    "Color output: pure values and validation"
@@ -54,7 +89,8 @@
      (check-true (immutable? got)))
    (test-case "invalid primary coordinates are rejected before loading"
      (for ([bad '((0.2 0) (-0.1 0.2) (0.9 0.9) (1))])
-       (check-exn exn:fail? (lambda () (primaries->xyz-d50 bad '(0.3 0.6) '(0.15 0.06) '(0.3127 0.3290))))))
+       (check-exn exn:fail?
+         (lambda () (primaries->xyz-d50 bad '(0.3 0.6) '(0.15 0.06) '(0.3127 0.3290))))))
    (test-case "automatic ICC mode remains false"
      (check-false (checked-encoding-profile 'test #f)))
    (test-case "synthetic profile directory passes"

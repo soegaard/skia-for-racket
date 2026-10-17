@@ -1,10 +1,39 @@
 #lang racket/base
+
+;;;
+;;; Path Matrix Pure Test
+;;;
+
+;; Covers affine matrix values and path/matrix validation.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui ffi/unsafe racket/math "../main.rkt" "../private/types.rkt")
 (provide path-matrix-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; mapped : any/c real? real? -> list?
+;;   Collects the transformed x and y values from an affine point mapping.
 (define (mapped m x y) (call-with-values (lambda () (matrix-map-point m x y)) list))
+
+; close-point : (listof real?) (listof real?) -> void?
+;;   Checks transformed coordinates within the fixture's numerical tolerance.
 (define (close-point got expected)
   (for ([a (in-list got)] [b (in-list expected)]) (check-= a b 0.0001)))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; path-matrix-pure-tests : test-suite?
+;;   Collects the regression cases for affine matrix values and path/matrix validation.
 (define path-matrix-pure-tests
   (test-suite
    "Affine matrix values and path/matrix validation"

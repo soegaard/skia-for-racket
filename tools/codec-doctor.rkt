@@ -1,7 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Codec Doctor
+;;;
+
+;; Exercises animation decoding, frame disposal, and encoded image orientation and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt" "../tests/codec-fixtures.rkt")
 (provide codec-doctor!)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; codec-doctor! : -> void?
+;;   Checks codec ABI sizes, animation disposal pixels, and all eight EXIF orientation mappings.
 (define (codec-doctor!)
   (unless (and (= (ctype-sizeof _sk-codec-options)
                   (if (= (ctype-sizeof _pointer) 8) 24 16))

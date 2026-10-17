@@ -1,20 +1,57 @@
 #lang racket/base
+
+;;;
+;;; Runtime Pure Test
+;;;
+
+;; Covers runtime effects: pure validation and uniform packing.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui ffi/unsafe racket/list
          "../main.rkt" (prefix-in util: "../private/runtime-util.rkt") "../private/types.rkt")
 (provide runtime-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; u : string? any/c exact-nonnegative-integer? exact-nonnegative-integer? exact-nonnegative-integer?
+; [exact-nonnegative-integer?] -> any/c
+;;   Builds detached uniform metadata with explicit count, flags, byte extent, and offset.
 (define (u name type count flags total [offset 0])
   (util:checked-runtime-uniform 'test name offset type count flags total))
+
+; pack : exact-nonnegative-integer? list? any/c -> bytes?
+;;   Packs supplied uniform values against reflected layout metadata.
 (define (pack size fields values)
   (util:runtime-pack-uniforms 'test size fields values))
+
+; read-float : bytes? [exact-nonnegative-integer?] -> real?
+;;   Reads a native-layout float from a packed uniform buffer at a byte offset.
 (define (read-float bs [at 0])
   (floating-point-bytes->real bs (system-big-endian?) at (+ at 4)))
+
+; read-int : bytes? [exact-nonnegative-integer?] -> exact-integer?
+;;   Reads a native-layout signed integer from a packed uniform buffer.
 (define (read-int bs [at 0])
   (integer-bytes->integer bs #t (system-big-endian?) at (+ at 4)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; runtime-pure-tests : test-suite?
+;;   Collects the regression cases for runtime effects: pure validation and uniform packing.
 (define runtime-pure-tests
   (test-suite
    "Runtime effects: pure validation and uniform packing"
    (test-case "new predicates are total and do not load Skia"
-     (for ([p (in-list (list runtime-effect? blender? runtime-uniform? runtime-child? exn:fail:skia-sksl?))])
+     (for ([p (in-list
+                (list runtime-effect? blender? runtime-uniform? runtime-child? exn:fail:skia-sksl?))])
        (check-false (p #f)) (check-false (p 12))))
    (test-case "source snapshots mutable strings"
      (define source (string-copy "half4 main(float2 p) { return half4(1); }"))
@@ -76,12 +113,14 @@
      (check-exn exn:fail? (lambda () (u "x" 0 0 1 4)))
      (check-exn exn:fail? (lambda () (u "x" 0 2 0 8))))
    (test-case "layout rejects gaps and overlaps"
-     (check-exn exn:fail? (lambda () (util:validate-runtime-layout 'test 8 (list (u "x" 0 1 0 8 4)) '())))
-     (check-exn exn:fail? (lambda () (util:validate-runtime-layout 'test 8 (list (u "x" 0 1 0 8) (u "y" 0 1 0 8)) '()))))
+     (check-exn exn:fail?
+       (lambda () (util:validate-runtime-layout 'test 8 (list (u "x" 0 1 0 8 4)) '())))
+     (check-exn exn:fail?
+       (lambda () (util:validate-runtime-layout 'test 8 (list (u "x" 0 1 0 8) (u "y" 0 1 0 8)) '()))))
    (test-case "layout checks duplicate names across child and numeric slots"
      (check-exn exn:fail?
                 (lambda () (util:validate-runtime-layout 'test 4 (list (u "x" 0 1 0 4))
-                                                     (list (util:checked-runtime-child 'test "x" 0 0))))))
+                             (list (util:checked-runtime-child 'test "x" 0 0))))))
    (test-case "child reflection has strict kinds and indices"
      (define c (util:checked-runtime-child 'test "layer" 2 0))
      (check-equal? (runtime-child-kind c) 'blender)
@@ -89,7 +128,7 @@
      (check-exn exn:fail? (lambda () (util:checked-runtime-child 'test "x" 3 0)))
      (check-exn exn:fail? (lambda () (util:checked-runtime-child 'test "x" 0 -1)))
      (check-exn exn:fail? (lambda () (util:validate-runtime-layout 'test 0 '()
-                                                          (list (util:checked-runtime-child 'test "x" 0 1))))))
+                                       (list (util:checked-runtime-child 'test "x" 0 1))))))
    (test-case "empty uniforms have empty immutable bytes"
      (define b (pack 0 '() (hash)))
      (check-equal? b #"") (check-true (immutable? b)))
@@ -102,8 +141,10 @@
      (check-equal? (bytes-length b) 16)
      (check-equal? (read-float b 12) 4.0))
    (test-case "integers pack signed 32-bit values including extremes"
-     (define b (pack 12 (list (u "v" 9 1 0 12)) (hash 'v (list (- (expt 2 31)) -7 (sub1 (expt 2 31))))))
-     (check-equal? (map (lambda (at) (read-int b at)) '(0 4 8)) (list (- (expt 2 31)) -7 (sub1 (expt 2 31)))))
+     (define b (pack 12 (list (u "v" 9 1 0 12))
+                 (hash 'v (list (- (expt 2 31)) -7 (sub1 (expt 2 31))))))
+     (check-equal? (map (lambda (at) (read-int b at)) '(0 4 8))
+       (list (- (expt 2 31)) -7 (sub1 (expt 2 31)))))
    (test-case "integer values reject inexact booleans fractions and overflow"
      (for ([v (in-list (list 2.0 #t 1/2 (expt 2 31)))])
        (check-exn exn:fail:contract? (lambda () (pack 4 (list (u "x" 7 1 0 4)) (hash 'x v))))))
@@ -112,7 +153,8 @@
        (check-exn exn:fail:contract? (lambda () (pack 4 (list (u "x" 0 1 0 4)) (hash 'x v))))))
    (test-case "matrix input is flat and column-major"
      (define b (pack 36 (list (u "m" 5 1 0 36)) (hash 'm '(1 2 3 4 5 6 7 8 9))))
-     (check-equal? (for/list ([at (in-range 0 36 4)]) (read-float b at)) '(1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0)))
+     (check-equal? (for/list ([at (in-range 0 36 4)]) (read-float b at))
+       '(1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0)))
    (test-case "arrays are tightly packed and flagged even at length one"
      (define one (u "a" 0 1 1 4))
      (check-true (runtime-uniform-array? one))
@@ -146,7 +188,8 @@
      (check-exn exn:fail:contract? (lambda () (pack 4 (list (u "x" 0 1 0 4)) (hash 'x 1 "x" 2)))))
    (test-case "binding dictionaries and keys have checked types"
      (check-exn exn:fail:contract? (lambda () (pack 0 '() #"")))
-     (check-exn exn:fail:contract? (lambda () (util:runtime-bindings 'test 'child '("x") (hash 12 1)))))
+     (check-exn exn:fail:contract?
+       (lambda () (util:runtime-bindings 'test 'child '("x") (hash 12 1)))))
    (test-case "packing freezes caller vectors"
      (define v (vector 0.2 0.3 0.4 1))
      (define b (pack 16 (list (u "v" 3 1 0 16)) (hash 'v v)))

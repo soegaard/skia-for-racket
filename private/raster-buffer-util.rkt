@@ -1,9 +1,19 @@
 #lang racket/base
+
+;;;
+;;; Raster Buffer Validation
+;;;
+
+;; Checks byte layouts, pixel coordinates, subsets, and raster callbacks.
+;; Prepares native raster storage operations with explicit stride and size limits.
+
 (require "check.rkt" (only-in ffi/unsafe ctype-sizeof _intptr))
 (provide raster-layout raster-point raster-subset prepare-raster-input raster-procedure)
 
 ;; RGBA8888 storage has four bytes/pixel, and every row starts on a 4-byte
 ;; boundary. Charge ALL allocated bytes, including the last row's padding.
+; raster-layout : symbol? integer? integer? any/c -> (values integer? integer? integer?)
+;;   Checks RGBA row stride and returns stride, minimum accessible bytes, and full allocation bytes.
 (define (raster-layout who w h row-bytes)
   (check-dimensions who w h)
   (define rb (if row-bytes row-bytes (* w 4)))
@@ -19,6 +29,8 @@
                            "storage bytes" allocation "limit" (current-skia-byte-limit)))
   (values rb (+ (* rb (sub1 h)) (* w 4)) allocation))
 
+; raster-point : symbol? integer? integer? integer? integer? -> void?
+;;   Requires a zero-based pixel coordinate inside a view's dimensions.
 (define (raster-point who x y w h)
   (unless (and (exact-nonnegative-integer? x) (< x w)
                (exact-nonnegative-integer? y) (< y h))
@@ -26,6 +38,8 @@
                            "pixel" (list x y) "size" (list w h)))
   (void))
 
+; raster-subset : symbol? integer? integer? integer? integer? integer? integer? -> void?
+;;   Requires a nonempty integer subrectangle entirely inside the enclosing view.
 (define (raster-subset who x y w h outer-w outer-h)
   (unless (and (exact-nonnegative-integer? x) (exact-nonnegative-integer? y)
                (exact-positive-integer? w) (exact-positive-integer? h)
@@ -34,10 +48,15 @@
                            "subset" (list x y w h) "view size" (list outer-w outer-h)))
   (void))
 
+; raster-procedure : symbol? procedure? -> void?
+;;   Requires a callback accepting the single borrowed canvas or pixmap argument.
 (define (raster-procedure who proc)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error who "procedure accepting one argument" proc)))
 
+; prepare-raster-input : symbol? integer? integer? bytes? any/c boolean? -> bytes?
+;;   Snapshots packed premultiplied RGBA input, validating all pixels before a destination can be
+;;   changed.
 (define (prepare-raster-input who w h data row-bytes premultiplied?)
   (boolean who premultiplied?)
   (unless (bytes? data) (raise-argument-error who "bytes?" data))

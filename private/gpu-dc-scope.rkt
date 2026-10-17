@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; GPU Drawing Context Scopes
+;;;
+
+;; Validates frame dimensions and scopes a drawing context to a GPU frame.
+;; Bridges the public GPU presenter and Racket drawing protocols.
+
 ;; Frame DC state and lifetime, without a GUI or native GPU initialization.
 ;; The ordinary DC keeps its logical state. Only renderer-bound commands are
 ;; mapped to the authoritative physical extent supplied by the GPU target.
@@ -11,13 +19,28 @@
          checked-frame-size (struct-out dc-frame-size)
          scale-dc-renderer call-with-frame-dc/renderer)
 
+; skia-gpu-dc<%> : interface?
+;;   Marks drawing-context objects whose lifetime is restricted to a GPU frame callback.
 (define skia-gpu-dc<%> (interface ()))
+; skia-gpu-dc? : any/c -> boolean?
+;;   Returns whether v is a frame-scoped GPU DC.
 (define (skia-gpu-dc? value) (is-a? value skia-gpu-dc<%>))
+; current-frame-dc : parameter?
+;;   Records whether this dynamic extent already contains a GPU drawing-context scope.
 (define current-frame-dc (make-parameter #f))
+; gpu-dc-scope-active? : -> boolean?
+;;   Reports whether nested GPU drawing-context construction would reuse an active frame scope.
 (define (gpu-dc-scope-active?) (and (current-frame-dc) #t))
 (struct dc-frame-size (pixel-width pixel-height logical-width logical-height scale-x scale-y)
   #:transparent)
+;; Fields:
+;;   pixel-width and pixel-height: positive physical dimensions. logical-width and logical-height:
+;;   positive drawing dimensions. scale-x and scale-y: physical/logical ratios for the corresponding
+;;   axes; both descriptions refer to the same frame.
 
+
+; checked-frame-size : exact-positive-integer? exact-positive-integer? real? real? -> dc-frame-size?
+;;   Checks physical and logical extents and computes finite positive per-axis device scales.
 (define (checked-frame-size pw ph lw lh)
   (define who 'call-with-gpu-dc)
   (check-dimensions who pw ph)
@@ -32,18 +55,25 @@
     (error who "logical-to-physical scale must be positive"))
   (dc-frame-size pw ph w h sx sy))
 
+; skia-gpu-dc-capabilities : -> (and/c hash? immutable?)
+;;   Returns detached declarations for GPU DC lifetime, device scaling, GPU alpha groups, explicit
+;;   snapshots, and presentation behavior.
 (define (skia-gpu-dc-capabilities)
   (hash-set* (dc-capabilities)
     'stage "0.59" 'class "frame-scoped-skia-gpu-dc" 'storage "frame-scoped-gpu-offscreen"
     'alpha_groups "same-context isolated GPU surfaces; discard unfinished groups on scope exit"
     'lifetime "callback only; closed on every exit; never reactivated"
-    'coordinates "logical drawing coordinates; independent X/Y device scales from actual target extents"
+    'coordinates
+      "logical drawing coordinates; independent X/Y device scales from actual target extents"
     'backing_scale 1.0 'device_scale "pixel-width/logical-width, pixel-height/logical-height"
     'presentation "GPU snapshot and GPU-to-GPU draw; no automatic CPU readback"
     'snapshot "explicit synchronous transfer to an independent CPU image"
     'native_probe_performed #f 'gui_initialized 'not-probed
     'deferred '(native-handle-brushes arbitrary-combined-text-breaks persistent-gpu-dc)))
 
+; scaled-clip : (or/c #f dc-clip?) real? real? -> (or/c #f dc-clip?)
+;;   Maps clip paths from logical coordinates into physical target coordinates without changing fill
+;;   rules.
 (define (scaled-clip clip sx sy)
   (and clip
        (dc-clip
@@ -55,6 +85,9 @@
                                   (dc-real 'gpu-dc-clip (* sy y)))))
            (dc-clip-path-rule path))))))
 
+; scale-dc-renderer : any/c any/c any/c [#:create any/c] [#:close any/c] -> dc-renderer/styles?
+;;   Adapts renderer-bound matrices and clips to device scaling while leaving logical DC state
+;;   unchanged.
 (define (scale-dc-renderer renderer sx sy
                            #:create [create (dc-renderer-create renderer)]
                            #:close [close (dc-renderer-close renderer)])
@@ -88,6 +121,10 @@
      ((dc-renderer/alpha-composite renderer) parent child (clip clipping) opacity))
    (dc-renderer/styles-path-bounds renderer)))
 
+; call-with-frame-dc/renderer : dc-renderer/styles? dc-frame-size? any/c any/c [#:background any/c]
+;   [#:smoothing any/c] [#:clear? boolean?] -> any
+;;   Owns the frame DC and its targets through one callback, commits its root, and expires all
+;;   targets on exit.
 (define (call-with-frame-dc/renderer renderer extent proc commit
                                      #:background [background "white"]
                                      #:smoothing [smoothing 'smoothed]

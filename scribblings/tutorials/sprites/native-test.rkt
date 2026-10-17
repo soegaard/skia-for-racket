@@ -1,5 +1,21 @@
 #lang racket
+
+;;;
+;;; Sprites Native Test
+;;;
+
+;; Checks Sprites tutorial behavior with native rendering tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit skia "atlas.rkt" "scene.rkt" "model.rkt" "../support/sprite-math.rkt")
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
   (test-case "atlas is the actual 224 by 112 CPU image"
     (with-skia ([atlas (make-ball-atlas)])

@@ -1,7 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Color Filter Doctor
+;;;
+
+;; Exercises HSLA, gamma, lookup-table, and composed color filters and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/color-filter-types.rkt"
          "../tests/color-filter-fixtures.rkt")
 (provide color-filter-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; color-filter-doctor! : -> void?
+;;   Checks high-contrast ABI layout and actual HSLA, gamma, table, luma, and retained-filter
+;;   results.
 (define (color-filter-doctor!)
   (unless (= (ctype-sizeof _sk-high-contrast-config) 12)
     (error 'doctor "high-contrast ABI is not 12 bytes"))

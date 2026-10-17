@@ -1,20 +1,57 @@
 #lang racket/base
+
+;;;
+;;; Annotation Native Test
+;;;
+
+;; Covers document links and destinations: native backends.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list racket/string racket/file "../main.rkt")
 (provide annotation-native-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; uri : string?
+;;   Exercises URL query punctuation that must survive document serialization.
 (define uri "https://example.invalid/manual?a=1&b=2")
+
+; has? : regexp? bytes? -> boolean?
+;;   Checks emitted document bytes for a structural marker.
 (define (has? pattern bs) (regexp-match? pattern bs))
+
+; svg-anchors : bytes? -> (listof string?)
+;;   Extracts complete SVG anchor elements for annotation geometry checks.
 (define (svg-anchors bs)
   (regexp-match* #px"<a[^>]*>(?s:.*?)</a>" (bytes->string/utf-8 bs)))
+
+; rect-of : string? -> (listof real?)
+;;   Reads an anchor rectangle in x, y, width, height order, defaulting omitted values to zero.
 (define (rect-of anchor)
   (define r (car (regexp-match #px"<rect[^>]*>" anchor)))
   (for/list ([key '("x" "y" "width" "height")])
     (define found (regexp-match (regexp (format " ~a=\"([^\"]+)\"" key)) r))
     (if found (string->number (cadr found)) 0)))
+
+; check-rect : (listof real?) (listof real?) -> void?
+;;   Compares annotation rectangles with a small serialization tolerance.
 (define (check-rect actual expected)
   (for ([a (in-list actual)] [b (in-list expected)]) (check-= a b 0.01)))
+
+; pdf-bytes : (canvas? -> any) -> bytes?
+;;   Finishes a single 200-by-160-point PDF page drawn by the callback.
 (define (pdf-bytes draw)
   (call-with-pdf-bytes (lambda (d) (call-with-document-page d 200 160 draw))))
+
+; foreign-error : (-> any) -> (or/c exn? #f)
+;;   Captures the exception from a worker thread, or false when the operation succeeds.
 (define (foreign-error proc)
   (define ch (make-channel))
   (define t (thread (lambda ()
@@ -22,6 +59,13 @@
                        (proc) (channel-put ch #f)))))
   (define e (channel-get ch)) (thread-wait t) e)
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; annotation-native-tests : test-suite?
+;;   Collects the regression cases for document links and destinations: native backends.
 (define annotation-native-tests
   (test-suite
    "Document links and destinations: native backends"
@@ -89,7 +133,11 @@
                     (canvas-define-destination! c "next" 4 5))
                   #:id-prefix "page"))
      (check-true (has? #rx#"viewBox=\"18.0 35.0 200.0 160.0\"" bs))
-     (check-true (has? (byte-regexp (string->bytes/utf-8 (string-append "href=\"#" (svg-destination-id "next" #:id-prefix "page") "\""))) bs)))
+     (check-true
+       (has? (byte-regexp
+               (string->bytes/utf-8
+                 (string-append "href=\"#" (svg-destination-id "next" #:id-prefix "page") "\"")))
+         bs)))
    (test-case "duplicate destinations fail across PDF pages"
      (check-exn #rx"already defined"
        (lambda ()
@@ -205,7 +253,8 @@
          (call-with-output-file path (lambda (p) (write-bytes #"keep" p)) #:exists 'replace)
          (check-exn #rx"undefined"
            (lambda () (call-with-svg-file path 100 100
-                        (lambda (c) (canvas-link-destination! c 1 1 5 5 "missing")) #:exists 'replace)))
+                        (lambda (c) (canvas-link-destination! c 1 1 5 5 "missing")) #:exists
+                        'replace)))
          (check-equal? (file->bytes path) #"keep"))
        (lambda () (delete-file path))))
    (test-case "undefined references never overwrite existing PDF output"

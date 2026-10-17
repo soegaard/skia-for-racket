@@ -1,14 +1,47 @@
 #lang racket/base
+
+;;;
+;;; Render Canvas Pure Test
+;;;
+
+;; Covers unified canvas declarative selection and callback scope; no GUI or native code.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list
          "../private/render-canvas-policy.rkt" "../private/render-canvas-state.rkt")
 (provide render-canvas-pure-tests render-canvas-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; select : symbol? [symbol? symbol? symbol? #:adapter any/c #:index any/c #:sync any/c] -> hash?
+;;   Resolves a renderer request under explicit platform and adapter inputs.
 (define (select renderer [backend 'auto] [os 'unix] [arch 'x86_64]
                 #:adapter [adapter #f] #:index [index #f] #:sync [sync #f])
   (resolve-render-canvas-policy renderer backend adapter index sync #:os os #:arch arch))
+
+; choice : any/c ... -> any/c
+;;   Extracts the selected renderer/backend choice from the policy result.
 (define (choice . args)
   (define p (apply select args))
   (list (hash-ref p 'renderer) (hash-ref p 'backend)))
+
+; session-count : any/c symbol? -> any/c
+;;   Reads a named counter from detached render-session information.
 (define (session-count s key) (hash-ref (render-session-info s) key))
+
+;;;
+;;; Regression Suite
+;;;
+
+; render-canvas-pure-tests : test-suite?
+;;   Collects the regression cases for unified canvas declarative selection and callback scope; no
+;;   GUI or native code.
 (define render-canvas-pure-tests
   (test-suite
    "Unified canvas declarative selection and callback scope; no GUI or native code"
@@ -139,7 +172,8 @@
      (check-equal? (session-count s 'callbacks_completed) 1))
    (test-case "non-exception raised values also unwind"
      (define s (make-render-session (lambda (_c _d) (raise 'paint-failed))))
-     (check-eq? (with-handlers ([(lambda (_) #t) values]) (render-session-deliver! s 'canvas 'dc)) 'paint-failed)
+     (check-eq? (with-handlers ([(lambda (_) #t) values]) (render-session-deliver! s 'canvas 'dc))
+       'paint-failed)
      (check-false (render-session-current-dc s)))
    (test-case "continuation escape retires the callback scope"
      (define s (make-render-session void))
@@ -171,9 +205,19 @@
      (check-exn exn:fail? (lambda () (render-session-deliver! s 'canvas 'dc (lambda (c d) (void)))))
      (check-exn exn:fail? (lambda () (render-session-deliver! s 'canvas #f)))
      (check-equal? (session-count s 'callbacks_started) 0))))
+
+; render-canvas-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define render-canvas-pure-test-count 33)
 (module+ main
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests render-canvas-pure-tests))
   (printf "render-canvas-pure: ~a cases, ~a failures; no GUI or native rendering.\n"
           render-canvas-pure-test-count failures)

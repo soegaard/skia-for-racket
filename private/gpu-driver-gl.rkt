@@ -1,8 +1,18 @@
 #lang racket/base
+
+;;;
+;;; OpenGL GPU Driver
+;;;
+
+;; Creates and describes Ganesh GL contexts using a provider-resolved interface.
+;; Adapts OpenGL context operations to the shared GPU domain protocol.
+
 (require ffi/unsafe "gpu-native.rkt" "gpu-domain.rkt" "gpu-provider.rkt"
          "gpu-types.rkt" (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-gl-driver)
+; make-gl-driver : any/c [#:options any/c] [#:interface any/c] -> gpu-driver?
+;;   Builds Ganesh lifecycle operations around a provider-owned GL interface and activation scope.
 (define (make-gl-driver provider #:options [options #f] #:interface [interface-mode 'default])
   (check-gl-interface-mode 'make-gl-driver interface-mode)
   (check-optional-context-options 'make-gl-driver options)
@@ -36,7 +46,8 @@
    gr_direct_context_abandon_context
    (lambda (p)
      (when (gr_direct_context_is_abandoned p)
-       (error 'call-with-gpu-context "native Ganesh context is abandoned; close or abandon this domain"))
+       (error 'call-with-gpu-context
+         "native Ganesh context is abandoned; close or abandon this domain"))
      ;; Invalidate Skia's assumptions after external host use. This does NOT
      ;; restore the host's GL state when the scope returns.
      (gr_direct_context_reset_context p #xffffffff))
@@ -57,7 +68,8 @@
                 'native_backend gr-opengl
                 'max_texture_size (gr_recording_context_max_texture_size p)
                 'max_render_target_size (gr_recording_context_max_render_target_size p)
-                'max_rgba_sample_count (gr_recording_context_get_max_surface_sample_count_for_color_type p rgba-8888)
+                'max_rgba_sample_count
+                  (gr_recording_context_get_max_surface_sample_count_for_color_type p rgba-8888)
                 'cache_limit_bytes (gr_direct_context_get_resource_cache_limit p)
                 'initial_cache_resources (ptr-ref count _int)
                 'initial_cache_bytes (ptr-ref size _size)))))

@@ -1,10 +1,21 @@
 #lang racket/base
 
+;;;
+;;; GPU Render Scopes
+;;;
+
+;; Validates context-bound drawing procedures and executes GPU rendering scopes.
+;; Provides shared execution rules for public GPU rendering helpers.
+
+
 (provide call-with-rendered-gpu-image)
 
 ;; Private lifetime worker. Injected operations allow failure-path tests without
 ;; a driver, while the public entry point supplies only the real GPU operations.
 ;; Factories must clean up their own partially constructed resources on failure.
+; call-with-rendered-gpu-image : any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Scopes context and surface creation, drawing, explicit readback, and cleanup through injected
+;;   operations.
 (define (call-with-rendered-gpu-image make-context activate make-surface
                                       draw readback close-resource close-context)
   (define image #f)

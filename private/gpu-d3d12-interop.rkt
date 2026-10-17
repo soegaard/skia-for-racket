@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Direct3D Texture Interoperation
+;;;
+
+;; Scopes external Direct3D textures and validates their context affinity.
+;; Connects application-owned textures to Skia image and surface resources.
+
 (require ffi/unsafe "../gpu.rkt" "core.rkt" "types.rkt" "lifetime.rkt"
          "gpu-types.rkt" "gpu-context.rkt" "gpu-domain.rkt" "gpu-dxgi-types.rkt"
          "gpu-d3d12-handles.rkt" "gpu-d3d12-interop-policy.rkt" "gpu-d3d12-interop-system.rkt"
@@ -11,14 +19,22 @@
          (submod "core.rkt" gpu-surface-internals)
          (submod "core.rkt" gpu-image-internals))
 (provide make-d3d12-external-texture call-with-gpu-d3d12-device)
+; quarantined-operations : list?
+;;   Roots operations whose private wrappers or synchronization state cannot safely be destroyed.
 (define quarantined-operations '())
+; context! : symbol? any/c -> any
+;;   Requires a Direct3D context before exposing device handles or accepting external textures.
 (define (context! who context)
-  (when (or (current-external-operation) (current-external-native?) (current-external-gl?) (current-gl-borrow?))
+  (when (or (current-external-operation) (current-external-native?) (current-external-gl?)
+    (current-gl-borrow?))
     (error who "nested native handoff/borrowing is not supported"))
   (define d (context-domain who context))
   (unless (eq? (domain-backend d) 'direct3d) (error who "an active Direct3D context is required"))
   (domain-pointer d)
   d)
+; call-with-gpu-d3d12-device : gpu-context? (-> cpointer? any) -> any
+;;   Calls proc with the borrowed ID3D12Device used by an active Direct3D context and returns the
+;;   callback's values.
 (define (call-with-gpu-d3d12-device context proc)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error 'call-with-gpu-d3d12-device "one-argument procedure" proc))
@@ -29,15 +45,26 @@
       ;; and resources. It cannot use private Ganesh resources or reenter Skia.
       (call-with-continuation-barrier
         (lambda () (parameterize ([current-external-native? #t]) (proc device)))))))
+; space-pointer : any/c -> any
+;;   Borrows an optional color-space pointer for the native texture wrapper's scope.
 (define (space-pointer space)
   (and space (call-with-owned 'd3d12-interop (list (color-space-h 'd3d12-interop space)) values)))
+; make-d3d12-external-texture : gpu-context? cpointer? #:producer-fence cpointer? #:producer-value
+;   (integer-in 1 18446744073709551614) #:incoming-state (or/c 'common 'render-target
+;   'pixel-shader-resource 'shader-read 'copy-dest 'copy-source) #:outgoing-state (or/c 'common
+;   'render-target 'pixel-shader-resource 'shader-read 'copy-dest 'copy-source) [#:timeout-ms
+;   (integer-in 1 60000)] [#:premultiplied? boolean?] [#:color-space (or/c color-space? #f)] ->
+;   gpu-external-texture?
+;;   Creates a single-use handoff for a live ID3D12Resource.
 (define (make-d3d12-external-texture context resource
           #:producer-fence producer #:producer-value value
           #:incoming-state incoming #:outgoing-state outgoing
           #:timeout-ms [timeout 5000] #:premultiplied? [premultiplied? #t]
           #:color-space [space #f])
-  (interop-state incoming) (interop-state outgoing) (interop-timeout! timeout) (interop-fence-value! value)
-  (unless (boolean? premultiplied?) (raise-argument-error 'make-d3d12-external-texture "boolean?" premultiplied?))
+  (interop-state incoming) (interop-state outgoing) (interop-timeout! timeout) (interop-fence-value!
+    value)
+  (unless (boolean? premultiplied?) (raise-argument-error 'make-d3d12-external-texture "boolean?"
+    premultiplied?))
   (define d (context! 'make-d3d12-external-texture context))
   (space-pointer space)
   (i:interop-native-check!)
@@ -48,7 +75,8 @@
       (parameterize-break #f
         (call-with-d3d12-handles (domain-pointer d)
           (lambda (_a device queue)
-            (set! session (make-interop-session device queue resource producer value incoming outgoing timeout))))
+            (set! session (make-interop-session device queue resource producer value incoming outgoing
+              timeout))))
         ;; The resource/fence now have independent COM references. Domain
         ;; finalization only enqueues this destructor; it never calls COM off-owner.
         (set! pin (domain-new-resource d 'external-d3d12-texture
@@ -59,7 +87,8 @@
       (check-dimensions 'make-d3d12-external-texture w h)
       (define info (gpu-context-info context))
       (unless (and (<= w (hash-ref info 'max_texture_size)) (<= h (hash-ref info 'max_texture_size))
-                   (<= w (hash-ref info 'max_render_target_size)) (<= h (hash-ref info 'max_render_target_size)))
+                   (<= w (hash-ref info 'max_render_target_size)) (<= h (hash-ref info
+                     'max_render_target_size)))
         (error 'make-d3d12-external-texture "external texture exceeds the context limits"))
       (define result
         (make-external-texture 'direct3d context (domain-generation d)
@@ -70,7 +99,8 @@
             (domain-pointer d) (resource-pointer pin) (space-pointer space)
             (check-dimensions 'd3d12-interop w h)
             (when (eq? mode 'surface)
-              (unless premultiplied? (error 'd3d12-interop "render targets require premultiplied alpha"))
+              (unless premultiplied? (error 'd3d12-interop
+                "render targets require premultiplied alpha"))
               (check-interop-resource! description #t)
               (n:gpu-native-check! 'dxgi)))
           (lambda (mode proc)
@@ -82,6 +112,9 @@
       (unless ready?
         (cond [pin (domain-resource-close! pin) (domain-drain! d)]
               [session (session-close! session)])))))
+; run-operation : any/c any/c any/c any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Coordinates context activation, native resource wrapping, synchronization, and quarantined
+;;   cleanup for one handoff.
 (define (run-operation context d session pin w h space premultiplied? mode proc)
   (define descriptor #f) (define handle #f) (define borrowed-surface #f)
   (define canvas #f) (define out #f) (define body-ok? #f)
@@ -99,11 +132,13 @@
     (with-handlers ([(lambda (_) #t) (lambda (e) (quarantine! e) (raise e))])
       (gpu-flush-and-submit! context)
       (session-complete! session))
-    (record-gpu-io! (hasheq 'kind "external-d3d12-completion" 'wait_requested #t 'cpu_pixel_readback #f)))
+    (record-gpu-io! (hasheq 'kind "external-d3d12-completion" 'wait_requested #t 'cpu_pixel_readback
+      #f)))
   (define (quarantine! e)
     (session-quarantine! session e)
     (set! quarantined-operations
-      (cons (list session pin handle descriptor borrowed-surface canvas out context e) quarantined-operations))
+      (cons (list session pin handle descriptor borrowed-surface canvas out context e)
+        quarantined-operations))
     (domain-request-shutdown! d 'external-d3d12-indeterminate))
   ;; A nested domain activation is the borrowed canvas lease, even when the
   ;; caller already has an outer active context.
@@ -130,7 +165,8 @@
                             (= (i:gr_backendtexture_get_backend descriptor) gr-direct3d))
                  (error 'gpu-import-image "invalid Direct3D bridge texture"))
                (set! handle (domain-new-resource d 'interop-bridge-image
-                 (lambda () (i:sk_image_new_from_texture native-context descriptor gr-top-left rgba-8888
+                 (lambda () (i:sk_image_new_from_texture native-context descriptor gr-top-left
+                   rgba-8888
                                                         (if premultiplied? 2 3) cp #f #f))
                  im:image-unref/native #:keepalive context))]
               [(surface)
@@ -139,7 +175,8 @@
                             (= (n:gr_backendrendertarget_get_backend descriptor) gr-direct3d))
                  (error 'call-with-gpu-external-surface "invalid external Direct3D render target"))
                (set! handle (domain-new-resource d 'interop-external-surface
-                 (lambda () (n:sk_surface_new_backend_render_target native-context descriptor gr-top-left rgba-8888 cp #f))
+                 (lambda () (n:sk_surface_new_backend_render_target native-context descriptor
+                   gr-top-left rgba-8888 cp #f))
                  n:sk_surface_unref #:keepalive context))]))
           (set! wrapped? #t)
           (case mode
@@ -166,13 +203,15 @@
                    'render_path "sk_surface_new_backend_render_target")))
              (gpu-surface-info borrowed-surface)
              (set! canvas (surface-canvas borrowed-surface))
-             (record-gpu-io! (hasheq 'kind "external-surface-borrow" 'backend "direct3d" 'contents_preserved #t))
+             (record-gpu-io! (hasheq 'kind "external-surface-borrow" 'backend "direct3d"
+               'contents_preserved #t))
              (call-with-canvas-state canvas
                (lambda ()
                  (define floor (canvas-save-count canvas))
                  (begin0 (proc canvas)
                    (unless (= (canvas-save-count canvas) floor)
-                     (error 'call-with-gpu-external-surface "callback left unbalanced canvas saves/layers")))))]))
+                     (error 'call-with-gpu-external-surface
+                       "callback left unbalanced canvas saves/layers")))))]))
         (lambda ()
           (when (hash-ref (session-info session) 'quarantined)
             (error 'd3d12-interop "quarantined: ~a" (hash-ref (session-info session) 'error)))
@@ -205,7 +244,8 @@
           (domain-resource-close! pin) (domain-drain! d)
           (when (hash-ref (session-info session) 'external_state_returned)
             (record-gpu-io! (hasheq 'kind "external-resource-return" 'backend "direct3d"
-              'completion_verified #t 'outgoing_state (hash-ref (session-info session) 'outgoing_state)
+              'completion_verified #t 'outgoing_state (hash-ref (session-info session)
+                'outgoing_state)
               'cpu_readback #f)))
           (void/reference-sink space))
         quarantine!))))

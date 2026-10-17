@@ -1,6 +1,19 @@
 #lang racket/base
+
+;;;
+;;; GUI Canvas Backing Stores
+;;;
+
+;; Manages bitmap backing stores and presents rendered pixels in a GUI canvas.
+;; Provides the CPU presentation path shared by the project's canvas widgets.
+
 ;; Headless ownership and presentation for skia/canvas. Requiring this module
 ;; initializes neither racket/gui nor the lazy native Skia renderer.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/future
          (prefix-in rd: racket/draw)
          "../dc.rkt" "dc-support.rkt"
@@ -8,9 +21,16 @@
          (only-in "check.rkt" check-dimensions current-skia-byte-limit))
 (provide canvas-backing% rgba->argb!)
 
+;;;
+;;; Pixel Transfer and Storage Budget
+;;;
+
 ;; The input and output are both premultiplied; only the channel order changes.
 ;; Read the complete pixel first so a caller may use the same byte string for
 ;; source and destination. All validation precedes the first write.
+
+; rgba->argb! : bytes? bytes? -> void?
+;;   Reorders equal-sized premultiplied buffers, allowing the mutable destination to alias the source.
 (define (rgba->argb! rgba argb)
   (unless (bytes? rgba)
     (raise-argument-error 'rgba->argb! "bytes?" rgba))
@@ -37,6 +57,11 @@
 ;; readback. Replacement temporarily retains the previous bitmap and transfer
 ;; storage. The DC checks its native root/alpha surfaces separately; snapshots
 ;; retained by callers and draw-lib/allocator overhead are outside this budget.
+
+; check-presentation-size : symbol? exact-positive-integer? exact-positive-integer?
+; [exact-nonnegative-integer?] -> exact-positive-integer?
+;;   Checks peak presentation storage, including retained replacement buffers, and returns one RGBA
+;;   buffer's byte count.
 (define (check-presentation-size who pixel-width pixel-height [retained-bytes 0])
   (define n (check-dimensions who pixel-width pixel-height))
   (define needed (max (* 3 n) (+ retained-bytes (* 2 n))))
@@ -46,6 +71,9 @@
                            "limit" (current-skia-byte-limit)))
   n)
 
+; make-presentation : symbol? exact-positive-integer? exact-positive-integer? real?
+; exact-positive-integer? -> (values (is-a?/c bitmap%) bytes?)
+;;   Allocates a logical-size bitmap at the backing scale and its physical-pixel ARGB transfer buffer.
 (define (make-presentation who width height backing bytes-count)
   ;; Allocate before touching an existing DC. A failed bitmap allocation cannot
   ;; leave the native surface and the presentation bitmap at different sizes.
@@ -55,11 +83,22 @@
     (error who "could not allocate the canvas presentation bitmap"))
   (values bitmap argb))
 
+;;;
+;;; Persistent Backing and Presentation
+;;;
+
+; canvas-backing% : class?
+;;   Owns a persistent DC, presentation bitmap, and transfer buffer on one thread; resizing preserves
+;;   DC identity.
 (define canvas-backing%
   (class object%
     (init [width 1] [height 1] [backing-scale 1.0]
           [background "white"] [smoothing 'unsmoothed]
           [dc-class skia-dc%])
+    ;;;
+    ;;; Owned Presentation State
+    ;;;
+
     (define owner (current-thread))
     (define closed-state #f)
     (define w width)
@@ -77,6 +116,10 @@
     ;; The public DC identity survives every successful resize.
     (define dc (new dc-class [width w] [height h] [backing-scale backing]
                     [background background] [smoothing smoothing]))
+
+    ;;;
+    ;;; Access and Transactional Resize
+    ;;;
 
     (define/private (owner! who)
       (unless (and (eq? owner (current-thread)) (not (current-future)))
@@ -134,6 +177,10 @@
              (commit!)))
          #t]))
 
+    ;;;
+    ;;; Paint Scope and Bitmap Readback
+    ;;;
+
     (define/public (paint! thunk [clear? #t])
       (check! 'canvas-backing-paint!)
       (unless (and (procedure? thunk) (procedure-arity-includes? thunk 0))
@@ -165,6 +212,10 @@
       (hasheq 'width w 'height h 'pixel-width pixel-w 'pixel-height pixel-h
               'backing-scale backing 'transfer "copied-premultiplied-rgba-to-argb"
               'presentation-bytes (* 2 byte-count)))
+
+    ;;;
+    ;;; Backing Retirement
+    ;;;
 
     (define/public (closed?)
       (owner! 'canvas-backing-closed?)

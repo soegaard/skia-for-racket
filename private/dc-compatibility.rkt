@@ -1,9 +1,29 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Compatibility
+;;;
+
+;; Records the supported dc<%> method surface and compatibility classifications.
+;; Makes the adapter's intentional support limits available to callers and tests.
+
 ;; Declarative compatibility boundary; no GUI, font parsing, or native probing.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list)
 (provide skia-dc-compatibility dc-interface-arities)
+;;;
+;;; Declared Method Surface
+;;;
+
 ;; Racket draw-lib 1.22+ dc<%>. Arity excludes the receiver. The acceptance
 ;; suite compares both the member set and each arity against the actual class.
+
+; dc-interface-arities : (listof (cons/c symbol? (listof exact-nonnegative-integer?)))
+;;   Lists each dc<%> method followed by its accepted positional arities, excluding the receiver.
 (define dc-interface-arities
   '((cache-font-metrics-key 0) (clear 0) (copy 6) (draw-arc 6)
     (draw-bitmap 3 4 5 6) (draw-bitmap-section 7 8 9 10)
@@ -25,7 +45,13 @@
     (set-text-foreground 1) (set-text-mode 1) (set-transformation 1)
     (start-doc 1) (start-page 0) (suspend-flush 0) (transform 1)
     (translate 2) (try-color 2)))
+
+; noop-methods : (listof symbol?)
+;;   Identifies document and flush methods that validate lifetime but do not affect raster targets.
 (define noop-methods '(start-doc end-doc start-page end-page flush suspend-flush resume-flush))
+; skia-dc-compatibility : [(or/c 'raster 'gpu 'pdf 'svg)] -> (and/c hash? immutable?)
+;;   Returns the machine-readable compatibility declaration for the selected DC lifetime and output
+;;   target.
 (define (skia-dc-compatibility [target 'raster])
   (unless (memq target '(raster gpu pdf svg))
     (raise-argument-error 'skia-dc-compatibility "'raster, 'gpu, 'pdf, or 'svg" target))
@@ -42,7 +68,8 @@
           (for/list ([row (in-list dc-interface-arities)])
             (hasheq 'name (car row) 'arities (cdr row) 'status (status (car row))))
           'text "single-line Skia/HarfBuzz; no universal Cairo/Pango metric or pixel identity"
-          'font_descriptions "plain family or single-family Pango description; size from font%; non-normal weight/style override description"
+          'font_descriptions
+            "plain family or single-family Pango description; size from font%; non-normal weight/style override description"
           'font_parser "Racket-supplied Pango, parsing only; no Pango layout or drawing"
           'unsupported
           '(native-cairo-handle-brushes combined-tabs-or-hard-breaks

@@ -1,10 +1,32 @@
 #lang racket/base
 
+;;;
+;;; Tutorial Example Export
+;;;
+
+;; Copies cataloged complete tutorial programs into a selected destination or lists the planned
+;; files.
+;; This command prepares runnable examples without requiring readers to extract Scribble snippets.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline racket/string raco/command-name
          "../scribblings/tutorials/support/catalog.rkt"
          "../scribblings/tutorials/support/examples.rkt")
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; list-only? : boolean?
+;;   Selects catalog listing without copying tutorial programs.
 (define list-only? #f)
+
+; arguments : (listof string?)
+;;   Stores positional command-line arguments used to select a tutorial and output destination.
 (define arguments
   (command-line
    #:program (short-program+command-name)

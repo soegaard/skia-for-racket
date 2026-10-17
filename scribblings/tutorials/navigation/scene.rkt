@@ -1,18 +1,47 @@
 #lang racket
 
+;;;
+;;; Navigation Scene
+;;;
+
+;; Draws transformed model geometry while keeping editor controls in screen coordinates.
+;; This shared tutorial drawing is used by the runnable program, documentation figures, and
+;; checks.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia "model.rkt")
 (provide editor-width editor-height header-height footer-height draw-editor)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; editor-width : exact-integer?
+;;   Specifies editor width in the drawing's local coordinate units.
 (define editor-width 800)
+; editor-height : exact-integer?
+;;   Specifies editor height in the drawing's local coordinate units.
 (define editor-height 500)
+; header-height : exact-integer?
+;;   Specifies header height in the drawing's local coordinate units.
 (define header-height 104)
+; footer-height : exact-integer?
+;;   Specifies footer height in the drawing's local coordinate units.
 (define footer-height 38)
 
+; curve-path : list? -> path?
+;;   Builds the cubic path from the ordered start, handles, and end points.
 (define (curve-path points)
   (match-define (list (control-point x0 y0) (control-point x1 y1)
                       (control-point x2 y2) (control-point x3 y3)) points)
   (make-path `((move ,x0 ,y0) (cubic ,x1 ,y1 ,x2 ,y2 ,x3 ,y3))))
 
+; draw-model : canvas? list? view-state? real? real? -> void?
+;;   Draws the model component in the current canvas coordinate system.
 (define (draw-model canvas points view width height)
   (define zoom (view-state-zoom view))
   (define grid (make-paint #:color "#20344D" #:style 'stroke #:stroke-width (/ 1 zoom)))
@@ -33,6 +62,8 @@
     (with-skia ([path (curve-path points)])
       (draw-path canvas path curve))))
 
+; draw-handles : canvas? list? view-state? (or/c exact-nonnegative-integer? #f) -> void?
+;;   Draws the handles component in the current canvas coordinate system.
 (define (draw-handles canvas points view selected)
   (define amber (make-paint #:color "#FFBF72"))
   (define cyan (make-paint #:color "#56D3E1"))
@@ -49,6 +80,9 @@
     (draw-circle canvas x y 10 (if (member index '(0 3)) amber cyan))
     (draw-simple-text canvas (format "P~a" index) label-x label-y font ink)))
 
+; draw-editor : canvas? list? view-state? real? real? [(or/c exact-nonnegative-integer? #f)] ->
+; void?
+;;   Draws the editor component in the current canvas coordinate system.
 (define (draw-editor canvas points view width height [selected #f])
   (define text (make-paint #:color "#E6F2FB"))
   (define muted (make-paint #:color "#A0BDD1"))
@@ -70,7 +104,13 @@
                             (exact-round (* 100 (view-state-zoom view))))
                     28 (- height 15) caption-font muted))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; surface : surface?
+  ;;   Owns the raster drawing target used to produce the example's output.
   (define surface (make-surface editor-width editor-height))
   (draw-editor (surface-canvas surface) initial-points home-view editor-width editor-height)
   (save-png surface "navigation.png" #:exists 'replace))

@@ -1,14 +1,41 @@
 #lang racket/base
+
+;;;
+;;; Typeface Pure Test
+;;;
+
+;; Covers pure typeface values, ranges and original generated fixtures.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui "../typefaces.rkt" "../private/typeface-util.rkt"
          "../private/check.rkt" "typeface-fixtures.rkt")
 (provide typeface-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail:contract? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail:contract? thunk))
+
+;;;
+;;; Regression Suite
+;;;
+
+; typeface-pure-tests : test-suite?
+;;   Collects the regression cases for pure typeface values, ranges and original generated fixtures.
 (define typeface-pure-tests
   (test-suite
    "0.68a pure typeface values, ranges and original generated fixtures"
    (test-case "style defaults are normalized values"
      (define s (make-font-style))
-     (check-equal? (list (font-style-weight s) (font-style-width s) (font-style-slant s)) '(400 5 upright)))
+     (check-equal? (list (font-style-weight s) (font-style-width s) (font-style-slant s))
+       '(400 5 upright)))
    (test-case "style accepts the existing weight and stretch vocabulary"
      (check-equal? (make-font-style #:weight 'bold #:width 'condensed #:slant 'italic)
                    (make-font-style #:weight 700 #:width 3 #:slant 'italic)))
@@ -55,7 +82,8 @@
        (bad (lambda () (typeface-slice 'test 8 (car p) (cadr p))))))
    (test-case "slice budget charges requested data, not the whole table"
      (parameterize ([current-skia-byte-limit 4])
-       (check-equal? (call-with-values (lambda () (typeface-slice 'test 1000 100 104)) list) '(100 104))
+       (check-equal? (call-with-values (lambda () (typeface-slice 'test 1000 100 104)) list)
+         '(100 104))
        (bad (lambda () (typeface-slice 'test 1000 100 105)))))
    (test-case "glyph IDs are uint16 and snapshot caller vectors"
      (define gs (vector 1 2))
@@ -66,7 +94,8 @@
    (test-case "kerning accounts for input and output buffers"
      (parameterize ([current-skia-byte-limit 7])
        (bad (lambda () (typeface-glyphs 'test '(1 2)))))
-     (parameterize ([current-skia-byte-limit 8]) (check-equal? (typeface-glyphs 'test '(1 2)) '(1 2))))
+     (parameterize ([current-skia-byte-limit 8])
+       (check-equal? (typeface-glyphs 'test '(1 2)) '(1 2))))
    (test-case "fixture fonts have the complete SFNT checksum"
      (check-equal? (fixture-checksum (fixture-font-bytes)) #xb1b0afba)
      (check-equal? (fixture-checksum (fixture-font-bytes #:bold? #t)) #xb1b0afba))

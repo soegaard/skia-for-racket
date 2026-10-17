@@ -1,7 +1,25 @@
 #lang racket/base
+
+;;;
+;;; Text Example
+;;;
+
+;; Renders a basic text specimen using fonts, paints, metrics, and outline drawing.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline
          "../main.rkt")
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; output : path-string?
+;;   Selects the destination used by this example's output.
 (define output
   (command-line
    #:program "text.rkt"

@@ -1,14 +1,38 @@
 #lang racket
 
+;;;
+;;; Sprites Tutorial Evaluation
+;;;
+
+;; Runs the Sprites tutorial's executable documentation examples and figure helpers.
+;; This module connects the manual to executable examples and their rendered figures.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/runtime-path scribble/eval skia "atlas.rkt" "model.rkt" "scene.rkt"
          "../support/figures.rkt" "../support/sprite-figures.rkt" "../support/sprite-math.rkt")
 (provide sprites-interaction balls-pict balls-motion ball-atlas-pict one-ball-pict placements-pict)
+;;;
+;;; Evaluator and Figure Helpers
+;;;
+
+; model-source : path?
+;;   Locates model source relative to this module rather than the current directory.
 (define-runtime-path model-source "model.rkt")
+; math-source : path?
+;;   Locates math source relative to this module rather than the current directory.
 (define-runtime-path math-source "../support/sprite-math.rkt")
+; evaluator : procedure?
+;;   Retains one evaluator so successive documentation examples share their bindings.
 (define evaluator (make-base-eval))
 (evaluator `(require racket (file ,(path->string model-source))
                       (file ,(path->string math-source))))
 
+; balls-pict : [any/c] #:scale [real?] -> pict?
+;;   Renders the balls illustration from the tutorial's drawing code.
 (define (balls-pict [steps 0] #:scale [scale 0.8])
   (define world (make-ball-world 30))
   (for ([_ (in-range steps)]) (step-balls! world fixed-step void))
@@ -16,13 +40,19 @@
     (render-pict scene-width scene-height
                  (lambda (canvas) (draw-balls canvas atlas world)) #:scale scale)))
 
+; balls-motion : -> pict?
+;;   Builds the balls motion illustration from the tutorial's actual drawing.
 (define (balls-motion)
   (figure-row (captioned-pict "t = 0 seconds" (balls-pict 0 #:scale 0.4))
               (captioned-pict "t = 1 second" (balls-pict 120 #:scale 0.4))))
 
+; ball-atlas-pict : -> pict?
+;;   Renders the ball atlas illustration from the tutorial's drawing code.
 (define (ball-atlas-pict)
   (with-skia ([atlas (make-ball-atlas)]) (atlas-pict atlas 8)))
 
+; one-ball-pict : -> pict?
+;;   Renders the one ball illustration from the tutorial's drawing code.
 (define (one-ball-pict)
   (with-skia ([atlas (make-ball-atlas)])
     (render-pict
@@ -42,6 +72,8 @@
          (draw-line canvas 140 65 140 87 mark)
          (draw-simple-text canvas "cell 2 / anchor at (140, 76)" 42 152 font ink))))))
 
+; placements-pict : -> pict?
+;;   Renders the placements illustration from the tutorial's drawing code.
 (define (placements-pict)
   (with-skia ([atlas (make-ball-atlas)])
     (render-pict
@@ -60,5 +92,7 @@
          (for ([x '(40 228 420)] [text '("1x / 0 degrees" "1.5x / 40 degrees" "2x / -35 degrees")])
            (draw-simple-text canvas text x 152 font ink)))))))
 
+; sprites-interaction : syntax -> syntax
+;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (sprites-interaction expression ...)
   (interaction #:eval evaluator expression ...))

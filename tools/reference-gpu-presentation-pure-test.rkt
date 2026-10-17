@@ -1,11 +1,32 @@
 #lang racket/base
 
+;;;
+;;; Reference GPU Presentation Pure Test
+;;;
+
+;; Checks frame acquisition, generation tracking, redraw coalescing, and expiration using a fake
+;; adapter.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Presenter state-machine checks with a synthetic adapter. No GUI, native GPU,
 ;; window, pixel readback, or physical presentation is created by this suite.
 (require rackunit racket/list
          "../private/gpu-presenter.rkt"
          (submod "../private/gpu-presenter.rkt" adapter-internals))
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; make-fake-presenter : [procedure?] -> (values any/c box? box? box? box?)
+;;   Returns a presenter and mutable metrics, event log, callback queue, and failure switch for
+;;   deterministic lifecycle checks.
 (define (make-fake-presenter [render void])
   (define metrics (box (presentation-metrics 100 80 50 40)))
   (define log (box '()))
@@ -35,6 +56,10 @@
      (lambda () (hasheq 'synthetic #t))))
   (values (make-presenter adapter render void) metrics log queued fail))
 
+
+; dispatch! : box? -> void?
+;;   Drains the current callback batch before running it, keeping newly enqueued work for the next
+;;   dispatch.
 (define (dispatch! queue)
   (for ([thunk (in-list (begin0 (unbox queue) (set-box! queue '())))]) (thunk)))
 

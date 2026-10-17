@@ -1,10 +1,29 @@
 #lang racket/base
+
+;;;
+;;; DC Replay Pure Test
+;;;
+
+;; Covers dC replay, locking and alpha protocol (recording renderer; no Skia pixels).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list
          (prefix-in rd: racket/draw)
          "../private/dc-class.rkt" "../private/dc-support.rkt"
          (only-in "../private/check.rkt" current-skia-byte-limit)
          "../examples/dc-replay.rkt" "dc-alpha-test.rkt")
 (provide dc-replay-pure-tests dc-replay-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fresh : [#:fail-create any/c #:fail-compose any/c] -> (values dc<%> box?)
+;;   Creates a recording alpha-capable DC with injectable allocation and merge failures.
 (define (fresh #:fail-create [fail-create #f] #:fail-compose [fail-compose #f])
   (define events (box '())) (define next 0)
   (define (event . xs) (set-box! events (cons xs (unbox events))) (void))
@@ -25,13 +44,30 @@
        (event 'merge parent child clip a)
        (when fail-compose (error 'merge "injected composition failure")))))
   (values (new (make-skia-dc-class r) [width 64] [height 48]) events))
+
+; with-fresh : syntax
+;;   Binds a fresh DC and event log and guarantees closure after the test body.
 (define-syntax-rule (with-fresh (dc e) body ...)
   (let-values ([(dc e) (fresh)])
     (dynamic-wind void (lambda () body ...) (lambda () (send dc close)))))
+
+; events-of : box? symbol? -> list?
+;;   Returns matching renderer events in execution order.
 (define (events-of e kind) (filter (lambda (x) (eq? (car x) kind)) (reverse (unbox e))))
+
+; simple : dc<%> -> void?
+;;   Draws one red rectangle to exercise recorded replay without unrelated state changes.
 (define (simple dc)
   (send dc set-pen "black" 1 'transparent) (send dc set-brush "red" 'solid)
   (send dc draw-rectangle 2 3 8 9))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-replay-pure-tests : test-suite?
+;;   Collects the regression cases for dC replay, locking and alpha protocol (recording renderer; no
+;;   Skia pixels).
 (define dc-replay-pure-tests
   (test-suite
    "DC replay, locking and alpha protocol (recording renderer; no Skia pixels)"
@@ -58,7 +94,8 @@
        (send dc set-origin 2 3) (send dc set-scale 2 3)
        (send dc set-rotation 0.1) (send dc set-smoothing 'smoothed)
        (define before (send dc get-transformation))
-       (define-values (proc datum) (make-dc-recording (lambda (d) (send d set-smoothing 'smoothed) (simple d))))
+       (define-values (proc datum)
+         (make-dc-recording (lambda (d) (send d set-smoothing 'smoothed) (simple d))))
        (for ([draw (list proc datum)]) (draw dc) (check-equal? (send dc get-transformation) before))))
    (test-case "both replay forms preserve selected region and alpha"
      (with-fresh (dc e)
@@ -118,7 +155,10 @@
    (test-case "wrong-thread alpha call is rejected before allocation"
      (with-fresh (dc e)
        (define answer (box #f))
-       (thread-wait (thread (lambda () (with-handlers ([exn:fail? (lambda (x) (set-box! answer x))]) (send dc start-alpha 0.5)))))
+       (thread-wait
+         (thread (lambda ()
+                   (with-handlers ([exn:fail? (lambda (x) (set-box! answer x))])
+                     (send dc start-alpha 0.5)))))
        (check-true (exn:fail? (unbox answer))) (check-equal? (length (events-of e 'create)) 1)))
    (test-case "close discards nested groups and releases all surfaces"
      (with-fresh (dc e)
@@ -159,7 +199,8 @@
          (check-exn exn:fail? (lambda () (send dc start-alpha 0.5))))
        (check-= (send dc get-alpha) 1 0) (check-equal? (send dc snapshot) 1)))
    (test-case "unmatched end-alpha performs no native work"
-     (with-fresh (dc e) (define before (unbox e)) (send dc end-alpha) (check-equal? (unbox e) before)))
+     (with-fresh (dc e) (define before (unbox e)) (send dc end-alpha)
+       (check-equal? (unbox e) before)))
    (test-case "allocation failure preserves usable root"
      (define-values (dc e) (fresh #:fail-create 2))
      (dynamic-wind void (lambda ()
@@ -176,7 +217,8 @@
        (check-equal? (events-of e 'close) '((close 2)))) (lambda () (send dc close))))
    (test-case "new hatch style restores state through both replay forms"
      (with-fresh (dc e)
-       (define-values (proc datum) (make-dc-recording (lambda (d) (send d set-brush "red" 'cross-hatch))))
+       (define-values (proc datum)
+         (make-dc-recording (lambda (d) (send d set-brush "red" 'cross-hatch))))
        (define before (send dc get-brush))
        (check-not-exn (lambda () (proc dc) (datum dc)))
        (check-eq? before (send dc get-brush))))
@@ -191,4 +233,7 @@
                        (check-false (object-method-arity-includes? dc 'do-set-brush! 1))))
    (test-case "production alpha controller adversarial suite"
      (check-equal? (run-dc-alpha-tests) dc-alpha-test-count))))
+
+; dc-replay-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-replay-pure-test-count 28)

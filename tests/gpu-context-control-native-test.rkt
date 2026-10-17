@@ -1,10 +1,40 @@
 #lang racket/base
+
+;;;
+;;; GPU Context Control Native Test
+;;;
+
+;; Covers gPU context control ABI and symbol resolution (no GPU execution).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui ffi/unsafe racket/list
          "../gpu-context-options.rkt" "../private/gpu-context-options-native.rkt"
          "../private/gpu-native.rkt" (only-in "../private/native.rkt" skia-check!))
 (provide gpu-context-control-native-tests gpu-context-control-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; field : cpointer? ctype? exact-nonnegative-integer? -> any/c
+;;   Reads a native ABI field at an absolute byte offset.
 (define (field p type offset) (ptr-ref p type 'abs offset))
+
+; gpu-context-control-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-context-control-native-test-count 12)
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-context-control-native-tests : test-suite?
+;;   Collects the regression cases for gPU context control ABI and symbol resolution (no GPU
+;;   execution).
 (define gpu-context-control-native-tests
   (test-suite "GPU context control ABI and symbol resolution (no GPU execution)"
     (test-case "pinned native baseline resolves" (skia-check!))
@@ -27,7 +57,8 @@
           (check-equal? (field p _size 8) 1234567) (check-false (field p _stdbool 16))
           (check-true (field p _stdbool 17)) (check-equal? (field p _int32 20) 4096))))
     (test-case "size_t is not narrowed"
-      (call-with-native-context-options 'test (make-gpu-context-options #:glyph-cache-texture-maximum-bytes #xffffffffffffffff)
+      (call-with-native-context-options 'test
+        (make-gpu-context-options #:glyph-cache-texture-maximum-bytes #xffffffffffffffff)
         (lambda (p) (check-equal? (field p _size 8) #xffffffffffffffff))))
     (test-case "mapping sentinel and zero"
       (for ([n '(-1 0 2147483647)])
@@ -39,16 +70,24 @@
     (test-case "omitted descriptor is native null"
       (check-false (call-with-native-context-options 'test #f values)))
     (test-case "multiple return values are preserved"
-      (check-equal? (call-with-values (lambda () (call-with-native-context-options 'test #f (lambda (_) (values 1 2)))) list) '(1 2)))
+      (check-equal?
+        (call-with-values
+          (lambda () (call-with-native-context-options 'test #f (lambda (_) (values 1 2)))) list)
+        '(1 2)))
     (test-case "invalid options do not call consumer"
       (define called? #f)
-      (check-exn exn:fail:contract? (lambda () (call-with-native-context-options 'test 'wrong (lambda (_) (set! called? #t)))))
+      (check-exn exn:fail:contract?
+        (lambda () (call-with-native-context-options 'test 'wrong (lambda (_) (set! called? #t)))))
       (check-false called?))
     (test-case "consumer error is not swallowed"
-      (check-exn #rx"sentinel" (lambda () (call-with-native-context-options 'test (make-gpu-context-options) (lambda (_) (error 'test "sentinel"))))))
+      (check-exn #rx"sentinel"
+        (lambda () (call-with-native-context-options 'test (make-gpu-context-options)
+                     (lambda (_) (error 'test "sentinel"))))))
     (test-case "all six symbols and legacy factories resolve"
       (for ([backend '(opengl metal direct3d)]
-            [factory '("gr_direct_context_make_gl" "gr_direct_context_make_metal" "gr_direct_context_make_direct3d")])
+            [factory
+              '("gr_direct_context_make_gl" "gr_direct_context_make_metal"
+                 "gr_direct_context_make_direct3d")])
         (define inventory (gpu-native-inventory backend))
         (for ([name (in-list (list factory (string-append factory "_with_options")
                                   "gr_direct_context_flush_surface" "gr_direct_context_flush_image"
@@ -57,6 +96,14 @@
           (check-not-false row)
           (check-true (and row (hash-ref row 'available)))))) ))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-context-control-native-tests))
-  (printf "gpu-context-control-native: ~a cases, ~a failures\n" gpu-context-control-native-test-count failures)
+  (printf "gpu-context-control-native: ~a cases, ~a failures\n"
+    gpu-context-control-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

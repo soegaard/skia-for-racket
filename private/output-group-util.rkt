@@ -1,11 +1,23 @@
 #lang racket/base
+
+;;;
+;;; Output Group Validation
+;;;
+
+;; Checks output-group labels, policies, geometry, and execution strategies.
+;; Shares explicit fallback choices across document output groups.
+
 (require racket/list "check.rkt" "output-util.rkt" "../output-policy.rkt")
 (provide group-policy group-label group-geometry group-strategy)
 
+; group-policy : symbol? any/c -> symbol?
+;;   Checks the caller's explicit vector-versus-raster fallback policy.
 (define (group-policy who policy)
   (unless (memq policy '(prefer-vector require-vector raster))
     (raise-argument-error who "'prefer-vector, 'require-vector, or 'raster" policy))
   policy)
+; group-label : symbol? any/c -> (or/c #f string?)
+;;   Copies an optional audit label into an immutable string.
 (define (group-label who label)
   (unless (or (not label) (string? label))
     (raise-argument-error who "string? or #f" label))
@@ -13,6 +25,10 @@
 
 ;; Check logical bounds without imposing an RGBA allocation limit on vector
 ;; groups. Raster dimensions and the byte budget are checked only after choice.
+; group-geometry : symbol? real? real? real? real? any/c real? -> (values real? real? real? real?
+;   list? real? real? real? real?)
+;;   Checks logical bounds and padding; returns x, y, width, height, left/top/right/bottom insets,
+;;   left, top, padded width, and padded height without allocating a raster.
 (define (group-geometry who x y w h padding scale)
   (define fx (scalar who x))
   (define fy (scalar who y))
@@ -32,6 +48,9 @@
 
 ;; This is deliberately a pure decision, not an analysis of native instructions.
 ;; Unknown provenance is never converted to a claim of safe rasterization.
+; group-strategy : symbol? symbol? (listof symbol?) -> (values symbol? symbol?)
+;;   Chooses native execution, isolated rasterization, or rejection from declared features and
+;;   returns a stable audit reason; unknown provenance cannot imply safe fallback.
 (define (group-strategy backend policy features)
   (unless (memq backend '(pdf svg raster))
     (raise-argument-error 'group-strategy "'pdf, 'svg, or 'raster" backend))
@@ -50,7 +69,10 @@
       (and (not (eq? f 'annotation)) (eq? (status 'raster f) 'discarded))))
   ;; Groups have no access to the receiving backdrop. Any potentially
   ;; destination-dependent operation uses a transparent isolated surface.
-  (define isolation? (ormap (lambda (f) (memq f '(source-replace blend-mode runtime-blender arithmetic-blender))) features))
+  (define isolation?
+    (ormap (lambda (f)
+             (memq f '(source-replace blend-mode runtime-blender arithmetic-blender)))
+           features))
   (define native-ok?
     (and (not isolation?)
          (or (eq? backend 'raster)

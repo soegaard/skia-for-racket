@@ -1,33 +1,67 @@
 #lang racket/base
+
+;;;
+;;; GPU Images Example
+;;;
+
+;; Defines shared image-workflow scenes for CPU and GPU comparison.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; Backend-independent drawing used by the image-workflow doctor. Sources are
 ;; ordinary image? values: the doctor supplies independent CPU or GPU images.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list "../main.rkt")
 (provide image-workflow-names image-workflow-width image-workflow-height
          image-workflow-pixels make-image-workflow-source draw-image-workflow-source
          make-image-workflow-picture)
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; image-workflow-names : list?
+;;   Orders the image cases shared by CPU and GPU comparison tools.
 (define image-workflow-names '(upload-reuse snapshot-graph))
+; image-workflow-width : exact-integer?
+;;   Specifies image workflow width in the drawing's local coordinate units.
 (define image-workflow-width 420)
+; image-workflow-height : exact-integer?
+;;   Specifies image workflow height in the drawing's local coordinate units.
 (define image-workflow-height 260)
+; image-workflow-pixels : bytes?
+;;   Contains the fixed RGBA source samples for reproducible image comparisons.
 (define image-workflow-pixels
   (apply bytes
     (append* (for*/list ([y (in-range 8)] [x (in-range 8)])
                (cond [(= x 3) '(0 0 0 0)]
                      [(< y 4) (if (< x 3) '(255 0 0 255) '(0 255 0 255))]
                      [else (if (< x 3) '(0 0 255 255) '(255 255 0 255))])))))
+; make-image-workflow-source : -> image?
+;;   Constructs image workflow source for the example's drawing pipeline.
 (define (make-image-workflow-source)
   (rgba-bytes->image 8 8 image-workflow-pixels #:premultiplied? #t))
+; rectangle : canvas? real? real? real? real? any/c -> void?
+;;   Draws the rectangle comparison in the current canvas coordinate system.
 (define (rectangle c x y w h color)
   (with-skia ([p (make-paint #:color color #:antialias? #f)]) (draw-rect c x y w h p)))
+; draw-image-workflow-source : canvas? -> void?
+;;   Draws the image workflow source component in the current canvas coordinate system.
 (define (draw-image-workflow-source c)
   (canvas-clear! c 'transparent)
   (rectangle c 0 0 3 4 (rgb 255 0 0))
   (rectangle c 4 0 4 4 (rgb 0 255 0))
   (rectangle c 0 4 3 4 (rgb 0 0 255))
   (rectangle c 4 4 4 4 (rgb 255 255 0)))
+; label : canvas? string? real? real? real? -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y size)
   (with-skia ([font (make-font #:size size #:hinting 'none #:linear-metrics? #t #:subpixel? #t)]
               [paint (make-paint #:color "#17354B")])
     (draw-simple-text c text x y font paint)))
+; make-image-workflow-picture : any/c any/c any/c -> picture?
+;;   Constructs image workflow picture for the example's drawing pipeline.
 (define (make-image-workflow-picture name source subset)
   (unless (memq name image-workflow-names)
     (raise-argument-error 'make-image-workflow-picture "image-workflow name" name))

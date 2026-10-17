@@ -1,9 +1,29 @@
 #lang racket
 
+;;;
+;;; Shaders Tests
+;;;
+
+;; Checks Shaders tutorial behavior with focused regression tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit "waves.rkt" skia)
 
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
+  ; effect : runtime-effect?
+  ;;   Retains the compiled wave effect reused by the tutorial figures or checks.
   (define effect (make-runtime-effect wave-source))
+  ; render : any/c #:premultiplied? [boolean?] -> bytes?
+  ;;   Renders a small shader sample for pixel-level regression checks.
   (define (render shader #:premultiplied? [premultiplied? #f])
     (with-skia ([surface (make-surface 96 64)] [paint (make-paint #:shader shader)])
       (draw-rect (surface-canvas surface) 0 0 96 64 paint)

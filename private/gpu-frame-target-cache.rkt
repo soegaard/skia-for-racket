@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; GPU Frame Target Cache
+;;;
+
+;; Caches presentation targets by size and configuration and disposes replacements.
+;; Avoids recreating compatible frame resources while keeping their ownership explicit.
+
 ;; One private staging target per presenter, not a cache of drawing contexts.
 ;; No GUI/native initialization. Factories own the native implementation;
 ;; disposal queues retirement through the existing GPU-domain lifetime layer.
@@ -9,34 +17,59 @@
 
 ;; Test/reference path only: not re-exported by skia/gpu or skia/gpu-dc.
 ;; Capture at entry, so a callback cannot change this operation's disposition.
+; current-frame-target-reuse? : parameter?
+;;   Enables target reuse by default and permits diagnostic runs to disable it.
 (define current-frame-target-reuse?
   (make-parameter #t
     (lambda (v)
       (unless (boolean? v) (raise-argument-error 'current-frame-target-reuse? "boolean?" v))
       v)))
 (struct target-entry (width height configuration value dispose))
+;; Fields:
+;;   width and height: cached target pixel dimensions. configuration: equality-compared
+;;   configuration key. value: backend target value. dispose: matching release procedure. Reuse
+;;   requires matching dimensions and configuration.
+
 (struct frame-target-cache
   (owner [entry #:mutable] [busy? #:mutable] [closed? #:mutable] [quarantined? #:mutable]
          [creations #:mutable] [reuses #:mutable] [retirements #:mutable]))
+;; Fields:
+;;   owner: creator thread. entry: mutable optional target-entry. busy?, closed?, and quarantined?:
+;;   scope/lifecycle flags. creations, reuses, and retirements: nonnegative counters.
+;;   A busy entry cannot be replaced or disposed; failed cleanup is quarantined to avoid repeated
+;;   destruction.
+
+; make-frame-target-cache : -> frame-target-cache?
+;;   Creates an empty cache bound to the current execution thread.
 (define (make-frame-target-cache)
   (when (current-future) (error 'gpu-frame-target "construction in a future is not supported"))
   (frame-target-cache (current-thread) #f #f #f #f 0 0 0))
+; owner! : symbol? frame-target-cache? -> void?
+;;   Rejects cache access outside the thread that owns its native targets.
 (define (owner! who cache)
   (unless (frame-target-cache? cache) (raise-argument-error who "frame-target-cache?" cache))
   (unless (and (eq? (current-thread) (frame-target-cache-owner cache)) (not (current-future)))
     (error who "staging target belongs to another execution owner")))
+; healthy! : symbol? frame-target-cache? -> void?
+;;   Rejects a closed or quarantined cache before any target can be reused.
 (define (healthy! who cache)
   (owner! who cache)
   (when (frame-target-cache-quarantined? cache)
     (error who "staging target retirement failed; cache is quarantined")))
+; idle! : symbol? frame-target-cache? -> void?
+;;   Requires a healthy cache with no outstanding target borrow before mutation or closure.
 (define (idle! who cache)
   (healthy! who cache)
   (when (frame-target-cache-busy? cache)
     (error who "nested staging target use or close is not allowed")))
+; event! : target-entry? any/c any/c -> any
+;;   Records a target-cache lifecycle event through the optional GPU I/O ledger.
 (define (event! entry action reason)
   (record-gpu-io!
    (hasheq 'kind "dc-frame-target" 'action action 'reason reason
            'pixel_width (target-entry-width entry) 'pixel_height (target-entry-height entry))))
+; retire! : frame-target-cache? any/c -> void?
+;;   Detaches the cached entry before disposal and quarantines uncertain cleanup outcomes.
 (define (retire! cache reason)
   (define entry (frame-target-cache-entry cache))
   (when entry
@@ -50,6 +83,8 @@
       (set-frame-target-cache-quarantined?! cache #f)
       (set-frame-target-cache-retirements! cache (add1 (frame-target-cache-retirements cache)))
       (event! entry "retire" reason))))
+; frame-target-cache-info : frame-target-cache? -> hash?
+;;   Returns detached creation, reuse, retirement, and current-target diagnostic information.
 (define (frame-target-cache-info cache)
   (owner! 'gpu-frame-target-info cache)
   (define entry (frame-target-cache-entry cache))
@@ -61,6 +96,8 @@
           'creations (frame-target-cache-creations cache) 'reuses (frame-target-cache-reuses cache)
           'retirements (frame-target-cache-retirements cache)
           'counts "wrapper staging-surface constructors/borrows/retirements; not driver allocations"))
+; close-frame-target-cache! : frame-target-cache? -> void?
+;;   Disposes an idle cached target once and marks the cache closed.
 (define (close-frame-target-cache! cache)
   (idle! 'close-gpu-frame-target cache)
   (unless (frame-target-cache-closed? cache)
@@ -68,6 +105,9 @@
       (retire! cache "presenter-close")
       (set-frame-target-cache-closed?! cache #t)))
   (void))
+; call-with-frame-target : frame-target-cache? any/c any/c any/c any/c any/c [#:configuration any/c]
+;   -> any
+;;   Reuses a compatible target or creates a replacement, then bounds its borrow to the callback.
 (define (call-with-frame-target cache width height create dispose proc
                                 #:configuration [configuration #f])
   (define who 'gpu-frame-target)

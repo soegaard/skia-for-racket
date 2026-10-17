@@ -1,5 +1,18 @@
 #lang racket/base
 
+;;;
+;;; Reference GPU Surface Pure Test
+;;;
+
+;; Checks format budgets and one-shot cleanup with fake resources, and compiles displayed GPU
+;; helpers.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Native-free checks. Fake operations test the actual one-shot lifetime worker;
 ;; they do not establish GPU, pixel, driver, or platform acceptance.
 (require rackunit racket/list racket/runtime-path syntax/modread skia skia/gpu
@@ -9,8 +22,20 @@
 
 
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; reference-directory : path?
+;;   Locates ../scribblings/reference relative to this module, independent of the invoking
+;;   directory.
 (define-runtime-path reference-directory "../scribblings/reference")
 
+
+; displayed-blocks : path-string? -> (listof list?)
+;;   Extracts displayed racketblock bodies while excluding quoted forms and evaluated Scribble
+;;   examples.
 (define (displayed-blocks path)
   (define (walk form)
     (cond [(not (pair? form)) '()]
@@ -24,6 +49,10 @@
           (lambda () (syntax->datum (read-syntax path in)))))))
   (walk document))
 
+
+; compile-displayed-block : list? -> void?
+;;   Loads a displayed helper module in a fresh base namespace to check imports and expansion
+;;   without invoking its helpers.
 (define (compile-displayed-block block)
   ;; A fresh base namespace deliberately inherits none of this test module's
   ;; skia/skia-gpu imports. The block must provide every binding it uses.
@@ -32,6 +61,10 @@
     (eval `(module displayed-gpu-example racket/base ,@block))
     (dynamic-require ''displayed-gpu-example #f)))
 
+
+; fake-render : [#:failure (or/c symbol? #f) #:draw procedure?] -> (values list? list?)
+;;   Runs one-shot rendering with fake resources, returning the tagged outcome and chronological
+;;   lifecycle events.
 (define (fake-render #:failure [failure #f] #:draw [draw (lambda () (values))])
   (define events '())
   (define (note name)

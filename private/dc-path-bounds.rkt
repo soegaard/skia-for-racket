@@ -1,5 +1,18 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Path Bounds
+;;;
+
+;; Computes filled and stroked path bounds while accounting for degenerate contours.
+;; Supports accurate clipping and ink queries in the dc<%> adapter.
+
 ;; Geometric path queries. No reference DC and no Cairo rasterization.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require (prefix-in sk: "../main.rkt")
          (only-in (submod "core.rkt" geometry-internals) path-h paint-h)
          (only-in "lifetime.rkt" call-with-owned)
@@ -8,10 +21,17 @@
          "dc-support.rkt" "dc-native-util.rkt" "dc-style-render.rkt")
 (provide dc-path-ink-bounds)
 
+;;;
+;;; Degenerate Fill Detection and Ink Bounds
+;;;
+
 ;; PathOps simplification preserves some zero-area geometry, such as a lone
 ;; line contour. `path-tight-bounds` then reports geometric bounds even though
 ;; filling the path paints nothing. After simplification, reject contours whose
 ;; complete geometry (including Bezier control points) is collinear.
+
+; contour-has-area? : path-contour? -> boolean?
+;;   Tests whether the contour's endpoints and control points include a noncollinear triple.
 (define (contour-has-area? contour)
   (define points
     (for*/list ([segment (in-list (sk:path-contour-segments contour))]
@@ -33,10 +53,16 @@
                      (* (- (cadr p1) (cadr p0))
                         (- (car p) (car p0)))))))))))
 
+; filled-path-has-area? : path? -> boolean?
+;;   Detects any noncollinear contour after native fill simplification has resolved
+;;   self-intersections.
 (define (filled-path-has-area? path)
   (for/or ([contour (in-list (sk:path-contours path #:mode 'raw))])
     (contour-has-area? contour)))
 
+; dc-path-ink-bounds : (listof vector?) symbol? dc-ink? -> (values real? real? real? real?)
+;;   Returns left, top, width, and height for path geometry, filled area, or a stroke outline,
+;;   excluding degenerate empty fills.
 (define (dc-path-ink-bounds commands kind ink)
   (call-with-path commands 'odd-even
     (lambda (path)

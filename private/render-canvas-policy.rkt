@@ -1,13 +1,35 @@
 #lang racket/base
+
+;;;
+;;; Render Canvas Backend Policy
+;;;
+
+;; Resolves requested rendering backends and reports supported capabilities.
+;; Keeps backend selection separate from GUI canvas state and native activation.
+
 ;; Declarative selection only: never load racket/gui, a driver, or Skia here.
+;;;
+;;; Exports
+;;;
+
 (provide resolve-render-canvas-policy render-canvas-capabilities)
 
+;;;
+;;; Declarative Backend Selection
+;;;
+
+; native-backend : symbol? symbol? -> (or/c #f symbol?)
+;;   Selects the platform's default Metal, Direct3D, or OpenGL backend without probing a driver.
 (define (native-backend os arch)
   (cond [(eq? os 'macosx) 'metal]
         [(and (eq? os 'windows) (eq? arch 'x86_64)) 'direct3d]
         [(eq? os 'unix) 'opengl]
         [else #f]))
 
+; resolve-render-canvas-policy : symbol? symbol? (or/c #f symbol?) (or/c #f exact-integer?) (or/c #f
+; exact-integer?) [#:os symbol? #:arch symbol?] -> hash?
+;;   Validates renderer/backend/adapter choices and resolves platform defaults without enabling
+;;   runtime fallback.
 (define (resolve-render-canvas-policy renderer backend adapter adapter-index sync-interval
                                      #:os [os (system-type 'os)]
                                      #:arch [arch (system-type 'arch)])
@@ -56,7 +78,8 @@
              (not (and (exact-integer? sync-interval) (<= 0 sync-interval 4))))
     (raise-argument-error who "#f or an exact sync interval from 0 through 4" sync-interval))
   (when (and (eq? adapter 'warp) adapter-index (not (zero? adapter-index)))
-    (raise-arguments-error who "WARP does not select a hardware adapter index" "adapter-index" adapter-index))
+    (raise-arguments-error who "WARP does not select a hardware adapter index" "adapter-index"
+      adapter-index))
   (hasheq 'requested_renderer renderer 'requested_backend backend
           'renderer actual-renderer 'backend actual-backend
           'adapter (and (eq? actual-backend 'direct3d) (or adapter 'hardware))
@@ -65,6 +88,13 @@
           'selection "declarative platform policy; not a driver probe"
           'runtime_fallback #f))
 
+;;;
+;;; Resolved Capability Description
+;;;
+
+; render-canvas-capabilities : hash? -> hash?
+;;   Describes callback lifetime, retained drawing state, and presentation behavior for a resolved
+;;   renderer policy.
 (define (render-canvas-capabilities policy)
   (define raster? (eq? (hash-ref policy 'renderer) 'raster))
   (hasheq 'renderer (hash-ref policy 'renderer) 'backend (hash-ref policy 'backend)

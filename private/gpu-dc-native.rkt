@@ -1,9 +1,20 @@
 #lang racket/base
+
+;;;
+;;; GPU Drawing Context Renderer
+;;;
+
+;; Renders drawing-context commands on a scoped GPU canvas.
+;; Reuses the dc<%> adapter with GPU-backed frame targets.
+
 (require (prefix-in sk: "../main.rkt") (prefix-in gpu: "../gpu.rkt")
          "dc-render.rkt" "dc-native-util.rkt" "gpu-dc-scope.rkt" "gpu-format-util.rkt"
          (only-in (submod "gpu-presenter.rkt" adapter-internals) call-with-gpu-frame-target))
 (provide call-with-gpu-frame-dc/native call-with-gpu-surface-dc/native)
 
+; gpu-renderer : any/c [any/c] [any/c] [any/c] [any/c] [any/c] -> any
+;;   Builds a same-context GPU renderer that may lend the caller's root surface once without taking
+;;   its ownership.
 (define (gpu-renderer context [borrowed-root #f]
                       [color-type 'rgba-8888] [space #f] [samples 0]
                       [properties (sk:make-surface-properties)])
@@ -31,6 +42,9 @@
        (sk:image->png-bytes image)))
    #:internal-snapshot gpu:gpu-surface-snapshot))
 
+; call-with-gpu-frame-dc/native : any/c any/c any/c any/c [any/c] [any/c] [any/c] [any/c] -> any
+;;   Renders a frame-scoped DC into a cached staging target and composites its GPU snapshot onto the
+;;   frame canvas.
 (define (call-with-gpu-frame-dc/native frame proc background smoothing
                                       [color-type 'rgba-8888] [descriptor #f] [samples 0]
                                       [properties (sk:make-surface-properties)])
@@ -41,7 +55,8 @@
                         (gpu:gpu-frame-logical-width frame) (gpu:gpu-frame-logical-height frame)))
   (define width (dc-frame-size-pixel-width extent))
   (define height (dc-frame-size-pixel-height extent))
-  (define key (gpu-staging-key 'call-with-gpu-frame-dc width height color-type descriptor samples properties))
+  (define key (gpu-staging-key 'call-with-gpu-frame-dc width height color-type descriptor samples
+    properties))
   (define space (sk:descriptor->color-space (vector-ref key 2)))
   (dynamic-wind void
     (lambda ()
@@ -70,6 +85,9 @@
        #:configuration key))
     (lambda () (when space (sk:skia-close! space)))))
 
+; call-with-gpu-surface-dc/native : any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Lends a checked GPU surface to a scaled DC scope while preserving the caller's surface
+;;   ownership.
 (define (call-with-gpu-surface-dc/native surface proc lw lh background smoothing clear?)
   (unless (gpu:gpu-surface? surface)
     (raise-argument-error 'call-with-gpu-surface-dc "gpu-surface?" surface))

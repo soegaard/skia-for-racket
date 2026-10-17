@@ -1,12 +1,30 @@
 #lang racket/base
+
+;;;
+;;; Live Port Validation
+;;;
+
+;; Checks port capabilities, cancellation, limits, and execution ownership.
+;; Shares preflight validation across streaming image and document operations.
+
 ;; Pure validation and bounded SVG root transformation. No native calls.
 (require "stream-buffer.rkt" "check.rkt" (only-in "live-port-runtime.rkt" in-port-service?))
 (provide live-port-options live-read-chunk live-write-all make-svg-header-filter
          check-live-cancel live-pause current-live-port-operation)
+; current-live-port-operation : (parameter/c any/c)
+;;   Marks the public live-operation scope to reject reentry from user port callbacks.
 (define current-live-port-operation (make-parameter #f))
+; check-live-cancel : symbol? (or/c #f evt?) -> void?
+;;   Applies the shared stream cancellation check before further port I/O.
 (define (check-live-cancel who event) (check-stream-cancel who event))
+; live-pause : symbol? (or/c #f evt?) -> void?
+;;   Briefly yields when a nonblocking port makes no progress, checking cancellation on both sides.
 (define (live-pause who event)
   (check-live-cancel who event) (sleep 0.001) (check-live-cancel who event))
+; live-port-options : symbol? any/c any/c any/c boolean? boolean? boolean? exact-positive-integer?
+;   any/c -> (or/c #f exact-nonnegative-integer?)
+;;   Checks distinct open ports, limits, close flags, and seek requirements before callbacks;
+;;   returns the input seek base when applicable.
 (define (live-port-options who in out length seekable? close-in? close-out? limit cancel)
   (stream-byte-limit who limit)
   (for ([flag (in-list (list seekable? close-in? close-out?))])
@@ -28,6 +46,10 @@
   (when (and seekable? (not (exact-nonnegative-integer? base)))
     (error who "input cannot report an exact position"))
   base)
+; live-read-chunk : symbol? input-port? exact-nonnegative-integer? boolean? any/c -> (values bytes?
+;   boolean?)
+;;   Reads or peeks at most 65536 binary bytes, returning the bytes and whether EOF ended the
+;;   request.
 (define (live-read-chunk who in count peek? cancel)
   (unless (and (exact-nonnegative-integer? count) (<= count 65536))
     (error who "invalid native chunk request"))
@@ -42,6 +64,9 @@
                  [(procedure? n) (error who "binary input cannot contain special values")]
                  [(zero? n) (live-pause who cancel) (loop at)]
                  [else (loop (+ at n))])])) )
+; live-write-all : symbol? output-port? bytes? box? exact-positive-integer? any/c -> void?
+;;   Writes a bounded chunk completely, updating the published-byte counter after each successful
+;;   partial write.
 (define (live-write-all who out bytes published limit cancel)
   (stream-count who (+ (unbox published) (bytes-length bytes)) limit)
   (let loop ([at 0])
@@ -52,6 +77,9 @@
              (set-box! published (+ (unbox published) n)) (loop (+ at n))]
             [else (live-pause who cancel) (loop at)]))))
 ;; Rewrite only a bounded native-produced root tag, never a whole XML document.
+; make-svg-header-filter : symbol? real? real? -> (values procedure? procedure?)
+;;   Creates a streaming point-size SVG root rewrite with a 16-KiB header bound, plus a finish check
+;;   that rejects incomplete headers.
 (define (make-svg-header-filter who width height)
   (define buffered #"") (define complete? #f)
   (define dimensions

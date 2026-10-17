@@ -1,7 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Picture Native Test
+;;;
+
+;; Covers persistent pictures: native streams, retained resources, spatial indexing, and audit.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/list
          "../main.rkt" "../private/picture-util.rkt")
 (provide picture-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; test-picture : [#:spatial-index symbol?] -> picture?
+;;   Records adjacent red and blue halves with the requested spatial-index policy.
 (define (test-picture #:spatial-index [index 'none])
   (call-with-picture 32 24
     (lambda (c)
@@ -9,30 +28,58 @@
                   [blue (make-paint #:color 'blue #:antialias? #f)])
         (draw-rect c 0 0 16 24 red) (draw-rect c 16 0 16 24 blue)))
     #:spatial-index index))
+
+; pixels : picture? [exact-positive-integer? exact-positive-integer?] -> bytes?
+;;   Rasterizes a picture and copies pixels before closing the temporary image.
 (define (pixels pic [w 32] [h 24])
   (with-skia ([image (picture->image pic w h)]) (image->rgba-bytes image)))
+
+; has? : output-audit-report? symbol? symbol? -> boolean?
+;;   Finds the selected feature/status pair in the picture replay audit.
 (define (has? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature) (eq? (output-audit-event-status e) status))))
+
+; temp-dir : procedure? -> any
+;;   Scopes an isolated picture-file directory and removes it after the test.
 (define (temp-dir proc)
   (define dir (make-temporary-file "skia-picture-native-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
+
+; thread-rejects? : procedure? -> boolean?
+;;   Reports whether a cross-thread picture operation raises a failure.
 (define (thread-rejects? thunk)
   (define ch (make-channel))
   (thread (lambda ()
             (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (thunk) #f))))
   (channel-get ch))
+
+; stripe-tile : -> picture?
+;;   Records a small red/blue stripe tile for repeated picture-shader playback.
 (define (stripe-tile)
   (call-with-picture 8 4
     (lambda (c)
       (with-skia ([a (make-paint #:color 'red #:antialias? #f)]
                   [b (make-paint #:color 'blue #:antialias? #f)])
         (draw-rect c 0 0 4 4 a) (draw-rect c 4 0 4 4 b)))))
+
+; runtime-picture : [#:spatial-index symbol?] -> picture?
+;;   Records a runtime-shaded rectangle and retains its effect after source wrappers close.
 (define (runtime-picture #:spatial-index [index 'none])
-  (with-skia ([effect (make-runtime-effect "uniform float r; half4 main(float2 p) { return half4(r, 0, 0, 1); }")]
+  (with-skia ([effect
+                (make-runtime-effect
+                  "uniform float r; half4 main(float2 p) { return half4(r, 0, 0, 1); }")]
               [shader (runtime-effect->shader effect #:uniforms (hash 'r 1))]
               [paint (make-paint #:shader shader)])
     (call-with-picture 32 24 (lambda (c) (draw-rect c 0 0 32 24 paint)) #:spatial-index index)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; picture-native-tests : test-suite?
+;;   Collects the regression cases for persistent pictures: native streams, retained resources,
+;;   spatial indexing, and audit.
 (define picture-native-tests
   (test-suite "Persistent pictures: native streams, retained resources, spatial indexing, and audit"
    (test-case "roundtrip returns the ordinary owned picture type"
@@ -113,7 +160,8 @@
    (test-case "a valid header does not make a truncated payload valid"
      (with-skia ([source (test-picture)])
        (define bs (picture->bytes source))
-       (check-exn #rx"decoder rejected" (lambda () (picture-from-bytes (subbytes bs 0 29) #:trusted? #t)))))
+       (check-exn #rx"decoder rejected"
+         (lambda () (picture-from-bytes (subbytes bs 0 29) #:trusted? #t)))))
    (test-case "serial header version is distinct from native milestone"
      (with-skia ([source (test-picture)])
        (define-values (v b) (picture-header 'test (picture->bytes source)))
@@ -138,7 +186,9 @@
        (define bounds (picture-cull-bounds source))
        (skia-close! source)
        (check-true (immutable? bounds)) (check-equal? bounds #(0.0 0.0 32.0 24.0))
-       (for ([get (list picture-cull-bounds picture-unique-id picture-approximate-op-count picture-approximate-bytes-used)])
+       (for ([get
+               (list picture-cull-bounds picture-unique-id picture-approximate-op-count
+                 picture-approximate-bytes-used)])
          (check-exn exn:fail? (lambda () (get source))))))
    (test-case "serialization and shader construction reject a closed source"
      (with-skia ([source (test-picture)])
@@ -174,7 +224,8 @@
          (check-equal? (surface-pixel surface 12 22) (rgb 255 0 0)))))
    (test-case "a nominal extent override does not alter stored cull or drawing coordinates"
      (with-skia ([source (test-picture)]
-                 [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t #:width 64 #:height 48)])
+                  [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t #:width 64
+                            #:height 48)])
        (check-= (picture-width loaded) 64 0) (check-= (picture-height loaded) 48 0)
        (check-equal? (picture-cull-bounds loaded) #(0.0 0.0 32.0 24.0))))
    (test-case "R-tree and ordinary recordings draw identical simple content"
@@ -209,18 +260,22 @@
        (define r (analyze-output-page (make-output-page 40 30 (lambda (c) (draw-picture c p))) 'svg))
        (check-true (has? r 'runtime-shader 'needs-raster))))
    (test-case "reusing a recorder with R-tree clears the preceding opaque summary"
-     (with-skia ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)]
+     (with-skia
+       ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)]
                  [rec (make-picture-recorder)] [paint (make-paint #:color 'red)])
        (draw-picture (picture-recorder-begin-recording! rec 0 0 32 24) loaded)
        (with-skia ([old (picture-recorder-finish-recording! rec)])
          (define c (picture-recorder-begin-recording! rec 0 0 32 24 #:spatial-index 'rtree))
          (draw-rect c 0 0 12 12 paint)
          (with-skia ([clean (picture-recorder-finish-recording! rec)])
-           (define r (analyze-output-page (make-output-page 40 30 (lambda (out) (draw-picture out clean))) 'svg))
+           (define r
+             (analyze-output-page (make-output-page 40 30 (lambda (out) (draw-picture out clean)))
+               'svg))
            (check-false (output-audit-report-blocking? r))
            (check-true (output-audit-report-vector-only? r))))))
    (test-case "loaded pixels may be correct while provenance remains unknown"
-     (with-skia ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
+     (with-skia
+       ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
        (for ([backend '(pdf svg)])
          (define-values (bs r)
            (output->bytes/audit (make-output-page 40 30 (lambda (c) (draw-picture c loaded)))
@@ -231,17 +286,22 @@
    (test-case "strict export of a loaded picture refuses publication"
      (temp-dir
       (lambda (dir)
-        (with-skia ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
+        (with-skia
+          ([source (test-picture)]
+            [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
           (define target (build-path dir "keep.svg"))
           (call-with-output-file target (lambda (out) (write-bytes #"keep" out)))
           (check-exn exn:fail:output-audit?
-            (lambda () (save-output/audit (make-output-page 40 30 (lambda (c) (draw-picture c loaded)))
+            (lambda ()
+              (save-output/audit (make-output-page 40 30 (lambda (c) (draw-picture c loaded)))
                                          target 'svg #:exists 'replace #:policy 'error)))
           (check-equal? (file->bytes target) #"keep")))))
    (test-case "explicit rasterization cannot invent missing loaded-picture provenance"
-     (with-skia ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
+     (with-skia
+       ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)])
        (define page (make-output-page 40 30
-                      (lambda (c) (draw-rasterized c 0 0 32 24 (lambda (r) (draw-picture r loaded))))))
+                      (lambda (c) (draw-rasterized c 0 0 32 24
+                                    (lambda (r) (draw-picture r loaded))))))
        (for ([backend '(pdf svg)])
          (check-true (has? (analyze-output-page page backend) 'deserialized-picture 'unknown)))))
    (test-case "ordinary picture-shader tiling renders repeated local coordinates"
@@ -259,14 +319,16 @@
        (check-equal? (surface-pixel s 14 2) (rgb 255 0 0))))
    (test-case "explicit tile extent can include transparent padding"
      (with-skia ([p (stripe-tile)]
-                 [shader (make-picture-shader p #:tile-x 'repeat #:tile-y 'repeat #:tile-rect '(0 0 12 4))]
+                  [shader (make-picture-shader p #:tile-x 'repeat #:tile-y 'repeat #:tile-rect
+                            '(0 0 12 4))]
                  [paint (make-paint #:shader shader)] [s (make-surface 24 8)])
        (draw-rect (surface-canvas s) 0 0 24 8 paint)
        (check-equal? (rgba-alpha (surface-pixel s 10 2)) 0)
        (check-equal? (surface-pixel s 14 2) (rgb 255 0 0))))
    (test-case "picture shader local matrices change samples, not destination geometry"
      (with-skia ([p (stripe-tile)]
-                 [shader (make-picture-shader p #:tile-x 'repeat #:local-matrix (matrix-translate 2 0))]
+                  [shader (make-picture-shader p #:tile-x 'repeat #:local-matrix
+                            (matrix-translate 2 0))]
                  [paint (make-paint #:shader shader)] [s (make-surface 16 4)])
        (draw-rect (surface-canvas s) 0 0 16 4 paint)
        (check-equal? (surface-pixel s 5 2) (rgb 255 0 0))
@@ -296,7 +358,8 @@
          (check-true (> (bytes-length bs) 0)) (check-false (output-audit-report-blocking? r))
          (check-true (has? r 'picture-shader 'rasterized)))))
    (test-case "shader use of a loaded picture stays unknown after input closure"
-     (with-skia ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)]
+     (with-skia
+       ([source (test-picture)] [loaded (picture-from-bytes (picture->bytes source) #:trusted? #t)]
                  [shader (make-picture-shader loaded)] [paint (make-paint #:shader shader)])
        (skia-close! loaded)
        (define r (analyze-output-page

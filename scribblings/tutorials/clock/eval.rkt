@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Clock Tutorial Evaluation
+;;;
+
+;; Runs the Clock tutorial's executable documentation examples and figure helpers.
+;; This module connects the manual to executable examples and their rendered figures.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require scribble/eval)
 
 (provide clock-racketblock+eval
@@ -9,6 +21,12 @@
          clock-def+int
          clock-image)
 
+;;;
+;;; Evaluator and Figure Helpers
+;;;
+
+; clock-eval : procedure?
+;;   Retains one evaluator so successive documentation examples share their bindings.
 (define clock-eval (make-base-eval))
 
 (void
@@ -151,20 +169,32 @@
          'png/alpha))
        0.70)))))
 
+; clock-interaction : syntax -> syntax
+;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (clock-interaction expression ...)
   (interaction #:eval clock-eval expression ...))
 
+; clock-interaction-eval : syntax -> syntax
+;;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
 (define-syntax-rule (clock-interaction-eval expression ...)
   (interaction-eval #:eval clock-eval expression ...))
 
+; clock-racketmod+eval : syntax -> syntax
+;;   Displays a module example and evaluates its expressions in the tutorial evaluator.
 (define-syntax-rule (clock-racketmod+eval expression ...)
   (racketmod+eval #:eval clock-eval expression ...))
 
+; clock-racketblock+eval : syntax -> syntax
+;;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (clock-racketblock+eval expression ...)
   (racketblock+eval #:eval clock-eval expression ...))
 
+; clock-def+int : syntax -> syntax
+;;   Displays definitions followed by their evaluated tutorial interaction.
 (define-syntax-rule (clock-def+int expression ...)
   (def+int #:eval clock-eval expression ...))
 
+; clock-image : syntax -> syntax
+;;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (clock-image expression)
   (interaction-eval-show #:eval clock-eval expression))

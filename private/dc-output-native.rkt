@@ -1,17 +1,40 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Output Replay
+;;;
+
+;; Replays captured drawing-context commands with relative transforms and state.
+;; Connects output capture to native canvas and document rendering.
+
 ;; Replay private immutable DC requests through the *same* native drawing
 ;; operations used by CPU/GPU. Each output group captures in local coordinates;
 ;; placement on its receiver preserves the receiver's units, margins and CTM.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list
          (prefix-in sk: "../main.rkt") "../output-groups.rkt" "../annotations.rkt"
          "dc-output-capture.rkt" "dc-support.rkt" "dc-native-util.rkt"
          (submod "dc-render.rkt" canvas-internals)
          (submod "dc-text.rkt" canvas-internals))
 (provide replay-output-dc)
+
+;;;
+;;; Relative Canvas State
+;;;
+
+; concat-dc-matrix! : canvas? vector? -> void?
+;;   Concatenates the DC affine transform while preserving the receiver's existing page placement.
 (define (concat-dc-matrix! c m)
   (sk:canvas-concat-matrix3! c
     (sk:make-matrix3 (vector-ref m 0) (vector-ref m 2) (vector-ref m 4)
                      (vector-ref m 1) (vector-ref m 3) (vector-ref m 5) 0 0 1)))
+
+; relative-state : canvas? vector? (or/c #f dc-clip?) procedure? -> any
+;;   Scopes a DC clip and transform relative to the receiving document canvas's current coordinates.
 (define (relative-state c matrix clip thunk)
   (sk:call-with-canvas-state c
     (lambda ()
@@ -25,6 +48,14 @@
                 (lambda (path) (sk:canvas-clip-path! c path #:antialias? #f))))))
       (concat-dc-matrix! c matrix)
       (thunk))))
+
+;;;
+;;; Ordered Command Replay
+;;;
+
+; replay-output-dc : canvas? real? real? (listof output-dc-command?) symbol? real? -> (listof hash?)
+;;   Replays captured operations with the requested vector/raster policy and returns ordered detached
+;;   group reports.
 (define (replay-output-dc c width height commands policy scale)
   (define reports '())
   (define (retain! report)
@@ -56,16 +87,20 @@
              (define x (list-ref payload 0)) (define y (list-ref payload 1))
              (define w (list-ref payload 2)) (define h (list-ref payload 3))
              (define pw (list-ref payload 4)) (define ph (list-ref payload 5))
-             (sk:with-skia ([image (sk:rgba-bytes->image pw ph (list-ref payload 6) #:premultiplied? #t)]
-                           [paint (sk:make-paint #:color (native-color (vector 255 255 255 (cadddr args))))])
+             (sk:with-skia ([image (sk:rgba-bytes->image pw ph (list-ref payload 6) #:premultiplied?
+               #t)]
+                           [paint (sk:make-paint #:color (native-color (vector 255 255 255 (cadddr
+                             args))))])
                (retain! (draw-output-group destination x y w h
                           (lambda (rc) (sk:draw-image-rect rc image 0 0 w h #:paint paint))
-                          #:policy 'raster #:scale (list-ref payload 8) #:label (list-ref payload 7))))))]
+                          #:policy 'raster #:scale (list-ref payload 8) #:label (list-ref payload
+                            7))))))]
         [(alpha)
          (group destination "dc-alpha"
            (lambda (rc)
              (install-clip! rc (cadr args))
-             (sk:with-skia ([paint (sk:make-paint #:color (native-color (vector 255 255 255 (caddr args))))])
+             (sk:with-skia ([paint (sk:make-paint #:color (native-color (vector 255 255 255 (caddr
+               args))))])
                (sk:call-with-canvas-layer rc
                  (lambda () (replay rc (car args)))
                  #:bounds (vector 0 0 width height) #:paint paint))))]
@@ -78,7 +113,8 @@
                [(path) (apply draw-on-canvas! rc args)]
                [(clear)
                 (install-clip! rc (car args))
-                (sk:with-skia ([paint (sk:make-paint #:color (native-color (cadr args)) #:antialias? #f)])
+                (sk:with-skia ([paint (sk:make-paint #:color (native-color (cadr args)) #:antialias?
+                  #f)])
                   ;; A finite DC clear is geometry, not a recorded unbounded
                   ;; color fill that would force SVG rasterization.
                   (sk:draw-rect rc 0 0 width height paint))]

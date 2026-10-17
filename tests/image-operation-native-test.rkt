@@ -1,28 +1,67 @@
 #lang racket/base
+
+;;;
+;;; Image Operation Native Test
+;;;
+
+;; Covers direct image operations (native).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector ffi/unsafe
          "../main.rkt" "image-operation-fixtures.rkt"
          (submod "../raster-buffers.rkt" image-operation-internals))
 (provide image-operation-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; near-vector : (vectorof real?) (vectorof real?) [real?] -> void?
+;;   Checks equal-length detached sample vectors within float conversion tolerance.
 (define (near-vector actual expected [tolerance 0.00001])
   (check-equal? (vector-length actual) (vector-length expected))
   (for ([a (in-vector actual)] [b (in-vector expected)]) (check-= a b tolerance)))
+
+; first-sample : raster-buffer? -> vector?
+;;   Copies the top-left sample while a borrowed pixmap is in scope.
 (define (first-sample b)
   (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-sample v 0 0))))
+
+; with-applied : image-filter? procedure? [#:subset any/c #:clip vector?] -> any
+;;   Applies a filter and scopes its owned output while exposing valid subset and offset metadata.
 (define (with-applied filter proc #:subset [subset #f] #:clip [clip '#(-8 -8 48 40)])
   (with-skia ([source (make-operation-source)])
     (define-values (out valid offset) (image-apply-filter source filter #:subset subset #:clip clip))
     (with-skia ([result out]) (proc result valid offset))))
+
+; render-source : image? image-filter? -> bytes?
+;;   Captures ordinary filtered drawing at a fixed placement on white.
 (define (render-source source filter)
   (with-skia ([surface (make-surface 96 64 #:background 'white)]
               [paint (make-paint #:image-filter filter #:antialias? #f)])
     (draw-image (surface-canvas surface) source 24 20 #:paint paint #:sampling 'nearest)
     (surface->rgba-bytes surface)))
+
+; render-result : image? vector? vector? -> bytes?
+;;   Captures the explicit filtered result using its valid subset and returned placement offset.
 (define (render-result result valid offset)
   (with-skia ([visible (apply image-subset result (vector->list valid))]
               [surface (make-surface 96 64 #:background 'white)])
-    (draw-image (surface-canvas surface) visible (+ 24 (vector-ref offset 0)) (+ 20 (vector-ref offset 1))
+    (draw-image (surface-canvas surface) visible (+ 24 (vector-ref offset 0))
+      (+ 20 (vector-ref offset 1))
                 #:sampling 'nearest)
     (surface->rgba-bytes surface)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; image-operation-native-tests : test-suite?
+;;   Collects the regression cases for direct image operations (native).
 (define image-operation-native-tests
   (test-suite
    "Direct image operations (native)"
@@ -57,7 +96,8 @@
        (near-vector (first-sample b) '#(0.5009765625 0.25 0.75 1.0) 0.000001)))
    (test-case "full image read yields independent buffer storage"
      (with-skia ([source (make-operation-source)] [b (image->raster-buffer source)])
-       (skia-close! source) (check-equal? (bytes->list (subbytes (raster-buffer->rgba-bytes b) 0 4)) '(32 96 192 255))))
+       (skia-close! source)
+       (check-equal? (bytes->list (subbytes (raster-buffer->rgba-bytes b) 0 4)) '(32 96 192 255))))
    (test-case "readback cannot alias the immutable source image"
      (with-skia ([source (make-operation-source)] [b (image->raster-buffer source)])
        (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-fill! v 'red)) #:writable? #t)
@@ -86,7 +126,8 @@
        (near-vector (first-sample b) '#(0.5009765625 0.25 0.75 1.0) 0.00001)))
    (test-case "raw shader local translation and tiling preserve numeric pixels"
      (with-skia ([source (rgba-bytes->image 2 1 (bytes 255 0 0 255 0 0 255 255))]
-                 [shader (make-raw-image-shader source #:tile-x 'repeat #:matrix (make-matrix 1 0 0 1 1 0))]
+                  [shader (make-raw-image-shader source #:tile-x 'repeat #:matrix
+                            (make-matrix 1 0 0 1 1 0))]
                  [paint (make-paint #:shader shader #:antialias? #f)] [s (make-surface 4 1)])
        (draw-rect (surface-canvas s) 0 0 4 1 paint)
        (check-equal? (surface->rgba-bytes s)
@@ -95,7 +136,8 @@
      (with-skia ([source (make-operation-source)] [b (make-raster-buffer 5 3)])
        (define before (raster-buffer->storage-bytes b))
        (call-with-raster-buffer-pixmap b
-         (lambda (v) (check-exn exn:fail? (lambda () (image-read-pixmap! source v #:source-x 15)))) #:writable? #t)
+         (lambda (v) (check-exn exn:fail? (lambda () (image-read-pixmap! source v #:source-x 15))))
+         #:writable? #t)
        (check-equal? (raster-buffer->storage-bytes b) before)))
    (test-case "padding and pixels outside a destination subset remain unchanged"
      (with-skia ([source (make-operation-source)] [b (make-raster-buffer 8 5 #:row-bytes 40)])
@@ -103,7 +145,8 @@
        (call-with-raster-buffer-pixmap b
          (lambda (v) (image-read-pixmap! source (pixmap-subset v 2 1 3 2))) #:writable? #t)
        (define data (raster-buffer->storage-bytes b))
-       (for ([y (in-range 5)]) (check-equal? (subbytes data (+ (* y 40) 32) (* (add1 y) 40)) (make-bytes 8 255)))
+       (for ([y (in-range 5)])
+         (check-equal? (subbytes data (+ (* y 40) 32) (* (add1 y) 40)) (make-bytes 8 255)))
        (check-equal? (subbytes data 0 4) (make-bytes 4 255))
        (check-equal? (subbytes data 48 52) (bytes 32 96 192 255))))
    (test-case "read-only pixmaps cannot be destinations"
@@ -120,7 +163,8 @@
        (call-with-raster-buffer-pixmap b
          (lambda (v)
            (check-exn exn:fail? (lambda ()
-             (call-with-pixmap-write-staging 'test v (lambda (_pm _info) (error 'test "injected failure")))))) #:writable? #t)
+             (call-with-pixmap-write-staging 'test v
+               (lambda (_pm _info) (error 'test "injected failure")))))) #:writable? #t)
        (check-equal? (raster-buffer->storage-bytes b) before)))
    (test-case "nearest scaling changes dimensions explicitly"
      (with-skia ([source (make-operation-source)]
@@ -129,11 +173,13 @@
        (check-equal? (bytes->list (subbytes (raster-buffer->rgba-bytes b) 0 4)) '(32 96 192 255))))
    (test-case "BGRA conversion preserves channel order in raw storage"
      (with-skia ([source (make-operation-source)]
-                 [b (image->raster-buffer source #:info (make-image-info 16 12 #:color-type 'bgra-8888))])
+                  [b (image->raster-buffer source #:info
+                       (make-image-info 16 12 #:color-type 'bgra-8888))])
        (check-equal? (bytes->list (subbytes (raster-buffer->storage-bytes b) 0 4)) '(192 96 32 255))))
    (test-case "F32 scaling preserves sub-byte distinctions"
      (with-skia ([source (make-operation-float-source)]
-                 [b (image->raster-buffer source #:info (make-image-info 16 12 #:color-type 'rgba-f32) #:sampling 'nearest)])
+                  [b (image->raster-buffer source #:info
+                       (make-image-info 16 12 #:color-type 'rgba-f32) #:sampling 'nearest)])
        (near-vector (first-sample b) '#(0.5009765625 0.25 0.75 1.0) 0.000001)))
    (test-case "explicit F32 to integer conversion ends precision provenance"
      (with-skia ([source (make-operation-float-source)]
@@ -150,7 +196,8 @@
    (test-case "color conversion uses the destination descriptor"
      (with-skia ([source (make-operation-float-source 'srgb)]
                  [b (image->raster-buffer source
-                      #:info (make-image-info 4 3 #:color-type 'rgba-f32 #:color-space 'linear-srgb))])
+                      #:info
+                      (make-image-info 4 3 #:color-type 'rgba-f32 #:color-space 'linear-srgb))])
        (define value (first-sample b))
        (check-= (vector-ref value 1) 0.0508761 0.001)
        (check-= (vector-ref value 2) 0.5225216 0.001)))
@@ -176,7 +223,8 @@
        (define-values (out subset offset) (image-apply-filter source filter #:clip '(-8 -8 48 40)))
        (with-skia ([result out])
          (skia-close! source) (skia-close! filter)
-         (check-true (image-valid? result)) (check-true (bytes? (render-result result subset offset))))))
+         (check-true (image-valid? result))
+         (check-true (bytes? (render-result result subset offset))))))
    (test-case "direct offset filtering matches independent canvas placement"
      (with-skia ([source (make-operation-source)] [filter (make-offset-image-filter 7 5)])
        (define-values (out subset offset) (image-apply-filter source filter #:clip '(-8 -8 48 40)))
@@ -190,7 +238,8 @@
        (check-true (> (image-height image) 12))))
    (test-case "drop shadow keeps its enlarged valid extent"
      (define-values (im offset meta raw) (make-operation-scene-image 'shadow))
-     (with-skia ([image im]) (check-true (> (image-width image) 16)) (check-true (> (image-height image) 12))))
+     (with-skia ([image im]) (check-true (> (image-width image) 16))
+       (check-true (> (image-height image) 12))))
    (test-case "null native filter result raises instead of publishing out parameters"
      (with-skia ([source (make-operation-source)] [filter (make-offset-image-filter 100 100)])
        (check-exn exn:fail? (lambda () (image-apply-filter source filter #:clip '(0 0 2 2))))
@@ -198,7 +247,8 @@
    (test-case "filter clip budget is checked before native evaluation"
      (with-skia ([source (make-operation-source)] [filter (make-offset-image-filter 0 0)])
        (parameterize ([current-skia-byte-limit 4096])
-         (check-exn exn:fail? (lambda () (image-apply-filter source filter #:clip '(-100 -100 256 256)))))))
+         (check-exn exn:fail?
+           (lambda () (image-apply-filter source filter #:clip '(-100 -100 256 256)))))))
    (test-case "raw shader retains its image independently"
      (with-skia ([source (make-operation-source)] [shader (make-raw-image-shader source)]
                  [paint (make-paint #:shader shader)] [surface (make-surface 16 12)])
@@ -208,7 +258,8 @@
    (test-case "raw shader bypasses source to destination color conversion"
      (with-skia ([source (make-operation-float-source 'srgb)] [shader (make-raw-image-shader source)]
                  [paint (make-paint #:shader shader #:antialias? #f)]
-                 [b (make-raster-buffer-from-info (make-image-info 4 3 #:color-type 'rgba-f32 #:color-space 'linear-srgb))])
+                  [b (make-raster-buffer-from-info
+                       (make-image-info 4 3 #:color-type 'rgba-f32 #:color-space 'linear-srgb))])
        (call-with-raster-buffer-canvas b (lambda (c) (draw-rect c 0 0 4 3 paint)))
        (near-vector (first-sample b) '#(0.5009765625 0.25 0.75 1.0) 0.00001)))
    (test-case "raw shader rejects unsupported cubic sampling"
@@ -216,12 +267,16 @@
        (check-exn exn:fail? (lambda () (make-raw-image-shader source #:sampling 'cubic)))))
    (test-case "raw shader rejects singular local matrices"
      (with-skia ([source (make-operation-source)])
-       (check-exn exn:fail? (lambda () (make-raw-image-shader source #:matrix (make-matrix 0 0 0 0 0 0))))))
+       (check-exn exn:fail?
+         (lambda () (make-raw-image-shader source #:matrix (make-matrix 0 0 0 0 0 0))))))
    (test-case "raw shader strict document export requires explicit rasterization"
-     (with-skia ([source (make-operation-source)] [shader (make-raw-image-shader source)] [paint (make-paint #:shader shader)])
+     (with-skia
+       ([source (make-operation-source)] [shader (make-raw-image-shader source)]
+         [paint (make-paint #:shader shader)])
        (define page (make-output-page 32 24 (lambda (c) (draw-rect c 0 0 16 12 paint))))
        (for ([kind '(pdf svg)])
-         (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit page kind #:policy 'error))))))
+         (check-exn exn:fail:output-audit?
+           (lambda () (output->bytes/audit page kind #:policy 'error))))))
    (test-case "float filtering cannot erase the source precision requirement"
      (with-skia ([source (make-operation-float-source)] [filter (make-offset-image-filter 0 0)])
        ;; m119 may either preserve F32 for this filter path or return a
@@ -261,4 +316,5 @@
        (check-eq? (channel-get result) 'rejected) (thread-wait worker)))))
 (module+ test
   (require rackunit/text-ui)
-  (unless (zero? (run-tests image-operation-native-tests)) (error 'image-operations "native tests failed")))
+  (unless (zero? (run-tests image-operation-native-tests))
+    (error 'image-operations "native tests failed")))

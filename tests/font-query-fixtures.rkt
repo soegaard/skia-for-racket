@@ -1,11 +1,40 @@
 #lang racket/base
+
+;;;
+;;; Font Query Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for font mutation, glyph metrics, and detached
+;; outline queries.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Shared procedural scenes for raster, GPU and independently rendered documents.
 (require racket/list "../main.rkt" "typeface-fixtures.rkt")
 (provide font-query-scenes font-query-width font-query-height
          draw-font-query-scene check-font-query-pixels)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; font-query-scenes : (listof symbol?)
+;;   Lists the snapshot, mutated-font, and batch-outline comparison scenes.
 (define font-query-scenes '(snapshot mutated batch))
+
+; font-query-width : exact-positive-integer?
+;;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define font-query-width 160)
+
+; font-query-height : exact-positive-integer?
+;;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define font-query-height 100)
+
+; draw-font-query-scene : symbol? canvas? -> any
+;;   Draws deterministic glyphs using generated fixture fonts and the requested font-query scenario.
 (define (draw-font-query-scene scene canvas)
   (unless (memq scene font-query-scenes)
     (raise-argument-error 'draw-font-query-scene "snapshot, mutated, or batch" scene))
@@ -46,11 +75,17 @@
                (canvas-translate! canvas (+ 20 (car xy)) (+ 60 (cadr xy)))
                (draw-path canvas p paint))))
          (lambda () (for ([p (in-vector paths)] #:when p) (skia-close! p))))])))
+
+; probes : hash?
+;;   Maps each scene to x, y, expected-color triples in logical pixel coordinates.
 (define probes
   (hasheq
    'snapshot '((25 40 black) (50 36 black) (41 40 white) (70 40 white) (5 5 white))
    'mutated  '((25 40 black) (41 40 black) (61 36 black) (85 40 white) (5 5 white))
    'batch    '((25 40 black) (36 40 black) (60 36 black) (44 40 white) (85 40 white) (5 5 white))))
+
+; check-font-query-pixels : symbol? bytes? -> void?
+;;   Checks capture dimensions and scene-specific black/white landmark pixels.
 (define (check-font-query-pixels scene data)
   (unless (and (bytes? data) (= (bytes-length data) (* font-query-width font-query-height 4)))
     (error 'font-query-pixels "wrong RGBA byte length"))

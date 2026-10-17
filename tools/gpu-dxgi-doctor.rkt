@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU DXGI Doctor
+;;;
+
+;; Exercises DXGI presentation policy and swap-chain ownership and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Actual HWND/swap-chain tests on the owning Racket GUI eventspace. This is
 ;; separate from the offscreen WARP gate; passing is not screen certification.
 (require json racket/class racket/cmdline racket/file racket/path racket/list
@@ -7,6 +19,13 @@
          (submod "../private/gpu-presenter-d3d12.rkt" testing)
          "../tests/gpu-presenter-native-test.rkt")
 (provide dxgi-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; draw-pattern : gpu-frame? -> void?
+;;   Draws distinct quadrants and a single-pixel marker on the acquired presentation target.
 (define (draw-pattern frame)
   (define c (gpu-frame-canvas frame))
   (define w (gpu-frame-width frame)) (define h (gpu-frame-height frame))
@@ -21,6 +40,10 @@
     (draw-rect c 0 y x (- h y) black)
     (draw-rect c x y (- w x) (- h y) white)
     (draw-rect c 0 0 1 1 yellow)))
+
+; dxgi-doctor! : path? symbol? (or/c exact-nonnegative-integer? #f) -> void?
+;;   Exercises shown DXGI windows, resizing, captured targets, and repeated teardown on the selected
+;;   adapter.
 (define (dxgi-doctor! directory selection index)
   (define run-id (path->string (file-name-from-path (simplify-path directory))))
   (define cycles '())
@@ -37,7 +60,8 @@
                   'racket_version (version) 'os (symbol->string (system-type 'os))
                   'architecture (symbol->string (system-type 'arch))
                   'test_counts counts 'cycles (reverse cycles)
-                  'window_created window-created? 'presentation_submission_verified (equal? status "passed")
+                  'window_created window-created? 'presentation_submission_verified
+            (equal? status "passed")
                   'back_buffer_pixels_verified #f ; independent Python checker decides
                   'visible_pixels_verified #f 'hardware_acceleration_verified #f
                   'performance_measured #f) out))
@@ -109,7 +133,10 @@
                     (draw! p)
                     (when (zero? (modulo (add1 frame) 30)) (collect-garbage) (clean! p))))
                 (define ready (gpu-presenter-info p))
-                (set! entries (cons (list number p initial ready captures (reverse (unbox normal-ledger))) entries))
+                (set! entries (cons
+                                (list number p initial ready captures
+                                  (reverse (unbox normal-ledger))) entries))
+
                 (printf "DXGI cycle ~a/window ~a: 180 stress frames, two resizes and three captures completed\n" cycle number)))
             (lambda () (for ([w (in-list windows)]) (send w close-gpu))))
           (define results
@@ -118,14 +145,17 @@
               (define p (list-ref entry 1))
               (define final (gpu-presenter-info p))
               (unless (and (eq? (gpu-presenter-state p) 'closed)
-                           (equal? (hash-ref (hash-ref (hash-ref final 'adapter) 'context) 'state) "closed"))
+                        (equal? (hash-ref (hash-ref (hash-ref final 'adapter) 'context) 'state)
+                          "closed"))
                 (error 'dxgi-doctor "context not closed before pixel encoding"))
               (define capture-results
                 (for/list ([item (in-list (reverse (list-ref entry 4)))])
                   (define ordinal (list-ref item 0)) (define pixels (list-ref item 1))
                   (define record (list-ref item 2)) (define frame (list-ref item 3))
                   (define filename (format "cycle-~a-window-~a-size-~a.png" cycle number ordinal))
-                  (with-skia ([image (rgba-bytes->image (hash-ref record 'width) (hash-ref record 'height) pixels)])
+                  (with-skia ([image
+                                (rgba-bytes->image (hash-ref record 'width)
+                                  (hash-ref record 'height) pixels)])
                     (call-with-output-file (build-path directory filename)
                       (lambda (out) (write-bytes (image->png-bytes image) out)) #:exists 'error))
                   (hasheq 'ordinal ordinal 'png filename 'submission record 'frame frame
@@ -138,7 +168,20 @@
     (publish "passed")
     (void)))
 (module+ main
-  (define directory #f) (define selection 'warp) (define index 0)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; selection : symbol?
+  ;;   Chooses the Direct3D adapter policy; WARP is the default for reproducible software execution.
+  (define selection 'warp)
+  ; index : exact-nonnegative-integer?
+  ;;   Selects the zero-based Direct3D adapter within the chosen adapter policy.
+  (define index 0)
   (command-line #:once-each
     [("--directory") path "fresh evidence directory" (set! directory (path->complete-path path))]
     [("--adapter") name "warp or hardware; no fallback" (set! selection (string->symbol name))]

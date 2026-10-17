@@ -1,12 +1,41 @@
 #lang racket/base
+
+;;;
+;;; Effects GPU Test
+;;;
+
+;; Covers shader masks retain GPU affinity through paint and getters.
+;; This executable supplies backend-specific drawing and transfer evidence to the GPU validation
+;; workflow.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Explicit offscreen gate. Missing contexts and failed cleanup are failures.
 (require racket/cmdline racket/list racket/file json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt"
          "../private/gpu-io-trace.rkt" "effects-fixtures.rkt" "effects-native-test.rkt")
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'auto)
+
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
   (define adapter 'hardware)
+
+  ; report-path : (or/c path-string? #f)
+  ;;   Holds the destination for this run's machine-readable evidence report.
   (define report-path #f)
+
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
   (define token #f)
   (command-line
    #:once-each
@@ -18,6 +47,9 @@
   (unless (and report-path token) (error 'effects-gpu "--report and --token are required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ; new-context : -> gpu-context?
+  ;;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
   (define (new-context)
     (case backend
       [(egl) (make-egl-gpu-context)]
@@ -27,23 +59,48 @@
   ;; Context construction itself is not nestable. Create the second context
   ;; before entering either GPU scope so the wrong-context test exercises the
   ;; ownership check instead of the scope-construction guard.
+
+  ; ctx : gpu-context?
+  ;;   Owns the primary native GPU context used by the fixture run.
   (define ctx (new-context))
+
+  ; other : (or/c gpu-context? #f)
+  ;;   Owns a second context used to verify cross-context resource rejection.
   (define other (new-context))
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures 0)
+
+  ; frames : exact-nonnegative-integer?
+  ;;   Counts successfully rendered fixture frames for the evidence report.
   (define frames 0)
+
+  ; readbacks : exact-nonnegative-integer?
+  ;;   Counts explicit GPU-to-CPU transfers used to inspect rendered output.
   (define readbacks 0)
+
+  ; count-reads : box? -> exact-nonnegative-integer?
+  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;;   inspection.
   (define (count-reads ledger)
     (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
+
+  ; render : procedure? -> bytes?
+  ;;   Renders an effect fixture without implicit readbacks, then performs exactly one explicit RGBA
+  ;;   capture.
   (define (render draw)
     (with-skia ([s (make-gpu-surface ctx effect-width effect-height)])
       (define ledger (box '()))
       (parameterize ([current-gpu-io-ledger ledger]) (draw (surface-canvas s)))
-      (unless (zero? (count-reads ledger)) (error 'effects-gpu "implicit wrapper readback during drawing"))
+      (unless (zero? (count-reads ledger))
+        (error 'effects-gpu "implicit wrapper readback during drawing"))
       (set! frames (add1 frames))
       (define pixels
         (parameterize ([current-gpu-io-ledger ledger])
           (gpu-surface->rgba-bytes s #:premultiplied? #t)))
-      (unless (= 1 (count-reads ledger)) (error 'effects-gpu "explicit capture must record exactly one readback"))
+      (unless (= 1 (count-reads ledger))
+        (error 'effects-gpu "explicit capture must record exactly one readback"))
       (set! readbacks (add1 readbacks))
       pixels))
   (dynamic-wind
@@ -75,7 +132,8 @@
                      (check-eq? (skia-resource-gpu-context p2) ctx)
                      (skia-close! retained)
                      (draw-rect (surface-canvas s) 0 0 16 16 p2)
-                     (check-exn exn:fail? (lambda () (draw-rect (surface-canvas cpu) 0 0 16 16 p2)))))))))))
+                     (check-exn exn:fail?
+                       (lambda () (draw-rect (surface-canvas cpu) 0 0 16 16 p2)))))))))))
       ;; Build the GPU-dependent paint under ctx, leave that scope, then enter
       ;; `other`. Context scopes are deliberately sequential, never nested.
       (set! failures

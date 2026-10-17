@@ -1,7 +1,29 @@
 #lang racket/base
+
+;;;
+;;; GPU EGL Native Test
+;;;
+
+;; Covers eGL native ownership and true headless contexts.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe rackunit "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt")
 (provide make-gpu-egl-native-tests gpu-egl-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-egl-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-egl-native-test-count 10)
+
+; make-gpu-egl-native-tests : procedure? -> test-suite?
+;;   Builds the parameterized suite for eGL native ownership and true headless contexts.
 (define (make-gpu-egl-native-tests factory)
   ;; This function is called only by the explicit Linux/headless doctor.
   (define egl (ffi-lib "libEGL.so.1"))
@@ -59,11 +81,15 @@
      (with-context
       (lambda (owner)
         (define host #f) (define d #f) (define borrowed #f)
-        (define choose (bind "eglChooseConfig" (_fun _pointer _pointer _pointer _int _pointer -> _uint32)))
-        (define query-context (bind "eglQueryContext" (_fun _pointer _pointer _int _pointer -> _uint32)))
-        (define create (bind "eglCreateContext" (_fun _pointer _pointer _pointer _pointer -> _pointer)))
+        (define choose
+          (bind "eglChooseConfig" (_fun _pointer _pointer _pointer _int _pointer -> _uint32)))
+        (define query-context
+          (bind "eglQueryContext" (_fun _pointer _pointer _int _pointer -> _uint32)))
+        (define create
+          (bind "eglCreateContext" (_fun _pointer _pointer _pointer _pointer -> _pointer)))
         (define destroy (bind "eglDestroyContext" (_fun _pointer _pointer -> _uint32)))
-        (define make-current (bind "eglMakeCurrent" (_fun _pointer _pointer _pointer _pointer -> _uint32)))
+        (define make-current
+          (bind "eglMakeCurrent" (_fun _pointer _pointer _pointer _pointer -> _uint32)))
         (define current-surface (bind "eglGetCurrentSurface" (_fun _int -> _pointer)))
         (define (ints . xs)
           (define p (malloc _int (length xs) 'atomic))
@@ -80,9 +106,11 @@
                   (define config-id (ints 0)) (define count (ints 0))
                   (define config (malloc _pointer 'atomic)) (ptr-set! config _pointer #f)
                   (check-equal? (query-context d original #x3028 config-id) 1)
-                  (check-equal? (choose d (ints #x3028 (ptr-ref config-id _int) #x3038) config 1 count) 1)
+                  (check-equal? (choose d (ints #x3028 (ptr-ref config-id _int) #x3038) config 1
+                                  count) 1)
                   (check-equal? (ptr-ref count _int) 1)
-                  (set! host (create d (ptr-ref config _pointer) #f (ints #x3098 3 #x30FB 3 #x30FD 1 #x3038)))
+                  (set! host (create d (ptr-ref config _pointer) #f
+                               (ints #x3098 3 #x30FB 3 #x30FD 1 #x3038)))
                   (check-not-false host)
                   (dynamic-wind
                     (lambda () (check-equal? (make-current d draw read host) 1))
@@ -108,6 +136,7 @@
    (test-case "callback failure restores EGL and allows later rendering"
      (with-context (lambda (c)
        (define previous (addr (current)))
-       (check-exn #rx"intentional" (lambda () (call-with-gpu-context c (lambda () (error 'test "intentional")))))
+       (check-exn #rx"intentional"
+         (lambda () (call-with-gpu-context c (lambda () (error 'test "intentional")))))
        (check-equal? (addr (current)) previous)
        (check-true (hash-ref (gpu-smoke-test c) 'exact_pixels)))))))

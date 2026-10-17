@@ -1,4 +1,15 @@
 #lang racket/base
+
+;;;
+;;; GPU Window Doctor
+;;;
+
+;; Exercises gpu window and reports native diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Diagnostic presenter, deliberately not the future public presenter API.
 ;; All GPU work runs on the creating Racket thread. Event callbacks never draw
 ;; with this domain and normal Racket DC drawing is never mixed into the GL DC.
@@ -8,6 +19,15 @@
          "../private/gpu-surface-native.rkt" "../private/gpu-io-trace.rkt"
          "../examples/gpu-scenes.rkt" "gpu-report.rkt")
 (provide gpu-window-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-window-doctor! : path-string? [#:interactive? boolean? #:required? boolean?
+; #:require-hardware? boolean?] -> exact-integer?
+;;   Exercises visible OpenGL window submission and resize, writes lifecycle evidence, and returns a
+;;   process status.
 (define (gpu-window-doctor! prefix #:interactive? [interactive? #f]
                            #:required? [required? #t] #:require-hardware? [hardware? #f])
   (define started? #f)
@@ -36,7 +56,8 @@
           (publish (report "error" (exn-message e)))
           (eprintf "Window GPU ERROR: ~a\n" (exn-message e)) 1)])
     (define-values (frame% canvas% sleep/yield)
-      (with-handlers ([exn:fail? (lambda (e) (gpu-unavailable 'gui-initialization "~a" (exn-message e)))])
+      (with-handlers
+        ([exn:fail? (lambda (e) (gpu-unavailable 'gui-initialization "~a" (exn-message e)))])
         (values (dynamic-require 'racket/gui/base 'frame%)
                 (dynamic-require 'racket/gui/base 'canvas%)
                 (dynamic-require 'racket/gui/base 'sleep/yield))))
@@ -44,7 +65,8 @@
     (send config set-legacy? (eq? (system-type 'os) 'windows))
     (send config set-double-buffered #t) (send config set-stencil-size 8)
     (send config set-hires-mode #t)
-    (set! frame (new frame% [label "Skia 0.39 / OpenGL — resize to inspect"] [width 520] [height 350]))
+    (set! frame
+      (new frame% [label "Skia 0.39 / OpenGL — resize to inspect"] [width 520] [height 350]))
     (define canvas (new canvas% [parent frame] [style '(gl no-autoclear)] [gl-config config]
                         [paint-callback (lambda (_canvas _dc) (void))]))
     (define saved-canvas #f)
@@ -53,7 +75,8 @@
       (lambda ()
         (send frame show #t) (sleep/yield 0.08)
         (define gl (send (send canvas get-dc) get-gl-context))
-        (unless (and gl (send gl ok?)) (gpu-unavailable 'racket-gl-host "window GL context unavailable"))
+        (unless (and gl (send gl ok?))
+          (gpu-unavailable 'racket-gl-host "window GL context unavailable"))
         ;; The native host framebuffer is captured while still untouched by
         ;; Ganesh. Subsequent frame queries use actual drawable pixel sizes.
         (define with-target (send gl call-as-current make-window-gl-access))
@@ -61,7 +84,7 @@
         (parameterize-break #f (set! gpu (make-gpu-context (make-racket-gl-provider gl))))
         (set! initial (gpu-context-info gpu))
         (when (and hardware?
-                   (not (equal? (hash-ref initial 'renderer_class "unclassified") "hardware-reported")))
+                (not (equal? (hash-ref initial 'renderer_class "unclassified") "hardware-reported")))
           (error 'gpu-window-doctor "hardware-reported renderer required"))
         (set! started? #t)
         (define (draw-frame index)
@@ -76,7 +99,8 @@
                     (define c (surface-canvas offscreen))
                     (with-canvas-state c
                       (canvas-scale! c (/ width gpu-scene-width) (/ height gpu-scene-height))
-                      (draw-gpu-scene c (list-ref gpu-scene-names (modulo index (length gpu-scene-names)))))
+                      (draw-gpu-scene c
+                        (list-ref gpu-scene-names (modulo index (length gpu-scene-names)))))
                     (with-target width height
                       (lambda (description)
                         (call-with-window-target gpu description
@@ -89,7 +113,8 @@
                             (draw-gpu-target-to-window! offscreen window)
                             (gpu-flush-and-submit! gpu) ; explicitly NOT a CPU wait
                             (send gl swap-buffers)))))))))
-            (unless (skia-closed? saved-canvas) (error 'gpu-window-doctor "frame canvas did not expire"))
+            (unless (skia-closed? saved-canvas)
+              (error 'gpu-window-doctor "frame canvas did not expire"))
             (define info (gpu-context-info gpu))
             (unless (and (zero? (hash-ref info 'live_children))
                          (zero? (hash-ref info 'pending_releases))
@@ -104,7 +129,8 @@
                             'swap_requested #t 'expired_canvas #t
                             'live_children (hash-ref info 'live_children)
                             'pending_releases (hash-ref info 'pending_releases)) frames))
-            (printf "GL frame ~a: ~ax~a pixels, logical ~ax~a; submitted and swapped without CPU readback\n"
+            (printf
+              "GL frame ~a: ~ax~a pixels, logical ~ax~a; submitted and swapped without CPU readback\n"
                     index width height logical-width logical-height)))
         ;; Finite validation exercises three actual window sizes. Visual
         ;; confirmation of the swapped pixels remains a separate manual check.
@@ -112,7 +138,8 @@
           (send frame resize (car size) (cadr size)) (sleep/yield 0.10)
           (draw-frame i))
         (when interactive?
-          (displayln "Inspect the corner markers, scene detail and resize behavior; close the window to finish.")
+          (displayln
+            "Inspect the corner markers, scene detail and resize behavior; close the window to finish.")
           (let loop ([i 3])
             (when (send frame is-shown?)
               (draw-frame i) (sleep/yield 0.25) (loop (add1 i))))))
@@ -129,15 +156,32 @@
                                          (hash-ref e 'wait_requested))) io))
     (unless (and (zero? reads) (zero? waits))
       (error 'gpu-window-doctor "normal frames performed a CPU wait or readback"))
-    (unless (>= (length frames) 3) (error 'gpu-window-doctor "fewer than three nonzero drawable frames"))
+    (unless (>= (length frames) 3)
+      (error 'gpu-window-doctor "fewer than three nonzero drawable frames"))
     (publish (hash-set* (report "passed" #f) 'closed_context closed
                         'frame_readbacks reads 'frame_explicit_cpu_waits waits
                         'surface_symbol_inventory (gpu-surface-native-inventory #t)))
     (displayln "GL window submission/resize checks passed. Visible output still requires human review; no performance claim.")
     0))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; prefix : path-string?
+  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-window-0.39")
-  (define interactive? #f) (define required? #t) (define hardware? #f)
+
+  ; interactive? : boolean?
+  ;;   Keeps visible window checks interactive when requested by the operator.
+  (define interactive? #f)
+  ; required? : boolean?
+  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  (define required? #t)
+  ; hardware? : boolean?
+  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  (define hardware? #f)
   (command-line #:program "gpu-window-doctor" #:once-each
     [("--prefix") value "Artifact prefix" (set! prefix value)]
     [("--interactive") "Keep redrawing until the window is closed" (set! interactive? #t)]

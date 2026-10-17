@@ -1,10 +1,39 @@
 #lang racket/base
+
+;;;
+;;; Text Blob Pure Test
+;;;
+
+;; Covers multi-run text blobs (pure).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector "../main.rkt" "../private/text-run-util.rkt"
          "text-blob-fixtures.rkt" "typeface-fixtures.rkt")
 (provide text-blob-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail? thunk))
+
+; metadata : string? any/c exact-nonnegative-integer? -> any
+;;   Validates source text, cluster offsets, and glyph count without constructing native runs.
 (define (metadata text clusters count)
   (call-with-values (lambda () (text-run-metadata 'test text clusters count)) list))
+
+;;;
+;;; Regression Suite
+;;;
+
+; text-blob-pure-tests : test-suite?
+;;   Collects the regression cases for multi-run text blobs (pure).
 (define text-blob-pure-tests
   (test-suite
    "Multi-run text blobs (pure)"

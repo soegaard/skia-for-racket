@@ -1,8 +1,30 @@
 #lang racket/base
+
+;;;
+;;; Effects Doctor
+;;;
+
+;; Exercises path effects, mask filters, noise, and programmable blending and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list json
          "../main.rkt" "../tests/effects-fixtures.rkt")
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; write-bytes-file : path-string? bytes? -> exact-nonnegative-integer?
+;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (write-bytes-file path data)
   (call-with-output-file path (lambda (out) (write-bytes data out)) #:exists 'error))
+
+; effect-page : symbol? box? box? [#:policy symbol?] -> output-page?
+;;   Places an effect in a bounded output group while recording strategy reports and callback count.
 (define (effect-page name reports calls #:policy [policy 'raster])
   (make-output-page 96 72
     (lambda (c)
@@ -18,7 +40,18 @@
       (canvas-annotate-url! c 2 2 4 4 (format "https://example.invalid/effects/~a" name)))
     #:background 'white))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
   (define directory #f)
+
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
   (define token #f)
   (command-line #:once-each
     [("--directory") path "New output directory" (set! directory path)]
@@ -27,6 +60,9 @@
   (unless (and directory token) (error 'effects-doctor "--directory and --token required"))
   (when (directory-exists? directory) (error 'effects-doctor "directory already exists"))
   (make-directory* directory)
+
+  ; rows : (listof hash?)
+  ;;   Accumulates output filenames and rendering metadata for the effect-fixture manifest.
   (define rows '())
   (for ([name (in-list effect-scene-names)])
     (define prefix (symbol->string name))

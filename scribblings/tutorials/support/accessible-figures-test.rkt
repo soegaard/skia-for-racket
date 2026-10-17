@@ -1,14 +1,34 @@
 #lang racket/base
 
+;;;
+;;; Accessible Figures Test
+;;;
+
+;; Checks accessible figure conversion and preview handling using native-free Racket picts.
+;; This module guards the documentation's examples and support code against regressions.
+
+
 ;; These tests use Racket picts, not Skia. Rendering the complete tutorials is a separate check.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file racket/list
          rackunit file/convertible
          (prefix-in pict: pict)
          scribble/core scribble/eval
          "accessible-figures.rkt")
 
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
+  ; created : list?
+  ;;   Tracks temporary figure files so the regression test can clean them up.
   (define created '())
+  ; keep : any/c -> image-element?
+  ;;   Records a generated figure's temporary path and returns the figure unchanged.
   (define (keep figure)
     (set! created (cons (image-element-path figure) created))
     figure)
@@ -48,6 +68,8 @@
             (if (eq? request 'png-bytes)
                 (convert (one-density-picture self) request default)
                 default)))
+        ;; picture: wrapped pict value. The converter deliberately offers only png-bytes so this
+        ;; fixture exercises single-density display scaling without a high-density alternative.
         (define figure
           (keep (tutorial-figure "A single-density panel."
                                  (one-density (pict:blank 32 20)))))

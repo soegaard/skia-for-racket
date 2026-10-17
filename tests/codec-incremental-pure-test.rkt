@@ -1,11 +1,43 @@
 #lang racket/base
+
+;;;
+;;; Codec Incremental Pure Test
+;;;
+
+;; Covers incremental input framing and detached progress.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list
          "../private/codec-incremental-input.rkt" "../private/codec-incremental-util.rkt"
          "../image-info.rkt" "../private/check.rkt" "codec-incremental-fixtures.rkt")
 (provide codec-incremental-pure-tests codec-incremental-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; parts : (listof bytes?)
+;;   Keeps PNG pieces in feed order for input-framing tests.
 (define parts (incremental-fixture-parts))
+
+; header : bytes?
+;;   Contains the signature and IHDR chunk before any image rows.
 (define header (car parts))
+
+; first : bytes?
+;;   Contains the first IDAT piece used to test partial progress.
 (define first (cadr parts))
+
+;;;
+;;; Regression Suite
+;;;
+
+; codec-incremental-pure-tests : test-suite?
+;;   Collects the regression cases for incremental input framing and detached progress.
 (define codec-incremental-pure-tests
   (test-suite "Incremental input framing and detached progress"
     (test-case "empty input has no visible bytes"
@@ -33,7 +65,8 @@
       (check-equal? (incremental-input-visible s) (bytes-length header)))
     (test-case "partial IDAT CRC stays hidden"
       (define s (make-incremental-input 4096))
-      (incremental-input-append! s (bytes-append header (subbytes first 0 (sub1 (bytes-length first)))) #f)
+      (incremental-input-append! s
+        (bytes-append header (subbytes first 0 (sub1 (bytes-length first)))) #f)
       (check-equal? (incremental-input-visible s) (bytes-length header)))
     (test-case "IDAT appears when complete"
       (define s (make-incremental-input 4096))
@@ -83,14 +116,19 @@
       (check-equal? (incremental-input-visible s) 9))
     (test-case "oversized chunk rejects"
       (define s (make-incremental-input 100))
-      (check-exn exn:fail? (lambda () (incremental-input-append! s (bytes-append #"\211PNG\r\n\32\n" #"\377\377\377\377IDAT") #f))))
+      (check-exn exn:fail?
+        (lambda () (incremental-input-append! s
+                     (bytes-append #"\211PNG\r\n\32\n" #"\377\377\377\377IDAT") #f))))
     (test-case "chunk exceeding input budget rejects"
       (define s (make-incremental-input 50))
-      (check-exn exn:fail? (lambda () (incremental-input-append! s (bytes-append header #"\0\0\0\20IDAT") #f))))
+      (check-exn exn:fail?
+        (lambda () (incremental-input-append! s (bytes-append header #"\0\0\0\20IDAT") #f))))
     (test-case "nonbytes feed rejects"
-      (check-exn exn:fail? (lambda () (incremental-input-append! (make-incremental-input 30) "abc" #f))))
+      (check-exn exn:fail?
+        (lambda () (incremental-input-append! (make-incremental-input 30) "abc" #f))))
     (test-case "nonboolean final rejects"
-      (check-exn exn:fail? (lambda () (incremental-input-append! (make-incremental-input 30) #"a" 1))))
+      (check-exn exn:fail?
+        (lambda () (incremental-input-append! (make-incremental-input 30) #"a" 1))))
     (test-case "zero and noninteger limits reject"
       (for ([limit '(0 -1 1.0 #f)]) (check-exn exn:fail? (lambda () (make-incremental-input limit)))))
     (test-case "success is terminal"
@@ -109,11 +147,16 @@
       (check-equal? (incremental-progress-state p) 'needs-input)
       (check-equal? (incremental-progress-initialized-rows p) 8))
     (test-case "unset rows stay false"
-      (check-false (incremental-progress-initialized-rows (make-incremental-progress 'needs-input 'incomplete-input #f))))
+      (check-false
+        (incremental-progress-initialized-rows
+          (make-incremental-progress 'needs-input 'incomplete-input #f))))
     (test-case "default options validate without native initialization"
-      (check-equal? (image-info-color-type (incremental-options 'test 'rgba-8888 'unpremul 'srgb #f 4096)) 'rgba-8888))
+      (check-equal?
+        (image-info-color-type (incremental-options 'test 'rgba-8888 'unpremul 'srgb #f 4096))
+        'rgba-8888))
     (test-case "BGRA premul options are explicit"
-      (check-equal? (image-info-alpha-type (incremental-options 'test 'bgra-8888 'premul #f 64 4096)) 'premul))
+      (check-equal?
+        (image-info-alpha-type (incremental-options 'test 'bgra-8888 'premul #f 64 4096)) 'premul))
     (test-case "unsupported target types reject"
       (for ([color '(rgba-f16 rgba-f32 gray-8 alpha-8)])
         (check-exn exn:fail? (lambda () (incremental-options 'test color 'unpremul 'srgb #f 4096)))))
@@ -122,10 +165,12 @@
         (check-exn exn:fail? (lambda () (incremental-options 'test 'rgba-8888 alpha 'srgb #f 4096)))))
     (test-case "invalid stride rejects"
       (for ([stride '(0 -1 3 5 8.0)])
-        (check-exn exn:fail? (lambda () (incremental-options 'test 'rgba-8888 'unpremul 'srgb stride 4096)))))
+        (check-exn exn:fail?
+          (lambda () (incremental-options 'test 'rgba-8888 'unpremul 'srgb stride 4096)))))
     (test-case "configured limit cannot exceed current limit"
       (parameterize ([current-skia-byte-limit 512])
-        (check-exn exn:fail? (lambda () (incremental-options 'test 'rgba-8888 'unpremul 'srgb #f 1024)))))
+        (check-exn exn:fail?
+          (lambda () (incremental-options 'test 'rgba-8888 'unpremul 'srgb #f 1024)))))
     (test-case "detached progress stays readable"
       (define p (make-incremental-progress 'complete 'success 6))
       (check-equal? (incremental-progress-result p) 'success))
@@ -134,8 +179,19 @@
       (for ([p (in-list (incremental-fixture-parts #:interlaced? #t))])
         (incremental-input-append! s p #f)
         (check-equal? (incremental-input-visible s) (incremental-input-size s))))))
+
+; codec-incremental-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define codec-incremental-pure-test-count 36)
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-incremental-pure-tests))
-  (printf "codec-incremental-pure: ~a cases, ~a failures\n" codec-incremental-pure-test-count failures)
+  (printf "codec-incremental-pure: ~a cases, ~a failures\n" codec-incremental-pure-test-count
+    failures)
   (exit (if (zero? failures) 0 1)))

@@ -1,7 +1,29 @@
 #lang racket/base
+
+;;;
+;;; Color Output Native Test
+;;;
+
+;; Covers color output native regression.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/vector "../main.rkt")
 (provide color-output-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; sample : bytes?
+;;   Provides two RGBA pixels with different alpha values for profile-preserving encode checks.
 (define sample (bytes 128 96 64 255 64 128 96 128))
+
+; close-color : color-space? color-space? [real?] -> void?
+;;   Compares D50 matrices and sampled transfer functions after profile round trips.
 (define (close-color a b [eps 3e-4])
   (define x (color-space-xyz-d50 a))
   (define y (color-space-xyz-d50 b))
@@ -12,16 +34,23 @@
   (check-true (transfer-function? tb))
   (for ([n '(0 0.01 0.04 0.25 0.5 0.75 1)])
     (check-= (transfer-function-evaluate ta n) (transfer-function-evaluate tb n) 1e-3)))
+
+; with-temp : (path? -> any) -> any
+;;   Provides an isolated output directory and removes it after the test.
 (define (with-temp proc)
   (define dir (make-temporary-file "skia-color-test-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
+
+; encode-check : symbol? -> void?
+;;   Checks embedded ICC metadata and decoded color meaning for the chosen image format.
 (define (encode-check format)
   (with-skia ([cs (make-rgb-color-space 'srgb 'display-p3)]
               [im (rgba-bytes->image 2 1 sample #:color-space cs)])
     (define bs (image->encoded-bytes im format #:icc-profile (color-space->icc-bytes cs)
                                     #:icc-description "P3 regression" #:webp-lossless? #t))
     (check-true
-     (regexp-match? (case format [(png) #rx#"iCCP"] [(jpeg) #rx#"ICC_PROFILE"] [(webp) #rx#"ICCP"]) bs))
+     (regexp-match? (case format [(png) #rx#"iCCP"] [(jpeg) #rx#"ICC_PROFILE"] [(webp) #rx#"ICCP"])
+       bs))
     (with-skia ([codec (codec-from-bytes bs)] [decoded (codec->image codec)]
                 [dcs (image-color-space decoded)])
       (close-color dcs cs)
@@ -30,6 +59,13 @@
         (define result (image->rgba-bytes decoded))
         (for ([a (in-bytes result)] [b (in-bytes sample)]) (check-= a b 1))))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; color-output-native-tests : test-suite?
+;;   Collects the regression cases for color output native regression.
 (define color-output-native-tests
   (test-suite
    "Color output native regression"
@@ -65,7 +101,8 @@
      (define actual (primaries->xyz-d50 '(0.64 0.33) '(0.30 0.60) '(0.15 0.06) '(0.3127 0.3290)))
      (for ([a (in-vector actual)] [b (in-vector (named-xyz-d50 'srgb))]) (check-= a b 3e-4)))
    (test-case "degenerate primaries fail cleanly"
-     (check-exn exn:fail? (lambda () (primaries->xyz-d50 '(0.64 0.33) '(0.64 0.33) '(0.64 0.33) '(0.3127 0.3290)))))
+     (check-exn exn:fail?
+       (lambda () (primaries->xyz-d50 '(0.64 0.33) '(0.64 0.33) '(0.64 0.33) '(0.3127 0.3290)))))
    (test-case "custom transfer and gamut snapshots"
      (define xyz (vector-copy (named-xyz-d50 'display-p3)))
      (with-skia ([cs (make-rgb-color-space (make-transfer-function 2 1 0 0 0 0 0) xyz)])
@@ -130,7 +167,8 @@
        (check-= (bytes-ref (image->rgba-bytes decoded) 0) 188 1)))
    (test-case "ICC metadata alone does not convert untagged samples"
      (with-skia ([cs (make-linear-srgb-color-space)] [im (rgba-bytes->image 2 1 sample)]
-                 [dec (image-from-bytes (image->png-bytes im #:icc-profile (color-space->icc-bytes cs)))]
+                  [dec (image-from-bytes
+                         (image->png-bytes im #:icc-profile (color-space->icc-bytes cs)))]
                  [tag (image-color-space dec)])
        (check-true (color-space-linear-gamma? tag))
        (define bs (image->rgba-bytes dec))
@@ -145,8 +183,11 @@
      (with-skia ([im (rgba-bytes->image 2 1 sample)])
        (for ([f '(png jpeg webp)]) (check-true (bytes? (image->encoded-bytes im f))))))
    (test-case "surface PNG forwards explicit profile"
-     (with-skia ([cs (make-srgb-color-space)] [s (make-surface 3 2 #:color-space cs #:background 'red)])
-       (check-true (regexp-match? #rx#"iCCP" (surface->png-bytes s #:icc-profile (color-space->icc-bytes cs))))))
+     (with-skia
+       ([cs (make-srgb-color-space)] [s (make-surface 3 2 #:color-space cs #:background 'red)])
+       (check-true
+         (regexp-match? #rx#"iCCP"
+           (surface->png-bytes s #:icc-profile (color-space->icc-bytes cs))))))
    (test-case "save-image forwards ICC settings for all formats"
      (with-temp
       (lambda (dir)
@@ -171,19 +212,24 @@
           (check-exn exn:fail? (lambda () (save-png s name #:exists 'replace #:icc-profile #"bad"))))
         (check-equal? (file->bytes name) #"keep"))))
    (test-case "profile scope can be used repeatedly without retaining caller buffers"
-     (with-skia ([cs (make-rgb-color-space 'srgb 'display-p3)] [im (rgba-bytes->image 2 1 sample #:color-space cs)])
+     (with-skia
+       ([cs (make-rgb-color-space 'srgb 'display-p3)]
+         [im (rgba-bytes->image 2 1 sample #:color-space cs)])
        (define profile (color-space->icc-bytes cs))
        (skia-close! cs)
        (for ([i (in-range 8)]) (check-true (bytes? (image->png-bytes im #:icc-profile profile))))))
    (test-case "PDF-A request adds an output intent and metadata"
-     (define bs (call-with-pdf-bytes (lambda (d) (with-document-page (c d 100 80) (void))) #:pdfa? #t))
+     (define bs
+       (call-with-pdf-bytes (lambda (d) (with-document-page (c d 100 80) (void))) #:pdfa? #t))
      (check-true (regexp-match? #rx#"/OutputIntents" bs))
      (check-true (regexp-match? #rx#"/Metadata" bs)))
    (test-case "default PDF mode retains its previous no-output-intent behavior"
      (define bs (call-with-pdf-bytes (lambda (d) (with-document-page (c d 100 80) (void)))))
      (check-false (regexp-match? #rx#"/OutputIntents" bs)))
    (test-case "shared PDF export forwards PDF-A mode"
-     (define p (make-output-page 120 80 (lambda (c) (with-skia ([ink (make-paint #:color 'blue)]) (draw-circle c 30 30 10 ink)))))
+     (define p (make-output-page 120 80
+                 (lambda (c) (with-skia ([ink (make-paint #:color 'blue)])
+                               (draw-circle c 30 30 10 ink)))))
      (check-true (regexp-match? #rx#"/OutputIntents" (output->bytes p 'pdf #:pdfa? #t))))
    (test-case "file PDF helper forwards PDF-A mode"
      (with-temp

@@ -1,14 +1,29 @@
 #lang racket/base
+
+;;;
+;;; GPU Diagnostics
+;;;
+
+;; Classifies detached driver strings and checks the fixed smoke-test image's RGBA pixels.
+;; Supplies pure diagnostic interpretation without loading a GPU library or activating a context.
+
 (provide renderer-class verify-smoke-pixels)
 ;; Classification is an explicit string heuristic, not a hardware attestation.
+; renderer-class : string? string? -> string?
+;;   Classifies copied vendor/renderer strings for diagnostics without claiming measured hardware
+;;   performance.
 (define (renderer-class vendor renderer)
   (define name (string-append vendor " " renderer))
   (cond
     [(regexp-match? #px"(?i:llvmpipe|softpipe|swrast|swiftshader|software|gdi generic|lavapipe)" name)
      "software"]
-    [(regexp-match? #px"(?i:apple [ma][0-9]|nvidia|geforce|quadro|radeon|intel.*(?:iris|graphics|arc)|amd.*graphics)" name)
+    [(regexp-match?
+      #px"(?i:apple [ma][0-9]|nvidia|geforce|quadro|radeon|intel.*(?:iris|graphics|arc)|amd.*graphics)" name)
      "hardware-reported"]
     [else "unclassified"]))
+; verify-smoke-pixels : bytes? -> #t
+;;   Checks the expected smoke-scene pixels so context construction alone is not reported as
+;;   successful rendering.
 (define (verify-smoke-pixels data)
   (unless (and (bytes? data) (= (bytes-length data) (* 8 8 4)))
     (error 'gpu-smoke-test "expected 8x8 tightly packed RGBA readback"))

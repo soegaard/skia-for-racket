@@ -1,17 +1,49 @@
 #lang racket/base
+
+;;;
+;;; GPU Output Pure Test
+;;;
+
+;; Covers gPU document execution: pure protocol, lazy ownership and scoped audit.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list json
          "../private/output-executor.rkt" "../private/gpu-provider.rkt"
          "../private/audit-trace.rkt" "../output-policy.rkt")
 (provide gpu-output-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; plan : any/c any/c -> output-raster-plan?
+;;   Creates a synthetic Metal plan with fixed generation metadata and no actual rendering.
 (define (plan c p)
   (output-raster-plan 'metal 17 #f (lambda (w h cs replay consume) (void))))
+
+; unavailable : -> gpu-unavailable?
+;;   Constructs the explicit unavailable-device result used to test fallback policy.
 (define (unavailable) (gpu-unavailable 'test-device "synthetic unavailable device"))
+
+; lazy : procedure? ... -> any
+;;   Runs the lazy-executor lifecycle with injectable create, check, plan, close, and unavailable
+;;   policy.
 (define (lazy proc #:create [create (lambda () 'context)] #:check [check void]
               #:plan [make-plan plan] #:close [close void] #:policy [policy 'error])
   (call-with-lazy-output-raster-executor create check make-plan close proc #:on-unavailable policy))
+
+; drawing-event : any/c symbol? -> any
+;;   Emits a synthetic rectangle operation through the audit boundary for a selected backend.
 (define (drawing-event handle backend)
   (audit-on-canvas 'probe 'owner backend handle '()
     (lambda () (audit-native-call 'sk_canvas_draw_rect '() void))))
+
+; geometry-events : (-> any) -> list?
+;;   Collects only geometry audit events produced within a bounded raster scope.
 (define (geometry-events thunk)
   (define-values (_ report)
     (call-with-audit-collector 'svg 'report #f 1
@@ -19,6 +51,14 @@
   (filter (lambda (e) (eq? (output-audit-event-feature e) 'geometry))
           (output-audit-report-events report)))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-output-pure-tests : test-suite?
+;;   Collects the regression cases for gPU document execution: pure protocol, lazy ownership and
+;;   scoped audit.
 (define gpu-output-pure-tests
   (test-suite
    "GPU document execution: pure protocol, lazy ownership and scoped audit"
@@ -40,7 +80,8 @@
      (define e (make-output-raster-executor void (lambda (_) (output-raster-plan 'metal #f #f void))))
      (check-exn exn:fail? (lambda () (prepare-output-raster e 'picture))))
    (test-case "GPU plan renderer arity is checked"
-     (define e (make-output-raster-executor void (lambda (_) (output-raster-plan 'opengl 1 #f (lambda () 1)))))
+     (define e (make-output-raster-executor void
+                 (lambda (_) (output-raster-plan 'opengl 1 #f (lambda () 1)))))
      (check-exn exn:fail? (lambda () (prepare-output-raster e 'picture))))
    (test-case "checking an unused lazy executor does not create a context"
      (define creates 0) (define closes 0)
@@ -144,7 +185,8 @@
      (define saved #f) (define closes 0)
      (check-exn #rx"close failed"
        (lambda () (lazy (lambda (e) (set! saved e) (prepare-output-raster e 'a))
-                        #:close (lambda (_) (set! closes (add1 closes)) (error 'test "close failed")))))
+                        #:close
+                    (lambda (_) (set! closes (add1 closes)) (error 'test "close failed")))))
      (check-exn #rx"expired" (lambda () (prepare-output-raster saved 'a)))
      (check-equal? closes 1))
    (test-case "planned execution does not claim a readback"
@@ -163,11 +205,15 @@
      (check-equal? (hash-ref d 'readback_count) 0) (check-equal? (hash-ref d 'requested) "gpu"))
    (test-case "exact GPU target receives raster representation audit"
      (define h (gensym))
-     (define events (geometry-events (lambda () (call-with-audit-gpu-raster h (lambda () (drawing-event h 'gpu))))))
+     (define events
+       (geometry-events
+         (lambda () (call-with-audit-gpu-raster h (lambda () (drawing-event h 'gpu))))))
      (check-equal? (length events) 1)
      (check-eq? (output-audit-event-status (car events)) 'rasterized))
    (test-case "unrelated GPU target cannot inherit raster audit scope"
-     (define events (geometry-events (lambda () (call-with-audit-gpu-raster 'a (lambda () (drawing-event 'b 'gpu))))))
+     (define events
+       (geometry-events
+         (lambda () (call-with-audit-gpu-raster 'a (lambda () (drawing-event 'b 'gpu))))))
      (check-equal? events '()))
    (test-case "GPU audit authority expires on scope exit"
      (define saved #f)

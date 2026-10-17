@@ -1,20 +1,54 @@
 #lang racket/base
+
+;;;
+;;; Portable Drawing Example
+;;;
+
+;; Exports point markers, image lattices, and atlas sprites with explicit output decisions.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file racket/path racket/list racket/string json "../main.rkt")
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; blue : rgba?
+;;   Specifies the blue color used by this drawing.
 (define blue (rgb 48 103 211))
+; teal : rgba?
+;;   Specifies the teal color used by this drawing.
 (define teal (rgb 14 149 142))
+; orange : rgba?
+;;   Specifies the orange color used by this drawing.
 (define orange (rgb 239 161 37))
+; ink : rgba?
+;;   Specifies the ink color used by this drawing.
 (define ink (rgb 32 52 78))
+; current-decisions : parameter?
+;;   Selects decisions for the dynamically scoped rendering operation.
 (define current-decisions (make-parameter #f))
+; label : canvas? string? real? real? [real?] -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11])
   (with-skia ([font (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [paint (make-paint #:color ink)])
     (draw-simple-text c text x y font paint)))
+; heading : canvas? string? string? -> void?
+;;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (with-skia ([paint (make-paint #:color teal)]) (draw-rect c 0 0 34 2 paint))
   (label c title 0 32 22) (label c subtitle 0 55 10))
+; footer : canvas? exact-nonnegative-integer? -> void?
+;;   Adds the page identification beneath the example drawing.
 (define (footer c n)
   (label c "RACKET / SKIA   |   PORTABLE GEOMETRY AND IMAGE PLACEMENTS" 0 444 9)
   (label c (number->string n) 652 444 9))
+; checker : canvas? real? real? real? real? -> void?
+;;   Draws a checkerboard that makes transparent pixels visible.
 (define (checker c x y width height)
   (with-skia ([a (make-paint #:color (rgb 242 245 248) #:antialias? #f)]
               [b (make-paint #:color (rgb 225 232 240) #:antialias? #f)])
@@ -24,13 +58,19 @@
            #:when (odd? (+ row column)))
       (draw-rect c (+ x (* column 16)) (+ y (* row 16))
                  (min 16 (- width (* column 16))) (min 16 (- height (* row 16))) b))))
+; group : canvas? any/c any/c real? real? real? real? procedure? -> void?
+;;   Draws the group comparison in the current canvas coordinate system.
 (define (group c page name x y width height draw)
   (define r (draw-output-group c x y width height draw #:label name))
   (when (current-decisions)
     (set-box! (current-decisions)
               (cons (cons page (output-group-report->jsexpr r)) (unbox (current-decisions)))))
   (void))
+; points : list?
+;;   Orders the marker centers used by the portable drawing comparison.
 (define points (for/list ([x '(28 76 124 172 220 268)]) (list x 27)))
+; markers : canvas? -> void?
+;;   Draws the markers comparison in the current canvas coordinate system.
 (define (markers c)
   (heading c "Markers stay ordinary vector geometry"
              "Explicit sizes, fill or stroke paints, ordered overlap, and a shared gradient coordinate system.")
@@ -65,6 +105,8 @@
   (label c "All four groups replay natively. This page contains no embedded images." 0 410 10)
   (footer c 1))
 
+; make-grid-source : -> image?
+;;   Constructs grid source for the example's drawing pipeline.
 (define (make-grid-source)
   (with-skia ([s (make-surface 30 24)] [a (make-paint #:color blue)]
               [b (make-paint #:color teal #:antialias? #f)]
@@ -74,10 +116,14 @@
     (draw-rect c 6 5 17 12 b)
     (draw-circle c 3 12 1.5 dot)
     (surface-snapshot s)))
+; lattice : image-lattice?
+;;   Defines the image-grid layout reused by the portable drawing pages.
 (define lattice
   (make-image-lattice '(6 23) '(5 17)
     #:cell-types '(default fixed-color default default transparent default default default default)
     #:colors (list 'black orange 'black 'black 'black 'black 'black 'black 'black)))
+; grids : any/c -> procedure?
+;;   Builds the portable image-grid drawing for the supplied source image.
 (define (grids source)
   (lambda (c)
     (heading c "Image grids do not need a panel bitmap"
@@ -89,13 +135,22 @@
       (lambda (local) (draw-image-nine/portable local source '(6 5 17 12) 0 0 300 170)))
     (group c "grids" "mixed-lattice" 352 110 300 170
       (lambda (local) (draw-image-lattice/portable local source lattice 0 0 300 170 #:alpha 230)))
-    (label c "Only the original crop-sized images are embedded; there is no 600 x 340 fallback panel." 0 320 10)
-    (label c "The fixed-color cell is ordinary geometry. The transparent cell draws nothing." 0 347 10)
-    (label c "Small destinations shrink fixed spans and collapse the stretch spans; plans expose every cell." 0 378 10)
-    (label c "These are still raster source images, not vector artwork. A vector-only policy correctly rejects them." 0 409 10)
+    (label c
+      "Only the original crop-sized images are embedded; there is no 600 x 340 fallback panel." 0
+      320 10)
+    (label c "The fixed-color cell is ordinary geometry. The transparent cell draws nothing." 0 347
+      10)
+    (label c
+      "Small destinations shrink fixed spans and collapse the stretch spans; plans expose every cell." 0 378 10)
+    (label c
+      "These are still raster source images, not vector artwork. A vector-only policy correctly rejects them." 0 409 10)
     (footer c 2)))
 
+; atlas-boxes : list?
+;;   Orders source-cell rectangles as x, y, width, and height.
 (define atlas-boxes '((0 0 24 24) (28 0 20 28) (52 0 20 20)))
+; make-atlas-source : -> image?
+;;   Constructs atlas source for the example's drawing pipeline.
 (define (make-atlas-source)
   (with-skia ([s (make-surface 72 28)] [a (make-paint #:color blue)]
               [b (make-paint #:color teal)] [dot (make-paint #:color orange)])
@@ -104,14 +159,20 @@
     (draw-rounded-rect c 28 0 20 28 4 4 b) (draw-rect c 33 8 10 12 dot)
     (draw-rounded-rect c 52 0 20 20 4 4 a) (draw-circle c 62 10 5 dot)
     (surface-snapshot s)))
+; placements : list?
+;;   Orders destination atlas transforms, matching the selected source rectangles.
 (define placements
   (list (make-atlas-transform 64 84 #:scale 2.2 #:rotation -20 #:anchor '(12 12))
         (make-atlas-transform 188 84 #:scale 3 #:anchor '(10 14))
         (make-atlas-transform 314 84 #:scale 2.7 #:rotation 25 #:anchor '(10 10))
         (make-atlas-transform 440 84 #:scale 3.2 #:rotation -30 #:anchor '(12 12))
         (make-atlas-transform 568 84 #:scale 2.5 #:rotation 15 #:anchor '(10 14))))
+; placed-boxes : list?
+;;   Repeats source rectangles in the same order as the atlas placements.
 (define placed-boxes (list (car atlas-boxes) (cadr atlas-boxes) (caddr atlas-boxes)
                            (car atlas-boxes) (cadr atlas-boxes)))
+; sprites : any/c -> procedure?
+;;   Builds the portable atlas drawing for the supplied source image.
 (define (sprites source)
   (lambda (c)
     (heading c "Atlas sprites stay individual image placements"
@@ -120,25 +181,49 @@
     (checker c 0 110 652 170)
     (group c "atlas" "portable-sprites" 0 110 652 170
       (lambda (local) (draw-atlas/portable local source placements placed-boxes #:alpha 220)))
-    (label c "A repeated crop shares its image resource; each sprite still has its own placement transform." 0 320 10)
-    (label c "Alpha applies per sprite, not once to the completed group. No per-sprite tint is silently approximated." 0 347 10)
-    (label c "The native draw-atlas API remains available for tint, effects, and fractional source regions." 0 378 10)
-    (label c "Filtering and edge antialiasing remain renderer-dependent; this is not a pixel-identical batch promise." 0 409 10)
+    (label c
+      "A repeated crop shares its image resource; each sprite still has its own placement transform." 0 320 10)
+    (label c
+      "Alpha applies per sprite, not once to the completed group. No per-sprite tint is silently approximated." 0 347 10)
+    (label c
+      "The native draw-atlas API remains available for tint, effects, and fractional source regions." 0 378 10)
+    (label c
+      "Filtering and edge antialiasing remain renderer-dependent; this is not a pixel-identical batch promise." 0 409 10)
     (footer c 3)))
 
+; write-json-file : path-string? any/c -> void?
+;;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
   (call-with-output-file path (lambda (out) (write-json data out) (newline out)) #:exists 'replace))
+; html-escape : string? -> string?
+;;   Escapes text before inserting it into the generated HTML report.
 (define (html-escape s)
-  (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" . "&quot;")))])
+  (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
+    "&quot;")))])
     (string-replace text (car p) (cdr p))))
+; names : list?
+;;   Orders the comparison cases used to name the generated pages.
 (define names '("markers" "grids" "atlas"))
+; decision-rows : list? -> list?
+;;   Groups output decisions by page for the generated report.
 (define (decision-rows entries)
   (for/list ([name (in-list names)])
-    (hasheq 'page name 'groups (for/list ([entry (in-list entries)] #:when (equal? (car entry) name)) (cdr entry)))))
+    (hasheq 'page name 'groups (for/list ([entry (in-list entries)] #:when (equal? (car entry)
+      name)) (cdr entry)))))
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; args : vector?
+  ;;   Retains the command-line argument vector used to select output paths.
   (define args (current-command-line-arguments))
   (when (> (vector-length args) 1) (error 'portable-drawing "expected optional output prefix"))
+  ; prefix : path-string?
+  ;;   Selects the destination used by this example's output.
   (define prefix (if (zero? (vector-length args)) "output/portable-drawing-0.35" (vector-ref args 0)))
+  ; file : any/c -> string?
+  ;;   Appends an output suffix to the selected filename prefix.
   (define (file suffix) (string-append prefix suffix))
   (make-directory* (or (path-only (string->path prefix)) (current-directory)))
   (with-skia ([grid-source (make-grid-source)] [atlas-source (make-atlas-source)])
@@ -150,7 +235,8 @@
               'atlas (for/list ([t (in-list placements)] [b (in-list placed-boxes)])
                        (hasheq 'source b 'matrix (vector->list (atlas-transform-coefficients t))))))
     (define draws (list markers (grids grid-source) (sprites atlas-source)))
-    (define pages (map (lambda (draw) (make-output-page 720 500 draw #:margins 24 #:background 'white)) draws))
+    (define pages (map (lambda (draw) (make-output-page 720 500 draw #:margins 24 #:background
+      'white)) draws))
     (define pdf-decisions (box '())) (define svg-decisions (box '()))
     (define pdf-report
       (parameterize ([current-decisions pdf-decisions])
@@ -163,7 +249,8 @@
           (save-output/audit page (file (string-append "." name ".svg")) 'svg
                              #:policy (if (equal? name "markers") 'vector-only 'error)
                              #:id-prefix name #:exists 'replace)))
-      (write-json-file (file (string-append "." name ".audit.json")) (output-audit-report->jsexpr report))
+      (write-json-file (file (string-append "." name ".audit.json")) (output-audit-report->jsexpr
+        report))
       (with-skia ([im (output-page->image page #:dpi 144)])
         (save-image im (file (string-append "." name ".reference.png")) 'png #:exists 'replace)))
     (write-json-file (file ".decisions.json")
@@ -172,10 +259,15 @@
     (define base (html-escape (path->string (file-name-from-path prefix))))
     (call-with-output-file (file ".review.html")
       (lambda (out)
-        (display "<!doctype html><meta charset=\"utf-8\"><title>Portable drawing review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}img{width:100%;background:white}figure{margin:0}@media(max-width:850px){.pair{grid-template-columns:1fr}}</style><h1>Portable geometry and image placements</h1>" out)
-        (fprintf out "<p><a href=\"~a.pdf\">Actual PDF</a> | <a href=\"~a.plans.json\">Source/destination plans</a> | <a href=\"~a.decisions.json\">Group decisions</a> | <a href=\"~a.inspection.json\">Structural inspection</a></p>" base base base base)
-        (display "<p>Left: actual SVG. Right: independent raster reference, not a PDF/SVG rasterization. Inspect edges at several zoom levels: separate image crops retain source pixels, not identical renderer filtering.</p>" out)
+        (display
+          "<!doctype html><meta charset=\"utf-8\"><title>Portable drawing review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}img{width:100%;background:white}figure{margin:0}@media(max-width:850px){.pair{grid-template-columns:1fr}}</style><h1>Portable geometry and image placements</h1>" out)
+        (fprintf out
+          "<p><a href=\"~a.pdf\">Actual PDF</a> | <a href=\"~a.plans.json\">Source/destination plans</a> | <a href=\"~a.decisions.json\">Group decisions</a> | <a href=\"~a.inspection.json\">Structural inspection</a></p>" base base base base)
+        (display
+          "<p>Left: actual SVG. Right: independent raster reference, not a PDF/SVG rasterization. Inspect edges at several zoom levels: separate image crops retain source pixels, not identical renderer filtering.</p>" out)
         (for ([name (in-list names)])
-          (fprintf out "<h2>~a</h2><div class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a.~a.svg\"></figure><figure><figcaption>Independent raster reference</figcaption><img src=\"~a.~a.reference.png\"></figure></div>" name base name base name)))
+          (fprintf out
+            "<h2>~a</h2><div class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a.~a.svg\"></figure><figure><figcaption>Independent raster reference</figcaption><img src=\"~a.~a.reference.png\"></figure></div>" name base name base name)))
       #:exists 'replace))
-  (printf "Wrote ~a.pdf; 3 SVGs/references; 4 audits; crop plans, source images, decisions, and review HTML\n" prefix))
+  (printf
+    "Wrote ~a.pdf; 3 SVGs/references; 4 audits; crop plans, source images, decisions, and review HTML\n" prefix))

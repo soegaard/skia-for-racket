@@ -1,6 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Runtime Doctor
+;;;
+
+;; Exercises SkSL runtime effects, uniform packing, and retained child effects and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt" "../tests/runtime-fixtures.rkt")
 (provide runtime-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; runtime-doctor! : -> void?
+;;   Checks runtime-effect reflection layouts, shader/filter/blender creation, retained inputs, and
+;;   compiler diagnostics.
 (define (runtime-doctor!)
   (with-skia ([reflection (make-runtime-effect reflection-sksl)]
               [effect (make-runtime-effect solid-sksl)]

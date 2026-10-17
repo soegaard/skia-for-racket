@@ -1,18 +1,49 @@
 #lang racket/base
+
+;;;
+;;; Font Query Native Test
+;;;
+
+;; Covers font options and glyph queries (native).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector "../main.rkt" "typeface-fixtures.rkt"
          (submod "../private/core.rkt" font-query-internals))
 (provide font-query-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fixture : procedure? -> any
+;;   Scopes a deterministic typeface and unhinted font for stable glyph measurements.
 (define (fixture proc)
   (with-skia ([face (typeface-from-bytes (fixture-font-bytes))]
               [font (make-font face #:size 20 #:hinting 'none #:linear-metrics? #t
                                #:subpixel? #t #:baseline-snap? #f)])
     (proc font face)))
+
+; near-list : (listof real?) (listof real?) -> void?
+;;   Compares equally sized metric lists with a small native-float tolerance.
 (define (near-list actual expected)
   (check-equal? (length actual) (length expected))
   (for ([a (in-list actual)] [e (in-list expected)]) (check-= a e 0.002)))
+
+; path-rect : path? -> (listof real?)
+;;   Collects path bounds in the API's x, y, width, height order.
 (define (path-rect p) (call-with-values (lambda () (path-bounds p)) list))
+
+; release-paths : (vectorof (or/c path? #f)) -> void?
+;;   Closes each present outline returned by a batch glyph-path query.
 (define (release-paths paths)
   (for ([p (in-vector paths)] #:when p) (skia-close! p)))
+
+; path-pixels : path? -> bytes?
+;;   Renders an outline at a fixed translated origin for shape comparisons.
 (define (path-pixels p)
   (with-skia ([surface (make-surface 96 64)] [paint (make-paint #:color (rgb 0 0 0))])
     (define canvas (surface-canvas surface))
@@ -20,8 +51,18 @@
     (canvas-translate! canvas 20 40)
     (draw-path canvas p paint)
     (surface->rgba-bytes surface)))
+
+; options : font? -> (listof boolean?)
+;;   Collects embedded-bitmap, force-autohint, and baseline-snap options in that order.
 (define (options f)
   (list (font-embedded-bitmaps? f) (font-force-auto-hinting? f) (font-baseline-snap? f)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; font-query-native-tests : test-suite?
+;;   Collects the regression cases for font options and glyph queries (native).
 (define font-query-native-tests
   (test-suite
    "Font options and glyph queries (native)"
@@ -81,7 +122,8 @@
    (test-case "shaper snapshots every option and its own typeface"
      (fixture (lambda (f _)
                 (font-set-embedded-bitmaps! f #t) (font-set-force-auto-hinting! f #t)
-                (with-skia ([sh (make-shaper f)] [bold (typeface-from-bytes (fixture-font-bytes #:bold? #t))])
+                (with-skia ([sh (make-shaper f)]
+                             [bold (typeface-from-bytes (fixture-font-bytes #:bold? #t))])
                   (define before (shape-text sh "AV"))
                   (font-set-typeface! f bold) (font-set-size! f 48)
                   (font-set-embedded-bitmaps! f #f) (font-set-force-auto-hinting! f #f)

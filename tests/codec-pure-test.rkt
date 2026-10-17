@@ -1,16 +1,48 @@
 #lang racket/base
+
+;;;
+;;; Codec Pure Test
+;;;
+
+;; Covers advanced codecs: pure checks.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit ffi/unsafe
          "../main.rkt" "../private/types.rkt" "../private/codec-util.rkt"
          "codec-fixtures.rkt")
 (provide codec-pure-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; origins : (listof symbol?)
+;;   Lists the eight encoded origins in the same order as orientation permutation fixtures.
 (define origins
   '(top-left top-right bottom-right bottom-left left-top right-top right-bottom left-bottom))
+
+; sample : bytes?
+;;   Uses distinct byte values in six RGBA-sized groups to expose incorrect pixel permutation.
 (define sample (apply bytes (for*/list ([i (in-range 6)] [j (in-range 4)]) (+ (* i 4) j))))
+
+; permuted : bytes? (vectorof exact-nonnegative-integer?) -> bytes?
+;;   Reorders complete four-byte pixels without changing channel order.
 (define (permuted pixels order)
   (apply bytes-append
          (for/list ([i (in-vector order)]) (subbytes pixels (* 4 i) (+ 4 (* 4 i))))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; codec-pure-tests : test-suite?
+;;   Collects the regression cases for advanced codecs: pure checks.
 (define codec-pure-tests
   (test-suite
    "Advanced codecs: pure checks"
@@ -89,5 +121,12 @@
 
 (module+ test
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-pure-tests))
   (unless (zero? failures) (error 'codec-pure-test "~a tests failed" failures)))

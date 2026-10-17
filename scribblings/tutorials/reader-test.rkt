@@ -1,15 +1,39 @@
 #lang racket/base
 
+;;;
+;;; Reader Test
+;;;
+
+;; Checks catalog-driven navigation, source access, and safe example copying.
+;; This module guards the documentation's examples and support code against regressions.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit racket/file racket/list racket/path racket/string
          scribble/core
          "support/catalog.rkt" "support/examples.rkt" "support/reader.rkt")
 
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
+  ; root : path?
+  ;;   Owns the temporary source root used by the copier regression checks.
   (define root (make-temporary-file "skia-reader-test~a" 'directory))
+  ; fixtures : path?
+  ;;   Names the temporary fixture subtree used by the copier tests.
   (define fixtures (build-path root "package"))
+  ; copies : path?
+  ;;   Names the destination subtree used by the copier tests.
   (define copies (build-path root "copies"))
   (make-directory* fixtures)
   (make-directory* copies)
+  ; files : list?
+  ;;   Collects each catalog source path once for completeness checks.
   (define files (remove-duplicates (append-map (lambda (row) (hash-ref row 'files)) tutorials)))
   (dynamic-wind
     void

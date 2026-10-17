@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Native Graphics Trace Capture
+;;;
+
+;; Installs native memory-dump callbacks and copies their bounded results.
+;; Bridges Skia graphics diagnostics to detached Racket memory statistics.
+
 ;; Synchronous, memory-only callbacks. No user procedure, port, wait, Skia call,
 ;; or exception escape is permitted while Skia holds its cache locks.
 (require ffi/unsafe ffi/unsafe/atomic ffi/unsafe/global racket/promise
@@ -8,22 +16,47 @@
          call-global-cache-native trace-binding-count)
 (define-cstruct _trace-procs ([numeric _fpointer] [string _fpointer])
   #:malloc-mode 'atomic-interior)
+;; Fields:
+;;   numeric and string: native callback function pointers for numeric and string memory statistics.
+;;   Callback procedures must remain reachable throughout the native memory dump; declaration order
+;;   matches the C callback table.
+
 ;; Reviewed Xamarin declarations, inventoried separately from include/c.
+; define-trace : syntax transformer
+;;   Defines a lazily resolved managed-trace procedure separately from the ordinary C-header
+;;   inventory.
 (define-syntax-rule (define-trace name type)
   (define name (delay/sync (get-ffi-obj 'name (skia-native-library-handle) type))))
+; sk_managedtracememorydump_new : (_fun _stdbool _stdbool _pointer -> _pointer) (FFI)
+;;   Calls the native sk_managedtracememorydump_new entry point using the declared FFI layout.
 (define-trace sk_managedtracememorydump_new (_fun _stdbool _stdbool _pointer -> _pointer))
+; sk_managedtracememorydump_delete : (_fun _pointer -> _void) (FFI)
+;;   Calls the native sk_managedtracememorydump_delete entry point using the declared FFI layout.
 (define-trace sk_managedtracememorydump_delete (_fun _pointer -> _void))
+; sk_managedtracememorydump_set_procs : (_fun _trace-procs -> _void) (FFI)
+;;   Calls the native sk_managedtracememorydump_set_procs entry point using the declared FFI layout.
 (define-trace sk_managedtracememorydump_set_procs (_fun _trace-procs -> _void))
+; trace-binding-count : exact-nonnegative-integer?
+;;   Counts the three reviewed managed-trace entry points outside the ordinary include/c inventory.
 (define trace-binding-count 3)
+; _numeric-callback : ctype?
+;;   Declares the atomic callback ABI for an unsigned 64-bit native memory statistic.
 (define _numeric-callback
   (_fun #:atomic? #t _pointer _pointer _pointer _pointer _pointer _uint64 -> _void))
+; _string-callback : ctype?
+;;   Declares the atomic callback ABI for a native string-valued memory statistic.
 (define _string-callback
   (_fun #:atomic? #t _pointer _pointer _pointer _pointer _pointer -> _void))
+; check-global-cache-idle! : symbol? -> void?
+;;   Rejects global cache access during live-port service or any active live-stream operation.
 (define (check-global-cache-idle! who)
   (when (in-port-service?)
     (error who "global cache operations are not allowed from a live port callback"))
   (unless (zero? (active-operation-count))
     (error who "global cache operations are not allowed while a live stream operation is active")))
+; call-global-cache-native : symbol? procedure? -> any
+;;   Resolves bindings before atomic entry and rechecks live-stream idleness before invoking a
+;;   global cache operation.
 (define (call-global-cache-native who thunk)
   ;; Resolve lazy library/symbol promises outside atomic mode. Recheck activity
   ;; inside atomic mode so no live worker starts before entering the cache API.
@@ -31,14 +64,36 @@
   (skia-check!)
   (call-as-atomic
    (lambda () (check-global-cache-idle! who) (thunk))))
+; roots : (or/c #f list?)
+;;   Retains installed callback procedures, function pointers, and the native table for the process
+;;   lifetime.
 (define roots #f)
+; provider-marker : (or/c #f cpointer?)
+;;   Holds the process-global identity token used to reject callbacks from foreign trace providers.
 (define provider-marker #f)
+; active : (or/c #f capture?)
+;;   Identifies the one currently authorized synchronous capture, or #f outside a native dump.
 (define active #f)
+; dump-lock : semaphore?
+;;   Serializes native memory dumps that share a single process-global callback provider.
 (define dump-lock (make-semaphore 1))
+; no-error : symbol?
+;;   Distinguishes no callback failure from arbitrary raised values, including #f.
 (define no-error (gensym 'no-error))
 (struct capture (collector string-limit marker [dump #:mutable] [error #:mutable]))
+;; Fields:
+;;   collector: bounded memory-collector. string-limit: per-string byte cap. marker: callback
+;;   context identity. dump: mutable native trace object or #f. error: no-error sentinel until the
+;;   first arbitrary raised callback value; #f itself may be a failure.
+;;   Callback storage is retained for the full native dump.
+
+; pointer=? : (or/c #f cpointer?) (or/c #f cpointer?) -> boolean?
+;;   Compares non-null native addresses without relying on Racket pointer-wrapper identity.
 (define (pointer=? a b)
   (and a b (= (cast a _pointer _uintptr) (cast b _pointer _uintptr))))
+; copy-c-string : cpointer? exact-nonnegative-integer? -> (or/c #f bytes?)
+;;   Copies a NUL-terminated native string within a byte cap and returns #f when the cap is
+;;   exceeded.
 (define (copy-c-string ptr cap)
   (unless ptr (error 'skia-memory-statistics "native statistic contains a null string"))
   (let loop ([n 0])
@@ -48,6 +103,9 @@
            bytes]
           [(= n cap) #f]
           [else (loop (add1 n))])))
+; capture-value : any/c (or/c #f cpointer?) (or/c #f cpointer?) any/c any/c any/c [any/c] -> void?
+;;   Accepts only callbacks for the active dump and records bounded values or a deferred failure
+;;   without escaping native code.
 (define (capture-value kind dump context name key last [value #f])
   (define state active)
   ;; Do not interpret callbacks from an unowned managed object. Only our
@@ -70,10 +128,16 @@
                    (collector-add! collector kind a b c value)
                    (collector-add! collector kind a b #f c)))])))
   (void))
+; numeric-callback : (or/c #f cpointer?) (or/c #f cpointer?) any/c any/c any/c any/c -> any
+;;   Routes numeric trace values into the active bounded collector without invoking user code.
 (define (numeric-callback dump context name key units value)
   (capture-value 'numeric dump context name key units value))
+; string-callback : (or/c #f cpointer?) (or/c #f cpointer?) any/c any/c any/c -> any
+;;   Routes string trace values into the active bounded collector without invoking user code.
 (define (string-callback dump context name key value)
   (capture-value 'string dump context name key value))
+; initialize-provider! : -> void?
+;;   Claims the process-global callback table once and roots all callback objects before native use.
 (define (initialize-provider!)
   (unless roots
     ;; Resolve all symbols and construct all callback objects before claiming
@@ -91,16 +155,24 @@
     (define marker (malloc 1 'raw))
     (when (register-process-global #"skia-for-racket/global-memory-statistics/m119/v1" marker)
       (free marker)
-      (error 'skia-memory-statistics "memory-statistics callback table is already claimed by another module/place"))
+      (error 'skia-memory-statistics
+        "memory-statistics callback table is already claimed by another module/place"))
     (set! provider-marker marker)
     (set! roots (list numeric-callback string-callback numeric string table))
     (set-procs table)))
+; global-memory-statistics/native : any/c any/c any/c any/c any/c -> any
+;;   Collects a bounded snapshot of Skia's process-global caches through the shared native dump
+;;   provider.
 (define (global-memory-statistics/native detailed? wrapped? max-entries string-limit byte-limit)
   (collect-memory-statistics/native 'skia-memory-statistics 'process-global-skia-caches
     sk_graphics_dump_memory_statistics detailed? wrapped? max-entries string-limit byte-limit))
 ;; Private native caller only. Never accepts an application callback through a
 ;; public API. GPU and global dumps share provider roots, limits and cleanup.
-(define (collect-memory-statistics/native who scope invoke detailed? wrapped? max-entries string-limit byte-limit)
+; collect-memory-statistics/native : symbol? any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Serializes a checked native dump and defers callback errors until all native capture resources
+;;   are retired.
+(define (collect-memory-statistics/native who scope invoke detailed? wrapped? max-entries string-limit
+  byte-limit)
   (memory-options who detailed? wrapped? max-entries string-limit byte-limit)
   (unless (memq scope '(process-global-skia-caches gpu-context-skia-resources))
     (raise-argument-error who "known memory-statistics scope" scope))
@@ -133,6 +205,8 @@
        (unless (eq? (capture-error state) no-error) (raise (capture-error state)))
        (collector-finish (capture-collector state) #:scope scope)))))))
 
+; set-active-for-test! : any/c -> void?
+;;   Injects capture state for callback tests without running a native memory dump.
 (define (set-active-for-test! state) (set! active state))
 (module+ test-support
   (provide copy-c-string capture-value capture active no-error

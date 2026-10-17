@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU Image Pure Test
+;;;
+
+;; Covers gPU images: pure transitive affinity, setters, recording and deferred ownership.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list (only-in ffi/unsafe void/reference-sink)
          "gpu-fixtures.rkt" "../private/lifetime.rkt" "../private/gpu-domain.rkt"
          "../private/gpu-context.rkt" "../private/core.rkt" "../gpu.rkt"
@@ -6,6 +18,13 @@
 (provide gpu-image-pure-tests)
 
 ;; Mock pointer values exercise real lifetime/affinity bookkeeping, not Skia.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fixture : procedure? -> any
+;;   Supplies a mock context and image ownership state without allocating GPU memory.
 (define (fixture proc)
   (call-with-mock
    (lambda (d provider driver log abandoned?)
@@ -27,15 +46,29 @@
        (lambda ()
          (for ([h (in-list handles)]) (owned-close! 'test h))
          (void/reference-sink context))))))
+
+; setter : symbol? any/c any/c -> any
+;;   Routes a synthetic paint-child assignment through the audit/retention boundary.
 (define (setter name paint child)
   (call-with-owned 'setter (if child (list paint child) (list paint))
     (lambda (pp . cps)
       (lifetime-native-call name (list pp (and child (car cps))) void))))
+
+; record-image : any/c any/c -> any
+;;   Records a synthetic image use so picture retention and context propagation can be checked.
 (define (record-image recorder image)
   (call-with-owned 'record (list recorder image)
     (lambda (rp ip)
       (call-with-owned-canvas 'record recorder 'recording (list image)
         (lambda () (lifetime-native-call 'sk_canvas_draw_image (list 'canvas ip) void))))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-image-pure-tests : test-suite?
+;;   Collects the regression cases for gPU images: pure transitive affinity, setters, recording and
+;;   deferred ownership.
 (define gpu-image-pure-tests
   (test-suite
    "GPU images: pure transitive affinity, setters, recording and deferred ownership"
@@ -148,7 +181,8 @@
                 (setter 'sk_paint_set_shader p (cpu 'shader))
                 (setter 'sk_paint_set_imagefilter p (derive 'filter 'image-filter (list (image))))
                 (check-false (owned-gpu-domain (derive 'paint-shader 'shader (list p))))
-                (check-eq? (owned-gpu-domain (derive 'paint-image-filter 'image-filter (list p))) d))))
+                (check-eq? (owned-gpu-domain (derive 'paint-image-filter 'image-filter (list p)))
+                  d))))
    (test-case "setting blend mode removes only the custom blender slot"
      (fixture (lambda (d ctx log cpu image derive track)
                 (define p (cpu 'paint))
@@ -172,7 +206,8 @@
                 (define src (image))
                 (for ([backend '(raster pdf svg)])
                   (check-exn exn:fail?
-                    (lambda () (call-with-owned-canvas 'draw (cpu 'surface) backend (list src) void)))))))
+                    (lambda () (call-with-owned-canvas 'draw (cpu 'surface) backend (list src)
+                                 void)))))))
    (test-case "independent CPU resources still draw into a GPU target"
      (fixture (lambda (d ctx log cpu image derive track)
                 (check-not-exn
@@ -189,7 +224,8 @@
                 (call-with-owned 'record (list rec p)
                   (lambda (rp pp)
                     (call-with-owned-canvas 'layer rec 'recording (list p)
-                      (lambda () (lifetime-native-call 'sk_canvas_save_layer (list 'canvas #f pp) void)))))
+                      (lambda () (lifetime-native-call 'sk_canvas_save_layer (list 'canvas #f pp)
+                                   void)))))
                 (check-eq? (owned-gpu-domain rec) d))))
    (test-case "finished picture keeps affinity after the recorder is reset"
      (fixture (lambda (d ctx log cpu image derive track)

@@ -1,24 +1,46 @@
 #lang racket/base
+
+;;;
+;;; Direct3D Interoperation Policy
+;;;
+
+;; Checks texture descriptions and supported Direct3D sharing constraints.
+;; Rejects unsupported external resources before native wrapping.
+
 (require "gpu-interop-cleanup.rkt")
 ;; Pure validation of the intentionally small initial Direct3D handoff subset.
 (provide interop-state interop-timeout! interop-fence-value!
          check-interop-resource! call-with-interop-cleanup)
+; states : hash?
+;;   Maps supported external state declarations to exact D3D12 resource-state bitmasks.
 (define states
   (hasheq 'common 0 'render-target 4 'pixel-shader-resource #x80
           'shader-read #xc0 'copy-dest #x400 'copy-source #x800))
+; interop-state : any/c -> any
+;;   Rejects unreviewed resource-state declarations before constructing native transition barriers.
 (define (interop-state value)
   (hash-ref states value
     (lambda () (raise-argument-error 'd3d12-interop
-      "'common, 'render-target, 'pixel-shader-resource, 'shader-read, 'copy-dest, or 'copy-source" value))))
+      "'common, 'render-target, 'pixel-shader-resource, 'shader-read, 'copy-dest, or 'copy-source"
+        value))))
+; interop-timeout! : exact-positive-integer? -> exact-positive-integer?
+;;   Checks a positive millisecond timeout bounded to one minute.
 (define (interop-timeout! n)
   (unless (and (exact-positive-integer? n) (<= n 60000))
     (raise-argument-error 'd3d12-interop "exact timeout in [1, 60000] milliseconds" n)) n)
+; interop-fence-value! : exact-positive-integer? -> exact-positive-integer?
+;;   Checks a positive uint64 fence value while excluding the device-loss sentinel.
 (define (interop-fence-value! n)
   (unless (and (exact-positive-integer? n) (< n #xffffffffffffffff))
-    (raise-argument-error 'd3d12-interop "positive uint64 fence value excluding the device-loss sentinel" n)) n)
+    (raise-argument-error 'd3d12-interop
+      "positive uint64 fence value excluding the device-loss sentinel" n)) n)
+; check-interop-resource! : hash? [any/c] -> hash?
+;;   Accepts only reviewed unshared default-heap RGBA8 textures, adding render-target usage checks
+;;   when required.
 (define (check-interop-resource! desc [render? #f])
   (unless (and (hash? desc)
-               (for/and ([k '(dimension width height depth levels format samples quality layout flags heap_type heap_flags)])
+               (for/and ([k '(dimension width height depth levels format samples quality layout flags
+                 heap_type heap_flags)])
                  (exact-nonnegative-integer? (hash-ref desc k #f))))
     (error 'd3d12-interop "invalid native resource description"))
   (unless (and (= (hash-ref desc 'dimension) 3) ; D3D12_RESOURCE_DIMENSION_TEXTURE2D
@@ -34,7 +56,8 @@
                ;; Allow only ALLOW_RENDER_TARGET; no depth, UAV, deny-SRV,
                ;; cross-adapter or simultaneous-access resources in this stage.
                (zero? (bitwise-and (hash-ref desc 'flags) (bitwise-not 1))))
-    (error 'd3d12-interop "requires an unshared DEFAULT-heap, single-level, single-sample RGBA8 2D texture"))
+    (error 'd3d12-interop
+      "requires an unshared DEFAULT-heap, single-level, single-sample RGBA8 2D texture"))
   (when (and render? (not (bitwise-bit-set? (hash-ref desc 'flags) 0)))
     (error 'd3d12-interop "scoped rendering requires ALLOW_RENDER_TARGET"))
   desc)

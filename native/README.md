@@ -1,5 +1,12 @@
 # Native library location
 
+This directory is the installation destination for optional native dependencies,
+not a Racket source module. The loaders in [private/](../private/README.md) locate
+these libraries; installers and ABI probes live in [tools/](../tools/README.md).
+This README is the directory's tracked source documentation. Platform-specific
+library directories are populated by installation rather than maintained as
+source code.
+
 This directory intentionally contains no binary in the source distribution.
 Run `bash tools/install-native.sh` from the package root. The installer writes:
 

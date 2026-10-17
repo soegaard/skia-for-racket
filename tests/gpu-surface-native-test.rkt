@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU Surface Native Test
+;;;
+
+;; Covers gPU surfaces: live Ganesh drawing, leases, submission, and transfers.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list
          "../main.rkt" "../gpu.rkt"
          "gpu-fixtures.rkt")
@@ -6,6 +18,14 @@
 
 ;; Explicit live contexts are supplied by the diagnostic host. Requiring this
 ;; suite neither loads a GPU library nor creates a window.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; make-gpu-surface-native-tests : gpu-context? gpu-context? -> test-suite?
+;;   Builds the parameterized suite for gPU surfaces: live Ganesh drawing, leases, submission, and
+;;   transfers.
 (define (make-gpu-surface-native-tests gpu other)
   (define backend (gpu-context-backend gpu))
   (define backend-id (case backend [(opengl) 0] [(metal) 2] [(direct3d) 3]
@@ -241,5 +261,6 @@
          (check-exn exn:fail? (lambda () (make-gpu-surface gpu 0 8)))
          (check-equal? (hash-ref (gpu-context-info gpu) 'live_children) before))))
    (test-case "context scopes preserve multiple return values"
-     (check-equal? (call-with-values (lambda () (call-with-gpu-context gpu (lambda () (values 'a 'b)))) list)
+     (check-equal?
+       (call-with-values (lambda () (call-with-gpu-context gpu (lambda () (values 'a 'b)))) list)
                    '(a b)))))

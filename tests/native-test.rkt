@@ -1,14 +1,49 @@
 #lang racket/base
+
+;;;
+;;; Native Regression Suite
+;;;
+
+;; Checks actual rendering, fonts, image encoding, resource lifetime, and the integrated native
+;; API.
+;; This aggregate runner complements pure validation with results from the installed Skia library.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/class racket/list
          (except-in racket/draw make-font)
          "../main.rkt" "../bitmap.rkt" "../private/bidi.rkt")
 (provide native-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; white : rgba?
+;;   Provides opaque white for background and pixel comparisons.
 (define white (rgb 255 255 255))
+
+; red : rgba?
+;;   Provides opaque red for drawing and channel-order comparisons.
 (define red (rgb 255 0 0))
+
+; blue : rgba?
+;;   Provides opaque blue for drawing and compositing comparisons.
 (define blue (rgb 0 0 255))
+
+; transparent : rgba?
+;;   Provides fully transparent black for empty-surface comparisons.
 (define transparent (rgba 0 0 0 0))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; native-tests : test-suite?
+;;   Collects the regression cases for live Skia rendering (requires the pinned native library).
 (define native-tests
   (test-suite
    "Live Skia rendering (requires the pinned native library)"
@@ -1626,11 +1661,21 @@ third"))
        (check-exn #rx"closed" (lambda () (text-blob-bounds blob)))))
   ))
 
+
+; make-list-of-red-pixels : exact-nonnegative-integer? -> (listof byte?)
+;;   Repeats opaque-red RGBA channels for a requested number of expected pixels.
 (define (make-list-of-red-pixels count)
   (if (zero? count) '() (append '(255 0 0 255) (make-list-of-red-pixels (sub1 count)))))
 
 (module+ test
   (skia-check!)
   (harfbuzz-check!)
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests native-tests))
   (unless (zero? failures) (error 'native-tests "~a failures" failures)))

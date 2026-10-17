@@ -1,5 +1,18 @@
 #lang racket
 
+;;;
+;;; Pattern Sheet
+;;;
+
+;; Records an emblem once and replays it at different positions, scales, and rotations.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia)
 
 (provide emblem-size
@@ -11,8 +24,16 @@
          draw-placed-emblem
          draw-pattern-sheet)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; emblem-size : exact-integer?
+;;   Sets the local recording dimensions used by the reusable emblem.
 (define emblem-size 120)
 
+; draw-emblem : canvas? -> void?
+;;   Draws the emblem component in the current canvas coordinate system.
 (define (draw-emblem canvas)
   (define blue (make-paint #:color "#326BC4"))
   (define teal (make-paint #:color "#1EA7A0"))
@@ -36,9 +57,13 @@
     (draw-circle canvas 0 0 19 ink)
     (draw-circle canvas 0 -8 5 highlight)))
 
+; record-emblem : -> picture?
+;;   Records the emblem once so placements can reuse the same drawing.
 (define (record-emblem)
   (call-with-picture emblem-size emblem-size draw-emblem))
 
+; draw-placed-emblem : canvas? picture? real? real? real? real? -> void?
+;;   Draws the placed emblem component in the current canvas coordinate system.
 (define (draw-placed-emblem canvas picture center-x center-y size angle)
   (with-canvas-state canvas
     (canvas-translate! canvas center-x center-y)
@@ -49,10 +74,18 @@
                   #:width size
                   #:height size)))
 
+; sheet-width : exact-integer?
+;;   Specifies sheet width in the drawing's local coordinate units.
 (define sheet-width 1000)
+; sheet-height : exact-integer?
+;;   Specifies sheet height in the drawing's local coordinate units.
 (define sheet-height 760)
+; sheet-background : string?
+;;   Specifies the sheet background color used by this drawing.
 (define sheet-background "#EDF2F7")
 
+; draw-pattern-sheet : canvas? -> void?
+;;   Draws the pattern sheet component in the current canvas coordinate system.
 (define (draw-pattern-sheet canvas)
   (define picture (record-emblem))
   (define paper (make-paint #:color "#FFFFFF"))
@@ -84,7 +117,13 @@
   (draw-simple-text canvas "REPLAY  /  RESIZE  /  ROTATE" 82 690 footer-font muted)
   (draw-simple-text canvas "11" 895 690 footer-font blue))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; surface : surface?
+  ;;   Owns the raster drawing target used to produce the example's output.
   (define surface
     (make-surface sheet-width sheet-height
                   #:background sheet-background))

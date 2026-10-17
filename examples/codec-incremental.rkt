@@ -1,6 +1,18 @@
 #lang racket/base
+
+;;;
+;;; Codec Incremental Example
+;;;
+
+;; Feeds PNG chunks to the incremental decoder and reports progress.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; Native incremental PNG, supplied a complete encoded chunk at a time. The
 ;; production API also accepts arbitrary fragments and handles framing itself.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list "../main.rkt" "../tests/codec-incremental-fixtures.rkt")
 (with-skia ([decoder (make-codec-incremental #:limit (* 1024 1024))])
   (define parts (incremental-fixture-parts))

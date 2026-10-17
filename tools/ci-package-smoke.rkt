@@ -1,4 +1,15 @@
 #lang racket/base
+
+;;;
+;;; Installed Package Smoke Test
+;;;
+
+;; Checks the installed package's rendering path and native-library identity.
+;; This CI probe verifies a usable installation rather than only a successful source checkout.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Collection imports, run with cwd outside the source and installed package.
 (require json "../main.rkt")
 (module+ main

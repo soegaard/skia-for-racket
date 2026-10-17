@@ -1,10 +1,33 @@
 #lang racket/base
+
+;;;
+;;; Picture Doctor
+;;;
+
+;; Exercises persistent recorded pictures, serialization, and replay ownership and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt" "../private/picture-util.rkt")
 (provide picture-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; has? : output-audit-report? symbol? symbol? -> boolean?
+;;   Finds an audit event matching both the requested feature and disposition.
 (define (has? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature)
          (eq? (output-audit-event-status e) status))))
+
+; picture-doctor! : -> void?
+;;   Checks picture serialization, replay, retained shaders, metadata, and conservative audit
+;;   handling of imported pictures.
 (define (picture-doctor!)
   (define (draw c)
     (with-skia ([a (make-paint #:color 'red #:antialias? #f)]

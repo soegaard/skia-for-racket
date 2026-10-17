@@ -1,10 +1,37 @@
 #lang racket/base
+
+;;;
+;;; GPU Backends Pure Test
+;;;
+
+;; Covers source-only backend policy and production output/metadata boundaries.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list json
          "../gpu.rkt" "../private/gpu-backends.rkt"
          "../private/gpu-surface-identity.rkt" "../private/output-executor.rkt")
 (provide gpu-backends-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; plan : symbol? [exact-nonnegative-integer? procedure?] -> output-raster-executor?
+;;   Creates a synthetic raster executor carrying explicit backend and generation metadata.
 (define (plan backend [generation 7] [render (lambda (w h cs replay consume) (void))])
   (make-output-raster-executor void (lambda (_) (output-raster-plan backend generation #f render))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-backends-pure-tests : test-suite?
+;;   Collects the regression cases for source-only backend policy and production output/metadata
+;;   boundaries.
 (define gpu-backends-pure-tests
   (test-suite
    "Source-only backend policy and production output/metadata boundaries"
@@ -33,15 +60,20 @@
      (check-true (immutable? (hash-ref c 'backend)))
      (check-exn exn:fail? (lambda () (hash-set! c 'native_probe_performed #t))))
    (test-case "declarations serialize as detached JSON"
-     (for ([b (in-list (gpu-backends))]) (check-not-exn (lambda () (jsexpr->string (gpu-backend-capabilities b))))))
+     (for ([b (in-list (gpu-backends))])
+       (check-not-exn (lambda () (jsexpr->string (gpu-backend-capabilities b))))))
    (test-case "all three support the common functionality"
      (for* ([b (in-list (gpu-backends))]
             [f '(offscreen images explicit_transfers cache_controls presentation document_executor)])
        (check-true (hash-ref (hash-ref (gpu-backend-capabilities b) 'features) f))))
    (test-case "interop is declared for each backend without runtime probing"
-     (check-true (hash-ref (hash-ref (gpu-backend-capabilities 'opengl) 'features) 'external_resource_interop))
-     (check-true (hash-ref (hash-ref (gpu-backend-capabilities 'direct3d) 'features) 'external_resource_interop))
-     (check-true (hash-ref (hash-ref (gpu-backend-capabilities 'metal) 'features) 'external_resource_interop)))
+     (check-true
+       (hash-ref (hash-ref (gpu-backend-capabilities 'opengl) 'features) 'external_resource_interop))
+     (check-true
+       (hash-ref (hash-ref (gpu-backend-capabilities 'direct3d) 'features)
+         'external_resource_interop))
+     (check-true
+       (hash-ref (hash-ref (gpu-backend-capabilities 'metal) 'features) 'external_resource_interop)))
    (test-case "WARP is a selection declaration, not an availability result"
      (define c (gpu-backend-capabilities 'direct3d))
      (check-equal? (hash-ref c 'software_selection) "explicit-warp")
@@ -69,7 +101,8 @@
        (check-equal? (hash-ref r 'backend) (symbol->string b))))
    (test-case "planned Direct3D work does not claim completed transfer"
      (define e (plan 'direct3d))
-     (define r (output-execution-details e 'prepared 'direct3d #:plan (prepare-output-raster e 'picture)))
+     (define r (output-execution-details e 'prepared 'direct3d #:plan
+                 (prepare-output-raster e 'picture)))
      (check-equal? (hash-ref r 'readback_count) 0)
      (check-equal? (hash-ref r 'transfer) "none"))
    (test-case "CPU execution does not fabricate GPU transfer"
@@ -88,12 +121,14 @@
                'context_matches #f 'storage "cpu" 'width 1 'height 1)
        'direct3d 17 3 67 41))
      (check-equal? (map (lambda (k) (hash-ref r k))
-                      '(backend context_generation native_backend context_matches storage width height))
+                     '(backend context_generation native_backend context_matches storage width
+                        height))
                    '("direct3d" 17 3 #t "gpu" 67 41)))
    (test-case "metadata helper rejects mismatched native identity"
      (check-exn exn:fail? (lambda () (gpu-surface-identity/validated (hasheq) 'direct3d 1 0 2 2))))
    (test-case "metadata helper rejects mutable input"
-     (check-exn exn:fail? (lambda () (gpu-surface-identity/validated (make-hasheq) 'direct3d 1 3 2 2))))
+     (check-exn exn:fail?
+       (lambda () (gpu-surface-identity/validated (make-hasheq) 'direct3d 1 3 2 2))))
    (test-case "metadata helper rejects malformed native numbers"
      (for ([n '(#f #t 3.0 -1)])
        (check-exn exn:fail? (lambda () (gpu-surface-identity/validated (hasheq) 'direct3d 1 n 2 2)))))
@@ -101,4 +136,5 @@
      (for ([n '(#f #t 0 -1 1.5)])
        (check-exn exn:fail? (lambda () (gpu-surface-identity/validated (hasheq) 'direct3d n 3 2 2)))
        (check-exn exn:fail? (lambda () (gpu-surface-identity/validated (hasheq) 'direct3d 1 3 n 2)))
-       (check-exn exn:fail? (lambda () (gpu-surface-identity/validated (hasheq) 'direct3d 1 3 2 n)))))))
+       (check-exn exn:fail?
+         (lambda () (gpu-surface-identity/validated (hasheq) 'direct3d 1 3 2 n)))))))

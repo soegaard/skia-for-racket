@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; Font Configuration and Glyph Queries
+;;;
+
+;; Configures native font behavior and queries glyph metrics, positions, and outlines.
+;; This public text layer extends the core font interface with retained typefaces and detached
+;; measurement results.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; 0.68b: checked SkFont options and unshaped glyph queries.
 (require ffi/unsafe racket/list racket/vector
          "private/core.rkt" "private/native.rkt" "private/types.rkt"
@@ -12,22 +25,47 @@
          font-glyph-positions font-glyph-x-positions font-glyph-paths
          font-break-text)
 
+
+;;;
+;;; Font Rendering Options
+;;;
+
+; font-embedded-bitmaps? : font? -> boolean?
+;;   Reports whether use of embedded glyph bitmaps is requested.
 (define (font-embedded-bitmaps? f)
   (font-native-get 'font-embedded-bitmaps? f sk_font_is_embedded_bitmaps))
+; font-set-embedded-bitmaps! : font? boolean? -> void?
+;;   Sets the request for use of embedded glyph bitmaps.
 (define (font-set-embedded-bitmaps! f value)
   (font-native-set! 'font-set-embedded-bitmaps! f
                     (boolean 'font-set-embedded-bitmaps! value) sk_font_set_embedded_bitmaps))
+; font-force-auto-hinting? : font? -> boolean?
+;;   Reports whether use of the font backend's automatic hinter is requested.
 (define (font-force-auto-hinting? f)
   (font-native-get 'font-force-auto-hinting? f sk_font_is_force_auto_hinting))
+; font-set-force-auto-hinting! : font? boolean? -> void?
+;;   Sets the request for use of the font backend's automatic hinter.
 (define (font-set-force-auto-hinting! f value)
   (font-native-set! 'font-set-force-auto-hinting! f
                     (boolean 'font-set-force-auto-hinting! value) sk_font_set_force_auto_hinting))
+; font-baseline-snap? : font? -> boolean?
+;;   Reports whether baseline snapping to device pixels is requested.
 (define (font-baseline-snap? f)
   (font-native-get 'font-baseline-snap? f sk_font_is_baseline_snap))
+; font-set-baseline-snap! : font? boolean? -> void?
+;;   Sets the request for baseline snapping to device pixels.
 (define (font-set-baseline-snap! f value)
   (font-native-set! 'font-set-baseline-snap! f
                     (boolean 'font-set-baseline-snap! value) sk_font_set_baseline_snap))
 
+
+;;;
+;;; Retained Typeface Selection
+;;;
+
+; font-typeface : font? -> typeface?
+;;   Returns an independently owned reference to the current typeface, not a borrowed field of the
+;;   font.
 (define (font-typeface f)
   (define who 'font-typeface)
   (call-with-owned who (list (font-h who f))
@@ -36,6 +74,8 @@
       (make-typeface-record
        (new-owned who 'typeface (lambda () (sk_font_get_typeface fp)) sk_typeface_unref)))))
 
+; font-set-typeface! : font? typeface? -> void?
+;;   Replaces the font's typeface, retaining its own native reference.
 (define (font-set-typeface! f face)
   (define who 'font-set-typeface!)
   ;; Explicit non-null typefaces only. Use (make-typeface) to select a default.
@@ -49,6 +89,13 @@
       (when old-owner (skia-close! old-owner))
       (void))))
 
+
+;;;
+;;; Glyph Measurements and Outlines
+;;;
+
+; check-face-glyphs : symbol? cpointer? (vectorof exact-nonnegative-integer?) -> void?
+;;   Checks glyph IDs against the font's typeface while balancing the temporary typeface reference.
 (define (check-face-glyphs who fp gs)
   (unless (zero? (vector-length gs))
     (call-with-native-temporary
@@ -61,16 +108,24 @@
          (unless (< g count)
            (raise-arguments-error who "glyph ID is outside this font's typeface"
                                   "glyph" g "glyph count" count)))))))
+; glyph-array : (vectorof exact-nonnegative-integer?) -> cpointer?
+;;   Copies glyph IDs into a pinned uint16 buffer that survives allocating native callbacks.
 (define (glyph-array gs)
   ;; getPaths calls back into Racket and can allocate/collect. Pin the native
   ;; input buffer so its address cannot move while Skia is iterating it.
   (define out (malloc (vector-length gs) _uint16 'atomic-interior))
   (for ([g (in-vector gs)] [i (in-naturals)]) (ptr-set! out _uint16 i g))
   out)
+; floats->vector : symbol? cpointer? exact-nonnegative-integer? -> vector?
+;;   Copies native floats into an immutable vector, checking each value's representable range.
 (define (floats->vector who ptr count)
   (vector->immutable-vector
    (for/vector ([i (in-range count)]) (scalar who (ptr-ref ptr _float i)))))
 
+; query-widths+bounds : symbol? font? any/c (or/c #f paint?) boolean? boolean? -> (values vector?
+;   vector?)
+;;   Queries widths and x/y/width/height bounds in glyph order, using empty vectors for unrequested
+;;   results.
 (define (query-widths+bounds who f glyphs p widths? bounds?)
   (define gs (font-query-glyphs who glyphs (+ 18 (if widths? 12 0) (if bounds? 48 0))))
   (call-with-font+paint
@@ -101,15 +156,29 @@
               #()))
         (void/reference-sink gs input widths bounds)
         (values ws bs)]))))
+; font-glyph-widths+bounds : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0
+;   65535))) [#:paint (or/c paint? #f)] -> (values (vectorof real?) (vectorof (list/c real? real?
+;   real? real?)))
+;;   Returns the advance-width vector and bounds vector as two values, using the same native query
+;;   and semantics as font-glyph-widths and font-glyph-bounds.
 (define (font-glyph-widths+bounds f glyphs #:paint [p #f])
   (query-widths+bounds 'font-glyph-widths+bounds f glyphs p #t #t))
+; font-glyph-widths : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0 65535)))
+;   [#:paint (or/c paint? #f)] -> (vectorof real?)
+;;   Returns one advance width per supplied glyph, without kerning or contextual positioning.
 (define (font-glyph-widths f glyphs #:paint [p #f])
   (define-values (widths bounds) (query-widths+bounds 'font-glyph-widths f glyphs p #t #f))
   widths)
+; font-glyph-bounds : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0 65535)))
+;   [#:paint (or/c paint? #f)] -> (vectorof (list/c real? real? real? real?))
+;;   Returns one x/y/width/height list per glyph in an immutable vector.
 (define (font-glyph-bounds f glyphs #:paint [p #f])
   (define-values (widths bounds) (query-widths+bounds 'font-glyph-bounds f glyphs p #f #t))
   bounds)
 
+; font-glyph-positions : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0 65535)))
+;   [#:origin (or/c (list/c real? real?) (vector/c real? real?))] -> (vectorof (list/c real? real?))
+;;   Returns glyph origins obtained by accumulating ordinary advances from origin.
 (define (font-glyph-positions f glyphs #:origin [origin '(0 0)])
   (define who 'font-glyph-positions)
   (define xy (font-query-origin who origin))
@@ -133,6 +202,9 @@
                     (scalar who (ptr-ref output _float (+ 1 (* i 2))))))))
          (void/reference-sink gs input output start)
          result]))))
+; font-glyph-x-positions : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0
+;   65535))) [#:origin real?] -> (vectorof real?)
+;;   Returns horizontal glyph origins accumulated from the drawing scalar origin.
 (define (font-glyph-x-positions f glyphs #:origin [origin 0])
   (define who 'font-glyph-x-positions)
   (define x (scalar who origin))
@@ -153,6 +225,10 @@
 
 ;; A synchronous internal callback, never an application-supplied procedure.
 ;; Explicit pointer retention lasts through the complete native invocation.
+; font-glyph-paths : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0 65535))) ->
+;   (vectorof (or/c skia-path? #f))
+;;   Returns an immutable vector of independently owned glyph-outline paths, with #f for glyphs
+;;   without paths.
 (define (font-glyph-paths f glyphs)
   (define who 'font-glyph-paths)
   (define gs (font-query-glyphs who glyphs 66))
@@ -199,6 +275,15 @@
             copy-path skia-close!))
          result]))))
 
+
+;;;
+;;; Text Prefix Fitting
+;;;
+
+; font-break-text : font? string? (and/c real? (>=/c 0)) [#:paint (or/c paint? #f)] -> (values
+;   exact-nonnegative-integer? real?)
+;;   Returns the number of Racket characters in the longest leading unshaped prefix that fits
+;;   max-width, followed by its measured width.
 (define (font-break-text f text max-width #:paint [p #f])
   (define who 'font-break-text)
   (define width (nonnegative-scalar who max-width))

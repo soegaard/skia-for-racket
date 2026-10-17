@@ -1,11 +1,31 @@
 #lang racket/base
 
+;;;
+;;; Reference Raster Pure Test
+;;;
+
+;; Checks format inventories, surface properties, output policies, and layer syntax without native
+;; loading.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; No native allocations or calls are required by these checks.
 (require rackunit racket/contract racket/list racket/vector
          skia/image-info skia/surface-properties skia/output-policy skia/native-capabilities
          skia/graphics
          (submod "reference-runtime.rkt" constant-contracts))
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; expand-layer : list? -> syntax?
+;;   Expands layer-scoping forms in a fresh module that imports only canvas primitives.
 (define (expand-layer forms)
   (parameterize ([current-namespace (make-base-namespace)])
     (expand `(module layer-form racket/base

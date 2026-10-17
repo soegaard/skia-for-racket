@@ -1,5 +1,21 @@
 #lang racket
+
+;;;
+;;; Sprites Model Test
+;;;
+
+;; Checks Sprites tutorial behavior with focused regression tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit "model.rkt" "../support/sprite-math.rkt")
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
   (test-case "initial simulation is reproducible"
     (check-equal? (make-ball-world 30) (make-ball-world 30)))

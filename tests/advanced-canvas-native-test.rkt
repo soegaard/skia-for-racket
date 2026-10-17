@@ -1,11 +1,43 @@
 #lang racket/base
+
+;;;
+;;; Advanced Canvas Native Test
+;;;
+
+;; Covers advanced layers, native drawables and specialized canvases.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list "../main.rkt")
 (provide advanced-canvas-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; rectangle : canvas? real? real? real? real? color -> void?
+;;   Draws an unantialiased filled rectangle for exact interior-pixel checks.
 (define (rectangle c x y w h color)
   (with-skia ([p (make-paint #:color color #:antialias? #f)]) (draw-rect c x y w h p)))
+
+; scene : canvas? -> void?
+;;   Draws distinct small red and blue shapes for specialized-canvas comparisons.
 (define (scene c)
   (rectangle c 1 2 5 4 'red) (rectangle c 8 1 4 7 'blue))
+
+; pixel-alpha : surface? exact-nonnegative-integer? exact-nonnegative-integer? -> byte?
+;;   Reads coverage at a device-pixel position.
 (define (pixel-alpha s x y) (rgba-alpha (surface-pixel s x y)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; advanced-canvas-native-tests : test-suite?
+;;   Collects the regression cases for advanced layers, native drawables and specialized canvases.
 (define advanced-canvas-native-tests
   (test-suite
    "Advanced layers, native drawables and specialized canvases"
@@ -101,7 +133,8 @@
    (test-case "layer preserves multiple callback values"
      (with-skia ([s (make-surface 8 8)])
        (check-equal? (call-with-values
-                      (lambda () (call-with-canvas-layer-rec (surface-canvas s) (lambda () (values 2 3)))) list)
+                       (lambda () (call-with-canvas-layer-rec (surface-canvas s)
+                                    (lambda () (values 2 3)))) list)
                      '(2 3))))
    (test-case "discard does not prevent an explicit complete overwrite"
      (with-skia ([s (make-surface 8 8)])
@@ -115,12 +148,14 @@
        (for ([i (in-range 3)]) (draw-drawable (surface-canvas s) d))
        (check-equal? calls 1) (check-equal? (surface-pixel s 2 3) (rgb 255 0 0))))
    (test-case "retained and immediate drawable drawing agree"
-     (with-skia ([d (call-with-drawable 16 12 scene)] [a (make-surface 16 12)] [b (make-surface 16 12)])
+     (with-skia
+       ([d (call-with-drawable 16 12 scene)] [a (make-surface 16 12)] [b (make-surface 16 12)])
        (draw-drawable (surface-canvas a) d)
        (draw-drawable (surface-canvas b) d #:mode 'immediate)
        (check-equal? (surface->rgba-bytes a) (surface->rgba-bytes b))))
    (test-case "drawable snapshot remains usable after drawable close"
-     (with-skia ([d (call-with-drawable 16 12 scene)] [p (drawable->picture d)] [s (make-surface 16 12)])
+     (with-skia
+       ([d (call-with-drawable 16 12 scene)] [p (drawable->picture d)] [s (make-surface 16 12)])
        (skia-close! d) (draw-picture (surface-canvas s) p)
        (check-equal? (surface-pixel s 9 2) (rgb 0 0 255))))
    (test-case "drawable metadata is detached and generation invalidation is explicit"
@@ -142,7 +177,8 @@
        (for ([kind '(pdf svg)])
          (define page (make-output-page 16 12 (lambda (c) (draw-drawable c d))))
          (define-values (bytes report) (output->bytes/audit page kind #:policy 'vector-only))
-         (check-true (> (bytes-length bytes) 50)) (check-true (output-audit-report-vector-only? report)))))
+         (check-true (> (bytes-length bytes) 50))
+         (check-true (output-audit-report-vector-only? report)))))
    (test-case "backdrop provenance survives drawable and picture snapshots"
      (for ([mode '(backdrop initialization)])
        (with-skia ([filter (make-offset-image-filter 1 0)]

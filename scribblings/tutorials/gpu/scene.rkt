@@ -1,5 +1,18 @@
 #lang racket
 
+;;;
+;;; GPU Scene
+;;;
+
+;; Defines the single drawing used to compare raster and GPU results.
+;; This shared tutorial drawing is used by the runnable program, documentation figures, and
+;; checks.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia)
 
 (provide scene-width
@@ -7,10 +20,22 @@
          scene-background
          draw-scene)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; scene-width : exact-integer?
+;;   Specifies scene width in the drawing's local coordinate units.
 (define scene-width 760)
+; scene-height : exact-integer?
+;;   Specifies scene height in the drawing's local coordinate units.
 (define scene-height 420)
+; scene-background : string?
+;;   Specifies the scene background color used by this drawing.
 (define scene-background "#0B1024")
 
+; draw-background : canvas? -> void?
+;;   Draws the background component in the current canvas coordinate system.
 (define (draw-background canvas)
   (define shader
     (make-linear-gradient-shader
@@ -24,6 +49,8 @@
              scene-width scene-height
              paint))
 
+; draw-grid : canvas? -> void?
+;;   Draws the grid component in the current canvas coordinate system.
 (define (draw-grid canvas)
   (define grid
     (make-paint #:color (rgba 230 242 250 22)
@@ -34,6 +61,8 @@
   (for ([y (in-range 40 scene-height 40)])
     (draw-line canvas 28 y (- scene-width 28) y grid)))
 
+; draw-orbit : canvas? -> void?
+;;   Draws the orbit component in the current canvas coordinate system.
 (define (draw-orbit canvas)
   (define orbit
     (make-path
@@ -52,6 +81,8 @@
   (draw-oval canvas 242 100 278 205 ring)
   (draw-circle canvas 381 202 65 ring))
 
+; draw-node : canvas? real? real? real? any/c -> void?
+;;   Draws the node component in the current canvas coordinate system.
 (define (draw-node canvas x y radius colors)
   (define shader
     (make-radial-gradient-shader
@@ -62,6 +93,8 @@
     (make-paint #:shader shader))
   (draw-circle canvas x y radius paint))
 
+; draw-nodes : canvas? -> void?
+;;   Draws the nodes component in the current canvas coordinate system.
 (define (draw-nodes canvas)
   (draw-node canvas
              170 190 56
@@ -79,6 +112,8 @@
                    "#9D78D8"
                    (rgba 157 120 216 0))))
 
+; draw-center : canvas? -> void?
+;;   Draws the center component in the current canvas coordinate system.
 (define (draw-center canvas)
   (define fill
     (make-paint #:color "#F4F7F8"))
@@ -87,6 +122,8 @@
   (draw-circle canvas 381 202 28 fill)
   (draw-circle canvas 381 202 12 inner))
 
+; draw-scene : canvas? -> void?
+;;   Draws the scene component in the current canvas coordinate system.
 (define (draw-scene canvas)
   (draw-background canvas)
   (draw-grid canvas)

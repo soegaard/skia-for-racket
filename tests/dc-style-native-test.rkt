@@ -1,25 +1,73 @@
 #lang racket/base
+
+;;;
+;;; DC Style Native Test
+;;;
+
+;; Covers dC native styles and compatibility queries.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
          (only-in racket/draw/private/local in-cairo-context)
          "dc-style-fixtures.rkt" "../examples/dc-replay.rkt")
 (provide dc-style-native-tests dc-style-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; using : procedure? -> any
+;;   Scopes an unsmoothed 64-by-64 native DC for exact style comparisons.
 (define (using proc)
   (define dc (new skia-dc% [width 64] [height 64] [smoothing 'unsmoothed]))
   (dynamic-wind void (lambda () (proc dc)) (lambda () (send dc close))))
+
+; render : procedure? -> bytes?
+;;   Captures a style drawing as premultiplied RGBA bytes.
 (define (render draw) (using (lambda (dc) (draw dc) (send dc get-rgba-bytes #:premultiplied? #t))))
+
+; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
+;;   Reads one premultiplied pixel from the fixed-width style capture.
 (define (pixel dc x y)
   (define b (send dc get-rgba-bytes #:premultiplied? #t))
   (bytes->list (subbytes b (* 4 (+ x (* y 64))) (* 4 (+ 1 x (* y 64))))))
+
+; near : (listof real?) (listof real?) [real?] -> void?
+;;   Checks equal-length color or metric lists with the requested tolerance.
 (define (near actual expected [tolerance 2])
   (check-equal? (length actual) (length expected))
-  (for ([a actual] [e expected]) (check-true (<= (abs (- a e)) tolerance) (format "~s versus ~s" actual expected))))
+  (for ([a actual] [e expected])
+    (check-true (<= (abs (- a e)) tolerance) (format "~s versus ~s" actual expected))))
+
+; near-bytes : bytes? bytes? real? -> void?
+;;   Compares equally sized raster storage with a per-byte tolerance.
 (define (near-bytes a b tolerance)
   (check-equal? (bytes-length a) (bytes-length b))
   (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) tolerance))))
+
+; near-values : (-> any) (listof real?) -> void?
+;;   Collects a multi-valued query and compares it with expected metrics.
 (define (near-values thunk expected) (near (call-with-values thunk list) expected 0.01))
+
+; rectangle-path : -> dc-path%
+;;   Builds the fixed rectangle used to query path bounds and fill behavior.
 (define (rectangle-path) (define p (new rd:dc-path%)) (send p rectangle 2 3 10 8) p)
+
+; dc-style-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-style-native-test-count 40)
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-style-native-tests : test-suite?
+;;   Collects the regression cases for dC native styles and compatibility queries.
 (define dc-style-native-tests
  (test-suite "DC native styles and compatibility queries"
   (test-case "linear gradient paints its spatial endpoints"
@@ -84,7 +132,8 @@
   (fill-with dc (rd:make-brush #:color "red" #:stipple (mono-tile) #:style 'opaque) 0 0 8 8)
   (near (pixel dc 3 2) '(0 0 255 255) 0))))
   (test-case "legacy xor brush is a solid alias"
-   (check-equal? (render (lambda (dc) (fill-with dc (rd:make-brush #:color "red" #:style 'xor) 0 0 8 8)))
+   (check-equal?
+     (render (lambda (dc) (fill-with dc (rd:make-brush #:color "red" #:style 'xor) 0 0 8 8)))
   (render (lambda (dc) (fill-with dc (rd:make-brush #:color "red") 0 0 8 8)))))
   (test-case "hilite paints black with 0.3 alpha"
    (using (lambda (dc)
@@ -106,42 +155,48 @@
    (using (lambda (dc)
    (fill-with dc (rd:make-brush #:color "red" #:style 'horizontal-hatch) 0 0 24 24)
    (define data (send dc get-rgba-bytes))
-   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (define alphas
+     (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
    (check-true (> (count positive? alphas) 20))
    (check-true (> (count zero? alphas) 20)))))
   (test-case "vertical-hatch contains repeated ink and gaps"
    (using (lambda (dc)
    (fill-with dc (rd:make-brush #:color "red" #:style 'vertical-hatch) 0 0 24 24)
    (define data (send dc get-rgba-bytes))
-   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (define alphas
+     (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
    (check-true (> (count positive? alphas) 20))
    (check-true (> (count zero? alphas) 20)))))
   (test-case "cross-hatch contains repeated ink and gaps"
    (using (lambda (dc)
    (fill-with dc (rd:make-brush #:color "red" #:style 'cross-hatch) 0 0 24 24)
    (define data (send dc get-rgba-bytes))
-   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (define alphas
+     (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
    (check-true (> (count positive? alphas) 20))
    (check-true (> (count zero? alphas) 20)))))
   (test-case "bdiagonal-hatch contains repeated ink and gaps"
    (using (lambda (dc)
    (fill-with dc (rd:make-brush #:color "red" #:style 'bdiagonal-hatch) 0 0 24 24)
    (define data (send dc get-rgba-bytes))
-   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (define alphas
+     (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
    (check-true (> (count positive? alphas) 20))
    (check-true (> (count zero? alphas) 20)))))
   (test-case "fdiagonal-hatch contains repeated ink and gaps"
    (using (lambda (dc)
    (fill-with dc (rd:make-brush #:color "red" #:style 'fdiagonal-hatch) 0 0 24 24)
    (define data (send dc get-rgba-bytes))
-   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (define alphas
+     (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
    (check-true (> (count positive? alphas) 20))
    (check-true (> (count zero? alphas) 20)))))
   (test-case "crossdiag-hatch contains repeated ink and gaps"
    (using (lambda (dc)
    (fill-with dc (rd:make-brush #:color "red" #:style 'crossdiag-hatch) 0 0 24 24)
    (define data (send dc get-rgba-bytes))
-   (define alphas (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
+   (define alphas
+     (for*/list ([y (in-range 24)] [x (in-range 24)]) (bytes-ref data (+ 3 (* 4 (+ x (* y 64)))))))
    (check-true (> (count positive? alphas) 20))
    (check-true (> (count zero? alphas) 20)))))
   (test-case "pen stipple keeps dash gaps like the pinned reference"
@@ -155,7 +210,8 @@
 (check-equal? (render (lambda (dc) (send dc draw-bitmap bm 2 2 'solid (color 255 0 0))))
                (render (lambda (dc) (send dc draw-bitmap bm 2 2 'xor (color 255 0 0))))))
   (test-case "all affine alignment modes draw without unsupported exceptions"
-   (for* ([s '(aligned unsmoothed)] [m (list '#(0 -1 1 0 0 40) '#(-1 0 0 1 40 0) '#(1 0.2 0.3 1 0 0))])
+   (for* ([s '(aligned unsmoothed)]
+           [m (list '#(0 -1 1 0 0 40) '#(-1 0 0 1 40 0) '#(1 0.2 0.3 1 0 0))])
   (using (lambda (dc) (send dc set-smoothing s) (send dc set-initial-matrix m)
     (send dc draw-rectangle 5 5 16 16)
     (check-true (for/or ([b (in-bytes (send dc get-rgba-bytes))]) (positive? b)))))))
@@ -196,7 +252,8 @@
   (send r is-empty?) (check-equal? before (send dc get-rgba-bytes)))))
   (test-case "failed private query retires scratch context"
    (using (lambda (dc)
-  (check-exn #rx"query-failure" (lambda () (send dc in-cairo-context (lambda (cr) (error "query-failure")))))
+  (check-exn #rx"query-failure"
+    (lambda () (send dc in-cairo-context (lambda (cr) (error "query-failure")))))
   (define r (new rd:region% [dc dc])) (send r set-rectangle 1 1 2 2)
   (check-false (send r is-empty?)))))
   (test-case "style recording procedure and datum agree"

@@ -1,29 +1,70 @@
 #lang racket/base
+
+;;;
+;;; DC Consumer Native Test
+;;;
+
+;; Covers direct pict and plot/no-gui consumers on the existing Skia DC subset.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/class racket/list rackunit
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
          "dc-consumer-fixtures.rkt")
 (provide dc-consumer-native-tests dc-consumer-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; dc-consumer-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-consumer-native-test-count 16)
+
+; using : procedure? [real?] -> any
+;;   Scopes a cleared consumer-sized Skia DC at the requested backing scale.
 (define (using f [backing 1])
   (define dc (new skia-dc% [width consumer-width] [height consumer-height]
                  [backing-scale backing] [smoothing 'smoothed]))
   (dynamic-wind void (lambda () (send dc clear) (f dc)) (lambda () (send dc close))))
+
+; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
+;;   Copies one RGBA pixel from the consumer's captured backing store.
 (define (pixel dc x y)
   (define data (send dc get-rgba-bytes))
   (define-values (w h) (send dc get-pixel-size))
   (define i (* 4 (+ x (* y w))))
   (bytes->list (subbytes data i (+ i 4))))
+
+; near-pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? (listof byte?) [real?] ->
+; void?
+;;   Checks a consumer probe pixel within the allowed channel tolerance.
 (define (near-pixel dc x y expected [tolerance 2])
   (for ([a (in-list (pixel dc x y))] [e (in-list expected)])
     (check-true (<= (abs (- a e)) tolerance))))
+
+; pict-ink : dc<%> [real?] -> void?
+;;   Checks colored pict landmarks after accounting for backing scale.
 (define (pict-ink dc [b 1])
   (near-pixel dc (* b 24) (* b 24) '(255 0 0 255))
   (near-pixel dc (* b 18) (* b 72) '(255 128 128 255))
   ;; The overlap must be faded as a group, not once per overlapping object.
   (near-pixel dc (* b 36) (* b 72) '(128 128 255 255))
   (near-pixel dc (* b 164) (* b 16) '(20 180 60 255)))
+
+; blue? : byte? byte? byte? -> boolean?
+;;   Recognizes blue plot ink while allowing antialiasing variation.
 (define (blue? r g b) (and (> b 160) (< r 100) (< g 100)))
+
+; red? : byte? byte? byte? -> boolean?
+;;   Recognizes red plot ink while allowing antialiasing variation.
 (define (red? r g b) (and (> r 160) (< g 100) (< b 100)))
+
+; plot-ink : dc<%> hash? [real?] -> void?
+;;   Searches near mapped plot landmarks for the expected red or blue ink.
 (define (plot-ink dc layout [backing 1])
   (define data (send dc get-rgba-bytes))
   (define-values (w h) (send dc get-pixel-size))
@@ -41,14 +82,31 @@
        (and (> (bytes-ref data (+ i 3)) 240)
             ((caddr entry) (bytes-ref data i) (bytes-ref data (+ i 1)) (bytes-ref data (+ i 2)))))
      (format "missing plot ink near data coordinate ~a,~a" (car entry) (cadr entry)))))
+
+; both-recordings : procedure? -> void?
+;;   Compares pixels from procedural and datum-based replay of one consumer drawing.
 (define (both-recordings draw)
   (define-values (proc datum _) (record-consumer draw))
   (define a (using (lambda (dc) (proc dc) (send dc get-rgba-bytes #:premultiplied? #t))))
   (define b (using (lambda (dc) (datum dc) (send dc get-rgba-bytes #:premultiplied? #t))))
   (check-equal? (bytes-length a) (bytes-length b))
   (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) 2))))
+
+; picture : -> pict?
+;;   Constructs the consumer pict using a temporarily live Skia metrics DC.
 (define (picture) (using make-consumer-pict))
+
+; drawing : pict? -> procedure?
+;;   Adapts a prepared pict to the one-argument drawing callback used by replay tests.
 (define (drawing p) (lambda (dc) (draw-consumer-pict dc p)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-consumer-native-tests : test-suite?
+;;   Collects the regression cases for direct pict and plot/no-gui consumers on the existing Skia DC
+;;   subset.
 (define dc-consumer-native-tests
   (test-suite
    "Direct pict and plot/no-gui consumers on the existing Skia DC subset"
@@ -61,7 +119,8 @@
        (check-true (>= (for*/sum ([y (in-range 126 172)] [x (in-range 12 165)])
                          (define i (* 4 (+ x (* y consumer-width))))
                          (if (and (< (bytes-ref data i) 160) (< (bytes-ref data (+ i 1)) 160)
-                                  (> (bytes-ref data (+ i 2)) (+ 20 (bytes-ref data i)))) 1 0)) 12)))))
+                                  (> (bytes-ref data (+ i 2)) (+ 20 (bytes-ref data i)))) 1 0))
+                     12)))))
    (test-case "pict uses logical coordinates on a 2x backing"
      (using (lambda (dc) (draw-consumer-pict dc (make-consumer-pict dc)) (pict-ink dc 2)) 2))
    (test-case "direct pict restores selected objects and drawing state"

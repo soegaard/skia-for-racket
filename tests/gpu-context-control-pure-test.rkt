@@ -1,9 +1,28 @@
 #lang racket/base
+
+;;;
+;;; GPU Context Control Pure Test
+;;;
+
+;; Covers gPU context options and pure lifecycle.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list
          "../gpu-context-options.rkt" (submod "../gpu-context-options.rkt" internals)
          "../private/gpu-domain.rkt" "../private/gpu-provider.rkt" "../private/gpu-context.rkt")
 (provide gpu-context-control-pure-tests gpu-context-control-pure-test-count)
 ;; Native-free doubles exercise the actual domain state machine.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; mock-domain : procedure? -> any
+;;   Supplies a recording provider/domain that exposes context-control calls without GPU creation.
 (define (mock-domain proc)
   (define log (box '()))
   (define current? (box #f))
@@ -21,7 +40,17 @@
   (set-box! log '())
   (dynamic-wind void (lambda () (proc d log current? note))
     (lambda () (unless (memq (domain-state d) '(closed release-failed)) (domain-close! d)))))
+
+; gpu-context-control-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-context-control-pure-test-count 22)
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-context-control-pure-tests : test-suite?
+;;   Collects the regression cases for gPU context options and pure lifecycle.
 (define gpu-context-control-pure-tests
   (test-suite "GPU context options and pure lifecycle"
     (test-case "six defaults"
@@ -45,22 +74,30 @@
       (for ([v (in-list (list #f 0 'options (hasheq)))]) (check-false (gpu-context-options? v))))
     (test-case "boolean flags are not truthy values"
       (for ([v (in-list (list 0 1 'yes))])
-        (check-exn exn:fail:contract? (lambda () (make-gpu-context-options #:avoid-stencil-buffers? v)))
-        (check-exn exn:fail:contract? (lambda () (make-gpu-context-options #:allow-path-mask-caching? v)))
+        (check-exn exn:fail:contract?
+          (lambda () (make-gpu-context-options #:avoid-stencil-buffers? v)))
+        (check-exn exn:fail:contract?
+          (lambda () (make-gpu-context-options #:allow-path-mask-caching? v)))
         (check-exn exn:fail:contract? (lambda () (make-gpu-context-options #:manual-mipmapping? v)))))
     (test-case "program cache bounds"
       (for ([v (in-list (list 0 -1 1.0 1/2 #t +nan.0 +inf.0 #x80000000))])
-        (check-exn exn:fail:contract? (lambda () (make-gpu-context-options #:runtime-program-cache-size v)))))
+        (check-exn exn:fail:contract?
+          (lambda () (make-gpu-context-options #:runtime-program-cache-size v)))))
     (test-case "glyph budget bounds"
       (for ([v (in-list (list 0 -1 1.0 #t +inf.0 #x10000000000000000))])
-        (check-exn exn:fail:contract? (lambda () (make-gpu-context-options #:glyph-cache-texture-maximum-bytes v)))))
+        (check-exn exn:fail:contract?
+          (lambda () (make-gpu-context-options #:glyph-cache-texture-maximum-bytes v)))))
     (test-case "buffer mapping sentinel"
       (for ([v (in-list (list -2 0.0 #t +inf.0 #x80000000))])
-        (check-exn exn:fail:contract? (lambda () (make-gpu-context-options #:buffer-map-threshold v))))
-      (check-equal? (gpu-context-options-buffer-map-threshold (make-gpu-context-options #:buffer-map-threshold 0)) 0))
+        (check-exn exn:fail:contract?
+          (lambda () (make-gpu-context-options #:buffer-map-threshold v))))
+      (check-equal?
+        (gpu-context-options-buffer-map-threshold
+          (make-gpu-context-options #:buffer-map-threshold 0)) 0))
     (test-case "maximum exact integers"
       (define o (make-gpu-context-options #:runtime-program-cache-size #x7fffffff
-                  #:glyph-cache-texture-maximum-bytes #xffffffffffffffff #:buffer-map-threshold #x7fffffff))
+                  #:glyph-cache-texture-maximum-bytes #xffffffffffffffff #:buffer-map-threshold
+                  #x7fffffff))
       (check-equal? (gpu-context-options-glyph-cache-texture-maximum-bytes o) #xffffffffffffffff))
     (test-case "optional options validation"
       (check-false (check-optional-context-options 'test #f))
@@ -68,7 +105,9 @@
       (check-exn exn:fail:contract? (lambda () (gpu-context-options->jsexpr #f))))
     (test-case "factory metadata is a requested value"
       (for ([backend '(opengl metal direct3d)]
-            [factory '("gr_direct_context_make_gl" "gr_direct_context_make_metal" "gr_direct_context_make_direct3d")])
+            [factory
+              '("gr_direct_context_make_gl" "gr_direct_context_make_metal"
+                 "gr_direct_context_make_direct3d")])
         (define d (context-options-diagnostics #f backend))
         (define e (context-options-diagnostics (make-gpu-context-options) backend))
         (check-equal? (hash-ref d 'context_factory) factory)
@@ -77,11 +116,13 @@
         (check-false (hash-ref d 'context_options))
         (check-false (hash-ref e 'context_options_native_readback))))
     (test-case "unrelated metadata is preserved"
-      (check-equal? (hash-ref (add-context-options-diagnostics (hasheq 'user_edit 17) #f 'metal) 'user_edit) 17)
+      (check-equal?
+        (hash-ref (add-context-options-diagnostics (hasheq 'user_edit 17) #f 'metal) 'user_edit) 17)
       (check-exn exn:fail:contract? (lambda () (context-options-diagnostics #f 'vulkan))))
     (test-case "healthy release activates the provider"
       (mock-domain (lambda (d log current? note)
-        (domain-release-and-abandon! d (lambda (_) (check-true (unbox current?)) (note 'native-release)))
+        (domain-release-and-abandon! d
+          (lambda (_) (check-true (unbox current?)) (note 'native-release)))
         (check-equal? (unbox log) '(activate reset native-release deactivate))
         (check-eq? (domain-state d) 'abandoned))))
     (test-case "loss abandonment never activates the provider"
@@ -110,7 +151,8 @@
         (domain-resource-close! h) (domain-close! d))))
     (test-case "scope and owner rejection"
       (mock-domain (lambda (d log current? note)
-        (domain-call d (lambda () (check-exn exn:fail? (lambda () (domain-release-and-abandon! d void)))))
+        (domain-call d
+          (lambda () (check-exn exn:fail? (lambda () (domain-release-and-abandon! d void)))))
         (define ch (make-channel))
         (thread (lambda () (with-handlers ([exn:fail? (lambda (e) (channel-put ch #t))])
           (domain-release-and-abandon! d void) (channel-put ch #f))))
@@ -127,14 +169,16 @@
         (domain-abandon! d))))
     (test-case "indeterminate exception cannot be retried"
       (mock-domain (lambda (d log current? note)
-        (check-exn #rx"native failure" (lambda () (domain-release-and-abandon! d (lambda (_) (error 'mock "native failure")))))
+        (check-exn #rx"native failure"
+          (lambda () (domain-release-and-abandon! d (lambda (_) (error 'mock "native failure")))))
         (check-eq? (domain-state d) 'release-failed)
         (check-exn exn:fail? (lambda () (domain-abandon! d)))
         (check-exn exn:fail? (lambda () (domain-close! d)))
         (check-false (unbox current?)))))
     (test-case "raised false also quarantines"
       (mock-domain (lambda (d log current? note)
-        (check-exn (lambda (e) (eq? e #f)) (lambda () (domain-release-and-abandon! d (lambda (_) (raise #f)))))
+        (check-exn (lambda (e) (eq? e #f))
+          (lambda () (domain-release-and-abandon! d (lambda (_) (raise #f)))))
         (check-eq? (domain-state d) 'release-failed))))
     (test-case "native callback arity and reentry are guarded"
       (mock-domain (lambda (d log current? note)
@@ -144,6 +188,14 @@
           (check-exn exn:fail? (lambda () (domain-pointer d)))
           (check-exn exn:fail? (lambda () (domain-close! d))))))))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-context-control-pure-tests))
-  (printf "gpu-context-control-pure: ~a cases, ~a failures\n" gpu-context-control-pure-test-count failures)
+  (printf "gpu-context-control-pure: ~a cases, ~a failures\n" gpu-context-control-pure-test-count
+    failures)
   (exit (if (zero? failures) 0 1)))

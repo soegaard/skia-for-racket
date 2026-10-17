@@ -1,10 +1,30 @@
 #lang racket/base
 
+;;;
+;;; Initial Bounds Test
+;;;
+
+;; Checks Sprites tutorial behavior with focused regression tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit (only-in racket/list take) "model.rkt")
+
+;;;
+;;; Regression Checks
+;;;
 
 (module+ test
   ;; Every smaller initial world is a prefix of the 2000-ball world.
+  ; maximum-world : ball-world?
+  ;;   Builds the largest supported initial ball world for bounds checks.
   (define maximum-world (make-ball-world 2000))
+  ; all-balls : list?
+  ;;   Retains the maximum world's ordered ball list to check all shorter prefixes.
   (define all-balls (ball-world-balls maximum-world))
   ;; The default layout keeps its original exact coordinates.
   (for ([sprite (in-list (take all-balls 30))] [index (in-naturals)])

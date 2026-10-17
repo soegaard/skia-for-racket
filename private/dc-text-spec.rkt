@@ -1,17 +1,61 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Text Requests
+;;;
+
+;; Copies font and text settings into detached request records.
+;; Separates racket/draw font selection from native shaping and rendering.
+
 ;; Public font% and text arguments -> immutable native-free requests.
 ;; Single-family comma descriptions use a lazy parsing-only Pango adapter.
 ;; No text layout or installed-font probing occurs while preparing a request.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/list racket/string
          (prefix-in rd: racket/draw) "dc-support.rkt" "dc-font-name.rkt"
          (only-in "check.rkt" current-skia-byte-limit))
 (provide (struct-out dc-font-spec) (struct-out dc-text-spec)
          dc-font-description dc-text-description dc-font-request-width)
+;;;
+;;; Detached Font and Text Records
+;;;
+
 (struct dc-font-spec (family size weight slant edging hinting underlined? features) #:transparent)
+;; Fields:
+;;   family: immutable single-family name. size: nonnegative pixel size resolved by font%, before
+;;   backing-scale application. weight: exact integer in [0,1000]. slant: 'upright, 'italic, or
+;;   'oblique. edging: 'alias or 'antialias. hinting: 'aligned or 'unaligned. underlined?: boolean.
+;;   features: list of "tag=value" shaping strings sorted by tag for deterministic requests. These
+;;   detached values contain no native font, layout, or installed-family probe result.
+
 (struct dc-font-spec/stretch dc-font-spec (width) #:transparent)
+;; Fields:
+;;   width: exact Skia font-width class in [1,9], with 5 normal. Non-normal requests use this
+;;   extension; inherited fields retain the dc-font-spec representation and invariants.
+
+; dc-font-request-width : dc-font-spec? -> exact-integer?
+;;   Returns the requested Skia width class, using normal width five for the original font-spec
+;;   representation.
 (define (dc-font-request-width spec)
   (if (dc-font-spec/stretch? spec) (dc-font-spec/stretch-width spec) 5))
 (struct dc-text-spec (font units combine) #:transparent)
+;; Fields:
+;;   font: detached dc-font-spec, possibly extended with stretch. units: ordered list of immutable
+;;   text strings. combine: 'characters, 'grapheme, or 'combined; units are respectively one retained
+;;   character, one grapheme, or the whole nonempty string. Text starts at the requested offset,
+;;   stops before NUL, and preserves source order; combined mode excludes tabs and hard breaks.
+
+;;;
+;;; Request Construction
+;;;
+
+; dc-font-description : symbol? (is-a?/c font%) -> dc-font-spec?
+;;   Copies resolved pixel size, mapped family/style, rasterization options, underline flag, and
+;;   sorted shaping features.
 (define (dc-font-description who f)
   (unless (is-a? f rd:font%) (raise-argument-error who "font% object" f))
   ;; get-size #t, unlike get-point-size, preserves fractional sizes and Racket's
@@ -35,6 +79,11 @@
   (if (= (dc-face-width face) 5)
       (apply dc-font-spec args)
       (apply dc-font-spec/stretch (append args (list (dc-face-width face))))))
+
+; dc-text-description : symbol? string? (is-a?/c font%) any/c exact-nonnegative-integer? ->
+; dc-text-spec?
+;;   Copies text from the character offset up to NUL into character, grapheme, or combined units,
+;;   rejecting unsupported combined line breaks.
 (define (dc-text-description who str f combine offset)
   (unless (string? str) (raise-argument-error who "string?" str))
   (unless (and (exact-nonnegative-integer? offset) (<= offset (string-length str)))
@@ -47,12 +96,14 @@
     (raise-arguments-error who "text exceeds current-skia-byte-limit"
                            "limit" (current-skia-byte-limit)))
   (define text (substring str offset stop))
-  (define mode (cond [(not combine) 'characters] [(eq? combine 'grapheme) 'grapheme] [else 'combined]))
+  (define mode (cond [(not combine) 'characters] [(eq? combine 'grapheme) 'grapheme] [else
+    'combined]))
   ;; dc<%> is a single-line drawing API. Paragraph/tabs in combined mode have
   ;; platform-dependent Pango behavior; keep that unsupported rather than
   ;; silently invoking this library's multiline paragraph layout.
   (when (and combine (regexp-match? #rx"[\t\r\n\u000B\u000C\u0085\u2028\u2029]" text))
-    (dc-unsupported who 'combined-text-tabs-or-hard-breaks "0.64: the single-line DC contract excludes combined tabs/hard breaks"))
+    (dc-unsupported who 'combined-text-tabs-or-hard-breaks
+      "0.64: the single-line DC contract excludes combined tabs/hard breaks"))
   (define units
     (case mode
       [(characters)

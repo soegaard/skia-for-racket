@@ -1,9 +1,19 @@
 #lang racket/base
+
+;;;
+;;; OpenGL Presentation Adapter
+;;;
+
+;; Builds a presentation adapter for GL-backed window contexts.
+;; Connects GL frame acquisition and swapping to the common presenter.
+
 (require racket/class "../gpu.rkt" "../gpu-racket-gl.rkt" "gpu-window.rkt"
          "gpu-io-trace.rkt" "core.rkt" "gpu-provider.rkt"
          (submod "gpu-presenter.rkt" adapter-internals))
 (provide make-gl-presentation-adapter)
 ;; Called on the owning eventspace handler, before Ganesh has touched the host.
+; make-gl-presentation-adapter : any/c any/c any/c any/c -> presentation-adapter?
+;;   Connects a window's current GL context and swap operation to common presenter callbacks.
 (define (make-gl-presentation-adapter gl measure post background)
   (unless (and gl (send gl ok?)) (gpu-unavailable 'presentation-gl "Racket GL host unavailable"))
   (define access (send gl call-as-current make-window-gl-access))

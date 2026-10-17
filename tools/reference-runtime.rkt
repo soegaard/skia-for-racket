@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Reference Runtime Inventory
+;;;
+
+;; Checks live public binding shapes and cross-reference targets against the documentation
+;; inventory.
+;; This acceptance tool connects source declarations, runtime exports, and generated manual links.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Read native Scribble forms and inspect public bindings without creating native objects.
 (require json racket/class racket/cmdline racket/file racket/list racket/path racket/runtime-path
          racket/string scribble/xref setup/xref syntax/modread
@@ -11,9 +23,23 @@
 (module constant-contracts racket/base
   (provide constant-shape constant-value-valid?)
 
+
+  ;;;
+  ;;; Constant Contract Validation
+  ;;;
+
+  ; symbol-vector-contract : list?
+  ;;   Represents the supported immutable-vector-of-symbols constant contract as a Racket datum.
   (define symbol-vector-contract '(and/c (vectorof symbol?) immutable?))
+
+  ; symbol-vector-json : list?
+  ;;   Represents the same constant contract using strings suitable for JSON evidence.
   (define symbol-vector-json '("and/c" ("vectorof" "symbol?") "immutable?"))
 
+
+  ; constant-shape : any/c -> hash?
+  ;;   Describes a simple predicate or the supported compound constant contract without evaluating
+  ;;   it.
   (define (constant-shape contract)
     (define shape (hasheq 'kind "value" 'arguments '() 'value_kind "constant"))
     (cond
@@ -22,6 +48,10 @@
        (hash-set shape 'value_contract symbol-vector-json)]
       [else (error 'reference-runtime "unsupported compound constant contract: ~e" contract)]))
 
+
+  ; constant-value-valid? : hash? module-path? any/c -> any/c
+  ;;   Checks an exported constant using standard predicates or its module's predicate, rejecting
+  ;;   unknown compound contracts.
   (define (constant-value-valid? spec module value)
     (define contract (hash-ref spec 'value_contract #f))
     (cond
@@ -44,12 +74,37 @@
 
 (require (submod "." constant-contracts))
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; root : path?
+;;   Locates .. relative to this module, independent of the invoking directory.
 (define-runtime-path root "..")
+
+; specs-file : (or/c path-string? #f)
+;;   Holds the required source-checker JSON input selected on the command line.
 (define specs-file #f)
+
+; output-file : (or/c path-string? #f)
+;;   Holds the required destination for runtime and cross-reference evidence.
 (define output-file #f)
+
+; xref-file : (or/c path-string? #f)
+;;   Selects a fresh Scribble cross-reference file, mutually exclusive with installed documentation.
 (define xref-file #f)
+
+; tutorial-xref-files : (listof path-string?)
+;;   Preserves the command-line order of tutorial cross-reference files added to the fresh build.
 (define tutorial-xref-files '())
+
+; installed? : boolean?
+;;   Selects installed collection cross-references instead of a fresh build.
 (define installed? #f)
+
+; reference-directory : (or/c path-string? #f)
+;;   Identifies the expected Reference HTML directory for containment and filename checks.
 (define reference-directory #f)
 (command-line
  #:once-each
@@ -63,32 +118,58 @@
  [("--tutorial-xref") path "Add fresh tutorial cross-reference information"
                          (set! tutorial-xref-files (append tutorial-xref-files (list path)))])
 
+
+; need : any/c string? any/c ... -> void?
+;;   Raises a Reference inventory failure with formatted context when a required condition is false.
 (define (need value message . arguments)
   (unless value (apply error 'reference-runtime message arguments)))
 (need (and specs-file output-file) "--specs and --output are required")
 (need (not (and installed? xref-file)) "choose installed xref or an explicit xref file")
 (need (or (null? tutorial-xref-files) (and xref-file (not installed?)))
       "--tutorial-xref requires a fresh --xref-file build")
+
+; absolute : path-string? -> path?
+;;   Resolves a path to a complete simplified filesystem path for checkout and build identity
+;;   checks.
 (define (absolute path) (simplify-path (path->complete-path path) #t))
 (need (equal? (absolute (collection-file-path "main.rkt" "skia"))
               (absolute (build-path root "main.rkt")))
       "the skia collection must resolve to this checkout, not another installed copy")
+
+; source-report : hash?
+;;   Contains source declarations and manual-link expectations read from the checker JSON.
 (define source-report (call-with-input-file specs-file read-json))
+
+; specifications : (listof hash?)
+;;   Lists the documented public binding specifications to compare with runtime exports.
 (define specifications (hash-ref source-report 'definitions))
+
+; declarations : hash?
+;;   Maps binding-name strings to parsed documentation shapes; duplicate names are rejected.
 (define declarations (make-hash))
 
+
+; read-module : path-string? -> any/c
+;;   Reads a module datum with its declared reader without instantiating the module.
 (define (read-module path)
   (call-with-input-file path
     (lambda (in)
       (with-module-reading-parameterization
        (lambda () (syntax->datum (read-syntax path in)))))))
 
+
+; record! : symbol? hash? -> void?
+;;   Records one documented binding shape, rejecting nonliteral or duplicate names.
 (define (record! name shape)
   (need (symbol? name) "expected a literal binding name")
   (define key (symbol->string name))
   (need (not (hash-has-key? declarations key)) "duplicate definition: ~a" key)
   (hash-set! declarations key shape))
 
+
+; procedure-shape : list? -> hash?
+;;   Converts a Scribble call specification into positional arity and keyword metadata, rejecting
+;;   unsupported signatures.
 (define (procedure-shape call)
   (define required 0)
   (define optional 0)
@@ -137,6 +218,10 @@
           'allowed_keywords (sort keywords string<?)
           'required_keywords (sort required-keywords string<?)))
 
+
+; record-structure! : list? -> void?
+;;   Records constructor, predicate, descriptor, and accessor shapes for supported transparent
+;;   structure declarations.
 (define (record-structure! datum)
   (define struct-name (cadr datum))
   (define fields (caddr datum))
@@ -168,6 +253,9 @@
     (define accessor (string->symbol (string-append group "-" (symbol->string (car field)))))
     (member! accessor (procedure-shape (list accessor (list 'value predicate))) "accessor")))
 
+
+; walk : any/c -> void?
+;;   Collects documentation declarations while ignoring quoted and displayed example code.
 (define (walk datum)
   (when (pair? datum)
     (case (car datum)
@@ -193,9 +281,15 @@
 (need (= (hash-count declarations) (length specifications))
       "native reader and source checker disagree on the definition count")
 
+
+; live-specifications : (listof hash?)
+;;   Selects documented bindings whose runtime shapes can be checked in the normal worker.
 (define live-specifications
   (filter (lambda (spec) (equal? (hash-ref spec 'runtime_check "live") "live"))
           specifications))
+
+; deferred-runtime-specifications : (listof hash?)
+;;   Separates bindings requiring specialized runtime checks from the live inventory.
 (define deferred-runtime-specifications
   (filter (lambda (spec) (not (equal? (hash-ref spec 'runtime_check "live") "live")))
           specifications))
@@ -250,6 +344,9 @@
                            (list #'main:color->rgba #'color:color->rgba)))])
   (need (free-label-identifier=? (car pair) (cadr pair))
         "declared color re-exports are not the same label binding"))
+
+; alias-namespaces : hash?
+;;   Caches module namespaces used to compare exported aliases without mixing binding scopes.
 (define alias-namespaces (make-hash))
 (for* ([spec (in-list live-specifications)]
        [module (in-list (hash-ref spec 'exports))]
@@ -272,6 +369,10 @@
           "re-export label binding differs: ~a / ~a" module name)))
 
 ;; This exercises syntax, internal definitions and multiple values without native allocation.
+
+; pure-namespace : namespace?
+;;   Provides an isolated base namespace for checks that must remain independent of native
+;;   execution.
 (define pure-namespace (make-base-namespace))
 (parameterize ([current-namespace pure-namespace])
   (namespace-require 'skia)
@@ -280,13 +381,22 @@
                 '(1 2))
         "with-skia empty-body syntax/result regression"))
 
+
+; xref : (or/c xref? #f)
+;;   Holds installed or merged fresh-build cross-references when link verification is enabled.
 (define xref
   (cond [installed? (load-collections-xref)]
         [xref-file
          (load-xref (for/list ([path (in-list (cons xref-file tutorial-xref-files))])
                       (lambda () (call-with-input-file path read))))]
         [else #f]))
+
+; seen-tags : hash?
+;;   Tracks resolved definition tags so aliases cannot silently map to incompatible targets.
 (define seen-tags (make-hash))
+
+; targets : (listof hash?)
+;;   Contains verified public-binding HTML paths and anchors within the intended Reference build.
 (define targets
   (if xref
       (begin
@@ -347,6 +457,9 @@
 
 ;; Construct the same document-aware links as the manual and ask Scribble for their tags.
 ;; The HTML checker checks these exact destinations, not hand-written fragment spellings.
+
+; tutorial-targets : (listof hash?)
+;;   Contains verified tutorial destinations from the merged cross-reference set.
 (define tutorial-targets
   (if xref
       (for/list ([link (in-list (hash-ref source-report 'tutorial_links '()))])
@@ -369,6 +482,9 @@
 
 
 ;; Resolve both current and compatibility tags through Scribble, not guessed anchors.
+
+; section-targets : (listof hash?)
+;;   Contains verified named Reference section targets with stable published filenames.
 (define section-targets
   (if xref
       (for/list ([link (in-list (hash-ref source-report 'section_links '()))])

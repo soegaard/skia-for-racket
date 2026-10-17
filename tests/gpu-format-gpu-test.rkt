@@ -1,19 +1,56 @@
 #lang racket/base
-(require racket/class racket/cmdline racket/file racket/list racket/path json rackunit rackunit/text-ui
+
+;;;
+;;; GPU Format GPU Test
+;;;
+
+;; Checks GPU surface formats, surface properties, and explicit readback.
+;; This executable supplies backend-specific drawing and transfer evidence to the GPU validation
+;; workflow.
+
+;;;
+;;; Imports and Exports
+;;;
+(require racket/class racket/cmdline racket/file racket/list racket/path json rackunit
+  rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../gpu-dc.rkt"
          "../private/gpu-io-trace.rkt" "../private/gpu-frame-target-cache.rkt"
          "../private/gpu-format-util.rkt" "../private/gpu-surface-native.rkt")
-(define WIDTH 8) (define HEIGHT 6)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; WIDTH : exact-positive-integer?
+;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+(define WIDTH 8)
+; HEIGHT : exact-positive-integer?
+;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+(define HEIGHT 6)
+
+; reads : box? -> exact-nonnegative-integer?
+;;   Counts explicit readbacks in the GPU I/O ledger.
 (define (reads ledger)
   (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
+
+; save : path-string? bytes? -> exact-nonnegative-integer?
+;;   Writes a fresh binary capture, refusing to overwrite existing evidence.
 (define (save path bytes)
   (call-with-output-file path (lambda (o) (write-bytes bytes o)) #:exists 'error))
+
+; alpha-for : symbol? -> symbol?
+;;   Chooses opaque alpha for alpha-less storage formats and premultiplied alpha otherwise.
 (define (alpha-for color) (if (memq color '(rgb-888x rgb-565 gray-8)) 'opaque 'premul))
+
+; draw-pattern : canvas? symbol? -> any
+;;   Draws format-sensitive samples, including values that expose float precision and clipping.
 (define (draw-pattern c color)
   (cond
     [(memq color '(rgba-f16 rgba-f32))
      (canvas-clear-color4f! c (make-color4f 0.5009765625 -0.125 1.25 1.0))
-     (with-skia ([p (make-paint/color4f (make-color4f 0.501953125 -0.125 1.25 1.0) #:color-space 'srgb #:antialias? #f)])
+     (with-skia
+       ([p (make-paint/color4f (make-color4f 0.501953125 -0.125 1.25 1.0) #:color-space 'srgb
+             #:antialias? #f)])
        (draw-rect c 4 0 4 6 p))]
     [else
      (define a (cond [(eq? color 'alpha-8) (rgba 0 0 0 64)]
@@ -23,10 +60,16 @@
      (canvas-clear! c a)
      (with-skia ([p (make-paint #:color b #:blend-mode 'src #:antialias? #f)])
        (draw-rect c 4 0 4 6 p))]))
+
+; make-context : symbol? symbol? -> gpu-context?
+;;   Creates the requested EGL, Metal, or Direct3D context for a format probe.
 (define (make-context backend adapter)
   (case backend [(egl) (make-egl-gpu-context)] [(metal) (make-gpu-context #:backend 'metal)]
     [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
     [else (error 'gpu-formats "unsupported selected backend")]))
+
+; write-documents : path-string? string? image? symbol? -> list?
+;;   Exports a captured image with vector markers and returns document evidence records.
 (define (write-documents directory token im color)
   (for/list ([kind '(pdf svg)])
     (define page (make-output-page 40 28
@@ -41,7 +84,24 @@
     (hasheq 'file name 'format (symbol->string kind) 'color_type (symbol->string color)
             'conversion "explicit-rgba8888" 'audit (output-audit-report->jsexpr audit))))
 (module+ main
-  (define backend 'auto) (define adapter 'hardware) (define report-path #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'auto)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter 'hardware)
+  ; report-path : (or/c path-string? #f)
+  ;;   Holds the destination for this run's machine-readable evidence report.
+  (define report-path #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--backend") b "egl, metal, direct3d" (set! backend (string->symbol b))]
     [("--adapter") a "hardware or warp" (set! adapter (string->symbol a))]
@@ -50,12 +110,56 @@
   (unless (and report-path token) (error 'gpu-formats "--report and --token required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
   (define directory (path-only (path->complete-path report-path)))
+
+  ; context : gpu-context?
+  ;;   Owns the primary native GPU context used by the fixture run.
   (define context (make-context backend adapter))
-  (define other #f) (define foreign-image #f)
-  (define cases 0) (define failures 0) (define rows '()) (define documents '())
-  (define drawing-reads 0) (define rejected 0) (define survivor #f)
-  (define cache-result #f) (define symbols '())
+
+  ; other : (or/c gpu-context? #f)
+  ;;   Owns a second context used to verify cross-context resource rejection.
+  (define other #f)
+  ; foreign-image : (or/c gpu-image? #f)
+  ;;   Retains an image from another context for format-transfer affinity checks.
+  (define foreign-image #f)
+
+  ; cases : exact-nonnegative-integer?
+  ;;   Counts acceptance cases attempted by the local test wrapper.
+  (define cases 0)
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  (define failures 0)
+  ; rows : (listof hash?)
+  ;;   Accumulates capture and operation evidence for the run's JSON manifest.
+  (define rows '())
+  ; documents : (listof hash?)
+  ;;   Collects PDF/SVG export evidence for validated GPU format captures.
+  (define documents '())
+
+  ; drawing-reads : exact-nonnegative-integer?
+  ;;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
+  ;;   zero.
+  (define drawing-reads 0)
+  ; rejected : exact-nonnegative-integer?
+  ;;   Counts rejected unsupported requests before they can produce invalid GPU output.
+  (define rejected 0)
+  ; survivor : (or/c image? #f)
+  ;;   Keeps a detached CPU image to verify usability after GPU resources are closed.
+  (define survivor #f)
+
+  ; cache-result : (or/c hash? #f)
+  ;;   Stores cache-control evidence collected without changing the rendering assertions.
+  (define cache-result #f)
+  ; symbols : (listof hash?)
+  ;;   Records native backend-resource symbol names and availability for the format acceptance
+  ;;   report.
+  (define symbols '())
+
+  ; test! : string? procedure? -> void?
+  ;;   Runs one named acceptance case and accumulates its failure count for final reporting.
   (define (test! label thunk)
     (set! cases (add1 cases))
     (set! failures (+ failures (run-tests (test-suite label (test-case label (thunk)))))))
@@ -94,7 +198,8 @@
                    (with-skia ([s (make-gpu-surface context WIDTH HEIGHT #:color-type color
                                     #:alpha-type alpha #:background 'black)])
                      (define ledger (box '()))
-                     (parameterize ([current-gpu-io-ledger ledger]) (draw-pattern (surface-canvas s) color))
+                     (parameterize ([current-gpu-io-ledger ledger])
+                       (draw-pattern (surface-canvas s) color))
                      (check-equal? (reads ledger) 0)
                      (set! drawing-reads (+ drawing-reads (reads ledger)))
                      (define info (gpu-surface->image-info s))
@@ -122,7 +227,8 @@
                          (check-equal? (raster-buffer->storage-bytes copy)
                                        (apply bytes-append
                                          (for/list ([y (in-range HEIGHT)])
-                                           (subbytes raw (* y stride) (+ (* y stride) (* WIDTH bpp)))))))
+                                           (subbytes raw (* y stride)
+                                             (+ (* y stride) (* WIDTH bpp)))))))
                        (when (memq color '(rgba-8888 bgra-8888 rgba-f16 rgba-f32))
                          (with-skia ([snapshot (gpu-surface-snapshot s)]
                                      [copy (gpu-image->raster-buffer snapshot)]
@@ -130,25 +236,33 @@
                                      [upload (gpu-upload-image context cpu)]
                                      [again (gpu-image->raster-buffer upload)])
                            (check-eq? (image-color-type upload) color)
-                           (check-equal? (raster-buffer->storage-bytes copy) (raster-buffer->storage-bytes again))))
+                           (check-equal? (raster-buffer->storage-bytes copy)
+                             (raster-buffer->storage-bytes again))))
                        (when (eq? color 'rgba-f16)
                          (set! survivor (gpu-surface->raster-image s))
-                         (define page (make-output-page 40 28 (lambda (c) (draw-image c survivor 16 12))))
+                         (define page (make-output-page 40 28
+                                        (lambda (c) (draw-image c survivor 16 12))))
                          (check-exn exn:fail:output-audit?
                            (lambda () (output->bytes/audit page 'pdf #:policy 'error))))
                        (when (memq color '(rgba-8888 rgba-f16))
-                         (with-skia ([quantized (raster-buffer-convert buffer (make-image-info WIDTH HEIGHT))]
+                         (with-skia ([quantized
+                                       (raster-buffer-convert buffer (make-image-info WIDTH HEIGHT))]
                                      [im (raster-buffer->image quantized)])
-                           (set! documents (append documents (write-documents directory token im color))))))
+                           (set! documents
+                             (append documents (write-documents directory token im color))))))
                      (set! rows (cons (hasheq 'color_type (symbol->string color) 'status "passed"
-                                      'alpha_type (symbol->string alpha) 'file (format "~a.pixels" color)
-                                      'row_bytes stride 'bytes_per_pixel bpp 'width WIDTH 'height HEIGHT
-                                      'readbacks 1 'properties (surface-properties->jsexpr (surface-properties-of s))
+                                      'alpha_type (symbol->string alpha) 'file
+                                        (format "~a.pixels" color)
+                                      'row_bytes stride 'bytes_per_pixel bpp 'width WIDTH 'height
+                                        HEIGHT
+                                      'readbacks 1 'properties
+                                        (surface-properties->jsexpr (surface-properties-of s))
                                       'capability cap) rows)))]))))
           (test! "required SDR and half-float formats are exercised"
             (lambda () (for ([color '("rgba-8888" "bgra-8888" "rgba-f16")])
               (check-true (for/or ([r (in-list rows)])
-                            (and (equal? color (hash-ref r 'color_type)) (equal? "passed" (hash-ref r 'status))))))))
+                            (and (equal? color (hash-ref r 'color_type))
+                              (equal? "passed" (hash-ref r 'status))))))))
           (test! "property requests are observed natively"
             (lambda ()
               (for ([g '(unknown rgb-h bgr-h rgb-v bgr-v)])
@@ -156,11 +270,14 @@
                                                    #:always-dither? #t #:dynamic-msaa? #t))
                 (with-skia ([s (make-gpu-surface context 8 6 #:surface-properties p)])
                   (check-equal? p (surface-properties-of s))
-                  (check-equal? (hash-ref (gpu-surface-info s) 'surface_properties) (surface-properties->jsexpr p))))))
+                  (check-equal? (hash-ref (gpu-surface-info s) 'surface_properties)
+                    (surface-properties->jsexpr p))))))
           (test! "sample upper bound is per context and color format"
             (lambda ()
-              (define maximum (hash-ref (gpu-surface-format-info context 'rgba-8888) 'max_sample_count))
-              (check-exn exn:fail? (lambda () (make-gpu-surface context 8 6 #:sample-count (add1 maximum))))
+              (define maximum
+                (hash-ref (gpu-surface-format-info context 'rgba-8888) 'max_sample_count))
+              (check-exn exn:fail?
+                (lambda () (make-gpu-surface context 8 6 #:sample-count (add1 maximum))))
               (with-skia ([s (make-gpu-surface context 8 6 #:sample-count (min 4 maximum))])
                 (check-equal? (hash-ref (gpu-surface-info s) 'requested_sample_count) (min 4 maximum))
                 (check-false (hash-ref (gpu-surface-info s) 'actual_sample_count)))))
@@ -171,17 +288,21 @@
                           [b (make-raster-buffer 8 6 #:row-bytes 40)])
                 (define before (raster-buffer->storage-bytes b))
                 (call-with-raster-buffer-pixmap b
-                  (lambda (v) (check-exn exn:fail? (lambda () (gpu-surface-read-pixmap! s v)))) #:writable? #t)
+                  (lambda (v) (check-exn exn:fail? (lambda () (gpu-surface-read-pixmap! s v))))
+                  #:writable? #t)
                 (check-equal? (raster-buffer->storage-bytes b) before))))
           (test! "tagged target retains its space and converts typed samples"
             (lambda ()
               (with-skia ([space (make-srgb-color-space)]
-                          [s (make-gpu-surface context 8 6 #:color-type 'rgba-f16 #:color-space space)])
+                           [s (make-gpu-surface context 8 6 #:color-type 'rgba-f16 #:color-space
+                                space)])
                 (skia-close! space)
                 (canvas-clear-color4f! (surface-canvas s) (make-color4f 0.5 0.25 0.75 1))
                 (check-eq? (image-info-color-space (gpu-surface->image-info s)) 'srgb)
                 (with-skia ([b (gpu-surface->raster-buffer s
-                                #:info (make-image-info 8 6 #:color-type 'rgba-f16 #:color-space 'linear-srgb))])
+                                #:info
+                                 (make-image-info 8 6 #:color-type 'rgba-f16 #:color-space
+                                   'linear-srgb))])
                   (call-with-raster-buffer-pixmap b
                     (lambda (v)
                       (define sample (pixmap-sample v 0 0))
@@ -191,7 +312,8 @@
           (test! "legacy buffer transfer still rejects incompatible layouts"
             (lambda ()
               (with-skia ([s (make-gpu-surface context 8 6)]
-                          [b (make-raster-buffer-from-info (make-image-info 8 6 #:color-type 'rgba-f16))])
+                           [b (make-raster-buffer-from-info
+                                (make-image-info 8 6 #:color-type 'rgba-f16))])
                 (check-exn exn:fail? (lambda () (gpu-surface-read-raster-buffer! s b))))))
           (test! "context affinity is enforced before drawing"
             (lambda ()
@@ -206,8 +328,10 @@
               (define (use color w h props)
                 (define key (gpu-staging-key 'test w h color #f 0 props))
                 (call-with-frame-target cache w h
-                  (lambda () (make-gpu-surface context w h #:color-type color #:surface-properties props))
-                  skia-close! (lambda (s) (check-eq? (image-info-color-type (gpu-surface->image-info s)) color))
+                  (lambda () (make-gpu-surface context w h #:color-type color #:surface-properties
+                               props))
+                  skia-close!
+                  (lambda (s) (check-eq? (image-info-color-type (gpu-surface->image-info s)) color))
                   #:configuration key))
               (dynamic-wind void
                 (lambda ()
@@ -251,7 +375,11 @@
         (with-skia ([image survivor] [b (image->raster-buffer image)])
           (check-eq? (image-color-type image) 'rgba-f16)
           (check-true (bytes? (raster-buffer->storage-bytes b)))))))
-  (define closed? (and (eq? (gpu-context-state context) 'closed) other (eq? (gpu-context-state other) 'closed)))
+
+  ; closed? : boolean?
+  ;;   Records whether context teardown completed with no live or failed resource releases.
+  (define closed?
+    (and (eq? (gpu-context-state context) 'closed) other (eq? (gpu-context-state other) 'closed)))
   (call-with-output-file report-path
     (lambda (o)
       (write-json (hasheq 'schema 1 'stage "0.73" 'run_token token

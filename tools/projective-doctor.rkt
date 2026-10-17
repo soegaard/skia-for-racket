@@ -1,9 +1,32 @@
 #lang racket/base
+
+;;;
+;;; Projective Doctor
+;;;
+
+;; Exercises projective transforms and output-audit classification and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt")
 (provide projective-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; has? : output-audit-report? symbol? symbol? -> boolean?
+;;   Finds an audit event matching both the requested feature and disposition.
 (define (has? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature) (eq? (output-audit-event-status e) status))))
+
+; projective-doctor! : -> void?
+;;   Checks general-matrix ABI ordering, homogeneous projection, scoped restoration, and explicit
+;;   PDF/SVG raster fallback.
 (define (projective-doctor!)
   (unless (= (ctype-sizeof _sk-m44) 64) (error 'doctor "general canvas matrix ABI size"))
   (with-skia ([s (make-surface 64 64)] [p (make-paint #:color 'red #:antialias? #f)])

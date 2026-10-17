@@ -1,6 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Filter Graph Doctor
+;;;
+
+;; Exercises image-filter graph geometry, retained inputs, and output policy and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt")
 (provide filter-graph-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; filter-graph-doctor! : -> void?
+;;   Checks native filter ABI layouts, retained children, merge placement, crop, and convolution
+;;   results.
 (define (filter-graph-doctor!)
   (unless (and (= (ctype-sizeof _sk-isize) 8) (= (ctype-sizeof _sk-ipoint) 8)
                (= (ctype-sizeof _sk-point3) 12))

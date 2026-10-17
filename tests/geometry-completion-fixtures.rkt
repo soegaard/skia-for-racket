@@ -1,14 +1,55 @@
 #lang racket/base
+
+;;;
+;;; Geometry Completion Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for arc construction, path operations, rounded
+;; rectangles, and regions.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/list "../main.rkt")
 (provide geometry-width geometry-height geometry-scene-names geometry-scene-probes
          draw-geometry-scene capture-geometry-scene current-geometry-renderer check-geometry-pixels)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; geometry-width : exact-positive-integer?
+;;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define geometry-width 64)
+
+; geometry-height : exact-positive-integer?
+;;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define geometry-height 48)
+
+; geometry-scene-names : (listof symbol?)
+;;   Lists the seven geometric construction scenarios used by the capture drivers.
 (define geometry-scene-names '(arc tangent boolean outline region rrect polygon))
+
+; blue : (listof byte?)
+;;   Stores the opaque blue probe color in RGBA channel order.
 (define blue '(0 64 220 255))
+
+; red : (listof byte?)
+;;   Stores the opaque red probe color in RGBA channel order.
 (define red '(220 32 16 255))
+
+; green : (listof byte?)
+;;   Stores the opaque green probe color in RGBA channel order.
 (define green '(0 160 80 255))
+
+; white : (listof byte?)
+;;   Stores the opaque white background in RGBA channel order.
 (define white '(255 255 255 255))
+
+; geometry-scene-probes : symbol? -> list?
+;;   Returns x, y, expected-RGBA triples for the chosen geometric scene.
 (define (geometry-scene-probes name)
   (case name
     [(arc) (list (list 32 32 blue) (list 12 12 white) (list 50 40 white))]
@@ -19,9 +60,15 @@
     [(rrect) (list (list 32 24 green) (list 13 9 white) (list 58 24 white))]
     [(polygon) (list (list 32 16 red) (list 8 32 white) (list 56 40 white))]
     [else (raise-argument-error 'geometry-scene-probes "known geometry scene" name)]))
+
+; pixel : bytes? exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
+;;   Reads a row-major RGBA pixel using the shared geometry fixture width.
 (define (pixel b x y)
   (define offset (* 4 (+ x (* geometry-width y))))
   (bytes->list (subbytes b offset (+ offset 4))))
+
+; check-geometry-pixels : symbol? bytes? -> void?
+;;   Checks capture size and the scene's interior/exterior color landmarks.
 (define (check-geometry-pixels name data)
   (unless (= (bytes-length data) (* geometry-width geometry-height 4))
     (error 'geometry-pixels "wrong byte count"))
@@ -30,14 +77,23 @@
     (unless (for/and ([a (in-list actual)] [b (in-list (caddr probe))]) (<= (abs (- a b)) 2))
       (error 'geometry-pixels "~a @ ~a,~a expected ~a got ~a"
              name (car probe) (cadr probe) (caddr probe) actual))))
+
+; current-geometry-renderer : parameter?
+;;   Selects a CPU or GPU capture callback while keeping drawing fixtures unchanged.
 (define current-geometry-renderer
   (make-parameter
    (lambda (draw)
      (with-skia ([surface (make-surface geometry-width geometry-height #:background 'white)])
        (draw (surface-canvas surface))
        (surface->rgba-bytes surface #:premultiplied? #t)))))
+
+; capture-geometry-scene : symbol? -> bytes?
+;;   Captures the selected geometry scene through the current renderer.
 (define (capture-geometry-scene name)
   ((current-geometry-renderer) (lambda (c) (draw-geometry-scene name c))))
+
+; draw-geometry-scene : symbol? canvas? -> any
+;;   Draws named path, region, rounded-rectangle, or polygon constructions with stable probe colors.
 (define (draw-geometry-scene name c)
   (with-skia ([blue-p (make-paint #:color (rgb 0 64 220) #:antialias? #f)]
               [red-p (make-paint #:color (rgb 220 32 16) #:antialias? #f)]

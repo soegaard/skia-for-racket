@@ -1,5 +1,18 @@
 #lang racket/base
 
+;;;
+;;; Reference GPU Interop Pure Test
+;;;
+
+;; Checks token consumption and Direct3D, Metal, OpenGL, and EGL handoff policies without native
+;; contexts.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Native-free policy and safe-token tests. They do not establish GPU availability
 ;; or validate any native pointer supplied to an unsafe interop constructor.
 (require rackunit racket/list
@@ -11,12 +24,25 @@
          "../private/gpu-diagnostic-util.rkt"
          "../private/gpu-gl-interop-util.rkt")
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; make-fake-token : [#:check procedure? #:operate procedure? #:retire procedure?] ->
+; external-texture?
+;;   Creates a synthetic Metal texture token with injectable lifecycle callbacks for native-free
+;;   interop checks.
 (define (make-fake-token #:check [check void] #:operate [operate (lambda (mode proc) mode)]
                          #:retire [retire void])
   (make-external-texture 'metal 'context 7
     (hasheq 'width 3 'height 2)
     check operate retire (lambda () (hasheq 'observed #t))))
 
+
+; valid-metal-description : hash?
+;;   Describes a retained, two-dimensional single-sample Metal texture accepted by the pure
+;;   validator.
 (define valid-metal-description
   (hasheq 'width 4 'height 3 'depth 1 'levels 1 'array_length 1 'samples 1
           'format 70 'texture_type 2 'usage 1 'storage_mode 2 'hazard_tracking_mode 2

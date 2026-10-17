@@ -1,18 +1,41 @@
 #lang racket
 
+;;;
+;;; Color Study
+;;;
+
+;; Builds paired images that distinguish color-space tagging from sample conversion.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia)
 (provide ramp-bytes make-gray-sample make-color-study draw-color-study
          save-color-study)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; ramp-bytes : -> bytes?
+;;   Builds 256 opaque grayscale pixels in tightly packed RGBA order.
 (define (ramp-bytes)
   (define pixels (make-bytes (* 256 4)))
   (for ([value (in-range 256)])
     (bytes-copy! pixels (* value 4) (bytes value value value 255)))
   pixels)
 
+; make-gray-sample : (or/c color-space? #f) [byte?] -> image?
+;;   Constructs gray sample for the example's drawing pipeline.
 (define (make-gray-sample color-space [sample 128])
   (rgba-bytes->image 1 1 (bytes sample sample sample 255) #:color-space color-space))
 
+; make-color-study : [byte?] -> list?
+;;   Constructs color study for the example's drawing pipeline.
 (define (make-color-study [sample 128])
   (define srgb (make-srgb-color-space))
   (define linear (make-linear-srgb-color-space))
@@ -26,6 +49,8 @@
   ;; Every image displayed by the comparison is now expressed in sRGB.
   (list encoded-gray converted-gray encoded-ramp converted-ramp))
 
+; draw-color-study : canvas? list? -> void?
+;;   Draws the color study component in the current canvas coordinate system.
 (define (draw-color-study canvas images)
   (match-define (list encoded-gray converted-gray encoded-ramp converted-ramp) images)
   (define font (make-font #:size 16))
@@ -51,6 +76,8 @@
   (draw-image-rect canvas converted-ramp 30 401 680 38 #:sampling 'nearest)
   (draw-simple-text canvas "Equal steps in linear light, then converted to sRGB" 30 462 small ink))
 
+; save-color-study : -> void?
+;;   Renders the color study example to the selected output destination.
 (define (save-color-study)
   (define srgb (make-srgb-color-space))
   (define profile (color-space->icc-bytes srgb))
@@ -66,5 +93,9 @@
   (call-with-output-file "study-srgb.icc"
     (lambda (out) (write-bytes profile out)) #:mode 'binary #:exists 'replace)
   (void))
+
+;;;
+;;; Command-Line Entry Point
+;;;
 
 (module+ main (save-color-study))

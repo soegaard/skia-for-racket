@@ -1,10 +1,23 @@
 #lang racket/base
+
+;;;
+;;; GPU Smoke Diagnostics
+;;;
+
+;; Renders and checks a small scene through a selected GPU context.
+;; Supports backend diagnostics without making smoke probes part of normal drawing.
+
 (require ffi/unsafe ffi/unsafe/atomic
          "gpu-native.rkt" "gpu-domain.rkt" "gpu-types.rkt"
          "gpu-diagnostics.rkt" "types.rkt")
 (provide run-gpu-smoke)
+; pointer=? : (or/c #f cpointer?) (or/c #f cpointer?) -> boolean?
+;;   Checks native context identity by address rather than pointer-wrapper identity.
 (define (pointer=? a b)
   (and a b (= (cast a _pointer _uintptr) (cast b _pointer _uintptr))))
+; run-gpu-smoke : any/c -> any
+;;   Verifies backend/context ownership and exact scene pixels using explicit synchronous GPU
+;;   readback.
 (define (run-gpu-smoke domain)
   (domain-call
    domain
@@ -52,7 +65,8 @@
          (verify-smoke-pixels bytes)
          (hasheq 'width 8 'height 8 'row_bytes 32 'rgba (bytes->immutable-bytes bytes)
                  'requested_sample_count 0 'actual_sample_count #f
-                 'sample_count_note "The pinned C API does not expose this Skia-owned target's actual sample count."
+                 'sample_count_note
+                   "The pinned C API does not expose this Skia-owned target's actual sample count."
                  'origin "top-left" 'transfer_format "RGBA8888-unpremultiplied"
                  'render_path "sk_surface_new_render_target"
                  'native_backend (gpu-backend-native-id (domain-backend domain))

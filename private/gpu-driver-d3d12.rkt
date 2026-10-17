@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Direct3D GPU Driver
+;;;
+
+;; Builds a Ganesh driver from Direct3D platform and context operations.
+;; Adapts Windows GPU services to the shared domain lifecycle.
+
 (require ffi/unsafe "gpu-d3d12-handles.rkt"
          "gpu-d3d12-system.rkt" "gpu-d3d12-util.rkt" "gpu-d3d12-types.rkt"
          "gpu-native.rkt" "gpu-types.rkt"
@@ -6,11 +14,16 @@
          (only-in "types.rkt" rgba-8888)
          (only-in "native.rkt" native-package-version skia-native-version skia-native-library-path))
 (provide make-owned-d3d12-components)
+; make-owned-d3d12-components : any/c any/c [#:receive-handles procedure?] [#:options any/c] ->
+;   any
+;;   Constructs owned Direct3D backend components and optionally reports retained handles to private
+;;   consumers.
 (define (make-owned-d3d12-components selection index #:receive-handles [receive void]
                                       #:options [options #f])
   (check-optional-context-options 'make-owned-d3d12-components options)
   (unless (and (procedure? receive) (procedure-arity-includes? receive 3))
-    (raise-argument-error 'make-owned-d3d12-components "three-argument private handle receiver" receive))
+    (raise-argument-error 'make-owned-d3d12-components "three-argument private handle receiver"
+      receive))
   (d3d12-selection! selection index)
   (define platform (load-d3d12-platform))
   (gpu-native-check! 'direct3d)
@@ -26,7 +39,8 @@
             (gr_direct_context_make_direct3d descriptor)))
       (when context
         (with-handlers ([(lambda (_) #t)
-                         (lambda (e) (forget-d3d12-handles! context) (gr_recording_context_unref context) (raise e))])
+                         (lambda (e) (forget-d3d12-handles! context) (gr_recording_context_unref
+                           context) (raise e))])
           (register-d3d12-handles! context adapter device queue)
           (receive adapter device queue)))
       context)
@@ -45,7 +59,8 @@
                  'native_backend gr-direct3d
                  'max_texture_size (gr_recording_context_max_texture_size p)
                  'max_render_target_size (gr_recording_context_max_render_target_size p)
-                 'max_rgba_sample_count (gr_recording_context_get_max_surface_sample_count_for_color_type p rgba-8888)
+                 'max_rgba_sample_count
+                   (gr_recording_context_get_max_surface_sample_count_for_color_type p rgba-8888)
                  'cache_limit_bytes (gr_direct_context_get_resource_cache_limit p))))
    selection index))
 (require "gpu-context-options-native.rkt"

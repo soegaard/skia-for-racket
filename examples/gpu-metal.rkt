@@ -1,7 +1,25 @@
 #lang racket/base
+
+;;;
+;;; GPU Metal Example
+;;;
+
+;; Renders a selected shared scene with Metal and saves a CPU-readable result.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline racket/file racket/path
          "../main.rkt" "../gpu.rkt" "gpu-scenes.rkt")
 (provide render-metal-example)
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-metal-example : path-string? [any/c] -> path?
+;;   Renders a named shared scene through Metal and saves the raster readback.
 (define (render-metal-example path [scene 'gradients])
   (unless (memq scene gpu-scene-names)
     (raise-argument-error 'render-metal-example "name from gpu-scene-names" scene))
@@ -19,7 +37,13 @@
       (lambda () (gpu-context-close! context))))
   (with-skia ([detached image]) (save-image detached target 'png #:exists 'replace))
   target)
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; scene : symbol?
+  ;;   Draws the described-font scene through the public drawing-context interface.
   (define scene 'gradients)
   (command-line #:once-each
     [("--scene") name "Shared scene name" (set! scene (string->symbol name))]

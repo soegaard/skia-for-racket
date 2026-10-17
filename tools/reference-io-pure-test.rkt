@@ -1,5 +1,18 @@
 #lang racket/base
 
+;;;
+;;; Reference I/O Pure Test
+;;;
+
+;; Checks storage sizing, bounded buffering, codec negotiation, scanline placement, and incremental
+;; states.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Public value checks and explicitly private state-model tests. No native call.
 (require rackunit racket/list skia
          (prefix-in buffer: "../private/stream-buffer.rkt")

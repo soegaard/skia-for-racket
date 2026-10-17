@@ -1,27 +1,73 @@
 #lang racket/base
+
+;;;
+;;; Racket Test Suite Entry Point
+;;;
+
+;; Runs the package's selected Racket test modules.
+;; This repository-level runner gathers regression suites while optional platform-specific
+;; acceptance remains controlled by the dedicated test tools.
+
+;;;
+;;; Test Suite Imports
+;;;
+
 (require "tests/public-api-pure-test.rkt")
 (require "tests/convertible-pure-test.rkt")
 (require "tests/pict-pure-test.rkt")
 (require "tests/racket-draw-pure-test.rkt")
 (require "tests/gpu-render-pure-test.rkt")
 (require racket/runtime-path "tests/small-gap-pure-test.rkt")
+; small-gap-native-tests-file : path?
+;;   Locates the small gap native test suite for explicit dynamic loading.
 (define-runtime-path small-gap-native-tests-file "tests/small-gap-native-test.rkt")
 (require "tests/release-scope-pure-test.rkt")
 (require racket/runtime-path "tests/gpu-diagnostics-pure-test.rkt")
+; gpu-diagnostics-native-tests-file : path?
+;;   Locates the gpu diagnostics native test suite for explicit dynamic loading.
 (define-runtime-path gpu-diagnostics-native-tests-file "tests/gpu-diagnostics-native-test.rkt")
 (require racket/runtime-path "tests/gpu-context-control-pure-test.rkt")
-(define-runtime-path gpu-context-control-native-tests-file "tests/gpu-context-control-native-test.rkt")
+; gpu-context-control-native-tests-file : path?
+;;   Locates the gpu context control native test suite for explicit dynamic loading.
+(define-runtime-path gpu-context-control-native-tests-file
+  "tests/gpu-context-control-native-test.rkt")
 (require "tests/global-cache-pure-test.rkt")
 (require "tests/codec-incremental-pure-test.rkt")
 (require "tests/codec-scanline-pure-test.rkt")
 (require "tests/codec-query-pure-test.rkt")
-(require racket/cmdline racket/runtime-path rackunit/text-ui
-         "main.rkt" "tests/pure-test.rkt" "tests/lifetime-test.rkt"
-         "tests/codec-pure-test.rkt" "tests/pdf-pure-test.rkt"
-         "tests/svg-pure-test.rkt" "tests/output-pure-test.rkt"
-         "tests/path-matrix-pure-test.rkt" "tests/filter-graph-pure-test.rkt"
-         "tests/color-output-pure-test.rkt" "tests/annotation-pure-test.rkt" "tests/runtime-pure-test.rkt" "tests/output-audit-pure-test.rkt" "tests/canvas-pure-test.rkt" "tests/geometry-pure-test.rkt" "tests/projective-pure-test.rkt" "tests/picture-pure-test.rkt" "tests/output-group-pure-test.rkt" "tests/portable-pure-test.rkt" "tests/color-filter-pure-test.rkt" "tests/raster-buffer-pure-test.rkt" "tests/gpu-pure-test.rkt" "tests/gpu-surface-pure-test.rkt" "tests/gpu-image-pure-test.rkt" "tests/gpu-metal-pure-test.rkt" "tests/gpu-presenter-pure-test.rkt" "tests/gpu-egl-pure-test.rkt" "tests/gpu-output-pure-test.rkt"
-         "tests/gpu-cache-pure-test.rkt" "tests/gpu-performance-pure-test.rkt")
+(require racket/cmdline
+         racket/runtime-path
+         rackunit/text-ui
+         "main.rkt"
+         "tests/pure-test.rkt"
+         "tests/lifetime-test.rkt"
+         "tests/codec-pure-test.rkt"
+         "tests/pdf-pure-test.rkt"
+         "tests/svg-pure-test.rkt"
+         "tests/output-pure-test.rkt"
+         "tests/path-matrix-pure-test.rkt"
+         "tests/filter-graph-pure-test.rkt"
+         "tests/color-output-pure-test.rkt"
+         "tests/annotation-pure-test.rkt"
+         "tests/runtime-pure-test.rkt"
+         "tests/output-audit-pure-test.rkt"
+         "tests/canvas-pure-test.rkt"
+         "tests/geometry-pure-test.rkt"
+         "tests/projective-pure-test.rkt"
+         "tests/picture-pure-test.rkt"
+         "tests/output-group-pure-test.rkt"
+         "tests/portable-pure-test.rkt"
+         "tests/color-filter-pure-test.rkt"
+         "tests/raster-buffer-pure-test.rkt"
+         "tests/gpu-pure-test.rkt"
+         "tests/gpu-surface-pure-test.rkt"
+         "tests/gpu-image-pure-test.rkt"
+         "tests/gpu-metal-pure-test.rkt"
+         "tests/gpu-presenter-pure-test.rkt"
+         "tests/gpu-egl-pure-test.rkt"
+         "tests/gpu-output-pure-test.rkt"
+         "tests/gpu-cache-pure-test.rkt"
+         "tests/gpu-performance-pure-test.rkt")
 
 (require "tests/live-stream-pure-test.rkt"
          "tests/stream-pure-test.rkt"
@@ -41,72 +87,176 @@
          "tests/render-canvas-pure-test.rkt"
          "tests/canvas-dc-pure-test.rkt"
          "tests/gpu-dc-pure-test.rkt"
-         "tests/native-abi-pure-test.rkt" "tests/gpu-d3d12-pure-test.rkt" "tests/gpu-dxgi-pure-test.rkt"
-         "tests/gpu-backends-pure-test.rkt" "tests/gpu-interop-pure-test.rkt"
-         "tests/gpu-metal-interop-pure-test.rkt" "tests/dc-pure-test.rkt" "tests/dc-compat-pure-test.rkt" "tests/dc-replay-pure-test.rkt" "tests/dc-style-pure-test.rkt")
+         "tests/native-abi-pure-test.rkt"
+         "tests/gpu-d3d12-pure-test.rkt"
+         "tests/gpu-dxgi-pure-test.rkt"
+         "tests/gpu-backends-pure-test.rkt"
+         "tests/gpu-interop-pure-test.rkt"
+         "tests/gpu-metal-interop-pure-test.rkt"
+         "tests/dc-pure-test.rkt"
+         "tests/dc-compat-pure-test.rkt"
+         "tests/dc-replay-pure-test.rkt"
+         "tests/dc-style-pure-test.rkt")
+; live-stream-native-tests-file : path?
+;;   Locates the live stream native test suite for explicit dynamic loading.
 (define-runtime-path live-stream-native-tests-file "tests/live-stream-native-test.rkt")
+; stream-native-tests-file : path?
+;;   Locates the stream native test suite for explicit dynamic loading.
 (define-runtime-path stream-native-tests-file "tests/stream-native-test.rkt")
+; advanced-canvas-native-tests-file : path?
+;;   Locates the advanced canvas native test suite for explicit dynamic loading.
 (define-runtime-path advanced-canvas-native-tests-file "tests/advanced-canvas-native-test.rkt")
+; gpu-format-native-tests-file : path?
+;;   Locates the gpu format native test suite for explicit dynamic loading.
 (define-runtime-path gpu-format-native-tests-file "tests/gpu-format-native-test.rkt")
+; image-operation-native-tests-file : path?
+;;   Locates the image operation native test suite for explicit dynamic loading.
 (define-runtime-path image-operation-native-tests-file "tests/image-operation-native-test.rkt")
+; float-pixel-native-tests-file : path?
+;;   Locates the float pixel native test suite for explicit dynamic loading.
 (define-runtime-path float-pixel-native-tests-file "tests/float-pixel-native-test.rkt")
+; integer-pixel-native-tests-file : path?
+;;   Locates the integer pixel native test suite for explicit dynamic loading.
 (define-runtime-path integer-pixel-native-tests-file "tests/integer-pixel-native-test.rkt")
+; text-blob-native-tests-file : path?
+;;   Locates the text blob native test suite for explicit dynamic loading.
 (define-runtime-path text-blob-native-tests-file "tests/text-blob-native-test.rkt")
+; font-query-native-tests-file : path?
+;;   Locates the font query native test suite for explicit dynamic loading.
 (define-runtime-path font-query-native-tests-file "tests/font-query-native-test.rkt")
+; typeface-native-tests-file : path?
+;;   Locates the typeface native test suite for explicit dynamic loading.
 (define-runtime-path typeface-native-tests-file "tests/typeface-native-test.rkt")
-(define-runtime-path geometry-completion-native-tests-file "tests/geometry-completion-native-test.rkt")
+; geometry-completion-native-tests-file : path?
+;;   Locates the geometry completion native test suite for explicit dynamic loading.
+(define-runtime-path geometry-completion-native-tests-file
+  "tests/geometry-completion-native-test.rkt")
+; effects-native-tests-file : path?
+;;   Locates the effects native test suite for explicit dynamic loading.
 (define-runtime-path effects-native-tests-file "tests/effects-native-test.rkt")
+; dc-closure-native-tests-file : path?
+;;   Locates the dc closure native test suite for explicit dynamic loading.
 (define-runtime-path dc-closure-native-tests-file "tests/dc-closure-native-test.rkt")
+; dc-output-native-tests-file : path?
+;;   Locates the dc output native test suite for explicit dynamic loading.
 (define-runtime-path dc-output-native-tests-file "tests/dc-output-native-test.rkt")
+; dc-native-tests-file : path?
+;;   Locates the dc native test suite for explicit dynamic loading.
 (define-runtime-path dc-native-tests-file "tests/dc-native-test.rkt")
+; dc-compat-native-tests-file : path?
+;;   Locates the dc compat native test suite for explicit dynamic loading.
 (define-runtime-path dc-compat-native-tests-file "tests/dc-compat-native-test.rkt")
+; dc-replay-native-tests-file : path?
+;;   Locates the dc replay native test suite for explicit dynamic loading.
 (define-runtime-path dc-replay-native-tests-file "tests/dc-replay-native-test.rkt")
+; dc-style-native-tests-file : path?
+;;   Locates the dc style native test suite for explicit dynamic loading.
 (define-runtime-path dc-style-native-tests-file "tests/dc-style-native-test.rkt")
+; canvas-dc-native-tests-file : path?
+;;   Locates the canvas dc native test suite for explicit dynamic loading.
 (define-runtime-path canvas-dc-native-tests-file "tests/canvas-dc-native-test.rkt")
+; native-abi-native-tests-file : path?
+;;   Locates the native abi native test suite for explicit dynamic loading.
 (define-runtime-path native-abi-native-tests-file "tests/native-abi-native-test.rkt")
+; native-tests-file : path?
+;;   Locates the native test suite for explicit dynamic loading.
 (define-runtime-path native-tests-file "tests/native-test.rkt")
+; codec-native-tests-file : path?
+;;   Locates the codec native test suite for explicit dynamic loading.
 (define-runtime-path codec-native-tests-file "tests/codec-native-test.rkt")
+; pdf-native-tests-file : path?
+;;   Locates the pdf native test suite for explicit dynamic loading.
 (define-runtime-path pdf-native-tests-file "tests/pdf-native-test.rkt")
+; svg-native-tests-file : path?
+;;   Locates the svg native test suite for explicit dynamic loading.
 (define-runtime-path svg-native-tests-file "tests/svg-native-test.rkt")
+; output-native-tests-file : path?
+;;   Locates the output native test suite for explicit dynamic loading.
 (define-runtime-path output-native-tests-file "tests/output-native-test.rkt")
+; convertible-native-tests-file : path?
+;;   Locates the convertible native test suite for explicit dynamic loading.
 (define-runtime-path convertible-native-tests-file "tests/convertible-native-test.rkt")
+; pict-native-tests-file : path?
+;;   Locates the pict native test suite for explicit dynamic loading.
 (define-runtime-path pict-native-tests-file "tests/pict-native-test.rkt")
+; racket-draw-native-tests-file : path?
+;;   Locates the racket draw native test suite for explicit dynamic loading.
 (define-runtime-path racket-draw-native-tests-file "tests/racket-draw-native-test.rkt")
+; racket-draw-consumer-tests-file : path?
+;;   Locates the racket draw consumer test suite for explicit dynamic loading.
 (define-runtime-path racket-draw-consumer-tests-file "tests/racket-draw-consumer-test.rkt")
 
+; path-matrix-native-tests-file : path?
+;;   Locates the path matrix native test suite for explicit dynamic loading.
 (define-runtime-path path-matrix-native-tests-file "tests/path-matrix-native-test.rkt")
 
+; filter-graph-native-tests-file : path?
+;;   Locates the filter graph native test suite for explicit dynamic loading.
 (define-runtime-path filter-graph-native-tests-file "tests/filter-graph-native-test.rkt")
 
+; color-output-native-tests-file : path?
+;;   Locates the color output native test suite for explicit dynamic loading.
 (define-runtime-path color-output-native-tests-file "tests/color-output-native-test.rkt")
 
+; annotation-native-tests-file : path?
+;;   Locates the annotation native test suite for explicit dynamic loading.
 (define-runtime-path annotation-native-tests-file "tests/annotation-native-test.rkt")
 
+; runtime-native-tests-file : path?
+;;   Locates the runtime native test suite for explicit dynamic loading.
 (define-runtime-path runtime-native-tests-file "tests/runtime-native-test.rkt")
+; output-audit-native-tests-file : path?
+;;   Locates the output audit native test suite for explicit dynamic loading.
 (define-runtime-path output-audit-native-tests-file "tests/output-audit-native-test.rkt")
 
+; canvas-native-tests-file : path?
+;;   Locates the canvas native test suite for explicit dynamic loading.
 (define-runtime-path canvas-native-tests-file "tests/canvas-native-test.rkt")
 
+; geometry-native-tests-file : path?
+;;   Locates the geometry native test suite for explicit dynamic loading.
 (define-runtime-path geometry-native-tests-file "tests/geometry-native-test.rkt")
 
+; projective-native-tests-file : path?
+;;   Locates the projective native test suite for explicit dynamic loading.
 (define-runtime-path projective-native-tests-file "tests/projective-native-test.rkt")
 
+; picture-native-tests-file : path?
+;;   Locates the picture native test suite for explicit dynamic loading.
 (define-runtime-path picture-native-tests-file "tests/picture-native-test.rkt")
+; output-group-native-tests-file : path?
+;;   Locates the output group native test suite for explicit dynamic loading.
 (define-runtime-path output-group-native-tests-file "tests/output-group-native-test.rkt")
+; portable-native-tests-file : path?
+;;   Locates the portable native test suite for explicit dynamic loading.
 (define-runtime-path portable-native-tests-file "tests/portable-native-test.rkt")
+; color-filter-native-tests-file : path?
+;;   Locates the color filter native test suite for explicit dynamic loading.
 (define-runtime-path color-filter-native-tests-file "tests/color-filter-native-test.rkt")
 
+; raster-buffer-native-tests-file : path?
+;;   Locates the raster buffer native test suite for explicit dynamic loading.
 (define-runtime-path raster-buffer-native-tests-file "tests/raster-buffer-native-test.rkt")
 
+; codec-query-native-tests-file : path?
+;;   Locates the codec query native test suite for explicit dynamic loading.
 (define-runtime-path codec-query-native-tests-file "tests/codec-query-native-test.rkt")
 
+; codec-scanline-native-tests-file : path?
+;;   Locates the codec scanline native test suite for explicit dynamic loading.
 (define-runtime-path codec-scanline-native-tests-file "tests/codec-scanline-native-test.rkt")
 
+; codec-incremental-native-tests-file : path?
+;;   Locates the codec incremental native test suite for explicit dynamic loading.
 (define-runtime-path codec-incremental-native-tests-file "tests/codec-incremental-native-test.rkt")
 
+; global-cache-native-tests-file : path?
+;;   Locates the global cache native test suite for explicit dynamic loading.
 (define-runtime-path global-cache-native-tests-file "tests/global-cache-native-test.rkt")
 
 (module+ main
+  ; pure-only? : boolean?
+  ;;   Records whether command-line selection excludes suites requiring the native library.
   (define pure-only? #f)
   (command-line
    #:program "racket run-tests.rkt"
@@ -114,35 +264,118 @@
    [("--pure") "Run only tests that do not load libSkiaSharp"
                  (set! pure-only? #t)]
    #:args () (void))
-  (define failures (+ (run-tests public-api-pure-tests) (run-tests convertible-pure-tests) (run-tests pict-pure-tests) (run-tests racket-draw-pure-tests) (run-tests small-gap-pure-tests) (run-tests release-scope-pure-tests) (run-tests global-cache-pure-tests) (run-tests codec-incremental-pure-tests) (run-tests codec-scanline-pure-tests) (run-tests codec-query-pure-tests) (run-tests live-stream-pure-tests) (run-tests stream-pure-tests) (run-tests advanced-canvas-pure-tests) (run-tests gpu-format-pure-tests) (run-tests image-operation-pure-tests) (run-tests float-pixel-pure-tests) (run-tests integer-pixel-pure-tests) (run-tests text-blob-pure-tests) (run-tests font-query-pure-tests) (run-tests typeface-pure-tests) (run-tests geometry-completion-pure-tests) (run-tests effects-pure-tests) (run-tests dc-closure-pure-tests) (run-tests dc-output-pure-tests) (+ (+ (run-tests pure-tests) (run-tests gpu-diagnostics-pure-tests)) (run-tests gpu-context-control-pure-tests)) (run-tests lifetime-tests)
-                      (run-tests gpu-render-pure-tests)
-                      (run-tests gpu-frame-target-pure-tests)
-                      (run-tests render-canvas-pure-tests)
-                      (run-tests canvas-dc-pure-tests)
-                      (run-tests gpu-dc-pure-tests)
-                      (run-tests dc-style-pure-tests)
-                      (run-tests native-abi-pure-tests) (run-tests gpu-d3d12-pure-tests) (run-tests gpu-dxgi-pure-tests) (run-tests gpu-backends-pure-tests) (run-tests gpu-interop-pure-tests) (run-tests gpu-metal-interop-pure-tests) (run-tests dc-pure-tests) (run-tests dc-compat-pure-tests) (run-tests dc-replay-pure-tests)
-                      (run-tests codec-pure-tests) (run-tests pdf-pure-tests)
-                      (run-tests svg-pure-tests) (run-tests output-pure-tests)
-                      (run-tests path-matrix-pure-tests) (run-tests filter-graph-pure-tests)
-                      (run-tests color-output-pure-tests) (run-tests annotation-pure-tests) (run-tests runtime-pure-tests) (run-tests output-audit-pure-tests) (run-tests canvas-pure-tests) (run-tests geometry-pure-tests) (run-tests projective-pure-tests) (run-tests picture-pure-tests) (run-tests output-group-pure-tests) (run-tests portable-pure-tests) (run-tests color-filter-pure-tests) (run-tests raster-buffer-pure-tests) (run-tests gpu-pure-tests) (run-tests gpu-surface-pure-tests) (run-tests gpu-image-pure-tests) (run-tests gpu-metal-pure-tests) (run-tests gpu-presenter-pure-tests) (run-tests gpu-egl-pure-tests) (run-tests gpu-output-pure-tests) (run-tests gpu-cache-pure-tests) (run-tests gpu-performance-pure-tests)))
+  ; failures : exact-nonnegative-integer?
+  ;;   Accumulates failure counts from the pure suites before any optional native test run.
+  (define failures
+    (+
+     (run-tests public-api-pure-tests)
+     (run-tests convertible-pure-tests)
+     (run-tests pict-pure-tests)
+     (run-tests racket-draw-pure-tests)
+     (run-tests small-gap-pure-tests)
+     (run-tests release-scope-pure-tests)
+     (run-tests global-cache-pure-tests)
+     (run-tests codec-incremental-pure-tests)
+     (run-tests codec-scanline-pure-tests)
+     (run-tests codec-query-pure-tests)
+     (run-tests live-stream-pure-tests)
+     (run-tests stream-pure-tests)
+     (run-tests advanced-canvas-pure-tests)
+     (run-tests gpu-format-pure-tests)
+     (run-tests image-operation-pure-tests)
+     (run-tests float-pixel-pure-tests)
+     (run-tests integer-pixel-pure-tests)
+     (run-tests text-blob-pure-tests)
+     (run-tests font-query-pure-tests)
+     (run-tests typeface-pure-tests)
+     (run-tests geometry-completion-pure-tests)
+     (run-tests effects-pure-tests)
+     (run-tests dc-closure-pure-tests)
+     (run-tests dc-output-pure-tests)
+     (+
+      (+ (run-tests pure-tests) (run-tests gpu-diagnostics-pure-tests))
+      (run-tests gpu-context-control-pure-tests))
+     (run-tests lifetime-tests)
+     (run-tests gpu-render-pure-tests)
+     (run-tests gpu-frame-target-pure-tests)
+     (run-tests render-canvas-pure-tests)
+     (run-tests canvas-dc-pure-tests)
+     (run-tests gpu-dc-pure-tests)
+     (run-tests dc-style-pure-tests)
+     (run-tests native-abi-pure-tests)
+     (run-tests gpu-d3d12-pure-tests)
+     (run-tests gpu-dxgi-pure-tests)
+     (run-tests gpu-backends-pure-tests)
+     (run-tests gpu-interop-pure-tests)
+     (run-tests gpu-metal-interop-pure-tests)
+     (run-tests dc-pure-tests)
+     (run-tests dc-compat-pure-tests)
+     (run-tests dc-replay-pure-tests)
+     (run-tests codec-pure-tests)
+     (run-tests pdf-pure-tests)
+     (run-tests svg-pure-tests)
+     (run-tests output-pure-tests)
+     (run-tests path-matrix-pure-tests)
+     (run-tests filter-graph-pure-tests)
+     (run-tests color-output-pure-tests)
+     (run-tests annotation-pure-tests)
+     (run-tests runtime-pure-tests)
+     (run-tests output-audit-pure-tests)
+     (run-tests canvas-pure-tests)
+     (run-tests geometry-pure-tests)
+     (run-tests projective-pure-tests)
+     (run-tests picture-pure-tests)
+     (run-tests output-group-pure-tests)
+     (run-tests portable-pure-tests)
+     (run-tests color-filter-pure-tests)
+     (run-tests raster-buffer-pure-tests)
+     (run-tests gpu-pure-tests)
+     (run-tests gpu-surface-pure-tests)
+     (run-tests gpu-image-pure-tests)
+     (run-tests gpu-metal-pure-tests)
+     (run-tests gpu-presenter-pure-tests)
+     (run-tests gpu-egl-pure-tests)
+     (run-tests gpu-output-pure-tests)
+     (run-tests gpu-cache-pure-tests)
+     (run-tests gpu-performance-pure-tests)))
   (cond
     [pure-only? (displayln "Native rendering tests NOT RUN (--pure).")]
     [else
      ;; A missing/incompatible library is a failure, not a silently skipped test.
      (skia-check!)
      (set! failures
-           (+ failures (+ (+ (run-tests (dynamic-require small-gap-native-tests-file 'small-gap-native-tests)) (run-tests (dynamic-require global-cache-native-tests-file 'global-cache-native-tests)) (run-tests (dynamic-require gpu-diagnostics-native-tests-file 'gpu-diagnostics-native-tests))) (run-tests (dynamic-require gpu-context-control-native-tests-file 'gpu-context-control-native-tests))) (run-tests (dynamic-require codec-incremental-native-tests-file 'codec-incremental-native-tests)) (run-tests (dynamic-require codec-scanline-native-tests-file 'codec-scanline-native-tests)) (run-tests (dynamic-require codec-query-native-tests-file 'codec-query-native-tests)) (run-tests (dynamic-require live-stream-native-tests-file 'live-stream-native-tests))
+           (+ failures
+              (+ (+ (run-tests
+                     (dynamic-require small-gap-native-tests-file 'small-gap-native-tests))
+                    (run-tests
+                     (dynamic-require global-cache-native-tests-file 'global-cache-native-tests))
+                    (run-tests
+                     (dynamic-require gpu-diagnostics-native-tests-file
+                                      'gpu-diagnostics-native-tests)))
+                 (run-tests
+                  (dynamic-require gpu-context-control-native-tests-file
+                                   'gpu-context-control-native-tests)))
+              (run-tests
+               (dynamic-require codec-incremental-native-tests-file 'codec-incremental-native-tests))
+              (run-tests
+               (dynamic-require codec-scanline-native-tests-file 'codec-scanline-native-tests))
+              (run-tests (dynamic-require codec-query-native-tests-file 'codec-query-native-tests))
+              (run-tests (dynamic-require live-stream-native-tests-file 'live-stream-native-tests))
               (run-tests (dynamic-require stream-native-tests-file 'stream-native-tests))
-              (run-tests (dynamic-require advanced-canvas-native-tests-file 'advanced-canvas-native-tests))
+              (run-tests
+               (dynamic-require advanced-canvas-native-tests-file 'advanced-canvas-native-tests))
               (run-tests (dynamic-require gpu-format-native-tests-file 'gpu-format-native-tests))
-              (run-tests (dynamic-require image-operation-native-tests-file 'image-operation-native-tests))
+              (run-tests
+               (dynamic-require image-operation-native-tests-file 'image-operation-native-tests))
               (run-tests (dynamic-require float-pixel-native-tests-file 'float-pixel-native-tests))
-              (run-tests (dynamic-require integer-pixel-native-tests-file 'integer-pixel-native-tests))
+              (run-tests
+               (dynamic-require integer-pixel-native-tests-file 'integer-pixel-native-tests))
               (run-tests (dynamic-require text-blob-native-tests-file 'text-blob-native-tests))
               (run-tests (dynamic-require font-query-native-tests-file 'font-query-native-tests))
               (run-tests (dynamic-require typeface-native-tests-file 'typeface-native-tests))
-              (run-tests (dynamic-require geometry-completion-native-tests-file 'geometry-completion-native-tests))
+              (run-tests
+               (dynamic-require geometry-completion-native-tests-file
+                                'geometry-completion-native-tests))
               (run-tests (dynamic-require effects-native-tests-file 'effects-native-tests))
               (run-tests (dynamic-require dc-closure-native-tests-file 'dc-closure-native-tests))
               (run-tests (dynamic-require dc-output-native-tests-file 'dc-output-native-tests))
@@ -160,7 +393,8 @@
               (run-tests (dynamic-require convertible-native-tests-file 'convertible-native-tests))
               (run-tests (dynamic-require pict-native-tests-file 'pict-native-tests))
               (run-tests (dynamic-require racket-draw-native-tests-file 'racket-draw-native-tests))
-              (run-tests (dynamic-require racket-draw-consumer-tests-file 'racket-draw-consumer-tests))
+              (run-tests
+               (dynamic-require racket-draw-consumer-tests-file 'racket-draw-consumer-tests))
               (run-tests (dynamic-require path-matrix-native-tests-file 'path-matrix-native-tests))
               (run-tests (dynamic-require filter-graph-native-tests-file 'filter-graph-native-tests))
               (run-tests (dynamic-require color-output-native-tests-file 'color-output-native-tests))
@@ -174,5 +408,6 @@
               (run-tests (dynamic-require output-group-native-tests-file 'output-group-native-tests))
               (run-tests (dynamic-require portable-native-tests-file 'portable-native-tests))
               (run-tests (dynamic-require color-filter-native-tests-file 'color-filter-native-tests))
-              (run-tests (dynamic-require raster-buffer-native-tests-file 'raster-buffer-native-tests))))])
+              (run-tests
+               (dynamic-require raster-buffer-native-tests-file 'raster-buffer-native-tests))))])
   (exit (if (zero? failures) 0 1)))

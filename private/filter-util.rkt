@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Image Filter Validation
+;;;
+
+;; Validates filter crops, kernels, channels, tile modes, and lighting parameters.
+;; Shares checked input preparation across the image-filter graph constructors.
+
 (require racket/list racket/match "check.rkt" "types.rkt")
 (provide filter-rectangle optional-filter-crop filter-kernel filter-channel
          filter-tile-mode filter-point3 filter-light-parameters filter-spot-parameters
@@ -6,10 +14,15 @@
 
 ;; These checks do not load Skia. Round before validating geometry so a positive
 ;; extent that disappears at the native float precision cannot pass unnoticed.
+; filter-float : symbol? real? -> inexact-real?
+;;   Checks a finite scalar and rounds it to its native binary32 value.
 (define (filter-float who value)
   (scalar who value)
   (floating-point-bytes->real (real->floating-point-bytes value 4 #f) #f))
 
+; filter-rectangle : symbol? any/c [#:positive? boolean?] -> sk-rect?
+;;   Converts x/y/width/height bounds, rejecting positive extents that collapse during float
+;;   rounding.
 (define (filter-rectangle who value #:positive? [positive? #f])
   (define parts
     (cond [(vector? value) (vector->list value)]
@@ -30,12 +43,18 @@
      (make-sk-rect fx fy right bottom)]
     [_ (raise-argument-error who "(list x y width height) or four-element vector" value)]))
 
+; optional-filter-crop : symbol? any/c -> (or/c #f sk-rect?)
+;;   Converts an optional crop rectangle, retaining #f for the native uncropped case.
 (define (optional-filter-crop who value)
   (and value (filter-rectangle who value)))
 
+; filter-channel : symbol? symbol? -> exact-nonnegative-integer?
+;;   Maps red/green/blue/alpha to the native channel enumeration.
 (define (filter-channel who v)
   (choice who v (hasheq 'red 0 'green 1 'blue 2 'alpha 3)))
 
+; filter-tile-mode : symbol? symbol? any/c [#:require-crop? boolean?] -> exact-nonnegative-integer?
+;;   Rejects unsupported mirror tiling and non-decal convolution tiling without an explicit crop.
 (define (filter-tile-mode who mode crop #:require-crop? [require-crop? #f])
   (define result (choice who mode tile-mode-values))
   (when (eq? mode 'mirror)
@@ -48,6 +67,8 @@
                            "tile-mode" mode))
   result)
 
+; filter-input-list : symbol? (or/c list? vector?) -> list?
+;;   Normalizes nonempty filter inputs after checking native count and pointer-array budgets.
 (define (filter-input-list who inputs)
   (define count
     (cond [(list? inputs) (length inputs)] [(vector? inputs) (vector-length inputs)]
@@ -59,6 +80,9 @@
     (error who "filter input array exceeds current-skia-byte-limit"))
   (if (vector? inputs) (vector->list inputs) inputs))
 
+; filter-kernel : symbol? integer? integer? any/c any/c -> (values sk-isize? sk-ipoint? list?)
+;;   Checks a row-major convolution kernel, offset, dimensions, and allocation size before native
+;;   conversion.
 (define (filter-kernel who width height kernel offset)
   (for ([n (in-list (list width height))])
     (unless (and (exact-integer? n) (<= 1 n 2048))
@@ -68,7 +92,8 @@
     (error who "convolution kernel exceeds current-skia-byte-limit"))
   (define size
     (cond [(list? kernel) (length kernel)] [(vector? kernel) (vector-length kernel)]
-          [else (raise-argument-error who "flat row-major list or vector of kernel coefficients" kernel)]))
+          [else
+           (raise-argument-error who "flat row-major list or vector of kernel coefficients" kernel)]))
   (unless (= count size)
     (raise-arguments-error who "kernel coefficient count does not equal width * height"
                            "required" count "given" size))
@@ -86,6 +111,8 @@
           (for/list ([v (if (vector? kernel) (in-vector kernel) (in-list kernel))])
             (filter-float who v))))
 
+; filter-point3 : symbol? any/c [#:direction? boolean?] -> sk-point3?
+;;   Converts checked x/y/z components, rejecting a zero vector when used as a light direction.
 (define (filter-point3 who value #:direction? [direction? #f])
   (define parts (if (vector? value) (vector->list value) value))
   (match parts
@@ -96,6 +123,9 @@
      (apply make-sk-point3 xyz)]
     [_ (raise-argument-error who "(list x y z) or three-element vector" value)]))
 
+; filter-light-parameters : symbol? real? real? (or/c #f real?) -> (values real? real? any/c)
+;;   Checks lighting surface scale, nonnegative coefficient, and optional shininess from 1 through
+;;   128.
 (define (filter-light-parameters who surface-scale coefficient shininess)
   (define s (filter-float who surface-scale))
   (define k (filter-float who (nonnegative-scalar who coefficient)))
@@ -107,6 +137,9 @@
            v)))
   (values s k shine))
 
+; filter-spot-parameters : symbol? any/c any/c real? real? -> (values sk-point3? sk-point3? real?
+;   real?)
+;;   Requires distinct spotlight endpoints and checks exponent and cutoff after float conversion.
 (define (filter-spot-parameters who location target exponent cutoff)
   (define loc (filter-point3 who location))
   (define dst (filter-point3 who target))

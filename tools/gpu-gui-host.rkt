@@ -1,12 +1,32 @@
 #lang racket/base
+
+;;;
+;;; GUI OpenGL Test Host
+;;;
+
+;; Creates a GUI OpenGL host and scopes callbacks to its current context.
+;; GPU tests use this host adapter when they require a real window-system GL context.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Loaded only by an explicit live GL probe, never by skia or skia/gpu.
 (require racket/class racket/draw "../gpu-racket-gl.rkt"
          "../private/gpu-provider.rkt")
 (provide call-with-gpu-test-host)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; call-with-gpu-test-host : procedure? -> any
+;;   Provides a current GUI OpenGL context and host metadata, hiding the owned frame after the
+;;   callback.
 (define (call-with-gpu-test-host proc)
   ;; Even compiling this module on a CPU-only machine does not require gui-lib.
   (define-values (frame% canvas% sleep/yield)
-    (with-handlers ([exn:fail? (lambda (e) (gpu-unavailable 'gui-initialization "~a" (exn-message e)))])
+    (with-handlers
+      ([exn:fail? (lambda (e) (gpu-unavailable 'gui-initialization "~a" (exn-message e)))])
       (values (dynamic-require 'racket/gui/base 'frame%)
               (dynamic-require 'racket/gui/base 'canvas%)
               (dynamic-require 'racket/gui/base 'sleep/yield))))

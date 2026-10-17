@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Gallery Example
+;;;
+
+;; Renders a font-independent gallery of curves, clips, transforms, and compositing.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline racket/math "../main.rkt")
 
 ;; A visual smoke test: curves, compositing, fills, clipping, transforms,
 ;; and image snapshots. No fonts, external images, or text renderer needed.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-gallery : path-string? -> void?
+;;   Renders the gallery example to the selected output destination.
 (define (render-gallery filename)
   (with-skia ([s (make-surface 1000 720 #:background "#F3F5F9")]
               [card (make-paint #:color 'white)]
@@ -74,7 +92,13 @@
           (draw-image-rect c im -55 -55 110 110 #:sampling 'linear))))
     (save-png s filename)))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; filename : path-string?
+  ;;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "gallery.rkt" #:args ([output "gallery.png"]) output))
   (render-gallery filename)

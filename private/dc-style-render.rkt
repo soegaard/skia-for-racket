@@ -1,8 +1,29 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Paint Rendering
+;;;
+
+;; Creates temporary paint and shader resources from detached style descriptions.
+;; Turns the adapter's selected pen and brush state into native drawing inputs.
+
 ;; All actual style rasterization goes through the existing Skia API.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list (prefix-in sk: "../main.rkt")
          "dc-support.rkt" "dc-native-util.rkt" "dc-style-math.rkt" "dc-bitmap.rkt")
 (provide call-with-dc-paint)
+
+;;;
+;;; Scoped Shader and Paint Construction
+;;;
+
+; with-source-shader : dc-paint-source? boolean? procedure? -> any
+;;   Scopes a native gradient, repeating stipple, or hatch shader and all temporary resources used by
+;;   the callback.
 (define (with-source-shader source antialias? proc)
   (define data (dc-paint-source-data source))
   (case (dc-paint-source-kind source)
@@ -16,7 +37,8 @@
                                          (append (vector-ref data 1) (list colors)))])
        (proc shader))]
     [(stipple)
-     (sk:with-skia ([image (sk:rgba-bytes->image (dc-bitmap-data-width data) (dc-bitmap-data-height data)
+     (sk:with-skia ([image (sk:rgba-bytes->image (dc-bitmap-data-width data) (dc-bitmap-data-height
+       data)
                                                (dc-bitmap-data-pixels data) #:premultiplied? #t)]
                    [shader (sk:make-image-shader image #:tile-x 'repeat #:tile-y 'repeat
                                                  #:sampling (if antialias? 'linear 'nearest))])
@@ -36,6 +58,10 @@
                                                    #:sampling (if antialias? 'linear 'nearest))])
          (proc shader)))]
     [else (error 'skia-dc-style "invalid private paint source")]))
+
+; call-with-dc-paint : dc-ink? boolean? procedure? -> any
+;;   Scopes a native paint with stroke, dash, and source settings, preserving shader provenance when
+;;   the local matrix is identity.
 (define (call-with-dc-paint ink antialias? proc)
   (define source (and (dc-ink/style? ink) (dc-ink/style-source ink)))
   (define (paint shader [rgba (dc-ink-rgba ink)])
@@ -48,7 +74,8 @@
       (sk:paint-set-miter-limit! p 10)
       (if (pair? (dc-ink-dashes ink))
           (sk:with-skia ([effect (sk:make-dash-path-effect (dc-ink-dashes ink)
-                                                           (if (dc-ink/style? ink) (dc-ink/style-phase ink) 0.0))])
+                                                           (if (dc-ink/style? ink) (dc-ink/style-phase
+                                                             ink) 0.0))])
             (sk:paint-set-path-effect! p effect) (proc p))
           (proc p))))
   (cond
@@ -70,5 +97,6 @@
          (if (equal? (dc-paint-source-matrix source) dc-identity)
              (paint shader)
              (sk:with-skia ([mapped (sk:shader-with-local-matrix shader
-                                     (apply sk:make-matrix (vector->list (dc-paint-source-matrix source))))])
+                                     (apply sk:make-matrix (vector->list (dc-paint-source-matrix
+                                       source))))])
                (paint mapped)))))]))

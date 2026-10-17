@@ -1,8 +1,28 @@
 #lang racket/base
 
+;;;
+;;; Reference Blob Values Test
+;;;
+
+;; Checks copied atlas transforms, anchor placement, rotation direction, and zero-scale geometry.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Pure public transform values: no font lookup, native allocation, or GPU context.
 (require rackunit skia/geometry-primitives)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; map-point : atlas-transform? real? real? -> (values real? real?)
+;;   Applies scale/rotation and translation coefficients to an anchor for transformed-blob
+;;   assertions.
 (define (map-point transform x y)
   (define cs (atlas-transform-coefficients transform))
   (values (+ (* (vector-ref cs 0) x) (- (* (vector-ref cs 1) y)) (vector-ref cs 2))

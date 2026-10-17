@@ -1,9 +1,32 @@
 #lang racket/base
-(require rackunit racket/list "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt" "../unsafe/gpu-d3d12.rkt"
+
+;;;
+;;; GPU Interop Native Test
+;;;
+
+;; Covers real D3D12 producer, Skia handoff, independent consumer.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+(require rackunit racket/list "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt"
+  "../unsafe/gpu-d3d12.rkt"
          "d3d12-interop-fixture.rkt" "../private/gpu-d3d12-interop-system.rkt")
 (provide make-gpu-interop-native-tests gpu-interop-native-test-count interop-pattern interop-red
          interop-handoff with-interop-fixture draw-interop-red)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-interop-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-interop-native-test-count 29)
+
+; interop-pattern : exact-positive-integer? exact-positive-integer? -> bytes?
+;;   Reconstructs the independent producer's expected row-major RGBA pattern.
 (define (interop-pattern w h)
   (apply bytes-append
     (for*/list ([y (in-range h)] [x (in-range w)])
@@ -11,27 +34,47 @@
         (bytes (modulo (+ (* x 17) (* y 3)) 256)
                (modulo (* (bitwise-xor x y) 13) 256)
                (modulo (+ (* x 5) (* y 11)) 256) 255)))))
+
+; interop-red : exact-positive-integer? exact-positive-integer? [real? real? real? real?] -> bytes?
+;;   Overlays the expected red rectangle on the producer's reference pattern.
 (define (interop-red w h [x 1] [y 2] [width 5] [height 4])
   (define b (interop-pattern w h))
   (for* ([j (in-range y (+ y height))] [i (in-range x (+ x width))])
     (bytes-copy! b (* 4 (+ i (* j w))) (bytes 255 0 0 255))) b)
+
+; draw-interop-red : canvas? -> void?
+;;   Draws the red rectangle used to verify Skia writes through an imported surface.
 (define (draw-interop-red c)
   (with-skia ([p (make-paint #:color 'red #:antialias? #f)]) (draw-rect c 1 2 5 4 p)))
+
+; interop-handoff : gpu-context? cpointer? [#:incoming symbol? #:premultiplied? boolean?] ->
+; gpu-external-texture?
+;;   Declares an external Direct3D texture's incoming/outgoing states and producer synchronization.
 (define (interop-handoff c f #:incoming [incoming 'pixel-shader-resource] #:premultiplied? [pm? #t])
   (make-d3d12-external-texture c (fixture-texture f)
     #:producer-fence (fixture-fence f) #:producer-value 1
     #:incoming-state incoming #:outgoing-state 'copy-source #:premultiplied? pm?))
+
+; with-interop-fixture : gpu-context? procedure? [exact-nonnegative-integer? exact-positive-integer?
+; exact-positive-integer?] -> any
+;;   Scopes an independently owned Direct3D fixture around an interop callback.
 (define (with-interop-fixture c proc [kind 0] [w 37] [h 29])
   (define f (make-fixture c w h kind))
   (dynamic-wind void (lambda () (proc f)) (lambda () (close-fixture f))))
+
+; make-gpu-interop-native-tests : gpu-context? gpu-context? -> test-suite?
+;;   Builds the parameterized suite for real D3D12 producer, Skia handoff, independent consumer.
 (define (make-gpu-interop-native-tests c other)
-  (define (using proc [kind 0]) (call-with-gpu-context c (lambda () (with-interop-fixture c proc kind))))
+  (define (using proc [kind 0])
+    (call-with-gpu-context c (lambda () (with-interop-fixture c proc kind))))
   (define (pixels im) (gpu-image->rgba-bytes im))
   (test-suite "Real D3D12 producer, Skia handoff, independent consumer"
     (test-case "MS x64 aggregate-return call agrees with SDK C++ GetDesc"
       (using (lambda (f)
         (define d (resource-description/native (fixture-texture f)))
-        (check-equal? (map (lambda (k) (hash-ref d k)) '(dimension width height depth levels format samples quality flags))
+        (check-equal?
+          (map (lambda (k) (hash-ref d k))
+            '(dimension width height depth levels format samples quality flags))
                       (fixture-description f)))))
     (test-case "owned image outlives the producer reference"
       (using (lambda (f)
@@ -42,13 +85,15 @@
     (test-case "copied pixels do not alias later external writes"
       (using (lambda (f)
         (with-skia ([im (gpu-import-image c (interop-handoff c f))])
-          (call-with-gpu-external-surface c (interop-handoff c f #:incoming 'copy-source) draw-interop-red)
+          (call-with-gpu-external-surface c (interop-handoff c f #:incoming 'copy-source)
+            draw-interop-red)
           (check-equal? (fixture-readback f #x800 37 29) (interop-red 37 29))
           (check-equal? (pixels im) (interop-pattern 37 29))))))
     (test-case "retained picture keeps an imported image after original wrapper closure"
       (using (lambda (f)
         (with-skia ([im (gpu-import-image c (interop-handoff c f))]
-                    [pic (call-with-picture 37 29 (lambda (canvas) (draw-image canvas im 0 0 #:sampling 'nearest)))]
+                     [pic (call-with-picture 37 29
+                            (lambda (canvas) (draw-image canvas im 0 0 #:sampling 'nearest)))]
                     [s (make-gpu-surface c 37 29)])
           (skia-close! im) (drop-fixture-texture f)
           (draw-picture (surface-canvas s) pic)
@@ -66,7 +111,8 @@
         (call-with-gpu-external-surface c (interop-handoff c f)
           (lambda (canvas)
             (canvas-translate! canvas 4 5) (canvas-clip-rect! canvas 0 0 4 3)
-            (with-skia ([p (make-paint #:color 'red #:antialias? #f)]) (draw-rect canvas 0 0 20 20 p))))
+            (with-skia ([p (make-paint #:color 'red #:antialias? #f)])
+              (draw-rect canvas 0 0 20 20 p))))
         (check-equal? (fixture-readback f #x800 37 29) (interop-red 37 29 4 5 4 3)))))
     (test-case "ordinary callback exception returns state before propagating"
       (using (lambda (f)
@@ -92,7 +138,8 @@
     (test-case "no borrowed surface or image escapes through the generic API"
       (using (lambda (f)
         (call-with-gpu-external-surface c (interop-handoff c f)
-          (lambda (v) (check-true (canvas? v)) (check-false (surface? v)) (check-false (image? v)))))))
+          (lambda (v) (check-true (canvas? v)) (check-false (surface? v))
+            (check-false (image? v)))))))
     (test-case "consumed handoff is not reusable"
       (using (lambda (f)
         (define t (interop-handoff c f))
@@ -101,17 +148,20 @@
     (test-case "active handoff cannot be retired by its callback"
       (using (lambda (f)
         (define t (interop-handoff c f))
-        (call-with-gpu-external-surface c t (lambda (_) (check-exn #rx"in use" (lambda () (gpu-external-texture-close! t))))))))
+        (call-with-gpu-external-surface c t
+          (lambda (_) (check-exn #rx"in use" (lambda () (gpu-external-texture-close! t))))))))
     (test-case "external handoffs reject the other Ganesh context"
       (using (lambda (f)
         (define t (interop-handoff c f))
         (check-exn #rx"another GPU context" (lambda () (gpu-import-image other t)))
-        (with-skia ([im (gpu-import-image c t)]) (check-true (hash-ref (gpu-image-info im) 'texture_backed))))))
+        (with-skia ([im (gpu-import-image c t)])
+          (check-true (hash-ref (gpu-image-info im) 'texture_backed))))))
     (test-case "non-RT texture copy is supported but rendering is rejected"
       (using (lambda (f)
         (define t (interop-handoff c f))
         (check-exn #rx"ALLOW_RENDER_TARGET" (lambda () (call-with-gpu-external-surface c t void)))
-        (with-skia ([im (gpu-import-image c t)]) (check-equal? (pixels im) (interop-pattern 37 29)))) 1))
+        (with-skia ([im (gpu-import-image c t)])
+          (check-equal? (pixels im) (interop-pattern 37 29)))) 1))
     (test-case "real mipmapped resource is rejected before graphics handoff"
       (using (lambda (f) (check-exn exn:fail? (lambda () (interop-handoff c f)))) 2))
     (test-case "real texture array is rejected before graphics handoff"
@@ -153,7 +203,8 @@
       (using (lambda (f)
         (define t (interop-handoff c f #:premultiplied? #f))
         (check-exn #rx"premultiplied" (lambda () (call-with-gpu-external-surface c t void)))
-        (with-skia ([im (gpu-import-image c t)]) (check-equal? (pixels im) (interop-pattern 37 29))))))
+        (with-skia ([im (gpu-import-image c t)])
+          (check-equal? (pixels im) (interop-pattern 37 29))))))
     (test-case "unsafe device callback cannot reenter Skia GPU execution"
       (call-with-gpu-context c (lambda ()
         (call-with-gpu-d3d12-device c (lambda (_)
@@ -162,7 +213,8 @@
       (using (lambda (f)
         (define t (interop-handoff c f)) (gpu-external-texture-close! t) (gpu-drain-releases! c)
         (check-equal? (hash-ref (hash-ref (gpu-external-texture-info t) 'native) 'state) "closed")
-        (check-false (hash-ref (hash-ref (gpu-external-texture-info t) 'native) 'external_state_returned)))))
+        (check-false
+          (hash-ref (hash-ref (gpu-external-texture-info t) 'native) 'external_state_returned)))))
     (test-case "closed-session diagnostics do not pretend the state was queried"
       (using (lambda (f)
         (define t (interop-handoff c f))

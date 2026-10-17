@@ -1,12 +1,46 @@
 #lang racket/base
+
+;;;
+;;; Integer Pixel Pure Test
+;;;
+
+;; Covers image information and integer samples (pure).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector "../main.rkt"
          "../private/integer-pixel-util.rkt")
 (provide integer-pixel-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail? thunk))
+
+; info : symbol? [any/c] -> image-info?
+;;   Builds small storage metadata with an appropriate default alpha interpretation.
 (define (info color [alpha #f])
   (make-image-info 3 2 #:color-type color
-                   #:alpha-type (or alpha (if (memq color '(rgb-888x rgb-565 gray-8)) 'opaque 'premul))))
-(define (layout i [rb #f]) (call-with-values (lambda () (image-info-storage-layout i #:row-bytes rb)) list))
+                   #:alpha-type
+    (or alpha (if (memq color '(rgb-888x rgb-565 gray-8)) 'opaque 'premul))))
+
+; layout : image-info? [any/c] -> list?
+;;   Collects validated stride, row, and allocation sizes for detached storage metadata.
+(define (layout i [rb #f])
+  (call-with-values (lambda () (image-info-storage-layout i #:row-bytes rb)) list))
+
+;;;
+;;; Regression Suite
+;;;
+
+; integer-pixel-pure-tests : test-suite?
+;;   Collects the regression cases for image information and integer samples (pure).
 (define integer-pixel-pure-tests
   (test-suite
    "Image information and integer samples (pure)"
@@ -52,7 +86,8 @@
        (bad (lambda () (layout (make-image-info 1 1) (expt 2 32))))
        (bad (lambda () (layout (make-image-info 32768 32768))))))
    (test-case "description construction does not allocate pixel storage"
-     (parameterize ([current-skia-byte-limit 1]) (check-true (image-info? (make-image-info 32768 32768)))))
+     (parameterize ([current-skia-byte-limit 1])
+       (check-true (image-info? (make-image-info 32768 32768)))))
    (test-case "descriptors accept only explicit detached forms"
      (for ([d (in-list '(#f srgb linear-srgb))]) (check-true (color-space-descriptor? d)))
      (bad (lambda () (make-image-info 1 1 #:color-space 'display-p3)))
@@ -69,9 +104,10 @@
      (define b (make-bytes 128)) (bytes-copy! b 36 #"acsp")
      (bad (lambda () (make-image-info 1 1 #:color-space b))))
    (test-case "dimension changes preserve interpretation"
-     (define i (make-image-info 1 2 #:color-type 'bgra-8888 #:alpha-type 'unpremul #:color-space 'srgb))
+     (define i (make-image-info 1 2 #:color-type 'bgra-8888 #:alpha-type 'unpremul #:color-space
+                 'srgb))
      (check-equal? (image-info-with-dimensions i 4 5)
-                   (make-image-info 4 5 #:color-type 'bgra-8888 #:alpha-type 'unpremul #:color-space 'srgb)))
+       (make-image-info 4 5 #:color-type 'bgra-8888 #:alpha-type 'unpremul #:color-space 'srgb)))
    (test-case "operation matrix does not promise unpremultiplied rendering"
      (check-true (image-info-supports? (info 'rgba-8888 'unpremul) 'storage))
      (check-false (image-info-supports? (info 'rgba-8888 'unpremul) 'raster-canvas))
@@ -87,8 +123,10 @@
      (check-equal? (image-info-channel-bits (info 'rgba-1010102)) '#(10 10 10 2))
      (check-equal? (image-info-channel-bits (info 'rgb-565)) '#(5 6 5)))
    (test-case "BGRA storage exposes logical RGBA samples"
-     (check-equal? (integer-sample->bytes 'test (info 'bgra-8888) '#(20 40 60 255)) (bytes 60 40 20 255))
-     (check-equal? (integer-bytes->sample 'test (info 'bgra-8888) (bytes 60 40 20 255)) '#(20 40 60 255)))
+     (check-equal? (integer-sample->bytes 'test (info 'bgra-8888) '#(20 40 60 255))
+       (bytes 60 40 20 255))
+     (check-equal? (integer-bytes->sample 'test (info 'bgra-8888) (bytes 60 40 20 255))
+       '#(20 40 60 255)))
    (test-case "RGB565 packing is the native word f800 for red"
      (check-equal? (integer-sample->bytes 'test (info 'rgb-565) '#(31 0 0))
                    (integer->integer-bytes #xf800 2 #f (system-big-endian?))))
@@ -112,7 +150,8 @@
      (for ([s (in-list (list '#(1 2 3) '#(-1 0 0 255) '#(256 0 0 255) '#(1.0 2 3 255) '#(1 0 0 0)))])
        (bad (lambda () (integer-sample-check 'test (info 'rgba-8888) s)))))
    (test-case "unpremultiplied samples retain hidden RGB at zero alpha"
-     (check-equal? (integer-sample->bytes 'test (info 'rgba-8888 'unpremul) '#(99 88 77 0)) (bytes 99 88 77 0)))
+     (check-equal? (integer-sample->bytes 'test (info 'rgba-8888 'unpremul) '#(99 88 77 0))
+       (bytes 99 88 77 0)))
    (test-case "strided input can omit only the final padding"
      (define i (make-image-info 1 2 #:color-type 'alpha-8))
      (check-equal? (integer-tight-input 'test i (bytes 10 99 99 99 20) 4) (bytes 10 20))

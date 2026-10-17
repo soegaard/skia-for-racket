@@ -1,5 +1,14 @@
 #lang racket
 
+;;;
+;;; Sprite Window
+;;;
+
+;; Hosts the sprite tutorials in a lazily loaded GUI submodule with explicit renderer choice.
+;; This module supports documentation assembly and shared examples rather than the public Skia
+;; API.
+
+
 ;; Loading this file is headless. Only the explicitly selected gui submodule
 ;; initializes the toolkit, so source-package test traversal need not open it.
 (module gui racket
@@ -12,6 +21,8 @@
            "sprite-assets.rkt" "sprite-math.rkt")
   (provide open-sprite-window)
 
+  ; preferred-backend : -> (or/c symbol? #f)
+  ;;   Returns the supported platform GPU choice, or #f when no choice is defined.
   (define (preferred-backend)
     (case (system-type 'os)
       [(macosx) 'metal]
@@ -19,6 +30,9 @@
       [(unix) 'opengl]
       [else #f]))
 
+  ; open-sprite-window : string? real? real? any/c any/c any/c any/c #:renderer [symbol?]
+  ; #:instructions [any/c] #:smoke? [boolean?] -> (is-a?/c frame%)
+  ;;   Creates the shared sprite host with fixed-step updates and scoped renderer cleanup.
   (define (open-sprite-window title scene-width scene-height
                               make-atlas make-world step-world! draw-world
                               #:renderer [renderer 'gpu]

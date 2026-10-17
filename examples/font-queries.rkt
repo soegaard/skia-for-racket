@@ -1,7 +1,23 @@
 #lang racket/base
+
+;;;
+;;; Font Queries Example
+;;;
+
+;; Inspects glyph metrics and font options without assuming a particular system font.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; Public-API example using the host's default font. No installed-font identity
 ;; or numerical metric is assumed here; acceptance uses procedural fixtures.
+;;;
+;;; Imports and Exports
+;;;
+
 (require "../main.rkt")
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
   (with-skia ([font (make-font #:size 32 #:embedded-bitmaps? #f #:baseline-snap? #f)]
               [face (font-typeface font)])

@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU Output Doctor
+;;;
+
+;; Exercises bounded GPU raster fallbacks within vector documents and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/path racket/list rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-output.rkt"
          "../private/audit-trace.rkt" "../private/gpu-io-trace.rkt"
@@ -6,6 +18,13 @@
          "gpu-test-host.rkt" "gpu-report.rkt")
 (provide gpu-output-doctor!)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-output-doctor! : path-string? ... -> exact-integer?
+;;   Checks bounded GPU document fallback and serializes retained PDF/SVG output after GPU teardown.
 (define (gpu-output-doctor! prefix #:backend [backend 'opengl] #:host [host-mode 'gui]
                             #:egl-platform [platform 'surfaceless] #:egl-device-index [index 0]
                             #:egl-surface [binding-surface 'surfaceless]
@@ -47,7 +66,7 @@
           (parameterize ([current-text-output-mode 'outline] [current-gpu-io-ledger ledger])
             (define (draw c) (set! group (draw-output-document c name executor calls)))
             (if (eq? format 'pdf)
-                (with-document-page (c document output-document-width output-document-height) (draw c))
+              (with-document-page (c document output-document-width output-document-height) (draw c))
                 (draw (svg-document-canvas document)))))))
     (vector-set! entry 3
       (hasheq 'name (symbol->string name) 'variant (symbol->string variant)
@@ -86,10 +105,12 @@
                   (set! started? #t)
                   (parameterize-break #f (set! other (make-other)))
                   (set! initial (gpu-context-info context))
-                  (when (and hardware? (not (equal? (hash-ref initial 'renderer_class) "hardware-reported")))
+                  (when (and hardware?
+                          (not (equal? (hash-ref initial 'renderer_class) "hardware-reported")))
                     (error 'gpu-output-doctor "hardware-reported renderer required"))
                   (set! failures (run-tests (make-gpu-output-native-tests context other)))
-                  (unless (zero? failures) (error 'gpu-output-doctor "GPU output suite failed: ~a" failures))
+                  (unless (zero? failures)
+                    (error 'gpu-output-doctor "GPU output suite failed: ~a" failures))
                   (define executor (make-gpu-raster-executor context))
                   (for* ([name (in-list output-probe-names)]
                          [variant '(cpu gpu)] [format '(pdf svg)])
@@ -109,26 +130,66 @@
                 (begin (svg-document-finish! document) (svg-document->bytes document))))
           (call-with-output-file (vector-ref entry 2)
             (lambda (out) (write-bytes bytes out)) #:exists 'truncate)
-          (set! documents (cons (hash-set (vector-ref entry 3) 'serialized_after_gpu_teardown #t) documents)))
+          (set! documents
+            (cons (hash-set (vector-ref entry 3) 'serialized_after_gpu_teardown #t) documents)))
         (write-gpu-json (path ".diagnostic.json")
           (hash-set* (report "passed" #f) 'closed_context closed 'other_closed_context other-closed
                      'documents_serialized_after_gpu_teardown #t))
-        (displayln "GPU output tests passed; PDF/SVG documents serialized after GPU teardown. Inspect actual document bytes and embedded PNGs next.")
+        (displayln
+          "GPU output tests passed; PDF/SVG documents serialized after GPU teardown. Inspect actual document bytes and embedded PNGs next.")
         0)
       close-documents!)))
+
+; format-name : symbol? symbol? symbol? -> string?
+;;   Builds a scene/variant/format suffix for related document artifacts.
 (define (format-name name variant format)
   (string-append "." (symbol->string name) "." (symbol->string variant) "." (symbol->string format)))
 
 (module+ main
-  (define prefix "output/gpu-output-0.44") (define backend 'opengl) (define host-mode 'gui)
-  (define platform 'surfaceless) (define index 0) (define binding-surface 'surfaceless)
-  (define adapter #f) (define adapter-index #f)
-  (define required? #t) (define hardware? #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; prefix : path-string?
+  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  (define prefix "output/gpu-output-0.44")
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'opengl)
+  ; host-mode : symbol?
+  ;;   Selects the GUI, EGL, or owned backend host used to activate the GPU context.
+  (define host-mode 'gui)
+
+  ; platform : symbol?
+  ;;   Selects the EGL platform, initially the display-server-free surfaceless platform.
+  (define platform 'surfaceless)
+  ; index : exact-nonnegative-integer?
+  ;;   Selects the zero-based EGL device for device-platform contexts.
+  (define index 0)
+  ; binding-surface : symbol?
+  ;;   Selects the EGL binding surface kind, initially surfaceless.
+  (define binding-surface 'surfaceless)
+
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter #f)
+  ; adapter-index : (or/c exact-nonnegative-integer? #f)
+  ;;   Optionally selects a zero-based Direct3D adapter within the requested adapter policy.
+  (define adapter-index #f)
+
+  ; required? : boolean?
+  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  (define required? #t)
+  ; hardware? : boolean?
+  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]
     [("--backend") b "opengl, metal, or direct3d" (set! backend (string->symbol b))]
     [("--adapter") a "Explicit Direct3D hardware or warp" (set! adapter (string->symbol a))]
-    [("--adapter-index") i "Explicit Direct3D adapter index" (set! adapter-index (or (string->number i) (error 'gpu-adapter "invalid adapter index")))]
+    [("--adapter-index") i "Explicit Direct3D adapter index"
+      (set! adapter-index (or (string->number i) (error 'gpu-adapter "invalid adapter index")))]
     [("--host") h "gui, egl, or owned" (set! host-mode (string->symbol h))]
     [("--egl-platform") p "surfaceless or device" (set! platform (string->symbol p))]
     [("--egl-device-index") i "Explicit device index" (set! index (string->number i))]

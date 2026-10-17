@@ -1,15 +1,49 @@
 #lang racket/base
+
+;;;
+;;; SVG Pure Test
+;;;
+
+;; Covers sVG pure validation and serialization.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/path
          "../main.rkt" "../private/svg-util.rkt")
 (provide svg-pure-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; envelope : bytes? [string? string? string?] -> bytes?
+;;   Finishes raw SVG with escaped metadata and prefixed resource identifiers.
 (define (envelope bs [title ""] [description ""] [prefix "skia"])
   (define-values (t d) (svg-metadata 'test title description))
   (finish-svg-xml 'test bs 120.5 80.25 t d (svg-id-prefix 'test prefix)))
 
-(define raw-empty #"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"121\" height=\"81\"/>")
-(define raw-body #"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"121\" height=\"81\"><rect x=\"7\" width=\"20\" height=\"30\"/></svg>")
 
+; raw-empty : bytes?
+;;   Provides native-shaped empty SVG for root-element finishing tests.
+(define raw-empty
+  #"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"121\" height=\"81\"/>")
+
+; raw-body : bytes?
+;;   Provides native-shaped SVG content for metadata and resource-reference rewriting.
+(define raw-body
+  #"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"121\" height=\"81\"><rect x=\"7\" width=\"20\" height=\"30\"/></svg>")
+
+
+;;;
+;;; Regression Suite
+;;;
+
+; svg-pure-tests : test-suite?
+;;   Collects the regression cases for sVG pure validation and serialization.
 (define svg-pure-tests
   (test-suite
    "SVG pure validation and serialization"
@@ -30,13 +64,15 @@
      (check-exn exn:fail:contract? (lambda () (make-svg-document 20 20 #:title #f))))
    (test-case "metadata escapes XML syntax and retains Unicode"
      (define bs (envelope raw-body "A & B <tag> \"quote\" 'apostrophe'" "Søgaard\n東京"))
-     (check-true (regexp-match? #rx#"<title>A &amp; B &lt;tag&gt; &quot;quote&quot; &apos;apostrophe&apos;</title>" bs))
+     (check-true
+       (regexp-match? #rx#"<title>A &amp; B &lt;tag&gt; &quot;quote&quot; &apos;apostrophe&apos;</title>" bs))
      (check-true (regexp-match? (regexp-quote (string->bytes/utf-8 "Søgaard\n東京")) bs))
      (check-false (regexp-match? #rx#"<tag>" bs)))
    (test-case "empty SVG is finalized as a complete document"
      (define bs (envelope raw-empty "Empty"))
      (check-true (immutable? bs))
-     (check-true (regexp-match? #rx#"width=\"120.5\" height=\"80.25\" viewBox=\"0 0 120.5 80.25\"" bs))
+     (check-true
+       (regexp-match? #rx#"width=\"120.5\" height=\"80.25\" viewBox=\"0 0 120.5 80.25\"" bs))
      (check-true (regexp-match? #rx#"<title>Empty</title>" bs))
      (check-true (regexp-match? #rx#"</svg>" bs)))
    (test-case "native drawing body is preserved"
@@ -50,7 +86,8 @@
      (define a #"<svg width=\"1\"><defs><clipPath id=\"cl_ab12\"/><image id=\"img_0\"/><linearGradient id=\"gradient_0\"/></defs><g clip-path=\"url(#cl_ab12)\"><use xlink:href=\"#img_0\" fill=\"url(#gradient_0)\"/></g><text>url(#cl_ab12) cl_ab12</text></svg>")
      (define b (regexp-replace* #rx#"cl_ab12" a #"cl_ffff"))
      ;; Text is intentionally NOT canonicalized, so keep the label the same.
-     (define b-label (regexp-replace #rx#"<text>[^<]*</text>" b #"<text>url(#cl_ab12) cl_ab12</text>"))
+     (define b-label
+       (regexp-replace #rx#"<text>[^<]*</text>" b #"<text>url(#cl_ab12) cl_ab12</text>"))
      (define out (envelope a "" "" "probe"))
      (check-equal? out (envelope b-label "" "" "probe"))
      (check-true (regexp-match? #rx#"id=\"probe-0\"" out))
@@ -61,7 +98,8 @@
    (test-case "ID validation, duplicate definitions, and broken references"
      (for ([p (in-list (list "" "0bad" "with space" "a:b" "<&>" (make-string 65 #\x) #f))])
        (check-exn exn:fail:contract? (lambda () (make-svg-document 1 1 #:id-prefix p))))
-     (check-exn exn:fail? (lambda () (envelope #"<svg width=\"1\"><path id=\"a\"/><path id=\"a\"/></svg>")))
+     (check-exn exn:fail?
+       (lambda () (envelope #"<svg width=\"1\"><path id=\"a\"/><path id=\"a\"/></svg>")))
      (check-exn exn:fail? (lambda () (envelope #"<svg width=\"1\"><use href=\"#missing\"/></svg>"))))
    (test-case "metadata and finalized output obey the byte limit"
      (parameterize ([current-skia-byte-limit 4])

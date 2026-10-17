@@ -1,9 +1,38 @@
 #lang racket/base
+
+;;;
+;;; Image Operation Pure Test
+;;;
+
+;; Covers direct image operations (pure).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector racket/runtime-path setup/getinfo version/utils
          "../main.rkt" "../private/image-operation-util.rkt")
 (provide image-operation-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; package-root : path?
+;;   Locates .. relative to this module, independent of the invoking directory.
 (define-runtime-path package-root "..")
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad proc) (check-exn exn:fail? proc))
+
+;;;
+;;; Regression Suite
+;;;
+
+; image-operation-pure-tests : test-suite?
+;;   Collects the regression cases for direct image operations (pure).
 (define image-operation-pure-tests
   (test-suite
    "Direct image operations (pure)"
@@ -57,7 +86,8 @@
    (test-case "native offsets have two signed integers"
      (bad (lambda () (operation-result-geometry 'test 32 32 '#(0 0 5 3) '#(0.0 0) '#(0 0 20 20)))))
    (test-case "negative geometric offsets remain valid"
-     (define-values (r p) (operation-result-geometry 'test 10 10 '#(0 0 5 5) '#(-2 -3) '#(-4 -4 20 20)))
+     (define-values (r p)
+       (operation-result-geometry 'test 10 10 '#(0 0 5 5) '#(-2 -3) '#(-4 -4 20 20)))
      (check-equal? p '#(-2 -3)))
    (test-case "F32 cannot implicitly narrow to F16 or integer"
      (check-true (operation-precision-compatible? 16 16))
@@ -87,4 +117,5 @@
      (bad (lambda () (make-raw-image-shader #f))))))
 (module+ test
   (require rackunit/text-ui)
-  (unless (zero? (run-tests image-operation-pure-tests)) (error 'image-operations "pure tests failed")))
+  (unless (zero? (run-tests image-operation-pure-tests))
+    (error 'image-operations "pure tests failed")))

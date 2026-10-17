@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Logo Tutorial Evaluation
+;;;
+
+;; Runs the Logo tutorial's executable documentation examples and figure helpers.
+;; This module connects the manual to executable examples and their rendered figures.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require scribble/eval)
 
 (provide logo-racketblock+eval
@@ -9,6 +21,12 @@
          logo-def+int
          logo-image)
 
+;;;
+;;; Evaluator and Figure Helpers
+;;;
+
+; logo-eval : procedure?
+;;   Retains one evaluator so successive documentation examples share their bindings.
 (define logo-eval (make-base-eval))
 
 (void
@@ -241,20 +259,32 @@
          'png/alpha))
        0.72)))))
 
+; logo-interaction : syntax -> syntax
+;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (logo-interaction expression ...)
   (interaction #:eval logo-eval expression ...))
 
+; logo-interaction-eval : syntax -> syntax
+;;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
 (define-syntax-rule (logo-interaction-eval expression ...)
   (interaction-eval #:eval logo-eval expression ...))
 
+; logo-racketmod+eval : syntax -> syntax
+;;   Displays a module example and evaluates its expressions in the tutorial evaluator.
 (define-syntax-rule (logo-racketmod+eval expression ...)
   (racketmod+eval #:eval logo-eval expression ...))
 
+; logo-racketblock+eval : syntax -> syntax
+;;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (logo-racketblock+eval expression ...)
   (racketblock+eval #:eval logo-eval expression ...))
 
+; logo-def+int : syntax -> syntax
+;;   Displays definitions followed by their evaluated tutorial interaction.
 (define-syntax-rule (logo-def+int expression ...)
   (def+int #:eval logo-eval expression ...))
 
+; logo-image : syntax -> syntax
+;;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (logo-image expression)
   (interaction-eval-show #:eval logo-eval expression))

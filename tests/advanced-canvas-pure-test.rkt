@@ -1,8 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Advanced Canvas Pure Test
+;;;
+
+;; Covers advanced canvases: pure argument, ABI and policy contracts.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit ffi/unsafe "../main.rkt" "../private/advanced-canvas-types.rkt"
          "../private/audit-trace.rkt"
          (only-in (submod "../private/audit-trace.rkt" testing) native-feature))
 (provide advanced-canvas-pure-tests)
+
+;;;
+;;; Regression Suite
+;;;
+
+; advanced-canvas-pure-tests : test-suite?
+;;   Collects the regression cases for advanced canvases: pure argument, ABI and policy contracts.
 (define advanced-canvas-pure-tests
   (test-suite
    "Advanced canvases: pure argument, ABI and policy contracts"
@@ -20,7 +39,8 @@
      (check-equal? (layer-options-flags v) 2) (check-true (layer-options-preserve-lcd-text? v)))
    (test-case "previous-content flag uses four"
      (define v (make-layer-options #:initialize-with-previous? #t))
-     (check-equal? (layer-options-flags v) 4) (check-true (layer-options-initialize-with-previous? v)))
+     (check-equal? (layer-options-flags v) 4)
+     (check-true (layer-options-initialize-with-previous? v)))
    (test-case "F16 flag uses sixteen"
      (define v (make-layer-options #:f16? #t))
      (check-equal? (layer-options-flags v) 16) (check-true (layer-options-f16? v)))

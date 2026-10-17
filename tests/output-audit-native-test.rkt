@@ -1,22 +1,63 @@
 #lang racket/base
+
+;;;
+;;; Output Audit Native Test
+;;;
+
+;; Covers output capability audit: actual drawing wrappers.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/file racket/list "../main.rkt")
 (provide output-audit-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; solid : string?
+;;   Defines a constant-color SkSL shader used to trigger runtime-effect audit classification.
 (define solid "half4 main(float2 p) { return half4(0.1,0.3,0.7,1); }")
+
+; plain : canvas? -> void?
+;;   Draws a vector-safe blue rectangle as the audit baseline.
 (define (plain c)
   (with-skia ([p (make-paint #:color 'blue)]) (draw-rect c 5 5 40 25 p)))
+
+; runtime : canvas? -> void?
+;;   Draws the same geometry using a runtime shader that requires backend-specific audit treatment.
 (define (runtime c)
   (with-skia ([e (make-runtime-effect solid)] [s (runtime-effect->shader e)]
               [p (make-paint #:shader s)])
     (draw-rect c 5 5 40 25 p)))
+
+; page : procedure? -> output-page?
+;;   Wraps an audit drawing in a fixed-size output page.
 (define (page f) (make-output-page 100 80 f))
+
+; contains? : output-audit-report? symbol? [symbol?] -> boolean?
+;;   Finds an audit feature, optionally restricted to a requested status.
 (define (contains? r f [s #f])
   (for/or ([e (in-list (output-audit-report-events r))])
     (and (eq? f (output-audit-event-feature e))
          (or (not s) (eq? s (output-audit-event-status e))))))
+
+; with-temp : procedure? -> any
+;;   Scopes a temporary export directory and removes its contents after the test.
 (define (with-temp proc)
   (define d (make-temporary-file "skia-audit-~a" 'directory))
   (dynamic-wind void (lambda () (proc d)) (lambda () (delete-directory/files d))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; output-audit-native-tests : test-suite?
+;;   Collects the regression cases for output capability audit: actual drawing wrappers.
 (define output-audit-native-tests
   (test-suite
    "Output capability audit: actual drawing wrappers"
@@ -87,36 +128,43 @@
        (check-true (contains? (analyze-output-page (page (lambda (c) (draw-rect c 0 0 10 10 q))) 'svg)
                               'runtime-shader))))
    (test-case "clearing shader clears warning"
-     (with-skia ([e (make-runtime-effect solid)] [s (runtime-effect->shader e)] [p (make-paint #:shader s)])
+     (with-skia
+       ([e (make-runtime-effect solid)] [s (runtime-effect->shader e)] [p (make-paint #:shader s)])
        (paint-set-shader! p #f)
        (check-false (output-audit-report-blocking?
                      (analyze-output-page (page (lambda (c) (draw-rect c 0 0 10 10 p))) 'svg)))))
    (test-case "blend reset removes custom blender risk"
-     (with-skia ([e (make-runtime-effect "half4 main(half4 s,half4 d){return (s+d)*0.5;}" #:kind 'blender)]
+     (with-skia
+       ([e (make-runtime-effect "half4 main(half4 s,half4 d){return (s+d)*0.5;}" #:kind 'blender)]
                  [b (runtime-effect->blender e)] [p (make-paint)])
        (paint-set-blender! p b) (paint-set-blend-mode! p 'src-over)
-       (check-false (contains? (analyze-output-page (page (lambda (c) (draw-rect c 0 0 10 10 p))) 'svg)
+       (check-false
+         (contains? (analyze-output-page (page (lambda (c) (draw-rect c 0 0 10 10 p))) 'svg)
                                'runtime-blender))))
    (test-case "PDF image filters are classified as backend expansion"
      (with-skia ([f (make-blur-image-filter 2 2)] [p (make-paint #:image-filter f)])
-       (check-true (contains? (analyze-output-page (page (lambda (c) (draw-circle c 20 20 10 p))) 'pdf)
+       (check-true
+         (contains? (analyze-output-page (page (lambda (c) (draw-circle c 20 20 10 p))) 'pdf)
                               'image-filter 'native-expansion))))
    (test-case "SVG image filters require a group"
      (with-skia ([f (make-blur-image-filter 2 2)] [p (make-paint #:image-filter f)])
-       (check-true (contains? (analyze-output-page (page (lambda (c) (draw-circle c 20 20 10 p))) 'svg)
+       (check-true
+         (contains? (analyze-output-page (page (lambda (c) (draw-circle c 20 20 10 p))) 'svg)
                               'image-filter 'needs-raster))))
    (test-case "native text versus automatic outlines"
      (define p (page (lambda (c)
                       (with-skia ([f (make-font #:size 12)] [ink (make-paint)])
                         (draw-simple-text c "abc" 2 20 f ink)))))
-     (check-true (contains? (analyze-output-page p 'svg #:text-mode 'native) 'native-text 'viewer-dependent))
+     (check-true
+       (contains? (analyze-output-page p 'svg #:text-mode 'native) 'native-text 'viewer-dependent))
      (check-false (contains? (analyze-output-page p 'svg) 'native-text)))
    (test-case "existing image is allowed but not a vector-only result"
      (with-skia ([im (rgba-bytes->image 1 1 (bytes 255 0 0 255))])
        (define p (page (lambda (c) (draw-image c im 0 0))))
        (define-values (_bs r) (output->bytes/audit p 'svg #:policy 'error))
        (check-true (contains? r 'image 'embedded-raster))
-       (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit p 'svg #:policy 'vector-only)))))
+       (check-exn exn:fail:output-audit?
+         (lambda () (output->bytes/audit p 'svg #:policy 'vector-only)))))
    (test-case "picture created before audit keeps runtime facts"
      (with-skia ([pic (call-with-picture 100 80 runtime)])
        (check-true (contains? (analyze-output-page (page (lambda (c) (draw-picture c pic))) 'svg)
@@ -147,7 +195,8 @@
      (define p (page (lambda (c) (with-output-label label (plain c)))))
      (define r (analyze-output-page p 'svg))
      (string-set! label 0 #\X)
-     (check-not-false (member '("panel") (map output-audit-event-scope (output-audit-report-events r)))))
+     (check-not-false
+       (member '("panel") (map output-audit-event-scope (output-audit-report-events r)))))
    (test-case "reused picture recorder does not inherit previous effect"
      (with-skia ([rec (make-picture-recorder)])
        (define first (picture-recorder-begin-recording! rec 0 0 100 80))
@@ -156,7 +205,8 @@
          (define second (picture-recorder-begin-recording! rec 0 0 100 80))
          (plain second)
          (with-skia ([pic2 (picture-recorder-finish-recording! rec)])
-           (check-false (contains? (analyze-output-page (page (lambda (c) (draw-picture c pic2))) 'svg)
+           (check-false
+             (contains? (analyze-output-page (page (lambda (c) (draw-picture c pic2))) 'svg)
                                    'runtime-shader))))))
    (test-case "source is unchanged by preflight"
      (with-skia ([s (make-surface 2 2 #:background 'red)])
@@ -168,7 +218,8 @@
        (check-equal? before (surface->rgba-bytes s))))
    (test-case "difference clip is not certified by a later plain draw"
      (define r (analyze-output-page
-                (page (lambda (c) (canvas-clip-rect! c 5 5 10 10 #:operation 'difference) (plain c))) 'svg))
+                 (page (lambda (c) (canvas-clip-rect! c 5 5 10 10 #:operation 'difference)
+                         (plain c))) 'svg))
      (check-true (contains? r 'clip-difference 'needs-raster)))
    (test-case "event budget aborts before publication"
      (with-temp

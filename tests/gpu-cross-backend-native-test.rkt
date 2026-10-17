@@ -1,10 +1,39 @@
 #lang racket/base
+
+;;;
+;;; GPU Cross Backend Native Test
+;;;
+
+;; Covers actual OpenGL/Metal separation and explicit two-way transfer.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit "../main.rkt" "../gpu.rkt" "../examples/gpu-images.rkt")
 (provide make-gpu-cross-backend-native-tests gpu-cross-backend-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-cross-backend-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-cross-backend-native-test-count 9)
+
+; under : gpu-context? (-> any) -> any
+;;   Runs the callback in the selected context's activation scope.
 (define (under c thunk) (call-with-gpu-context c thunk))
+
+; source-image : gpu-context? -> image?
+;;   Uploads a shared CPU pattern and returns the owned GPU-resident image.
 (define (source-image c)
   (under c (lambda () (with-skia ([cpu (make-image-workflow-source)]) (gpu-upload-image c cpu)))))
+
+; make-gpu-cross-backend-native-tests : gpu-context? gpu-context? -> test-suite?
+;;   Builds the parameterized suite for actual OpenGL/Metal separation and explicit two-way
+;;   transfer.
 (define (make-gpu-cross-backend-native-tests gl metal)
   (define (both proc)
     (for ([a (in-list (list gl metal))] [b (in-list (list metal gl))])
@@ -26,7 +55,8 @@
            (check-exn exn:fail? (lambda () (draw-image (surface-canvas s) im 0 0))))))))))
    (test-case "retained shader and paint cannot cross backends"
      (both (lambda (a b)
-       (with-skia ([paint (under a (lambda () (with-skia ([im (source-image a)] [sh (make-image-shader im)])
+       (with-skia
+         ([paint (under a (lambda () (with-skia ([im (source-image a)] [sh (make-image-shader im)])
                                                (make-paint #:shader sh))))])
          (under a (lambda () (gpu-drain-releases! a)))
          (check-eq? (skia-resource-gpu-context paint) a)
@@ -53,15 +83,18 @@
          (with-skia ([s (make-gpu-surface a 4 4)]) (canvas-clear! (surface-canvas s) 'blue)))))))
    (test-case "explicit CPU detachment then upload works in both directions"
      (both (lambda (a b)
-       (with-skia ([cpu (under a (lambda () (with-skia ([im (source-image a)]) (gpu-image->raster-image im))))])
+       (with-skia
+         ([cpu (under a (lambda ()
+                          (with-skia ([im (source-image a)]) (gpu-image->raster-image im))))])
          (check-eq? (image-residency cpu) 'cpu)
          (check-false (skia-resource-gpu-context cpu))
          (under b (lambda () (with-skia ([im (gpu-upload-image b cpu)])
            (check-equal? (gpu-image->rgba-bytes im) image-workflow-pixels))))))))
    (test-case "failed foreign attachment leaves the existing paint affinity intact"
      (both (lambda (a b)
-       (with-skia ([paint (under a (lambda () (with-skia ([im (source-image a)] [sh (make-image-shader im)])
+       (with-skia
+         ([paint (under a (lambda () (with-skia ([im (source-image a)] [sh (make-image-shader im)])
                                                (make-paint #:shader sh))))]
-                   [foreign (under b (lambda () (with-skia ([im (source-image b)]) (make-image-shader im))))])
+           [foreign (under b (lambda () (with-skia ([im (source-image b)]) (make-image-shader im))))])
          (under a (lambda () (check-exn exn:fail? (lambda () (paint-set-shader! paint foreign)))))
          (check-eq? (skia-resource-gpu-context paint) a)))))))

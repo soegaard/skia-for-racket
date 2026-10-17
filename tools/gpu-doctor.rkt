@@ -1,19 +1,52 @@
 #lang racket/base
+
+;;;
+;;; GPU Doctor
+;;;
+
+;; Exercises GPU domains, thread affinity, deferred release, and abandonment and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/path racket/runtime-path racket/list
          json "../gpu.rkt" "../main.rkt" "../private/gpu-native.rkt"
          "../private/gpu-provider.rkt")
 (provide gpu-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; host-module : path?
+;;   Locates gpu-gui-host.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path host-module "gpu-gui-host.rkt")
+
+; metal-module : path?
+;;   Locates ../private/gpu-metal-probe.rkt relative to this module, independent of the invoking
+;;   directory.
 (define-runtime-path metal-module "../private/gpu-metal-probe.rkt")
+
+; write-json-atomically : path? any/c -> void?
+;;   Publishes JSON through a sibling temporary file and cleans up failed writes.
 (define (write-json-atomically path value)
   (make-directory* (or (path-only path) (current-directory)))
-  (define temporary (make-temporary-file "gpu-report-~a.tmp" #f (or (path-only path) (current-directory))))
+  (define temporary
+    (make-temporary-file "gpu-report-~a.tmp" #f (or (path-only path) (current-directory))))
   (dynamic-wind
     void
     (lambda ()
-      (call-with-output-file temporary (lambda (out) (write-json value out) (newline out)) #:exists 'truncate)
+      (call-with-output-file temporary (lambda (out) (write-json value out) (newline out)) #:exists
+        'truncate)
       (rename-file-or-directory temporary path #t))
     (lambda () (when (file-exists? temporary) (delete-file temporary)))))
+
+; gpu-doctor! : [#:backend symbol? #:required? boolean? #:require-hardware? boolean? #:cycles
+; exact-positive-integer? #:prefix path-string?] -> exact-integer?
+;;   Runs repeated GPU creation/drawing/teardown cycles and publishes a diagnostic receipt, not a
+;;   performance claim.
 (define (gpu-doctor! #:backend [backend 'opengl] #:required? [required? #t]
                      #:require-hardware? [require-hardware? #f] #:cycles [cycles 3]
                      #:prefix [prefix "output/gpu-0.38"])
@@ -40,7 +73,8 @@
           (step "unavailable" (hasheq 'at (symbol->string (exn:fail:gpu:unavailable-step e))
                                       'message (exn-message e)))
           (publish (report "unavailable" '() (exn-message e)))
-          (printf "GPU ~a: ~a\n" (if required? "REQUIRED CHECK FAILED" "explicitly SKIPPED") (exn-message e))
+          (printf "GPU ~a: ~a\n" (if required? "REQUIRED CHECK FAILED" "explicitly SKIPPED")
+            (exn-message e))
           (if required? 1 0))]
        [exn:fail?
         (lambda (e)
@@ -82,7 +116,8 @@
                   (define info (gpu-context-info context))
                   (step "ganesh-context" info)
                   (when (and require-hardware?
-                             (not (equal? (hash-ref info 'renderer_class "unclassified") "hardware-reported")))
+                          (not (equal? (hash-ref info 'renderer_class "unclassified")
+                                 "hardware-reported")))
                     (error 'gpu-doctor "required hardware-reported renderer, got ~a"
                            (hash-ref info 'renderer_class "unclassified")))
                   (define smoke (gpu-smoke-test context))
@@ -93,7 +128,8 @@
                   (set! result
                     (hasheq 'index (add1 i) 'initial_context info
                             'smoke (hash-set smoke 'rgba (bytes->list (hash-ref smoke 'rgba)))
-                            'image_file (path->string (file-name-from-path (string->path image-file)))))
+                            'image_file
+                      (path->string (file-name-from-path (string->path image-file)))))
                   (step "target-draw-submit-readback" (hash-remove smoke 'rgba)))
                 (lambda () (gpu-context-close! context)))
               (define closed (gpu-context-info context))
@@ -104,20 +140,42 @@
               (step "teardown" closed)
               (hash-set result 'closed_context closed))))]))
     (publish (report "passed" results))
-    (printf "GPU ~a check passed (~a creation/teardown cycles). No performance claim.\n" backend cycles)
+    (printf "GPU ~a check passed (~a creation/teardown cycles). No performance claim.\n" backend
+      cycles)
     0))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
   (define backend 'opengl)
+
+  ; required? : boolean?
+  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
   (define required? #t)
+
+  ; hardware? : boolean?
+  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
   (define hardware? #f)
+
+  ; prefix : path-string?
+  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-0.38")
+
+  ; cycles : exact-positive-integer?
+  ;;   Sets the number of context creation, rendering, and cleanup cycles.
   (define cycles 3)
   (command-line
    #:program "gpu-doctor"
    #:once-each
    [("--backend") name "opengl or metal (no automatic fallback)" (set! backend (string->symbol name))]
-   [("--optional") "Unavailable initialization may be reported as an explicit skip" (set! required? #f)]
-   [("--require-hardware") "Require a hardware-reported GL renderer; reject software/unknown strings" (set! hardware? #t)]
+   [("--optional") "Unavailable initialization may be reported as an explicit skip"
+     (set! required? #f)]
+   [("--require-hardware")
+     "Require a hardware-reported GL renderer; reject software/unknown strings" (set! hardware? #t)]
    [("--prefix") value "Output prefix" (set! prefix value)]
    [("--cycles") value "Context creation/teardown count, 1..100" (set! cycles (string->number value))]
    #:args () (void))

@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; OpenGL Texture Interoperation
+;;;
+
+;; Scopes application-owned textures and framebuffers under their GPU context.
+;; Connects external GL resources to Skia images and surfaces without transferring ownership.
+
 (require ffi/unsafe "../gpu.rkt" "core.rkt" "types.rkt" "lifetime.rkt"
          "gpu-domain.rkt" "gpu-context.rkt" "gpu-types.rkt" "gpu-io-trace.rkt"
          "gpu-interop-guard.rkt" "gpu-gl-interop-util.rkt" "gpu-gl-queries.rkt"
@@ -8,6 +16,8 @@
          (submod "core.rkt" gpu-surface-internals)
          (submod "core.rkt" gpu-image-internals))
 (provide call-with-gpu-external-gl call-with-gpu-gl-framebuffer gpu-copy-gl-texture)
+; context! : symbol? any/c -> any
+;;   Requires an OpenGL context and its matching active execution domain for interoperation.
 (define (context! who context)
   (when (or (current-gl-borrow?) (current-external-gl?))
     (error who "nested external GL handoff/borrowing is not supported"))
@@ -18,10 +28,17 @@
     (domain-request-shutdown! d 'external-gl-context-lost)
     (error who "native GL context has been lost"))
   d)
+; procedure! : symbol? procedure? exact-nonnegative-integer? -> void?
+;;   Checks callback arity before lending native GL objects to application code.
 (define (procedure! who thunk n)
   (unless (and (procedure? thunk) (procedure-arity-includes? thunk n))
     (raise-argument-error who (format "procedure accepting ~a arguments" n) thunk)))
+; reset! : any/c -> any
+;;   Invalidates Ganesh's cached GL state after external code may have changed the context.
 (define (reset! d) (n:gr_direct_context_reset_context (domain-pointer d) #xffffffff))
+; call-with-gpu-external-gl : gpu-context? (-> any) [#:wait? boolean?] -> any
+;;   Flushes and submits queued Skia work, then calls proc while the same native OpenGL context
+;;   remains current.
 (define (call-with-gpu-external-gl context proc #:wait? [wait? #f])
   (define who 'call-with-gpu-external-gl)
   (procedure! who proc 0)
@@ -41,19 +58,31 @@
            (reset! d)
            (record-gpu-io! (hasheq 'kind "external-gl-end" 'skia_state_invalidated #t))))))))
 
+; colorspace-pointer : symbol? any/c -> any
+;;   Returns a checked borrowed color-space pointer only for the surrounding native wrapping
+;;   operation.
 (define (colorspace-pointer who space)
   (and space (call-with-owned who (list (color-space-h who space)) values)))
+; close-borrow! : any/c list? -> any
+;;   Closes temporary Skia wrappers while the borrowed GL context is still valid.
 (define (close-borrow! context handles)
   (define d (context-domain 'gpu-gl-interop context))
   (parameterize-break #f
     (for ([h (in-list handles)] #:when h) (domain-resource-close! h))
     (domain-drain! d)))
+; with-state : any/c gl-queries? any/c -> any
+;;   Preserves queried GL bindings and resets Ganesh state around external-resource operations.
 (define (with-state d queries thunk)
   ;; On a native-context mismatch do not issue restoration calls into another
   ;; context. The caller violated the borrowing contract and must recover or
   ;; abandon before releasing its own GL names.
   ((gl-queries-with-bindings queries) thunk (lambda () (domain-pointer d))))
 
+; call-with-gpu-gl-framebuffer : gpu-context? (integer-in 1 4294967295) (integer-in 1 2147483647)
+;   (integer-in 1 2147483647) (-> canvas? any) [#:origin (or/c 'bottom-left 'top-left)]
+;   [#:color-space (or/c color-space? #f)] [#:wait? boolean?] -> any
+;;   Temporarily wraps a host-owned framebuffer and calls proc with an ordinary borrowed Skia
+;;   canvas.
 (define (call-with-gpu-gl-framebuffer context name width height proc
                                       #:origin [origin 'bottom-left]
                                       #:color-space [space #f]
@@ -93,7 +122,8 @@
                       (error who "Skia rejected the external framebuffer description"))
                     (set! handle
                       (domain-new-resource d 'surface
-                        (lambda () (wrap-backend-target/native (domain-pointer d) (resource-pointer descriptor)
+                        (lambda () (wrap-backend-target/native (domain-pointer d) (resource-pointer
+                          descriptor)
                                      (gl-origin-value who origin) rgba-8888 cp #f))
                         n:sk_surface_unref #:keepalive context)))
                   (define target
@@ -128,16 +158,24 @@
                       ;; leaves queued jobs for explicit recovery/abandonment.
                       (lambda () (close-borrow! context (list handle descriptor))))
                     (define after ((gl-queries-framebuffer queries) name width height))
-                    (unless (and (= (hash-ref after 'color_texture_id) (hash-ref info 'color_texture_id))
-                                 (= (hash-ref after 'stencil_renderbuffer_id) (hash-ref info 'stencil_renderbuffer_id)))
+                    (unless (and (= (hash-ref after 'color_texture_id) (hash-ref info
+                      'color_texture_id))
+                                 (= (hash-ref after 'stencil_renderbuffer_id) (hash-ref info
+                                   'stencil_renderbuffer_id)))
                       (error who "external framebuffer attachment identities changed"))
-                    (record-gpu-io! (hasheq 'kind "external-framebuffer-return" 'attachments_preserved #t
+                    (record-gpu-io! (hasheq 'kind "external-framebuffer-return" 'attachments_preserved
+                      #t
                                             'owns_host_framebuffer #f 'wait_requested wait?))))))))
          (lambda ()
            ;; with-state restored the saved bindings. Make Skia notice that.
            (reset! d)
            (void/reference-sink space)))))))
 
+; gpu-copy-gl-texture : gpu-context? (integer-in 1 4294967295) (integer-in 1 2147483647) (integer-in
+;   1 2147483647) [#:origin (or/c 'bottom-left 'top-left)] [#:premultiplied? boolean?]
+;   [#:color-space (or/c color-space? #f)] [#:wait? boolean?] -> gpu-image?
+;;   Validates and temporarily borrows the host's level-zero GL_RGBA8 2D texture, then copies it on
+;;   the GPU into a new Skia-owned image.
 (define (gpu-copy-gl-texture context name width height
                              #:origin [origin 'bottom-left]
                              #:premultiplied? [premultiplied? #t]
@@ -173,8 +211,10 @@
                        delete-texture-descriptor/native #:keepalive context))
                    (set! handle
                      (domain-new-resource d 'image
-                       (lambda () (borrowed-texture-image/native (domain-pointer d) (resource-pointer descriptor)
-                                    (gl-origin-value who origin) rgba-8888 (if premultiplied? 2 3) cp #f #f))
+                       (lambda () (borrowed-texture-image/native (domain-pointer d) (resource-pointer
+                         descriptor)
+                                    (gl-origin-value who origin) rgba-8888 (if premultiplied? 2 3) cp
+                                      #f #f))
                        image-unref/native #:keepalive context)))
                  (define borrowed (make-image-record handle width height))
                  (unless (and (texture-backed?/native (resource-pointer handle))
@@ -198,7 +238,8 @@
                    (dynamic-wind
                      void
                      (lambda ()
-                       (when (and handle (not submitted?)) (gpu-flush-and-submit! context #:wait? wait?)))
+                       (when (and handle (not submitted?)) (gpu-flush-and-submit! context #:wait?
+                         wait?)))
                      (lambda () (close-borrow! context (list handle descriptor))))
                    (record-gpu-io! (hasheq 'kind "external-texture-return"
                                            'owns_external_texture #f 'wait_requested wait?))))))))

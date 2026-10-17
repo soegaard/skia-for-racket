@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; GPU Render Native Test
+;;;
+
+;; Covers one-shot GPU render on the explicitly selected backend.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit
          "../main.rkt"
          "../gpu.rkt")
@@ -8,6 +20,14 @@
 
 ;; No native initialization on import. A host provider, when supplied, must be
 ;; idle and must not already belong to a live Ganesh context. It remains borrowed.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; make-gpu-render-native-tests : #:backend symbol? [#:provider (or/c gpu-provider? #f) #:adapter
+; (or/c symbol? #f)] -> test-suite?
+;;   Builds the parameterized suite for one-shot GPU render on the explicitly selected backend.
 (define (make-gpu-render-native-tests #:backend backend
                                       #:provider [provider #f]
                                       #:adapter [adapter #f])

@@ -1,7 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Codec Scanline Doctor
+;;;
+
+;; Exercises scanline decoding, encoded row order, and cursor ownership and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require json racket/cmdline racket/file racket/list
          "../main.rkt" "../tests/codec-scanline-fixtures.rkt" "../tests/codec-fixtures.rkt")
 (provide generate-scanline-evidence)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; generate-scanline-evidence : path-string? string? -> void?
+;;   Records scanline row mapping, reads/skips, truncated input, JPEG scaling, and
+;;   unsupported-format behavior.
 (define (generate-scanline-evidence directory token)
   (make-directory* directory)
   (define (save name bytes)
@@ -14,7 +34,8 @@
   (define jpeg (scanline-fixture-jpeg))
   (define rotated (jpeg-with-origin jpeg 6))
   (define png (scanline-fixture-png))
-  (for ([name '("bottom.bmp" "top.bmp" "short-bottom.bmp" "short-top.bmp" "reference.jpeg" "rotated.jpeg" "unsupported.png")]
+  (for ([name '("bottom.bmp" "top.bmp" "short-bottom.bmp" "short-top.bmp" "reference.jpeg"
+                 "rotated.jpeg" "unsupported.png")]
         [data (list bottom top short-bottom short-top jpeg rotated png)]) (save name data))
   (define (record name input actions #:scale [scale 1] #:stride [stride #f])
     (with-skia ([s (codec-scanline-from-bytes input #:scale scale)])
@@ -68,9 +89,11 @@
     (with-handlers ([exn:fail:codec-scanline?
                      (lambda (e) (hasheq 'result (symbol->string (exn:fail:codec-scanline-result e))
                                         'code (exn:fail:codec-scanline-native-code e)))])
-      (with-skia ([s (codec-scanline-from-bytes png)]) (error 'scanline-doctor "unexpected PNG scanline support"))))
+      (with-skia ([s (codec-scanline-from-bytes png)])
+        (error 'scanline-doctor "unexpected PNG scanline support"))))
   (define report
-    (hasheq 'schema 1 'stage "0.76b" 'run_token token 'status "passed" 'native_version (skia-native-version)
+    (hasheq 'schema 1 'stage "0.76b" 'run_token token 'status "passed" 'native_version
+      (skia-native-version)
             'cases cases 'unsupported_png unsupported 'session_scope "owned-private-codec"
             'scaled_scanline_executed #t 'subset_decode_executed #f
             'incremental_decode_executed #f 'live_port_callbacks #f 'gpu_executed #f))
@@ -78,7 +101,18 @@
     (lambda (out) (write-json report out) (newline out)) #:exists 'error)
   (displayln "codec-scanline-evidence: passed"))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") path "Fresh native evidence directory" (set! directory path)]
     [("--token") value "Unique run token" (set! token value)])

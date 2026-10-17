@@ -1,11 +1,37 @@
 #lang racket/base
+
+;;;
+;;; Geometry Completion Pure Test
+;;;
+
+;; Covers pure geometry domains and paint provenance.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list
          "../private/geometry-completion-util.rkt" "../private/check.rkt"
          "../private/types.rkt" "../matrix.rkt" "../output-policy.rkt"
          (only-in (submod "../private/audit-trace.rkt" testing)
                   uses put-slot! features after-native!))
 (provide geometry-completion-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail:contract? for the deliberately invalid operation.
 (define (bad f) (check-exn exn:fail:contract? f))
+
+;;;
+;;; Regression Suite
+;;;
+
+; geometry-completion-pure-tests : test-suite?
+;;   Collects the regression cases for pure geometry domains and paint provenance.
 (define geometry-completion-pure-tests
   (test-suite
    "0.67 pure geometry domains and paint provenance"

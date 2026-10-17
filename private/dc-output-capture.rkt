@@ -1,6 +1,19 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Output Capture
+;;;
+
+;; Records bounded drawing-context commands for later replay.
+;; Allows document output to inspect and replay Racket drawing operations.
+
 ;; A short-lived command capture, not a second public recording format.
 ;; Requests come from the production DC state machine; no Cairo pixel renderer.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/future racket/list racket/runtime-path
          "dc-class.rkt" "dc-support.rkt" "dc-bitmap.rkt"
          (submod "dc-class.rkt" canvas)
@@ -9,21 +22,60 @@
 (provide capture-output-dc skia-output-dc? output-dc-capabilities
          current-output-dc-command-limit output-dc-size output-dc-procedure!
          output-dc-special! (struct-out output-dc-command))
+;;;
+;;; Capture Records and Limits
+;;;
+
 (struct output-dc-command (kind arguments) #:transparent)
+;; Fields:
+;;   kind: 'path, 'clear, 'text, 'bitmap, 'alpha, 'url, 'destination, 'link, or 'raster. arguments:
+;;   detached positional argument list for that kind's replay operation. Alpha arguments contain
+;;   ordered child commands, parent clip, and opacity. Special commands contain payload, matrix,
+;;   clip, and alpha in that order. The tag determines the payload layout; no live output DC is
+;;   retained by a command.
+
 (struct target ([reverse-commands #:mutable] [closed? #:mutable]))
+;; Fields:
+;;   reverse-commands: mutable list of output-dc-command records, newest first; reverse it for
+;;   replay. closed?: mutable flag rejecting further capture after target closure.
+
+; add-output-command! : local-member-name binding
+;;   Reserves the capture-only command insertion method outside ordinary public DC dispatch.
 (define-local-member-name add-output-command!)
+
+; output-dc<%> : interface?
+;;   Marks short-lived document DCs so annotation and raster-group helpers can reject ordinary raster
+;;   DCs.
 (define output-dc<%> (interface ()))
+; skia-output-dc? : any/c -> boolean?
+;;   Returns whether v is one of the callback-scoped output DC values.
 (define (skia-output-dc? value) (is-a? value output-dc<%>))
+
+; current-output-dc-command-limit : (parameter/c exact-positive-integer?)
+;;   Bounds the total recorded operations, including commands inside isolated alpha groups.
 (define current-output-dc-command-limit
   (make-parameter 100000
     (lambda (n)
       (unless (exact-positive-integer? n)
         (raise-argument-error 'current-output-dc-command-limit "exact-positive-integer?" n))
       n)))
+
+; capture-active? : (parameter/c boolean?)
+;;   Tracks dynamic capture nesting so a document callback cannot recursively start another output DC.
 (define capture-active? (make-parameter #f))
+
+; native-renderer-module : path?
+;;   Locates the native renderer used lazily for font metrics and path bounds during capture.
 (define-runtime-path native-renderer-module "dc-render.rkt")
+
+; native-renderer : -> dc-renderer/styles?
+;;   Loads the shared renderer only when capture needs native measurement or path-query callbacks.
 (define (native-renderer)
   (dynamic-require native-renderer-module 'skia-dc-renderer))
+
+; output-dc-size : symbol? real? real? -> (values real? real?)
+;;   Validates positive logical output dimensions no larger than 32768 without allocating raster
+;;   storage.
 (define (output-dc-size who width height)
   (define w (dc-real who width))
   (define h (dc-real who height))
@@ -31,10 +83,16 @@
     (raise-arguments-error who "logical dimensions must be positive and at most 32768"
                            "width" width "height" height))
   (values w h))
+
+; output-dc-procedure! : symbol? procedure? exact-nonnegative-integer? -> void?
+;;   Checks a callback's positional arity and rejects required keywords.
 (define (output-dc-procedure! who proc arity)
   (unless (and (procedure? proc) (procedure-arity-includes? proc arity)
                (let-values ([(required _allowed) (procedure-keywords proc)]) (null? required)))
-    (raise-argument-error who (format "procedure accepting ~a arguments, no required keywords" arity) proc)))
+    (raise-argument-error who (format "procedure accepting ~a arguments, no required keywords" arity)
+      proc)))
+; output-dc-capabilities : -> (and/c hash? immutable?)
+;;   Returns detached declarations for the output-DC compatibility surface.
 (define (output-dc-capabilities)
   (hash-set* (dc-capabilities)
     'stage "0.63" 'class "callback-scoped-output-dc" 'storage "deferred-vector-commands"
@@ -46,11 +104,23 @@
     'annotations '(url named-destination destination-link)
     'explicit_raster_group #t
     'deferred '(copy erase pixel-size native-handle-brushes arbitrary-combined-text-breaks)))
+
+; output-dc-special! : (is-a?/c output-dc<%>) symbol? list? -> void?
+;;   Adds a supported annotation or explicit raster command through the active capture DC's lifetime
+;;   checks.
 (define (output-dc-special! dc kind arguments)
   (unless (skia-output-dc? dc)
     (raise-argument-error 'output-dc-special! "skia-output-dc?" dc))
   (send dc add-output-command! kind arguments))
 
+;;;
+;;; Callback-Scoped Command Capture
+;;;
+
+; capture-output-dc : real? real? procedure? [#:background any/c #:smoothing symbol?] -> (values
+; (listof output-dc-command?) exact-nonnegative-integer?)
+;;   Runs a callback once, expires its DC, and returns ordered detached commands plus the total
+;;   captured command count.
 (define (capture-output-dc width height draw
                            #:background [background "white"]
                            #:smoothing [smoothing 'smoothed])
@@ -136,7 +206,8 @@
         (define-values (_w _h matrix clip) (send this dc-region-query-info))
         (unless (pair? live) (error who "output capture has expired"))
         (when (and (memq kind '(url destination link)) (not (eq? (car live) root)))
-          (dc-unsupported kind 'annotation-inside-alpha-group "0.63: annotate outside isolated groups"))
+          (dc-unsupported kind 'annotation-inside-alpha-group
+            "0.63: annotate outside isolated groups"))
         (unless (memq kind '(url destination link raster))
           (error who "unknown private output command"))
         (append! (car live) kind (list arguments matrix clip (send this get-alpha))))))

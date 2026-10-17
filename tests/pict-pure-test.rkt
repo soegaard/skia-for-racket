@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Pict Pure Test
+;;;
+
+;; Covers skia/pict pure validation and explicit-transfer boundaries.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; These checks use only pure helper values. Requiring skia/pict must not load
 ;; Skia, create a GUI, or create a GPU context merely to validate requests.
 (require rackunit rackunit/text-ui racket/list pict/convert
@@ -8,6 +20,13 @@
 
 (provide pict-pure-tests)
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; pict-pure-tests : test-suite?
+;;   Collects the regression cases for skia/pict pure validation and explicit-transfer boundaries.
 (define pict-pure-tests
   (test-suite
    "skia/pict pure validation and explicit-transfer boundaries"
@@ -46,5 +65,12 @@
      (check-true (procedure? picture->pict)))))
 
 (module+ test
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pict-pure-tests))
   (unless (zero? failures) (error 'pict-pure-test "~a failures" failures)))

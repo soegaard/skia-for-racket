@@ -1,6 +1,25 @@
 #lang racket/base
+
+;;;
+;;; Canvas Pure Test
+;;;
+
+;; Covers canvas primitives: validation without native loading.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/vector "../main.rkt")
 (provide canvas-pure-tests)
+
+;;;
+;;; Regression Suite
+;;;
+
+; canvas-pure-tests : test-suite?
+;;   Collects the regression cases for canvas primitives: validation without native loading.
 (define canvas-pure-tests
   (test-suite
    "Canvas primitives: validation without native loading"
@@ -13,7 +32,8 @@
      (check-equal? (rounded-rect-radii (make-rounded-rect 0 0 20 30 #:radii 5))
                    #(#(5.0 5.0) #(5.0 5.0) #(5.0 5.0) #(5.0 5.0))))
    (test-case "corner order is TL TR BR BL"
-     (check-equal? (rounded-rect-radii (make-rounded-rect 0 0 20 30 #:radii '((1 2) (3 4) (5 6) (7 8))))
+     (check-equal?
+       (rounded-rect-radii (make-rounded-rect 0 0 20 30 #:radii '((1 2) (3 4) (5 6) (7 8))))
                    #(#(1.0 2.0) #(3.0 4.0) #(5.0 6.0) #(7.0 8.0))))
    (test-case "input vectors are deeply copied"
      (define p (vector 1 2)) (define rs (vector p p p p))
@@ -37,7 +57,8 @@
    (test-case "corner arity checked"
      (check-exn exn:fail:contract? (lambda () (make-rounded-rect 0 0 20 20 #:radii '((1 2) (3 4))))))
    (test-case "radius pair arity checked"
-     (check-exn exn:fail:contract? (lambda () (make-rounded-rect 0 0 20 20 #:radii '((1) (2 3) (4 5) (6 7))))))
+     (check-exn exn:fail:contract?
+       (lambda () (make-rounded-rect 0 0 20 20 #:radii '((1) (2 3) (4 5) (6 7))))))
    (test-case "non-finite radius rejected"
      (check-exn exn:fail:contract? (lambda () (make-rounded-rect 0 0 20 20 #:radii +inf.0))))
    (test-case "point coordinates checked first"
@@ -77,4 +98,6 @@
      (check-eq? (output-capability-status (output-capability-for 'pdf 'layer)) 'native-expansion)
      (check-eq? (output-capability-status (output-capability-for 'svg 'layer)) 'needs-raster))
    (test-case "PDF text reason is backend-specific"
-     (check-true (regexp-match? #rx"PDF" (output-capability-reason (output-capability-for 'pdf 'native-text)))))))
+     (check-true
+       (regexp-match? #rx"PDF"
+         (output-capability-reason (output-capability-for 'pdf 'native-text)))))))

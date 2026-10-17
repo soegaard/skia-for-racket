@@ -1,15 +1,41 @@
 #lang racket/base
+
+;;;
+;;; GPU Diagnostics Example
+;;;
+
+;; Reports context, cache, and memory diagnostics for an explicitly selected GPU.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; Public APIs only. This example really creates the explicitly selected backend.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline json "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt")
 (provide describe-current-gpu)
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; describe-current-gpu : gpu-context? -> hash?
+;;   Returns context, cache, and memory diagnostics as a JSON-compatible hash.
 (define (describe-current-gpu context)
   (hasheq 'context (gpu-context-info context)
           'budgeted_cache (gpu-cache-info context)
           'memory_dump (memory-statistics->jsexpr (gpu-memory-statistics context))
           'gl_interface (and (eq? (gpu-context-backend context) 'opengl)
                              (gpu-gl-interface-info context))))
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; backend : symbol?
+  ;;   Selects backend for the example.
   (define backend 'auto)
+  ; adapter : symbol?
+  ;;   Selects the requested GPU adapter, or leaves backend selection at its default.
   (define adapter 'hardware)
   (command-line #:once-each
     [("--backend") b "egl, metal, direct3d" (set! backend (string->symbol b))]
@@ -18,6 +44,8 @@
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
   (unless (memq adapter '(hardware warp)) (error 'gpu-diagnostics "invalid adapter"))
+  ; context : gpu-context?
+  ;;   Owns the explicitly selected GPU context for the example's rendering work.
   (define context
     (case backend
       [(egl) (make-egl-gpu-context #:gl-interface 'auto)]

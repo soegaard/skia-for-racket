@@ -1,9 +1,32 @@
 #lang racket/base
+
+;;;
+;;; Geometry Completion Doctor
+;;;
+
+;; Exercises arc construction, path operations, rounded rectangles, and regions and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list json
          "../main.rkt" "../tests/geometry-completion-fixtures.rkt")
 (provide generate-geometry-documents)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; write-data : path-string? bytes? -> exact-nonnegative-integer?
+;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (write-data path data)
   (call-with-output-file path (lambda (out) (write-bytes data out)) #:exists 'error))
+
+; generate-geometry-documents : path-string? string? -> void?
+;;   Exports the shared geometry scenes as vector documents for independent pixel/structure
+;;   inspection.
 (define (generate-geometry-documents directory token)
   (when (directory-exists? directory) (error 'geometry-doctor "output directory already exists"))
   (make-directory* directory)
@@ -24,7 +47,8 @@
                (set! group (draw-output-group c 8 16 64 48
                  (lambda (gc) (set! count (add1 count)) (draw-geometry-scene name gc))
                  #:policy 'require-vector #:label id))
-               (canvas-annotate-url! c 2 2 4 4 (string-append "https://example.invalid/geometry/" id)))
+               (canvas-annotate-url! c 2 2 4 4
+                 (string-append "https://example.invalid/geometry/" id)))
              #:background 'white))
          (define-values (bytes audit) (output->bytes/audit page fmt #:policy 'vector-only))
          (unless (and (= count 1) (output-audit-report-vector-only? audit)
@@ -39,9 +63,21 @@
   (call-with-output-file (build-path directory "documents.json")
     (lambda (out) (write-json (hasheq 'schema 1 'stage "0.67" 'run_token token 'status "passed"
                                     'documents rows 'rendering_executed #t) out)) #:exists 'error)
-  (printf "Geometry: ~a native vector documents generated; independent inspection required.\n" (length rows)))
+  (printf "Geometry: ~a native vector documents generated; independent inspection required.\n"
+    (length rows)))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") path "New output directory" (set! directory path)]
     [("--token") value "Run identity" (set! token value)] #:args () (void))

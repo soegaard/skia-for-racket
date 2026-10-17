@@ -1,28 +1,59 @@
 #lang racket/base
+
+;;;
+;;; Runtime Native Test
+;;;
+
+;; Covers runtime effects: native compilation, rendering, and ownership.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list
          "../main.rkt" "runtime-fixtures.rkt")
 (provide runtime-native-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; check-rgba-near : rgba? rgba? [real?] -> void?
+;;   Compares rendered RGBA channels within the allowed native rounding tolerance.
 (define (check-rgba-near actual expected [tolerance 2])
   (for ([a (in-list (list (rgba-red actual) (rgba-green actual)
                           (rgba-blue actual) (rgba-alpha actual)))]
         [e (in-list expected)])
     (check-= a e tolerance)))
+
+; shader-pixel : shader? [real? real?] -> any/c
+;;   Renders a shader and samples a requested fixture pixel.
 (define (shader-pixel sh [x 0] [y 0])
   (with-skia ([s (make-surface 24 24)] [p (make-paint #:shader sh)])
     (draw-paint (surface-canvas s) p)
     (surface-pixel s x y)))
+
+; filter-pixel : color-filter? -> any/c
+;;   Renders the fixed color-filter input and returns its output sample.
 (define (filter-pixel cf)
   (with-skia ([s (make-surface 2 2)]
               [p (make-paint #:color 'red #:color-filter cf)])
     (draw-paint (surface-canvas s) p)
     (surface-pixel s 0 0)))
+
+; blend-pixel : blender? -> any/c
+;;   Renders the fixed source/destination pair through a runtime blender.
 (define (blend-pixel b)
   (with-skia ([s (make-surface 2 2 #:background 'blue)]
               [p (make-paint #:color 'red)])
     (paint-set-blender! p b)
     (draw-paint (surface-canvas s) p)
     (surface-pixel s 0 0)))
+
+; in-other-thread : procedure? -> any/c
+;;   Captures a runtime-effect operation's worker-thread result or failure.
 (define (in-other-thread thunk)
   (define ch (make-channel))
   (define t
@@ -32,6 +63,14 @@
   (thread-wait t)
   result)
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; runtime-native-tests : test-suite?
+;;   Collects the regression cases for runtime effects: native compilation, rendering, and
+;;   ownership.
 (define runtime-native-tests
   (test-suite
    "Runtime effects: native compilation, rendering, and ownership"
@@ -58,7 +97,8 @@
    (test-case "reflection follows packed offsets including float3 and arrays"
      (with-skia ([e (make-runtime-effect reflection-sksl)])
        (define us (runtime-effect-uniforms e))
-       (check-equal? (map runtime-uniform-name us) '("shift" "triple" "pairs" "basis" "channel" "tint"))
+       (check-equal? (map runtime-uniform-name us)
+         '("shift" "triple" "pairs" "basis" "channel" "tint"))
        (check-equal? (map runtime-uniform-offset us) '(0 4 16 24 40 44))
        (check-equal? (map runtime-uniform-type us) '(float float3 float float2x2 int float4))
        (check-equal? (map runtime-uniform-count us) '(1 1 2 1 1 1))
@@ -153,7 +193,8 @@
    (test-case "child metadata is copied and names resolve to correct kinds"
      (with-skia ([e (make-runtime-effect mixed-child-sksl)])
        (check-equal? (map runtime-child-name (runtime-effect-children e)) '("image" "filter" "blend"))
-       (check-equal? (map runtime-child-kind (runtime-effect-children e)) '(shader color-filter blender))
+       (check-equal? (map runtime-child-kind (runtime-effect-children e))
+         '(shader color-filter blender))
        (check-equal? (map runtime-child-index (runtime-effect-children e)) '(0 1 2))))
    (test-case "ordinary child shaders can be closed after parent creation"
      (with-skia ([e (make-runtime-effect pass-child-sksl)]
@@ -178,9 +219,12 @@
    (test-case "missing extra null and mistyped children reject"
      (with-skia ([e (make-runtime-effect pass-child-sksl)] [p (make-paint)])
        (check-exn exn:fail:contract? (lambda () (runtime-effect->shader e)))
-       (check-exn exn:fail:contract? (lambda () (runtime-effect->shader e #:children (hash 'child #f))))
-       (check-exn exn:fail:contract? (lambda () (runtime-effect->shader e #:children (hash 'child p))))
-       (check-exn exn:fail:contract? (lambda () (runtime-effect->shader e #:children (hash 'extra p))))))
+       (check-exn exn:fail:contract?
+         (lambda () (runtime-effect->shader e #:children (hash 'child #f))))
+       (check-exn exn:fail:contract?
+         (lambda () (runtime-effect->shader e #:children (hash 'child p))))
+       (check-exn exn:fail:contract?
+         (lambda () (runtime-effect->shader e #:children (hash 'extra p))))))
    (test-case "already-closed children reject before native construction"
      (with-skia ([e (make-runtime-effect pass-child-sksl)] [child (make-color-shader 'blue)])
        (skia-close! child)
@@ -269,7 +313,8 @@
    (test-case "lowered uniform byte limit rejects instantiation"
      (with-skia ([e (make-runtime-effect solid-sksl)])
        (parameterize ([current-skia-byte-limit 15])
-         (check-exn exn:fail? (lambda () (runtime-effect->shader e #:uniforms (hash 'color '(1 0 0 1))))))))
+         (check-exn exn:fail?
+           (lambda () (runtime-effect->shader e #:uniforms (hash 'color '(1 0 0 1))))))))
    (test-case "recorded runtime drawing owns shader inputs"
      (with-skia ([e (make-runtime-effect solid-sksl)]
                  [sh (runtime-effect->shader e #:uniforms (hash 'color '(0 1 0 1)))]

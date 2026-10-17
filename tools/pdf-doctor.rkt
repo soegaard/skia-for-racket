@@ -1,7 +1,27 @@
 #lang racket/base
+
+;;;
+;;; PDF Doctor
+;;;
+
+;; Exercises PDF documents, page scopes, metadata, and finish-time output and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt")
 (provide pdf-doctor!)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; pdf-doctor! : -> void?
+;;   Checks multipage PDF serialization, copied output bytes, native metadata layouts, and expired
+;;   page-canvas rejection.
 (define (pdf-doctor!)
   (define expired #f)
   (define bs

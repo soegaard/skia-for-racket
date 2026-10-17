@@ -1,14 +1,39 @@
 #lang racket/base
+
+;;;
+;;; Lifetime Test
+;;;
+
+;; Covers ownership and scoped cleanup (no native library).
+;; This regression module protects the integration boundaries used by the package's drawing API.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui "../private/lifetime.rkt")
 (provide lifetime-tests)
 
 ;; Synthetic native tokens exercise the actual lifetime implementation,
 ;; not a separate implementation, without loading libSkiaSharp.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; make-fake : box? -> any/c
+;;   Creates a synthetic owned resource whose destructor increments the supplied counter.
 (define (make-fake released)
   (new-owned 'test 'synthetic-resource
              (lambda () 'synthetic-pointer)
              (lambda (_) (set-box! released (add1 (unbox released))))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; lifetime-tests : test-suite?
+;;   Collects the regression cases for ownership and scoped cleanup (no native library).
 (define lifetime-tests
   (test-suite
    "Ownership and scoped cleanup (no native library)"
@@ -60,5 +85,12 @@
        (lambda () (new-owned 'test 'synthetic (lambda () #f) void))))))
 
 (module+ test
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests lifetime-tests))
   (unless (zero? failures) (error 'lifetime-tests "~a failures" failures)))

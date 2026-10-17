@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; GPU Image Queries
+;;;
+
+;; Performs GPU-aware image validity and conversion operations.
+;; Connects extended image APIs to the correct GPU context scope.
+
 ;; Explicit GPU filtering. Requiring gpu.rkt still does not construct a context.
 (require ffi/unsafe
          "core.rkt" "types.rkt" "lifetime.rkt" "gpu-domain.rkt" "gpu-context.rkt"
@@ -8,6 +16,11 @@
          (submod "gpu-images.rkt" image-operation-internals)
          (submod "../image-operations.rkt" internals))
 (provide gpu-image-apply-filter)
+; gpu-image-apply-filter : gpu-image? image-filter? [#:subset (or/c list? vector? #f)] #:clip (or/c
+;   list? vector?) -> (values gpu-image? (and/c (vector/c exact-nonnegative-integer?
+;   exact-nonnegative-integer? exact-positive-integer? exact-positive-integer?) immutable?) (and/c
+;   (vector/c exact-integer? exact-integer?) immutable?))
+;;   Applies filter in the image's active context.
 (define (gpu-image-apply-filter im filter #:subset [subset #f] #:clip clip)
   (define who 'gpu-image-apply-filter)
   (define ih (gpu-h who im)) (define fh (image-filter-h who filter))
@@ -32,7 +45,8 @@
           (call-with-owned who (list handle)
             (lambda (p)
               (unless (and (texture-backed?/native p) (valid-image?/native p cp))
-                (error who "native filter result is not a valid same-context texture; no CPU fallback"))
+                (error who
+                  "native filter result is not a valid same-context texture; no CPU fallback"))
               (define image (operation-image-record who handle p source-color))
               (unless (and (<= (image-width image) maximum) (<= (image-height image) maximum))
                 (error who "native filtered image exceeds the texture-size limit"))
@@ -40,7 +54,8 @@
       (define-values (image valid offset)
         (finish-image-filter who result out-subset out-offset checked-clip (list ih fh)))
       (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! image) (raise e))])
-        (record-gpu-io! (hasheq 'kind "gpu-image-filter" 'width (image-width image) 'height (image-height image)
+        (record-gpu-io! (hasheq 'kind "gpu-image-filter" 'width (image-width image) 'height
+          (image-height image)
                                 'subset (vector->list valid) 'offset (vector->list offset)))
         (void/reference-sink sr cr out-subset out-offset)
         (values image valid offset)))))

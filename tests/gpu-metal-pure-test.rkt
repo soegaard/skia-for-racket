@@ -1,15 +1,43 @@
 #lang racket/base
+
+;;;
+;;; GPU Metal Pure Test
+;;;
+
+;; Covers metal ownership and native-call scopes: pure mocked operations.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list ffi/unsafe/atomic
          "../gpu.rkt" "../private/gpu-domain.rkt" "../private/gpu-types.rkt"
          "../private/gpu-provider.rkt" "../private/gpu-native-scope.rkt"
          "gpu-fixtures.rkt" "gpu-metal-fixtures.rkt")
 (provide gpu-metal-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; failed-construction : symbol? -> void?
+;;   Injects a construction failure and checks balanced pool scope and zero retained references.
 (define (failed-construction fail)
   (define f (make-metal-fixture fail))
-  (check-exn exn:fail? (lambda () (make-gpu-domain (metal-fixture-provider f) (metal-fixture-driver f))))
+  (check-exn exn:fail?
+    (lambda () (make-gpu-domain (metal-fixture-provider f) (metal-fixture-driver f))))
   (check-equal? (metal-live-refs f) '(0 0 0))
   (check-equal? (metal-event-count f 'pool-enter) (metal-event-count f 'pool-leave))
   f)
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-metal-pure-tests : test-suite?
+;;   Collects the regression cases for metal ownership and native-call scopes: pure mocked
+;;   operations.
 (define gpu-metal-pure-tests
   (test-suite
    "Metal ownership and native-call scopes: pure mocked operations"
@@ -33,7 +61,9 @@
      (check-equal? (map gpu-backend-native-id '(opengl metal)) '(0 2))
      (check-exn exn:fail:contract? (lambda () (gpu-backend-native-id 'cpu))))
    (test-case "default native scope preserves multiple values"
-     (check-equal? (call-with-values (lambda () (call-with-gpu-native-scope (lambda () (values 1 2)))) list) '(1 2)))
+     (check-equal?
+       (call-with-values (lambda () (call-with-gpu-native-scope (lambda () (values 1 2)))) list)
+       '(1 2)))
    (test-case "native scope rejects invalid callbacks"
      (check-exn exn:fail:contract? (lambda () (make-gpu-native-scope 1 void)))
      (check-exn exn:fail:contract? (lambda () (make-gpu-native-scope void 1))))
@@ -50,12 +80,14 @@
    (test-case "native failure closes its pool before propagating"
      (define f (make-metal-fixture))
      (parameterize ([current-gpu-native-scope (metal-fixture-scope f)])
-       (check-exn exn:fail? (lambda () (call-with-gpu-native-scope (lambda () (error 'test "failure"))))))
+       (check-exn exn:fail?
+         (lambda () (call-with-gpu-native-scope (lambda () (error 'test "failure"))))))
      (check-false (unbox (metal-fixture-in-pool f)))
      (check-equal? (metal-events f) '(pool-enter pool-leave)))
    (test-case "failed pool entry is not popped"
      (define popped? #f)
-     (define s (make-gpu-native-scope (lambda () (error 'test "enter")) (lambda (_) (set! popped? #t))))
+     (define s (make-gpu-native-scope (lambda () (error 'test "enter"))
+                 (lambda (_) (set! popped? #t))))
      (parameterize ([current-gpu-native-scope s])
        (check-exn exn:fail? (lambda () (call-with-gpu-native-scope void))))
      (check-false popped?))
@@ -115,7 +147,9 @@
       (lambda (f d)
         (with-metal-fixture
          (lambda (g e)
-           (check-false (eq? (gpu-provider-key (metal-fixture-provider f)) (gpu-provider-key (metal-fixture-provider g))))
+           (check-false
+             (eq? (gpu-provider-key (metal-fixture-provider f))
+               (gpu-provider-key (metal-fixture-provider g))))
            (check-false (= (domain-generation d) (domain-generation e))))))))
    (test-case "application scope has no open autorelease pool"
      (with-metal-fixture

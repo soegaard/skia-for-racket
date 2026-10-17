@@ -1,19 +1,51 @@
 #lang racket/base
+
+;;;
+;;; Annotation Pure Test
+;;;
+
+;; Covers document annotations: pure contracts and SVG finishing.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/string
          "../annotations.rkt" "../private/annotation-util.rkt"
          "../private/svg-util.rkt" "../private/check.rkt")
 (provide annotation-pure-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; native-svg : bytes?
+;;   Supplies native-shaped SVG with an existing clip and escaped external link.
 (define native-svg
   #"<svg width=\"100\" height=\"80\"><defs><clipPath id=\"old\"><rect width=\"2\" height=\"2\"/></clipPath></defs><g clip-path=\"url(#old)\"><a xlink:href=\"https://example.invalid/?a=1&amp;b=2\"><rect fill-opacity=\"0.0\" x=\"10\" y=\"20\" width=\"30\" height=\"40\"/></a></g></svg>")
+
+; finish-native : annotation-scope bytes? [bytes?] -> bytes?
+;;   Runs XML and annotation finishing on a fixed-size SVG fixture.
 (define (finish-native scope bs [prefix #"probe"])
   (finish-svg-annotations 'test scope
     (finish-svg-xml 'test bs 100 80 #"" #"" prefix) 100 80 prefix))
+
+; internal-svg : string? -> bytes?
+;;   Builds an internal-destination anchor using the encoded destination identifier.
 (define (internal-svg name)
   (string->bytes/utf-8
    (format "<svg width=\"100\" height=\"80\"><a xlink:href=\"urn:racket-skia:destination:~a\"><rect fill-opacity=\"0\" width=\"30\" height=\"20\"/></a></svg>"
            (destination-id name))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; annotation-pure-tests : test-suite?
+;;   Collects the regression cases for document annotations: pure contracts and SVG finishing.
 (define annotation-pure-tests
   (test-suite
    "Document annotations: pure contracts and SVG finishing"
@@ -101,7 +133,8 @@
      (check-true (regexp-match? #rx#"href=\"https://example.invalid/\\?a=1&amp;b=2\"" out))
      (check-false (regexp-match? #rx#"amp;amp" out)))
    (test-case "external href text is not rewritten as a paint server"
-     (define bs #"<svg width=\"100\" height=\"80\"><a xlink:href=\"https://example.invalid/?q=url(#not-a-resource)\"><rect width=\"2\" height=\"2\"/></a></svg>")
+     (define bs
+       #"<svg width=\"100\" height=\"80\"><a xlink:href=\"https://example.invalid/?q=url(#not-a-resource)\"><rect width=\"2\" height=\"2\"/></a></svg>")
      (check-true (regexp-match? #rx#"url\\(#not-a-resource\\)" (finish-native (box #f) bs))))
    (test-case "native graphics resource references still resolve"
      (define out (finish-native (box #f) native-svg))
@@ -113,7 +146,8 @@
      (annotation-define! 'test s "intro" 12 34)
      (define out (finish-native s (internal-svg "intro")))
      (check-true (regexp-match? #rx#"href=\"#probe-dest-696e74726f\"" out))
-     (check-true (regexp-match? #rx#"<view id=\"probe-dest-696e74726f\" viewBox=\"12.0 34.0 100 80\"" out))
+     (check-true
+       (regexp-match? #rx#"<view id=\"probe-dest-696e74726f\" viewBox=\"12.0 34.0 100 80\"" out))
      (check-false (regexp-match? #rx#"urn:racket-skia" out))
      (annotation-forget! s))
    (test-case "definitions work on an otherwise empty SVG"
@@ -127,7 +161,8 @@
      (define a (box #f)) (define b (box #f))
      (for ([n '("a" "b")]) (annotation-define! 'test a n 1 2))
      (for ([n '("b" "a")]) (annotation-define! 'test b n 1 2))
-     (check-equal? (finish-native a #"<svg width=\"100\" height=\"80\"/>") (finish-native b #"<svg width=\"100\" height=\"80\"/>"))
+     (check-equal? (finish-native a #"<svg width=\"100\" height=\"80\"/>")
+       (finish-native b #"<svg width=\"100\" height=\"80\"/>"))
      (annotation-forget! a) (annotation-forget! b))
    (test-case "SVG added output is bounded"
      (define s (box #f))

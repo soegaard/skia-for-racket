@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; GPU Formats Example
+;;;
+
+;; Returns a detached half-float CPU image rendered in a caller-selected GPU context.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require "../main.rkt" "../gpu.rkt")
 (provide render-half-float-image)
 ;; The caller selects a backend and activates its own context. The returned
 ;; CPU image is independently owned and retains F16 precision after shutdown.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-half-float-image : gpu-context? -> image?
+;;   Returns a detached CPU image while preserving the rendered half-float samples.
 (define (render-half-float-image context)
   (call-with-gpu-context context
     (lambda ()

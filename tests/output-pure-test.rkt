@@ -1,9 +1,35 @@
 #lang racket/base
+
+;;;
+;;; Output Pure Test
+;;;
+
+;; Covers shared vector output: pure contracts.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file
          "../main.rkt" "../private/output-util.rkt")
 (provide output-pure-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; blank-page : -> output-page?
+;;   Builds an empty page for public output argument and policy validation.
 (define (blank-page) (make-output-page 72 72 void))
+
+;;;
+;;; Regression Suite
+;;;
+
+; output-pure-tests : test-suite?
+;;   Collects the regression cases for shared vector output: pure contracts.
 (define output-pure-tests
   (test-suite
    "Shared vector output: pure contracts"
@@ -83,11 +109,13 @@
    (test-case "format-specific options cannot be silently ignored"
      (check-exn #rx"SVG-only" (lambda () (output->bytes (blank-page) 'pdf #:id-prefix "x")))
      (check-exn #rx"PDF-only" (lambda () (output->bytes (blank-page) 'svg #:encoding-quality 0)))
-     (check-exn exn:fail:contract? (lambda () (output->bytes (blank-page) 'pdf #:encoding-quality 102))))
+     (check-exn exn:fail:contract?
+       (lambda () (output->bytes (blank-page) 'pdf #:encoding-quality 102))))
    (test-case "the last page's raster scale is checked before the first callback"
      (define first (make-output-page 72 72 (lambda (_) (error 'test "callback ran"))))
      (define second (make-output-page 1 1 void #:unit 'in))
-     (check-exn #rx"raster scale" (lambda () (output->bytes (list first second) 'pdf #:raster-dpi 9600))))
+     (check-exn #rx"raster scale"
+       (lambda () (output->bytes (list first second) 'pdf #:raster-dpi 9600))))
    (test-case "padded raster geometry preserves the content box"
      (check-equal? (call-with-values (lambda () (rasterized-geometry 'test 10 20 2 '(1 2 3 4))) list)
                    '(28 52 1 2 14.0 26.0))
@@ -100,7 +128,8 @@
        (check-exn #rx"byte-limit" (lambda () (rasterized-geometry 'test 2 2 1 1))))
      (check-exn exn:fail:contract? (lambda () (text-blob->path #f))))
    (test-case "SVG physical sizing only rewrites the root dimensions"
-     (define input #"<?xml version=\"1.0\"?><svg width=\"72\" height=\"36\" viewBox=\"0 0 72 36\"><svg width=\"9\" height=\"8\"/></svg>")
+     (define input
+       #"<?xml version=\"1.0\"?><svg width=\"72\" height=\"36\" viewBox=\"0 0 72 36\"><svg width=\"9\" height=\"8\"/></svg>")
      (define bs (svg-with-point-size 'test input 72 36))
      (check-true (regexp-match? #rx#"width=\"72.0pt\" height=\"36.0pt\" viewBox=\"0 0 72 36\"" bs))
      (check-true (regexp-match? #rx#"<svg width=\"9\" height=\"8\"/>" bs)))
@@ -117,7 +146,7 @@
        (lambda ()
          (define ran? #f)
          (check-exn #rx"already exists"
-                    (lambda () (save-output (make-output-page 20 20 (lambda (_) (set! ran? #t))) tmp 'svg)))
+           (lambda () (save-output (make-output-page 20 20 (lambda (_) (set! ran? #t))) tmp 'svg)))
          (check-false ran?))
        (lambda () (delete-file tmp))))))
 

@@ -1,20 +1,49 @@
 #lang racket
 
+;;;
+;;; Waves
+;;;
+
+;; Defines runtime shader sources and shared drawing functions for animated waves.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia)
 (provide solid-source coordinate-source bands-source wave-source
          scene-width scene-height phase-speed phase-at
          make-wave-shader draw-wave-panel draw-wave-scene)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; scene-width : exact-integer?
+;;   Specifies scene width in the drawing's local coordinate units.
 (define scene-width 760)
+; scene-height : exact-integer?
+;;   Specifies scene height in the drawing's local coordinate units.
 (define scene-height 460)
+; phase-speed : real?
+;;   Sets the shader phase change per elapsed second.
 (define phase-speed 2.0)
 
+; phase-at : real? -> real?
+;;   Converts elapsed seconds into the wave shader's animation phase.
 (define (phase-at seconds)
   (* phase-speed seconds))
 
+; solid-source : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define solid-source
   "half4 main(float2 p) { return half4(0.18, 0.74, 0.90, 1.0); }")
 
+; coordinate-source : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define coordinate-source
   #<<SKSL
 uniform float2 extent;
@@ -25,6 +54,8 @@ half4 main(float2 p) {
 SKSL
   )
 
+; bands-source : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define bands-source
   #<<SKSL
 uniform float2 extent;
@@ -38,6 +69,8 @@ half4 main(float2 p) {
 SKSL
   )
 
+; wave-source : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define wave-source
   #<<SKSL
 uniform float2 extent;
@@ -69,6 +102,9 @@ half4 main(float2 p) {
 SKSL
   )
 
+; make-wave-shader : runtime-effect? real? real? #:frequency [real?] #:bend [real?] #:phase
+; [real?] #:hue [real?] #:glow [real?] -> shader?
+;;   Constructs wave shader for the example's drawing pipeline.
 (define (make-wave-shader effect width height
                           #:frequency [frequency 5]
                           #:bend [bend 0.30]
@@ -84,6 +120,9 @@ SKSL
                     'hue hue
                     'glow glow)))
 
+; draw-wave-panel : canvas? runtime-effect? real? real? real? real? #:frequency [real?] #:bend
+; [real?] #:phase [real?] #:hue [real?] #:glow [real?] -> void?
+;;   Draws the wave panel component in the current canvas coordinate system.
 (define (draw-wave-panel canvas effect x y width height
                          #:frequency [frequency 5]
                          #:bend [bend 0.30]
@@ -101,6 +140,9 @@ SKSL
       (canvas-translate! canvas x y)
       (draw-rounded-rect canvas 0 0 width height 20 20 paint))))
 
+; draw-wave-scene : canvas? runtime-effect? real? real? real? #:frequency [real?] #:bend [real?]
+; #:hue [real?] -> void?
+;;   Draws the wave scene component in the current canvas coordinate system.
 (define (draw-wave-scene canvas effect seconds width height
                          #:frequency [frequency 5]
                          #:bend [bend 0.30]
@@ -114,6 +156,10 @@ SKSL
                    #:bend bend
                    #:phase (phase-at seconds)
                    #:hue hue))
+
+;;;
+;;; Command-Line Entry Point
+;;;
 
 (module+ main
   (with-skia ([effect (make-runtime-effect wave-source)]

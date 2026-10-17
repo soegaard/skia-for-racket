@@ -1,6 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Portable Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for portable image drawing and bounded
+;; vector-output alternatives.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt")
 (provide make-portable-test-image)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; make-portable-test-image : -> image?
+;;   Creates a deterministic border/center image for portable drawing and tiling comparisons.
 (define (make-portable-test-image)
   ;; Nine solid, distinct 3x3 blocks. Nearest-neighbor reference comparisons
   ;; avoid renderer-specific edge sampling while still exposing wrong cells.

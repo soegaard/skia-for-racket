@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Codecs Example
+;;;
+
+;; Renders an image-codec gallery from in-memory encoding and decoding round trips.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline "../main.rkt")
 
 ;; Visual smoke test for the 0.4 encoded-image layer. Everything is generated
 ;; in memory: render -> encode PNG/JPEG/WebP -> decode -> crop/subset -> render.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-codec-gallery : path-string? -> void?
+;;   Renders the codec gallery example to the selected output destination.
 (define (render-codec-gallery filename)
   (with-skia ([source (make-surface 240 180 #:background 'white)]
               [gradient (make-linear-gradient-shader
@@ -57,7 +75,13 @@
         (printf "encoded sizes: PNG ~a bytes; JPEG ~a bytes; WebP ~a bytes\n"
                 (bytes-length png) (bytes-length jpeg) (bytes-length webp))))))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; filename : path-string?
+  ;;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "codecs.rkt" #:args ([output "codecs.png"]) output))
   (render-codec-gallery filename)

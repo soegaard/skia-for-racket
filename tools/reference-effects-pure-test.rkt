@@ -1,5 +1,18 @@
 #lang racket/base
 
+;;;
+;;; Reference Effects Pure Test
+;;;
+
+;; Checks effect argument ranges, runtime-source validation, and graph options before native
+;; allocation.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Public argument validation only. No native initialization, drawing, or GPU context.
 (require rackunit racket/list skia)
 

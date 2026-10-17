@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Direct3D Presentation Adapter
+;;;
+
+;; Builds the presentation adapter around DXGI swap-chain targets.
+;; Connects Windows presentation to the common GPU frame API.
+
 ;; Draw-only swap-chain surfaces are private and frame-scoped. The public
 ;; frame exposes only the ordinary canvas, never a SkSurface/back-buffer COM
 ;; object that could be snapshotted or read back behind this state protocol.
@@ -13,8 +21,12 @@
 (provide make-d3d12-presentation-adapter)
 ;; Explicit test-only capture: D3D12 CopyTextureRegion + READBACK heap, not a
 ;; Skia surface read. Never installed by the production GUI/presenter factory.
+; current-dxgi-capture-hook : parameter?
+;;   Provides an optional diagnostic receiver for explicitly captured DXGI frame pixels.
 (define current-dxgi-capture-hook (make-parameter #f))
 (module* testing #f (provide current-dxgi-capture-hook))
+; make-d3d12-presentation-adapter : any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Connects DXGI back-buffer acquisition and fence completion to the common presenter protocol.
 (define (make-d3d12-presentation-adapter hwnd gui-measure post background selection index sync)
   (dxgi-sync-interval! sync)
   (n:gpu-native-check! 'dxgi)
@@ -85,7 +97,8 @@
                       (values outcome pixels record)))
                     (call-with-presentation-cleanup
                       (lambda (mark-handed-off!)
-                        (when (and capture (not (and (procedure? capture) (procedure-arity-includes? capture 2))))
+                        (when (and capture (not (and (procedure? capture) (procedure-arity-includes?
+                          capture 2))))
                           (error 'direct3d-presentation "invalid private capture hook"))
                         (define resource-info
                           (make-gr-d3d-texture-info (dxgi-token-resource token) #f
@@ -96,8 +109,10 @@
                                      (= (n:gr_backendrendertarget_get_samples descriptor) 1)
                                      (= (n:gr_backendrendertarget_get_width descriptor) w)
                                      (= (n:gr_backendrendertarget_get_height descriptor) h))
-                          (error 'direct3d-presentation "Skia rejected the DXGI render-target descriptor"))
-                        (define cs (call-with-owned 'direct3d-presentation (list (color-space-h 'direct3d-presentation space)) values))
+                          (error 'direct3d-presentation
+                            "Skia rejected the DXGI render-target descriptor"))
+                        (define cs (call-with-owned 'direct3d-presentation (list (color-space-h
+                          'direct3d-presentation space)) values))
                         (set! handle
                           (domain-new-resource d 'window-surface
                             (lambda () (n:sk_surface_new_backend_render_target
@@ -107,7 +122,8 @@
                           (make-gpu-surface-record handle w h '() context d cs
                             (hasheq 'backend "direct3d"
                                     'storage "gpu" 'target_kind "dxgi-back-buffer"
-                                    'target_identity (format "dxgi-~a-~a" (domain-generation d) (dxgi-token-generation token))
+                                    'target_identity (format "dxgi-~a-~a" (domain-generation d)
+                                      (dxgi-token-generation token))
                                     'buffer_index (dxgi-token-index token)
                                     'swap_chain_generation (dxgi-token-generation token)
                                     'color_type "RGBA8888" 'origin "top-left"
@@ -123,12 +139,14 @@
                         (receive c info
                           (lambda ()
                             (unless (= (canvas-save-count c) 1)
-                              (error 'direct3d-presentation "render callback left unbalanced canvas saves/layers"))
+                              (error 'direct3d-presentation
+                                "render callback left unbalanced canvas saves/layers"))
                             (gpu-flush-and-submit! context)
                             (define-values (outcome pixels record) (finish! #t))
                             (mark-handed-off!)
                             (record-gpu-io!
-                              (hasheq 'kind "present-request" 'backend "direct3d" 'method "dxgi-same-queue"
+                              (hasheq 'kind "present-request" 'backend "direct3d" 'method
+                                "dxgi-same-queue"
                                       'wait_requested #f 'hresult (hash-ref record 'hresult)
                                       'result (symbol->string outcome)
                                       'buffer_index (hash-ref record 'buffer_index)
@@ -136,7 +154,8 @@
                                       'fence_value (hash-ref record 'fence_value)))
                             (when capture
                               (record-gpu-io! (hasheq 'kind "validation-readback" 'backend "direct3d"
-                                                       'method "CopyTextureRegion" 'wait_requested #t))
+                                                       'method "CopyTextureRegion" 'wait_requested
+                                                         #t))
                               (capture pixels record))
                             (if (eq? outcome 'occluded) 'occluded (void)))))
                       (lambda ()
@@ -148,7 +167,8 @@
                             ;; Balance cancelled save-layers before flushing; the
                             ;; external transition must refer to the root target.
                             (canvas-restore-to-count! canvas 1)
-                            (record-gpu-io! (hasheq 'kind "cancelled-frame-sync" 'backend "direct3d" 'wait_requested #t))
+                            (record-gpu-io! (hasheq 'kind "cancelled-frame-sync" 'backend "direct3d"
+                              'wait_requested #t))
                             (n:gr_direct_context_flush (domain-pointer d))
                             (unless (n:gr_direct_context_submit (domain-pointer d) #f)
                               (error 'direct3d-presentation "cancelled frame submission failed")))

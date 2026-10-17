@@ -1,21 +1,54 @@
 #lang racket/base
+
+;;;
+;;; Release Scope Pure Test
+;;;
+
+;; Covers release-scope Color4f equivalent (pure Racket).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; 0.78a: executable evidence for the EXISTING Racket color conversion contract.
 ;; No native color conversion, binary32 bit parity, color management or render
 ;; execution is asserted by these tests. No libSkiaSharp dependency is needed.
 (require rackunit rackunit/text-ui "../color.rkt" "../color4f.rkt")
 (provide release-scope-pure-tests release-scope-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; release-scope-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define release-scope-pure-test-count 16)
+
+; roundtrip : any/c -> any/c
+;;   Serializes and reads a release-scope case to verify its detached representation.
 (define (roundtrip c) (color->argb (color4f->rgba (color->color4f c))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; release-scope-pure-tests : test-suite?
+;;   Collects the regression cases for release-scope Color4f equivalent (pure Racket).
 (define release-scope-pure-tests
   (test-suite "Release-scope Color4f equivalent (pure Racket)"
     (test-case "all red bytes roundtrip"
-      (for ([n (in-range 256)]) (check-equal? (roundtrip (rgba n 23 117 191)) (color->argb (rgba n 23 117 191)))))
+      (for ([n (in-range 256)])
+        (check-equal? (roundtrip (rgba n 23 117 191)) (color->argb (rgba n 23 117 191)))))
     (test-case "all green bytes roundtrip"
-      (for ([n (in-range 256)]) (check-equal? (roundtrip (rgba 17 n 97 163)) (color->argb (rgba 17 n 97 163)))))
+      (for ([n (in-range 256)])
+        (check-equal? (roundtrip (rgba 17 n 97 163)) (color->argb (rgba 17 n 97 163)))))
     (test-case "all blue bytes roundtrip"
-      (for ([n (in-range 256)]) (check-equal? (roundtrip (rgba 53 79 n 211)) (color->argb (rgba 53 79 n 211)))))
+      (for ([n (in-range 256)])
+        (check-equal? (roundtrip (rgba 53 79 n 211)) (color->argb (rgba 53 79 n 211)))))
     (test-case "all alpha bytes roundtrip without premultiplication"
-      (for ([n (in-range 256)]) (check-equal? (roundtrip (rgba 199 73 41 n)) (color->argb (rgba 199 73 41 n)))))
+      (for ([n (in-range 256)])
+        (check-equal? (roundtrip (rgba 199 73 41 n)) (color->argb (rgba 199 73 41 n)))))
     (test-case "packed ARGB order"
       (check-equal? (roundtrip #x80402010) #x80402010))
     (test-case "transparent RGB is preserved"
@@ -38,7 +71,8 @@
       (check-equal? (color4f->rgba (make-color4f -1/8 1/2 5/4 1/2) #:out-of-range 'clip)
                     (rgba 0 128 255 128)))
     (test-case "invalid clipping policy rejected"
-      (check-exn exn:fail:contract? (lambda () (color4f->rgba (make-color4f 0 0 0) #:out-of-range 'invented))))
+      (check-exn exn:fail:contract?
+        (lambda () (color4f->rgba (make-color4f 0 0 0) #:out-of-range 'invented))))
     (test-case "nonfinite channels rejected"
       (for ([x (in-list (list +inf.0 -inf.0 +nan.0))])
         (check-exn exn:fail:contract? (lambda () (make-color4f x 0 0)))))
@@ -50,6 +84,13 @@
       (check-true (immutable? (color4f->vector c)))
       (check-equal? (color4f->vector c) '#(0.25 0.5 0.75 1.0)))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests release-scope-pure-tests))
   (printf "release-scope-pure: ~a cases, ~a failures\n" release-scope-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Path Effects Example
+;;;
+
+;; Renders path effects, measurements, segments, and Boolean path operations.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline "../main.rkt")
 
 ;; Visual smoke test for the 0.5 vector layer: dash/corner/discrete/trim path
 ;; effects, path measurement/segments/tangents, and boolean path operations.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-path-effects : path-string? -> void?
+;;   Renders the path effects example to the selected output destination.
 (define (render-path-effects filename)
   (with-skia ([s (make-surface 1000 700 #:background "#F3F5F9")]
               [card (make-paint #:color 'white)]
@@ -103,7 +121,13 @@
 
     (save-png s filename)))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; filename : path-string?
+  ;;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "path-effects.rkt"
                   #:args ([output "path-effects.png"])

@@ -1,8 +1,23 @@
 #lang racket/base
+
+;;;
+;;; Installation and Rendering Doctor
+;;;
+
+;; Runs installation diagnostics and feature-specific native rendering probes selected by
+;; command-line options.
+;; This is the main human-facing health check for the package and its installed native
+;; dependencies.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
          "../private/bidi.rkt" "../private/unicode-conformance.rkt"
          "codec-doctor.rkt" "pdf-doctor.rkt" "svg-doctor.rkt" "output-doctor.rkt"
-         "path-matrix-doctor.rkt" "filter-graph-doctor.rkt" "color-output-doctor.rkt" "annotation-doctor.rkt" "runtime-doctor.rkt" "output-audit-doctor.rkt" "canvas-doctor.rkt" "geometry-doctor.rkt" "projective-doctor.rkt" "picture-doctor.rkt")
+         "path-matrix-doctor.rkt" "filter-graph-doctor.rkt" "color-output-doctor.rkt"
+  "annotation-doctor.rkt" "runtime-doctor.rkt" "output-audit-doctor.rkt" "canvas-doctor.rkt"
+  "geometry-doctor.rkt" "projective-doctor.rkt" "picture-doctor.rkt")
 (module+ main
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
@@ -268,9 +283,19 @@
               (> (bytes-ref pixels i) 0))
       (error 'doctor "justified layout rasterization failed"))
     (printf "Paragraph justification passed; justify/justify-all positioning and drawing verified\n"))
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; line-break-conformance-smoke : unicode-conformance-result?
+  ;;   Records a minimal Unicode line-break data parser and algorithm smoke check.
   (define line-break-conformance-smoke
     (run-line-break-conformance-port
      (open-input-string "÷ 0041 × 0020 ÷ 0042 ÷\n")))
+
+  ; bidi-conformance-smoke : unicode-conformance-result?
+  ;;   Records a minimal Unicode bidi-character data parser and algorithm smoke check.
   (define bidi-conformance-smoke
     (run-bidi-character-conformance-port
      (open-input-string "05D0 0041; 2; 1; 1 2; 1 0\n")))

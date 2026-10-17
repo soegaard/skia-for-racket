@@ -1,9 +1,33 @@
 #lang racket/base
 
+;;;
+;;; Reference Geometry Test
+;;;
+
+;; Checks native path/region operations, copied geometry, canvas restoration, drawables, and atlas
+;; cropping.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Opt-in CPU tests for the R3g-a contracts. No GUI, GPU, or font lookup is needed.
 (require rackunit racket/list racket/vector skia)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; argb : surface? exact-nonnegative-integer? exact-nonnegative-integer? ->
+; exact-nonnegative-integer?
+;;   Converts a sampled pixel to a packed ARGB value for exact geometry checks.
 (define (argb surface x y) (color->argb (surface-pixel surface x y)))
+
+; blue-box : canvas? -> void?
+;;   Draws an unaliased blue rectangle whose interior and exterior pixels are deterministic.
 (define (blue-box canvas)
   (with-skia ([ink (make-paint #:color 'blue #:antialias? #f)])
     (draw-rect canvas 2 2 8 8 ink)))

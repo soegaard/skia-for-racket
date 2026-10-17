@@ -1,10 +1,22 @@
 #lang racket/base
+
+;;;
+;;; Native Layout Inventory
+;;;
+
+;; Collects the C layout types checked during native initialization.
+;; Provides one inventory for validating the pinned Skia ABI.
+
 (require ffi/unsafe "types.rkt")
 (provide native-layout-sizes)
 ;; This is a measurement of our Racket declarations, not reflection on an
 ;; arbitrary shared library. C layout mirrors and live tests remain required.
+; native-layout-sizes : -> hash?
+;;   Collects native C-record byte sizes under the ABI catalogue's stable layout names, without
+;;   loading a library.
 (define (native-layout-sizes)
-  (hasheq 'color4f (ctype-sizeof _sk-color4f) 'lattice (ctype-sizeof _sk-lattice) 'rsxform (ctype-sizeof _sk-rsxform)
+  (hasheq 'color4f (ctype-sizeof _sk-color4f)
+          'lattice (ctype-sizeof _sk-lattice) 'rsxform (ctype-sizeof _sk-rsxform)
           'runtime_uniform (ctype-sizeof _sk-runtime-uniform)
           'runtime_child (ctype-sizeof _sk-runtime-child)
           'transfer (ctype-sizeof _sk-transfer) 'xyz (ctype-sizeof _sk-xyz)

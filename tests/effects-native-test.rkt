@@ -1,10 +1,42 @@
 #lang racket/base
+
+;;;
+;;; Effects Native Test
+;;;
+
+;; Covers actual effect pixels and retained inputs.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list "../main.rkt" "effects-fixtures.rkt")
 (provide effects-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; near-pixel : (listof byte?) (listof byte?) [real?] -> void?
+;;   Checks rendered channels within the effect fixture's rounding tolerance.
 (define (near-pixel actual expected [tolerance 1])
   (check-true (for/and ([a (in-list actual)] [e (in-list expected)]) (<= (abs (- a e)) tolerance))))
+
+; alphas : bytes? -> (listof byte?)
+;;   Extracts every fourth byte as alpha from tightly packed RGBA storage.
 (define (alphas bs) (for/list ([i (in-range 3 (bytes-length bs) 4)]) (bytes-ref bs i)))
+
+; capture : (canvas? -> any) -> bytes?
+;;   Uses the currently selected renderer, allowing the native scene suite to run on GPU too.
 (define (capture draw) ((current-effects-renderer) draw))
+
+;;;
+;;; Regression Suite
+;;;
+
+; effects-native-tests : test-suite?
+;;   Collects the regression cases for actual effect pixels and retained inputs.
 (define effects-native-tests
   (test-suite
    "0.66 actual effect pixels and retained inputs"

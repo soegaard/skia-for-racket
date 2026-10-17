@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; Float Pixels Example
+;;;
+
+;; Draws into a floating-point pixel buffer and explicitly quantizes PNG output.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file "../main.rkt")
 ;; A real float drawing target. Quantization is explicit, only for the PNG.
 (with-skia ([buffer (make-raster-buffer-from-info

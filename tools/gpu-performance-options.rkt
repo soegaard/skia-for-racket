@@ -1,26 +1,64 @@
 #lang racket/base
+
+;;;
+;;; GPU Performance Options
+;;;
+
+;; Validates benchmark options, clears targeted prior evidence, and fingerprints relevant Racket
+;; sources.
+;; Performance diagnostics share this configuration layer to make captures comparable and
+;; attributable.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../private/gpu-backends.rkt" (only-in "../private/gpu-d3d12-util.rkt" d3d12-selection!))
-(require racket/cmdline racket/runtime-path racket/file file/sha1 "../private/gpu-performance-util.rkt")
+(require racket/cmdline racket/runtime-path racket/file file/sha1
+  "../private/gpu-performance-util.rkt")
 (provide read-performance-options clear-performance-results! performance-source-fingerprints)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; source-root : path?
+;;   Locates .. relative to this module, independent of the invoking directory.
 (define-runtime-path source-root "..")
+
+; clear-performance-results! : string? -> void?
+;;   Removes only prior inspection, review, and sample files associated with the selected output
+;;   prefix.
 (define (clear-performance-results! prefix)
   (for ([suffix '(".inspection.json" ".review.html" ".samples.csv")])
     (define p (string->path (string-append prefix suffix)))
     (when (file-exists? p) (delete-file p))))
 ;; Keep these as repository-relative names, but assemble the extension so the
 ;; static local-require checker does not mistake data paths for module requires.
+
+; rkt-source : string? -> string?
+;;   Adds the Racket source suffix to an inventory path.
 (define (rkt-source path) (string-append path ".rkt"))
+
+; source-paths : (listof string?)
+;;   Lists the scene, cache, benchmark, and driver sources fingerprinted in each performance
+;;   receipt.
 (define source-paths
   (map rkt-source
        '("examples/gpu-scenes" "examples/gpu-presentation-scene"
          "private/gpu-performance-util" "private/gpu-cache"
          "tools/gpu-performance-options" "tools/gpu-performance-work"
          "tools/gpu-performance-doctor" "tools/gpu-redraw-doctor")))
+
+; performance-source-fingerprints : -> list?
+;;   Records SHA-1 fingerprints of benchmark-relevant source files for evidence attribution.
 (define (performance-source-fingerprints)
   ;; File bytes only, including in headless mode: never import a GUI module.
   ;; SHA1 here is a reproducibility fingerprint, not a security attestation.
   (for/list ([p (in-list source-paths)])
     (hasheq 'path p 'sha1 (call-with-input-file (build-path source-root p) sha1))))
+
+; read-performance-options : string? -> hash?
+;;   Parses backend/host and measurement options, then validates the benchmark configuration.
 (define (read-performance-options default-prefix)
   (define prefix default-prefix) (define backend 'opengl) (define host 'gui)
   (define platform 'surfaceless) (define index 0) (define surface 'surfaceless)
@@ -31,20 +69,23 @@
   (define warmup (environment "GPU_BENCH_WARMUP" 3))
   (define frames (environment "GPU_STRESS_FRAMES" 180))
   (define cycles (environment "GPU_STRESS_CYCLES" 3))
-  (define width (environment "GPU_BENCH_WIDTH" 640)) (define height (environment "GPU_BENCH_HEIGHT" 400))
+  (define width (environment "GPU_BENCH_WIDTH" 640))
+  (define height (environment "GPU_BENCH_HEIGHT" 400))
   (define sample-count (environment "GPU_BENCH_SAMPLE_COUNT" 0))
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]
     [("--backend") b "opengl, metal, or direct3d" (set! backend (string->symbol b))]
     [("--adapter") a "Explicit Direct3D hardware or warp" (set! adapter (string->symbol a))]
-    [("--adapter-index") i "Explicit Direct3D adapter index" (set! adapter-index (or (string->number i) (error 'gpu-adapter "invalid adapter index")))]
+    [("--adapter-index") i "Explicit Direct3D adapter index"
+      (set! adapter-index (or (string->number i) (error 'gpu-adapter "invalid adapter index")))]
     [("--host") h "gui, egl, or owned" (set! host (string->symbol h))]
     [("--egl-platform") p "surfaceless or device" (set! platform (string->symbol p))]
     [("--egl-device-index") i "Explicit EGL device index" (set! index (string->number i))]
     [("--egl-surface") s "surfaceless or pbuffer" (set! surface (string->symbol s))]
     [("--samples") n "Measured samples (3..500)" (set! samples (string->number n))]
     [("--warmup") n "Excluded warmup iterations (1..100)" (set! warmup (string->number n))]
-    [("--frames") n "Stress frames per cycle, multiple of 30 (60..9990)" (set! frames (string->number n))]
+    [("--frames") n "Stress frames per cycle, multiple of 30 (60..9990)"
+      (set! frames (string->number n))]
     [("--cycles") n "Recreated contexts/window pairs (3..50)" (set! cycles (string->number n))]
     [("--width") n "Benchmark target width" (set! width (string->number n))]
     [("--height") n "Benchmark target height" (set! height (string->number n))]
@@ -60,5 +101,6 @@
   (hasheq 'prefix prefix 'backend backend 'host host 'egl_platform platform 'egl_index index
           'egl_surface surface 'required required? 'hardware hardware?
           'adapter adapter 'adapter_index adapter-index
-          'config (performance-config #:samples samples #:warmup warmup #:frames frames #:cycles cycles
+          'config
+    (performance-config #:samples samples #:warmup warmup #:frames frames #:cycles cycles
                                       #:width width #:height height #:sample-count sample-count)))

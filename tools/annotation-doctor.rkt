@@ -1,7 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Annotation Doctor
+;;;
+
+;; Exercises document links, named destinations, and SVG annotation finishing and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt")
 (provide annotation-doctor!)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; annotation-doctor! : -> void?
+;;   Checks PDF links/destinations, SVG escaping/views, and annotation no-op behavior on raster
+;;   surfaces.
 (define (annotation-doctor!)
   (define pdf
     (call-with-pdf-bytes

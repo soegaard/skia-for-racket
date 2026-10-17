@@ -1,24 +1,65 @@
 #lang racket/base
+
+;;;
+;;; Small Gap Native Test
+;;;
+
+;; Covers small-gap native acceptance.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Public-API numerical and native no-draw execution. Never substitute a mock
 ;; or count the presence of a source declaration as execution evidence.
 (require racket/list rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" (only-in "../private/types.rkt" _sk-xyz))
 (provide small-gap-native-tests small-gap-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; I : vector?
+;;   Provides identity coefficients for native matrix-query comparisons.
 (define I '#(1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0))
+
+; A : vector?
+;;   Provides a nontrivial coefficient matrix for multiplication and inversion checks.
 (define A '#(1 2 3 0 1 4 5 6 0))
+
+; D : vector?
+;;   Provides a second coefficient matrix whose product distinguishes operand order.
 (define D '#(2 0 0 0 3 0 0 0 4))
+
+; near : any/c any/c [real?] -> void?
+;;   Compares matrix-query results within native floating-point tolerance.
 (define (near actual expected [epsilon 5e-6])
   (check-true (and (vector? actual) (= (vector-length actual) 9)))
   (when (and (vector? actual) (= (vector-length actual) 9))
     (for ([x (in-vector actual)] [y (in-vector expected)])
       (check-= x y (* epsilon (max 1 (abs y)))))))
 ;; Independent elementary oracle, not a call to the implementation under test.
+
+; product : vector? vector? -> vector?
+;;   Computes the independent expected matrix product in the fixture's coefficient order.
 (define (product a b)
   (for/vector ([index (in-range 9)])
     (define row (quotient index 3)) (define col (remainder index 3))
     (for/sum ([k (in-range 3)])
       (* (vector-ref a (+ (* row 3) k)) (vector-ref b (+ (* k 3) col))))))
+
+; small-gap-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define small-gap-native-test-count 24)
+
+;;;
+;;; Regression Suite
+;;;
+
+; small-gap-native-tests : test-suite?
+;;   Collects the regression cases for small-gap native acceptance.
 (define small-gap-native-tests
   (test-suite "small-gap native acceptance"
     (test-case "existing native XYZ layout is 36 bytes" (check-equal? (ctype-sizeof _sk-xyz) 36))
@@ -126,6 +167,13 @@
       (call-with-nodraw-canvas 1 1 (lambda (c) (check-equal? (canvas-save-count c) 1))))))
 (module+ main
   (skia-check!)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests small-gap-native-tests))
   (printf "small-gap-native: ~a cases, ~a failures\n" small-gap-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

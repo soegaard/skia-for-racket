@@ -1,6 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Raster Buffer Doctor
+;;;
+
+;; Exercises raster buffer layouts, writable pixmaps, and storage ownership and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt")
 (provide raster-buffer-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; raster-buffer-doctor! : -> void?
+;;   Checks padded storage, direct drawing, borrowed subset lifetime, retired views, and detached
+;;   image snapshots.
 (define (raster-buffer-doctor!)
   (with-skia ([b (make-raster-buffer 3 2 #:row-bytes 20)])
     (call-with-raster-buffer-canvas b (lambda (c) (canvas-clear! c 'blue)))

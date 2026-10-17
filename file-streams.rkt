@@ -1,9 +1,27 @@
 #lang racket/base
+
+;;;
+;;; File Output Streams
+;;;
+
+;; Opens native output streams for files and exposes explicit flushing.
+;; This public stream extension supplies filesystem-backed sinks to the same ownership protocol used
+;; by memory streams.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/path "streams.rkt" (submod "streams.rkt" internals)
          "private/core.rkt" "private/native.rkt" "private/lifetime.rkt"
          "private/stream-resource.rkt" "private/stream-buffer.rkt")
 (provide make-file-output-stream output-stream-flush!)
-(define (make-file-output-stream filename #:exists [exists 'error] #:limit [limit (current-skia-byte-limit)])
+; make-file-output-stream : path-string? [#:exists (or/c 'error 'replace)] [#:limit
+;   exact-positive-integer?] -> skia-output-stream?
+;;   Opens a native file writer.
+(define (make-file-output-stream filename
+                                 #:exists [exists 'error]
+                                 #:limit [limit (current-skia-byte-limit)])
   (define who 'make-file-output-stream) (stream-byte-limit who limit)
   (unless (path-string? filename) (raise-argument-error who "path-string?" filename))
   (unless (memq exists '(error replace)) (raise-argument-error who "'error or 'replace" exists))
@@ -11,7 +29,8 @@
   (when (regexp-match? #rx#"\0" bytes) (error who "file path contains NUL"))
   (when (directory-exists? path) (error who "output target is a directory"))
   (unless (directory-exists? (path-only path)) (error who "output directory does not exist"))
-  (when (and (eq? exists 'error) (or (file-exists? path) (link-exists? path))) (error who "output path exists"))
+  (when (and (eq? exists 'error) (or (file-exists? path) (link-exists? path)))
+    (error who "output path exists"))
   (skia-check!)
   ;; Native constructor truncates. The caller must control the path for the
   ;; operation's lifetime; this is not an atomic O_EXCL/rename publication API.
@@ -24,5 +43,7 @@
        ptr)
      sk_filewstream_destroy)
    'output 'file limit))
+; output-stream-flush! : skia-output-stream? -> void?
+;;   Requests a native flush of a memory or file output stream.
 (define (output-stream-flush! stream)
   (with-output 'output-stream-flush! stream (lambda (p _n) (sk_wstream_flush p))) (void))

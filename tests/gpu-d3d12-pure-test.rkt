@@ -1,10 +1,30 @@
 #lang racket/base
+
+;;;
+;;; GPU Direct3D 12 Pure Test
+;;;
+
+;; Covers d3D12 ownership and ABI without native libraries.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit ffi/unsafe racket/list
          "../gpu.rkt" "../private/gpu-domain.rkt"
          "../private/gpu-d3d12-util.rkt" "../private/gpu-d3d12-types.rkt"
          "../private/gpu-types.rkt" "../private/gpu-cache-util.rkt")
 (provide gpu-d3d12-pure-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fixture : [any/c symbol? exact-nonnegative-integer?] -> any
+;;   Builds synthetic Direct3D platform/context operations with an ordered release log and injected
+;;   failure.
 (define (fixture [failure #f] [selection 'warp] [flags 2])
   (define log (box '()))
   (define lost (box 0))
@@ -23,8 +43,10 @@
      (lambda (d) (check-eq? d 'device-p) (unbox lost))))
   (define native
     (d3d12-context-ops
-     (lambda (a d q) (check-equal? (list a d q) '(adapter-p device-p queue-p)) (create 'ganesh 'context-p))
-     (lambda (p) (note 'release-context) (when (eq? failure 'release) (error 'fixture "release failed")))
+     (lambda (a d q) (check-equal? (list a d q) '(adapter-p device-p queue-p))
+       (create 'ganesh 'context-p))
+     (lambda (p) (note 'release-context)
+       (when (eq? failure 'release) (error 'fixture "release failed")))
      (lambda (p) (note 'abandon) (set-box! abandoned #t))
      (lambda (p) (unbox abandoned))
      (lambda (p) (note 'wait) (when (eq? failure 'wait) (error 'fixture "wait failed")))
@@ -33,12 +55,25 @@
        (hash-set details 'native_backend 3))))
   (define-values (provider driver) (make-d3d12-components platform native selection 0))
   (values provider driver log lost))
+
+; exercise : any/c procedure? -> any
+;;   Supplies a failure-configured Direct3D provider, driver, log, and loss control to a test.
 (define (exercise failure proc)
   (define-values (provider driver log lost) (fixture failure))
   (proc provider driver log lost))
+
+; released : box? -> list?
+;;   Filters the synthetic COM release events while preserving their recorded order.
 (define (released log)
   (filter (lambda (x) (and (pair? x) (eq? (car x) 'release))) (unbox log)))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-d3d12-pure-tests : test-suite?
+;;   Collects the regression cases for d3D12 ownership and ABI without native libraries.
 (define gpu-d3d12-pure-tests
   (test-suite
    "D3D12 ownership and ABI without native libraries"
@@ -49,18 +84,25 @@
      (when (= (ctype-sizeof _pointer) 8) (check-not-exn check-d3d12-layouts!)))
    (test-case "by-value descriptor includes trailing bool"
      (when (= (ctype-sizeof _pointer) 8) (check-equal? (ctype-sizeof _gr-d3d-backend-context) 40)))
-   (test-case "GUID widths" (for ([g (list iid-factory4 iid-adapter1 iid-device iid-queue)]) (check-equal? (bytes-length g) 16)))
+   (test-case "GUID widths"
+     (for ([g (list iid-factory4 iid-adapter1 iid-device iid-queue)])
+       (check-equal? (bytes-length g) 16)))
    (test-case "warp selection" (check-not-exn (lambda () (d3d12-selection! 'warp 0))))
    (test-case "hardware selection" (check-not-exn (lambda () (d3d12-selection! 'hardware 3))))
    (test-case "unknown adapter" (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'auto 0))))
-   (test-case "negative index" (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'hardware -1))))
-   (test-case "inexact index" (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'hardware 0.0))))
-   (test-case "overflow index" (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'hardware #x100000000))))
-   (test-case "warp index is not ignored" (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'warp 1))))
+   (test-case "negative index"
+     (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'hardware -1))))
+   (test-case "inexact index"
+     (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'hardware 0.0))))
+   (test-case "overflow index"
+     (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'hardware #x100000000))))
+   (test-case "warp index is not ignored"
+     (check-exn exn:fail:contract? (lambda () (d3d12-selection! 'warp 1))))
    (test-case "other backends reject adapter keywords"
      (check-exn exn:fail:contract? (lambda () (make-gpu-context #:backend 'metal #:adapter 'warp))))
    (test-case "bad selection rejected before platform loading"
-     (check-exn exn:fail:contract? (lambda () (make-gpu-context #:backend 'direct3d #:adapter 'auto))))
+     (check-exn exn:fail:contract?
+       (lambda () (make-gpu-context #:backend 'direct3d #:adapter 'auto))))
    (test-case "no construction on component creation"
      (exercise #f (lambda (p d log lost) (check-equal? (unbox log) '()))))
    (test-case "context retains its independent COM references"
@@ -72,21 +114,34 @@
      (exercise #f (lambda (p driver log lost)
                    (define d (make-gpu-domain p driver))
                    (set-box! log '()) (domain-close! d)
-                   (check-equal? (unbox log) '(wait release-context (release queue-p) (release device-p) (release adapter-p))))))
+                    (check-equal? (unbox log)
+                      '(wait release-context (release queue-p) (release device-p)
+                         (release adapter-p))))))
    (test-case "close is idempotent"
      (exercise #f (lambda (p driver log lost)
                    (define d (make-gpu-domain p driver)) (domain-close! d)
                    (define before (unbox log)) (domain-close! d) (check-equal? (unbox log) before))))
    (test-case "adapter failure owns nothing"
-     (exercise 'adapter (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d))) (check-equal? (released log) '()))))
+     (exercise 'adapter
+       (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d)))
+         (check-equal? (released log) '()))))
    (test-case "device failure releases adapter"
-     (exercise 'device (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d))) (check-equal? (released log) '((release adapter-p))))))
+     (exercise 'device
+       (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d)))
+         (check-equal? (released log) '((release adapter-p))))))
    (test-case "queue failure releases device then adapter"
-     (exercise 'queue (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d))) (check-equal? (released log) '((release device-p) (release adapter-p))))))
+     (exercise 'queue
+       (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d)))
+         (check-equal? (released log) '((release device-p) (release adapter-p))))))
    (test-case "Ganesh null releases all owned COM references"
-     (exercise 'ganesh (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d))) (check-equal? (released log) '((release queue-p) (release device-p) (release adapter-p))))))
+     (exercise 'ganesh
+       (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d)))
+         (check-equal? (released log) '((release queue-p) (release device-p) (release adapter-p))))))
    (test-case "description failure cleans up successful construction"
-     (exercise 'describe (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d))) (check-not-false (member 'release-context (unbox log))) (check-equal? (length (released log)) 3))))
+     (exercise 'describe
+       (lambda (p d log lost) (check-exn exn:fail? (lambda () (make-gpu-domain p d)))
+         (check-not-false (member 'release-context (unbox log)))
+         (check-equal? (length (released log)) 3))))
    (test-case "WARP cannot masquerade as hardware"
      (define-values (p d log lost) (fixture #f 'hardware 2))
      (check-exn exn:fail? (lambda () (make-gpu-domain p d)))
@@ -106,16 +161,20 @@
      (exercise #f (lambda (p driver log lost)
                    (define d (make-gpu-domain p driver)) (set-box! log '())
                    (domain-abandon! d) (domain-close! d)
-                   (check-false (member 'wait (unbox log))) (check-equal? (length (released log)) 3))))
+                   (check-false (member 'wait (unbox log)))
+                    (check-equal? (length (released log)) 3))))
    (test-case "device removal blocks drawing and retires without waiting"
      (exercise #f (lambda (p driver log lost)
                    (define d (make-gpu-domain p driver)) (set-box! lost -1) (set-box! log '())
                    (check-exn exn:fail? (lambda () (domain-call d void))) (domain-close! d)
-                   (check-not-false (member 'abandon (unbox log))) (check-false (member 'wait (unbox log))))))
+                   (check-not-false (member 'abandon (unbox log)))
+                    (check-false (member 'wait (unbox log))))))
    (test-case "foreign owner rejected before COM work"
      (exercise #f (lambda (p driver log lost)
                    (define d (make-gpu-domain p driver)) (define ch (make-channel)) (set-box! log '())
-                   (thread (lambda () (with-handlers ([exn:fail? (lambda (e) (channel-put ch #t))]) (domain-call d void) (channel-put ch #f))))
+                    (thread (lambda ()
+                              (with-handlers ([exn:fail? (lambda (e) (channel-put ch #t))])
+                                (domain-call d void) (channel-put ch #f))))
                    (check-true (channel-get ch)) (check-equal? (unbox log) '()) (domain-close! d))))
    (test-case "independent contexts get distinct generations"
      (define-values (p1 drv1 log1 lost1) (fixture))
@@ -127,4 +186,5 @@
      (check-equal? (hash-ref (cache-snapshot 'direct3d 1 1024 0 0) 'backend) "direct3d"))
    (test-case "native DLLs are not needed for pure tests"
      (when (not (eq? (system-type 'os) 'windows))
-       (check-exn exn:fail:gpu:unavailable? (lambda () (make-gpu-context #:backend 'direct3d #:adapter 'warp)))))))
+       (check-exn exn:fail:gpu:unavailable?
+         (lambda () (make-gpu-context #:backend 'direct3d #:adapter 'warp)))))))

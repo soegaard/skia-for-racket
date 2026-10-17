@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU DC Pure Test
+;;;
+
+;; Covers frame-scoped GPU DC state, scaling and lifetime (no native renderer).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Exercises the real dc<%> implementation with an instrumented non-native
 ;; renderer. This is not evidence of GPU execution or GUI initialization.
 (require rackunit racket/class racket/list
@@ -7,7 +19,18 @@
          (only-in "../private/dc-region-adapter.rkt" dc-region-query-info)
          (only-in "../private/check.rkt" current-skia-byte-limit))
 (provide gpu-dc-pure-tests gpu-dc-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
 (struct target (width height [closed? #:mutable]) #:transparent)
+;; width, height: exact nonnegative pixel extents supplied by the fake renderer.
+;; closed?: mutable boolean; false while usable and true after release. Tests
+;; observe this flag to detect drawing through retired targets. No native
+;; allocation is attached to this record.
+
+; make-probe : [#:bad-close? boolean? #:bad-create? boolean?] -> (values dc-renderer? box?)
+;;   Builds an event-recording renderer with injectable allocation and cleanup failures.
 (define (make-probe #:bad-close? [bad-close? #f] #:bad-create? [bad-create? #f])
   (define events (box '()))
   (define (record tag . args) (set-box! events (cons (cons tag args) (unbox events))))
@@ -33,20 +56,44 @@
      (lambda args (apply record 'composite args))
      (lambda (_commands _kind _ink) (values 0.0 0.0 10.0 20.0))))
   (values renderer events))
+
+; extent : frame-size?
+;;   Supplies an 80-by-60-pixel frame with a 40-by-20 logical coordinate extent.
 (define extent (checked-frame-size 80 60 40 20))
+
+; entries : box? symbol? -> list?
+;;   Returns matching renderer events in execution order.
 (define (entries events tag)
   (filter (lambda (event) (eq? (car event) tag)) (reverse (unbox events))))
+
+; scope : procedure? [#:extent frame-size? #:clear? boolean?] -> box?
+;;   Runs a frame-DC scope and returns drawing, commit, and cleanup events.
 (define (scope proc #:extent [size extent] #:clear? [clear? #f])
   (define-values (renderer events) (make-probe))
   (call-with-frame-dc/renderer renderer size proc
     (lambda (root) (set-box! events (cons (list 'commit root) (unbox events))))
     #:clear? clear?)
   events)
+
+; fill : dc<%> ... -> void?
+;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;;   checks.
 (define (fill dc)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush "blue" 'solid)
   (send dc draw-rectangle 1 2 8 6))
+
+; draw-command : box? -> any/c
+;;   Extracts the first draw-command payload from the ordered event log.
 (define (draw-command events) (caddr (car (entries events 'draw))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-dc-pure-tests : test-suite?
+;;   Collects the regression cases for frame-scoped GPU DC state, scaling and lifetime (no native
+;;   renderer).
 (define gpu-dc-pure-tests
   (test-suite
    "Frame-scoped GPU DC state, scaling and lifetime (no native renderer)"
@@ -135,7 +182,8 @@
      (check-equal? (entries events 'composite) '())
      (check-equal? (map car (reverse (unbox events))) '(create create draw close commit close)))
    (test-case "nested groups are all released on normal completion"
-     (define events (scope (lambda (dc) (send dc start-alpha 0.5) (send dc start-alpha 0.5) (fill dc))))
+     (define events
+       (scope (lambda (dc) (send dc start-alpha 0.5) (send dc start-alpha 0.5) (fill dc))))
      (check-equal? (length (entries events 'create)) 3)
      (check-equal? (length (entries events 'close)) 3)
      (check-equal? (entries events 'composite) '()))
@@ -143,7 +191,8 @@
      (check-equal? (length (entries (scope void #:clear? #t) 'clear)) 1)
      (check-equal? (entries (scope void #:clear? #f) 'clear) '()))
    (test-case "ordinary drawing never calls public CPU-transfer callbacks"
-     (define events (scope (lambda (dc) (fill dc) (send dc start-alpha 0.4) (fill dc) (send dc end-alpha))))
+     (define events
+       (scope (lambda (dc) (fill dc) (send dc start-alpha 0.4) (fill dc) (send dc end-alpha))))
      (for ([kind '(snapshot rgba png)]) (check-equal? (entries events kind) '())))
    (test-case "explicit transfer methods dispatch only when requested"
      (define events (scope (lambda (dc)
@@ -154,7 +203,8 @@
    (test-case "callback values survive cleanup and commit"
      (define-values (r events) (make-probe))
      (check-equal?
-       (call-with-values (lambda () (call-with-frame-dc/renderer r extent (lambda (_) (values 1 2 3)) void)) list)
+       (call-with-values
+         (lambda () (call-with-frame-dc/renderer r extent (lambda (_) (values 1 2 3)) void)) list)
        '(1 2 3))
      (check-equal? (length (entries events 'close)) 1))
    (test-case "saved DC is closed, including pure state methods and metadata"
@@ -235,9 +285,19 @@
      (define k #f)
      (scope (lambda (_dc) (call/cc (lambda (saved) (set! k saved)))))
      (check-exn exn:fail? (lambda () (k 'resume))))))
+
+; gpu-dc-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-dc-pure-test-count 33)
 (module+ main
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-dc-pure-tests))
   (printf "gpu-dc-pure: ~a cases, ~a failures; real DC class, instrumented renderer, no GPU.\n"
           gpu-dc-pure-test-count failures)

@@ -1,10 +1,30 @@
 #lang racket/base
+
+;;;
+;;; GPU Presenter Pure Test
+;;;
+
+;; Covers presentation lifecycle and scheduling with synthetic adapters.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list
          "../private/gpu-presenter.rkt"
          (submod "../private/gpu-presenter.rkt" adapter-internals)
          "../private/gpu-metal-handles.rkt" "../private/gpu-presentation-cleanup.rkt"
          "../private/gpu-domain.rkt" "gpu-fixtures.rkt")
 (provide gpu-presenter-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; make-mock-presenter : [procedure? symbol?] -> (values gpu-presenter? box? box? box? box?)
+;;   Builds a synthetic presenter with mutable metrics, queued callbacks, and injected failure
+;;   state.
 (define (make-mock-presenter [render void] [backend 'metal])
   (define metrics (box (presentation-metrics 100 80 50 40)))
   (define log (box '())) (define queued (box '())) (define fail (box #f))
@@ -21,7 +41,8 @@
            (dynamic-wind void
              (lambda ()
                (receive 'fake-canvas
-                        (hasheq 'backend (if (eq? (unbox fail) 'backend) "wrong" (symbol->string backend))
+                        (hasheq 'backend
+                                (if (eq? (unbox fail) 'backend) "wrong" (symbol->string backend))
                                 'target_identity "mock-target")
                         (lambda () (emit 'present)
                           (when (eq? (unbox fail) 'present) (error 'mock "present")))))
@@ -32,18 +53,36 @@
       (lambda () (when (eq? (unbox fail) 'close) (error 'mock "live application children"))
         (emit 'close))
       (lambda () (hasheq 'synthetic #t))))
-  (values (make-presenter adapter render (lambda (e) (emit 'reported-error))) metrics log queued fail))
+  (values (make-presenter adapter render (lambda (e) (emit 'reported-error)))
+          metrics log queued fail))
+
+; event-count* : box? any/c -> exact-nonnegative-integer?
+;;   Counts a selected lifecycle event in the presenter's recorded log.
 (define (event-count* log e) (count (lambda (v) (eq? v e)) (unbox log)))
+
+; dispatch! : box? -> void?
+;;   Runs queued redraw callbacks with a finite budget that detects runaway rescheduling.
 (define (dispatch! queue)
   (let loop ([fuel 50])
     (when (pair? (unbox queue))
       (when (zero? fuel) (error 'dispatch "unbounded redraw loop"))
       (define f (car (unbox queue))) (set-box! queue (cdr (unbox queue)))
       (f) (loop (sub1 fuel)))))
+
+; with-presenter : procedure? [procedure?] -> any
+;;   Scopes a synthetic presenter and disables injected failures before guaranteed cleanup.
 (define (with-presenter proc [render void])
   (define-values (p m log queue fail) (make-mock-presenter render))
   (dynamic-wind void (lambda () (proc p m log queue fail))
     (lambda () (set-box! fail #f) (gpu-presenter-close! p))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-presenter-pure-tests : test-suite?
+;;   Collects the regression cases for presentation lifecycle and scheduling with synthetic
+;;   adapters.
 (define gpu-presenter-pure-tests
   (test-suite
    "Presentation lifecycle and scheduling with synthetic adapters"

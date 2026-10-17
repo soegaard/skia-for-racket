@@ -1,14 +1,34 @@
 #lang racket
 
+;;;
+;;; Squadron Atlas
+;;;
+
+;; Draws original ship, enemy, projectile, and explosion artwork into an atlas.
+;; This original CPU artwork supplies the tutorial renderer and its documentation figures.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia "../support/sprite-math.rkt")
 (provide make-game-atlas sprite-names draw-game-cell)
 
 ;; Original geometric artwork. No original Galaga graphics are used.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; sprite-names : vector?
+;;   Orders atlas cell names so drawing and animation choose the same artwork.
 (define sprite-names
   '#(player-0 player-1 scout-0 scout-1 guard-0 guard-1
              player-shot enemy-shot blast-0 blast-1 blast-2 blast-3 blast-4 blast-5
              shield star))
 
+; draw-game-cell : canvas? exact-nonnegative-integer? -> void?
+;;   Draws the game cell component in the current canvas coordinate system.
 (define (draw-game-cell canvas index)
   (with-skia ([white (make-paint #:color "#EDF9FF")]
               [cyan (make-paint #:color "#56E0F5")]
@@ -61,6 +81,8 @@
        (draw-polygon canvas '((24 4) (28 19) (43 24) (28 29) (24 44) (20 29) (5 24) (20 19))
                      amber)])))
 
+; make-game-atlas : -> image?
+;;   Constructs game atlas for the example's drawing pipeline.
 (define (make-game-atlas)
   (with-skia ([surface (make-surface atlas-width (atlas-height 16)
                                      #:background 'transparent)])

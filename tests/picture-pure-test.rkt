@@ -1,19 +1,53 @@
 #lang racket/base
+
+;;;
+;;; Picture Pure Test
+;;;
+
+;; Covers persistent pictures: bounded framing, file publication, and conservative policy.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/path
          "../main.rkt" "../private/picture-util.rkt" "../private/types.rkt"
          "../private/audit-trace.rkt" (submod "../private/audit-trace.rkt" testing)
          (submod "../pictures.rkt" testing))
 (provide picture-pure-tests)
 ;; Header-only fixture: deliberately not claimed to be a complete native SKP.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; header : [#:version exact-integer? #:kind exact-integer? #:bounds list?] -> bytes?
+;;   Builds a synthetic serialized-picture header for version, kind, and bounds rejection tests.
 (define (header #:version [version 103] #:kind [kind 1] #:bounds [bounds '(0 0 20 10)])
   (bytes-append #"skiapict" (integer->integer-bytes version 4 #f (system-big-endian?))
-                (apply bytes-append (map (lambda (v) (real->floating-point-bytes v 4 (system-big-endian?))) bounds))
+    (apply bytes-append
+      (map (lambda (v) (real->floating-point-bytes v 4 (system-big-endian?))) bounds))
                 (bytes kind)))
+
+; temporary-directory : procedure? -> any
+;;   Scopes an isolated destination directory for serialization validation.
 (define (temporary-directory proc)
   (define dir (make-temporary-file "skia-picture-pure-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
+
+; fake-picture : symbol? -> any/c
+;;   Constructs a synthetic picture resource for wrapper validation without decoding native bytes.
 (define (fake-picture who)
   (audit-allocate who 'picture (lambda () (gensym 'picture))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; picture-pure-tests : test-suite?
+;;   Collects the regression cases for persistent pictures: bounded framing, file publication, and
+;;   conservative policy.
 (define picture-pure-tests
   (test-suite "Persistent pictures: bounded framing, file publication, and conservative policy"
    (test-case "the standard native header records version and cull bounds"
@@ -95,7 +129,8 @@
        (check-exn exn:fail? (lambda () (picture-tile-rect 'test tile)))))
    (test-case "bad spatial-index choices fail before native creation"
      (check-exn exn:fail? (lambda () (call-with-picture 20 10 void #:spatial-index 'octree)))
-     (check-exn exn:fail? (lambda () (picture-recorder-begin-recording! #f 0 0 20 10 #:spatial-index #t))))
+     (check-exn exn:fail?
+       (lambda () (picture-recorder-begin-recording! #f 0 0 20 10 #:spatial-index #t))))
    (test-case "file reader copies a complete bounded stream"
      (temporary-directory
       (lambda (dir)
@@ -106,7 +141,8 @@
      (temporary-directory
       (lambda (dir)
         (define file (build-path dir "cache.skp"))
-        (call-with-output-file file (lambda (out) (write-bytes (bytes-append (header) (make-bytes 100)) out)))
+        (call-with-output-file file
+          (lambda (out) (write-bytes (bytes-append (header) (make-bytes 100)) out)))
         (parameterize ([current-skia-byte-limit 40])
           (check-exn exn:fail? (lambda () (read-picture-file-bytes 'test file)))))))
    (test-case "atomic writer enforces error then replacement"
@@ -130,19 +166,25 @@
      (temporary-directory
       (lambda (dir)
         (check-exn exn:fail? (lambda () (picture-output-path 'test dir 'replace)))
-        (check-exn exn:fail? (lambda () (picture-output-path 'test (build-path dir "missing" "x.skp") 'replace)))
+        (check-exn exn:fail?
+          (lambda () (picture-output-path 'test (build-path dir "missing" "x.skp") 'replace)))
         (check-exn exn:fail? (lambda () (picture-output-path 'test (build-path dir "x.skp") 'append)))
         (check-exn exn:fail? (lambda () (picture-output-path 'test "x\0.skp" 'error))))))
    (test-case "deserialized pictures have unknown capabilities on every backend"
      (for ([backend '(pdf svg raster)])
-       (check-eq? (output-capability-status (output-capability-for backend 'deserialized-picture)) 'unknown)))
+       (check-eq? (output-capability-status (output-capability-for backend 'deserialized-picture))
+         'unknown)))
    (test-case "picture-shader rendering requires document fallback"
      (for ([backend '(pdf svg)])
-       (check-eq? (output-capability-status (output-capability-for backend 'picture-shader)) 'needs-raster))
-     (check-eq? (output-capability-status (output-capability-for 'raster 'picture-shader)) 'rasterized))
+       (check-eq? (output-capability-status (output-capability-for backend 'picture-shader))
+         'needs-raster))
+     (check-eq? (output-capability-status (output-capability-for 'raster 'picture-shader))
+       'rasterized))
    (test-case "sampled annotation loss remains explicit on every backend"
      (for ([backend '(pdf svg raster)])
-       (check-eq? (output-capability-status (output-capability-for backend 'picture-shader-annotation)) 'discarded)))
+       (check-eq?
+         (output-capability-status (output-capability-for backend 'picture-shader-annotation))
+         'discarded)))
    (test-case "both native import paths start with opaque provenance"
      (for ([who '(picture-from-bytes picture-from-file)])
        (check-not-false (memq 'deserialized-picture (features (fake-picture who))))))
@@ -162,7 +204,9 @@
      (check-false (memq 'annotation (features result)))
      (check-not-false (memq 'picture-shader-annotation (features result))))
    (test-case "R-tree begin clears the recorder summary just like ordinary begin"
-     (for ([name '(sk_picture_recorder_begin_recording sk_picture_recorder_begin_recording_with_bbh_factory)])
+     (for ([name
+             '(sk_picture_recorder_begin_recording
+                sk_picture_recorder_begin_recording_with_bbh_factory)])
        (define h (gensym 'recorder)) (define ptr (gensym 'ptr))
        (hash-set! resources h (provenance 'picture-recorder '(runtime-shader) (hasheq)))
        (audit-use (list h) (list ptr) (lambda () (after-native! name (list ptr #f #f))))

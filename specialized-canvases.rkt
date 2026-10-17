@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; Specialized Canvas Scopes
+;;;
+
+;; Supplies no-draw, multi-target, and overdraw canvases to bounded callbacks.
+;; This public canvas layer adapts native specialized targets to the package's owner-thread,
+;; resource-pinning, and scope-expiration rules.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; These constructors borrow native canvases, never adopt caller-owned targets.
 ;; An application callback runs outside the FFI/atomic allocation sections.
 (require ffi/unsafe racket/list
@@ -6,10 +19,15 @@
          "private/check.rkt" "private/lifetime.rkt" "private/audit-trace.rkt"
          (submod "private/core.rkt" advanced-canvas-internals))
 (provide call-with-nodraw-canvas call-with-nway-canvas call-with-overdraw-canvas)
+; callback! : symbol? procedure? -> void?
+;;   Requires a one-canvas callback with no required keyword arguments.
 (define (callback! who proc)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1)
                (let-values ([(required allowed) (procedure-keywords proc)]) (null? required)))
     (raise-argument-error who "procedure accepting one canvas without required keywords" proc)))
+; root-target! : symbol? surface? -> canvas?
+;;   Requires an unborrowed root canvas with identity transform, balanced saves, and a full
+;;   rectangular clip.
 (define (root-target! who surface)
   (unless (surface? surface) (raise-argument-error who "surface?" surface))
   (check-unborrowed-target! who surface)
@@ -28,9 +46,13 @@
                    (= (sk-irect-left clip) 0) (= (sk-irect-top clip) 0)
                    (= (sk-irect-right clip) (surface-width surface))
                    (= (sk-irect-bottom clip) (surface-height surface)))
-        (error who "target must have a balanced root canvas, identity matrix and full rectangular clip"))
+        (error who
+               "target must have a balanced root canvas, identity matrix and full rectangular clip"))
       (void/reference-sink m clip)))
   c)
+; call-special : symbol? symbol? integer? integer? list? list? procedure? procedure? procedure?
+;   procedure? procedure? -> any/c
+;;   Scopes a specialized native canvas, restoring and unlocking every target on all exits.
 (define (call-special who kind width height surfaces canvases create destroy attach detach proc)
   (audit-specialized-scope!)
   (define handles (map (lambda (s) (surface-h who s)) surfaces))
@@ -91,6 +113,8 @@
               (set! borrowed (make-canvas-record owner)))))
         (lambda () (call-with-output-capture (lambda () (proc borrowed))))
         cleanup!))))
+; call-with-nodraw-canvas : (integer-in 1 32768) (integer-in 1 32768) (-> canvas? any) -> any
+;;   Calls the function with a native no-draw canvas of the given dimensions.
 (define (call-with-nodraw-canvas width height proc)
   (define who 'call-with-nodraw-canvas)
   (check-dimensions who width height)
@@ -99,6 +123,8 @@
   (call-special who 'nodraw width height '() '()
     (lambda () (sk_nodraw_canvas_new width height)) sk_nodraw_canvas_destroy
     (lambda ignored (void)) (lambda ignored (void)) proc))
+; call-with-nway-canvas : (listof surface?) (-> canvas? any) -> any
+;;   Calls the function with a canvas forwarding drawing to between 1 and 64 distinct surfaces.
 (define (call-with-nway-canvas surfaces proc)
   (define who 'call-with-nway-canvas)
   (callback! who proc)
@@ -121,6 +147,8 @@
       (for ([target (in-list targets)]) (sk_nway_canvas_remove_canvas cp target))
       (sk_nway_canvas_remove_all cp))
     proc))
+; call-with-overdraw-canvas : surface? (-> canvas? any) -> any
+;;   Calls the function with a native overdraw-counting wrapper over an Alpha8 surface.
 (define (call-with-overdraw-canvas surface proc)
   (define who 'call-with-overdraw-canvas)
   (callback! who proc)

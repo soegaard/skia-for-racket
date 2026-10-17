@@ -1,10 +1,32 @@
 #lang racket/base
+
+;;;
+;;; GPU Image Native Test
+;;;
+
+;; Covers gPU images: live uploads, snapshots, transitive graphs, and explicit transfers.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list
          "../main.rkt" "../gpu.rkt" "gpu-fixtures.rkt"
          "../private/gpu-io-trace.rkt")
 (provide make-gpu-image-native-tests image-test-pixels gpu-image-native-test-count)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-image-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-image-native-test-count 42)
+
+; image-test-pixels : bytes?
+;;   Supplies distinct RGBA source pixels for upload, copy, and detached-image checks.
 (define image-test-pixels
   (apply bytes
     (append*
@@ -12,11 +34,18 @@
        (cond [(= x 3) '(0 0 0 0)]
              [(< y 4) (if (< x 3) '(255 0 0 255) '(0 255 0 255))]
              [else (if (< x 3) '(0 0 255 255) '(255 255 0 255))])))))
+
+; call-with-gpu-io-trace : (-> any) -> any
+;;   Runs a callback with a fresh I/O ledger so hidden transfers can be counted.
 (define (call-with-gpu-io-trace thunk)
   (define ledger (box '()))
   (define result (parameterize ([current-gpu-io-ledger ledger]) (thunk)))
   (values result (reverse (unbox ledger))))
 
+
+; make-gpu-image-native-tests : gpu-context? gpu-context? -> test-suite?
+;;   Builds the parameterized suite for gPU images: live uploads, snapshots, transitive graphs, and
+;;   explicit transfers.
 (define (make-gpu-image-native-tests gpu other)
   (define (cpu-image) (rgba-bytes->image 8 8 image-test-pixels #:premultiplied? #t))
   (define (uploaded proc)
@@ -165,7 +194,8 @@
                    (check-equal? (surface-pixel s 0 0) (rgb 255 0 0))))))
    (test-case "clearing one paint slot preserves a GPU filter dependency"
      (uploaded (lambda (cpu im)
-                 (with-skia ([sh (make-image-shader im)] [f (make-image-source-filter im #:sampling 'nearest)]
+                 (with-skia ([sh (make-image-shader im)]
+                              [f (make-image-source-filter im #:sampling 'nearest)]
                              [p (make-paint #:shader sh #:image-filter f)])
                    (paint-set-shader! p #f)
                    (same-context p)
@@ -195,7 +225,9 @@
        (lambda (sh)
          (call-with-gpu-context gpu
            (lambda ()
-             (with-skia ([effect (make-runtime-effect "uniform shader tex; half4 main(float2 p) { return tex.eval(p); }")]
+             (with-skia
+               ([effect (make-runtime-effect
+                          "uniform shader tex; half4 main(float2 p) { return tex.eval(p); }")]
                          [runtime (runtime-effect->shader effect #:children (hash "tex" sh))]
                          [p (make-paint #:shader runtime)])
                (same-context runtime) (skia-close! sh) (skia-close! effect)
@@ -237,9 +269,11 @@
      (uploaded (lambda (cpu im)
                  (with-skia ([s (make-surface 8 8)])
                    (check-exn exn:fail? (lambda () (draw-image (surface-canvas s) im 0 0))))
-                 (check-exn #rx"GPU" (lambda () (call-with-svg-bytes 8 8 (lambda (c) (draw-image c im 0 0)))))
+                 (check-exn #rx"GPU"
+                   (lambda () (call-with-svg-bytes 8 8 (lambda (c) (draw-image c im 0 0)))))
                  (check-exn #rx"GPU" (lambda () (call-with-pdf-bytes (lambda (d)
-                                             (call-with-document-page d 8 8 (lambda (c) (draw-image c im 0 0))))))))))
+                                                            (call-with-document-page d 8 8
+                                                            (lambda (c) (draw-image c im 0 0))))))))))
    (test-case "cross-context upload rejects without implicit transfer"
      (held (lambda () (with-skia ([cpu (cpu-image)]) (gpu-upload-image gpu cpu)))
        (lambda (im)
@@ -296,7 +330,8 @@
      (call-with-gpu-context gpu
        (lambda ()
          (with-skia ([cs (make-linear-srgb-color-space)]
-                     [cpu (rgba-bytes->image 1 1 (bytes 128 0 0 128) #:premultiplied? #t #:color-space cs)]
+                      [cpu (rgba-bytes->image 1 1 (bytes 128 0 0 128) #:premultiplied? #t
+                             #:color-space cs)]
                      [im (gpu-upload-image gpu cpu)] [space (image-color-space im)]
                      [detached (gpu-image->raster-image im)])
            (check-false (skia-resource-gpu-context space))

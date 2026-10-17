@@ -1,22 +1,61 @@
 #lang racket/base
+
+;;;
+;;; DC Replay Native Test
+;;;
+
+;; Covers dC recorded replay and isolated raster alpha groups (native Skia pixels).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
          "../examples/dc-replay.rkt")
 (provide dc-replay-native-tests dc-replay-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; using : procedure? [exact-positive-integer? exact-positive-integer? real?] -> any
+;;   Scopes a smoothed native DC for recorded-procedure replay.
 (define (using proc [w 96] [h 72] [backing 1])
   (define dc (new skia-dc% [width w] [height h] [backing-scale backing] [smoothing 'smoothed]))
   (dynamic-wind void (lambda () (proc dc)) (lambda () (send dc close))))
+
+; pixels : dc<%> -> bytes?
+;;   Captures the full backing store in premultiplied RGBA order.
 (define (pixels dc) (send dc get-rgba-bytes #:premultiplied? #t))
+
+; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
+;;   Selects one premultiplied RGBA pixel from the replay capture.
 (define (pixel dc x y)
   (define-values (w h) (send dc get-pixel-size))
   (bytes->list (subbytes (pixels dc) (* 4 (+ x (* y w))) (* 4 (+ 1 x (* y w))))))
+
+; near : (listof real?) (listof real?) [real?] -> void?
+;;   Checks equal-length channel lists with a small replay-rounding tolerance.
 (define (near actual expected [tolerance 1])
   (check-equal? (length actual) (length expected))
-  (for ([a actual] [b expected]) (check-true (<= (abs (- a b)) tolerance) (format "~a versus ~a" actual expected))))
+  (for ([a actual] [b expected])
+    (check-true (<= (abs (- a b)) tolerance) (format "~a versus ~a" actual expected))))
+
+; fill : dc<%> ... -> void?
+;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;;   checks.
 (define (fill dc color x y w h)
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
+
+; simple : dc<%> -> void?
+;;   Draws the minimal red rectangle used by replay and locking tests.
 (define (simple dc) (send dc set-smoothing 'smoothed) (fill dc "red" 2 3 8 9))
+
+; rich-ink! : dc<%> -> void?
+;;   Checks image landmarks and visible text ink in the rich replay fixture.
 (define (rich-ink! dc)
   (near (pixel dc 73 14) '(236 64 79 255) 2)
   (define bytes (pixels dc))
@@ -26,6 +65,9 @@
       (define i (* 4 (+ x (* y width))))
       (if (and (< (bytes-ref bytes i) 230) (> (bytes-ref bytes (+ i 2)) (bytes-ref bytes i))) 1 0)))
   (check-true (>= text-ink 10) "recorded text must produce real navy ink"))
+
+; reference : procedure? [real?] -> void?
+;;   Compares native replay pixels with an independently rendered Racket bitmap.
 (define (reference draw [tolerance 2])
   (define bm (rd:make-bitmap 48 32 #t))
   (define rd-dc (new rd:bitmap-dc% [bitmap bm]))
@@ -39,7 +81,16 @@
       (for*/fold ([worst 0]) ([i (in-range 0 (bytes-length argb) 4)] [j (in-range 4)])
         (max worst (abs (- (bytes-ref actual (+ i j))
                           (bytes-ref argb (+ i (if (= j 3) 0 (add1 j)))))))))
-    (check-true (<= worst tolerance) (format "maximum channel error ~a (limit ~a)" worst tolerance))) 48 32))
+    (check-true (<= worst tolerance)
+      (format "maximum channel error ~a (limit ~a)" worst tolerance))) 48 32))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-replay-native-tests : test-suite?
+;;   Collects the regression cases for dC recorded replay and isolated raster alpha groups (native
+;;   Skia pixels).
 (define dc-replay-native-tests
   (test-suite
    "DC recorded replay and isolated raster alpha groups (native Skia pixels)"
@@ -73,7 +124,8 @@
    (test-case "replay intersects destination clipping"
      (define-values (proc datum) (make-dc-recording simple))
      (for ([draw (list proc datum)])
-       (using (lambda (dc) (send dc set-clipping-rect 4 5 2 2) (define region (send dc get-clipping-region))
+       (using (lambda (dc) (send dc set-clipping-rect 4 5 2 2)
+                (define region (send dc get-clipping-region))
          (draw dc) (check-eq? region (send dc get-clipping-region))
          (check-equal? (pixel dc 4 5) '(255 0 0 255)) (check-equal? (pixel dc 3 5) '(0 0 0 0))))))
    (test-case "replay respects destination opacity"
@@ -159,14 +211,19 @@
      (define image
        (using (lambda (dc) (fill dc "blue" 0 0 30 30) (send dc start-alpha 1)
          (fill dc "red" 0 0 30 30) (send dc snapshot))))
-     (sk:with-skia ([im image]) (check-equal? (subbytes (sk:image->rgba-bytes im) 0 4) (bytes 0 0 255 255))))
+     (sk:with-skia ([im image])
+       (check-equal? (subbytes (sk:image->rgba-bytes im) 0 4) (bytes 0 0 255 255))))
    (test-case "backing scale is applied once through alpha group"
      (using (lambda (dc) (send dc start-alpha 1) (fill dc "red" 2 3 4 5) (send dc end-alpha)
-       (check-equal? (pixel dc 5 7) '(255 0 0 255)) (check-equal? (pixel dc 3 7) '(0 0 0 0))) 24 20 2))
+       (check-equal? (pixel dc 5 7) '(255 0 0 255)) (check-equal? (pixel dc 3 7) '(0 0 0 0))) 24 20
+       2))
    (test-case "replay inside existing alpha group leaves that group open"
      (define-values (proc datum) (make-dc-recording simple))
      (for ([draw (list proc datum)])
        (using (lambda (dc) (send dc start-alpha 0.5) (draw dc)
          (check-equal? (pixel dc 4 5) '(0 0 0 0)) (send dc end-alpha)
          (near (pixel dc 4 5) '(128 0 0 128))))))))
+
+; dc-replay-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-replay-native-test-count 28)

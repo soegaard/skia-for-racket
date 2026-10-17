@@ -1,10 +1,30 @@
 #lang racket/base
+
+;;;
+;;; Windowed GPU DC Consumer Probe
+;;;
+
+;; Runs pict, plot, and recorded workloads through real window paint callbacks.
+;; This acceptance executable covers consumer compatibility and expired frame-DC behavior in an
+;; eventspace.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Each workload gets a normal, no-readback frame and a separate inspection
 ;; frame. Pixel captures describe the GPU DC backing, not physical scanout.
 (require racket/class racket/cmdline racket/file racket/list
          (prefix-in gui: racket/gui/base)
          "../gpu-canvas.rkt" "../tests/gpu-dc-consumer-fixtures.rkt"
          "gpu-dc-consumer-common.rkt")
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; run-gui : path-string? string? symbol? any/c -> void?
+;;   Exercises real window callbacks, separate inspection frames, and expiration of retained
+;;   consumer DCs.
 (define (run-gui directory token backend adapter)
   (define custodian (make-custodian))
   (define space (parameterize ([current-custodian custodian]) (gui:make-eventspace)))
@@ -23,7 +43,8 @@
   (define captures '()) (define frames '()) (define transfers '())
   (define saved-dcs '())
   (define (retain! workload extent target data layout events)
-    (set! captures (cons (write-consumer-capture! directory workload extent target data layout events) captures)))
+    (set! captures
+      (cons (write-consumer-capture! directory workload extent target data layout events) captures)))
   (dynamic-wind void
     (lambda ()
       (define workloads (on-handler make-consumer-workloads))
@@ -41,7 +62,8 @@
         ;; Allow native layout events to run without yielding inside a GPU scope.
         (let loop ([attempts 200])
           (define now
-            (on-handler (lambda () (call-with-values (lambda () (send canvas get-client-size)) list))))
+            (on-handler
+              (lambda () (call-with-values (lambda () (send canvas get-client-size)) list))))
           (unless (and (>= (car now) 320) (>= (cadr now) 240)
                        (or (equal? (car geometry) "small") (> (car now) (car previous))))
             (when (zero? attempts) (error 'gpu-dc-consumers "GUI resize did not settle"))
@@ -79,7 +101,8 @@
                                    "geometry changed between drawing and inspection")
                  (set! layout (exercise-consumer! workload dc))
                  (define-values (data io)
-                   (observe-consumer-io! (lambda () (send dc get-rgba-bytes #:premultiplied? #t)) #:capture? #t))
+                   (observe-consumer-io! (lambda () (send dc get-rgba-bytes #:premultiplied? #t))
+                     #:capture? #t))
                  (set! pixels data) (set! capture-io io)))
              (check-consumer-expired! observed-dc)
              (set! saved-dcs (cons observed-dc saved-dcs))
@@ -88,7 +111,8 @@
              (call-with-consumer-cpu-dc extent
                (lambda (dc)
                  (define cpu-layout (exercise-consumer! workload dc))
-                 (retain! workload extent "cpu" (send dc get-rgba-bytes #:premultiplied? #t) cpu-layout '())))))))
+                 (retain! workload extent "cpu" (send dc get-rgba-bytes #:premultiplied? #t)
+                   cpu-layout '())))))))
       (on-handler (lambda () (send canvas close-skia) (send canvas close-skia)
                     (ensure-consumer! (send canvas skia-closed?) "GUI canvas did not close")
                     (send frame show #f)))
@@ -98,10 +122,28 @@
                 'final_target_pixels #f 'inspection "separate frame, GPU DC backing only")))
     (lambda ()
       (dynamic-wind void
-        (lambda () (when canvas (on-handler (lambda () (send canvas close-skia) (send frame show #f)))))
+        (lambda ()
+          (when canvas (on-handler (lambda () (send canvas close-skia) (send frame show #f)))))
         (lambda () (custodian-shutdown-all custodian))))))
 (module+ main
-  (define directory #f) (define token #f) (define backend 'opengl) (define adapter 'hardware)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'opengl)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter 'hardware)
   (command-line #:once-each
     [("--directory") value "New capture directory" (set! directory value)]
     [("--run-token") value "Validation identity" (set! token value)]

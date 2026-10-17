@@ -1,19 +1,55 @@
 #lang racket/base
+
+;;;
+;;; Filter Graphs Example
+;;;
+
+;; Compares native filter graphs with bounded SVG raster groups and raster references.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline racket/file racket/path racket/string racket/list "../main.rkt")
 ;; One registry; PDF receives native filter graphs. SVG receives explicit bounded
 ;; raster groups. Reference PNGs are independent native Skia raster drawings.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; current-probe-backend : parameter?
+;;   Selects probe backend for the dynamically scoped rendering operation.
 (define current-probe-backend (make-parameter 'raster))
+; ink : string?
+;;   Specifies the ink color used by this drawing.
 (define ink "#20344e")
+; blue : string?
+;;   Specifies the blue color used by this drawing.
 (define blue "#3269d5")
+; teal : string?
+;;   Specifies the teal color used by this drawing.
 (define teal "#10988e")
+; orange : string?
+;;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
+; PW : exact-integer?
+;;   Sets the filter comparison panel width in local drawing units.
 (define PW 208)
+; PH : exact-integer?
+;;   Sets the filter comparison panel height in local drawing units.
 (define PH 128)
+; crop : list?
+;;   Sets the filter crop rectangle as x, y, width, and height.
 (define crop '(48 16 96 96))
+; label : canvas? string? real? real? real? [any/c] -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y size [color ink])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color color)])
     (draw-simple-text c text x y f p)))
+; stamp : canvas? -> void?
+;;   Draws the stamp comparison in the current canvas coordinate system.
 (define (stamp c)
   (with-skia ([p (make-paint #:color blue)] [q (make-paint #:color orange)]
               [stroke (make-paint #:color teal #:style 'stroke #:stroke-width 5)])
@@ -21,10 +57,16 @@
     (draw-circle c 139 83 23 q)
     (draw-line c 42 39 112 71 stroke)
     (draw-line c 67 30 86 82 stroke)))
+; source-filter : any/c any/c -> image-filter?
+;;   Creates an image-filter source with the selected color and bounds.
 (define (source-filter color bounds)
   (with-skia ([sh (make-color-shader color)]) (make-shader-image-filter sh #:crop bounds)))
+; paint-filter : canvas? any/c -> void?
+;;   Draws the paint filter comparison in the current canvas coordinate system.
 (define (paint-filter c f)
   (with-skia ([p (make-paint #:image-filter f)]) (draw-paint c p)))
+; render-case : canvas? any/c -> void?
+;;   Draws the render case comparison in the current canvas coordinate system.
 (define (render-case c key)
   (with-skia ([pic (call-with-picture PW PH stamp)] [src (make-picture-image-filter pic)])
     (case key
@@ -44,7 +86,8 @@
       [(compose)
        (with-skia ([outer (make-offset-image-filter 18 -8)]
                    [inner (make-blur-image-filter 2 2 #:input src)]
-                   [f (make-compose-image-filter outer inner #:crop '(10 8 190 112))]) (paint-filter c f))]
+                   [f (make-compose-image-filter outer inner #:crop '(10 8 190 112))]) (paint-filter
+                     c f))]
       [(dilate erode)
        (with-skia ([f ((if (eq? key 'dilate) make-dilate-image-filter make-erode-image-filter)
                        4 3 #:input src)]) (paint-filter c f))]
@@ -64,7 +107,8 @@
        (with-skia ([f (make-magnifier-image-filter '(24 12 160 104) 1.9 #:inset 10 #:input src)])
          (paint-filter c f))]
       [(image)
-       (with-skia ([s (make-surface 104 64)] [p (make-paint #:color teal)] [q (make-paint #:color orange)])
+       (with-skia ([s (make-surface 104 64)] [p (make-paint #:color teal)] [q (make-paint #:color
+         orange)])
          (draw-rounded-rect (surface-canvas s) 2 2 100 60 8 8 p)
          (for ([x '(24 52 80)]) (draw-circle (surface-canvas s) x 32 10 q))
          (with-skia ([im (surface-snapshot s)]
@@ -87,6 +131,8 @@
                            #:surface-scale 16 #:coefficient 3 #:shininess 8
                            #:input bump #:crop '(8 8 192 112)))])
          (paint-filter c f))])))
+; panel : canvas? real? real? string? any/c any/c -> void?
+;;   Draws one labeled comparison panel using the example's shared layout.
 (define (panel c x y title note key)
   (label c title x y 11)
   (define top (+ y 12))
@@ -106,6 +152,8 @@
   (with-skia ([p (make-paint #:color "#bdcad7" #:style 'stroke #:stroke-width 0.5)])
     (draw-rect c x top PW PH p))
   (label c note x (+ top PH 17) 8.4))
+; make-probe : string? string? list? -> output-page?
+;;   Constructs probe for the example's drawing pipeline.
 (define (make-probe title subtitle cases)
   (make-output-page
    720 560
@@ -116,9 +164,12 @@
      (for ([spec (in-list cases)] [i (in-naturals)])
        (panel c (* (remainder i 3) 232) (+ 90 (* (quotient i 3) 180))
               (car spec) (cadr spec) (caddr spec)))
-     (label c "PDF: native filter graphs. SVG: six explicit 416 x 256 PNG groups; labels and grid stay vector." 0 461 9)
+     (label c
+       "PDF: native filter graphs. SVG: six explicit 416 x 256 PNG groups; labels and grid stay vector." 0 461 9)
      (label c "RACKET / SKIA   |   ADVANCED FILTER GRAPHS" 0 502 9))
    #:margins 24 #:background 'white))
+; registry : list?
+;;   Keeps the shared scene/page order used by the exported documents and raster references.
 (define registry
   (list
    (cons "graphs"
@@ -148,12 +199,26 @@
          ("04  Tiled subset" "Repeat a 20 x 20 source region." tile)
          ("05  Distant diffuse lighting" "Soft alpha supplies the height field." diffuse)
          ("06  Spot specular lighting" "Position, target, and shininess." specular))))))
+; escaped : string? -> string?
+;;   Escapes text before inserting it into the generated HTML report.
 (define (escaped s)
-  (for/fold ([s s]) ([pair (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" . "&quot;")))])
+  (for/fold ([s s]) ([pair (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
+    "&quot;")))])
     (string-replace s (car pair) (cdr pair))))
+; base-name : any/c -> string?
+;;   Returns an HTML-safe filename for a generated report link.
 (define (base-name s) (escaped (path->string (file-name-from-path s))))
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
-  (define prefix (command-line #:program "filter-graphs.rkt" #:args ([prefix "filter-graphs-0.25"]) prefix))
+  ; prefix : path-string?
+  ;;   Selects the destination used by this example's output.
+  (define prefix (command-line #:program "filter-graphs.rkt" #:args ([prefix "filter-graphs-0.25"])
+    prefix))
+  ; name : any/c -> string?
+  ;;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
   (parameterize ([current-probe-backend 'pdf])
@@ -170,11 +235,14 @@
         (save-image im (name (string-append stem ".reference.png")) 'png #:exists 'replace))))
   (call-with-output-file (name ".review.html")
     (lambda (out)
-      (display "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Filter graph review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}figure{margin:0}img{width:100%;background:white}figcaption{margin-bottom:8px}@media(max-width:800px){.pair{grid-template-columns:1fr}}</style><h1>Advanced filter graphs</h1>" out)
-      (fprintf out "<p><a href=\"~a\">Actual three-page PDF</a> uses native filter graphs. Left: actual SVG with explicit raster groups. Right: independent native raster reference. PNGs are not vector-file rasterizations.</p>" (base-name (name ".pdf")))
+      (display
+        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Filter graph review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}figure{margin:0}img{width:100%;background:white}figcaption{margin-bottom:8px}@media(max-width:800px){.pair{grid-template-columns:1fr}}</style><h1>Advanced filter graphs</h1>" out)
+      (fprintf out
+        "<p><a href=\"~a\">Actual three-page PDF</a> uses native filter graphs. Left: actual SVG with explicit raster groups. Right: independent native raster reference. PNGs are not vector-file rasterizations.</p>" (base-name (name ".pdf")))
       (for ([entry (in-list registry)])
         (define stem (string-append "." (car entry)))
-        (fprintf out "<h2>~a</h2><section class=\"pair\"><figure><figcaption>Actual SVG (six bounded raster groups)</figcaption><img src=\"~a\" alt=\"SVG\"></figure><figure><figcaption>Separate native raster reference</figcaption><img src=\"~a\" alt=\"Reference\"></figure></section>"
+        (fprintf out
+          "<h2>~a</h2><section class=\"pair\"><figure><figcaption>Actual SVG (six bounded raster groups)</figcaption><img src=\"~a\" alt=\"SVG\"></figure><figure><figcaption>Separate native raster reference</figcaption><img src=\"~a\" alt=\"Reference\"></figure></section>"
           (car entry) (base-name (name (string-append stem ".svg")))
           (base-name (name (string-append stem ".reference.png")))))
       (display "</html>" out)) #:exists 'replace)

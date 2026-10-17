@@ -1,12 +1,43 @@
 #lang racket/base
+
+;;;
+;;; Codec Scanline Pure Test
+;;;
+
+;; Covers pure scanline contracts.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui "../main.rkt"
          (only-in "../private/codec-scanline-util.rkt"
                   scanline-options scanline-count scanline-index scanline-order-name
                   scanline-row scanline-batch-layout scanline-read-state raise-scanline-result))
 (provide codec-scanline-pure-tests codec-scanline-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; codec-scanline-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define codec-scanline-pure-test-count 32)
+
+; layout : symbol? exact-nonnegative-integer? exact-nonnegative-integer? exact-nonnegative-integer?
+; exact-nonnegative-integer? -> list?
+;;   Collects row-placement results for a requested scanline batch.
 (define (layout order height position request decoded)
-  (call-with-values (lambda () (scanline-batch-layout 'test order height position request decoded)) list))
+  (call-with-values (lambda () (scanline-batch-layout 'test order height position request decoded))
+    list))
+
+;;;
+;;; Regression Suite
+;;;
+
+; codec-scanline-pure-tests : test-suite?
+;;   Collects the regression cases for pure scanline contracts.
 (define codec-scanline-pure-tests
   (test-suite "0.76b pure scanline contracts"
    (test-case "positive scales round to C float"
@@ -67,14 +98,17 @@
      (check-equal? (scanline-read-state 5 2 3 3) 'complete)
      (check-equal? (scanline-read-state 5 0 2 2) 'ready))
    (test-case "padded batch layout is bounded"
-     (define-values (rb minimum size) (image-info-storage-layout (make-image-info 7 2) #:row-bytes 32))
+     (define-values (rb minimum size)
+       (image-info-storage-layout (make-image-info 7 2) #:row-bytes 32))
      (check-equal? (list rb minimum size) '(32 60 64)))
    (test-case "misaligned and short strides rejected"
      (for ([rb '(27 29 -1 28.0)])
-       (check-exn exn:fail? (lambda () (image-info-storage-layout (make-image-info 7 2) #:row-bytes rb)))))
+       (check-exn exn:fail?
+         (lambda () (image-info-storage-layout (make-image-info 7 2) #:row-bytes rb)))))
    (test-case "batch allocation obeys current byte limit"
      (parameterize ([current-skia-byte-limit 63])
-       (check-exn exn:fail? (lambda () (image-info-storage-layout (make-image-info 7 2) #:row-bytes 32)))))
+       (check-exn exn:fail?
+         (lambda () (image-info-storage-layout (make-image-info 7 2) #:row-bytes 32)))))
    (test-case "unsupported native result remains distinct"
      (check-exn (lambda (e) (and (exn:fail:codec-scanline? e)
                                 (eq? (exn:fail:codec-scanline-result e) 'unimplemented)
@@ -105,6 +139,13 @@
      (check-exn exn:fail? (lambda () (scanline-batch-complete? #f)))
      (check-exn exn:fail? (lambda () (scanline-batch->raster-buffer #f))))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-scanline-pure-tests))
   (printf "codec-scanline-pure: ~a cases, ~a failures\n" codec-scanline-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

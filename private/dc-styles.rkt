@@ -1,15 +1,38 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Style Descriptions
+;;;
+
+;; Validates pens, brushes, stipples, gradients, and style transforms.
+;; Builds the detached style data shared by rendering and output replay.
+
 ;; Public racket/draw objects -> immutable, native-free paint descriptions.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/list
          (prefix-in rd: racket/draw)
          (only-in ffi/unsafe/atomic call-as-atomic)
          (only-in "check.rkt" current-skia-byte-limit check-dimensions)
          "dc-support.rkt" "dc-style-math.rkt" "dc-bitmap.rkt")
 (provide dc-check-pen dc-check-brush dc-style-ink dc-style-color)
+
+;;;
+;;; Mutable Style Validation
+;;;
+
+; dc-style-color : symbol? (is-a?/c color%) -> vector?
+;;   Copies mutable Racket colors into immutable RGB-byte/unit-alpha vectors.
 (define (dc-style-color who color)
   (unless (is-a? color rd:color%) (raise-argument-error who "color% object" color))
   (vector-immutable (send color red) (send color green) (send color blue)
                     (dc-unit who (send color alpha))))
+
+; check-stipple : symbol? (is-a?/c bitmap%) -> void?
+;;   Validates a stipple's liveness, backing scale, physical dimensions, and conservative copy budget.
 (define (check-stipple who b)
   (unless (and (is-a? b rd:bitmap%) (send b ok?))
     (raise-argument-error who "valid stipple bitmap%" b))
@@ -21,19 +44,25 @@
   (when (> (* 12 w h) (current-skia-byte-limit))
     (raise-arguments-error who "stipple snapshot exceeds current-skia-byte-limit" "bytes" (* 12 w h)))
   (void))
+
+; gradient-description : symbol? (or/c (is-a?/c linear-gradient%) (is-a?/c radial-gradient%)) ->
+; vector?
+;;   Copies a checked gradient into kind, geometry, and stably ordered offset/color stops.
 (define (gradient-description who gradient)
   (define linear? (is-a? gradient rd:linear-gradient%))
   (unless (or linear? (is-a? gradient rd:radial-gradient%))
     (raise-argument-error who "linear-gradient% or radial-gradient%" gradient))
   (define geometry
     (for/list ([x (in-list (call-with-values
-                           (lambda () (if linear? (send gradient get-line) (send gradient get-circles))) list))])
+                           (lambda () (if linear? (send gradient get-line) (send gradient
+                             get-circles))) list))])
       (dc-real who x)))
   (unless linear?
     (dc-extent who (list-ref geometry 2)) (dc-extent who (list-ref geometry 5)))
   (define stops (send gradient get-stops))
   (unless (and (list? stops) (<= (* 40 (length stops)) (current-skia-byte-limit)))
-    (raise-arguments-error who "gradient stops exceed current-skia-byte-limit" "limit" (current-skia-byte-limit)))
+    (raise-arguments-error who "gradient stops exceed current-skia-byte-limit" "limit"
+      (current-skia-byte-limit)))
   (define checked
     (dc-gradient-stops who
       (for/list ([s (in-list stops)])
@@ -42,12 +71,18 @@
         (list (car s) (dc-style-color who (cadr s))))
       (current-skia-byte-limit)))
   (vector-immutable (if linear? 'linear 'radial) geometry checked))
+
+; check-transform : symbol? (or/c #f vector?) -> void?
+;;   Checks an optional brush transform and its inverse before selecting a native paint source.
 (define (check-transform who t)
   (when t
     (define m (dc-effective (dc-transformation who t)))
     ;; A singular pattern map has no inverse for native shader sampling.
     (dc-inverse who m))
   (void))
+
+; dc-check-pen : (is-a?/c pen%) -> (is-a?/c pen%)
+;;   Validates supported pen settings and optional stipple storage before the object becomes selected.
 (define (dc-check-pen p)
   (unless (is-a? p rd:pen%) (raise-argument-error 'set-pen "pen% object" p))
   (unless (memq (send p get-style) dc-pen-styles)
@@ -55,6 +90,10 @@
   (dc-extent 'set-pen (send p get-width)) (dc-style-color 'set-pen (send p get-color))
   (when (send p get-stipple) (check-stipple 'set-pen (send p get-stipple)))
   p)
+
+; dc-check-brush : (is-a?/c brush%) -> (is-a?/c brush%)
+;;   Validates brush colors, gradients, stipples, and transforms while rejecting native Cairo-handle
+;;   brushes.
 (define (dc-check-brush b)
   (unless (is-a? b rd:brush%) (raise-argument-error 'set-brush "brush% object" b))
   (unless (memq (send b get-style) dc-brush-styles)
@@ -66,6 +105,14 @@
   (when (send b get-gradient) (gradient-description 'set-brush (send b get-gradient)))
   (check-transform 'set-brush (send b get-transformation))
   b)
+
+;;;
+;;; Atomic Detached Ink Capture
+;;;
+
+; dc-style-ink : object? boolean? dc-ink? (is-a?/c color%) real? vector? -> dc-ink/style?
+;;   Atomically snapshots mutable style inputs into detached ink, including dash phase and optional
+;;   gradient/stipple/hatch data.
 (define (dc-style-ink object stroke? old-ink background alpha drawing)
   ;; No native handles escape this function. Gradient colors/transform and
   ;; bitmap bytes are copied anew for each drawing operation. Locking a brush
@@ -95,7 +142,8 @@
           (when (> (* 12 12 8) (current-skia-byte-limit))
             (raise-arguments-error 'skia-dc-hatch "hatch tile exceeds current-skia-byte-limit"
                                    "limit" (current-skia-byte-limit)))
-          (dc-paint-source 'hatch (vector-immutable style (dc-style-color 'skia-dc-hatch (send object get-color)))
+          (dc-paint-source 'hatch (vector-immutable style (dc-style-color 'skia-dc-hatch (send object
+            get-color)))
                            dc-identity)]
          [else #f]))
      (define rgba

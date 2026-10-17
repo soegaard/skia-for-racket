@@ -1,16 +1,49 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Bitmap Snapshots
+;;;
+
+;; Copies Racket bitmap pixels and resolves logical versus physical bitmap geometry.
+;; Prepares immutable drawing inputs for Skia-backed bitmap operations.
+
 ;; Public bitmap% pixel bridge. Pixels are copied on every call: bitmap%
 ;; mutation has no revision counter suitable for a safe immutable-image cache.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/list (prefix-in rd: racket/draw)
          (only-in "check.rkt" check-dimensions current-skia-byte-limit)
          "dc-support.rkt")
 (provide (struct-out dc-bitmap-data) dc-bitmap-snapshot dc-bitmap-source-rect)
+;;;
+;;; Detached Pixels and Geometry
+;;;
+
 (struct dc-bitmap-data (width height backing logical-width logical-height pixels) #:transparent)
+;; Fields:
+;;   width and height: positive exact physical pixel dimensions, each rounded up from its logical
+;;   dimension times backing. backing: positive finite bitmap scale. logical-width and
+;;   logical-height: positive exact unscaled bitmap dimensions. pixels: immutable detached
+;;   premultiplied RGBA bytes, tightly packed left-to-right then top-to-bottom, exactly
+;;   4 * width * height bytes; each RGB component is bounded by its pixel's alpha.
+
+; mul255 : byte? byte? -> byte?
+;;   Multiplies a color component by byte-valued coverage with nearest-integer rounding.
 (define (mul255 a b) (quotient (+ (* a b) 127) 255))
+
+; color-bytes : symbol? (is-a?/c color%) -> vector?
+;;   Copies RGB channels and converts the color's unit alpha into a rounded byte.
 (define (color-bytes who c)
   (unless (is-a? c rd:color%) (raise-argument-error who "color% object" c))
   (vector (send c red) (send c green) (send c blue)
           (inexact->exact (round (* 255 (dc-unit who (send c alpha)))))))
+
+; physical : symbol? (is-a?/c bitmap%) -> (values exact-positive-integer? exact-positive-integer?
+; real?)
+;;   Validates a bitmap's backing scale and returns its physical dimensions followed by that scale.
 (define (physical who bm)
   (define b (dc-real who (send bm get-backing-scale)))
   (unless (> b 0) (raise-arguments-error who "invalid bitmap backing scale" "scale" b))
@@ -18,21 +51,36 @@
   (define h (inexact->exact (ceiling (* b (send bm get-height)))))
   (check-dimensions who w h)
   (values w h b))
+
+; read-argb : (is-a?/c bitmap%) exact-positive-integer? exact-positive-integer? -> bytes?
+;;   Reads physical pixels into detached, straight-alpha ARGB storage.
 (define (read-argb bm w h)
   (define bytes (make-bytes (* 4 w h)))
   (send bm get-argb-pixels 0 0 w h bytes #f #f #:unscaled? #t)
   bytes)
+
+;;;
+;;; Bitmap Capture and Rectangle Mapping
+;;;
+
+; dc-bitmap-snapshot : symbol? (is-a?/c bitmap%) symbol? (is-a?/c color%) (or/c #f (is-a?/c bitmap%))
+; (is-a?/c color%) -> (or/c #f dc-bitmap-data?)
+;;   Copies a bitmap and optional mask into premultiplied RGBA, applying DC monochrome
+;;   foreground/background semantics.
 (define (dc-bitmap-snapshot who source style color mask background)
   (unless (is-a? source rd:bitmap%) (raise-argument-error who "bitmap% object" source))
-  (unless (memq style '(solid opaque xor)) (raise-argument-error who "'solid, 'opaque, or 'xor" style))
+  (unless (memq style '(solid opaque xor)) (raise-argument-error who "'solid, 'opaque, or 'xor"
+    style))
   (define foreground (color-bytes who color))
   (define bg (color-bytes who background))
-  (unless (or (not mask) (is-a? mask rd:bitmap%)) (raise-argument-error who "bitmap% or #f mask" mask))
+  (unless (or (not mask) (is-a? mask rd:bitmap%)) (raise-argument-error who "bitmap% or #f mask"
+    mask))
   (when mask
     (unless (and (send mask ok?)
                  (= (send mask get-width) (send source get-width))
                  (= (send mask get-height) (send source get-height)))
-      (raise-arguments-error who "mask must be valid and match logical source dimensions" "mask" mask)))
+      (raise-arguments-error who "mask must be valid and match logical source dimensions" "mask"
+        mask)))
   (cond
     [(not (send source ok?)) #f]
     [else
@@ -80,6 +128,11 @@
                      (bytes->immutable-bytes rgba))]))
 ;; Crop in logical source units. Source and destination change together, so a
 ;; partially outside section is clipped rather than stretched to fill its box.
+
+; dc-bitmap-source-rect : symbol? dc-bitmap-data? real? real? real? real? real? real? real? real? ->
+; (or/c #f vector?)
+;;   Clips a logical source rectangle and adjusts its destination; returns physical source xywh then
+;;   logical destination xywh.
 (define (dc-bitmap-source-rect who data sx sy sw sh dx dy dw dh)
   (for ([v (in-list (list sx sy dx dy))]) (dc-real who v))
   (for ([v (in-list (list sw sh dw dh))]) (dc-extent who v))

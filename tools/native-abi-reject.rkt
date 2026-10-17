@@ -1,15 +1,36 @@
 #lang racket/base
+
+;;;
+;;; Native ABI Rejection Probe
+;;;
+
+;; Exercises rejection of an unsupported or mismatched native ABI in an isolated process.
+;; This negative probe checks that incompatible libraries fail before unsafe native calls.
+
+;;;
+;;; Imports and Exports
+;;;
 (require json racket/cmdline
          (only-in "../private/native.rkt" skia-check!)
          (only-in "../private/native-abi.rkt"
                   exn:fail:native-abi? exn:fail:native-abi-milestone
                   exn:fail:native-abi-increment))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; expected : exact-positive-integer?
+  ;;   Parses the deliberately incompatible milestone supplied to the rejection probe.
   (define expected
     (command-line #:args (milestone)
       (define n (string->number milestone))
       (unless (exact-positive-integer? n) (error 'native-abi-reject "invalid milestone"))
       n))
+
+  ; rejected : boolean?
+  ;;   Records whether the native compatibility gate rejected the mismatched milestone.
   (define rejected #f)
   (with-handlers ([exn:fail:native-abi?
                    (lambda (e)

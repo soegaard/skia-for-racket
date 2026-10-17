@@ -1,24 +1,47 @@
 #lang racket/base
+
+;;;
+;;; GPU Redraw Doctor
+;;;
+
+;; Exercises gpu redraw and reports native diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/class racket/list racket/path
          "../main.rkt" "../gpu.rkt" "../private/gpu-performance-util.rkt"
          "../private/gpu-io-trace.rkt" "../examples/gpu-presentation-scene.rkt"
          "gpu-performance-options.rkt" "gpu-presentation-host.rkt" "gpu-report.rkt")
 (provide gpu-redraw-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-redraw-doctor! : hash? -> exact-integer?
+;;   Runs configured redraw and recreation cycles, checking frame evidence and resource cleanup
+;;   before publishing a status.
 (define (gpu-redraw-doctor! options)
   (define prefix (hash-ref options 'prefix)) (define backend (hash-ref options 'backend))
   (define config (hash-ref options 'config)) (define started? #f) (define windows '())
   (clear-performance-results! prefix)
   (define sources (performance-source-fingerprints))
-  (define run-id (or (getenv "SKIA_GPU_VALIDATION_RUN") (format "redraw-~a" (current-inexact-milliseconds))))
+  (define run-id
+    (or (getenv "SKIA_GPU_VALIDATION_RUN") (format "redraw-~a" (current-inexact-milliseconds))))
   (define (publish status message)
     (write-gpu-json (string->path (string-append prefix ".diagnostic.json"))
       (hasheq 'schema_version 1 'stage "0.45" 'kind "redraw" 'status status 'message message
               'backend (symbol->string backend) 'validation_run run-id 'config config
-              'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
-              'racket_version (version) 'workload_sources sources 'required (hash-ref options 'required)
+              'os (symbol->string (system-type 'os)) 'architecture
+        (symbol->string (system-type 'arch))
+              'racket_version (version) 'workload_sources sources 'required
+        (hash-ref options 'required)
               'require_hardware (hash-ref options 'hardware) 'windows (reverse windows)
               'clock "current-inexact-monotonic-milliseconds"
-              'timing_scope "host presenter call including acquisition, authoring, submission, swap/backpressure; not display latency"
+              'timing_scope
+        "host presenter call including acquisition, authoring, submission, swap/backpressure; not display latency"
               'performance_measured (equal? status "passed") 'visible_pixels_verified #f
               'display_latency_measured #f 'speedup_claimed #f)))
   (with-handlers
@@ -28,7 +51,8 @@
           (if (and (not started?) (not (hash-ref options 'required))) 0 1))]
        [exn:fail? (lambda (e) (publish "error" (exn-message e))
                     (eprintf "Redraw ERROR: ~a\n" (exn-message e)) 1)])
-    (unless (eq? (hash-ref options 'host) 'gui) (error 'gpu-redraw "presentation requires a GUI host"))
+    (unless (eq? (hash-ref options 'host) 'gui)
+      (error 'gpu-redraw "presentation requires a GUI host"))
     (call-on-presentation-handler
       (lambda (gpu-window% settle)
         (for ([cycle (in-range (hash-ref config 'cycles))])
@@ -55,7 +79,8 @@
               (for ([w (in-list hosts)] [p (in-list ps)] [i (in-naturals)])
                 (define context (gpu-presenter-context p)) (define initial (gpu-context-info context))
                 (when (and (hash-ref options 'hardware)
-                           (not (equal? (hash-ref initial 'renderer_class "unclassified") "hardware-reported")))
+                        (not (equal? (hash-ref initial 'renderer_class "unclassified")
+                               "hardware-reported")))
                   (error 'gpu-redraw "hardware-reported renderer required"))
                 (define skips 0)
                 (define skipped-callbacks 0)
@@ -82,7 +107,8 @@
                     (cond
                       [(eq? result 'present-requested)
                        (define f (vector-ref last-frames i))
-                       (unless (and (gpu-frame-expired? f) (skia-closed? (vector-ref last-canvases i)))
+                        (unless (and (gpu-frame-expired? f)
+                                  (skia-closed? (vector-ref last-canvases i)))
                          (error 'gpu-redraw "frame/canvas escaped its scope"))
                        (hash-set* row 'callback (vector-ref last-times i) 'frame (gpu-frame-info f)
                                   'frame_expired #t 'canvas_expired #t 'io_events (reverse (unbox io))
@@ -116,10 +142,12 @@
                   (parameterize ([current-gpu-io-ledger queued-io])
                     (for ([j (in-range 4)]) (gpu-presenter-request-render! p))
                     (settle))
-                  (unless (= (vector-ref counts i) (add1 old)) (error 'gpu-redraw "redraw coalescing failed"))
+                  (unless (= (vector-ref counts i) (add1 old))
+                    (error 'gpu-redraw "redraw coalescing failed"))
                   (define cache (cache-check)) (collect-garbage)
                   (define info (gpu-context-info context))
-                  (check-resource-envelope! info cache baseline config (if (eq? backend 'direct3d) 1 0))
+                  (check-resource-envelope! info cache baseline config
+                    (if (eq? backend 'direct3d) 1 0))
                   (define presenter (gpu-presenter-info p))
                   (set! checkpoints
                     (cons (hasheq 'frame (* 30 (add1 batch)) 'context info 'cache cache
@@ -136,7 +164,9 @@
                                 'render_callbacks (vector-ref counts i) 'closed_presenter closed
                                 'skipped_callbacks skipped-callbacks
                                 'measured_backend_fence_waits measured-fence-waits
-                                'backend_fence_waits_outside_samples (- (fence-waits) measured-fence-waits)) windows))
+                                'backend_fence_waits_outside_samples
+                          (- (fence-waits) measured-fence-waits)) windows))
+
                 (printf "~a: redraw cycle ~a/window ~a, ~a frames; queued redraw and cleanup verified\n"
                         backend (add1 cycle) i (hash-ref config 'frames))))
             (lambda () (close-gpu-contexts! hosts (lambda (w) (send w close-gpu))))))))

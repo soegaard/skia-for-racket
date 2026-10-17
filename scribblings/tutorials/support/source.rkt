@@ -1,10 +1,29 @@
 #lang racket/base
 
+;;;
+;;; Source
+;;;
+
+;; Extracts a definition from example source without evaluating the program.
+;; This module supports documentation assembly and shared examples rather than the public Skia
+;; API.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file)
 (provide source-definition)
 
 ;; Read, but do not evaluate, an example. Display its actual definition rather
 ;; than maintaining a second copy in the manual. Nested local helpers count.
+;;;
+;;; Documentation Data and Helpers
+;;;
+
+; source-definition : path-string? any/c -> string?
+;;   Returns the actual source text of a named definition without evaluating it.
 (define (source-definition path name)
   (define source (file->string path))
   (define (find-definition form)
@@ -29,9 +48,17 @@
   (define start (sub1 (syntax-position definition)))
   (substring source start (+ start (syntax-span definition))))
 
+;;;
+;;; Regression Checks
+;;;
+
 (module+ test
   (require rackunit racket/runtime-path)
+  ; model : path?
+  ;;   Locates model relative to this module rather than the current directory.
   (define-runtime-path model "../navigation/model.rkt")
+  ; window : path?
+  ;;   Locates window relative to this module rather than the current directory.
   (define-runtime-path window "../navigation/navigate.rkt")
   (check-equal? (caadr (read (open-input-string (source-definition model 'zoom-at)))) 'zoom-at)
   (check-equal? (caadr (read (open-input-string (source-definition window 'drag-to!)))) 'drag-to!)

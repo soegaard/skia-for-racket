@@ -1,10 +1,30 @@
 #lang racket/base
+
+;;;
+;;; Skia Drawing Context Class
+;;;
+
+;; Builds the dc<%>-compatible class and maintains its selected drawing state.
+;; Adapts Racket's drawing protocol to the project's renderer implementations.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/future racket/list racket/math racket/vector
          (prefix-in rd: racket/draw) "dc-support.rkt" "dc-geometry.rkt"
          "dc-region-adapter.rkt" "dc-text-spec.rkt" "dc-bitmap.rkt"
          "dc-replay-adapter.rkt" "dc-alpha.rkt" "dc-styles.rkt" "dc-style-math.rkt"
          (only-in "check.rkt" check-dimensions current-skia-byte-limit))
 (provide make-skia-dc-class)
+
+;;;
+;;; Private Canvas Protocol
+;;;
+
+; dc-push-layer! : local-member-name bindings
+;;   Reserves private layer and backing operations so ordinary symbol-based dc<%> dispatch cannot
+;;   invoke them.
 (define-local-member-name dc-push-layer! dc-pop-layer!
                           dc-replace-backing! dc-paint-scope dc-clear-root!)
 
@@ -13,13 +33,31 @@
 ;; dispatch these operations using a symbol with the same spelling.
 (module* canvas #f
   (provide dc-resize-backing! call-with-dc-canvas-paint dc-clear-backing!)
+
+  ; dc-resize-backing! : (is-a?/c dc<%>) exact-positive-integer? exact-positive-integer? real? ->
+  ; boolean?
+  ;;   Replaces the DC backing transactionally; returns #f when its logical size and backing scale are
+  ;;   unchanged.
   (define (dc-resize-backing! dc width height backing-scale)
     (send dc dc-replace-backing! width height backing-scale))
+
+  ; call-with-dc-canvas-paint : (is-a?/c dc<%>) procedure? -> any
+  ;;   Runs a paint callback with root-target entry and unfinished-layer cleanup on every exit.
   (define (call-with-dc-canvas-paint dc thunk)
     (send dc dc-paint-scope thunk))
+
+  ; dc-clear-backing! : (is-a?/c dc<%>) -> void?
+  ;;   Clears the root to transparent and then to the selected background, ignoring ordinary drawing
+  ;;   state.
   (define (dc-clear-backing! dc)
     (send dc dc-clear-root!)))
 
+;;;
+;;; Detached Colors and Selection Validators
+;;;
+
+; color-value : symbol? (or/c string? (is-a?/c color%)) -> vector?
+;;   Copies a named or object color into immutable RGB-byte/unit-alpha form; unknown names use black.
 (define (color-value who v)
   (define c
     (cond [(string? v) (or (send rd:the-color-database find-color v)
@@ -27,20 +65,43 @@
           [(is-a? v rd:color%) v]
           [else (raise-argument-error who "color% object or color name" v)]))
   (vector-immutable (send c red) (send c green) (send c blue) (dc-unit who (send c alpha))))
+
+; color-object : vector? -> (is-a?/c color%)
+;;   Builds a detached public color object so callers cannot mutate the DC's stored color.
 (define (color-object v)
   ;; A detached public object: mutating a returned color cannot change the DC.
   (make-object rd:color% (vector-ref v 0) (vector-ref v 1) (vector-ref v 2) (vector-ref v 3)))
+
+; with-opacity : vector? real? -> vector?
+;;   Preserves the RGB bytes and multiplies the color's unit alpha by the current draw opacity.
 (define (with-opacity rgba alpha)
   (vector-immutable (vector-ref rgba 0) (vector-ref rgba 1) (vector-ref rgba 2)
                     (* (vector-ref rgba 3) alpha)))
+
+; check-pen : (is-a?/c pen%) -> (is-a?/c pen%)
+;;   Shares the pen validator used before selecting and locking mutable drawing styles.
 (define check-pen dc-check-pen)
+
+; check-brush : (is-a?/c brush%) -> (is-a?/c brush%)
+;;   Shares the brush validator used before selecting and locking mutable drawing styles.
 (define check-brush dc-check-brush)
+
+; smoothing-value : symbol? -> symbol?
+;;   Accepts only the dc<%> smoothing modes unsmoothed, smoothed, and aligned.
 (define (smoothing-value s)
   (unless (memq s '(unsmoothed smoothed aligned))
     (raise-argument-error 'set-smoothing "'unsmoothed, 'smoothed, or 'aligned" s)) s)
 
+;;;
+;;; Renderer-Backed Class
+;;;
+
+; make-skia-dc-class : dc-renderer? -> class?
+;;   Builds a thread-owned dc<%> class with renderer-backed drawing, selection locks, and isolated
+;;   alpha groups.
 (define (make-skia-dc-class renderer)
-  (unless (dc-renderer? renderer) (raise-argument-error 'make-skia-dc-class "private DC renderer" renderer))
+  (unless (dc-renderer? renderer) (raise-argument-error 'make-skia-dc-class "private DC renderer"
+    renderer))
   ;; Alpha default implementations are part of draw-lib 1.22 / Racket 8.18.
   ;; Leave those methods out of the base and override the interface defaults
   ;; in the final class. No compatibility branch for older interfaces.
@@ -49,6 +110,10 @@
       (init [(logical-width width) 640] [(logical-height height) 480]
             [(requested-backing backing-scale) 1.0]
             [background "white"] [smoothing 'unsmoothed])
+      ;;;
+      ;;; Owned Drawing State
+      ;;;
+
       (define owner (current-thread))
       (define-values (pixel-w pixel-h backing)
         (dc-physical-size 'skia-dc% logical-width logical-height requested-backing))
@@ -88,6 +153,10 @@
                        (lambda () (current-skia-byte-limit))))
       (dc-style-select! style-lease 0 pen-state check-pen void)
       (dc-style-select! style-lease 1 brush-state check-brush void)
+
+      ;;;
+      ;;; Ownership, Backing Replacement, and Paint Scopes
+      ;;;
 
       (define/private (owner! who)
         (unless (and (eq? owner (current-thread)) (not (current-future)))
@@ -136,7 +205,8 @@
                  (lambda () (set! backing-operation 'resize))
                  (lambda ()
                    (set! replacement ((dc-renderer-create renderer) next-pixel-w next-pixel-h))
-                   (unless replacement (error 'dc-resize-backing! "raster renderer returned no surface"))
+                   (unless replacement (error 'dc-resize-backing!
+                     "raster renderer returned no surface"))
                    (set! next-groups
                      (make-dc-alpha replacement next-pixel-w next-pixel-h
                        (dc-renderer-create renderer) (dc-renderer-close renderer)
@@ -170,7 +240,8 @@
       (define/public (dc-paint-scope thunk)
         (idle-backing! 'call-with-dc-canvas-paint)
         (unless (and (procedure? thunk) (procedure-arity-includes? thunk 0))
-          (raise-argument-error 'call-with-dc-canvas-paint "procedure accepting zero arguments" thunk))
+          (raise-argument-error 'call-with-dc-canvas-paint "procedure accepting zero arguments"
+            thunk))
         (call-with-continuation-barrier
          (lambda ()
            (define entered? #f)
@@ -208,9 +279,14 @@
                 ((dc-renderer-clear renderer) root #f background-state #f)
                 (void))
               (lambda () (set! backing-operation previous-operation)))))))
+      ;;;
+      ;;; Layer and Transform Helpers
+      ;;;
+
       (define/private (compat! who)
         (unless (dc-renderer+? renderer)
-          (dc-unsupported who 'recording-renderer-without-compatibility-callbacks "private test renderer")))
+          (dc-unsupported who 'recording-renderer-without-compatibility-callbacks
+            "private test renderer")))
       (define/private (physical-clip) (dc-alpha-clip groups))
       (define/public (dc-push-layer! a)
         (check! 'start-alpha)
@@ -241,6 +317,10 @@
         (for ([i (in-list indices)] [value (in-list values-list)]) (vector-set! v i value)) v)
       (define/private (aligners who)
         (dc-alignment-functions who (effective) alignment (send pen-state get-width) smoothing-state))
+      ;;;
+      ;;; Detached Ink and Geometry Submission
+      ;;;
+
       (define/private (ink stroke?)
         (define obj (if stroke? pen-state brush-state))
         (define col (with-opacity (color-value 'skia-dc% (send obj get-color)) alpha-state))
@@ -254,19 +334,22 @@
         (dc-style-ink obj stroke?
           (dc-ink col stroke? actual-width
                   (if (and stroke? (<= (* width axis-scale) 1)) 'round
-                      (if stroke? (case (send pen-state get-cap) [(projecting) 'square] [else (send pen-state get-cap)]) 'round))
+                      (if stroke? (case (send pen-state get-cap) [(projecting) 'square] [else (send
+                        pen-state get-cap)]) 'round))
                   (if stroke? (send pen-state get-join) 'round) '())
           (color-object background-state) alpha-state m))
       (define/private (emit! who fill-commands stroke-commands [rule 'winding])
         (check! who)
-        (unless (memq rule '(winding odd-even)) (raise-argument-error who "'winding or 'odd-even" rule))
+        (unless (memq rule '(winding odd-even)) (raise-argument-error who "'winding or 'odd-even"
+          rule))
         (unless (dc-singular? (effective))
           ;; Build and validate the entire batch before the first native draw.
           (define batch
             (for/list ([commands (in-list (list fill-commands stroke-commands))]
                        [stroke? (in-list '(#f #t))]
                        #:when (and (pair? commands)
-                                   (not (eq? (send (if stroke? pen-state brush-state) get-style) 'transparent))))
+                                   (not (eq? (send (if stroke? pen-state brush-state) get-style)
+                                     'transparent))))
               (define checked-commands
                 (dc-path-map commands (lambda (x y) (values (dc-real who x) (dc-real who y)))))
               (define paint (ink stroke?))
@@ -324,6 +407,10 @@
                        (max 0 (- (ay (+ y height)) (ay y) uy)) #f)))
         (void))
 
+      ;;;
+      ;;; Lifetime, Size, and Snapshots
+      ;;;
+
       (define/public (ok?) (and (not closed?) (eq? owner (current-thread)) (not (current-future)) #t))
       (define/public (close)
         (owner! 'close)
@@ -348,26 +435,37 @@
       (define/public (get-gl-context) (check! 'get-gl-context) #f)
       (define/public (cache-font-metrics-key) (check! 'cache-font-metrics-key) 0)
       (define/public (get-capabilities) (check! 'get-capabilities) (dc-capabilities))
-      (define/public (snapshot) (check! 'snapshot) ((dc-renderer-snapshot renderer) (dc-alpha-root groups)))
-      (define/public (get-png-bytes) (check! 'get-png-bytes) ((dc-renderer-png renderer) (dc-alpha-root groups)))
+      (define/public (snapshot) (check! 'snapshot) ((dc-renderer-snapshot renderer) (dc-alpha-root
+        groups)))
+      (define/public (get-png-bytes) (check! 'get-png-bytes) ((dc-renderer-png renderer)
+        (dc-alpha-root groups)))
       (define/public (get-rgba-bytes #:premultiplied? [premultiplied? #f])
         (check! 'get-rgba-bytes)
-        (unless (boolean? premultiplied?) (raise-argument-error 'get-rgba-bytes "boolean?" premultiplied?))
+        (unless (boolean? premultiplied?) (raise-argument-error 'get-rgba-bytes "boolean?"
+          premultiplied?))
         ((dc-renderer-rgba renderer) (dc-alpha-root groups) premultiplied?))
+      ;;;
+      ;;; Transform and Style Selection
+      ;;;
+
       (define/public (get-initial-matrix) (check! 'get-initial-matrix) (vector-ref transform-state 0))
       (define/public (get-transformation) (check! 'get-transformation) transform-state)
-      (define/public (get-origin) (check! 'get-origin) (values (vector-ref transform-state 1) (vector-ref transform-state 2)))
-      (define/public (get-scale) (check! 'get-scale) (values (vector-ref transform-state 3) (vector-ref transform-state 4)))
+      (define/public (get-origin) (check! 'get-origin) (values (vector-ref transform-state 1)
+        (vector-ref transform-state 2)))
+      (define/public (get-scale) (check! 'get-scale) (values (vector-ref transform-state 3)
+        (vector-ref transform-state 4)))
       (define/public (get-rotation) (check! 'get-rotation) (vector-ref transform-state 5))
       (define/public (get-clipping-matrix) (check! 'get-clipping-matrix) (effective))
-      (define/public (set-initial-matrix m) (set-transform! 'set-initial-matrix (changed '(0) (list m))))
+      (define/public (set-initial-matrix m) (set-transform! 'set-initial-matrix (changed '(0) (list
+        m))))
       (define/public (set-origin x y) (set-transform! 'set-origin (changed '(1 2) (list x y))))
       (define/public (set-scale x y) (set-transform! 'set-scale (changed '(3 4) (list x y))))
       (define/public (set-rotation a) (set-transform! 'set-rotation (changed '(5) (list a))))
       (define/public (set-transformation t) (set-transform! 'set-transformation t))
       (define/public (transform m)
         (check! 'transform)
-        (set-transform! 'transform (vector (dc-multiply (effective) (dc-matrix 'transform m)) 0 0 1 1 0)))
+        (set-transform! 'transform (vector (dc-multiply (effective) (dc-matrix 'transform m)) 0 0 1 1
+          0)))
       (define/public (translate x y) (transform (vector 1 0 0 1 x y)))
       (define/public (scale x y) (transform (vector x 0 0 y 0 0)))
       (define/public (rotate angle)
@@ -379,11 +477,14 @@
         (unless (> a 0) (raise-argument-error 'set-alignment-scale "positive finite real" v))
         (set! alignment a) (void))
       (define/public (get-smoothing) (check! 'get-smoothing) smoothing-state)
-      (define/public (set-smoothing s) (check! 'set-smoothing) (set! smoothing-state (smoothing-value s)) (void))
+      (define/public (set-smoothing s) (check! 'set-smoothing) (set! smoothing-state (smoothing-value
+        s)) (void))
       (define/public (get-alpha) (check! 'get-alpha) alpha-state)
-      (define/public (set-alpha a) (check! 'set-alpha) (set! alpha-state (dc-unit 'set-alpha a)) (void))
+      (define/public (set-alpha a) (check! 'set-alpha) (set! alpha-state (dc-unit 'set-alpha a))
+        (void))
       (define/public (get-background) (check! 'get-background) (color-object background-state))
-      (define/public (set-background c) (check! 'set-background) (set! background-state (color-value 'set-background c)) (void))
+      (define/public (set-background c) (check! 'set-background) (set! background-state (color-value
+        'set-background c)) (void))
       (define/public (get-pen) (check! 'get-pen) pen-state)
       (define/public set-pen
         (case-lambda
@@ -404,19 +505,27 @@
         (unless (is-a? f rd:font%) (raise-argument-error 'set-font "font% object" f))
         (set! font-state f) (void))
       (define/public (get-text-foreground) (check! 'get-text-foreground) (color-object text-fg))
-      (define/public (set-text-foreground c) (check! 'set-text-foreground) (set! text-fg (color-value 'set-text-foreground c)) (void))
+      (define/public (set-text-foreground c) (check! 'set-text-foreground) (set! text-fg (color-value
+        'set-text-foreground c)) (void))
       (define/public (get-text-background) (check! 'get-text-background) (color-object text-bg))
-      (define/public (set-text-background c) (check! 'set-text-background) (set! text-bg (color-value 'set-text-background c)) (void))
+      (define/public (set-text-background c) (check! 'set-text-background) (set! text-bg (color-value
+        'set-text-background c)) (void))
       (define/public (get-text-mode) (check! 'get-text-mode) text-mode-state)
       (define/public (set-text-mode mode)
         (check! 'set-text-mode)
-        (unless (memq mode '(transparent solid)) (raise-argument-error 'set-text-mode "'transparent or 'solid" mode))
+        (unless (memq mode '(transparent solid)) (raise-argument-error 'set-text-mode
+          "'transparent or 'solid" mode))
         (set! text-mode-state mode) (void))
       (define/public (try-color c dest)
         (check! 'try-color)
         (unless (and (is-a? c rd:color%) (is-a? dest rd:color%))
-          (raise-arguments-error 'try-color "source and destination must be color% objects" "source" c "destination" dest))
+          (raise-arguments-error 'try-color "source and destination must be color% objects" "source" c
+            "destination" dest))
         (send dest set (send c red) (send c green) (send c blue) (send c alpha)) (void))
+      ;;;
+      ;;; Clipping and Basic Drawing
+      ;;;
+
       (define/public (get-clipping-region) (check! 'get-clipping-region) clip-region)
       (define/public (set-clipping-region r)
         (check! 'set-clipping-region)
@@ -478,6 +587,10 @@
                            (vector 'cubic (/ (+ xa x2) 2) (/ (+ ya y2) 2)
                                    (/ (+ x2 xb) 2) (/ (+ y2 yb) 2) xb yb)
                            (vector 'line x3 y3)) 'winding #f #f))
+      ;;;
+      ;;; Document and Flush Compatibility
+      ;;;
+
       ;; Raster DCs do not represent documents or a GUI flush queue.
       (define/public (start-doc title) (check! 'start-doc)
         (unless (string? title) (raise-argument-error 'start-doc "string?" title)) (void))
@@ -492,6 +605,10 @@
       ;; class. dc<%> supplies default implementations for those methods, so
       ;; defining them here would conflict when the final class attaches dc<%>.
       ;; The final class* below overrides the interface defaults instead.
+      ;;;
+      ;;; Text, Bitmaps, Copies, and Bounds
+      ;;;
+
       (define/public (draw-text str x y [combine #f] [offset 0] [angle 0])
         (check! 'draw-text) (compat! 'draw-text)
         (dc-real 'draw-text x) (dc-real 'draw-text y) (dc-real 'draw-text angle)
@@ -508,14 +625,16 @@
       (define/private (font-extent who)
         (check! who) (compat! who)
         (call-with-values
-         (lambda () ((dc-renderer+-measure-text renderer) target (dc-font-description who font-state)))
+         (lambda () ((dc-renderer+-measure-text renderer) target (dc-font-description who
+           font-state)))
          list))
       (define/public (get-char-width) (car (font-extent 'get-char-width)))
       (define/public (get-char-height) (cadr (font-extent 'get-char-height)))
       (define/public (glyph-exists? c)
         (check! 'glyph-exists?) (compat! 'glyph-exists?)
         (unless (char? c) (raise-argument-error 'glyph-exists? "char?" c))
-        ((dc-renderer+-glyph-exists? renderer) target (dc-font-description 'glyph-exists? font-state) c))
+        ((dc-renderer+-glyph-exists? renderer) target (dc-font-description 'glyph-exists? font-state)
+          c))
       (define/private (bitmap! who bitmap x y sx sy sw sh dw dh style color mask smooth?)
         (check! who) (compat! who)
         (for ([v (in-list (list x y sx sy))]) (dc-real who v))
@@ -527,7 +646,8 @@
            (define rect (dc-bitmap-source-rect who data sx sy sw sh x y dw dh))
            (when (and rect (not (dc-singular? (effective))))
              (for ([n (in-vector rect)]) (dc-real who n))
-             ((dc-renderer+-draw-bitmap renderer) target data rect (backed (effective)) (physical-clip)
+             ((dc-renderer+-draw-bitmap renderer) target data rect (backed (effective))
+               (physical-clip)
               alpha-state (if (or smooth? (not (eq? smoothing-state 'unsmoothed))) 'linear 'nearest)))
            #t]))
       (define/public (draw-bitmap bitmap x y [style 'solid]
@@ -547,7 +667,8 @@
         (for ([v (in-list (list x y x2 y2))]) (dc-real 'copy v))
         (dc-extent 'copy width) (dc-extent 'copy height)
         (when (and (> width 0) (> height 0) (not (dc-singular? (effective))))
-          ((dc-renderer+-copy renderer) target (backed (effective)) (physical-clip) x y width height x2 y2))
+          ((dc-renderer+-copy renderer) target (backed (effective)) (physical-clip) x y width height
+            x2 y2))
         (void))
       (define/public (get-path-bounding-box path kind)
         (check! 'get-path-bounding-box)
@@ -555,7 +676,8 @@
           (raise-argument-error 'get-path-bounding-box "'path, 'fill, or 'stroke" kind))
         (define commands (dc-path-commands 'get-path-bounding-box path))
         (unless (dc-renderer/styles? renderer)
-          (dc-unsupported 'get-path-bounding-box 'renderer-without-path-bounds "private test renderer"))
+          (dc-unsupported 'get-path-bounding-box 'renderer-without-path-bounds
+            "private test renderer"))
         (cond
           [(or (dc-singular? (effective)) (null? commands)
                (and (eq? kind 'stroke) (zero? (send pen-state get-width))))
@@ -567,10 +689,12 @@
            ;; use the current clip. They describe geometric ink only.
            (define w (send pen-state get-width))
            (define-values (sx sy) (dc-axis-scales (effective) alignment))
-           (define-values (dashes phase) (dc-dash-spec (send pen-state get-style) w (send pen-state get-stipple)))
+           (define-values (dashes phase) (dc-dash-spec (send pen-state get-style) w (send pen-state
+             get-stipple)))
            (define width (if (eq? smoothing-state 'smoothed) w (/ (max 1.0 (floor (* w sx))) sx)))
            (define cap (if (<= (* w sx) 1) 'round
-                           (case (send pen-state get-cap) [(projecting) 'square] [else (send pen-state get-cap)])))
+                           (case (send pen-state get-cap) [(projecting) 'square] [else (send pen-state
+                             get-cap)])))
            ((dc-renderer/styles-path-bounds renderer) snapped kind
              (dc-ink/style '#(0 0 0 1.0) #t width cap (send pen-state get-join) dashes #f phase))]))
       (define/public (dc-region-query-info)

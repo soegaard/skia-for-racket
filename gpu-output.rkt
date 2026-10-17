@@ -1,9 +1,24 @@
 #lang racket/base
+
+;;;
+;;; GPU Raster Output Executor
+;;;
+
+;; Runs explicit document raster-fallback work using a live GPU context.
+;; This public adapter connects the output-group execution protocol to GPU rendering and copied CPU
+;; image results.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require "gpu.rkt" "private/core.rkt" "private/output-executor.rkt"
          "private/audit-trace.rkt"
          (submod "private/core.rkt" gpu-surface-internals))
 (provide make-gpu-raster-executor call-with-gpu-raster-executor)
 
+; check-context! : gpu-context? -> void?
+;;   Requires an owner-thread context whose detached state is ready and not shutting down.
 (define (check-context! context)
   (unless (gpu-context? context)
     (raise-argument-error 'make-gpu-raster-executor "gpu-context?" context))
@@ -13,6 +28,8 @@
                (not (hash-ref info 'shutdown_requested)))
     (error 'make-gpu-raster-executor "GPU context is not ready (or shutdown was requested)")))
 
+; context-plan : gpu-context? picture? -> output-raster-plan?
+;;   Builds a same-context GPU fallback plan with explicit CPU readback for document retention.
 (define (context-plan context picture)
   (check-context! context)
   (define affinity (skia-resource-gpu-context picture))
@@ -36,6 +53,8 @@
            (with-skia ([image (gpu-surface->raster-image surface)])
              (consume image target))))))))
 
+; make-gpu-raster-executor : gpu-context? -> output-raster-executor?
+;;   Creates an output raster executor that borrows context.
 (define (make-gpu-raster-executor context)
   (check-context! context)
   (define generation (gpu-context-generation context))
@@ -46,6 +65,9 @@
        (error 'make-gpu-raster-executor "stale GPU context generation")))
    (lambda (picture) (context-plan context picture))))
 
+; call-with-gpu-raster-executor : (-> gpu-context?) (-> output-raster-executor? any)
+;   [#:on-unavailable (or/c 'error 'cpu)] -> any
+;;   Calls proc with a scoped output raster executor and returns its values.
 (define (call-with-gpu-raster-executor make-context proc #:on-unavailable [policy 'error])
   (call-with-lazy-output-raster-executor
    make-context check-context! context-plan

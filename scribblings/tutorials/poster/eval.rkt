@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Poster Tutorial Evaluation
+;;;
+
+;; Runs the Poster tutorial's executable documentation examples and figure helpers.
+;; This module connects the manual to executable examples and their rendered figures.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require scribble/eval)
 
 (provide poster-interaction
@@ -9,6 +21,12 @@
          poster-def+int
          poster-image)
 
+;;;
+;;; Evaluator and Figure Helpers
+;;;
+
+; poster-eval : procedure?
+;;   Retains one evaluator so successive documentation examples share their bindings.
 (define poster-eval (make-base-eval))
 
 (void
@@ -130,20 +148,32 @@
         (open-input-bytes (surface->png-bytes surface))
         'png/alpha))))))
 
+; poster-interaction : syntax -> syntax
+;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (poster-interaction expression ...)
   (interaction #:eval poster-eval expression ...))
 
+; poster-interaction-eval : syntax -> syntax
+;;   Evaluates tutorial expressions in the shared documentation evaluator without displaying them.
 (define-syntax-rule (poster-interaction-eval expression ...)
   (interaction-eval #:eval poster-eval expression ...))
 
+; poster-racketmod+eval : syntax -> syntax
+;;   Displays a module example and evaluates its expressions in the tutorial evaluator.
 (define-syntax-rule (poster-racketmod+eval expression ...)
   (racketmod+eval #:eval poster-eval expression ...))
 
+; poster-racketblock+eval : syntax -> syntax
+;;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (poster-racketblock+eval expression ...)
   (racketblock+eval #:eval poster-eval expression ...))
 
+; poster-def+int : syntax -> syntax
+;;   Displays definitions followed by their evaluated tutorial interaction.
 (define-syntax-rule (poster-def+int expression ...)
   (def+int #:eval poster-eval expression ...))
 
+; poster-image : syntax -> syntax
+;;   Evaluates the figure expression using the tutorial's shared drawing environment.
 (define-syntax-rule (poster-image expression)
   (interaction-eval-show #:eval poster-eval expression))

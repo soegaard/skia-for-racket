@@ -1,5 +1,18 @@
 #lang racket
 
+;;;
+;;; Vector Raster
+;;;
+
+;; Supports the corresponding tutorial's complete drawing program.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia)
 
 (provide sheet-width
@@ -7,14 +20,34 @@
          paper-color
          draw-study)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; sheet-width : exact-integer?
+;;   Specifies sheet width in the drawing's local coordinate units.
 (define sheet-width 900)
+; sheet-height : exact-integer?
+;;   Specifies sheet height in the drawing's local coordinate units.
 (define sheet-height 610)
+; paper-color : string?
+;;   Specifies the paper color color used by this drawing.
 (define paper-color "#F3F7FB")
+; ink-color : string?
+;;   Specifies the ink color color used by this drawing.
 (define ink-color "#243852")
+; muted-color : string?
+;;   Specifies the muted color color used by this drawing.
 (define muted-color "#62768C")
+; blue-color : string?
+;;   Specifies the blue color color used by this drawing.
 (define blue-color "#326BC4")
+; teal-color : string?
+;;   Specifies the teal color color used by this drawing.
 (define teal-color "#159F99")
 
+; draw-vector-art : canvas? -> void?
+;;   Draws the vector art component in the current canvas coordinate system.
 (define (draw-vector-art canvas)
   (define gradient
     (make-linear-gradient-shader 0 0 200 0
@@ -31,6 +64,8 @@
   (draw-line canvas 27 142 173 142 ring)
   (draw-circle canvas 100 89 10 dot))
 
+; make-pixel-tile : -> image?
+;;   Constructs pixel tile for the example's drawing pipeline.
 (define (make-pixel-tile)
   (define surface
     (make-surface 32 32 #:background "#234D74"))
@@ -44,11 +79,15 @@
   (draw-rect canvas 9 9 14 14 amber)
   (surface-snapshot surface))
 
+; draw-pixel-art : canvas? -> void?
+;;   Draws the pixel art component in the current canvas coordinate system.
 (define (draw-pixel-art canvas)
   (define tile (make-pixel-tile))
   (draw-image-rect canvas tile 4 0 192 192
                    #:sampling 'nearest))
 
+; draw-filtered-badge : canvas? -> void?
+;;   Draws the filtered badge component in the current canvas coordinate system.
 (define (draw-filtered-badge canvas)
   (define shadow
     (make-drop-shadow-image-filter
@@ -58,6 +97,8 @@
                 #:image-filter shadow))
   (draw-rounded-rect canvas 26 18 146 116 24 24 fill))
 
+; draw-fallback-art : canvas? -> void?
+;;   Draws the fallback art component in the current canvas coordinate system.
 (define (draw-fallback-art canvas)
   (define border
     (make-paint #:color ink-color
@@ -71,6 +112,8 @@
     (draw-rounded-rect canvas 26 18 146 116 24 24 border)
     (draw-circle canvas 99 76 15 center)))
 
+; draw-study : canvas? -> void?
+;;   Draws the study component in the current canvas coordinate system.
 (define (draw-study canvas)
   (define title-font (make-font #:size 39))
   (define subtitle-font (make-font #:size 18))
@@ -120,11 +163,19 @@
   (draw-simple-text canvas "Embedded images and the bounded effect remain pixels."
                     50 593 small-font muted))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; page : output-page?
+  ;;   Describes the page drawing and its export dimensions.
   (define page
     (make-output-page sheet-width sheet-height draw-study
                       #:unit 'px
                       #:background paper-color))
+  ; preview : image?
+  ;;   Truncates a text preview for display in the comparison panel.
   (define preview
     (output-page->image page #:dpi 96 #:text-mode 'outline))
   (save-output/audit page "what-stays-vector.pdf" 'pdf

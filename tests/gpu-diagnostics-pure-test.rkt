@@ -1,15 +1,41 @@
 #lang racket/base
+
+;;;
+;;; GPU Diagnostics Pure Test
+;;;
+
+;; Covers gPU diagnostics: native-free contracts and ownership doubles.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui ffi/unsafe racket/list
          "../gpu-diagnostics.rkt" (submod "../gpu-diagnostics.rkt" testing)
          "../private/gpu-diagnostic-util.rkt" "../private/graphics-data.rkt"
          "../private/gpu-gl-interface.rkt" (submod "../private/gpu-gl-interface.rkt" testing)
          "../private/gpu-domain.rkt" "../private/gpu-context.rkt" "../private/gpu-provider.rkt")
 (provide gpu-diagnostics-pure-tests gpu-diagnostics-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; ptr : exact-nonnegative-integer? -> cpointer?
+;;   Makes a synthetic pointer token for resolver tests; it must never be dereferenced.
 (define (ptr n) (cast n _uintptr _pointer))
+
+; provider : [symbol? procedure?] -> gpu-provider?
+;;   Builds an always-current synthetic OpenGL provider with an injected symbol resolver.
 (define (provider [name 'diagnostic-test] [resolver (lambda (_) (ptr 99))])
   (make-gpu-provider #:name name #:backend 'opengl #:key (gensym)
     #:current? (lambda () #t) #:call-as-current (lambda (thunk) (thunk))
     #:get-proc-address resolver))
+
+; interface-double : procedure? [#:native? boolean? #:version string? #:assembled? boolean?
+; #:callback? boolean?] -> any
+;;   Injects interface discovery results and records dispatch during a callback.
 (define (interface-double thunk #:native? [native? #t] #:version [version "4.5 Mesa"]
                            #:assembled? [assembled? #t] #:callback? [callback? #f])
   (define log (box '()))
@@ -26,21 +52,38 @@
                      [(extension) (string=? (cadr args) "GL_REAL_extension")]
                      [else (error 'double "unexpected call")]))])
     (thunk log)))
+
+; with-context : symbol? procedure? -> any
+;;   Supplies a synthetic activated context for backend-specific diagnostic contracts.
 (define (with-context backend thunk)
   (define on? (box #f))
   (define p (make-gpu-provider #:name 'diagnostic-domain #:backend backend #:key (gensym)
               #:current? (lambda () (unbox on?))
               #:call-as-current (lambda (f)
                 (dynamic-wind (lambda () (set-box! on? #t)) f (lambda () (set-box! on? #f))))))
-  (define d (make-gpu-domain p (gpu-driver (lambda () (ptr 900)) void void void (lambda (_) (hasheq)))))
+  (define d (make-gpu-domain p
+              (gpu-driver (lambda () (ptr 900)) void void void (lambda (_) (hasheq)))))
   (define c (wrap-gpu-domain d))
   (dynamic-wind void (lambda () (thunk c d on?))
     (lambda () (unless (eq? (domain-state d) 'closed) (domain-close! d)))))
+
+; collector-report : [symbol?] -> any
+;;   Builds a detached one-resource memory report with an explicit accounting scope.
 (define (collector-report [scope 'gpu-context-skia-resources])
   (define c (make-memory-collector 10 1024 #f #f))
   (collector-add! c 'numeric #"skia/gpu_resources/resource_1" #"size" #"bytes" 1024)
   (collector-finish c #:scope scope))
+
+; gpu-diagnostics-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-diagnostics-pure-test-count 38)
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-diagnostics-pure-tests : test-suite?
+;;   Collects the regression cases for gPU diagnostics: native-free contracts and ownership doubles.
 (define gpu-diagnostics-pure-tests
   (test-suite "GPU diagnostics: native-free contracts and ownership doubles"
     (test-case "known interface modes"
@@ -50,18 +93,21 @@
       (for ([v (in-list (list #f #t 0 "auto" 'native 'vulkan))])
         (check-exn exn:fail:contract? (lambda () (check-gl-interface-mode 'test v)))))
     (test-case "non-GL default remains valid"
-      (for ([b '(metal direct3d)]) (check-not-exn (lambda () (check-gl-interface-backend 'test b 'default)))))
+      (for ([b '(metal direct3d)])
+        (check-not-exn (lambda () (check-gl-interface-backend 'test b 'default)))))
     (test-case "non-GL explicit interface is rejected"
       (for ([b '(metal direct3d)] [m '(auto desktop)])
         (check-exn exn:fail:contract? (lambda () (check-gl-interface-backend 'test b m)))))
     (test-case "owned EGL is not a GLES host factory"
       (for ([m '(default auto desktop)]) (check-eq? (check-owned-egl-interface-mode 'test m) m))
-      (for ([m '(gles webgl)]) (check-exn exn:fail:contract? (lambda () (check-owned-egl-interface-mode 'test m)))))
+      (for ([m '(gles webgl)])
+        (check-exn exn:fail:contract? (lambda () (check-owned-egl-interface-mode 'test m)))))
     (test-case "version standard follows pinned native categories"
       (check-eq? (gl-version-standard "4.6 (Core Profile) Mesa") 'desktop)
       (check-eq? (gl-version-standard "OpenGL ES 3.2 Vendor") 'gles)
       (check-eq? (gl-version-standard "OpenGL ES 3.0 (WebGL 2.0 Chromium)") 'webgl)
-      (for ([v '(#f "" "WebGL 2.0" "OpenGL ES-CM 1.1" "unknown")]) (check-false (gl-version-standard v))))
+      (for ([v '(#f "" "WebGL 2.0" "OpenGL ES-CM 1.1" "unknown")])
+        (check-false (gl-version-standard v))))
     (test-case "ASCII extension identifiers"
       (for ([v '("GL_ARB_framebuffer_object" "EXT_color_buffer_float" "A" "GL_123")])
         (check-equal? (checked-gl-extension 'test v) v)))
@@ -88,7 +134,8 @@
       (check-true (immutable? (memory-statistics-entries r))))
     (test-case "GPU JSON retains separate scope"
       (define r (memory-statistics->jsexpr (collector-report)))
-      (check-equal? (hash-ref r 'scope) "gpu-context-skia-resources") (check-false (hash-ref r 'atomic)))
+      (check-equal? (hash-ref r 'scope) "gpu-context-skia-resources")
+      (check-false (hash-ref r 'atomic)))
     (test-case "unknown report scope is rejected"
       (check-exn exn:fail:contract?
         (lambda () (collector-finish (make-memory-collector 0 0 #f #f) #:scope 'rss))))
@@ -96,7 +143,8 @@
       (define c (make-memory-collector 0 0 #f #f))
       (collector-add! c 'numeric #"x" #"y" #"bytes" 1)
       (define r (collector-finish c #:scope 'gpu-context-skia-resources))
-      (check-true (memory-statistics-truncated? r)) (check-equal? (memory-statistics-dropped-count r) 1)
+      (check-true (memory-statistics-truncated? r))
+      (check-equal? (memory-statistics-dropped-count r) 1)
       (check-equal? (memory-statistics-entries r) '#()))
     (test-case "memory option validation precedes context work"
       (check-exn exn:fail:contract? (lambda () (gpu-memory-statistics #f #:detailed? 1)))
@@ -109,7 +157,8 @@
                          (check-equal? args '(#t #t 10 20 100)) (collector-report))])
           (domain-call d (lambda ()
             (check-true (memory-statistics? (gpu-memory-statistics c #:detailed? #t #:dump-wrapped? #t
-                                              #:max-entries 10 #:string-limit 20 #:byte-limit 100)))))))))
+                                              #:max-entries 10 #:string-limit 20 #:byte-limit
+                                              100)))))))))
     (test-case "invalid context rejects without native dispatch"
       (parameterize ([current-gpu-diagnostics-dispatch (lambda _ (error 'double "must not run"))])
         (check-exn exn:fail:contract? (lambda () (gpu-memory-statistics #f)))
@@ -153,7 +202,8 @@
     (test-case "default fallback is desktop"
       (interface-double (lambda (log)
         (define-values (p factory) (create-gl-interface/native (provider) 'default))
-        (check-equal? factory "assembled-desktop-gl") (check-equal? (unbox log) '(native version desktop))) #:native? #f))
+        (check-equal? factory "assembled-desktop-gl")
+                          (check-equal? (unbox log) '(native version desktop))) #:native? #f))
     (test-case "EGL never calls native GLX factory"
       (interface-double (lambda (log)
         (create-gl-interface/native (provider 'egl-owned) 'default)
@@ -166,16 +216,19 @@
           (check-equal? (unbox log) (list 'version mode))) #:version version)))
     (test-case "explicit assembly requires resolver"
       (interface-double (lambda (log)
-        (check-exn exn:fail:gpu:unavailable? (lambda () (create-gl-interface/native (provider 'test #f) 'auto)))
+        (check-exn exn:fail:gpu:unavailable?
+          (lambda () (create-gl-interface/native (provider 'test #f) 'auto)))
         (check-equal? (unbox log) '()))))
     (test-case "factory mismatch fails before native assembly"
       (interface-double (lambda (log)
         (for ([mode '(gles webgl)])
-          (check-exn exn:fail:gpu:unavailable? (lambda () (create-gl-interface/native (provider) mode))))
+          (check-exn exn:fail:gpu:unavailable?
+            (lambda () (create-gl-interface/native (provider) mode))))
         (check-equal? (unbox log) '(version version)))))
     (test-case "unknown host standard is rejected"
       (interface-double (lambda (log)
-        (check-exn exn:fail:gpu:unavailable? (lambda () (create-gl-interface/native (provider) 'auto)))) #:version "Unknown"))
+        (check-exn exn:fail:gpu:unavailable?
+          (lambda () (create-gl-interface/native (provider) 'auto)))) #:version "Unknown"))
     (test-case "resolver raised false is deferred and allocated interface freed"
       (interface-double (lambda (log)
         (check-exn (lambda (e) (eq? e #f))
@@ -183,11 +236,13 @@
         (check-equal? (unbox log) '(version desktop unref))) #:callback? #t))
     (test-case "invalid resolver result is caught at native boundary"
       (interface-double (lambda (log)
-        (check-exn exn:fail? (lambda () (create-gl-interface/native (provider 'test (lambda (_) 42)) 'auto)))
+        (check-exn exn:fail?
+          (lambda () (create-gl-interface/native (provider 'test (lambda (_) 42)) 'auto)))
         (check-equal? (unbox log) '(version auto unref))) #:callback? #t))
     (test-case "explicit failure never falls back"
       (interface-double (lambda (log)
-        (check-exn exn:fail:gpu:unavailable? (lambda () (create-gl-interface/native (provider) 'auto)))
+        (check-exn exn:fail:gpu:unavailable?
+          (lambda () (create-gl-interface/native (provider) 'auto)))
         (check-equal? (unbox log) '(version auto))) #:assembled? #f))
     (test-case "retained interface queried and unrefed exactly once"
       (interface-double (lambda (log)
@@ -203,7 +258,9 @@
       (interface-double (lambda (log)
         (register-gl-interface! (ptr 1002) (ptr 400) 'desktop "assembled-desktop-gl")
         (dynamic-wind void
-          (lambda () (check-exn exn:fail? (lambda () (register-gl-interface! (ptr 1002) (ptr 401) 'auto "assembled-auto"))))
+          (lambda ()
+            (check-exn exn:fail?
+              (lambda () (register-gl-interface! (ptr 1002) (ptr 401) 'auto "assembled-auto"))))
           (lambda () (release-gl-interface! (ptr 1002)))))))
     (test-case "interface information is detached"
       (interface-double (lambda (log)
@@ -220,6 +277,13 @@
       (check-exn exn:fail? (lambda () (gl-context-interface-info/native (ptr 1999)))))
   ))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-diagnostics-pure-tests))
   (printf "gpu-diagnostics-pure: ~a cases, ~a failures\n" gpu-diagnostics-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

@@ -1,10 +1,25 @@
 #lang racket/base
+
+;;;
+;;; OpenGL Resource Queries
+;;;
+
+;; Queries texture and framebuffer descriptions while restoring GL bindings.
+;; Inspects external resources without leaving the application's GL state changed.
+
 (require ffi/unsafe "gpu-gl-interop-util.rkt")
 (provide make-gl-queries (struct-out gl-queries))
 (struct gl-queries (bind integer with-bindings texture framebuffer))
+;; Fields:
+;;   bind, integer, with-bindings, texture, and framebuffer: native query/helper procedures.
+;;   with-bindings restores saved GL bindings around texture/framebuffer inspection; all operations
+;;   require the intended current context.
+
 ;; Core desktop GL >=3.3; caller supplies THIS provider's procedure resolver.
 ;; Query functions deliberately reject unsupported storage, rather than guessing
 ;; from width/height/format supplied by the caller.
+; make-gl-queries : any/c -> gl-queries?
+;;   Binds provider-resolved GL queries and pairs temporary binding changes with restoration.
 (define (make-gl-queries resolve)
   (define (bind name type)
     (define p (resolve name))
@@ -19,7 +34,8 @@
   (define tex-level (bind "glGetTexLevelParameteriv" (_fun _uint32 _int _uint32 _pointer -> _void)))
   (define tex-param (bind "glGetTexParameteriv" (_fun _uint32 _uint32 _pointer -> _void)))
   (define rb-param (bind "glGetRenderbufferParameteriv" (_fun _uint32 _uint32 _pointer -> _void)))
-  (define attachment-param (bind "glGetFramebufferAttachmentParameteriv" (_fun _uint32 _uint32 _uint32 _pointer -> _void)))
+  (define attachment-param (bind "glGetFramebufferAttachmentParameteriv" (_fun _uint32 _uint32 _uint32
+    _pointer -> _void)))
   (define status (bind "glCheckFramebufferStatus" (_fun _uint32 -> _uint32)))
   (define is-texture (bind "glIsTexture" (_fun _uint32 -> _stdbool)))
   (define is-fbo (bind "glIsFramebuffer" (_fun _uint32 -> _stdbool)))
@@ -51,24 +67,28 @@
     (unless (is-texture name) (error 'gpu-gl-texture "name is not a live texture in this context"))
     (bind-tex #x0DE1 name) (check 'bind-texture-2d)
     (define (level token) (integer-call 'texture-level (lambda (p) (tex-level #x0DE1 0 token p))))
-    (define (parameter token) (integer-call 'texture-parameter (lambda (p) (tex-param #x0DE1 token p))))
+    (define (parameter token) (integer-call 'texture-parameter (lambda (p) (tex-param #x0DE1 token
+      p))))
     (define actual-width (level #x1000)) (define actual-height (level #x1001))
     (define format (level #x1003))
     (unless (and (= actual-width width) (= actual-height height))
       (error 'gpu-gl-texture "declared extent ~ax~a differs from texture level zero ~ax~a"
              width height actual-width actual-height))
-    (unless (= format #x8058) (error 'gpu-gl-texture "only uncompressed GL_RGBA8 level-zero GL_TEXTURE_2D storage is supported"))
+    (unless (= format #x8058) (error 'gpu-gl-texture
+      "only uncompressed GL_RGBA8 level-zero GL_TEXTURE_2D storage is supported"))
     (unless (= (parameter #x813C) 0) (error 'gpu-gl-texture "texture base level must be zero"))
     (unless (= (parameter #x884C) 0) (error 'gpu-gl-texture "texture compare mode must be GL_NONE"))
     ;; Component remapping would make a color read/copy ambiguous.
     (for ([token (in-list '(#x8E42 #x8E43 #x8E44 #x8E45))]
           [identity (in-list '(#x1903 #x1904 #x1905 #x1906))])
-      (unless (= (parameter token) identity) (error 'gpu-gl-texture "texture swizzle must be identity")))
+      (unless (= (parameter token) identity) (error 'gpu-gl-texture
+        "texture swizzle must be identity")))
     (hasheq 'texture_id name 'width width 'height height 'format format
             'texture_target #x0DE1 'mip_level 0 'owns_external_texture #f))
   (define (framebuffer name width height)
     (check-gl-name 'gpu-gl-framebuffer name) (check-gl-extent 'gpu-gl-framebuffer width height)
-    (unless (is-fbo name) (error 'gpu-gl-framebuffer "name is not a live framebuffer in this context"))
+    (unless (is-fbo name) (error 'gpu-gl-framebuffer
+      "name is not a live framebuffer in this context"))
     (bind-fbo #x8D40 name) (check 'bind-framebuffer)
     (unless (= (status #x8D40) #x8CD5) (error 'gpu-gl-framebuffer "framebuffer is incomplete"))
     (define (attachment point token)
@@ -76,25 +96,30 @@
     (unless (= (integer #x8825) #x8CE0) ; GL_DRAW_BUFFER0
       (error 'gpu-gl-framebuffer "color output must select GL_COLOR_ATTACHMENT0"))
     (for ([i (in-range 1 (integer #x8824))])
-      (unless (zero? (integer (+ #x8825 i))) (error 'gpu-gl-framebuffer "multiple draw buffers are not supported")))
+      (unless (zero? (integer (+ #x8825 i))) (error 'gpu-gl-framebuffer
+        "multiple draw buffers are not supported")))
     (unless (and (= (attachment #x8CE0 #x8CD0) #x1702) ; GL_TEXTURE
                  (= (attachment #x8CE0 #x8CD2) 0)
                  (= (attachment #x8CE0 #x8CD3) 0)
                  (= (attachment #x8CE0 #x8DA7) 0))
-      (error 'gpu-gl-framebuffer "color attachment must be a non-layered, non-cube level-zero 2D texture"))
+      (error 'gpu-gl-framebuffer
+        "color attachment must be a non-layered, non-cube level-zero 2D texture"))
     (define color-name (attachment #x8CE0 #x8CD1))
     (texture color-name width height)
-    (unless (zero? (integer #x80A9)) (error 'gpu-gl-framebuffer "multisampled external framebuffers are not supported"))
+    (unless (zero? (integer #x80A9)) (error 'gpu-gl-framebuffer
+      "multisampled external framebuffers are not supported"))
     ;; Require a host-owned stencil attachment. This avoids asking Ganesh to
     ;; install a temporary stencil attachment on an externally owned FBO.
     (unless (= (attachment #x8D20 #x8CD0) #x8D41)
       (error 'gpu-gl-framebuffer "a host-owned eight-bit stencil renderbuffer is required"))
     (define stencil-name (attachment #x8D20 #x8CD1))
     (bind-rb #x8D41 stencil-name) (check 'bind-stencil)
-    (define (rb-value token) (integer-call 'renderbuffer-query (lambda (p) (rb-param #x8D41 token p))))
+    (define (rb-value token) (integer-call 'renderbuffer-query (lambda (p) (rb-param #x8D41 token
+      p))))
     (unless (and (= (rb-value #x8D42) width) (= (rb-value #x8D43) height)
                  (= (rb-value #x8D55) 8) (= (rb-value #x8CAB) 0))
-      (error 'gpu-gl-framebuffer "stencil renderbuffer must match color extent, have eight stencil bits, and be single-sampled"))
+      (error 'gpu-gl-framebuffer
+        "stencil renderbuffer must match color extent, have eight stencil bits, and be single-sampled"))
     (hasheq 'framebuffer_id name 'width width 'height height 'format #x8058
             'color_texture_id color-name 'stencil_renderbuffer_id stencil-name
             'color_type 4 'stencil_bits 8 'actual_sample_count 0

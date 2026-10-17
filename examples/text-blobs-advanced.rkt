@@ -1,5 +1,21 @@
 #lang racket/base
+
+;;;
+;;; Text Blobs Advanced Example
+;;;
+
+;; Builds retained shaped text and places it along a path.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file "../main.rkt")
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
   (make-directory* "output")
   (with-skia ([font (make-font #:size 30 #:hinting 'none)] [sh (make-shaper font)]
@@ -17,6 +33,8 @@
               (draw-text-blob c blob 0 0 paint)
               (draw-text-blob c curved 0 0 paint))) #:background 'white))
       (call-with-output-file "output/text-blobs-advanced.svg"
-        (lambda (out) (write-bytes (output->bytes page 'svg #:text-mode 'outline) out)) #:exists 'truncate/replace)
+        (lambda (out) (write-bytes (output->bytes page 'svg #:text-mode 'outline) out)) #:exists
+          'truncate/replace)
       (call-with-output-file "output/text-blobs-advanced.pdf"
-        (lambda (out) (write-bytes (output->bytes page 'pdf #:text-mode 'outline) out)) #:exists 'truncate/replace))))
+        (lambda (out) (write-bytes (output->bytes page 'pdf #:text-mode 'outline) out)) #:exists
+          'truncate/replace))))

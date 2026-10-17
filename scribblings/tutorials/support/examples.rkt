@@ -1,9 +1,28 @@
 #lang racket/base
 
+;;;
+;;; Examples
+;;;
+
+;; Copies a catalog-selected example source set into a new directory safely.
+;; This module supports documentation assembly and shared examples rather than the public Skia
+;; API.
+
+
 ;; Copy only the explicit source set. This module does not load Skia or a GUI.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file racket/list racket/path racket/string "catalog.rkt")
 (provide copy-tutorial-example)
 
+;;;
+;;; Documentation Data and Helpers
+;;;
+
+; check-source : path-string? string? -> path?
+;;   Resolves a source file and rejects missing files or paths outside the repository.
 (define (check-source root relative)
   (define source (tutorial-source-path relative root))
   (define normalized-root (simplify-path (path->complete-path root) #f))
@@ -21,6 +40,8 @@
                            "path" source))
   source)
 
+; copy-tutorial-example : string? path-string? #:root [path-string?] -> path?
+;;   Copies the complete catalog source set into a new destination without overwriting it.
 (define (copy-tutorial-example id destination #:root [root repository-root])
   (define entry (tutorial-by-id id))
   (define files (hash-ref entry 'files))

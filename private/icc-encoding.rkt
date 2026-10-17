@@ -1,7 +1,17 @@
 #lang racket/base
+
+;;;
+;;; ICC Encoding Metadata
+;;;
+
+;; Prepares ICC profile and description values for native image encoders.
+;; Shares color-profile lifetime handling across PNG, JPEG, and WebP output.
+
 (require "native.rkt" "lifetime.rkt" "color-output-util.rkt")
 (provide call-with-encoder-profile)
 
+; temporary : symbol? any/c any/c any/c any/c -> any
+;;   Owns a temporary native encoder resource through one callback and closes it on every exit.
 (define (temporary who kind create release proc)
   (define h (new-owned who kind create release))
   (call-with-scoped-resource
@@ -12,6 +22,9 @@
 ;; and retain that data, the profile, and the description until encoding ends.
 ;; The native encoder regenerates a profile; this is not byte-for-byte copying
 ;; of arbitrary ICC metadata and it performs no color conversion by itself.
+; call-with-encoder-profile : symbol? any/c any/c procedure? -> any
+;;   Retains profile bytes, parsed curves, and description storage until the encoder callback
+;;   finishes.
 (define (call-with-encoder-profile who input description proc)
   (define bs (checked-encoding-profile who input))
   (define desc (icc-description-bytes who bs description))

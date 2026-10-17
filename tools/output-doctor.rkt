@@ -1,13 +1,35 @@
 #lang racket/base
+
+;;;
+;;; Output Doctor
+;;;
+
+;; Exercises reusable output pages and PDF, SVG, and raster destinations and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt")
 (provide output-doctor!)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; output-doctor! : -> void?
+;;   Checks physical page sizing, multipage PDF output, outlined SVG text, and independent text-blob
+;;   snapshots.
 (define (output-doctor!)
   (define page
     (make-output-page
      3 2
      (lambda (c)
-       (with-skia ([f (make-font #:size 1/4 #:linear-metrics? #t #:subpixel? #t #:hinting 'none)] [paint (make-paint #:color 'black)])
+       (with-skia
+         ([f (make-font #:size 1/4 #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
+           [paint (make-paint #:color 'black)])
          (draw-simple-text c "PDF and SVG" 1/8 1/2 f paint)))
      #:unit 'in #:margins 1/8))
   (define svg (output->bytes page 'svg))

@@ -1,8 +1,28 @@
 #lang racket/base
 
+;;;
+;;; Reference Matrix Test
+;;;
+
+;; Checks affine coefficient order, rounding, composition, point/vector differences, bounds, and
+;; inversion.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Pure R2 acceptance: imports only the public affine module, never native Skia.
 (require rackunit racket/list skia/matrix)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; results : procedure? -> list?
+;;   Collects multiple matrix-operation results for exact list comparisons.
 (define (results thunk) (call-with-values thunk list))
 
 (module+ test

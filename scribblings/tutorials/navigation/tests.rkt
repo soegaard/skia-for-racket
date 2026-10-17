@@ -1,6 +1,22 @@
 #lang racket
 
+;;;
+;;; Navigation Tests
+;;;
+
+;; Checks Navigation tutorial behavior with focused regression tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit "model.rkt")
+
+;;;
+;;; Regression Checks
+;;;
 
 (module+ test
   (test-case "coordinate conversion round trips"

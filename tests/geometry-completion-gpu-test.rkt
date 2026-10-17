@@ -1,9 +1,38 @@
 #lang racket/base
+
+;;;
+;;; Geometry Completion GPU Test
+;;;
+
+;; Covers gPU geometry and retained paint reset.
+;; This executable supplies backend-specific drawing and transfer evidence to the GPU validation
+;; workflow.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt"
          "../private/gpu-io-trace.rkt" "geometry-completion-fixtures.rkt")
 (module+ main
-  (define backend 'auto) (define adapter 'hardware) (define report-path #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'auto)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter 'hardware)
+  ; report-path : (or/c path-string? #f)
+  ;;   Holds the destination for this run's machine-readable evidence report.
+  (define report-path #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
     [("--adapter") value "hardware or warp" (set! adapter (string->symbol value))]
@@ -12,17 +41,56 @@
   (unless (and report-path token) (error 'geometry-gpu "--report and --token required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ; create : -> gpu-context?
+  ;;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
   (define (create)
     (case backend [(egl) (make-egl-gpu-context)]
       [(metal) (make-gpu-context #:backend 'metal)]
       [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
       [else (error 'geometry-gpu "unsupported backend")]))
   ;; Construction and entry of different domains are never nested.
-  (define ctx (create)) (define other #f) (define held #f) (define failures 0)
-  (define frames 0) (define readbacks 0) (define drawing-reads 0)
-  (define reset-reads 0) (define reset-drawing-reads 0)
+
+  ; ctx : gpu-context?
+  ;;   Owns the primary native GPU context used by the fixture run.
+  (define ctx (create))
+  ; other : (or/c gpu-context? #f)
+  ;;   Owns a second context used to verify cross-context resource rejection.
+  (define other #f)
+  ; held : (or/c image? #f)
+  ;;   Retains a GPU snapshot to test cross-context rejection and lifecycle behavior.
+  (define held #f)
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  (define failures 0)
+
+  ; frames : exact-nonnegative-integer?
+  ;;   Counts successfully rendered fixture frames for the evidence report.
+  (define frames 0)
+  ; readbacks : exact-nonnegative-integer?
+  ;;   Counts explicit GPU-to-CPU transfers used to inspect rendered output.
+  (define readbacks 0)
+  ; drawing-reads : exact-nonnegative-integer?
+  ;;   Counts wrapper readbacks during drawing, which these GPU-only fixtures require to remain
+  ;;   zero.
+  (define drawing-reads 0)
+
+  ; reset-reads : exact-nonnegative-integer?
+  ;;   Counts explicit readbacks after backend-state reset.
+  (define reset-reads 0)
+  ; reset-drawing-reads : exact-nonnegative-integer?
+  ;;   Counts unexpected readbacks during the post-reset drawing pass.
+  (define reset-drawing-reads 0)
+
+  ; completed : (listof string?)
+  ;;   Collects completed scene labels for coverage evidence.
   (define completed '())
-  (define (reads ledger) (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
+
+  ; reads : box? -> exact-nonnegative-integer?
+  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;;   inspection.
+  (define (reads ledger)
+    (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) (unbox ledger)))
   (dynamic-wind void
     (lambda ()
       (set! other (create))
@@ -93,7 +161,11 @@
         (lambda ()
           (dynamic-wind void (lambda () (when other (gpu-context-close! other)))
             (lambda () (gpu-context-close! ctx)))))))
-  (define closed? (and (eq? (gpu-context-state ctx) 'closed) other (eq? (gpu-context-state other) 'closed)))
+
+  ; closed? : boolean?
+  ;;   Records whether context teardown completed with no live or failed resource releases.
+  (define closed?
+    (and (eq? (gpu-context-state ctx) 'closed) other (eq? (gpu-context-state other) 'closed)))
   (call-with-output-file report-path
     (lambda (out)
       (write-json (hasheq 'schema 1 'stage "0.67" 'run_token token

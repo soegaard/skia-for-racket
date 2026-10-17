@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; Document Annotations
+;;;
+
+;; Adds URL links and named destinations to supported document canvases.
+;; This public layer translates Racket names and rectangles into native PDF
+;; annotations or the deferred SVG metadata collected during document output.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require "private/core.rkt" "private/native.rkt" "private/types.rkt"
          "private/check.rkt" "private/annotation-util.rkt" "private/audit-trace.rkt"
          "matrix.rkt" "private/path-matrix.rkt"
@@ -7,13 +20,23 @@
          canvas-define-destination! canvas-link-destination!
          destination-id svg-destination-id)
 
+;;;
+;;; Destination Names and Canvas Ownership
+;;;
+
+; destination-id : string? -> string?
+;;   Encodes a destination name for use in a document link.
 (define (destination-id name)
   (annotation-name->id 'destination-id name))
+; svg-destination-id : string? [#:id-prefix string?] -> string?
+;;   Adds the SVG namespace prefix to an encoded destination name.
 (define (svg-destination-id name #:id-prefix [prefix "skia"])
   (annotation-svg-id 'svg-destination-id name prefix))
 
 ;; Only called while call-on-canvas holds a live owning resource. PDF scopes
 ;; span all pages; SVG has one viewport. Canvas aliases use the same scope.
+; annotation-target : symbol? canvas? -> (values symbol? any/c)
+;;   Finds the annotation backend and the owner that groups its destinations.
 (define (annotation-target who c)
   (define owner (canvas-owner who c))
   (cond [(pdf-page? owner) (values 'pdf (pdf-page-document owner))]
@@ -22,6 +45,8 @@
         [(picture-recorder? owner) (values 'recording owner)]
         [else (error who "unsupported annotation canvas")]))
 
+; canvas-annotation-backend : canvas? -> symbol?
+;;   Reports the annotation backend without changing the canvas.
 (define (canvas-annotation-backend c)
   (call-on-canvas
    'canvas-annotation-backend c '()
@@ -29,6 +54,8 @@
      (define-values (kind scope) (annotation-target 'canvas-annotation-backend c))
      kind)))
 
+; call-with-annotation-data : symbol? bytes? procedure? -> any
+;;   Supplies copied native annotation data for the duration of a callback.
 (define (call-with-annotation-data who bs proc)
   ;; Include the NUL byte in SkData's size: both native document writers expect
   ;; that terminator. Copy into native storage before calling or recording.
@@ -36,6 +63,12 @@
    who 'annotation-data
    (lambda () (sk_data_new_with_copy bs (bytes-length bs))) sk_data_unref proc))
 
+;;;
+;;; Annotation Emission
+;;;
+
+; canvas-annotate-url! : canvas? real? real? real? real? string? -> void?
+;;   Associates a URL with a local rectangle on a supported canvas.
 (define (canvas-annotate-url! c x y width height uri)
   (define who 'canvas-annotate-url!)
   (define rr (rect who x y width height))
@@ -52,6 +85,8 @@
          (lambda (dp) (sk_canvas_draw_url_annotation cp rr dp))))))
   (void))
 
+; canvas-define-destination! : canvas? string? real? real? -> void?
+;;   Defines a uniquely named destination at a document-space drawing point.
 (define (canvas-define-destination! c name x y)
   (define who 'canvas-define-destination!)
   (define checked (annotation-name who name))
@@ -84,6 +119,8 @@
        [else (void)])))
   (void))
 
+; canvas-link-destination! : canvas? real? real? real? real? string? -> void?
+;;   Links a local rectangle to a destination checked when the document finishes.
 (define (canvas-link-destination! c x y width height name)
   (define who 'canvas-link-destination!)
   (define rr (rect who x y width height))

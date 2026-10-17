@@ -1,10 +1,30 @@
 #lang racket/base
+
+;;;
+;;; DC Output Doctor
+;;;
+
+;; Exercises shared DC authoring on raster, PDF, and SVG output canvases and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Actual native documents. Receipt completion is written only after ALL
 ;; authoring, byte generation, file writes and resource cleanup succeed.
 (require racket/class racket/cmdline racket/file racket/list json
          (prefix-in sk: "../main.rkt") "../dc-output.rkt"
          "../tests/dc-output-fixtures.rkt")
 (provide generate-dc-output-evidence)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; generate-dc-output-evidence : path-string? string? -> hash?
+;;   Exports DC-authored document cases into a new directory and returns the tagged evidence
+;;   receipt.
 (define (generate-dc-output-evidence directory token)
   (unless (and (string? token) (positive? (string-length token)))
     (raise-argument-error 'dc-output-doctor "nonempty run token" token))
@@ -48,7 +68,8 @@
   (for ([fmt '(pdf svg)])
     (define counter (box 0))
     (emit (format "mixed-~a" fmt) "mixed" fmt
-      (list (lambda (dc) (draw-output-mixed-scene dc (lambda (_) (set-box! counter (add1 (unbox counter)))))))
+      (list (lambda (dc)
+              (draw-output-mixed-scene dc (lambda (_) (set-box! counter (add1 (unbox counter)))))))
       200 160 #:raster-counter counter)
     (emit (format "styles-~a" fmt) "styles" fmt (list draw-output-style-scene) 80 64)
     (emit (format "units-~a" fmt) "units" fmt
@@ -81,7 +102,18 @@
   (printf "dc-output-documents: ~a documents; passed.\n" (length entries))
   receipt)
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") value "new evidence directory" (set! directory value)]
     [("--run-token") value "caller-supplied receipt identity" (set! token value)]

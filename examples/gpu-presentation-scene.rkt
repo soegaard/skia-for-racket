@@ -1,7 +1,25 @@
 #lang racket/base
+
+;;;
+;;; GPU Presentation Scene Example
+;;;
+
+;; Draws a shared frame callback for comparing native GPU presenters.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; The exact same ordinary Skia draw callback serves both window backends.
+;;;
+;;; Imports and Exports
+;;;
+
 (require "../main.rkt" "../gpu.rkt" "gpu-scenes.rkt")
 (provide draw-presentation-scene)
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; draw-presentation-scene : gpu-frame? -> void?
+;;   Draws the presentation scene component in the current canvas coordinate system.
 (define (draw-presentation-scene frame)
   (define c (gpu-frame-canvas frame))
   (define w (gpu-frame-width frame)) (define h (gpu-frame-height frame))

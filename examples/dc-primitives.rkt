@@ -1,21 +1,42 @@
 #lang racket/base
+
+;;;
+;;; DC Primitives Example
+;;;
+
+;; Defines drawing-context geometry scenes and an independent raster oracle.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/cmdline racket/file racket/math
          (prefix-in rd: racket/draw) "../dc.rkt")
 (provide draw-dc-primitives draw-dc-oracle)
 ;; Both procedures consume the PUBLIC dc<%> API, not Skia drawing functions.
 ;; Deliberately no text or bitmap input: these belong to stage 0.54.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; draw-dc-oracle : (is-a?/c dc<%>) -> void?
+;;   Draws the dc oracle component in the current canvas coordinate system.
 (define (draw-dc-oracle dc)
   (send dc set-smoothing 'unsmoothed)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-background "white") (send dc clear)
   (for ([r (in-list '((0 0 (255 0 0)) (12 0 (0 200 0)) (0 10 (0 0 255)) (12 10 (255 255 0))))])
-    (send dc set-brush (apply make-object rd:color% (caddr r)) 'solid) (send dc draw-rectangle (car r) (cadr r) 12 10))
+    (send dc set-brush (apply make-object rd:color% (caddr r)) 'solid) (send dc draw-rectangle (car
+      r) (cadr r) 12 10))
   (send dc set-clipping-rect 4 5 3 4)
   (send dc set-origin 50 50)
   (send dc set-background (make-object rd:color% 120 30 200)) (send dc clear)
   (send dc set-origin 0 0)
   (send dc set-clipping-rect 18 15 4 3) (send dc erase)
   (send dc set-clipping-region #f))
+; draw-dc-primitives : (is-a?/c dc<%>) -> void?
+;;   Draws the dc primitives component in the current canvas coordinate system.
 (define (draw-dc-primitives dc)
   (send dc set-smoothing 'smoothed)
   (send dc set-background "white") (send dc clear)
@@ -45,10 +66,18 @@
   (define ring (new rd:dc-path%))
   (send ring ellipse 320 248 95 55) (send ring ellipse 345 260 42 30)
   (send dc set-brush "lightblue" 'solid) (send dc draw-path ring 0 0 'odd-even))
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; destination : string?
+  ;;   Selects the destination used by this example's output.
   (define destination "dc-primitives.png")
   (command-line #:program "dc-primitives.rkt" #:args ([file "dc-primitives.png"])
                 (set! destination file))
+  ; dc : (is-a?/c skia-dc%)
+  ;;   Owns the raster Skia drawing context used to save the example.
   (define dc (new skia-dc% [width 460] [height 320] [backing-scale 2]))
   (dynamic-wind void
     (lambda ()

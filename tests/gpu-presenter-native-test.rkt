@@ -1,10 +1,33 @@
 #lang racket/base
+
+;;;
+;;; GPU Presenter Native Test
+;;;
+
+;; Covers live shared presenter/frame API (submission, not visible-pixel certification).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Run by the presenter doctor on its eventspace handler. Window creation and
 ;; event pumping are injected so this module does not initialize racket/gui.
 (require rackunit racket/class racket/list
          "../main.rkt" "../gpu.rkt" "../private/gpu-io-trace.rkt" "gpu-fixtures.rkt")
 (provide make-gpu-presenter-native-tests gpu-presenter-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-presenter-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-presenter-native-test-count 28)
+
+; make-gpu-presenter-native-tests : symbol? procedure? procedure? -> test-suite?
+;;   Builds the parameterized suite for live shared presenter/frame API (submission, not
+;;   visible-pixel certification).
 (define (make-gpu-presenter-native-tests backend make-window settle)
   (define (fixture body [render void])
     (define w (make-window render #f))

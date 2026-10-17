@@ -1,8 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Explicit Raster Output Groups
+;;;
+
+;; Records a drawing group and chooses its permitted native or raster output representation.
+;; This public compositing layer makes bounded fallback execution and its audit report explicit
+;; within document rendering.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list
-         "private/core.rkt" (submod "private/core.rkt" output-group-internals)
-         "private/check.rkt" "private/output-util.rkt" "private/output-group-util.rkt"
-         "private/audit-trace.rkt" "private/output-executor.rkt" "canvas-matrix.rkt" "projective-matrix.rkt")
+         "private/core.rkt"
+         (submod "private/core.rkt" output-group-internals)
+         "private/check.rkt"
+         "private/output-util.rkt"
+         "private/output-group-util.rkt"
+         "private/audit-trace.rkt"
+         "private/output-executor.rkt"
+         "canvas-matrix.rkt"
+         "projective-matrix.rkt")
 (provide draw-output-group output-raster-executor?
          output-group-report? output-group-report-backend output-group-report-policy
          output-group-report-strategy output-group-report-reason
@@ -13,13 +32,54 @@
          exn:fail:output-group? exn:fail:output-group-report)
 
 (struct output-group-report
-  (backend policy strategy reason bounds padded-bounds pixel-size scale features label children execution)
+  (backend policy strategy reason bounds padded-bounds pixel-size scale
+           features label children execution)
   #:transparent #:constructor-name make-group-report)
+;; An output-group-report describes one capture and its representation decision.
+;;  - backend        symbol?       Receiving 'pdf, 'svg, or 'raster representation.
+;;  - policy         symbol?       'prefer-vector, 'require-vector, or 'raster.
+;;  - strategy       symbol?       Selected 'native, 'raster, or 'reject replay.
+;;  - reason         symbol?       Stable classification explaining that choice.
+;;  - bounds         immutable vector  Original destination-local x, y, width,
+;;                                   and height, in that order.
+;;  - padded-bounds  immutable vector  Destination-local bounds including padding,
+;;                                   also x, y, width, and height.
+;;  - pixel-size     #f or immutable vector  Raster width and height, in that order;
+;;                                        absent for nonraster strategies.
+;;  - scale          real?         Requested pixels per logical unit, 1/1024..1024.
+;;  - features       (listof symbol?)  Sorted, duplicate-free feature summaries.
+;;  - label          #f or immutable string  Copied author-supplied group label.
+;;  - children       (listof output-group-report?)  Nested reports in capture order.
+;;  - execution      immutable hash  Requested executor and observed execution
+;;                                 phase/backend, including readback information.
+;; Reports distinguish planned, rejected, and completed work. Children reflect
+;; capture order, not another execution of author callbacks. The representation
+;; backend is not a GPU backend name.
+
 (struct exn:fail:output-group exn:fail (report) #:transparent)
+;; An exn:fail:output-group preserves the rejected representation decision.
+;;  - report  output-group-report?  Rejection details before destination replay.
+;; The inherited fields hold the message and continuation marks. Capture callback
+;; side effects may have happened even though no group reached the destination.
+
 (struct capture-target (backend creator recording-handle executor) #:transparent)
+;; A capture-target authorizes nested groups within one active recording.
+;;  - backend           symbol?     Receiving 'pdf, 'svg, or 'raster representation.
+;;  - creator           thread?     Thread allowed to inherit the capture state.
+;;  - recording-handle  owned handle  Identity of this capture's native recorder.
+;;  - executor          'cpu or output-raster-executor?  Inheritable raster executor.
+;; Only that same recording handle on its creator thread may inherit the target;
+;; an unrelated recorder cannot acquire a backend from ambient dynamic state.
+
+; enclosing-target : (parameter/c (or/c #f capture-target?))
+;;   Identifies the currently active output-group capture for checked nesting.
 (define enclosing-target (make-parameter #f))
+; enclosing-children : (parameter/c (or/c #f box?))
+;;   Accumulates child reports in reverse capture order until the parent finishes.
 (define enclosing-children (make-parameter #f))
 
+; output-group-report->jsexpr : output-group-report? -> (and/c hash? immutable?)
+;;   Returns a detached JSON-compatible hash of the report.
 (define (output-group-report->jsexpr report)
   (unless (output-group-report? report)
     (raise-argument-error 'output-group-report->jsexpr "output-group-report?" report))
@@ -37,6 +97,8 @@
           'execution (output-group-report-execution report)
           'captured_children (map output-group-report->jsexpr (output-group-report-children report))))
 
+; reject-group! : output-group-report? -> none/c
+;;   Raises a policy exception carrying a group that was not replayed to its target.
 (define (reject-group! report)
   (raise (exn:fail:output-group
           (format "draw-output-group: ~a (~a, ~a); no group was drawn to the destination"
@@ -44,6 +106,12 @@
                   (output-group-report-backend report) (output-group-report-policy report))
           (current-continuation-marks) report)))
 
+; draw-output-group : canvas? real? real? (and/c real? (>/c 0)) (and/c real? (>/c 0)) (-> canvas?
+;   any) [#:policy (or/c 'prefer-vector 'require-vector 'raster)] [#:padding (or/c real? list?)]
+;   [#:scale (real-in 1/1024 1024)] [#:color-space (or/c #f color-space?)] [#:label (or/c #f
+;   string?)] [#:raster-executor (or/c #f 'cpu output-raster-executor?)] -> output-group-report?
+;;   Captures draw with a borrowed recording canvas whose local origin is placed at x and y on the
+;;   destination.
 (define (draw-output-group c x y width height draw
                            #:policy [policy 'prefer-vector]
                            #:padding [padding 0]
@@ -70,9 +138,11 @@
          (output-group-canvas-recording-handle who c)))
   (when (eq? receiver 'recording)
     (unless parent
-      (error who "an ordinary picture recorder has no output backend; use groups in a document/raster callback"))
+      (error who
+             "an ordinary picture recorder has no output backend; use groups in a document/raster callback"))
     (unless (eq? receiver-recording-handle (capture-target-recording-handle parent))
-      (error who "a recording canvas can inherit an output backend only from its own enclosing output-group capture")))
+      (error who
+             "a recording canvas can inherit an output backend only from its own enclosing output-group capture")))
   (define backend (if (eq? receiver 'recording) (capture-target-backend parent) receiver))
   (unless (memq backend '(pdf svg raster)) (error who "unsupported canvas backend: ~a" backend))
   ;; Inherit only through the receiver's verified enclosing capture, never an
@@ -97,7 +167,8 @@
             (define rc (picture-recorder-begin-recording! recorder (- left) (- top) bw bh))
             (define capture-handle
               (output-group-canvas-recording-handle who rc))
-            (parameterize ([enclosing-target (capture-target backend (current-thread) capture-handle executor)]
+            (parameterize ([enclosing-target
+                            (capture-target backend (current-thread) capture-handle executor)]
                            [enclosing-children captured-children])
               (with-canvas-state rc
                 ;; Both strategies see exactly the same padded local clip.
@@ -120,7 +191,9 @@
                                (vector-immutable (- fx left) (- fy top) bw bh)
                                pixels scale fs copied-label (reverse (unbox captured-children))
                                (output-execution-details
-                                executor (case strategy [(native) 'native] [(reject) 'rejected] [else 'planned])
+                                executor
+                                (case strategy
+                                  [(native) 'native] [(reject) 'rejected] [else 'planned])
                                 (and (eq? strategy 'native) backend))))
           ;; Reject device-coordinate regions, whose playback ignores the
           ;; intended group-local-to-receiver transformation.
@@ -131,7 +204,9 @@
                               [strategy 'reject] [reason 'device-space-clip]
                               [execution (output-execution-details executor 'rejected #f)]) report)))
           (define details (output-group-report->jsexpr report))
-          (parameterize ([audit-labels (if copied-label (cons copied-label (audit-labels)) (audit-labels))])
+          (parameterize ([audit-labels (if copied-label
+                                          (cons copied-label (audit-labels))
+                                          (audit-labels))])
             (audit-output-group! receiver (eq? strategy 'raster) details)
             (case strategy
               [(native)
@@ -169,7 +244,9 @@
                      (call-with-audit-raster
                       receiver pw ph
                       (hasheq 'x (- fx left) 'y (- fy top) 'width bw 'height bh
-                              'execution (output-execution-details executor 'planned execution-backend #:plan plan))
+                              'execution
+                              (output-execution-details executor 'planned execution-backend
+                                                        #:plan plan))
                       (lambda ()
                         (parameterize ([current-text-output-mode 'native]) (draw-picture rc p)))
                       #:recording-handle receiver-recording-handle))

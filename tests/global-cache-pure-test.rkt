@@ -1,10 +1,36 @@
 #lang racket/base
+
+;;;
+;;; Global Cache Pure Test
+;;;
+
+;; Covers global cache values and bounded memory collector.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui json ffi/unsafe
          "../graphics.rkt" "../private/graphics-data.rkt"
          (only-in "../private/check.rkt" current-skia-byte-limit)
          (submod "../private/graphics-trace-native.rkt" test-support))
 (provide global-cache-pure-tests global-cache-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; global-cache-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define global-cache-pure-test-count 28)
+
+;;;
+;;; Regression Suite
+;;;
+
+; global-cache-pure-tests : test-suite?
+;;   Collects the regression cases for global cache values and bounded memory collector.
 (define global-cache-pure-tests
   (test-suite "Global cache values and bounded memory collector"
    (test-case "byte limits accept zero"
@@ -13,7 +39,8 @@
      (define max (sub1 (expt 2 (* 8 (ctype-sizeof _size)))))
      (check-equal? (cache-byte-limit 'test max) max))
    (test-case "byte limits reject overflow"
-     (check-exn exn:fail:contract? (lambda () (cache-byte-limit 'test (expt 2 (* 8 (ctype-sizeof _size)))))))
+     (check-exn exn:fail:contract?
+       (lambda () (cache-byte-limit 'test (expt 2 (* 8 (ctype-sizeof _size)))))))
    (test-case "cache byte limits are not allocation budgets"
      (parameterize ([current-skia-byte-limit 1])
        (check-equal? (cache-byte-limit 'test 1048576) 1048576)))
@@ -29,7 +56,8 @@
        (check-exn exn:fail:contract? (lambda () (cache-count-limit 'test v)))))
    (test-case "public invalid setters reject without native calls"
      (for ([f (in-list (list skia-set-font-cache-limit! skia-set-font-cache-count-limit!
-                            skia-set-resource-cache-limit! skia-set-resource-cache-single-allocation-limit!))])
+                            skia-set-resource-cache-limit!
+                         skia-set-resource-cache-single-allocation-limit!))])
        (check-exn exn:fail:contract? (lambda () (f -1)))))
    (test-case "snapshot options require booleans"
      (check-exn exn:fail:contract? (lambda () (memory-options 'test 1 #f 1 1 1)))
@@ -50,7 +78,8 @@
      (define c (make-memory-collector 1 40 #f #f))
      (collector-add! c 'numeric #"node" #"size" #"bytes" #xffffffffffffffff)
      (define r (collector-finish c))
-     (check-equal? (memory-statistic-value (vector-ref (memory-statistics-entries r) 0)) #xffffffffffffffff)
+     (check-equal? (memory-statistic-value (vector-ref (memory-statistics-entries r) 0))
+       #xffffffffffffffff)
      (check-equal? (memory-statistics-string-bytes r) 13))
    (test-case "string entries are detached and immutable"
      (define c (make-memory-collector 1 100 #t #t))
@@ -141,6 +170,13 @@
          (check-equal? (memory-statistics-entries (collector-finish c)) '#()))
        (lambda () (set-active-for-test! #f))))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests global-cache-pure-tests))
   (printf "global-cache-pure: ~a cases, ~a failures\n" global-cache-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

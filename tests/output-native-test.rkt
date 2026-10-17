@@ -1,19 +1,53 @@
 #lang racket/base
+
+;;;
+;;; Output Native Test
+;;;
+
+;; Covers shared vector output: live rendering and lifetime.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/path "../main.rkt")
 (provide output-native-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; text-page : -> output-page?
+;;   Builds a page with a short label for native-text versus outline output checks.
 (define (text-page)
   (make-output-page
    216 144
    (lambda (c)
      (with-skia ([font (make-font #:size 18)] [paint (make-paint #:color 'black)])
        (draw-simple-text c "Vector output" 10 35 font paint)))))
+
+; has-text? : bytes? -> boolean?
+;;   Recognizes a text element in generated SVG.
 (define (has-text? bs) (regexp-match? #rx#"<text[ >]" bs))
+
+; has-path? : bytes? -> boolean?
+;;   Recognizes a path element in generated SVG.
 (define (has-path? bs) (regexp-match? #rx#"<path[ >]" bs))
+
+; pdf-pages : bytes? -> exact-nonnegative-integer?
+;;   Counts PDF Page dictionaries without confusing them with the Pages tree.
 (define (pdf-pages bs) (length (regexp-match* #rx#"/Type /Page([^s]|$)" bs)))
+
+; in-temp-dir : procedure? -> any
+;;   Scopes a temporary output directory and removes it after the test.
 (define (in-temp-dir proc)
   (define dir (make-temporary-file "skia-output-~a" 'directory))
   (dynamic-wind void (lambda () (proc dir)) (lambda () (delete-directory/files dir))))
+
+; foreign-error : (-> any) -> (or/c exn? #f)
+;;   Runs the operation on another thread and returns its exception, or false on success.
 (define (foreign-error thunk)
   (define ch (make-channel))
   (define worker
@@ -24,6 +58,13 @@
   (thread-wait worker)
   result)
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; output-native-tests : test-suite?
+;;   Collects the regression cases for shared vector output: live rendering and lifetime.
 (define output-native-tests
   (test-suite
    "Shared vector output: live rendering and lifetime"
@@ -55,7 +96,8 @@
      (check-equal? (pdf-pages bs) 3))
    (test-case "SVG callback can return multiple values without changing output"
      (define n 0)
-     (define bs (output->bytes (make-output-page 40 30 (lambda (_) (set! n (add1 n)) (values 1 2))) 'svg))
+     (define bs
+       (output->bytes (make-output-page 40 30 (lambda (_) (set! n (add1 n)) (values 1 2))) 'svg))
      (check-equal? n 1)
      (check-true (regexp-match? #rx#"</svg>" bs)))
    (test-case "metadata and prefixed resource references survive the shared wrapper"
@@ -118,7 +160,8 @@
           (lambda (c)
             (with-skia ([f (make-font #:size 18)] [sh (make-shaper f)] [p (make-paint)])
               (draw-shaped-text c sh "office affinity AV" 10 30 p)
-              (draw-text-layout c (layout-text sh "Paragraph output wraps here." #:width 140) 10 60 p))))
+              (draw-text-layout c (layout-text sh "Paragraph output wraps here." #:width 140) 10 60
+                p))))
         'svg))
      (check-false (has-text? bs))
      (check-true (has-path? bs)))
@@ -129,7 +172,8 @@
           (lambda (c)
             (with-skia ([f (make-font #:size 16)] [sh (make-shaper f)]
                         [fm (default-font-manager)] [p (make-paint)])
-              (draw-mixed-text-layout c (layout-mixed-text sh fm "Racket 123 text" #:width 220) 8 8 p))))
+              (draw-mixed-text-layout c (layout-mixed-text sh fm "Racket 123 text" #:width 220) 8 8
+                p))))
         'svg))
      (check-false (has-text? bs))
      (check-true (has-path? bs)))
@@ -180,7 +224,8 @@
                       (with-skia ([f (make-font #:size 16)] [p (make-paint)])
                         (draw-simple-text c "ABC" 10 30 f p))))])
        (check-true
-        (has-text? (output->bytes (make-output-page 100 60 (lambda (c) (draw-picture c pic))) 'svg)))))
+        (has-text?
+          (output->bytes (make-output-page 100 60 (lambda (c) (draw-picture c pic))) 'svg)))))
    (test-case "raster padding preserves outside effects without moving the content origin"
      (with-skia ([s (make-surface 50 40)] [p (make-paint #:color 'red)])
        (draw-rasterized (surface-canvas s) 10 10 20 10
@@ -246,7 +291,8 @@
                    (lambda ()
                      (save-output (make-output-page 20 20
                                     (lambda (_)
-                                      (call-with-output-file target (lambda (out) (write-bytes #"other" out)))))
+                                      (call-with-output-file target
+                                        (lambda (out) (write-bytes #"other" out)))))
                                   target 'svg)))
         (check-equal? (file->bytes target) #"other")
         (check-equal? (length (directory-list dir)) 1))))

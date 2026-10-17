@@ -1,17 +1,52 @@
 #lang racket/base
+
+;;;
+;;; Canvas Native Test
+;;;
+
+;; Covers canvas primitives: native geometry, queries, and layers.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/file "../main.rkt")
 (provide canvas-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; page : (canvas? -> any) -> output-page?
+;;   Wraps a drawing callback in a 100-by-80-unit output page.
 (define (page f) (make-output-page 100 80 f))
+
+; has-feature? : output-audit-report? symbol? [symbol?] -> boolean?
+;;   Finds an audit feature, optionally requiring a particular outcome.
 (define (has-feature? r feature [status #f])
   (for/or ([e (in-list (output-audit-report-events r))])
     (and (eq? feature (output-audit-event-feature e))
          (or (not status) (eq? status (output-audit-event-status e))))))
+
+; opaque-pair : canvas? -> void?
+;;   Draws overlapping opaque red and blue rectangles.
 (define (opaque-pair c)
   (with-skia ([p (make-paint #:color 'red)] [q (make-paint #:color 'blue)])
     (draw-rect c 0 0 20 20 p) (draw-rect c 10 0 20 20 q)))
+
+; layer-pair : canvas? -> void?
+;;   Composites the overlapping pair through a half-opacity save layer.
 (define (layer-pair c)
   (with-skia ([p (make-paint #:color (rgba 0 0 0 128))])
     (with-canvas-layer c #:paint p (opaque-pair c))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; canvas-native-tests : test-suite?
+;;   Collects the regression cases for canvas primitives: native geometry, queries, and layers.
 (define canvas-native-tests
   (test-suite
    "Canvas primitives: native geometry, queries, and layers"
@@ -20,7 +55,8 @@
        (draw-point (surface-canvas s) 10 10 p)
        (check-equal? (surface-pixel s 10 10) (rgb 255 0 0))))
    (test-case "point sets ignore fill style and use stroke width"
-     (with-skia ([s (make-surface 30 30)] [p (make-paint #:color 'blue #:style 'fill #:stroke-width 6)])
+     (with-skia
+       ([s (make-surface 30 30)] [p (make-paint #:color 'blue #:style 'fill #:stroke-width 6)])
        (draw-points (surface-canvas s) #(#(8 8) #(20 20)) p)
        (check-equal? (surface-pixel s 8 8) (rgb 0 0 255))
        (check-equal? (rgba-alpha (surface-pixel s 14 14)) 0)))
@@ -61,7 +97,8 @@
        (check-equal? (surface->rgba-bytes s) (make-bytes 1600 0))))
    (test-case "per-corner rounded rect has square and rounded corners"
      (with-skia ([s (make-surface 50 50)] [p (make-paint #:color 'red)])
-       (draw-rrect (surface-canvas s) (make-rounded-rect 5 5 40 40 #:radii '((0 0) (15 15) (0 0) (15 15))) p)
+       (draw-rrect (surface-canvas s)
+         (make-rounded-rect 5 5 40 40 #:radii '((0 0) (15 15) (0 0) (15 15))) p)
        (check-equal? (surface-pixel s 6 6) (rgb 255 0 0))
        (check-equal? (rgba-alpha (surface-pixel s 43 6)) 0)))
    (test-case "oversized corner radii are normalized by Skia"
@@ -150,13 +187,16 @@
        (check-equal? (canvas-save-count c) (add1 n))
        (canvas-restore-to-count! c n) (check-equal? (canvas-save-count c) n)))
    (test-case "layer retains paint after closure"
-     (with-skia ([s (make-surface 40 25 #:background 'white)] [p (make-paint #:color (rgba 0 0 0 128))])
+     (with-skia
+       ([s (make-surface 40 25 #:background 'white)] [p (make-paint #:color (rgba 0 0 0 128))])
        (define c (surface-canvas s)) (define n (canvas-save-layer! c #:paint p))
        (skia-close! p) (opaque-pair c) (canvas-restore-to-count! c n)
        (check-= (rgba-red (surface-pixel s 15 10)) 127 1)))
    (test-case "scoped layer preserves multiple results"
      (with-skia ([s (make-surface 20 20)])
-       (check-equal? (call-with-values (lambda () (with-canvas-layer (surface-canvas s) (values 2 3))) list) '(2 3))))
+       (check-equal?
+         (call-with-values (lambda () (with-canvas-layer (surface-canvas s) (values 2 3))) list)
+         '(2 3))))
    (test-case "scoped layer protects its frame against restore"
      (with-skia ([s (make-surface 20 20)])
        (define c (surface-canvas s))
@@ -189,8 +229,10 @@
        (define c (surface-canvas s)) (define ch (make-channel))
        (define worker
          (thread (lambda ()
-                   (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (canvas-save-layer! c) #f))
-                   (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (canvas-local-clip-bounds c) #f)))))
+                   (channel-put ch
+                     (with-handlers ([exn:fail? (lambda (_) #t)]) (canvas-save-layer! c) #f))
+                   (channel-put ch
+                     (with-handlers ([exn:fail? (lambda (_) #t)]) (canvas-local-clip-bounds c) #f)))))
        (check-true (channel-get ch)) (check-true (channel-get ch)) (thread-wait worker)))
    (test-case "expired document page is rejected"
      (with-skia ([d (make-pdf-document)])
@@ -198,27 +240,36 @@
        (check-exn exn:fail? (lambda () (canvas-save-layer! c)))
        (check-exn exn:fail? (lambda () (canvas-clip-empty? c)))))
    (test-case "SVG native point sprites are a blocking audit feature"
-     (define r (analyze-output-page (page (lambda (c) (with-skia ([p (make-paint #:stroke-width 5)]) (draw-point c 10 10 p)))) 'svg))
+     (define r (analyze-output-page
+                 (page (lambda (c)
+                         (with-skia ([p (make-paint #:stroke-width 5)]) (draw-point c 10 10 p))))
+                 'svg))
      (check-true (has-feature? r 'point-sprites 'needs-raster)))
    (test-case "SVG arcs and rounded geometry pass vector-only"
      (define-values (bs r)
        (output->bytes/audit (page (lambda (c) (with-skia ([p (make-paint)])
                                   (draw-arc c 5 5 30 30 0 160 p)
-                                  (draw-rrect c (make-rounded-rect 45 5 35 30 #:radii 5) p)))) 'svg #:policy 'vector-only))
+                                  (draw-rrect c (make-rounded-rect 45 5 35 30 #:radii 5) p)))) 'svg
+         #:policy 'vector-only))
      (check-true (output-audit-report-vector-only? r)) (check-true (regexp-match? #rx#"<path" bs)))
    (test-case "SVG direct layers are rejected before the body runs"
      (define count 0)
      (check-exn exn:fail:output-audit?
-       (lambda () (output->bytes/audit (page (lambda (c) (with-canvas-layer c (set! count 1)))) 'svg #:policy 'error)))
+       (lambda ()
+         (output->bytes/audit (page (lambda (c) (with-canvas-layer c (set! count 1)))) 'svg
+           #:policy 'error)))
      (check-equal? count 0))
    (test-case "explicit SVG raster group resolves native layers"
      (define-values (bs r)
-       (output->bytes/audit (page (lambda (c) (draw-rasterized c 0 0 40 25 layer-pair #:scale 2))) 'svg #:policy 'error))
+       (output->bytes/audit (page (lambda (c) (draw-rasterized c 0 0 40 25 layer-pair #:scale 2)))
+         'svg #:policy 'error))
      (check-true (has-feature? r 'layer 'rasterized))
      (check-false (output-audit-report-blocking? r)) (check-true (regexp-match? #rx#"<image" bs)))
    (test-case "PDF layers expose paint filters and native expansion"
      (define r (analyze-output-page
-                (page (lambda (c) (with-skia ([f (make-blur-image-filter 2 2)] [p (make-paint #:image-filter f)])
+                 (page (lambda (c)
+                         (with-skia ([f (make-blur-image-filter 2 2)]
+                                      [p (make-paint #:image-filter f)])
                                    (with-canvas-layer c #:paint p (opaque-pair c))))) 'pdf))
      (check-true (has-feature? r 'layer 'native-expansion))
      (check-true (has-feature? r 'image-filter 'native-expansion)))
@@ -252,7 +303,9 @@
        (skia-close! p) (draw-picture (surface-canvas s) pic)
        (check-equal? (surface-pixel s 10 10) (rgb 255 0 0))))
    (test-case "non-default color blend and unbounded recorded fills are audited"
-     (check-true (has-feature? (analyze-output-page (page (lambda (c) (draw-color c 'red #:blend-mode 'multiply))) 'svg)
+     (check-true
+       (has-feature? (analyze-output-page
+                       (page (lambda (c) (draw-color c 'red #:blend-mode 'multiply))) 'svg)
                               'blend-mode 'needs-raster))
      (with-skia ([pic (call-with-picture 20 20 (lambda (c) (draw-color c 'red)))])
        (check-true (has-feature? (analyze-output-page (page (lambda (c) (draw-picture c pic))) 'svg)

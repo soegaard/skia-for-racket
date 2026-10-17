@@ -1,6 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Output Audit Doctor
+;;;
+
+;; Exercises vector-output capability tracking and fallback policy and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt")
 (provide output-audit-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; output-audit-doctor! : -> void?
+;;   Checks retained provenance, strict SVG export rejection, and explicitly rasterized output for
+;;   unsupported effects.
 (define (output-audit-doctor!)
   (define source "half4 main(float2 p) { return half4(.2,.4,.8,1); }")
   (with-skia ([effect (make-runtime-effect source)]

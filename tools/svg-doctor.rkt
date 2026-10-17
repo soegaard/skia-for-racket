@@ -1,7 +1,26 @@
 #lang racket/base
+
+;;;
+;;; SVG Doctor
+;;;
+
+;; Exercises SVG document finishing, XML metadata, and output lifetime and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../main.rkt")
 (provide svg-doctor!)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; svg-doctor! : -> void?
+;;   Checks vector XML, deterministic IDs, embedded raster images, and document-canvas invalidation.
 (define (svg-doctor!)
   (define stale #f)
   (define (render)

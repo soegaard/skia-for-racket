@@ -1,18 +1,55 @@
 #lang racket
 
+;;;
+;;; Poster
+;;;
+
+;; Builds a poster from gradients, image shaders, transparency, and blending.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; width : exact-integer?
+;;   Specifies width in the drawing's local coordinate units.
 (define width 720)
+; height : exact-integer?
+;;   Specifies height in the drawing's local coordinate units.
 (define height 900)
 
+; background-top : string?
+;;   Specifies the background top color used by this drawing.
 (define background-top "#0B1026")
+; background-middle : string?
+;;   Specifies the background middle color used by this drawing.
 (define background-middle "#182950")
+; background-bottom : string?
+;;   Specifies the background bottom color used by this drawing.
 (define background-bottom "#304A73")
+; warm-color : string?
+;;   Specifies the warm color color used by this drawing.
 (define warm-color "#FFAE5D")
+; hot-color : string?
+;;   Specifies the hot color color used by this drawing.
 (define hot-color "#F35B74")
+; cool-color : string?
+;;   Specifies the cool color color used by this drawing.
 (define cool-color "#45C2C7")
+; light-color : string?
+;;   Specifies the light color color used by this drawing.
 (define light-color "#F8F1E5")
 
+; draw-background : canvas? -> void?
+;;   Draws the background component in the current canvas coordinate system.
 (define (draw-background canvas)
   (define shader
     (make-linear-gradient-shader
@@ -24,6 +61,8 @@
   (define paint (make-paint #:shader shader))
   (draw-rect canvas 0 0 width height paint))
 
+; draw-orb : canvas? -> void?
+;;   Draws the orb component in the current canvas coordinate system.
 (define (draw-orb canvas)
   (define shader
     (make-radial-gradient-shader
@@ -35,6 +74,8 @@
   (define paint (make-paint #:shader shader))
   (draw-circle canvas 520 190 165 paint))
 
+; draw-transparent-shapes : canvas? -> void?
+;;   Draws the transparent shapes component in the current canvas coordinate system.
 (define (draw-transparent-shapes canvas)
   (define cool-paint
     (make-paint #:color (rgba 69 194 199 62)))
@@ -44,6 +85,8 @@
   (draw-circle canvas 195 330 72 hot-paint)
   (draw-rounded-rect canvas 68 220 220 180 32 32 cool-paint))
 
+; draw-repeat-band : canvas? -> void?
+;;   Draws the repeat band component in the current canvas coordinate system.
 (define (draw-repeat-band canvas)
   (define shader
     (make-linear-gradient-shader
@@ -57,6 +100,8 @@
   (define paint (make-paint #:shader shader))
   (draw-rounded-rect canvas 60 418 600 96 20 20 paint))
 
+; make-checker-image : -> image?
+;;   Constructs checker image for the example's drawing pipeline.
 (define (make-checker-image)
   (define surface
     (make-surface 32 32 #:background 'transparent))
@@ -71,6 +116,8 @@
   (draw-rect canvas 0 16 16 16 cool)
   (surface-snapshot surface))
 
+; draw-pattern-strip : canvas? -> void?
+;;   Draws the pattern strip component in the current canvas coordinate system.
 (define (draw-pattern-strip canvas)
   (define image (make-checker-image))
   (define shader
@@ -81,6 +128,8 @@
   (define paint (make-paint #:shader shader))
   (draw-rounded-rect canvas 82 696 556 56 12 12 paint))
 
+; draw-blended-panel : canvas? -> void?
+;;   Draws the blended panel component in the current canvas coordinate system.
 (define (draw-blended-panel canvas)
   (define base
     (make-linear-gradient-shader
@@ -102,6 +151,8 @@
   (draw-rounded-rect canvas 60 548 600 238 30 30 paint)
   (draw-rounded-rect canvas 60 548 600 238 30 30 border))
 
+; draw-copy : canvas? -> void?
+;;   Draws the copy component in the current canvas coordinate system.
 (define (draw-copy canvas)
   (define kicker-font (make-font #:size 14))
   (define title-font (make-font #:size 58))
@@ -123,6 +174,8 @@
                     62 876
                     subtitle-font quiet-paint))
 
+; draw-poster : canvas? -> void?
+;;   Draws the poster component in the current canvas coordinate system.
 (define (draw-poster canvas)
   (draw-background canvas)
   (draw-transparent-shapes canvas)
@@ -132,7 +185,13 @@
   (draw-pattern-strip canvas)
   (draw-copy canvas))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; surface : surface?
+  ;;   Owns the raster drawing target used to produce the example's output.
   (define surface
     (make-surface width height))
   (draw-poster (surface-canvas surface))

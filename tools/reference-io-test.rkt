@@ -1,13 +1,36 @@
 #lang racket/base
 
+;;;
+;;; Reference I/O Test
+;;;
+
+;; Checks native stream ownership, codec snapshots, bottom-up rows, incremental completion, and live
+;; ports.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Native CPU and managed-stream acceptance. No fonts, GUI, or GPU are required.
 ;; These tests must fail rather than skip when the required native bridge is absent.
 (require rackunit racket/file racket/list skia)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; sample-png : -> bytes?
+;;   Encodes a two-by-three red raster image for image and codec examples.
 (define (sample-png)
   (with-skia ([surface (make-surface 2 3 #:background 'red)])
     (surface->png-bytes surface)))
 
+
+; bottom-up-bmp : -> bytes?
+;;   Builds a two-by-three 24-bit BMP with padded bottom-up rows and distinguishable pixel colors.
 (define (bottom-up-bmp)
   ;; Two pixels per row, three rows, uncompressed BGR24, four-byte row alignment.
   ;; Top-to-bottom colors: red/green, blue/white, yellow/black.

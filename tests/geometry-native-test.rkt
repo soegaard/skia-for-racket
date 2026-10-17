@@ -1,13 +1,44 @@
 #lang racket/base
+
+;;;
+;;; Geometry Native Test
+;;;
+
+;; Covers structured geometry and advanced image drawing: native backends.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list "../main.rkt")
 (provide geometry-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; triangle : (listof (listof real?))
+;;   Provides three ordered vertices for triangle-mode validation and drawing.
 (define triangle '((0 0) (30 0) (0 30)))
+
+; square-patch : (listof (listof real?))
+;;   Orders twelve boundary control points clockwise around a square Coons patch.
 (define square-patch '((0 0) (10 0) (20 0) (30 0) (30 10) (30 20)
                        (30 30) (20 30) (10 30) (0 30) (0 20) (0 10)))
+
+; page : (canvas? -> any) -> output-page?
+;;   Wraps a drawing in a fixed 100-by-80-unit page for output-audit checks.
 (define (page f) (make-output-page 100 80 f))
+
+; has-feature? : output-audit-report? symbol? symbol? -> boolean?
+;;   Finds the requested feature/status pair in a document audit.
 (define (has-feature? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? feature (output-audit-event-feature e)) (eq? status (output-audit-event-status e)))))
+
+; test-image : -> image?
+;;   Creates an owned image with a red border and green center for scaling and patch probes.
 (define (test-image)
   (define b (make-bytes (* 24 24 4)))
   (for* ([y (in-range 24)] [x (in-range 24)])
@@ -16,6 +47,14 @@
     (bytes-set! b at (if red? 255 0)) (bytes-set! b (+ at 1) (if red? 0 255))
     (bytes-set! b (+ at 3) 255))
   (rgba-bytes->image 24 24 b))
+
+;;;
+;;; Regression Suite
+;;;
+
+; geometry-native-tests : test-suite?
+;;   Collects the regression cases for structured geometry and advanced image drawing: native
+;;   backends.
 (define geometry-native-tests
   (test-suite "Structured geometry and advanced image drawing: native backends"
    (test-case "empty region is an owned resource with empty snapshots"
@@ -47,7 +86,8 @@
    )
    (test-case "xor reverse difference and replace use the correct op codes"
      (with-skia ([a (make-region '((0 0 20 20)))] [b (make-region '((10 0 20 20)))]
-                 [x (region-xor a b)] [d (region-op a b 'reverse-difference)] [r (region-op a b 'replace)])
+                 [x (region-xor a b)] [d (region-op a b 'reverse-difference)]
+                  [r (region-op a b 'replace)])
        (check-false (region-contains-point? x 15 10))
        (check-equal? (region-bounds d) #(20 0 10 20))
        (check-equal? (region-bounds r) (region-bounds b)))
@@ -63,7 +103,9 @@
        (check-exn exn:fail:contract? (lambda () (region-translate r 1073741823 0))))
    )
    (test-case "region containment and intersection queries are distinct"
-     (with-skia ([a (make-region '((0 0 20 20)))] [b (make-region '((5 5 5 5)))] [c (make-region '((19 19 5 5)))])
+     (with-skia
+       ([a (make-region '((0 0 20 20)))] [b (make-region '((5 5 5 5)))]
+         [c (make-region '((19 19 5 5)))])
        (check-true (region-contains-region? a b))
        (check-true (region-contains-rect? a '(5 5 5 5)))
        (check-true (region-intersects? a c))
@@ -96,7 +138,8 @@
        (check-false (path-contains? p 20 20)))
    )
    (test-case "draw-region follows the canvas transform and filled SVG regions have no rectangle seams"
-     (with-skia ([s (make-surface 40 30)] [r (make-region '((0 0 10 10)))] [p (make-paint #:color 'red)])
+     (with-skia
+       ([s (make-surface 40 30)] [r (make-region '((0 0 10 10)))] [p (make-paint #:color 'red)])
        (define c (surface-canvas s)) (canvas-translate! c 15 5) (draw-region c r p)
        (check-equal? (surface-pixel s 18 8) (rgb 255 0 0))
        (check-equal? (rgba-alpha (surface-pixel s 3 3)) 0))
@@ -123,7 +166,8 @@
    (test-case "region closure and thread affinity are enforced"
      (with-skia ([r (make-region '((0 0 10 10)))])
        (define ch (make-channel))
-       (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (region-bounds r) #f))))
+       (thread (lambda ()
+                 (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (region-bounds r) #f))))
        (check-true (channel-get ch))
        (skia-close! r) (check-true (skia-closed? r))
        (check-exn exn:fail? (lambda () (region-bounds r))))
@@ -139,14 +183,16 @@
        (check-equal? (vertices-positions v) snapshot))
    )
    (test-case "triangle colors are interpolated using opaque white paint"
-     (with-skia ([s (make-surface 40 40)] [v (make-vertices 'triangles triangle #:colors '(red red red))]
+     (with-skia
+       ([s (make-surface 40 40)] [v (make-vertices 'triangles triangle #:colors '(red red red))]
                  [p (make-paint #:color 'white)])
        (draw-vertices (surface-canvas s) v p)
        (check-equal? (surface-pixel s 4 4) (rgb 255 0 0))
        (check-equal? (rgba-alpha (surface-pixel s 35 35)) 0))
    )
    (test-case "mesh color blending is separate from framebuffer blending"
-     (with-skia ([s (make-surface 40 40)] [v (make-vertices 'triangles triangle #:colors '(red red red))]
+     (with-skia
+       ([s (make-surface 40 40)] [v (make-vertices 'triangles triangle #:colors '(red red red))]
                  [p (make-paint #:color 'blue)])
        (draw-vertices (surface-canvas s) v p #:blend-mode 'src)
        (check-equal? (surface-pixel s 4 4) (rgb 0 0 255))
@@ -155,7 +201,8 @@
    )
    (test-case "indexed triangles reuse their position array"
      (with-skia ([s (make-surface 40 40)]
-                 [v (make-vertices 'triangles '((0 0) (30 0) (30 30) (0 30)) #:indices '(0 1 2 0 2 3))]
+                  [v (make-vertices 'triangles '((0 0) (30 0) (30 30) (0 30)) #:indices
+                       '(0 1 2 0 2 3))]
                  [p (make-paint #:color 'blue)])
        (draw-vertices (surface-canvas s) v p)
        (check-equal? (vertices-indices v) #(0 1 2 0 2 3))
@@ -181,8 +228,11 @@
        (check-exn exn:fail? (lambda () (draw-vertices (surface-canvas s) v p))))
    )
    (test-case "recorded mesh survives closure of vertices and paint"
-     (with-skia ([v (make-vertices 'triangles triangle #:colors '(red red red))] [p (make-paint #:color 'white)]
-                 [pic (call-with-picture 40 40 (lambda (c) (draw-vertices c v p)))] [s (make-surface 40 40)])
+     (with-skia
+       ([v (make-vertices 'triangles triangle #:colors '(red red red))]
+         [p (make-paint #:color 'white)]
+                 [pic (call-with-picture 40 40 (lambda (c) (draw-vertices c v p)))]
+         [s (make-surface 40 40)])
        (skia-close! v) (skia-close! p)
        (draw-picture (surface-canvas s) pic)
        (check-equal? (surface-pixel s 4 4) (rgb 255 0 0)))
@@ -196,12 +246,15 @@
    (test-case "lattice and nine-patch agree for a three-by-three grid"
      (with-skia ([im (test-image)] [a (make-surface 60 40)] [b (make-surface 60 40)])
        (draw-image-nine (surface-canvas a) im '(6 6 12 12) 0 0 60 40 #:sampling 'nearest)
-       (draw-image-lattice (surface-canvas b) im (make-image-lattice '(6 18) '(6 18)) 0 0 60 40 #:sampling 'nearest)
+       (draw-image-lattice (surface-canvas b) im (make-image-lattice '(6 18) '(6 18)) 0 0 60 40
+         #:sampling 'nearest)
        (check-equal? (surface->rgba-bytes a) (surface->rgba-bytes b)))
    )
    (test-case "lattice uint8 cell kinds preserve default transparent and fixed cells"
      (define lattice (make-image-lattice '(6 18) '(6 18)
-                       #:cell-types '(default transparent fixed-color default transparent default fixed-color default default)
+                       #:cell-types
+                       '(default transparent fixed-color default transparent default fixed-color
+                          default default)
                        #:colors '(white white blue white white white yellow white white)))
      (with-skia ([im (test-image)] [s (make-surface 60 60)])
        (draw-image-lattice (surface-canvas s) im lattice 0 0 60 60 #:sampling 'nearest)
@@ -213,7 +266,8 @@
        (canvas-clear! (surface-canvas s) 'transparent)
        (draw-image-lattice (surface-canvas s) im
          (make-image-lattice '(6 18) '(6 18)
-           #:cell-types '(default transparent default default default default default default default))
+           #:cell-types
+           '(default transparent default default default default default default default))
          0 0 60 60 #:sampling 'nearest)
        (check-equal? (rgba-alpha (surface-pixel s 30 2)) 0)
        (check-equal? (surface-pixel s 30 30) (rgb 0 255 0)))
@@ -227,7 +281,8 @@
    (test-case "image-relative lattice validation rejects outside divisions"
      (with-skia ([im (test-image)] [s (make-surface 40 40)])
        (check-exn exn:fail:contract?
-         (lambda () (draw-image-lattice (surface-canvas s) im (make-image-lattice '(30) '(6)) 0 0 40 40)))
+         (lambda ()
+           (draw-image-lattice (surface-canvas s) im (make-image-lattice '(30) '(6)) 0 0 40 40)))
        (check-exn exn:fail:contract?
          (lambda () (draw-image-nine (surface-canvas s) im '(0 0 30 30) 0 0 40 40))))
    )
@@ -239,13 +294,15 @@
    )
    (test-case "atlas sprite origin is relative to its selected source rectangle"
      (with-skia ([im (test-image)] [s (make-surface 50 40)])
-       (draw-atlas (surface-canvas s) im (list (make-atlas-transform 20 10)) '((6 6 12 12)) #:sampling 'nearest)
+       (draw-atlas (surface-canvas s) im (list (make-atlas-transform 20 10)) '((6 6 12 12))
+         #:sampling 'nearest)
        (check-equal? (surface-pixel s 22 12) (rgb 0 255 0))
        (check-equal? (rgba-alpha (surface-pixel s 10 10)) 0))
    )
    (test-case "atlas ninety-degree rotation follows y-down canvas coordinates"
      (with-skia ([im (test-image)] [s (make-surface 40 40)])
-       (draw-atlas (surface-canvas s) im (list (make-atlas-transform 20 10 #:rotation 90)) '((0 0 8 4)) #:sampling 'nearest)
+       (draw-atlas (surface-canvas s) im (list (make-atlas-transform 20 10 #:rotation 90))
+         '((0 0 8 4)) #:sampling 'nearest)
        (check-equal? (surface-pixel s 18 12) (rgb 255 0 0))
        (check-equal? (rgba-alpha (surface-pixel s 24 12)) 0))
    )
@@ -257,8 +314,11 @@
    )
    (test-case "atlas array counts and source bounds are checked"
      (with-skia ([im (test-image)] [s (make-surface 40 40)])
-       (check-exn exn:fail:contract? (lambda () (draw-atlas (surface-canvas s) im (list (make-atlas-transform 0 0)) '())))
-       (check-exn exn:fail:contract? (lambda () (draw-atlas (surface-canvas s) im (list (make-atlas-transform 0 0)) '((20 20 10 10))))))
+       (check-exn exn:fail:contract?
+         (lambda () (draw-atlas (surface-canvas s) im (list (make-atlas-transform 0 0)) '())))
+       (check-exn exn:fail:contract?
+         (lambda () (draw-atlas (surface-canvas s) im (list (make-atlas-transform 0 0))
+                      '((20 20 10 10))))))
    )
    (test-case "empty atlas still validates image lifetime"
      (with-skia ([im (test-image)] [s (make-surface 40 40)])
@@ -275,7 +335,8 @@
    (test-case "Coons patch accepts shader texture coordinates"
      (with-skia ([im (rgba-bytes->image 1 1 (bytes 0 0 255 255))] [shader (make-image-shader im)]
                  [p (make-paint #:shader shader)] [s (make-surface 40 40)])
-       (draw-patch (surface-canvas s) (make-cubic-patch square-patch #:texture-coordinates '((0 0) (1 0) (1 1) (0 1))) p)
+       (draw-patch (surface-canvas s)
+         (make-cubic-patch square-patch #:texture-coordinates '((0 0) (1 0) (1 1) (0 1))) p)
        (check-equal? (surface-pixel s 12 14) (rgb 0 0 255)))
    )
    (test-case "PDF and SVG preflight flag direct meshes without executing them"
@@ -287,12 +348,16 @@
    (test-case "strict document publication rejects direct mesh operations"
      (with-skia ([v (make-vertices 'triangles triangle)] [p (make-paint)])
        (check-exn exn:fail:output-audit?
-         (lambda () (output->bytes/audit (page (lambda (c) (draw-vertices c v p))) 'svg #:policy 'error))))
+         (lambda ()
+           (output->bytes/audit (page (lambda (c) (draw-vertices c v p))) 'svg #:policy 'error))))
    )
    (test-case "explicit mesh fallback resolves classification and emits PNG"
-     (with-skia ([v (make-vertices 'triangles triangle #:colors '(red red red))] [p (make-paint #:color 'white)])
+     (with-skia
+       ([v (make-vertices 'triangles triangle #:colors '(red red red))]
+         [p (make-paint #:color 'white)])
        (define-values (b r)
-         (output->bytes/audit (page (lambda (c) (draw-rasterized c 0 0 40 40 (lambda (rc) (draw-vertices rc v p)))))
+         (output->bytes/audit
+           (page (lambda (c) (draw-rasterized c 0 0 40 40 (lambda (rc) (draw-vertices rc v p)))))
                              'svg #:policy 'error))
        (check-false (output-audit-report-blocking? r))
        (check-true (has-feature? r 'vertices 'rasterized))
@@ -307,9 +372,12 @@
        (check-true (has-feature? r 'coons-patch 'needs-raster)))
    )
    (test-case "boundary-path clipping remains vector in SVG"
-     (with-skia ([r (make-region '((0 0 20 20) (30 0 10 20)))] [p (region->path r)] [ink (make-paint)])
+     (with-skia
+       ([r (make-region '((0 0 20 20) (30 0 10 20)))] [p (region->path r)] [ink (make-paint)])
        (define-values (_b report)
-         (output->bytes/audit (page (lambda (c) (canvas-clip-path! c p) (draw-rect c 0 0 50 30 ink))) 'svg #:policy 'vector-only))
+         (output->bytes/audit
+           (page (lambda (c) (canvas-clip-path! c p) (draw-rect c 0 0 50 30 ink))) 'svg #:policy
+           'vector-only))
        (check-true (output-audit-report-vector-only? report)))
    )
    (test-case "direct device-region clips are reported separately"

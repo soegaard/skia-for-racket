@@ -1,10 +1,31 @@
 #lang racket/base
+
+;;;
+;;; GPU Presenter Doctor
+;;;
+
+;; Exercises frame acquisition, presentation, redraw scheduling, and closure and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/class racket/cmdline racket/file racket/path racket/list
          rackunit/text-ui "../main.rkt" "../gpu.rkt"
          "../private/gpu-io-trace.rkt" "../tests/gpu-presenter-native-test.rkt"
          "../examples/gpu-presentation-scene.rkt"
          "gpu-report.rkt" "gpu-presentation-host.rkt")
 (provide gpu-presenter-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-presenter-doctor! : path-string? symbol? [#:required? boolean? #:require-hardware? boolean?]
+; -> exact-integer?
+;;   Exercises presenter frame acquisition, submission, resize, and teardown, publishing diagnostic
+;;   evidence and a process status.
 (define (gpu-presenter-doctor! prefix backend #:required? [required? #t]
                                #:require-hardware? [hardware? #f])
   (unless (memq backend '(opengl metal))
@@ -18,7 +39,8 @@
             'backend (symbol->string backend) 'status status 'message message
             'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
             'racket_version (version) 'validation_run validation-run
-            'required required? 'require_hardware hardware? 'eventspace_handler_checked handler-checked?
+            'required required? 'require_hardware hardware? 'eventspace_handler_checked
+      handler-checked?
             'native_test_cases gpu-presenter-native-test-count 'native_test_failures failures
             'windows (reverse windows) 'visible_pixels_verified #f
             'manual_review_required #t 'performance_measured #f))
@@ -48,11 +70,15 @@
            (define p (send probe get-gpu-presenter))
            (set! started? #t)
            (define ctx (gpu-context-info (gpu-presenter-context p)))
-           (when (and hardware? (not (equal? (hash-ref ctx 'renderer_class "unclassified") "hardware-reported")))
+           (when
+             (and hardware? (not
+                              (equal? (hash-ref ctx 'renderer_class "unclassified")
+                                "hardware-reported")))
              (error 'gpu-presenter-doctor "hardware-reported renderer required")))
          (lambda () (send probe close-gpu)))
        (set! failures (run-tests (make-gpu-presenter-native-tests backend make-window settle)))
-       (unless (zero? failures) (error 'gpu-presenter-doctor "presenter native suite failed: ~a" failures))
+       (unless (zero? failures)
+         (error 'gpu-presenter-doctor "presenter native suite failed: ~a" failures))
        ;; Two windows coexist, with separate contexts and independent closure.
        ;; Record every successful submission without a diagnostic readback.
        (define saved-frames (make-vector 2 #f))
@@ -70,7 +96,8 @@
          (lambda ()
            (for ([w (in-list hosts)]) (send w show #t)) (settle)
            (define ps (map (lambda (w) (send w get-gpu-presenter)) hosts))
-           (define generations (map (lambda (p) (gpu-context-generation (gpu-presenter-context p))) ps))
+           (define generations
+             (map (lambda (p) (gpu-context-generation (gpu-presenter-context p))) ps))
            (unless (= (length (remove-duplicates generations)) 2)
              (error 'gpu-presenter-doctor "window contexts unexpectedly share a generation"))
            (for ([w (in-list hosts)] [p (in-list ps)] [i (in-naturals)])
@@ -81,10 +108,12 @@
                (define ledger (box '()))
                (define result
                  (let loop ([n 8])
-                   (define r (parameterize ([current-gpu-io-ledger ledger]) (gpu-presenter-render! p)))
+                   (define r (parameterize ([current-gpu-io-ledger ledger])
+                               (gpu-presenter-render! p)))
                    (cond [(eq? r 'present-requested) r]
                          [(and (eq? r 'skipped) (positive? n)) (settle) (loop (sub1 n))]
-                         [else (error 'gpu-presenter-doctor "unable to submit visible-size frame: ~a" r)])))
+                     [else (error 'gpu-presenter-doctor "unable to submit visible-size frame: ~a"
+                             r)])))
                (define f (vector-ref saved-frames i))
                (define after (gpu-presenter-info p))
                (set! frames (cons
@@ -103,8 +132,24 @@
     (publish "passed" #f)
     0))
 (module+ main
-  (define prefix "output/presentation-0.42") (define backend 'opengl)
-  (define required? #t) (define hardware? #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; prefix : path-string?
+  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  (define prefix "output/presentation-0.42")
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'opengl)
+
+  ; required? : boolean?
+  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  (define required? #t)
+  ; hardware? : boolean?
+  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]
     [("--backend") b "opengl or metal" (set! backend (string->symbol b))]

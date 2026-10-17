@@ -1,20 +1,56 @@
 #lang racket/base
+
+;;;
+;;; GPU Interop Pure Test
+;;;
+
+;; Covers external resource handoff contracts; no Windows/native loading.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list "../gpu-interop.rkt"
          "../private/gpu-d3d12-interop-policy.rkt"
          (submod "../private/gpu-external.rkt" backend-internals))
 (provide gpu-interop-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; desc : hash?
+;;   Describes a synthetic single-level, single-sample RGBA Direct3D texture and its heap flags.
 (define desc
   (hasheq 'dimension 3 'width 37 'height 29 'depth 1 'levels 1 'format 28
           'samples 1 'quality 0 'layout 0 'flags 1 'heap_type 1 'heap_flags 0))
+
+; ctx : symbol?
+;;   Provides a unique context identity token with no native allocation.
 (define ctx (gensym 'context))
+
+; fixture : [#:check procedure? #:operate procedure? #:retire procedure?] -> gpu-external-texture?
+;;   Builds a synthetic external-texture token with injectable validation, operation, and
+;;   retirement.
 (define (fixture #:check [check void] #:operate [operate (lambda (mode p) (if p (p 'canvas) 'image))]
                  #:retire [retire void])
   (make-external-texture 'direct3d ctx 71 (hasheq 'ownership "synthetic")
                         check operate retire (lambda () (hasheq 'synthetic #t))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-interop-pure-tests : test-suite?
+;;   Collects the regression cases for external resource handoff contracts; no Windows/native
+;;   loading.
 (define gpu-interop-pure-tests
   (test-suite "External resource handoff contracts; no Windows/native loading"
     (test-case "all named states have the reviewed native values"
-      (check-equal? (map interop-state '(common render-target pixel-shader-resource shader-read copy-dest copy-source))
+      (check-equal?
+        (map interop-state
+          '(common render-target pixel-shader-resource shader-read copy-dest copy-source))
                     '(0 4 128 192 1024 2048)))
     (test-case "state values cannot be guessed from integers or strings"
       (for ([x '(#f #t 0 4 "render-target" unknown)])
@@ -31,41 +67,60 @@
     (test-case "non-RT images can be copied but not borrowed for drawing"
       (define d (hash-set desc 'flags 0)) (check-not-exn (lambda () (check-interop-resource! d)))
       (check-exn exn:fail? (lambda () (check-interop-resource! d #t))))
-    (test-case "array textures are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'depth 2)))))
-    (test-case "mipmapped textures are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'levels 2)))))
-    (test-case "MSAA is rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'samples 4)))))
-    (test-case "other formats are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'format 87)))))
-    (test-case "oversized textures are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'width 16385)))))
-    (test-case "zero textures are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'height 0)))))
-    (test-case "wrong resource dimension is rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'dimension 1)))))
-    (test-case "flags cannot be booleans" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags #f)))))
-    (test-case "simultaneous access is rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags #x20)))))
-    (test-case "cross-adapter resources are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags #x10)))))
-    (test-case "UAV textures are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags 5)))))
-    (test-case "shared heaps are rejected" (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'heap_flags 1)))))
+    (test-case "array textures are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'depth 2)))))
+    (test-case "mipmapped textures are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'levels 2)))))
+    (test-case "MSAA is rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'samples 4)))))
+    (test-case "other formats are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'format 87)))))
+    (test-case "oversized textures are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'width 16385)))))
+    (test-case "zero textures are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'height 0)))))
+    (test-case "wrong resource dimension is rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'dimension 1)))))
+    (test-case "flags cannot be booleans"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags #f)))))
+    (test-case "simultaneous access is rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags #x20)))))
+    (test-case "cross-adapter resources are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags #x10)))))
+    (test-case "UAV textures are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'flags 5)))))
+    (test-case "shared heaps are rejected"
+      (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'heap_flags 1)))))
     (test-case "upload/readback/custom heaps are rejected"
-      (for ([type '(2 3 4)]) (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'heap_type type))))))
+      (for ([type '(2 3 4)])
+        (check-exn exn:fail? (lambda () (check-interop-resource! (hash-set desc 'heap_type type))))))
     (test-case "ordinary allocation category flags are accepted"
-      (for ([flags '(0 4 68 132)]) (check-not-exn (lambda () (check-interop-resource! (hash-set desc 'heap_flags flags))))))
+      (for ([flags '(0 4 68 132)])
+        (check-not-exn (lambda () (check-interop-resource! (hash-set desc 'heap_flags flags))))))
     (test-case "missing native metadata is not accepted"
-      (for ([k (in-list (hash-keys desc))]) (check-exn exn:fail? (lambda () (check-interop-resource! (hash-remove desc k))))))
+      (for ([k (in-list (hash-keys desc))])
+        (check-exn exn:fail? (lambda () (check-interop-resource! (hash-remove desc k))))))
     (test-case "generic copy returns its backend-owned result"
       (check-eq? (gpu-import-image ctx (fixture)) 'image))
     (test-case "handoff cannot be copied twice"
       (define t (fixture)) (gpu-import-image ctx t)
       (check-exn #rx"consumed" (lambda () (gpu-import-image ctx t))))
     (test-case "scoped borrowing preserves multiple return values"
-      (check-equal? (call-with-values (lambda () (call-with-gpu-external-surface ctx (fixture) (lambda (c) (values c 2 3)))) list)
+      (check-equal?
+        (call-with-values
+          (lambda () (call-with-gpu-external-surface ctx (fixture) (lambda (c) (values c 2 3)))) list)
                     '(canvas 2 3)))
     (test-case "foreign context rejects before checking or touching native storage"
       (define checks 0) (define t (fixture #:check (lambda (_) (set! checks (add1 checks)))))
       (check-exn #rx"another GPU context" (lambda () (gpu-import-image 'foreign t)))
-      (check-equal? checks 0) (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "ready"))
+      (check-equal? checks 0)
+      (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "ready"))
     (test-case "invalid callback does not consume a handoff"
       (define t (fixture)) (check-exn exn:fail? (lambda () (call-with-gpu-external-surface ctx t 7)))
       (check-eq? (gpu-import-image ctx t) 'image))
     (test-case "required callback keywords are rejected"
-      (check-exn exn:fail? (lambda () (call-with-gpu-external-surface ctx (fixture) (lambda (x #:need n) n)))))
+      (check-exn exn:fail?
+        (lambda () (call-with-gpu-external-surface ctx (fixture) (lambda (x #:need n) n)))))
     (test-case "retirement is idempotent"
       (define count 0) (define t (fixture #:retire (lambda () (set! count (add1 count)))))
       (gpu-external-texture-close! t) (gpu-external-texture-close! t) (check-equal? count 1))
@@ -74,10 +129,12 @@
       (check-exn #rx"retired" (lambda () (gpu-import-image ctx t))))
     (test-case "cannot close a currently borrowed descriptor"
       (define t (fixture))
-      (call-with-gpu-external-surface ctx t (lambda (_) (check-exn #rx"in use" (lambda () (gpu-external-texture-close! t))))))
+      (call-with-gpu-external-surface ctx t
+        (lambda (_) (check-exn #rx"in use" (lambda () (gpu-external-texture-close! t))))))
     (test-case "nested imports are rejected and leave the second token ready"
       (define t (fixture)) (define other (fixture))
-      (call-with-gpu-external-surface ctx t (lambda (_) (check-exn #rx"nested" (lambda () (gpu-import-image ctx other)))))
+      (call-with-gpu-external-surface ctx t
+        (lambda (_) (check-exn #rx"nested" (lambda () (gpu-import-image ctx other)))))
       (check-eq? (gpu-import-image ctx other) 'image))
     (test-case "failed preparation does not consume the handoff"
       (define t (fixture #:check (lambda (_) (error 'test "preflight"))))
@@ -97,12 +154,15 @@
       (check-false (hash-has-key? i 'context)) (check-equal? (hash-ref i 'context_generation) 71))
     (test-case "foreign Racket thread cannot use a descriptor"
       (define t (fixture)) (define ch (make-channel))
-      (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (gpu-import-image ctx t) #f))))
+      (thread (lambda ()
+                (channel-put ch
+                  (with-handlers ([exn:fail? (lambda (_) #t)]) (gpu-import-image ctx t) #f))))
       (check-true (channel-get ch)))
     (test-case "cleanup runs after normal completion"
       (define log '())
       (check-equal? (call-with-interop-cleanup (lambda () (set! log (cons 'body log)) 19)
-                       (lambda () (set! log (cons 'finish log))) (lambda (_) (error 'test "unexpected"))) 19)
+                       (lambda () (set! log (cons 'finish log)))
+                      (lambda (_) (error 'test "unexpected"))) 19)
       (check-equal? (reverse log) '(body finish)))
     (test-case "cleanup runs after an arbitrary exception"
       (define finished #f)

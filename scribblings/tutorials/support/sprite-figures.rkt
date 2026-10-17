@@ -1,8 +1,27 @@
 #lang racket
 
+;;;
+;;; Sprite Figures
+;;;
+
+;; Draws atlas previews and cell annotations from the actual sprite artwork.
+;; This module supports documentation assembly and shared examples rather than the public Skia
+;; API.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia "figures.rkt" "sprite-math.rkt")
 (provide atlas-pict draw-checker)
 
+;;;
+;;; Documentation Data and Helpers
+;;;
+
+; draw-checker : canvas? real? real? [exact-nonnegative-integer?] -> void?
+;;   Draws a checkerboard that makes transparent pixels visible.
 (define (draw-checker canvas width height [cell 16])
   (with-skia ([first (make-paint #:color "#E9EEF4")]
               [second (make-paint #:color "#CED9E4")])
@@ -10,6 +29,8 @@
       (draw-rect canvas x y (min cell (- width x)) (min cell (- height y))
                  (if (even? (+ (quotient x cell) (quotient y cell))) first second)))))
 
+; atlas-pict : image? exact-nonnegative-integer? -> pict?
+;;   Shows the actual atlas with enlarged cell boundaries and index labels.
 (define (atlas-pict atlas count)
   (define width (* 2 (image-width atlas)))
   (define height (* 2 (image-height atlas)))

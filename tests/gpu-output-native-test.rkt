@@ -1,19 +1,50 @@
 #lang racket/base
+
+;;;
+;;; GPU Output Native Test
+;;;
+
+;; Covers bounded GPU document fallbacks with unchanged representation policies.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list json
          "../main.rkt" "../gpu.rkt" "../gpu-output.rkt"
          "../private/gpu-provider.rkt" "../private/gpu-io-trace.rkt"
          "gpu-output-fixtures.rkt")
 (provide make-gpu-output-native-tests gpu-output-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-output-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-output-native-test-count 42)
+
+; blue : canvas? -> void?
+;;   Draws a vector-safe blue rectangle as the output-group baseline.
 (define (blue c)
   (with-skia ([p (make-paint #:color 'blue #:antialias? #f)]) (draw-rect c 0 0 24 16 p)))
+
+; effect : canvas? -> void?
+;;   Draws a runtime-shader rectangle that requires a representation-policy decision.
 (define (effect c)
   (with-skia ([e (make-runtime-effect "half4 main(float2 p) { return half4(1,0,0,1); }")]
               [s (runtime-effect->shader e)] [p (make-paint #:shader s)])
     (draw-rect c 0 0 24 16 p)))
+
+; text : canvas? -> void?
+;;   Draws a short label to test text handling inside bounded output groups.
 (define (text c)
   (with-skia ([f (make-font #:size 10)] [p (make-paint #:color 'black)])
     (draw-simple-text c "TEXT" 0 12 f p)))
+
+; export : procedure? output-raster-executor? ... -> any
+;;   Exports one bounded group and returns emitted bytes together with strategy/call evidence.
 (define (export draw executor #:format [format 'svg] #:policy [policy 'prefer-vector]
                 #:audit [audit 'error] #:mode [mode 'auto] #:scale [scale 2]
                 #:padding [padding 0] #:width [w 24] #:height [h 16])
@@ -27,21 +58,37 @@
                         #:policy policy #:scale scale #:padding padding #:raster-executor executor))))
      format #:policy audit #:text-mode mode))
   (values bytes result calls audit-report))
+
+; preview : procedure? output-raster-executor? -> bytes?
+;;   Renders a bounded raster group over a green CPU preview background.
 (define (preview draw executor)
   (with-skia ([s (make-surface 48 36 #:background 'green)])
     (draw-output-group (surface-canvas s) 8 10 24 16 draw #:policy 'raster
                        #:scale 1 #:raster-executor executor)
     (surface->rgba-bytes s)))
+
+; group-error : (-> any) -> any
+;;   Returns a structured output-group failure report, or false when no such error occurs.
 (define (group-error thunk)
   (with-handlers ([exn:fail:output-group? exn:fail:output-group-report])
     (call-with-values thunk (lambda _ #f))))
+
+; run-with-ledger : procedure? -> list?
+;;   Returns I/O events in execution order for a drawing/export callback.
 (define (run-with-ledger proc)
   (define ledger (box '()))
   (parameterize ([current-gpu-io-ledger ledger]) (proc))
   (reverse (unbox ledger)))
+
+; readbacks : list? -> list?
+;;   Keeps only readback entries from an ordered GPU I/O ledger.
 (define (readbacks events)
   (filter (lambda (e) (equal? (hash-ref e 'kind) "readback")) events))
 
+
+; make-gpu-output-native-tests : gpu-context? gpu-context? -> test-suite?
+;;   Builds the parameterized suite for bounded GPU document fallbacks with unchanged representation
+;;   policies.
 (define (make-gpu-output-native-tests context other)
   (define executor (make-gpu-raster-executor context))
   (define backend (symbol->string (gpu-context-backend context)))
@@ -71,7 +118,8 @@
      (check-equal? creates 0))
    (test-case "require-vector rejects effects before execution"
      (define events (run-with-ledger
-       (lambda () (define r (group-error (lambda () (export effect executor #:policy 'require-vector))))
+       (lambda ()
+         (define r (group-error (lambda () (export effect executor #:policy 'require-vector))))
          (check-eq? (output-group-report-reason r) 'vector-required))))
      (check-equal? events '()))
    (test-case "outer vector-only veto precedes lazy context creation"
@@ -83,18 +131,22 @@
      (check-equal? creates 0))
    (test-case "native URL metadata remains vector metadata"
      (define-values (b r n a)
-       (export (lambda (c) (blue c) (canvas-annotate-url! c 0 0 24 16 "https://example.org/")) executor))
+       (export (lambda (c) (blue c) (canvas-annotate-url! c 0 0 24 16 "https://example.org/"))
+         executor))
      (check-eq? (output-group-report-strategy r) 'native)
      (check-true (regexp-match? #rx#"example.org" b)))
    (test-case "GPU rasterization cannot discard a URL"
      (define r (group-error (lambda ()
-       (export (lambda (c) (effect c) (canvas-annotate-url! c 0 0 24 16 "https://example.org/")) executor))))
+       (export (lambda (c) (effect c) (canvas-annotate-url! c 0 0 24 16 "https://example.org/"))
+         executor))))
      (check-eq? (output-group-report-reason r) 'annotation-would-be-lost))
    (test-case "PDF native text cannot be silently rasterized by a GPU"
-     (define r (group-error (lambda () (export (lambda (c) (text c) (effect c)) executor #:format 'pdf))))
+     (define r (group-error
+                 (lambda () (export (lambda (c) (text c) (effect c)) executor #:format 'pdf))))
      (check-eq? (output-group-report-reason r) 'native-text-would-be-lost))
    (test-case "explicit text outlining permits bounded GPU rasterization"
-     (define-values (b r n a) (export (lambda (c) (text c) (effect c)) executor #:format 'pdf #:mode 'outline))
+     (define-values (b r n a)
+       (export (lambda (c) (text c) (effect c)) executor #:format 'pdf #:mode 'outline))
      (check-eq? (output-group-report-strategy r) 'raster))
    (test-case "native PDF text alone remains native"
      (define-values (b r n a) (export text executor #:format 'pdf))
@@ -103,12 +155,15 @@
    (test-case "forced GPU rasterization cannot certify imported SKP provenance"
      (with-skia ([p (call-with-picture 24 16 blue)]
                  [opaque (picture-from-bytes (picture->bytes p) #:trusted? #t)])
-       (define r (group-error (lambda () (export (lambda (c) (draw-picture c opaque)) executor #:policy 'raster))))
+       (define r
+         (group-error (lambda ()
+                        (export (lambda (c) (draw-picture c opaque)) executor #:policy 'raster))))
        (check-eq? (output-group-report-reason r) 'unknown-provenance)))
    (test-case "lost links inside an explicit CPU raster remain rejected"
      (define r (group-error (lambda () (export
        (lambda (c) (draw-rasterized c 0 0 24 16
-                     (lambda (r) (canvas-annotate-url! r 0 0 24 16 "https://example.org/")))) executor))))
+                     (lambda (r) (canvas-annotate-url! r 0 0 24 16 "https://example.org/"))))
+                                         executor))))
      (check-eq? (output-group-report-reason r) 'discarded-semantics))
    (test-case "fractional bounds and asymmetric padding use ceil pixel extents"
      (define-values (b r n a) (export effect executor #:width 24.25 #:height 16.5
@@ -250,7 +305,8 @@
      (define e (findf (lambda (e) (eq? (output-audit-event-operation e) 'execute-output-group))
                       (output-audit-report-events a)))
      (check-not-false e)
-     (check-equal? (hash-ref (hash-ref (output-audit-event-details e) 'execution) 'transfer) "gpu-to-cpu"))
+     (check-equal? (hash-ref (hash-ref (output-audit-event-details e) 'execution) 'transfer)
+       "gpu-to-cpu"))
    (test-case "explicit raster color space preserves tagged image conversion"
      (with-skia ([linear (make-linear-srgb-color-space)] [srgb (make-srgb-color-space)]
                  [source (rgba-bytes->image 1 1 (bytes 128 128 128 255) #:color-space linear)]

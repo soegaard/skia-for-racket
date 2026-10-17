@@ -1,9 +1,38 @@
 #lang racket/base
+
+;;;
+;;; Advanced Canvas GPU Test
+;;;
+
+;; Checks save layers, native drawables, and specialized canvases.
+;; This executable supplies backend-specific drawing and transfer evidence to the GPU validation
+;; workflow.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list racket/path json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt" "../private/gpu-io-trace.rkt"
          "advanced-canvas-fixtures.rkt")
 (module+ main
-  (define backend 'auto) (define adapter 'hardware) (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'auto)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter 'hardware)
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
     [("--adapter") value "hardware or warp" (set! adapter (string->symbol value))]
@@ -16,18 +45,61 @@
                (or (eq? backend 'direct3d) (eq? adapter 'hardware)))
     (error 'advanced-gpu "invalid backend/adapter selection"))
   (make-directory* directory)
+
+  ; create : -> gpu-context?
+  ;;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
   (define (create)
     (case backend [(egl) (make-egl-gpu-context)]
       [(metal) (make-gpu-context #:backend 'metal)]
       [else (make-gpu-context #:backend 'direct3d #:adapter adapter)]))
-  (define context (create)) (define other #f) (define foreign #f) (define foreign-filter #f)
-  (define cases 0) (define failures 0) (define rows '()) (define checks (make-hasheq))
+
+  ; context : gpu-context?
+  ;;   Owns the primary native GPU context used by the fixture run.
+  (define context (create))
+  ; other : (or/c gpu-context? #f)
+  ;;   Owns a second context used to verify cross-context resource rejection.
+  (define other #f)
+  ; foreign : (or/c drawable? #f)
+  ;;   Retains a drawable recording whose backdrop filter uses the secondary context, testing replay
+  ;;   affinity.
+  (define foreign #f)
+  ; foreign-filter : (or/c image-filter? #f)
+  ;;   Retains a filter using another context's image to test context-affinity rejection.
+  (define foreign-filter #f)
+
+  ; cases : exact-nonnegative-integer?
+  ;;   Counts acceptance cases attempted by the local test wrapper.
+  (define cases 0)
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  (define failures 0)
+  ; rows : (listof hash?)
+  ;;   Accumulates capture and operation evidence for the run's JSON manifest.
+  (define rows '())
+  ; checks : hash?
+  ;;   Stores named acceptance outcomes included in the final report.
+  (define checks (make-hasheq))
+
+  ; test! : string? procedure? -> void?
+  ;;   Runs one named acceptance case and accumulates its failure count for final reporting.
   (define (test! name thunk)
     (set! cases (add1 cases))
     (set! failures (+ failures (run-tests (test-suite name (test-case name (thunk)))))))
+
+  ; reads : list? -> exact-nonnegative-integer?
+  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;;   inspection.
   (define (reads events) (count (lambda (e) (equal? (hash-ref e 'kind #f) "readback")) events))
+
+  ; save! : path-string? bytes? -> exact-nonnegative-integer?
+  ;;   Writes one capture artifact in the run directory, refusing to replace an existing file.
   (define (save! name data)
-    (call-with-output-file (build-path directory name) (lambda (out) (write-bytes data out)) #:exists 'error))
+    (call-with-output-file (build-path directory name) (lambda (out) (write-bytes data out))
+      #:exists 'error))
+
+  ; capture! : string? procedure? -> void?
+  ;;   Renders a scene, requires zero implicit drawing readbacks, and saves explicit capture pixels
+  ;;   with target metadata.
   (define (capture! name draw)
     (define ledger (box '()))
     (with-skia ([s (make-gpu-surface context advanced-width advanced-height #:background 'white)])
@@ -39,7 +111,8 @@
       (check-equal? (reads (unbox ledger)) 1)
       (save! (string-append name ".rgba") data)
       (set! rows (cons (hasheq 'name name 'file (string-append name ".rgba") 'target target
-                               'drawing_readbacks drawing-reads 'inspection_readbacks (reads (unbox ledger))
+                               'drawing_readbacks drawing-reads 'inspection_readbacks
+                         (reads (unbox ledger))
                                'io (reverse (unbox ledger))) rows))))
   (dynamic-wind void
     (lambda ()
@@ -47,7 +120,8 @@
       (set! other (create))
       (call-with-gpu-context other
         (lambda ()
-          (with-skia ([s (make-gpu-surface other 8 8 #:background 'red)] [im (gpu-surface-snapshot s)])
+          (with-skia
+            ([s (make-gpu-surface other 8 8 #:background 'red)] [im (gpu-surface-snapshot s)])
             (set! foreign-filter (make-image-source-filter im))
             ;; Exercise new SaveLayerRec affinity, not only ordinary draw-image
             ;; affinity: the recorded backdrop must follow its GPU input.
@@ -56,7 +130,8 @@
                 (lambda (c) (call-with-canvas-layer-rec c void #:backdrop foreign-filter)))))))
       (call-with-gpu-context context
         (lambda ()
-          (test! "group opacity on the selected GPU" (lambda () (capture! "layer" draw-advanced-layer)))
+          (test! "group opacity on the selected GPU"
+            (lambda () (capture! "layer" draw-advanced-layer)))
           (test! "previous content initialization on the selected GPU"
             (lambda () (capture! "initialization" draw-advanced-initialization)))
           (test! "backdrop field on the selected GPU"
@@ -71,8 +146,10 @@
           (test! "NWay uses two real same-context targets and calls authoring once"
             (lambda ()
               (define ledger (box '())) (define called 0)
-              (with-skia ([a (make-gpu-surface context advanced-width advanced-height #:background 'white)]
-                          [b (make-gpu-surface context advanced-width advanced-height #:background 'white)])
+              (with-skia ([a (make-gpu-surface context advanced-width advanced-height
+                                             #:background 'white)]
+                          [b (make-gpu-surface context advanced-width advanced-height
+                                             #:background 'white)])
                 (parameterize ([current-gpu-io-ledger ledger])
                   (call-with-nway-canvas (list a b)
                     (lambda (c) (set! called (add1 called)) (draw-advanced-vector c))))
@@ -123,7 +200,9 @@
               (with-skia ([s (make-gpu-surface context 8 8)])
                 (define c (surface-canvas s))
                 (check-exn #rx"expected layer failure" (lambda ()
-                  (call-with-canvas-layer-rec c (lambda () (canvas-save! c) (error 'test "expected layer failure")))))
+                                                         (call-with-canvas-layer-rec c
+                                                           (lambda () (canvas-save! c)
+                                                            (error 'test "expected layer failure")))))
                 (check-equal? (canvas-save-count c) 1))
               (hash-set! checks 'layer_exception_cleanup #t)))
           (test! "exceptional NWay exit releases both GPU borrows"
@@ -159,13 +238,22 @@
       (when foreign-filter (skia-close! foreign-filter))
       (when other (gpu-context-close! other))
       (gpu-context-close! context)))
+
+  ; closed? : boolean?
+  ;;   Records whether context teardown completed with no live or failed resource releases.
   (define closed? (and (eq? (gpu-context-state context) 'closed)
                        other (eq? (gpu-context-state other) 'closed)))
+
+  ; report : hash?
+  ;;   Combines assertions, captures, run identity, byte order, and context cleanup without claiming
+  ;;   display or HDR validation.
   (define report
-    (hasheq 'schema 1 'stage "0.74" 'run_token token 'status (if (and (zero? failures) closed?) "passed" "failed")
+    (hasheq 'schema 1 'stage "0.74" 'run_token token 'status
+      (if (and (zero? failures) closed?) "passed" "failed")
             'backend (symbol->string backend) 'adapter (symbol->string adapter)
             'cases cases 'failures failures 'checks checks 'contexts_closed closed?
             'captures (reverse rows) 'float_order (if (system-big-endian?) "big" "little")
             'hdr_verified #f 'physical_display_verified #f))
-  (call-with-output-file (build-path directory "gpu.json") (lambda (out) (write-json report out)) #:exists 'error)
+  (call-with-output-file (build-path directory "gpu.json") (lambda (out) (write-json report out))
+    #:exists 'error)
   (exit (if (and (zero? failures) closed?) 0 1)))

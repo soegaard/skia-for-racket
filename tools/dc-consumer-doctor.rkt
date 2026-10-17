@@ -1,8 +1,28 @@
 #lang racket/base
+
+;;;
+;;; DC Consumer Doctor
+;;;
+
+;; Exercises pict, plot/no-gui, and recorded drawing consumers and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/class racket/list racket/file racket/path json rackunit/text-ui
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
          "../tests/dc-consumer-fixtures.rkt" "../tests/dc-consumer-native-test.rkt")
 (provide dc-consumer-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; dc-consumer-doctor! : path? -> void?
+;;   Runs real pict/plot consumer checks and writes direct/replayed/reference captures for
+;;   inspection.
 (define (dc-consumer-doctor! directory)
   (define (file name) (build-path directory name))
   (define (publish data)
@@ -53,7 +73,9 @@
          (render (name "datum") datum)
          (define reference-layout (reference (name "reference") draw))
          (for/list ([mode (in-list '("direct" "procedure" "datum" "reference"))]
-                    [layout (in-list (list direct-layout recorded-layout recorded-layout reference-layout))])
+                     [layout (in-list
+                               (list direct-layout recorded-layout recorded-layout
+                                 reference-layout))])
            (hasheq 'kind kind 'mode mode 'file (name mode)
                    'layout (if (equal? kind "plot") layout #f))))
        (list (cons "pict" (lambda (dc) (draw-consumer-pict dc picture)))

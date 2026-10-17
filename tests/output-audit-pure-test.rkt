@@ -1,25 +1,63 @@
 #lang racket/base
+
+;;;
+;;; Output Audit Pure Test
+;;;
+
+;; Covers output audit: pure policies and provenance.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit json "../output-policy.rkt"
          (submod "../output-policy.rkt" internals)
          "../private/audit-trace.rkt" (submod "../private/audit-trace.rkt" testing))
 (provide output-audit-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fake : symbol? [symbol?] -> any/c
+;;   Registers a synthetic resource with the audit layer without native allocation.
 (define (fake kind [who 'test]) (audit-allocate who kind (lambda () (box kind))))
+
+; attach! : any/c any/c [symbol?] -> any
+;;   Records a synthetic native setter so paint-child provenance can be tested.
 (define (attach! p s [setter 'sk_paint_set_shader])
   (define pp (box 'p))
   (define sp (and s (box 's)))
   (audit-use (if s (list p s) (list p)) (if s (list pp sp) (list pp))
     (lambda () (audit-native-call setter (list pp sp) void))))
+
+; draw : any/c [symbol? procedure? symbol?] -> any
+;;   Routes a synthetic drawing through the canvas audit scope and selected native-operation tag.
 (define (draw p [backend 'svg] [thunk void] [op 'sk_canvas_draw_rect])
   (audit-on-canvas 'draw-rect 'owner backend (fake 'surface) (if p (list p) '())
     (lambda () (audit-native-call op '() thunk))))
+
+; capture : procedure? [symbol? symbol? boolean?] -> output-audit-report?
+;;   Collects a detached audit report under the chosen backend, policy, and dry-run mode.
 (define (capture thunk [backend 'svg] [policy 'report] [dry? #f])
   (define-values (_ report) (call-with-audit-collector backend policy dry? 1 thunk))
   report)
+
+; has-feature? : output-audit-report? symbol? [symbol?] -> boolean?
+;;   Finds a feature event, optionally requiring a specific classification status.
 (define (has-feature? report feature [status #f])
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature)
          (or (not status) (eq? (output-audit-event-status e) status)))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; output-audit-pure-tests : test-suite?
+;;   Collects the regression cases for output audit: pure policies and provenance.
 (define output-audit-pure-tests
   (test-suite
    "Output audit: pure policies and provenance"
@@ -37,12 +75,15 @@
      (check-eq? (output-capability-status (output-capability-for 'svg 'image)) 'embedded-raster))
    (test-case "runtime shaders require an explicit boundary"
      (for ([b '(pdf svg)])
-       (check-eq? (output-capability-status (output-capability-for b 'runtime-shader)) 'needs-raster)))
+       (check-eq? (output-capability-status (output-capability-for b 'runtime-shader))
+         'needs-raster)))
    (test-case "filter expansion differs across backends"
-     (check-eq? (output-capability-status (output-capability-for 'pdf 'image-filter)) 'native-expansion)
+     (check-eq? (output-capability-status (output-capability-for 'pdf 'image-filter))
+       'native-expansion)
      (check-eq? (output-capability-status (output-capability-for 'svg 'image-filter)) 'needs-raster))
    (test-case "native SVG text is viewer dependent"
-     (check-eq? (output-capability-status (output-capability-for 'svg 'native-text)) 'viewer-dependent))
+     (check-eq? (output-capability-status (output-capability-for 'svg 'native-text))
+       'viewer-dependent))
    (test-case "empty complete observation is vector-only"
      (define r (capture void))
      (check-false (output-audit-report-blocking? r))
@@ -61,7 +102,7 @@
      (define ran? #f)
      (define p (fake 'paint 'make-paint)) (attach! p (fake 'shader 'runtime-effect->shader))
      (check-exn exn:fail:output-audit?
-                (lambda () (capture (lambda () (draw p 'svg (lambda () (set! ran? #t)))) 'svg 'error)))
+       (lambda () (capture (lambda () (draw p 'svg (lambda () (set! ran? #t)))) 'svg 'error)))
      (check-false ran?))
    (test-case "vector-only rejects an embedded image"
      (check-exn exn:fail:output-audit?
@@ -131,7 +172,8 @@
      (check-exn exn:fail? (lambda () (capture (lambda () (draw #f) (error 'probe "stop")))))
      (check-equal? (output-audit-report-events (capture void)) '()))
    (test-case "scope labels and page numbers are recorded"
-     (define r (capture (lambda () (parameterize ([audit-page-index 2] [audit-labels '("inner" "outer")])
+     (define r (capture
+                 (lambda () (parameterize ([audit-page-index 2] [audit-labels '("inner" "outer")])
                                     (draw #f)))))
      (define e (car (output-audit-report-events r)))
      (check-equal? (output-audit-event-page e) 2)
@@ -140,16 +182,20 @@
      (define ch (make-channel))
      (capture
       (lambda ()
-        (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (draw #f) #f))))
+        (thread
+          (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (draw #f) #f))))
         (check-true (channel-get ch)))))
    (test-case "recorded risks survive until picture replay"
      (define rec (fake 'picture-recorder 'make-picture-recorder))
      (define p (fake 'paint 'make-paint)) (attach! p (fake 'shader 'runtime-effect->shader))
      (audit-on-canvas 'draw-rect 'rec 'recording rec (list p)
        (lambda () (audit-native-call 'sk_canvas_draw_rect '() void)))
-     (define pic (audit-use (list rec) (list (box 'rec)) (lambda () (fake 'picture 'picture-recorder-finish-recording!))))
-     (define r (capture (lambda () (audit-on-canvas 'draw-picture 'out 'svg (fake 'svg-document) (list pic)
-                                    (lambda () (audit-native-call 'sk_canvas_draw_picture '() void))))))
+     (define pic
+       (audit-use (list rec) (list (box 'rec))
+         (lambda () (fake 'picture 'picture-recorder-finish-recording!))))
+     (define r (capture
+                 (lambda () (audit-on-canvas 'draw-picture 'out 'svg (fake 'svg-document) (list pic)
+                              (lambda () (audit-native-call 'sk_canvas_draw_picture '() void))))))
      (check-true (has-feature? r 'runtime-shader)))
    (test-case "recorder reuse resets its feature summary"
      (define rec (fake 'picture-recorder 'make-picture-recorder))

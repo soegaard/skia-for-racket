@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Reference GPU Context Test
+;;;
+
+;; Checks real backend contexts, options, nesting, canvas expiry, child cleanup, and abandonment.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Real, explicitly selected backend acceptance. No skip-on-unavailability and
 ;; no CPU fallback. This suite checks lifecycle, not rendering or performance.
 (require rackunit rackunit/text-ui json racket/cmdline racket/list
@@ -8,11 +20,30 @@
 ;; `module+ main` imports bindings from this module, so command-line state
 ;; must live in mutable parameter values instead of module bindings set with
 ;; `set!`.
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; selected-backend : parameter?
+;;   Selects the explicitly requested native GPU backend for this Reference test run.
 (define selected-backend (make-parameter #f))
+
+; selected-adapter : parameter?
+;;   Selects Direct3D hardware or software adapter policy; defaults to hardware.
 (define selected-adapter (make-parameter 'hardware))
+
+; output-path : parameter?
+;;   Holds the optional destination for the machine-readable test report.
 (define output-path (make-parameter #f))
+
+; contexts : (listof gpu-context?)
+;;   Tracks created contexts newest first for final teardown evidence.
 (define contexts '())
 
+
+; new-context : [(or/c gpu-context-options? #f)] -> gpu-context?
+;;   Creates and records an owned context for the selected backend and options.
 (define (new-context [options #f])
   (define context
     (case (selected-backend)
@@ -26,6 +57,9 @@
   (set! contexts (cons context contexts))
   context)
 
+
+; with-context : procedure? [#:options (or/c gpu-context-options? #f)] -> any
+;;   Closes a newly created context after the callback, including exceptional exits.
 (define (with-context proc #:options [options #f])
   (define context (new-context options))
   (dynamic-wind void
@@ -34,9 +68,19 @@
       ;; Preserve teardown failures. Do not substitute abandonment for a failed close.
       (gpu-context-close! context))))
 
+
+; make-child : gpu-context? -> gpu-surface?
+;;   Creates a two-by-two owned surface while its parent context is active.
 (define (make-child context)
   (call-with-gpu-context context (lambda () (make-gpu-surface context 2 2))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; suite : test-suite?
+;;   Collects the regression cases for reference GPU context native acceptance.
 (define suite
   (test-suite
    "Reference GPU context native acceptance"
@@ -161,9 +205,26 @@
   (unless (and (memq (selected-adapter) '(hardware warp))
                (or (eq? (selected-backend) 'direct3d) (eq? (selected-adapter) 'hardware)))
     (error 'reference-gpu-context "--adapter warp requires --backend direct3d"))
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests suite))
+
+  ; closed : exact-nonnegative-integer?
+  ;;   Counts created contexts that reached the closed state after acceptance checks.
   (define closed (count (lambda (context) (eq? (gpu-context-state context) 'closed)) contexts))
+
+  ; passed? : boolean?
+  ;;   Combines test assertions and required evidence/cleanup checks into the final run status.
   (define passed? (and (zero? failures) (= closed (length contexts)) (pair? contexts)))
+
+  ; receipt : hash?
+  ;;   Records case results and native-context lifecycle evidence without claiming pixel or hardware
+  ;;   validation.
   (define receipt
     (hasheq 'schema 1 'status (if passed? "passed" "failed")
             'backend (symbol->string (selected-backend))

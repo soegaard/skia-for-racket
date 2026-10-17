@@ -1,6 +1,25 @@
 #lang racket/base
+
+;;;
+;;; GPU Format Native Test
+;;;
+
+;; Covers surface properties (native; no GPU required).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit "../main.rkt" "../private/surface-property-native.rkt")
 (provide gpu-format-native-tests)
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-format-native-tests : test-suite?
+;;   Collects the regression cases for surface properties (native; no GPU required).
 (define gpu-format-native-tests
   (test-suite "Surface properties (native; no GPU required)"
     (test-case "native properties preserve all reviewed flag and geometry combinations"
@@ -16,7 +35,8 @@
         (lambda () (call-with-native-surface-properties 'test (make-surface-properties)
                      (lambda (_) (error 'test "intentional")))))
       (call-with-native-surface-properties 'test (make-surface-properties)
-        (lambda (ptr) (check-equal? (surface-properties-flags (surface-properties/native 'test ptr)) 0))))
+        (lambda (ptr)
+          (check-equal? (surface-properties-flags (surface-properties/native 'test ptr)) 0))))
     (test-case "surface query is detached and does not delete borrowed properties"
       (with-skia ([s (make-surface 8 6)])
         (define a (surface-properties-of s)) (define b (surface-properties-of s))

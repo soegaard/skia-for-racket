@@ -1,40 +1,84 @@
 #lang racket/base
+
+;;;
+;;; Output Audit Example
+;;;
+
+;; Builds output pages that expose document capability and fallback decisions.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file racket/path json "../main.rkt")
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; blue : rgba?
+;;   Specifies the blue color used by this drawing.
 (define blue (rgb 48 103 211))
+; teal : rgba?
+;;   Specifies the teal color used by this drawing.
 (define teal (rgb 14 149 142))
+; orange : rgba?
+;;   Specifies the orange color used by this drawing.
 (define orange (rgb 239 161 37))
+; ink : rgba?
+;;   Specifies the ink color used by this drawing.
 (define ink (rgb 32 52 78))
+; label : canvas? string? real? real? [real?] -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 12])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color ink)]) (draw-simple-text c text x y f p)))
+; heading : canvas? string? string? -> void?
+;;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (with-skia ([p (make-paint #:color teal)]) (draw-rect c 0 0 34 2 p))
   (label c title 0 33 24) (label c subtitle 0 57 11))
+; footer : canvas? -> void?
+;;   Adds the page identification beneath the example drawing.
 (define (footer c)
   (label c "RACKET / SKIA   |   OUTPUT CAPABILITY AND FALLBACK AUDIT" 0 444 9))
+; plain-panel : canvas? -> void?
+;;   Draws the plain panel comparison in the current canvas coordinate system.
 (define (plain-panel c)
   (with-skia ([gradient (make-linear-gradient-shader 0 0 300 0 (list blue teal orange))]
-              [p (make-paint #:shader gradient)] [stroke (make-paint #:color ink #:style 'stroke #:stroke-width 2)])
+              [p (make-paint #:shader gradient)] [stroke (make-paint #:color ink #:style 'stroke
+                #:stroke-width 2)])
     (draw-rounded-rect c 0 5 300 155 12 12 p)
     (draw-circle c 70 82 32 stroke)))
+; sksl : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define sksl
   "uniform float phase; half4 main(float2 p) {
      float t = .5+.5*sin(p.x*.05+p.y*.02+phase);
      return half4(mix(float3(.19,.40,.83),float3(.94,.63,.15),t),1);
    }")
+; wave-panel : canvas? -> void?
+;;   Draws the wave panel comparison in the current canvas coordinate system.
 (define (wave-panel c)
   (with-skia ([e (make-runtime-effect sksl)]
               [s (runtime-effect->shader e #:uniforms (hash 'phase .5))]
               [p (make-paint #:shader s)]) (draw-rect c 0 0 300 170 p)))
+; shadow-panel : canvas? -> void?
+;;   Draws the shadow panel comparison in the current canvas coordinate system.
 (define (shadow-panel c)
   (with-skia ([f (make-drop-shadow-image-filter 5 5 3 3 (rgba 0 0 0 110))]
               [p (make-paint #:color blue #:image-filter f)] [q (make-paint #:color orange)])
     (draw-rounded-rect c 14 16 228 112 14 14 p)
     (draw-circle c 245 118 37 q)))
+; translated : canvas? real? real? procedure? -> any/c
+;;   Runs a drawing callback at a translated origin and restores canvas state afterward.
 (define (translated c x y f)
   (with-canvas-state c (canvas-translate! c x y) (f c)))
+; page1 : canvas? -> void?
+;;   Draws the page1 comparison in the current canvas coordinate system.
 (define (page1 c)
-  (heading c "Know what remains vector" "The drawing API is unchanged. Audited exports add a separate, immutable report.")
+  (heading c "Know what remains vector"
+    "The drawing API is unchanged. Audited exports add a separate, immutable report.")
   (label c "01  Native geometry and a linear gradient" 0 89)
   (label c "02  An explicitly rasterized runtime shader" 352 89)
   (with-output-label "native-vector" (translated c 0 112 plain-panel))
@@ -43,8 +87,11 @@
   (label c "The runtime panel is reported as a bounded 600 x 340 image." 0 350)
   (label c "No automatic rasterization or visual-equivalence claim is made by the auditor." 0 392 11)
   (footer c))
+; page2 : canvas? -> void?
+;;   Draws the page2 comparison in the current canvas coordinate system.
 (define (page2 c)
-  (heading c "Backend expansion is not vector preservation" "PDF receives an image filter; SVG uses a declared raster boundary around the same drawing.")
+  (heading c "Backend expansion is not vector preservation"
+    "PDF receives an image filter; SVG uses a declared raster boundary around the same drawing.")
   (label c "01  A paint with a shadow image filter" 0 89)
   (label c "02  The same filtered drawing, explicit group" 352 89)
   (with-output-label "backend-filter"
@@ -57,9 +104,12 @@
   (label c "Padding is part of the report: each explicit panel is 624 x 364 pixels." 0 350 11)
   (label c "The audit reports conservative backend policy; inspect the exported files too." 0 392 11)
   (footer c))
+; recorded-page : picture? -> procedure?
+;;   Replays the supplied picture as an audited output-page drawing.
 (define (recorded-page picture)
   (lambda (c)
-    (heading c "Recording does not erase resource provenance" "A picture recorded before auditing keeps a compact snapshot of the features it uses.")
+    (heading c "Recording does not erase resource provenance"
+      "A picture recorded before auditing keeps a compact snapshot of the features it uses.")
     (label c "01  Recorded runtime content in a raster group" 0 89)
     (label c "02  A normal vector panel and an outer link" 352 89)
     (with-output-label "recorded-fallback"
@@ -71,22 +121,37 @@
     (label c "Placing an annotation inside a raster group is reported as semantic loss." 0 350 11)
     (label c "The unsafe preflight JSON demonstrates issues without emitting an unsafe SVG." 0 392 11)
     (footer c)))
+; unsafe-page : canvas? -> void?
+;;   Draws the unsafe page comparison in the current canvas coordinate system.
 (define (unsafe-page c)
   (with-output-label "unhandled-runtime" (wave-panel c))
   (with-output-label "unhandled-filter" (shadow-panel c)))
+; write-json-file : path-string? any/c -> void?
+;;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path value)
   (call-with-output-file path (lambda (o) (write-json value o) (newline o)) #:exists 'replace))
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; argv : vector?
+  ;;   Retains the command-line argument vector used to select output paths.
   (define argv (current-command-line-arguments))
   (when (> (vector-length argv) 1) (error 'output-audit "expected an optional output prefix"))
+  ; prefix : path-string?
+  ;;   Selects the destination used by this example's output.
   (define prefix (if (zero? (vector-length argv)) "output/output-audit-0.29" (vector-ref argv 0)))
+  ; file : any/c -> string?
+  ;;   Appends an output suffix to the selected filename prefix.
   (define (file suffix) (string-append prefix suffix))
   (make-directory* (or (path-only (string->path prefix)) (current-directory)))
   ;; Record before beginning either audit; the snapshot must still carry SkSL.
   (with-skia ([recorded (call-with-picture 300 170 wave-panel)])
     (define registry (list (cons "vector" page1) (cons "filters" page2)
                            (cons "recorded" (recorded-page recorded))))
-    (define pages (map (lambda (entry) (make-output-page 720 500 (cdr entry) #:margins 24 #:background 'white)) registry))
+    (define pages (map (lambda (entry) (make-output-page 720 500 (cdr entry) #:margins 24
+      #:background 'white)) registry))
     (define report
       (save-output/audit pages (file ".pdf") 'pdf #:exists 'replace #:policy 'error
                          #:title "Output capability audit"))
@@ -104,11 +169,15 @@
     (define base (path->string (file-name-from-path prefix)))
     (call-with-output-file (file ".review.html")
       (lambda (o)
-        (display "<!doctype html><meta charset=\"utf-8\"><title>Output audit review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:12px 0 32px}img{width:100%;background:white}figure{margin:0}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style><h1>Output capability and fallback audit</h1>" o)
-        (fprintf o "<p><a href=\"~a.pdf\">Actual PDF</a> | <a href=\"~a.pdf.audit.json\">PDF report</a> | <a href=\"~a.unsafe.audit.json\">Unsafe preflight report (no SVG generated)</a></p>" base base base)
-        (display "<p>Left: actual SVG. Right: separate raster reference, not a PDF/SVG rendering. Reports describe observed operations and known risks, not visual certification.</p>" o)
+        (display
+          "<!doctype html><meta charset=\"utf-8\"><title>Output audit review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:12px 0 32px}img{width:100%;background:white}figure{margin:0}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style><h1>Output capability and fallback audit</h1>" o)
+        (fprintf o
+          "<p><a href=\"~a.pdf\">Actual PDF</a> | <a href=\"~a.pdf.audit.json\">PDF report</a> | <a href=\"~a.unsafe.audit.json\">Unsafe preflight report (no SVG generated)</a></p>" base base base)
+        (display
+          "<p>Left: actual SVG. Right: separate raster reference, not a PDF/SVG rendering. Reports describe observed operations and known risks, not visual certification.</p>" o)
         (for ([entry (in-list registry)])
           (define tag (car entry))
-          (fprintf o "<h2>~a</h2><p><a href=\"~a.~a.audit.json\">Audit report</a></p><div class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a.~a.svg\"></figure><figure><figcaption>Independent raster reference</figcaption><img src=\"~a.~a.reference.png\"></figure></div>" tag base tag base tag base tag)))
+          (fprintf o
+            "<h2>~a</h2><p><a href=\"~a.~a.audit.json\">Audit report</a></p><div class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a.~a.svg\"></figure><figure><figcaption>Independent raster reference</figcaption><img src=\"~a.~a.reference.png\"></figure></div>" tag base tag base tag base tag)))
       #:exists 'replace))
   (printf "Wrote ~a.pdf, 3 SVGs/references, 5 audit reports, and review HTML\n" prefix))

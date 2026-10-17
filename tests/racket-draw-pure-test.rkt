@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Racket Draw Pure Test
+;;;
+
+;; Covers skia/racket-draw pure boundary and detached conversions.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; The facade and its detached helpers must be usable without initializing
 ;; Skia, HarfBuzz, a GUI eventspace, or a GPU context.
 (require rackunit rackunit/text-ui racket/class
@@ -13,6 +25,13 @@
 
 (provide racket-draw-pure-tests)
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; racket-draw-pure-tests : test-suite?
+;;   Collects the regression cases for skia/racket-draw pure boundary and detached conversions.
 (define racket-draw-pure-tests
   (test-suite
    "skia/racket-draw pure boundary and detached conversions"
@@ -60,5 +79,12 @@
                 (lambda () (skia-path->dc-path 'not-a-path #:conic-subdivisions 6))))))
 
 (module+ test
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests racket-draw-pure-tests))
   (unless (zero? failures) (error 'racket-draw-pure-test "~a failures" failures)))

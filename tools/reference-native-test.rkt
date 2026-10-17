@@ -1,21 +1,47 @@
 #lang racket/base
 
+;;;
+;;; Displayed Reference Example Checks
+;;;
+
+;; Extracts displayed Reference examples and runs them in fresh namespaces or isolated processes.
+;; This acceptance runner detects examples that drift from the executable public API.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Opt-in CPU checks. The Reference build itself does not run these tests.
 (require rackunit racket/file racket/list racket/path racket/runtime-path racket/system
          syntax/modread skia)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; reference-directory : path?
+;;   Locates ../scribblings/reference relative to this module, independent of the invoking
+;;   directory.
 (define-runtime-path reference-directory "../scribblings/reference")
 
 ;; Read and execute the displayed native examples, instead of maintaining copies.
 ;; The live-stream provider installs process-global native callbacks.  It alone
 ;; needs a fresh Racket process; ordinary examples retain the cheaper fresh-
 ;; namespace isolation used by this test historically.
+
+; live-native-symbols : (listof symbol?)
+;;   Identifies callback-based stream APIs whose displayed examples require process isolation.
 (define live-native-symbols
   '(make-codec-incremental
     image-from-port picture-from-port copy-port/streaming
     image->port picture->port output->port
     image-write-stream! picture-write-stream! output-write-stream!))
 
+
+; uses-live-native-callbacks? : any/c -> any/c
+;;   Finds references to live callback APIs recursively; returns a nonfalse membership tail when
+;;   present.
 (define (uses-live-native-callbacks? form)
   (cond
     [(symbol? form) (memq form live-native-symbols)]
@@ -23,6 +49,10 @@
                       (uses-live-native-callbacks? (cdr form)))]
     [else #f]))
 
+
+; run-example-in-fresh-process : path-string? list? -> void?
+;;   Runs a displayed example in a temporary standalone module, isolating native callback service
+;;   state and deleting the module afterward.
 (define (run-example-in-fresh-process directory example)
   (define source (make-temporary-file "skia-reference-native-example-~a.rkt" #f directory))
   (dynamic-wind
@@ -55,6 +85,9 @@
     (lambda ()
       (when (file-exists? source) (delete-file source)))))
 
+
+; run-example-in-fresh-namespace : path-string? list? -> void?
+;;   Evaluates a displayed example in a fresh namespace and the designated output directory.
 (define (run-example-in-fresh-namespace directory example)
   (parameterize ([current-namespace (make-base-namespace)]
                  [current-directory directory])
@@ -63,6 +96,10 @@
                       (lambda ignored (void)))))
 
 ;; Every block runs twice without inheriting another chapter's example state.
+
+; run-displayed-examples : path-string? -> void?
+;;   Runs each Reference racketblock twice with namespace or process isolation appropriate to its
+;;   native callback use.
 (define (run-displayed-examples directory)
   (define (blocks form)
     (cond
@@ -89,6 +126,13 @@
                      (format "~a, run ~a" chapter (add1 attempt))))))
 
 (module+ test
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; directory : path?
+  ;;   Owns a temporary working directory for displayed-example artifacts, removed after the run.
   (define directory (make-temporary-file "skia-reference-native-~a" 'directory))
   (dynamic-wind
     void

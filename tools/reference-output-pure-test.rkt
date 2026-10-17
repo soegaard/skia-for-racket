@@ -1,11 +1,32 @@
 #lang racket/base
 
+;;;
+;;; Reference Output Pure Test
+;;;
+
+;; Checks page units, margins, output policies, explicit picture trust, and protected page syntax.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Native-free public API checks. No document or picture is allocated.
 (require rackunit racket/list skia)
 
 ;; Expand the actual imported macro in this module's namespace. Do not evaluate
 ;; the supplied form: even the document and dimension expressions may raise.
+; expansion-anchor : namespace-anchor?
+;;   Anchors page-form expansion in the namespace containing this module's imports.
 (define-namespace-anchor expansion-anchor)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; expand-page-form : any/c -> syntax?
+;;   Expands a page-scoping form in the test namespace without generating a native document.
 (define (expand-page-form form)
   (parameterize ([current-namespace (namespace-anchor->namespace expansion-anchor)])
     (expand (datum->syntax #f form))))

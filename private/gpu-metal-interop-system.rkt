@@ -1,9 +1,24 @@
 #lang racket/base
+
+;;;
+;;; Metal Interoperation System
+;;;
+
+;; Queries Metal texture properties and command-buffer status through Objective-C.
+;; Supplies platform operations for the backend-independent session policy.
+
 ;; Unsafe ObjC calls stay private, lazy; swizzle uses a typed SDK-checked four-byte aggregate.
 (require ffi/unsafe "gpu-provider.rkt" "gpu-native-scope.rkt"
          "gpu-metal-interop-session.rkt")
 (provide load-metal-interop-ops)
 (define-cstruct _mtl-swizzle ([red _uint8] [green _uint8] [blue _uint8] [alpha _uint8]))
+;; Fields:
+;;   red, green, blue, and alpha: one-byte Metal component-swizzle selectors, in channel order. This
+;;   is a packed native channel mapping, not RGBA sample values.
+
+; load-metal-interop-ops : any/c any/c -> metal-interop-ops?
+;;   Builds Objective-C texture inspection and command-buffer operations for the selected device and
+;;   queue.
 (define (load-metal-interop-ops device queue)
   (unless (and (eq? (system-type 'os) 'macosx)
                (memq (system-type 'arch) '(aarch64 x86_64)) (= (ctype-sizeof _pointer) 8))
@@ -38,7 +53,8 @@
     (list (mtl-swizzle-red v) (mtl-swizzle-green v) (mtl-swizzle-blue v) (mtl-swizzle-alpha v)))
   (define (act x name) (v0 x (sel name)))
   (define (nonnull who x)
-    (unless (and x (cpointer? x)) (raise-argument-error who "live non-null Objective-C object pointer" x)))
+    (unless (and x (cpointer? x)) (raise-argument-error who "live non-null Objective-C object pointer"
+      x)))
   (define (conforms x name)
     (define p (protocol name))
     (unless (and p (not (zero? (b1 x (sel "conformsToProtocol:") p))))
@@ -52,7 +68,8 @@
         (conforms texture "MTLTexture") (conforms producer "MTLCommandBuffer")
         (for ([name '("hazardTrackingMode" "swizzle" "isShareable" "remoteStorageTexture")])
           (unless (has? texture name)
-            (gpu-unavailable 'metal-interop-api "Metal interop requires the macOS 10.15+ texture API (~a)" name)))
+            (gpu-unavailable 'metal-interop-api
+              "Metal interop requires the macOS 10.15+ texture API (~a)" name)))
         (define q (get producer "commandQueue"))
         (hasheq 'width (uint texture "width") 'height (uint texture "height")
                 'depth (uint texture "depth") 'levels (uint texture "mipmapLevelCount")
@@ -71,7 +88,8 @@
                 'same_device (and (same? device (get texture "device")) q
                                   (same? device (get q "device")) #t)
                 'producer_retained_references (bool producer "retainedReferences")))))
-   (lambda (x) (native (lambda () (or (get x "retain") (error 'metal-interop "retain returned null")))))
+   (lambda (x) (native (lambda () (or (get x "retain") (error 'metal-interop
+     "retain returned null")))))
    (lambda (x) (native (lambda () (act x "release"))))
    (lambda (x) (native (lambda () (uint x "status"))))
    (lambda (x)
@@ -79,7 +97,8 @@
        (define e (get x "error"))
        (define text (and e (get e "localizedDescription")))
        (define utf8 (and text (get text "UTF8String")))
-       (if utf8 (string->immutable-string (cast utf8 _pointer _string/utf-8)) "no NSError description"))))
+       (if utf8 (string->immutable-string (cast utf8 _pointer _string/utf-8))
+         "no NSError description"))))
    (lambda ()
      (native (lambda ()
        (define command (get queue "commandBuffer"))

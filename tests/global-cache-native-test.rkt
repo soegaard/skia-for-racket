@@ -1,7 +1,33 @@
 #lang racket/base
+
+;;;
+;;; Global Cache Native Test
+;;;
+
+;; Covers native global caches and memory statistics.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui json "../main.rkt" "global-cache-support.rkt")
 (provide global-cache-native-tests global-cache-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; global-cache-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define global-cache-native-test-count 31)
+
+;;;
+;;; Regression Suite
+;;;
+
+; global-cache-native-tests : test-suite?
+;;   Collects the regression cases for native global caches and memory statistics.
 (define global-cache-native-tests
   (test-suite "Native global caches and memory statistics"
    (test-case "explicit initialization is idempotent"
@@ -30,7 +56,8 @@
         (check-equal? (skia-font-cache-count-limit) 128))))
    (test-case "font entry limit accepts zero"
      (with-restored-limits
-      (lambda () (skia-set-font-cache-count-limit! 0) (check-equal? (skia-font-cache-count-limit) 0))))
+      (lambda () (skia-set-font-cache-count-limit! 0)
+        (check-equal? (skia-font-cache-count-limit) 0))))
    (test-case "resource byte limit returns prior setting"
      (with-restored-limits
       (lambda ()
@@ -48,7 +75,8 @@
         (check-equal? (skia-resource-cache-single-allocation-limit) 524288))))
    (test-case "single allocation limit accepts zero"
      (with-restored-limits
-      (lambda () (skia-set-resource-cache-single-allocation-limit! 0) (check-equal? (skia-resource-cache-single-allocation-limit) 0))))
+      (lambda () (skia-set-resource-cache-single-allocation-limit! 0)
+        (check-equal? (skia-resource-cache-single-allocation-limit) 0))))
    (test-case "cache limit is independent of transfer allocation bound"
      (with-restored-limits
        (lambda ()
@@ -162,7 +190,8 @@
        (make-output-port 'cache-callback-test always-evt
          (lambda (bytes start end nonblocking? breakable?)
            (with-handlers ([exn:fail? (lambda (e)
-                                      (set! rejected? (regexp-match? #rx"live port callback" (exn-message e))))])
+                                        (set! rejected?
+                                          (regexp-match? #rx"live port callback" (exn-message e))))])
              (skia-cache-statistics))
            (write-bytes bytes sink start end))
          void))
@@ -211,6 +240,13 @@
        (collect-garbage)
        (check-pred memory-statistics? (skia-memory-statistics #:detailed? #t))))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (with-restored-limits (lambda () (run-tests global-cache-native-tests))))
   (printf "global-cache-native: ~a cases, ~a failures\n" global-cache-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

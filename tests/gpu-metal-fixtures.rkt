@@ -1,9 +1,38 @@
 #lang racket/base
+
+;;;
+;;; GPU Metal Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for Metal device/queue ownership, activation
+;; scopes, and abandonment.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 (require "../private/gpu-metal-util.rkt" "../private/gpu-native-scope.rkt"
          "../private/gpu-domain.rkt")
 (provide (struct-out metal-fixture) make-metal-fixture with-metal-fixture
          metal-events metal-event-count metal-live-refs)
+
+;;;
+;;; Fixtures and Assertions
+;;;
 (struct metal-fixture (provider driver scope events refs failure in-pool))
+;; provider: synthetic Metal provider produced by the injected platform ops.
+;; driver: matching context driver; it shares the provider's reference ledger.
+;; scope: simulated autorelease-pool scope required around native operations.
+;; events: box of event symbols, newest first; metal-events reverses for checks.
+;; refs: mutable hash of nonnegative device, queue, and context reference counts.
+;; failure: box containing #f or the operation tag that should fail.
+;; in-pool: box of a boolean, true only while the synthetic pool is active.
+;; No real Metal objects are owned here. Successful teardown balances all
+;; reference counts and pool entries, including after injected failures.
+
+; make-metal-fixture : [any/c] -> metal-fixture?
+;;   Builds synthetic Metal platform/context operations with pool and reference-count assertions.
 (define (make-metal-fixture [fail #f])
   (define events (box '()))
   (define context-token (gensym 'metal-context))
@@ -51,12 +80,24 @@
         (native!) (emit 'context-info) (fail! 'context-info)
         (hash-set details 'native_backend 2)))))
   (metal-fixture provider driver scope events refs failure in-pool))
+
+; with-metal-fixture : procedure? -> any
+;;   Scopes a GPU domain over the synthetic Metal provider and guarantees domain closure.
 (define (with-metal-fixture proc)
   (define f (make-metal-fixture))
   (define d (make-gpu-domain (metal-fixture-provider f) (metal-fixture-driver f)))
   (dynamic-wind void (lambda () (proc f d)) (lambda () (domain-close! d))))
+
+; metal-events : metal-fixture? -> list?
+;;   Returns recorded Metal lifecycle events in execution order.
 (define (metal-events f) (reverse (unbox (metal-fixture-events f))))
+
+; metal-event-count : metal-fixture? any/c -> exact-nonnegative-integer?
+;;   Counts occurrences of a selected synthetic Metal event.
 (define (metal-event-count f event)
   (for/sum ([x (in-list (metal-events f))]) (if (eq? x event) 1 0)))
+
+; metal-live-refs : metal-fixture? -> (listof exact-nonnegative-integer?)
+;;   Returns outstanding device, queue, and context reference counts in that order.
 (define (metal-live-refs f)
   (for/list ([key '(device queue context)]) (hash-ref (metal-fixture-refs f) key)))

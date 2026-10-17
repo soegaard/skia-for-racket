@@ -1,11 +1,45 @@
 #lang racket/base
-(require rackunit racket/list ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/geometry-util.rkt")
+
+;;;
+;;; Geometry Pure Test
+;;;
+
+;; Covers structured geometry: pure contracts and immutable specifications.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
+(require rackunit racket/list ffi/unsafe "../main.rkt" "../private/types.rkt"
+  "../private/geometry-util.rkt")
 (provide geometry-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; triangle : (listof (listof real?))
+;;   Provides three ordered vertices for triangle-mode validation and drawing.
 (define triangle '((0 0) (20 0) (0 20)))
+
+; square-patch : (listof (listof real?))
+;;   Orders twelve boundary control points clockwise around a square Coons patch.
 (define square-patch '((0 0) (10 0) (20 0) (30 0) (30 10) (30 20)
                        (30 30) (20 30) (10 30) (0 30) (0 20) (0 10)))
+
+; validate-vertices : symbol? list? [#:tex any/c #:colors any/c #:indices any/c] -> list?
+;;   Collects checked vertex geometry and optional attribute/index data without native allocation.
 (define (validate-vertices mode ps #:tex [tex #f] #:colors [colors #f] #:indices [indices #f])
   (call-with-values (lambda () (geometry-vertices 'test mode ps tex colors indices)) list))
+
+;;;
+;;; Regression Suite
+;;;
+
+; geometry-pure-tests : test-suite?
+;;   Collects the regression cases for structured geometry: pure contracts and immutable
+;;   specifications.
 (define geometry-pure-tests
   (test-suite
    "Structured geometry: pure contracts and immutable specifications"
@@ -44,24 +78,28 @@
        (check-equal? (vector-length (car (validate-vertices mode (append triangle '((2 2)))))) 4))
    )
    (test-case "texture coordinate count must match"
-     (check-exn exn:fail:contract? (lambda () (make-vertices 'triangles triangle #:texture-coordinates '((0 0)))))
+     (check-exn exn:fail:contract?
+       (lambda () (make-vertices 'triangles triangle #:texture-coordinates '((0 0)))))
    )
    (test-case "color count must match"
-     (check-exn exn:fail:contract? (lambda () (make-vertices 'triangles triangle #:colors '(red green))))
+     (check-exn exn:fail:contract?
+       (lambda () (make-vertices 'triangles triangle #:colors '(red green))))
    )
    (test-case "indices must address available vertices"
      (check-exn exn:fail:contract? (lambda () (make-vertices 'triangles triangle #:indices '(0 1 3))))
    )
    (test-case "indices must be exact nonnegative uint16 values"
      (for ([bad '(1.0 -1 65536)])
-       (check-exn exn:fail:contract? (lambda () (make-vertices 'triangles triangle #:indices (list 0 1 bad)))))
+       (check-exn exn:fail:contract?
+         (lambda () (make-vertices 'triangles triangle #:indices (list 0 1 bad)))))
    )
    (test-case "indices cannot submit incomplete triangles"
      (check-exn exn:fail:contract? (lambda () (make-vertices 'triangles triangle #:indices '(0 1))))
    )
    (test-case "combined vertex storage is budgeted"
      (parameterize ([current-skia-byte-limit 35])
-       (check-exn exn:fail:contract? (lambda () (make-vertices 'triangles triangle #:colors '(red green blue)))))
+       (check-exn exn:fail:contract?
+         (lambda () (make-vertices 'triangles triangle #:colors '(red green blue)))))
    )
    (test-case "nonfinite positions are rejected"
      (check-exn exn:fail:contract? (lambda () (make-vertices 'triangles '((0 0) (+inf.0 0) (0 10)))))
@@ -84,13 +122,16 @@
      (check-exn exn:fail:contract? (lambda () (make-image-lattice '() '())))
    )
    (test-case "cell types cover the full grid"
-     (check-exn exn:fail:contract? (lambda () (make-image-lattice '(8 16) '(8 16) #:cell-types '(default))))
+     (check-exn exn:fail:contract?
+       (lambda () (make-image-lattice '(8 16) '(8 16) #:cell-types '(default))))
    )
    (test-case "unknown lattice cell kinds are rejected"
-     (check-exn exn:fail:contract? (lambda () (make-image-lattice '(8) '() #:cell-types '(default bogus))))
+     (check-exn exn:fail:contract?
+       (lambda () (make-image-lattice '(8) '() #:cell-types '(default bogus))))
    )
    (test-case "fixed cells require a color array"
-     (check-exn exn:fail:contract? (lambda () (make-image-lattice '(8) '() #:cell-types '(default fixed-color))))
+     (check-exn exn:fail:contract?
+       (lambda () (make-image-lattice '(8) '() #:cell-types '(default fixed-color))))
    )
    (test-case "colors without cell types are not silently ignored"
      (check-exn exn:fail:contract? (lambda () (make-image-lattice '(8) '() #:colors '(red blue))))
@@ -118,7 +159,8 @@
      (check-equal? (atlas-transform-coefficients (make-atlas-transform 10 20)) #(1.0 0.0 10.0 20.0))
    )
    (test-case "atlas rotation and anchor map the anchor to the supplied point"
-     (define v (atlas-transform-coefficients (make-atlas-transform 40 50 #:scale 2 #:rotation 90 #:anchor '(3 4))))
+     (define v (atlas-transform-coefficients
+                 (make-atlas-transform 40 50 #:scale 2 #:rotation 90 #:anchor '(3 4))))
      (check-= (+ (* (vector-ref v 0) 3) (- (* (vector-ref v 1) 4)) (vector-ref v 2)) 40 1e-6)
      (check-= (+ (* (vector-ref v 1) 3) (* (vector-ref v 0) 4) (vector-ref v 3)) 50 1e-6)
    )
@@ -131,7 +173,8 @@
    )
    (test-case "patch corner arrays require four entries"
      (check-exn exn:fail:contract? (lambda () (make-cubic-patch square-patch #:colors '(red))))
-     (check-exn exn:fail:contract? (lambda () (make-cubic-patch square-patch #:texture-coordinates triangle)))
+     (check-exn exn:fail:contract?
+       (lambda () (make-cubic-patch square-patch #:texture-coordinates triangle)))
    )
    (test-case "patch snapshots are immutable"
      (define p (make-cubic-patch square-patch #:colors '(red green blue white)))

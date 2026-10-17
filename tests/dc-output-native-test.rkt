@@ -1,17 +1,55 @@
 #lang racket/base
+
+;;;
+;;; DC Output Native Test
+;;;
+
+;; Covers shared authoring on actual PDF, SVG and raster output canvases.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list racket/file
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt")
          "../dc-output.rkt" "../private/dc-support.rkt")
 (provide dc-output-native-tests dc-output-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fill : dc<%> ... -> void?
+;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;;   checks.
 (define (fill dc [color "blue"] [x 2] [y 3] [w 8] [h 6])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
+
+; page : procedure? [#:policy symbol?] -> output-page?
+;;   Builds a white document page with the requested representation policy.
 (define (page draw #:policy [policy 'prefer-vector])
   (make-dc-output-page 80 60 draw #:background 'white #:policy policy))
+
+; export : procedure? symbol? [#:policy symbol?] -> bytes?
+;;   Executes the DC-authored page through the selected output encoder.
 (define (export draw format #:policy [policy 'prefer-vector])
   (sk:output->bytes (page draw #:policy policy) format))
+
+; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
+; (listof byte?)
+;;   Extracts one row-major RGBA pixel from an output capture.
 (define (pixel bytes width x y)
   (define n (* 4 (+ x (* width y)))) (bytes->list (subbytes bytes n (+ n 4))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-output-native-tests : test-suite?
+;;   Collects the regression cases for shared authoring on actual PDF, SVG and raster output
+;;   canvases.
 (define dc-output-native-tests
   (test-suite
    "Shared authoring on actual PDF, SVG and raster output canvases"
@@ -133,10 +171,20 @@
        (page (lambda (dc) (draw-dc-raster-group dc 1 1 20 10 fill))) 'svg #:policy 'error))
      (check-false (sk:output-audit-report-blocking? report))
      (check-true (regexp-match? #rx#"<image" bytes)))))
+
+; dc-output-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-output-native-test-count 22)
 (module+ main
   (require rackunit/text-ui)
   (sk:skia-check!)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests dc-output-native-tests))
   (printf "dc-output-native: ~a cases, ~a failures\n" dc-output-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

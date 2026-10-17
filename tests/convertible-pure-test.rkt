@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Convertible Pure Test
+;;;
+
+;; Covers file/convertible dispatch without native loading.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; These checks exercise property dispatch and GPU affinity without loading the
 ;; native library. Native pixels, documents, pict, and Scribble live in the
 ;; companion native suite.
@@ -11,10 +23,24 @@
          (submod "../private/core.rkt" gpu-surface-internals))
 (provide convertible-pure-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fake-gpu-surface : gpu-domain? box? box? -> gpu-surface?
+;;   Wraps a mock owned surface so conversion dispatch can be checked without GPU allocation.
 (define (fake-gpu-surface domain log abandoned?)
   (make-gpu-surface-record (mock-resource domain log abandoned? 'surface) 8 8 '()
                            'mock-context domain #f (hasheq 'storage "gpu")))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; convertible-pure-tests : test-suite?
+;;   Collects the regression cases for file/convertible dispatch without native loading.
 (define convertible-pure-tests
   (test-suite
    "file/convertible dispatch without native loading"
@@ -55,5 +81,12 @@
         (skia-close! surface))))))
 
 (module+ test
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests convertible-pure-tests))
   (unless (zero? failures) (error 'convertible-pure-test "~a failures" failures)))

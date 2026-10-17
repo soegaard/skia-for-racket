@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU Metal Interop Doctor
+;;;
+
+;; Exercises Metal texture handoff, producer completion, and retained ownership and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/path racket/list rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt" "../unsafe/gpu-metal.rkt"
          "../private/gpu-io-trace.rkt" "../private/gpu-metal-interop-policy.rkt"
@@ -6,9 +18,18 @@
          "../tests/metal-interop-fixture.rkt" "../tests/gpu-metal-interop-native-test.rkt"
          "gpu-report.rkt")
 (provide gpu-metal-interop-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-metal-interop-doctor! : path? path-string? [#:timeout-case? boolean?] -> exact-integer?
+;;   Runs independent Metal handoffs or an isolated timeout/quarantine scenario and publishes the
+;;   corresponding receipt.
 (define (gpu-metal-interop-doctor! directory fixture-path #:timeout-case? [timeout-case? #f])
   (define run (path->string (file-name-from-path (simplify-path directory))))
-  (define file (build-path directory (if timeout-case? "metal-interop.timeout.json" "metal-interop.diagnostic.json")))
+  (define file (build-path directory
+                 (if timeout-case? "metal-interop.timeout.json" "metal-interop.diagnostic.json")))
   (define base
     (hasheq 'schema 1 'stage "0.52" 'backend "metal" 'validation_run run
             'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
@@ -21,7 +42,8 @@
     (emit (hash-set* base 'status "failed" 'error message))
     (eprintf "Metal interop FAILED: ~a\n" message) 1)
   (with-handlers ([(lambda (_) #t) failure])
-    (unless (eq? (system-type 'os) 'macosx) (error 'metal-interop-doctor "requires macOS; no optional skip"))
+    (unless (eq? (system-type 'os) 'macosx)
+      (error 'metal-interop-doctor "requires macOS; no optional skip"))
     (make-directory* directory)
     (load-metal-fixture! fixture-path)
     (cond
@@ -44,7 +66,8 @@
            (unless caught (error 'metal-interop-doctor "specific timeout exception was not observed"))
            (define native (hash-ref (gpu-external-texture-info t) 'native))
            (define info (gpu-context-info c))
-           (unless (and (hash-ref native 'quarantined) (equal? (hash-ref native 'error_reason) "timeout")
+           (unless
+             (and (hash-ref native 'quarantined) (equal? (hash-ref native 'error_reason) "timeout")
                         (null? (hash-ref native 'waits)) (hash-ref native 'retained_texture)
                         (hash-ref native 'retained_producer) (hash-ref info 'shutdown_requested)
                         (positive? (hash-ref info 'live_children)))
@@ -70,7 +93,8 @@
          (lambda () (close-gpu-contexts! (filter values (list b a)) gpu-context-close!)))
        (set! suite-closed (map gpu-context-info (list a b)))
        (for-each check-gpu-teardown! suite-closed)
-       (unless (and failures (zero? failures)) (error 'metal-interop-doctor "native interop suite failed"))
+       (unless (and failures (zero? failures))
+         (error 'metal-interop-doctor "native interop suite failed"))
        (define cycles '()) (define captures '()) (define pending '())
        (dynamic-wind void
          (lambda ()
@@ -108,15 +132,22 @@
                                    (define name (format "cycle-~a-context-~a-~a.png" cycle slot mode))
                                    (define im (rgba-bytes->image 37 29 bytes #:premultiplied? #t))
                                    (set! pending (cons (cons im name) pending))
-                                   (set! captures (cons (hasheq 'cycle cycle 'context slot 'ordinal ordinal
-                                     'mode (symbol->string mode) 'png name 'width 37 'height 29) captures)))
-                                 (set! handoffs (cons (hasheq 'ordinal ordinal 'mode (symbol->string mode)
+                                   (set! captures (cons
+                                                    (hasheq 'cycle cycle 'context slot 'ordinal
+                                                      ordinal
+                                     'mode (symbol->string mode) 'png name 'width 37 'height 29)
+                                                    captures)))
+                                 (set! handoffs (cons
+                                                  (hasheq 'ordinal ordinal 'mode (symbol->string mode)
                                    'handoff (gpu-external-texture-info t) 'image image-info
                                    'producer_closed_before_skia_readback (eq? mode 'copy)
                                    'independent_consumer_readback (eq? mode 'surface)
-                                   'pixels_verified #t 'io_events (reverse (unbox ledger))) handoffs)))
+                                   'pixels_verified #t 'io_events (reverse (unbox ledger)))
+                                                  handoffs)))
                                (lambda () (when image (skia-close! image)))))))))
-                   (set! rows (cons (hasheq 'context slot 'initial initial 'handoffs (reverse handoffs)) rows))))
+                   (set! rows (cons
+                                (hasheq 'context slot 'initial initial 'handoffs
+                                  (reverse handoffs)) rows))))
                (lambda () (close-gpu-contexts! contexts gpu-context-close!)))
              (define finals (map gpu-context-info contexts))
              (for-each check-gpu-teardown! finals)
@@ -139,7 +170,20 @@
            0)
          (lambda () (for ([entry (in-list pending)]) (skia-close! (car entry)))))])))
 (module+ main
-  (define directory #f) (define fixture #f) (define timeout? #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; fixture : (or/c path-string? #f)
+  ;;   Selects the external Metal producer fixture library used for retained texture handoff checks.
+  (define fixture #f)
+  ; timeout? : boolean?
+  ;;   Selects the deliberately blocked producer/consumer case used to validate timeout handling.
+  (define timeout? #f)
   (command-line #:once-each
     [("--directory") p "Fresh evidence directory" (set! directory (string->path p))]
     [("--fixture") p "Independent native test fixture" (set! fixture (string->path p))]

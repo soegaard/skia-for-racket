@@ -1,10 +1,30 @@
 #lang racket/base
+
+;;;
+;;; GPU Interop Doctor
+;;;
+
+;; Exercises external Direct3D textures, state handoff, and synchronization and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/path rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-gl-interop.rkt"
          "../tests/gpu-gl-fixtures.rkt" "../tests/gpu-gl-interop-native-test.rkt"
          "../private/gpu-gl-interop-native.rkt" "../private/gpu-io-trace.rkt"
          "gpu-test-host.rkt" "gpu-report.rkt")
 (provide gpu-interop-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-interop-doctor! : path-string? ... -> exact-integer?
+;;   Checks external GL borrowing/copy workflows and publishes teardown plus independently
+;;   inspectable captures.
 (define (gpu-interop-doctor! prefix #:host [host-mode 'gui] #:egl-platform [platform 'surfaceless]
                              #:egl-device-index [index 0] #:egl-surface [surface 'surfaceless]
                              #:required? [required? #t] #:require-hardware? [hardware? #f])
@@ -43,11 +63,13 @@
               (parameterize-break #f (set! context (make-context)) (set! other (make-other)))
               (set! initial (gpu-context-info context))
               (set! started? #t)
-              (when (and hardware? (not (equal? (hash-ref initial 'renderer_class) "hardware-reported")))
+              (when
+                (and hardware? (not (equal? (hash-ref initial 'renderer_class) "hardware-reported")))
                 (error 'gpu-interop-doctor "hardware-reported renderer required"))
               (gl-interop-native-check!)
               (set! failures (run-tests (make-gpu-gl-interop-native-tests context other)))
-              (unless (zero? failures) (error 'gpu-interop-doctor "GL interoperability suite failed: ~a" failures))
+              (unless (zero? failures)
+                (error 'gpu-interop-doctor "GL interoperability suite failed: ~a" failures))
               (call-with-gpu-context context
                 (lambda ()
                   (define native (make-gl-fixture context))
@@ -57,27 +79,32 @@
                       (define source (gl-fixture-pixels native))
                       (set! copied
                         (parameterize ([current-gpu-io-ledger ledger])
-                          (gpu-copy-gl-texture context (gl-fixture-texture native) 8 8 #:origin 'top-left)))
+                          (gpu-copy-gl-texture context (gl-fixture-texture native) 8 8 #:origin
+                            'top-left)))
                       (define info (gpu-image-info copied))
                       (parameterize ([current-gpu-io-ledger ledger])
                         (call-with-gpu-gl-framebuffer context (gl-fixture-framebuffer native) 8 8
                           (lambda (canvas) (canvas-clear! canvas 'blue)) #:origin 'top-left))
                       (define alive (gl-fixture-alive? native))
-                      (unless alive (error 'gpu-interop-doctor "host object name deleted by borrowing"))
+                      (unless alive (error 'gpu-interop-doctor
+                                      "host object name deleted by borrowing"))
                       (define framebuffer-result (gl-fixture-pixels native))
                       (delete-gl-fixture! native)
                       ;; The copied GPU image remains live after its external
                       ;; GL source is destroyed. Only final validation downloads.
                       (define copied-result (gpu-image->rgba-bytes copied))
                       (for ([pixels (in-list (list source framebuffer-result copied-result))]
-                            [suffix (in-list '(".host-source.png" ".host-framebuffer.png" ".owned-copy.png"))])
+                             [suffix (in-list
+                                       '(".host-source.png" ".host-framebuffer.png"
+                                          ".owned-copy.png"))])
                         (with-skia ([im (rgba-bytes->image 8 8 pixels)])
                           (save-image im (file suffix) 'png #:exists 'replace)))
                       (set! workflow
                         (hasheq 'source_image (base (file ".host-source.png"))
                                 'framebuffer_image (base (file ".host-framebuffer.png"))
                                 'copy_image (base (file ".owned-copy.png")) 'image info
-                                'host_names_survived_borrow alive 'source_deleted_before_copy_readback #t
+                                'host_names_survived_borrow alive
+                          'source_deleted_before_copy_readback #t
                                 'framebuffer_read_by_host #t 'cpu_validation_readbacks 3)))
                     (lambda () (when copied (skia-close! copied)) (delete-gl-fixture! native))))))
             (lambda () (close-gpu-contexts! (list other context) gpu-context-close!)))))))
@@ -88,8 +115,33 @@
     (displayln "GL borrowing/copy workflow passed; exact PNG inspection is a separate step.")
     0))
 (module+ main
-  (define prefix "output/gpu-interop-0.43") (define host-mode 'gui) (define platform 'surfaceless)
-  (define index 0) (define surface 'surfaceless) (define required? #t) (define hardware? #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; prefix : path-string?
+  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  (define prefix "output/gpu-interop-0.43")
+  ; host-mode : symbol?
+  ;;   Selects the GUI, EGL, or owned backend host used to activate the GPU context.
+  (define host-mode 'gui)
+  ; platform : symbol?
+  ;;   Selects the EGL platform, initially the display-server-free surfaceless platform.
+  (define platform 'surfaceless)
+
+  ; index : exact-nonnegative-integer?
+  ;;   Selects the zero-based EGL device for device-platform contexts.
+  (define index 0)
+  ; surface : symbol?
+  ;;   Selects the EGL binding surface kind, initially surfaceless.
+  (define surface 'surfaceless)
+  ; required? : boolean?
+  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  (define required? #t)
+  ; hardware? : boolean?
+  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]
     [("--host") p "gui or egl" (set! host-mode (string->symbol p))]
@@ -100,4 +152,5 @@
     [("--require-hardware") "Reject software/unclassified renderers" (set! hardware? #t)]
     #:args () (void))
   (exit (gpu-interop-doctor! prefix #:host host-mode #:egl-platform platform #:egl-device-index index
-                           #:egl-surface surface #:required? required? #:require-hardware? hardware?)))
+                           #:egl-surface surface #:required? required? #:require-hardware?
+          hardware?)))

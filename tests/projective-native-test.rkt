@@ -1,16 +1,52 @@
 #lang racket/base
+
+;;;
+;;; Projective Native Test
+;;;
+
+;; Covers general canvas matrices: native storage, lifetime, and document policies.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list ffi/unsafe "../main.rkt" "../private/types.rkt"
          (submod "../canvas-matrix.rkt" testing))
 (provide projective-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; check-matrix-close : any/c any/c -> void?
+;;   Compares projective matrix coefficients within native precision tolerance.
 (define (check-matrix-close a b)
   (for ([x (in-vector (matrix4->vector a))] [y (in-vector (matrix4->vector b))]) (check-= x y 1e-5)))
+
+; page : procedure? -> output-page?
+;;   Wraps a projective drawing in a fixed output page for audit comparisons.
 (define (page f) (make-output-page 100 80 f))
+
+; has-feature? : output-audit-report? symbol? symbol? -> boolean?
+;;   Finds a feature with the expected projective-output classification.
 (define (has-feature? report feature status)
   (for/or ([e (in-list (output-audit-report-events report))])
     (and (eq? (output-audit-event-feature e) feature) (eq? (output-audit-event-status e) status))))
+
+; projective-drawing : canvas? -> any
+;;   Draws the shared perspective-transformed scene for raster/vector behavior checks.
 (define (projective-drawing c)
   (canvas-concat-matrix3! c (matrix3-perspective 1/32 0))
   (with-skia ([p (make-paint #:color 'red)]) (draw-rect c 16 16 32 32 p)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; projective-native-tests : test-suite?
+;;   Collects the regression cases for general canvas matrices: native storage, lifetime, and
+;;   document policies.
 (define projective-native-tests
   (test-suite "General canvas matrices: native storage, lifetime, and document policies"
    (test-case "row-major public data crosses the column-major ABI"
@@ -94,14 +130,16 @@
        (define a (matrix4-perspective 128)) (define b (matrix4-rotate-y-degrees 45))
        (canvas-concat-matrix4! c a) (canvas-concat-matrix4! c b)
        (define p (matrix3-map-point (matrix4-project-xy (canvas-matrix4 c)) 20 10))
-       (define q (matrix3-map-point (matrix3-compose (matrix4-project-xy a) (matrix4-project-xy b)) 20 10))
+       (define q
+         (matrix3-map-point (matrix3-compose (matrix4-project-xy a) (matrix4-project-xy b)) 20 10))
        (check-true (> (abs (- (vector-ref p 0) (vector-ref q 0))) 1)))
    )
    (test-case "matrix replacement does not replace the existing device clip"
      (with-skia ([s (make-surface 80 80)])
        (define c (surface-canvas s)) (canvas-clip-rect! c 10 15 30 35)
        (define bounds (canvas-device-clip-bounds c))
-       (canvas-set-matrix4! c (matrix4-compose (matrix4-perspective 100) (matrix4-rotate-y-degrees 30)))
+       (canvas-set-matrix4! c
+         (matrix4-compose (matrix4-perspective 100) (matrix4-rotate-y-degrees 30)))
        (check-equal? (canvas-device-clip-bounds c) bounds))
    )
    (test-case "matrix scope composes and returns multiple values"
@@ -159,9 +197,12 @@
    (test-case "scope contracts reject before saving"
      (with-skia ([s (make-surface 80 80)])
        (define c (surface-canvas s)) (define count (canvas-save-count c))
-       (check-exn exn:fail:contract? (lambda () (call-with-canvas-matrix c matrix4-identity void #:replace? 'yes)))
-       (check-exn exn:fail:contract? (lambda () (call-with-canvas-matrix c matrix4-identity (lambda (x) x))))
-       (check-exn exn:fail:contract? (lambda () (call-with-canvas-matrix c matrix4-identity (lambda (#:x x) x))))
+       (check-exn exn:fail:contract?
+         (lambda () (call-with-canvas-matrix c matrix4-identity void #:replace? 'yes)))
+       (check-exn exn:fail:contract?
+         (lambda () (call-with-canvas-matrix c matrix4-identity (lambda (x) x))))
+       (check-exn exn:fail:contract?
+         (lambda () (call-with-canvas-matrix c matrix4-identity (lambda (#:x x) x))))
        (check-equal? (canvas-save-count c) count))
    )
    (test-case "concatenation overflow rejects before native state changes"
@@ -224,7 +265,8 @@
    (test-case "explicit document raster groups resolve perspective"
      (for ([backend '(pdf svg)])
        (define-values (bs r) (output->bytes/audit
-         (page (lambda (c) (draw-rasterized c 0 0 64 64 projective-drawing #:scale 2))) backend #:policy 'error))
+         (page (lambda (c) (draw-rasterized c 0 0 64 64 projective-drawing #:scale 2))) backend
+                               #:policy 'error))
        (check-true (has-feature? r 'projective-transform 'rasterized))
        (check-false (output-audit-report-blocking? r))
        (check-true (positive? (bytes-length bs)))
@@ -234,7 +276,8 @@
      (for ([backend '(pdf svg)])
        (define-values (_bs r) (output->bytes/audit
          (page (lambda (c) (with-canvas-matrix c (matrix4-translate 10 20)
-           (with-skia ([p (make-paint #:color 'red)]) (draw-rect c 0 0 20 20 p))))) backend #:policy 'vector-only))
+           (with-skia ([p (make-paint #:color 'red)]) (draw-rect c 0 0 20 20 p))))) backend
+                                #:policy 'vector-only))
        (check-true (output-audit-report-vector-only? r)))
    )
    (test-case "pre-recorded perspective content keeps its provenance"
@@ -246,7 +289,9 @@
    (test-case "pre-recorded perspective content works inside explicit fallback"
      (with-skia ([pic (call-with-picture 64 64 projective-drawing)])
        (define-values (_bs r) (output->bytes/audit
-         (page (lambda (c) (draw-rasterized c 0 0 64 64 (lambda (r) (draw-picture r pic)) #:scale 2))) 'svg #:policy 'error))
+         (page (lambda (c)
+                 (draw-rasterized c 0 0 64 64 (lambda (r) (draw-picture r pic)) #:scale 2))) 'svg
+                                #:policy 'error))
        (check-true (has-feature? r 'projective-transform 'rasterized)))
    )
    (test-case "concatenation retains exporter physical units and margins"
@@ -270,9 +315,11 @@
      (for ([backend '(pdf svg)])
        (define r (analyze-output-page
          (page (lambda (c) (canvas-concat-matrix3! c (matrix3-perspective 1/32 0))
-           (draw-rasterized c 0 0 30 30 (lambda (r) (with-skia ([p (make-paint)]) (draw-rect r 0 0 20 20 p)))))) backend))
+           (draw-rasterized c 0 0 30 30
+             (lambda (r) (with-skia ([p (make-paint)]) (draw-rect r 0 0 20 20 p)))))) backend))
        (check-true (has-feature? r 'projective-transform 'needs-raster)))
    )
 ))
 (module+ test
-  (unless (zero? (run-tests projective-native-tests)) (error 'projective-native-tests "test failure")))
+  (unless (zero? (run-tests projective-native-tests))
+    (error 'projective-native-tests "test failure")))

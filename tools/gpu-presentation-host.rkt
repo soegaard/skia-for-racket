@@ -1,9 +1,32 @@
 #lang racket/base
+
+;;;
+;;; GPU Presentation Eventspace Host
+;;;
+
+;; Loads presentation widgets and dispatches work on their GUI handler thread.
+;; Presentation diagnostics use this boundary to preserve eventspace ownership while testing
+;; windows.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; GUI initialization and synchronous handoff are explicit diagnostic operations.
 ;; Loading this helper does not itself initialize a display server.
 (require racket/async-channel racket/runtime-path "../private/gpu-provider.rkt")
 (provide call-on-presentation-handler)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; widgets : path?
+;;   Locates ../gpu-gui.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path widgets "../gpu-gui.rkt")
+
+; call-on-presentation-handler : procedure? -> any/c
+;;   Runs the callback with the window class and event-settling thunk on an owned GUI eventspace,
+;;   then shuts down that eventspace.
 (define (call-on-presentation-handler proc)
   (define-values (current-space make-space handler-thread enqueue settle)
     (with-handlers ([exn:fail?

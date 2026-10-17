@@ -1,29 +1,81 @@
 #lang racket/base
+
+;;;
+;;; Codec Scanline Native Test
+;;;
+
+;; Covers native scanline decoding and cursor ownership.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/list
          "../main.rkt" "codec-scanline-fixtures.rkt" "codec-fixtures.rkt")
 (provide codec-scanline-native-tests codec-scanline-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; codec-scanline-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define codec-scanline-native-test-count 47) ; regenerated from actual test forms
-(define W scanline-fixture-width) (define H scanline-fixture-height)
+
+; W : exact-positive-integer?
+;;   Aliases the fixture width used to calculate packed RGBA row offsets.
+(define W scanline-fixture-width)
+; H : exact-positive-integer?
+;;   Aliases the fixture height used by cursor and batch-boundary checks.
+(define H scanline-fixture-height)
+
+; bytes-slice : exact-nonnegative-integer? exact-nonnegative-integer? -> bytes?
+;;   Selects complete logical RGBA rows from the expected fixture image.
 (define (bytes-slice y count) (subbytes (scanline-fixture-rgba) (* y W 4) (* (+ y count) W 4)))
+
+; whole : bytes? -> bytes?
+;;   Decodes an entire image without origin normalization as the scanline comparison oracle.
 (define (whole bytes)
   (with-skia ([codec (codec-from-bytes bytes)] [image (codec->image codec #:normalize-origin? #f)])
     (image->rgba-bytes image)))
+
+; with-bmp : procedure? [#:top-down? boolean?] -> any
+;;   Scopes a BMP scanline decoder around a callback and releases it afterward.
 (define (with-bmp proc #:top-down? [td? #f])
   (with-skia ([s (codec-scanline-from-bytes (scanline-fixture-bmp #:top-down? td?))]) (proc s)))
+
+; batch-rgba : scanline-batch? -> bytes?
+;;   Converts a detached batch to canonical RGBA through a temporary raster buffer.
 (define (batch-rgba batch)
   (with-skia ([b (scanline-batch->raster-buffer batch)]) (raster-buffer->rgba-bytes b)))
+
+; with-input-file : bytes? (path? -> any) -> any
+;;   Writes a temporary BMP fixture and removes it even when the callback fails.
 (define (with-input-file bytes proc)
   (define path (make-temporary-file "skia-scanlines-~a.bmp"))
   (dynamic-wind
-    (lambda () (call-with-output-file path (lambda (out) (write-bytes bytes out)) #:mode 'binary #:exists 'truncate))
+    (lambda () (call-with-output-file path (lambda (out) (write-bytes bytes out)) #:mode 'binary
+                 #:exists 'truncate))
     (lambda () (proc path))
     (lambda () (delete-file path))))
+
+; other-thread-error : (-> any) -> void?
+;;   Requires a worker-thread ownership error within a bounded wait.
 (define (other-thread-error thunk)
   (define answer (make-channel))
-  (define worker (thread (lambda () (channel-put answer (with-handlers ([exn:fail? values]) (thunk) #f)))))
+  (define worker
+    (thread (lambda () (channel-put answer (with-handlers ([exn:fail? values]) (thunk) #f)))))
   (define result (sync/timeout 10 answer))
   (unless result (kill-thread worker))
   (check-pred exn:fail? result))
+
+;;;
+;;; Regression Suite
+;;;
+
+; codec-scanline-native-tests : test-suite?
+;;   Collects the regression cases for native scanline decoding and cursor ownership.
 (define codec-scanline-native-tests
   (test-suite "0.76b native scanline decoding and cursor ownership"
     (test-case "session is an ordinary owned resource"
@@ -56,11 +108,13 @@
         (codec-scanline-output-row s 3)
         (check-equal? (codec-scanline-position s) 0))))
     (test-case "top-down one-row reads match known pixels"
-      (with-bmp (lambda (s) (check-equal? (scanline-collect-bytes s 1) (scanline-fixture-rgba))) #:top-down? #t))
+      (with-bmp (lambda (s) (check-equal? (scanline-collect-bytes s 1) (scanline-fixture-rgba)))
+        #:top-down? #t))
     (test-case "bottom-up one-row reads match known pixels"
       (with-bmp (lambda (s) (check-equal? (scanline-collect-bytes s 1) (scanline-fixture-rgba)))))
     (test-case "top-down batches match known pixels"
-      (with-bmp (lambda (s) (check-equal? (scanline-collect-bytes s 2) (scanline-fixture-rgba))) #:top-down? #t))
+      (with-bmp (lambda (s) (check-equal? (scanline-collect-bytes s 2) (scanline-fixture-rgba)))
+        #:top-down? #t))
     (test-case "bottom-up batches reverse within each chunk"
       (with-bmp (lambda (s)
         (define batch (codec-scanline-read! s 2))
@@ -70,7 +124,9 @@
     (test-case "bottom-up mixed batches assemble the complete image"
       (with-bmp (lambda (s) (check-equal? (scanline-collect-bytes s 3) (scanline-fixture-rgba)))))
     (test-case "whole-image scanline call preserves logical row order"
-      (with-bmp (lambda (s) (check-equal? (scanline-batch-bytes (codec-scanline-read! s H)) (scanline-fixture-rgba)))))
+      (with-bmp
+        (lambda (s) (check-equal? (scanline-batch-bytes (codec-scanline-read! s H))
+                      (scanline-fixture-rgba)))))
     (test-case "end of scanline mode is not an out-of-range native query"
       (with-bmp (lambda (s)
         (codec-scanline-read! s H)
@@ -112,11 +168,13 @@
         (define batch (codec-scanline-read! s 2 #:row-bytes 32))
         (check-equal? (scanline-batch-row-bytes batch) 32)
         (check-equal? (bytes-length (scanline-batch-bytes batch)) 64)
-        (for ([i '(28 29 30 31 60 61 62 63)]) (check-equal? (bytes-ref (scanline-batch-bytes batch) i) 0))
+        (for ([i '(28 29 30 31 60 61 62 63)])
+          (check-equal? (bytes-ref (scanline-batch-bytes batch) i) 0))
         (check-equal? (batch-rgba batch) (bytes-slice 3 2)))))
     (test-case "invalid stride fails before native consumption"
       (with-bmp (lambda (s)
-        (for ([n '(27 29)]) (check-exn exn:fail? (lambda () (codec-scanline-read! s 2 #:row-bytes n))))
+        (for ([n '(27 29)])
+          (check-exn exn:fail? (lambda () (codec-scanline-read! s 2 #:row-bytes n))))
         (check-equal? (codec-scanline-position s) 0))))
     (test-case "allocation quota fails before native consumption"
       (with-bmp (lambda (s)
@@ -126,7 +184,9 @@
         (check-true (scanline-batch-complete? (codec-scanline-read! s 1))))))
     (test-case "session capture limit cannot be enlarged later"
       (define limit (bytes-length (scanline-fixture-bmp)))
-      (define s (parameterize ([current-skia-byte-limit limit]) (codec-scanline-from-bytes (scanline-fixture-bmp))))
+      (define s
+        (parameterize ([current-skia-byte-limit limit])
+          (codec-scanline-from-bytes (scanline-fixture-bmp))))
       (with-skia ([session s])
         (parameterize ([current-skia-byte-limit (* 10 limit)])
           (check-exn exn:fail? (lambda () (codec-scanline-read! session 1 #:row-bytes (* 4 limit)))))
@@ -156,9 +216,12 @@
         (check-equal? (image-info-width (codec-scanline-info s)) W)
         (check-equal? (scanline-collect-bytes s 2) (scanline-fixture-rgba))))
     (test-case "EXIF is reported but not silently applied to row coordinates"
-      (with-skia ([s (codec-scanline-from-bytes (jpeg-with-origin (scanline-fixture-jpeg) 6) #:scale 1/2)])
+      (with-skia
+        ([s (codec-scanline-from-bytes (jpeg-with-origin (scanline-fixture-jpeg) 6) #:scale 1/2)])
         (check-equal? (encoded-image-info-origin (codec-scanline-source-info s)) 'right-top)
-        (check-equal? (list (image-info-width (codec-scanline-info s)) (image-info-height (codec-scanline-info s))) '(8 6))))
+        (check-equal?
+          (list (image-info-width (codec-scanline-info s))
+            (image-info-height (codec-scanline-info s))) '(8 6))))
     (test-case "unsupported PNG scanlines report native unimplemented"
       (define bytes (scanline-fixture-png))
       (check-exn (lambda (e) (and (exn:fail:codec-scanline? e)
@@ -272,11 +335,19 @@
       (define bytes (scanline-fixture-bmp))
       (with-skia ([codec (codec-from-bytes bytes)] [s (codec-scanline-from-bytes bytes)])
         (codec-scanline-skip! s 2)
-        (with-skia ([image (codec->image codec)]) (check-equal? (image->rgba-bytes image) (scanline-fixture-rgba)))
+        (with-skia ([image (codec->image codec)])
+          (check-equal? (image->rgba-bytes image) (scanline-fixture-rgba)))
         (check-equal? (codec-scanline-position s) 2)))
 ))
 (module+ main
   (skia-check!)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-scanline-native-tests))
   (printf "codec-scanline-native: ~a cases, ~a failures\n" codec-scanline-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

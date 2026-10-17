@@ -1,4 +1,18 @@
 #lang racket/base
+
+;;;
+;;; Drawing Contexts for Document Output
+;;;
+
+;; Supplies Skia drawing contexts to document callbacks and supports explicit raster groups and
+;; annotations.
+;; This public bridge connects Racket drawing-context authoring to the existing PDF/SVG page, audit,
+;; and output-policy machinery.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Opt-in bridge. Do not add this module to main.rkt: native DC metrics already
 ;; depend on main.rkt, and neither the CPU nor GPU entry point should change.
 (require racket/class racket/list
@@ -12,11 +26,23 @@
 (provide make-dc-output-page call-with-output-dc skia-output-dc? output-dc-capabilities
          current-output-dc-command-limit draw-dc-raster-group
          dc-annotate-url! dc-define-destination! dc-link-destination!)
+; vector-only? : (parameter/c boolean?)
+;;   Tracks whether the current drawing scope forbids implicit raster fallbacks.
 (define vector-only? (make-parameter #f))
+; in-explicit-raster? : (parameter/c boolean?)
+;;   Tracks explicit raster scopes so annotations cannot silently disappear inside them.
 (define in-explicit-raster? (make-parameter #f))
+; check-policy : symbol? -> void?
+;;   Accepts only prefer-vector and require-vector output policies.
 (define (check-policy policy)
   (unless (memq policy '(prefer-vector require-vector))
     (raise-argument-error 'dc-output "'prefer-vector or 'require-vector" policy)))
+; call-with-output-dc : canvas? (and/c real? (>/c 0) (<=/c 32768)) (and/c real? (>/c 0) (<=/c
+;   32768)) (-> (is-a?/c draw:dc<%>) any) [#:policy (or/c 'prefer-vector 'require-vector)]
+;   [#:background (or/c string? (is-a?/c draw:color%))] [#:smoothing (or/c 'unsmoothed 'smoothed
+;   'aligned)] [#:text-mode (or/c 'native 'outline)] [#:raster-scale (real-in 1/1024 1024)] ->
+;   (and/c hash? immutable?)
+;;   Captures one drawing callback and replays its commands onto canvas.
 (define (call-with-output-dc c width height draw
                              #:policy [policy 'prefer-vector]
                              #:background [background "white"]
@@ -54,9 +80,19 @@
             'dc_expired #t 'groups groups
             'native_groups (count-groups groups "native")
             'raster_groups (count-groups groups "raster"))))
+; count-groups : (listof hash?) symbol? -> exact-nonnegative-integer?
+;;   Counts captured output groups using the requested rendering strategy.
 (define (count-groups groups strategy)
   (count (lambda (g) (equal? (hash-ref g 'strategy) strategy)) groups))
 
+; make-dc-output-page : (and/c real? (>/c 0) (<=/c 32768)) (and/c real? (>/c 0) (<=/c 32768)) (->
+;   (is-a?/c draw:dc<%>) any) [#:unit (or/c 'pt 'in 'mm 'cm 'px)] [#:margins (or/c (and/c real?
+;   (>=/c 0)) (list/c (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) (and/c
+;   real? (>=/c 0))))] [#:background (or/c color? #f)] [#:smoothing (or/c 'unsmoothed 'smoothed
+;   'aligned)] [#:policy (or/c 'prefer-vector 'require-vector)] [#:on-report (-> (and/c hash?
+;   immutable?) any)] -> output-page?
+;;   Creates an ordinary detached output-page description whose drawing callback is adapted through
+;;   call-with-output-dc.
 (define (make-dc-output-page width height draw
                              #:unit [unit 'pt] #:margins [margins 0]
                              #:background [background #f]
@@ -79,33 +115,53 @@
       (on-report (call-with-output-dc c cw ch draw #:smoothing smoothing #:policy policy)))
     #:unit unit #:margins margins #:background background #:clip? #t))
 
+; live-dc! : symbol? any/c -> void?
+;;   Checks the drawing-context interface and probes its size before output operations.
 (define (live-dc! who dc)
   (unless (is-a? dc rd:dc<%>) (raise-argument-error who "dc<%> object" dc))
   (send dc get-size)
   (void))
+; annotation! : symbol? (is-a?/c rd:dc<%>) symbol? list? -> void?
+;;   Forwards document annotations, rejecting explicit raster scopes and ignoring raster/GPU
+;;   targets.
 (define (annotation! who dc kind args)
   (live-dc! who dc)
   (when (in-explicit-raster?)
-    (dc-unsupported who 'annotation-inside-explicit-raster "0.63: annotate the receiving document instead"))
+    (dc-unsupported who 'annotation-inside-explicit-raster
+                    "0.63: annotate the receiving document instead"))
   ;; Raster/GPU authoring uses the same helpers as documents; annotations are
   ;; invisible no-ops there, not a reason for a CPU/GPU transfer.
   (when (skia-output-dc? dc) (output-dc-special! dc kind args))
   (void))
+; annotation-rectangle : symbol? real? real? real? real? -> list?
+;;   Validates annotation coordinates and nonnegative extents in x, y, width, height order.
 (define (annotation-rectangle who x y w h)
   (list (dc-real who x) (dc-real who y) (dc-extent who w) (dc-extent who h)))
+; dc-annotate-url! : (is-a?/c draw:dc<%>) real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   string? -> void?
+;;   Adds a URI rectangle when dc is an output DC.
 (define (dc-annotate-url! dc x y width height uri)
   (annotation! 'dc-annotate-url! dc 'url
     (append (annotation-rectangle 'dc-annotate-url! x y width height)
             (list (annotation-uri 'dc-annotate-url! uri)))))
+; dc-define-destination! : (is-a?/c draw:dc<%>) string? real? real? -> void?
+;;   Defines a named PDF/SVG destination through an output DC.
 (define (dc-define-destination! dc name x y)
   (annotation! 'dc-define-destination! dc 'destination
     (list (annotation-name 'dc-define-destination! name)
           (dc-real 'dc-define-destination! x) (dc-real 'dc-define-destination! y))))
+; dc-link-destination! : (is-a?/c draw:dc<%>) real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c
+;   0)) string? -> void?
+;;   Adds a link rectangle to a named destination through an output DC.
 (define (dc-link-destination! dc x y width height name)
   (annotation! 'dc-link-destination! dc 'link
     (append (annotation-rectangle 'dc-link-destination! x y width height)
             (list (annotation-name 'dc-link-destination! name)))))
 
+; draw-dc-raster-group : (is-a?/c draw:dc<%>) real? real? (and/c real? (>/c 0)) (and/c real? (>/c
+;   0)) (-> (is-a?/c draw:dc<%>) any) [#:scale (real-in 1/1024 1024)] [#:label string?] -> void?
+;;   Runs draw once on an isolated transparent CPU DC of the requested logical size, then inserts
+;;   the resulting pixels at x and y.
 (define (draw-dc-raster-group dc x y width height draw
                               #:scale [scale (sk:current-raster-output-scale)]
                               #:label [label "dc-explicit-raster"])

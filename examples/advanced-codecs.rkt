@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Advanced Codecs Example
+;;;
+
+;; Renders a contact sheet of animation disposal and EXIF orientation cases.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline "../main.rkt" "../tests/codec-fixtures.rkt")
 
 ;; A deterministic contact sheet: animation disposal/blending above, all eight
 ;; normalized EXIF orientations below. All input images are local/in-memory.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-advanced-codecs : path-string? -> void?
+;;   Renders the advanced codecs example to the selected output destination.
 (define (render-advanced-codecs filename)
   (with-skia ([out (make-surface 1120 740 #:background "#F0F2F5")]
               [ink (make-paint #:color "#182330")]
@@ -28,16 +46,19 @@
       (for ([i (in-range (codec-frame-count gif))])
         (define x (+ 25 (* i 215)))
         (with-skia ([im (codec->image gif #:frame-index i)]) (panel im x 82 195 104))
-        (label (format "Frame ~a  |  ~a ms" i (codec-frame-info-duration (codec-frame-info gif i))) x 210)))
+        (label (format "Frame ~a  |  ~a ms" i (codec-frame-info-duration (codec-frame-info gif i)))
+          x 210)))
     (label "Lossless animated WebP (decoded in reverse order)" 25 250)
     (with-skia ([webp (codec-from-bytes animated-webp)])
       (for ([i (in-range 2 -1 -1)])
         (define x (+ 25 (* i 215)))
         (with-skia ([im (codec->image webp #:frame-index i)]) (panel im x 267 195 104))
-        (label (format "Frame ~a  |  ~a ms" i (codec-frame-info-duration (codec-frame-info webp i))) x 395)))
+        (label (format "Frame ~a  |  ~a ms" i (codec-frame-info-duration (codec-frame-info webp i)))
+          x 395)))
     (label "EXIF 1-8: normalized output (top row 1-4, bottom row 5-8)" 25 434)
     (with-skia ([source (make-surface 96 64)])
-      (for ([color (in-list '("#FF0000" "#00FF00" "#0000FF" "#FFFF00" "#00FFFF" "#FF00FF"))] [i (in-naturals)])
+      (for ([color (in-list '("#FF0000" "#00FF00" "#0000FF" "#FFFF00" "#00FFFF" "#FF00FF"))] [i
+        (in-naturals)])
         (with-skia ([p (make-paint #:color color)])
           (draw-rect (surface-canvas source) (* 32 (remainder i 3)) (* 32 (quotient i 3)) 32 32 p)))
       (with-skia ([snapshot (surface-snapshot source)])
@@ -51,7 +72,13 @@
                    x (+ y 123))))))
     (save-png out filename)))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; filename : path-string?
+  ;;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "advanced-codecs.rkt"
                   #:args ([output "advanced-codecs.png"]) output))

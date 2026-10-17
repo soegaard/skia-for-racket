@@ -1,4 +1,15 @@
 #lang racket/base
+
+;;;
+;;; Pure Regression Suite
+;;;
+
+;; Combines source-only validation suites across the public API and implementation helpers.
+;; This aggregate runner is the fast regression entry point that does not require native Skia.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/list
          rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
@@ -6,6 +17,13 @@
          "../private/unicode-conformance.rkt" "../private/joining.rkt")
 (provide pure-tests)
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; pure-tests : test-suite?
+;;   Collects the regression cases for colors, validation, and ABI layouts (no native library).
 (define pure-tests
   (test-suite
    "Colors, validation, and ABI layouts (no native library)"
@@ -250,7 +268,8 @@
      (check-exn exn:fail:contract? (lambda () (paint-set-image-filter! 'not-a-paint #f))))
    (test-case "svg-path->path validates data before native loading"
      (check-exn exn:fail:contract? (lambda () (svg-path->path 42)))
-     (check-exn exn:fail? (lambda () (svg-path->path (string-append "a" (string (integer->char 0)) "b")))))
+     (check-exn exn:fail?
+       (lambda () (svg-path->path (string-append "a" (string (integer->char 0)) "b")))))
    (test-case "path point and add-path validators run before native loading"
      (check-exn exn:fail:contract? (lambda () (path-point-ref 'not-a-path 0)))
      (check-exn exn:fail:contract? (lambda () (path-add-path! 'a 'b #:mode 'nope))))
@@ -259,7 +278,8 @@
      (check-exn exn:fail:contract? (lambda () (call-with-picture 10 10 #f))))
    (test-case "draw-picture keywords validate before native loading"
      (check-exn exn:fail:contract? (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10)))
-     (check-exn exn:fail:contract? (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10 #:height 'bad))))
+     (check-exn exn:fail:contract?
+       (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10 #:height 'bad))))
    (test-case "font-manager options validate before native loading"
      (check-exn exn:fail:contract? (lambda () (font-manager-family-count 'not-a-manager)))
      (check-exn exn:fail:contract?
@@ -287,7 +307,8 @@
      (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:align 'diagonal)))
      (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:direction 'ttb)))
      (check-exn exn:fail:contract? (lambda () (layout-text 'not-a-shaper "x" #:line-height 0)))
-     (check-exn exn:fail:contract? (lambda () (draw-text-layout 'not-a-canvas 'not-a-layout 0 0 'not-a-paint))))
+     (check-exn exn:fail:contract?
+       (lambda () (draw-text-layout 'not-a-canvas 'not-a-layout 0 0 'not-a-paint))))
    (test-case "justification validates width before native loading"
      (check-exn #rx"requires a positive #:width"
                 (lambda () (layout-text 'not-a-shaper "alpha beta" #:align 'justify)))
@@ -486,5 +507,12 @@
      (check-false (skia-path? (string->path "sample.png"))))))
 
 (module+ test
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pure-tests))
   (unless (zero? failures) (error 'pure-tests "~a failures" failures)))

@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU DC Native Test
+;;;
+
+;; Covers native Ganesh GPU DC: coordinates, residency, transfer and frame lifetime.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Explicit native gate: a missing backend is a failure, never a skipped pass.
 (require rackunit racket/class racket/list racket/cmdline
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt")
@@ -6,12 +18,28 @@
          (submod "../private/gpu-presenter.rkt" adapter-internals)
          "../private/gpu-io-trace.rkt")
 (provide gpu-dc-native-tests gpu-dc-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; backend : parameter?
+;;   Selects auto, EGL, Metal, or Direct3D for the native frame-DC suite.
 (define backend (make-parameter 'auto))
+
+; adapter : parameter?
+;;   Selects the Direct3D hardware or WARP adapter requested by the runner.
 (define adapter (make-parameter 'hardware))
+
+; selected-backend : -> symbol?
+;;   Resolves auto to the platform's native offscreen test backend.
 (define (selected-backend)
   (if (eq? (backend) 'auto)
       (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])
       (backend)))
+
+; with-context : procedure? -> any
+;;   Creates a selected GPU context and closes it after the callback.
 (define (with-context proc)
   (define ctx
     (case (selected-backend)
@@ -22,21 +50,41 @@
   (dynamic-wind void
     (lambda () (gpu:call-with-gpu-context ctx (lambda () (proc ctx))))
     (lambda () (gpu:gpu-context-close! ctx))))
+
+; with-surface : procedure? [exact-positive-integer? exact-positive-integer?] -> any
+;;   Scopes a GPU surface and its context around the drawing test.
 (define (with-surface proc [w 64] [h 48])
   (with-context (lambda (ctx)
     (sk:with-skia ([s (gpu:make-gpu-surface ctx w h)]) (proc ctx s)))))
+
+; fill : dc<%> ... -> void?
+;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;;   checks.
 (define (fill dc color [x 0] [y 0] [w 8] [h 6])
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
+
+; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
+; (listof byte?)
+;;   Extracts a row-major RGBA pixel from an explicit capture.
 (define (pixel bytes width x y)
   (define p (* 4 (+ x (* width y)))) (bytes->list (subbytes bytes p (+ p 4))))
+
+; read-pixel : surface? exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
+;;   Explicitly reads a GPU surface and selects one premultiplied pixel.
 (define (read-pixel s x y)
   (pixel (gpu:gpu-surface->rgba-bytes s #:premultiplied? #t) (sk:surface-width s) x y))
+
+; opaque-color? : (listof byte?) (listof byte?) -> boolean?
+;;   Checks RGB within one byte while requiring fully opaque alpha.
 (define (opaque-color? actual rgb)
   (and (for/and ([a (in-list (take actual 3))] [b (in-list rgb)]) (<= (abs (- a b)) 1))
        (= (last actual) 255)))
 ;; Actual Ganesh target with the existing presenter state machine. The adapter
 ;; substitutes only window acquisition/presentation, NOT drawing or GPU storage.
+
+; with-presenter : procedure? -> any
+;;   Scopes an offscreen presenter and real GPU final target for frame-DC lifetime tests.
 (define (with-presenter proc)
   (define ctx
     (case (selected-backend)
@@ -57,7 +105,7 @@
              (lambda ()
                (receive (sk:surface-canvas surface)
                         (hasheq 'backend (symbol->string raw-backend) 'target_identity "test-target")
-                        (lambda () (gpu:gpu-flush-and-submit! ctx) (set! presents (add1 presents)))))))
+                 (lambda () (gpu:gpu-flush-and-submit! ctx) (set! presents (add1 presents)))))))
          (lambda (_callback) (void)) ; synchronous tests never dispatch a queue
          (lambda () (void))
          (lambda () (hasheq 'fixture "native GPU offscreen target; no GUI or screen certification"))))
@@ -72,6 +120,14 @@
      (when presenter (gpu:gpu-presenter-close! presenter))
      (when surface (sk:skia-close! surface))
      (gpu:gpu-context-close! ctx))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-dc-native-tests : test-suite?
+;;   Collects the regression cases for native Ganesh GPU DC: coordinates, residency, transfer and
+;;   frame lifetime.
 (define gpu-dc-native-tests
   (test-suite
    "Native Ganesh GPU DC: coordinates, residency, transfer and frame lifetime"
@@ -95,7 +151,8 @@
            #:logical-width lw #:logical-height lh)
          (check-equal? (read-pixel s 0 0) '(255 0 0 255))
          (check-equal? (read-pixel s (inexact->exact (floor (* (/ pw lw) 4)))
-                                      (inexact->exact (floor (* (/ ph lh) 5)))) '(0 0 255 255))) pw ph)))
+                                      (inexact->exact (floor (* (/ ph lh) 5)))) '(0 0 255 255))) pw
+         ph)))
    (test-case "logical clipping and transformed geometry use the same device mapping"
      (with-surface (lambda (_ctx s)
        (call-with-gpu-surface-dc s
@@ -147,7 +204,8 @@
          (check-true (> w 0)) (check-true (> h 0))
          (send dc set-text-foreground "black") (send dc draw-text "Skia" 2 2 #t)))
        (define pixels (gpu:gpu-surface->rgba-bytes s))
-       (check-true (for/or ([i (in-range 0 (bytes-length pixels) 4)]) (< (bytes-ref pixels i) 200))))))
+       (check-true
+         (for/or ([i (in-range 0 (bytes-length pixels) 4)]) (< (bytes-ref pixels i) 200))))))
    (test-case "CPU snapshot explicitly detaches and survives GPU context closure"
      (define image #f)
      (with-surface (lambda (_ctx s)
@@ -164,7 +222,8 @@
            (fill dc "blue")
            (check-equal? (pixel (send dc get-rgba-bytes) 64 3 3) '(0 0 255 255))
            (check-equal? (subbytes (send dc get-png-bytes) 0 8) #"\211PNG\r\n\032\n"))))
-       (check-true (>= (count (lambda (e) (equal? (hash-ref e 'kind) "readback")) (unbox ledger)) 2)))))
+       (check-true
+         (>= (count (lambda (e) (equal? (hash-ref e 'kind) "readback")) (unbox ledger)) 2)))))
    (test-case "CPU targets are rejected instead of becoming an implicit fallback"
      (sk:with-skia ([s (sk:make-surface 8 8)])
        (check-exn exn:fail? (lambda () (call-with-gpu-surface-dc s void)))))
@@ -207,6 +266,9 @@
          (lambda (dc) (set! saved dc) (fill dc "red") (gpu:gpu-presenter-close! p)))))
        (check-equal? (presents) 0) (check-false (send saved ok?))
        (check-eq? (gpu:gpu-presenter-state p) 'closed))))))
+
+; gpu-dc-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-dc-native-test-count 15)
 (module+ main
   (require rackunit/text-ui)
@@ -215,6 +277,13 @@
     [("--adapter") value "hardware or warp (Direct3D)" (adapter (string->symbol value))]
     #:args () (void))
   (printf "gpu-dc-native backend: ~a\n" (selected-backend))
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-dc-native-tests))
   (printf "gpu-dc-native: ~a cases, ~a failures; native GPU targets and presenter lifecycle, no GUI.\n"
           gpu-dc-native-test-count failures)

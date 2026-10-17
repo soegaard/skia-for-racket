@@ -1,9 +1,31 @@
 #lang racket/base
+
+;;;
+;;; Font Query Doctor
+;;;
+
+;; Exercises font mutation, glyph metrics, and detached outline queries and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list json
          "../main.rkt" "../tests/font-query-fixtures.rkt")
 (provide generate-font-query-documents)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; write-data : path-string? bytes? -> exact-nonnegative-integer?
+;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (write-data path data)
   (call-with-output-file path (lambda (out) (write-bytes data out)) #:exists 'error))
+
+; generate-font-query-documents : path-string? string? -> void?
+;;   Exports deterministic font-mutation and outline scenes with tagged document evidence.
 (define (generate-font-query-documents directory token)
   (when (or (directory-exists? directory) (file-exists? directory))
     (error 'font-query-doctor "output directory already exists"))
@@ -40,7 +62,18 @@
                           'gui_executed #f 'gpu_executed #f) out)) #:exists 'error)
   (printf "Font queries: ~a documents; independent inspection required.\n" (length rows)))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") value "New output directory" (set! directory value)]
     [("--token") value "Invocation identity" (set! token value)] #:args () (void))

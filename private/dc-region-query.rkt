@@ -1,16 +1,43 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Region Queries
+;;;
+
+;; Scopes native region queries and validates the associated drawing context.
+;; Provides the implementation behind region membership and bounding queries.
+
 ;; Compatibility for region%'s *query* callback. This scratch recording surface
 ;; never receives the Skia pixels and is never copied/composited to any output.
 ;; The only caller is the private in-cairo-context member in our region adapter.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require (prefix-in c: racket/draw/unsafe/cairo)
          (only-in racket/draw/unsafe/cairo-lib cairo-lib)
          (only-in ffi/unsafe get-ffi-obj _fun _pointer _int)
          "dc-support.rkt")
 (provide call-with-dc-region-query)
+
+;;;
+;;; Scratch Context Validation and Queries
+;;;
+
+; context-status : cpointer? -> exact-integer?
+;;   Reads the native Cairo status of the scratch query context without touching drawing pixels.
 (define context-status (get-ffi-obj 'cairo_status cairo-lib (_fun _pointer -> _int)))
+
+; check-context! : cpointer? -> void?
+;;   Raises when Cairo reports a failure before or after a region query.
 (define (check-context! cr)
   (define status (context-status cr))
-  (unless (zero? status) (error 'skia-dc-region-query "Cairo query context failed with status ~a" status)))
+  (unless (zero? status) (error 'skia-dc-region-query "Cairo query context failed with status ~a"
+    status)))
+
+; install-commands : cpointer? (listof vector?) -> void?
+;;   Replaces the scratch context's current path with detached move/line/cubic/close commands.
 (define (install-commands cr commands)
   (c:cairo_new_path cr)
   (for ([v (in-list commands)])
@@ -22,13 +49,18 @@
       [(close) (c:cairo_close_path cr)]
       [else (error 'skia-dc-region-query "invalid internal query path")]))
   (void))
+
+; call-with-dc-region-query : real? real? vector? (or/c #f dc-clip?) procedure? -> any
+;;   Runs a query with a bounded recording surface, selected clip, and transform; destroys both native
+;;   objects afterward.
 (define (call-with-dc-region-query width height matrix clip proc)
   ;; A continuation cannot resume with a destroyed native context. Breaks are
   ;; deferred over allocation and retirement; dynamic-wind handles exceptions.
   (call-with-continuation-barrier
    (lambda ()
      (parameterize-break #f
-       (define extent (c:make-cairo_rectangle_t 0.0 0.0 (exact->inexact width) (exact->inexact height)))
+       (define extent (c:make-cairo_rectangle_t 0.0 0.0 (exact->inexact width) (exact->inexact
+         height)))
        (define surface (c:cairo_recording_surface_create c:CAIRO_CONTENT_COLOR_ALPHA extent))
        (unless surface (error 'skia-dc-region-query "Cairo recording surfaces are unavailable"))
        (dynamic-wind
@@ -45,7 +77,8 @@
                    (for ([part (in-list (dc-clip-paths clip))])
                      (install-commands cr (dc-clip-path-commands part))
                      (c:cairo_set_fill_rule cr (if (eq? (dc-clip-path-rule part) 'odd-even)
-                                                   c:CAIRO_FILL_RULE_EVEN_ODD c:CAIRO_FILL_RULE_WINDING))
+                                                   c:CAIRO_FILL_RULE_EVEN_ODD
+                                                     c:CAIRO_FILL_RULE_WINDING))
                      (c:cairo_clip cr))))
              (c:cairo_set_matrix cr (apply c:make-cairo_matrix_t (vector->list matrix)))
              (check-context! cr)

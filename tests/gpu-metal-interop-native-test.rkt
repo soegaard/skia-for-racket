@@ -1,9 +1,32 @@
 #lang racket/base
-(require rackunit racket/list "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt" "../unsafe/gpu-metal.rkt"
+
+;;;
+;;; GPU Metal Interop Native Test
+;;;
+
+;; Covers independent Metal producer, Skia handoff and consumer.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+(require rackunit racket/list "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt"
+  "../unsafe/gpu-metal.rkt"
          "metal-interop-fixture.rkt" "../private/gpu-metal-interop-policy.rkt")
 (provide make-gpu-metal-interop-native-tests gpu-metal-interop-native-test-count
          metal-pattern draw-metal-overlay metal-handoff with-metal-fixture)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; gpu-metal-interop-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-metal-interop-native-test-count 33)
+
+; metal-pattern : [boolean? (listof real?)] -> bytes?
+;;   Builds expected producer pixels, optionally including the premultiplied magenta overlay.
 (define (metal-pattern [painted? #f] [rect '(3 4 6 5)])
   (define x0 (car rect)) (define y0 (cadr rect)) (define w (caddr rect)) (define h (cadddr rect))
   (apply bytes-append
@@ -16,17 +39,33 @@
          (define right? (> x 18)) (define bottom? (>= y 14))
          (bytes (if (or (and (not right?) (not bottom?)) (and right? bottom?)) a 0)
                 (if right? a 0) (if (and (not right?) bottom?) a 0) a)]))))
+
+; draw-metal-overlay : canvas? -> void?
+;;   Draws a half-alpha magenta rectangle with source replacement for independent readback checks.
 (define (draw-metal-overlay canvas)
   (with-skia ([p (make-paint #:color (rgba 255 0 255 128) #:blend-mode 'src #:antialias? #f)])
     (draw-rect canvas 3 4 6 5 p)))
+
+; metal-handoff : gpu-context? fixture? [#:premultiplied? boolean? #:timeout-ms real?] ->
+; gpu-external-texture?
+;;   Imports the producer texture with its command-buffer completion dependency.
 (define (metal-handoff context f #:premultiplied? [pm? #t] #:timeout-ms [timeout 5000])
   (make-metal-external-texture context (metal-fixture-texture f)
     #:producer-command-buffer (metal-fixture-producer f) #:premultiplied? pm? #:timeout-ms timeout))
+
+; with-metal-fixture : gpu-context? procedure? [exact-nonnegative-integer?] -> any
+;;   Scopes the independent Metal producer and closes it after the callback.
 (define (with-metal-fixture context proc [variant 0])
   (define f (make-metal-fixture context variant))
   (dynamic-wind void (lambda () (proc f)) (lambda () (close-metal-fixture! f))))
+
+; interop-error-reason? : symbol? -> (any/c -> boolean?)
+;;   Builds a predicate matching a Metal interop exception's structured reason.
 (define ((interop-error-reason? reason) e)
   (and (exn:fail:metal-interop? e) (eq? (exn:fail:metal-interop-reason e) reason)))
+
+; make-gpu-metal-interop-native-tests : gpu-context? gpu-context? -> test-suite?
+;;   Builds the parameterized suite for independent Metal producer, Skia handoff and consumer.
 (define (make-gpu-metal-interop-native-tests context other)
   (define (using proc [variant 0])
     (call-with-gpu-context context (lambda () (with-metal-fixture context proc variant))))
@@ -36,8 +75,12 @@
       (using (lambda (f)
         (define t (metal-handoff context f)) (define d (gpu-external-texture-info t))
         (check-equal?
-          (append (map (lambda (k) (hash-ref d k)) '(width height depth levels array_length samples format texture_type usage storage_mode hazard_tracking_mode))
-                  (map (lambda (k) (if (hash-ref d k) 1 0)) '(framebuffer_only shareable producer_retained_references))
+          (append
+            (map (lambda (k) (hash-ref d k))
+              '(width height depth levels array_length samples format texture_type usage
+                 storage_mode hazard_tracking_mode))
+            (map (lambda (k) (if (hash-ref d k) 1 0))
+              '(framebuffer_only shareable producer_retained_references))
                   (hash-ref d 'swizzle) '(1))
           (metal-fixture-description f))
         (gpu-external-texture-close! t) (gpu-drain-releases! context))))
@@ -56,7 +99,8 @@
     (test-case "retained picture owns imported image after wrapper closure"
       (using (lambda (f)
         (with-skia ([im (gpu-import-image context (metal-handoff context f))]
-                    [pic (call-with-picture 37 29 (lambda (canvas) (draw-image canvas im 0 0 #:sampling 'nearest)))]
+                     [pic (call-with-picture 37 29
+                            (lambda (canvas) (draw-image canvas im 0 0 #:sampling 'nearest)))]
                     [surface (make-gpu-surface context 37 29)])
           (skia-close! im) (close-metal-fixture! f)
           (draw-picture (surface-canvas surface) pic)
@@ -90,16 +134,19 @@
     (test-case "borrowed canvas expires inside surviving outer activation"
       (using (lambda (f)
         (define escaped #f)
-        (call-with-gpu-external-surface context (metal-handoff context f) (lambda (v) (set! escaped v)))
+        (call-with-gpu-external-surface context (metal-handoff context f)
+          (lambda (v) (set! escaped v)))
         (check-exn exn:fail? (lambda () (draw-metal-overlay escaped))))))
     (test-case "callback receives canvas only"
       (using (lambda (f)
         (call-with-gpu-external-surface context (metal-handoff context f)
-          (lambda (v) (check-true (canvas? v)) (check-false (surface? v)) (check-false (image? v)))))))
+          (lambda (v) (check-true (canvas? v)) (check-false (surface? v))
+            (check-false (image? v)))))))
     (test-case "multiple callback values survive cleanup"
       (using (lambda (f)
         (check-equal? (call-with-values (lambda ()
-          (call-with-gpu-external-surface context (metal-handoff context f) (lambda (_) (values 1 2 3)))) list)
+          (call-with-gpu-external-surface context (metal-handoff context f)
+            (lambda (_) (values 1 2 3)))) list)
           '(1 2 3)))))
     (test-case "consumed token cannot be reused"
       (using (lambda (f)
@@ -120,7 +167,8 @@
       (using (lambda (f)
         (define t (metal-handoff context f))
         (check-exn #rx"RenderTarget" (lambda () (call-with-gpu-external-surface context t void)))
-        (with-skia ([im (gpu-import-image context t)]) (check-equal? (pixels im) (metal-pattern)))) 2))
+        (with-skia ([im (gpu-import-image context t)]) (check-equal? (pixels im) (metal-pattern))))
+        2))
     (test-case "straight alpha import converts to premultiplied storage"
       (using (lambda (f)
         (with-skia ([im (gpu-import-image context (metal-handoff context f #:premultiplied? #f))])
@@ -129,32 +177,52 @@
       (using (lambda (f)
         (define t (metal-handoff context f #:premultiplied? #f))
         (check-exn #rx"premultiplied" (lambda () (call-with-gpu-external-surface context t void)))
-        (with-skia ([im (gpu-import-image context t)]) (check-equal? (pixels im) (metal-pattern)))) 1))
+        (with-skia ([im (gpu-import-image context t)]) (check-equal? (pixels im) (metal-pattern))))
+        1))
     (test-case "reject real BGRA format"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 3))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 3))
     (test-case "reject real mipmapped texture"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 4))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 4))
     (test-case "reject real texture array"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 5))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 5))
     (test-case "reject real untracked resource"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 6))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 6))
     (test-case "reject real uncommitted command buffer"
-      (using (lambda (f) (check-exn (interop-error-reason? 'uncommitted) (lambda () (metal-handoff context f)))) 7))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'uncommitted)
+                 (lambda () (metal-handoff context f)))) 7))
     (test-case "reject real unretained producer references"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 8))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 8))
     (test-case "reject real nonidentity swizzle"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 9))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 9))
     (test-case "reject real texture view"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 10))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 10))
     (test-case "reject real shader-write usage"
-      (using (lambda (f) (check-exn (interop-error-reason? 'descriptor) (lambda () (metal-handoff context f)))) 12))
+      (using (lambda (f)
+               (check-exn (interop-error-reason? 'descriptor)
+                 (lambda () (metal-handoff context f)))) 12))
     (test-case "null texture is rejected before messaging"
       (using (lambda (f)
         (check-exn exn:fail? (lambda () (make-metal-external-texture context #f
           #:producer-command-buffer (metal-fixture-producer f)))))))
     (test-case "live wrong protocol object is rejected"
       (using (lambda (f)
-        (check-exn #rx"MTLTexture" (lambda () (make-metal-external-texture context (metal-fixture-producer f)
+        (check-exn #rx"MTLTexture"
+          (lambda () (make-metal-external-texture context (metal-fixture-producer f)
           #:producer-command-buffer (metal-fixture-producer f)))))))
     (test-case "device callback cannot reenter Skia GPU code"
       (call-with-gpu-context context (lambda ()
@@ -177,5 +245,6 @@
     (test-case "nested device handoff is rejected"
       (using (lambda (f)
         (call-with-gpu-external-surface context (metal-handoff context f)
-          (lambda (_) (check-exn #rx"nested" (lambda () (call-with-gpu-metal-device context void))))))))
+          (lambda (_)
+            (check-exn #rx"nested" (lambda () (call-with-gpu-metal-device context void))))))))
 ))

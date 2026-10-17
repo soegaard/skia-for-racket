@@ -1,7 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Global Cache Doctor
+;;;
+
+;; Exercises global font/resource cache controls and bounded memory statistics and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require json racket/cmdline racket/file racket/list
          "../main.rkt" "../tests/global-cache-support.rkt")
 (provide generate-cache-evidence)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; generate-cache-evidence : path-string? string? -> void?
+;;   Captures cache limits, memory reports, truncation bounds, and drawing stability while restoring
+;;   global settings.
 (define (generate-cache-evidence directory token)
   (make-directory* directory)
   (define (save name bytes)
@@ -32,7 +52,9 @@
       (skia-set-font-cache-limit! 1) (skia-set-font-cache-count-limit! 1)
       (skia-set-resource-cache-limit! 1)
       (save "limited.rgba" (cache-test-pixels))
-      (for ([purge (in-list (list skia-purge-font-cache! skia-purge-resource-cache! skia-purge-all-caches!))]
+      (for ([purge
+              (in-list (list skia-purge-font-cache! skia-purge-resource-cache!
+                         skia-purge-all-caches!))]
             [name (in-list '(font resource all))])
         (define settings (limit-settings))
         (purge)
@@ -58,7 +80,18 @@
     (lambda (out) (write-json receipt out) (newline out)) #:exists 'error)
   (displayln "global-cache-native-evidence: passed"))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") path "New evidence directory" (set! directory path)]
     [("--token") text "Unique validator token" (set! token text)])

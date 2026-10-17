@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; GPU Image Doctor
+;;;
+
+;; Exercises GPU image residency, ownership, and explicit pixel transfer and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/path racket/runtime-path racket/list
          rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../private/gpu-image-native.rkt"
@@ -6,7 +18,16 @@
          "../examples/gpu-images.rkt" "../tests/gpu-image-native-test.rkt"
          "gpu-report.rkt" "gpu-test-host.rkt")
 (provide gpu-image-doctor!)
-(define (gpu-image-doctor! prefix #:backend [backend 'opengl] #:required? [required? #t] #:require-hardware? [hardware? #f]
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-image-doctor! : path-string? ... -> exact-integer?
+;;   Runs GPU-image ownership/workflow cases and saves CPU, GPU, and detached captures for separate
+;;   inspection.
+(define (gpu-image-doctor! prefix #:backend [backend 'opengl] #:required? [required? #t]
+          #:require-hardware? [hardware? #f]
                               #:host [host-mode 'gui] #:egl-platform [platform 'surfaceless]
                               #:egl-device-index [index 0] #:egl-surface [egl-surface 'surfaceless]
                               #:adapter [adapter #f] #:adapter-index [adapter-index #f])
@@ -21,7 +42,8 @@
     (hasheq 'schema_version 1 'stage "0.41" 'kind "images" 'backend (symbol->string backend)
             'status status 'message message 'required required? 'require_hardware hardware?
             'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
-            'racket_version (version) 'validation_run (or (getenv "SKIA_GPU_VALIDATION_RUN") #f) 'initial_context initial 'host host-info
+            'racket_version (version) 'validation_run (or (getenv "SKIA_GPU_VALIDATION_RUN") #f)
+      'initial_context initial 'host host-info
             'native_test_failures native-failures 'native_test_cases gpu-image-native-test-count
             'scenes (reverse scenes) 'performance_measured #f))
   (define (publish value) (write-gpu-json (string->path (file ".diagnostic.json")) value))
@@ -97,7 +119,8 @@
                                               [subset (gpu-image-subset source 0 4 3 4)])
                                     (set! image-info (gpu-image-info source))
                                     (make-image-workflow-picture name source subset))]
-                                 [surface (make-gpu-surface context image-workflow-width image-workflow-height)])
+                                  [surface (make-gpu-surface context image-workflow-width
+                                             image-workflow-height)])
                               (unless (eq? (skia-resource-gpu-context picture) context)
                                 (error 'gpu-image-doctor "recorded graph lost GPU affinity"))
                               ;; Release the original wrappers' queued native refs
@@ -112,7 +135,8 @@
                               (when (for/or ([e (in-list (unbox reuse-io))])
                                       (or (equal? (hash-ref e 'kind) "readback")
                                           (hash-ref e 'wait_requested #f)))
-                                (error 'gpu-image-doctor "resident replay performed an explicit readback or CPU wait"))
+                                (error 'gpu-image-doctor
+                                  "resident replay performed an explicit readback or CPU wait"))
                               (parameterize ([current-gpu-io-ledger download-io])
                                 (gpu-surface->raster-image surface)))))))
                     (with-skia ([im detached]) (save-image im gpu-file 'png #:exists 'replace))
@@ -121,18 +145,21 @@
                                  (zero? (hash-ref info 'pending_releases)))
                       (error 'gpu-image-doctor "resident workflow left GPU wrappers behind"))
                     (set! scenes
-                      (cons (hasheq 'name stem 'cpu_image (basename cpu-file) 'gpu_image (basename gpu-file)
+                      (cons (hasheq 'name stem 'cpu_image (basename cpu-file) 'gpu_image
+                              (basename gpu-file)
                                     'width image-workflow-width 'height image-workflow-height
                                     'image image-info 'target target-info 'replay_count 2
                                     'original_wrappers_closed_before_replay retained?
                                     'intermediate_cpu_panels 0
                                     'reuse_events (reverse (unbox reuse-io))
                                     'download_events (reverse (unbox download-io))) scenes))
+
                     (printf "GPU image workflow ~a: retained replay and explicit output transfer completed\n" name))
                   (set! survivor
                     (call-with-gpu-context context
                       (lambda ()
-                        (with-skia ([cpu (make-image-workflow-source)] [im (gpu-upload-image context cpu)])
+                        (with-skia ([cpu (make-image-workflow-source)]
+                                     [im (gpu-upload-image context cpu)])
                           (gpu-image->raster-image im))))))
                 (lambda () (close-gpu-contexts! (list other context) gpu-context-close!)))))))
         (define closed (gpu-context-info context))
@@ -149,26 +176,64 @@
                             'surface_symbol_inventory (gpu-surface-native-inventory)
                             'detached_survived_teardown #t
                             'detached_image (basename (file ".detached.png"))))
-        (displayln "GPU image tests and workflows completed; numerical comparison is the separate inspector step.")
+        (displayln
+          "GPU image tests and workflows completed; numerical comparison is the separate inspector step.")
         0)
       (lambda () (when survivor (skia-close! survivor))))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; prefix : path-string?
+  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
   (define prefix "output/gpu-images-0.41")
-  (define required? #t) (define hardware? #f) (define backend 'opengl)
-  (define host-mode 'gui) (define platform 'surfaceless) (define device-index 0) (define egl-surface 'surfaceless)
-  (define adapter #f) (define adapter-index #f)
+
+  ; required? : boolean?
+  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  (define required? #t)
+  ; hardware? : boolean?
+  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  (define hardware? #f)
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'opengl)
+
+  ; host-mode : symbol?
+  ;;   Selects the GUI, EGL, or owned backend host used to activate the GPU context.
+  (define host-mode 'gui)
+  ; platform : symbol?
+  ;;   Selects the EGL platform, initially the display-server-free surfaceless platform.
+  (define platform 'surfaceless)
+  ; device-index : exact-nonnegative-integer?
+  ;;   Selects the zero-based EGL device when the platform supports device enumeration.
+  (define device-index 0)
+  ; egl-surface : symbol?
+  ;;   Selects the EGL binding surface kind, initially surfaceless.
+  (define egl-surface 'surfaceless)
+
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter #f)
+  ; adapter-index : (or/c exact-nonnegative-integer? #f)
+  ;;   Optionally selects a zero-based Direct3D adapter within the requested adapter policy.
+  (define adapter-index #f)
   (command-line #:program "gpu-image-doctor" #:once-each
     [("--host") value "gui, egl, or owned" (set! host-mode (string->symbol value))]
     [("--egl-platform") value "surfaceless or device" (set! platform (string->symbol value))]
-    [("--egl-device-index") value "EGL device enumeration index" (set! device-index (string->number value))]
+    [("--egl-device-index") value "EGL device enumeration index"
+      (set! device-index (string->number value))]
     [("--egl-surface") value "surfaceless or pbuffer" (set! egl-surface (string->symbol value))]
     [("--backend") value "opengl, metal, or direct3d" (set! backend (string->symbol value))]
     [("--adapter") value "Explicit Direct3D hardware or warp" (set! adapter (string->symbol value))]
-    [("--adapter-index") value "Explicit Direct3D adapter index" (set! adapter-index (or (string->number value) (error 'gpu-adapter "invalid adapter index")))]
+    [("--adapter-index") value "Explicit Direct3D adapter index"
+      (set! adapter-index (or (string->number value) (error 'gpu-adapter "invalid adapter index")))]
     [("--prefix") value "Artifact prefix" (set! prefix value)]
     [("--optional") "Allow initialization unavailability to skip" (set! required? #f)]
     [("--require-hardware") "Require hardware-reported renderer strings" (set! hardware? #t)]
     #:args () (void))
-  (exit (gpu-image-doctor! prefix #:backend backend #:required? required? #:require-hardware? hardware?
+  (exit (gpu-image-doctor! prefix #:backend backend #:required? required? #:require-hardware?
+          hardware?
     #:host host-mode #:egl-platform platform #:egl-device-index device-index #:egl-surface egl-surface
     #:adapter adapter #:adapter-index adapter-index)))

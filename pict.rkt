@@ -1,5 +1,18 @@
 #lang racket/base
 
+;;;
+;;; Pict Conversion
+;;;
+
+;; Converts Skia images, surfaces, and recorded pictures into Racket pict values.
+;; This opt-in rendering bridge preserves requested logical geometry while copying pixel results for
+;; ordinary pict composition.
+
+;;;
+;;; Imports and Exports
+;;;
+
+
 ;; Explicit, eager Skia-to-pict snapshots. This module deliberately does not
 ;; alter main.rkt or add conversion properties to Skia resources.
 (require racket/class
@@ -11,6 +24,9 @@
 
 (provide image->pict surface->pict picture->pict)
 
+; bitmap->pict : (is-a?/c bitmap%) real? real? -> pict?
+;;   Scales a physical bitmap to logical pict dimensions while preserving the bitmap baseline
+;;   convention.
 (define (bitmap->pict bitmap logical-width logical-height)
   (define physical-width (send bitmap get-width))
   (define physical-height (send bitmap get-height))
@@ -22,6 +38,9 @@
                 (/ logical-width physical-width)
                 (/ logical-height physical-height))))
 
+; read-image-pixels : image? -> bytes?
+;;   Reads premultiplied pixels, converting tagged input to sRGB and preserving untagged numeric
+;;   samples.
 (define (read-image-pixels im)
   ;; Tagged input is rendered into owned sRGB. Untagged samples have no profile
   ;; interpretation to preserve, so their numerical RGBA values are copied.
@@ -33,6 +52,8 @@
        (image->rgba-bytes im #:premultiplied? #t #:color-space destination))]
     [else (image->rgba-bytes im #:premultiplied? #t)]))
 
+; image->pict/geometry : symbol? image? integer? integer? real? real? -> pict?
+;;   Creates an independent bitmap pict after enforcing explicit CPU image residency.
 (define (image->pict/geometry who im width height logical-width logical-height)
   ;; Metadata inspection happens only after the explicit CPU-residency gate.
   ;; The RGBA byte vector and its ARGB copy coexist only while this call builds
@@ -41,6 +62,8 @@
   (bitmap->pict (rgba-premul->bitmap width height (read-image-pixels im))
                 logical-width logical-height))
 
+; image->pict : image? [#:backing-scale (and/c real? (>/c 0))] -> pict:pict?
+;;   Returns an ordinary Racket pict containing an eager copy of the CPU image.
 (define (image->pict im #:backing-scale [backing-scale 1])
   (define who 'image->pict)
   (unless (image? im) (raise-argument-error who "image?" im))
@@ -57,6 +80,8 @@
   ;; existing explicit transfer route and never trigger bridge-side readback.
   (image->pict/geometry who im width height logical-width logical-height))
 
+; surface->pict : surface? [#:backing-scale (and/c real? (>/c 0))] -> pict:pict?
+;;   Returns a pict from an eager snapshot of the CPU surface's current pixels.
 (define (surface->pict surface #:backing-scale [backing-scale 1])
   (define who 'surface->pict)
   (unless (surface? surface) (raise-argument-error who "surface?" surface))
@@ -66,6 +91,9 @@
   (with-skia ([snapshot (surface-snapshot surface)])
     (image->pict snapshot #:backing-scale backing-scale)))
 
+; picture->pict : picture? [#:bounds (or/c #f (vector/c real? real? (and/c real? (>/c 0)) (and/c
+;   real? (>/c 0))))] [#:raster-scale (and/c real? (>/c 0))] -> pict:pict?
+;;   Returns an ordinary pict by replaying picture once into a transparent CPU sRGB surface.
 (define (picture->pict picture #:bounds [requested-bounds #f] #:raster-scale [raster-scale 1])
   (define who 'picture->pict)
   (unless (picture? picture) (raise-argument-error who "picture?" picture))

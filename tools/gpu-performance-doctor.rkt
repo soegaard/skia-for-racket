@@ -1,16 +1,37 @@
 #lang racket/base
+
+;;;
+;;; GPU Performance Doctor
+;;;
+
+;; Exercises GPU timing, frame reuse, and deferred-release measurements and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/list racket/path racket/file rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../private/gpu-cache-native.rkt"
          "../tests/gpu-cache-native-test.rkt" "gpu-performance-work.rkt"
          "gpu-performance-options.rkt" "gpu-test-host.rkt" "gpu-report.rkt")
 (provide gpu-performance-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-performance-doctor! : hash? -> exact-integer?
+;;   Measures completed GPU workloads and release stress under validated options, publishing
+;;   attributable evidence.
 (define (gpu-performance-doctor! options)
   (define prefix (hash-ref options 'prefix)) (define backend (hash-ref options 'backend))
   (define config (hash-ref options 'config)) (define started? #f) (define failures #f)
   (define scenes '()) (define cycles '()) (define host-info #f) (define inventory '())
   (clear-performance-results! prefix)
   (define sources (performance-source-fingerprints))
-  (define run-id (or (getenv "SKIA_GPU_VALIDATION_RUN") (format "performance-~a" (current-inexact-milliseconds))))
+  (define run-id
+    (or (getenv "SKIA_GPU_VALIDATION_RUN") (format "performance-~a" (current-inexact-milliseconds))))
   (define (report status message)
     (hasheq 'schema_version 1 'stage "0.45" 'kind "performance" 'status status 'message message
             'backend (symbol->string backend) 'validation_run run-id
@@ -22,7 +43,8 @@
             'native_test_cases gpu-cache-native-test-count 'native_test_failures failures
             'scenes (reverse scenes) 'cycles (reverse cycles)
             'clock "current-inexact-monotonic-milliseconds"
-            'timing_scope "instrumented host wall latency; process CPU/GC counters include other threads"
+            'timing_scope
+      "instrumented host wall latency; process CPU/GC counters include other threads"
             'isolated_gpu_timestamps #f 'display_latency_measured #f 'total_gpu_memory_measured #f
             'performance_measured (equal? status "passed") 'speedup_claimed #f))
   (define (publish status message)
@@ -76,7 +98,8 @@
               (save-image image file 'png #:exists 'replace)
               (set! scenes (cons (hash-set* row 'initial_context initial 'closed_context closed
                                                'encoded_after_teardown #t) scenes))
-              (printf "~a / ~a: recording, first-use, replay, upload and readback measured\n" backend name))
+              (printf "~a / ~a: recording, first-use, replay, upload and readback measured\n"
+                backend name))
             (lambda () (when image (skia-close! image)))))
         (for ([i (in-range (hash-ref config 'cycles))])
           (define c #f) (define initial #f) (define row #f)
@@ -87,7 +110,8 @@
               (set! row (release-stress! c config)))
             (lambda () (when c (gpu-context-close! c))))
           (define closed (gpu-context-info c)) (check-gpu-teardown! closed)
-          (set! cycles (cons (hash-set* row 'index i 'initial_context initial 'closed_context closed) cycles))
+          (set! cycles
+            (cons (hash-set* row 'index i 'initial_context initial 'closed_context closed) cycles))
           (printf "~a: stress cycle ~a, ~a retained-graph frames and teardown completed\n"
                   backend (add1 i) (hash-ref config 'frames)))))
     (publish "passed" #f) 0))

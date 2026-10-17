@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Unicode Line Breaking
+;;;
+
+;; Classifies characters and resolves line-break opportunities at text boundaries.
+;; Supplies Unicode-aware wrapping for the project's text layout engines.
+
 (require racket/list racket/string)
 
 (provide line-break-class
@@ -9,6 +17,13 @@
 ;; Unicode 15.1 Line_Break property data, compacted from LineBreak-15.1.0.txt.
 ;; Each token is START-END:CLASS in hexadecimal code-point order.  The table is
 ;; private implementation data for the UAX #14 resolver below.
+;;;
+;;; Pinned Line-Break Properties
+;;;
+
+; packed-line-break-data : string?
+;;   Stores the pinned Unicode 15.1 line-break ranges as inclusive hexadecimal endpoints and class
+;;   tags.
 (define packed-line-break-data
 #<<LINEBREAK-DATA
 0-8:CM 9-9:BA a-a:LF b-c:BK d-d:CR e-1f:CM 20-20:SP 21-21:EX 22-22:QU 23-23:AL 24-24:PR 25-25:PO 26-26:AL
@@ -371,10 +386,33 @@ ffe8-ffee:AL fff9-fffb:CM fffc-fffc:CB fffd-fffd:AI 10000-1000b:AL 1000d-10026:A
 LINEBREAK-DATA
 )
 
-(struct lb-range (lo hi class) #:transparent)
-(struct lb-cluster (start end first last raw leading-class class ri-count) #:transparent)
-(struct line-break-opportunity (index kind) #:transparent)
+;;;
+;;; Ranges, Clusters, and Results
+;;;
 
+(struct lb-range (lo hi class) #:transparent)
+;; Fields:
+;;   lo and hi: inclusive Unicode code-point interval. class: line-break-class symbol. Lookup ranges
+;;   are ordered by code point.
+
+(struct lb-cluster (start end first last raw leading-class class ri-count) #:transparent)
+;; Fields:
+;;   start and end: nonnegative half-open string-character bounds, with start < end. first and last:
+;;   characters at start and end - 1. raw: first character's original line-break class.
+;;   leading-class: resolved class entering the cluster after LB1/LB9/LB10. class: resolved class
+;;   leaving it; these may differ when a grapheme combines characters with different break behavior.
+;;   ri-count: nonnegative number of regional-indicator code points represented by the cluster.
+;;   Clusters are adjacent in logical text order; indices count characters, not bytes or glyphs.
+
+(struct line-break-opportunity (index kind) #:transparent)
+;; Fields:
+;;   index: nonnegative string-character boundary, at most the source length. kind: 'allowed or
+;;   'mandatory; prohibited boundaries are omitted. Opportunities are detached and ordered by
+;;   increasing index. The final boundary is mandatory, including index zero for empty text.
+
+
+; line-break-ranges : (vectorof lb-range?)
+;;   Parses sorted, nonoverlapping property ranges for binary-search character classification.
 (define line-break-ranges
   (list->vector
    (for/list ([token (in-list (string-split packed-line-break-data))])
@@ -384,6 +422,9 @@ LINEBREAK-DATA
                (string->number (list-ref m 2) 16)
                (string->symbol (list-ref m 3))))))
 
+; missing-line-break-class : exact-nonnegative-integer? -> symbol?
+;;   Applies the pinned @missing defaults for ideographs, currency prefixes, and otherwise unknown
+;;   code points.
 (define (missing-line-break-class cp)
   ;; Unicode 15.1 LineBreak.txt @missing defaults.  Most of these ranges are
   ;; explicit in the compact table, but keep the normative defaults here too.
@@ -398,6 +439,8 @@ LINEBREAK-DATA
     [(<= #x20A0 cp #x20CF) 'PR]
     [else 'XX]))
 
+; raw-line-break-class : char? -> symbol?
+;;   Looks up the pinned raw property before context-dependent LB1 and combining-mark resolution.
 (define (raw-line-break-class ch)
   (define cp (char->integer ch))
   (let loop ([lo 0] [hi (sub1 (vector-length line-break-ranges))])
@@ -410,6 +453,8 @@ LINEBREAK-DATA
              [(> cp (lb-range-hi r)) (loop (add1 mid) hi)]
              [else (lb-range-class r)])])))
 
+; line-break-class : char? -> symbol?
+;;   Applies LB1 class normalization without dictionary breaking for complex-context scripts.
 (define (line-break-class ch)
   ;; UAX #14 LB1 resolution for classes whose default behavior is context- or
   ;; locale-dependent.  Complex-context (SA) dictionary breaking is deliberately
@@ -423,6 +468,9 @@ LINEBREAK-DATA
      (if (memq (char-general-category ch) '(mn mc)) 'CM 'AL)]
     [else raw]))
 
+; wide-halfwidth-opener/closer-codepoints : (listof exact-nonnegative-integer?)
+;;   Pins the fullwidth, wide, or halfwidth bracket set excluded from LB30's alphabetic/numeric
+;;   rule.
 (define wide-halfwidth-opener/closer-codepoints
   ;; OP/CP characters whose East_Asian_Width value is F, W, or H in Unicode
   ;; 15.1.  LB30 excludes these from its alphabetic/numeric parenthesis rule.
@@ -430,12 +478,18 @@ LINEBREAK-DATA
     #xFE17 #xFE35 #xFE37 #xFE39 #xFE3B #xFE3D #xFE3F #xFE41 #xFE43 #xFE47
     #xFE59 #xFE5B #xFE5D #xFF08 #xFF3B #xFF5B #xFF5F #xFF62))
 
+; wide-halfwidth-opener/closer? : (or/c #f char?) -> boolean?
+;;   Recognizes a pinned East Asian bracket exception, accepting false for an absent neighboring
+;;   cluster.
 (define (wide-halfwidth-opener/closer? ch)
   (and ch (memv (char->integer ch) wide-halfwidth-opener/closer-codepoints) #t))
 
 ;; Unicode 15.1 Extended_Pictographic code points that were unassigned (Cn)
 ;; in Unicode 15.1.  LB30b reserves these for emoji modifier sequences.  Keep
 ;; this data pinned rather than consulting the host Racket Unicode version.
+; extended-pictographic-unassigned-ranges : list?
+;;   Pins inclusive unassigned extended-pictographic ranges for emoji modifier handling
+;;   independently of the host Unicode version.
 (define extended-pictographic-unassigned-ranges
   '((#x1F02C . #x1F02F) (#x1F094 . #x1F09F) (#x1F0AF . #x1F0B0)
     (#x1F0C0 . #x1F0C0) (#x1F0D0 . #x1F0D0) (#x1F0F6 . #x1F0FF)
@@ -450,16 +504,27 @@ LINEBREAK-DATA
     (#x1FAC6 . #x1FACD) (#x1FADC . #x1FADF) (#x1FAE9 . #x1FAEF)
     (#x1FAF9 . #x1FAFF) (#x1FC00 . #x1FFFD)))
 
+; extended-pictographic-unassigned? : (or/c #f char?) -> boolean?
+;;   Checks the pinned LB30b reserved emoji ranges, returning false for an absent cluster.
 (define (extended-pictographic-unassigned? ch)
   (and ch
        (let ([cp (char->integer ch)])
          (for/or ([r (in-list extended-pictographic-unassigned-ranges)])
            (<= (car r) cp (cdr r))))))
 
+; hard-classes : (listof symbol?)
+;;   Identifies BK, CR, LF, and NL as mandatory line-separator classes.
 (define hard-classes '(BK CR LF NL))
+; hard-class? : any/c -> boolean?
+;;   Recognizes a mandatory separator class, including safe handling of an absent neighbor.
 (define (hard-class? c) (and c (memq c hard-classes) #t))
+; class-in? : any/c (listof symbol?) -> boolean?
+;;   Tests a possibly absent neighboring class against a rule's class set.
 (define (class-in? c xs) (and c (memq c xs) #t))
 
+; resolve-lb9/lb10-class : char? (or/c #f symbol?) -> symbol?
+;;   Resolves a combining mark or ZWJ from the preceding eligible class, otherwise treating it as
+;;   AL.
 (define (resolve-lb9/lb10-class ch previous-class)
   (define resolved (line-break-class ch))
   (if (memq resolved '(CM ZWJ))
@@ -469,6 +534,13 @@ LINEBREAK-DATA
           'AL)
       resolved))
 
+;;;
+;;; Grapheme-Preserving Cluster Resolution
+;;;
+
+; make-clusters : string? -> (vectorof lb-cluster?)
+;;   Builds logical default-grapheme records while preserving distinct entering/leaving classes and
+;;   represented regional-indicator counts.
 (define (make-clusters text)
   (define n (string-length text))
   (let loop ([i 0] [previous-class #f] [out '()])
@@ -500,36 +572,52 @@ LINEBREAK-DATA
                                leading-class trailing-class ri-count)
                    out))])))
 
+; cluster-class : vector? exact-integer? -> (or/c #f symbol?)
+;;   Returns a cluster's resolved trailing class, or false outside the cluster vector.
 (define (cluster-class clusters i)
   ;; Class at the *end* of the tailored grapheme cluster. This is the class
   ;; visible when the cluster is to the left of a candidate boundary.
   (and (<= 0 i) (< i (vector-length clusters))
        (lb-cluster-class (vector-ref clusters i))))
 
+; cluster-leading-class : vector? exact-integer? -> (or/c #f symbol?)
+;;   Returns a cluster's resolved entering class for rules inspecting the right side of a boundary.
 (define (cluster-leading-class clusters i)
   ;; Class at the *start* of the tailored grapheme cluster. This is the class
   ;; visible when the cluster is to the right of a candidate boundary.
   (and (<= 0 i) (< i (vector-length clusters))
        (lb-cluster-leading-class (vector-ref clusters i))))
 
+; cluster-raw : vector? exact-integer? -> (or/c #f symbol?)
+;;   Returns the first character's unnormalized property, preserving hard-break and combining-mark
+;;   distinctions.
 (define (cluster-raw clusters i)
   (and (<= 0 i) (< i (vector-length clusters))
        (lb-cluster-raw (vector-ref clusters i))))
 
+; cluster-first : vector? exact-integer? -> (or/c #f char?)
+;;   Returns a cluster's first character, or false outside the vector.
 (define (cluster-first clusters i)
   (and (<= 0 i) (< i (vector-length clusters))
        (lb-cluster-first (vector-ref clusters i))))
 
+; cluster-last : vector? exact-integer? -> (or/c #f char?)
+;;   Returns a cluster's last character for rules such as ZWJ suppression, or false outside the
+;;   vector.
 (define (cluster-last clusters i)
   (and (<= 0 i) (< i (vector-length clusters))
        (lb-cluster-last (vector-ref clusters i))))
 
+; last-non-space-index : vector? exact-nonnegative-integer? -> (or/c #f exact-nonnegative-integer?)
+;;   Scans left past space clusters for rules that permit intervening spaces.
 (define (last-non-space-index clusters boundary)
   (let loop ([i (sub1 boundary)])
     (cond [(negative? i) #f]
           [(eq? (cluster-class clusters i) 'SP) (loop (sub1 i))]
           [else i])))
 
+; regional-indicators-before : vector? exact-nonnegative-integer? -> exact-nonnegative-integer?
+;;   Counts RI code points, not graphemes, in the consecutive run before a candidate boundary.
 (define (regional-indicators-before clusters boundary)
   (let loop ([i (sub1 boundary)] [count 0])
     (if (and (>= i 0) (eq? (cluster-class clusters i) 'RI))
@@ -537,6 +625,12 @@ LINEBREAK-DATA
               (+ count (lb-cluster-ri-count (vector-ref clusters i))))
         count)))
 
+;;;
+;;; Quotation, Brahmic, and Numeric Context
+;;;
+
+; opening-pi-sequence? : vector? exact-nonnegative-integer? -> boolean?
+;;   Matches the opening-quotation and optional-space context that suppresses a break under LB15a.
 (define (opening-pi-sequence? clusters boundary)
   ;; LB15a: ... [Pi&QU] SP* ×
   (define q (last-non-space-index clusters boundary))
@@ -547,6 +641,8 @@ LINEBREAK-DATA
          (or (not before)
              (class-in? before '(BK CR LF NL OP QU GL SP ZW))))))
 
+; closing-pf-sequence? : vector? exact-nonnegative-integer? -> boolean?
+;;   Matches the closing-quotation lookahead context that suppresses a break under LB15b.
 (define (closing-pf-sequence? clusters boundary)
   ;; LB15b: × [Pf&QU] (... | eot)
   (define n (vector-length clusters))
@@ -557,10 +653,14 @@ LINEBREAK-DATA
          (or (not after)
              (class-in? after '(SP GL WJ CL QU CP EX IS SY BK CR LF NL ZW))))))
 
+; dotted-circle? : vector? exact-integer? -> boolean?
+;;   Recognizes literal U+25CC at a cluster start for Brahmic syllable rules.
 (define (dotted-circle? clusters i)
   (define ch (cluster-first clusters i))
   (and ch (= (char->integer ch) #x25CC)))
 
+; cluster-start-aksara-or-dotted? : vector? exact-integer? [boolean?] -> boolean?
+;;   Recognizes an entering aksara class or dotted-circle base, optionally admitting AS.
 (define (cluster-start-aksara-or-dotted? clusters i [allow-as? #t])
   ;; Inspect the class entering a tailored grapheme cluster. This is needed for
   ;; LB28a because VI/VF and combining marks can be absorbed into the same
@@ -570,6 +670,9 @@ LINEBREAK-DATA
       (and allow-as? (eq? c 'AS))
       (dotted-circle? clusters i)))
 
+; cluster-end-aksara-or-dotted? : vector? exact-integer? [boolean?] -> boolean?
+;;   Recognizes a leaving aksara/base class without mistaking a trailing virama for the base it
+;;   modifies.
 (define (cluster-end-aksara-or-dotted? clusters i [allow-as? #t])
   ;; Inspect the class leaving the cluster. A DOTTED CIRCLE followed only by
   ;; combining marks still ends as AL after LB9/LB10; if the cluster ends in a
@@ -579,6 +682,9 @@ LINEBREAK-DATA
       (and allow-as? (eq? c 'AS))
       (and (dotted-circle? clusters i) (eq? c 'AL))))
 
+; brahmic-no-break? : vector? exact-nonnegative-integer? -> boolean?
+;;   Applies LB28a across grapheme boundaries while accounting for viramas absorbed into neighboring
+;;   clusters.
 (define (brahmic-no-break? clusters boundary)
   ;; LB28a uses U+25CC DOTTED CIRCLE literally; the [◌] notation in UAX #14
   ;; is not the CM line-break class. The grapheme-preserving tailoring can fold
@@ -607,6 +713,8 @@ LINEBREAK-DATA
         (or (eq? (cluster-class clusters boundary) 'VF)
             (eq? (cluster-leading-class clusters (add1 boundary)) 'VF)))))
 
+; numeric-tail-chain-before? : vector? exact-nonnegative-integer? [boolean?] -> boolean?
+;;   Recognizes a preceding numeric-expression chain with an optional closing punctuation suffix.
 (define (numeric-tail-chain-before? clusters boundary [allow-close? #f])
   ;; UAX #14 15.1 LineBreakTest uses the Example 7 numeric-expression
   ;; tailoring.  Look left from a boundary for
@@ -624,6 +732,9 @@ LINEBREAK-DATA
       [(class-in? (cluster-class clusters i) '(SY IS)) (loop (sub1 i))]
       [else #f])))
 
+; numeric-tail-no-break? : vector? exact-nonnegative-integer? -> boolean?
+;;   Applies the Example 7 numeric tailoring used by the pinned conformance corpus instead of
+;;   pairwise LB25 approximations.
 (define (numeric-tail-no-break? clusters boundary)
   ;; Example 7 replaces LB25 with a direct numeric-expression tailoring:
   ;;   (PR|PO) × (OP|HY)? NU
@@ -643,6 +754,13 @@ LINEBREAK-DATA
       (and (class-in? r '(PO PR))
            (numeric-tail-chain-before? clusters boundary #t))))
 
+;;;
+;;; Ordered Boundary Rules
+;;;
+
+; boundary-kind : vector? exact-nonnegative-integer? -> symbol?
+;;   Classifies one cluster boundary as prohibited, allowed, or mandatory using ordered UAX #14
+;;   rules and project tailoring.
 (define (boundary-kind clusters boundary)
   ;; boundary is between clusters boundary-1 and boundary.  Rules are ordered
   ;; as in UAX #14 rev. 51 (Unicode 15.1); earlier rules take precedence.
@@ -756,6 +874,13 @@ LINEBREAK-DATA
         'prohibited]
        [else 'allowed])]))                                    ; LB31
 
+;;;
+;;; Public Break Opportunities and Hard-Line Splitting
+;;;
+
+; line-break-opportunities : string? -> (listof line-break-opportunity?)
+;;   Returns allowed and mandatory breaks at increasing source-character boundaries, preserving
+;;   graphemes and including the mandatory end boundary.
 (define (line-break-opportunities text)
   (unless (string? text)
     (raise-argument-error 'line-break-opportunities "string?" text))
@@ -771,6 +896,9 @@ LINEBREAK-DATA
         (lb-cluster-end (vector-ref clusters (sub1 boundary)))
         kind))]))
 
+; split-hard-lines : string? -> (listof string?)
+;;   Splits at mandatory separators and removes them, treating CRLF as one separator and preserving
+;;   empty terminal lines.
 (define (split-hard-lines text)
   ;; Split and remove UAX #14 mandatory line separators. CRLF is one extended
   ;; grapheme cluster in Racket and therefore becomes one separator here.

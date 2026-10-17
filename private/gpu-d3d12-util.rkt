@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Direct3D Driver Operations
+;;;
+
+;; Defines injectable platform and context operations and validates device requests.
+;; Separates Direct3D driver policy from its native system calls.
+
 (require "gpu-provider.rkt" "gpu-domain.rkt")
 (provide (struct-out d3d12-platform-ops) (struct-out d3d12-context-ops)
          d3d12-selection! make-d3d12-components)
@@ -6,7 +14,19 @@
 ;; Private synchronous operations. Tests supply doubles without Windows/Skia.
 ;; Adapter, device and queue factories return owned +1 COM references.
 (struct d3d12-platform-ops (adapter device queue release describe removed-reason))
+;; Fields:
+;;   adapter, device, and queue: native creation procedures. release: COM release procedure.
+;;   describe: detached diagnostic query. removed-reason: device-loss query. Returned interfaces
+;;   remain owned until release.
+
 (struct d3d12-context-ops (create release abandon abandoned? wait describe))
+;; Fields:
+;;   create, release, abandon, abandoned?, wait, and describe: procedures for the native Ganesh
+;;   context. Operations run under the owning provider; abandon follows the backend's lost-device
+;;   rules.
+
+; d3d12-selection! : any/c exact-nonnegative-integer? -> void?
+;;   Validates adapter-selection mode and index before enumerating hardware or WARP adapters.
 (define (d3d12-selection! adapter index)
   (unless (memq adapter '(hardware warp))
     (raise-argument-error 'make-gpu-context "'hardware or 'warp" adapter))
@@ -16,6 +36,10 @@
     (raise-arguments-error 'make-gpu-context "WARP has no selectable adapter index" "index" index))
   (void))
 
+; make-d3d12-components : d3d12-platform-ops? d3d12-context-ops? any/c exact-nonnegative-integer? ->
+;   (values gpu-provider? gpu-driver?)
+;;   Combines injected device and Ganesh operations with balanced adapter, device, and queue
+;;   ownership.
 (define (make-d3d12-components platform native selection index)
   (d3d12-selection! selection index)
   (unless (d3d12-platform-ops? platform)
@@ -54,11 +78,13 @@
         (set! adapter ((d3d12-platform-ops-adapter platform) selection index))
         (unless adapter (gpu-unavailable 'd3d12-adapter "selected DXGI adapter is unavailable"))
         (set! details (freeze-gpu-details ((d3d12-platform-ops-describe platform) adapter)))
-        (unless (and (hash? details) (exact-nonnegative-integer? (hash-ref details 'adapter_flags #f)))
+        (unless (and (hash? details) (exact-nonnegative-integer? (hash-ref details 'adapter_flags
+          #f)))
           (error 'direct3d "invalid DXGI adapter description"))
         (define software? (bitwise-bit-set? (hash-ref details 'adapter_flags) 1))
         (unless (eq? software? (eq? selection 'warp))
-          (gpu-unavailable 'd3d12-adapter "selected adapter class does not match ~a; no automatic fallback" selection))
+          (gpu-unavailable 'd3d12-adapter
+            "selected adapter class does not match ~a; no automatic fallback" selection))
         (set! details (hash-set* details
                                 'adapter_selection (symbol->string selection)
                                 'adapter_index (if (eq? selection 'warp) #f index)
@@ -74,7 +100,8 @@
         ;; Keep our independent +1 references until AFTER Ganesh destruction, so
         ;; device-loss checks and every partial failure have explicit ownership.
         (define p ((d3d12-context-ops-create native) adapter device queue))
-        (unless p (gpu-unavailable 'd3d12-ganesh "Ganesh Direct3D construction returned null (possible disabled native backend)"))
+        (unless p (gpu-unavailable 'd3d12-ganesh
+          "Ganesh Direct3D construction returned null (possible disabled native backend)"))
         (set! success? #t)
         p)
       (lambda () (unless success? (release-handles!)))))

@@ -1,20 +1,50 @@
 #lang racket/base
+
+;;;
+;;; SVG Documents Example
+;;;
+
+;; Exports SVG probe pages and separate raster references from shared drawing callbacks.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline racket/file racket/path "../main.rkt")
 (provide render-svg-probes)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; ink : string?
+;;   Specifies the ink color used by this drawing.
 (define ink "#20344E")
+; muted : string?
+;;   Specifies the muted color used by this drawing.
 (define muted "#50657C")
+; blue : string?
+;;   Specifies the blue color used by this drawing.
 (define blue "#3168CF")
+; teal : string?
+;;   Specifies the teal color used by this drawing.
 (define teal "#12988C")
+; orange : string?
+;;   Specifies the orange color used by this drawing.
 (define orange "#F0A02B")
 
 ;; Outlined labels make these parts independent of the SVG viewer's fonts.
+; label : canvas? string? real? real? [real?] [any/c] -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 14] [color muted])
   (with-skia ([f (make-font #:size size)]
               [p (make-paint #:color color)]
               [path (simple-text-path f text x y)])
     (draw-path c path p)))
 
+; heading : canvas? real? real? string? string? exact-nonnegative-integer? -> void?
+;;   Draws the page heading and its explanatory subtitle.
 (define (heading c width height title subtitle index)
   (with-skia ([white (make-paint #:color 'white)] [accent (make-paint #:color teal)])
     (draw-rect c 0 0 width height white)
@@ -24,9 +54,12 @@
   (label c "RACKET / SKIA   |   SVG OUTPUT PROBE" 30 (- height 20) 11)
   (label c (number->string index) (- width 40) (- height 20) 11 ink))
 
+; draw-vectors : canvas? -> void?
+;;   Draws the vectors component in the current canvas coordinate system.
 (define (draw-vectors c)
   (heading c 720 520 "A canvas, now in SVG"
-           "Paths, a linear gradient, clipping and independent transforms. All labels are outlines." 1)
+           "Paths, a linear gradient, clipping and independent transforms. All labels are outlines."
+             1)
   (label c "01  Native vector geometry" 30 112)
   (with-skia ([fill (make-paint #:color blue)]
               [stroke (make-paint #:color ink #:style 'stroke #:stroke-width 3)]
@@ -59,6 +92,8 @@
       (draw-line c -40 0 40 0 border)
       (draw-line c 0 -30 0 30 border))))
 
+; draw-sun : canvas? -> void?
+;;   Draws the sun component in the current canvas coordinate system.
 (define (draw-sun c)
   (with-skia ([rays (make-paint #:color blue #:style 'stroke #:stroke-width 7 #:cap 'round)]
               [center (make-paint #:color orange)])
@@ -69,6 +104,8 @@
         (draw-line c 0 -21 0 -34 rays)))
     (draw-circle c 40 40 14 center)))
 
+; draw-text-images : canvas? -> void?
+;;   Draws the text images component in the current canvas coordinate system.
 (define (draw-text-images c)
   (heading c 800 540 "Text, images and recorded drawing"
            "Native text is editable; outlined shaped text preserves glyph geometry, not text semantics." 2)
@@ -87,7 +124,8 @@
   (with-skia ([f (make-font #:size 18)] [sh (make-shaper f)]
               [p (make-paint #:color ink)])
     (define layout
-      (layout-text sh "The paragraph API draws to an SVG canvas using the existing layout and drawing operations."
+      (layout-text sh
+        "The paragraph API draws to an SVG canvas using the existing layout and drawing operations."
                    #:width 365))
     (draw-text-layout c layout 30 310 p))
   (label c "04  Embedded RGBA image" 455 123)
@@ -104,6 +142,8 @@
     (draw-picture c pic #:x 535 #:y 377 #:width 72 #:height 72)
     (draw-picture c pic #:x 646 #:y 356 #:width 114 #:height 114)))
 
+; draw-effects : canvas? -> void?
+;;   Draws the effects component in the current canvas coordinate system.
 (define (draw-effects c)
   (heading c 720 480 "Explicit rasterized groups"
            "The two effect panels become embedded PNGs; labels and the dashed path remain vectors." 3)
@@ -131,12 +171,16 @@
               [p (make-paint #:color ink #:style 'stroke #:stroke-width 3 #:path-effect dash)])
     (draw-line c 40 410 675 410 p)))
 
+; html-escape : string? -> string?
+;;   Escapes text before inserting it into the generated HTML report.
 (define (html-escape s)
   (regexp-replace* #rx"[&<>\"]" s
                    (lambda (v)
                      (cond [(string=? v "&") "&amp;"] [(string=? v "<") "&lt;"]
                            [(string=? v ">") "&gt;"] [else "&quot;"]))))
 
+; render-svg-probes : any/c -> void?
+;;   Renders the svg probes example to the selected output destination.
 (define (render-svg-probes prefix)
   (define full (path->string (path->complete-path prefix)))
   (define entries '())
@@ -151,7 +195,8 @@
     (define png (string-append full "." suffix ".reference.png"))
     (call-with-svg-file svg w h draw #:exists 'replace
                         #:title (string-append "Skia SVG probe: " suffix)
-                        #:description "Compare the SVG rendered in a viewer with the separately drawn raster reference."
+                        #:description
+                          "Compare the SVG rendered in a viewer with the separately drawn raster reference."
                         #:id-prefix (string-append "probe-" suffix))
     (with-skia ([s (make-surface w h #:background 'white)])
       (draw (surface-canvas s))
@@ -161,16 +206,24 @@
   (define html (string-append full ".review.html"))
   (call-with-output-file html
     (lambda (out)
-      (display "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Skia SVG review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}h1{font-size:24px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}img{width:100%;background:white}figure{margin:0}figcaption{margin-bottom:8px}@media(max-width:800px){.pair{grid-template-columns:1fr}}</style><h1>SVG output review</h1><p>Left: actual SVG, rendered by this browser. Right: separately drawn raster reference. Open the SVG files directly to inspect and zoom. The references are not SVG rasterizations.</p>" out)
+      (display
+        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Skia SVG review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}h1{font-size:24px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}img{width:100%;background:white}figure{margin:0}figcaption{margin-bottom:8px}@media(max-width:800px){.pair{grid-template-columns:1fr}}</style><h1>SVG output review</h1><p>Left: actual SVG, rendered by this browser. Right: separately drawn raster reference. Open the SVG files directly to inspect and zoom. The references are not SVG rasterizations.</p>" out)
       (for ([entry (in-list (reverse entries))])
         (define svg-name (html-escape (path->string (file-name-from-path (cadr entry)))))
         (define png-name (html-escape (path->string (file-name-from-path (caddr entry)))))
-        (fprintf out "<h2>~a</h2><section class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a\" alt=\"SVG probe\"></figure><figure><figcaption>Raster reference</figcaption><img src=\"~a\" alt=\"Raster reference\"></figure></section>" (car entry) svg-name png-name))
+        (fprintf out
+          "<h2>~a</h2><section class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a\" alt=\"SVG probe\"></figure><figure><figcaption>Raster reference</figcaption><img src=\"~a\" alt=\"Raster reference\"></figure></section>" (car entry) svg-name png-name))
       (display "</html>" out))
     #:exists 'replace)
   (printf "Wrote ~a\n" html))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; prefix : path-string?
+  ;;   Selects the destination used by this example's output.
   (define prefix
     (command-line #:program "svg-documents.rkt"
                   #:args ([output-prefix "svg-documents"]) output-prefix))

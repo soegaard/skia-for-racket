@@ -1,17 +1,44 @@
 #lang racket/base
+
+;;;
+;;; GPU Metal Interop Pure Test
+;;;
+
+;; Covers metal external-resource contracts without native/GUI loading.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list "../gpu-interop.rkt"
          "../private/gpu-metal-interop-policy.rkt" "../private/gpu-metal-interop-session.rkt"
          "../private/gpu-interop-cleanup.rkt"
          (submod "../private/gpu-external.rkt" backend-internals))
 (provide gpu-metal-interop-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; desc : hash?
+;;   Describes a valid synthetic 2D Metal texture, including storage, usage, swizzle, and device
+;;   identity.
 (define desc
   (hasheq 'width 37 'height 29 'depth 1 'levels 1 'array_length 1 'samples 1
           'format 70 'texture_type 2 'usage 5 'storage_mode 2 'hazard_tracking_mode 2
           'swizzle '(2 3 4 5) 'same_device #t 'framebuffer_only #f 'has_parent #f
           'has_buffer #f 'has_heap #f 'has_iosurface #f 'shareable #f 'has_remote_storage #f
           'producer_retained_references #t))
+
+; reason : symbol? -> (any/c -> boolean?)
+;;   Builds a predicate for a specific structured Metal interop failure.
 (define (reason r)
   (lambda (e) (and (exn:fail:metal-interop? e) (eq? (exn:fail:metal-interop-reason e) r))))
+
+; fixture : [#:producer-status procedure? #:tail-status procedure? #:retain procedure? #:release
+; procedure? #:tail procedure? #:commit procedure? #:description hash? #:timeout real?] -> any
+;;   Injects producer/tail completion and ownership operations into a native-free interop token.
 (define (fixture #:producer-status [ps (lambda () 4)] #:tail-status [ts (lambda () 4)]
                  #:retain [retain values] #:release [release void]
                  #:tail [tail (lambda () 'tail)] #:commit [commit void]
@@ -26,6 +53,13 @@
      (lambda (p) (if (eq? p 'producer) (ps) (ts)))
      (lambda (_) "synthetic command failure") tail commit))
   (values (make-metal-session ops 'texture 'producer timeout) calls))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-metal-interop-pure-tests : test-suite?
+;;   Collects the regression cases for metal external-resource contracts without native/GUI loading.
 (define gpu-metal-interop-pure-tests
  (test-suite "Metal external-resource contracts without native/GUI loading"
   (test-case "valid private descriptor"
@@ -77,7 +111,8 @@
   (test-case "reject has_remote_storage #t"
     (check-exn exn:fail? (lambda () (metal-check-texture! (hash-set desc 'has_remote_storage #t)))))
   (test-case "reject producer_retained_references #f"
-    (check-exn exn:fail? (lambda () (metal-check-texture! (hash-set desc 'producer_retained_references #f)))))
+    (check-exn exn:fail?
+      (lambda () (metal-check-texture! (hash-set desc 'producer_retained_references #f)))))
   (test-case "reject swizzle '(4 3 2 5)"
     (check-exn exn:fail? (lambda () (metal-check-texture! (hash-set desc 'swizzle '(4 3 2 5))))))
   (test-case "reject width #t"
@@ -98,7 +133,8 @@
     (for ([v '(0 1 #f 6)])
       (check-exn (reason 'uncommitted) (lambda () (metal-wait-completed! (lambda () v) void 10)))))
   (test-case "asynchronous error has its own reason"
-    (check-exn (reason 'command-error) (lambda () (metal-wait-completed! (lambda () 5) (lambda () "bad") 10))))
+    (check-exn (reason 'command-error)
+      (lambda () (metal-wait-completed! (lambda () 5) (lambda () "bad") 10))))
   (test-case "fake clock establishes a real deadline"
     (define now 0)
     (check-exn (reason 'timeout)
@@ -108,14 +144,16 @@
   (test-case "unconsumed session releases exact two references once"
     (define-values (s calls) (fixture))
     (metal-session-close! s) (metal-session-close! s)
-    (check-equal? (unbox calls) '((retain texture) (retain producer) (release producer) (release texture)))
+    (check-equal? (unbox calls)
+      '((retain texture) (retain producer) (release producer) (release texture)))
     (check-equal? (hash-ref (metal-session-info s) 'state) "closed"))
   (test-case "completed handoff verifies both completion boundaries"
     (define-values (s calls) (fixture))
     (metal-session-begin! s) (metal-session-complete! s) (metal-session-close! s)
     (check-equal? (map (lambda (x) (hash-ref x 'phase)) (hash-ref (metal-session-info s) 'waits))
                   '("producer" "ganesh-queue-tail"))
-    (check-equal? (unbox calls) '((retain texture) (retain producer) (release tail) (release producer) (release texture))))
+    (check-equal? (unbox calls)
+      '((retain texture) (retain producer) (release tail) (release producer) (release texture))))
   (test-case "active session cannot be closed"
     (define-values (s calls) (fixture)) (metal-session-begin! s)
     (check-exn #rx"cannot release" (lambda () (metal-session-close! s)))
@@ -163,7 +201,9 @@
     (check-equal? (length (unbox calls)) 3))
   (test-case "thread cannot observe or mutate native session"
     (define-values (s calls) (fixture)) (define ch (make-channel))
-    (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) 'rejected)]) (metal-session-info s)))))
+    (thread (lambda ()
+              (channel-put ch
+                (with-handlers ([exn:fail? (lambda (_) 'rejected)]) (metal-session-info s)))))
     (check-eq? (channel-get ch) 'rejected) (metal-session-close! s))
   (test-case "generic Metal copy is one handoff"
     (define context (gensym))
@@ -182,7 +222,8 @@
     (define finished? #f)
     (check-exn (lambda (e) (eq? e 'boom))
       (lambda () (call-with-interop-cleanup (lambda () (raise 'boom))
-                   (lambda () (set! finished? #t)) (lambda (_) (error 'test "unexpected quarantine")))))
+                   (lambda () (set! finished? #t))
+                   (lambda (_) (error 'test "unexpected quarantine")))))
     (check-true finished?))
   (test-case "shared cleanup failure quarantines once"
     (define n 0)

@@ -1,16 +1,42 @@
 #lang racket/base
 
+;;;
+;;; Path Ops Tutorial Evaluation
+;;;
+
+;; Runs the Path Ops tutorial's executable documentation examples and figure helpers.
+;; This module connects the manual to executable examples and their rendered figures.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/runtime-path scribble/eval skia "badge.rkt" "../support/figures.rkt")
 (provide paths-interaction paths-racketblock+eval badge-pict shape-pict operands-pict simplify-pict
          trim-pair difference-pair backgrounds-pict xor-comparison)
+;;;
+;;; Evaluator and Figure Helpers
+;;;
+
+; program-source : path?
+;;   Locates program source relative to this module rather than the current directory.
 (define-runtime-path program-source "badge.rkt")
+; program-directory : path?
+;;   Locates program directory relative to this module rather than the current directory.
 (define-runtime-path program-directory ".")
+; paths-eval : procedure?
+;;   Retains one evaluator so successive documentation examples share their bindings.
 (define paths-eval (make-base-eval))
 (paths-eval `(current-directory ,(path->string program-directory)))
 (paths-eval '(require racket skia))
 (paths-eval `(require (file ,(path->string program-source))))
+; parts : hash?
+;;   Keeps the named intermediate paths used to explain the badge construction.
 (define parts (make-badge-parts))
 
+; shape-pict : any/c #:scale [real?] -> pict?
+;;   Renders the shape illustration from the tutorial's drawing code.
 (define (shape-pict key #:scale [scale 0.9])
   (render-pict 320 320
                (lambda (canvas)
@@ -18,13 +44,19 @@
                  (draw-shape canvas (hash-ref parts key)))
                #:scale scale))
 
+; badge-pict : -> pict?
+;;   Renders the badge illustration from the tutorial's drawing code.
 (define (badge-pict)
   (render-pict 720 468 (lambda (canvas) (draw-badge-sheet canvas parts)) #:scale 0.9))
 
+; operands-pict : -> pict?
+;;   Renders the operands illustration from the tutorial's drawing code.
 (define (operands-pict)
   (figure-row (captioned-pict "Disk" (shape-pict 'disk #:scale 0.65))
               (captioned-pict "Cross: two overlapping contours" (shape-pict 'cross #:scale 0.65))))
 
+; simplify-pict : -> pict?
+;;   Renders the simplify illustration from the tutorial's drawing code.
 (define (simplify-pict)
   (define source (cross-path))
   (define simplified (path-simplify source))
@@ -33,6 +65,8 @@
   (figure-row (captioned-pict "Original contour boundaries" (one source))
               (captioned-pict "Simplified filled region, then stroked" (one simplified))))
 
+; trim-pair : -> pict?
+;;   Builds the trim pair illustration from the tutorial's actual drawing.
 (define (trim-pair)
   (define operands
     (render-pict 320 320
@@ -47,6 +81,8 @@
               (captioned-pict "Intersection: only the overlap"
                               (shape-pict 'trimmed #:scale 0.8))))
 
+; difference-pair : -> pict?
+;;   Builds the difference pair illustration from the tutorial's actual drawing.
 (define (difference-pair)
   (with-skia ([reverse (path-difference (hash-ref parts 'hole) (hash-ref parts 'trimmed))])
     (figure-row
@@ -60,6 +96,8 @@
                      (draw-shape canvas reverse))
                    #:scale 0.8)))))
 
+; xor-comparison : -> pict?
+;;   Builds the xor comparison illustration from the tutorial's actual drawing.
 (define (xor-comparison)
   (with-skia ([left (make-path)] [right (make-path)])
     (path-add-circle! left 80 100 62)
@@ -90,6 +128,8 @@
                   (captioned-pict "A minus B: one side" (one difference))
                   (captioned-pict "A XOR B: both outer sides" (one exclusive))))))
 
+; backgrounds-pict : -> pict?
+;;   Renders the backgrounds illustration from the tutorial's drawing code.
 (define (backgrounds-pict)
   (define badge (hash-ref parts 'badge))
   (define (one kind)
@@ -111,7 +151,11 @@
   (figure-row (captioned-pict "Same badge over a gradient" (one 'gradient))
               (captioned-pict "Same badge over stripes" (one 'stripes))))
 
+; paths-interaction : syntax -> syntax
+;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (paths-interaction expression ...)
   (interaction #:eval paths-eval expression ...))
+; paths-racketblock+eval : syntax -> syntax
+;;   Displays a code block and evaluates the same expressions for the tutorial.
 (define-syntax-rule (paths-racketblock+eval expression ...)
   (racketblock+eval #:eval paths-eval expression ...))

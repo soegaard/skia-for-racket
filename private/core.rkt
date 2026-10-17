@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Core Skia Resource and Drawing API
+;;;
+
+;; Implements owned resources, canvas operations, image codecs, documents, and text layout.
+;; Connects the public Racket API to checked native calls and the shared lifetime protocol.
+
 (require "codec-incremental-state.rkt")
 (require "codec-scanline-state.rkt")
 (require "stream-resource.rkt")
@@ -13,6 +21,10 @@
 ;; Owned style sets integrate with the ordinary resource lifecycle. Metadata
 ;; entries returned by the public module are detached, not native views.
 (struct font-style-set-resource (handle) #:constructor-name make-font-style-set-record)
+;; Fields:
+;;   handle: owned native font-style-set lifetime cell; explicit close releases its reference and
+;;   invalidates subsequent native queries.
+
 (module* typeface-internals #f
   (provide font-style-set-resource? font-style-set-resource-handle make-font-style-set-record
            font-manager-h typeface-h make-typeface-record copy-sk-string copy-native-data
@@ -45,6 +57,13 @@
   (handle width height row-bytes colorspace state [description #:auto #:mutable])
   #:auto-value #f
   #:constructor-name make-raster-buffer-record)
+;; Fields:
+;;   handle: owned native pixel allocation. width and height: positive pixel dimensions. row-bytes:
+;;   stride in bytes, at least the tight row size. colorspace: retained native color-space pointer
+;;   or #f, released with the pixel allocation. state: box tracking exclusive canvas/pixmap borrows.
+;;   description: mutable image-info value or #f for the legacy RGBA layout. Borrow state prevents
+;;   closing or conflicting access while native views are live.
+
 (module* raster-buffer-internals #f
   (provide raster-buffer-resource? make-raster-buffer-record
            raster-buffer-resource-handle raster-buffer-resource-width
@@ -63,8 +82,20 @@
 ;; Native regions/vertices use the ordinary resource lifetime protocol. Their
 ;; public inspection data never includes borrowed pointers.
 (struct region-resource (handle) #:constructor-name make-region-record)
+;; Fields:
+;;   handle: owned native region lifetime cell. Rectangle queries copy their results rather than
+;;   exposing borrowed native storage.
+
 (struct vertices-resource (handle mode positions texture colors indices)
   #:constructor-name make-vertices-record)
+;; Fields:
+;;   handle: owned native vertices lifetime cell. mode: 'triangles, 'triangle-strip, or 'triangle-fan.
+;;   positions: immutable coordinate-pair vector; texture: matching texture-coordinate vector or #f.
+;;   colors: matching packed native color vector or #f. indices: optional immutable uint16 index
+;;   vector.
+;;   All per-vertex arrays agree in length; indices refer to positions. Native construction copies
+;;   arrays, while detached snapshots support later inspection.
+
 (module* geometry-internals #f
   (provide region-resource? region-resource-handle make-region-record
            vertices-resource? vertices-resource-handle make-vertices-record
@@ -77,7 +108,17 @@
 ;; module. This private bridge is never re-exported by main.rkt.
 (struct runtime-effect-resource (handle kind source byte-size uniforms children)
   #:constructor-name make-runtime-effect-record)
+;; Fields:
+;;   handle: owned compiled effect. kind: 'shader, 'color-filter, or 'blender. source: immutable
+;;   SkSL source string. byte-size: packed uniform buffer size.
+;;   uniforms and children: detached reflection records in native declaration/index order. Uniform
+;;   byte ranges fit byte-size; child indices determine binding order.
+
 (struct blender-resource (handle) #:constructor-name make-blender-record)
+;; Fields:
+;;   handle: owned native blender lifetime cell; retained paint attachments participate in the
+;;   shared lifetime and GPU-affinity protocol.
+
 (module* runtime-internals #f
   (provide runtime-effect-resource? make-runtime-effect-record
            runtime-effect-resource-handle runtime-effect-resource-kind
@@ -89,6 +130,9 @@
 
 ;; Convert *samples*, unlike an ICC metadata override. Untagged input requires
 ;; an explicit source declaration; never silently reinterpret it as sRGB.
+; image-convert-color-space : image? color-space? [#:source-color-space (or/c color-space? #f)] ->
+;   image?
+;;   Returns a new owned CPU image with samples converted to destination.
 (define (image-convert-color-space im destination #:source-color-space [source #f])
   (define who 'image-convert-color-space)
   (define ih (image-h who im))
@@ -117,6 +161,9 @@
        (image-convert-color-space declared destination))]
     [else (error who "untagged input: supply #:source-color-space explicitly")]))
 
+; call-with-output-image : symbol? image? (or/c #f color-space?) procedure? -> any
+;;   Supplies the image to an encoder, temporarily converting its samples when an output color space
+;;   is requested.
 (define (call-with-output-image who im cs proc)
   (define ih (image-h who im))
   (define ch (optional-color-space-h who cs))
@@ -134,9 +181,14 @@
 
 ;; Legacy drawing remains native by default. Shared exporters parameterize
 ;; these choices only while authoring a page; no global backend is installed.
+; current-text-output-mode : (parameter/c (or/c 'native 'outline))
+;;   Selects native text or path outlines while exporters author a page; the default preserves
+;;   ordinary native text drawing.
 (define current-text-output-mode
   (make-parameter 'native
                   (lambda (v) (output-text-mode 'current-text-output-mode v))))
+; current-raster-output-scale : (parameter/c (real-in 1/1024 1024))
+;;   Supplies the checked device-pixel scale for explicit rasterized output groups.
 (define current-raster-output-scale
   (make-parameter 1
                   (lambda (v) (raster-output-scale 'current-raster-output-scale v))))
@@ -147,7 +199,8 @@
          racket/match
          racket/path
          racket/vector
-         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt" "pdf-util.rkt" "svg-util.rkt"
+         "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt" "pdf-util.rkt"
+         "svg-util.rkt"
          "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt" "joining.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
@@ -274,23 +327,47 @@
     (case request
       [(png-bytes) (surface->png-bytes value)]
       [else default])))
+;; Fields:
+;;   handle: owned native surface lifetime cell. width and height: positive pixel dimensions.
+;;   floors: mutable stack of protected canvas save counts, innermost first. Scoped restoration
+;;   cannot cross the current floor.
+
 ;; GPU handles use the domain's deferred-release allocator. The context wrapper
 ;; is retained while the surface is reachable. Native color-space references
 ;; are released with the surface handle, not with a public borrowed wrapper.
 (struct gpu-surface surface (context domain colorspace description)
   #:constructor-name make-gpu-surface-record)
+;; Fields:
+;;   context: retained public GPU context wrapper. domain: matching execution domain. colorspace:
+;;   retained native color-space pointer or #f, released with the surface. description: immutable
+;;   configuration hash. Inherited handle and dimensions describe the same native surface; native
+;;   access requires its live domain.
+
 ;; A canvas is always borrowed from a surface, picture recorder, or individual PDF page.
 (struct canvas (resource) #:constructor-name make-canvas-record)
+;; Fields:
+;;   resource: owning surface, recorder, page, SVG document, or specialized-canvas owner. The canvas
+;;   borrows native storage from this owner and is valid only while the owner's relevant drawing
+;;   scope remains live.
+
 (struct gpu-canvas canvas (lease) #:constructor-name make-gpu-canvas-record)
+;; Fields:
+;;   lease: captured GPU-domain activation lease. The inherited resource supplies the canvas; both
+;;   owner lifetime and lease generation must still be valid at use time.
+
 (module* gpu-surface-internals #f
   (provide gpu-surface? make-gpu-surface-record gpu-surface-context
            gpu-surface-domain gpu-surface-colorspace gpu-surface-description
            surface-h surface-floors color-space-h wrap-owned-color-space
            canvas-owner))
 (provide surface-backend canvas-execution-backend)
+; surface-backend : surface? -> symbol?
+;;   Returns 'raster for an ordinary CPU surface or the selected GPU backend for a GPU surface.
 (define (surface-backend s)
   (unless (surface? s) (raise-argument-error 'surface-backend "surface?" s))
   (if (gpu-surface? s) (domain-backend (gpu-surface-domain s)) 'raster))
+; canvas-execution-backend : canvas? -> symbol?
+;;   Returns the execution backend of a valid canvas.
 (define (canvas-execution-backend c)
   (define owner (canvas-owner 'canvas-execution-backend c))
   (call-on-canvas 'canvas-execution-backend c '()
@@ -300,24 +377,75 @@
             [(picture-recorder? owner) 'recording]
             [(pdf-page? owner) 'pdf]
             [else 'svg]))))
+; require-cpu-surface : symbol? surface? -> void?
+;;   Rejects GPU surfaces at CPU-only entry points so readback cannot happen implicitly.
 (define (require-cpu-surface who s)
   (when (gpu-surface? s)
-    (error who "GPU transfers are explicit; use gpu-surface->rgba-bytes or gpu-surface->raster-image")))
+    (error who
+      "GPU transfers are explicit; use gpu-surface->rgba-bytes or gpu-surface->raster-image")))
 (struct paint (handle) #:constructor-name make-paint-record)
+;; Fields:
+;;   handle: owned native paint lifetime cell. Native mutation and retained attachments are mediated
+;;   by the shared resource/GPU-affinity protocol.
+
 (struct shader (handle) #:constructor-name make-shader-record)
+;; Fields:
+;;   handle: owned native shader lifetime cell, including any propagated GPU affinity of its
+;;   dependencies.
+
 (struct path-effect (handle) #:constructor-name make-path-effect-record)
+;; Fields:
+;;   handle: owned native path-effect lifetime cell; the wrapper releases one native reference when
+;;   closed.
+
 (struct color-filter (handle) #:constructor-name make-color-filter-record)
+;; Fields:
+;;   handle: owned native color-filter lifetime cell, including affinity inherited from retained
+;;   effect children.
+
 (struct mask-filter (handle) #:constructor-name make-mask-filter-record)
+;; Fields:
+;;   handle: owned native mask-filter lifetime cell; shader-backed masks may carry propagated GPU
+;;   affinity.
+
 (struct image-filter (handle) #:constructor-name make-image-filter-record)
+;; Fields:
+;;   handle: owned native image-filter lifetime cell; graph dependencies are retained through native
+;;   references and tracked affinity.
+
 (struct color-space (handle) #:constructor-name make-color-space-record)
+;; Fields:
+;;   handle: owned native color-space reference. Public wrappers do not expose the underlying
+;;   pointer.
+
 (struct picture (handle width height) #:constructor-name make-picture-record)
+;; Fields:
+;;   handle: owned recorded-picture lifetime cell. width and height: recorded drawing extents in
+;;   local units, used by conversion and rasterization helpers.
+
 (struct picture-recorder (handle [recording? #:mutable] [canvas-ptr #:mutable]
                                  [bounds #:mutable] [floors #:mutable])
   #:constructor-name make-picture-recorder-record)
+;; Fields:
+;;   handle: owned native recorder. recording?: mutable recording-active flag. canvas-ptr: borrowed
+;;   recording canvas or #f. bounds: recording bounds. floors: protected save-count stack, innermost
+;;   first.
+;;   Finishing recording invalidates its borrowed canvas; the resulting picture has its own native
+;;   ownership.
+
 (struct skia-path (handle) #:constructor-name make-path-record)
+;; Fields:
+;;   handle: owned mutable native path lifetime cell. Inspection APIs return detached geometry
+;;   rather than borrowed native arrays.
+
 ;; snapshot-box contains a raw native SkPath pointer owned together with the
 ;; native SkPathMeasure. It is never exposed by the public API.
 (struct path-measure (handle snapshot-box) #:constructor-name make-path-measure-record)
+;; Fields:
+;;   handle: owned native path measure. snapshot-box: box containing its owned raw path snapshot or
+;;   #f. Snapshot replacement and closure release the old path together with the measure's ownership
+;;   bookkeeping.
+
 (struct image (handle width height)
   #:constructor-name make-image-record
   #:property prop:convertible
@@ -326,8 +454,15 @@
     (case request
       [(png-bytes) (image->png-bytes value)]
       [else default])))
+;; Fields:
+;;   handle: owned native image lifetime cell. width and height: positive pixel dimensions.
+;;   GPU-backed images use the same wrapper; affinity on the handle controls valid access and
+;;   explicit readback.
+
 (module* pict-internals #f
   (provide require-cpu-image)
+  ; require-cpu-image : symbol? image? -> void?
+  ;;   Rejects GPU-affine images at CPU-only conversion entry points, requiring explicit detachment.
   (define (require-cpu-image who im)
     ;; GPU images have an ordinary image wrapper, so test their lifetime binding
     ;; rather than importing the GPU implementation (which would create a cycle).
@@ -342,45 +477,131 @@
   (width height format color-type alpha-type origin frame-count)
   #:transparent
   #:constructor-name make-encoded-image-info-record)
+;; Fields:
+;;   width and height: encoded pixel dimensions before orientation. format, color-type, alpha-type,
+;;   and origin: codec metadata symbols. frame-count: reported number of image frames. These are
+;;   detached values and own no decoder.
+
 (struct font-manager (handle) #:constructor-name make-font-manager-record)
+;; Fields:
+;;   handle: owned native font-manager lifetime cell used for family lookup and fallback selection.
+
 (struct typeface (handle) #:constructor-name make-typeface-record)
+;; Fields:
+;;   handle: owned native typeface reference. Font-table and metadata queries copy data before
+;;   returning to callers.
+
 ;; owner keeps an implicitly-created default typeface reachable for at least
 ;; as long as the font wrapper. SkFont itself also retains its typeface.
 (struct font (handle [owner #:mutable]) #:constructor-name make-font-record)
+;; Fields:
+;;   handle: owned mutable native font. owner: mutable optional typeface wrapper retained for
+;;   implicitly created/default typefaces. Native SkFont also retains its typeface; changing the
+;;   font updates this Racket keepalive as needed.
+
 ;; A private font snapshot and immutable positions allow exact outline replay
 ;; after the caller mutates/closes the font used to construct this blob.
 (struct text-blob (handle font glyphs positions) #:constructor-name make-text-blob-record)
+;; Fields:
+;;   handle: owned native text blob. font: retained private font snapshot. glyphs: glyph-id list.
+;;   positions: coordinate-pair list in matching glyph order.
+;;   The font snapshot and detached positions preserve outline replay independently of later changes
+;;   to the caller's font.
+
 ;; 0.69 private ownership bridge. No handles are re-exported by main.rkt.
 (require "text-run-data.rkt" "text-run-util.rkt")
 (struct multi-text-blob text-blob (runs) #:constructor-name make-multi-text-blob-record)
-(struct text-blob-builder-resource (handle runs cost) #:constructor-name make-text-blob-builder-record)
+;; Fields:
+;;   runs: retained-text-run records in blob run order. Each retains the font snapshot and detached
+;;   positioning metadata for its run; inherited fields preserve compatibility with ordinary text
+;;   blobs.
+
+(struct text-blob-builder-resource (handle runs cost)
+  #:constructor-name make-text-blob-builder-record)
+;; Fields:
+;;   handle: owned native builder. runs: box accumulating retained run records. cost: box of
+;;   accounted construction bytes. Builder operations update both boxes; run order is preserved when
+;;   the blob is finalized.
+
 (module* text-blob-internals #f
   (provide multi-text-blob? multi-text-blob-runs make-multi-text-blob-record
            text-blob-builder-resource? text-blob-builder-resource-handle
-           text-blob-builder-resource-runs text-blob-builder-resource-cost make-text-blob-builder-record
+           text-blob-builder-resource-runs text-blob-builder-resource-cost
+           make-text-blob-builder-record
            text-blob-h text-blob-font text-blob-glyphs text-blob-positions
            font-h shaper-h shaper-font paint-h path-h call-on-canvas
            copy-font-for-shaper call-with-native-temporary path-native-verb-count))
 (struct shaper (handle font) #:constructor-name make-shaper-record)
+;; Fields:
+;;   handle: owned HarfBuzz font lifetime cell. font: retained Skia font snapshot used for glyph
+;;   metrics and drawing. Explicitly closing either required resource invalidates later native work.
+
 (struct shaped-run (glyphs clusters positions advance-x advance-y) #:transparent)
+;; Fields:
+;;   glyphs: glyph-id list. clusters: matching UTF-8 source byte-offset list. positions: matching
+;;   glyph coordinate pairs in shaped visual order. advance-x and advance-y: total run
+;;   advances in drawing units.
+;;   Glyph, cluster, and position counts agree; cluster order need not increase for right-to-left
+;;   runs.
+
 (struct layout-break-opportunity (index insert)
   #:transparent
   #:constructor-name make-layout-break-opportunity-record)
+;; Fields:
+;;   index: nonnegative string-character boundary. insert: string displayed only when this break is
+;;   chosen, empty for an ordinary break; it contains no hard breaks or bidi formatting controls.
+;;   Indices refer to the original logical string, not UTF-8 bytes or shaped glyph indices.
+
 ;; A text layout is a pure Racket value, but it intentionally keeps the shaper
 ;; wrapper reachable. It therefore remains drawable while the shaper is live;
 ;; explicitly closing that shaper invalidates later drawing from the layout.
 (struct text-layout (shaper lines width height line-height) #:transparent)
+;; Fields:
+;;   shaper: caller's retained shaper wrapper. lines: text-layout-line values in top-to-bottom
+;;   order. width and height: layout extents. line-height: baseline-to-baseline distance, all in
+;;   drawing units.
+;;   The record itself is detached Racket data, but drawing still requires the retained shaper to be
+;;   open.
+
 (struct text-layout-line (text run origin-x baseline width direction) #:transparent)
+;; Fields:
+;;   text: displayed line string. run: shaped-run for that text. origin-x and baseline: line origin
+;;   in layout coordinates. width: horizontal line advance. direction: resolved line direction
+;;   symbol.
+
 ;; Mixed layouts keep caller-owned base shaper/font-manager wrappers reachable.
 ;; Fallback fonts/shapers are created transiently during layout/drawing, so the
 ;; layout itself owns no hidden native resources.
 (struct mixed-text-layout (shaper font-manager lines width height line-height) #:transparent)
+;; Fields:
+;;   shaper and font-manager: retained caller-owned wrappers used to reconstruct fallback fonts.
+;;   lines: mixed-text-line values in top-to-bottom order. width, height, and line-height: layout
+;;   dimensions in drawing units.
+;;   The layout owns no hidden fallback resources; later drawing still requires its caller-owned
+;;   resources to remain live.
+
 (struct mixed-text-line (text runs origin-x baseline width direction) #:transparent)
+;; Fields:
+;;   text: displayed line string. runs: mixed-text-run values in visual drawing order. origin-x and
+;;   baseline: layout-space origin. width: line advance. direction: resolved paragraph/line
+;;   direction.
+
 (struct mixed-text-run
   (text shaped-run origin-x width direction level script
         family weight font-width slant)
   #:transparent)
+;; Fields:
+;;   text and shaped-run: displayed source slice and matching glyph data. origin-x: visual
+;;   horizontal placement. width: run advance. direction, level, and script: resolved bidi
+;;   direction, embedding level, and script.
+;;   family, weight, font-width, and slant: detached fallback-font choice. These identify the font
+;;   request without retaining temporary fallback fonts.
+
 (struct fallback-choice (family weight width slant) #:transparent)
+;; Fields:
+;;   family: chosen family name. weight, width, and slant: checked font-style values. The detached
+;;   choice can recreate a fallback font without retaining its native pointer.
+
 (struct font-metrics
   (top ascent descent bottom leading
    average-character-width max-character-width
@@ -388,9 +609,27 @@
    underline-thickness underline-position
    strikeout-thickness strikeout-position spacing)
   #:transparent)
+;; Fields:
+;;   top, ascent, descent, and bottom: signed baseline-relative vertical metrics. leading and
+;;   spacing: additional line gap and recommended baseline spacing.
+;;   average-character-width and max-character-width: horizontal size metrics. x-min and x-max:
+;;   horizontal font bounds. x-height and cap-height: font height metrics, all in drawing units.
+;;   underline-thickness, underline-position, strikeout-thickness, and strikeout-position:
+;;   decoration metrics or #f when the corresponding native validity flag is absent; positions are
+;;   baseline-relative.
 
+
+;;;
+;;; Resource Lifetimes and Checked Handles
+;;;
+
+; skia-resource? : any/c -> boolean?
+;;   Returns #t when v is an owned resource accepted by the ordinary Skia resource protocol, and #f
+;;   otherwise.
 (define (skia-resource? v)
-  (or (incremental-session-record? v) (scanline-session-record? v) (native-stream? v) (recorded-drawable? v) (text-blob-builder-resource? v) (font-style-set-resource? v) (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
+  (or (incremental-session-record? v) (scanline-session-record? v) (native-stream? v)
+      (recorded-drawable? v) (text-blob-builder-resource? v) (font-style-set-resource? v)
+      (raster-buffer-resource? v) (region-resource? v) (vertices-resource? v)
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
@@ -398,6 +637,8 @@
       (skia-path? v) (path-measure? v) (image? v) (codec? v)
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
 
+; resource-handle : symbol? skia-resource? -> (or/c owned? domain-resource?)
+;;   Selects the lifetime cell for a supported resource wrapper and rejects unrelated values.
 (define (resource-handle who v)
   (cond [(incremental-session-record? v) (incremental-session-record-handle v)]
         [(scanline-session-record? v) (scanline-session-record-handle v)]
@@ -435,6 +676,8 @@
         [(shaper? v) (shaper-handle v)]
         [else (raise-argument-error who "skia-resource? (not a borrowed canvas)" v)]))
 
+; skia-closed? : (or/c skia-resource? canvas?) -> boolean?
+;;   Returns whether v has been closed or its borrowed target has expired.
 (define (skia-closed? v)
   (cond
     [(and (canvas? v) (specialized-canvas-owner? (canvas-resource v)))
@@ -448,6 +691,8 @@
            [(and (canvas? v) (svg-document? owner)) (svg-canvas-closed? owner)]
            [else (owned-closed? (resource-handle 'skia-closed? owner))])]))
 
+; skia-close! : skia-resource? -> void?
+;;   Releases resource's owned native reference.
 (define (skia-close! v)
   (check-canvas-close-pin! 'skia-close! v)
   (when (and (gpu-surface? v) (pair? (surface-floors v)))
@@ -477,12 +722,17 @@
      (for ([run (in-list (multi-text-blob-runs v))]) (skia-close! (retained-text-run-font run)))]
     [(text-blob? v) (skia-close! (text-blob-font v))]))
 
+; call-with-skia-resource : skia-resource? (-> skia-resource? any) -> any
+;;   Calls proc with resource and closes the resource when the call finishes, including an
+;;   exceptional or nonlocal exit.
 (define (call-with-skia-resource v proc)
   (resource-handle 'call-with-skia-resource v)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error 'call-with-skia-resource "procedure accepting one argument" proc))
   (call-with-scoped-resource v skia-close! proc))
 
+; with-skia : syntax transformer
+;;   Acquires resources in binding order and closes them in reverse order on every scope exit.
 (define-syntax with-skia
   (syntax-rules ()
     [(_ () body ...) (let () body ...)]
@@ -490,39 +740,80 @@
      (call-with-skia-resource expression
        (lambda (id) (with-skia (rest ...) body ...)))]))
 
+; typed-handle : symbol? any/c procedure? procedure? string? -> (or/c owned? domain-resource?)
+;;   Checks a wrapper predicate before extracting its private lifetime cell.
 (define (typed-handle who v pred accessor description)
   (unless (pred v) (raise-argument-error who description v))
   (accessor v))
+; surface-h : symbol? surface? -> (or/c owned? domain-resource?)
+;;   Extracts a checked surface lifetime cell only when the target is not exclusively borrowed.
 (define (surface-h who v)
   (define handle (typed-handle who v surface? surface-handle "surface?"))
   (check-unborrowed-target! who v)
   handle)
+; paint-h : symbol? paint? -> (or/c owned? domain-resource?)
+;;   Checks paint? before returning the wrapper's private lifetime cell.
 (define (paint-h who v) (typed-handle who v paint? paint-handle "paint?"))
+; shader-h : symbol? shader? -> (or/c owned? domain-resource?)
+;;   Checks shader? before returning the wrapper's private lifetime cell.
 (define (shader-h who v) (typed-handle who v shader? shader-handle "shader?"))
+; path-effect-h : symbol? path-effect? -> (or/c owned? domain-resource?)
+;;   Checks path-effect? before returning the wrapper's private lifetime cell.
 (define (path-effect-h who v)
   (typed-handle who v path-effect? path-effect-handle "path-effect?"))
+; color-filter-h : symbol? color-filter? -> (or/c owned? domain-resource?)
+;;   Checks color-filter? before returning the wrapper's private lifetime cell.
 (define (color-filter-h who v)
   (typed-handle who v color-filter? color-filter-handle "color-filter?"))
+; mask-filter-h : symbol? mask-filter? -> (or/c owned? domain-resource?)
+;;   Checks mask-filter? before returning the wrapper's private lifetime cell.
 (define (mask-filter-h who v)
   (typed-handle who v mask-filter? mask-filter-handle "mask-filter?"))
+; image-filter-h : symbol? image-filter? -> (or/c owned? domain-resource?)
+;;   Checks image-filter? before returning the wrapper's private lifetime cell.
 (define (image-filter-h who v)
   (typed-handle who v image-filter? image-filter-handle "image-filter?"))
+; color-space-h : symbol? color-space? -> (or/c owned? domain-resource?)
+;;   Checks color-space? before returning the wrapper's private lifetime cell.
 (define (color-space-h who v)
   (typed-handle who v color-space? color-space-handle "color-space?"))
+; picture-h : symbol? picture? -> (or/c owned? domain-resource?)
+;;   Checks picture? before returning the wrapper's private lifetime cell.
 (define (picture-h who v) (typed-handle who v picture? picture-handle "picture?"))
+; picture-recorder-h : symbol? picture-recorder? -> (or/c owned? domain-resource?)
+;;   Checks picture-recorder? before returning the wrapper's private lifetime cell.
 (define (picture-recorder-h who v)
   (typed-handle who v picture-recorder? picture-recorder-handle "picture-recorder?"))
+; path-h : symbol? skia-path? -> (or/c owned? domain-resource?)
+;;   Checks skia-path? before returning the wrapper's private lifetime cell.
 (define (path-h who v) (typed-handle who v skia-path? skia-path-handle "skia-path?"))
+; path-measure-h : symbol? path-measure? -> (or/c owned? domain-resource?)
+;;   Checks path-measure? before returning the wrapper's private lifetime cell.
 (define (path-measure-h who v)
   (typed-handle who v path-measure? path-measure-handle "path-measure?"))
+; image-h : symbol? image? -> (or/c owned? domain-resource?)
+;;   Checks image? before returning the wrapper's private lifetime cell.
 (define (image-h who v) (typed-handle who v image? image-handle "image?"))
+; font-manager-h : symbol? font-manager? -> (or/c owned? domain-resource?)
+;;   Checks font-manager? before returning the wrapper's private lifetime cell.
 (define (font-manager-h who v)
   (typed-handle who v font-manager? font-manager-handle "font-manager?"))
+; typeface-h : symbol? typeface? -> (or/c owned? domain-resource?)
+;;   Checks typeface? before returning the wrapper's private lifetime cell.
 (define (typeface-h who v) (typed-handle who v typeface? typeface-handle "typeface?"))
+; font-h : symbol? font? -> (or/c owned? domain-resource?)
+;;   Checks font? before returning the wrapper's private lifetime cell.
 (define (font-h who v) (typed-handle who v font? font-handle "font?"))
+; text-blob-h : symbol? text-blob? -> (or/c owned? domain-resource?)
+;;   Checks text-blob? before returning the wrapper's private lifetime cell.
 (define (text-blob-h who v) (typed-handle who v text-blob? text-blob-handle "text-blob?"))
+; shaper-h : symbol? shaper? -> (or/c owned? domain-resource?)
+;;   Checks shaper? before returning the wrapper's private lifetime cell.
 (define (shaper-h who v) (typed-handle who v shaper? shaper-handle "shaper?"))
 
+; canvas-owner : symbol? canvas? -> any
+;;   Checks canvas and GPU-lease validity before returning the resource that owns the borrowed
+;;   canvas.
 (define (canvas-owner who c)
   (unless (canvas? c) (raise-argument-error who "canvas?" c))
   (when (gpu-canvas? c) (domain-check-lease! who (gpu-canvas-lease c)))
@@ -532,11 +823,13 @@
       (error who "specialized canvas lease has expired"))
     (for ([parent (in-list (specialized-canvas-owner-dependencies owner))])
       (canvas-owner who parent)))
-  (unless (or (specialized-canvas-owner? owner) (surface? owner) (picture-recorder? owner) (pdf-page? owner)
-              (svg-document? owner))
+  (unless (or (specialized-canvas-owner? owner) (surface? owner) (picture-recorder? owner)
+              (pdf-page? owner) (svg-document? owner))
     (error who "canvas owner is corrupted"))
   owner)
 
+; owner-floors : any/c -> (listof exact-positive-integer?)
+;;   Reads the protected save-count stack from any supported canvas-owner representation.
 (define (owner-floors owner)
   (cond [(specialized-canvas-owner? owner) (specialized-canvas-owner-floors owner)]
         [(surface? owner) (surface-floors owner)]
@@ -545,6 +838,8 @@
         [(svg-document? owner) (svg-document-floors owner)]
         [else (error 'owner-floors "unsupported owner")]))
 
+; set-owner-floors! : any/c (listof exact-positive-integer?) -> void?
+;;   Replaces the protected save-count stack on the concrete canvas-owner representation.
 (define (set-owner-floors! owner floors)
   (cond [(specialized-canvas-owner? owner) (set-specialized-canvas-owner-floors! owner floors)]
         [(surface? owner) (set-surface-floors! owner floors)]
@@ -553,6 +848,9 @@
         [(svg-document? owner) (set-svg-document-floors! owner floors)]
         [else (error 'set-owner-floors! "unsupported owner")]))
 
+; call-on-canvas : symbol? canvas? (listof (or/c owned? domain-resource?)) procedure? -> any
+;;   Scopes the destination and auxiliary resources, then supplies their checked native pointers to
+;;   the drawing operation.
 (define (call-on-canvas who c others proc)
   (define owner (canvas-owner who c))
   (check-unborrowed-target! who owner)
@@ -564,7 +862,8 @@
              (memq who '(draw-simple-text draw-text-blob draw-picture draw-drawable
                           canvas-save-layer! call-with-canvas-layer
                           canvas-save-layer-rec! call-with-canvas-layer-rec)))
-    (error who "overdraw diagnostics support direct primitives, not text, recorded content, or layers"))
+    (error who
+      "overdraw diagnostics support direct primitives, not text, recorded content, or layers"))
   (call-with-owned
    who (cons (resource-handle who owner) others)
    (lambda (op . ps)
@@ -599,6 +898,9 @@
 
 (module* output-group-internals #f
   (provide picture-h output-group-canvas-backend output-group-canvas-recording-handle)
+  ; output-group-canvas-backend : symbol? any/c -> symbol?
+  ;;   Classifies an ordinary live drawing target for output planning, rejecting diagnostic
+  ;;   canvases.
   (define (output-group-canvas-backend who c)
     (define owner (canvas-owner who c))
     (call-on-canvas who c '() (lambda ignored (void)))
@@ -607,11 +909,15 @@
           [(gpu-surface? owner) 'gpu]
           [(surface? owner) 'raster] [(picture-recorder? owner) 'recording]
           [(pdf-page? owner) 'pdf] [else 'svg]))
+  ; output-group-canvas-recording-handle : symbol? any/c -> any
+  ;;   Returns the recorder lifetime cell when output authoring targets a picture recording.
   (define (output-group-canvas-recording-handle who c)
     (define owner (canvas-owner who c))
     (call-on-canvas who c '() (lambda ignored (void)))
     (and (picture-recorder? owner) (picture-recorder-handle owner))))
 
+; initialize-resource : skia-resource? procedure? -> skia-resource?
+;;   Closes a newly allocated resource if its initialization procedure raises an exception.
 (define (initialize-resource v proc)
   (with-handlers ([exn? (lambda (e) (skia-close! v) (raise e))])
     (proc v)
@@ -640,6 +946,11 @@
 ;; that canvas closes the XML root. One owned STREAM handle keeps everything
 ;; alive; its release closure captures storage, never the public wrapper.
 (struct svg-storage ([canvas #:mutable] [xml #:mutable]))
+;; Fields:
+;;   canvas: live native SVG canvas pointer or #f after release. xml: finalized detached SVG bytes
+;;   or #f before successful finish. Closing the canvas completes native output before XML is
+;;   exposed.
+
 (struct svg-document (handle storage width height title description prefix
                              [status #:mutable] [floors #:mutable])
   #:constructor-name make-svg-document-record
@@ -649,26 +960,46 @@
     (case request
       [(svg-bytes) (svg-document->bytes value)]
       [else default])))
+;; Fields:
+;;   handle: owned native output lifetime cell. storage: mutable SVG storage. width and height:
+;;   drawing extents. title, description, and prefix: validated metadata and identifier prefix.
+;;   status: mutable document-state symbol. floors: protected canvas save-count stack. Drawing is
+;;   legal only in the open document state; final XML is detached from native resources.
 
+
+;;;
+;;; SVG Document Lifecycle
+;;;
+
+; svg-document-h : symbol? svg-document? -> (or/c owned? domain-resource?)
+;;   Checks svg-document? before returning the wrapper's private lifetime cell.
 (define (svg-document-h who d)
   (typed-handle who d svg-document? svg-document-handle "svg-document?"))
 
+; svg-document-state : svg-document? -> (or/c 'open 'finishing 'finished 'aborted 'closed)
+;;   Returns the stored lifecycle state, accounting for release.
 (define (svg-document-state d)
   (define h (svg-document-h 'svg-document-state d))
   (if (owned-closed? h)
       (if (eq? (svg-document-status d) 'aborted) 'aborted 'closed)
       (svg-document-status d)))
 
+; svg-canvas-closed? : svg-document? -> boolean?
+;;   Detects whether document completion, abortion, or release has invalidated the SVG canvas.
 (define (svg-canvas-closed? d)
   (or (owned-closed? (svg-document-handle d))
       (not (eq? (svg-document-status d) 'open))
       (not (svg-storage-canvas (svg-document-storage d)))))
 
+; svg-canvas-pointer/checked : symbol? svg-document? -> cpointer?
+;;   Returns the borrowed SVG canvas pointer only while its document remains open.
 (define (svg-canvas-pointer/checked who d)
   (when (svg-canvas-closed? d)
     (error who "SVG canvas is closed (document finished, aborted, or released)"))
   (svg-storage-canvas (svg-document-storage d)))
 
+; release-svg-native! : svg-storage? any/c -> any
+;;   Destroys the SVG canvas before its output stream and clears retained output state.
 (define (release-svg-native! storage sp)
   ;; Clear first: explicit release and GC cleanup cannot delete the same canvas
   ;; twice. Finalizers may finish an XML stream internally but never publish it.
@@ -678,6 +1009,9 @@
   (set-svg-storage-xml! storage #f)
   (sk_dynamicmemorywstream_destroy sp))
 
+; make-svg-document : (real-in 1/1000 32768) (real-in 1/1000 32768) [#:title string?] [#:description
+;   string?] [#:id-prefix string?] -> svg-document?
+;;   Returns an owned SVG document in the 'open state.
 (define (make-svg-document width height #:title [title ""]
                             #:description [description ""] #:id-prefix [id-prefix "skia"])
   (define who 'make-svg-document)
@@ -704,6 +1038,8 @@
      (lambda (sp) (release-svg-native! storage sp))))
   (make-svg-document-record handle storage w h t d prefix 'open '()))
 
+; svg-document-canvas : svg-document? -> canvas?
+;;   Returns a borrowed canvas for an open, unfinished document.
 (define (svg-document-canvas d)
   (call-with-owned
    'svg-document-canvas (list (svg-document-h 'svg-document-canvas d))
@@ -711,6 +1047,8 @@
      (svg-canvas-pointer/checked 'svg-document-canvas d)
      (make-canvas-record d))))
 
+; svg-document-finish! : svg-document? -> void?
+;;   Completes the SVG XML, normalizes generated IDs and metadata, and finalizes annotations.
 (define (svg-document-finish! d)
   (define who 'svg-document-finish!)
   (define hnd (svg-document-h who d))
@@ -754,6 +1092,8 @@
          (annotation-forget! d)))))
   (void))
 
+; svg-document-abort! : svg-document? -> void?
+;;   Releases the native storage and marks the document aborted.
 (define (svg-document-abort! d)
   (define hnd (svg-document-h 'svg-document-abort! d))
   ;; Also checks thread ownership after an earlier close/abort.
@@ -762,6 +1102,8 @@
   (set-svg-document-status! d 'aborted)
   (void))
 
+; svg-document->bytes : svg-document? -> (and/c bytes? (not/c immutable?))
+;;   Returns a fresh mutable copy of the finished SVG.
 (define (svg-document->bytes d)
   (define who 'svg-document->bytes)
   (call-with-owned
@@ -775,13 +1117,22 @@
      ;; Independent mutable result, like document->pdf-bytes and image encoders.
      (bytes-copy xml))))
 
+; svg-document->string : svg-document? -> string?
+;;   Returns the finished SVG as a UTF-8-decoded string, with the same lifecycle and size
+;;   requirements as svg-document->bytes.
 (define (svg-document->string d)
   (bytes->string/utf-8 (svg-document->bytes d) #f))
 
+; save-svg : svg-document? path-string? [#:exists (or/c 'error 'replace)] -> void?
+;;   Publishes the finished SVG to a file without finishing or closing the document.
 (define (save-svg d filename #:exists [exists 'error])
   (define target (svg-output-path 'save-svg filename exists))
   (write-svg-file-bytes! 'save-svg (svg-document->bytes d) target exists))
 
+; call-with-svg-bytes : (real-in 1/1000 32768) (real-in 1/1000 32768) (-> canvas? any) [#:title
+;   string?] [#:description string?] [#:id-prefix string?] -> (and/c bytes? (not/c immutable?))
+;;   Creates an SVG document, calls proc with its canvas, discards the callback's results, finishes
+;;   the XML, and returns the bytes.
 (define (call-with-svg-bytes width height proc #:title [title ""]
                              #:description [description ""] #:id-prefix [id-prefix "skia"])
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
@@ -794,12 +1145,19 @@
     (svg-document-finish! d)
     (svg-document->bytes d)))
 
+; call-with-svg-string : (real-in 1/1000 32768) (real-in 1/1000 32768) (-> canvas? any) [#:title
+;   string?] [#:description string?] [#:id-prefix string?] -> string?
+;;   Like call-with-svg-bytes, returning the UTF-8-decoded SVG string.
 (define (call-with-svg-string width height proc #:title [title ""]
                               #:description [description ""] #:id-prefix [id-prefix "skia"])
   (bytes->string/utf-8
    (call-with-svg-bytes width height proc #:title title
                         #:description description #:id-prefix id-prefix) #f))
 
+; call-with-svg-file : path-string? (real-in 1/1000 32768) (real-in 1/1000 32768) (-> canvas? any)
+;   [#:exists (or/c 'error 'replace)] [#:title string?] [#:description string?] [#:id-prefix
+;   string?] -> void?
+;;   Runs call-with-svg-bytes and publishes the completed output according to save-svg's file rules.
 (define (call-with-svg-file filename width height proc #:exists [exists 'error]
                             #:title [title ""] #:description [description ""]
                             #:id-prefix [id-prefix "skia"])
@@ -811,6 +1169,9 @@
 
 ;; These two helpers work with every backend, not only SVG. They make the
 ;; trade-off between editable text, glyph outlines, and raster content explicit.
+; shaped-run->path : shaper? shaped-run? -> skia-path?
+;;   Returns an owned path assembled from the run's available monochrome glyph outlines at their
+;;   stored positions.
 (define (shaped-run->path sh run)
   (define who 'shaped-run->path)
   (define hh (shaper-h who sh))
@@ -829,12 +1190,22 @@
           (lambda (p) (path-add-path! out p #:dx (car pos) #:dy (cadr pos))))))
     out))
 
+;;;
+;;; Explicit Raster Output
+;;;
+
+; draw-rasterized : canvas? real? real? (and/c real? (>/c 0)) (and/c real? (>/c 0)) (-> canvas? any)
+;   [#:scale (real-in 1/1024 1024)] [#:padding (or/c real? list?)] [#:color-space (or/c color-space?
+;   #f)] -> void?
+;;   Draws the callback into a temporary transparent CPU surface, then draws its snapshot onto the
+;;   destination.
 (define (draw-rasterized c x y width height proc
                          #:scale [scale (current-raster-output-scale)]
                          #:padding [padding 0] #:color-space [cs #f])
   (define who 'draw-rasterized)
   (when (gpu-surface? (canvas-owner who c))
-    (error who "CPU raster fallback on GPU targets is not implicit; draw directly or explicitly transfer a CPU image"))
+    (error who
+      "CPU raster fallback on GPU targets is not implicit; draw directly or explicitly transfer a CPU image"))
   (define fx (scalar who x))
   (define fy (scalar who y))
   (define-values (pw ph left top bw bh)
@@ -877,6 +1248,11 @@
 ;; One owned handle releases the document before its borrowed output stream.
 ;; The release closure captures storage, never the wrapper (no finalizer cycle).
 (struct pdf-storage ([stream #:mutable] [data #:mutable] [native-closed? #:mutable]))
+;; Fields:
+;;   stream: native output stream pointer or #f after release. data: finalized PDF byte data or #f
+;;   before completion. native-closed?: whether native document finalization has already occurred,
+;;   preventing duplicate close.
+
 (struct document (handle storage [status #:mutable] [page #:mutable] [count #:mutable])
   #:constructor-name make-document-record
   #:property prop:convertible
@@ -885,33 +1261,59 @@
     (case request
       [(pdf-bytes) (document->pdf-bytes value)]
       [else default])))
+;; Fields:
+;;   handle: owned native PDF document. storage: stream/data bookkeeping. status: mutable lifecycle
+;;   symbol. page: current pdf-page or #f. count: number of pages begun. At most one page can be
+;;   active.
+
 ;; Each begin-page gets a distinct token. In particular, an old canvas must
 ;; NEVER become usable again when the same document starts its next page.
 (struct pdf-page (document pointer [floors #:mutable] [scoped? #:mutable]))
+;; Fields:
+;;   document: owning PDF document. pointer: borrowed native page canvas. floors: mutable protected
+;;   save-count stack. scoped?: whether the page is managed by a scoped helper. The pointer expires
+;;   when this page ends, even if the document remains live.
 
+
+;;;
+;;; PDF Document and Page Lifecycle
+;;;
+
+; document-h : symbol? document? -> (or/c owned? domain-resource?)
+;;   Checks document? before returning the wrapper's private lifetime cell.
 (define (document-h who d)
   (typed-handle who d document? document-handle "document?"))
 
+; document-state : document? -> (or/c 'open 'page 'finished 'aborted 'closed)
+;;   Returns the current lifecycle state.
 (define (document-state d)
   (define h (document-h 'document-state d))
   (if (owned-closed? h)
       (if (eq? (document-status d) 'aborted) 'aborted 'closed)
       (document-status d)))
 
+; document-page-count : document? -> exact-nonnegative-integer?
+;;   Returns the number of successfully ended pages.
 (define (document-page-count d)
   (document-h 'document-page-count d)
   (document-count d))
 
+; pdf-page-closed? : pdf-page? -> boolean?
+;;   Checks both document lifetime and page identity so a previous page cannot be drawn again.
 (define (pdf-page-closed? p)
   (define d (pdf-page-document p))
   (or (owned-closed? (document-handle d))
       (not (eq? p (document-page d)))))
 
+; pdf-page-pointer/checked : symbol? pdf-page? -> cpointer?
+;;   Returns the borrowed PDF canvas pointer only for the document's active page.
 (define (pdf-page-pointer/checked who p)
   (when (pdf-page-closed? p)
     (error who "PDF page canvas is closed (page ended or document released)"))
   (pdf-page-pointer p))
 
+; release-pdf-native! : pdf-storage? any/c -> void?
+;;   Aborts unfinished native PDF output and releases its document, data, and stream references.
 (define (release-pdf-native! storage dp)
   ;; An unfinished document is aborted rather than accidentally published by
   ;; SkDocument's destructor. No file output or Racket callback occurs here.
@@ -926,6 +1328,8 @@
     (sk_dynamicmemorywstream_destroy (pdf-storage-stream storage))
     (set-pdf-storage-stream! storage #f)))
 
+; call-with-pdf-metadata : symbol? any/c any/c any/c any/c any/c any/c procedure? -> any
+;;   Keeps native metadata strings and date records alive for one document-creation callback.
 (define (call-with-pdf-metadata who fields creation modified dpi quality pdfa? proc)
   ;; AsDocumentPDFMetadata copies strings/timestamps by value. Keep all
   ;; temporary SkStrings and date structs alive through that conversion.
@@ -947,6 +1351,11 @@
         sk_string_destructor
         (lambda (sp) (loop (cdr remaining) (cons sp pointers))))])))
 
+; make-pdf-document : [#:title string?] [#:author string?] [#:subject string?] [#:keywords string?]
+;   [#:creator string?] [#:producer string?] [#:creation-date (or/c date? #f)] [#:modified-date
+;   (or/c date? #f)] [#:raster-dpi (real-in 1 9600)] [#:encoding-quality (integer-in 0 101)]
+;   [#:pdfa? boolean?] -> document?
+;;   Returns an owned document in the 'open state with no completed pages.
 (define (make-pdf-document #:title [title ""] #:author [author ""]
                            #:subject [subject ""] #:keywords [keywords ""]
                            #:creator [creator "skia-for-racket"]
@@ -987,6 +1396,8 @@
         (lambda (dp) (release-pdf-native! storage dp))))))
   (make-document-record hnd storage 'open #f 0))
 
+; document-begin-page! : document? (real-in 1/1000 14400) (real-in 1/1000 14400) -> canvas?
+;;   Begins a page and returns its borrowed canvas.
 (define (document-begin-page! d width height)
   (define who 'document-begin-page!)
   (define hnd (document-h who d))
@@ -1009,6 +1420,8 @@
      (set-document-status! d 'page)
      (make-canvas-record page))))
 
+; end-document-page! : symbol? any/c any/c any/c -> any
+;;   Ends the matching active PDF page without crossing an outstanding page or canvas-state scope.
 (define (end-document-page! who d expected scoped?)
   (call-with-owned
    who (list (document-h who d))
@@ -1025,9 +1438,13 @@
      (set-document-status! d 'open)
      (set-document-count! d (add1 (document-count d))))))
 
+; document-end-page! : document? -> void?
+;;   Ends the active page, increments the completed-page count, and returns the document to 'open.
 (define (document-end-page! d)
   (end-document-page! 'document-end-page! d #f #f))
 
+; document-finish! : document? -> void?
+;;   Finalizes a document that is open between pages and has at least one completed page.
 (define (document-finish! d)
   (define who 'document-finish!)
   (define hnd (document-h who d))
@@ -1060,6 +1477,9 @@
          (annotation-forget! d)))))
   (void))
 
+; document-abort! : document? -> void?
+;;   Discards access to the document's bytes, ends any active page, releases its native resources,
+;;   and reports 'aborted.
 (define (document-abort! d)
   (define hnd (document-h 'document-abort! d))
   ;; owned-close! checks thread affinity even for an already-closed resource.
@@ -1069,6 +1489,8 @@
   (set-document-status! d 'aborted)
   (void))
 
+; document->pdf-bytes : document? -> (and/c bytes? (not/c immutable?))
+;;   Returns a fresh mutable copy of a finished document's bytes.
 (define (document->pdf-bytes d)
   (define who 'document->pdf-bytes)
   (call-with-owned
@@ -1078,10 +1500,16 @@
        (error who "document-finish! must succeed before reading PDF bytes"))
      (copy-native-data who (pdf-storage-data (document-storage d))))))
 
+; save-pdf : document? path-string? [#:exists (or/c 'error 'replace)] -> void?
+;;   Writes an already-finished, still-open document.
 (define (save-pdf d filename #:exists [exists 'error])
   (define target (pdf-output-path 'save-pdf filename exists))
   (write-pdf-file-bytes! 'save-pdf (document->pdf-bytes d) target exists))
 
+; call-with-document-page : document? (real-in 1/1000 14400) (real-in 1/1000 14400) (-> canvas? any)
+;   -> any
+;;   Begins a protected page, calls proc with its canvas, ends the page on normal return, and
+;;   returns all of the callback's results.
 (define (call-with-document-page d width height proc)
   (define who 'call-with-document-page)
   (document-h who d)
@@ -1111,9 +1539,17 @@
          ;; A partially authored page cannot silently become a successful PDF.
          (unless completed? (document-abort! d)))))))
 
+; with-document-page : syntax transformer
+;;   Binds a borrowed page canvas through call-with-document-page and aborts incomplete authoring.
 (define-syntax-rule (with-document-page (canvas document width height) body ...)
   (call-with-document-page document width height (lambda (canvas) body ...)))
 
+; call-with-pdf-bytes : (-> document? any) [#:title string?] [#:author string?] [#:subject string?]
+;   [#:keywords string?] [#:creator string?] [#:producer string?] [#:creation-date (or/c date? #f)]
+;   [#:modified-date (or/c date? #f)] [#:raster-dpi (real-in 1 9600)] [#:encoding-quality
+;   (integer-in 0 101)] [#:pdfa? boolean?] -> (and/c bytes? (not/c immutable?))
+;;   Creates a document with the settings described at make-pdf-document, calls proc with the
+;;   document, discards its results, finishes the document, and returns its bytes.
 (define (call-with-pdf-bytes proc
                              #:title [title ""] #:author [author ""]
                              #:subject [subject ""] #:keywords [keywords ""]
@@ -1135,6 +1571,12 @@
     (document-finish! d)
     (document->pdf-bytes d)))
 
+; call-with-pdf-file : path-string? (-> document? any) [#:exists (or/c 'error 'replace)] [#:title
+;   string?] [#:author string?] [#:subject string?] [#:keywords string?] [#:creator string?]
+;   [#:producer string?] [#:creation-date (or/c date? #f)] [#:modified-date (or/c date? #f)]
+;   [#:raster-dpi (real-in 1 9600)] [#:encoding-quality (integer-in 0 101)] [#:pdfa? boolean?] ->
+;   void?
+;;   Runs call-with-pdf-bytes and publishes the completed bytes using the file rules of save-pdf.
 (define (call-with-pdf-file filename proc #:exists [exists 'error]
                             #:title [title ""] #:author [author ""]
                             #:subject [subject ""] #:keywords [keywords ""]
@@ -1155,15 +1597,21 @@
      #:raster-dpi raster-dpi #:encoding-quality encoding-quality #:pdfa? pdfa?))
   (write-pdf-file-bytes! 'call-with-pdf-file bs target exists))
 
+; optional-color-space-h : symbol? any/c -> any
+;;   Extracts a color-space lifetime cell or preserves #f for an unspecified color space.
 (define (optional-color-space-h who cs)
   (cond [(not cs) #f]
         [(color-space? cs) (color-space-h who cs)]
         [else (raise-argument-error who "(or/c #f color-space?)" cs)]))
 
+; wrap-owned-color-space : symbol? any/c -> color-space?
+;;   Wraps one owned native color-space reference with the matching unref destructor.
 (define (wrap-owned-color-space who create)
   (make-color-space-record
    (new-owned who 'color-space create sk_colorspace_unref)))
 
+; make-ref-counted-singleton-color-space : symbol? any/c -> any
+;;   Acquires a reference to a native singleton before giving it independent Racket ownership.
 (define (make-ref-counted-singleton-color-space who getter)
   (skia-check!)
   (wrap-owned-color-space
@@ -1173,14 +1621,22 @@
      (when ptr (sk_colorspace_ref ptr))
      ptr)))
 
+; make-srgb-color-space : -> color-space?
+;;   Returns a new owned color-space reference describing sRGB, with its standard RGB primaries and
+;;   nonlinear transfer function.
 (define (make-srgb-color-space)
   (make-ref-counted-singleton-color-space 'make-srgb-color-space
                                           sk_colorspace_new_srgb))
 
+; make-linear-srgb-color-space : -> color-space?
+;;   Returns a new owned color-space reference with the same RGB primaries as sRGB and a linear
+;;   transfer function.
 (define (make-linear-srgb-color-space)
   (make-ref-counted-singleton-color-space 'make-linear-srgb-color-space
                                           sk_colorspace_new_srgb_linear))
 
+; positive-profile-bytes : symbol? bytes? -> exact-nonnegative-integer?
+;;   Rejects empty or over-budget ICC data and returns its checked byte count.
 (define (positive-profile-bytes who bs)
   (unless (bytes? bs) (raise-argument-error who "bytes?" bs))
   (define n (bytes-length bs))
@@ -1192,6 +1648,8 @@
                            "limit" (current-skia-byte-limit)))
   n)
 
+; color-space-from-icc-bytes : bytes? -> color-space?
+;;   Returns an owned color-space resource parsed from nonempty ICC bytes.
 (define (color-space-from-icc-bytes bs)
   (define who 'color-space-from-icc-bytes)
   (define n (positive-profile-bytes who bs))
@@ -1219,28 +1677,38 @@
       (sk_colorspace_icc_profile_delete profile)
       (sk_data_unref data))))
 
+; icc-put-u16! : any/c any/c any/c -> void?
+;;   Writes the low sixteen bits in ICC big-endian byte order.
 (define (icc-put-u16! out at n)
   (bytes-set! out at (bitwise-and (arithmetic-shift n -8) #xff))
   (bytes-set! out (+ at 1) (bitwise-and n #xff)))
 
+; icc-put-u32! : any/c any/c any/c -> void?
+;;   Writes the low thirty-two bits in ICC big-endian byte order.
 (define (icc-put-u32! out at n)
   (bytes-set! out at (bitwise-and (arithmetic-shift n -24) #xff))
   (bytes-set! out (+ at 1) (bitwise-and (arithmetic-shift n -16) #xff))
   (bytes-set! out (+ at 2) (bitwise-and (arithmetic-shift n -8) #xff))
   (bytes-set! out (+ at 3) (bitwise-and n #xff)))
 
+; icc-put-signature! : any/c any/c any/c -> void?
+;;   Writes an exactly four-byte ICC tag signature into the output buffer.
 (define (icc-put-signature! out at text)
   (define raw (string->bytes/utf-8 text))
   (unless (= (bytes-length raw) 4)
     (error 'color-space->icc-bytes "internal ICC signature is not four bytes: ~s" text))
   (bytes-copy! out at raw))
 
+; icc-put-s15fixed16! : any/c any/c any/c -> any
+;;   Rounds a real coefficient to signed ICC 15.16 fixed point and checks representability.
 (define (icc-put-s15fixed16! out at x)
   (define scaled (inexact->exact (round (* (exact->inexact x) 65536.0))))
   (unless (<= (- (expt 2 31)) scaled (sub1 (expt 2 31)))
     (error 'color-space->icc-bytes "ICC fixed-point value is out of range: ~a" x))
   (icc-put-u32! out at (if (negative? scaled) (+ scaled (expt 2 32)) scaled)))
 
+; make-icc-xyz-tag : any/c any/c any/c -> bytes?
+;;   Encodes an ICC XYZ tag with three signed fixed-point colorimetric coordinates.
 (define (make-icc-xyz-tag x y z)
   (define out (make-bytes 20 0))
   (icc-put-signature! out 0 "XYZ ")
@@ -1249,6 +1717,8 @@
   (icc-put-s15fixed16! out 16 z)
   out)
 
+; make-icc-parametric-tag : vector? -> bytes?
+;;   Encodes the seven transfer coefficients as an ICC type-4 parametric curve.
 (define (make-icc-parametric-tag transfer)
   ;; ICC parametricCurveType function 4 is exactly the seven-parameter form
   ;; used by skcms/SkColorSpace: y=(a*x+b)^g+e above d, else c*x+f.
@@ -1259,8 +1729,13 @@
     (icc-put-s15fixed16! out at x))
   out)
 
+; align4 : any/c -> any
+;;   Rounds a nonnegative byte count up to the next four-byte boundary.
 (define (align4 n) (bitwise-and (+ n 3) (bitwise-not 3)))
 
+; matrix+trc->icc-bytes : any/c any/c -> bytes?
+;;   Serializes a matrix/TRC RGB profile with aligned colorant, white-point, and transfer-curve
+;;   tags.
 (define (matrix+trc->icc-bytes transfer xyz)
   ;; Minimal deterministic ICC v4 RGB monitor profile. The XYZ matrix returned
   ;; by Skia is row-major RGB->XYZ(D50); ICC rXYZ/gXYZ/bXYZ tags are its columns.
@@ -1313,6 +1788,9 @@
       (loop (cdr rest) (+ entry-at 12) (+ data-at (align4 n)))))
   out)
 
+; color-space->icc-bytes : color-space? -> bytes?
+;;   Returns a new mutable byte string containing an ICC v4 RGB monitor profile constructed from the
+;;   space's numerical transfer function and XYZ-D50 matrix.
 (define (color-space->icc-bytes cs)
   (define who 'color-space->icc-bytes)
   (define hnd (color-space-h who cs))
@@ -1336,29 +1814,44 @@
               (bytes-length out)))
      out)))
 
+; color-space-srgb? : color-space? -> boolean?
+;;   Returns #t when Skia recognizes space as sRGB, and #f otherwise.
 (define (color-space-srgb? cs)
   (define who 'color-space-srgb?)
   (call-with-owned who (list (color-space-h who cs)) sk_colorspace_is_srgb))
 
+; color-space-linear-gamma? : color-space? -> boolean?
+;;   Returns #t when space has a linear transfer function, and #f otherwise.
 (define (color-space-linear-gamma? cs)
   (define who 'color-space-linear-gamma?)
   (call-with-owned who (list (color-space-h who cs)) sk_colorspace_gamma_is_linear))
 
+; color-space-gamma-close-to-srgb? : color-space? -> boolean?
+;;   Returns #t when Skia considers the space's transfer function close enough to sRGB for its sRGB
+;;   approximation, and #f otherwise.
 (define (color-space-gamma-close-to-srgb? cs)
   (define who 'color-space-gamma-close-to-srgb?)
   (call-with-owned who (list (color-space-h who cs)) sk_colorspace_gamma_close_to_srgb))
 
+; color-space=? : color-space? color-space? -> boolean?
+;;   Returns #t when Skia considers a and b equivalent color spaces, and #f otherwise.
 (define (color-space=? a b)
   (define who 'color-space=?)
   (call-with-owned who (list (color-space-h who a) (color-space-h who b))
                    sk_colorspace_equals))
 
+; color-space->linear-gamma : color-space? -> color-space?
+;;   Returns an owned color-space reference with the source's RGB gamut and a linear transfer
+;;   function.
 (define (color-space->linear-gamma cs)
   (define who 'color-space->linear-gamma)
   (define ptr
     (call-with-owned who (list (color-space-h who cs)) sk_colorspace_make_linear_gamma))
   (wrap-owned-color-space who (lambda () ptr)))
 
+; color-space->srgb-gamma : color-space? -> color-space?
+;;   Returns an owned color-space reference with the source's RGB gamut and the sRGB transfer
+;;   function.
 (define (color-space->srgb-gamma cs)
   (define who 'color-space->srgb-gamma)
   (define ptr
@@ -1367,6 +1860,14 @@
 
 ;; Surfaces -----------------------------------------------------------------
 
+;;;
+;;; Raster Surfaces and Picture Recording
+;;;
+
+; make-surface : (integer-in 1 32768) (integer-in 1 32768) [#:background color?] [#:color-space
+;   (or/c color-space? #f)] -> surface?
+;;   Creates an owned CPU raster surface with the given pixel dimensions and clears it to
+;;   background.
 (define (make-surface w h #:background [background 'transparent]
                       #:color-space [cs #f])
   (define who 'make-surface)
@@ -1389,6 +1890,8 @@
    (make-surface-record hnd w h '())
    (lambda (s) (canvas-clear! (surface-canvas s) argb))))
 
+; surface-canvas : surface? -> canvas?
+;;   Returns a canvas for surface.
 (define (surface-canvas s)
   (call-with-owned 'surface-canvas (list (surface-h 'surface-canvas s))
     (lambda (_)
@@ -1396,6 +1899,9 @@
           (make-gpu-canvas-record s (domain-capture-lease (gpu-surface-domain s)))
           (make-canvas-record s)))))
 
+; surface-color-space : surface? -> (or/c color-space? #f)
+;;   Returns an independently owned reference to the surface's color space, or #f for an untagged
+;;   surface.
 (define (surface-color-space s)
   (if (gpu-surface? s)
       (call-with-owned 'surface-color-space (list (surface-h 'surface-color-space s))
@@ -1407,6 +1913,8 @@
 
 ;; Pictures and recording ---------------------------------------------------
 
+; make-picture-recorder : -> picture-recorder?
+;;   Returns an owned recorder with no active recording.
 (define (make-picture-recorder)
   (skia-check!)
   (make-picture-recorder-record
@@ -1415,6 +1923,9 @@
               sk_picture_recorder_delete)
    #f #f #f '()))
 
+; picture-recorder-begin-recording! : picture-recorder? real? real? (and/c real? (>=/c 0)) (and/c
+;   real? (>=/c 0)) [#:spatial-index (or/c 'none 'rtree)] -> canvas?
+;;   Begins a recording and returns its borrowed canvas.
 (define (picture-recorder-begin-recording! recorder x y w h
                                             #:spatial-index [spatial-index 'none])
   (define who 'picture-recorder-begin-recording!)
@@ -1450,6 +1961,8 @@
      (set-picture-recorder-floors! rr '())
      (make-canvas-record rr))))
 
+; picture-recorder-finish-recording! : picture-recorder? -> picture?
+;;   Finishes the active recording and returns an owned picture.
 (define (picture-recorder-finish-recording! recorder)
   (define who 'picture-recorder-finish-recording!)
   (define rr
@@ -1478,6 +1991,10 @@
        ;; its affinity before returning the now-empty recorder to CPU ownership.
        (owned-clear-recording-affinity! (picture-recorder-handle rr))))))
 
+; call-with-picture : (integer-in 1 32768) (integer-in 1 32768) (-> canvas? any) [#:spatial-index
+;   (or/c 'none 'rtree)] -> picture?
+;;   Records proc on a fresh canvas with culling bounds at the origin and returns the finished
+;;   picture.
 (define (call-with-picture w h proc #:spatial-index [spatial-index 'none])
   (define who 'call-with-picture)
   (unless (memq spatial-index '(none rtree))
@@ -1493,6 +2010,9 @@
      (proc c)
      (picture-recorder-finish-recording! rec))))
 
+; surface->rgba-bytes : surface? [#:premultiplied? boolean?] [#:color-space (or/c color-space? #f)]
+;   -> bytes?
+;;   Returns a new mutable byte string containing tightly packed rows from top to bottom.
 (define (surface->rgba-bytes s #:premultiplied? [premultiplied? #f]
                              #:color-space [cs #f])
   (define who 'surface->rgba-bytes)
@@ -1515,6 +2035,8 @@
        (error who "native pixel read failed"))))
   out)
 
+; surface-pixel : surface? exact-nonnegative-integer? exact-nonnegative-integer? -> rgba?
+;;   Returns one pixel as an unpremultiplied rgba value.
 (define (surface-pixel s x y)
   (require-cpu-surface 'surface-pixel s)
   (define hnd (surface-h 'surface-pixel s))
@@ -1532,12 +2054,17 @@
        (error 'surface-pixel "native pixel read failed"))))
   (rgba (bytes-ref out 0) (bytes-ref out 1) (bytes-ref out 2) (bytes-ref out 3)))
 
+; call-with-native-temporary : symbol? any/c any/c any/c any/c -> any
+;;   Scopes one temporary native allocation and releases it after the callback on every exit.
 (define (call-with-native-temporary who kind create release proc)
   (define hnd (new-owned who kind create release))
   (call-with-scoped-resource
    hnd (lambda (h) (owned-close! who h))
    (lambda (h) (call-with-owned who (list h) proc))))
 
+; surface->png-bytes : surface? [#:compression (integer-in 0 9)] [#:color-space (or/c color-space?
+;   #f)] [#:icc-profile (or/c bytes? #f)] [#:icc-description (or/c string? #f)] -> bytes?
+;;   Encodes a temporary snapshot of an open CPU surface as PNG.
 (define (surface->png-bytes s #:compression [compression 6]
                             #:color-space [cs #f] #:icc-profile [icc #f]
                             #:icc-description [description #f])
@@ -1552,6 +2079,10 @@
     (image->png-bytes im #:compression compression #:color-space cs
                      #:icc-profile profile #:icc-description description)))
 
+; save-png : surface? path-string? [#:exists (or/c 'error 'replace)] [#:compression (integer-in 0
+;   9)] [#:color-space (or/c color-space? #f)] [#:icc-profile (or/c bytes? #f)] [#:icc-description
+;   (or/c string? #f)] -> void?
+;;   Encodes the current pixels of an open CPU surface as PNG and writes them to filename.
 (define (save-png s filename #:exists [exists 'error] #:compression [compression 6]
                   #:color-space [cs #f] #:icc-profile [icc #f]
                   #:icc-description [description #f])
@@ -1568,6 +2099,19 @@
 
 ;; Paint --------------------------------------------------------------------
 
+;;;
+;;; Paint State and Retained Attachments
+;;;
+
+; make-paint : [#:color color?] [#:style (or/c 'fill 'stroke 'stroke-and-fill)] [#:stroke-width
+;   (and/c real? (>=/c 0))] [#:antialias? boolean?] [#:cap (or/c 'butt 'round 'square)] [#:join
+;   (or/c 'miter 'round 'bevel)] [#:miter-limit (and/c real? (>=/c 0))] [#:blend-mode (or/c 'clear
+;   'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out 'dst-out 'src-atop 'dst-atop 'xor 'plus
+;   'modulate 'screen 'overlay 'darken 'lighten 'color-dodge 'color-burn 'hard-light 'soft-light
+;   'difference 'exclusion 'multiply 'hue 'saturation 'color 'luminosity)] [#:shader (or/c shader?
+;   #f)] [#:path-effect (or/c path-effect? #f)] [#:color-filter (or/c color-filter? #f)]
+;   [#:mask-filter (or/c mask-filter? #f)] [#:image-filter (or/c image-filter? #f)] -> paint?
+;;   Creates an owned mutable paint with the specified settings.
 (define (make-paint #:color [color 'black]
                     #:style [style 'fill]
                     #:stroke-width [width 1]
@@ -1644,16 +2188,23 @@
         (when imf-hnd
           (sk_paint_set_imagefilter p (car remaining))))))))
 
+; paint-copy : paint? -> paint?
+;;   Returns a new owned paint with the same settings.
 (define (paint-copy p)
   (call-with-owned 'paint-copy (list (paint-h 'paint-copy p))
     (lambda (ptr)
       (make-paint-record
        (new-owned 'paint-copy 'paint (lambda () (sk_paint_clone ptr)) sk_paint_delete)))))
 
+; paint-color : paint? -> rgba?
+;;   Returns the paint's color as a detached eight-bit rgba value.
 (define (paint-color p)
   (color->rgba
    (call-with-owned 'paint-color (list (paint-h 'paint-color p)) sk_paint_get_color)))
 
+; paint-shader : paint? -> (or/c shader? #f)
+;;   Returns an independently owned reference to the attached shader, or #f when no shader is
+;;   attached.
 (define (paint-shader p)
   (define who 'paint-shader)
   (call-with-owned
@@ -1666,6 +2217,8 @@
           (make-shader-record
            (new-owned who 'shader (lambda () sp) sk_shader_unref))))))
 
+; paint-path-effect : paint? -> (or/c path-effect? #f)
+;;   Returns an independently owned reference to the attached path effect, or #f.
 (define (paint-path-effect p)
   (define who 'paint-path-effect)
   (call-with-owned
@@ -1677,6 +2230,8 @@
           (make-path-effect-record
            (new-owned who 'path-effect (lambda () ep) sk_path_effect_unref))))))
 
+; paint-owned-filter : symbol? any/c any/c function Object() { [native code] } any/c any/c -> any
+;;   Wraps a retained filter getter result, preserving #f when the paint has no such attachment.
 (define (paint-owned-filter who p native-get constructor kind release)
   (call-with-owned
    who (list (paint-h who p))
@@ -1687,43 +2242,72 @@
      (and fp
           (constructor (new-owned who kind (lambda () fp) release))))))
 
+; paint-color-filter : paint? -> (or/c color-filter? #f)
+;;   Returns an independently owned reference to the attached color filter, or #f.
 (define (paint-color-filter p)
   (paint-owned-filter 'paint-color-filter p sk_paint_get_colorfilter
                       make-color-filter-record 'color-filter sk_colorfilter_unref))
+; paint-mask-filter : paint? -> (or/c mask-filter? #f)
+;;   Returns an independently owned reference to the attached mask filter, or #f.
 (define (paint-mask-filter p)
   (paint-owned-filter 'paint-mask-filter p sk_paint_get_maskfilter
                       make-mask-filter-record 'mask-filter sk_maskfilter_unref))
+; paint-image-filter : paint? -> (or/c image-filter? #f)
+;;   Returns an independently owned reference to the attached image filter, or #f.
 (define (paint-image-filter p)
   (paint-owned-filter 'paint-image-filter p sk_paint_get_imagefilter
                       make-image-filter-record 'image-filter sk_imagefilter_unref))
 
+; set-paint-value! : symbol? any/c any/c any/c -> any
+;;   Applies a native paint setter while its owning lifetime cell is live.
 (define (set-paint-value! who p value native-setter)
   (call-with-owned who (list (paint-h who p))
     (lambda (ptr) (native-setter ptr value))))
+; paint-set-color! : paint? color? -> void?
+;;   Sets the paint's byte-valued color, including its alpha.
 (define (paint-set-color! p c)
   (set-paint-value! 'paint-set-color! p (color->argb c) sk_paint_set_color))
+; paint-set-style! : paint? (or/c 'fill 'stroke 'stroke-and-fill) -> void?
+;;   Selects filling, stroking, or both for geometry that uses the paint's style.
 (define (paint-set-style! p v)
   (set-paint-value! 'paint-set-style! p
                     (choice 'paint-set-style! v style-values) sk_paint_set_style))
+; paint-set-stroke-width! : paint? (and/c real? (>=/c 0)) -> void?
+;;   Sets the stroke width in local drawing units.
 (define (paint-set-stroke-width! p v)
   (set-paint-value! 'paint-set-stroke-width! p
                     (nonnegative-scalar 'paint-set-stroke-width! v) sk_paint_set_stroke_width))
+; paint-set-antialias! : paint? boolean? -> void?
+;;   Sets whether the paint requests antialiased shape edges.
 (define (paint-set-antialias! p v)
   (set-paint-value! 'paint-set-antialias! p
                     (boolean 'paint-set-antialias! v) sk_paint_set_antialias))
+; paint-set-cap! : paint? (or/c 'butt 'round 'square) -> void?
+;;   Sets the shape of open stroke ends.
 (define (paint-set-cap! p v)
   (set-paint-value! 'paint-set-cap! p
                     (choice 'paint-set-cap! v cap-values) sk_paint_set_stroke_cap))
+; paint-set-join! : paint? (or/c 'miter 'round 'bevel) -> void?
+;;   Sets the connection between adjacent stroked segments.
 (define (paint-set-join! p v)
   (set-paint-value! 'paint-set-join! p
                     (choice 'paint-set-join! v join-values) sk_paint_set_stroke_join))
+; paint-set-miter-limit! : paint? (and/c real? (>=/c 0)) -> void?
+;;   Sets the dimensionless miter limit.
 (define (paint-set-miter-limit! p v)
   (set-paint-value! 'paint-set-miter-limit! p
                     (nonnegative-scalar 'paint-set-miter-limit! v) sk_paint_set_stroke_miter))
+; paint-set-blend-mode! : paint? (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out
+;   'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
+;   'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation 'color
+;   'luminosity) -> void?
+;;   Selects one of the modes in .
 (define (paint-set-blend-mode! p v)
   (set-paint-value! 'paint-set-blend-mode! p
                     (choice 'paint-set-blend-mode! v blend-values) sk_paint_set_blendmode))
 
+; paint-set-shader! : paint? (or/c shader? #f) -> void?
+;;   Attaches shader, retaining the native shader independently of the argument's wrapper.
 (define (paint-set-shader! p sh)
   (define who 'paint-set-shader!)
   (unless (or (not sh) (shader? sh))
@@ -1736,6 +2320,8 @@
      (call-with-owned who (list (paint-h who p))
        (lambda (pp) (sk_paint_set_shader pp #f)))]))
 
+; paint-set-path-effect! : paint? (or/c path-effect? #f) -> void?
+;;   Attaches a retained reference to effect, or removes the path effect when effect is #f.
 (define (paint-set-path-effect! p effect)
   (define who 'paint-set-path-effect!)
   (unless (or (not effect) (path-effect? effect))
@@ -1748,6 +2334,9 @@
      (call-with-owned who (list (paint-h who p))
        (lambda (pp) (sk_paint_set_path_effect pp #f)))]))
 
+; set-paint-filter! : symbol? any/c procedure? procedure? procedure? any/c any/c -> any
+;;   Installs or clears a checked filter attachment while retaining both resources for the native
+;;   call.
 (define (set-paint-filter! who p value pred get-handle description native-setter)
   (unless (or (not value) (pred value))
     (raise-argument-error who description value))
@@ -1759,23 +2348,33 @@
      (call-with-owned who (list (paint-h who p))
        (lambda (pp) (native-setter pp #f)))]))
 
+; paint-set-color-filter! : paint? (or/c color-filter? #f) -> void?
+;;   Attaches a retained reference to filter, or removes the color filter when filter is #f.
 (define (paint-set-color-filter! p cf)
   (set-paint-filter! 'paint-set-color-filter! p cf color-filter? color-filter-h
                      "(or/c #f color-filter?)" sk_paint_set_colorfilter))
+; paint-set-mask-filter! : paint? (or/c mask-filter? #f) -> void?
+;;   Attaches a retained reference to filter, or removes the mask filter when filter is #f.
 (define (paint-set-mask-filter! p mf)
   (set-paint-filter! 'paint-set-mask-filter! p mf mask-filter? mask-filter-h
                      "(or/c #f mask-filter?)" sk_paint_set_maskfilter))
+; paint-set-image-filter! : paint? (or/c image-filter? #f) -> void?
+;;   Attaches a retained reference to filter, or removes the image filter when filter is #f.
 (define (paint-set-image-filter! p imf)
   (set-paint-filter! 'paint-set-image-filter! p imf image-filter? image-filter-h
                      "(or/c #f image-filter?)" sk_paint_set_imagefilter))
 
 ;; Shaders and gradients ----------------------------------------------------
 
+; gradient-sequence : symbol? any/c any/c -> any
+;;   Normalizes a list or vector to list order before validating gradient entries.
 (define (gradient-sequence who value description)
   (cond [(list? value) value]
         [(vector? value) (vector->list value)]
         [else (raise-argument-error who description value)]))
 
+; checked-gradient-stops : symbol? any/c any/c -> (values list? any/c)
+;;   Checks color and position counts, monotonic stop positions, and native gradient limits.
 (define (checked-gradient-stops who colors positions)
   (define color-list
     (gradient-sequence who colors "(or/c list? vector?) for gradient colors"))
@@ -1814,24 +2413,39 @@
                            "limit" (current-skia-byte-limit)))
   (values packed-colors checked-positions))
 
+; native-array : list? any/c -> any
+;;   Copies list elements to contiguous native storage using the requested FFI element type.
 (define (native-array values type)
   (define out (malloc (length values) type 'atomic))
   (for ([v (in-list values)] [i (in-naturals)])
     (ptr-set! out type i v))
   out)
 
+; gradient-native-arrays : list? list? -> (values any/c any/c)
+;;   Builds native color and optional position arrays in the same gradient-stop order.
 (define (gradient-native-arrays colors positions)
   (values (native-array colors _uint32)
           (and positions (native-array positions _float))))
 
+; new-shader : symbol? any/c -> shader?
+;;   Creates a shader lifetime cell with native unref cleanup and propagated dependency affinity.
 (define (new-shader who create)
   (skia-check!)
   (make-shader-record (new-owned who 'shader create sk_shader_unref)))
 
+;;;
+;;; Shaders and Effects
+;;;
+
+; make-color-shader : color? -> shader?
+;;   Returns a shader that produces the same color at every coordinate.
 (define (make-color-shader color)
   (define argb (color->argb color))
   (new-shader 'make-color-shader (lambda () (sk_shader_new_color argb))))
 
+; make-linear-gradient-shader : real? real? real? real? (or/c list? vector?) [#:positions (or/c
+;   list? vector? #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] -> shader?
+;;   Returns a gradient whose parameter is zero at the first endpoint and one at the second.
 (define (make-linear-gradient-shader x0 y0 x1 y1 colors
                                      #:positions [positions #f]
                                      #:tile-mode [tile-mode 'clamp])
@@ -1855,6 +2469,9 @@
      (sk_shader_new_linear_gradient points native-colors native-pos
                                     (length packed) tile #f))))
 
+; make-radial-gradient-shader : real? real? (and/c real? (>/c 0)) (or/c list? vector?) [#:positions
+;   (or/c list? vector? #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] -> shader?
+;;   Returns a gradient centered at coordinates x and y.
 (define (make-radial-gradient-shader cx cy radius colors
                                      #:positions [positions #f]
                                      #:tile-mode [tile-mode 'clamp])
@@ -1870,6 +2487,10 @@
      (sk_shader_new_radial_gradient center r native-colors native-pos
                                     (length packed) tile #f))))
 
+; make-sweep-gradient-shader : real? real? (or/c list? vector?) [#:positions (or/c list? vector?
+;   #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] [#:start-angle real?] [#:end-angle
+;   real?] -> shader?
+;;   Returns an angular gradient about coordinates x and y.
 (define (make-sweep-gradient-shader cx cy colors
                                     #:positions [positions #f]
                                     #:tile-mode [tile-mode 'clamp]
@@ -1891,6 +2512,10 @@
      (sk_shader_new_sweep_gradient center native-colors native-pos
                                    (length packed) tile start end #f))))
 
+; make-two-point-conical-gradient-shader : real? real? (and/c real? (>=/c 0)) real? real? (and/c
+;   real? (>=/c 0)) (or/c list? vector?) [#:positions (or/c list? vector? #f)] [#:tile-mode (or/c
+;   'clamp 'repeat 'mirror 'decal)] -> shader?
+;;   Returns a gradient described by two circles.
 (define (make-two-point-conical-gradient-shader x0 y0 radius0 x1 y1 radius1 colors
                                                 #:positions [positions #f]
                                                 #:tile-mode [tile-mode 'clamp])
@@ -1916,6 +2541,10 @@
      (sk_shader_new_two_point_conical_gradient
       start r0 end r1 native-colors native-pos (length packed) tile #f))))
 
+; make-image-shader : image? [#:tile-x (or/c 'clamp 'repeat 'mirror 'decal)] [#:tile-y (or/c 'clamp
+;   'repeat 'mirror 'decal)] [#:sampling (or/c 'nearest 'linear)] -> shader?
+;;   Returns a shader that samples image, with image pixels initially aligned to local drawing
+;;   units.
 (define (make-image-shader im
                            #:tile-x [tile-x 'clamp]
                            #:tile-y [tile-y 'clamp]
@@ -1934,6 +2563,11 @@
                  (lambda () (sk_image_make_shader ip tx ty smp #f))
                  sk_shader_unref)))))
 
+; make-blend-shader : (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out 'dst-out
+;   'src-atop 'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
+;   'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation 'color
+;   'luminosity) shader? shader? -> shader?
+;;   Returns a shader that combines two shader outputs using a mode from .
 (define (make-blend-shader mode destination source)
   (define who 'make-blend-shader)
   (define blend (choice who mode blend-values))
@@ -1950,11 +2584,15 @@
 
 ;; Path effects -------------------------------------------------------------
 
+; new-path-effect : symbol? any/c -> path-effect?
+;;   Creates an owned path effect after checking native-library readiness.
 (define (new-path-effect who create)
   (skia-check!)
   (make-path-effect-record
    (new-owned who 'path-effect create sk_path_effect_unref)))
 
+; path-effect-sequence : symbol? any/c -> list?
+;;   Checks an even dash sequence with at least two entries and positive total length.
 (define (path-effect-sequence who intervals)
   (define xs
     (cond [(list? intervals) intervals]
@@ -1975,6 +2613,8 @@
                            "limit" (current-skia-byte-limit)))
   checked)
 
+; make-dash-path-effect : (or/c list? vector?) [real?] -> path-effect?
+;;   Returns an effect that alternates drawn and skipped distances along a stroke.
 (define (make-dash-path-effect intervals [phase 0])
   (define who 'make-dash-path-effect)
   (define checked (path-effect-sequence who intervals))
@@ -1984,11 +2624,17 @@
                    (lambda ()
                      (sk_path_effect_create_dash arr (length checked) ph))))
 
+; make-corner-path-effect : (and/c real? (>/c 0)) -> path-effect?
+;;   Returns an effect that replaces sharp path corners with rounded transitions of the requested
+;;   radius.
 (define (make-corner-path-effect radius)
   (define who 'make-corner-path-effect)
   (define r (positive-scalar who radius))
   (new-path-effect who (lambda () (sk_path_effect_create_corner r))))
 
+; make-discrete-path-effect : (and/c real? (>/c 1/4096)) (and/c real? (>=/c 0)) [(integer-in 0
+;   4294967295)] -> path-effect?
+;;   Returns an effect that subdivides a path and perturbs the resulting vertices.
 (define (make-discrete-path-effect segment-length deviation [seed 0])
   (define who 'make-discrete-path-effect)
   (define seg (positive-scalar who segment-length))
@@ -2001,6 +2647,10 @@
   (new-path-effect who
                    (lambda () (sk_path_effect_create_discrete seg dev sd))))
 
+; make-trim-path-effect : (real-in 0 1) (real-in 0 1) [#:mode (or/c 'normal 'inverted)] ->
+;   path-effect?
+;;   Returns an effect selecting the interval from start to stop in the path's length
+;;   parameterization, or its complement in inverted mode.
 (define (make-trim-path-effect start stop #:mode [mode 'normal])
   (define who 'make-trim-path-effect)
   (define a (scalar who start))
@@ -2019,6 +2669,8 @@
                            "start" start "stop" stop "mode" mode))
   (new-path-effect who (lambda () (sk_path_effect_create_trim a b m))))
 
+; make-compose-path-effect : path-effect? path-effect? -> path-effect?
+;;   Returns an effect that applies inner first, then outer.
 (define (make-compose-path-effect outer inner)
   (define who 'make-compose-path-effect)
   (define oh (path-effect-h who outer))
@@ -2029,6 +2681,9 @@
      (call-with-owned who (list oh ih)
        (lambda (op ip) (sk_path_effect_create_compose op ip))))))
 
+; make-sum-path-effect : path-effect? path-effect? -> path-effect?
+;;   Returns an effect that applies both effects to the original geometry and combines the resulting
+;;   paths.
 (define (make-sum-path-effect first second)
   (define who 'make-sum-path-effect)
   (define fh (path-effect-h who first))
@@ -2041,6 +2696,8 @@
 
 ;; Color, mask, and image filters ------------------------------------------
 
+; filter-sequence : symbol? any/c any/c any/c -> list?
+;;   Checks a fixed-length numeric filter input and converts entries to native scalar values.
 (define (filter-sequence who value count description)
   (define xs
     (cond [(list? value) value]
@@ -2051,11 +2708,15 @@
                            "required entries" count "given entries" (length xs)))
   (for/list ([x (in-list xs)]) (scalar who x)))
 
+; new-color-filter : symbol? any/c -> color-filter?
+;;   Creates an owned native color filter with the matching unref operation.
 (define (new-color-filter who create)
   (skia-check!)
   (make-color-filter-record
    (new-owned who 'color-filter create sk_colorfilter_unref)))
 
+; make-color-matrix-filter : (or/c list? vector?) -> color-filter?
+;;   Returns a color filter using 20 row-major coefficients: four rows with five coefficients each.
 (define (make-color-matrix-filter matrix)
   (define who 'make-color-matrix-filter)
   (define values
@@ -2064,6 +2725,12 @@
   (define native (native-array values _float))
   (new-color-filter who (lambda () (sk_colorfilter_new_color_matrix native))))
 
+; make-blend-color-filter : color? (or/c 'clear 'src 'src-over 'dst-over 'src-in 'dst-in 'src-out
+;   'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
+;   'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation 'color
+;   'luminosity) -> color-filter?
+;;   Returns a filter that blends a constant source color with each incoming color as the
+;;   destination.
 (define (make-blend-color-filter color mode)
   (define who 'make-blend-color-filter)
   (define argb (color->argb color))
@@ -2076,6 +2743,8 @@
                            "mode" mode))
   (new-color-filter who (lambda () (sk_colorfilter_new_mode argb blend))))
 
+; make-compose-color-filter : color-filter? color-filter? -> color-filter?
+;;   Returns a filter applying inner before outer.
 (define (make-compose-color-filter outer inner)
   (define who 'make-compose-color-filter)
   (define oh (color-filter-h who outer))
@@ -2086,11 +2755,16 @@
      (call-with-owned who (list oh ih)
        (lambda (op ip) (sk_colorfilter_new_compose op ip))))))
 
+; new-mask-filter : symbol? any/c -> mask-filter?
+;;   Creates an owned native mask filter with the matching unref operation.
 (define (new-mask-filter who create)
   (skia-check!)
   (make-mask-filter-record
    (new-owned who 'mask-filter create sk_maskfilter_unref)))
 
+; make-blur-mask-filter : (and/c real? (>/c 0)) [#:style (or/c 'normal 'solid 'outer 'inner)]
+;   [#:respect-ctm? boolean?] -> mask-filter?
+;;   Returns a Gaussian blur of the shape's coverage.
 (define (make-blur-mask-filter sigma
                                #:style [style 'normal]
                                #:respect-ctm? [respect-ctm? #t])
@@ -2102,21 +2776,31 @@
                    (lambda ()
                      (sk_maskfilter_new_blur_with_flags sty sig respect?))))
 
+; new-image-filter : symbol? any/c -> image-filter?
+;;   Creates an owned image-filter graph node and tracks its native dependencies.
 (define (new-image-filter who create)
   (skia-check!)
   (make-image-filter-record
    (new-owned who 'image-filter create sk_imagefilter_unref)))
 
+; optional-image-filter-h : symbol? any/c -> any
+;;   Extracts an optional image-filter lifetime cell while preserving the absent-input marker.
 (define (optional-image-filter-h who input)
   (unless (or (not input) (image-filter? input))
     (raise-argument-error who "(or/c #f image-filter?)" input))
   (and input (image-filter-h who input)))
 
+; with-optional-image-input : symbol? any/c procedure? -> any
+;;   Calls the filter factory with a live input pointer, or #f for the implicit source image.
 (define (with-optional-image-input who input-h proc)
   (if input-h
       (call-with-owned who (list input-h) (lambda (ip) (proc ip)))
       (proc #f)))
 
+; make-blur-image-filter : (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:tile-mode (or/c 'decal
+;   'clamp 'repeat)] [#:input (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real?
+;   real?) (vector/c real? real? real? real?))] -> image-filter?
+;;   Returns a Gaussian blur of the input colors and alpha.
 (define (make-blur-image-filter sigma-x sigma-y
                                 #:tile-mode [tile-mode 'decal]
                                 #:input [input #f] #:crop [crop #f])
@@ -2143,6 +2827,8 @@
       who ih
       (lambda (ip) (sk_imagefilter_new_blur sx sy tile ip cr))))))
 
+; make-drop-shadow-filter : symbol? any/c any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Validates offsets, blur radii, color, input, and crop for either drop-shadow factory.
 (define (make-drop-shadow-filter who native-create dx dy sigma-x sigma-y color input crop)
   (define cr (optional-filter-crop who crop))
   (define fdx (scalar who dx))
@@ -2158,18 +2844,29 @@
       who ih
       (lambda (ip) (native-create fdx fdy sx sy argb ip cr))))))
 
+; make-drop-shadow-image-filter : real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) color?
+;   [#:input (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?) (vector/c
+;   real? real? real? real?))] -> image-filter?
+;;   Returns a colored, blurred shadow behind the original input.
 (define (make-drop-shadow-image-filter dx dy sigma-x sigma-y color
                                        #:input [input #f] #:crop [crop #f])
   (make-drop-shadow-filter 'make-drop-shadow-image-filter
                            sk_imagefilter_new_drop_shadow
                            dx dy sigma-x sigma-y color input crop))
 
+; make-drop-shadow-only-image-filter : real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   color? [#:input (or/c image-filter? #f)] [#:crop (or/c #f (list/c real? real? real? real?)
+;   (vector/c real? real? real? real?))] -> image-filter?
+;;   Returns only the colored, blurred shadow, without the original input.
 (define (make-drop-shadow-only-image-filter dx dy sigma-x sigma-y color
                                             #:input [input #f] #:crop [crop #f])
   (make-drop-shadow-filter 'make-drop-shadow-only-image-filter
                            sk_imagefilter_new_drop_shadow_only
                            dx dy sigma-x sigma-y color input crop))
 
+; make-color-filter-image-filter : color-filter? [#:input (or/c image-filter? #f)] [#:crop (or/c #f
+;   (list/c real? real? real? real?) (vector/c real? real? real? real?))] -> image-filter?
+;;   Returns a graph node applying a color filter to its input.
 (define (make-color-filter-image-filter cf #:input [input #f] #:crop [crop #f])
   (define who 'make-color-filter-image-filter)
   (define cr (optional-filter-crop who crop))
@@ -2184,6 +2881,9 @@
       (lambda (cp . rest)
         (sk_imagefilter_new_color_filter cp (if ih (car rest) #f) cr))))))
 
+; make-compose-image-filter : image-filter? image-filter? [#:crop (or/c #f (list/c real? real? real?
+;   real?) (vector/c real? real? real? real?))] -> image-filter?
+;;   Returns a graph that feeds inner into the dynamic source slots of outer.
 (define (make-compose-image-filter outer inner #:crop [crop #f])
   (define who 'make-compose-image-filter)
   (define cr (optional-filter-crop who crop))
@@ -2203,18 +2903,33 @@
 
 ;; Canvas state -------------------------------------------------------------
 
+;;;
+;;; Canvas State and Primitive Drawing
+;;;
+
+; canvas-clear! : canvas? color? -> void?
+;;   Replaces the content inside the current clip with color, using source replacement rather than
+;;   source-over blending.
 (define (canvas-clear! c color)
   (define argb (color->argb color))
   (call-on-canvas 'canvas-clear! c '() (lambda (cp) (sk_canvas_clear cp argb))))
+; canvas-save! : canvas? -> exact-positive-integer?
+;;   Saves the current transform and clip and returns the save count from before this save.
 (define (canvas-save! c)
   (call-on-canvas 'canvas-save! c '() sk_canvas_save))
+; canvas-save-count : canvas? -> exact-positive-integer?
+;;   Returns the current number of states, including the base state.
 (define (canvas-save-count c)
   (call-on-canvas 'canvas-save-count c '() sk_canvas_get_save_count))
 
+; restore-floor : any/c -> any
+;;   Returns the innermost protected save count, or the canvas's base count when unscoped.
 (define (restore-floor c)
   (define floors (owner-floors (canvas-owner 'restore-floor c)))
   (if (null? floors) 1 (car floors)))
 
+; canvas-restore! : canvas? -> void?
+;;   Restores the previous transform and clip by removing the top state.
 (define (canvas-restore! c)
   (call-on-canvas
    'canvas-restore! c '()
@@ -2223,6 +2938,8 @@
        (error 'canvas-restore! "cannot pop the base or a protected canvas state"))
      (sk_canvas_restore cp))))
 
+; canvas-restore-to-count! : canvas? exact-positive-integer? -> void?
+;;   Restores states until the save count is count.
 (define (canvas-restore-to-count! c count)
   (unless (exact-positive-integer? count)
     (raise-argument-error 'canvas-restore-to-count! "exact-positive-integer?" count))
@@ -2235,6 +2952,8 @@
                               "requested" count "minimum" (restore-floor c) "current" now))
      (sk_canvas_restore_to_count cp count))))
 
+; call-with-canvas-state : canvas? (-> any) -> any
+;;   Saves the canvas state, calls proc with no arguments, and returns its results.
 (define (call-with-canvas-state c thunk)
   (define s (canvas-owner 'call-with-canvas-state c))
   (unless (and (procedure? thunk) (procedure-arity-includes? thunk 0))
@@ -2258,30 +2977,47 @@
              (lambda (cp) (sk_canvas_restore_to_count cp old-count))))
          (set-owner-floors! s (cdr (owner-floors s))))))))
 
+; with-canvas-state : syntax transformer
+;;   Restores the canvas save stack after the body using the guarded call-with-canvas-state scope.
 (define-syntax-rule (with-canvas-state c body ...)
   (call-with-canvas-state c (lambda () body ...)))
 
+; canvas-translate! : canvas? real? real? -> void?
+;;   Concatenates a translation by x and y in the current local coordinate system.
 (define (canvas-translate! c x y)
   (define fx (scalar 'canvas-translate! x))
   (define fy (scalar 'canvas-translate! y))
   (call-on-canvas 'canvas-translate! c '() (lambda (cp) (sk_canvas_translate cp fx fy))))
+; canvas-scale! : canvas? real? [real?] -> void?
+;;   Concatenates scaling by x horizontally and y vertically.
 (define (canvas-scale! c x [y x])
   (define fx (scalar 'canvas-scale! x))
   (define fy (scalar 'canvas-scale! y))
   (call-on-canvas 'canvas-scale! c '() (lambda (cp) (sk_canvas_scale cp fx fy))))
+; canvas-rotate! : canvas? real? -> void?
+;;   Concatenates a rotation about the local origin by degrees.
 (define (canvas-rotate! c degrees)
   (define f (scalar 'canvas-rotate! degrees))
   (call-on-canvas 'canvas-rotate! c '() (lambda (cp) (sk_canvas_rotate_degrees cp f))))
+; canvas-rotate-radians! : canvas? real? -> void?
+;;   Like canvas-rotate!, but the angle is measured in radians.
 (define (canvas-rotate-radians! c radians)
   (define f (scalar 'canvas-rotate-radians! radians))
   (call-on-canvas 'canvas-rotate-radians! c '() (lambda (cp) (sk_canvas_rotate_radians cp f))))
+; canvas-skew! : canvas? real? real? -> void?
+;;   Concatenates a shear with horizontal factor x and vertical factor y.
 (define (canvas-skew! c x y)
   (define fx (scalar 'canvas-skew! x))
   (define fy (scalar 'canvas-skew! y))
   (call-on-canvas 'canvas-skew! c '() (lambda (cp) (sk_canvas_skew cp fx fy))))
+; canvas-reset-transform! : canvas? -> void?
+;;   Replaces the current transform with the identity.
 (define (canvas-reset-transform! c)
   (call-on-canvas 'canvas-reset-transform! c '() sk_canvas_reset_matrix))
 
+; canvas-clip-rect! : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:operation
+;   (or/c 'intersect 'difference)] [#:antialias? boolean?] -> void?
+;;   Combines the current clip with the transformed rectangle.
 (define (canvas-clip-rect! c x y w h #:operation [operation 'intersect]
                            #:antialias? [antialias? #f])
   (define r (rect 'canvas-clip-rect! x y w h))
@@ -2290,6 +3026,9 @@
   (call-on-canvas 'canvas-clip-rect! c '()
     (lambda (cp) (sk_canvas_clip_rect_with_operation cp r op antialias?))))
 
+; canvas-clip-path! : canvas? skia-path? [#:operation (or/c 'intersect 'difference)] [#:antialias?
+;   boolean?] -> void?
+;;   Like canvas-clip-rect!, but uses the filled region of path and its fill rule.
 (define (canvas-clip-path! c path #:operation [operation 'intersect]
                            #:antialias? [antialias? #f])
   (define hnd (path-h 'canvas-clip-path! path))
@@ -2300,19 +3039,29 @@
 
 ;; Drawing ------------------------------------------------------------------
 
+; draw-paint : canvas? paint? -> void?
+;;   Draws paint across the current clip without a separate geometric shape.
 (define (draw-paint c p)
   (call-on-canvas 'draw-paint c (list (paint-h 'draw-paint p)) sk_canvas_draw_paint))
 
+; draw-line : canvas? real? real? real? real? paint? -> void?
+;;   Draws a line segment from coordinates x0, y0 to coordinates x1, y1.
 (define (draw-line c x0 y0 x1 y1 p)
   (define coordinates (map (lambda (x) (scalar 'draw-line x)) (list x0 y0 x1 y1)))
   (call-on-canvas 'draw-line c (list (paint-h 'draw-line p))
     (lambda (cp pp) (apply sk_canvas_draw_line cp (append coordinates (list pp))))))
 
+; draw-rect : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) paint? -> void?
+;;   Draws a rectangle on canvas with its upper-left corner at coordinates x and y, the given width
+;;   and height, and the specified paint.
 (define (draw-rect c x y w h p)
   (define r (rect 'draw-rect x y w h))
   (call-on-canvas 'draw-rect c (list (paint-h 'draw-rect p))
     (lambda (cp pp) (sk_canvas_draw_rect cp r pp))))
 
+; draw-rounded-rect : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) (and/c real?
+;   (>=/c 0)) (and/c real? (>=/c 0)) paint? -> void?
+;;   Draws a rectangle with elliptical corner radii.
 (define (draw-rounded-rect c x y w h rx ry p)
   (define r (rect 'draw-rounded-rect x y w h))
   (define frx (nonnegative-scalar 'draw-rounded-rect rx))
@@ -2320,6 +3069,8 @@
   (call-on-canvas 'draw-rounded-rect c (list (paint-h 'draw-rounded-rect p))
     (lambda (cp pp) (sk_canvas_draw_round_rect cp r frx fry pp))))
 
+; draw-circle : canvas? real? real? (and/c real? (>=/c 0)) paint? -> void?
+;;   Draws a circle centered at coordinates x and y.
 (define (draw-circle c x y radius p)
   (define fx (scalar 'draw-circle x))
   (define fy (scalar 'draw-circle y))
@@ -2327,15 +3078,22 @@
   (call-on-canvas 'draw-circle c (list (paint-h 'draw-circle p))
     (lambda (cp pp) (sk_canvas_draw_circle cp fx fy fr pp))))
 
+; draw-oval : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) paint? -> void?
+;;   Draws the ellipse inscribed in the rectangle given by position and size.
 (define (draw-oval c x y w h p)
   (define r (rect 'draw-oval x y w h))
   (call-on-canvas 'draw-oval c (list (paint-h 'draw-oval p))
     (lambda (cp pp) (sk_canvas_draw_oval cp r pp))))
 
+; draw-path : canvas? skia-path? paint? -> void?
+;;   Draws the contours of path using paint.
 (define (draw-path c path p)
   (call-on-canvas 'draw-path c (list (path-h 'draw-path path) (paint-h 'draw-path p))
                  sk_canvas_draw_path))
 
+; draw-polygon : canvas? (and/c pair? (listof (list/c real? real?))) paint? [#:closed? boolean?] ->
+;   void?
+;;   Draws connected straight segments through points.
 (define (draw-polygon c points p #:closed? [closed? #t])
   (boolean 'draw-polygon closed?)
   (unless (and (list? points) (pair? points))
@@ -2351,6 +3109,12 @@
 
 ;; Paths --------------------------------------------------------------------
 
+;;;
+;;; Mutable Paths and Geometry
+;;;
+
+; make-path : [list?] [#:fill-rule (or/c 'winding 'even-odd)] -> skia-path?
+;;   Returns a new path by applying commands in order.
 (define (make-path [commands '()] #:fill-rule [fill-rule 'winding])
   (unless (list? commands) (raise-argument-error 'make-path "list?" commands))
   (define fill (choice 'make-path fill-rule fill-values))
@@ -2377,47 +3141,86 @@
          [_ (raise-arguments-error 'make-path "invalid path command"
                                     "command" command)])))))
 
+; path-copy : skia-path? -> skia-path?
+;;   Returns an independently owned path with the same geometry and fill rule.
 (define (path-copy p)
   (call-with-owned 'path-copy (list (path-h 'path-copy p))
     (lambda (pp)
       (make-path-record
        (new-owned 'path-copy 'path (lambda () (sk_path_clone pp)) sk_path_delete)))))
 
+; mutate-path! : symbol? any/c any/c any/c -> any
+;;   Validates all numeric arguments before invoking a native mutation on the live path.
 (define (mutate-path! who p args native-op)
   (define vals (map (lambda (x) (scalar who x)) args))
   (call-with-owned who (list (path-h who p))
     (lambda (pp) (apply native-op pp vals))))
+; path-move-to! : skia-path? real? real? -> void?
+;;   Starts a contour at coordinates x and y.
 (define (path-move-to! p x y)
   (mutate-path! 'path-move-to! p (list x y) sk_path_move_to))
+; path-rmove-to! : skia-path? real? real? -> void?
+;;   Starts a contour offset by dx and dy from the current point.
 (define (path-rmove-to! p dx dy)
   (mutate-path! 'path-rmove-to! p (list dx dy) sk_path_rmove_to))
+; path-line-to! : skia-path? real? real? -> void?
+;;   Adds a straight segment from the current point to coordinates x and y, making that endpoint the
+;;   new current point.
 (define (path-line-to! p x y)
   (mutate-path! 'path-line-to! p (list x y) sk_path_line_to))
+; path-rline-to! : skia-path? real? real? -> void?
+;;   Adds a straight segment whose endpoint is offset from the current point by dx and dy.
 (define (path-rline-to! p dx dy)
   (mutate-path! 'path-rline-to! p (list dx dy) sk_path_rline_to))
+; path-quad-to! : skia-path? real? real? real? real? -> void?
+;;   Adds a quadratic Bézier segment from the current point to coordinates x and y, with control
+;;   point cx, cy.
 (define (path-quad-to! p cx cy x y)
   (mutate-path! 'path-quad-to! p (list cx cy x y) sk_path_quad_to))
+; path-rquad-to! : skia-path? real? real? real? real? -> void?
+;;   Like path-quad-to!, with both the control point and endpoint given as offsets from the current
+;;   point at the start of the call.
 (define (path-rquad-to! p dcx dcy dx dy)
   (mutate-path! 'path-rquad-to! p (list dcx dcy dx dy) sk_path_rquad_to))
+; path-conic-to! : skia-path? real? real? real? real? real? -> void?
+;;   Adds a rational quadratic segment with one control point and an endpoint.
 (define (path-conic-to! p cx cy x y weight)
   (mutate-path! 'path-conic-to! p (list cx cy x y weight) sk_path_conic_to))
+; path-rconic-to! : skia-path? real? real? real? real? real? -> void?
+;;   Like path-conic-to!, with control and endpoint offsets relative to the current point at the
+;;   start of the call.
 (define (path-rconic-to! p dcx dcy dx dy weight)
   (mutate-path! 'path-rconic-to! p (list dcx dcy dx dy weight) sk_path_rconic_to))
+; path-cubic-to! : skia-path? real? real? real? real? real? real? -> void?
+;;   Adds a cubic Bézier segment to coordinates x and y.
 (define (path-cubic-to! p cx1 cy1 cx2 cy2 x y)
   (mutate-path! 'path-cubic-to! p (list cx1 cy1 cx2 cy2 x y) sk_path_cubic_to))
+; path-rcubic-to! : skia-path? real? real? real? real? real? real? -> void?
+;;   Like path-cubic-to!, with all three coordinate pairs expressed as offsets from the current
+;;   point at the start of the call.
 (define (path-rcubic-to! p dcx1 dcy1 dcx2 dcy2 dx dy)
   (mutate-path! 'path-rcubic-to! p (list dcx1 dcy1 dcx2 dcy2 dx dy) sk_path_rcubic_to))
+; path-close! : skia-path? -> void?
+;;   Closes the current contour, adding a connection to its starting point when needed.
 (define (path-close! p)
   (call-with-owned 'path-close! (list (path-h 'path-close! p)) sk_path_close))
+; path-reset! : skia-path? -> void?
+;;   Removes the geometry and resets the fill rule to 'winding.
 (define (path-reset! p)
   ;; Skia resets the fill rule to winding along with the geometry.
   (call-with-owned 'path-reset! (list (path-h 'path-reset! p)) sk_path_reset))
 
+; path-add-rect! : skia-path? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:direction
+;   (or/c 'cw 'ccw)] -> void?
+;;   Appends a closed rectangle with the given position, size, and winding direction.
 (define (path-add-rect! p x y w h #:direction [direction 'cw])
   (define r (rect 'path-add-rect! x y w h))
   (define dir (choice 'path-add-rect! direction direction-values))
   (call-with-owned 'path-add-rect! (list (path-h 'path-add-rect! p))
     (lambda (pp) (sk_path_add_rect pp r dir))))
+; path-add-rounded-rect! : skia-path? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:direction (or/c 'cw 'ccw)] -> void?
+;;   Appends a closed rounded rectangle.
 (define (path-add-rounded-rect! p x y w h rx ry #:direction [direction 'cw])
   (define r (rect 'path-add-rounded-rect! x y w h))
   (define frx (nonnegative-scalar 'path-add-rounded-rect! rx))
@@ -2425,11 +3228,17 @@
   (define dir (choice 'path-add-rounded-rect! direction direction-values))
   (call-with-owned 'path-add-rounded-rect! (list (path-h 'path-add-rounded-rect! p))
     (lambda (pp) (sk_path_add_rounded_rect pp r frx fry dir))))
+; path-add-oval! : skia-path? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:direction
+;   (or/c 'cw 'ccw)] -> void?
+;;   Appends the closed ellipse inscribed in the specified rectangle.
 (define (path-add-oval! p x y w h #:direction [direction 'cw])
   (define r (rect 'path-add-oval! x y w h))
   (define dir (choice 'path-add-oval! direction direction-values))
   (call-with-owned 'path-add-oval! (list (path-h 'path-add-oval! p))
     (lambda (pp) (sk_path_add_oval pp r dir))))
+; path-add-circle! : skia-path? real? real? (and/c real? (>=/c 0)) [#:direction (or/c 'cw 'ccw)] ->
+;   void?
+;;   Appends a closed circle centered at coordinates x and y.
 (define (path-add-circle! p x y radius #:direction [direction 'cw])
   (define fx (scalar 'path-add-circle! x))
   (define fy (scalar 'path-add-circle! y))
@@ -2438,6 +3247,9 @@
   (call-with-owned 'path-add-circle! (list (path-h 'path-add-circle! p))
     (lambda (pp) (sk_path_add_circle pp fx fy fr dir))))
 
+; path-add-path! : skia-path? skia-path? [#:dx real?] [#:dy real?] [#:mode (or/c 'append 'extend)]
+;   -> void?
+;;   Adds source's geometry to destination, translating its points by dx and dy.
 (define (path-add-path! dest src #:dx [dx 0] #:dy [dy 0] #:mode [mode 'append])
   (define who 'path-add-path!)
   (define fdx (scalar who dx))
@@ -2449,14 +3261,20 @@
           (sk_path_add_path dp sp mo)
           (sk_path_add_path_offset dp sp fdx fdy mo)))))
 
+; path-add-reversed-path! : skia-path? skia-path? -> void?
+;;   Appends the source's contours with their traversal direction reversed.
 (define (path-add-reversed-path! dest src)
   (define who 'path-add-reversed-path!)
   (call-with-owned who (list (path-h who dest) (path-h who src))
     (lambda (dp sp) (sk_path_add_path_reverse dp sp))))
 
+; path-point-count : skia-path? -> exact-nonnegative-integer?
+;;   Returns the number of stored points, including curve controls.
 (define (path-point-count p)
   (call-with-owned 'path-point-count (list (path-h 'path-point-count p)) sk_path_count_points))
 
+; path-point-ref : skia-path? exact-nonnegative-integer? -> (values real? real?)
+;;   Returns the stored point at index as x and y values.
 (define (path-point-ref p index)
   (define who 'path-point-ref)
   (unless (and (exact-integer? index) (>= index 0))
@@ -2470,10 +3288,14 @@
       (sk_path_get_point pp index pt)))
   (values (sk-point-x pt) (sk-point-y pt)))
 
+; path-points : skia-path? -> (listof (list/c real? real?))
+;;   Returns detached coordinate pairs for all stored points in order.
 (define (path-points p)
   (for/list ([i (in-range (path-point-count p))])
     (call-with-values (lambda () (path-point-ref p i)) list)))
 
+; path-last-point : skia-path? -> (values real? real?)
+;;   Returns the last stored point as x and y values.
 (define (path-last-point p)
   (define who 'path-last-point)
   (define pt (make-sk-point 0.0 0.0))
@@ -2483,9 +3305,13 @@
         (error who "path has no last point"))))
   (values (sk-point-x pt) (sk-point-y pt)))
 
+; path-convex? : skia-path? -> boolean?
+;;   Returns Skia's convexity classification for the path.
 (define (path-convex? p)
   (call-with-owned 'path-convex? (list (path-h 'path-convex? p)) sk_path_is_convex))
 
+; svg-path->path : string? [#:fill-rule (or/c 'winding 'even-odd)] -> skia-path?
+;;   Parses SVG path-data syntax into an owned path.
 (define (svg-path->path data #:fill-rule [fill-rule 'winding])
   (define who 'svg-path->path)
   (unless (string? data) (raise-argument-error who "string?" data))
@@ -2499,6 +3325,8 @@
         (error who "invalid SVG path data"))))
   p)
 
+; path->svg-path : skia-path? -> string?
+;;   Returns SVG path data for the geometry.
 (define (path->svg-path p)
   (define who 'path->svg-path)
   (call-with-owned
@@ -2510,6 +3338,8 @@
         (sk_path_to_svg_string pp sp)
         (copy-sk-string who sp))))))
 
+; get-path-bounds : symbol? any/c any/c -> (values any/c any/c any/c any/c)
+;;   Copies native rectangle edges into detached x, y, width, and height results.
 (define (get-path-bounds who p native-get)
   (define r (make-sk-rect 0.0 0.0 0.0 0.0))
   (call-with-owned who (list (path-h who p))
@@ -2517,18 +3347,30 @@
   (values (sk-rect-left r) (sk-rect-top r)
           (- (sk-rect-right r) (sk-rect-left r))
           (- (sk-rect-bottom r) (sk-rect-top r))))
+; path-bounds : skia-path? -> (values real? real? real? real?)
+;;   Returns the bounds of the stored points, including control points, as left, top, width, and
+;;   height.
 (define (path-bounds p) (get-path-bounds 'path-bounds p sk_path_get_bounds))
+; path-tight-bounds : skia-path? -> (values real? real? real? real?)
+;;   Returns tighter geometric bounds computed from the curves rather than simply the control-point
+;;   bounds.
 (define (path-tight-bounds p)
   (get-path-bounds 'path-tight-bounds p sk_path_compute_tight_bounds))
+; path-contains? : skia-path? real? real? -> boolean?
+;;   Reports whether the point is contained in the path's filled region according to its fill rule.
 (define (path-contains? p x y)
   (define fx (scalar 'path-contains? x))
   (define fy (scalar 'path-contains? y))
   (call-with-owned 'path-contains? (list (path-h 'path-contains? p))
     (lambda (pp) (sk_path_contains pp fx fy))))
+; path-fill-rule : skia-path? -> (or/c 'winding 'even-odd)
+;;   Returns the path's fill rule.
 (define (path-fill-rule p)
   (case (call-with-owned 'path-fill-rule (list (path-h 'path-fill-rule p)) sk_path_get_filltype)
     [(0) 'winding] [(1) 'even-odd]
     [else (error 'path-fill-rule "unexpected native fill rule")]))
+; path-set-fill-rule! : skia-path? (or/c 'winding 'even-odd) -> void?
+;;   Changes how the path's contours combine when filled or used as a clip.
 (define (path-set-fill-rule! p value)
   (define fill (choice 'path-set-fill-rule! value fill-values))
   (call-with-owned 'path-set-fill-rule! (list (path-h 'path-set-fill-rule! p))
@@ -2536,6 +3378,8 @@
 
 ;; Boolean path operations --------------------------------------------------
 
+; path-result : symbol? procedure? -> any
+;;   Owns a new output path and closes it if the native path operation fails.
 (define (path-result who proc)
   (define result (make-path))
   (with-handlers ([exn? (lambda (e) (skia-close! result) (raise e))])
@@ -2545,6 +3389,9 @@
           (skia-close! result)
           (error who "native path operation failed")))))
 
+; path-op : skia-path? skia-path? (or/c 'difference 'intersect 'union 'xor 'reverse-difference) ->
+;   skia-path?
+;;   Combines the two filled regions.
 (define (path-op a b operation)
   (define who 'path-op)
   (define op (choice who operation path-op-values))
@@ -2556,12 +3403,25 @@
      (call-with-owned who (list ah bh rh)
        (lambda (ap bp rp) (sk_pathop_op ap bp op rp))))))
 
+; path-union : skia-path? skia-path? -> skia-path?
+;;   Returns (path-op first second 'union).
 (define (path-union a b) (path-op a b 'union))
+; path-intersect : skia-path? skia-path? -> skia-path?
+;;   Returns (path-op first second 'intersect).
 (define (path-intersect a b) (path-op a b 'intersect))
+; path-difference : skia-path? skia-path? -> skia-path?
+;;   Returns (path-op first second 'difference).
 (define (path-difference a b) (path-op a b 'difference))
+; path-xor : skia-path? skia-path? -> skia-path?
+;;   Returns (path-op first second 'xor).
 (define (path-xor a b) (path-op a b 'xor))
+; path-reverse-difference : skia-path? skia-path? -> skia-path?
+;;   Returns (path-op first second 'reverse-difference).
 (define (path-reverse-difference a b) (path-op a b 'reverse-difference))
 
+; path-simplify : skia-path? -> skia-path?
+;;   Returns a path for the same filled region with overlaps and self-intersections resolved by
+;;   Skia.
 (define (path-simplify p)
   (define who 'path-simplify)
   (define ph (path-h who p))
@@ -2571,6 +3431,8 @@
      (call-with-owned who (list ph rh)
        (lambda (pp rp) (sk_pathop_simplify pp rp))))))
 
+; path-as-winding : skia-path? -> skia-path?
+;;   Returns a winding-rule path representing the input's filled region.
 (define (path-as-winding p)
   (define who 'path-as-winding)
   (define ph (path-h who p))
@@ -2582,6 +3444,8 @@
 
 ;; Path measurement ---------------------------------------------------------
 
+; snapshot-native-path : symbol? any/c -> any
+;;   Clones a live path for private native consumers that must not observe later mutations.
 (define (snapshot-native-path who p)
   (call-with-owned who (list (path-h who p))
     (lambda (pp)
@@ -2589,6 +3453,13 @@
       (unless snapshot (error who "native path snapshot failed"))
       snapshot)))
 
+;;;
+;;; Path Measurement
+;;;
+
+; make-path-measure : skia-path? [#:force-closed? boolean?] [#:res-scale (and/c real? (>/c 0))] ->
+;   path-measure?
+;;   Creates a measure of an independent snapshot of path.
 (define (make-path-measure p #:force-closed? [force-closed? #f]
                            #:res-scale [res-scale 1])
   (define who 'make-path-measure)
@@ -2620,6 +3491,8 @@
            (sk_path_delete sp)))))
     (make-path-measure-record hnd snapshot-box)))
 
+; path-measure-set-path! : path-measure? (or/c skia-path? #f) [#:force-closed? boolean?] -> void?
+;;   Replaces the measured path with a fresh snapshot and resets contour traversal.
 (define (path-measure-set-path! m p #:force-closed? [force-closed? #f])
   (define who 'path-measure-set-path!)
   (unless (or (not p) (skia-path? p))
@@ -2639,16 +3512,22 @@
     (when old-snapshot (sk_path_delete old-snapshot))
     (void)))
 
+; path-measure-length : path-measure? -> real?
+;;   Returns the length of the current contour, or zero when no measurable contour is available.
 (define (path-measure-length m)
   (call-with-owned 'path-measure-length
                    (list (path-measure-h 'path-measure-length m))
                    sk_pathmeasure_get_length))
 
+; path-measure-closed? : path-measure? -> boolean?
+;;   Reports whether the current measured contour is closed, taking forced closure into account.
 (define (path-measure-closed? m)
   (call-with-owned 'path-measure-closed?
                    (list (path-measure-h 'path-measure-closed? m))
                    sk_pathmeasure_is_closed))
 
+; checked-measure-distance : symbol? any/c any/c -> any
+;;   Checks a nonnegative contour distance against the current measured contour length.
 (define (checked-measure-distance who m value)
   (define d (nonnegative-scalar who value))
   (define len (path-measure-length m))
@@ -2657,6 +3536,9 @@
                            "distance" value "contour length" len))
   d)
 
+; path-measure-position+tangent : path-measure? (and/c real? (>=/c 0)) -> (values (or/c real? #f)
+;   (or/c real? #f) (or/c real? #f) (or/c real? #f))
+;;   Returns the position x and y and the unit tangent x and y at distance.
 (define (path-measure-position+tangent m distance)
   (define who 'path-measure-position+tangent)
   (define d (checked-measure-distance who m distance))
@@ -2670,6 +3552,9 @@
               (sk-point-x tan) (sk-point-y tan))
       (values #f #f #f #f)))
 
+; path-measure-segment : path-measure? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   [#:start-with-move-to? boolean?] -> (or/c skia-path? #f)
+;;   Returns a new owned path for the portion between start and stop.
 (define (path-measure-segment m start stop
                               #:start-with-move-to? [start-with-move-to? #t])
   (define who 'path-measure-segment)
@@ -2689,6 +3574,8 @@
         result
         (begin (skia-close! result) #f))))
 
+; path-measure-next-contour! : path-measure? -> boolean?
+;;   Advances to the next contour and returns #t when one exists.
 (define (path-measure-next-contour! m)
   (call-with-owned 'path-measure-next-contour!
                    (list (path-measure-h 'path-measure-next-contour! m))
@@ -2696,21 +3583,33 @@
 
 ;; Font managers, typefaces, fonts, and text blobs --------------------------
 
+;;;
+;;; Font Discovery and Font State
+;;;
+
+; make-font-manager : -> font-manager?
+;;   Creates an owned manager using the platform's default font sources.
 (define (make-font-manager)
   (skia-check!)
   (make-font-manager-record
    (new-owned 'make-font-manager 'font-manager sk_fontmgr_create_default sk_fontmgr_unref)))
 
+; default-font-manager : -> font-manager?
+;;   Returns an owned reference to the native default font manager.
 (define (default-font-manager)
   (skia-check!)
   (make-font-manager-record
    (new-owned 'default-font-manager 'font-manager sk_fontmgr_ref_default sk_fontmgr_unref)))
 
+; font-manager-family-count : font-manager? -> exact-nonnegative-integer?
+;;   Returns the number of families enumerated by manager.
 (define (font-manager-family-count fm)
   (call-with-owned 'font-manager-family-count
                    (list (font-manager-h 'font-manager-family-count fm))
                    sk_fontmgr_count_families))
 
+; font-manager-family-name : font-manager? exact-nonnegative-integer? -> string?
+;;   Returns the family name at the zero-based index.
 (define (font-manager-family-name fm index)
   (define who 'font-manager-family-name)
   (unless (exact-nonnegative-integer? index)
@@ -2727,10 +3626,14 @@
         (sk_fontmgr_get_family_name mp index sp)
         (copy-sk-string who sp))))))
 
+; font-manager-families : font-manager? -> (listof string?)
+;;   Returns the family names in the manager's enumeration order.
 (define (font-manager-families fm)
   (for/list ([i (in-range (font-manager-family-count fm))])
     (font-manager-family-name fm i)))
 
+; native-c-string-pointer : symbol? any/c any/c -> any
+;;   Copies a checked NUL-free string to GC-managed native storage with one terminator.
 (define (native-c-string-pointer who value description)
   (define str (nul-free-string who value description))
   (define bs (nul-terminated-bytes (string->bytes/utf-8 str)))
@@ -2738,16 +3641,27 @@
   (memcpy ptr bs (bytes-length bs))
   ptr)
 
+; font-manager-style-values : symbol? any/c any/c any/c -> (values any/c any/c any/c)
+;;   Normalizes font weight, width, and slant to native style values in constructor order.
 (define (font-manager-style-values who weight width slant)
   (values (font-weight who weight)
           (font-width who width)
           (choice who slant font-slant-values)))
 
+; wrap-matched-typeface : symbol? any/c -> any
+;;   Wraps a successful native typeface match and preserves #f when no face was found.
 (define (wrap-matched-typeface who ptr)
   (and ptr
        (make-typeface-record
         (new-owned who 'typeface (lambda () ptr) sk_typeface_unref))))
 
+; font-manager-match-family : font-manager? string? [#:weight (or/c (integer-in 0 1000) 'invisible
+;   'thin 'extra-light 'light 'normal 'medium 'semi-bold 'bold 'extra-bold 'black 'extra-black)]
+;   [#:width (or/c (integer-in 1 9) 'ultra-condensed 'extra-condensed 'condensed 'semi-condensed
+;   'normal 'semi-expanded 'expanded 'extra-expanded 'ultra-expanded)] [#:slant (or/c 'upright
+;   'italic 'oblique)] -> (or/c typeface? #f)
+;;   Returns an owned typeface selected by manager for the requested family and style, or #f if no
+;;   face is found.
 (define (font-manager-match-family fm family
                                    #:weight [weight 'normal]
                                    #:width [width 'normal]
@@ -2767,6 +3681,13 @@
         (void (ptr-ref family-ptr _byte 0))
         (wrap-matched-typeface who result))))))
 
+; font-manager-match-character : font-manager? (or/c char? (integer-in 0 55295) (integer-in 57344
+;   1114111)) [#:family (or/c string? #f)] [#:weight (or/c (integer-in 0 1000) 'invisible 'thin
+;   'extra-light 'light 'normal 'medium 'semi-bold 'bold 'extra-bold 'black 'extra-black)] [#:width
+;   (or/c (integer-in 1 9) 'ultra-condensed 'extra-condensed 'condensed 'semi-condensed 'normal
+;   'semi-expanded 'expanded 'extra-expanded 'ultra-expanded)] [#:slant (or/c 'upright 'italic
+;   'oblique)] [#:languages (listof string?)] -> (or/c typeface? #f)
+;;   Returns an owned typeface selected for character, or #f if none is found.
 (define (font-manager-match-character fm character
                                       #:family [family #f]
                                       #:weight [weight 'normal]
@@ -2807,11 +3728,19 @@
         (for ([lp (in-list language-ptrs)]) (void (ptr-ref lp _byte 0)))
         (wrap-matched-typeface who result))))))
 
+; make-typeface : -> typeface?
+;;   Creates an owned default typeface.
 (define (make-typeface)
   (skia-check!)
   (make-typeface-record
    (new-owned 'make-typeface 'typeface sk_typeface_create_default sk_typeface_unref)))
 
+; typeface-from-family : string? [#:weight (or/c (integer-in 0 1000) 'invisible 'thin 'extra-light
+;   'light 'normal 'medium 'semi-bold 'bold 'extra-bold 'black 'extra-black)] [#:width (or/c
+;   (integer-in 1 9) 'ultra-condensed 'extra-condensed 'condensed 'semi-condensed 'normal
+;   'semi-expanded 'expanded 'extra-expanded 'ultra-expanded)] [#:slant (or/c 'upright 'italic
+;   'oblique)] -> typeface?
+;;   Creates an owned typeface using the default font system and the requested family and style.
 (define (typeface-from-family family
                               #:weight [weight 'normal]
                               #:width [width 'normal]
@@ -2834,6 +3763,8 @@
                  (lambda () (sk_typeface_create_from_name family-bytes style-ptr))
                  sk_typeface_unref)))))
 
+; typeface-from-file : path-string? [#:index exact-nonnegative-integer?] -> typeface?
+;;   Loads an owned typeface from an existing file.
 (define (typeface-from-file filename #:index [index 0])
   (define who 'typeface-from-file)
   (unless (path-string? filename)
@@ -2852,6 +3783,8 @@
               (lambda () (sk_typeface_create_from_file path-bytes index))
               sk_typeface_unref)))
 
+; copy-sk-string : symbol? any/c -> string?
+;;   Copies a bounded native SkString into Racket text without returning borrowed storage.
 (define (copy-sk-string who string-ptr)
   (define n (sk_string_get_size string-ptr))
   (unless (<= n (current-skia-byte-limit))
@@ -2863,6 +3796,9 @@
     (memcpy out src n))
   (bytes->string/utf-8 out))
 
+; typeface-family-name : typeface? -> string?
+;;   Returns a copied family-name string for the actual selected face, which can differ from a
+;;   requested family name.
 (define (typeface-family-name tf)
   (define who 'typeface-family-name)
   (call-with-owned
@@ -2874,12 +3810,18 @@
       sk_string_destructor
       (lambda (sp) (copy-sk-string who sp))))))
 
+; typeface-weight : typeface? -> exact-integer?
+;;   Returns the face's numeric weight, rather than a weight symbol.
 (define (typeface-weight tf)
   (call-with-owned 'typeface-weight (list (typeface-h 'typeface-weight tf))
                    sk_typeface_get_font_weight))
+; typeface-width : typeface? -> exact-integer?
+;;   Returns the face's numeric width class, rather than a width in pixels.
 (define (typeface-width tf)
   (call-with-owned 'typeface-width (list (typeface-h 'typeface-width tf))
                    sk_typeface_get_font_width))
+; typeface-slant : typeface? -> (or/c 'upright 'italic 'oblique)
+;;   Returns the face's declared slant: upright, italic, or oblique.
 (define (typeface-slant tf)
   (define who 'typeface-slant)
   (enum-name who
@@ -2887,6 +3829,16 @@
                               sk_typeface_get_font_slant)
              font-slant-values "font slant"))
 
+;;;
+;;; Font Construction and Metrics
+;;;
+
+; make-font : [(or/c typeface? #f)] [#:size (and/c real? (>/c 0))] [#:scale-x (and/c real? (>/c 0))]
+;   [#:skew-x real?] [#:edging (or/c 'alias 'antialias 'subpixel-antialias)] [#:hinting (or/c 'none
+;   'slight 'normal 'full)] [#:subpixel? boolean?] [#:linear-metrics? boolean?] [#:embolden?
+;   boolean?] [#:embedded-bitmaps? boolean?] [#:force-auto-hinting? boolean?] [#:baseline-snap?
+;   boolean?] -> font?
+;;   Creates an owned mutable font.
 (define (make-font [tf #f]
                    #:size [size 12]
                    #:scale-x [scale-x 1]
@@ -2943,58 +3895,98 @@
           (sk_font_set_baseline_snap fp snap?)
           (sk_font_set_embolden fp bold?)))))))
 
+; font-native-get : symbol? any/c any/c -> any
+;;   Calls a native font getter while the font's lifetime cell is held live.
 (define (font-native-get who f getter)
   (call-with-owned who (list (font-h who f)) getter))
+; font-native-set! : symbol? any/c any/c any/c -> any
+;;   Applies a checked setting through a native font setter while the font remains live.
 (define (font-native-set! who f value setter)
   (call-with-owned who (list (font-h who f))
                    (lambda (fp) (setter fp value))))
 
+; font-size : font? -> real?
+;;   Returns the font's size in local drawing units.
 (define (font-size f) (font-native-get 'font-size f sk_font_get_size))
+; font-set-size! : font? (and/c real? (>/c 0)) -> void?
+;;   Sets the font's size in local drawing units.
 (define (font-set-size! f value)
   (font-native-set! 'font-set-size! f
                     (positive-scalar 'font-set-size! value) sk_font_set_size))
+; font-scale-x : font? -> real?
+;;   Returns the font's horizontal scale factor.
 (define (font-scale-x f) (font-native-get 'font-scale-x f sk_font_get_scale_x))
+; font-set-scale-x! : font? (and/c real? (>/c 0)) -> void?
+;;   Sets the font's horizontal scale factor.
 (define (font-set-scale-x! f value)
   (font-native-set! 'font-set-scale-x! f
                     (positive-scalar 'font-set-scale-x! value) sk_font_set_scale_x))
+; font-skew-x : font? -> real?
+;;   Returns the font's horizontal shear factor.
 (define (font-skew-x f) (font-native-get 'font-skew-x f sk_font_get_skew_x))
+; font-set-skew-x! : font? real? -> void?
+;;   Sets the font's horizontal shear factor.
 (define (font-set-skew-x! f value)
   (font-native-set! 'font-set-skew-x! f
                     (scalar 'font-set-skew-x! value) sk_font_set_skew_x))
+; font-edging : font? -> (or/c 'alias 'antialias 'subpixel-antialias)
+;;   Returns the font's requested glyph-edge rendering mode.
 (define (font-edging f)
   (define who 'font-edging)
   (enum-name who (font-native-get who f sk_font_get_edging)
              font-edging-values "font edging"))
+; font-set-edging! : font? (or/c 'alias 'antialias 'subpixel-antialias) -> void?
+;;   Sets the font's requested glyph-edge rendering mode.
 (define (font-set-edging! f value)
   (font-native-set! 'font-set-edging! f
                     (choice 'font-set-edging! value font-edging-values)
                     sk_font_set_edging))
+; font-hinting : font? -> (or/c 'none 'slight 'normal 'full)
+;;   Returns the font's requested hinting level.
 (define (font-hinting f)
   (define who 'font-hinting)
   (enum-name who (font-native-get who f sk_font_get_hinting)
              font-hinting-values "font hinting"))
+; font-set-hinting! : font? (or/c 'none 'slight 'normal 'full) -> void?
+;;   Sets the font's requested hinting level.
 (define (font-set-hinting! f value)
   (font-native-set! 'font-set-hinting! f
                     (choice 'font-set-hinting! value font-hinting-values)
                     sk_font_set_hinting))
+; font-subpixel? : font? -> boolean?
+;;   Reports whether subpixel glyph positioning is requested.
 (define (font-subpixel? f) (font-native-get 'font-subpixel? f sk_font_is_subpixel))
+; font-set-subpixel! : font? boolean? -> void?
+;;   Sets whether subpixel glyph positioning is requested.
 (define (font-set-subpixel! f value)
   (font-native-set! 'font-set-subpixel! f
                     (boolean 'font-set-subpixel! value) sk_font_set_subpixel))
+; font-linear-metrics? : font? -> boolean?
+;;   Reports whether linear scaling of metrics is requested instead of hinted metric adjustments.
 (define (font-linear-metrics? f)
   (font-native-get 'font-linear-metrics? f sk_font_is_linear_metrics))
+; font-set-linear-metrics! : font? boolean? -> void?
+;;   Sets whether linear scaling of metrics is requested instead of hinted metric adjustments.
 (define (font-set-linear-metrics! f value)
   (font-native-set! 'font-set-linear-metrics! f
                     (boolean 'font-set-linear-metrics! value)
                     sk_font_set_linear_metrics))
+; font-embolden? : font? -> boolean?
+;;   Reports whether synthetic glyph emboldening is requested.
 (define (font-embolden? f) (font-native-get 'font-embolden? f sk_font_is_embolden))
+; font-set-embolden! : font? boolean? -> void?
+;;   Sets whether synthetic glyph emboldening is requested.
 (define (font-set-embolden! f value)
   (font-native-set! 'font-set-embolden! f
                     (boolean 'font-set-embolden! value) sk_font_set_embolden))
 
+; metric-if-valid : any/c any/c any/c -> any
+;;   Returns an optional font metric only when its native validity bit is set.
 (define (metric-if-valid metrics flag value)
   (and (not (zero? (bitwise-and (sk-font-metrics-flags metrics) flag))) value))
 
+; font-get-metrics : font? -> font-metrics?
+;;   Returns a detached metrics snapshot.
 (define (font-get-metrics f)
   (define who 'font-get-metrics)
   (define metrics
@@ -3027,6 +4019,8 @@
                     (sk-font-metrics-strikeout-position metrics))
    spacing))
 
+; call-with-font+paint : symbol? any/c procedure? any/c -> any
+;;   Supplies a live font pointer and optional paint pointer in the native call's required order.
 (define (call-with-font+paint who f p proc)
   (define fh (font-h who f))
   (cond
@@ -3036,6 +4030,8 @@
      (call-with-owned who (list fh)
        (lambda (fp) (proc fp #f)))]))
 
+; draw-simple-text : canvas? string? real? real? font? paint? -> void?
+;;   Draws unshaped text with the baseline origin at coordinates x and y, using font and paint.
 (define (draw-simple-text c text x y f p)
   (define who 'draw-simple-text)
   (define bs (utf8-text who text))
@@ -3054,6 +4050,8 @@
         (sk_canvas_draw_simple_text cp bs (bytes-length bs) text-encoding-utf8
                                     fx fy fp pp)))]))
 
+; measure-simple-text : font? string? [#:paint (or/c paint? #f)] -> real?
+;;   Returns the horizontal advance of the unshaped text in local drawing units.
 (define (measure-simple-text f text #:paint [p #f])
   (define who 'measure-simple-text)
   (define bs (utf8-text who text))
@@ -3063,6 +4061,9 @@
    (lambda (fp pp)
      (sk_font_measure_text fp bs (bytes-length bs) text-encoding-utf8 bounds pp))))
 
+; simple-text-bounds : font? string? [#:paint (or/c paint? #f)] -> (values real? real? real? real?)
+;;   Returns the unshaped text's bounds as four values: x, y, width, and height, relative to a
+;;   baseline origin at zero.
 (define (simple-text-bounds f text #:paint [p #f])
   (define who 'simple-text-bounds)
   (define bs (utf8-text who text))
@@ -3077,6 +4078,8 @@
           (- (sk-rect-right bounds) (sk-rect-left bounds))
           (- (sk-rect-bottom bounds) (sk-rect-top bounds))))
 
+; font-text->glyphs : font? string? -> (vectorof (integer-in 0 65535))
+;;   Maps UTF-8 text directly to glyph IDs without shaping or fallback.
 (define (font-text->glyphs f text)
   (define who 'font-text->glyphs)
   (define bs (utf8-text who text))
@@ -3103,12 +4106,18 @@
         (for/vector ([i (in-range count)])
           (ptr-ref buffer _uint16 i))]))))
 
+; font-char->glyph : font? (or/c char? (integer-in 0 55295) (integer-in 57344 1114111)) ->
+;   (integer-in 0 65535)
+;;   Maps one Unicode scalar to its glyph ID in the font's typeface.
 (define (font-char->glyph f ch)
   (define who 'font-char->glyph)
   (define codepoint (unicode-scalar who ch))
   (call-with-owned who (list (font-h who f))
     (lambda (fp) (sk_font_unichar_to_glyph fp codepoint))))
 
+; font-glyph-path : font? (integer-in 0 65535) -> (or/c skia-path? #f)
+;;   Returns an owned monochrome glyph-outline path, or #f when the font supplies no outline for the
+;;   glyph.
 (define (font-glyph-path f glyph)
   (define who 'font-glyph-path)
   (define gid (glyph-id who glyph))
@@ -3121,6 +4130,8 @@
         p
         (begin (skia-close! p) #f))))
 
+; simple-text-path : font? string? [real?] [real?] -> skia-path?
+;;   Returns an owned path for the unshaped string placed at the given baseline origin.
 (define (simple-text-path f text [x 0] [y 0])
   (define who 'simple-text-path)
   (define bs (utf8-text who text))
@@ -3134,6 +4145,8 @@
                                 fx fy fp pp)))
     p))
 
+; glyph-sequence : symbol? any/c -> list?
+;;   Copies a glyph list or vector into checked sixteen-bit glyph identifiers.
 (define (glyph-sequence who glyphs)
   (define xs
     (cond [(vector? glyphs) (vector->list glyphs)]
@@ -3141,6 +4154,8 @@
           [else (raise-argument-error who "list? or vector? of glyph ids" glyphs)]))
   (for/list ([g (in-list xs)]) (glyph-id who g)))
 
+; position-sequence : symbol? any/c -> list?
+;;   Normalizes ordered two-coordinate glyph positions to checked scalar pairs.
 (define (position-sequence who positions)
   (define xs
     (cond [(vector? positions) (vector->list positions)]
@@ -3152,6 +4167,10 @@
       [(vector x y) (list (scalar who x) (scalar who y))]
       [_ (raise-argument-error who "(list x y) or #(x y) position" position)])))
 
+; make-positioned-text-blob : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0
+;   65535))) (or/c (listof (or/c (list/c real? real?) (vector/c real? real?))) (vectorof (or/c
+;   (list/c real? real?) (vector/c real? real?)))) -> text-blob?
+;;   Creates an owned text blob from nonempty glyph and position sequences of equal length.
 (define (make-positioned-text-blob f glyphs positions)
   (define who 'make-positioned-text-blob)
   (define fh (font-h who f))
@@ -3200,6 +4219,8 @@
              (define snapshot (copy-font-for-shaper who fp tp))
              (make-text-blob-record hnd snapshot gs ps)))))))))
 
+; text-blob-bounds : text-blob? -> (values real? real? real? real?)
+;;   Returns the native blob bounds as x, y, width, and height, relative to its stored origin.
 (define (text-blob-bounds blob)
   (define who 'text-blob-bounds)
   (define r (make-sk-rect 0.0 0.0 0.0 0.0))
@@ -3209,14 +4230,21 @@
           (- (sk-rect-right r) (sk-rect-left r))
           (- (sk-rect-bottom r) (sk-rect-top r))))
 
+; text-blob-unique-id : text-blob? -> exact-integer?
+;;   Returns the native blob identifier.
 (define (text-blob-unique-id blob)
   (call-with-owned 'text-blob-unique-id
                    (list (text-blob-h 'text-blob-unique-id blob))
                    sk_textblob_get_unique_id))
 
+; text-blob->path : text-blob? -> skia-path?
+;;   Returns an owned path of positioned monochrome glyph outlines without baking in a paint or
+;;   canvas transform.
 (define (text-blob->path blob)
   (if (multi-text-blob? blob) (multi-text-blob->path blob) (legacy-text-blob->path blob)))
 
+; legacy-text-blob->path : text-blob? -> any
+;;   Replays a positioned blob's glyph outlines using its retained font snapshot.
 (define (legacy-text-blob->path blob)
   (define who 'text-blob->path)
   (call-with-owned who (list (text-blob-h who blob)) (lambda (_) (void)))
@@ -3231,6 +4259,8 @@
           (lambda (p) (path-add-path! out p #:dx (car pos) #:dy (cadr pos))))))
     out))
 
+; draw-text-blob : canvas? text-blob? real? real? paint? -> void?
+;;   Draws the blob translated by the drawing scalars x and y.
 (define (draw-text-blob c blob x y p)
   (define who 'draw-text-blob)
   (define fx (scalar who x))
@@ -3250,6 +4280,8 @@
 
 ;; HarfBuzz shaping ---------------------------------------------------------
 
+; copy-font-for-shaper : symbol? any/c any/c -> font?
+;;   Snapshots native font settings so shaping does not depend on later caller mutations.
 (define (copy-font-for-shaper who font-ptr typeface-ptr)
   (define size (sk_font_get_size font-ptr))
   (define scale-x (sk_font_get_scale_x font-ptr))
@@ -3273,6 +4305,8 @@
        (sk_font_set_embolden fp (sk_font_is_embolden font-ptr))))
     result))
 
+; typeface-font-bytes : symbol? any/c -> any
+;;   Copies a typeface's bounded font stream and collection index for HarfBuzz construction.
 (define (typeface-font-bytes who typeface-ptr)
   (define ttc-index (malloc _int 'atomic))
   (ptr-set! ttc-index _int 0)
@@ -3296,6 +4330,8 @@
        (error who "typeface returned invalid collection index ~a" index))
      (values bytes index))))
 
+; make-hb-font : symbol? any/c -> any
+;;   Builds an owned HarfBuzz font from the typeface's font bytes and units-per-em scale.
 (define (make-hb-font who typeface-ptr)
   (harfbuzz-check!)
   (define-values (font-bytes ttc-index) (typeface-font-bytes who typeface-ptr))
@@ -3326,6 +4362,12 @@
              (hb_ot_font_set_funcs hp)))
           hb-font))))))
 
+;;;
+;;; HarfBuzz Shaping
+;;;
+
+; make-shaper : font? -> shaper?
+;;   Creates an owned shaper using a snapshot of font and its typeface data.
 (define (make-shaper f)
   (define who 'make-shaper)
   (define fh (font-h who f))
@@ -3345,28 +4387,38 @@
           (define hb-font (make-hb-font who typeface-ptr))
           (make-shaper-record hb-font private-font)))))))
 
+; shaped-run-glyph-count : shaped-run? -> exact-nonnegative-integer?
+;;   Returns the number of glyph IDs in the run, not the number of characters or clusters.
 (define (shaped-run-glyph-count run)
   (unless (shaped-run? run)
     (raise-argument-error 'shaped-run-glyph-count "shaped-run?" run))
   (length (shaped-run-glyphs run)))
 
+; normalize-shape-direction : symbol? any/c -> any
+;;   Accepts only the supported horizontal, vertical, or automatically guessed shaping directions.
 (define (normalize-shape-direction who direction)
   (unless (memq direction '(auto ltr rtl ttb btt))
     (raise-argument-error who "one of 'auto, 'ltr, 'rtl, 'ttb, or 'btt" direction))
   direction)
 
+; normalize-shape-script : symbol? symbol? -> any
+;;   Converts an optional script symbol to its text tag while preserving unspecified script.
 (define (normalize-shape-script who script)
   (cond [(not script) #f]
         [(symbol? script) (symbol->string script)]
         [(string? script) script]
         [else (raise-argument-error who "(or/c #f symbol? string?)" script)]))
 
+; normalize-shape-language : symbol? any/c -> any
+;;   Checks an optional NUL-free language tag for the native shaping API.
 (define (normalize-shape-language who language)
   (cond [(not language) #f]
         [(string? language)
          (nul-free-string who language "language string")]
         [else (raise-argument-error who "(or/c #f string?)" language)]))
 
+; normalize-shape-features : symbol? any/c -> list?
+;;   Normalizes ordered HarfBuzz feature strings and rejects embedded NUL characters.
 (define (normalize-shape-features who features)
   (define xs
     (cond [(list? features) features]
@@ -3375,6 +4427,8 @@
   (for/list ([feature (in-list xs)])
     (nul-free-string who feature "HarfBuzz feature string")))
 
+; make-hb-feature-array : symbol? list? -> any
+;;   Parses feature strings into contiguous native feature records and returns the record count.
 (define (make-hb-feature-array who features)
   (define count (length features))
   (if (zero? count)
@@ -3387,6 +4441,10 @@
             (raise-arguments-error who "invalid HarfBuzz feature" "feature" feature)))
         (values ptr count))))
 
+; shape-text : shaper? string? [#:direction (or/c 'auto 'ltr 'rtl 'ttb 'btt)] [#:script (or/c
+;   symbol? string? #f)] [#:language (or/c string? #f)] [#:features (or/c (listof string?) (vectorof
+;   string?))] -> shaped-run?
+;;   Shapes text with the captured font and returns a detached run.
 (define (shape-text sh text
                     #:direction [direction 'auto]
                     #:script [script #f]
@@ -3467,6 +4525,9 @@
               (set! y (+ y (* (hb-glyph-position-y-advance pos) text-size-y))))
             (shaped-run (reverse glyphs) (reverse clusters) (reverse points) x y)))))))
 
+; shaped-run->text-blob : shaper? shaped-run? -> text-blob?
+;;   Returns an owned text blob containing the run's glyphs and positions, using the shaper's
+;;   captured font.
 (define (shaped-run->text-blob sh run)
   (define who 'shaped-run->text-blob)
   (shaper-h who sh)
@@ -3477,6 +4538,8 @@
                              (shaped-run-glyphs run)
                              (shaped-run-positions run)))
 
+; draw-shaped-run : canvas? shaper? shaped-run? real? real? paint? -> void?
+;;   Draws the run with its origin translated by x and y.
 (define (draw-shaped-run c sh run x y p)
   (define who 'draw-shaped-run)
   (shaper-h who sh)
@@ -3495,6 +4558,10 @@
      (with-skia ([blob (shaped-run->text-blob sh run)])
        (draw-text-blob c blob x y p))]))
 
+; draw-shaped-text : canvas? shaper? string? real? real? paint? [#:direction (or/c 'auto 'ltr 'rtl
+;   'ttb 'btt)] [#:script (or/c symbol? string? #f)] [#:language (or/c string? #f)] [#:features
+;   (or/c (listof string?) (vectorof string?))] -> shaped-run?
+;;   Shapes text with shape-text, draws it with draw-shaped-run, and returns the shaped run.
 (define (draw-shaped-text c sh text x y p
                           #:direction [direction 'auto]
                           #:script [script #f]
@@ -3512,16 +4579,22 @@
 
 ;; Paragraph text layout ----------------------------------------------------
 
+; text-layout-line-count : text-layout? -> exact-nonnegative-integer?
+;;   Returns the number of line records, including retained empty lines.
 (define (text-layout-line-count layout)
   (unless (text-layout? layout)
     (raise-argument-error 'text-layout-line-count "text-layout?" layout))
   (length (text-layout-lines layout)))
 
+; normalize-layout-direction : symbol? any/c -> any
+;;   Restricts paragraph layout to automatic, left-to-right, or right-to-left direction.
 (define (normalize-layout-direction who direction)
   (unless (memq direction '(auto ltr rtl))
     (raise-argument-error who "one of 'auto, 'ltr, or 'rtl" direction))
   direction)
 
+; normalize-layout-align : symbol? any/c -> any
+;;   Checks physical, direction-relative, and justification alignment choices.
 (define (normalize-layout-align who align)
   (unless (memq align '(start center end left right justify justify-all))
     (raise-argument-error
@@ -3530,16 +4603,26 @@
      align))
   align)
 
+; normalize-layout-width : symbol? real? -> any
+;;   Checks an optional positive wrapping width; #f leaves the paragraph unwrapped.
 (define (normalize-layout-width who width)
   (cond [(not width) #f]
         [else (positive-scalar who width)]))
 
+; layout-break-insert-valid? : any/c -> any
+;;   Rejects explicit bidi controls and hard line separators in display-only break insertions.
 (define (layout-break-insert-valid? insert)
   (for/and ([ch (in-string insert)])
     (and (not (bidi-explicit-control? ch))
          (not (memv ch '(#\newline #\return #\u000B #\u000C
                          #\u0085 #\u2028 #\u2029))))))
 
+;;;
+;;; Line Breaking and Single-Font Layout
+;;;
+
+; make-layout-break-opportunity : exact-nonnegative-integer? [string?] -> layout-break-opportunity?
+;;   Returns an ordinary break-opportunity value.
 (define (make-layout-break-opportunity index [insert ""])
   (unless (and (exact-integer? index) (>= index 0))
     (raise-argument-error 'make-layout-break-opportunity
@@ -3554,7 +4637,13 @@
   (make-layout-break-opportunity-record index insert))
 
 (struct wrap-break (index insert) #:transparent)
+;; Fields:
+;;   index: logical string-character boundary. insert: text inserted only when the break is
+;;   selected. Break order follows increasing source indices, independently of shaped glyph order.
 
+
+; normalize-layout-break-provider : symbol? procedure? -> any
+;;   Checks the optional callback accepting a paragraph and language and returning break records.
 (define (normalize-layout-break-provider who provider)
   (cond
     [(not provider) #f]
@@ -3565,6 +4654,8 @@
       "#f or a procedure accepting (paragraph language)"
       provider)]))
 
+; grapheme-boundary-table : any/c -> any
+;;   Indexes every grapheme boundary, including the initial and final character positions.
 (define (grapheme-boundary-table text)
   (define n (string-length text))
   (define boundaries (make-hasheqv))
@@ -3576,6 +4667,9 @@
       (loop next)))
   boundaries)
 
+; provider-wrap-breaks : symbol? any/c any/c any/c -> list?
+;;   Checks provider breaks against grapheme boundaries and rejects conflicting insertions at one
+;;   index.
 (define (provider-wrap-breaks who provider text language)
   (cond
     [(not provider) '()]
@@ -3626,6 +4720,8 @@
         (wrap-break index insert))
       < #:key wrap-break-index)]))
 
+; combined-wrap-breaks : symbol? any/c any/c any/c -> list?
+;;   Combines Unicode opportunities with provider overrides in increasing source-index order.
 (define (combined-wrap-breaks who text language break-provider)
   ;; Higher-level opportunities supplement rather than replace UAX #14. A
   ;; provider entry at an already-legal boundary may attach display-only text.
@@ -3640,11 +4736,15 @@
      (wrap-break index insert))
    < #:key wrap-break-index))
 
+; split-explicit-lines : any/c -> any
+;;   Splits hard line separators before width-based wrapping is attempted.
 (define (split-explicit-lines text)
   ;; UAX #14 hard line breaks (BK/CR/LF/NL) delimit layout paragraphs. The
   ;; separators themselves are not shaped; empty and trailing lines survive.
   (split-hard-lines text))
 
+; breakable-layout-whitespace? : any/c -> any
+;;   Recognizes trimmable whitespace while preserving nonbreaking and narrow nonbreaking spaces.
 (define (breakable-layout-whitespace? ch)
   ;; Trimming policy at an actual wrap boundary. UAX #14 decides *where* a
   ;; break is legal; ordinary whitespace at that chosen boundary is omitted
@@ -3652,6 +4752,8 @@
   (and (char-whitespace? ch)
        (not (or (char=? ch #\u00A0) (char=? ch #\u202F)))))
 
+; trim-wrap-end : any/c any/c any/c -> any
+;;   Finds the visible end of a wrapped slice without consuming nonbreaking spaces.
 (define (trim-wrap-end text start end)
   (let loop ([i end])
     (if (and (> i start)
@@ -3659,6 +4761,8 @@
         (loop (sub1 i))
         i)))
 
+; skip-wrap-leading-whitespace : any/c any/c -> any
+;;   Advances over breakable leading whitespace before starting the next visible line.
 (define (skip-wrap-leading-whitespace text start)
   (define n (string-length text))
   (let loop ([i start])
@@ -3666,6 +4770,8 @@
         (loop (add1 i))
         i)))
 
+; wrap-at-line-breaks : any/c any/c any/c [any/c] [any/c] [symbol?] -> any
+;;   Chooses fitting break opportunities using shaped measurements and optional display insertions.
 (define (wrap-at-line-breaks text max-width measure
                              [break-provider #f] [language #f]
                              [who 'layout-text])
@@ -3715,7 +4821,14 @@
                    (wrap next-start (cons line acc)))])])))]))
 
 (struct wrapped-slice (start render-end logical-end text insert) #:transparent)
+;; Fields:
+;;   start, render-end, and logical-end: source character boundaries, with rendered trailing
+;;   whitespace excluded before logical advancement. text: displayed slice. insert: optional break
+;;   insertion. Logical consumption and visible output are intentionally distinct.
 
+
+; wrap-at-line-break-slices : any/c any/c any/c [any/c] [any/c] [symbol?] -> any
+;;   Wraps text while retaining separate visible and logically consumed source ranges.
 (define (wrap-at-line-break-slices text max-width measure-range
                                    [break-provider #f] [language #f]
                                    [who 'layout-mixed-text])
@@ -3765,9 +4878,13 @@
                    (reverse (cons line acc))
                    (wrap next-start (cons line acc)))])])))]))
 
+; run-horizontal-width : shaped-run? -> any
+;;   Converts signed horizontal run advance to a nonnegative layout width.
 (define (run-horizontal-width run)
   (abs (shaped-run-advance-x run)))
 
+; shape-layout-run : any/c string? any/c any/c any/c any/c -> any
+;;   Passes the paragraph's shaping properties consistently to the run shaper.
 (define (shape-layout-run sh text direction script language features)
   (shape-text sh text
               #:direction direction
@@ -3775,6 +4892,8 @@
               #:language language
               #:features features))
 
+; wrapped-paragraph-lines : any/c any/c any/c any/c any/c any/c any/c [any/c] -> any
+;;   Leaves unbounded paragraphs intact or delegates to measured line wrapping.
 (define (wrapped-paragraph-lines sh paragraph max-width
                                  direction script language features
                                  [break-provider #f])
@@ -3787,6 +4906,8 @@
                                        break-provider)
       (list paragraph)))
 
+; wrapped-paragraph-lines/limited : any/c any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Measures candidate lines with the selected shaper before choosing Unicode/provider breaks.
 (define (wrapped-paragraph-lines/limited sh paragraph max-width
                                          direction script language features
                                          break-provider)
@@ -3797,6 +4918,9 @@
          (shape-layout-run sh str direction script language features))))
   (wrap-at-line-breaks paragraph max-width measure
                        break-provider language 'layout-text))
+; effective-line-direction : any/c any/c -> symbol?
+;;   Uses explicit direction or cluster progression to resolve a line's horizontal alignment
+;;   direction.
 (define (effective-line-direction requested run)
   (cond
     [(eq? requested 'rtl) 'rtl]
@@ -3813,6 +4937,9 @@
          'rtl
          'ltr)]))
 
+; line-left-offset : any/c any/c any/c any/c -> any
+;;   Converts physical or direction-relative alignment to a horizontal offset inside the layout
+;;   width.
 (define (line-left-offset align direction box-width line-width)
   (case align
     [(left) 0.0]
@@ -3822,9 +4949,13 @@
      (if (eq? direction 'rtl) (- box-width line-width) 0.0)]
     [(end) (if (eq? direction 'rtl) 0.0 (- box-width line-width))]))
 
+; justification-align? : any/c -> any
+;;   Identifies the two alignment modes that distribute extra horizontal space.
 (define (justification-align? align)
   (and (memq align '(justify justify-all)) #t))
 
+; check-justification-width : symbol? any/c any/c -> void?
+;;   Requires a finite target width when a justification mode needs an expansion extent.
 (define (check-justification-width who align max-width)
   (when (and (justification-align? align) (not max-width))
     (raise-arguments-error
@@ -3833,6 +4964,8 @@
      "alignment" align
      "width" #f)))
 
+; ordinary-space-byte-offsets : any/c -> any
+;;   Locates ordinary spaces as UTF-8 byte offsets compatible with shaped cluster indices.
 (define (ordinary-space-byte-offsets text)
   ;; Stage 0.14 intentionally implements inter-word justification only.
   ;; U+0020 SPACE is the stretchable opportunity; NBSP, NNBSP, ideographic
@@ -3848,6 +4981,9 @@
        (loop (add1 i) next-byte-offset
              (if (char=? ch #\space) (cons byte-offset out) out))])))
 
+; justify-shaped-run : shaped-run? any/c any/c any/c any/c -> (or/c (values any/c any/c #f) (values
+;   shaped-run? any/c #t))
+;;   Distributes extra width over ordinary spaces while respecting the run's advance direction.
 (define (justify-shaped-run run text direction target-width natural-width)
   ;; HarfBuzz clusters are UTF-8 byte offsets. Move each positioned glyph by
   ;; the accumulated expansion of ordinary spaces preceding it in visual flow;
@@ -3884,15 +5020,24 @@
       target-width
       #t)]))
 
+; cjk-justification-scripts : list?
+;;   Identifies Han, Hiragana, Katakana, and Hangul scripts eligible for inter-cluster justification
+;;   spacing.
 (define cjk-justification-scripts '(hani hira kana hang))
 
+; cjk-justification-script? : any/c -> any
+;;   Recognizes scripts for which inter-character spacing is an eligible justification strategy.
 (define (cjk-justification-script? script)
   (and script (memq script cjk-justification-scripts) #t))
 
+; inferred-line-script : any/c any/c -> any
+;;   Uses the requested script or the first informative Unicode script in the line.
 (define (inferred-line-script text requested-script)
   (or requested-script
       (for/or ([ch (in-string text)]) (unicode-script-symbol ch))))
 
+; ordinary-space-boundary-byte-offsets : any/c -> any
+;;   Returns UTF-8 boundaries immediately after ordinary spaces, in source order.
 (define (ordinary-space-boundary-byte-offsets text)
   ;; Boundaries immediately after U+0020. Unlike the 0.14 helper, using the
   ;; post-space byte offset lets the same position-shifting primitive serve CJK
@@ -3910,6 +5055,8 @@
                  (cons next-byte-offset out)
                  out))])))
 
+; cjk-boundary-byte-offsets : any/c -> any
+;;   Finds eligible inter-grapheme CJK expansion boundaries without splitting grapheme clusters.
 (define (cjk-boundary-byte-offsets text)
   ;; Stretch only between adjacent default grapheme clusters that both have a
   ;; CJK script. Common punctuation therefore stays attached to the surrounding
@@ -3931,6 +5078,8 @@
                  (cons byte-offset out)
                  out))])))
 
+; string-index-boundaries->byte-offsets : any/c list? -> any
+;;   Converts selected character boundaries to the UTF-8 offsets used by shaping clusters.
 (define (string-index-boundaries->byte-offsets text indices)
   (define wanted (make-hasheqv))
   (for ([i (in-list indices)]) (hash-set! wanted i #t))
@@ -3945,6 +5094,9 @@
              (+ byte-offset (bytes-length (string->bytes/utf-8 (string ch))))
              out*)])))
 
+; adjust-shaped-run-at-boundaries : shaped-run? any/c any/c any/c -> any
+;;   Shifts glyph positions and total advance to distribute expansion across selected byte
+;;   boundaries.
 (define (adjust-shaped-run-at-boundaries run direction byte-boundaries delta)
   ;; Change the visual advance by DELTA without altering glyph IDs. A boundary
   ;; is a UTF-8 byte offset immediately before the glyphs that move in logical
@@ -3978,10 +5130,19 @@
                  (+ advance (* axis-sign delta))
                  (shaped-run-advance-y run))]))
 
+; tatweel-char : char?
+;;   Supplies the Arabic elongation character inserted only at reviewed joining opportunities during
+;;   justification.
 (define tatweel-char #\u0640)
+; tatweel-byte-length : exact-nonnegative-integer?
+;;   Accounts for the UTF-8 bytes added by each inserted Arabic elongation character when remapping
+;;   clusters.
 (define tatweel-byte-length
   (bytes-length (string->bytes/utf-8 (string tatweel-char))))
 
+; build-kashida-display : any/c list? vector? -> any
+;;   Inserts requested tatweel counts and records byte offsets needed to map clusters back to source
+;;   text.
 (define (build-kashida-display text boundaries counts)
   ;; COUNTS is parallel to BOUNDARIES. Return the display-only string together
   ;; with UTF-8 boundaries immediately after every inserted tatweel. Those
@@ -4019,6 +5180,8 @@
                 (cons (string ch) pieces*)
                 offsets*)])])) )
 
+; remap-kashida-run-clusters : shaped-run? any/c -> any
+;;   Subtracts inserted tatweel bytes from shaped clusters to restore original source offsets.
 (define (remap-kashida-run-clusters run after-offsets)
   ;; HarfBuzz cluster offsets belong to the temporary display string. Collapse
   ;; each inserted TATWEEL byte span back onto its logical source boundary so
@@ -4039,6 +5202,8 @@
                  (shaped-run-advance-x run)
                  (shaped-run-advance-y run))]))
 
+; shape-kashida-to-width : any/c any/c any/c any/c any/c -> any
+;;   Tries bounded tatweel insertions and reshaping without exceeding the requested line width.
 (define (shape-kashida-to-width shape-display text direction target-width natural-run)
   ;; Insert U+0640 at Unicode Joining_Type-compatible cursive boundaries. The
   ;; final small difference is absorbed at the inserted connection boundaries,
@@ -4091,6 +5256,9 @@
                 next-display next-after-offsets
                 (if (> next-width (+ width 0.001)) 0 (add1 stalled)))]))]))
 
+; justify-layout-run : any/c any/c any/c any/c any/c any/c any/c any/c any/c -> (or/c (values any/c
+;   any/c #f) (values any/c any/c #t))
+;;   Selects space, CJK-boundary, and Arabic joining expansion appropriate to the line's script.
 (define (justify-layout-run sh run text direction script language features
                             target-width natural-width)
   (define effective-script (inferred-line-script text script))
@@ -4129,12 +5297,25 @@
               base-run direction post-boundaries remaining)
              target-width #t)]))
 
+; paragraph-line-justify? : any/c any/c any/c -> (or/c #t boolean? #f)
+;;   Includes the final line only for justify-all; ordinary justify leaves it unexpanded.
 (define (paragraph-line-justify? align index count)
   (case align
     [(justify-all) #t]
     [(justify) (< index (sub1 count))]
     [else #f]))
 
+;;;
+;;; Single-Font Layout and Drawing
+;;;
+
+; layout-text : shaper? string? [#:width (or/c (and/c real? (>/c 0)) #f)] [#:align (or/c 'start
+;   'center 'end 'left 'right 'justify 'justify-all)] [#:direction (or/c 'auto 'ltr 'rtl)] [#:script
+;   (or/c symbol? string? #f)] [#:language (or/c string? #f)] [#:features (or/c (listof string?)
+;   (vectorof string?))] [#:break-provider (or/c #f (-> string? (or/c string? #f) (listof (or/c
+;   exact-nonnegative-integer? layout-break-opportunity?))))] [#:line-height (or/c (and/c real? (>/c
+;   0)) #f)] -> text-layout?
+;;   Returns a layout using one shaper and the rules in .
 (define (layout-text sh text
                      #:width [width #f]
                      #:align [align 'start]
@@ -4228,6 +5409,9 @@
            (max 0.0 descent))))
   (text-layout sh lines box-width height line-step))
 
+; draw-text-layout : canvas? text-layout? real? real? paint? -> void?
+;;   Draws the layout box with origin at the drawing scalars x and y, using each line's stored x
+;;   offset and baseline.
 (define (draw-text-layout c layout x y p)
   (define who 'draw-text-layout)
   (unless (text-layout? layout)
@@ -4249,11 +5433,16 @@
 
 ;; Mixed-script / mixed-direction layout -----------------------------------
 
+; mixed-text-layout-line-count : mixed-text-layout? -> exact-nonnegative-integer?
+;;   Returns the number of lines, including retained empty lines.
 (define (mixed-text-layout-line-count layout)
   (unless (mixed-text-layout? layout)
     (raise-argument-error 'mixed-text-layout-line-count "mixed-text-layout?" layout))
   (length (mixed-text-layout-lines layout)))
 
+; hb-tag->script-symbol : any/c -> any
+;;   Converts a HarfBuzz script tag to a lowercase symbol, omitting common, inherited, and unknown
+;;   tags.
 (define (hb-tag->script-symbol tag)
   (cond
     [(zero? tag) #f]
@@ -4264,11 +5453,16 @@
      (define sym (string->symbol (string-downcase (list->string chars))))
      (if (memq sym '(zyyy zinh zzzz)) #f sym)]))
 
+; unicode-script-symbol : any/c -> any
+;;   Queries HarfBuzz Unicode properties and returns an informative script symbol when available.
 (define (unicode-script-symbol ch)
   (define ufuncs (hb_unicode_funcs_get_default))
   (unless ufuncs (error 'unicode-script-symbol "HarfBuzz returned no Unicode property provider"))
   (hb-tag->script-symbol (hb_unicode_script ufuncs (char->integer ch))))
 
+; font-choice-relevant-char? : any/c -> any
+;;   Excludes whitespace, formatting controls, and variation selectors from missing-glyph fallback
+;;   selection.
 (define (font-choice-relevant-char? ch)
   ;; Directional formatting controls, join controls, variation selectors, and
   ;; other format characters need not have standalone cmap glyphs. They must
@@ -4281,6 +5475,8 @@
        (not (<= #xfe00 cp #xfe0f))
        (not (<= #xe0100 cp #xe01ef))))
 
+; hash-ref/cache! : hash? any/c any/c -> any
+;;   Computes and stores a missing lookup result while preserving its exact value for later reuse.
 (define (hash-ref/cache! ht key thunk)
   (hash-ref ht key
             (lambda ()
@@ -4288,6 +5484,9 @@
               (hash-set! ht key value)
               value)))
 
+; cluster-font-choice : any/c any/c any/c any/c hash? -> any
+;;   Chooses and caches a fallback family for the first relevant missing character in a grapheme
+;;   cluster.
 (define (cluster-font-choice base-font fm cluster language cache)
   (define missing
     (for/first ([ch (in-string cluster)]
@@ -4314,6 +5513,8 @@
                                    (typeface-width face)
                                    (typeface-slant face))))))))))
 
+; make-font-like : any/c any/c -> any
+;;   Copies the base font's rendering settings onto a newly selected fallback typeface.
 (define (make-font-like base-font tf)
   (make-font tf
              #:size (font-size base-font)
@@ -4323,11 +5524,16 @@
              #:hinting (font-hinting base-font)
              #:subpixel? (font-subpixel? base-font)
              #:linear-metrics? (font-linear-metrics? base-font)
-             #:embedded-bitmaps? (font-native-get 'fallback-font base-font sk_font_is_embedded_bitmaps)
-             #:force-auto-hinting? (font-native-get 'fallback-font base-font sk_font_is_force_auto_hinting)
+             #:embedded-bitmaps? (font-native-get 'fallback-font base-font
+                                                 sk_font_is_embedded_bitmaps)
+             #:force-auto-hinting? (font-native-get 'fallback-font base-font
+                                                   sk_font_is_force_auto_hinting)
              #:baseline-snap? (font-native-get 'fallback-font base-font sk_font_is_baseline_snap)
              #:embolden? (font-embolden? base-font)))
 
+; call-with-choice-shaper : symbol? any/c any/c fallback-choice? procedure? -> any
+;;   Uses the base shaper or scopes a recreated fallback typeface, font, and shaper for one
+;;   callback.
 (define (call-with-choice-shaper who base-shaper fm choice proc)
   (cond
     [(not choice) (proc base-shaper)]
@@ -4349,12 +5555,22 @@
          (lambda (font)
            (call-with-skia-resource (make-shaper font) proc)))))]))
 
+; strip-explicit-bidi-controls : any/c -> any
+;;   Removes layout-control characters after their bidi levels have influenced logical ordering.
 (define (strip-explicit-bidi-controls str)
   (list->string
    (for/list ([ch (in-string str)] #:unless (bidi-explicit-control? ch)) ch)))
 
 (struct logical-mixed-piece (text level script choice) #:transparent)
+;; Fields:
+;;   text: logical source slice. level: resolved bidi embedding level. script: script symbol.
+;;   choice: detached fallback-choice. Adjacent pieces merge only when their shaping properties
+;;   agree.
 
+
+; grapheme-pieces : any/c any/c any/c any/c any/c any/c -> any
+;;   Partitions logical text into grapheme pieces annotated with bidi level, script, and fallback
+;;   choice.
 (define (grapheme-pieces sh fm text levels language choice-cache)
   (define base-font (shaper-font sh))
   (define n (string-length text))
@@ -4382,6 +5598,8 @@
           (define choice (cluster-font-choice base-font fm clean language choice-cache))
           (loop end (cons (logical-mixed-piece clean level script choice) acc))])])) )
 
+; coalesce-logical-pieces : list? -> list?
+;;   Merges adjacent pieces only when level, script, and font choice permit one shaping run.
 (define (coalesce-logical-pieces pieces)
   (define out '())
   (for ([piece (in-list pieces)])
@@ -4405,6 +5623,8 @@
       [else (set! out (cons piece out))]))
   (reverse out))
 
+; mixed-run-from-piece : any/c any/c logical-mixed-piece? any/c any/c -> mixed-text-run?
+;;   Shapes one logical piece with its resolved direction and selected fallback font.
 (define (mixed-run-from-piece sh fm piece language features)
   (define level (logical-mixed-piece-level piece))
   (define direction (if (odd? level) 'rtl 'ltr))
@@ -4427,6 +5647,9 @@
    (and choice (fallback-choice-width choice))
    (and choice (fallback-choice-slant choice))))
 
+; place-visual-mixed-runs : any/c -> any
+;;   Assigns horizontal origins to visual-order runs, accounting for negative right-to-left
+;;   advances.
 (define (place-visual-mixed-runs runs)
   (let loop ([xs runs] [cursor 0.0] [out '()])
     (cond
@@ -4452,6 +5675,10 @@
                          (mixed-text-run-slant r)))
        (loop (cdr xs) (+ cursor (mixed-text-run-width r)) (cons placed out))])))
 
+; shape-mixed-line/resolved : any/c any/c any/c any/c any/c any/c any/c any/c [#:insert any/c]
+;   [#:insert-level any/c] -> (values any/c any/c any/c)
+;;   Shapes a line using already resolved paragraph levels and an optional display-only break
+;;   insertion.
 (define (shape-mixed-line/resolved sh fm text levels resolved-direction
                                    language features choice-cache
                                    #:insert [insert ""]
@@ -4476,9 +5703,14 @@
   (define-values (placed width) (place-visual-mixed-runs visual))
   (values placed width resolved-direction))
 
+; slice-levels : vector? any/c any/c -> vector?
+;;   Copies the bidi-level interval corresponding to a logical source substring.
 (define (slice-levels levels start end)
   (for/vector ([i (in-range start end)]) (vector-ref levels i)))
 
+; display-insert-level : string? vector? any/c -> any
+;;   Uses the last non-control character's level for a display insertion, falling back to paragraph
+;;   direction.
 (define (display-insert-level text levels paragraph-direction)
   ;; A discretionary suffix does not participate in paragraph bidi resolution.
   ;; It inherits the resolved level of the last drawable character before it.
@@ -4488,6 +5720,9 @@
       [(bidi-explicit-control? (string-ref text i)) (loop (sub1 i))]
       [else (vector-ref levels i)])))
 
+; wrapped-mixed-line-slices : any/c any/c string? any/c any/c any/c any/c any/c any/c [any/c] ->
+;   any
+;;   Measures mixed-script candidates with preserved paragraph levels before choosing source slices.
 (define (wrapped-mixed-line-slices sh fm paragraph max-width paragraph-direction
                                    paragraph-levels language features choice-cache
                                    [break-provider #f])
@@ -4514,6 +5749,8 @@
               width)))
       break-provider language 'layout-mixed-text)]))
 
+; shape-mixed-line : any/c any/c any/c any/c any/c any/c any/c -> (values any/c any/c any/c)
+;;   Resolves bidi levels, shapes logical font/script runs, and places them in visual order.
 (define (shape-mixed-line sh fm text paragraph-direction language features choice-cache)
   (define-values (levels resolved-direction)
     (bidi-resolve-levels text paragraph-direction))
@@ -4528,10 +5765,14 @@
   (define-values (placed width) (place-visual-mixed-runs visual))
   (values placed width resolved-direction))
 
+; mixed-paragraph-direction : any/c any/c -> any
+;;   Returns the paragraph direction resolved by the Unicode bidi algorithm.
 (define (mixed-paragraph-direction paragraph requested)
   (define-values (_levels dir) (bidi-resolve-levels paragraph requested))
   dir)
 
+; wrapped-mixed-lines : any/c any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Keeps an unbounded mixed-script paragraph intact or chooses measured line breaks.
 (define (wrapped-mixed-lines sh fm paragraph max-width paragraph-direction
                              language features choice-cache)
   (if max-width
@@ -4539,6 +5780,8 @@
                                    language features choice-cache)
       (list paragraph)))
 
+; wrapped-mixed-lines/limited : any/c any/c any/c any/c any/c any/c any/c any/c -> any
+;;   Measures candidate strings using mixed-font shaping rather than character counts.
 (define (wrapped-mixed-lines/limited sh fm paragraph max-width paragraph-direction
                                      language features choice-cache)
   (define (measure str)
@@ -4550,6 +5793,8 @@
           width)))
   (wrap-at-line-breaks paragraph max-width measure))
 
+; mixed-run-choice : mixed-text-run? -> any
+;;   Reconstructs a detached fallback-font request from a mixed run's saved style fields.
 (define (mixed-run-choice r)
   (and (mixed-text-run-family r)
        (fallback-choice (mixed-text-run-family r)
@@ -4557,34 +5802,48 @@
                         (mixed-text-run-font-width r)
                         (mixed-text-run-slant r))))
 
+; mixed-run-space-count : mixed-text-run? -> exact-nonnegative-integer?
+;;   Counts ordinary-space expansion boundaries in one mixed-script run.
 (define (mixed-run-space-count r)
   (length (ordinary-space-boundary-byte-offsets (mixed-text-run-text r))))
 
+; mixed-run-cjk-boundaries : mixed-text-run? -> any
+;;   Returns inter-grapheme expansion boundaries only for CJK-eligible runs.
 (define (mixed-run-cjk-boundaries r)
   (if (cjk-justification-script? (mixed-text-run-script r))
       (cjk-boundary-byte-offsets (mixed-text-run-text r))
       '()))
 
+; mixed-run-kashida-indices : mixed-text-run? -> any
+;;   Returns logical joining boundaries only when the run uses Arabic script.
 (define (mixed-run-kashida-indices r)
   (if (eq? (mixed-text-run-script r) 'arab)
       (arabic-kashida-boundaries (mixed-text-run-text r))
       '()))
 
+; mixed-run-justification-count : mixed-text-run? -> any
+;;   Counts the run's space, CJK, and kashida expansion opportunities together.
 (define (mixed-run-justification-count r)
   (+ (mixed-run-space-count r)
      (length (mixed-run-cjk-boundaries r))
      (length (mixed-run-kashida-indices r))))
 
+; cjk-run-boundary? : mixed-text-run? mixed-text-run? -> any
+;;   Recognizes an expansion opportunity between two adjacent CJK-script runs.
 (define (cjk-run-boundary? left right)
   (and left right
        (cjk-justification-script? (mixed-text-run-script left))
        (cjk-justification-script? (mixed-text-run-script right))))
 
+; cross-run-cjk-count : any/c -> any
+;;   Counts eligible CJK boundaries that lie between, rather than inside, visual runs.
 (define (cross-run-cjk-count runs)
   (for/sum ([left (in-list runs)]
             [right (in-list (if (pair? runs) (cdr runs) '()))])
     (if (cjk-run-boundary? left right) 1 0)))
 
+; shape-mixed-run-display : any/c any/c mixed-text-run? any/c any/c any/c -> any
+;;   Reshapes replacement display text with the run's saved font, direction, and script.
 (define (shape-mixed-run-display sh fm r display language features)
   (call-with-choice-shaper
    'layout-mixed-text sh fm (mixed-run-choice r)
@@ -4595,6 +5854,8 @@
                  #:language language
                  #:features features))))
 
+; justify-one-mixed-run : any/c any/c mixed-text-run? any/c any/c any/c -> mixed-text-run?
+;;   Combines bounded kashida reshaping with boundary spacing for one run's expansion share.
 (define (justify-one-mixed-run sh fm r per language features)
   (define natural-width (mixed-text-run-width r))
   (define text (mixed-text-run-text r))
@@ -4633,6 +5894,8 @@
                   (mixed-text-run-font-width r)
                   (mixed-text-run-slant r)))
 
+; place-visual-mixed-runs/justified : any/c any/c -> any
+;;   Places expanded visual runs and adds the selected gaps between eligible CJK runs.
 (define (place-visual-mixed-runs/justified runs cjk-gap)
   (let loop ([xs runs] [cursor 0.0] [out '()])
     (cond
@@ -4659,6 +5922,10 @@
              (+ cursor (mixed-text-run-width r) gap)
              (cons placed out))])))
 
+; justify-mixed-runs : any/c any/c any/c any/c any/c any/c any/c -> (or/c (values any/c any/c #f)
+;   (values any/c any/c #t))
+;;   Divides extra line width across internal and cross-run opportunities, then recomputes visual
+;;   positions.
 (define (justify-mixed-runs sh fm runs natural-width target-width language features)
   ;; Distribute slack over script-appropriate visual opportunities. Latin and
   ;; other scripts retain inter-word U+0020 expansion; CJK also expands between
@@ -4681,6 +5948,17 @@
      ;; requested layout measure just like the 0.14 inter-word implementation.
      (values placed target-width #t)]))
 
+;;;
+;;; Mixed-Text Layout and Drawing
+;;;
+
+; layout-mixed-text : shaper? font-manager? string? [#:width (or/c (and/c real? (>/c 0)) #f)]
+;   [#:align (or/c 'start 'center 'end 'left 'right 'justify 'justify-all)] [#:direction (or/c 'auto
+;   'ltr 'rtl)] [#:language (or/c string? #f)] [#:features (or/c (listof string?) (vectorof
+;   string?))] [#:break-provider (or/c #f (-> string? (or/c string? #f) (listof (or/c
+;   exact-nonnegative-integer? layout-break-opportunity?))))] [#:line-height (or/c (and/c real? (>/c
+;   0)) #f)] -> mixed-text-layout?
+;;   Returns a mixed-script, mixed-direction layout with font fallback.
 (define (layout-mixed-text sh fm text
                            #:width [width #f]
                            #:align [align 'start]
@@ -4777,6 +6055,13 @@
            (max 0.0 descent))))
   (mixed-text-layout sh fm lines box-width height line-step))
 
+;;;
+;;; Mixed-Script Font Fallback
+;;;
+
+; fallback-choice-from-run : mixed-text-run? -> any
+;;   Reconstructs the detached font request needed to redraw a mixed run with its original fallback
+;;   choice.
 (define (fallback-choice-from-run r)
   (and (mixed-text-run-family r)
        (fallback-choice (mixed-text-run-family r)
@@ -4784,6 +6069,8 @@
                         (mixed-text-run-font-width r)
                         (mixed-text-run-slant r))))
 
+; draw-mixed-text-layout : canvas? mixed-text-layout? real? real? paint? -> void?
+;;   Draws the stored layout at its upper-left box origin.
 (define (draw-mixed-text-layout c layout x y p)
   (define who 'draw-mixed-text-layout)
   (unless (mixed-text-layout? layout)
@@ -4837,6 +6124,8 @@
 
 ;; Images, encoded data, codecs, and copied pixel input ---------------------
 
+; surface-snapshot : surface? -> image?
+;;   Returns an owned immutable image of the surface's current pixels.
 (define (surface-snapshot s)
   (require-cpu-surface 'surface-snapshot s)
   (call-with-owned 'surface-snapshot (list (surface-h 'surface-snapshot s))
@@ -4846,6 +6135,13 @@
                   (lambda () (sk_surface_new_image_snapshot sp)) sk_image_unref)
        (surface-width s) (surface-height s)))))
 
+;;;
+;;; Image Pixels, Decoding, and Encoding
+;;;
+
+; rgba-bytes->image : (integer-in 1 32768) (integer-in 1 32768) bytes? [#:premultiplied? boolean?]
+;   [#:color-space (or/c color-space? #f)] -> image?
+;;   Copies tightly packed RGBA bytes into a new owned raster image.
 (define (rgba-bytes->image w h pixels #:premultiplied? [premultiplied? #f]
                            #:color-space [cs #f])
   (define who 'rgba-bytes->image)
@@ -4881,6 +6177,9 @@
    (new-owned who 'image (lambda () ptr) sk_image_unref)
    w h))
 
+; checked-file-data : symbol? path-string? -> (values any/c any/c)
+;;   Checks encoded-file existence, nonempty size, byte budget, and native path encoding before
+;;   loading.
 (define (checked-file-data who filename)
   (unless (path-string? filename)
     (raise-argument-error who "path-string?" filename))
@@ -4897,6 +6196,8 @@
     (raise-arguments-error who "image path contains an embedded NUL" "path" filename))
   (values (nul-terminated-bytes raw-path) n))
 
+; call-with-encoded-data-from-bytes : symbol? any/c any/c -> any
+;;   Copies bounded encoded bytes into temporary native data for one decode callback.
 (define (call-with-encoded-data-from-bytes who bs proc)
   (positive-encoded-bytes who bs)
   (skia-check!)
@@ -4905,6 +6206,8 @@
    (lambda () (sk_data_new_with_copy bs (bytes-length bs)))
    sk_data_unref proc))
 
+; call-with-encoded-data-from-file : symbol? path-string? any/c -> any
+;;   Scopes native encoded data loaded from a checked file path.
 (define (call-with-encoded-data-from-file who filename proc)
   (define-values (path-bytes _n) (checked-file-data who filename))
   (skia-check!)
@@ -4913,6 +6216,8 @@
    (lambda () (sk_data_new_from_file path-bytes))
    sk_data_unref proc))
 
+; make-image-from-data : symbol? procedure? -> any
+;;   Creates and validates an owned image from a temporary encoded-data provider.
 (define (make-image-from-data who call-with-data)
   (call-with-data
    (lambda (dp)
@@ -4927,12 +6232,16 @@
        (check-dimensions who w h)
        (make-image-record hnd w h)))))
 
+; image-from-bytes : bytes? -> image?
+;;   Creates an owned image from a copy of encoded image data.
 (define (image-from-bytes bs)
   (define who 'image-from-bytes)
   (positive-encoded-bytes who bs)
   (make-image-from-data
    who (lambda (proc) (call-with-encoded-data-from-bytes who bs proc))))
 
+; image-from-file : path-string? -> image?
+;;   Creates an image from a nonempty encoded file.
 (define (image-from-file filename)
   (define who 'image-from-file)
   ;; Validate before loading the native library.
@@ -4940,6 +6249,8 @@
   (make-image-from-data
    who (lambda (proc) (call-with-encoded-data-from-file who filename proc))))
 
+; copy-native-data : symbol? any/c -> bytes?
+;;   Copies a nonempty bounded SkData buffer before its native reference is released.
 (define (copy-native-data who data)
   (define n (sk_data_get_size data))
   (unless (<= 1 n (current-skia-byte-limit))
@@ -4950,6 +6261,9 @@
   (memcpy out src n)
   out)
 
+; image-original-encoded-bytes : image? -> (or/c bytes? #f)
+;;   Returns a new mutable copy of retained encoded data when the native image has such data, or #f
+;;   otherwise.
 (define (image-original-encoded-bytes im)
   (define who 'image-original-encoded-bytes)
   (call-with-owned
@@ -4961,6 +6275,9 @@
            who 'encoded-data (lambda () dp) sk_data_unref
            (lambda (data) (copy-native-data who data)))))))
 
+; codec-info-from-data : symbol? any/c -> any
+;;   Queries detached image metadata through a temporary codec and releases retained color-space
+;;   data.
 (define (codec-info-from-data who data)
   (call-with-native-temporary
    who 'codec (lambda () (sk_codec_new_from_data data)) sk_codec_destroy
@@ -4998,11 +6315,17 @@
          (when colorspace
            (sk_colorspace_unref colorspace)))))))
 
+; encoded-image-info-from-bytes : bytes? -> encoded-image-info?
+;;   Probes nonempty encoded bytes without returning a codec or allocating the complete decoded
+;;   raster.
 (define (encoded-image-info-from-bytes bs)
   (define who 'encoded-image-info-from-bytes)
   (call-with-encoded-data-from-bytes
    who bs (lambda (dp) (codec-info-from-data who dp))))
 
+; encoded-image-info-from-file : path-string? -> encoded-image-info?
+;;   Probes an existing nonempty file without returning a codec or allocating the complete decoded
+;;   raster.
 (define (encoded-image-info-from-file filename)
   (define who 'encoded-image-info-from-file)
   (call-with-encoded-data-from-file
@@ -5022,22 +6345,40 @@
          codec-frame-info-rect)
 
 (struct codec (handle) #:constructor-name make-codec-record)
+;; Fields:
+;;   handle: owned native codec lifetime cell. Frame decoding and metadata queries require the codec
+;;   to remain open.
+
 (struct codec-frame-info
   (index required-frame duration fully-received? alpha-type
          has-alpha-within-bounds? disposal-method blend rect)
   #:transparent
   #:constructor-name make-codec-frame-info-record
   #:omit-define-syntaxes)
+;; Fields:
+;;   index: zero-based frame index. required-frame: prerequisite frame index or native
+;;   no-prerequisite marker. duration: display duration in milliseconds. fully-received?: complete
+;;   encoded-frame flag.
+;;   alpha-type and has-alpha-within-bounds?: frame alpha metadata. disposal-method and blend:
+;;   animation compositing symbols. rect: detached frame rectangle in encoded image coordinates.
 
+
+; codec-h : symbol? codec? -> (or/c owned? domain-resource?)
+;;   Checks codec? before returning the wrapper's private lifetime cell.
 (define (codec-h who c)
   (typed-handle who c codec? codec-handle "codec?"))
 
+; codec-native-frame-count : symbol? any/c -> any
+;;   Rejects invalid native frame counts before exposing them to index checks.
 (define (codec-native-frame-count who cp)
   (define count (sk_codec_get_frame_count cp))
   (unless (exact-nonnegative-integer? count)
     (error who "codec returned invalid animation frame count ~a" count))
   count)
 
+; codec-check-frame : symbol? any/c any/c -> any
+;;   Checks an animation index against the codec's decodable frame count, including still-image
+;;   handling.
 (define (codec-check-frame who cp index)
   (checked-codec-index who index)
   (define count (codec-native-frame-count who cp))
@@ -5048,6 +6389,9 @@
 
 ;; The C shim returns an owned color-space reference in image info. It must
 ;; remain live during decode/copy and must be released even when decoding fails.
+; call-with-codec-image-info : symbol? any/c any/c -> any
+;;   Scopes checked image dimensions and releases the color-space reference returned with native
+;;   codec info.
 (define (call-with-codec-image-info who cp proc)
   (define info (make-sk-image-info #f 0 0 0 0))
   (sk_codec_get_info cp info)
@@ -5061,6 +6405,8 @@
       (proc info))
     (lambda () (when cs (sk_colorspace_unref cs)))))
 
+; make-codec-from-data : symbol? procedure? -> any
+;;   Constructs an owned codec and closes it if initial metadata validation fails.
 (define (make-codec-from-data who call-with-data)
   (call-with-data
    (lambda (dp)
@@ -5073,11 +6419,19 @@
        (codec-info c)
        c))))
 
+;;;
+;;; Owned Codec Resources
+;;;
+
+; codec-from-bytes : bytes? -> codec?
+;;   Constructs a codec from a copy of nonempty encoded bytes.
 (define (codec-from-bytes bs)
   (define who 'codec-from-bytes)
   (make-codec-from-data
    who (lambda (proc) (call-with-encoded-data-from-bytes who bs proc))))
 
+; codec-from-file : path-string? -> codec?
+;;   Constructs a codec from a bounded snapshot of a nonempty encoded file.
 (define (codec-from-file filename)
   (define who 'codec-from-file)
   ;; Read an owned snapshot rather than retaining a file mapping. Bound every
@@ -5102,6 +6456,8 @@
   (make-codec-from-data
    who (lambda (proc) (call-with-encoded-data-from-bytes who bs proc))))
 
+; codec-info : codec? -> encoded-image-info?
+;;   Returns detached encoded metadata.
 (define (codec-info c)
   (define who 'codec-info)
   (call-with-owned
@@ -5119,12 +6475,16 @@
          (enum-name who (sk_codec_get_origin cp) encoded-origin-values "encoded origin")
          (codec-native-frame-count who cp)))))))
 
+; encoded-image-info-display-width : encoded-image-info? -> exact-positive-integer?
+;;   Returns the width after applying the encoded orientation.
 (define (encoded-image-info-display-width info)
   (define-values (w h)
     (oriented-dimensions 'encoded-image-info-display-width
                         (encoded-image-info-width info) (encoded-image-info-height info)
                         (encoded-image-info-origin info)))
   w)
+; encoded-image-info-display-height : encoded-image-info? -> exact-positive-integer?
+;;   Returns the height after applying the encoded orientation.
 (define (encoded-image-info-display-height info)
   (define-values (w h)
     (oriented-dimensions 'encoded-image-info-display-height
@@ -5134,11 +6494,15 @@
 
 ;; Unlike the legacy metadata field, this is the number of decodable frames:
 ;; still images have one frame, although their animation metadata table is empty.
+; codec-frame-count : codec? -> exact-positive-integer?
+;;   Returns the number of frame indices exposed by the codec.
 (define (codec-frame-count c)
   (define who 'codec-frame-count)
   (call-with-owned who (list (codec-h who c))
     (lambda (cp) (max 1 (codec-native-frame-count who cp)))))
 
+; codec-repetition-count : codec? -> (integer-in -1 #f)
+;;   Returns the native animation repetition count.
 (define (codec-repetition-count c)
   (define who 'codec-repetition-count)
   (call-with-owned who (list (codec-h who c))
@@ -5150,6 +6514,8 @@
 
 ;; Returns #f only for the valid still-image frame with no animation metadata.
 ;; Rect is #(x y width height), always in encoded (not oriented) pixels.
+; codec-frame-info : codec? (integer-in 0 2147483647) -> (or/c codec-frame-info? #f)
+;;   Returns metadata for a valid selectable frame.
 (define (codec-frame-info c index)
   (define who 'codec-frame-info)
   (define hnd (codec-h who c))
@@ -5183,6 +6549,9 @@
                            (- (sk-irect-right r) (sk-irect-left r))
                            (- (sk-irect-bottom r) (sk-irect-top r))))]))))
 
+; codec-color-space : codec? -> (or/c color-space? #f)
+;;   Returns an independently owned reference to the source color space, or #f when the source is
+;;   untagged.
 (define (codec-color-space c)
   (define who 'codec-color-space)
   (call-with-owned
@@ -5196,6 +6565,9 @@
              (wrap-owned-color-space
               who (lambda () (sk_colorspace_ref cs) cs))))))))
 
+; codec->image : codec? [#:frame-index (integer-in 0 2147483647)] [#:normalize-origin? boolean?]
+;   [#:color-space (or/c color-space? #f)] -> image?
+;;   Decodes the selected zero-based frame into a new CPU image with premultiplied RGBA8888 storage.
 (define (codec->image c #:frame-index [index 0]
                        #:normalize-origin? [normalize? #t]
                        #:color-space [cs #f])
@@ -5244,6 +6616,10 @@
                     sk_image_unref)
          ow oh))))))
 
+; image-frame-from-bytes : bytes? [(integer-in 0 2147483647)] [#:normalize-origin? boolean?]
+;   [#:color-space (or/c color-space? #f)] -> image?
+;;   Constructs a temporary codec with codec-from-bytes, decodes index with codec->image, and closes
+;;   the codec.
 (define (image-frame-from-bytes bs [index 0]
                                 #:normalize-origin? [normalize? #t]
                                 #:color-space [cs #f])
@@ -5254,6 +6630,10 @@
   (with-skia ([c (codec-from-bytes bs)])
     (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space cs)))
 
+; image-frame-from-file : path-string? [(integer-in 0 2147483647)] [#:normalize-origin? boolean?]
+;   [#:color-space (or/c color-space? #f)] -> image?
+;;   Constructs a temporary codec with codec-from-file, decodes index with codec->image, and closes
+;;   the codec.
 (define (image-frame-from-file filename [index 0]
                               #:normalize-origin? [normalize? #t]
                               #:color-space [cs #f])
@@ -5265,18 +6645,25 @@
     (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space cs)))
 
 
+; image-color-type : image? -> symbol?
+;;   Returns the native pixel-format name, such as 'rgba-8888, 'bgra-8888, or 'rgba-f16.
 (define (image-color-type im)
   (define who 'image-color-type)
   (enum-name who
              (call-with-owned who (list (image-h who im)) sk_image_get_color_type)
              color-type-values "color type"))
 
+; image-alpha-type : image? -> (or/c 'unknown 'opaque 'premul 'unpremul)
+;;   Returns the image's native alpha interpretation.
 (define (image-alpha-type im)
   (define who 'image-alpha-type)
   (enum-name who
              (call-with-owned who (list (image-h who im)) sk_image_get_alpha_type)
              alpha-type-values "alpha type"))
 
+; image-color-space : image? -> (or/c color-space? #f)
+;;   Returns an independently owned reference to the image's color space, or #f for an untagged
+;;   image.
 (define (image-color-space im)
   (define who 'image-color-space)
   ;; The pinned C shim returns image->refColorSpace().release(), i.e. a newly
@@ -5285,6 +6672,9 @@
     (call-with-owned who (list (image-h who im)) sk_image_get_colorspace))
   (and ptr (wrap-owned-color-space who (lambda () ptr))))
 
+; image->rgba-bytes : image? [#:premultiplied? boolean?] [#:color-space (or/c color-space? #f)] ->
+;   bytes?
+;;   Returns a new mutable, tightly packed RGBA byte string.
 (define (image->rgba-bytes im #:premultiplied? [premultiplied? #f]
                            #:color-space [cs #f])
   (define who 'image->rgba-bytes)
@@ -5305,6 +6695,8 @@
         (error who "native image pixel read failed"))))
   out)
 
+; call-with-image-pixmap : symbol? any/c any/c -> any
+;;   Scopes a raster image and borrowed pixmap so encoding never uses expired pixel storage.
 (define (call-with-image-pixmap who im proc)
   (call-with-owned
    who (list (image-h who im))
@@ -5321,6 +6713,8 @@
              (error who "raster image did not expose its pixels"))
            (proc pixmap))))))))
 
+; encode-pixmap-to-bytes : symbol? any/c any/c any/c -> any
+;;   Runs the selected encoder into a temporary stream and copies its resulting encoded bytes.
 (define (encode-pixmap-to-bytes who pixmap encoder options)
   (call-with-native-temporary
    who 'encoded-stream sk_dynamicmemorywstream_new sk_dynamicmemorywstream_destroy
@@ -5332,6 +6726,10 @@
       (lambda () (sk_dynamicmemorywstream_detach_as_data stream)) sk_data_unref
       (lambda (data) (copy-native-data who data))))))
 
+; encode-color-output : symbol? any/c any/c any/c any/c any/c any/c [#:explicit-png-profile? any/c]
+;   -> any
+;;   Coordinates sample conversion, ICC metadata lifetime, and encoder options for color-managed
+;;   output.
 (define (encode-color-output who im cs icc description make-options encoder
                              #:explicit-png-profile? [explicit-png-profile? #f])
   (define profile (checked-encoding-profile who icc))
@@ -5370,6 +6768,13 @@
              [else
               (encode-pixmap-to-bytes who pixmap encoder options)]))))))))
 
+;;;
+;;; Image Encoding and Saving
+;;;
+
+; image->png-bytes : image? [#:compression (integer-in 0 9)] [#:color-space (or/c color-space? #f)]
+;   [#:icc-profile (or/c bytes? #f)] [#:icc-description (or/c string? #f)] -> bytes?
+;;   Encodes an image as PNG.
 (define (image->png-bytes im #:compression [compression 6]
                           #:color-space [cs #f] #:icc-profile [icc #f]
                           #:icc-description [description #f])
@@ -5381,6 +6786,10 @@
                        sk_pngencoder_encode
                        #:explicit-png-profile? #t))
 
+; image->jpeg-bytes : image? [#:quality (integer-in 0 100)] [#:downsample (or/c 'yuv-420 'yuv-422
+;   'yuv-444)] [#:alpha (or/c 'ignore 'blend-on-black)] [#:color-space (or/c color-space? #f)]
+;   [#:icc-profile (or/c bytes? #f)] [#:icc-description (or/c string? #f)] -> bytes?
+;;   Encodes the image as lossy JPEG.
 (define (image->jpeg-bytes im #:quality [quality 90]
                            #:downsample [downsample 'yuv-420] #:alpha [alpha 'ignore]
                            #:color-space [cs #f] #:icc-profile [icc #f]
@@ -5393,6 +6802,10 @@
                        (lambda (pp text) (make-sk-jpeg-options q ds a #f pp text))
                        sk_jpegencoder_encode))
 
+; image->webp-bytes : image? [#:quality (real-in 0 100)] [#:lossless? boolean?] [#:color-space (or/c
+;   color-space? #f)] [#:icc-profile (or/c bytes? #f)] [#:icc-description (or/c string? #f)] ->
+;   bytes?
+;;   Encodes the image as WebP.
 (define (image->webp-bytes im #:quality [quality 90] #:lossless? [lossless? #f]
                            #:color-space [cs #f] #:icc-profile [icc #f]
                            #:icc-description [description #f])
@@ -5404,6 +6817,11 @@
                        (lambda (pp text) (make-sk-webp-options compression q pp text))
                        sk_webpencoder_encode))
 
+; image->encoded-bytes : image? (or/c 'png 'jpeg 'webp) [#:quality any/c] [#:png-compression any/c]
+;   [#:jpeg-downsample any/c] [#:jpeg-alpha any/c] [#:webp-lossless? any/c] [#:color-space (or/c
+;   color-space? #f)] [#:icc-profile (or/c bytes? #f)] [#:icc-description (or/c string? #f)] ->
+;   bytes?
+;;   Dispatches to image->png-bytes, image->jpeg-bytes, or image->webp-bytes according to format.
 (define (image->encoded-bytes im format #:quality [quality 90]
                               #:png-compression [png-compression 6]
                               #:jpeg-downsample [jpeg-downsample 'yuv-420]
@@ -5420,13 +6838,19 @@
                                #:color-space cs #:icc-profile icc #:icc-description description)]
     [else (raise-argument-error 'image->encoded-bytes "'png, 'jpeg, or 'webp" format)]))
 
+; save-image : image? path-string? (or/c 'png 'jpeg 'webp) [#:exists (or/c 'error 'replace)]
+;   [#:quality any/c] [#:png-compression any/c] [#:jpeg-downsample any/c] [#:jpeg-alpha any/c]
+;   [#:webp-lossless? any/c] [#:color-space (or/c color-space? #f)] [#:icc-profile (or/c bytes? #f)]
+;   [#:icc-description (or/c string? #f)] -> void?
+;;   Encodes with image->encoded-bytes and writes the completed bytes to filename.
 (define (save-image im filename format #:exists [exists 'error] #:quality [quality 90]
                     #:png-compression [png-compression 6]
                     #:jpeg-downsample [jpeg-downsample 'yuv-420] #:jpeg-alpha [jpeg-alpha 'ignore]
                     #:webp-lossless? [webp-lossless? #f]
                     #:color-space [cs #f] #:icc-profile [icc #f] #:icc-description [description #f])
   (unless (path-string? filename) (raise-argument-error 'save-image "path-string?" filename))
-  (unless (memq exists '(error replace)) (raise-argument-error 'save-image "'error or 'replace" exists))
+  (unless (memq exists '(error replace)) (raise-argument-error 'save-image "'error or 'replace"
+    exists))
   ;; Retain the existing encode-before-opening failure behavior.
   (define data
     (image->encoded-bytes im format #:quality quality #:png-compression png-compression
@@ -5436,6 +6860,9 @@
   (call-with-output-file filename (lambda (out) (write-bytes data out) (void))
                          #:mode 'binary #:exists exists))
 
+; image-subset : image? exact-nonnegative-integer? exact-nonnegative-integer?
+;   exact-positive-integer? exact-positive-integer? -> image?
+;;   Returns an independently owned raster subset.
 (define (image-subset im x y w h)
   (define who 'image-subset)
   (define subset
@@ -5449,6 +6876,14 @@
                  sk_image_unref)
       w h))))
 
+;;;
+;;; Image and Picture Drawing
+;;;
+
+; draw-image : canvas? image? real? real? [#:sampling (or/c 'nearest 'linear)] [#:paint (or/c paint?
+;   #f)] -> void?
+;;   Draws the image with its upper-left corner at coordinates x and y, using its pixel width and
+;;   height as local drawing dimensions.
 (define (draw-image c im x y #:sampling [mode 'nearest] #:paint [p #f])
   (define ih (image-h 'draw-image im))
   (define fx (scalar 'draw-image x))
@@ -5459,6 +6894,9 @@
     (lambda (cp ip . paints)
       (sk_canvas_draw_image cp ip fx fy smp (if p (car paints) #f)))))
 
+; draw-image-rect : canvas? image? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   [#:sampling (or/c 'nearest 'linear)] [#:paint (or/c paint? #f)] -> void?
+;;   Scales the complete image to the destination rectangle.
 (define (draw-image-rect c im x y w h #:sampling [mode 'linear] #:paint [p #f])
   (define ih (image-h 'draw-image-rect im))
   (define src (rect 'draw-image-rect 0 0 (image-width im) (image-height im)))
@@ -5469,6 +6907,10 @@
     (lambda (cp ip . paints)
       (sk_canvas_draw_image_rect cp ip src dst smp (if p (car paints) #f)))))
 
+; draw-image-subrect : canvas? image? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) (and/c real?
+;   (>=/c 0)) (and/c real? (>=/c 0)) real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   [#:sampling (or/c 'nearest 'linear)] [#:paint (or/c paint? #f)] -> void?
+;;   Draws the selected source rectangle into the destination rectangle.
 (define (draw-image-subrect c im sx sy sw sh dx dy dw dh
                             #:sampling [mode 'linear] #:paint [p #f])
   (define who 'draw-image-subrect)
@@ -5482,6 +6924,9 @@
       (sk_canvas_draw_image_rect cp ip src dst smp (if p (car paints) #f)))))
 
 
+; draw-picture : canvas? picture? [#:x real?] [#:y real?] [#:width (or/c #f (and/c real? (>=/c 0)))]
+;   [#:height (or/c #f (and/c real? (>=/c 0)))] -> void?
+;;   Replays the picture with a translation and optional scaling.
 (define (draw-picture c pic #:x [x 0] #:y [y 0] #:width [w #f] #:height [h #f])
   (define who 'draw-picture)
   (define _ph (picture-h who pic))
@@ -5509,6 +6954,10 @@
      (call-on-canvas who c (list (picture-h who pic))
        (lambda (cp pp) (sk_canvas_draw_picture cp pp #f #f))))))
 
+; picture->image : picture? (integer-in 1 32768) (integer-in 1 32768) [#:background color?] ->
+;   image?
+;;   Replays a CPU-compatible picture into a new raster image with the given pixel dimensions and
+;;   color-specification background.
 (define (picture->image pic width height #:background [background 'transparent])
   (define who 'picture->image)
   (define _ph (picture-h who pic))
@@ -5518,8 +6967,13 @@
     (surface-snapshot surface)))
 
 ;; 0.69: retained multi-run replay. The legacy single-run route stays unchanged.
+; path-native-verb-count : any/c -> any
+;;   Queries path complexity for allocation accounting without exposing a native iterator.
 (define (path-native-verb-count p)
-  (call-with-owned 'path-native-verb-count (list (path-h 'path-native-verb-count p)) sk_path_count_verbs))
+  (call-with-owned 'path-native-verb-count (list (path-h 'path-native-verb-count p))
+                   sk_path_count_verbs))
+; glyph-has-visible-bounds? : symbol? any/c any/c -> any
+;;   Checks whether a glyph has a nonempty native ink rectangle before outline fallback handling.
 (define (glyph-has-visible-bounds? who f glyph)
   (call-with-owned who (list (font-h who f))
     (lambda (fp)
@@ -5531,6 +6985,8 @@
         (and (< (sk-rect-left bounds) (sk-rect-right bounds))
              (< (sk-rect-top bounds) (sk-rect-bottom bounds)))
         (void/reference-sink gid bounds)))))
+; multi-text-blob->path : any/c -> any
+;;   Replays every retained run's glyph outlines while enforcing the path-allocation budget.
 (define (multi-text-blob->path blob)
   (define who 'text-blob->path)
   (call-with-owned who (list (text-blob-h who blob))
@@ -5563,29 +7019,56 @@
                       (define pos (vector-ref (text-run-info-positions info) i))
                       (path-add-path! result p #:dx (car pos) #:dy (cadr pos))])))]
               [(glyph-has-visible-bounds? who f glyph)
-               (error who "glyph ~a has visible bounds but no monochrome outline; explicit raster output is required" glyph)]
+               (error who
+                 "glyph ~a has visible bounds but no monochrome outline; explicit raster output is required" glyph)]
               [else (void)])))
         result))))
 
 ;; 0.74 internal owners. No constructor, native handle, or lifetime token is
 ;; exported by main.rkt. A special canvas always expires at callback exit.
 (struct recorded-drawable (handle width height) #:constructor-name make-drawable-record)
+;; Fields:
+;;   handle: owned native drawable. width and height: recording extents in local drawing units.
+;;   Snapshots acquire their own picture ownership.
+
 (struct specialized-canvas-owner
   (handle kind backend execution [dependencies #:mutable] [floors #:mutable] [live? #:mutable]))
+;; Fields:
+;;   handle: owned specialized native canvas. kind: canvas implementation symbol. backend and
+;;   execution: audit/output and execution backend descriptions.
+;;   dependencies: mutable retained target owners. floors: mutable protected save-count stack.
+;;   live?: mutable validity flag. Target borrows and close pins prevent dependency closure while
+;;   this canvas is active.
+
+; canvas-target-borrows : hash?
+;;   Tracks exclusive specialized-canvas borrows with weak owner keys so ordinary target access can
+;;   be rejected.
 (define canvas-target-borrows (make-weak-hasheq))
+; canvas-close-pins : hash?
+;;   Counts active canvas leases by weak root-owner keys to prevent closing resources still in use.
 (define canvas-close-pins (make-weak-hasheq))
+; check-unborrowed-target! : symbol? any/c -> void?
+;;   Rejects direct target access while a specialized canvas holds its exclusive borrow.
 (define (check-unborrowed-target! who owner)
   (when (hash-ref canvas-target-borrows owner #f)
     (error who "surface is exclusively borrowed by a specialized canvas")))
+; check-canvas-close-pin! : symbol? any/c -> void?
+;;   Rejects closure while a canvas scope or specialized target borrow still pins the owner.
 (define (check-canvas-close-pin! who owner)
   (when (or (hash-ref canvas-target-borrows owner #f)
             (positive? (hash-ref canvas-close-pins owner 0)))
     (error who "resource is pinned by an active canvas scope")))
+; canvas-pin-root : pdf-page? -> any
+;;   Pins the containing document for a PDF page and otherwise uses the canvas owner itself.
 (define (canvas-pin-root owner)
   (if (pdf-page? owner) (pdf-page-document owner) owner))
+; pin-canvas-owner! : any/c -> void?
+;;   Adds one close-prevention reference to the root resource of a borrowed canvas.
 (define (pin-canvas-owner! owner)
   (define root (canvas-pin-root owner))
   (hash-set! canvas-close-pins root (add1 (hash-ref canvas-close-pins root 0))))
+; unpin-canvas-owner! : any/c -> void?
+;;   Removes one close-prevention reference and drops the table entry after the last pin.
 (define (unpin-canvas-owner! owner)
   (define root (canvas-pin-root owner))
   (define next (sub1 (hash-ref canvas-close-pins root)))
@@ -5598,13 +7081,16 @@
            recorded-drawable? recorded-drawable-handle recorded-drawable-width
            recorded-drawable-height make-drawable-record
            specialized-canvas-owner specialized-canvas-owner? specialized-canvas-owner-handle
-           set-specialized-canvas-owner-live?! set-specialized-canvas-owner-dependencies! make-canvas-record
+           set-specialized-canvas-owner-live?! set-specialized-canvas-owner-dependencies!
+           make-canvas-record
            canvas-target-borrows check-unborrowed-target!
            pin-canvas-owner! unpin-canvas-owner!))
 
 ;; 0.75a private stream consumer bridge. No raw pointer ingress is public.
 (module* stream-input-internals #f
   (provide make-codec-record make-typeface-record make-picture-record stream-picture-bounds)
+  ; stream-picture-bounds : symbol? any/c -> vector?
+  ;;   Copies native picture cull edges into a checked immutable x/y/width/height vector.
   (define (stream-picture-bounds who ptr)
     (define r (make-sk-rect 0.0 0.0 0.0 0.0))
     (sk_picture_get_cull_rect ptr r)
@@ -5617,6 +7103,8 @@
 ;; 0.75b: private result adoption; no native pointers are exported by main.rkt.
 (module* live-stream-internals #f
   (provide image-h picture-h make-image-record make-picture-record stream-picture-bounds)
+  ; stream-picture-bounds : symbol? any/c -> vector?
+  ;;   Copies native picture cull edges into a checked immutable x/y/width/height vector.
   (define (stream-picture-bounds who ptr)
     (define r (make-sk-rect 0.0 0.0 0.0 0.0))
     (sk_picture_get_cull_rect ptr r)

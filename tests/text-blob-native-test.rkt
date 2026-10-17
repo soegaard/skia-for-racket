@@ -1,31 +1,76 @@
 #lang racket/base
+
+;;;
+;;; Text Blob Native Test
+;;;
+
+;; Covers multi-run text blobs (native).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector "../main.rkt" "typeface-fixtures.rkt"
          "text-blob-fixtures.rkt" "../private/text-run-data.rkt"
          (submod "../private/core.rkt" text-blob-internals))
 (provide text-blob-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; with-fixture : syntax
+;;   Scopes the generated text-fixture typeface and font around a test body.
 (define-syntax-rule (with-fixture (f face) body ...)
   (with-skia ([face (typeface-from-bytes (fixture-font-bytes))]
               [f (make-font face #:size 20 #:hinting 'none #:linear-metrics? #t
                             #:subpixel? #t #:baseline-snap? #f #:edging 'alias)]) body ...))
+
+; with-layout-fixture : syntax
+;;   Scopes the generated font and shaper needed by text-layout tests.
 (define-syntax-rule (with-layout-fixture (f sh) body ...)
   (with-skia ([face (typeface-from-bytes (text-blob-fixture-font-bytes))]
               [f (make-font face #:size 20 #:hinting 'none #:linear-metrics? #t
                             #:subpixel? #t #:baseline-snap? #f)]
               [sh (make-shaper f)]) body ...))
+
+; near : (listof real?) (listof real?) -> void?
+;;   Compares text coordinates with native float tolerance.
 (define (near xs ys)
   (check-equal? (length xs) (length ys))
   (for ([x (in-list xs)] [y (in-list ys)]) (check-= x y 0.005)))
+
+; render : text-blob? [symbol?] -> bytes?
+;;   Captures a blob using native glyphs or outline mode for pixel comparisons.
 (define (render blob [mode 'native])
   (with-skia ([surface (make-surface 192 128 #:background 'white)]
               [ink (make-paint #:color 'black #:antialias? #f)])
-    (parameterize ([current-text-output-mode mode]) (draw-text-blob (surface-canvas surface) blob 0 0 ink))
+    (parameterize ([current-text-output-mode mode])
+      (draw-text-blob (surface-canvas surface) blob 0 0 ink))
     (surface->rgba-bytes surface)))
+
+; rectangle : path? -> list?
+;;   Collects an outline path's rectangular bounds.
 (define (rectangle p) (call-with-values (lambda () (path-bounds p)) list))
+
+; one-blob : font? [list?] -> text-blob?
+;;   Builds one positioned glyph run using the supplied font and point sequence.
 (define (one-blob f [positions '((10 40) (30 40))])
   (with-skia ([b (make-text-blob-builder)])
     (text-blob-builder-add-positioned-run! b f '(2 3) positions)
     (text-blob-builder-finish! b)))
+
+; one-info : text-blob? -> any/c
+;;   Reads the single run's detached metadata for ownership and layout assertions.
 (define (one-info blob) (vector-ref (text-blob-runs blob) 0))
+
+;;;
+;;; Regression Suite
+;;;
+
+; text-blob-native-tests : test-suite?
+;;   Collects the regression cases for multi-run text blobs (native).
 (define text-blob-native-tests
   (test-suite
    "Multi-run text blobs (native)"
@@ -64,7 +109,9 @@
          (text-blob-builder-add-positioned-run! b f '(2) '((10 40)))
          (text-blob-builder-add-positioned-run! b other '(3) '((40 60)))
          (skia-close! f) (skia-close! face) (skia-close! other) (skia-close! other-face)
-         (with-skia ([blob (text-blob-builder-finish! b)] [a (text-blob-run-font blob 0)] [v (text-blob-run-font blob 1)])
+         (with-skia
+           ([blob (text-blob-builder-finish! b)] [a (text-blob-run-font blob 0)]
+             [v (text-blob-run-font blob 1)])
            (check-= (font-size a) 20 0.001) (check-= (font-size v) 30 0.001)
            (with-skia ([af (font-typeface a)] [vf (font-typeface v)])
              (check-equal? (typeface-postscript-name af) (fixture-postscript))
@@ -81,7 +128,8 @@
          (check-equal? (render blob) pixels)
          (with-skia ([snapshot (text-blob-run-font blob 0)])
            (check-= (font-size snapshot) 20 0.001)
-           (check-true (font-embedded-bitmaps? snapshot)) (check-true (font-force-auto-hinting? snapshot))
+           (check-true (font-embedded-bitmaps? snapshot))
+           (check-true (font-force-auto-hinting? snapshot))
            (check-false (font-baseline-snap? snapshot))))))
    (test-case "builder close deterministically releases untransferred private fonts"
      (with-fixture (f face)
@@ -104,7 +152,8 @@
          (text-blob-builder-add-run! b f '(2))
          (check-exn exn:fail? (lambda () (text-blob-builder-add-positioned-run! b f '(2 3) '((1 2)))))
          (check-equal? (text-blob-builder-run-count b) 1)
-         (with-skia ([blob (text-blob-builder-finish! b)]) (check-equal? (text-blob-run-count blob) 1)))))
+         (with-skia ([blob (text-blob-builder-finish! b)])
+           (check-equal? (text-blob-run-count blob) 1)))))
    (test-case "cumulative builder limit rejects before modifying native run state"
      (with-fixture (f face)
        (with-skia ([b (make-text-blob-builder)])
@@ -112,7 +161,8 @@
            (text-blob-builder-add-run! b f '(2))
            (check-exn exn:fail? (lambda () (text-blob-builder-add-run! b f '(3)))))
          (check-equal? (text-blob-builder-run-count b) 1)
-         (with-skia ([blob (text-blob-builder-finish! b)]) (check-equal? (text-blob-run-count blob) 1)))))
+         (with-skia ([blob (text-blob-builder-finish! b)])
+           (check-equal? (text-blob-run-count blob) 1)))))
    (test-case "glyph IDs are checked against each current source face"
      (with-fixture (f face)
        (with-skia ([b (make-text-blob-builder)])
@@ -123,8 +173,10 @@
      (with-fixture (f face)
        (with-skia ([b (make-text-blob-builder)])
          (define c (make-channel))
-         (define worker (thread (lambda () (channel-put c (with-handlers ([exn:fail? (lambda (_) 'rejected)])
-                                                           (text-blob-builder-add-run! b f '(2)) 'unexpected)))))
+         (define worker
+           (thread (lambda () (channel-put c (with-handlers ([exn:fail? (lambda (_) 'rejected)])
+                                                           (text-blob-builder-add-run! b f '(2))
+                                               'unexpected)))))
          (check-eq? (channel-get c) 'rejected) (thread-wait worker)
          (check-equal? (text-blob-builder-run-count b) 0))))
    (test-case "default run snapshots native unshaped positions including origin"
@@ -133,7 +185,9 @@
        (with-skia ([b (make-text-blob-builder)])
          (text-blob-builder-add-run! b f '(2 3) #:origin '(10 40))
          (with-skia ([blob (text-blob-builder-finish! b)])
-           (for ([p (in-vector (text-run-info-positions (one-info blob)))] [q (in-vector expected)]) (near p q))))))
+           (for
+             ([p (in-vector (text-run-info-positions (one-info blob)))] [q (in-vector expected)])
+             (near p q))))))
    (test-case "metadata and position inputs are copied into immutable detached records"
      (with-fixture (f face)
        (define text (bytes 65 86)) (define cs (vector 0 1))
@@ -151,7 +205,8 @@
            (near (vector-ref (text-run-info-positions info) 0) '(10 40))))))
    (test-case "run font getters return independently owned font copies"
      (with-fixture (f face)
-       (with-skia ([blob (one-blob f)] [a (text-blob-run-font blob 0)] [b (text-blob-run-font blob 0)])
+       (with-skia
+         ([blob (one-blob f)] [a (text-blob-run-font blob 0)] [b (text-blob-run-font blob 0)])
          (font-set-size! a 50) (skia-close! blob)
          (check-= (font-size b) 20 0.001)
          (check-true (positive? (measure-simple-text a "AV")))
@@ -222,7 +277,8 @@
    (test-case "atlas-transform values are accepted as glyph RSXforms"
      (with-fixture (f face)
        (with-skia ([b (make-text-blob-builder)])
-         (text-blob-builder-add-transformed-run! b f '(2) (list (make-atlas-transform 30 40 #:rotation 90)))
+         (text-blob-builder-add-transformed-run! b f '(2)
+           (list (make-atlas-transform 30 40 #:rotation 90)))
          (with-skia ([blob (text-blob-builder-finish! b)] [path (text-blob->path blob)])
            (near (rectangle path) '(30 40 14 8))))))
    (test-case "reallocation and native run coalescing do not corrupt earlier buffers"
@@ -251,8 +307,11 @@
        (with-skia ([b (make-text-blob-builder)])
          (text-blob-builder-add-shaped-run! b sh run #:text "A\u0301")
          (with-skia ([blob (text-blob-builder-finish! b)])
-           (check-equal? (text-run-info-clusters (one-info blob)) (list->vector (shaped-run-clusters run)))
-           (for ([p (in-vector (text-run-info-positions (one-info blob)))] [q (in-list (shaped-run-positions run))])
+           (check-equal? (text-run-info-clusters (one-info blob))
+             (list->vector (shaped-run-clusters run)))
+           (for
+             ([p (in-vector (text-run-info-positions (one-info blob)))]
+               [q (in-list (shaped-run-positions run))])
              (near p q))))))
    (test-case "RTL glyph order and descending clusters are preserved without reversal"
      (with-layout-fixture (f sh)
@@ -261,14 +320,17 @@
        (with-skia ([b (make-text-blob-builder)])
          (text-blob-builder-add-shaped-run! b sh run #:text "אב")
          (with-skia ([blob (text-blob-builder-finish! b)])
-           (check-equal? (text-run-info-glyphs (one-info blob)) (list->vector (shaped-run-glyphs run)))
+           (check-equal? (text-run-info-glyphs (one-info blob))
+             (list->vector (shaped-run-glyphs run)))
            (check-equal? (text-run-info-clusters (one-info blob)) '#(2 0))))))
    (test-case "straight path placement keeps shaped advances and normal offsets"
      (with-layout-fixture (f sh)
        (define run (shape-text sh "AV" #:features '("liga=0")))
        (with-skia ([path (make-path '((move 10 50) (line 180 50)))]
-                   [blob (shaped-run->text-blob/on-path sh run path #:start-offset 5 #:normal-offset 3)])
-         (for ([cs (in-vector (text-run-info-transforms (one-info blob)))] [p (in-list (shaped-run-positions run))])
+                    [blob (shaped-run->text-blob/on-path sh run path #:start-offset 5
+                            #:normal-offset 3)])
+         (for ([cs (in-vector (text-run-info-transforms (one-info blob)))]
+                [p (in-list (shaped-run-positions run))])
            (near cs (list 1 0 (+ 15 (car p)) (+ 53 (cadr p)))))
          (skia-close! path) (skia-close! sh) (skia-close! f)
          (check-true (bytes? (render blob 'outline))))))
@@ -276,7 +338,8 @@
      (with-layout-fixture (f sh)
        (define run (shape-text sh "A"))
        (with-skia ([path (make-path '((move 50 20) (line 50 100)))]
-                   [blob (shaped-run->text-blob/on-path sh run path #:start-offset 5 #:normal-offset 3)])
+                    [blob (shaped-run->text-blob/on-path sh run path #:start-offset 5
+                            #:normal-offset 3)])
          (near (vector-ref (text-run-info-transforms (one-info blob)) 0) '(0 1 47 25)))))
    (test-case "text-on-path selects a contour explicitly and never clamps an overrun"
      (with-layout-fixture (f sh)

@@ -1,12 +1,32 @@
 #lang racket/base
+
+;;;
+;;; Skia Canvas Example
+;;;
+
+;; Opens raster-backed Skia drawing-context windows for interactive lifecycle review.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; Explicit GUI example. Resize, cover/uncover, minimize/restore, and move the
 ;; window between monitors. Use New window to check independent lifetimes.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/gui/base
          (prefix-in rd: racket/draw)
          "../canvas.rkt")
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; next-window : exact-integer?
+;;   Allocates a distinct index for each independently created review window.
 (define next-window 0)
 
+; make-window : -> void?
+;;   Creates and shows an interactive drawing window with its own resource lifetime.
 (define (make-window)
   (set! next-window (add1 next-window))
   (define index next-window)
@@ -73,13 +93,18 @@
             (send dc end-alpha)
             (send dc set-text-foreground "navy")
             (send dc draw-text "Resize or move this window between displays." 30 (- height 43))
-            (send dc draw-text "New window creates an independently owned canvas." 30 (- height 24)))]))
+            (send dc draw-text "New window creates an independently owned canvas." 30 (- height
+              24)))]))
   ;; The handler keeps one DC identity even as resize replaces its storage.
   (define retained-dc (send canvas get-dc))
   (unless (eq? retained-dc (send canvas get-dc))
     (error 'skia-canvas-example "canvas did not preserve its DC identity"))
   (send window show #t)
   (void))
+
+;;;
+;;; Command-Line Entry Point
+;;;
 
 (module+ main
   (queue-callback make-window))

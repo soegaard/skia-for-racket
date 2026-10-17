@@ -1,5 +1,18 @@
 #lang racket
 
+;;;
+;;; Navigate
+;;;
+
+;; Connects keyboard and pointer events to the zoomable tutorial canvas.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/cmdline
          (only-in racket/gui/base canvas% frame% vertical-panel% horizontal-panel%
                   button% queue-callback)
@@ -8,6 +21,12 @@
 
 (provide open-navigation-window)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; preferred-gpu-backend : -> symbol?
+;;   Chooses the platform's preferred explicitly requested GPU backend.
 (define (preferred-gpu-backend)
   (case (system-type 'os)
     [(macosx) 'metal]
@@ -15,6 +34,8 @@
     [(unix) 'opengl]
     [else #f]))
 
+; open-navigation-window : symbol? -> #f
+;;   Opens the pan-and-zoom editor with the explicitly selected rendering backend.
 (define (open-navigation-window renderer)
   (unless (memq renderer '(raster gpu))
     (raise-argument-error 'open-navigation-window "'raster or 'gpu" renderer))
@@ -162,7 +183,13 @@
   (send widget focus)
   window)
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; renderer : symbol?
+  ;;   Selects renderer for the example.
   (define renderer 'raster)
   (command-line #:once-each
                 [("--renderer") name "raster or gpu" (set! renderer (string->symbol name))]

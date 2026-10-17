@@ -1,17 +1,52 @@
 #lang racket/base
+
+;;;
+;;; Float Pixel Native Test
+;;;
+
+;; Covers floating pixels and colors (native).
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector "../main.rkt" "float-pixel-fixtures.rkt"
          "../private/float-pixel-util.rkt")
 (provide float-pixel-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; near : (or/c list? vector?) (or/c list? vector?) [real?] -> void?
+;;   Compares samples componentwise while allowing float-format quantization.
 (define (near actual expected [tolerance 0.002])
   (define a (if (vector? actual) (vector->list actual) actual))
   (define e (if (vector? expected) (vector->list expected) expected))
   (check-equal? (length a) (length e))
   (for ([x (in-list a)] [y (in-list e)]) (check-= x y tolerance)))
+
+; sample : raster-buffer? [exact-nonnegative-integer? exact-nonnegative-integer?] -> vector?
+;;   Reads a sample only while its borrowed pixmap view is valid.
 (define (sample b [x 0] [y 0]) (call-with-raster-buffer-pixmap b (lambda (p) (pixmap-sample p x y))))
+
+; put : raster-buffer? vector? [exact-nonnegative-integer? exact-nonnegative-integer?] -> any
+;;   Writes one sample through an explicitly writable borrowed pixmap.
 (define (put b value [x 0] [y 0])
   (call-with-raster-buffer-pixmap b (lambda (p) (pixmap-set-sample! p x y value)) #:writable? #t))
+
+; image-page : image? -> output-page?
+;;   Places a fixture image at the origin of a white comparison page.
 (define (image-page im)
   (make-output-page 64 32 (lambda (c) (draw-image c im 0 0)) #:background 'white))
+
+;;;
+;;; Regression Suite
+;;;
+
+; float-pixel-native-tests : test-suite?
+;;   Collects the regression cases for floating pixels and colors (native).
 (define float-pixel-native-tests
   (test-suite
    "Floating pixels and colors (native)"
@@ -20,7 +55,8 @@
        (with-float-buffer f (lambda (b) (near (sample b) '(0 0 0 0))))))
    (test-case "opaque F16 and F32 storage starts with alpha one"
      (for ([f (in-vector float-pixel-formats)])
-       (with-float-buffer f (lambda (b) (near (sample b) '(0 0 0 1)) (check-true (raster-buffer-opaque? b)))
+       (with-float-buffer f
+         (lambda (b) (near (sample b) '(0 0 0 1)) (check-true (raster-buffer-opaque? b)))
          #:alpha-type 'opaque)))
    (test-case "raw float samples retain negative extended and fractional channels"
      (for ([f (in-vector float-pixel-formats)])
@@ -46,7 +82,8 @@
        (lambda (b)
          (define before (raster-buffer->storage-bytes b))
          (define bad (bytes-copy before))
-         (bytes-copy! bad (- (bytes-length bad) 16) (real->floating-point-bytes +inf.0 4 (system-big-endian?)))
+         (bytes-copy! bad (- (bytes-length bad) 16)
+           (real->floating-point-bytes +inf.0 4 (system-big-endian?)))
          (check-exn exn:fail? (lambda () (raster-buffer-write-storage! b bad)))
          (check-equal? (raster-buffer->storage-bytes b) before))))
    (test-case "raw input is copied and full padding survives roundtrip"
@@ -64,10 +101,12 @@
        (for ([i (in-list '(32 80))]) (bytes-copy! raw i (make-bytes 16 165)))
        (raster-buffer-write-storage! b raw)
        (call-with-raster-buffer-pixmap b
-         (lambda (p) (pixmap-fill-color4f! (pixmap-subset p 1 0 1 2) (make-color4f 0.25 0.5 0.75))) #:writable? #t)
+         (lambda (p) (pixmap-fill-color4f! (pixmap-subset p 1 0 1 2) (make-color4f 0.25 0.5 0.75)))
+         #:writable? #t)
        (near (sample b 0 0) '(0 0 0 0)) (near (sample b 1 1) '(0.25 0.5 0.75 1))
        (define after (raster-buffer->storage-bytes b))
-       (for ([i (in-list '(32 80))]) (check-equal? (subbytes after i (+ i 16)) (make-bytes 16 165)))) )
+       (for ([i (in-list '(32 80))])
+         (check-equal? (subbytes after i (+ i 16)) (make-bytes 16 165)))) )
    (test-case "float getters expose unpremultiplied color separately from stored samples"
      (with-float-buffer 'rgba-f32
        (lambda (b)
@@ -81,7 +120,8 @@
        (with-float-buffer f
          (lambda (b)
            (call-with-raster-buffer-pixmap b
-             (lambda (p) (pixmap-fill-color4f! p (make-color4f 0.5009765625 0.25 1 0.5))) #:writable? #t)
+             (lambda (p) (pixmap-fill-color4f! p (make-color4f 0.5009765625 0.25 1 0.5)))
+             #:writable? #t)
            (near (sample b) '(0.25048828125 0.125 0.5 0.5) 0.0001)))) )
    (test-case "native eraseColor4f interprets its input as sRGB"
      (with-float-buffer 'rgba-f32
@@ -95,7 +135,9 @@
        (lambda (b)
          (define before (raster-buffer->storage-bytes b))
          (call-with-raster-buffer-pixmap b
-           (lambda (p) (check-exn exn:fail? (lambda () (pixmap-fill-color4f! p (make-color4f 1 0 0 0.5))))) #:writable? #t)
+           (lambda (p)
+             (check-exn exn:fail? (lambda () (pixmap-fill-color4f! p (make-color4f 1 0 0 0.5)))))
+           #:writable? #t)
          (check-equal? before (raster-buffer->storage-bytes b))) #:alpha-type 'opaque))
    (test-case "canvas Color4f clear uses the by-value four-float ABI"
      (for ([f (in-vector float-pixel-formats)])
@@ -121,7 +163,8 @@
    (test-case "float paint draws fine color distinctions into a float raster target"
      (with-float-buffer 'rgba-f32
        (lambda (b)
-         (with-skia ([p (make-paint/color4f (make-color4f 0.5009765625 0.25 0.75) #:color-space 'srgb)])
+         (with-skia
+           ([p (make-paint/color4f (make-color4f 0.5009765625 0.25 0.75) #:color-space 'srgb)])
            (call-with-raster-buffer-canvas b (lambda (c) (draw-paint c p)))
            (near (sample b) '(0.5009765625 0.25 0.75 1) 0.00001)))))
    (test-case "all five float shader factories produce native pixels"
@@ -132,10 +175,12 @@
              (call-with-raster-buffer-canvas b (lambda (c) (draw-float-scene name c)))
              (near (sample b 12 12) '(0.125 0.375 0.625 1) 0.002)) #:width 64 #:height 32))
        (with-skia ([b (make-float-fixture-buffer f 'linear)])
-         (near (sample b 16 8) (list (+ 0.25 (* 0.5 (/ 16.5 64))) 0.5 (- 0.75 (* 0.5 (/ 16.5 64))) 1) 0.002))))
+         (near (sample b 16 8)
+           (list (+ 0.25 (* 0.5 (/ 16.5 64))) 0.5 (- 0.75 (* 0.5 (/ 16.5 64))) 1) 0.002))))
    (test-case "linear gradient interpolates differences smaller than one byte step"
      (with-skia ([shader (make-linear-gradient-color4f-shader '(0 0) '(64 0)
-                          (list (make-color4f 0.5 0.5 0.5) (make-color4f 0.501953125 0.5 0.5)) #:color-space 'srgb)]
+                          (list (make-color4f 0.5 0.5 0.5) (make-color4f 0.501953125 0.5 0.5))
+                           #:color-space 'srgb)]
                  [paint (make-paint #:shader shader)])
        (with-float-buffer 'rgba-f32
          (lambda (b)
@@ -143,7 +188,8 @@
            (check-true (> (- (vector-ref (sample b 56) 0) (vector-ref (sample b 8) 0)) 0.001)))
          #:width 64 #:height 32)))
    (test-case "paint clone retains precision provenance and reset clears only its own state"
-     (with-skia ([p (make-paint/color4f (make-color4f 0.5 0.25 0.75) #:color-space 'srgb)] [q (paint-copy p)])
+     (with-skia
+       ([p (make-paint/color4f (make-color4f 0.5 0.25 0.75) #:color-space 'srgb)] [q (paint-copy p)])
        (paint-reset! p)
        (define page (make-output-page 8 8 (lambda (c) (draw-rect c 0 0 8 8 q))))
        (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit page 'pdf #:policy 'error)))
@@ -152,7 +198,8 @@
        (check-true (output-audit-report-vector-only? report))))
    (test-case "float image snapshots retain source format after buffer closes"
      (for ([f (in-vector float-pixel-formats)])
-       (define im (with-float-buffer f (lambda (b) (put b '#(0.5 0.25 0.75 1)) (raster-buffer->image b))))
+       (define im
+         (with-float-buffer f (lambda (b) (put b '#(0.5 0.25 0.75 1)) (raster-buffer->image b))))
        (call-with-skia-resource im
          (lambda (image) (check-equal? (image-color-type image) f)
                          (check-equal? (image-info-color-type (image->image-info image)) f)))) )
@@ -161,21 +208,26 @@
        (lambda (b)
          (with-skia ([im (raster-buffer->image b)])
            (for ([format (in-list '(pdf svg))])
-             (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit (image-page im) format #:policy 'error))))))))
+             (check-exn exn:fail:output-audit?
+               (lambda () (output->bytes/audit (image-page im) format #:policy 'error))))))))
    (test-case "float image subsets and image shaders retain the precision restriction"
      (with-float-buffer 'rgba-f32
        (lambda (b)
          (with-skia ([im (raster-buffer->image b)] [sub (image-subset im 0 0 1 1)]
                      [shader (make-image-shader sub)] [p (make-paint #:shader shader)])
-           (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit (image-page sub) 'pdf #:policy 'error)))
            (check-exn exn:fail:output-audit?
-             (lambda () (output->bytes/audit (make-output-page 4 4 (lambda (c) (draw-paint c p))) 'pdf #:policy 'error)))))))
+             (lambda () (output->bytes/audit (image-page sub) 'pdf #:policy 'error)))
+           (check-exn exn:fail:output-audit?
+             (lambda ()
+               (output->bytes/audit (make-output-page 4 4 (lambda (c) (draw-paint c p))) 'pdf
+                 #:policy 'error)))))))
    (test-case "float surface snapshots preserve format and document precision tracking"
      (with-skia ([s (make-surface-from-info (float-fixture-info 'rgba-f32 4 2))])
        (canvas-clear-color4f! (surface-canvas s) (make-color4f 0.25 0.5 0.75))
        (with-skia ([im (surface-snapshot s)])
          (check-equal? (image-color-type im) 'rgba-f32)
-         (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit (image-page im) 'pdf #:policy 'error))))))
+         (check-exn exn:fail:output-audit?
+           (lambda () (output->bytes/audit (image-page im) 'pdf #:policy 'error))))))
    (test-case "explicit RGBA conversion permits intentional document embedding"
      (with-skia ([im (make-float-fixture-image 'rgba-f32 'samples)])
        (for ([format (in-list '(pdf svg))])
@@ -193,11 +245,14 @@
      (with-float-buffer 'rgba-f32
        (lambda (b)
          (put b '#(0.5 0.5 0.5 1))
-         (with-skia ([out (raster-buffer-convert b (float-fixture-info 'rgba-f32 4 2 'premul 'linear-srgb))])
+         (with-skia
+           ([out (raster-buffer-convert b (float-fixture-info 'rgba-f32 4 2 'premul 'linear-srgb))])
            (near (sample out) '(0.21404114 0.21404114 0.21404114 1) 0.001)))))
    (test-case "tagged versus untagged conversion does not guess a source space"
      (with-float-buffer 'rgba-f32
-       (lambda (b) (check-exn exn:fail? (lambda () (raster-buffer-convert b (make-image-info 4 2 #:color-type 'rgba-f32)))))))
+       (lambda (b)
+         (check-exn exn:fail?
+           (lambda () (raster-buffer-convert b (make-image-info 4 2 #:color-type 'rgba-f32)))))))
    (test-case "float alpha extraction is an explicit Alpha8 quantization"
      (with-float-buffer 'rgba-f32
        (lambda (b)
@@ -212,14 +267,16 @@
            (lambda (p)
              (set! saved p)
              (define ch (make-channel))
-             (define t (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) 'rejected)])
+             (define t
+               (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) 'rejected)])
                                                                   (pixmap-color4f p 0 0) 'bad)))))
              (check-eq? (channel-get ch) 'rejected) (thread-wait t)))
          (check-exn exn:fail? (lambda () (pixmap-alphaf saved 0 0))))))
    (test-case "read-only float views do not permit erasure"
      (with-float-buffer 'rgba-f16
        (lambda (b) (call-with-raster-buffer-pixmap b
-                     (lambda (p) (check-exn exn:fail? (lambda () (pixmap-fill-color4f! p (make-color4f 1 0 0)))))))))
+                     (lambda (p) (check-exn exn:fail?
+                                   (lambda () (pixmap-fill-color4f! p (make-color4f 1 0 0)))))))))
    (test-case "outstanding canvas scopes prevent pixel borrowing and closure"
      (with-float-buffer 'rgba-f16
        (lambda (b)
@@ -241,9 +298,13 @@
    (test-case "nonconstant radial sweep and conical shaders preserve float differences"
      (define stops (list (make-color4f 0.25 0.5 0.75) (make-color4f 0.75 0.5 0.25)))
      (for ([factory (in-list
-                    (list (lambda () (make-radial-gradient-color4f-shader '(0 0) 64 stops #:color-space 'srgb))
-                          (lambda () (make-sweep-gradient-color4f-shader '(32 16) stops #:color-space 'srgb))
-                          (lambda () (make-two-point-conical-gradient-color4f-shader '(0 0) 0 '(0 0) 64 stops #:color-space 'srgb))))])
+                      (list (lambda ()
+                              (make-radial-gradient-color4f-shader '(0 0) 64 stops #:color-space
+                                'srgb))
+                        (lambda () (make-sweep-gradient-color4f-shader '(32 16) stops #:color-space
+                                     'srgb))
+                        (lambda () (make-two-point-conical-gradient-color4f-shader '(0 0) 0 '(0 0)
+                                     64 stops #:color-space 'srgb))))])
        (with-skia ([shader (factory)] [paint (make-paint #:shader shader)])
          (with-float-buffer 'rgba-f32
            (lambda (b)

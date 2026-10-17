@@ -1,10 +1,30 @@
 #lang racket/base
+
+;;;
+;;; Offscreen GPU DC Consumer Probe
+;;;
+
+;; Runs consumer workloads on GPU surfaces and presenter frames, saving comparison captures.
+;; This acceptance executable checks drawing compatibility without requiring the GUI consumer
+;; path.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Mandatory when selected. No optional backend skip and no CPU fallback.
 (require racket/class racket/cmdline racket/file racket/list
          (prefix-in sk: "../main.rkt") (prefix-in gpu: "../gpu.rkt")
          "../gpu-egl.rkt" "../gpu-dc.rkt"
          (submod "../private/gpu-presenter.rkt" adapter-internals)
          "../tests/gpu-dc-consumer-fixtures.rkt" "gpu-dc-consumer-common.rkt")
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; run-native : path-string? string? symbol? any/c -> void?
+;;   Compares CPU, GPU-surface, and offscreen-frame consumers with explicit captures and expired-DC
+;;   checks.
 (define (run-native directory token backend adapter)
   (define workloads (make-consumer-workloads))
   (define captures '())
@@ -17,7 +37,8 @@
       [(direct3d) (gpu:make-gpu-context #:backend 'direct3d #:adapter adapter)]
       [else (error 'gpu-dc-consumers "unsupported native backend ~a" backend)]))
   (define (retain! workload extent target data layout events)
-    (set! captures (cons (write-consumer-capture! directory workload extent target data layout events) captures)))
+    (set! captures
+      (cons (write-consumer-capture! directory workload extent target data layout events) captures)))
   (dynamic-wind void
     (lambda ()
       (for ([extent (in-list consumer-extents)])
@@ -48,13 +69,15 @@
               (call-with-consumer-cpu-dc extent
                 (lambda (dc)
                   (define layout (exercise-consumer! workload dc))
-                  (retain! workload extent "cpu" (send dc get-rgba-bytes #:premultiplied? #t) layout '())))
+                  (retain! workload extent "cpu" (send dc get-rgba-bytes #:premultiplied? #t)
+                    layout '())))
               (for ([path (in-list '("surface" "frame"))])
                 (define layout #f) (define saved #f)
                 (define (draw dc)
                   (set! saved dc)
                   (for ([previous (in-list saved-dcs)])
-                    (ensure-consumer! (not (send previous ok?)) "a later frame revived an expired DC"))
+                    (ensure-consumer! (not (send previous ok?))
+                      "a later frame revived an expired DC"))
                   (set! layout (exercise-consumer! workload dc)))
                 (define before presents)
                 (define-values (_draw events)
@@ -69,7 +92,8 @@
                        [else
                         (gpu:gpu-presenter-set-render! presenter
                           (lambda (frame) (call-with-gpu-frame-dc frame draw)))
-                        (ensure-consumer! (eq? (gpu:gpu-presenter-render! presenter) 'present-requested)
+                         (ensure-consumer!
+                           (eq? (gpu:gpu-presenter-render! presenter) 'present-requested)
                                           "consumer frame was not committed")
                         (ensure-consumer! (= presents (add1 before)) "wrong frame commit count")]))))
                 (check-consumer-expired! saved)
@@ -93,7 +117,24 @@
     (hasheq 'expired_dcs (length saved-dcs) 'context_closed #t 'transfers (reverse transfers)
             'final_target_pixels #t 'window_created #f)))
 (module+ main
-  (define directory #f) (define token #f) (define backend 'egl) (define adapter 'hardware)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'egl)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter 'hardware)
   (command-line #:once-each
     [("--directory") value "New capture directory" (set! directory value)]
     [("--run-token") value "Validation identity" (set! token value)]

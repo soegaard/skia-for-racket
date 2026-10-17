@@ -1,12 +1,38 @@
 #lang racket/base
+
+;;;
+;;; PDF Pure Test
+;;;
+
+;; Covers pDF pure validation and ABI.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/file racket/path ffi/unsafe
          "../main.rkt" "../private/types.rkt" "../private/pdf-util.rkt")
 (provide pdf-pure-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; with-temp-dir : procedure? -> any
+;;   Scopes a temporary destination directory for validation-only path checks.
 (define (with-temp-dir proc)
   (define d (make-temporary-file "skia-pdf-test-~a" 'directory))
   (dynamic-wind void (lambda () (proc d)) (lambda () (delete-directory/files d))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; pdf-pure-tests : test-suite?
+;;   Collects the regression cases for pDF pure validation and ABI.
 (define pdf-pure-tests
   (test-suite
    "PDF pure validation and ABI"
@@ -51,7 +77,8 @@
    (test-case "dates reject invalid calendar days and non-minute offsets"
      (define d (seconds->date 0 #f))
      (check-exn exn:fail? (lambda () (pdf-date-time 'test (struct-copy date d [month 2] [day 30]))))
-     (check-exn exn:fail? (lambda () (pdf-date-time 'test (struct-copy date d [time-zone-offset 30]))))
+     (check-exn exn:fail?
+       (lambda () (pdf-date-time 'test (struct-copy date d [time-zone-offset 30]))))
      (check-exn exn:fail:contract? (lambda () (pdf-date-time 'test "today")))
      (check-equal? (sk-pdf-datetime-day
                     (pdf-date-time 'test (struct-copy date d [year 2024] [month 2] [day 29]))) 29))
@@ -97,5 +124,12 @@
 
 (module+ test
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pdf-pure-tests))
   (unless (zero? failures) (error 'pdf-pure-test "~a failures" failures)))

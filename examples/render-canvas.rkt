@@ -1,9 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Render Canvas Example
+;;;
+
+;; Opens a review window that runs the same consumer on selected rendering backends.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; The same callback can run on raster, Metal, OpenGL, or Direct3D.
 ;; Run from the checkout, or require skia/render-canvas when installed.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/cmdline (prefix-in gui: racket/gui/base)
          "../render-canvas.rkt" "../tests/gpu-dc-consumer-fixtures.rkt")
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; open-review : symbol? symbol? symbol? -> void?
+;;   Opens a rendering-backend review window using the shared consumer workloads.
 (define (open-review renderer backend adapter)
   (define workloads (make-consumer-workloads))
   (define selected 0)
@@ -14,7 +32,8 @@
       (define/augment (on-close)
         (when canvas (send canvas close))
         (send this show #f))))
-  (define frame (new review-frame% [label "Skia 0.61: unified render canvas"] [width 720] [height 560]))
+  (define frame (new review-frame% [label "Skia 0.61: unified render canvas"] [width 720] [height
+    560]))
   (define panel (new gui:vertical-panel% [parent frame]))
   (new gui:choice% [parent panel] [label "Consumer / execution"]
        [choices (for/list ([w (in-list workloads)])
@@ -38,10 +57,20 @@
   (send frame show #t)
   (void))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
   ;; Mutable options belong to this submodule, not to its enclosing module.
+  ; renderer : symbol?
+  ;;   Selects renderer for the example.
   (define renderer 'auto)
+  ; backend : symbol?
+  ;;   Selects backend for the example.
   (define backend 'auto)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects the requested GPU adapter, or leaves backend selection at its default.
   (define adapter #f)
   (command-line #:once-each
     [("--renderer") name "auto, raster or gpu" (set! renderer (string->symbol name))]

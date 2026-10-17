@@ -1,7 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Native ABI Native Test
+;;;
+
+;; Covers native ABI diagnostics on the accepted library.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit "../native-capabilities.rkt"
          (only-in "../private/native.rkt" skia-check! skia-native-version skia-native-library-handle))
 (provide native-abi-native-tests)
+
+;;;
+;;; Regression Suite
+;;;
+
+; native-abi-native-tests : test-suite?
+;;   Collects the regression cases for native ABI diagnostics on the accepted library.
 (define native-abi-native-tests
   (test-suite
    "native ABI diagnostics on the accepted library"
@@ -10,12 +29,14 @@
      (check-equal? (hash-ref (skia-native-capabilities) 'native_version) (skia-native-version)))
    (test-case "all CPU bindings resolved"
      (check-true (hash-ref (skia-native-capabilities) 'required_cpu_symbols_resolved)))
-   (test-case "Racket layouts checked" (check-true (hash-ref (skia-native-capabilities) 'racket_layouts_checked)))
+   (test-case "Racket layouts checked"
+     (check-true (hash-ref (skia-native-capabilities) 'racket_layouts_checked)))
    (test-case "required registry preserved"
      (check-true (> (hash-ref (skia-native-capabilities) 'required_cpu_symbol_count) 300)))
    (test-case "present and absent exports"
      (check-equal? (map (lambda (row) (hash-ref row 'available))
-                       (skia-native-symbol-inventory '(sk_version_get_milestone sk_stage047_nonexistent_export)))
+                     (skia-native-symbol-inventory
+                       '(sk_version_get_milestone sk_stage047_nonexistent_export)))
                    '(#t #f)))
    (test-case "inventory arguments"
      (check-exn exn:fail:contract? (lambda () (skia-native-symbol-inventory '(123)))))
@@ -33,5 +54,12 @@
      (check-false (hash-ref (skia-native-capabilities) 'package_identity_from_version_functions)))))
 (module+ test
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests native-abi-native-tests))
   (unless (zero? failures) (error 'native-abi-native-tests "tests failed")))

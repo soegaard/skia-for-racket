@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Metal Driver Operations
+;;;
+
+;; Defines injectable Metal platform and context operations and validates options.
+;; Separates Metal driver policy from native device and queue calls.
+
 (require "gpu-provider.rkt" "gpu-domain.rkt" "gpu-native-scope.rkt" "gpu-metal-handles.rkt")
 (provide (struct-out metal-platform-ops) (struct-out metal-context-ops)
          make-metal-components)
@@ -7,7 +15,18 @@
 ;; Metal, Skia, a display server or a GUI. Every callback below is an internal
 ;; synchronous native operation (or a test double), never application code.
 (struct metal-platform-ops (scope device queue release describe))
+;; Fields:
+;;   scope: provider activation procedure. device and queue: Metal handle creation procedures.
+;;   release: Objective-C release procedure. describe: detached native diagnostic query. Handles are
+;;   retained until explicitly released.
+
 (struct metal-context-ops (create release abandon reset describe))
+;; Fields:
+;;   create, release, abandon, reset, and describe: native Ganesh context procedures. They share the
+;;   provider's device/queue and obey its activation and lost-context rules.
+
+; make-metal-components : metal-platform-ops? metal-context-ops? -> (values gpu-provider? gpu-driver?)
+;;   Combines injected Metal platform and context operations with balanced handle ownership.
 (define (make-metal-components platform native)
   (unless (metal-platform-ops? platform)
     (raise-argument-error 'make-metal-components "metal-platform-ops?" platform))
@@ -47,7 +66,8 @@
          void
          (lambda ()
            (set! device ((metal-platform-ops-device platform)))
-           (unless device (gpu-unavailable 'metal-device "MTLCreateSystemDefaultDevice returned null"))
+           (unless device (gpu-unavailable 'metal-device
+             "MTLCreateSystemDefaultDevice returned null"))
            (set! queue ((metal-platform-ops-queue platform) device))
            (unless queue (gpu-unavailable 'metal-queue "newCommandQueue returned null"))
            (set! details (freeze-gpu-details ((metal-platform-ops-describe platform) device)))

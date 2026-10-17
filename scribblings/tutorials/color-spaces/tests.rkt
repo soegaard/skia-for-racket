@@ -1,6 +1,22 @@
 #lang racket
 
+;;;
+;;; Color Spaces Tests
+;;;
+
+;; Checks Color Spaces tutorial behavior with focused regression tests.
+;; This module guards the documentation's examples and support code against regressions.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit "color-study.rkt" skia)
+
+;;;
+;;; Regression Checks
+;;;
 
 (module+ test
   (test-case "tagging preserves the supplied samples"

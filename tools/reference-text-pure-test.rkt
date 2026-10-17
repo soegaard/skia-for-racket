@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Reference Text Pure Test
+;;;
+
+;; Checks font-style normalization, OpenType tag conversion, and deferred break-position validation.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Pure R3a values and checks. Importing Skia does not construct native fonts.
 (require rackunit skia)
 

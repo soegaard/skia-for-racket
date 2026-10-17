@@ -1,5 +1,16 @@
 #lang racket/base
 
+;;;
+;;; Reference Figure Renderer
+;;;
+
+;; Renders API examples and conceptual diagrams into the Reference image directory.
+;; This documentation build tool keeps published figures tied to executable Skia drawing fixtures.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file
          racket/list
          racket/runtime-path
@@ -20,19 +31,39 @@
                   codec-incremental-snapshot incremental-snapshot->raster-buffer)
          (prefix-in pict: pict))
 
+
+;;;
+;;; Rendering and Annotation Helpers
+;;;
+
+; output-directory : path?
+;;   Locates ../scribblings/reference/images relative to this module, independent of the invoking
+;;   directory.
 (define-runtime-path output-directory "../scribblings/reference/images")
 
+
+; device-scale : exact-positive-integer?
+;;   Sets the PNG backing resolution to twice the logical dimensions used in manual examples.
 (define device-scale 2)
 
+
+; output-path : path-string? -> path?
+;;   Resolves a generated image filename beneath the Reference image directory.
 (define (output-path filename)
   (build-path output-directory filename))
 
 ;; Conceptual figures use the same small visual vocabulary throughout the
 ;; Reference.  Keep the annotations in this generator: their coordinates are
 ;; derived from the fixture below rather than being hand-drawn after rendering.
+
+; one-decimal : real? -> string?
+;;   Formats measured diagram values rounded to one decimal place.
 (define (one-decimal value)
   (number->string (/ (round (* 10.0 value)) 10.0)))
 
+
+; draw-arrow : canvas? real? real? real? real? paint? -> void?
+;;   Draws a directed line and a filled triangular head at its second endpoint.
 (define (draw-arrow canvas x1 y1 x2 y2 paint)
   (draw-line canvas x1 y1 x2 y2 paint)
   (define angle (atan (- y2 y1) (- x2 x1)))
@@ -42,6 +73,9 @@
           (+ y2 (* wing (sin (+ angle delta))))))
   (draw-polygon canvas (list (list x2 y2) (point 2.55) (point -2.55)) paint))
 
+
+; draw-corner-bracket : canvas? real? real? real? real? paint? -> void?
+;;   Marks a rectangle's four corners without obscuring the content inside it.
 (define (draw-corner-bracket canvas x y width height paint)
   (define size 7)
   (for ([x0 (list x (+ x width))] [sx '(1 -1)])
@@ -49,6 +83,10 @@
       (draw-line canvas x0 y0 (+ x0 (* sx size)) y0 paint)
       (draw-line canvas x0 y0 x0 (+ y0 (* sy size)) paint))))
 
+
+; make-reference-surface : exact-positive-integer? exact-positive-integer? [any/c] -> surface?
+;;   Creates an owned raster surface at the presentation scale, optionally initializing its
+;;   background.
 (define (make-reference-surface width height [background #f])
   (if background
       (make-surface (* device-scale width)
@@ -57,6 +95,10 @@
       (make-surface (* device-scale width)
                     (* device-scale height))))
 
+
+; render-reference-image : path-string? exact-positive-integer? exact-positive-integer? procedure?
+; [#:background any/c] -> void?
+;;   Draws in logical coordinates on a scaled surface and replaces the named Reference PNG.
 (define (render-reference-image filename width height draw
                                 #:background [background #f])
   (make-directory* output-directory)
@@ -72,6 +114,11 @@
 ;; single-device-pixel coverage.  Render those programs at their literal target
 ;; size, then enlarge the captured result for the Reference's 2x PNG convention.
 ;; Applying `device-scale` before their program would change the example itself.
+
+; render-native-scale-reference-image : path-string? exact-positive-integer? exact-positive-integer?
+; procedure? [#:background any/c #:sampling symbol?] -> void?
+;;   Renders at literal example dimensions before enlarging the completed image, preserving examples
+;;   that reset the canvas matrix.
 (define (render-native-scale-reference-image filename width height draw
                                               #:background [background #f]
                                               #:sampling [sampling 'nearest])
@@ -94,6 +141,10 @@
 ;; fallback selects that face once; it does not supply a different face while
 ;; shaping the displayed string.  The log records the host-dependent face and
 ;; native versions used for a regenerated fixture.
+
+; call-with-hebrew-font : string? real? string? procedure? -> any
+;;   Scopes a fallback face and font covering the requested Hebrew text and records the chosen
+;;   native versions.
 (define (call-with-hebrew-font label size text proc)
   (with-skia ([manager (make-font-manager)])
     (define face
@@ -108,6 +159,10 @@
               (skia-native-version) (harfbuzz-native-version))
       (proc font))))
 
+
+; make-reference-bottom-up-bmp : -> bytes?
+;;   Builds a two-by-three bottom-up 24-bit BMP with distinct colors and padded rows for decoder
+;;   diagrams.
 (define (make-reference-bottom-up-bmp)
   ;; Two pixels per row, three rows, uncompressed BGR24, four-byte row alignment.
   ;; Top-to-bottom colors: red/green, blue/white, yellow/black.
@@ -122,6 +177,10 @@
   (bytes-copy! output 62 (bytes 255 0 0 255 255 255 0 0))
   (bytes-copy! output 70 (bytes 0 0 255 0 255 0 0 0))
   output)
+
+;;;
+;;; Core Drawing, Canvas State, Effects, and Transforms
+;;;
 
 (render-reference-image
  "rectangle.png" 160 100
@@ -362,7 +421,8 @@
          (draw-image canvas image x 30)
          (draw-rect canvas x 30 120 85 border)
          (draw-rect canvas (+ x 25) 50 70 46 clip-outline))
-       (draw-simple-text canvas "same striped-and-circle backdrop; orange is the explicit clip" 12 135 font label))))
+       (draw-simple-text canvas "same striped-and-circle backdrop; orange is the explicit clip" 12
+         135 font label))))
  #:background 'white)
 
 (render-reference-image
@@ -447,7 +507,7 @@
  (lambda (canvas)
    (with-skia ([effect
                 (make-runtime-effect
-                 "half4 main(float2 p) { half t=half(0.5+0.5*sin(p.x*0.08)); return half4(t,0,1-t,1); }")]
+                  "half4 main(float2 p) { half t=half(0.5+0.5*sin(p.x*0.08)); return half4(t,0,1-t,1); }")]
                [shader (runtime-effect->shader effect)]
                [paint (make-paint #:shader shader)])
      (draw-paint canvas paint)))
@@ -466,13 +526,13 @@
                [orange (make-paint #:color "#E94F37")]
                [filtered-orange (make-paint #:color "#E94F37" #:color-filter color-filter)]
                [child-effect (make-runtime-effect
-                              "uniform shader child; half4 main(float2 p) { half4 c=child.eval(p); return half4(c.b,c.g*0.4,c.r,c.a); }")]
+                               "uniform shader child; half4 main(float2 p) { half4 c=child.eval(p); return half4(c.b,c.g*0.4,c.r,c.a); }")]
                [child-gradient (make-linear-gradient-shader 220 0 400 0 '(red blue))]
                [child-shader (runtime-effect->shader child-effect
                                                      #:children (hash 'child child-gradient))]
                [child-paint (make-paint #:shader child-shader)]
                [blender-effect (make-runtime-effect
-                                "half4 main(half4 src, half4 dst) { return half4(src.r,dst.g,dst.b,1); }"
+                                 "half4 main(half4 src, half4 dst) { return half4(src.r,dst.g,dst.b,1); }"
                                 #:kind 'blender)]
                [paint-blender (runtime-effect->blender blender-effect)]
                [shader-blender (runtime-effect->blender blender-effect)]
@@ -656,8 +716,9 @@
  #:background 'white)
 
 
-;; Stage 3: visual examples for the broader drawing, text, recording, and
-;; structured-drawing reference chapters.
+;;;
+;;; Drawing Primitives, Structured Images, Text, and Recordings
+;;;
 
 (render-reference-image
  "radial-gradient.png" 120 80
@@ -781,6 +842,10 @@
      (draw-patch canvas patch paint)))
  #:background 'white)
 
+
+; make-nine-patch-source : -> image?
+;;   Returns an owned yellow image with blue top and bottom bands that reveal fixed versus stretched
+;;   regions.
 (define (make-nine-patch-source)
   (with-skia ([surface (make-surface 30 30 #:background "#F4D35E")]
               [blue (make-paint #:color "#326DE6")])
@@ -795,6 +860,9 @@
      (draw-image-nine canvas image '(8 8 14 14) 15 10 150 90)))
  #:background 'white)
 
+
+; make-atlas-source : -> image?
+;;   Returns an owned red/blue two-cell atlas for source-rectangle and transform examples.
 (define (make-atlas-source)
   (with-skia ([surface (make-surface 32 16 #:background 'red)]
               [blue (make-paint #:color "#326DE6")])
@@ -888,16 +956,19 @@
                [label (make-paint #:color "#20344E")]
                [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)])
      (call-with-raster-buffer-pixmap
-      read-buffer (lambda (destination) (image-read-pixmap! source destination #:source-x 1 #:source-y 1))
+      read-buffer
+       (lambda (destination) (image-read-pixmap! source destination #:source-x 1 #:source-y 1))
       #:writable? #t)
      (call-with-raster-buffer-pixmap
-      nearest-buffer (lambda (destination) (image-scale-pixmap! source destination #:sampling 'nearest))
+      nearest-buffer
+       (lambda (destination) (image-scale-pixmap! source destination #:sampling 'nearest))
       #:writable? #t)
      (call-with-raster-buffer-pixmap
       source-buffer
       (lambda (source-view)
         (call-with-raster-buffer-pixmap
-         linear-buffer (lambda (destination) (pixmap-scale! destination source-view #:sampling 'linear))
+         linear-buffer
+          (lambda (destination) (pixmap-scale! destination source-view #:sampling 'linear))
          #:writable? #t)))
      (with-skia ([read-image (raster-buffer->image read-buffer)]
                  [nearest-image (raster-buffer->image nearest-buffer)]
@@ -1002,8 +1073,9 @@
  #:background 'white)
 
 
-;; Stage 4: additional visual examples for float colors, specialized canvases,
-;; documents and output, raster buffers and codecs, and the pict bridge.
+;;;
+;;; Floating Colors, Output Documents, Raster Storage, and Racket Bridges
+;;;
 
 (render-reference-image
  "float-gradient.png" 64 16
@@ -1379,9 +1451,9 @@
                          15 151 label-font label-paint))))
  #:background 'white)
 
-;; Stage 6: thirty-two additional reference figures. Six already had generator
-;; entries from the earlier broad rendering pass; the twenty-six entries below
-;; are new in this stage.
+;;;
+;;; Extended Effects, Font Geometry, Pictures, and Decoder Placement
+;;;
 
 (render-reference-image
  "color-swatches.png" 210 70
@@ -1621,21 +1693,27 @@
      (draw-rect (surface-canvas height-surface) 0 0 120 70 height-paint)
      (with-skia ([height-image (surface-snapshot height-surface)]
                  [distant-diffuse (make-distant-lit-diffuse-image-filter '(1 -1 2) 'white
-                                                                          #:surface-scale 6 #:coefficient 1.2)]
+                                                                          #:surface-scale 6
+                                    #:coefficient 1.2)]
                  [point-diffuse (make-point-lit-diffuse-image-filter '(60 20 80) 'white
-                                                                      #:surface-scale 6 #:coefficient 1.2)]
+                                                                      #:surface-scale 6
+                                  #:coefficient 1.2)]
                  [spot-diffuse (make-spot-lit-diffuse-image-filter '(60 20 80) '(60 35 0) 'white
                                                                     #:exponent 2 #:cutoff-angle 35
-                                                                    #:surface-scale 6 #:coefficient 1.2)]
+                                                                    #:surface-scale 6 #:coefficient
+                                 1.2)]
                  [distant-specular (make-distant-lit-specular-image-filter '(1 -1 2) 'white
-                                                                            #:surface-scale 6 #:coefficient 1
+                                                                            #:surface-scale 6
+                                     #:coefficient 1
                                                                             #:shininess 8)]
                  [point-specular (make-point-lit-specular-image-filter '(60 35 100) 'white
-                                                                        #:surface-scale 6 #:coefficient 1
+                                                                        #:surface-scale 6
+                                   #:coefficient 1
                                                                         #:shininess 8)]
                  [spot-specular (make-spot-lit-specular-image-filter '(60 35 100) '(60 35 0) 'white
                                                                       #:exponent 2 #:cutoff-angle 35
-                                                                      #:surface-scale 6 #:coefficient 1
+                                                                      #:surface-scale 6
+                                  #:coefficient 1
                                                                       #:shininess 8)])
        (for ([name '("diffuse distant" "diffuse point" "diffuse spot"
                     "specular distant" "specular point" "specular spot")]
@@ -1866,6 +1944,9 @@
        (draw-path canvas stroked stroke-paint))))
  #:background 'white)
 
+
+; face-label : typeface? -> string?
+;;   Truncates a font family label to fit compact comparison panels.
 (define (face-label face)
   (define family (typeface-family-name face))
   (if (> (string-length family) 16)
@@ -2128,8 +2209,13 @@
        (draw-image canvas image 0 0))))
  #:background 'white)
 
-;; Stage 7: sixty-four additional visual examples.
+;;;
+;;; Reusable Comparison Fixtures
+;;;
 
+
+; draw-reference-checkerboard : canvas? real? real? real? real? [real?] -> void?
+;;   Draws a clipped light/dark grid that makes transparency visible behind examples.
 (define (draw-reference-checkerboard canvas x y width height [cell 10])
   (with-skia ([light (make-paint #:color "#F1F3F5")]
               [dark (make-paint #:color "#D9DEE4")])
@@ -2142,6 +2228,10 @@
                  (min cell (- (+ y height) ry))
                  (if (even? (+ row col)) light dark)))))
 
+
+; make-reference-quadrant-image : -> image?
+;;   Returns an owned four-color image whose quadrant placement reveals sampling and coordinate
+;;   behavior.
 (define (make-reference-quadrant-image)
   (with-skia ([surface (make-surface 4 4 #:background 'red)]
               [green (make-paint #:color 'green)]
@@ -2153,6 +2243,10 @@
     (draw-rect canvas 2 2 2 2 yellow)
     (surface-snapshot surface)))
 
+
+; make-reference-motif-image : -> image?
+;;   Returns an owned yellow image with distinct circle and rectangle motifs for cropping and
+;;   placement examples.
 (define (make-reference-motif-image)
   (with-skia ([surface (make-surface 40 30 #:background "#F4D35E")]
               [blue (make-paint #:color "#326DE6")]
@@ -2162,18 +2256,26 @@
     (draw-rect canvas 24 6 12 18 orange)
     (surface-snapshot surface)))
 
+
+; make-reference-overlap-path : symbol? -> path?
+;;   Returns an owned Boolean path result from two overlapping circles.
 (define (make-reference-overlap-path operation)
   (with-skia ([left (make-path)] [right (make-path)])
     (path-add-circle! left 65 50 34)
     (path-add-circle! right 105 50 34)
     (path-op left right operation)))
 
+
+; make-reference-region-result : symbol? -> region?
+;;   Returns an owned region-operation result from two overlapping integer rectangles.
 (define (make-reference-region-result operation)
   (with-skia ([a (make-region '((20 15 90 55)))]
               [b (make-region '((70 30 80 50)))])
     (region-op a b operation)))
 
-;; Paint styles and blending.
+;;;
+;;; Paint Styles and Blending
+;;;
 
 (render-reference-image
  "paint-fill-path.png" 220 120
@@ -2306,7 +2408,9 @@
      (draw-rounded-rect canvas 45 22 90 56 14 14 paint)))
  #:background 'white)
 
-;; Canvas transforms and clipping.
+;;;
+;;; Canvas Transforms and Clipping
+;;;
 
 (render-reference-image
  "canvas-translate.png" 180 100
@@ -2373,7 +2477,9 @@
      (draw-paint canvas paint)))
  #:background 'white)
 
-;; Shader transformations, noise, filtering, and tiling.
+;;;
+;;; Shader Transforms, Noise, Filtering, and Tiling
+;;;
 
 (render-reference-image
  "shader-local-matrix.png" 180 100
@@ -2434,7 +2540,9 @@
                  [paint (make-paint #:shader shader)])
        (draw-rect canvas 0 y 200 30 paint)))))
 
-;; Color-filter composition.
+;;;
+;;; Color-Filter Composition
+;;;
 
 (render-reference-image
  "blend-color-filter.png" 180 80
@@ -2497,7 +2605,9 @@
      (draw-rounded-rect canvas 102 18 60 44 8 8 filtered)))
  #:background 'white)
 
-;; Image-filter graph examples.
+;;;
+;;; Image-Filter Graphs
+;;;
 
 (render-reference-image
  "offset-image-filter.png" 180 90
@@ -2586,7 +2696,9 @@
      (draw-rect canvas 0 0 180 90 paint)))
  #:background 'white)
 
-;; Path geometry, measurement, and set operations.
+;;;
+;;; Path Geometry, Measurement, and Set Operations
+;;;
 
 (render-reference-image
  "quadratic-path.png" 180 100
@@ -2736,7 +2848,9 @@
      (draw-path canvas path paint)))
  #:background 'white)
 
-;; Rounded rectangles and integer-region set operations.
+;;;
+;;; Rounded Rectangles and Integer-Region Set Operations
+;;;
 
 (render-reference-image
  "rounded-rect-normalized.png" 180 100
@@ -2839,7 +2953,9 @@
        (draw-simple-text canvas "binary cells, not coverage" 260 145 font label))))
  #:background 'white)
 
-;; Image sampling, subsets, alpha, and reflected drawing.
+;;;
+;;; Image Sampling, Subsets, Alpha, and Reflections
+;;;
 
 (render-reference-image
  "sampling-comparison.png" 210 100
@@ -2886,7 +3002,9 @@
        (draw-image-rect canvas image 0 0 80 50 #:sampling 'nearest))))
  #:background 'white)
 
-;; Font controls and shaping.
+;;;
+;;; Font Controls and Shaping
+;;;
 
 (render-reference-image
  "font-sizes.png" 250 130
@@ -2963,7 +3081,9 @@
          (draw-path canvas path paint)))))
  #:background 'white)
 
-;; Text-blob positioning and paragraph layout.
+;;;
+;;; Text-Blob Positioning and Paragraph Layout
+;;;
 
 (render-reference-image
  "horizontal-text-run.png" 240 90
@@ -3048,7 +3168,9 @@
      (draw-text-layout canvas loose 175 10 orange)))
  #:background 'white)
 
-;; Picture playback, rasterization, drawables, and output-page margins.
+;;;
+;;; Picture Playback, Rasterization, Drawables, and Page Margins
+;;;
 
 (render-reference-image
  "picture-scaled.png" 180 120
@@ -3110,9 +3232,11 @@
      (draw-image canvas image 0 0)))
  #:background 'white)
 
-;; Stage 8: retained visual examples after consolidation.
+;; Alternative parameter choices below complement the preceding API examples.
 
-;; Shaders and gradients.
+;;;
+;;; Gradient Parameters
+;;;
 
 (render-reference-image
  "two-point-conical-offset.png" 180 100
@@ -3123,7 +3247,9 @@
                [paint (make-paint #:shader shader)])
      (draw-paint canvas paint))))
 
-;; Path effects and mask filters.
+;;;
+;;; Path-Effect Composition and Mask Styles
+;;;
 
 (render-reference-image
  "dash-phase-stage8.png" 200 90
@@ -3194,7 +3320,9 @@
        (draw-circle canvas x 55 20 paint))))
  #:background 'white)
 
-;; Image filters.
+;;;
+;;; Image-Filter Parameters
+;;;
 
 (render-reference-image
  "blur-anisotropic-stage8.png" 200 100
@@ -3248,7 +3376,9 @@
        (draw-paint canvas paint))))
  #:background 'white)
 
-;; Drawing primitives.
+;;;
+;;; Primitive Parameters
+;;;
 
 (render-reference-image
  "point-caps-stage8.png" 220 100
@@ -3280,7 +3410,9 @@
        (canvas-clip-rect! canvas x 0 80 100)
        (draw-color canvas "#326DE6" #:blend-mode mode)))))
 
-;; Paths.
+;;;
+;;; Path Construction, Conversion, and Measurement
+;;;
 
 (render-reference-image
  "relative-path-stage8.png" 200 110
@@ -3368,7 +3500,7 @@
  (lambda (canvas)
    (with-skia ([path
                 (svg-path->path
-                 "M20 38 C20 12 55 12 55 38 C55 12 90 12 90 38 C90 65 55 88 55 88 C55 88 20 65 20 38 Z")]
+                  "M20 38 C20 12 55 12 55 38 C55 12 90 12 90 38 C90 65 55 88 55 88 C55 88 20 65 20 38 Z")]
                [paint (make-paint #:color "#E94F37")])
      (with-canvas-state canvas
        (canvas-translate! canvas 45 5)
@@ -3376,7 +3508,9 @@
        (draw-path canvas path paint))))
  #:background 'white)
 
-;; Text blobs.
+;;;
+;;; Text-Blob Placement and Conversion
+;;;
 
 (render-reference-image
  "blob-run-origins-stage8.png" 280 120
@@ -3447,7 +3581,9 @@
                               #:start-offset 25 #:normal-offset -14)))
  #:background 'white)
 
-;; Text layout.
+;;;
+;;; Wrapping and Bidirectional Layout
+;;;
 
 (render-reference-image
  "layout-rtl-stage8.png" 300 100
@@ -3515,11 +3651,13 @@
                        label-font label-paint)))
  #:background 'white)
 
-;; Stage 9: retained visual examples after consolidation.
+;; Canvas-state and coverage comparisons use literal coordinates where needed.
 
 
 
-;; canvases
+;;;
+;;; Canvas State and Clip Coverage
+;;;
 
 (render-native-scale-reference-image
  "canvas-reset-transform-stage9.png" 200 110
@@ -3652,7 +3790,9 @@
 
 
 
-;; paints
+;;;
+;;; Paint Coverage
+;;;
 
 (render-native-scale-reference-image
  "paint-hairline-stage9.png" 200 90
@@ -3689,7 +3829,9 @@
 )
  #:background 'white)
 
-;; shaders
+;;;
+;;; Shader Edge and Empty Behavior
+;;;
 
 (render-reference-image
  "image-shader-decal-stage9.png" 180 100
@@ -3722,7 +3864,9 @@
 
 
 
-;; path-effects
+;;;
+;;; Gamma Mask Coverage
+;;;
 
 (render-native-scale-reference-image
  "gamma-mask-stage9.png" 220 100
@@ -3738,7 +3882,9 @@
 
 
 
-;; image-filters
+;;;
+;;; Shader-Source Image Filtering
+;;;
 
 (render-reference-image
  "shader-source-filter-stage9.png" 200 100
@@ -3752,7 +3898,9 @@
 
 
 
-;; drawing
+;;;
+;;; Arc Chords and Clipped Colors
+;;;
 
 (render-reference-image
  "arc-chord-stage9.png" 180 100
@@ -3776,7 +3924,9 @@
 
 
 
-;; paths
+;;;
+;;; Polygon and Contour Extension
+;;;
 
 (render-reference-image
  "path-polygon-stage9.png" 180 100
@@ -3806,9 +3956,9 @@
 )
  #:background 'white)
 
-;; images
-
-;; Additional Reference visual examples.
+;;;
+;;; Floating Gradients, Image Grids, Shaping, and Picture Composition
+;;;
 
 (render-reference-image
  "float-source-space-stage10.png" 210 80
@@ -4107,7 +4257,9 @@
      (draw-output-page canvas page)))
  #:background 'white)
 
-;; Conceptual diagrams -------------------------------------------------------
+;;;
+;;; Conceptual Diagrams
+;;;
 ;; These scenes deliberately combine a small executed fixture with guides that
 ;; explain the fixture's coordinate contract.  The guides are not presented as
 ;; pixels produced by the adjacent API call.
@@ -4230,9 +4382,11 @@
      (draw-rect canvas 24 194 requested 63 box-ink)
      (draw-line canvas (+ 24 requested) 186 (+ 24 requested) 269 guide-ink)
      (draw-text-layout canvas overflow 24 202 ink)
-     (draw-corner-bracket canvas 24 194 (text-layout-width overflow) (text-layout-height overflow) faint-ink)
+     (draw-corner-bracket canvas 24 194 (text-layout-width overflow) (text-layout-height overflow)
+       faint-ink)
      (draw-simple-text canvas "requested width" 24 278 label-font label)
-     (draw-simple-text canvas "reported layout box; whole word remains visible" 155 278 label-font label)))
+     (draw-simple-text canvas "reported layout box; whole word remains visible" 155 278 label-font
+       label)))
  #:background 'white)
 
 (render-reference-image
@@ -4275,7 +4429,9 @@
             "canvas: translate, then scale  =>  T × S")
      (panel 255 "S then T on the canvas" stx sty "S(T(p)) = (26,48)"
             "canvas: scale, then translate  =>  S × T")
-     (draw-simple-text canvas "Matrix composition names argument order; points receive the rightmost map first." 20 220 font label)))
+     (draw-simple-text canvas
+       "Matrix composition names argument order; points receive the rightmost map first." 20 220
+       font label)))
  #:background 'white)
 
 ;; Resetting the canvas transform needs literal target coordinates.  This
@@ -4324,7 +4480,8 @@
      (draw-circle canvas 430 145 10 green)
      (draw-rect canvas 348 55 75 55 clip-ink)
      (draw-simple-text canvas "pixels remain" 328 181 font label)
-     (draw-simple-text canvas "red boundary = established clip; grid and labels are explanatory" 20 222 font label)))
+     (draw-simple-text canvas "red boundary = established clip; grid and labels are explanatory" 20
+       222 font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4360,8 +4517,10 @@
      (draw-arrow canvas 227 82 286 82 arrow-ink)
      (draw-simple-text canvas "restore: composite group once" 205 105 font label)
      (draw-simple-text canvas "same opacity in overlap" 300 145 font label)
-     (draw-simple-text canvas "A state save has no transparent intermediate target; a layer does." 24 193 title label)
-     (draw-simple-text canvas "The purple arrow is the layer restore/composite step, not a draw call." 24 215 font label)))
+     (draw-simple-text canvas "A state save has no transparent intermediate target; a layer does."
+       24 193 title label)
+     (draw-simple-text canvas
+       "The purple arrow is the layer restore/composite step, not a draw call." 24 215 font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4411,7 +4570,8 @@
           (draw-rect canvas 374 124 62 42 source-ink)
           (draw-corner-bracket canvas 360 114 84 60 offset-ink)
           (draw-simple-text canvas (format "offset = (~a,~a)" ox oy) 348 206 font label)
-          (draw-simple-text canvas "source upper-left goes here; full result origin need not" 18 216 font label))))))
+          (draw-simple-text canvas "source upper-left goes here; full result origin need not" 18
+            216 font label))))))
  #:background 'white)
 
 (render-reference-image
@@ -4461,8 +4621,11 @@
        (draw-arrow canvas 217 168 242 168 arrow-ink)
        (draw-arrow canvas 327 168 352 168 arrow-ink)
        (draw-simple-text canvas "#f input slot = the dynamic drawing source" 20 220 title label)
-       (draw-simple-text canvas "make-compose-image-filter feeds the inner graph into the outer graph's #f input slots." 20 246 font label)
-       (draw-simple-text canvas "Node construction connects a graph; it does not process pixels." 20 270 font label)))))
+       (draw-simple-text canvas
+         "make-compose-image-filter feeds the inner graph into the outer graph's #f input slots."
+         20 246 font label)
+       (draw-simple-text canvas "Node construction connects a graph; it does not process pixels."
+         20 270 font label)))))
  #:background 'white)
 
 (render-reference-image
@@ -4480,7 +4643,8 @@
      (define cell 13)
      (define x0 42)
      (define (row y row-index)
-       (draw-simple-text canvas (format "row ~a (starts at ~a)" row-index (* row-index 16)) 42 (- y 7) font label)
+       (draw-simple-text canvas (format "row ~a (starts at ~a)" row-index (* row-index 16)) 42
+         (- y 7) font label)
        (for ([byte (in-range 16)])
          (draw-rect canvas (+ x0 (* byte cell)) y cell 28
                     (cond [(< byte 4) pixel-a]
@@ -4496,8 +4660,10 @@
      (row 47 0)
      (row 108 1)
      (draw-arrow canvas 42 151 (+ x0 (* 16 cell)) 151 measure)
-     (draw-simple-text canvas "row stride = 16 bytes (12 pixel bytes + 4 padding bytes)" 42 169 font label)
-     (draw-simple-text canvas "returned (stride, minimum addressable, allocation) = (16, 28, 32)" 42 192 title label)))
+     (draw-simple-text canvas "row stride = 16 bytes (12 pixel bytes + 4 padding bytes)" 42 169
+       font label)
+     (draw-simple-text canvas "returned (stride, minimum addressable, allocation) = (16, 28, 32)"
+       42 192 title label)))
  #:background 'white)
 
 (render-reference-image
@@ -4516,7 +4682,8 @@
      (define left 42) (define top 24) (define right 62) (define bottom 34)
      (define cx (+ px left)) (define cy (+ py top))
      (define cw (- pw left right)) (define ch (- ph top bottom))
-     (draw-simple-text canvas "page origin and unequal margins (left, top, right, bottom)" 70 18 title label)
+     (draw-simple-text canvas "page origin and unequal margins (left, top, right, bottom)" 70 18
+       title label)
      (draw-rect canvas px py pw ph page)
      (draw-rect canvas cx cy cw ch content)
      (draw-rect canvas px py pw ph border)
@@ -4534,8 +4701,10 @@
      (draw-arrow canvas (- px 16) (+ cy ch) (- px 16) (+ py ph) measure)
      (draw-simple-text canvas "bottom" 15 (- (+ py ph) 4) font label)
      (draw-circle canvas (+ cx cw 14) (+ cy ch 8) 18 ink)
-     (draw-simple-text canvas "red = content clip when clip? is true" (+ cx 7) (- (+ cy ch) 8) font label)
-     (draw-simple-text canvas "With clip? false, the blue mark may cross it; neither origin changes." 70 224 font label)))
+     (draw-simple-text canvas "red = content clip when clip? is true" (+ cx 7) (- (+ cy ch) 8) font
+       label)
+     (draw-simple-text canvas
+       "With clip? false, the blue mark may cross it; neither origin changes." 70 224 font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4552,7 +4721,8 @@
                [label (make-paint #:color "#20344E")])
      (define rx 70) (define ry 42) (define rw 280) (define rh 130)
      (define left 32) (define top 20) (define right 48) (define bottom 28)
-     (draw-simple-text canvas "raster fallback: padding enlarges, content origin stays fixed" 28 20 title label)
+     (draw-simple-text canvas "raster fallback: padding enlarges, content origin stays fixed" 28 20
+       title label)
      (draw-rect canvas rx ry rw rh padding)
      (draw-rect canvas (+ rx left) (+ ry top) (- rw left right) (- rh top bottom) content)
      (draw-rect canvas rx ry rw rh border)
@@ -4580,7 +4750,8 @@
                [label (make-paint #:color "#20344E")])
      (define-values (bx by bw bh) (path-bounds path))
      (define-values (tx ty tw th) (path-tight-bounds path))
-     (draw-simple-text canvas "cubic controls are stored points, but the curve does not pass through them" 28 19 title label)
+     (draw-simple-text canvas
+       "cubic controls are stored points, but the curve does not pass through them" 28 19 title label)
      (draw-line canvas 40 170 100 45 control)
      (draw-line canvas 100 45 320 45 control)
      (draw-line canvas 320 45 390 170 control)
@@ -4595,7 +4766,8 @@
      (draw-simple-text canvas "end" 385 189 font label)
      (draw-simple-text canvas "red: path-bounds (stored points)" 42 214 font label)
      (draw-simple-text canvas "green: path-tight-bounds (curve geometry)" 230 214 font label)
-     (draw-simple-text canvas "Neither rectangle includes stroke width, filters, transform, or clip." 42 238 font label)))
+     (draw-simple-text canvas
+       "Neither rectangle includes stroke width, filters, transform, or clip." 42 238 font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4617,13 +4789,17 @@
        (draw-arrow canvas (+ x 90) (+ y 46) (+ x 84) (+ y 35) arrow-ink)
        (draw-arrow canvas (+ x 75) (+ y 67) (+ x 64) (+ y 71) arrow-ink)
        (draw-simple-text canvas directions (+ x 110) (+ y 43) font label)
-       (draw-simple-text canvas (if center-filled? "center filled" "center hole") (+ x 110) (+ y 65) font label))
-     (draw-simple-text canvas "nested contours: direction affects winding, not even-odd parity" 28 19 title label)
+       (draw-simple-text canvas (if center-filled? "center filled" "center hole") (+ x 110)
+         (+ y 65) font label))
+     (draw-simple-text canvas "nested contours: direction affects winding, not even-odd parity" 28
+       19 title label)
      (panel 28 38 "winding: same direction" #t "signed total != 0")
      (panel 247 38 "winding: reversed inner" #f "signed total = 0")
      (panel 28 145 "even-odd: same direction" #f "crossing parity = even")
      (panel 247 145 "even-odd: reversed inner" #f "crossing parity = even")
-     (draw-simple-text canvas "Arrows label contour traversal; the test ray/crossing count is a conceptual guide." 28 250 font label)))
+     (draw-simple-text canvas
+       "Arrows label contour traversal; the test ray/crossing count is a conceptual guide." 28 250
+       font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4644,16 +4820,19 @@
          (for ([j (in-range 3)] [h (in-list heights)])
            (draw-rect canvas xx yy w h (if (or (= i 1) (= j 1)) stretch fixed))
            (draw-rect canvas xx yy w h border)
-           (draw-simple-text canvas (format "~a" (+ 1 i (* 3 j))) (+ xx (/ w 2) -3) (+ yy (/ h 2) 4) font label)
+           (draw-simple-text canvas (format "~a" (+ 1 i (* 3 j))) (+ xx (/ w 2) -3)
+             (+ yy (/ h 2) 4) font label)
            (set! yy (+ yy h)))
          (set! xx (+ xx w))))
-     (draw-simple-text canvas "matching numbered cells preserve source correspondence" 28 19 title label)
+     (draw-simple-text canvas "matching numbered cells preserve source correspondence" 28 19 title
+       label)
      (grid 45 55 '(28 54 28) '(20 38 20) "source; center = (28,20,54,38)")
      (grid 245 55 '(28 130 28) '(20 75 20) "enlarged destination")
      (draw-arrow canvas 168 104 226 104 measure)
      (draw-simple-text canvas "fixed corners" 45 174 font label)
      (draw-simple-text canvas "edges: one axis; center: both" 245 190 font label)
-     (draw-simple-text canvas "If destination is smaller than fixed spans, fixed spans shrink and stretch spans can collapse." 28 218 font label)))
+     (draw-simple-text canvas
+       "If destination is smaller than fixed spans, fixed spans shrink and stretch spans can collapse." 28 218 font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4670,7 +4849,8 @@
      (define headers '("characters" "UTF-8 bytes" "glyph records" "cluster start"))
      (define rows '(("e-acute" "0..1" "glyph 0" "byte 0")
                     ("A" "2" "glyph 1" "byte 2")))
-     (draw-simple-text canvas "characters, UTF-8 offsets, and glyph metadata are different index spaces" 30 19 title label)
+     (draw-simple-text canvas
+       "characters, UTF-8 offsets, and glyph metadata are different index spaces" 30 19 title label)
      (for ([h headers] [w widths] [i (in-naturals)])
        (define xx (+ x (apply + (take widths i))))
        (draw-rect canvas xx y w 33 header)
@@ -4682,13 +4862,16 @@
          (define yy (+ y 33 (* j 37)))
          (draw-rect canvas xx yy w 37 border)
          (draw-simple-text canvas cell (+ xx 6) (+ yy 23) font label)))
-     (draw-simple-text canvas "2 Racket characters; 3 UTF-8 bytes: e-acute starts at 0, A starts at 2." 30 161 font label)
+     (draw-simple-text canvas
+       "2 Racket characters; 3 UTF-8 bytes: e-acute starts at 0, A starts at 2." 30 161 font label)
      (draw-rect canvas 30 181 194 36 glyph)
      (draw-simple-text canvas "several characters" 66 204 font label)
      (draw-arrow canvas 232 199 278 199 cluster)
      (draw-rect canvas 285 181 150 36 header)
      (draw-simple-text canvas "one shaped glyph" 304 204 font label)
-     (draw-simple-text canvas "Ligatures can map several characters to one glyph; verify the selected font." 30 233 font label)))
+     (draw-simple-text canvas
+       "Ligatures can map several characters to one glyph; verify the selected font." 30 233 font
+       label)))
  #:background 'white)
 
 (render-reference-image
@@ -4702,7 +4885,8 @@
                [small (make-font #:size 11)]
                [title (make-font #:size 13)]
                [label (make-paint #:color "#20344E")])
-     (draw-simple-text canvas "text-on-path uses an arc-length tangent/normal frame" 28 19 title label)
+     (draw-simple-text canvas "text-on-path uses an arc-length tangent/normal frame" 28 19 title
+       label)
      (draw-line canvas 45 105 425 105 path-ink)
      (draw-arrow canvas 70 105 155 105 path-ink)
      (draw-simple-text canvas "contour direction" 75 87 small label)
@@ -4717,7 +4901,9 @@
      (draw-circle canvas sx (+ sy 48) 3 glyph)
      (draw-simple-text canvas "A" (+ sx 10) (+ sy 72) font glyph)
      (draw-simple-text canvas "glyph origin = P(s) + (normal + gy) * (-ty,tx)" 28 185 title label)
-     (draw-simple-text canvas "On a rightward path in downward-positive coordinates, positive normal offset is downward." 28 213 small label)))
+     (draw-simple-text canvas
+       "On a rightward path in downward-positive coordinates, positive normal offset is downward."
+       28 213 small label)))
  #:background 'white)
 
 (render-reference-image
@@ -4731,7 +4917,8 @@
                [font (make-font #:size 11)]
                [title (make-font #:size 13)]
                [label (make-paint #:color "#20344E")])
-     (draw-simple-text canvas "two density routes keep physical pixels and logical units distinct" 28 19 title label)
+     (draw-simple-text canvas "two density routes keep physical pixels and logical units distinct"
+       28 19 title label)
      (draw-simple-text canvas "image->pict backing scale 2" 35 49 title label)
      (draw-rect canvas 35 62 120 80 light)
      (for ([n (in-range 0 7)]) (draw-line canvas (+ 35 (* n 20)) 62 (+ 35 (* n 20)) 142 border))
@@ -4756,7 +4943,8 @@
                [font (make-font #:size 11)]
                [title (make-font #:size 13)]
                [label (make-paint #:color "#20344E")])
-     (draw-simple-text canvas "ownership and borrowed-view validity are timelines, not one universal tree" 28 19 title label)
+     (draw-simple-text canvas
+       "ownership and borrowed-view validity are timelines, not one universal tree" 28 19 title label)
      (draw-arrow canvas 75 52 440 52 axis)
      (for ([x '(90 230 350)]) (draw-line canvas x 43 x 213 axis))
      (draw-simple-text canvas "open" 80 40 font label)
@@ -4776,7 +4964,9 @@
      (draw-simple-text canvas "pixmap/subset valid" 110 192 font label)
      (draw-rect canvas 230 174 120 26 expired)
      (draw-simple-text canvas "invalid" 268 192 font label)
-     (draw-simple-text canvas "Keeping a borrowed wrapper reachable never extends its owner or callback scope." 28 229 font label)))
+     (draw-simple-text canvas
+       "Keeping a borrowed wrapper reachable never extends its owner or callback scope." 28 229
+       font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4790,7 +4980,8 @@
                [font (make-font #:size 11)]
                [title (make-font #:size 13)]
                [label (make-paint #:color "#20344E")])
-     (draw-simple-text canvas "same bytes: interpretation then destination conversion" 28 19 title label)
+     (draw-simple-text canvas "same bytes: interpretation then destination conversion" 28 19 title
+       label)
      (draw-rect canvas 28 50 100 46 bytes)
      (draw-rect canvas 28 50 100 46 border)
      (draw-simple-text canvas "bytes (128,128,128)" 30 118 font label)
@@ -4804,7 +4995,8 @@
      (draw-rect canvas 220 127 95 55 border)
      (draw-simple-text canvas "draw into sRGB: 128" 326 78 font label)
      (draw-simple-text canvas "draw into sRGB: approx. 188" 326 158 font label)
-     (draw-simple-text canvas "A tag declares sample meaning; drawing converts into the destination." 28 208 font label)))
+     (draw-simple-text canvas
+       "A tag declares sample meaning; drawing converts into the destination." 28 208 font label)))
  #:background 'white)
 
 (render-reference-image
@@ -4832,7 +5024,8 @@
      (draw-arrow canvas 230 71 260 71 arrow-ink)
      (draw-arrow canvas 363 71 392 71 arrow-ink)
      (draw-simple-text canvas "gpu-submit! submits work already flushed" 150 110 font label)
-     (draw-simple-text canvas "gpu-wait! includes flush plus submission and requests CPU completion" 20 135 font label)
+     (draw-simple-text canvas
+       "gpu-wait! includes flush plus submission and requests CPU completion" 20 135 font label)
      (box 95 162 125 38 route "readback -> CPU image")
      (box 290 162 125 38 route "presentation request")
      (draw-arrow canvas 316 92 170 155 arrow-ink)

@@ -1,4 +1,28 @@
-# Current inventory: 0.75 (stage 0.75a)
+# API inventories and policy inputs
+
+This directory contains reviewed machine-readable inputs and snapshots for
+source coverage, public API stability, and release validation. These files do
+not initialize Skia and do not, by themselves, prove native rendering works.
+Tools in [tools/](../tools/README.md) compare source declarations with these
+baselines; policy and evidence details live in [docs/](../docs/README.md).
+
+| Files | Role |
+| --- | --- |
+| [upstream-m119.json](upstream-m119.json), [bindings-baseline.json](bindings-baseline.json), [capabilities.json](capabilities.json) | Pinned upstream scope, expected native bindings, and reviewed capability-family dispositions. |
+| [baseline-evidence.json](baseline-evidence.json) | Historical execution identity and hashes, kept distinct from current source coverage. |
+| [global-cache-ffi.json](global-cache-ffi.json), [live-stream-ffi.json](live-stream-ffi.json) | Supplemental native adapter/callback inventories with explicitly limited scopes. |
+| [gpu-render-addition.json](gpu-render-addition.json) | Reviewed additive GPU rendering API declaration. |
+| [public-api-policy.json](public-api-policy.json), [public-api-capture.json](public-api-capture.json) | Stability policy and capture metadata for reflected public signatures. |
+| [public-api-headless.json](public-api-headless.json), [public-api-gui.json](public-api-gui.json) | Reflected API snapshots split by whether loading requires the GUI environment. |
+| [reference-coverage.json](reference-coverage.json) | Mapping and coverage policy connecting exports to Reference documentation. |
+| [release-scope-policy.json](release-scope-policy.json), [release-scope.json](release-scope.json) | Reviewed release-scope policy and its checked inventory. |
+| [release-candidate-policy.json](release-candidate-policy.json) | Required release-candidate validation policy. |
+| [reference-source/](reference-source/README.md) | Archived source fixture used by coverage-validator tests, not the current API implementation. |
+
+The stage notes below are retained historical context; their version labels are
+not a substitute for the current manifest contents.
+
+## Inventory note: 0.75 (stage 0.75a)
 
 Native stream foundations and buffered port adapters have source anchors.
 Live port bridging and remaining stream consumers stay planned for 0.75b.

@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Incremental Codec Stream Callbacks
+;;;
+
+;; Registers incremental inputs and services native read and seek requests.
+;; Connects the incremental decoder to Skia's callback-based stream interface.
+
 ;; Shared Skia managed-stream provider dispatch for bounded in-memory sources.
 ;; This module never installs callback tables. Unlike live Racket ports, these
 ;; callbacks perform only memory operations and may safely run synchronously in
@@ -8,15 +16,30 @@
 (provide incremental-source-register! incremental-source-unregister!
          incremental-source-callback incremental-source-count)
 (struct source (input context [position #:mutable]))
+;; Fields:
+;;   input: incremental-input buffer. context: native registration context pointer. position:
+;;   mutable nonnegative read cursor within the visible input prefix. Registration keeps the input
+;;   reachable until native stream destruction.
+
+; sources : hash?
+;;   Roots stream callback state by raw context address until each native stream is destroyed.
 (define sources (make-hasheqv))
+; key : cpointer? -> exact-nonnegative-integer?
+;;   Converts a native callback context address to its registry key.
 (define (key p) (cast p _pointer _uintptr))
+; incremental-source-count : -> exact-nonnegative-integer?
+;;   Counts retained stream contexts for leak and cleanup diagnostics.
 (define (incremental-source-count) (hash-count sources))
+; incremental-source-register! : incremental-input? -> cpointer?
+;;   Allocates a unique stream context, roots its input state, and starts its cursor at zero.
 (define (incremental-source-register! input)
   (define context (malloc 1 'raw))
   (unless context (error 'make-codec-incremental "native stream context allocation failed"))
   (hash-set! sources (key context) (source input context 0))
   (set-incremental-input-streams! input (add1 (incremental-input-streams input)))
   context)
+; incremental-source-unregister! : cpointer? -> void?
+;;   Unroots and frees a known context exactly once, updating input destruction diagnostics.
 (define (incremental-source-unregister! context)
   (define s (hash-ref sources (key context) #f))
   (when s
@@ -25,6 +48,9 @@
     (set-incremental-input-destroys! input (add1 (incremental-input-destroys input)))
     (free (source-context s)))
   (void))
+; read! : source? (or/c #f cpointer?) exact-nonnegative-integer? boolean? ->
+;   exact-nonnegative-integer?
+;;   Copies or skips only visible bytes, leaving the cursor unchanged for peek requests.
 (define (read! s destination requested peek?)
   (define input (source-input s))
   (define at (source-position s))
@@ -38,9 +64,14 @@
         (loop (+ done count)))))
   (unless peek? (set-source-position! s (+ at n)))
   n)
+; seek! : source? exact-integer? -> boolean?
+;;   Moves the stream cursor only within the currently visible encoded prefix.
 (define (seek! s at)
   (and (<= 0 at (incremental-input-visible (source-input s)))
        (begin (set-source-position! s at) #t)))
+; incremental-source-callback : symbol? any/c list? -> any/c
+;;   Dispatches memory-only stream operations, capturing failures for re-raise after native frames
+;;   unwind.
 (define (incremental-source-callback kind fallback arguments)
   (define context (cadr arguments))
   (define s (hash-ref sources (key context) #f))

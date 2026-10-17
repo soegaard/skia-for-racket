@@ -1,11 +1,33 @@
 #lang racket/base
+
+;;;
+;;; GPU Direct3D 12 Interop Doctor
+;;;
+
+;; Exercises gpu d3d12 interop and reports native diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/path racket/list json rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt" "../unsafe/gpu-d3d12.rkt"
          "../tests/gpu-interop-native-test.rkt" "../tests/d3d12-interop-fixture.rkt"
          "../private/gpu-io-trace.rkt" "gpu-report.rkt")
 (provide gpu-d3d12-interop-doctor! gpu-d3d12-interop-timeout-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; publish : path-string? path-string? any/c -> void?
+;;   Writes a named JSON receipt under the selected interop evidence directory.
 (define (publish directory name data)
   (write-gpu-json (build-path directory name) data))
+
+; base : path? symbol? (or/c exact-nonnegative-integer? #f) -> hash?
+;;   Builds runtime/adapter identity fields without claiming unmeasured hardware or presentation
+;;   behavior.
 (define (base directory selection index)
   (hasheq 'schema 1 'stage "0.51" 'validation_run (path->string (file-name-from-path directory))
     'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
@@ -14,6 +36,11 @@
     'adapter_index (if (eq? selection 'warp) #f index)
     'hardware_acceleration_verified #f 'presentation_verified #f 'performance_measured #f
     'resource_state_declarations_verified #f 'zero_copy_claimed #f))
+
+; gpu-d3d12-interop-doctor! : path? path-string? symbol? (or/c exact-nonnegative-integer? #f) ->
+; exact-integer?
+;;   Runs independent producer/consumer handoffs and records ownership, pixels, and repeated-context
+;;   teardown.
 (define (gpu-d3d12-interop-doctor! directory dll selection index)
   (define cycles '()) (define captures '()) (define pending '())
   (define failures #f) (define suite-contexts '())
@@ -23,7 +50,8 @@
       'sdk_getdesc_call_verified (and (exact-integer? failures) (zero? failures))
       'producer "independent-d3d12-sdk-fixture" 'consumer "independent-direct-command-queue"
       'suite_contexts suite-contexts 'cycles (reverse cycles) 'captures (reverse captures)))
-  (define (new-context) (make-gpu-context #:backend 'direct3d #:adapter selection #:adapter-index index))
+  (define (new-context)
+    (make-gpu-context #:backend 'direct3d #:adapter selection #:adapter-index index))
   (define (keep image name row)
     (set! pending (cons (list image name row) pending)))
   (define (one c cycle slot serial w h)
@@ -42,7 +70,8 @@
         (cond
           [(eq? mode 'copy)
            (set! image-info (gpu-image-info image))
-           (unless (hash-ref image-info 'texture_backed) (error 'interop-doctor "imported image is not GPU-backed"))
+           (unless (hash-ref image-info 'texture_backed)
+             (error 'interop-doctor "imported image is not GPU-backed"))
            ;; No original producer COM reference remains while Skia consumes its
            ;; own returned image. Close the fixture before validation readback.
            (close-fixture f) (set! f #f) (set! producer-closed? #t)
@@ -115,7 +144,8 @@
               (define final (gpu-context-info c)) (check-gpu-teardown! final)
               (hash-set row 'final final)))
           (set! cycles (cons (hasheq 'cycle cycle 'contexts contexts) cycles))
-          (printf "Interop cycle ~a: two contexts, 48 handoffs, explicit state return and cleanup passed\n" cycle))
+          (printf
+            "Interop cycle ~a: two contexts, 48 handoffs, explicit state return and cleanup passed\n" cycle))
         ;; Detached images are deliberately encoded only after ALL six stress
         ;; contexts are closed; temporary image wrappers are tracked until then.
         (for ([entry (in-list (reverse pending))])
@@ -124,6 +154,11 @@
                                           'encoded_after_context_teardown #t) captures)))
         (publish directory "interop.diagnostic.json" (report "passed")) 0)
       (lambda () (for ([entry (in-list pending)]) (skia-close! (car entry)))))))
+
+; gpu-d3d12-interop-timeout-doctor! : path? path-string? symbol? (or/c exact-nonnegative-integer?
+; #f) -> exact-integer?
+;;   Forces an unsignaled-fence timeout and checks quarantine without submitting the graphics
+;;   handoff.
 (define (gpu-d3d12-interop-timeout-doctor! directory dll selection index)
   ;; Disposable child: intentional quarantine, not a leak-free success. It
   ;; exits normally; no SIGABRT, core dump or Crash Reporter fixture.
@@ -155,7 +190,27 @@
       'intentional_retention_until_process_exit #t 'graphics_handoff_submitted #f))
   0)
 (module+ main
-  (define directory #f) (define dll #f) (define selection 'warp) (define index 0) (define timeout? #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; dll : (or/c path-string? #f)
+  ;;   Selects the external Direct3D producer fixture DLL used for texture and fence ownership
+  ;;   checks.
+  (define dll #f)
+  ; selection : symbol?
+  ;;   Chooses the Direct3D adapter policy; WARP is the default for reproducible software execution.
+  (define selection 'warp)
+  ; index : exact-nonnegative-integer?
+  ;;   Selects the zero-based Direct3D adapter within the chosen adapter policy.
+  (define index 0)
+  ; timeout? : boolean?
+  ;;   Selects the deliberately blocked producer/consumer case used to validate timeout handling.
+  (define timeout? #f)
   (command-line #:once-each
     [("--directory") p "Fresh evidence directory" (set! directory (string->path p))]
     [("--fixture") p "Independent Windows SDK producer DLL" (set! dll p)]
@@ -164,4 +219,5 @@
     [("--timeout-case") "Run only disposable expected-timeout child" (set! timeout? #t)]
     #:args () (void))
   (unless (and directory dll) (error 'interop-doctor "--directory and --fixture are required"))
-  (exit ((if timeout? gpu-d3d12-interop-timeout-doctor! gpu-d3d12-interop-doctor!) directory dll selection index)))
+  (exit ((if timeout? gpu-d3d12-interop-timeout-doctor! gpu-d3d12-interop-doctor!) directory dll
+          selection index)))

@@ -1,17 +1,50 @@
 #lang racket/base
+
+;;;
+;;; Color Filter Native Test
+;;;
+
+;; Covers cPU color filters: native results, ownership, and output policy.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list ffi/unsafe "../main.rkt"
          "../private/color-filter-types.rkt" "color-filter-fixtures.rkt")
 (provide color-filter-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; close-color? : rgba? rgba? [real?] -> void?
+;;   Checks each RGBA channel against the allowed byte-level rendering tolerance.
 (define (close-color? actual expected [tolerance 2])
   (for ([a (in-list (rgba-list actual))] [b (in-list (rgba-list expected))])
     (check-= a b tolerance)))
+
+; one : (-> color-filter?) color color [real?] -> void?
+;;   Scopes a filter factory result and checks its rendered swatch.
 (define (one make color expected [tolerance 2])
   (with-skia ([cf (make)]) (close-color? (filter-pixel cf color) expected tolerance)))
+
+; filtered-page : color-filter? -> output-page?
+;;   Builds a page whose colored rectangle exposes vector-output filter policy.
 (define (filtered-page cf)
   (make-output-page 48 32
     (lambda (c)
       (with-skia ([p (make-paint #:color filter-swatch-color #:color-filter cf)])
         (draw-rect c 2 2 44 28 p)))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; color-filter-native-tests : test-suite?
+;;   Collects the regression cases for cPU color filters: native results, ownership, and output
+;;   policy.
 (define color-filter-native-tests
   (test-suite
    "CPU color filters: native results, ownership, and output policy"
@@ -22,16 +55,19 @@
      (check-equal? (ptr-ref c _int 1) 2)
      (check-= (ptr-ref c _float 2) 0.25 0))
    (test-case "all probe factories return ordinary color filters"
-     (for ([n '(identity hue desaturate lighting encode decode rgb-table threshold luma contrast lerp compose)])
+     (for ([n '(identity hue desaturate lighting encode decode rgb-table threshold luma contrast
+                 lerp compose)])
        (with-skia ([cf (make-probe-color-filter n)]) (check-true (color-filter? cf)))))
    (test-case "HSLA identity preserves opaque color"
-     (one (lambda () (make-hsla-matrix-filter identity-hsla)) filter-swatch-color filter-swatch-color))
+     (one (lambda () (make-hsla-matrix-filter identity-hsla)) filter-swatch-color
+       filter-swatch-color))
    (test-case "HSLA hue uses normalized turns"
      (one (lambda () (make-hsla-matrix-filter hue-third-hsla)) (rgb 255 0 0) (rgb 0 255 0)))
    (test-case "HSLA zero saturation uses HSL lightness"
      (one (lambda () (make-hsla-matrix-filter saturation-zero-hsla)) (rgb 255 0 0) (rgb 128 128 128)))
    (test-case "HSLA offsets are normalized rather than byte offsets"
-     (one (lambda () (make-hsla-matrix-filter lightness-invert-hsla)) (rgb 64 64 64) (rgb 191 191 191)))
+     (one (lambda () (make-hsla-matrix-filter lightness-invert-hsla)) (rgb 64 64 64)
+       (rgb 191 191 191)))
    (test-case "HSLA copied input survives mutation"
      (define v (list->vector identity-hsla))
      (with-skia ([cf (make-hsla-matrix-filter v)])
@@ -61,7 +97,8 @@
        (define b (rgba-alpha (filter-pixel cf (rgb 255 0 0))))
        (check-= (* 2 a) b 2)))
    (test-case "all-component identity table"
-     (one (lambda () (make-table-color-filter identity-table)) filter-swatch-color filter-swatch-color 0))
+     (one (lambda () (make-table-color-filter identity-table)) filter-swatch-color
+       filter-swatch-color 0))
    (test-case "all-component inversion also changes alpha"
      (one (lambda () (make-table-color-filter inverse-table)) 'white (rgba 0 0 0 0) 0))
    (test-case "table bytes copied before caller mutation"
@@ -71,7 +108,8 @@
    (test-case "table vector copied before caller mutation"
      (define v (list->vector (build-list 256 values)))
      (with-skia ([cf (make-table-argb-color-filter #:red v)])
-       (vector-set! v 72 0) (close-color? (filter-pixel cf filter-swatch-color) filter-swatch-color 0)))
+       (vector-set! v 72 0)
+       (close-color? (filter-pixel cf filter-swatch-color) filter-swatch-color 0)))
    (test-case "ARGB omitted channels are identity"
      (one make-table-argb-color-filter filter-swatch-color filter-swatch-color 0))
    (test-case "red table does not change other channels"
@@ -101,7 +139,8 @@
        (close-color? (filter-pixel cf 'black) (rgb 255 255 255))
        (close-color? (filter-pixel cf 'white) (rgb 0 0 0))))
    (test-case "lightness and brightness inversion are distinct"
-     (one (lambda () (make-high-contrast-color-filter #:invert-style 'brightness)) 'red (rgb 0 255 255))
+     (one (lambda () (make-high-contrast-color-filter #:invert-style 'brightness)) 'red
+       (rgb 0 255 255))
      (one (lambda () (make-high-contrast-color-filter #:invert-style 'lightness)) 'red (rgb 255 0 0)))
    (test-case "contrast endpoints produce valid colors and preserve alpha"
      (for ([amount '(-1 1)])
@@ -109,7 +148,8 @@
          (define p (filter-pixel cf (rgba 255 0 0 128)))
          (check-true (rgba? p)) (check-= (rgba-alpha p) 128 1))))
    (test-case "lighting white multiply and black add is identity"
-     (one (lambda () (make-lighting-color-filter 'white 'black)) filter-swatch-color filter-swatch-color))
+     (one (lambda () (make-lighting-color-filter 'white 'black)) filter-swatch-color
+       filter-swatch-color))
    (test-case "lighting ignores argument alpha"
      (one (lambda () (make-lighting-color-filter (rgba 0 0 0 0) (rgba 50 100 150 0)))
           (rgb 20 40 60) (rgb 50 100 150) 1))
@@ -187,12 +227,13 @@
          (check-false (output-audit-report-blocking? report))
          (check-eq? (output-group-report-strategy result) 'raster))))
    (test-case "runtime child provenance survives optimized lerp endpoint"
-     (with-skia ([effect (make-runtime-effect "half4 main(half4 c) { return c; }" #:kind 'color-filter)]
+     (with-skia
+       ([effect (make-runtime-effect "half4 main(half4 c) { return c; }" #:kind 'color-filter)]
                  [runtime (runtime-effect->color-filter effect)]
                  [table (make-table-argb-color-filter)] [cf (make-lerp-color-filter 0 table runtime)])
        (define report (analyze-output-page (filtered-page cf) 'svg))
        (check-not-false (member 'runtime-color-filter
-                               (map output-audit-event-feature (output-audit-report-events report))))))
+                          (map output-audit-event-feature (output-audit-report-events report))))))
    (test-case "trusted SKP roundtrip retains table operation"
      (with-skia ([cf (make-probe-color-filter 'rgb-table)]
                  [pic (call-with-picture 8 8

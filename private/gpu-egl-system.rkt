@@ -1,22 +1,40 @@
 #lang racket/base
+
+;;;
+;;; EGL Context System
+;;;
+
+;; Loads EGL, retains displays, and manages current-context scopes.
+;; Provides the platform implementation used by headless and windowed EGL providers.
+
 (require ffi/unsafe ffi/unsafe/global racket/promise racket/string
          "gpu-provider.rkt" "gpu-egl-util.rkt" "gpu-diagnostics.rkt")
 (provide make-egl-platform-ops capture-current-egl-provider)
 ;; EGLBoolean and EGLenum are 32-bit, NOT C bool. EGLint is signed 32-bit.
 ;; GetPlatformDisplay is called with a NULL attribute list, avoiding the
 ;; EGLAttrib/intptr_t (core) versus EGLint (EXT) array ABI distinction.
+; EGL-OPENGL-API : exact-nonnegative-integer?
+;;   Identifies the desktop OpenGL client API in EGL binding and capability queries.
 (define EGL-OPENGL-API #x30A2)
+; EGL-NONE : exact-nonnegative-integer?
+;;   Terminates EGL attribute lists using the native API's sentinel value.
 (define EGL-NONE #x3038)
+; lib : promise?
+;;   Loads the Linux EGL library only when an EGL backend is actually requested.
 (define lib
   (delay/sync
     (unless (eq? (system-type 'os) 'unix)
-      (gpu-unavailable 'egl-platform "the built-in EGL adapter supports Linux; use Metal or a native GL provider on this platform"))
+      (gpu-unavailable 'egl-platform
+        "the built-in EGL adapter supports Linux; use Metal or a native GL provider on this platform"))
     (with-handlers ([exn:fail? (lambda (e) (gpu-unavailable 'egl-library "~a" (exn-message e)))])
       (ffi-lib "libEGL.so.1"))))
 ;; A single native initialization registry cannot be split across places (or
 ;; independent namespace instances). A process-global, one-byte raw token
 ;; enforces that policy. This token intentionally lives for the process lifetime;
 ;; it is not an EGL context/display allocation and never points into the GC heap.
+; process-token : promise?
+;;   Claims process-wide EGL ownership once and deliberately retains its registration token for the
+;;   process lifetime.
 (define process-token
   (delay/sync
     (define token (malloc 1 'raw))
@@ -24,52 +42,113 @@
     (define previous (register-process-global #"skia-for-racket/EGL-instance/v1" token))
     (when previous
       (free token)
-      (gpu-unavailable 'egl-place "another EGL adapter instance/place owns process initialization; use a separate process"))
+      (gpu-unavailable 'egl-place
+        "another EGL adapter instance/place owns process initialization; use a separate process"))
     token))
+; gl-lib : promise?
+;;   Lazily resolves desktop GL symbols through libOpenGL or the libGL compatibility fallback.
 (define gl-lib
   (delay/sync
     (or (ffi-lib "libOpenGL.so.0" #:fail (lambda () #f))
         (ffi-lib "libGL.so.1" #:fail (lambda () #f)))))
+; bind : any/c any/c -> any
+;;   Resolves one EGL symbol with the explicitly supplied native calling signature.
 (define (bind name type) (get-ffi-obj name (force lib) type))
+; egl : syntax transformer
+;;   Defines a lazy EGL procedure without loading native libraries at module import time.
 (define-syntax-rule (egl name type)
   (begin (define pending (delay/sync (bind 'name type)))
          (define (name . args) (apply (force pending) args))))
+; eglGetError : (_fun -> _uint32) (FFI)
+;;   Calls the native eglGetError entry point using the declared FFI layout.
 (egl eglGetError (_fun -> _uint32))
+; eglQueryString : (_fun _pointer _int -> _pointer) (FFI)
+;;   Calls the native eglQueryString entry point using the declared FFI layout.
 (egl eglQueryString (_fun _pointer _int -> _pointer))
+; eglGetProcAddress : (_fun _string/utf-8 -> _pointer) (FFI)
+;;   Calls the native eglGetProcAddress entry point using the declared FFI layout.
 (egl eglGetProcAddress (_fun _string/utf-8 -> _pointer))
+; eglInitialize : (_fun _pointer _pointer _pointer -> _uint32) (FFI)
+;;   Calls the native eglInitialize entry point using the declared FFI layout.
 (egl eglInitialize (_fun _pointer _pointer _pointer -> _uint32))
+; eglTerminate : (_fun _pointer -> _uint32) (FFI)
+;;   Calls the native eglTerminate entry point using the declared FFI layout.
 (egl eglTerminate (_fun _pointer -> _uint32))
+; eglBindAPI : (_fun _uint32 -> _uint32) (FFI)
+;;   Calls the native eglBindAPI entry point using the declared FFI layout.
 (egl eglBindAPI (_fun _uint32 -> _uint32))
+; eglQueryAPI : (_fun -> _uint32) (FFI)
+;;   Calls the native eglQueryAPI entry point using the declared FFI layout.
 (egl eglQueryAPI (_fun -> _uint32))
+; eglChooseConfig : (_fun _pointer _pointer _pointer _int _pointer -> _uint32) (FFI)
+;;   Calls the native eglChooseConfig entry point using the declared FFI layout.
 (egl eglChooseConfig (_fun _pointer _pointer _pointer _int _pointer -> _uint32))
+; eglCreateContext : (_fun _pointer _pointer _pointer _pointer -> _pointer) (FFI)
+;;   Calls the native eglCreateContext entry point using the declared FFI layout.
 (egl eglCreateContext (_fun _pointer _pointer _pointer _pointer -> _pointer))
+; eglDestroyContext : (_fun _pointer _pointer -> _uint32) (FFI)
+;;   Calls the native eglDestroyContext entry point using the declared FFI layout.
 (egl eglDestroyContext (_fun _pointer _pointer -> _uint32))
+; eglCreatePbufferSurface : (_fun _pointer _pointer _pointer -> _pointer) (FFI)
+;;   Calls the native eglCreatePbufferSurface entry point using the declared FFI layout.
 (egl eglCreatePbufferSurface (_fun _pointer _pointer _pointer -> _pointer))
+; eglDestroySurface : (_fun _pointer _pointer -> _uint32) (FFI)
+;;   Calls the native eglDestroySurface entry point using the declared FFI layout.
 (egl eglDestroySurface (_fun _pointer _pointer -> _uint32))
+; eglMakeCurrent : (_fun _pointer _pointer _pointer _pointer -> _uint32) (FFI)
+;;   Calls the native eglMakeCurrent entry point using the declared FFI layout.
 (egl eglMakeCurrent (_fun _pointer _pointer _pointer _pointer -> _uint32))
+; eglGetCurrentContext : (_fun -> _pointer) (FFI)
+;;   Calls the native eglGetCurrentContext entry point using the declared FFI layout.
 (egl eglGetCurrentContext (_fun -> _pointer))
+; eglGetCurrentDisplay : (_fun -> _pointer) (FFI)
+;;   Calls the native eglGetCurrentDisplay entry point using the declared FFI layout.
 (egl eglGetCurrentDisplay (_fun -> _pointer))
+; eglGetCurrentSurface : (_fun _int -> _pointer) (FFI)
+;;   Calls the native eglGetCurrentSurface entry point using the declared FFI layout.
 (egl eglGetCurrentSurface (_fun _int -> _pointer))
+; address : (or/c #f cpointer?) -> any
+;;   Converts a nullable native pointer to its numeric address for stable identity comparisons.
 (define (address p) (and p (cast p _pointer _uintptr)))
+; pointer=? : (or/c #f cpointer?) (or/c #f cpointer?) -> boolean?
+;;   Compares EGL object addresses, including the null-pointer representation.
 (define (pointer=? a b) (equal? (address a) (address b)))
+; ok : symbol? any/c -> any
+;;   Rejects failed EGL status results and includes the native error code in the availability
+;;   failure.
 (define (ok who value)
   (when (or (not value) (and (number? value) (zero? value)))
     (gpu-unavailable who "~a failed with EGL error 0x~x" who (eglGetError)))
   value)
+; string-at : (or/c #f cpointer?) -> any
+;;   Copies a nullable native UTF-8 string into an immutable Racket string.
 (define (string-at p) (and p (string->immutable-string (cast p _pointer _string/utf-8))))
+; query : any/c any/c -> any
+;;   Copies an EGL display query string and substitutes an empty string for unavailable text.
 (define (query d token) (or (string-at (eglQueryString d token)) ""))
+; int-cell : [any/c] -> any
+;;   Allocates an initialized native integer out-parameter for synchronous EGL calls.
 (define (int-cell [value 0]) (define p (malloc _int 'atomic)) (ptr-set! p _int value) p)
+; ints : list? ... -> any
+;;   Packs ordered EGL attributes into contiguous native integer storage.
 (define (ints . values)
   (define p (malloc _int (length values) 'atomic))
   (for ([v (in-list values)] [i (in-naturals)]) (ptr-set! p _int i v)) p)
+; resolve : any/c -> any
+;;   Resolves GL entry points through EGL first, then the EGL and desktop GL libraries.
 (define (resolve name)
   (or (eglGetProcAddress name)
       (get-ffi-obj name (force lib) _fpointer (lambda () #f))
       (and (force gl-lib) (get-ffi-obj name (force gl-lib) _fpointer (lambda () #f)))))
+; extension-function : any/c ctype? -> any
+;;   Requires an advertised EGL extension procedure and casts its address to the reviewed signature.
 (define (extension-function name type)
   (define p (resolve name))
   (unless p (gpu-unavailable 'egl-entrypoint "EGL function ~a is unavailable" name))
   (cast p _pointer type))
+; require-extension : any/c any/c -> void?
+;;   Requires a complete extension token rather than accepting a substring of another extension
+;;   name.
 (define (require-extension text name)
   (unless (egl-extension? text name)
     (gpu-unavailable 'egl-extension "required extension ~a is not advertised" name)))
@@ -79,13 +158,29 @@
 ;; All operations are serialized by the package EGL provider lock. Borrowed
 ;; current-context providers never initialize/terminate the host display.
 (struct display-entry (pointer [references #:mutable] major minor extensions))
+;; Fields:
+;;   pointer: retained EGL display handle. references: mutable host-reference count. major and
+;;   minor: initialized EGL version. extensions: copied extension description. The display is
+;;   terminated only after its last owned reference is released.
+
+; displays : hash?
+;;   Tracks shared display initialization counts so EGL termination happens only after the last
+;;   owned host closes.
 (define displays (make-hasheqv))
+; quarantine : hash?
+;;   Roots hosts whose native cleanup may have failed, preventing unsafe repeated destruction.
 (define quarantine (make-hasheq))
+; owned-contexts : hash?
+;;   Maps created context addresses to their owned hosts for binding and teardown checks.
 (define owned-contexts (make-hasheqv))
+; retain-display! : any/c -> any
+;;   Initializes an unclaimed display once and increments this module's shared display reference
+;;   count.
 (define (retain-display! p)
   (define key (address p))
   (define previous (hash-ref displays key #f))
-  (cond [previous (set-display-entry-references! previous (add1 (display-entry-references previous))) previous]
+  (cond [previous (set-display-entry-references! previous (add1 (display-entry-references previous)))
+    previous]
         [else
          ;; EGL initialization is not reference-counted. Refuse an already
          ;; initialized display owned outside this module, even when it has no
@@ -97,11 +192,14 @@
              "EGL display was initialized outside this adapter; borrow its current provider instead"))
          (define state-error (eglGetError))
          (unless (= state-error #x3001) ; EGL_NOT_INITIALIZED
-           (gpu-unavailable 'egl-display-ownership "cannot establish exclusive display ownership (EGL error 0x~x)" state-error))
+           (gpu-unavailable 'egl-display-ownership
+             "cannot establish exclusive display ownership (EGL error 0x~x)" state-error))
          (define major (int-cell)) (define minor (int-cell))
          (ok 'eglInitialize (eglInitialize p major minor))
          (define entry (display-entry p 1 (ptr-ref major _int) (ptr-ref minor _int) (query p #x3055)))
          (hash-set! displays key entry) entry]))
+; release-display! : display-entry? -> any
+;;   Terminates a display only when its last retained owned host is released.
 (define (release-display! entry)
   (cond [(> (display-entry-references entry) 1)
          (set-display-entry-references! entry (sub1 (display-entry-references entry)))]
@@ -110,9 +208,16 @@
          (hash-remove! displays (address (display-entry-pointer entry)))
          (set-display-entry-references! entry 0)]))
 (struct egl-host (entry context draw read details owned? [closed? #:mutable]))
+;; Fields:
+;;   entry: retained display-entry. context: EGL context handle. draw and read: draw/read surface
+;;   handles. details: detached diagnostics. owned?: whether this host owns native teardown.
+;;   closed?: mutable lifetime flag.
+
 ;; Save/restore the desktop GL current binding AND the caller's bound client
 ;; API. Query GL bindings after selecting GL, not a potentially different ES
 ;; API. We never use eglReleaseThread: it would discard foreign API state.
+; call-with-desktop-binding : any/c -> any
+;;   Saves and restores the caller's client API and desktop GL binding around EGL work.
 (define (call-with-desktop-binding thunk)
   (define api (eglQueryAPI))
   (define d #f) (define context #f) (define draw #f) (define read #f)
@@ -136,6 +241,8 @@
                     [(eglGetCurrentContext)
                      (ok 'eglUnbind (eglMakeCurrent (eglGetCurrentDisplay) #f #f #f))]))
             (lambda () (ok 'eglRestoreAPI (eglBindAPI api)))))))))
+; enter : egl-host? -> any
+;;   Makes an open host current and returns the restoration procedure for the preceding binding.
 (define (enter host)
   (when (egl-host-closed? host) (error 'egl-provider "EGL host is closed"))
   (define api (eglQueryAPI))
@@ -151,14 +258,18 @@
         (lambda ()
           (ok 'eglBindAPI (eglBindAPI EGL-OPENGL-API))
           (cond [previous-context
-                 (ok 'eglRestoreCurrent (eglMakeCurrent previous-display previous-draw previous-read previous-context))]
+                 (ok 'eglRestoreCurrent (eglMakeCurrent previous-display previous-draw previous-read
+                   previous-context))]
                 [(eglGetCurrentContext)
                  (ok 'eglUnbind (eglMakeCurrent (eglGetCurrentDisplay) #f #f #f))]))
         (lambda () (ok 'eglRestoreAPI (eglBindAPI api))))))
   (with-handlers ([(lambda (_) #t) (lambda (e) (restore) (raise e))])
     (ok 'eglMakeCurrent (eglMakeCurrent (display-entry-pointer (egl-host-entry host))
-                                       (egl-host-draw host) (egl-host-read host) (egl-host-context host))))
+                                       (egl-host-draw host) (egl-host-read host) (egl-host-context
+                                         host))))
   restore)
+; current? : egl-host? -> any
+;;   Checks the client API, display, context, and both surfaces against the host's complete binding.
 (define (current? host)
   (and (= (eglQueryAPI) EGL-OPENGL-API)
        (not (egl-host-closed? host))
@@ -166,6 +277,9 @@
        (pointer=? (eglGetCurrentDisplay) (display-entry-pointer (egl-host-entry host)))
        (pointer=? (eglGetCurrentSurface #x3059) (egl-host-draw host))
        (pointer=? (eglGetCurrentSurface #x305A) (egl-host-read host))))
+; close : egl-host? -> void?
+;;   Retires owned context, surface, and display references, retaining uncertain failures in
+;;   quarantine.
 (define (close host)
   (unless (egl-host-closed? host)
     (unless (egl-host-owned? host) (error 'egl-close "cannot destroy a borrowed EGL host"))
@@ -184,6 +298,9 @@
     (release-display! (egl-host-entry host))
     (hash-remove! owned-contexts (address (egl-host-context host)))
     (hash-remove! quarantine host)))
+; close-owned : any/c -> any
+;;   Unbinds this host when necessary and closes it without disturbing an unrelated client API
+;;   binding.
 (define (close-owned host)
   ;; The enclosing provider retains the *previous* binding separately. Normal
   ;; Ganesh release calls this with our EGL context current; lost-domain close
@@ -196,6 +313,8 @@
         (ok 'eglUnbind (eglMakeCurrent (display-entry-pointer (egl-host-entry host)) #f #f #f)))
       (close host))
     (lambda () (ok 'eglRestoreAPI (eglBindAPI api)))))
+; describe : egl-host? -> hash?
+;;   Checks the active desktop GL version and returns detached driver evidence for the host.
 (define (describe host)
   (unless (current? host) (error 'egl-diagnostics "EGL context is not current"))
   (define get-string (extension-function "glGetString" (_fun _uint32 -> _pointer)))
@@ -215,6 +334,9 @@
              'renderer_class_evidence "driver strings; not an independent hardware attestation"
              'profile_mask (gl-int #x9126)
              'host_samples (gl-int #x80A9) 'shading_language_version (gl-string #x8B8C)))
+; create : any/c any/c any/c -> any
+;;   Selects an EGL display and constructs a desktop GL host with checked platform, surface, and
+;;   cleanup paths.
 (define (create platform index surface)
   (force lib) (force process-token)
   (define client (query #f #x3055))
@@ -222,10 +344,12 @@
     ;; A loader can export a 1.5 stub while the driver only advertises the
     ;; 1.4 EXT entry point. Prefer the explicitly advertised platform contract.
     (cond [(egl-extension? client "EGL_EXT_platform_base")
-           (extension-function "eglGetPlatformDisplayEXT" (_fun _uint32 _pointer _pointer -> _pointer))]
+           (extension-function "eglGetPlatformDisplayEXT" (_fun _uint32 _pointer _pointer ->
+             _pointer))]
           [else
            (define p (get-ffi-obj 'eglGetPlatformDisplay (force lib) _fpointer (lambda () #f)))
-           (unless p (gpu-unavailable 'egl-entrypoint "neither EGL 1.5 platform display nor EGL_EXT_platform_base is available"))
+           (unless p (gpu-unavailable 'egl-entrypoint
+             "neither EGL 1.5 platform display nor EGL_EXT_platform_base is available"))
            (cast p _pointer (_fun _uint32 _pointer _pointer -> _pointer))]))
   (define device
     (case platform
@@ -235,7 +359,8 @@
        (unless (or (egl-extension? client "EGL_EXT_device_enumeration")
                    (egl-extension? client "EGL_EXT_device_base"))
          (gpu-unavailable 'egl-device "EGL device enumeration is not advertised"))
-       (define enumerate (extension-function "eglQueryDevicesEXT" (_fun _int _pointer _pointer -> _uint32)))
+       (define enumerate (extension-function "eglQueryDevicesEXT" (_fun _int _pointer _pointer ->
+         _uint32)))
        (define count (int-cell))
        (ok 'eglQueryDevicesEXT (enumerate 0 #f count))
        (define n (ptr-ref count _int))
@@ -245,21 +370,25 @@
        (unless (< index (min n (ptr-ref count _int)))
          (gpu-unavailable 'egl-device "device-index ~a exceeds the enumerated device list" index))
        (ptr-ref devices _pointer index)]))
-  (define d (ok 'eglGetPlatformDisplay (get-display (if (eq? platform 'device) #x313F #x31DD) device #f)))
+  (define d (ok 'eglGetPlatformDisplay (get-display (if (eq? platform 'device) #x313F #x31DD) device
+    #f)))
   (define entry #f) (define ctx #f) (define buffer #f) (define success? #f)
   (call-with-desktop-binding
    (lambda ()
      ;; A current foreign owner on the same display cannot be safely adopted.
      (when (and (pointer=? d (eglGetCurrentDisplay))
                 (not (hash-has-key? displays (address d))))
-       (gpu-unavailable 'egl-display-ownership "this EGL display is already current outside the package; use make-current-egl-gpu-provider"))
+       (gpu-unavailable 'egl-display-ownership
+         "this EGL display is already current outside the package; use make-current-egl-gpu-provider"))
      (dynamic-wind
        void
        (lambda ()
          (set! entry (retain-display! d))
          (define version15? (or (> (display-entry-major entry) 1)
-                               (and (= (display-entry-major entry) 1) (>= (display-entry-minor entry) 5))))
-         (unless version15? (require-extension (display-entry-extensions entry) "EGL_KHR_create_context"))
+                               (and (= (display-entry-major entry) 1) (>= (display-entry-minor entry)
+                                 5))))
+         (unless version15? (require-extension (display-entry-extensions entry)
+           "EGL_KHR_create_context"))
          (when (and (eq? surface 'surfaceless) (not version15?))
            (require-extension (display-entry-extensions entry) "EGL_KHR_surfaceless_context"))
          (define config-p (malloc _pointer 'atomic)) (ptr-set! config-p _pointer #f)
@@ -267,17 +396,21 @@
          (define attrs (ints #x3040 #x0008 #x3033 (if (eq? surface 'pbuffer) #x0001 0)
                              #x3024 8 #x3023 8 #x3022 8 #x3021 8 EGL-NONE))
          (ok 'eglChooseConfig (eglChooseConfig d attrs config-p 1 count))
-         (unless (positive? (ptr-ref count _int)) (gpu-unavailable 'egl-config "no desktop GL EGL config matches"))
+         (unless (positive? (ptr-ref count _int)) (gpu-unavailable 'egl-config
+           "no desktop GL EGL config matches"))
          (define config (ptr-ref config-p _pointer))
          (when (eq? surface 'pbuffer)
-           (set! buffer (ok 'eglCreatePbufferSurface (eglCreatePbufferSurface d config (ints #x3057 1 #x3056 1 EGL-NONE)))))
+           (set! buffer (ok 'eglCreatePbufferSurface (eglCreatePbufferSurface d config (ints #x3057 1
+             #x3056 1 EGL-NONE)))))
          (set! ctx (ok 'eglCreateContext
-                       (eglCreateContext d config #f (ints #x3098 3 #x30FB 3 #x30FD #x0001 EGL-NONE))))
+                       (eglCreateContext d config #f (ints #x3098 3 #x30FB 3 #x30FD #x0001
+                         EGL-NONE))))
          (set! success? #t)
          (define result (egl-host entry ctx buffer buffer
            (hasheq 'egl_platform (symbol->string platform) 'egl_surface (symbol->string surface)
                    'egl_device_index (and (eq? platform 'device) index)
-                   'egl_version (format "~a.~a" (display-entry-major entry) (display-entry-minor entry))
+                   'egl_version (format "~a.~a" (display-entry-major entry) (display-entry-minor
+                     entry))
                    'egl_vendor (query d #x3053) 'headless #t 'display_server_free #t
                    'window_created #f 'requires_window #f 'requires_glx #f
                    'owns_egl_context #t 'owns_egl_display_initialization #t
@@ -294,10 +427,17 @@
            (when ctx (ok 'eglDestroyContext (eglDestroyContext d ctx)))
            (when buffer (ok 'eglDestroySurface (eglDestroySurface d buffer)))
            (when entry (release-display! entry))))))))
+; make-egl-platform-ops : any/c any/c any/c -> egl-platform-ops?
+;;   Packages owned EGL creation, activation, inspection, and retirement operations for the backend
+;;   driver.
 (define (make-egl-platform-ops platform index surface)
   (check-egl-options 'make-egl-platform-ops platform index surface)
   (force lib)
-  (egl-platform-ops (lambda () (create platform index surface)) close-owned enter current? describe resolve))
+  (egl-platform-ops (lambda () (create platform index surface)) close-owned enter current? describe
+    resolve))
+; capture-current-egl-provider : -> any
+;;   Describes the caller's current EGL binding as a borrowed provider without taking native
+;;   ownership.
 (define (capture-current-egl-provider)
   (force lib) (force process-token)
   (unless (= (eglQueryAPI) EGL-OPENGL-API)
@@ -305,7 +445,8 @@
   (define ctx (eglGetCurrentContext)) (define d (eglGetCurrentDisplay))
   (unless (and ctx d) (gpu-unavailable 'egl-current "no current desktop EGL context"))
   (when (hash-has-key? owned-contexts (address ctx))
-    (gpu-unavailable 'egl-current-ownership "use the existing owned GPU context, not a second Ganesh wrapper"))
+    (gpu-unavailable 'egl-current-ownership
+      "use the existing owned GPU context, not a second Ganesh wrapper"))
   (define host
     (egl-host (display-entry d 0 0 0 (query d #x3055)) ctx
       (eglGetCurrentSurface #x3059) (eglGetCurrentSurface #x305A)

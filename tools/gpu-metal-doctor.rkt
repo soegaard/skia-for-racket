@@ -1,16 +1,37 @@
 #lang racket/base
+
+;;;
+;;; GPU Metal Doctor
+;;;
+
+;; Exercises Metal device/queue ownership, activation scopes, and abandonment and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/path racket/list rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../private/gpu-native.rkt"
          "../tests/gpu-metal-native-test.rkt" "gpu-report.rkt")
 (provide gpu-metal-doctor!)
 ;; This process never imports/initializes a Racket GUI or OpenGL provider.
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gpu-metal-doctor! : path-string? [#:required? boolean? #:require-hardware? boolean?] ->
+; exact-integer?
+;;   Checks owned Metal queues, native activation, GC retirement, and repeated context teardown.
 (define (gpu-metal-doctor! prefix #:required? [required? #t] #:require-hardware? [hardware? #f])
   (define started? #f) (define cycles '()) (define failures #f)
   (define (report status message)
     (hasheq 'schema_version 1 'stage "0.41" 'kind "metal-lifecycle" 'backend "metal"
             'status status 'message message 'required required? 'require_hardware hardware?
             'os (symbol->string (system-type 'os)) 'architecture (symbol->string (system-type 'arch))
-            'racket_version (version) 'validation_run (or (getenv "SKIA_GPU_VALIDATION_RUN") #f) 'headless #t 'presentation_tested #f
+            'racket_version (version) 'validation_run (or (getenv "SKIA_GPU_VALIDATION_RUN") #f)
+      'headless #t 'presentation_tested #f
             'native_test_cases gpu-metal-native-test-count 'native_test_failures failures
             'cycles (reverse cycles) 'performance_measured #f))
   (define (publish status message)
@@ -51,7 +72,20 @@
     (publish "passed" #f)
     0))
 (module+ main
-  (define prefix "output/gpu-metal-0.41") (define required? #t) (define hardware? #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; prefix : path-string?
+  ;;   Sets the common output-path prefix for diagnostic images and JSON evidence.
+  (define prefix "output/gpu-metal-0.41")
+  ; required? : boolean?
+  ;;   Makes unavailable backend support a failed run when true, rather than a permitted skip.
+  (define required? #t)
+  ; hardware? : boolean?
+  ;;   Requires evidence of a hardware renderer instead of accepting a software implementation.
+  (define hardware? #f)
   (command-line #:once-each
     [("--prefix") p "Artifact prefix" (set! prefix p)]
     [("--optional") "Allow initial unavailability only" (set! required? #f)]

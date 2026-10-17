@@ -1,29 +1,88 @@
 #lang racket/base
+
+;;;
+;;; Live Stream Native Test
+;;;
+
+;; Covers live ports and native consumers; real Skia required.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file racket/list racket/port "../main.rkt"
          (only-in "../private/live-port-runtime.rkt" active-operation-count in-port-service?))
 (provide live-stream-native-tests live-stream-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; live-stream-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define live-stream-native-test-count 42)
+
+; pixels : bytes?
+;;   Stores a 2-by-2 opaque red, green, blue, and white image in row-major RGBA order.
 (define pixels (bytes 255 0 0 255 0 255 0 255 0 0 255 255 255 255 255 255))
+
+; with-image : procedure? -> any
+;;   Scopes the deterministic four-pixel source image around a streaming test.
 (define (with-image proc) (with-skia ([im (rgba-bytes->image 2 2 pixels)]) (proc im)))
+
+; png : -> bytes?
+;;   Encodes the shared source image as a complete PNG reference.
 (define (png) (with-image image->png-bytes))
-(define (draw-red c) (with-skia ([p (make-paint #:color 'red #:antialias? #f)]) (draw-rect c 0 0 64 48 p)))
+
+; draw-red : canvas? -> void?
+;;   Draws the opaque red page used to compare streamed document and picture output.
+(define (draw-red c)
+  (with-skia ([p (make-paint #:color 'red #:antialias? #f)]) (draw-rect c 0 0 64 48 p)))
+
+; page : [procedure?] -> output-page?
+;;   Builds a 64-by-48-unit output page from the selected drawing callback.
 (define (page [draw draw-red]) (make-output-page 64 48 draw))
+
+; picture : -> picture?
+;;   Records the red fixture into a caller-owned picture.
 (define (picture) (call-with-picture 64 48 draw-red))
+
+; with-path : (path? -> any) -> any
+;;   Provides a fresh nonexisting output path and removes any produced file afterward.
 (define (with-path proc)
   (define path (make-temporary-file "skia-live-~a.bin")) (delete-file path)
-  (dynamic-wind void (lambda () (proc path)) (lambda () (when (file-exists? path) (delete-file path)))))
+  (dynamic-wind void (lambda () (proc path))
+    (lambda () (when (file-exists? path) (delete-file path)))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; live-stream-native-tests : test-suite?
+;;   Collects the regression cases for live ports and native consumers; real Skia required.
 (define live-stream-native-tests
  (test-suite "Live ports and native consumers; real Skia required"
-  (test-case "pure-FFI bridge ready and no jobs" (live-streams-check!) (check-equal? (active-operation-count) 0))
-  (test-case "copy crosses chunk boundaries" (define bs (make-bytes 131079 37)) (define out (open-output-bytes)) (check-equal? (copy-port/streaming (open-input-bytes bs) out) (bytes-length bs)) (check-equal? (get-output-bytes out) bs))
-  (test-case "empty EOF" (check-equal? (copy-port/streaming (open-input-bytes #"") (open-output-bytes)) 0))
+  (test-case "pure-FFI bridge ready and no jobs" (live-streams-check!)
+    (check-equal? (active-operation-count) 0))
+  (test-case "copy crosses chunk boundaries" (define bs (make-bytes 131079 37))
+    (define out (open-output-bytes))
+    (check-equal? (copy-port/streaming (open-input-bytes bs) out) (bytes-length bs))
+    (check-equal? (get-output-bytes out) bs))
+  (test-case "empty EOF"
+    (check-equal? (copy-port/streaming (open-input-bytes #"") (open-output-bytes)) 0))
   (test-case "short write on protected service thread"
     (define owner (current-thread)) (define collected (open-output-bytes))
     (define out (make-output-port 'short always-evt (lambda (bs start end _block? _break?)
-      (check-false (eq? (current-thread) owner)) (check-true (in-port-service?)) (define n (min 3 (- end start))) (write-bytes bs collected start (+ start n)) n) void))
-    (check-equal? (copy-port/streaming (open-input-bytes #"abcdefg") out) 7) (check-equal? (get-output-bytes collected) #"abcdefg"))
+      (check-false (eq? (current-thread) owner)) (check-true (in-port-service?))
+                                                      (define n (min 3 (- end start)))
+                                                      (write-bytes bs collected start (+ start n))
+                                                      n) void))
+    (check-equal? (copy-port/streaming (open-input-bytes #"abcdefg") out) 7)
+    (check-equal? (get-output-bytes collected) #"abcdefg"))
   (test-case "output precedes completion of input"
-    (define-values (in writer) (make-pipe)) (define release (make-semaphore)) (define timed-out? (box #f))
+    (define-values (in writer) (make-pipe)) (define release (make-semaphore))
+    (define timed-out? (box #f))
     (define first (make-bytes 65536 37)) (define last #"tail") (define collected (open-output-bytes))
     (define producer (thread (lambda () (write-bytes first writer)
       (unless (sync/timeout 5 release) (set-box! timed-out? #t))
@@ -31,46 +90,83 @@
     (define out (make-output-port 'progress always-evt (lambda (bs start end _block? _break?)
       (write-bytes bs collected start end) (semaphore-post release) (- end start)) void))
     (copy-port/streaming in out #:close-input? #t) (thread-wait producer)
-    (check-false (unbox timed-out?)) (check-equal? (get-output-bytes collected) (bytes-append first last)))
-  (test-case "borrowed ports stay open" (define in (open-input-bytes #"a")) (define out (open-output-bytes)) (copy-port/streaming in out) (check-false (port-closed? in)) (check-false (port-closed? out)))
-  (test-case "owned ports close" (define in (open-input-bytes #"a")) (define out (open-output-bytes)) (copy-port/streaming in out #:close-input? #t #:close-output? #t) (check-true (port-closed? in)) (check-true (port-closed? out)))
+    (check-false (unbox timed-out?))
+    (check-equal? (get-output-bytes collected) (bytes-append first last)))
+  (test-case "borrowed ports stay open" (define in (open-input-bytes #"a"))
+    (define out (open-output-bytes)) (copy-port/streaming in out) (check-false (port-closed? in))
+    (check-false (port-closed? out)))
+  (test-case "owned ports close" (define in (open-input-bytes #"a"))
+    (define out (open-output-bytes))
+    (copy-port/streaming in out #:close-input? #t #:close-output? #t)
+    (check-true (port-closed? in)) (check-true (port-closed? out)))
   (test-case "original input exception after native cleanup"
     (define in (make-input-port 'fail (lambda (_) (raise 'read-error)) #f void))
-    (check-exn (lambda (e) (eq? e 'read-error)) (lambda () (copy-port/streaming in (open-output-bytes) #:close-input? #t)))
+    (check-exn (lambda (e) (eq? e 'read-error))
+      (lambda () (copy-port/streaming in (open-output-bytes) #:close-input? #t)))
     (check-true (port-closed? in)) (check-equal? (active-operation-count) 0))
   (test-case "write error retains partial prefix"
     (define collected (open-output-bytes)) (define calls 0)
     (define out (make-output-port 'fail always-evt (lambda (bs start end _block? _break?)
-      (set! calls (add1 calls)) (if (= calls 1) (begin (write-bytes bs collected start (add1 start)) 1) (raise 'write-error))) void))
-    (check-exn (lambda (e) (eq? e 'write-error)) (lambda () (copy-port/streaming (open-input-bytes #"abc") out)))
+      (set! calls (add1 calls))
+                                                     (if (= calls 1)
+                                                       (begin (write-bytes bs collected start
+                                                            (add1 start)) 1) (raise 'write-error)))
+                  void))
+    (check-exn (lambda (e) (eq? e 'write-error))
+      (lambda () (copy-port/streaming (open-input-bytes #"abc") out)))
     (check-equal? (get-output-bytes collected) #"a") (check-equal? (active-operation-count) 0))
   (test-case "cancel blocked input"
     (define-values (in out) (make-pipe)) (define stop (make-semaphore))
     (define timer (thread (lambda () (sleep 0.01) (semaphore-post stop))))
-    (check-exn #rx"cancelled" (lambda () (copy-port/streaming in (open-output-bytes) #:cancel-evt (semaphore-peek-evt stop))))
-    (thread-wait timer) (close-input-port in) (close-output-port out) (check-equal? (active-operation-count) 0))
+    (check-exn #rx"cancelled"
+      (lambda () (copy-port/streaming in (open-output-bytes) #:cancel-evt (semaphore-peek-evt stop))))
+    (thread-wait timer) (close-input-port in) (close-output-port out)
+    (check-equal? (active-operation-count) 0))
   (test-case "cancel blocked output"
     (define-values (in out) (make-pipe 1)) (define stop (make-semaphore))
     (define timer (thread (lambda () (sync in) (semaphore-post stop))))
-    (check-exn #rx"cancelled" (lambda () (copy-port/streaming (open-input-bytes #"abc") out #:close-output? #t #:cancel-evt (semaphore-peek-evt stop))))
-    (thread-wait timer) (check-equal? (read-bytes 10 in) #"a") (close-input-port in) (check-equal? (active-operation-count) 0))
+    (check-exn #rx"cancelled"
+      (lambda () (copy-port/streaming (open-input-bytes #"abc") out #:close-output? #t #:cancel-evt
+                   (semaphore-peek-evt stop))))
+    (thread-wait timer) (check-equal? (read-bytes 10 in) #"a") (close-input-port in)
+    (check-equal? (active-operation-count) 0))
   (test-case "reject callback reentry"
     (define out (make-output-port 'reentry always-evt (lambda (_bs _start _end _block? _break?)
       (copy-port/streaming (open-input-bytes #"x") (open-output-bytes))) void))
     (check-exn #rx"re-enter" (lambda () (copy-port/streaming (open-input-bytes #"abc") out)))
     (check-equal? (active-operation-count) 0))
-  (test-case "quota is not fake EOF" (check-exn exn:fail? (lambda () (copy-port/streaming (open-input-bytes #"abcd") (open-output-bytes) #:limit 3))) (check-equal? (active-operation-count) 0))
-  (test-case "live PNG decode" (with-skia ([im (image-from-port (open-input-bytes (png)))]) (check-equal? (image->rgba-bytes im) pixels)))
+  (test-case "quota is not fake EOF"
+    (check-exn exn:fail?
+      (lambda () (copy-port/streaming (open-input-bytes #"abcd") (open-output-bytes) #:limit 3)))
+    (check-equal? (active-operation-count) 0))
+  (test-case "live PNG decode"
+    (with-skia ([im (image-from-port (open-input-bytes (png)))])
+      (check-equal? (image->rgba-bytes im) pixels)))
   (test-case "nonseekable PNG input"
     (define-values (in out) (make-pipe)) (write-bytes (png) out) (close-output-port out)
-    (with-skia ([im (image-from-port in #:close? #t)]) (check-true (port-closed? in)) (collect-garbage) (check-equal? (image->rgba-bytes im) pixels)))
+    (with-skia ([im (image-from-port in #:close? #t)]) (check-true (port-closed? in))
+      (collect-garbage) (check-equal? (image->rgba-bytes im) pixels)))
   (test-case "seekable view starts at caller position"
-    (define bs (png)) (define in (open-input-bytes (bytes-append #"prefix" bs #"tail"))) (read-bytes 6 in)
-    (with-skia ([im (image-from-port in #:length (bytes-length bs) #:seekable? #t)]) (check-equal? (image-width im) 2))
+    (define bs (png)) (define in (open-input-bytes (bytes-append #"prefix" bs #"tail")))
+    (read-bytes 6 in)
+    (with-skia ([im (image-from-port in #:length (bytes-length bs) #:seekable? #t)])
+      (check-equal? (image-width im) 2))
     (check-true (<= (file-position in) (+ 6 (bytes-length bs)))))
-  (test-case "bad image fails and cleans worker" (check-exn exn:fail? (lambda () (image-from-port (open-input-bytes #"not an image")))) (check-equal? (active-operation-count) 0))
-  (test-case "PNG output decodes independently" (with-image (lambda (im) (define out (open-output-bytes)) (define n (image->port im out 'png)) (check-equal? n (bytes-length (get-output-bytes out))) (with-skia ([again (image-from-bytes (get-output-bytes out))]) (check-equal? (image->rgba-bytes again) pixels)))))
-  (test-case "JPEG and WebP native output" (with-image (lambda (im) (for ([format '(jpeg webp)]) (define out (open-output-bytes)) (image->port im out format #:quality 100 #:webp-lossless? #t) (with-skia ([again (image-from-bytes (get-output-bytes out))]) (check-equal? (image-width again) 2) (when (eq? format 'webp) (check-equal? (image->rgba-bytes again) pixels)))))))
+  (test-case "bad image fails and cleans worker"
+    (check-exn exn:fail? (lambda () (image-from-port (open-input-bytes #"not an image"))))
+    (check-equal? (active-operation-count) 0))
+  (test-case "PNG output decodes independently"
+    (with-image (lambda (im) (define out (open-output-bytes)) (define n (image->port im out 'png))
+                  (check-equal? n (bytes-length (get-output-bytes out)))
+                  (with-skia ([again (image-from-bytes (get-output-bytes out))])
+                    (check-equal? (image->rgba-bytes again) pixels)))))
+  (test-case "JPEG and WebP native output"
+    (with-image (lambda (im)
+                  (for ([format '(jpeg webp)]) (define out (open-output-bytes))
+                    (image->port im out format #:quality 100 #:webp-lossless? #t)
+                    (with-skia ([again (image-from-bytes (get-output-bytes out))])
+                      (check-equal? (image-width again) 2)
+                      (when (eq? format 'webp) (check-equal? (image->rgba-bytes again) pixels)))))))
   (test-case "port callback cannot use caller-thread-affine image wrappers"
     (with-skia ([im (rgba-bytes->image 2 2 pixels)])
       (define collected (open-output-bytes))
@@ -83,24 +179,69 @@
       (check-true refused?) (check-false (skia-closed? im))
       (with-skia ([again (image-from-bytes (get-output-bytes collected))])
         (check-equal? (image->rgba-bytes again) pixels))))
-  (test-case "SKP stream roundtrip" (with-skia ([pic (picture)]) (define out (open-output-bytes)) (picture->port pic out) (with-skia ([again (picture-from-port (open-input-bytes (get-output-bytes out)) #:trusted? #t)]) (check-equal? (picture-cull-bounds again) (picture-cull-bounds pic)))))
-  (test-case "SKP trust before input" (define in (open-input-bytes #"unread")) (check-exn exn:fail? (lambda () (picture-from-port in))) (check-equal? (read-byte in) 117))
-  (test-case "native memory encoder" (with-image (lambda (im) (with-skia ([out (make-memory-output-stream)]) (image-write-stream! im out 'png) (with-skia ([again (image-from-bytes (output-stream->bytes out))]) (check-equal? (image->rgba-bytes again) pixels))))))
-  (test-case "native memory picture writer" (with-skia ([pic (picture)] [out (make-memory-output-stream)]) (picture-write-stream! pic out) (check-true (regexp-match? #rx#"^skiapict" (output-stream->bytes out)))))
-  (test-case "native encoder quota poisons destination" (with-image (lambda (im) (with-skia ([out (make-memory-output-stream #:limit 8)]) (check-exn exn:fail? (lambda () (image-write-stream! im out 'png))) (check-exn #rx"native output failed" (lambda () (output-stream->bytes out)))
+  (test-case "SKP stream roundtrip"
+    (with-skia ([pic (picture)]) (define out (open-output-bytes)) (picture->port pic out)
+      (with-skia ([again
+                    (picture-from-port (open-input-bytes (get-output-bytes out)) #:trusted? #t)])
+        (check-equal? (picture-cull-bounds again) (picture-cull-bounds pic)))))
+  (test-case "SKP trust before input" (define in (open-input-bytes #"unread"))
+    (check-exn exn:fail? (lambda () (picture-from-port in))) (check-equal? (read-byte in) 117))
+  (test-case "native memory encoder"
+    (with-image (lambda (im)
+                  (with-skia ([out (make-memory-output-stream)]) (image-write-stream! im out 'png)
+                    (with-skia ([again (image-from-bytes (output-stream->bytes out))])
+                      (check-equal? (image->rgba-bytes again) pixels))))))
+  (test-case "native memory picture writer"
+    (with-skia ([pic (picture)] [out (make-memory-output-stream)]) (picture-write-stream! pic out)
+      (check-true (regexp-match? #rx#"^skiapict" (output-stream->bytes out)))))
+  (test-case "native encoder quota poisons destination"
+    (with-image (lambda (im)
+                  (with-skia ([out (make-memory-output-stream #:limit 8)])
+                    (check-exn exn:fail? (lambda () (image-write-stream! im out 'png)))
+                    (check-exn #rx"native output failed" (lambda () (output-stream->bytes out)))
       (skia-close! out) (check-true (skia-closed? out))))))
-  (test-case "native file output" (with-path (lambda (path) (with-skia ([out (make-file-output-stream path)]) (output-stream-write-bytes! out #"abc") (output-stream-flush! out) (check-exn exn:fail? (lambda () (output-stream->bytes out))) (check-exn exn:fail? (lambda () (output-stream-detach-input! out)))) (check-equal? (file->bytes path) #"abc"))))
-  (test-case "file exists policy" (with-path (lambda (path) (with-skia ([out (make-file-output-stream path)]) (void)) (check-exn exn:fail? (lambda () (make-file-output-stream path))) (with-skia ([out (make-file-output-stream path #:exists 'replace)]) (output-stream-write-bytes! out #"new")) (check-equal? (file->bytes path) #"new"))))
-  (test-case "PDF and SVG author once" (for ([format '(pdf svg)]) (define count 0) (define out (open-output-bytes)) (output->port (page (lambda (c) (set! count (add1 count)) (draw-red c))) out format) (check-equal? count 1) (check-true (regexp-match? (if (eq? format 'pdf) #rx#"^%PDF" #rx#"<svg") (get-output-bytes out)))))
-  (test-case "native PDF stream output" (with-skia ([out (make-memory-output-stream)]) (output-write-stream! (page) out) (check-true (regexp-match? #rx#"^%PDF" (output-stream->bytes out)))))
-  (test-case "closed native output rejects before authoring" (define out (make-memory-output-stream)) (skia-close! out) (define count 0) (check-exn exn:fail? (lambda () (output-write-stream! (page (lambda (c) (set! count (add1 count)))) out))) (check-equal? count 0))
+  (test-case "native file output"
+    (with-path (lambda (path)
+                 (with-skia ([out (make-file-output-stream path)])
+                   (output-stream-write-bytes! out #"abc") (output-stream-flush! out)
+                   (check-exn exn:fail? (lambda () (output-stream->bytes out)))
+                   (check-exn exn:fail? (lambda () (output-stream-detach-input! out))))
+                 (check-equal? (file->bytes path) #"abc"))))
+  (test-case "file exists policy"
+    (with-path (lambda (path) (with-skia ([out (make-file-output-stream path)]) (void))
+                 (check-exn exn:fail? (lambda () (make-file-output-stream path)))
+                 (with-skia ([out (make-file-output-stream path #:exists 'replace)])
+                   (output-stream-write-bytes! out #"new"))
+                 (check-equal? (file->bytes path) #"new"))))
+  (test-case "PDF and SVG author once"
+    (for ([format '(pdf svg)]) (define count 0) (define out (open-output-bytes))
+      (output->port (page (lambda (c) (set! count (add1 count)) (draw-red c))) out format)
+      (check-equal? count 1)
+      (check-true (regexp-match? (if (eq? format 'pdf) #rx#"^%PDF" #rx#"<svg")
+                    (get-output-bytes out)))))
+  (test-case "native PDF stream output"
+    (with-skia ([out (make-memory-output-stream)]) (output-write-stream! (page) out)
+      (check-true (regexp-match? #rx#"^%PDF" (output-stream->bytes out)))))
+  (test-case "closed native output rejects before authoring"
+    (define out (make-memory-output-stream)) (skia-close! out) (define count 0)
+    (check-exn exn:fail?
+      (lambda () (output-write-stream! (page (lambda (c) (set! count (add1 count)))) out)))
+    (check-equal? count 0))
   (test-case "imported picture remains unknown to document audit"
     (with-skia ([pic (picture)] [loaded (picture-from-bytes (picture->bytes pic) #:trusted? #t)])
       (define out (open-output-bytes))
-      (check-exn exn:fail:output-audit? (lambda () (output->port (page (lambda (c) (draw-picture c loaded))) out 'pdf)))
+      (check-exn exn:fail:output-audit?
+        (lambda () (output->port (page (lambda (c) (draw-picture c loaded))) out 'pdf)))
       (check-equal? (get-output-bytes out) #"")))
-  (test-case "named destinations are not silently lost" (define out (open-output-bytes)) (check-exn exn:fail? (lambda () (output->port (page (lambda (c) (canvas-define-destination! c "named" 0 0))) out 'pdf))) (check-equal? (get-output-bytes out) #""))
-  (test-case "URL annotations survive native replay" (define out (open-output-bytes)) (output->port (page (lambda (c) (draw-red c) (canvas-annotate-url! c 1 1 10 10 "https://example.test/live"))) out 'svg) (check-true (regexp-match? #rx#"https://example.test/live" (get-output-bytes out))))
+  (test-case "named destinations are not silently lost" (define out (open-output-bytes))
+    (check-exn exn:fail?
+      (lambda () (output->port (page (lambda (c) (canvas-define-destination! c "named" 0 0))) out
+                   'pdf))) (check-equal? (get-output-bytes out) #""))
+  (test-case "URL annotations survive native replay" (define out (open-output-bytes))
+    (output->port (page
+                    (lambda (c) (draw-red c)
+                      (canvas-annotate-url! c 1 1 10 10 "https://example.test/live"))) out 'svg)
+    (check-true (regexp-match? #rx#"https://example.test/live" (get-output-bytes out))))
   (test-case "source image is still usable after publication failure"
     (with-image (lambda (im)
       (check-exn exn:fail? (lambda () (image->port im (open-output-bytes) 'png #:limit 1)))
@@ -119,7 +260,8 @@
   (test-case "live-imported SKP remains unknown to audit"
     (with-skia ([pic (picture)])
       (define bytes (open-output-bytes)) (picture->port pic bytes)
-      (with-skia ([loaded (picture-from-port (open-input-bytes (get-output-bytes bytes)) #:trusted? #t)])
+      (with-skia
+        ([loaded (picture-from-port (open-input-bytes (get-output-bytes bytes)) #:trusted? #t)])
         (define out (open-output-bytes))
         (check-exn exn:fail:output-audit?
           (lambda () (output->port (page (lambda (c) (draw-picture c loaded))) out 'svg)))
@@ -171,6 +313,13 @@
   (test-case "no live operations remain" (check-equal? (active-operation-count) 0))))
 (module+ main
   (live-streams-check!)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests live-stream-native-tests))
   (printf "live-stream-native: ~a cases, ~a failures\n" live-stream-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

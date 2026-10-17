@@ -1,16 +1,47 @@
 #lang racket/base
+
+;;;
+;;; GPU Surface Pure Test
+;;;
+
+;; Covers gPU surfaces: pure options, generic handles, and activation leases.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list
          "gpu-fixtures.rkt"
          "../private/gpu-domain.rkt" "../private/gpu-context.rkt"
          "../private/gpu-surface-util.rkt" "../private/lifetime.rkt"
          "../private/core.rkt" (submod "../private/core.rkt" gpu-surface-internals))
 (provide gpu-surface-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; options : [#:w real? #:h real? #:samples any/c #:opaque? any/c #:budgeted? any/c #:alpha any/c] ->
+; any
+;;   Validates a synthetic surface request without allocating native GPU storage.
 (define (options #:w [w 8] #:h [h 8] #:samples [samples 0]
                  #:opaque? [opaque? #f] #:budgeted? [budgeted? #t] #:alpha [alpha 0])
   (gpu-surface-options 'test w h samples opaque? budgeted? alpha))
+
+; fake-surface : gpu-domain? box? box? -> gpu-surface?
+;;   Wraps a mock owned surface with its domain and detached allocation options.
 (define (fake-surface d log abandoned?)
   (make-gpu-surface-record (mock-resource d log abandoned? 'surface) 8 8 '()
                           'mock-context d #f (options)))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-surface-pure-tests : test-suite?
+;;   Collects the regression cases for gPU surfaces: pure options, generic handles, and activation
+;;   leases.
 (define gpu-surface-pure-tests
   (test-suite
    "GPU surfaces: pure options, generic handles, and activation leases"
@@ -76,7 +107,8 @@
      (call-with-mock
       (lambda (d p driver log a)
         (define lease (domain-call d (lambda () (domain-capture-lease d))))
-        (domain-call d (lambda () (check-exn exn:fail? (lambda () (domain-check-lease! 'test lease))))))))
+        (domain-call d
+          (lambda () (check-exn exn:fail? (lambda () (domain-check-lease! 'test lease))))))))
    (test-case "nested activation retires only the inner lease"
      (call-with-mock
       (lambda (d p driver log a)
@@ -92,7 +124,8 @@
      (call-with-mock
       (lambda (d p driver log a)
         (define lease #f)
-        (check-exn exn:fail? (lambda () (domain-call d (lambda () (set! lease (domain-capture-lease d))
+        (check-exn exn:fail?
+          (lambda () (domain-call d (lambda () (set! lease (domain-capture-lease d))
                                                                  (error 'test "escape")))))
         (check-true (domain-lease-expired? lease)))))
    (test-case "continuation escape retires the lease"

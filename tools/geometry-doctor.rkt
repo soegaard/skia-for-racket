@@ -1,6 +1,25 @@
 #lang racket/base
+
+;;;
+;;; Geometry Doctor
+;;;
+
+;; Exercises structured geometry, vertices, patches, and advanced image drawing and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe racket/list "../main.rkt" "../private/types.rkt")
 (provide geometry-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; geometry-doctor! : -> void?
+;;   Checks region operations, colored vertices, lattice cells, and structured-geometry ABI sizes.
 (define (geometry-doctor!)
   (with-skia ([r (make-region '((0 0 12 10)))] [q (make-region '((4 3 4 4)))]
               [hole (region-difference r q)] [s (make-surface 40 40)]
@@ -14,10 +33,13 @@
     (unless (equal? (surface-pixel s 4 4) (rgb 255 0 0))
       (error 'doctor "native colored triangle failed")))
   ;; Discriminator cells at indices 1, 2 and 6 catch int32/uint8 enum-stride bugs.
-  (with-skia ([im (rgba-bytes->image 24 24 (apply bytes (apply append (make-list 576 '(255 0 0 255)))))]
+  (with-skia ([im
+                (rgba-bytes->image 24 24 (apply bytes (apply append (make-list 576 '(255 0 0 255)))))]
               [s (make-surface 60 60)])
     (define lat (make-image-lattice '(6 18) '(6 18)
-                  #:cell-types '(default transparent fixed-color default transparent default fixed-color default default)
+                  #:cell-types
+                  '(default transparent fixed-color default transparent default fixed-color default
+                     default)
                   #:colors '(white white blue white white white yellow white white)))
     (draw-image-lattice (surface-canvas s) im lat 0 0 60 60 #:sampling 'nearest)
     (unless (and (= (rgba-alpha (surface-pixel s 30 2)) 0)

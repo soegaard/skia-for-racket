@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; GPU Breakout Example
+;;;
+
+;; Runs an interactive Breakout game with offscreen rendering and a shader post-pass.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; Breakout with shader juice.
 ;;
 ;;   Mouse or ←/→   move the paddle
@@ -12,14 +20,30 @@
 ;; samples a snapshot of it as an SkSL child shader.
 ;;
 ;; Run:  racket examples/gpu-breakout.rkt [--backend auto|opengl|metal|direct3d]
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/cmdline racket/list racket/math
          (only-in racket/gui/base frame% timer% queue-callback)
          "../main.rkt" "../gpu.rkt" "../gpu-gui.rkt")
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; W : real?
+;;   Sets the fixed scene width before scaling to the actual window dimensions.
 (define W 960.0)
+; H : real?
+;;   Sets the fixed scene height before scaling to the actual window dimensions.
 (define H 600.0)
 
-;; ------------------------------------------------------------- shaders
+;;;
+;;; Shaders
+;;;
+; background-source : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define background-source #<<SKSL
 uniform float2 resolution;
 uniform float time;
@@ -38,6 +62,8 @@ half4 main(float2 p) {
 SKSL
   )
 
+; crt-source : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define crt-source #<<SKSL
 uniform shader scene;
 uniform float2 resolution;
@@ -61,32 +87,89 @@ half4 main(float2 p) {
 SKSL
   )
 
-;; ------------------------------------------------------------- level data
-(define COLS 12) (define ROWS 6)
-(define BW 64.0) (define BH 22.0) (define GAP 8.0)
+;;;
+;;; Level Data
+;;;
+; COLS : exact-integer?
+;;   Sets the number of brick columns in the level.
+(define COLS 12)
+; ROWS : exact-integer?
+;;   Sets the number of brick rows in the level.
+(define ROWS 6)
+; BW : real?
+;;   Sets each brick's width in scene units.
+(define BW 64.0)
+; BH : real?
+;;   Sets each brick's height in scene units.
+(define BH 22.0)
+; GAP : real?
+;;   Sets the spacing between neighboring bricks in scene units.
+(define GAP 8.0)
+; LEFT : real?
+;;   Centers the complete brick grid horizontally in the scene.
 (define LEFT (/ (- W (- (* COLS (+ BW GAP)) GAP)) 2.0))
+; TOP : real?
+;;   Sets the top edge of the first brick row in scene units.
 (define TOP 80.0)
+; row-colors : vector?
+;;   Orders brick colors by row, matching the level's row indices.
 (define row-colors
   (vector (rgba 255 107 107 255) (rgba 255 169 77 255) (rgba 255 212 59 255)
           (rgba 105 219 124 255) (rgba 77 171 247 255) (rgba 177 151 252 255)))
 
 (struct brick (x y row [alive? #:mutable]))
+;; x, y: real left and top coordinates in the fixed scene coordinate system.
+;; row: exact nonnegative row index, used for color and score; smaller rows score more.
+;; alive?: mutable boolean; only live bricks are drawn and participate in collisions.
+;; Level lists are row-major, and each brick keeps its original position and row.
+; make-level : -> (listof brick?)
+;;   Creates the row-major brick list with every brick initially alive.
 (define (make-level)
   (for*/list ([r (in-range ROWS)] [c (in-range COLS)])
     (brick (+ LEFT (* c (+ BW GAP))) (+ TOP (* r (+ BH GAP))) r #t)))
 
 (struct particle ([x #:mutable] [y #:mutable] [vx #:mutable] [vy #:mutable]
                   [life #:mutable] color))
+;; x, y: mutable real scene coordinates of the particle center.
+;; vx, vy: mutable real velocities in scene units per second; gravity increases vy.
+;; life: mutable real remaining intensity, initialized to 1 and reduced each update.
+;; color: RGBA base color; rendering derives opacity and size from remaining life.
+;; Particles are ordinary Racket state, not native resources; expired entries are discarded.
 
-(define PW 120.0) (define PH 16.0) (define PY (- H 50.0)) (define BR 8.0)
+; PW : real?
+;;   Sets the paddle width in fixed scene units.
+(define PW 120.0)
+; PH : real?
+;;   Sets the paddle height in fixed scene units.
+(define PH 16.0)
+; PY : real?
+;;   Sets the paddle's vertical position above the bottom of the scene.
+(define PY (- H 50.0))
+; BR : real?
+;;   Sets the collision and drawing radius of the ball in scene units.
+(define BR 8.0)
 
+; clamp : real? real? real? -> real?
+;;   Restricts a real value to the closed interval between the two bounds.
 (define (clamp v lo hi) (max lo (min hi v)))
+; rand-range : real? real? -> real?
+;;   Chooses a random real value between the supplied bounds.
 (define (rand-range lo hi) (+ lo (* (random) (- hi lo))))
+; fade : rgba? real? -> rgba?
+;;   Replaces the color's alpha channel with a clamped opacity.
 (define (fade c a) (rgba (rgba-red c) (rgba-green c) (rgba-blue c)
                          (exact-round (clamp (* 255 a) 0 255))))
 
-;; ------------------------------------------------------------------ main
+;;;
+;;; Main
+;;;
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; backend : symbol?
+  ;;   Selects backend for the example.
   (define backend 'auto)
   (command-line
    #:once-each

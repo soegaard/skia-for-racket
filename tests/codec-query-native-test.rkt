@@ -1,13 +1,41 @@
 #lang racket/base
+
+;;;
+;;; Codec Query Native Test
+;;;
+
+;; Covers native codec size and subset negotiation.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/file
          "../main.rkt" "codec-query-fixtures.rkt" "codec-fixtures.rkt")
 (provide codec-query-native-tests codec-query-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; with-codec : symbol? (codec? -> any) -> any
+;;   Creates a fixture codec and closes it after the callback.
 (define (with-codec format proc)
   (with-skia ([codec (codec-from-bytes (query-fixture-bytes format))]) (proc codec)))
+
+; dimensions : codec? real? -> (listof exact-nonnegative-integer?)
+;;   Collects the native width and height negotiated for a scale.
 (define (dimensions codec scale)
   (call-with-values (lambda () (codec-scaled-dimensions codec scale)) list))
+
+; decoded : codec? -> bytes?
+;;   Copies decoded pixels without normalizing the encoded origin.
 (define (decoded codec)
   (with-skia ([image (codec->image codec #:normalize-origin? #f)]) (image->rgba-bytes image)))
+
+; other-thread-error : (-> any) -> void?
+;;   Requires a worker-thread ownership error, with a bounded wait for the reply.
 (define (other-thread-error thunk)
   (define answer (make-channel))
   (define worker
@@ -15,27 +43,50 @@
   (define result (sync/timeout 10 answer))
   (unless result (kill-thread worker))
   (check-pred exn:fail? result))
+
+;;;
+;;; Regression Suite
+;;;
+
+; codec-query-native-tests : test-suite?
+;;   Collects the regression cases for native codec size and subset negotiation.
 (define codec-query-native-tests
   (test-suite "0.76a native codec size and subset negotiation"
     (test-case "all formats report original size at scale one"
-      (for ([format '(png jpeg webp)]) (with-codec format (lambda (c) (check-equal? (dimensions c 1) '(16 12))))))
+      (for ([format '(png jpeg webp)])
+        (with-codec format (lambda (c) (check-equal? (dimensions c 1) '(16 12))))))
     (test-case "upscale queries clamp to original size"
-      (for ([format '(png jpeg webp)]) (with-codec format (lambda (c) (check-equal? (dimensions c 8) '(16 12))))))
-    (test-case "JPEG half-size is native 8 by 6" (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 1/2) '(8 6)))))
-    (test-case "JPEG quarter-size is native 4 by 3" (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 1/4) '(4 3)))))
-    (test-case "JPEG eighth-size rounds rows up" (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 1/8) '(2 2)))))
-    (test-case "JPEG tiny request returns native minimum not a fabricated size" (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 0.01) '(2 2)))))
-    (test-case "PNG without native scaling returns original dimensions" (with-codec 'png (lambda (c) (check-equal? (dimensions c 1/2) '(16 12)))))
+      (for ([format '(png jpeg webp)])
+        (with-codec format (lambda (c) (check-equal? (dimensions c 8) '(16 12))))))
+    (test-case "JPEG half-size is native 8 by 6"
+      (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 1/2) '(8 6)))))
+    (test-case "JPEG quarter-size is native 4 by 3"
+      (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 1/4) '(4 3)))))
+    (test-case "JPEG eighth-size rounds rows up"
+      (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 1/8) '(2 2)))))
+    (test-case "JPEG tiny request returns native minimum not a fabricated size"
+      (with-codec 'jpeg (lambda (c) (check-equal? (dimensions c 0.01) '(2 2)))))
+    (test-case "PNG without native scaling returns original dimensions"
+      (with-codec 'png (lambda (c) (check-equal? (dimensions c 1/2) '(16 12)))))
     (test-case "JPEG query uses encoded dimensions before EXIF rotation"
       (with-skia ([c (codec-from-bytes (jpeg-with-origin (query-fixture-bytes 'jpeg) 6))])
         (check-equal? (dimensions c 1/2) '(8 6))
-        (with-skia ([image (codec->image c)]) (check-equal? (list (image-width image) (image-height image)) '(12 16)))))
-    (test-case "PNG subset unsupported is false" (with-codec 'png (lambda (c) (check-false (codec-supported-subset c 1 3 6 5)))))
-    (test-case "JPEG subset unsupported is false" (with-codec 'jpeg (lambda (c) (check-false (codec-supported-subset c 1 3 6 5)))))
-    (test-case "WebP even subset stays exact" (with-codec 'webp (lambda (c) (check-equal? (codec-supported-subset c 2 4 6 4) '#(2 4 6 4)))))
-    (test-case "WebP odd origin expands left and top only" (with-codec 'webp (lambda (c) (check-equal? (codec-supported-subset c 1 3 6 5) '#(0 2 7 6)))))
-    (test-case "WebP full image is a supported subset" (with-codec 'webp (lambda (c) (check-equal? (codec-supported-subset c 0 0 16 12) '#(0 0 16 12)))))
-    (test-case "WebP last pixel keeps native exclusive bounds" (with-codec 'webp (lambda (c) (check-equal? (codec-supported-subset c 15 11 1 1) '#(14 10 2 2)))))
+        (with-skia ([image (codec->image c)])
+          (check-equal? (list (image-width image) (image-height image)) '(12 16)))))
+    (test-case "PNG subset unsupported is false"
+      (with-codec 'png (lambda (c) (check-false (codec-supported-subset c 1 3 6 5)))))
+    (test-case "JPEG subset unsupported is false"
+      (with-codec 'jpeg (lambda (c) (check-false (codec-supported-subset c 1 3 6 5)))))
+    (test-case "WebP even subset stays exact"
+      (with-codec 'webp (lambda (c) (check-equal? (codec-supported-subset c 2 4 6 4) '#(2 4 6 4)))))
+    (test-case "WebP odd origin expands left and top only"
+      (with-codec 'webp (lambda (c) (check-equal? (codec-supported-subset c 1 3 6 5) '#(0 2 7 6)))))
+    (test-case "WebP full image is a supported subset"
+      (with-codec 'webp
+        (lambda (c) (check-equal? (codec-supported-subset c 0 0 16 12) '#(0 0 16 12)))))
+    (test-case "WebP last pixel keeps native exclusive bounds"
+      (with-codec 'webp
+        (lambda (c) (check-equal? (codec-supported-subset c 15 11 1 1) '#(14 10 2 2)))))
     (test-case "repeated queries do not update original size"
       (with-codec 'webp (lambda (c)
         (for ([i (in-range 10)]) (check-equal? (codec-supported-subset c 1 3 6 5) '#(0 2 7 6)))
@@ -71,7 +122,8 @@
       (with-codec 'jpeg (lambda (c)
         (for ([scale (list 0 -1 1e-100 +nan.0 +inf.0)])
           (check-exn exn:fail:contract? (lambda () (dimensions c scale))))
-        (check-equal? (dimensions c 1/2) '(8 6)) (check-equal? (bytes-length (decoded c)) (* 16 12 4)))))
+        (check-equal? (dimensions c 1/2) '(8 6))
+                          (check-equal? (bytes-length (decoded c)) (* 16 12 4)))))
     (test-case "native-stream caller cursor is unchanged"
       (with-skia ([s (make-memory-input-stream (query-fixture-bytes 'webp))])
         (input-stream-seek! s 7)
@@ -83,7 +135,8 @@
       (define path (make-temporary-file "skia-codec-query-~a.jpg"))
       (dynamic-wind void
         (lambda ()
-          (call-with-output-file path (lambda (out) (write-bytes (query-fixture-bytes 'jpeg) out)) #:exists 'truncate #:mode 'binary)
+          (call-with-output-file path (lambda (out) (write-bytes (query-fixture-bytes 'jpeg) out))
+            #:exists 'truncate #:mode 'binary)
           (with-skia ([s (make-file-input-stream path)] [c (codec-from-stream s)])
             (skia-close! s) (collect-garbage)
             (check-equal? (dimensions c 1/2) '(8 6))))
@@ -98,9 +151,19 @@
         (with-skia ([c (codec-from-bytes (query-fixture-bytes format 1 1))])
           (check-equal? (dimensions c 0.125) '(1 1))
           (check-equal? (codec-supported-subset c 0 0 1 1) (and (eq? format 'webp) '#(0 0 1 1))))))))
+
+; codec-query-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define codec-query-native-test-count 26)
 (module+ main
   (skia-check!)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests codec-query-native-tests))
   (printf "codec-query-native: ~a cases, ~a failures\n" codec-query-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

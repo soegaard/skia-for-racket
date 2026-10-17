@@ -1,7 +1,27 @@
 #lang racket/base
+
+;;;
+;;; Path Matrix Doctor
+;;;
+
+;; Exercises path geometry, affine matrices, and detached query results and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt")
 (provide path-matrix-doctor!)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; path-matrix-doctor! : -> void?
+;;   Checks matrix ABI sizes, path snapshots, expired-source safety, affine transforms, and
+;;   path-measure frames.
 (define (path-matrix-doctor!)
   (unless (and (= (ctype-sizeof _sk-matrix) 36) (= (ctype-sizeof _sk-m44) 64))
     (error 'doctor "incorrect matrix struct layout"))

@@ -1,19 +1,42 @@
 #lang racket/base
+
+;;;
+;;; EGL Provider Operations
+;;;
+
+;; Defines injectable EGL operations and validates provider options.
+;; Separates EGL configuration policy from platform loading and activation.
+
 (require "gpu-provider.rkt" "gpu-domain.rkt")
 (provide (struct-out egl-platform-ops) make-egl-components egl-extension?
          check-egl-options call-with-egl-lock)
 ;; No EGL, GL, GUI or Skia initialization. Operations are private synchronous
 ;; native procedures (or test doubles). enter returns a restoration thunk.
 (struct egl-platform-ops (create close enter current? describe resolve))
+;; Fields:
+;;   create, close, enter, current?, describe, and resolve: injected procedures for host
+;;   construction, teardown, activation, current-context checks, diagnostics, and procedure lookup.
+;;   enter preserves/restores the previous native context.
+
+; gate : semaphore?
+;;   Serializes EGL display/context bookkeeping shared by provider construction and teardown.
 (define gate (make-semaphore 1))
+; inside-gate? : parameter?
+;;   Marks reentrant calls already inside the EGL bookkeeping lock.
 (define inside-gate? (make-parameter #f))
+; call-with-egl-lock : any/c -> any
+;;   Serializes EGL bookkeeping without deadlocking nested calls on the same dynamic path.
 (define (call-with-egl-lock proc)
   (when (inside-gate?)
     (error 'egl-provider "nested EGL provider activation is not supported"))
   (call-with-semaphore gate (lambda () (parameterize ([inside-gate? (current-thread)]) (proc)))))
+; egl-extension? : any/c any/c -> any
+;;   Matches a complete EGL extension token rather than a substring of another extension name.
 (define (egl-extension? text name)
   (and (string? text)
        (for/or ([s (in-list (regexp-split #px"\\s+" text))]) (string=? s name))))
+; check-egl-options : symbol? any/c exact-nonnegative-integer? any/c -> void?
+;;   Checks requested EGL platform, device index, and surface mode before loading native services.
 (define (check-egl-options who platform index surface)
   (unless (memq platform '(surfaceless device))
     (raise-argument-error who "'surfaceless or 'device" platform))
@@ -24,6 +47,8 @@
   (unless (memq surface '(surfaceless pbuffer))
     (raise-argument-error who "'surfaceless or 'pbuffer" surface)))
 
+; make-egl-components : egl-platform-ops? any/c -> (values any/c gpu-driver?)
+;;   Combines injected EGL host operations with a GL driver while preserving failure cleanup.
 (define (make-egl-components ops make-driver)
   (unless (egl-platform-ops? ops)
     (raise-argument-error 'make-egl-components "egl-platform-ops?" ops))

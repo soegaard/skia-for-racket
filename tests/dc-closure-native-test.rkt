@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; DC Closure Native Test
+;;;
+
+;; Covers native font-description and DC compatibility acceptance.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Actual parser, Skia text/bitmap pixels, public recordings, and PDF/SVG scopes.
 ;; This suite is CPU/headless and runs in every ordinary native CI lane.
 (require rackunit racket/class racket/list racket/port
@@ -6,26 +18,58 @@
          "../dc.rkt" "../dc-output.rkt"
          "../private/dc-font-name.rkt" "../private/dc-text-spec.rkt")
 (provide dc-closure-native-tests dc-closure-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; family : -> string?
+;;   Queries an available native family for cross-library font-description tests.
 (define (family)
   (sk:with-skia ([tf (sk:make-typeface)]) (sk:typeface-family-name tf)))
+
+; font : string? [symbol? symbol? real?] -> font%
+;;   Creates a pixel-sized Racket font with unaligned hinting for metric comparisons.
 (define (font name [weight 'normal] [style 'normal] [size 18])
   (rd:make-font #:face name #:weight weight #:style style
                 #:size size #:size-in-pixels? #t #:hinting 'unaligned))
+
+; with-dc : procedure? [real?] -> any
+;;   Scopes a cleared Skia DC around a callback at the requested backing scale.
 (define (with-dc proc [backing 1])
   (define dc (new skia-dc% [width 240] [height 100]
                  [backing-scale backing] [smoothing 'smoothed]))
   (dynamic-wind void (lambda () (send dc clear) (proc dc)) (lambda () (send dc close))))
+
+; extent : dc<%> string? font% [any/c] -> (listof real?)
+;;   Collects width, height, descent, and leading from the DC text query.
 (define (extent dc text f [mode #t])
   (call-with-values (lambda () (send dc get-text-extent text f mode)) list))
+
+; draw-label : dc<%> font% -> void?
+;;   Draws a ligature- and combining-mark-sensitive label in the selected font.
 (define (draw-label dc f)
   (send dc set-font f)
   (send dc set-text-foreground "navy")
   (send dc draw-text "office / á" 8 8 #t))
+
+; render : font% [real?] -> bytes?
+;;   Captures the label's pixels at the requested backing scale.
 (define (render f [backing 1])
   (with-dc (lambda (dc) (draw-label dc f) (send dc get-rgba-bytes)) backing))
+
+; same-pixels : bytes? bytes? -> void?
+;;   Checks equal-sized rasters with at most one byte of channel rounding difference.
 (define (same-pixels a b)
   (check-equal? (bytes-length a) (bytes-length b))
   (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) 1))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-closure-native-tests : test-suite?
+;;   Collects the regression cases for native font-description and DC compatibility acceptance.
 (define dc-closure-native-tests
   (test-suite
    "0.64 native font-description and DC compatibility acceptance"
@@ -37,7 +81,8 @@
                    (dc-face "Arial" 400 'upright 5)))
    (test-case "built-in script-family descriptions work through the public directory"
      (define f (rd:make-font #:family 'script #:size 18 #:size-in-pixels? #t #:hinting 'unaligned))
-     (define resolved (send rd:the-font-name-directory get-screen-name (send f get-font-id) 'normal 'normal))
+     (define resolved
+       (send rd:the-font-name-directory get-screen-name (send f get-font-id) 'normal 'normal))
      (define d (dc-font-description 'test f))
      (define expected (dc-font-face 'test resolved 'normal 'normal))
      (check-equal? (dc-font-spec-family d) (dc-face-family expected))
@@ -118,7 +163,8 @@
      (define proc (send recorder get-recorded-procedure))
      (define datum
        (read (open-input-bytes
-              (call-with-output-bytes (lambda (out) (write (send recorder get-recorded-datum) out))))))
+              (call-with-output-bytes
+                (lambda (out) (write (send recorder get-recorded-datum) out))))))
      (define from-datum (rd:recorded-datum->procedure datum))
      (define expected (render f))
      (for ([replay (in-list (list proc from-datum))])
@@ -174,9 +220,19 @@
                              (send dc snapshot))))
      (sk:with-skia ([im image])
        (check-true (> (bytes-length (sk:image->png-bytes im)) 100))))))
+
+; dc-closure-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-closure-native-test-count 22)
 (module+ main
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests dc-closure-native-tests))
   (printf "dc-closure-native: ~a cases, ~a failures\n" dc-closure-native-test-count failures)
   (exit (if (zero? failures) 0 1)))

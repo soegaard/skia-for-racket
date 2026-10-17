@@ -1,20 +1,46 @@
 #lang racket
 
+;;;
+;;; Squadron Tutorial Evaluation
+;;;
+
+;; Runs the Squadron tutorial's executable documentation examples and figure helpers.
+;; This module connects the manual to executable examples and their rendered figures.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/runtime-path scribble/eval skia "atlas.rkt" "model.rkt" "scene.rkt"
          "../support/figures.rkt" "../support/sprite-figures.rkt" "../support/sprite-math.rkt")
 (provide squadron-interaction game-pict game-atlas-pict fleet-pict ship-pict
          dive-pict explosion-pict collision-pict game-states-pict)
+;;;
+;;; Evaluator and Figure Helpers
+;;;
+
+; model-source : path?
+;;   Locates model source relative to this module rather than the current directory.
 (define-runtime-path model-source "model.rkt")
+; evaluator : procedure?
+;;   Retains one evaluator so successive documentation examples share their bindings.
 (define evaluator (make-base-eval))
 (evaluator `(require racket (file ,(path->string model-source))))
 
+; game-pict : -> pict?
+;;   Renders the game illustration from the tutorial's drawing code.
 (define (game-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict scene-width scene-height
                  (lambda (canvas) (draw-game canvas atlas (demonstration-game))) #:scale 0.72)))
+; game-atlas-pict : -> pict?
+;;   Renders the game atlas illustration from the tutorial's drawing code.
 (define (game-atlas-pict)
   (with-skia ([atlas (make-game-atlas)]) (atlas-pict atlas 16)))
 
+; ship-pict : -> pict?
+;;   Renders the ship illustration from the tutorial's drawing code.
 (define (ship-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -27,6 +53,8 @@
                          (make-atlas-transform 350 65 #:anchor sprite-anchor))
                    (map sprite-source '(0 1 6)) #:sampling 'nearest)))))
 
+; fleet-pict : -> pict?
+;;   Renders the fleet illustration from the tutorial's drawing code.
 (define (fleet-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -41,6 +69,8 @@
                    (map (lambda (sprite) (sprite-source (first sprite))) sprites)
                    #:sampling 'linear)))))
 
+; dive-pict : -> pict?
+;;   Renders the dive illustration from the tutorial's drawing code.
 (define (dive-pict)
   (define diagram-scale 0.66)
   (with-skia ([atlas (make-game-atlas)])
@@ -74,6 +104,8 @@
          (draw-simple-text canvas "Two mirrored dives; target chosen at launch" 138 584 font ink)))
      #:scale 0.75)))
 
+; explosion-pict : -> pict?
+;;   Renders the explosion illustration from the tutorial's drawing code.
 (define (explosion-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -85,6 +117,8 @@
                      (make-atlas-transform x 50 #:anchor sprite-anchor #:scale 1.5))
                    (map sprite-source '(8 9 10 11 12 13)) #:sampling 'nearest)))))
 
+; collision-pict : -> pict?
+;;   Renders the collision illustration from the tutorial's drawing code.
 (define (collision-pict)
   (with-skia ([atlas (make-game-atlas)])
     (render-pict
@@ -110,6 +144,8 @@
          (draw-simple-text canvas "HIT: segment crosses circle" 34 198 font ink)
          (draw-simple-text canvas "MISS: 45 units from center" 370 198 font ink))))))
 
+; game-states-pict : -> pict?
+;;   Renders the game states illustration from the tutorial's drawing code.
 (define (game-states-pict)
   (with-skia ([atlas (make-game-atlas)])
     (define (one mode)
@@ -127,5 +163,7 @@
     (figure-row (captioned-pict "After clearing a wave" (one 'wave-clear))
                 (captioned-pict "After the last life" (one 'game-over)))))
 
+; squadron-interaction : syntax -> syntax
+;;   Displays and evaluates tutorial expressions in the shared documentation evaluator.
 (define-syntax-rule (squadron-interaction expression ...)
   (interaction #:eval evaluator expression ...))

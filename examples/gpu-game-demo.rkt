@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; GPU Game Demo Example
+;;;
+
+;; Combines runtime shaders, recorded backgrounds, uploaded textures, and sprite batches.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; A small 2D "game frame" demo exercising four techniques together:
 ;;   1. Shader effects  - an animated SkSL plasma background (time uniform).
 ;;   2. Static layers   - a picture recorded once, replayed every frame.
@@ -6,17 +14,37 @@
 ;;   4. Sprite batching - every sprite drawn by one draw-atlas call per frame.
 ;;
 ;; Run:  racket examples/gpu-game-demo.rkt [--sprites N] [--backend auto|opengl|metal|direct3d]
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/cmdline racket/flonum racket/math
          (only-in racket/gui/base frame% timer% queue-callback)
          "../main.rkt" "../gpu.rkt" "../gpu-gui.rkt")
 
 ;; Scene coordinates are fixed; each frame scales them to the real pixel size.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; W : real?
+;;   Sets the fixed scene width before scaling to the actual window dimensions.
 (define W 960.0)
+; H : real?
+;;   Sets the fixed scene height before scaling to the actual window dimensions.
 (define H 600.0)
+; CELL : exact-integer?
+;;   Sets the square sprite-cell size in atlas pixels.
 (define CELL 32)          ; sprite-sheet cell size in pixels
+; CELLS : exact-integer?
+;;   Sets the number of artwork variants in the sprite sheet.
 (define CELLS 4)          ; number of sprite variants in the sheet
 
-;; ---------------------------------------------------------------- 1. shader
+;;;
+;;; Shader
+;;;
+; plasma-source : string?
+;;   Contains the SkSL source compiled by the runtime-effect example.
 (define plasma-source #<<SKSL
 uniform float2 resolution;
 uniform float time;
@@ -36,7 +64,11 @@ half4 main(float2 p) {
 SKSL
   )
 
-;; ----------------------------------------------------------- 2. static layer
+;;;
+;;; Static Layer
+;;;
+; record-static-layer : font? -> picture?
+;;   Records the fixed grid, border, and caption for reuse in every frame.
 (define (record-static-layer font)
   (call-with-picture
    (inexact->exact W) (inexact->exact H)
@@ -51,8 +83,12 @@ SKSL
        (draw-rounded-rect c 24 24 360 44 10 10 panel)
        (draw-simple-text c "skia-for-racket · sprite demo" 40 54 font ink)))))
 
-;; ------------------------------------------------------------ 3. sprite sheet
+;;;
+;;; Sprite Sheet
+;;;
 ;; Drawn on the CPU once; uploaded to the GPU on the first frame.
+; make-sprite-sheet : -> image?
+;;   Draws four sprite variants into a CPU image for one-time GPU upload.
 (define (make-sprite-sheet)
   (define colors '(("#FFE066" "#F08C00") ("#74C0FC" "#1864AB")
                    ("#8CE99A" "#2B8A3E") ("#FFA8A8" "#C92A2A")))
@@ -71,11 +107,24 @@ SKSL
         (draw-circle c (- cx 6) (- cy 6) 3 spark)))
     (surface-snapshot s)))
 
+; sprite-sources : list?
+;;   Orders source rectangles as x, y, width, and height for the atlas cells.
 (define sprite-sources
   (for/list ([i (in-range CELLS)]) (list (* i CELL) 0 CELL CELL)))
 
-;; -------------------------------------------------------------- simulation
+;;;
+;;; Simulation
+;;;
 (struct sprites (n x y vx vy angle spin cell))
+;; n: exact nonnegative sprite count; every following vector has exactly this length.
+;; x, y: mutable flvectors of scene-space center coordinates.
+;; vx, vy: mutable flvectors of scene units per second.
+;; angle, spin: mutable flvectors of degrees and degrees per second, respectively.
+;; cell: vector of exact indices from 0 through CELLS - 1, selecting sprite-sources.
+;; The same index in all vectors describes one sprite; updates preserve this alignment.
+;; The record owns ordinary Racket arrays, not the separately managed atlas image.
+; make-sprites : exact-nonnegative-integer? -> sprites?
+;;   Creates parallel position, velocity, rotation, and cell arrays for the requested count.
 (define (make-sprites n)
   (define (fv lo hi) (for/flvector #:length n ([_ (in-range n)]) (+ lo (* (random) (- hi lo)))))
   (sprites n (fv 20.0 (- W 20.0)) (fv 80.0 (- H 20.0))
@@ -83,6 +132,8 @@ SKSL
            (fv 0.0 360.0) (fv -240.0 240.0)
            (for/vector #:length n ([_ (in-range n)]) (random CELLS))))
 
+; step! : sprites? real? -> void?
+;;   Advances sprite positions and rotations and reflects velocities at the scene boundaries.
 (define (step! s dt)
   (define-values (xs ys vxs vys as ss)
     (values (sprites-x s) (sprites-y s) (sprites-vx s) (sprites-vy s)
@@ -96,9 +147,19 @@ SKSL
     (flvector-set! ys i (flmax 16.0 (flmin y (fl- H 16.0))))
     (flvector-set! as i (fl+ (flvector-ref as i) (fl* dt (flvector-ref ss i))))))
 
-;; ------------------------------------------------------------------- main
+;;;
+;;; Main
+;;;
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; sprite-count : exact-integer?
+  ;;   Selects the number of simulated sprites shown by the game-frame demo.
   (define sprite-count 1500)
+  ; backend : symbol?
+  ;;   Selects backend for the example.
   (define backend 'auto)
   (command-line
    #:once-each

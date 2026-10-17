@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; DC Consumer Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for pict, plot/no-gui, and recorded drawing
+;; consumers.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Real public clients, deliberately limited to the existing 0.55 DC subset.
 ;; This is test/example code, not a replacement pict or plot implementation.
 (require racket/class racket/list
@@ -8,9 +21,22 @@
 (provide consumer-width consumer-height make-consumer-pict draw-consumer-pict
          draw-consumer-plot record-consumer consumer-state plot-probe-position)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; consumer-width : exact-positive-integer?
+;;   Sets the logical width shared by consumer drawings and captures.
 (define consumer-width 320)
+
+; consumer-height : exact-positive-integer?
+;;   Sets the logical height shared by consumer drawings and captures.
 (define consumer-height 240)
 
+
+; make-consumer-pict : dc<%> -> pict?
+;;   Builds a mixed geometry, image, and text pict using the supplied DC for text metrics.
 (define (make-consumer-pict metric-dc)
   (define bm (rd:make-bitmap 12 10 #t))
   (define argb (make-bytes (* 12 10 4)))
@@ -47,10 +73,16 @@
                              (list 12 126 (p:hc-append 8 label (p:disk 16)))))])
       (p:pin-over scene (car entry) (cadr entry) (caddr entry)))))
 
+
+; draw-consumer-pict : dc<%> pict? -> void?
+;;   Draws the prepared consumer pict at the destination origin.
 (define (draw-consumer-pict dc picture)
   (p:draw-pict picture dc 0 0)
   (void))
 
+
+; draw-consumer-plot : dc<%> -> hash?
+;;   Draws deterministic lines and points, returning layout data for pixel probes.
 (define (draw-consumer-plot dc)
   ;; No plot/gui dependency, plot window, bitmap renderer, or plot-pict detour.
   ;; The returned metrics describe the layout selected by THIS target DC.
@@ -76,12 +108,18 @@
     (define upper (send metrics plot->dc (vector 2 1.5)))
     (hash 'lower_left (vector->list lower) 'upper_right (vector->list upper))))
 
+
+; plot-probe-position : hash? real? real? -> (values real? real?)
+;;   Maps a plot-data coordinate into the captured plot rectangle.
 (define (plot-probe-position layout x y)
   (define lo (hash-ref layout 'lower_left))
   (define hi (hash-ref layout 'upper_right))
   (values (+ (car lo) (* (/ (+ x 2) 4) (- (car hi) (car lo))))
           (+ (cadr lo) (* (/ (+ y 1.5) 3) (- (cadr hi) (cadr lo))))))
 
+
+; record-consumer : procedure? -> (values procedure? procedure? any/c)
+;;   Returns procedure replay, datum replay, and layout from the same recorded drawing.
 (define (record-consumer draw)
   (define recorder (new rd:record-dc% [width consumer-width] [height consumer-height]))
   (send recorder set-smoothing 'smoothed)
@@ -90,6 +128,10 @@
           (rd:recorded-datum->procedure (send recorder get-recorded-datum))
           layout))
 
+
+; consumer-state : dc<%> -> list?
+;;   Snapshots destination style, transform, clip, text, and color state for replay-restoration
+;;   checks.
 (define (consumer-state dc)
   (define (rgba c) (list (send c red) (send c green) (send c blue) (send c alpha)))
   (list (send dc get-pen) (send dc get-brush) (send dc get-font)

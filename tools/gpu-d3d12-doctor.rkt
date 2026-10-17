@@ -1,9 +1,29 @@
 #lang racket/base
+
+;;;
+;;; GPU Direct3D 12 Doctor
+;;;
+
+;; Exercises Direct3D 12 adapter selection, COM ownership, and ABI contracts and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require json racket/cmdline racket/file racket/path racket/list rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../private/gpu-io-trace.rkt"
          "../tests/gpu-surface-native-test.rkt" "../tests/gpu-image-native-test.rkt"
          "../tests/gpu-cache-native-test.rkt")
 (provide d3d12-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; d3d12-doctor! : path? symbol? (or/c exact-nonnegative-integer? #f) -> void?
+;;   Runs offscreen Direct3D lifecycle, image, and surface cases and captures post-close detached
+;;   output.
 (define (d3d12-doctor! directory selection index)
   (define run-id (path->string (file-name-from-path (simplify-path directory))))
   (define cycles '())
@@ -26,7 +46,8 @@
   (define (quiescent! c)
     (call-with-gpu-context c void)
     (define info (gpu-context-info c))
-    (unless (for/and ([key '(live_children pending_releases failed_releases)]) (zero? (hash-ref info key)))
+    (unless (for/and ([key '(live_children pending_releases failed_releases)])
+              (zero? (hash-ref info key)))
       (error 'd3d12-doctor "context did not become quiescent: ~a" info)))
   (publish "running")
   (with-handlers ([exn:fail?
@@ -46,8 +67,10 @@
         (define surface-failures (run-tests (make-gpu-surface-native-tests gpu other)))
         (define image-failures (run-tests (make-gpu-image-native-tests gpu other)))
         (define cache-failures (run-tests (make-gpu-cache-native-tests gpu other)))
-        (set! counts (hasheq 'surface 33 'image gpu-image-native-test-count 'cache gpu-cache-native-test-count
-                            'surface_failures surface-failures 'image_failures image-failures 'cache_failures cache-failures))
+        (set! counts
+          (hasheq 'surface 33 'image gpu-image-native-test-count 'cache gpu-cache-native-test-count
+                            'surface_failures surface-failures 'image_failures image-failures
+            'cache_failures cache-failures))
         (unless (zero? (+ surface-failures image-failures cache-failures))
           (error 'd3d12-doctor "shared D3D12 native suites failed")))
       (quiescent! gpu) (quiescent! other)
@@ -72,7 +95,8 @@
                   (unless (bytes=? (surface->rgba-bytes cpu-surface) image-test-pixels)
                     (error 'd3d12-doctor "CPU reference rendering failed"))
                   (call-with-output-file (build-path directory cpu-file)
-                    (lambda (out) (write-bytes (surface->png-bytes cpu-surface) out)) #:exists 'error))
+                    (lambda (out) (write-bytes (surface->png-bytes cpu-surface) out)) #:exists
+                    'error))
                 (set! target-info (gpu-surface-info s))
                 (set! image-info (gpu-image-info im))
                 ;; The retained picture must keep the texture alive independently.
@@ -82,14 +106,17 @@
                   (draw-picture (surface-canvas s) pic)
                   (gpu-flush-and-submit! gpu) ; no explicit CPU wait on normal frames
                   (when (zero? (modulo (add1 frame) 30))
-                    (with-skia ([snap (gpu-surface-snapshot s)] [part (gpu-image-subset snap 0 0 3 4)])
+                    (with-skia ([snap (gpu-surface-snapshot s)]
+                                 [part (gpu-image-subset snap 0 0 3 4)])
                       (define subset-pixels (gpu-image->rgba-bytes part))
-                      (unless (bytes=? subset-pixels (apply bytes-append (make-list 12 (bytes 255 0 0 255))))
+                      (unless (bytes=? subset-pixels
+                                (apply bytes-append (make-list 12 (bytes 255 0 0 255))))
                         (error 'd3d12-doctor "GPU snapshot/subset pixels failed")))
                     (gpu-purge-unlocked! gpu)
                     (collect-garbage)))
                 (define pixels (gpu-surface->rgba-bytes s))
-                (unless (bytes=? pixels image-test-pixels) (error 'd3d12-doctor "GPU pixels differ from exact source"))
+                (unless (bytes=? pixels image-test-pixels)
+                  (error 'd3d12-doctor "GPU pixels differ from exact source"))
                 (with-skia ([png-image (rgba-bytes->image 8 8 pixels)])
                   (call-with-output-file (build-path directory gpu-file)
                     (lambda (out) (write-bytes (image->png-bytes png-image) out)) #:exists 'error))
@@ -104,9 +131,12 @@
         (call-with-output-file (build-path directory detached-file)
           (lambda (out) (write-bytes (image->png-bytes cpu-detached) out)) #:exists 'error))
       (set! cycles (cons (hasheq 'cycle cycle 'initial initial 'other_initial other-initial
-                                  'final final 'other_final other-final 'target target-info 'image image-info
-                                  'frames 180 'cpu_png cpu-file 'gpu_png gpu-file 'detached_png detached-file
-                                  'detached_encoded_after_teardown #t 'io (reverse (unbox ledger))) cycles))
+                                  'final final 'other_final other-final 'target target-info 'image
+                           image-info
+                                  'frames 180 'cpu_png cpu-file 'gpu_png gpu-file 'detached_png
+                           detached-file
+                                  'detached_encoded_after_teardown #t 'io (reverse (unbox ledger)))
+                     cycles))
       (publish "running"))
     ;; No GUI or swap chain was used. Do not infer physical display pixels.
     (define gui?
@@ -115,7 +145,20 @@
     (publish "passed")
     (void)))
 (module+ main
-  (define directory #f) (define selection 'warp) (define index 0)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; selection : symbol?
+  ;;   Chooses the Direct3D adapter policy; WARP is the default for reproducible software execution.
+  (define selection 'warp)
+  ; index : exact-nonnegative-integer?
+  ;;   Selects the zero-based Direct3D adapter within the chosen adapter policy.
+  (define index 0)
   (command-line #:once-each
     [("--directory") path "fresh output directory" (set! directory (path->complete-path path))]
     [("--adapter") name "warp or hardware" (set! selection (string->symbol name))]

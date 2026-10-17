@@ -1,21 +1,55 @@
 #lang racket/base
+
+;;;
+;;; Persistent Pictures Example
+;;;
+
+;; Compares recorded pictures before and after serialization and indexed replay.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/file racket/path racket/list racket/string json "../main.rkt")
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; blue : rgba?
+;;   Specifies the blue color used by this drawing.
 (define blue (rgb 48 103 211))
+; teal : rgba?
+;;   Specifies the teal color used by this drawing.
 (define teal (rgb 14 149 142))
+; orange : rgba?
+;;   Specifies the orange color used by this drawing.
 (define orange (rgb 239 161 37))
+; ink : rgba?
+;;   Specifies the ink color used by this drawing.
 (define ink (rgb 32 52 78))
+; label : canvas? string? real? real? [real?] -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11])
   (with-skia ([font (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [paint (make-paint #:color ink)])
     (draw-simple-text c text x y font paint)))
+; heading : canvas? string? string? -> void?
+;;   Draws the page heading and its explanatory subtitle.
 (define (heading c title subtitle)
   (with-skia ([p (make-paint #:color teal)]) (draw-rect c 0 0 34 2 p))
   (label c title 0 32 23) (label c subtitle 0 56 10))
+; footer : canvas? exact-nonnegative-integer? -> void?
+;;   Adds the page identification beneath the example drawing.
 (define (footer c n)
   (label c "RACKET / SKIA   |   PERSISTENT PICTURES AND PICTURE SHADERS" 0 444 9)
   (label c (number->string n) 652 444 9))
+; at : canvas? real? real? procedure? -> any/c
+;;   Runs a drawing callback at a translated origin and restores canvas state afterward.
 (define (at c x y draw)
   (with-canvas-state c (canvas-translate! c x y) (draw c)))
+; checker : canvas? real? real? -> void?
+;;   Draws a checkerboard that makes transparent pixels visible.
 (define (checker c x y)
   (with-skia ([a (make-paint #:color (rgb 240 243 247))]
               [b (make-paint #:color (rgb 224 230 238))])
@@ -23,6 +57,8 @@
     (for* ([row (in-range 12)] [col (in-range 19)] #:when (odd? (+ row col)))
       (draw-rect c (+ x (* col 16)) (+ y (* row 16))
                  (min 16 (- 300 (* col 16))) (min 16 (- 180 (* row 16))) b))))
+; badge : canvas? -> void?
+;;   Draws the badge comparison in the current canvas coordinate system.
 (define (badge c)
   (with-skia ([gradient (make-linear-gradient-shader 0 0 240 0 (list blue teal))]
               [fill (make-paint #:shader gradient)]
@@ -33,6 +69,8 @@
     (draw-line c 125 45 208 45 stroke)
     (draw-line c 125 70 191 70 stroke)
     (draw-line c 125 95 208 95 stroke)))
+; indexed-art : canvas? -> void?
+;;   Draws the indexed art comparison in the current canvas coordinate system.
 (define (indexed-art c)
   (with-skia ([a (make-paint #:color blue)] [b (make-paint #:color teal)]
               [dot (make-paint #:color orange)])
@@ -40,11 +78,15 @@
       (define x (+ 20 (* col 48))) (define y (+ 20 (* row 48)))
       (draw-rounded-rect c x y 38 38 7 7 (if (even? (+ row col)) a b))
       (draw-circle c (+ x 19) (+ y 19) 7 dot))))
+; tile-art : canvas? -> void?
+;;   Draws the tile art comparison in the current canvas coordinate system.
 (define (tile-art c)
   (with-skia ([a (make-paint #:color teal)] [b (make-paint #:color blue)]
               [dot (make-paint #:color orange)])
     (draw-rect c 0 0 32 48 a) (draw-rect c 32 0 32 48 b)
     (draw-circle c 18 24 10 dot)))
+; roundtrip-page : any/c any/c -> procedure?
+;;   Draws original and deserialized pictures side by side.
 (define (roundtrip-page original loaded)
   (lambda (c)
     (heading c "A drawing can outlive its recording session"
@@ -55,10 +97,16 @@
     (with-output-label "live-recording" (draw-picture c original #:x 30 #:y 130))
     (with-output-label "loaded-stream" (draw-picture c loaded #:x 382 #:y 130))
     (label c "The native stream contains drawing commands and resources, not a screenshot." 0 320)
-    (label c "This page deliberately uses report policy: an opaque imported picture is not certified as vector." 0 348 10)
-    (label c "The validator also decodes this cache in a fresh Racket process and compares raw RGBA bytes." 0 380 10)
-    (label c "Loading requires #:trusted? #t. A native SKP may contain SkSL; it is not a safe interchange format." 0 407 10)
+    (label c
+      "This page deliberately uses report policy: an opaque imported picture is not certified as vector." 0 348 10)
+    (label c
+      "The validator also decodes this cache in a fresh Racket process and compares raw RGBA bytes."
+      0 380 10)
+    (label c
+      "Loading requires #:trusted? #t. A native SKP may contain SkSL; it is not a safe interchange format." 0 407 10)
     (footer c 1)))
+; indexed-page : picture? -> procedure?
+;;   Draws a picture using indexed replay so culling can be compared.
 (define (indexed-page picture)
   (lambda (c)
     (heading c "An index changes replay work, not the drawing"
@@ -71,17 +119,25 @@
           (canvas-translate! c x 110)
           (canvas-clip-rect! c 0 0 300 180)
           (draw-picture c picture #:x shift #:y -20))))
-    (label c "Cull bounds are a drawing promise, not an exact painted-bounds or clipping query." 0 320)
-    (label c "R-tree construction can tighten the native cull rectangle; the Racket nominal size stays unchanged." 0 348 10)
-    (label c "SKP stores the native cull rectangle. Loading does not restore the in-memory R-tree." 0 380 10)
-    (label c "Operation and byte counts are estimates. These panels establish correctness, not a speedup claim." 0 407 10)
+    (label c "Cull bounds are a drawing promise, not an exact painted-bounds or clipping query." 0
+      320)
+    (label c
+      "R-tree construction can tighten the native cull rectangle; the Racket nominal size stays unchanged." 0 348 10)
+    (label c "SKP stores the native cull rectangle. Loading does not restore the in-memory R-tree."
+      0 380 10)
+    (label c
+      "Operation and byte counts are estimates. These panels establish correctness, not a speedup claim." 0 407 10)
     (footer c 2)))
+; shader-panel : canvas? real? paint? -> void?
+;;   Draws the shader panel comparison in the current canvas coordinate system.
 (define (shader-panel c x paint)
   (checker c x 110)
   (define (draw r) (draw-rect r 0 0 300 180 paint))
   (if (memq (canvas-annotation-backend c) '(pdf svg))
       (draw-rasterized c x 110 300 180 draw #:scale 2)
       (at c x 110 draw)))
+; shaders-page : paint? paint? -> procedure?
+;;   Compares repeated and mirrored picture shaders.
 (define (shaders-page repeat-paint mirror-paint)
   (lambda (c)
     (heading c "A picture can become a sampled paint source"
@@ -89,11 +145,18 @@
     (label c "01  Repeated tile" 0 92) (label c "02  Mirrored tile, rotated local coordinates" 352 92)
     (with-output-label "repeat-shader" (shader-panel c 0 repeat-paint))
     (with-output-label "mirror-shader" (shader-panel c 352 mirror-paint))
-    (label c "Tile bounds are picture coordinates. The shader matrix changes sampling, not the destination shape." 0 320 10)
-    (label c "Each document panel is explicitly rasterized at 600 x 360; labels and checkerboards remain vector." 0 348 10)
-    (label c "Sampling does not preserve recorded links. Add annotations to the receiving document canvas." 0 380 10)
-    (label c "Native object IDs are process-local; neither IDs nor operation counts are persistent cache keys." 0 407 10)
+    (label c
+      "Tile bounds are picture coordinates. The shader matrix changes sampling, not the destination shape." 0 320 10)
+    (label c
+      "Each document panel is explicitly rasterized at 600 x 360; labels and checkerboards remain vector." 0 348 10)
+    (label c
+      "Sampling does not preserve recorded links. Add annotations to the receiving document canvas."
+      0 380 10)
+    (label c
+      "Native object IDs are process-local; neither IDs nor operation counts are persistent cache keys." 0 407 10)
     (footer c 3)))
+; metadata : any/c picture? -> hash?
+;;   Collects picture identity, dimensions, and serialization metadata for the report.
 (define (metadata name picture)
   (hasheq 'name name 'width (picture-width picture) 'height (picture-height picture)
           'cull_bounds (vector->list (picture-cull-bounds picture))
@@ -101,29 +164,49 @@
           'operations (picture-approximate-op-count picture)
           'nested_operations (picture-approximate-op-count picture #:nested? #t)
           'approximate_bytes (picture-approximate-bytes-used picture)))
+; write-json-file : path-string? any/c -> void?
+;;   Writes the report data as JSON, replacing an existing report file.
 (define (write-json-file path data)
   (call-with-output-file path (lambda (out) (write-json data out) (newline out)) #:exists 'replace))
+; html-escape : string? -> string?
+;;   Escapes text before inserting it into the generated HTML report.
 (define (html-escape s)
-  (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" . "&quot;")))])
+  (for/fold ([text s]) ([p (in-list '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" .
+    "&quot;")))])
     (string-replace text (car p) (cdr p))))
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; args : vector?
+  ;;   Retains the command-line argument vector used to select output paths.
   (define args (current-command-line-arguments))
   (when (> (vector-length args) 1) (error 'persistent-pictures "expected optional output prefix"))
-  (define prefix (if (zero? (vector-length args)) "output/persistent-pictures-0.33" (vector-ref args 0)))
+  ; prefix : path-string?
+  ;;   Selects the destination used by this example's output.
+  (define prefix (if (zero? (vector-length args)) "output/persistent-pictures-0.33" (vector-ref args
+    0)))
+  ; file : any/c -> string?
+  ;;   Appends an output suffix to the selected filename prefix.
   (define (file suffix) (string-append prefix suffix))
   (make-directory* (or (path-only (string->path prefix)) (current-directory)))
   (with-skia ([original (call-with-picture 240 140 badge)]
               [indexed (call-with-picture 640 360 indexed-art #:spatial-index 'rtree)]
               [tile (call-with-picture 64 48 tile-art)]
-              [repeat-shader (make-picture-shader tile #:tile-x 'repeat #:tile-y 'repeat #:sampling 'linear)]
-              [mirror-shader (make-picture-shader tile #:tile-x 'mirror #:tile-y 'mirror #:sampling 'linear
+              [repeat-shader (make-picture-shader tile #:tile-x 'repeat #:tile-y 'repeat #:sampling
+                'linear)]
+              [mirror-shader (make-picture-shader tile #:tile-x 'mirror #:tile-y 'mirror #:sampling
+                'linear
                                                   #:local-matrix (matrix-rotate-degrees 20))]
-              [repeat-paint (make-paint #:shader repeat-shader)] [mirror-paint (make-paint #:shader mirror-shader)])
+              [repeat-paint (make-paint #:shader repeat-shader)] [mirror-paint (make-paint #:shader
+                mirror-shader)])
     (save-picture original (file ".cache.skp") #:exists 'replace)
     (with-skia ([loaded (picture-from-file (file ".cache.skp") #:trusted? #t)]
                 [expected (picture->image original 240 140)])
       (call-with-output-file (file ".expected.rgba")
-        (lambda (out) (write-bytes (image->rgba-bytes expected) out)) #:mode 'binary #:exists 'replace)
+        (lambda (out) (write-bytes (image->rgba-bytes expected) out)) #:mode 'binary #:exists
+          'replace)
       (write-json-file (file ".pictures.json")
         (list (metadata "original" original) (metadata "loaded" loaded)
               (metadata "indexed" indexed) (metadata "tile" tile)))
@@ -132,7 +215,8 @@
         (list (cons "roundtrip" (roundtrip-page original loaded))
               (cons "indexed" (indexed-page indexed))
               (cons "shaders" (shaders-page repeat-paint mirror-paint))))
-      (define pages (map (lambda (p) (make-output-page 720 500 (cdr p) #:margins 24 #:background 'white)) registry))
+      (define pages (map (lambda (p) (make-output-page 720 500 (cdr p) #:margins 24 #:background
+        'white)) registry))
       ;; The known probe stream is drawn despite unknown provenance. This is an
       ;; explicit report-policy experiment, not a strict-export workaround.
       (define report (save-output/audit pages (file ".pdf") 'pdf #:policy 'report #:exists 'replace
@@ -158,11 +242,16 @@
       (define base (html-escape (path->string (file-name-from-path prefix))))
       (call-with-output-file (file ".review.html")
         (lambda (out)
-          (display "<!doctype html><meta charset=\"utf-8\"><title>Persistent pictures review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}img{width:100%;background:white}figure{margin:0}@media(max-width:850px){.pair{grid-template-columns:1fr}}</style><h1>Persistent pictures and picture shaders</h1>" out)
-          (fprintf out "<p><a href=\"~a.pdf\">Actual PDF</a> | <a href=\"~a.pictures.json\">Picture metadata</a> | <a href=\"~a.opaque.audit.json\">Opaque preflight reports</a> | <a href=\"~a.fresh.png\">Fresh-process cache replay</a></p>" base base base base)
-          (display "<p>Left: actual SVG. Right: independent raster drawing, not a PDF/SVG rasterization. The roundtrip page deliberately uses report policy and retains a blocking unknown-provenance finding.</p>" out)
+          (display
+            "<!doctype html><meta charset=\"utf-8\"><title>Persistent pictures review</title><style>body{font:16px system-ui;margin:24px;background:#edf0f4;color:#20344e}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}img{width:100%;background:white}figure{margin:0}@media(max-width:850px){.pair{grid-template-columns:1fr}}</style><h1>Persistent pictures and picture shaders</h1>" out)
+          (fprintf out
+            "<p><a href=\"~a.pdf\">Actual PDF</a> | <a href=\"~a.pictures.json\">Picture metadata</a> | <a href=\"~a.opaque.audit.json\">Opaque preflight reports</a> | <a href=\"~a.fresh.png\">Fresh-process cache replay</a></p>" base base base base)
+          (display
+            "<p>Left: actual SVG. Right: independent raster drawing, not a PDF/SVG rasterization. The roundtrip page deliberately uses report policy and retains a blocking unknown-provenance finding.</p>" out)
           (for ([entry (in-list registry)])
             (define name (car entry))
-            (fprintf out "<h2>~a</h2><div class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a.~a.svg\"></figure><figure><figcaption>Independent raster reference</figcaption><img src=\"~a.~a.reference.png\"></figure></div>" name base name base name)))
+            (fprintf out
+              "<h2>~a</h2><div class=\"pair\"><figure><figcaption>Actual SVG</figcaption><img src=\"~a.~a.svg\"></figure><figure><figcaption>Independent raster reference</figcaption><img src=\"~a.~a.reference.png\"></figure></div>" name base name base name)))
         #:exists 'replace)))
-  (printf "Wrote ~a.pdf; 3 SVGs/references; 4 export audits; opaque preflights; SKP cache, RGBA expectation and metadata; review HTML\n" prefix))
+  (printf
+    "Wrote ~a.pdf; 3 SVGs/references; 4 export audits; opaque preflights; SKP cache, RGBA expectation and metadata; review HTML\n" prefix))

@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Skia GPU Canvas Example
+;;;
+
+;; Opens a GPU-backed drawing-context window without retaining frame-local resources.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; Run on the desktop: auto selects Metal on macOS, OpenGL elsewhere.
 ;; This example never retains a frame DC and performs no CPU pixel readback.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/gui/base (prefix-in rd: racket/draw)
          "../gpu-canvas.rkt")
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; make-window : -> void?
+;;   Creates and shows an interactive drawing window with its own resource lifetime.
 (define (make-window)
   (define canvas #f) (define frames 0)
   (define window%
@@ -44,7 +62,13 @@
             (send dc set-brush "gold" 'solid)
             (send dc draw-rounded-rectangle 284 142 (max 40 (- w 322)) 106 16)
             (send dc set-text-foreground "navy")
-            (send dc draw-text "Resize or move between displays; every frame gets a fresh DC." 24 (- h 38) #t)
-            (send dc draw-text "Ordinary drawing and presentation stay on GPU surfaces." 24 (- h 20) #t))]))
+            (send dc draw-text "Resize or move between displays; every frame gets a fresh DC." 24 (-
+              h 38) #t)
+            (send dc draw-text "Ordinary drawing and presentation stay on GPU surfaces." 24 (- h 20)
+              #t))]))
   (send window show #t) (void))
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main (queue-callback make-window))

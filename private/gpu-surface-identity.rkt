@@ -1,10 +1,22 @@
 #lang racket/base
+
+;;;
+;;; GPU Surface Identity
+;;;
+
+;; Associates surface wrappers with immutable native identity descriptions.
+;; Supports frame-target reuse and interoperation checks without exposing native pointers.
+
 (require "gpu-backends.rkt")
 (provide gpu-surface-identity/validated)
 ;; Private stamping boundary, called only AFTER gpu-surface-info has checked
 ;; the live recording context's pointer against the owning domain. Backend,
 ;; generation and geometry come from that validation, never a constructor's
 ;; descriptive hash. This prevents the 0.49 missing-backend regression.
+; gpu-surface-identity/validated : hash? symbol? any/c exact-nonnegative-integer? any/c any/c ->
+;   hash?
+;;   Combines checked backend, generation, native identity, and extents into detached surface
+;;   identity data.
 (define (gpu-surface-identity/validated description backend generation native width height)
   (unless (and (hash? description) (immutable? description))
     (raise-argument-error 'gpu-surface-info "immutable description hash" description))

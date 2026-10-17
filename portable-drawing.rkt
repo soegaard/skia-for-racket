@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; Portable Drawing Operations
+;;;
+
+;; Draws markers, sliced images, lattices, and atlases through explicit portable paths.
+;; This public compatibility layer expresses selected complex drawing operations using primitives
+;; suitable for supported document and raster targets.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list racket/vector
          "color.rkt" "private/core.rkt" "private/check.rkt"
          "private/geometry-util.rkt" "private/portable-util.rkt"
@@ -11,6 +24,9 @@
 
 ;; Explicit lowering, before recording or serialization. Existing native batch
 ;; operations are unchanged. No raw SVG injection and no backend masquerading.
+; draw-markers : canvas? (or/c list? vector?) (and/c real? (>/c 0)) paint? [#:shape (or/c 'circle
+;   'square)] -> void?
+;;   Draws a circle or square centered at each two-coordinate point.
 (define (draw-markers c points size paint #:shape [shape 'circle])
   (define who 'draw-markers)
   (define boxes (portable-marker-boxes who points size shape))
@@ -23,6 +39,10 @@
            c (append (vector->list b) (list paint))))
   (void))
 
+; image-lattice-plan : (integer-in 1 1073741823) (integer-in 1 1073741823) image-lattice? real?
+;   real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) -> (listof image-grid-cell?)
+;;   Returns the row-major cells for the lattice after checking bounds and interior divisions
+;;   against the image dimensions.
 (define (image-lattice-plan image-width image-height lattice x y width height)
   (define who 'image-lattice-plan)
   (unless (image-lattice? lattice) (raise-argument-error who "image-lattice?" lattice))
@@ -33,16 +53,24 @@
    (image-lattice-cell-types lattice) (image-lattice-colors lattice)
    (list x y width height)))
 
+; nonempty-box? : vector? -> boolean?
+;;   Checks that an x/y/width/height rectangle has positive extents.
 (define (nonempty-box? b)
   (and (positive? (vector-ref b 2)) (positive? (vector-ref b 3))))
+; visible-cell? : image-grid-cell? -> boolean?
+;;   Selects nontransparent grid cells with nonempty source and destination rectangles.
 (define (visible-cell? cell)
   (and (not (eq? (image-grid-cell-kind cell) 'transparent))
        (nonempty-box? (image-grid-cell-source cell))
        (nonempty-box? (image-grid-cell-destination cell))))
+; checked-image-canvas : canvas? image? -> exact-positive-integer?
+;;   Checks image and canvas lifetimes even when the drawing plan has no visible cells.
 (define (checked-image-canvas c im)
   (image-color-type im) ; validate lifetime/thread even if the plan paints nothing
   (canvas-save-count c))
 
+; call-with-slices : image? (listof vector?) procedure? -> any/c
+;;   Shares native image subsets for repeated source rectangles and closes them after the callback.
 (define (call-with-slices im boxes proc)
   ;; Reuse a native subset for repeated source rectangles (not one newly
   ;; encoded image per atlas occurrence). No input pixels are resampled here.
@@ -61,11 +89,15 @@
          (proc table))
        (lambda () (for ([part (in-hash-values table)]) (skia-close! part)))))))
 
+; color-with-alpha : any/c byte? -> rgba?
+;;   Multiplies the color's byte alpha by the requested opacity with integer rounding.
 (define (color-with-alpha color alpha)
   (define v (color->rgba color))
   (rgba (rgba-red v) (rgba-green v) (rgba-blue v)
         (quotient (+ (* (rgba-alpha v) alpha) 127) 255)))
 
+; draw-grid : canvas? image? list? symbol? byte? -> void?
+;;   Paints visible grid cells in plan order using shared source subsets or solid colors.
 (define (draw-grid c im plan filter alpha)
   (checked-image-canvas c im)
   (define cells (filter-visible plan))
@@ -86,14 +118,24 @@
             (paint-set-color! color-paint (color-with-alpha (image-grid-cell-color cell) alpha))
             (apply draw-rect c (append (vector->list b) (list color-paint)))])))))
   (void))
+; filter-visible : (listof image-grid-cell?) -> (listof image-grid-cell?)
+;;   Keeps visible cells in their original drawing order.
 (define (filter-visible plan) (filter visible-cell? plan))
 
+; draw-image-nine/portable : canvas? image? (or/c (list/c exact-integer? exact-integer?
+;   exact-integer? exact-integer?) (vector/c exact-integer? exact-integer? exact-integer?
+;   exact-integer?)) real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:sampling (or/c
+;   'nearest 'linear)] [#:alpha byte?] -> void?
+;;   Draws the image-nine-plan as ordinary image rectangles.
 (define (draw-image-nine/portable c im center x y width height
                                   #:sampling [filter 'linear] #:alpha [alpha 255])
   (portable-filter 'draw-image-nine/portable filter)
   (portable-alpha 'draw-image-nine/portable alpha)
   (define plan (image-nine-plan (image-width im) (image-height im) center x y width height))
   (draw-grid c im plan filter alpha))
+; draw-image-lattice/portable : canvas? image? image-lattice? real? real? (and/c real? (>=/c 0))
+;   (and/c real? (>=/c 0)) [#:sampling (or/c 'nearest 'linear)] [#:alpha byte?] -> void?
+;;   Draws the image-lattice-plan as image rectangles and plain fixed-color rectangles.
 (define (draw-image-lattice/portable c im lattice x y width height
                                      #:sampling [filter 'linear] #:alpha [alpha 255])
   (portable-filter 'draw-image-lattice/portable filter)
@@ -101,6 +143,9 @@
   (define plan (image-lattice-plan (image-width im) (image-height im) lattice x y width height))
   (draw-grid c im plan filter alpha))
 
+; draw-atlas/portable : canvas? image? (or/c list? vector?) (or/c list? vector?) [#:sampling (or/c
+;   'nearest 'linear)] [#:alpha byte?] -> void?
+;;   Draws matching atlas transforms and source rectangles as separate transformed image rectangles.
 (define (draw-atlas/portable c im transforms sources
                              #:sampling [filter 'linear] #:alpha [alpha 255])
   (define who 'draw-atlas/portable)

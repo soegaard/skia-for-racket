@@ -1,19 +1,54 @@
 #lang racket/base
+
+;;;
+;;; Portable Native Test
+;;;
+
+;; Covers portable drawing: native resources and vector backends.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list "../main.rkt" "portable-fixtures.rkt")
 (provide portable-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; render : procedure? -> bytes?
+;;   Captures a portable drawing on the fixed CPU comparison surface.
 (define (render draw)
   (with-skia ([s (make-surface 40 32)])
     (draw (surface-canvas s))
     (surface->rgba-bytes s)))
+
+; check-buffers-close : bytes? bytes? real? -> void?
+;;   Requires equally sized captures and bounded per-channel rendering differences.
 (define (check-buffers-close a b tolerance)
   (check-equal? (bytes-length a) (bytes-length b))
   (check-true (for/and ([x (in-bytes a)] [y (in-bytes b)]) (<= (abs (- x y)) tolerance))))
+
+; export : procedure? [symbol? symbol?] -> any
+;;   Exports the portable drawing through the chosen vector backend and audit policy.
 (define (export draw [format 'svg] [policy 'error])
   (output->bytes/audit (make-output-page 40 32 draw) format #:policy policy))
+
+; check-no-fallback : output-audit-report? -> void?
+;;   Requires the portable drawing's audit to contain no unexpected raster fallback.
 (define (check-no-fallback report)
   (check-false (output-audit-report-blocking? report))
   (check-false (for/or ([e (in-list (output-audit-report-events report))])
                  (eq? (output-audit-event-feature e) 'raster-group))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; portable-native-tests : test-suite?
+;;   Collects the regression cases for portable drawing: native resources and vector backends.
 (define portable-native-tests
   (test-suite
    "Portable drawing: native resources and vector backends"
@@ -85,17 +120,22 @@
      (with-skia ([im (make-portable-test-image)])
        (check-buffers-close
          (render (lambda (c) (draw-image-nine c im '(3 3 3 3) 2 2 18 15 #:sampling 'nearest)))
-         (render (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 2 2 18 15 #:sampling 'nearest))) 0)))
+         (render
+           (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 2 2 18 15 #:sampling 'nearest))) 0)))
    (test-case "small nine-patch matches native collapsed spans"
      (with-skia ([im (make-portable-test-image)])
        (check-buffers-close
          (render (lambda (c) (draw-image-nine c im '(3 3 3 3) 2 2 4 2 #:sampling 'nearest)))
-         (render (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 2 2 4 2 #:sampling 'nearest))) 0)))
+         (render
+           (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 2 2 4 2 #:sampling 'nearest))) 0)))
    (test-case "portable nine alpha matches native image opacity"
      (with-skia ([im (make-portable-test-image)] [p (make-paint #:color (rgba 0 0 0 128))])
        (check-buffers-close
-         (render (lambda (c) (draw-image-nine c im '(3 3 3 3) 2 2 18 15 #:sampling 'nearest #:paint p)))
-         (render (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 2 2 18 15 #:sampling 'nearest #:alpha 128))) 1)))
+         (render
+           (lambda (c) (draw-image-nine c im '(3 3 3 3) 2 2 18 15 #:sampling 'nearest #:paint p)))
+         (render
+           (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 2 2 18 15 #:sampling 'nearest
+                         #:alpha 128))) 1)))
    (test-case "ordinary lattice matches native nearest samples"
      (with-skia ([im (make-portable-test-image)])
        (define l (make-image-lattice '(3 6) '(3 6)))
@@ -105,7 +145,8 @@
    (test-case "lattice transparent and fixed-color cells match native"
      (with-skia ([im (make-portable-test-image)])
        (define l (make-image-lattice '(3 6) '(3 6)
-                   #:cell-types '(default fixed-color default transparent default default default default default)
+                   #:cell-types
+                   '(default fixed-color default transparent default default default default default)
                    #:colors '(black #x80ff0000 black black black black black black black)))
        (check-buffers-close
          (render (lambda (c) (draw-image-lattice c im l 2 2 18 15 #:sampling 'nearest)))
@@ -126,7 +167,9 @@
    (test-case "image-grid bad alpha rejected before painting"
      (with-skia ([im (make-portable-test-image)] [s (make-surface 24 24)])
        (define before (surface->rgba-bytes s))
-       (check-exn exn:fail? (lambda () (draw-image-nine/portable (surface-canvas s) im '(3 3 3 3) 0 0 20 20 #:alpha 256)))
+       (check-exn exn:fail?
+         (lambda () (draw-image-nine/portable (surface-canvas s) im '(3 3 3 3) 0 0 20 20 #:alpha
+                      256)))
        (check-equal? (surface->rgba-bytes s) before)))
    (test-case "portable nine exports as image pieces without fallback"
      (with-skia ([im (make-portable-test-image)])
@@ -150,7 +193,9 @@
    (test-case "vector-only policy still rejects cropped images"
      (with-skia ([im (make-portable-test-image)])
        (check-exn exn:fail:output-audit?
-         (lambda () (export (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 0 0 30 24)) 'svg 'vector-only)))))
+         (lambda ()
+           (export (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 0 0 30 24)) 'svg
+             'vector-only)))))
    (test-case "old native grid classification remains conservative"
      (with-skia ([im (make-portable-test-image)])
        (check-exn exn:fail:output-audit?
@@ -159,11 +204,14 @@
      (with-skia ([im (make-portable-test-image)])
        (check-buffers-close
          (render (lambda (c) (draw-image-subrect c im 3 0 3 3 5 7 3 3 #:sampling 'nearest)))
-         (render (lambda (c) (draw-atlas/portable c im (list (make-atlas-transform 5 7)) '((3 0 3 3)) #:sampling 'nearest))) 0)))
+         (render
+           (lambda (c) (draw-atlas/portable c im (list (make-atlas-transform 5 7)) '((3 0 3 3))
+                         #:sampling 'nearest))) 0)))
    (test-case "atlas anchor is relative to its crop not the atlas origin"
      (with-skia ([im (make-portable-test-image)] [s (make-surface 24 24)])
        (draw-atlas/portable (surface-canvas s) im
-         (list (make-atlas-transform 10 10 #:scale 2 #:anchor '(1 1))) '((6 0 3 3)) #:sampling 'nearest)
+         (list (make-atlas-transform 10 10 #:scale 2 #:anchor '(1 1))) '((6 0 3 3)) #:sampling
+         'nearest)
        (check-equal? (surface-pixel s 10 10) (rgba 0 0 255 255))
        (check-equal? (rgba-alpha (surface-pixel s 7 10)) 0)))
    (test-case "atlas restores the receiving canvas matrix and clip"
@@ -184,11 +232,13 @@
    (test-case "atlas fractional source coordinates are rejected not rounded"
      (with-skia ([im (make-portable-test-image)] [s (make-surface 24 24)])
        (check-exn exn:fail? (lambda ()
-         (draw-atlas/portable (surface-canvas s) im (list (make-atlas-transform 0 0)) '((1/2 0 3 3)))))))
+         (draw-atlas/portable (surface-canvas s) im (list (make-atlas-transform 0 0))
+           '((1/2 0 3 3)))))))
    (test-case "atlas does not silently accept per-sprite tint"
      (with-skia ([im (make-portable-test-image)] [s (make-surface 24 24)])
        (check-exn exn:fail? (lambda ()
-         (draw-atlas/portable (surface-canvas s) im (list (make-atlas-transform 0 0)) '((0 0 3 3)) #:colors '(red))))))
+         (draw-atlas/portable (surface-canvas s) im (list (make-atlas-transform 0 0)) '((0 0 3 3))
+           #:colors '(red))))))
    (test-case "empty atlas still checks image lifetime"
      (with-skia ([im (make-portable-test-image)] [s (make-surface 24 24)])
        (skia-close! im)
@@ -196,7 +246,8 @@
    (test-case "zero atlas scale produces no painted pixels"
      (with-skia ([im (make-portable-test-image)] [s (make-surface 24 24)])
        (define before (surface->rgba-bytes s))
-       (draw-atlas/portable (surface-canvas s) im (list (make-atlas-transform 10 10 #:scale 0)) '((0 0 3 3)))
+       (draw-atlas/portable (surface-canvas s) im (list (make-atlas-transform 10 10 #:scale 0))
+         '((0 0 3 3)))
        (check-equal? (surface->rgba-bytes s) before)))
    (test-case "atlas cropped images and placements export without panel fallback"
      (with-skia ([im (make-portable-test-image)])
@@ -226,7 +277,8 @@
        (check-no-fallback report)))
    (test-case "SKP import cannot restore provenance of portable drawings"
      (with-skia ([im (make-portable-test-image)]
-                 [p (call-with-picture 40 30 (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 0 0 30 24)))]
+                  [p (call-with-picture 40 30
+                       (lambda (c) (draw-image-nine/portable c im '(3 3 3 3) 0 0 30 24)))]
                  [loaded (picture-from-bytes (picture->bytes p) #:trusted? #t)])
        (check-exn exn:fail:output-audit? (lambda () (export (lambda (c) (draw-picture c loaded)))))))
 ))

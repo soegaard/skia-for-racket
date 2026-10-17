@@ -1,9 +1,29 @@
 #lang racket/base
+
+;;;
+;;; GPU DXGI Pure Test
+;;;
+
+;; Covers dXGI policy and shared presenter semantics; no Windows/Skia calls.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit
          "../private/gpu-dxgi-util.rkt" "../private/gpu-dxgi-types.rkt"
          "../private/gpu-presenter.rkt"
          (submod "../private/gpu-presenter.rkt" adapter-internals))
 (provide gpu-dxgi-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fixture : procedure? [procedure?] -> any
+;;   Supplies a synthetic presenter with mutable metrics, acquisition counters, and queued
+;;   callbacks.
 (define (fixture proc [render void])
   (define outcome (box 'occluded))
   (define metrics (box (presentation-metrics 120 80 60 40)))
@@ -24,6 +44,14 @@
       render raise))
   (dynamic-wind void (lambda () (proc p outcome metrics acquired retired posted))
     (lambda () (gpu-presenter-close! p))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-dxgi-pure-tests : test-suite?
+;;   Collects the regression cases for dXGI policy and shared presenter semantics; no Windows/Skia
+;;   calls.
 (define gpu-dxgi-pure-tests
   (test-suite
    "DXGI policy and shared presenter semantics; no Windows/Skia calls"

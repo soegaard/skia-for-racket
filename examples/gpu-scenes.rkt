@@ -1,17 +1,45 @@
 #lang racket/base
+
+;;;
+;;; GPU Scenes Example
+;;;
+
+;; Defines the common scene registry used for direct CPU and GPU rendering comparisons.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; One backend-independent registry. The same callback is run directly on CPU
 ;; and GPU surfaces; it does not use output groups or intermediate CPU panels.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list "../main.rkt")
 (provide gpu-scene-names gpu-scene-width gpu-scene-height draw-gpu-scene)
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; gpu-scene-width : exact-integer?
+;;   Specifies gpu scene width in the drawing's local coordinate units.
 (define gpu-scene-width 420)
+; gpu-scene-height : exact-integer?
+;;   Specifies gpu scene height in the drawing's local coordinate units.
 (define gpu-scene-height 260)
+; gpu-scene-names : list?
+;;   Orders the scene names shared by CPU and GPU rendering checks.
 (define gpu-scene-names '(paths gradients images filters runtime text mesh perspective))
+; label : canvas? string? real? real? real? -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y size)
   (with-skia ([font (make-font #:size size #:hinting 'none #:linear-metrics? #t #:subpixel? #t)]
               [ink (make-paint #:color "#17354B")])
     (draw-simple-text c text x y font ink)))
+; box : canvas? real? real? real? real? any/c -> void?
+;;   Draws the box comparison in the current canvas coordinate system.
 (define (box c x y w h color)
   (with-skia ([p (make-paint #:color color #:antialias? #f)]) (draw-rect c x y w h p)))
+; frame : canvas? any/c -> void?
+;;   Draws the frame comparison in the current canvas coordinate system.
 (define (frame c name)
   (canvas-clear! c 'transparent)
   (box c 16 16 388 228 'white)
@@ -20,6 +48,8 @@
   (box c 0 252 8 8 (rgb 0 0 255))
   (box c 412 252 8 8 (rgb 255 255 0))
   (label c (string-append "GPU / CPU   " (symbol->string name)) 28 42 17))
+; source-image : -> image?
+;;   Builds the small procedural image sampled by the GPU comparison scenes.
 (define (source-image)
   (define pixels (make-bytes (* 32 24 4)))
   (for* ([y (in-range 24)] [x (in-range 32)])
@@ -29,6 +59,8 @@
     (bytes-set! pixels (+ i 2) (if (< x 11) 35 215))
     (bytes-set! pixels (+ i 3) (if (= (modulo x 9) 0) 96 255)))
   (rgba-bytes->image 32 24 pixels))
+; draw-gpu-scene : canvas? any/c -> void?
+;;   Draws the gpu scene component in the current canvas coordinate system.
 (define (draw-gpu-scene c name)
   (unless (memq name gpu-scene-names) (error 'draw-gpu-scene "unknown scene ~a" name))
   (frame c name)

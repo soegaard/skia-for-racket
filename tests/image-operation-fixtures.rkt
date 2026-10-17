@@ -1,16 +1,51 @@
 #lang racket/base
+
+;;;
+;;; Image Operation Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for image filtering, subsets, placement offsets,
+;; and raw pixel access.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/list "../main.rkt")
 (provide operation-scenes operation-blue operation-width operation-height
          make-operation-source make-operation-float-source make-operation-filter
          operation-filter-subset operation-filter-clip
          make-operation-scene-image operation-pixel operation-check-pixels)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; operation-scenes : (listof symbol?)
+;;   Lists direct-image operations in the order used by capture drivers.
 (define operation-scenes '(offset clip blur shadow scale raw))
+
+; operation-blue : rgba?
+;;   Provides the source color used to distinguish image contents from white background.
 (define operation-blue (rgb 32 96 192))
-(define operation-width 96) (define operation-height 64)
+
+; operation-width : exact-positive-integer?
+;;   Sets the fixture width in pixels for drawing and storage-layout checks.
+(define operation-width 96)
+; operation-height : exact-positive-integer?
+;;   Sets the fixture height in pixels for drawing and storage-layout checks.
+(define operation-height 64)
+
+; make-operation-source : -> image?
+;;   Creates an owned solid-blue image detached from a temporary raster buffer.
 (define (make-operation-source)
   (with-skia ([b (make-raster-buffer 16 12)])
     (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-fill! v operation-blue)) #:writable? #t)
     (raster-buffer->image b)))
+
+; make-operation-float-source : [any/c] -> image?
+;;   Creates float samples with fractional and extended-range values for raw-conversion checks.
 (define (make-operation-float-source [space #f])
   (with-skia ([b (make-raster-buffer-from-info
                   (make-image-info 4 3 #:color-type 'rgba-f32 #:color-space space))])
@@ -19,18 +54,30 @@
         (for* ([y (in-range 3)] [x (in-range 4)])
           (pixmap-set-sample! v x y '#(0.5009765625 0.25 0.75 1.0)))) #:writable? #t)
     (raster-buffer->image b)))
+
+; make-operation-filter : symbol? -> image-filter?
+;;   Creates the offset, blur, or shadow graph associated with a named operation scene.
 (define (make-operation-filter scene)
   (case scene
     [(offset clip) (make-offset-image-filter 7 5)]
     [(blur) (make-blur-image-filter 2 2)]
     [(shadow) (make-drop-shadow-image-filter 8 6 2 2 (rgb 0 0 0))]
     [else (raise-argument-error 'make-operation-filter "offset, clip, blur or shadow" scene)]))
+
+; operation-filter-subset : symbol? -> (or/c vector? #f)
+;;   Restricts the clip scenario to a source subset; other scenes use the complete source.
 (define (operation-filter-subset scene) (and (eq? scene 'clip) '#(4 3 8 6)))
+
+; operation-filter-clip : symbol? -> vector?
+;;   Returns the output clip rectangle for the chosen filter scenario.
 (define (operation-filter-clip scene)
   (case scene [(clip) '#(12 9 5 3)] [(blur) '#(-8 -8 32 28)] [else '#(-8 -8 48 40)]))
 
 ;; Return an independently owned, tightly cropped image, its world placement,
 ;; detached filter metadata, and optional raw F32 evidence before conversion.
+
+; make-operation-scene-image : symbol? -> any
+;;   Returns the processed image and its placement information for a named fixture scene.
 (define (make-operation-scene-image scene)
   (case scene
     [(offset clip blur shadow)
@@ -58,9 +105,16 @@
        (values (surface-snapshot surface) '#(0 0)
                (hasheq 'conversion "explicit-raw-shader-rasterization") #f))]
     [else (raise-argument-error 'make-operation-scene-image "symbol in operation-scenes" scene)]))
+
+; operation-pixel : bytes? exact-nonnegative-integer? exact-nonnegative-integer?
+; [exact-positive-integer?] -> (listof byte?)
+;;   Extracts one row-major RGBA pixel from an operation capture.
 (define (operation-pixel data x y [width operation-width])
   (define at (* 4 (+ x (* width y))))
   (bytes->list (subbytes data at (+ at 4))))
+
+; operation-check-pixels : symbol? bytes? -> void?
+;;   Checks capture dimensions and scene-specific source, effect, and marker landmarks.
 (define (operation-check-pixels scene data)
   (unless (= (bytes-length data) (* 4 operation-width operation-height))
     (error 'image-operation-fixture "wrong capture dimensions"))

@@ -1,18 +1,51 @@
 #lang racket/base
+
+;;;
+;;; Projective Pure Test
+;;;
+
+;; Covers perspective and general matrices: pure values and audit policy.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list "../matrix.rkt" "../projective-matrix.rkt"
          "../output-policy.rkt" "../private/audit-trace.rkt"
          (submod "../private/audit-trace.rkt" testing))
 (provide projective-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; check-vector-close : (vectorof real?) (vectorof real?) real? -> void?
+;;   Checks equal-sized coefficient vectors within an explicit numerical tolerance.
 (define (check-vector-close a b tolerance)
   (check-equal? (vector-length a) (vector-length b))
   (for ([x (in-vector a)] [y (in-vector b)]) (check-= x y tolerance)))
+
+; capture : symbol? symbol? procedure? -> any
+;;   Collects the audit behavior of a projective operation for a backend and policy.
 (define (capture backend policy thunk)
   (define-values (_ report) (call-with-audit-collector backend policy #f 1 thunk)) report)
+
+; fake-matrix-call : symbol? boolean? procedure? -> any
+;;   Injects affine or general-matrix provenance into a synthetic native-call audit.
 (define (fake-matrix-call backend general? thunk)
   (define h (audit-allocate 'make-surface 'surface (lambda () (box 'surface))))
   (audit-on-canvas 'canvas-concat-matrix4! 'owner backend h '()
     (lambda () (call-with-audit-matrix general?
       (lambda () (audit-native-call 'sk_canvas_concat '() thunk))))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; projective-pure-tests : test-suite?
+;;   Collects the regression cases for perspective and general matrices: pure values and audit
+;;   policy.
 (define projective-pure-tests
   (test-suite "Perspective and general matrices: pure values and audit policy"
    (test-case "new matrix types leave the affine type unchanged"
@@ -104,13 +137,15 @@
    (test-case "3x3 inverse includes perspective coefficients"
      (define m (make-matrix3 2 1 4 0 3 5 0.125 0.25 1))
      (define inv (matrix3-invert m)) (check-true (matrix3? inv))
-     (check-vector-close (matrix3->vector (matrix3-compose m inv)) (matrix3->vector matrix3-identity) 1e-5)
+     (check-vector-close (matrix3->vector (matrix3-compose m inv))
+       (matrix3->vector matrix3-identity) 1e-5)
    )
    (test-case "4x4 inverse includes retained depth"
      (define m (matrix4-compose (matrix4-perspective 200) (matrix4-rotate-y-degrees 30)
                                 (matrix4-translate 20 30 10) (matrix4-scale 2 3 4)))
      (define inv (matrix4-invert m)) (check-true (matrix4? inv))
-     (check-vector-close (matrix4->vector (matrix4-compose m inv)) (matrix4->vector matrix4-identity) 1e-5)
+     (check-vector-close (matrix4->vector (matrix4-compose m inv))
+       (matrix4->vector matrix4-identity) 1e-5)
    )
    (test-case "singular inverses return false"
      (check-false (matrix3-invert (make-matrix3 0 0 0 0 0 0 0 0 0)))
@@ -125,8 +160,10 @@
      (check-true (matrix4? (matrix4-invert (matrix4-scale 1e-20 1 1))))
    )
    (test-case "matrix composition rejects result overflow"
-     (check-exn exn:fail:contract? (lambda () (matrix3-compose (make-matrix3 1e30) (make-matrix3 1e30))))
-     (check-exn exn:fail:contract? (lambda () (matrix4-compose (matrix4-scale 1e30) (matrix4-scale 1e30))))
+     (check-exn exn:fail:contract?
+       (lambda () (matrix3-compose (make-matrix3 1e30) (make-matrix3 1e30))))
+     (check-exn exn:fail:contract?
+       (lambda () (matrix4-compose (matrix4-scale 1e30) (matrix4-scale 1e30))))
    )
    (test-case "legacy six-coefficient conversion preserves order"
      (define m (make-matrix 2 3 4 5 6 7))
@@ -176,7 +213,8 @@
      (check-true (immutable? (matrix3-map-point matrix3-identity 1 2)))
    )
    (test-case "homogeneous directions explicitly use w zero"
-     (check-equal? (matrix3-map-homogeneous (matrix->matrix3 (matrix-translate 10 20)) 2 3 0) #(2.0 3.0 0.0))
+     (check-equal? (matrix3-map-homogeneous (matrix->matrix3 (matrix-translate 10 20)) 2 3 0)
+       #(2.0 3.0 0.0))
      (check-equal? (matrix4-map-homogeneous (matrix4-translate 10 20 30) 2 3 4 0) #(2.0 3.0 4.0 0.0))
    )
    (test-case "points on a horizon return false"
@@ -205,7 +243,8 @@
      (check-equal? (matrix3-map-rect matrix3-identity 1 2 0 0) #(1.0 2.0 0.0 0.0))
    )
    (test-case "full homogeneous 4x4 mapping retains depth"
-     (check-equal? (matrix4-map-homogeneous (apply make-matrix4 (range 1 17)) 1 2 3) #(18.0 46.0 74.0 102.0))
+     (check-equal? (matrix4-map-homogeneous (apply make-matrix4 (range 1 17)) 1 2 3)
+       #(18.0 46.0 74.0 102.0))
    )
    (test-case "camera distance controls the homogeneous divide"
      (check-vector-close (matrix4-map-point (matrix4-perspective 10) 4 6 10) #(2.0 3.0 5.0) 1e-6)
@@ -250,13 +289,15 @@
      (check-false (matrix4-affine-2d? (matrix3->matrix4 p)))
    )
    (test-case "general matrix feature is scoped to its native call"
-     (check-equal? (call-with-audit-matrix #t (lambda () (native-feature 'sk_canvas_concat '()))) '(transform projective-transform))
+     (check-equal? (call-with-audit-matrix #t (lambda () (native-feature 'sk_canvas_concat '())))
+       '(transform projective-transform))
      (check-equal? (native-feature 'sk_canvas_concat '()) '(transform))
      (check-equal? (native-feature 'sk_canvas_get_matrix '()) #f)
    )
    (test-case "general matrix policy blocks both document backends"
      (for ([backend '(pdf svg)])
-       (check-eq? (output-capability-status (output-capability-for backend 'projective-transform)) 'needs-raster))
+       (check-eq? (output-capability-status (output-capability-for backend 'projective-transform))
+         'needs-raster))
    )
    (test-case "strict matrix rejection occurs before the native call"
      (define ran? #f)

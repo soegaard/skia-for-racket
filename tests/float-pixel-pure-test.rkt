@@ -1,10 +1,39 @@
 #lang racket/base
+
+;;;
+;;; Float Pixel Pure Test
+;;;
+
+;; Covers floating colors and storage (pure).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector ffi/unsafe "../main.rkt"
          "../private/types.rkt" "../private/float-pixel-util.rkt" "../private/pixel-sample-util.rkt")
 (provide float-pixel-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail? thunk))
+
+; finfo : [symbol? symbol?] -> image-info?
+;;   Builds one-pixel float metadata for storage and alpha-contract checks.
 (define (finfo [format 'rgba-f16] [alpha 'premul])
   (make-image-info 1 1 #:color-type format #:alpha-type alpha))
+
+;;;
+;;; Regression Suite
+;;;
+
+; float-pixel-pure-tests : test-suite?
+;;   Collects the regression cases for floating colors and storage (pure).
 (define float-pixel-pure-tests
   (test-suite
    "Floating colors and storage (pure)"
@@ -29,7 +58,8 @@
      (check-equal? (color4f->rgba c #:out-of-range 'clip) (rgba 0 255 128 128))
      (bad (lambda () (color4f->rgba c #:out-of-range 'guess))))
    (test-case "integer format inventory and defaults stay unchanged"
-     (check-equal? integer-pixel-formats '#(rgba-8888 bgra-8888 rgb-888x alpha-8 gray-8 rgb-565 rgba-1010102))
+     (check-equal? integer-pixel-formats
+       '#(rgba-8888 bgra-8888 rgb-888x alpha-8 gray-8 rgb-565 rgba-1010102))
      (check-equal? float-pixel-formats '#(rgba-f16 rgba-f32))
      (check-equal? (vector-length pixel-formats) 9)
      (check-equal? (image-info-color-type (make-image-info 1 1)) 'rgba-8888))
@@ -45,7 +75,8 @@
        (check-equal? (image-info-byte-order i) (if (system-big-endian?) 'big-endian 'little-endian))))
    (test-case "float layouts include last-row padding"
      (define i (make-image-info 3 2 #:color-type 'rgba-f16))
-     (check-equal? (call-with-values (lambda () (image-info-storage-layout i #:row-bytes 32)) list) '(32 56 64))
+     (check-equal? (call-with-values (lambda () (image-info-storage-layout i #:row-bytes 32)) list)
+       '(32 56 64))
      (parameterize ([current-skia-byte-limit 63])
        (bad (lambda () (image-info-storage-layout i #:row-bytes 32)))))
    (test-case "float stride and extent checks precede allocation"
@@ -89,13 +120,15 @@
    (test-case "zero-alpha premul is canonical but unpremul retains hidden RGB"
      (bad (lambda () (float-sample->bytes 'test (finfo) '#(1 0 0 0))))
      (check-equal? (float-bytes->sample 'test (finfo 'rgba-f16 'unpremul)
-                     (float-sample->bytes 'test (finfo 'rgba-f16 'unpremul) '#(1 2 3 0))) '#(1.0 2.0 3.0 0.0)))
+                     (float-sample->bytes 'test (finfo 'rgba-f16 'unpremul) '#(1 2 3 0)))
+       '#(1.0 2.0 3.0 0.0)))
    (test-case "quantized zero alpha cannot leave nonzero premultiplied RGB"
      (bad (lambda () (float-sample->bytes 'test (finfo) (vector 1 0 0 (expt 2 -30))))))
    (test-case "opaque sample initialization uses float one, not integer bits"
      (for ([f (in-vector float-pixel-formats)])
        (define i (finfo f 'opaque))
-       (check-equal? (float-bytes->sample 'test i (float-sample->bytes 'test i (float-black-sample i)))
+       (check-equal?
+         (float-bytes->sample 'test i (float-sample->bytes 'test i (float-black-sample i)))
                      '#(0.0 0.0 0.0 1.0))
        (bad (lambda () (float-sample->bytes 'test i '#(0 0 0 0.5))))))
    (test-case "sample lengths and invalid raw float channels reject"
@@ -123,9 +156,12 @@
      (for ([i (in-range 4)] [v (in-list '(0.125 0.375 0.625 0.875))])
        (check-= (ptr-ref c _float i) v 0.000001)))
    (test-case "gradient inputs reject before native loading"
-     (bad (lambda () (make-linear-gradient-color4f-shader '(0 0) '(1 0) '(red blue) #:color-space 'srgb)))
+     (bad (lambda ()
+            (make-linear-gradient-color4f-shader '(0 0) '(1 0) '(red blue) #:color-space 'srgb)))
      (bad (lambda () (make-radial-gradient-color4f-shader '(0 0) 0 '() #:color-space 'srgb)))
-     (bad (lambda () (make-sweep-gradient-color4f-shader '(0 0) '() #:color-space 'srgb #:start-angle 360 #:end-angle 0))))
+     (bad (lambda ()
+            (make-sweep-gradient-color4f-shader '(0 0) '() #:color-space 'srgb #:start-angle 360
+              #:end-angle 0))))
    (test-case "stops that collapse at float32 precision are rejected"
      (define cs (list (make-color4f 0 0 0) (make-color4f 1 1 1)))
      (bad (lambda () (make-linear-gradient-color4f-shader '(0 0) '(1 0) cs #:color-space 'srgb
@@ -139,6 +175,8 @@
      (bad (lambda () (canvas-clear-color4f! #f (make-color4f 1 0 0)))))
    (test-case "float precision is not reported as portable vector output"
      (for ([backend (in-list '(pdf svg))] [ignored (in-naturals)])
-       (check-equal? (output-capability-status (output-capability-for backend 'float-color)) 'needs-raster)
-       (check-equal? (output-capability-status (output-capability-for backend 'float-pixels)) 'needs-raster)))
+       (check-equal? (output-capability-status (output-capability-for backend 'float-color))
+         'needs-raster)
+       (check-equal? (output-capability-status (output-capability-for backend 'float-pixels))
+         'needs-raster)))
 ))

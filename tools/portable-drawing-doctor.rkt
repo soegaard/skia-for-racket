@@ -1,6 +1,25 @@
 #lang racket/base
+
+;;;
+;;; Portable Drawing Doctor
+;;;
+
+;; Exercises portable drawing and reports native diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/list "../main.rkt")
 (provide portable-drawing-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; portable-drawing-doctor! : -> void?
+;;   Checks marker geometry, fixed/stretch image-grid plans, and cropped-image classification inside
+;;   native output groups.
 (define (portable-drawing-doctor!)
   (define plan (image-nine-plan 9 9 '(3 3 3 3) 0 0 30 24))
   (unless (and (= (length plan) 9)
@@ -26,6 +45,7 @@
                  (not (output-audit-report-blocking? report))
                  (not (for/or ([e (in-list (output-audit-report-events report))])
                         (eq? (output-audit-event-feature e) 'raster-group))))
-      (error 'portable-drawing-doctor "cropped images were rasterized again or lost their image classification")))
+      (error 'portable-drawing-doctor
+        "cropped images were rasterized again or lost their image classification")))
   (displayln "Portable drawing passed: marker geometry, fixed/stretch plans, cropped images in native groups; no new native symbols"))
 (module+ main (portable-drawing-doctor!))

@@ -1,19 +1,47 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Text Rendering
+;;;
+
+;; Measures and draws text using the adapter's normalized font requests.
+;; Connects dc<%> text operations to Skia shaping and layout.
+
 ;; The native text path uses existing Skia fonts + HarfBuzz, never a hidden
 ;; bitmap-dc% or Pango text renderer. Every native resource is scoped to a call.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list racket/math
          (prefix-in sk: "../main.rkt")
          (only-in (submod "core.rkt" dc-text-internals)
                   shaper-font call-with-choice-shaper fallback-choice-from-run)
          "dc-support.rkt" "dc-text-spec.rkt" "dc-native-util.rkt")
 (provide dc-measure-text dc-render-text! dc-glyph-exists?)
+;;;
+;;; Shaped Units and Scoped Font Resources
+;;;
+
 (struct text-unit (layout x width) #:transparent)
+;; Fields:
+;;   layout: mixed-text-layout for one source unit. x: accumulated horizontal placement in logical
+;;   drawing units. width: that unit's advance, rounded when hinting is aligned. Units preserve
+;;   source order and share the callback-scoped fonts/shaper used by call-with-text.
+
+; font-options : dc-font-spec? typeface? -> font?
+;;   Creates a native font with the request's size, antialiasing, and aligned or linear metric
+;;   behavior.
 (define (font-options f tf)
   (sk:make-font tf #:size (max 1e-6 (dc-font-spec-size f))
                 #:edging (dc-font-spec-edging f)
                 #:hinting (if (eq? (dc-font-spec-hinting f) 'aligned) 'normal 'none)
                 #:subpixel? #t
                 #:linear-metrics? (eq? (dc-font-spec-hinting f) 'unaligned)))
+
+; call-with-fonts : dc-font-spec? procedure? -> any
+;;   Scopes a matching typeface, font, and font manager while the callback performs native text work.
 (define (call-with-fonts f proc)
   (sk:with-skia ([fm (sk:make-font-manager)]
                 [tf (sk:typeface-from-family (dc-font-spec-family f)
@@ -21,6 +49,10 @@
                       #:slant (dc-font-spec-slant f))]
                 [font (font-options f tf)])
     (proc fm font)))
+
+; call-with-text : dc-text-spec? procedure? -> any
+;;   Supplies ordered shaped units, width/height/descent/leading extent, shaper, manager, baseline,
+;;   and font metrics within their resource scope.
 (define (call-with-text request proc)
   (define spec (dc-text-spec-font request))
   (define size (dc-font-spec-size spec))
@@ -62,6 +94,14 @@
            (define height (dc-real 'skia-dc-text (+ ascent descent leading)))
            (define extent (vector cursor height descent leading))
            (proc units extent sh fm (+ leading ascent) metrics))))]))
+
+;;;
+;;; Measurement and Drawing
+;;;
+
+; dc-measure-text : any/c (or/c dc-font-spec? dc-text-spec?) -> (values real? real? real? real?)
+;;   Returns width, height, descent, and leading; font-only requests use average character width and
+;;   font metrics.
 (define (dc-measure-text _surface request)
   (if (dc-font-spec? request)
       (if (zero? (dc-font-spec-size request)) (values 0.0 0.0 0.0 0.0)
@@ -77,9 +117,18 @@
       (call-with-text request (lambda (_units extent _sh _fm _baseline _metrics)
                                (apply values (vector->list extent))))))
 (module* canvas-internals #f (provide dc-render-text-on-canvas!))
+
+; dc-render-text! : surface? dc-text-spec? vector? (or/c #f dc-clip?) real? real? real? vector?
+; vector? boolean? -> void?
+;;   Renders a normalized text request through the target surface's canvas.
 (define (dc-render-text! surface request matrix clip x y angle foreground background solid?)
   (dc-render-text-on-canvas! (sk:surface-canvas surface) request matrix clip
                            x y angle foreground background solid?))
+
+; dc-render-text-on-canvas! : canvas? dc-text-spec? vector? (or/c #f dc-clip?) real? real? real?
+; vector? vector? boolean? -> void?
+;;   Draws shaped units at the requested top-left position and rotation, with optional background and
+;;   underline decoration.
 (define (dc-render-text-on-canvas! c request matrix clip x y angle foreground background solid?)
   (call-with-text
    request
@@ -104,10 +153,14 @@
                   (- baseline (sk:mixed-text-line-baseline (car lines))) paint)))
              (when (and metrics (dc-font-spec-underlined? (dc-text-spec-font request)))
                (define thickness (max 0.5 (or (sk:font-metrics-underline-thickness metrics)
-                                               (/ (dc-font-spec-size (dc-text-spec-font request)) 16))))
+                                               (/ (dc-font-spec-size (dc-text-spec-font request))
+                                                 16))))
                (define position (or (sk:font-metrics-underline-position metrics) thickness))
                (sk:draw-rect c 0 (+ baseline position) (vector-ref extent 0) thickness paint))))))))
   (void))
+
+; dc-glyph-exists? : any/c dc-font-spec? char? -> boolean?
+;;   Checks the requested face and then the matching fallback face for a nonzero character glyph.
 (define (dc-glyph-exists? _surface spec character)
   (unless (char? character) (raise-argument-error 'glyph-exists? "char?" character))
   (call-with-fonts

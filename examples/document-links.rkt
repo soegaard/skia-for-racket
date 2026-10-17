@@ -1,23 +1,59 @@
 #lang racket/base
+
+;;;
+;;; Document Links Example
+;;;
+
+;; Builds document pages with hyperlinks, destinations, and linkable regions.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline racket/file racket/path racket/string "../main.rkt")
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; ink : string?
+;;   Specifies the ink color used by this drawing.
 (define ink "#20344e")
+; teal : string?
+;;   Specifies the teal color used by this drawing.
 (define teal "#10988e")
+; blue : string?
+;;   Specifies the blue color used by this drawing.
 (define blue "#3269d5")
+; orange : string?
+;;   Specifies the orange color used by this drawing.
 (define orange "#efa02b")
+; pale : string?
+;;   Specifies the pale color used by this drawing.
 (define pale "#edf0f4")
+; docs-uri : string?
+;;   Names the external documentation destination for the hyperlink examples.
 (define docs-uri "https://docs.racket-lang.org/")
+; label : canvas? string? real? real? [real?] [any/c] -> void?
+;;   Draws a text label at the supplied baseline in local canvas coordinates.
 (define (label c text x y [size 11] [color ink])
   (with-skia ([f (make-font #:size size #:linear-metrics? #t #:subpixel? #t #:hinting 'none)]
               [p (make-paint #:color color)])
     (draw-simple-text c text x y f p)))
+; line : canvas? real? real? real? real? [any/c] [real?] -> void?
+;;   Draws the line comparison in the current canvas coordinate system.
 (define (line c x0 y0 x1 y1 [color teal] [width 2])
   (with-skia ([p (make-paint #:color color #:stroke-width width)])
     (draw-line c x0 y0 x1 y1 p)))
+; button : canvas? real? real? real? real? string? [any/c] [real?] -> void?
+;;   Draws the button comparison in the current canvas coordinate system.
 (define (button c x y w h text [color blue] [size 16])
   (with-skia ([p (make-paint #:color color)])
     (draw-rounded-rect c x y w h 8 8 p))
   (label c text (+ x 12) (+ y (/ h 2) (* size 0.35)) size 'white))
+; page : procedure? string? string? any/c -> output-page?
+;;   Builds the page output page and its drawing callback.
 (define (page draw title subtitle number)
   (make-output-page
    720 500
@@ -30,10 +66,16 @@
      (label c (number->string number) 652 437 9))
    #:margins 24 #:background 'white))
 
+; escape-html : string? -> string?
+;;   Escapes text before inserting it into the generated HTML report.
 (define (escape-html s)
   (for/fold ([s s]) ([entry '(("&" . "&amp;") ("<" . "&lt;") (">" . "&gt;") ("\"" . "&quot;"))])
     (string-replace s (car entry) (cdr entry))))
+; file-name : any/c -> string?
+;;   Escapes the filename portion for a generated HTML link.
 (define (file-name s) (path->string (file-name-from-path s)))
+; file-uri : any/c -> string?
+;;   Percent-encodes one filename component without altering a complete URI.
 (define (file-uri s)
   ;; Encode a single filename, not an entire URI. No extra package or network.
   (define out (open-output-string))
@@ -46,6 +88,8 @@
                (write-char (string-ref digits (remainder b 16)) out))))
   (get-output-string out))
 
+; make-registry : any/c -> list?
+;;   Constructs registry for the example's drawing pipeline.
 (define (make-registry prefix)
   (define (name suffix) (string-append prefix suffix))
   (define companion (string-append (file-uri (name ".companion.html")) "#note"))
@@ -76,9 +120,11 @@
        (with-skia ([p (make-paint #:color pale)]) (draw-rounded-rect c 0 280 648 103 8 8 p))
        (label c "This is the same-page destination." 15 305 16)
        (label c "Annotations are invisible. The button artwork is ordinary canvas drawing." 15 330 11)
-       (label c "SVG fragments select predefined views; PDF links navigate to named points." 15 352 11)
+       (label c "SVG fragments select predefined views; PDF links navigate to named points." 15 352
+         11)
        (label c "Use the actual PDF or interactive SVG, not the PNG, to test clicking." 0 411 11))
-     "A drawing can also be a document" "URL regions, same-document destinations, and links across exported files." 1))
+     "A drawing can also be a document"
+       "URL regions, same-document destinations, and links across exported files." 1))
   (define transforms
     (page
      (lambda (c)
@@ -107,9 +153,12 @@
          (draw-picture c pic #:x 210 #:y 260 #:width 225 #:height 78))
        (button c 484 278 164 48 "Back to page 1" teal 14)
        (cross-link c 484 278 164 48 "overview" "links")
-       (label c "Recorded URLs follow replay transforms. Named destinations are authored after replay." 0 365 10.5)
+       (label c
+         "Recorded URLs follow replay transforms. Named destinations are authored after replay." 0
+         365 10.5)
        (label c "Links survive vector output; rasterization discards interactivity." 0 405 11))
-     "Links follow canvas coordinates" "Translation, rotation, scaling, clipping, and ordinary picture replay." 2))
+     "Links follow canvas coordinates"
+       "Translation, rotation, scaling, clipping, and ordinary picture replay." 2))
   (define destinations
     (page
      (lambda (c)
@@ -128,19 +177,33 @@
        (canvas-define-destination! c "α-section" 0 242)
        (with-skia ([p (make-paint #:color pale)]) (draw-rounded-rect c 0 235 648 142 8 8 p))
        (label c "Named point destination" 15 264 17)
-       (label c "Destination names become deterministic ASCII IDs, without losing distinctions." 15 290 11)
-       (label c "Duplicate definitions and unresolved references raise errors before publication." 15 313 11)
-       (label c "A PDF may resolve a forward link on a later page. Each SVG has its own scope." 15 336 11)
+       (label c "Destination names become deterministic ASCII IDs, without losing distinctions." 15
+         290 11)
+       (label c "Duplicate definitions and unresolved references raise errors before publication."
+         15 313 11)
+       (label c "A PDF may resolve a forward link on a later page. Each SVG has its own scope." 15
+         336 11)
        (label c "These are links and destinations, not PDF comments, forms, or bookmarks." 15 359 11)
        (label c "The companion link also checks XML escaping of an ampersand in the URI." 0 407 11))
-     "Names, not page-number guesses" "Forward references, document scope, and stable SVG fragment identifiers." 3))
+     "Names, not page-number guesses"
+       "Forward references, document scope, and stable SVG fragment identifiers." 3))
   (list (cons "links" links) (cons "transforms" transforms) (cons "destinations" destinations)))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; prefix : path-string?
+  ;;   Selects the destination used by this example's output.
   (define prefix
     (command-line #:program "document-links.rkt" #:args ([prefix "document-links-0.27"]) prefix))
+  ; name : any/c -> string?
+  ;;   Constructs an output filename from the selected prefix.
   (define (name suffix) (string-append prefix suffix))
   (make-parent-directory* (name ".pdf"))
+  ; registry : list?
+  ;;   Keeps the shared scene/page order used by the exported documents and raster references.
   (define registry (make-registry prefix))
   (save-output (map cdr registry) (name ".pdf") 'pdf #:exists 'replace
                #:title "Document links and destinations" #:raster-dpi 144)
@@ -152,18 +215,24 @@
       (save-image image (name (string-append stem ".reference.png")) 'png #:exists 'replace)))
   (call-with-output-file (name ".companion.html")
     (lambda (p)
-      (display "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Link target</title><h1 id=\"note\">The local link worked.</h1><p>This is a static test destination. No scripts or network requests are needed.</p></html>" p))
+      (display
+        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Link target</title><h1 id=\"note\">The local link worked.</h1><p>This is a static test destination. No scripts or network requests are needed.</p></html>" p))
     #:exists 'replace)
   (call-with-output-file (name ".review.html")
     (lambda (p)
-      (display "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Document link review</title><style>body{font:16px system-ui;margin:24px;color:#20344e;background:#edf0f4}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:16px 0 32px}figure{margin:0}object,img{display:block;width:100%;aspect-ratio:720/500;height:auto;background:white}figcaption{margin:8px 0}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style><h1>Links and document annotations</h1>" p)
-      (fprintf p "<p><a href=\"~a\">Open the actual three-page PDF</a>. Test its buttons and cross-page links in a PDF viewer.</p>" (escape-html (file-uri (name ".pdf"))))
-      (display "<p>Left: an interactive SVG document, embedded with object, not img. Right: a separately drawn raster reference. PNGs have no links and are not PDF/SVG rasterizations. Opening an SVG by itself is the clearest way to test fragment navigation. Refresh to restore a navigated preview.</p>" p)
+      (display
+        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Document link review</title><style>body{font:16px system-ui;margin:24px;color:#20344e;background:#edf0f4}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:16px 0 32px}figure{margin:0}object,img{display:block;width:100%;aspect-ratio:720/500;height:auto;background:white}figcaption{margin:8px 0}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style><h1>Links and document annotations</h1>" p)
+      (fprintf p
+        "<p><a href=\"~a\">Open the actual three-page PDF</a>. Test its buttons and cross-page links in a PDF viewer.</p>" (escape-html (file-uri (name ".pdf"))))
+      (display
+        "<p>Left: an interactive SVG document, embedded with object, not img. Right: a separately drawn raster reference. PNGs have no links and are not PDF/SVG rasterizations. Opening an SVG by itself is the clearest way to test fragment navigation. Refresh to restore a navigated preview.</p>" p)
       (for ([entry (in-list registry)])
         (define stem (string-append "." (car entry)))
         (define svg (escape-html (file-uri (name (string-append stem ".svg")))))
         (define png (escape-html (file-uri (name (string-append stem ".reference.png")))))
-        (fprintf p "<h2>~a</h2><p><a href=\"~a\">Open this SVG as a standalone document</a></p><section class=\"pair\"><figure><figcaption>Actual SVG: click the buttons</figcaption><object type=\"image/svg+xml\" data=\"~a\" aria-label=\"Interactive SVG\"><a href=\"~a\">Open SVG</a></object></figure><figure><figcaption>Independent raster reference: not interactive</figcaption><img src=\"~a\" alt=\"Raster reference\"></figure></section>"
+        (fprintf p
+          "<h2>~a</h2><p><a href=\"~a\">Open this SVG as a standalone document</a></p><section class=\"pair\"><figure><figcaption>Actual SVG: click the buttons</figcaption><object type=\"image/svg+xml\" data=\"~a\" aria-label=\"Interactive SVG\"><a href=\"~a\">Open SVG</a></object></figure><figure><figcaption>Independent raster reference: not interactive</figcaption><img src=\"~a\" alt=\"Raster reference\"></figure></section>"
                  (car entry) svg svg svg png))
       (display "</html>" p)) #:exists 'replace)
-  (printf "Wrote ~a.pdf; 3 interactive SVGs; 3 independent raster references; companion HTML; ~a.review.html\n" prefix prefix))
+  (printf
+    "Wrote ~a.pdf; 3 interactive SVGs; 3 independent raster references; companion HTML; ~a.review.html\n" prefix prefix))

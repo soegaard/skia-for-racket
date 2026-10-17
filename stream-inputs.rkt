@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; Stream-Backed Resource Input
+;;;
+
+;; Constructs codecs, typefaces, pictures, and images from native streams or buffered ports.
+;; This public input layer centralizes stream duplication and ownership handoff for the resource
+;; factories that consume encoded data.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require ffi/unsafe
          "streams.rkt" (submod "streams.rkt" internals)
          "typefaces.rkt"
@@ -9,11 +22,17 @@
          codec-from-port/buffered typeface-from-port/buffered
          image-from-port/buffered picture-from-port/buffered)
 
+; checked-index : symbol? exact-nonnegative-integer? -> exact-nonnegative-integer?
+;;   Bounds a collection index to the native signed 32-bit range.
 (define (checked-index who index)
   (unless (and (exact-nonnegative-integer? index) (<= index #x7fffffff))
     (raise-argument-error who "exact integer from 0 through 2147483647" index))
   index)
 
+; consume-private-duplicate : symbol? symbol? skia-input-stream? procedure? procedure? -> (or/c
+;   owned? domain-resource?)
+;;   Transfers a validated private duplicate to a native constructor, never handing off the caller's
+;;   stream.
 (define (consume-private-duplicate who kind stream constructor release)
   ;; Resolve every registered native symbol before creating a raw duplicate.
   ;; The reviewed C shims take a unique_ptr, even on construction failure.
@@ -40,6 +59,8 @@
             (lambda () (unless transferred? (sk_stream_destroy duplicate)))))
         release))))
 
+; codec-from-stream : skia-input-stream? -> codec?
+;;   Returns an image codec using a private duplicate of stream.
 (define (codec-from-stream stream)
   (define who 'codec-from-stream)
   (define result (malloc _int 'atomic))
@@ -54,6 +75,8 @@
   (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! codec) (raise e))])
     (codec-info codec)
     codec))
+; typeface-from-stream : skia-input-stream? [#:index (integer-in 0 2147483647)] -> typeface?
+;;   Returns a typeface from the stream's font data.
 (define (typeface-from-stream stream #:index [index 0])
   (define who 'typeface-from-stream)
   (checked-index who index)
@@ -76,6 +99,9 @@
             (native-face)))
       (native-face)))
 
+; picture-from-stream : skia-input-stream? [#:trusted? boolean?] [#:width (or/c real? #f)] [#:height
+;   (or/c real? #f)] -> picture?
+;;   Deserializes trusted SKP data using a private duplicate.
 (define (picture-from-stream stream #:trusted? [trusted? #f]
                              #:width [width #f] #:height [height #f])
   (define who 'picture-from-stream)
@@ -101,23 +127,40 @@
         (if size (vector-ref size 0) (vector-ref bounds 2))
         (if size (vector-ref size 1) (vector-ref bounds 3))))))
 
+; codec-from-port/buffered : input-port? [#:limit exact-positive-integer?] [#:close? boolean?]
+;   [#:cancel-evt (or/c evt? #f)] -> codec?
+;;   Buffers the unread port contents using buffered-port->input-stream, then constructs a codec.
 (define (codec-from-port/buffered in #:limit [limit (current-skia-byte-limit)]
                                   #:close? [close? #f] #:cancel-evt [cancel #f])
-  (with-skia ([stream (buffered-port->input-stream in #:limit limit #:close? close? #:cancel-evt cancel)])
+  (with-skia ([stream (buffered-port->input-stream
+                      in #:limit limit #:close? close? #:cancel-evt cancel)])
     (codec-from-stream stream)))
+; typeface-from-port/buffered : input-port? [#:index (integer-in 0 2147483647)] [#:limit
+;   exact-positive-integer?] [#:close? boolean?] [#:cancel-evt (or/c evt? #f)] -> typeface?
+;;   Buffers the unread font data, then constructs the selected collection member as in
+;;   typeface-from-stream.
 (define (typeface-from-port/buffered in #:index [index 0] #:limit [limit (current-skia-byte-limit)]
                                      #:close? [close? #f] #:cancel-evt [cancel #f])
   (checked-index 'typeface-from-port/buffered index)
-  (with-skia ([stream (buffered-port->input-stream in #:limit limit #:close? close? #:cancel-evt cancel)])
+  (with-skia ([stream (buffered-port->input-stream
+                      in #:limit limit #:close? close? #:cancel-evt cancel)])
     (typeface-from-stream stream #:index index)))
+; image-from-port/buffered : input-port? [#:limit exact-positive-integer?] [#:close? boolean?]
+;   [#:cancel-evt (or/c evt? #f)] -> image?
+;;   Buffers the unread encoded data and constructs an image as in image-from-bytes.
 (define (image-from-port/buffered in #:limit [limit (current-skia-byte-limit)]
                                   #:close? [close? #f] #:cancel-evt [cancel #f])
   (image-from-bytes (read-port-buffered 'image-from-port/buffered in limit close? cancel)))
+; picture-from-port/buffered : input-port? [#:trusted? boolean?] [#:width (or/c real? #f)] [#:height
+;   (or/c real? #f)] [#:limit exact-positive-integer?] [#:close? boolean?] [#:cancel-evt (or/c evt?
+;   #f)] -> picture?
+;;   Buffers trusted SKP input and constructs a picture as in picture-from-stream.
 (define (picture-from-port/buffered in #:trusted? [trusted? #f]
                                     #:width [width #f] #:height [height #f]
                                     #:limit [limit (current-skia-byte-limit)]
                                     #:close? [close? #f] #:cancel-evt [cancel #f])
   (check-picture-trust 'picture-from-port/buffered trusted?)
   (picture-size-override 'picture-from-port/buffered width height)
-  (with-skia ([stream (buffered-port->input-stream in #:limit limit #:close? close? #:cancel-evt cancel)])
+  (with-skia ([stream (buffered-port->input-stream
+                      in #:limit limit #:close? close? #:cancel-evt cancel)])
     (picture-from-stream stream #:trusted? trusted? #:width width #:height height)))

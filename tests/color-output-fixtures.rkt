@@ -1,8 +1,28 @@
 #lang racket/base
+
+;;;
+;;; Color Output Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for ICC profiles, transfer functions, and
+;; color-preserving image output.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 (provide fixture-icc)
 
 ;; Synthetic matrix/TRC profile for pure *structure* tests. This fixture is not
 ;; offered as a display characterization and is not a native encoder result.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fixture-icc : -> bytes?
+;;   Builds a minimal RGB matrix/TRC ICC profile with explicit offsets for validation mutations.
 (define (fixture-icc)
   (define (u16 n) (integer->integer-bytes n 2 #f #t))
   (define (u32 n) (integer->integer-bytes n 4 #f #t))

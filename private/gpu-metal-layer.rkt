@@ -1,20 +1,52 @@
 #lang racket/base
+
+;;;
+;;; Metal Layer Presentation
+;;;
+
+;; Manages CAMetalLayer hosts, drawable leases, and presentation.
+;; Provides the macOS presentation system used by GPU windows.
+
 ;; macOS GUI-only native adapter. Dynamically loaded by skia/gpu-gui, never by
 ;; CPU/offscreen imports. Raw objects remain private and creator-thread checked.
 (require ffi/unsafe "gpu-native-scope.rkt" "gpu-metal-handles.rkt" "gpu-provider.rkt"
          (submod "gpu-presenter.rkt" adapter-internals))
 (provide make-metal-layer-host
          metal-layer-measure metal-layer-acquire! metal-layer-present! metal-layer-release!
-         metal-layer-finish! metal-layer-close! metal-layer-info metal-drawable-texture metal-drawable-info)
+         metal-layer-finish! metal-layer-close! metal-layer-info metal-drawable-texture
+           metal-drawable-info)
 (define-cstruct _ca-size ([width _double] [height _double]))
+;; Fields:
+;;   width and height: double-precision Core Animation size components in the units expected by the
+;;   receiving property. Native order is width then height.
+
 (define-cstruct _ca-rect ([x _double] [y _double] [width _double] [height _double]))
+;; Fields:
+;;   x and y: double-precision rectangle origin. width and height: double-precision extents. Layout
+;;   flattens the native origin/size pair in Core Graphics order.
+
 (struct metal-layer-host
   (owner scope view [layer #:mutable] queue [space #:mutable] identity ops
          [live #:mutable] [presents #:mutable] [last-buffer #:mutable]))
+;; Fields:
+;;   owner: creator thread. scope: native activation scope. view: host view pointer. layer: mutable
+;;   retained CAMetalLayer. queue: Metal command queue. space: optional retained color space.
+;;   identity: host identity; ops: injected platform operations.
+;;   live: mutable drawable-lease bookkeeping. presents: presentation count. last-buffer:
+;;   retained/latest submission bookkeeping. Native drawable and layer ownership must outlive
+;;   submitted GPU work.
+
 (struct metal-drawable (host [pointer #:mutable] texture info [presented? #:mutable]))
+;; Fields:
+;;   host: owning layer host. pointer: mutable retained drawable pointer, cleared after release.
+;;   texture: borrowed texture pointer whose lifetime is bounded by the drawable. info: detached
+;;   dimensions/configuration. presented?: mutable flag preventing duplicate presentation.
+
 ;; Procedures in ops are short synchronous callouts; user rendering never runs
 ;; with a Cocoa autorelease pool pushed. Method IMPs returning CGRect use the
 ;; platform's normal C ABI (including x86_64 struct-return conventions).
+; make-metal-layer-host : any/c any/c -> any
+;;   Retains a view-backed Metal layer and its queue resources for owner-thread presentation.
 (define (make-metal-layer-host context view)
   (unless (and (eq? (system-type 'os) 'macosx) (= (ctype-sizeof _pointer) 8))
     (gpu-unavailable 'metal-presentation-platform "Metal presentation requires 64-bit macOS"))
@@ -27,7 +59,8 @@
   (define sel (get-ffi-obj "sel_registerName" objc (_fun _string/utf-8 -> _pointer)))
   (define cls (get-ffi-obj "objc_getClass" objc (_fun _string/utf-8 -> _pointer)))
   (define obj-cls (get-ffi-obj "object_getClass" objc (_fun _pointer -> _pointer)))
-  (define method-imp (get-ffi-obj "class_getMethodImplementation" objc (_fun _pointer _pointer -> _pointer)))
+  (define method-imp (get-ffi-obj "class_getMethodImplementation" objc (_fun _pointer _pointer ->
+    _pointer)))
   (define ptr0 (get-ffi-obj "objc_msgSend" objc (_fun _pointer _pointer -> _pointer)))
   (define void0 (get-ffi-obj "objc_msgSend" objc (_fun _pointer _pointer -> _void)))
   (define ptr1 (get-ffi-obj "objc_msgSend" objc (_fun _pointer _pointer _pointer -> _void)))
@@ -55,10 +88,12 @@
     ((cast (method-imp (obj-cls p) s) _pointer (_fun _pointer _pointer -> _ca-rect)) p s))
   (define (backing-rect p rectangle)
     (define s (sel "convertRectToBacking:"))
-    ((cast (method-imp (obj-cls p) s) _pointer (_fun _pointer _pointer _ca-rect -> _ca-rect)) p s rectangle))
+    ((cast (method-imp (obj-cls p) s) _pointer (_fun _pointer _pointer _ca-rect -> _ca-rect)) p s
+      rectangle))
   (define transaction (cls "CATransaction"))
   (define layer-class (cls "CAMetalLayer"))
-  (unless (and transaction layer-class view) (gpu-unavailable 'metal-layer "Cocoa layer classes/view unavailable"))
+  (unless (and transaction layer-class view) (gpu-unavailable 'metal-layer
+    "Cocoa layer classes/view unavailable"))
   (define (without-animation thunk)
     (dynamic-wind (lambda () (act transaction "begin"))
       (lambda () (bool1 transaction (sel "setDisableActions:") 1) (thunk))
@@ -106,12 +141,14 @@
              (unless (and (= w (hash-ref m 'pixel_width)) (= ht (hash-ref m 'pixel_height))
                           (= (uint0 texture (sel "pixelFormat")) 80)
                           (= (uint0 texture (sel "sampleCount")) 1))
-               (error 'gpu-presenter "drawable extent, BGRA8 format or sample count disagrees with layer"))
+               (error 'gpu-presenter
+                 "drawable extent, BGRA8 format or sample count disagrees with layer"))
              (set-metal-layer-host-live! h (add1 (metal-layer-host-live h)))
              (metal-drawable h drawable texture
                (hasheq 'width w 'height ht 'pixel_format "BGRA8Unorm" 'metal_pixel_format 80
                        'framebuffer_only #t 'color_space "sRGB" 'texture_sample_count 1
-                       'origin "top-left" 'backend "metal" 'target_identity (metal-layer-host-identity h)
+                       'origin "top-left" 'backend "metal" 'target_identity (metal-layer-host-identity
+                         h)
                        'presentation_path "CAMetalLayer/same-Ganesh-queue"
                        'acquisition_may_block #t)
                #f)))))
@@ -155,7 +192,8 @@
       (set-metal-layer-host-last-buffer! h #f)
       (act command "release")))
   (define (close h)
-    (unless (zero? (metal-layer-host-live h)) (error 'gpu-presenter "live Metal drawable during layer teardown"))
+    (unless (zero? (metal-layer-host-live h)) (error 'gpu-presenter
+      "live Metal drawable during layer teardown"))
     (finish h)
     (define p (metal-layer-host-layer h))
     (when p
@@ -198,14 +236,18 @@
               (without-animation (lambda () (put root "addSublayer:" layer)))
               (define h (metal-layer-host (current-thread) scope view layer queue space
                           (symbol->string (gensym 'metal-layer))
-                          (hasheq 'libraries (list objc quartz cg) 'main? main? 'measure measure 'acquire acquire
-                                  'present present 'release release 'finish finish 'close close) 0 0 #f))
+                          (hasheq 'libraries (list objc quartz cg) 'main? main? 'measure measure
+                            'acquire acquire
+                                  'present present 'release release 'finish finish 'close close) 0 0
+                                    #f))
               (set! ok? #t) h)
             (lambda ()
               (unless ok?
                 (when layer (act layer "removeFromSuperlayer") (act layer "release"))
                 (when retained-view? (act view "release"))
                 (when space (release-space space)))))))))))
+; layer-call : symbol? metal-layer-host? any/c any/c ... -> any
+;;   Dispatches a layer operation under the host's ownership and native activation checks.
 (define (layer-call who h name . args)
   (unless (metal-layer-host? h) (raise-argument-error who "private Metal layer host" h))
   (unless (and (eq? (current-thread) (metal-layer-host-owner h))
@@ -215,16 +257,30 @@
   (parameterize ([current-gpu-native-scope (metal-layer-host-scope h)])
     (call-with-gpu-native-scope
      (lambda () (apply (hash-ref (metal-layer-host-ops h) name) h args)))))
+; metal-layer-measure : metal-layer-host? -> any
+;;   Copies the layer's current drawable and logical extents into detached presentation metrics.
 (define (metal-layer-measure h) (layer-call 'gpu-presenter h 'measure))
+; metal-layer-acquire! : metal-layer-host? any/c -> any
+;;   Acquires and tracks one retained drawable lease for the measured frame configuration.
 (define (metal-layer-acquire! h m) (layer-call 'gpu-presenter h 'acquire m))
+; metal-layer-present! : metal-layer-host? metal-drawable? -> any
+;;   Queues presentation of a live drawable once and updates submission bookkeeping.
 (define (metal-layer-present! h token)
   (unless (eq? h (metal-drawable-host token)) (error 'gpu-presenter "foreign Metal drawable"))
   (layer-call 'gpu-presenter h 'present token))
+; metal-layer-release! : metal-layer-host? metal-drawable? -> any
+;;   Releases the retained drawable and invalidates its borrowed texture access.
 (define (metal-layer-release! h token)
   (unless (eq? h (metal-drawable-host token)) (error 'gpu-presenter "foreign Metal drawable"))
   (layer-call 'gpu-presenter h 'release token))
+; metal-layer-finish! : metal-layer-host? -> any
+;;   Completes outstanding layer submission work before resources can be retired.
 (define (metal-layer-finish! h) (layer-call 'gpu-presenter-close! h 'finish))
+; metal-layer-close! : metal-layer-host? -> any
+;;   Releases layer-owned native objects only after live drawable work has been settled.
 (define (metal-layer-close! h) (layer-call 'gpu-presenter-close! h 'close))
+; metal-layer-info : metal-layer-host? -> hash?
+;;   Copies layer identity, live leases, and presentation counters for diagnostics.
 (define (metal-layer-info h)
   (hasheq 'layer_closed (not (metal-layer-host-layer h)) 'live_drawables (metal-layer-host-live h)
           'presents_requested (metal-layer-host-presents h)

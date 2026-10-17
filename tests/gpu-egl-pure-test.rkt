@@ -1,8 +1,27 @@
 #lang racket/base
+
+;;;
+;;; GPU EGL Pure Test
+;;;
+
+;; Covers eGL ownership, callback scopes and GL interop contracts.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list "../private/gpu-egl-util.rkt" "../private/gpu-domain.rkt"
          "../private/gpu-provider.rkt" "../private/gpu-interop-guard.rkt"
          "../private/gpu-gl-interop-util.rkt")
 (provide gpu-egl-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fixture : procedure? [#:fail any/c] -> any
+;;   Supplies injected EGL operations and records ownership/activation behavior without native EGL.
 (define (fixture proc #:fail [failure #f])
   (define log (box '()))
   (define (record item) (set-box! log (append (unbox log) (list item))))
@@ -14,7 +33,8 @@
   (define ops
     (egl-platform-ops
      (lambda () (operation 'open) (set! opened? #t) 'egl-host)
-     (lambda (_) (operation 'host-close) (set! opened? #f) (when (eq? current 'ours) (set! current #f)))
+     (lambda (_) (operation 'host-close) (set! opened? #f)
+       (when (eq? current 'ours) (set! current #f)))
      (lambda (_)
        (operation 'enter)
        (define previous current) (set! current 'ours)
@@ -37,12 +57,21 @@
       (set! d (make-gpu-domain provider driver))
       (proc d provider log
             (lambda () current)
-            (lambda () (define h (domain-new-resource d 'mock (lambda () 'child) (lambda (_) (record 'child-release))))
+            (lambda ()
+              (define h (domain-new-resource d 'mock (lambda () 'child)
+                          (lambda (_) (record 'child-release))))
                         (set! children (cons h children)) h)))
     (lambda ()
       (for ([h (in-list children)]) (domain-resource-close! h))
       (when (and d (not (eq? (domain-state d) 'closed)))
         (domain-close! d)))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-egl-pure-tests : test-suite?
+;;   Collects the regression cases for eGL ownership, callback scopes and GL interop contracts.
 (define gpu-egl-pure-tests
   (test-suite
    "EGL ownership, callback scopes and GL interop contracts"
@@ -79,14 +108,17 @@
        (check-eq? (current) 'foreign))))
    (test-case "multiple values cross provider scopes"
      (fixture (lambda (d p log current child)
-       (check-equal? (call-with-values (lambda () (domain-call d (lambda () (values 2 3)))) list) '(2 3)))))
+       (check-equal? (call-with-values (lambda () (domain-call d (lambda () (values 2 3)))) list)
+         '(2 3)))))
    (test-case "callback exceptions restore current binding"
      (fixture (lambda (d p log current child)
        (check-exn #rx"callback" (lambda () (domain-call d (lambda () (error 'callback "failure")))))
        (check-eq? (current) 'foreign))))
    (test-case "non-exception raised values restore current binding"
      (fixture (lambda (d p log current child)
-       (check-equal? (with-handlers ([(lambda (_) #t) values]) (domain-call d (lambda () (raise 'marker)))) 'marker)
+       (check-equal?
+         (with-handlers ([(lambda (_) #t) values]) (domain-call d (lambda () (raise 'marker))))
+         'marker)
        (check-eq? (current) 'foreign))))
    (test-case "nested same-domain scopes do not rebind EGL"
      (fixture (lambda (d p log current child)
@@ -128,7 +160,9 @@
    (test-case "wrong Racket thread cannot activate provider"
      (fixture (lambda (d p log current child)
        (define ch (make-channel))
-       (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (domain-call d void) #f))))
+       (thread (lambda ()
+                 (channel-put ch
+                   (with-handlers ([exn:fail? (lambda (_) #t)]) (domain-call d void) #f))))
        (check-true (channel-get ch)))))
    (test-case "external GL callback blocks Skia pointer access"
      (fixture (lambda (d p log current child)

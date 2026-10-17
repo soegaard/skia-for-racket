@@ -1,8 +1,29 @@
 #lang racket/base
+
+;;;
+;;; Unicode Conformance Runner
+;;;
+
+;; Runs line-break and bidirectional conformance checks against supplied Unicode test data.
+;; This command connects the text-layout implementation to the upstream conformance fixtures.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline
          "../private/unicode-conformance.rkt")
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; line-break-path : (or/c path-string? #f)
+;;   Selects an external Unicode LineBreakTest data file from the command line.
 (define line-break-path #f)
+
+; bidi-path : (or/c path-string? #f)
+;;   Selects an external Unicode BidiCharacterTest data file from the command line.
 (define bidi-path #f)
 
 (command-line
@@ -17,8 +38,14 @@
 (unless (or line-break-path bidi-path)
   (error 'unicode-conformance "give --line-break and/or --bidi"))
 
+
+; failed? : boolean?
+;;   Accumulates whether any selected Unicode conformance suite reported a failure.
 (define failed? #f)
 
+
+; report : string? unicode-conformance-result? -> void?
+;;   Prints suite totals and bounded failure details while updating the process failure flag.
 (define (report label result)
   (define total (unicode-conformance-result-total result))
   (define passed (unicode-conformance-result-passed result))

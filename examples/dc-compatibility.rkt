@@ -1,6 +1,24 @@
 #lang racket/base
+
+;;;
+;;; DC Compatibility Example
+;;;
+
+;; Defines independent racket/draw scenes for bitmap and text compatibility checks.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/list (prefix-in rd: racket/draw))
 (provide draw-dc-compat-oracle draw-dc-text-sample)
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; pattern : real? real? [any/c] -> (is-a?/c bitmap%)
+;;   Creates a deterministic bitmap pattern at the requested backing scale.
 (define (pattern w h [backing 1])
   (define bm (rd:make-bitmap w h #t #:backing-scale backing))
   (define pw (* w backing)) (define ph (* h backing))
@@ -13,6 +31,8 @@
     (bytes-set! pixels (+ i 3) 70))
   (send bm set-argb-pixels 0 0 pw ph pixels #f #f #:unscaled? #t)
   bm)
+; draw-dc-compat-oracle : (is-a?/c dc<%>) -> void?
+;;   Draws the dc compat oracle component in the current canvas coordinate system.
 (define (draw-dc-compat-oracle dc)
   (send dc set-smoothing 'unsmoothed)
   (send dc set-background (make-object rd:color% 20 30 40)) (send dc clear)
@@ -56,6 +76,8 @@
   (send dc copy 2 32 6 4 4 32)
   (send dc set-alpha 1.0)
   (void))
+; draw-dc-text-sample : (is-a?/c dc<%>) -> void?
+;;   Draws the dc text sample component in the current canvas coordinate system.
 (define (draw-dc-text-sample dc)
   (send dc set-background "white") (send dc clear)
   (send dc set-font (rd:make-font #:size 19 #:size-in-pixels? #t #:hinting 'unaligned))

@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; Canvas DC Pure Test
+;;;
+
+;; Covers canvas DC ownership, resizing, paint recovery and direct pixel bridge (headless).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Headless lifecycle tests use the production DC with a recording renderer.
 ;; They do not claim native pixels or initialize racket/gui/base.
 (require rackunit racket/class racket/list racket/control
@@ -9,6 +21,13 @@
          (only-in "../private/check.rkt" current-skia-byte-limit))
 (provide canvas-dc-pure-tests canvas-dc-pure-test-count)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; recording-renderer : [(listof exact-positive-integer?)] -> (values dc-renderer? box? box?)
+;;   Builds an instrumented renderer with allocation and selected-release failure injection.
 (define (recording-renderer [fail-releases '()])
   (define events (box '()))
   (define fail-next (box #f))
@@ -35,21 +54,48 @@
      (lambda (s . xs) (apply event 'copy s xs))
      (lambda (parent child clip alpha) (event 'merge parent child clip alpha))))
   (values renderer events fail-next))
+
+; fresh : [(listof exact-positive-integer?)] -> (values dc<%> box? box?)
+;;   Creates a fresh recording DC, event log, and next-allocation failure control.
 (define (fresh [fail-releases '()])
   (define-values (renderer events fail-next) (recording-renderer fail-releases))
   (values (new (make-skia-dc-class renderer) [width 20] [height 12]) events fail-next))
+
+; with-fresh : syntax
+;;   Binds a fresh recording DC and controls, guaranteeing DC closure after the body.
 (define-syntax-rule (with-fresh (dc e fail) body ...)
   (let-values ([(dc e fail) (fresh)])
     (dynamic-wind void (lambda () body ...) (lambda () (send dc close)))))
+
+; events-of : box? symbol? -> list?
+;;   Returns matching renderer events in execution order, reversing the newest-first log.
 (define (events-of events kind)
   (filter (lambda (x) (eq? (car x) kind)) (reverse (unbox events))))
+
+; fill : dc<%> ... -> void?
+;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;;   checks.
 (define (fill dc)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush "red" 'solid)
   (send dc draw-rectangle 1 2 3 4))
+
+; size : dc<%> -> (listof real?)
+;;   Collects the logical width and height reported by a DC.
 (define (size dc) (call-with-values (lambda () (send dc get-size)) list))
+
+; pixel-size : dc<%> -> (listof exact-nonnegative-integer?)
+;;   Collects the backing width and height in device pixels.
 (define (pixel-size dc) (call-with-values (lambda () (send dc get-pixel-size)) list))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; canvas-dc-pure-tests : test-suite?
+;;   Collects the regression cases for canvas DC ownership, resizing, paint recovery and direct
+;;   pixel bridge (headless).
 (define canvas-dc-pure-tests
   (test-suite
    "Canvas DC ownership, resizing, paint recovery and direct pixel bridge (headless)"
@@ -143,7 +189,8 @@
        (send dc set-text-background "green") (send dc set-text-mode 'solid)
        (define transformation (send dc get-transformation))
        (dc-resize-backing! dc 31 23 2)
-       (check-eq? (send dc get-pen) p) (check-eq? (send dc get-brush) b) (check-eq? (send dc get-font) f)
+       (check-eq? (send dc get-pen) p) (check-eq? (send dc get-brush) b)
+       (check-eq? (send dc get-font) f)
        (check-equal? (send dc get-transformation) transformation)
        (check-equal? (send dc get-alpha) 0.25) (check-eq? (send dc get-smoothing) 'aligned)
        (check-equal? (send (send dc get-background) red) 255)
@@ -201,7 +248,9 @@
                               (lambda () (dc-clear-backing! dc))
                               (lambda () (call-with-dc-canvas-paint dc void)))])
          (define result (box #f))
-         (thread-wait (thread (lambda () (with-handlers ([exn:fail? (lambda (e) (set-box! result e))]) (operation)))))
+         (thread-wait
+           (thread (lambda ()
+                     (with-handlers ([exn:fail? (lambda (e) (set-box! result e))]) (operation)))))
          (check-true (exn:fail? (unbox result))))
        (check-equal? (reverse (unbox e)) '((create 1 20 12)))))
    (test-case "all private lifecycle operations reject a closed DC"
@@ -215,7 +264,9 @@
      (with-fresh (dc e fail)
        (check-equal?
         (call-with-values
-         (lambda () (call-with-dc-canvas-paint dc (lambda () (send dc set-alpha 0.25) (send dc set-origin 3 4) (values 'a 'b))))
+         (lambda ()
+           (call-with-dc-canvas-paint dc
+             (lambda () (send dc set-alpha 0.25) (send dc set-origin 3 4) (values 'a 'b))))
          list) '(a b))
        (check-equal? (send dc get-alpha) 0.25)
        (check-equal? (call-with-values (lambda () (send dc get-origin)) list) '(3.0 4.0))))
@@ -332,7 +383,8 @@
      (check-true (void? (rgba->argb! #"" (make-bytes 0)))))
    (test-case "backing close records logical closure even when native retirement throws"
      (define-values (renderer e fail) (recording-renderer '(1)))
-     (define backing (new canvas-backing% [width 20] [height 12] [dc-class (make-skia-dc-class renderer)]))
+     (define backing
+       (new canvas-backing% [width 20] [height 12] [dc-class (make-skia-dc-class renderer)]))
      (define dc (send backing get-dc))
      (send backing get-bitmap)
      (check-exn #rx"retirement failure" (lambda () (send backing close)))
@@ -342,7 +394,8 @@
      (check-exn #rx"closed" (lambda () (send backing get-bitmap))))
    (test-case "rejected backing close during paint preserves reusable presentation storage"
      (define-values (renderer e fail) (recording-renderer))
-     (define backing (new canvas-backing% [width 20] [height 12] [dc-class (make-skia-dc-class renderer)]))
+     (define backing
+       (new canvas-backing% [width 20] [height 12] [dc-class (make-skia-dc-class renderer)]))
      (dynamic-wind void
        (lambda ()
          (define before (send backing get-bitmap))
@@ -353,20 +406,32 @@
        (lambda () (send backing close))))
    (test-case "bridge follows committed geometry after an old target retirement failure"
      (define-values (renderer e fail) (recording-renderer '(1)))
-     (define backing (new canvas-backing% [width 20] [height 12] [dc-class (make-skia-dc-class renderer)]))
+     (define backing
+       (new canvas-backing% [width 20] [height 12] [dc-class (make-skia-dc-class renderer)]))
      (dynamic-wind void
        (lambda ()
          (define dc (send backing get-dc)) (define old (send backing get-bitmap))
          (check-exn #rx"retirement failure" (lambda () (send backing resize! 31 23 1)))
          (check-eq? (send backing get-dc) dc) (check-equal? (size dc) '(31.0 23.0))
          (define next (send backing get-bitmap))
-         (check-not-eq? next old) (check-equal? (send next get-width) 31) (check-equal? (send next get-height) 23)
+         (check-not-eq? next old) (check-equal? (send next get-width) 31)
+         (check-equal? (send next get-height) 23)
          (check-eq? (send backing get-bitmap) next))
        (lambda () (send backing close))))))
 
+
+; canvas-dc-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define canvas-dc-pure-test-count 38)
 (module+ main
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests canvas-dc-pure-tests))
   (printf "canvas-dc-pure: ~a cases, ~a failures; no native pixels or GUI.\n"
           canvas-dc-pure-test-count failures)

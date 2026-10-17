@@ -1,9 +1,28 @@
 #lang racket/base
 
+;;;
+;;; Reference Color Test
+;;;
+
+;; Checks byte-color construction, channel access, named colors, and packed ARGB conversion.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Pure color contracts and examples; no native library or GUI is needed.
 (require rackunit skia/color)
 
 (module+ test
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; color : color?
+  ;;   Provides a half-transparent RGBA sample for color accessor and conversion assertions.
   (define color (rgba 50 109 230 128))
   (check-true (rgba? color))
   (check-true (struct-type? struct:rgba))

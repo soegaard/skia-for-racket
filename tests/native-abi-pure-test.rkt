@@ -1,10 +1,42 @@
 #lang racket/base
+
+;;;
+;;; Native ABI Pure Test
+;;;
+
+;; Covers native ABI policy (no native library).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit ffi/unsafe
          "../private/native-abi.rkt" "../private/native-layouts.rkt")
 (provide native-abi-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; profile : hash?
+;;   Selects the expected 64-bit Skia m119 ABI profile for detached contract tests.
 (define profile (native-abi-profile-for 119 0 8))
+
+; layouts : hash?
+;;   Maps ABI structure names to the selected profile's expected byte sizes.
 (define layouts (hash-ref profile 'layout_sizes))
+
+; contracts : hash?
+;;   Holds feature-level native contracts extracted from the same profile.
 (define contracts (hash-ref profile 'contracts))
+
+;;;
+;;; Regression Suite
+;;;
+
+; native-abi-pure-tests : test-suite?
+;;   Collects the regression cases for native ABI policy (no native library).
 (define native-abi-pure-tests
   (test-suite
    "native ABI policy (no native library)"
@@ -13,16 +45,22 @@
    (test-case "immutable catalog" (check-true (immutable? (native-abi-catalog))))
    (test-case "immutable profile" (check-true (immutable? profile)))
    (test-case "default profile" (check-equal? (hash-ref profile 'id) "skiasharp-m119"))
-   (test-case "increment range preserves old milestone gate" (check-not-false (native-abi-profile-for 119 1 8)))
+   (test-case "increment range preserves old milestone gate"
+     (check-not-false (native-abi-profile-for 119 1 8)))
    (test-case "older milestone" (check-false (native-abi-profile-for 118 0 8)))
    (test-case "candidate is not enabled" (check-false (native-abi-profile-for 153 0 8)))
    (test-case "unknown future" (check-false (native-abi-profile-for 999 0 8)))
    (test-case "32-bit rejected" (check-false (native-abi-profile-for 119 0 4)))
-   (test-case "negative milestone" (check-exn exn:fail:contract? (lambda () (native-abi-profile-for -1 0 8))))
-   (test-case "negative increment" (check-exn exn:fail:contract? (lambda () (native-abi-profile-for 119 -1 8))))
-   (test-case "zero pointer width" (check-exn exn:fail:contract? (lambda () (native-abi-profile-for 119 0 0))))
-   (test-case "fractional version" (check-exn exn:fail:contract? (lambda () (native-abi-profile-for 119.5 0 8))))
-   (test-case "string version" (check-exn exn:fail:contract? (lambda () (native-abi-profile-for "119" 0 8))))
+   (test-case "negative milestone"
+     (check-exn exn:fail:contract? (lambda () (native-abi-profile-for -1 0 8))))
+   (test-case "negative increment"
+     (check-exn exn:fail:contract? (lambda () (native-abi-profile-for 119 -1 8))))
+   (test-case "zero pointer width"
+     (check-exn exn:fail:contract? (lambda () (native-abi-profile-for 119 0 0))))
+   (test-case "fractional version"
+     (check-exn exn:fail:contract? (lambda () (native-abi-profile-for 119.5 0 8))))
+   (test-case "string version"
+     (check-exn exn:fail:contract? (lambda () (native-abi-profile-for "119" 0 8))))
    (test-case "typed rejection"
      (check-exn (lambda (e) (and (exn:fail:native-abi? e)
                                 (= (exn:fail:native-abi-milestone e) 153)
@@ -31,16 +69,28 @@
                 (lambda () (native-abi-require! 153 0 8))))
    (test-case "supported requirement" (check-equal? (native-abi-require! 119 0 8) profile))
    (test-case "complete layout catalog" (check-equal? (hash-count layouts) 27))
-   (test-case "matching layouts" (check-not-exn (lambda () (native-abi-check-layouts! profile layouts))))
-   (test-case "missing layout" (check-exn exn:fail? (lambda () (native-abi-check-layouts! profile (hash-remove layouts 'sampling)))))
-   (test-case "extra layout" (check-exn exn:fail? (lambda () (native-abi-check-layouts! profile (hash-set layouts 'other 8)))))
-   (test-case "wrong layout size" (check-exn exn:fail? (lambda () (native-abi-check-layouts! profile (hash-set layouts 'image_info 16)))))
-   (test-case "unregistered profile" (check-exn exn:fail:contract? (lambda () (native-abi-check-layouts! (hash-set profile 'milestone 153) layouts))))
-   (test-case "path-measure ownership" (check-equal? (hash-ref contracts 'path_measure_destination) "path"))
-   (test-case "ICC workaround retained" (check-true (hash-ref contracts 'png_explicit_icc_requires_non_srgb_sentinel)))
+   (test-case "matching layouts"
+     (check-not-exn (lambda () (native-abi-check-layouts! profile layouts))))
+   (test-case "missing layout"
+     (check-exn exn:fail?
+       (lambda () (native-abi-check-layouts! profile (hash-remove layouts 'sampling)))))
+   (test-case "extra layout"
+     (check-exn exn:fail?
+       (lambda () (native-abi-check-layouts! profile (hash-set layouts 'other 8)))))
+   (test-case "wrong layout size"
+     (check-exn exn:fail?
+       (lambda () (native-abi-check-layouts! profile (hash-set layouts 'image_info 16)))))
+   (test-case "unregistered profile"
+     (check-exn exn:fail:contract?
+       (lambda () (native-abi-check-layouts! (hash-set profile 'milestone 153) layouts))))
+   (test-case "path-measure ownership"
+     (check-equal? (hash-ref contracts 'path_measure_destination) "path"))
+   (test-case "ICC workaround retained"
+     (check-true (hash-ref contracts 'png_explicit_icc_requires_non_srgb_sentinel)))
    (test-case "Graphite not a wrapper feature" (check-false (hash-ref contracts 'graphite_wrapper)))
    (test-case "Direct3D wrapper is explicit" (check-true (hash-ref contracts 'direct3d_wrapper)))
-   (test-case "candidate policy" (check-equal? (hash-ref (hash-ref (native-abi-catalog) 'candidate) 'policy) "investigate-only"))
+   (test-case "candidate policy"
+     (check-equal? (hash-ref (hash-ref (native-abi-catalog) 'candidate) 'policy) "investigate-only"))
    (test-case "actual Racket layouts"
      (if (= (ctype-sizeof _pointer) 8)
          (check-not-exn (lambda () (native-abi-check-layouts! profile (native-layout-sizes))))
@@ -49,5 +99,12 @@
      (check-exn exn:fail:contract? (lambda () (hash-set! profile 'milestone 153))))))
 (module+ test
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests native-abi-pure-tests))
   (unless (zero? failures) (error 'native-abi-pure-tests "tests failed")))

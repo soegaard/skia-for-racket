@@ -1,7 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Stream Doctor
+;;;
+
+;; Exercises bounded port I/O, cancellation, and stream ownership and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require json racket/cmdline racket/file racket/list
          "../main.rkt" "../tests/typeface-fixtures.rkt")
 (provide generate-stream-evidence)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; generate-stream-evidence : path-string? string? -> void?
+;;   Exercises native stream transfers and writes byte-level evidence plus a JSON manifest.
 (define (generate-stream-evidence directory token)
   (make-directory* directory)
   (define payload (apply bytes-append (make-list 16 (apply bytes (range 256)))))
@@ -50,7 +69,18 @@
     (lambda (out) (write-json report out) (newline out)) #:exists 'error)
   (displayln "stream-native-evidence: passed"))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") path "New evidence directory" (set! directory path)]
     [("--token") value "Unique validator run token" (set! token value)])

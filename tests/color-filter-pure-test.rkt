@@ -1,10 +1,42 @@
 #lang racket/base
+
+;;;
+;;; Color Filter Pure Test
+;;;
+
+;; Covers cPU color filters: validation without native loading.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list "../color-filters.rkt" "../private/check.rkt"
          "../private/color-filter-util.rkt")
 (provide color-filter-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; identity : (listof real?)
+;;   Provides a valid 4-by-5 identity matrix before argument mutations.
 (define identity '(1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0))
+
+; table : bytes?
+;;   Provides an identity channel lookup for validation-only filter construction.
 (define table (apply bytes (build-list 256 values)))
+
+; fail : (-> any) -> void?
+;;   Requires the operation to reject invalid filter arguments.
 (define (fail thunk) (check-exn exn:fail? thunk))
+
+;;;
+;;; Regression Suite
+;;;
+
+; color-filter-pure-tests : test-suite?
+;;   Collects the regression cases for cPU color filters: validation without native loading.
 (define color-filter-pure-tests
   (test-suite
    "CPU color filters: validation without native loading"
@@ -87,7 +119,8 @@
                      (list #t i 0.0))))
    (test-case "high contrast endpoints accepted by validator"
      (for ([v '(-1 0 1)])
-       (check-equal? (length (call-with-values (lambda () (checked-high-contrast 'test #f 'none v)) list)) 3)))
+       (check-equal?
+         (length (call-with-values (lambda () (checked-high-contrast 'test #f 'none v)) list)) 3)))
    (test-case "high contrast grayscale must be boolean"
      (fail (lambda () (make-high-contrast-color-filter #:grayscale? 1))))
    (test-case "high contrast inversion must be known"

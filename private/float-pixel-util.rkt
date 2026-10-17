@@ -1,11 +1,23 @@
 #lang racket/base
+
+;;;
+;;; Floating-Point Pixel Samples
+;;;
+
+;; Encodes and decodes half- and single-precision pixel samples.
+;; Supports the raster-buffer APIs without silently reducing floating-point precision.
+
 ;; Exact IEEE binary16 storage codec. Native rendering may flush subnormals;
 ;; storage read/write itself does not. No Skia/native library on import.
 (require racket/list racket/vector "check.rkt" "../image-info.rkt")
 (provide float-info? float-sample-check float-sample->bytes float-bytes->sample
          float-black-sample real->binary16 binary16->real)
+; float-info? : any/c -> boolean?
+;;   Recognizes detached RGBA F16 or F32 storage descriptions.
 (define (float-info? info)
   (and (image-info? info) (memq (image-info-color-type info) '(rgba-f16 rgba-f32)) #t))
+; real->binary16 : real? -> exact-nonnegative-integer?
+;;   Encodes finite half-range input with ties-to-even rounding, preserving signed zero.
 (define (real->binary16 value)
   (define who 'real->binary16)
   (unless (and (real? value) (<= -65504 value 65504))
@@ -25,6 +37,8 @@
            (arithmetic-shift (+ e 16) 10)
            (+ (arithmetic-shift (+ e 15) 10) (- q 1024)))]))
   (bitwise-ior sign word))
+; binary16->real : exact-nonnegative-integer? -> inexact-real?
+;;   Decodes a uint16 half-float word, rejecting infinity and NaN storage.
 (define (binary16->real word)
   (unless (and (exact-integer? word) (<= 0 word #xffff))
     (raise-argument-error 'binary16->real "unsigned 16-bit word" word))
@@ -34,12 +48,16 @@
   (define magnitude (if (zero? e) (* f (expt 2 -24)) (* (+ 1024 f) (expt 2 (- e 25)))))
   (define value (exact->inexact magnitude))
   (if (bitwise-bit-set? word 15) (- value) value))
+; float-sample-check : symbol? image-info? any/c -> vector?
+;;   Copies finite RGBA channels while enforcing alpha range, opaque alpha, and canonical zero-alpha
+;;   premultiplication.
 (define (float-sample-check who info sample)
   (unless (float-info? info) (raise-argument-error who "F16/F32 image-info" info))
   (define xs (cond [(vector? sample) (vector->list sample)] [(list? sample) sample]
                    [else (raise-argument-error who "four finite float channels" sample)]))
   (unless (= (length xs) 4) (error who "float RGBA requires four channels"))
-  (define limit (if (eq? (image-info-color-type info) 'rgba-f16) 65504 340282346638528859811704183484516925440))
+  (define limit
+    (if (eq? (image-info-color-type info) 'rgba-f16) 65504 340282346638528859811704183484516925440))
   (define values
     (for/list ([v (in-list xs)])
       (unless (and (real? v) (<= (- limit) v limit))
@@ -55,8 +73,12 @@
              (ormap (lambda (v) (not (zero? v))) (take values 3)))
     (error who "zero-alpha premultiplied storage requires zero RGB"))
   (vector->immutable-vector (list->vector values)))
+; float-black-sample : image-info? -> vector?
+;;   Returns zero RGB with alpha one for opaque storage and zero otherwise.
 (define (float-black-sample info)
   (vector-immutable 0.0 0.0 0.0 (if (eq? (image-info-alpha-type info) 'opaque) 1.0 0.0)))
+; float-bytes->sample : symbol? image-info? bytes? [exact-nonnegative-integer?] -> vector?
+;;   Decodes native-endian F16/F32 RGBA bytes and validates the resulting stored sample.
 (define (float-bytes->sample who info data [offset 0])
   (unless (float-info? info) (raise-argument-error who "F16/F32 image-info" info))
   (define width (if (eq? (image-info-color-type info) 'rgba-f16) 2 4))
@@ -69,6 +91,8 @@
       (if (= width 2)
           (binary16->real (integer-bytes->integer data #f (system-big-endian?) at (+ at 2)))
           (floating-point-bytes->real data (system-big-endian?) at (+ at 4))))))
+; float-sample->bytes : symbol? image-info? any/c -> bytes?
+;;   Encodes native-endian float channels and rechecks alpha invariants after quantization.
 (define (float-sample->bytes who info sample)
   (define values (float-sample-check who info sample))
   (define result

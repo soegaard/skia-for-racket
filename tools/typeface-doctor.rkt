@@ -1,9 +1,31 @@
 #lang racket/base
+
+;;;
+;;; Typeface Doctor
+;;;
+
+;; Exercises deterministic font fixtures, font tables, and typeface ownership and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list json
          "../main.rkt" "../tests/typeface-fixtures.rkt")
 (provide generate-typeface-documents)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; write-data : path-string? bytes? -> exact-nonnegative-integer?
+;;   Writes fresh binary evidence, refusing to overwrite an existing capture.
 (define (write-data path data)
   (call-with-output-file path (lambda (out) (write-bytes data out)) #:exists 'error))
+
+; generate-typeface-documents : path-string? string? -> void?
+;;   Creates fresh typeface-resource PDF/SVG fixtures and records native execution evidence.
 (define (generate-typeface-documents directory token)
   (when (directory-exists? directory) (error 'typeface-doctor "output directory already exists"))
   (make-directory* directory)
@@ -21,11 +43,13 @@
          (define kern (typeface-kerning-pair-adjustments face '(2 3)))
          (set! metadata
            (cons (hasheq 'face id 'postscript_name (typeface-postscript-name face)
-                         'glyph_count (typeface-glyph-count face) 'units_per_em (typeface-units-per-em face)
+                         'glyph_count (typeface-glyph-count face) 'units_per_em
+                   (typeface-units-per-em face)
                          'fixed_pitch (typeface-fixed-pitch? face)
                          'table_tags (vector->list (typeface-table-tags face))
                          'font_data_bytes (bytes-length raw) 'font_data_index index
-                         'kerning_available (and kern #t) 'kerning (and kern (vector->list kern))) metadata))
+                         'kerning_available (and kern #t) 'kerning (and kern (vector->list kern)))
+             metadata))
          ;; Fonts retain their own native typeface reference.
          (skia-close! face)
          (for/list ([spec '((pdf native) (pdf outline) (svg outline))])
@@ -38,7 +62,8 @@
                  (with-skia ([marker (make-paint #:color (rgb 0 255 0) #:antialias? #f)])
                    (draw-rect c 2 2 4 4 marker))
                  (draw-simple-text c fixture-text 16 72 font ink)
-                 (canvas-annotate-url! c 2 2 4 4 (string-append "https://example.invalid/typeface/" id)))
+                 (canvas-annotate-url! c 2 2 4 4
+                   (string-append "https://example.invalid/typeface/" id)))
                #:background 'white))
            (define stem (format "~a-~a-~a" id fmt mode))
            ;; Reference and export are separate explicit authoring invocations.
@@ -46,7 +71,8 @@
              (write-data (build-path directory (string-append stem ".rgba"))
                          (image->rgba-bytes image #:premultiplied? #t)))
            (set! count 0)
-           (define-values (data audit) (output->bytes/audit page fmt #:text-mode mode #:policy 'vector-only))
+           (define-values (data audit)
+             (output->bytes/audit page fmt #:text-mode mode #:policy 'vector-only))
            (unless (and (= count 1) (output-audit-report-vector-only? audit))
              (error 'typeface-doctor "document was not authored once as vector/text output"))
            (define filename (format "~a.~a" stem fmt))
@@ -59,9 +85,21 @@
       (write-json (hasheq 'schema 1 'stage "0.68a" 'run_token token 'status "passed"
                           'documents rows 'typefaces (reverse metadata) 'rendering_executed #t
                           'gui_executed #f 'gpu_executed #f) out)) #:exists 'error)
-  (printf "Typeface resources: ~a native documents; independent inspection required.\n" (length rows)))
+  (printf "Typeface resources: ~a native documents; independent inspection required.\n"
+    (length rows)))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") path "New output directory" (set! directory path)]
     [("--token") value "Run identity" (set! token value)] #:args () (void))

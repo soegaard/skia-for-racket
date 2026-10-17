@@ -1,4 +1,15 @@
 #lang racket/base
+
+;;;
+;;; Render Canvas GUI Test
+;;;
+
+;; Covers unified callback API on real raster and GPU canvas% objects.
+;; This GUI regression layer exercises real callbacks, eventspace ownership, and window cleanup.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Required selected GUI test. No unavailable-backend skip or CPU GPU fallback.
 (require rackunit racket/class racket/list racket/cmdline racket/file json
          (prefix-in gui: racket/gui/base) (prefix-in rd: racket/draw)
@@ -6,19 +17,53 @@
          "../private/render-canvas-policy.rkt" "../private/gpu-io-trace.rkt"
          "gpu-dc-consumer-fixtures.rkt")
 (provide render-canvas-gui-tests render-canvas-gui-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; request : parameter?
+;;   Carries renderer, backend, and optional adapter selection into GUI callbacks.
 (define request (make-parameter (list 'raster 'auto #f)))
+
+; output-directory : parameter?
+;;   Selects the optional directory where GUI evidence captures are written.
 (define output-directory (make-parameter #f))
+
+; captures : box?
+;;   Accumulates capture metadata in reverse completion order for the final receipt.
 (define captures (box '()))
+
+; test-custodian : custodian?
+;;   Owns the dedicated GUI eventspace and its resources for final shutdown.
 (define test-custodian (make-custodian))
+
+; uncaught : box?
+;;   Retains the first uncaught asynchronous message/exception pair until the next dispatch.
 (define uncaught (box #f))
+
+; space : eventspace?
+;;   Runs all test widgets under the isolated error-reporting handler.
 (define space
   (parameterize ([current-custodian test-custodian]
                  [error-display-handler
-                  (lambda (message e) (unless (unbox uncaught) (set-box! uncaught (cons message e))))])
+                   (lambda (message e)
+                     (unless (unbox uncaught) (set-box! uncaught (cons message e))))])
     (gui:make-eventspace)))
+
+; expected : -> hash?
+;;   Resolves the requested renderer/backend/adapter tuple to its expected policy.
 (define (expected)
   (resolve-render-canvas-policy (car (request)) (cadr (request)) (caddr (request)) #f #f))
+
+; gpu-mode? : -> boolean?
+;;   Reports whether the resolved choice uses expiring GPU frame DCs rather than persistent raster
+;;   DCs.
 (define (gpu-mode?) (eq? (hash-ref (expected) 'renderer) 'gpu))
+
+; on-handler : (-> any) -> any
+;;   Dispatches a callback with captured options and propagates asynchronous or synchronous
+;;   failures.
 (define (on-handler thunk)
   (define opts (request))
   (define directory (output-directory))
@@ -39,6 +84,16 @@
   (unless result (error 'render-canvas-gui "eventspace did not respond"))
   (if (eq? (car result) 'exception) (raise (cdr result)) (apply values (cdr result))))
 (struct window (frame canvas ready errors seen) #:transparent)
+;; frame: owned GUI frame, hidden when the window fixture is closed.
+;; canvas: unified render-canvas object; its close method releases renderer state.
+;; ready: semaphore posted after painting or an asynchronous renderer error.
+;; errors: box of errors reported by the canvas, newest first.
+;; seen: box of borrowed paint DCs, newest first, retained for lifetime checks.
+;; Widget access is confined to the test eventspace; raster DCs may remain live
+;; between callbacks, whereas GPU frame DCs must expire at callback return.
+
+; make-window : [procedure?] -> window?
+;;   Shows a unified canvas and records callback DCs, readiness, and renderer errors.
 (define (make-window [paint void])
   (on-handler
    (lambda ()
@@ -60,38 +115,82 @@
              (lambda () (semaphore-post ready))))))
      (send f show #t)
      (window f c ready errors seen))))
+
+; check-errors : window? -> void?
+;;   Raises the oldest recorded renderer error from the handler thread.
 (define (check-errors w)
   (on-handler (lambda ()
     (unless (null? (unbox (window-errors w))) (raise (last (unbox (window-errors w))))))))
+
+; await-paint : window? -> void?
+;;   Waits up to thirty seconds for a callback and checks all preceding handler errors.
 (define (await-paint w)
-  (unless (sync/timeout 30 (window-ready w)) (error 'render-canvas-gui "shown window produced no callback"))
+  (unless (sync/timeout 30 (window-ready w))
+    (error 'render-canvas-gui "shown window produced no callback"))
   (on-handler void) (check-errors w))
+
+; close-window : window? -> void?
+;;   Closes the renderer and hides the frame on its owning eventspace.
 (define (close-window w)
   (on-handler (lambda () (send (window-canvas w) close) (send (window-frame w) show #f))))
+
+; with-window : procedure? [#:paint procedure?] -> any
+;;   Scopes a shown unified canvas and guarantees renderer/window cleanup.
 (define (with-window proc #:paint [paint void])
   (define w (make-window paint))
-  (dynamic-wind void (lambda () (await-paint w) (proc w) (check-errors w)) (lambda () (close-window w))))
+  (dynamic-wind void (lambda () (await-paint w) (proc w) (check-errors w))
+    (lambda () (close-window w))))
+
+; reset-dc : dc<%> -> void?
+;;   Restores identity coordinates, full clipping, opaque alpha, and a white clear.
 (define (reset-dc dc)
   (send dc set-transformation '#(#(1 0 0 1 0 0) 0 0 1 1 0))
   (send dc set-clipping-region #f) (send dc set-alpha 1)
   (send dc set-background "white") (send dc clear))
+
+; fill : dc<%> ... -> void?
+;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;;   checks.
 (define (fill dc color x y w h)
   (send dc set-pen "black" 1 'transparent) (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
+
+; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
+; (listof byte?)
+;;   Extracts one tightly packed RGBA device pixel from a capture.
 (define (pixel data width x y)
   (define p (* 4 (+ x (* width y)))) (bytes->list (subbytes data p (+ p 4))))
+
+; extent : dc<%> string? -> hash?
+;;   Records logical and physical dimensions separately with a capture label.
 (define (extent dc label)
   (define-values (w h) (send dc get-size))
   (define-values (pw ph) (send dc get-pixel-size))
   (hasheq 'name label 'logical_width w 'logical_height h 'pixel_width pw 'pixel_height ph))
+
+; kinds : list? -> list?
+;;   Extracts I/O event kinds in their recorded order.
 (define (kinds entries) (map (lambda (v) (hash-ref v 'kind)) entries))
+
+; readback-count : list? -> exact-nonnegative-integer?
+;;   Counts explicit GPU readbacks without counting ordinary drawing operations.
 (define (readback-count entries) (count (lambda (e) (equal? (hash-ref e 'kind) "readback")) entries))
+
+; check-after : dc<%> -> void?
+;;   Checks callback-return lifetime: GPU DCs expire, while raster DCs remain usable.
 (define (check-after dc)
   (if (gpu-mode?)
       (begin (check-false (send dc ok?))
              (check-exn exn:fail? (lambda () (send dc get-rgba-bytes))))
       (check-true (send dc ok?))))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; render-canvas-gui-tests : test-suite?
+;;   Collects the regression cases for unified callback API on real raster and GPU canvas% objects.
 (define render-canvas-gui-tests
   (test-suite
    "Unified callback API on real raster and GPU canvas% objects"
@@ -129,7 +228,8 @@
        (define c (window-canvas w))
        (send c refresh-now (lambda (_dc)
          (for ([thunk (list (lambda () (send c refresh-now)) (lambda () (send c close))
-                            (lambda () (send c present)) (lambda () (send c set-paint-callback void)))])
+                            (lambda () (send c present))
+                        (lambda () (send c set-paint-callback void)))])
            (check-exn #rx"paint callback" thunk))
          (when (gpu-mode?) (check-exn #rx"paint callback" (lambda () (send c close-gpu))))
          (send c refresh))))))))
@@ -209,7 +309,8 @@
      (on-handler (lambda ()
        (define f (new gui:frame% [label "Invalid selection test"]))
        (define before (send f get-children))
-       (check-exn exn:fail? (lambda () (make-skia-render-canvas f #:renderer 'raster #:backend 'opengl)))
+       (check-exn exn:fail?
+         (lambda () (make-skia-render-canvas f #:renderer 'raster #:backend 'opengl)))
        (check-exn exn:fail? (lambda () (make-skia-render-canvas f #:paint-callback 42)))
        (check-exn exn:fail? (lambda () (make-skia-render-canvas f #:min-width -1)))
        (check-equal? (send f get-children) before))))
@@ -247,15 +348,20 @@
                (set! pixels (parameterize ([current-gpu-io-ledger capture-io])
                               (send dc get-rgba-bytes #:premultiplied? #t)))))
              (check-equal? (readback-count (unbox capture-io)) (if (gpu-mode?) 1 0))
-             (define id (format "~a-~a-~a" (consumer-workload-scene workload) (consumer-workload-mode workload) (car size)))
+             (define id
+               (format "~a-~a-~a" (consumer-workload-scene workload)
+                 (consumer-workload-mode workload) (car size)))
              (define file (string-append id ".rgba"))
              (when (output-directory)
                (call-with-output-file (build-path (output-directory) file)
                  (lambda (out) (write-bytes pixels out)) #:exists 'error #:mode 'binary))
              (set-box! captures
-               (cons (hasheq 'id id 'scene (consumer-workload-scene workload) 'mode (consumer-workload-mode workload)
+               (cons
+                 (hasheq 'id id 'scene (consumer-workload-scene workload) 'mode
+                   (consumer-workload-mode workload)
                              'extent e 'layout layout 'file file
-                             'draw_io (reverse (unbox normal-io)) 'capture_io (reverse (unbox capture-io)))
+                             'draw_io (reverse (unbox normal-io)) 'capture_io
+                   (reverse (unbox capture-io)))
                      (unbox captures))))))))))
    (test-case "close is idempotent and does not masquerade as a usable renderer"
      (with-window (lambda (w) (on-handler (lambda ()
@@ -279,7 +385,7 @@
          (define f
            (new skia-render-window% [label "Unified window acceptance"]
                 [renderer (car (request))] [backend (cadr (request))] [adapter (caddr (request))]
-                [on-error (lambda (e) (set-box! errors (cons e (unbox errors))) (semaphore-post ready))]
+             [on-error (lambda (e) (set-box! errors (cons e (unbox errors))) (semaphore-post ready))]
                 [paint-callback (lambda (_c _dc) (semaphore-post ready))]))
          (send f show #t) f)))
      (dynamic-wind void
@@ -294,7 +400,13 @@
            (check-true (send c closed?)))))
        (lambda () (on-handler (lambda () (send frame close-render))))))
 ))
+
+; render-canvas-gui-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define render-canvas-gui-test-count 20)
+
+; json-value : any/c -> any/c
+;;   Normalizes capture/report values into the representation accepted by the JSON writer.
 (define (json-value value)
   (cond [(symbol? value) (symbol->string value)]
         [(hash? value) (for/hasheq ([(k v) (in-hash value)]) (values k (json-value v)))]
@@ -303,8 +415,28 @@
         [else value]))
 (module+ main
   (require rackunit/text-ui)
-  (define renderer 'raster) (define backend 'auto) (define adapter #f)
-  (define directory #f) (define token "manual")
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; renderer : symbol?
+  ;;   Selects the raster or GPU renderer used by the visible canvas regression run.
+  (define renderer 'raster)
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'auto)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter #f)
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token "manual")
   (command-line #:once-each
     [("--renderer") v "raster, gpu or auto" (set! renderer (string->symbol v))]
     [("--backend") v "auto, opengl, metal or direct3d" (set! backend (string->symbol v))]
@@ -313,6 +445,9 @@
     [("--run-token") v "Validator identity" (set! token v)]
     #:args () (void))
   (when directory (make-directory directory))
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures
     (parameterize ([request (list renderer backend adapter)] [output-directory directory])
       (dynamic-wind void (lambda () (run-tests render-canvas-gui-tests))

@@ -1,10 +1,29 @@
 #lang racket/base
+
+;;;
+;;; DC Pure Test
+;;;
+
+;; Covers skia-dc foundation (recording renderer; no Skia pixels).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list racket/math racket/vector
          (prefix-in rd: racket/draw)
          "../private/dc-support.rkt" "../private/dc-class.rkt")
 (provide dc-pure-tests dc-pure-test-count)
 ;; These are production-class tests with an injected recording renderer. They
 ;; verify protocol/state/geometry, not native Skia pixel execution.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fresh : [exact-positive-integer? exact-positive-integer? real?] -> (values dc<%> box?)
+;;   Builds a recording renderer and DC, preserving emitted operations for assertions.
 (define (fresh [width 32] [height 24] [scale 1])
   (define events (box '()))
   (define (event v) (set-box! events (cons v (unbox events))))
@@ -18,11 +37,27 @@
                  (lambda (s) #"fake-png")))
   (define dc (new (make-skia-dc-class backend) [width width] [height height] [backing-scale scale]))
   (values dc events))
+
+; draws : box? -> list?
+;;   Returns drawing-event payloads in execution order.
 (define (draws e) (for/list ([x (in-list (reverse (unbox e)))] #:when (eq? (car x) 'draw)) (cdr x)))
+
+; paint-only : dc<%> -> void?
+;;   Selects a red brush and transparent pen for path-command tests.
 (define (paint-only dc)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush "red" 'solid))
+
+; fails? : (-> any) -> void?
+;;   Requires the declared unsupported-DC-operation exception.
 (define (fails? thunk) (check-exn exn:fail:skia-dc:unsupported? thunk))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-pure-tests : test-suite?
+;;   Collects the regression cases for skia-dc foundation (recording renderer; no Skia pixels).
 (define dc-pure-tests
   (test-suite
    "skia-dc foundation (recording renderer; no Skia pixels)"
@@ -57,7 +92,8 @@
    (test-case "closed drawing and snapshots fail"
      (define-values (dc e) (fresh)) (send dc close)
      (for ([f (in-list (list (lambda () (send dc clear)) (lambda () (send dc snapshot))
-                             (lambda () (send dc get-size)) (lambda () (send dc draw-line 0 0 1 1))))])
+                             (lambda () (send dc get-size))
+                         (lambda () (send dc draw-line 0 0 1 1))))])
        (check-exn #rx"closed" f)))
    (test-case "thread ownership checked before drawing"
      (define-values (dc e) (fresh))
@@ -93,7 +129,8 @@
    (test-case "transformation failure is transactional"
      (define-values (dc e) (fresh))
      (define before (send dc get-transformation))
-     (check-exn exn:fail? (lambda () (send dc set-transformation (vector dc-identity 1 2 3 4 +nan.0))))
+     (check-exn exn:fail?
+       (lambda () (send dc set-transformation (vector dc-identity 1 2 3 4 +nan.0))))
      (check-equal? (send dc get-transformation) before))
    (test-case "native matrix overflow does not mutate state"
      (define-values (dc e) (fresh 32 24 2))
@@ -150,7 +187,8 @@
      (send dc close) (check-not-exn (lambda () (send b set-color "green"))))
    (test-case "invalid pen argument does not replace current pen"
      (define-values (dc e) (fresh)) (define before (send dc get-pen))
-     (check-exn exn:fail? (lambda () (send dc set-pen "blue" +nan.0 'solid))) (check-eq? (send dc get-pen) before))
+     (check-exn exn:fail? (lambda () (send dc set-pen "blue" +nan.0 'solid)))
+     (check-eq? (send dc get-pen) before))
    (test-case "invalid brush argument does not replace current brush"
      (define-values (dc e) (fresh)) (define before (send dc get-brush))
      (check-exn exn:fail? (lambda () (send dc set-brush #f))) (check-eq? (send dc get-brush) before))
@@ -163,7 +201,8 @@
    (test-case "try-color returns through destination including alpha"
      (define-values (dc e) (fresh)) (define dest (make-object rd:color%))
      (send dc try-color (make-object rd:color% 3 7 11 0.5) dest)
-     (check-equal? (list (send dest red) (send dest green) (send dest blue) (send dest alpha)) '(3 7 11 0.5)))
+     (check-equal? (list (send dest red) (send dest green) (send dest blue) (send dest alpha))
+       '(3 7 11 0.5)))
    (test-case "fill precedes stroke"
      (define-values (dc e) (fresh)) (send dc draw-rectangle 1 2 10 12)
      (check-equal? (map (lambda (op) (dc-ink-stroke? (dc-draw-ink op))) (draws e)) '(#f #t)))
@@ -183,7 +222,8 @@
      (send dc draw-lines '()) (send dc draw-polygon '((1 . 1))) (check-equal? (draws e) '()))
    (test-case "invalid point list fails before drawing"
      (define-values (dc e) (fresh))
-     (check-exn exn:fail? (lambda () (send dc draw-lines '((1 . 1) (2 . bad))))) (check-equal? (draws e) '()))
+     (check-exn exn:fail? (lambda () (send dc draw-lines '((1 . 1) (2 . bad)))))
+     (check-equal? (draws e) '()))
    (test-case "polygon closure and fill rule"
      (define-values (dc e) (fresh))
      (send dc draw-polygon '((1 . 1) (9 . 1) (9 . 9)) 2 3 'odd-even)
@@ -193,7 +233,8 @@
      (define-values (dc e) (fresh)) (send dc set-smoothing 'smoothed)
      (define p (new rd:dc-path%)) (send p move-to 1 2) (send p curve-to 3 4 5 6 7 8)
      (send dc draw-path p 10 20 'winding)
-     (check-equal? (dc-draw-commands (car (draws e))) '(#(move 11.0 22.0) #(cubic 13.0 24.0 15.0 26.0 17.0 28.0))))
+     (check-equal? (dc-draw-commands (car (draws e)))
+       '(#(move 11.0 22.0) #(cubic 13.0 24.0 15.0 26.0 17.0 28.0))))
    (test-case "rectangle outline is inset in aligned mode"
      (define-values (dc e) (fresh)) (send dc draw-rectangle 1 2 10 12)
      (check-equal? (car (dc-draw-commands (second (draws e)))) '#(move 1.5 2.5))
@@ -231,7 +272,8 @@
      (check-true (>= (length (dc-draw-commands (second (draws e)))) 5)))
    (test-case "rounded rectangle uses cubic path segments"
      (define-values (dc e) (fresh)) (send dc draw-rounded-rectangle 0 0 20 20)
-     (check-not-false (memq 'cubic (map (lambda (v) (vector-ref v 0)) (dc-draw-commands (car (draws e)))))))
+     (check-not-false
+       (memq 'cubic (map (lambda (v) (vector-ref v 0)) (dc-draw-commands (car (draws e)))))))
    (test-case "invalid dimensions fail before any ink"
      (define-values (dc e) (fresh))
      (check-exn exn:fail? (lambda () (send dc draw-rectangle 0 0 -1 2)))
@@ -244,7 +286,8 @@
      (send dc set-origin 3 4) (send dc set-clipping-rect 1 2 5 6)
      (send dc set-origin 10 20) (send dc clear)
      (define clear-event (car (unbox e)))
-     (check-equal? (car (dc-clip-path-commands (car (dc-clip-paths (second clear-event))))) '#(move 8.0 12.0)))
+     (check-equal? (car (dc-clip-path-commands (car (dc-clip-paths (second clear-event)))))
+       '#(move 8.0 12.0)))
    (test-case "rectangle tickets can be restored"
      (define-values (dc e) (fresh)) (send dc set-clipping-rect 1 2 3 4)
      (define old (send dc get-clipping-region))
@@ -256,24 +299,28 @@
    (test-case "unassociated regions accepted and foreign associated regions rejected"
      (define-values (dc e) (fresh)) (define-values (other oe) (fresh))
      (send other set-clipping-rect 0 0 1 1)
-     (check-exn exn:fail:contract? (lambda () (send dc set-clipping-region (send other get-clipping-region))))
+     (check-exn exn:fail:contract?
+       (lambda () (send dc set-clipping-region (send other get-clipping-region))))
      (define r (new rd:region%)) (send dc set-clipping-region r)
      (check-eq? (send dc get-clipping-region) r))
    (test-case "clipping replacement is not intersection"
      (define-values (dc e) (fresh))
      (send dc set-clipping-rect 0 0 1 1) (send dc set-clipping-rect 10 10 5 5) (send dc clear)
-     (check-equal? (car (dc-clip-path-commands (car (dc-clip-paths (second (car (unbox e))))))) '#(move 10.0 10.0)))
+     (check-equal? (car (dc-clip-path-commands (car (dc-clip-paths (second (car (unbox e)))))))
+       '#(move 10.0 10.0)))
    (test-case "erase ignores DC alpha but retains clipping"
      (define-values (dc e) (fresh)) (send dc set-alpha 0.1)
      (send dc set-clipping-rect 1 2 3 4) (send dc erase)
      (define op (car (unbox e)))
      (check-equal? (third op) '#(0 0 0 0.0)) (check-true (fourth op)) (check-not-false (second op)))
    (test-case "clear uses background multiplied by DC alpha"
-     (define-values (dc e) (fresh)) (send dc set-alpha 0.25) (send dc set-background "red") (send dc clear)
+     (define-values (dc e) (fresh)) (send dc set-alpha 0.25) (send dc set-background "red")
+     (send dc clear)
      (check-equal? (third (car (unbox e))) '#(255 0 0 0.25)))
    (test-case "a minimal recording renderer never fabricates native text metrics"
      (define-values (dc e) (fresh))
-     (for ([f (list (lambda () (send dc draw-text "abc" 0 0)) (lambda () (send dc get-text-extent "abc"))
+     (for ([f (list (lambda () (send dc draw-text "abc" 0 0))
+                (lambda () (send dc get-text-extent "abc"))
                     (lambda () (send dc get-char-width)) (lambda () (send dc get-char-height))
                     (lambda () (send dc glyph-exists? #\a)))]) (fails? f)))
    (test-case "minimal renderer copy and missing alpha callbacks remain explicit"
@@ -297,4 +344,7 @@
      (check-false (hash-ref (dc-capabilities) 'native_probe_performed))
      (check-true (immutable? (dc-capabilities))))))
 
+
+; dc-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-pure-test-count 60)

@@ -1,8 +1,34 @@
 #lang racket/base
+
+;;;
+;;; Filter Graph Pure Test
+;;;
+
+;; Covers filter graphs: validation without native loading.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/filter-util.rkt" "../private/types.rkt")
 (provide filter-graph-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail:contract? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail:contract? thunk))
+
+;;;
+;;; Regression Suite
+;;;
+
+; filter-graph-pure-tests : test-suite?
+;;   Collects the regression cases for filter graphs: validation without native loading.
 (define filter-graph-pure-tests
   (test-suite
    "Filter graphs: validation without native loading"
@@ -55,7 +81,8 @@
      (bad (lambda () (make-matrix-convolution-image-filter 1 1 '(1) #:tile-mode 'repeat)))
      (check-equal? (filter-tile-mode 'test 'clamp #t #:require-crop? #t) 0))
    (test-case "mirror rejected for convolution and blur"
-     (bad (lambda () (make-matrix-convolution-image-filter 1 1 '(1) #:tile-mode 'mirror #:crop '(0 0 1 1))))
+     (bad (lambda ()
+            (make-matrix-convolution-image-filter 1 1 '(1) #:tile-mode 'mirror #:crop '(0 0 1 1))))
      (bad (lambda () (make-blur-image-filter 1 1 #:tile-mode 'mirror))))
    (test-case "crop validation applies to legacy constructors"
      (bad (lambda () (make-blur-image-filter 1 1 #:crop '(1 2))))
@@ -99,7 +126,8 @@
        (bad (lambda () (make-distant-lit-specular-image-filter '(0 0 1) 'white #:shininess v)))))
    (test-case "spotlight geometry and cone validation"
      (bad (lambda () (make-spot-lit-diffuse-image-filter '(0 0 1) '(0 0 1) 'white)))
-     (bad (lambda () (make-spot-lit-specular-image-filter '(0 0 10) '(0 0 0) 'white #:cutoff-angle 91)))
+     (bad (lambda ()
+            (make-spot-lit-specular-image-filter '(0 0 10) '(0 0 0) 'white #:cutoff-angle 91)))
      (bad (lambda () (make-spot-lit-diffuse-image-filter '(0 0 10) '(0 0 0) 'white #:exponent -1))))
    (test-case "C filter records have complete expected sizes"
      (check-equal? (ctype-sizeof _sk-isize) 8)

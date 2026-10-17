@@ -1,8 +1,27 @@
 #lang racket/base
+
+;;;
+;;; GPU Frame Target Pure Test
+;;;
+
+;; Covers presenter staging target cache: bounded ownership and single-use scopes.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list
          "../private/gpu-frame-target-cache.rkt" "../private/gpu-io-trace.rkt"
          (only-in "../private/check.rkt" current-skia-byte-limit))
 (provide gpu-frame-target-pure-tests gpu-frame-target-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fixture : procedure? -> any
+;;   Supplies an instrumented target cache and synthetic creation/retirement controls.
 (define (fixture proc)
   (define cache (make-frame-target-cache))
   (define made 0) (define retired '())
@@ -14,12 +33,26 @@
     (lambda () (proc cache use (lambda () made) (lambda () retired)))
     (lambda () (unless (hash-ref (frame-target-cache-info cache) 'quarantined)
                  (close-frame-target-cache! cache)))))
+
+; stat : frame-target-cache? symbol? -> any/c
+;;   Reads a selected counter from detached cache information.
 (define (stat cache key) (hash-ref (frame-target-cache-info cache) key))
+
+; in-worker : (-> any) -> any/c
+;;   Captures the result or exception of a worker-thread cache operation.
 (define (in-worker thunk)
   (define ch (make-channel))
   (thread (lambda ()
     (channel-put ch (with-handlers ([(lambda (_) #t) values]) (thunk) 'returned))))
   (or (sync/timeout 5 ch) (error 'test "worker timeout")))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-frame-target-pure-tests : test-suite?
+;;   Collects the regression cases for presenter staging target cache: bounded ownership and
+;;   single-use scopes.
 (define gpu-frame-target-pure-tests
   (test-suite
    "Presenter staging target cache: bounded ownership and single-use scopes"
@@ -100,11 +133,13 @@
        (check-false (stat c 'busy)))))
    (test-case "multiple return values are preserved"
      (fixture (lambda (c use made retired)
-       (check-equal? (call-with-values (lambda () (use (lambda (_) (values 1 2 3)))) list) '(1 2 3)))))
+       (check-equal? (call-with-values (lambda () (use (lambda (_) (values 1 2 3)))) list)
+         '(1 2 3)))))
    (test-case "allocation failure does not poison an empty cache"
      (fixture (lambda (c use made retired)
        (check-exn #rx"allocation-error"
-         (lambda () (call-with-frame-target c 8 6 (lambda () (error 'test "allocation-error")) void void)))
+         (lambda ()
+           (call-with-frame-target c 8 6 (lambda () (error 'test "allocation-error")) void void)))
        (check-false (stat c 'busy)) (use) (check-equal? (made) 1))))
    (test-case "false allocation is rejected and never disposed"
      (fixture (lambda (c use made retired)
@@ -177,9 +212,19 @@
        (for ([e (in-list (unbox ledger))])
          (check-true (immutable? e)) (check-equal? (hash-ref e 'kind) "dc-frame-target")
          (check-equal? (hash-ref e 'pixel_width) 8)))))))
+
+; gpu-frame-target-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define gpu-frame-target-pure-test-count 32)
 (module+ main
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests gpu-frame-target-pure-tests))
   (printf "gpu-frame-target-pure: ~a cases, ~a failures; no native GPU or GUI.\n"
           gpu-frame-target-pure-test-count failures)

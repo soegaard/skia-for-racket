@@ -1,4 +1,16 @@
 #lang racket/base
+
+;;;
+;;; Integer Pixels Example
+;;;
+
+;; Preserves exact high-bit-depth channel samples until explicit 8-bit conversion.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require "../main.rkt")
 ;; Raw 10-bit channels remain exact. Conversion to 8-bit happens explicitly.
 (with-skia ([source (make-raster-buffer-from-info

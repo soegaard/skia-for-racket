@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; GPU Render Pure Test
+;;;
+
+;; Covers one-shot GPU render: arguments and lifetime worker.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit
          rackunit/text-ui
          "../gpu.rkt"
@@ -9,6 +21,13 @@
 (provide gpu-render-pure-tests)
 
 ;; Test the same lifetime worker used by the public API, with no native driver.
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; make-render-fixture : [#:fail any/c #:draw procedure?] -> any
+;;   Builds an instrumented one-shot renderer with failure injection at lifecycle steps.
 (define (make-render-fixture #:fail [failure #f] #:draw [body void])
   (define events '())
   (define active? #f)
@@ -59,12 +78,25 @@
        (record! 'close-context))))
   (values render (lambda () (reverse events)) image))
 
+
+; normal-events : (listof symbol?)
+;;   Lists required context, surface, drawing, readback, and cleanup events in execution order.
 (define normal-events
   '(create-context enter create-surface draw readback close-surface leave close-context))
 
+
+; raises-value? : any/c -> (any/c -> boolean?)
+;;   Matches a deliberately raised value by identity during cleanup-precedence tests.
 (define (raises-value? expected)
   (lambda (value) (eq? value expected)))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-render-pure-tests : test-suite?
+;;   Collects the regression cases for one-shot GPU render: arguments and lifetime worker.
 (define gpu-render-pure-tests
   (test-suite
    "One-shot GPU render: arguments and lifetime worker"

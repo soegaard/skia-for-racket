@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Picture Serialization Validation
+;;;
+
+;; Checks trust, byte budgets, bounds, and paths for recorded pictures.
+;; Protects picture serialization and deserialization at the public API boundary.
+
 (require racket/file racket/path "check.rkt")
 (provide check-picture-trust picture-data-snapshot picture-header
          picture-size-override picture-output-path
@@ -8,6 +16,13 @@
 ;; uint32 version, four float cull coordinates, then a one-byte payload kind.
 ;; This is only a cheap framing check, NOT a validator/sandbox for the payload.
 ;; See SkPicture.cpp and SkPicturePriv.h at the pinned native revision.
+;;;
+;;; Trust Acknowledgement and SKP Headers
+;;;
+
+; check-picture-trust : symbol? any/c -> void?
+;;   Requires an explicit true trust acknowledgement because deserializing SKP data may execute
+;;   embedded SkSL.
 (define (check-picture-trust who trusted?)
   (boolean who trusted?)
   (unless trusted?
@@ -16,6 +31,8 @@
       "trusted?" trusted?))
   (void))
 
+; picture-byte-count : symbol? bytes? -> exact-positive-integer?
+;;   Checks the minimum SKP header length and configured byte budget before copying or decoding.
 (define (picture-byte-count who bs)
   (unless (bytes? bs) (raise-argument-error who "bytes?" bs))
   (define n (bytes-length bs))
@@ -24,6 +41,9 @@
                            "bytes" n "limit" (current-skia-byte-limit)))
   n)
 
+; picture-header : symbol? bytes? -> (values exact-integer? vector?)
+;;   Checks SKP magic, supported version, scalar bounds, and standard picture kind; returns the
+;;   version and immutable x/y/width/height bounds.
 (define (picture-header who bs)
   (picture-byte-count who bs)
   (unless (bytes=? (subbytes bs 0 8) #"skiapict")
@@ -47,6 +67,8 @@
                            "payload kind" (bytes-ref bs 28)))
   (values version (vector-immutable left top width height)))
 
+; picture-data-snapshot : symbol? bytes? -> bytes?
+;;   Makes a bounded immutable SKP snapshot and validates its header before native deserialization.
 (define (picture-data-snapshot who bs)
   (picture-byte-count who bs)
   ;; Never lend the caller's mutable buffer to native code. The SKData bridge
@@ -55,6 +77,9 @@
   (picture-header who copy)
   copy)
 
+; picture-size-override : symbol? (or/c #f real?) (or/c #f real?) -> (or/c #f vector?)
+;;   Requires width and height together and checks nonnegative native scalars for the optional size
+;;   override.
 (define (picture-size-override who width height)
   (cond [(and (eq? width #f) (eq? height #f)) #f]
         [(or (eq? width #f) (eq? height #f))
@@ -63,6 +88,12 @@
         [else (vector-immutable (nonnegative-scalar who width)
                                 (nonnegative-scalar who height))]))
 
+;;;
+;;; Bounded File Input and Atomic Output
+;;;
+
+; picture-path : symbol? path-string? -> path?
+;;   Resolves a complete NUL-free path for picture input or output.
 (define (picture-path who filename)
   (unless (path-string? filename) (raise-argument-error who "path-string?" filename))
   (define target (path->complete-path filename))
@@ -70,6 +101,9 @@
     (raise-arguments-error who "picture path contains NUL" "path" filename))
   target)
 
+; read-picture-file-bytes : symbol? path-string? -> bytes?
+;;   Reads SKP data in bounded chunks and returns a validated immutable snapshot without an
+;;   unbounded file allocation.
 (define (read-picture-file-bytes who filename)
   (define target (picture-path who filename))
   ;; Do not use an unbounded file->bytes followed by a size check, or trust a
@@ -90,6 +124,9 @@
                (loop next)])))
     #:mode 'binary))
 
+; picture-output-path : symbol? path-string? symbol? -> path?
+;;   Checks the output parent, directory conflicts, and error-or-replace policy before writing a
+;;   picture.
 (define (picture-output-path who filename exists)
   (unless (memq exists '(error replace))
     (raise-argument-error who "'error or 'replace" exists))
@@ -102,6 +139,9 @@
     (raise-arguments-error who "picture destination already exists" "path" target))
   target)
 
+; write-picture-file-bytes! : symbol? bytes? path-string? symbol? -> void?
+;;   Validates a picture snapshot and publishes it by same-directory atomic rename, removing the
+;;   temporary file on unsuccessful exit.
 (define (write-picture-file-bytes! who bs filename exists)
   (define copy (picture-data-snapshot who bs))
   (define target (picture-output-path who filename exists))

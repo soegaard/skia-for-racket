@@ -1,13 +1,40 @@
 #lang racket/base
+
+;;;
+;;; GPU Pure Test
+;;;
+
+;; Covers gPU foundation: pure mock-provider, ownership, lifecycle, and ABI tests.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list ffi/unsafe
          "gpu-fixtures.rkt" "../gpu.rkt"
          "../private/gpu-context.rkt" "../private/gpu-domain.rkt"
          "../private/gpu-provider.rkt" "../private/gpu-types.rkt"
          "../private/gpu-diagnostics.rkt" "../private/native-platform.rkt")
 (provide gpu-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; provider : procedure? procedure? [any/c] -> gpu-provider?
+;;   Builds an OpenGL provider from activation/currentness callbacks and a stable host identity.
 (define (provider activate current? [key (gensym 'host)])
   (make-gpu-provider #:name 'test #:backend 'opengl #:key key
                      #:call-as-current activate #:current? current?))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-pure-tests : test-suite?
+;;   Collects the regression cases for gPU foundation: pure mock-provider, ownership, lifecycle, and
+;;   ABI tests.
 (define gpu-pure-tests
   (test-suite
    "GPU foundation: pure mock-provider, ownership, lifecycle, and ABI tests"
@@ -37,24 +64,28 @@
    (test-case "provider cannot swallow a callback failure"
      (define p (provider (lambda (f) (with-handlers ([exn:fail? (lambda (_) 'swallowed)]) (f)))
                          (lambda () #t)))
-     (check-exn #rx"original failure" (lambda () (provider-call p (lambda () (error 'test "original failure"))))))
+     (check-exn #rx"original failure"
+       (lambda () (provider-call p (lambda () (error 'test "original failure"))))))
    (test-case "provider must invoke its callback"
      (check-exn exn:fail? (lambda () (provider-call (provider (lambda (_) 10) (lambda () #t)) void))))
    (test-case "provider must not invoke twice"
-     (check-exn exn:fail? (lambda () (provider-call (provider (lambda (f) (f) (f)) (lambda () #t)) void))))
+     (check-exn exn:fail?
+       (lambda () (provider-call (provider (lambda (f) (f) (f)) (lambda () #t)) void))))
    (test-case "late provider callback is retired"
      (define saved #f)
      (provider-call (provider (lambda (f) (set! saved f) (f)) (lambda () #t)) void)
      (check-exn exn:fail? saved))
    (test-case "provider must make native context current"
-     (check-exn exn:fail? (lambda () (provider-call (provider (lambda (f) (f)) (lambda () #f)) void))))
+     (check-exn exn:fail?
+       (lambda () (provider-call (provider (lambda (f) (f)) (lambda () #f)) void))))
    (test-case "provider rejects another thread before acquisition"
      (define calls 0)
      (define p (provider (lambda (f) (set! calls (add1 calls)) (f)) (lambda () #t)))
      (check-true (exn:fail? (in-worker (lambda () (provider-call p void)))))
      (check-equal? calls 0))
    (test-case "provider rejects callback execution on another thread"
-     (define p (provider (lambda (f) (define result (in-worker f)) (when (exn? result) (raise result)))
+     (define p (provider
+                 (lambda (f) (define result (in-worker f)) (when (exn? result) (raise result)))
                          (lambda () #t)))
      (check-exn exn:fail? (lambda () (provider-call p void))))
    (test-case "diagnostics are copied and immutable"
@@ -73,7 +104,8 @@
      (check-eq? (domain-state d) 'ready)
      (domain-close! d)
      (check-eq? (domain-state d) 'closed)
-     (check-equal? (events log) '(activate create describe deactivate activate release-context deactivate)))
+     (check-equal? (events log)
+       '(activate create describe deactivate activate release-context deactivate)))
    (test-case "same host cannot have two live Ganesh domains"
      (call-with-mock
       (lambda (d p driver log a)
@@ -92,7 +124,8 @@
      (define d (make-gpu-domain p replacement))
      (domain-close! d))
    (test-case "failed diagnostic construction releases the native context"
-     (define-values (p driver log a) (make-mock #:describe (lambda () (error 'mock "describe failed"))))
+     (define-values (p driver log a)
+       (make-mock #:describe (lambda () (error 'mock "describe failed"))))
      (check-exn exn:fail? (lambda () (make-gpu-domain p driver)))
      (check-equal? (event-count log 'release-context) 1))
    (test-case "mutable diagnostic snapshots reject with cleanup"
@@ -103,10 +136,12 @@
      (call-with-mock
       (lambda (d p driver log a)
         (check-equal? (domain-call d (lambda () (+ 2 3))) 5)
-        (check-equal? (call-with-values (lambda () (domain-call d (lambda () (values 1 2 3)))) list) '(1 2 3))
+        (check-equal?
+          (call-with-values (lambda () (domain-call d (lambda () (values 1 2 3)))) list) '(1 2 3))
         (check-not-false (domain-call d (lambda () (domain-pointer d)))))))
    (test-case "native pointer cannot be obtained outside a scope"
-     (call-with-mock (lambda (d p driver log a) (check-exn exn:fail? (lambda () (domain-pointer d))))))
+     (call-with-mock
+       (lambda (d p driver log a) (check-exn exn:fail? (lambda () (domain-pointer d))))))
    (test-case "wrong-thread domain use never activates"
      (call-with-mock
       (lambda (d p driver log a)
@@ -194,7 +229,9 @@
    (test-case "child creation failure does not increment live count"
      (call-with-mock
       (lambda (d p driver log a)
-        (domain-call d (lambda () (check-exn exn:fail? (lambda () (domain-new-resource d 'failed (lambda () #f) void)))))
+        (domain-call d
+          (lambda () (check-exn exn:fail?
+                       (lambda () (domain-new-resource d 'failed (lambda () #f) void)))))
         (check-equal? (domain-live-count d) 0))))
    (test-case "explicit child close queues without activating or releasing"
      (call-with-mock

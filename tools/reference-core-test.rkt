@@ -1,7 +1,27 @@
 #lang racket/base
 
+;;;
+;;; Reference Core Test
+;;;
+
+;; Checks canvas restoration, clipping, retained paint/path/image values, path measurement, and
+;; encoder options.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Opt-in native CPU tests for distinctions specified by the R2 Reference.
 (require rackunit racket/file racket/list skia)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; results : procedure? -> list?
+;;   Collects multiple return values into a list for exact Reference assertions.
 (define (results thunk) (call-with-values thunk list))
 
 (module+ test

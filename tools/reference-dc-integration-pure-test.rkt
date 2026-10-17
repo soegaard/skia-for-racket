@@ -1,5 +1,17 @@
 #lang racket/base
 
+;;;
+;;; Reference DC Integration Pure Test
+;;;
+
+;; Checks detached DC capability reports, callback lifetimes, and validation before native drawing.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Native-free declarations and rejection boundaries for R4e. This suite does
 ;; not allocate a Skia surface, create a GPU context, render a document, or open
 ;; a GUI. Native DC/output/GPU execution remains in the repository validators.

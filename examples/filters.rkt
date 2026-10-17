@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Filters Example
+;;;
+
+;; Renders examples of color filters, blur masks, shadows, and filter composition.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline "../main.rkt")
 
 ;; Visual smoke test for the 0.6 filter layer: color filters, mask blur,
 ;; image blur, drop shadows, and composed image-filter graphs.
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; render-filters : path-string? -> void?
+;;   Renders the filters example to the selected output destination.
 (define (render-filters filename)
   (define grayscale
     '(0.2126 0.7152 0.0722 0 0
@@ -66,7 +84,13 @@
     (draw-circle c 825 515 72 compose-paint)
     (save-png s filename)))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; filename : path-string?
+  ;;   Selects the destination used by this example's output.
   (define filename
     (command-line #:program "filters.rkt"
                   #:args ([output "filters.png"])

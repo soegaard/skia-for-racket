@@ -1,14 +1,36 @@
 #lang racket/base
+
+;;;
+;;; Live Stream Doctor
+;;;
+
+;; Exercises synchronous native callbacks over live Racket input and output ports and reports
+;; native diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require json racket/cmdline racket/file racket/list "../main.rkt"
          (only-in "../private/live-port-runtime.rkt" active-operation-count in-port-service?))
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; generate : path-string? string? -> void?
+;;   Checks callback-based native stream support, saves stream and document evidence, and reports
+;;   service-thread activity.
 (define (generate directory token)
   (live-streams-check!) (make-directory* directory)
   (define (save name bytes)
-    (call-with-output-file (build-path directory name) (lambda (out) (write-bytes bytes out)) #:mode 'binary #:exists 'error))
+    (call-with-output-file (build-path directory name) (lambda (out) (write-bytes bytes out))
+      #:mode 'binary #:exists 'error))
   (define raw (bytes 255 0 0 255 0 255 0 255 0 0 255 255 255 255 255 255))
   (define payload (list->bytes (for/list ([i (in-range 131079)]) (modulo i 251))))
   (define copied (open-output-bytes))
-  (unless (= (copy-port/streaming (open-input-bytes payload) copied) (bytes-length payload)) (error 'doctor "copy count"))
+  (unless (= (copy-port/streaming (open-input-bytes payload) copied) (bytes-length payload))
+    (error 'doctor "copy count"))
   (save "copy.bin" (get-output-bytes copied))
   (define owner (current-thread)) (define calls 0)
   (with-skia ([image (rgba-bytes->image 2 2 raw)])
@@ -31,23 +53,41 @@
       (draw-rect c 8 8 20 16 red) (draw-rect c 0 36 64 12 blue)
       (canvas-annotate-url! c 8 8 20 16 "https://example.test/live")))
   (define authors 0)
-  (define page (make-output-page 64 48 (lambda (c) (set! authors (add1 authors)) (draw c)) #:background 'white))
+  (define page (make-output-page 64 48 (lambda (c) (set! authors (add1 authors)) (draw c))
+                 #:background 'white))
   (for ([kind '(pdf svg)])
     (define out (open-output-bytes))
     (output->port (if (eq? kind 'pdf) (list page page) page) out kind)
     (save (format "document.~a" kind) (get-output-bytes out)))
   (with-skia ([pic (call-with-picture 64 48 draw)])
-    (define out (open-output-bytes)) (picture->port pic out) (save "picture.skp" (get-output-bytes out))
+    (define out (open-output-bytes)) (picture->port pic out)
+    (save "picture.skp" (get-output-bytes out))
     (with-skia ([again (picture-from-port (open-input-bytes (get-output-bytes out)) #:trusted? #t)])
-      (unless (equal? (picture-cull-bounds pic) (picture-cull-bounds again)) (error 'doctor "picture extent"))))
-  (unless (and (= authors 3) (positive? calls) (= (active-operation-count) 0)) (error 'doctor "incomplete execution"))
+      (unless (equal? (picture-cull-bounds pic) (picture-cull-bounds again))
+        (error 'doctor "picture extent"))))
+  (unless (and (= authors 3) (positive? calls) (= (active-operation-count) 0))
+    (error 'doctor "incomplete execution"))
   (call-with-output-file (build-path directory "native.json")
     (lambda (out) (write-json (hasheq 'schema 1 'stage "0.75b" 'status "passed" 'run_token token
-      'native_version (skia-native-version) 'racket_version (version) 'os (symbol->string (system-type 'os))
-      'authoring_calls authors 'write_callbacks calls 'callbacks_on_service_thread #t 'compiler_required #f
-      'active_jobs (active-operation-count) 'native_execution #t 'gpu_execution #f) out)) #:exists 'error))
+      'native_version (skia-native-version) 'racket_version (version) 'os
+                                (symbol->string (system-type 'os))
+      'authoring_calls authors 'write_callbacks calls 'callbacks_on_service_thread #t
+                                'compiler_required #f
+      'active_jobs (active-operation-count) 'native_execution #t 'gpu_execution #f) out)) #:exists
+    'error))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each [("--directory") p "Fresh evidence directory" (set! directory p)]
                 [("--token") t "Run identity" (set! token t)])
   (unless (and directory token) (error 'doctor "--directory and --token required"))

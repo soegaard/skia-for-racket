@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; Direct3D Device System
+;;;
+
+;; Loads Windows device functions and manages adapter, device, and queue creation.
+;; Supplies platform services used by the Direct3D GPU backend.
+
 (require ffi/unsafe racket/promise racket/list
          "gpu-provider.rkt" "gpu-d3d12-types.rkt" "gpu-d3d12-util.rkt")
 (provide load-d3d12-platform)
@@ -7,19 +15,29 @@
 
 ;; Windows x64 has one calling convention for these C/COM calls. 32-bit and
 ;; ARM64 hosts are rejected BEFORE either DLL is loaded or a vtable is read.
+; method : any/c any/c ctype? -> any
+;;   Reads a COM vtable slot and casts it to the explicitly supplied native calling signature.
 (define (method object slot type)
   (unless object (error 'direct3d "null COM interface"))
   (cast (ptr-ref (ptr-ref object _pointer) _pointer slot) _fpointer type))
+; release : any/c -> void?
+;;   Releases one owned COM interface reference through IUnknown's fixed vtable slot.
 (define (release object)
   ((method object iunknown-release-slot (_fun _pointer -> _uint32)) object)
   (void))
+; raw : any/c any/c -> any
+;;   Allocates and frees temporary native output storage around a synchronous COM query.
 (define (raw size proc)
   (define p (malloc size 'raw))
   (dynamic-wind void (lambda () (memset p 0 size) (proc p)) (lambda () (free p))))
+; hresult! : symbol? any/c -> void?
+;;   Converts unsuccessful COM status codes into step-specific backend-availability failures.
 (define (hresult! step hr)
   (when (negative? hr)
     (gpu-unavailable step "~a failed with HRESULT 0x~a" step
                      (number->string (bitwise-and hr #xffffffff) 16))))
+; out-interface : any/c any/c -> any
+;;   Receives a checked COM interface out-parameter and rejects successful calls that returned null.
 (define (out-interface step get)
   (raw (ctype-sizeof _pointer)
        (lambda (out)
@@ -31,8 +49,14 @@
            (hresult! step hr))
          (unless p (gpu-unavailable step "~a succeeded without returning an interface" step))
          p)))
+; dxgi-library : promise?
+;;   Loads DXGI lazily so importing platform-independent GPU modules does not load Windows DLLs.
 (define dxgi-library (delay/sync (ffi-lib "dxgi")))
+; d3d12-library : promise?
+;;   Loads the Direct3D 12 DLL only when Windows backend construction is requested.
 (define d3d12-library (delay/sync (ffi-lib "d3d12")))
+; platform : promise?
+;;   Caches the native adapter/device/queue operations after lazy Windows DLL resolution.
 (define platform
   (delay/sync
     (define dxgi (force dxgi-library))
@@ -60,7 +84,8 @@
          (lambda () (release factory))))
      (lambda (adapter)
        (out-interface 'd3d12-device
-                      (lambda (out) (create-device adapter d3d12-minimum-feature-level iid-device out))))
+                      (lambda (out) (create-device adapter d3d12-minimum-feature-level iid-device
+                        out))))
      (lambda (device)
        (define create (method device device-create-queue-slot
                               (_fun _pointer _pointer _bytes _pointer -> _int32)))
@@ -103,6 +128,8 @@
                       'command_queue_owned #t))))
      (lambda (device)
        ((method device device-removed-reason-slot (_fun _pointer -> _int32)) device)))))
+; load-d3d12-platform : -> any
+;;   Returns the checked Windows platform operations, initializing their lazy bindings once.
 (define (load-d3d12-platform)
   (unless (and (eq? (system-type 'os) 'windows) (eq? (system-type 'arch) 'x86_64))
     (gpu-unavailable 'd3d12-platform "Direct3D requires Windows x64; no automatic CPU/GL fallback"))

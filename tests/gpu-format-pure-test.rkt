@@ -1,10 +1,32 @@
 #lang racket/base
+
+;;;
+;;; GPU Format Pure Test
+;;;
+
+;; Covers gPU format and surface property contracts (pure).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit "../surface-properties.rkt" (submod "../surface-properties.rkt" internals)
          "../image-info.rkt" "../private/check.rkt" "../private/gpu-format-util.rkt"
          "../private/gpu-frame-target-cache.rkt")
 (provide gpu-format-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; key : [symbol? any/c exact-nonnegative-integer? surface-properties?] -> any/c
+;;   Builds a staging-cache key that includes format, color space, samples, and surface properties.
 (define (key [color 'rgba-8888] [space #f] [samples 0] [p (make-surface-properties)])
   (gpu-staging-key 'test 8 6 color space samples p))
+
+; with-cache : procedure? -> any
+;;   Supplies an instrumented target cache with constructor and retirement counters.
 (define (with-cache proc)
   (define cache (make-frame-target-cache))
   (define made 0) (define retired '())
@@ -14,6 +36,13 @@
     (call-with-frame-target cache w h create dispose values #:configuration k))
   (dynamic-wind void (lambda () (proc cache use (lambda () made) (lambda () retired)))
                 (lambda () (close-frame-target-cache! cache))))
+
+;;;
+;;; Regression Suite
+;;;
+
+; gpu-format-pure-tests : test-suite?
+;;   Collects the regression cases for gPU format and surface property contracts (pure).
 (define gpu-format-pure-tests
   (test-suite "GPU format and surface property contracts (pure)"
     (test-case "default properties retain unknown geometry and zero flags"
@@ -47,19 +76,24 @@
       (check-exn exn:fail? (lambda () (gpu-format-name "invented"))))
     (test-case "GPU size and alpha validation precede construction"
       (for ([a '(unpremul unknown #f)])
-        (check-exn exn:fail? (lambda () (gpu-format-request 'test 8 6 'rgba-8888 a 0 (make-surface-properties)))))
+        (check-exn exn:fail?
+          (lambda () (gpu-format-request 'test 8 6 'rgba-8888 a 0 (make-surface-properties)))))
       (for ([w '(0 -1 32769 2.5)])
-        (check-exn exn:fail? (lambda () (gpu-format-request 'test w 6 'rgba-8888 'premul 0 (make-surface-properties))))))
+        (check-exn exn:fail?
+          (lambda () (gpu-format-request 'test w 6 'rgba-8888 'premul 0 (make-surface-properties))))))
     (test-case "non-alpha formats require opaque requests"
       (for ([c '(rgb-888x rgb-565 gray-8)])
-        (check-exn exn:fail? (lambda () (gpu-format-request 'test 8 6 c 'premul 0 (make-surface-properties))))
-        (check-true (image-info? (gpu-format-request 'test 8 6 c 'opaque 0 (make-surface-properties))))))
+        (check-exn exn:fail?
+          (lambda () (gpu-format-request 'test 8 6 c 'premul 0 (make-surface-properties))))
+        (check-true
+          (image-info? (gpu-format-request 'test 8 6 c 'opaque 0 (make-surface-properties))))))
     (test-case "sample requests have a bounded exact representation"
       (for ([v '(-1 65 4.0 #t)])
         (check-exn exn:fail? (lambda () (key 'rgba-8888 #f v)))))
     (test-case "float targets charge their actual storage size"
       (parameterize ([current-skia-byte-limit 200])
-        (check-true (image-info? (gpu-format-request 'test 8 6 'rgba-8888 'premul 0 (make-surface-properties))))
+        (check-true
+          (image-info? (gpu-format-request 'test 8 6 'rgba-8888 'premul 0 (make-surface-properties))))
         (check-exn exn:fail? (lambda () (key 'rgba-f16)))
         (check-exn exn:fail? (lambda () (key 'rgba-f32)))))
     (test-case "staging only accepts full-color premultiplied formats"

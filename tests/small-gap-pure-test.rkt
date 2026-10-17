@@ -1,16 +1,51 @@
 #lang racket/base
+
+;;;
+;;; Small Gap Pure Test
+;;;
+
+;; Covers small-gap pure contracts.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; No native library is loaded: every public call here fails at its input gate.
 (require rackunit rackunit/text-ui
          "../main.rkt"
          (only-in "../private/color-output-util.rkt" color-sequence))
 (provide small-gap-pure-tests small-gap-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; I : vector?
+;;   Provides valid identity coefficients before individual invalid-input mutations.
 (define I '(1 0 0 0 1 0 0 0 1))
+
+; bad-input : any/c -> void?
+;;   Checks that invalid matrix coefficients are rejected before native use.
 (define (bad-input v)
   (check-exn exn:fail:contract? (lambda () (xyz-d50-invert v)))
   (check-exn exn:fail:contract? (lambda () (xyz-d50-concat v I)))
   (check-exn exn:fail:contract? (lambda () (xyz-d50-concat I v))))
+
+; replace-first : any/c -> vector?
+;;   Copies the identity fixture with its first coefficient replaced.
 (define (replace-first value) (cons value (cdr I)))
+
+; small-gap-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define small-gap-pure-test-count 20)
+
+;;;
+;;; Regression Suite
+;;;
+
+; small-gap-pure-tests : test-suite?
+;;   Collects the regression cases for small-gap pure contracts.
 (define small-gap-pure-tests
   (test-suite "small-gap pure contracts"
     (test-case "public helpers have exact ordinary arity"
@@ -60,6 +95,13 @@
       (check-exn exn:fail:contract?
         (lambda () (call-with-nodraw-canvas 3 4 (lambda (c #:required k) (void))))))))
 (module+ main
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests small-gap-pure-tests))
   (printf "small-gap-pure: ~a cases, ~a failures\n" small-gap-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

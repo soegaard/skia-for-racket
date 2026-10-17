@@ -1,7 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Effects Pure Test
+;;;
+
+;; Covers effect validation without loading Skia.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui ffi/unsafe
          "../main.rkt" "../private/effects-util.rkt" "../private/types.rkt")
 (provide effects-pure-tests)
+
+;;;
+;;; Regression Suite
+;;;
+
+; effects-pure-tests : test-suite?
+;;   Collects the regression cases for effect validation without loading Skia.
 (define effects-pure-tests
   (test-suite
    "0.66 effect validation without loading Skia"

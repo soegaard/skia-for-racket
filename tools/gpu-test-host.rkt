@@ -1,11 +1,39 @@
 #lang racket/base
+
+;;;
+;;; GPU Backend Test Host
+;;;
+
+;; Selects GUI OpenGL, EGL, Metal, or Direct3D activation for a diagnostic callback.
+;; This adapter lets GPU acceptance tools share workloads while keeping host setup
+;; backend-specific.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/runtime-path "../gpu.rkt"
          (only-in "../private/gpu-d3d12-util.rkt" d3d12-selection!))
 (provide call-with-gpu-backend-host)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; gl-host-module : path?
+;;   Locates gpu-gui-host.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path gl-host-module "gpu-gui-host.rkt")
+
+; egl-module : path?
+;;   Locates ../gpu-egl.rkt relative to this module, independent of the invoking directory.
 (define-runtime-path egl-module "../gpu-egl.rkt")
 ;; Supply a context maker, not a raw backend handle. Metal needs no host;
 ;; creating each context owns a new command queue. GL borrows its GUI host.
+
+; call-with-gpu-backend-host : symbol? procedure? [#:host symbol? #:egl-platform symbol?
+; #:egl-device-index exact-nonnegative-integer? #:egl-surface symbol? #:adapter (or/c symbol? #f)
+; #:adapter-index (or/c exact-nonnegative-integer? #f)] -> any
+;;   Invokes the workload with a backend-specific context factory and host evidence; OpenGL GUI
+;;   contexts borrow the enclosing host.
 (define (call-with-gpu-backend-host backend proc #:host [host 'gui]
                                     #:egl-platform [platform 'surfaceless]
                                     #:egl-device-index [index 0]

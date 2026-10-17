@@ -1,17 +1,28 @@
 #lang racket/base
+
+;;;
+;;; Metal Device System
+;;;
+
+;; Loads Objective-C Metal services and retains device and queue handles.
+;; Provides platform setup beneath the Metal driver.
+
 (require ffi/unsafe "gpu-provider.rkt" "gpu-metal-util.rkt"
          "gpu-native-scope.rkt" "gpu-diagnostics.rkt")
 (provide load-metal-platform)
 
 ;; No Objective-C/framework access at module instantiation or compilation.
 ;; There is no AppKit, MTKView, CAMetalLayer, GL context or window in this path.
+; load-metal-platform : -> metal-platform-ops?
+;;   Lazily binds Objective-C device, queue, activation, and diagnostic operations for Metal.
 (define (load-metal-platform)
   (unless (and (eq? (system-type 'os) 'macosx)
                (memq (system-type 'arch) '(aarch64 x86_64))
                (= (ctype-sizeof _pointer) 8))
     (gpu-unavailable 'metal-platform "owned Metal contexts require 64-bit macOS Racket"))
   (with-handlers ([exn:fail?
-                   (lambda (e) (gpu-unavailable 'metal-framework "Metal/Objective-C initialization: ~a" (exn-message e)))])
+                   (lambda (e) (gpu-unavailable 'metal-framework
+                     "Metal/Objective-C initialization: ~a" (exn-message e)))])
     (define objc (ffi-lib "/usr/lib/libobjc.A.dylib"))
     (define metal (ffi-lib "/System/Library/Frameworks/Metal.framework/Metal"))
     (define selector (get-ffi-obj "sel_registerName" objc (_fun _string/utf-8 -> _pointer)))
@@ -27,7 +38,8 @@
     (define utf8-selector (selector "UTF8String"))
     (define scope
       (make-gpu-native-scope
-       (lambda () (or (push-pool) (error 'metal-native-scope "autorelease pool creation returned null")))
+       (lambda () (or (push-pool) (error 'metal-native-scope
+         "autorelease pool creation returned null")))
        pop-pool))
     (metal-platform-ops
      scope default-device
@@ -36,7 +48,8 @@
      (lambda (device)
        (define name-object (send-pointer device name-selector))
        (define utf8 (and name-object (send-pointer name-object utf8-selector)))
-       (define name (if utf8 (string->immutable-string (cast utf8 _pointer _string/utf-8)) "unnamed Metal device"))
+       (define name (if utf8 (string->immutable-string (cast utf8 _pointer _string/utf-8))
+         "unnamed Metal device"))
        (hasheq 'device name 'renderer name 'vendor "Apple Metal API"
                'renderer_class (renderer-class "" name)
                'renderer_class_evidence "MTLDevice name; not an independent hardware attestation"

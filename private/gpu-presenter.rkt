@@ -1,4 +1,12 @@
 #lang racket/base
+
+;;;
+;;; GPU Frames and Presentation
+;;;
+
+;; Scopes frame canvases and coordinates presentation, resize, and shutdown.
+;; Provides the backend-independent frame API used by GPU windows and drawing callbacks.
+
 ;; Backend-neutral lifecycle. This module does not initialize GUI or native GPU
 ;; facilities. Adapters own target acquisition/cleanup; frames never expose a
 ;; closeable surface, drawable, framebuffer, command buffer or raw pointer.
@@ -19,31 +27,79 @@
 ;; exactly once, or returns #f if no drawable is available. It must retire its
 ;; target on EVERY exit. post queues (never invokes inline) on the owner thread.
 (struct presentation-adapter (backend context measure call-target post close describe))
+;; Fields:
+;;   backend: backend symbol. context: retained public GPU context. measure: zero-argument immutable
+;;   metrics query. call-target: procedure receiving metrics and a frame receiver; it retires its
+;;   target on every exit.
+;;   post: owner-thread scheduler that queues rather than immediately invokes work. close: teardown
+;;   procedure. describe: detached diagnostic query. The adapter owns acquired native targets, never
+;;   the public frame wrapper.
+
 (struct gpu-presenter
   (adapter owner [render #:mutable] on-error [state #:mutable] [busy? #:mutable]
            [dirty? #:mutable] [ticket #:mutable] [queued? #:mutable]
            [generation #:mutable] [signature #:mutable] [index #:mutable]
            [presented #:mutable] [skipped #:mutable] [cancelled #:mutable]
-           [last #:mutable] [error #:mutable] [requested? #:mutable] [cleanup-posted? #:mutable] [unregister #:mutable]
+           [last #:mutable] [error #:mutable] [requested? #:mutable] [cleanup-posted? #:mutable]
+             [unregister #:mutable]
            targets))
+;; Fields:
+;;   adapter: presentation-adapter. owner: creator/eventspace thread. render: mutable frame
+;;   callback. on-error: failure callback. state: lifecycle symbol. busy? and dirty?: render/repaint
+;;   flags.
+;;   ticket and queued?: stale-work cancellation token and scheduling flag. generation and
+;;   signature: current target configuration identity. index: acquired-frame counter. presented,
+;;   skipped, and cancelled: outcome counters.
+;;   last and error: latest detached frame/error reports. requested? and cleanup-posted?: shutdown
+;;   request/scheduling flags. unregister: optional cleanup unregistration procedure. targets:
+;;   presenter-owned frame-target-cache.
+;;   Only owner performs rendering or native teardown; a frame's canvas is invalidated before the
+;;   callback scope ends.
+
 (struct gpu-frame (owner [canvas-value #:mutable] [context-value #:mutable] info [live? #:mutable]
                          [targets #:mutable]))
+;; Fields:
+;;   owner: callback's execution thread. canvas-value and context-value: mutable borrowed drawing
+;;   handles, cleared at scope exit. info: immutable frame metrics and identity. live?: validity
+;;   flag. targets: borrowed presenter cache, also cleared at exit.
+
+; pending-cleanup : hash?
+;;   Roots only presenters whose shutdown has been requested until owner-thread cleanup runs.
 (define pending-cleanup (make-hasheq)) ; only requested cleanup, never all live presenters
+; active-presenter : parameter?
+;;   Marks the currently delivering presenter to prevent nested frame rendering.
 (define active-presenter (make-parameter #f))
+; presentation-active? : -> boolean?
+;;   Detects either a presenter callback or a lower-level GPU activation that forbids reentrant
+;;   rendering.
 (define (presentation-active?) (or (and (active-presenter) #t) (domain-execution-active?)))
+; deferred-redraws : hash?
+;;   Collects redraw requests deferred while another presentation or GPU scope is active.
 (define deferred-redraws (make-hasheq))
+; owner! : symbol? gpu-presenter? -> void?
+;;   Requires the presenter's creator/eventspace thread and excludes future execution.
 (define (owner! who p)
   (unless (gpu-presenter? p) (raise-argument-error who "gpu-presenter?" p))
   (unless (and (eq? (current-thread) (gpu-presenter-owner p)) (not (current-future)))
     (error who "presenter operations require its eventspace handler/creator thread")))
+; check-open! : symbol? gpu-presenter? -> void?
+;;   Rejects rendering changes after shutdown is requested or the presenter enters a terminal state.
 (define (check-open! who p)
   (owner! who p)
   (when (or (gpu-presenter-requested? p) (memq (gpu-presenter-state p) '(closing closed failed)))
     (error who "presenter is ~a" (gpu-presenter-state p))))
+; procedure! : symbol? procedure? exact-nonnegative-integer? -> void?
+;;   Checks callback arity before storing it in presenter state.
 (define (procedure! who v arity)
   (unless (and (procedure? v) (procedure-arity-includes? v arity))
     (raise-argument-error who (format "procedure accepting ~a argument(s)" arity) v)))
+; error-text : any/c -> string?
+;;   Produces detached diagnostic text for exceptions and non-exception raised values.
 (define (error-text v) (if (exn? v) (exn-message v) (format "~s" v)))
+; presentation-metrics : exact-nonnegative-integer? exact-nonnegative-integer? real? real?
+;   [#:visible? boolean?] -> (and/c hash? immutable?)
+;;   Validates logical and pixel extents and derives consistent per-axis scales and drawable
+;;   visibility.
 (define (presentation-metrics pw ph lw lh #:visible? [visible? #t])
   (for ([n (in-list (list pw ph))])
     (unless (and (exact-nonnegative-integer? n) (<= n #x7fffffff))
@@ -57,6 +113,9 @@
           'scale_y (if (positive? lh) (/ (exact->inexact ph) lh) 0.0)
           'drawable (and visible? (positive? pw) (positive? ph) (positive? lw) (positive? lh))
           'visible visible?))
+; metrics! : presentation-adapter? -> (and/c hash? immutable?)
+;;   Revalidates an adapter's immutable metrics so inconsistent geometry cannot cross the FFI
+;;   boundary.
 (define (metrics! a)
   (define m ((presentation-adapter-measure a)))
   (unless (and (hash? m) (immutable? m)) (error 'gpu-presenter "adapter metrics must be immutable"))
@@ -67,24 +126,35 @@
     #:visible? (hash-ref m 'visible)))
   (unless (equal? checked m) (error 'gpu-presenter "inconsistent adapter metrics"))
   m)
+; gpu-presenter-backend : gpu-presenter? -> (or/c 'opengl 'metal 'direct3d)
+;;   Returns the fixed backend selected by presenter.
 (define (gpu-presenter-backend p)
   (owner! 'gpu-presenter-backend p) (presentation-adapter-backend (gpu-presenter-adapter p)))
+; gpu-presenter-context : gpu-presenter? -> gpu-context?
+;;   Returns the presenter's owned GPU context on its owner thread.
 (define (gpu-presenter-context p)
   (owner! 'gpu-presenter-context p) (presentation-adapter-context (gpu-presenter-adapter p)))
+; gpu-presenter-info : gpu-presenter? -> (and/c hash? immutable?)
+;;   Returns a detached owner-thread diagnostic snapshot.
 (define (gpu-presenter-info p)
   (owner! 'gpu-presenter-info p)
   (hasheq 'backend (symbol->string (gpu-presenter-backend p))
           'state (symbol->string (gpu-presenter-state p))
           'target_generation (gpu-presenter-generation p) 'frames_acquired (gpu-presenter-index p)
           'presents_requested (gpu-presenter-presented p) 'frames_skipped (gpu-presenter-skipped p)
-          'frames_cancelled (gpu-presenter-cancelled p) 'redraw_queued (gpu-presenter-queued? p) 'shutdown_requested (gpu-presenter-requested? p)
+          'frames_cancelled (gpu-presenter-cancelled p) 'redraw_queued (gpu-presenter-queued? p)
+            'shutdown_requested (gpu-presenter-requested? p)
           'last_frame (gpu-presenter-last p) 'last_error (gpu-presenter-error p)
           'frame_target_cache (frame-target-cache-info (gpu-presenter-targets p))
           'adapter ((presentation-adapter-describe (gpu-presenter-adapter p)))
           'visible_pixels_verified #f 'performance_measured #f))
+; gpu-frame-expired? : gpu-frame? -> boolean?
+;;   Reports whether the callback lease has ended.
 (define (gpu-frame-expired? f)
   (unless (gpu-frame? f) (raise-argument-error 'gpu-frame-expired? "gpu-frame?" f))
   (not (gpu-frame-live? f)))
+; gpu-frame-canvas : gpu-frame? -> canvas?
+;;   Returns the borrowed canvas while frame is live on its original owner thread.
 (define (gpu-frame-canvas f)
   (unless (gpu-frame? f) (raise-argument-error 'gpu-frame-canvas "gpu-frame?" f))
   (unless (and (eq? (current-thread) (gpu-frame-owner f)) (not (current-future)))
@@ -92,32 +162,60 @@
   (when (gpu-frame-expired? f) (error 'gpu-frame-canvas "presentation frame has expired"))
   (gpu-frame-canvas-value f))
 ;; Avoid exporting the raw mutable canvas accessor.
+; gpu-frame-context : gpu-frame? -> gpu-context?
+;;   Returns the presenter's context under the same owner/liveness checks as gpu-frame-canvas.
 (define (gpu-frame-context f)
   (gpu-frame-canvas f) ; identical owner/expiration checks
   (gpu-frame-context-value f))
 ;; The cache is an implementation resource of THIS presenter/context. A frame
 ;; may borrow it only while live; invalidate its reference along with the canvas
 ;; so retaining expired public frames cannot keep GPU staging storage alive.
-(define (call-with-gpu-frame-target f width height create dispose proc #:configuration [configuration #f])
+; call-with-gpu-frame-target : gpu-frame? any/c any/c any/c any/c any/c [#:configuration any/c] ->
+;   any
+;;   Borrows the presenter's staging cache only for matching dimensions of a still-live frame.
+(define (call-with-gpu-frame-target f width height create dispose proc #:configuration [configuration
+  #f])
   (gpu-frame-canvas f)
   (unless (and (= width (gpu-frame-width f)) (= height (gpu-frame-height f)))
     (error 'gpu-frame-target "staging extent differs from the live frame"))
   (call-with-frame-target (gpu-frame-targets f) width height create dispose proc
                           #:configuration configuration))
+; gpu-frame-width : gpu-frame? -> exact-positive-integer?
+;;   Returns the acquired target width in physical pixels.
 (define (gpu-frame-width f) (hash-ref (gpu-frame-info f) 'pixel_width))
+; gpu-frame-height : gpu-frame? -> exact-positive-integer?
+;;   Returns the acquired target height in physical pixels.
 (define (gpu-frame-height f) (hash-ref (gpu-frame-info f) 'pixel_height))
+; gpu-frame-logical-width : gpu-frame? -> (and/c real? positive?)
+;;   Returns the logical client width used for this acquired frame.
 (define (gpu-frame-logical-width f) (hash-ref (gpu-frame-info f) 'logical_width))
+; gpu-frame-logical-height : gpu-frame? -> (and/c real? positive?)
+;;   Returns the logical client height used for this acquired frame.
 (define (gpu-frame-logical-height f) (hash-ref (gpu-frame-info f) 'logical_height))
+; gpu-frame-scale-x : gpu-frame? -> (and/c real? positive?)
+;;   Returns physical width divided by logical width for this frame.
 (define (gpu-frame-scale-x f) (hash-ref (gpu-frame-info f) 'scale_x))
+; gpu-frame-scale-y : gpu-frame? -> (and/c real? positive?)
+;;   Returns physical height divided by logical height for this frame.
 (define (gpu-frame-scale-y f) (hash-ref (gpu-frame-info f) 'scale_y))
+; gpu-frame-generation : gpu-frame? -> exact-positive-integer?
+;;   Returns the presenter's target generation.
 (define (gpu-frame-generation f) (hash-ref (gpu-frame-info f) 'target_generation))
+; gpu-frame-index : gpu-frame? -> exact-positive-integer?
+;;   Returns the monotonically increasing acquisition index for this presenter.
 (define (gpu-frame-index f) (hash-ref (gpu-frame-info f) 'frame_index))
+; invalidate-queue! : gpu-presenter? -> any
+;;   Advances the scheduling ticket so previously queued redraw callbacks become harmless.
 (define (invalidate-queue! p)
   (set-gpu-presenter-ticket! p (add1 (gpu-presenter-ticket p)))
   (set-gpu-presenter-queued?! p #f))
+; report-error! : gpu-presenter? any/c -> any
+;;   Stores a readable error snapshot before invoking the caller's error callback.
 (define (report-error! p e)
   (set-gpu-presenter-error! p (error-text e))
   ((gpu-presenter-on-error p) e))
+; schedule! : gpu-presenter? -> void?
+;;   Queues one owner-thread redraw and defers it again if dispatch would reenter active GPU work.
 (define (schedule! p)
   (when (and (gpu-presenter-dirty? p) (not (gpu-presenter-busy? p))
              (eq? (gpu-presenter-state p) 'ready) (not (gpu-presenter-requested? p))
@@ -138,16 +236,22 @@
                (hash-set! deferred-redraws p #t)
                (with-handlers ([(lambda (_) #t) (lambda (e) (report-error! p e))])
                (when (eq? (gpu-presenter-state p) 'ready) (gpu-presenter-render! p))))))))))
+; gpu-presenter-request-render! : gpu-presenter? -> void?
+;;   Marks the presenter dirty and queues a redraw when one is not already queued.
 (define (gpu-presenter-request-render! p)
   (check-open! 'gpu-presenter-request-render! p)
   (set-gpu-presenter-dirty?! p #t)
   (schedule! p)
   (void))
+; gpu-presenter-set-render! : gpu-presenter? procedure? -> void?
+;;   Replaces the one-argument frame callback and requests one redraw.
 (define (gpu-presenter-set-render! p render)
   (check-open! 'gpu-presenter-set-render! p)
   (procedure! 'gpu-presenter-set-render! render 1)
   (set-gpu-presenter-render! p render)
   (gpu-presenter-request-render! p))
+; make-presenter : presentation-adapter? procedure? procedure? -> any
+;;   Validates an adapter and installs frame, scheduling, cache, and custodian-cleanup state.
 (define (make-presenter adapter render on-error)
   (unless (presentation-adapter? adapter)
     (raise-argument-error 'make-presenter "private presentation adapter" adapter))
@@ -170,6 +274,9 @@
    (lambda (_)
      ;; Constructor registration runs atomically; caller owns error cleanup.
      (error 'make-presenter "current custodian has already shut down"))))
+; post-cleanup! : gpu-presenter? -> void?
+;;   Posts owner-thread teardown at most once instead of destroying native resources from
+;;   finalization.
 (define (post-cleanup! p)
   (unless (or (gpu-presenter-cleanup-posted? p) (eq? (gpu-presenter-state p) 'closed))
     (set-gpu-presenter-cleanup-posted?! p #t)
@@ -185,6 +292,8 @@
            (with-handlers ([(lambda (_) #t)
                             (lambda (e) (set-gpu-presenter-error! p (error-text e)))])
              (gpu-presenter-close! p))))))))
+; schedule-deferred-owner-work! : -> void?
+;;   Reschedules deferred redraws and cleanup when the current thread leaves GPU execution.
 (define (schedule-deferred-owner-work!)
   ;; Called after a domain or presenter scope. Queue only; do not run user
   ;; callbacks or switch a native context from this notification hook.
@@ -200,6 +309,8 @@
                  #:when (eq? (current-thread) (gpu-presenter-owner p))) p))
     (for ([p (in-list closing)]) (post-cleanup! p))))
 (register-domain-idle-notifier! schedule-deferred-owner-work!)
+; request-cleanup! : gpu-presenter? -> void?
+;;   Records a presenter shutdown request and arranges safe owner-thread cleanup.
 (define (request-cleanup! p)
   ;; Finalizers/custodians only mark and enqueue. Neither native destruction
   ;; nor GUI manipulation is performed here; post is the adapter's thread-safe
@@ -212,6 +323,8 @@
     (set-gpu-presenter-dirty?! p #f)
     (invalidate-queue! p)
     (post-cleanup! p)))
+; gpu-presenter-close! : gpu-presenter? -> void?
+;;   Requests deterministic owner-thread closure.
 (define (gpu-presenter-close! p)
   (owner! 'gpu-presenter-close! p)
   (unless (eq? (gpu-presenter-state p) 'closed)
@@ -238,8 +351,12 @@
         (define unregister (gpu-presenter-unregister p))
         (when unregister (unregister p) (set-gpu-presenter-unregister! p #f)))))
   (void))
+; gpu-drain-pending-presenters! : -> (listof (and/c hash? immutable?))
+;;   Attempts pending presenter cleanup owned by the current thread and returns their detached
+;;   diagnostic snapshots.
 (define (gpu-drain-pending-presenters!)
-  (when (presentation-active?) (error 'gpu-drain-pending-presenters! "cannot drain inside a GPU or presentation frame"))
+  (when (presentation-active?) (error 'gpu-drain-pending-presenters!
+    "cannot drain inside a GPU or presentation frame"))
   (define candidates
     (call-as-atomic (lambda ()
       (for/list ([p (in-hash-keys pending-cleanup)]
@@ -247,6 +364,8 @@
   (for/list ([p (in-list candidates)])
     (with-handlers ([(lambda (_) #t) (lambda (e) (gpu-presenter-info p))])
       (gpu-presenter-close! p) (gpu-presenter-info p))))
+; gpu-presenter-render! : gpu-presenter? -> (or/c 'present-requested 'skipped 'cancelled)
+;;   Performs one immediate presentation attempt on the presenter owner thread.
 (define (gpu-presenter-render! p)
   (check-open! 'gpu-presenter-render! p)
   (when (or (gpu-presenter-busy? p) (presentation-active?))
@@ -294,7 +413,8 @@
                [else
                 ((presentation-adapter-call-target a) m
                  (lambda (canvas target present!)
-                   (when acquired? (error 'gpu-presenter-render! "adapter delivered more than one target"))
+                   (when acquired? (error 'gpu-presenter-render!
+                     "adapter delivered more than one target"))
                    (set! acquired? #t)
                    (unless (and (hash? target) (immutable? target)
                                 (equal? (hash-ref target 'backend #f)
@@ -309,7 +429,8 @@
                      (hash-set* m 'backend (symbol->string (presentation-adapter-backend a))
                                   'target_generation (gpu-presenter-generation p)
                                   'frame_index (gpu-presenter-index p) 'target target))
-                   (define f (gpu-frame (current-thread) canvas (presentation-adapter-context a) info #t
+                   (define f (gpu-frame (current-thread) canvas (presentation-adapter-context a) info
+                     #t
                                         (gpu-presenter-targets p)))
                    (set-gpu-presenter-last! p (hash-set info 'result "acquired"))
                    (dynamic-wind

@@ -1,8 +1,26 @@
 #lang racket/base
+
+;;;
+;;; DC Style Math Test
+;;;
+
+;; Checks gradient, stipple, and hatch coordinate calculations.
+;; This regression module protects the integration boundaries used by the package's drawing API.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Standalone executable tests of production math; no draw-lib, Skia or
 ;; RackUnit is needed. The RackUnit style suite invokes this same entry point.
 (require racket/list racket/math "../private/dc-style-math.rkt" "../private/dc-support.rkt")
 (provide run-dc-style-math-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; run-dc-style-math-tests : -> exact-nonnegative-integer?
+;;   Runs native-free gradient, stipple, and hatch math assertions and returns the checked count.
 (define (run-dc-style-math-tests)
   (define count 0)
   (define (yes label v)
@@ -15,7 +33,8 @@
   (for ([m (list '#(2.0 0.0 0.0 3.0 7.0 -4.0) '#(-1.0 0.0 0.0 1.0 20.0 0.0)
                 '#(1.0 0.5 0.25 1.0 2.0 3.0) '#(0.0 -1.0 1.0 0.0 0.0 0.0))])
     (define product (dc-multiply m (dc-inverse 'test m)))
-    (yes 'inverse (for/and ([x (in-vector product)] [y (in-vector dc-identity)]) (< (abs (- x y)) 1e-8))))
+    (yes 'inverse
+      (for/and ([x (in-vector product)] [y (in-vector dc-identity)]) (< (abs (- x y)) 1e-8))))
   (reject 'singular (lambda () (dc-inverse 'test '#(1 2 2 4 0 0))))
   (reject 'nonfinite (lambda () (dc-inverse 'test (vector +nan.0 0 0 1 0 0))))
   (equal 'source-backing (dc-style-local-matrix '#(2 0 0 2 7 8) #f 2) '#(0.5 0.0 0.0 0.5 0.0 0.0))
@@ -33,7 +52,8 @@
   (equal 'stipple-dash none '(3.0 6.0))
   (for ([style '(xor xor-dot xor-long-dash xor-short-dash xor-dot-dash)])
     (define-values (d p) (dc-dash-spec style 2)) (equal 'legacy-solid d '()))
-  (for ([style dc-hatch-styles] [n '(3 3 6 5 5 10)]) (equal 'hatch-count (length (dc-hatch-lines style)) n))
+  (for ([style dc-hatch-styles] [n '(3 3 6 5 5 10)])
+    (equal 'hatch-count (length (dc-hatch-lines style)) n))
   (reject 'bad-hatch (lambda () (dc-hatch-lines 'solid)))
   (define stops (dc-gradient-stops 'test '((1 #(0 0 255 1)) (0.5 #(0 255 0 1))
                                           (0.5 #(255 0 0 1)) (0 #(0 0 0 0))) 1000))

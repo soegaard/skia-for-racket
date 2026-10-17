@@ -1,7 +1,33 @@
 #lang racket/base
+
+;;;
+;;; Font Query Pure Test
+;;;
+
+;; Covers font queries (pure).
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/list racket/vector "../main.rkt" "../private/font-query-util.rkt")
 (provide font-query-pure-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; bad : (-> any) -> void?
+;;   Requires exn:fail? for the deliberately invalid operation.
 (define (bad thunk) (check-exn exn:fail? thunk))
+
+;;;
+;;; Regression Suite
+;;;
+
+; font-query-pure-tests : test-suite?
+;;   Collects the regression cases for font queries (pure).
 (define font-query-pure-tests
   (test-suite
    "Font queries (pure)"

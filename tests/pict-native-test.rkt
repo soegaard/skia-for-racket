@@ -1,17 +1,39 @@
 #lang racket/base
 
+;;;
+;;; Pict Native Test
+;;;
+
+;; Covers skia/pict eager CPU snapshots.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit rackunit/text-ui racket/class racket/list
          pict/convert (prefix-in pict: pict) (prefix-in rd: racket/draw)
          "../main.rkt" "../pict.rkt" "../dc.rkt" "../dc-output.rkt")
 
 (provide pict-native-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; argb-at : pict? exact-nonnegative-integer? exact-nonnegative-integer? -> bytes?
+;;   Renders a pict through Racket Draw and samples one ARGB pixel.
 (define (argb-at picture x y)
   (define bitmap (pict:pict->bitmap picture))
   (define bytes (make-bytes 4))
   (send bitmap get-argb-pixels x y 1 1 bytes #f #t)
   bytes)
 
+
+; thread-result : procedure? -> any/c
+;;   Captures the result or exception of a pict operation on a different thread.
 (define (thread-result thunk)
   (define reply (make-channel))
   (thread (lambda ()
@@ -19,12 +41,22 @@
                          (with-handlers ([exn:fail? values]) (thunk) 'returned))))
   (channel-get reply))
 
+
+; source-pict : -> pict?
+;;   Builds the small colored pict used to check the Skia conversion bridge.
 (define (source-pict)
   (with-skia ([paint (make-paint #:color 'red #:antialias? #f)]
               [picture (call-with-picture 101 71
                          (lambda (canvas) (draw-rect canvas 0 0 101 71 paint)))])
     (picture->pict picture #:bounds #(0 0 101/2 71/3) #:raster-scale 3/2)))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; pict-native-tests : test-suite?
+;;   Collects the regression cases for skia/pict eager CPU snapshots.
 (define pict-native-tests
   (test-suite
    "skia/pict eager CPU snapshots"
@@ -122,5 +154,12 @@
 
 (module+ test
   (skia-check!)
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests pict-native-tests))
   (unless (zero? failures) (error 'pict-native-test "~a failures" failures)))

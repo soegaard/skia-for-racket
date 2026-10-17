@@ -1,16 +1,46 @@
 #lang racket/base
+
+;;;
+;;; Drawing Context Style Geometry
+;;;
+
+;; Computes dash patterns, hatch lines, alignment, and local style transforms.
+;; Provides pure geometry for the dc adapter's pen, brush, and gradient rendering.
+
 ;; Pure policy/math shared by the DC front end and its style renderer.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/list racket/math "dc-support.rkt")
 (provide dc-pen-styles dc-brush-styles dc-hatch-styles dc-dash-spec
          dc-inverse dc-style-local-matrix dc-alignment-functions dc-axis-scales
          dc-hatch-lines dc-gradient-stops)
+
+;;;
+;;; Supported Styles and Dash Patterns
+;;;
+
+; dc-pen-styles : (listof symbol?)
+;;   Lists accepted solid, transparent, highlight, dash, and legacy xor pen styles.
 (define dc-pen-styles
   '(solid transparent xor hilite dot long-dash short-dash dot-dash
           xor-dot xor-long-dash xor-short-dash xor-dot-dash))
+
+; dc-hatch-styles : (listof symbol?)
+;;   Lists the supported repeating line-hatch brush patterns.
 (define dc-hatch-styles
   '(horizontal-hatch vertical-hatch cross-hatch bdiagonal-hatch fdiagonal-hatch crossdiag-hatch))
+
+; dc-brush-styles : (listof symbol?)
+;;   Combines the accepted ordinary brush modes with the supported hatch patterns.
 (define dc-brush-styles
   (append '(solid transparent opaque xor hilite panel) dc-hatch-styles))
+
+; dc-dash-spec : symbol? real? [any/c] -> (values (listof real?) real?)
+;;   Returns alternating on/off dash lengths and phase; solid and legacy xor styles use an empty
+;;   dash list, while stippled pens retain their selected dash pattern.
 (define (dc-dash-spec style width [stipple? #f])
   ;; Upstream 8.18 accepts the legacy xor-* names but renders them solid;
   ;; it does not implement bitwise XOR. Preserve that behavior, not the name.
@@ -25,6 +55,14 @@
           [else '()]))
   (values (map (lambda (v) (* v (if wide? width 1.0))) pattern)
           (cond [(null? pattern) 0.0] [(eq? style 'dot-dash) 4.0] [else 2.0])))
+
+;;;
+;;; Pattern Transforms and Pixel Alignment
+;;;
+
+; dc-inverse : symbol? vector? -> vector?
+;;   Inverts a checked affine matrix with an exact determinant calculation and rejects singular or
+;;   overflowing results.
 (define (dc-inverse who m)
   (define a (dc-matrix who m))
   ;; Exact arithmetic avoids a binary64 determinant underflow producing a
@@ -38,22 +76,37 @@
   (dc-matrix who (vector aa bb cc dd
                         (- (+ (* aa (vector-ref x 4)) (* cc (vector-ref x 5))))
                         (- (+ (* bb (vector-ref x 4)) (* dd (vector-ref x 5)))))))
+
+; dc-style-local-matrix : vector? (or/c #f vector?) real? -> vector?
+;;   Maps source pixels into drawing-local coordinates, accounting for a brush transform and source
+;;   backing scale.
 (define (dc-style-local-matrix drawing brush-transform source-backing)
   ;; Drawing is in logical coordinates; both transforms share the destination
   ;; backing scale, so that factor cancels. Stipple coordinates are physical
   ;; source pixels, hence the final inverse *source* backing scale.
   (define b (dc-real 'skia-dc-style source-backing))
-  (unless (> b 0) (raise-argument-error 'skia-dc-style "positive source backing scale" source-backing))
+  (unless (> b 0) (raise-argument-error 'skia-dc-style "positive source backing scale"
+    source-backing))
   (define base (if brush-transform
                    (dc-multiply (dc-inverse 'skia-dc-style drawing)
                                 (dc-effective (dc-transformation 'skia-dc-style brush-transform)))
                    dc-identity))
   (dc-multiply base (vector (/ 1.0 b) 0 0 (/ 1.0 b) 0 0)))
+
+; dc-axis-scales : vector? real? -> (values real? real?)
+;;   Returns the effective x/y row-norm scales multiplied by the explicit alignment scale.
 (define (dc-axis-scales m alignment)
   ;; These row norms match racket/draw's effective-scale calculation. They
   ;; remain positive for rotations, reflections and nonsingular shear.
-  (values (dc-real 'skia-dc-alignment (* alignment (sqrt (+ (sqr (vector-ref m 0)) (sqr (vector-ref m 2))))))
-          (dc-real 'skia-dc-alignment (* alignment (sqrt (+ (sqr (vector-ref m 1)) (sqr (vector-ref m 3))))))))
+  (values (dc-real 'skia-dc-alignment (* alignment (sqrt (+ (sqr (vector-ref m 0)) (sqr (vector-ref m
+    2))))))
+          (dc-real 'skia-dc-alignment (* alignment (sqrt (+ (sqr (vector-ref m 1)) (sqr (vector-ref m
+            3))))))))
+
+; dc-alignment-functions : symbol? vector? real? real? symbol? -> (values procedure? procedure? real?
+; real?)
+;;   Returns x/y snapping functions and logical stroke adjustments; smoothed drawing uses identity
+;;   functions and zero adjustment.
 (define (dc-alignment-functions who m alignment width smoothing)
   (cond
     [(eq? smoothing 'smoothed) (values values values 0.0 0.0)]
@@ -70,6 +123,14 @@
      (values (lambda (x) (/ (- (+ (floor (+ (* x sx) ox)) (delta sx)) ox) sx))
              (lambda (y) (/ (- (+ (floor (+ (* y sy) oy)) (delta sy)) oy) sy))
              (/ 1.0 sx) (/ 1.0 sy))]))
+
+;;;
+;;; Detached Hatch and Gradient Data
+;;;
+
+; dc-hatch-lines : symbol? -> (listof vector?)
+;;   Returns x1/y1/x2/y2 segments for a 12-by-12 hatch tile, keeping crossings in one path for uniform
+;;   opacity.
 (define (dc-hatch-lines style)
   ;; A 12x12 repeating tile, using racket/draw's line positions. Color and
   ;; opacity are applied by the renderer; crosses form one stroke, not two
@@ -81,6 +142,10 @@
   (case style [(horizontal-hatch) h] [(vertical-hatch) v] [(cross-hatch) (append h v)]
     [(bdiagonal-hatch) b] [(fdiagonal-hatch) f] [(crossdiag-hatch) (append b f)]
     [else (raise-argument-error 'dc-hatch-lines "hatch brush style" style)]))
+
+; dc-gradient-stops : symbol? list? exact-nonnegative-integer? -> list?
+;;   Validates and copies offset/color pairs, then stably sorts offsets so equal-position
+;;   discontinuities retain their order.
 (define (dc-gradient-stops who stops limit)
   ;; Input uses immutable RGBA vectors. Stable sort preserves a discontinuity
   ;; represented by adjacent equal-offset stops. Zero and one stop are valid.

@@ -1,8 +1,28 @@
 #lang racket/base
 
+;;;
+;;; Reference Color Management Test
+;;;
+
+;; Checks retained color spaces, gamut transforms, ICC round trips, floating paints, and sample
+;; conversion.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Opt-in native CPU acceptance for documented color behavior, with no fonts or GPU.
 (require rackunit racket/vector skia)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; near-vector : vector? vector? [real?] -> void?
+;;   Checks color-component vectors with a configurable absolute tolerance.
 (define (near-vector actual expected [tolerance 0.0001])
   (check-equal? (vector-length actual) (vector-length expected))
   (for ([a (in-vector actual)] [e (in-vector expected)]) (check-= a e tolerance)))

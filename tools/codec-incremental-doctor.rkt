@@ -1,9 +1,29 @@
 #lang racket/base
+
+;;;
+;;; Codec Incremental Doctor
+;;;
+
+;; Exercises incremental PNG feeding, decode progress, and detached snapshots and reports native
+;; diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require json racket/cmdline racket/file racket/list
          "../main.rkt" "../tests/codec-incremental-fixtures.rkt"
          (only-in "../tests/codec-scanline-fixtures.rkt" scanline-fixture-bmp)
          (only-in "../private/codec-incremental-source.rkt" incremental-source-count))
 (provide generate-codec-incremental-evidence)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; generate-codec-incremental-evidence : path-string? string? -> void?
+;;   Captures row/pass progress, truncation, cancellation, and session cleanup for incremental PNG
+;;   decoding.
 (define (generate-codec-incremental-evidence directory token)
   (make-directory* directory)
   (define seen '())
@@ -65,7 +85,18 @@
     (lambda (out) (write-json report out) (newline out)) #:exists 'error)
   (displayln "codec-incremental-native-evidence: passed"))
 (module+ main
-  (define directory #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
+  (define directory #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--directory") path "New evidence directory" (set! directory path)]
     [("--token") value "Unique execution token" (set! token value)])

@@ -1,6 +1,26 @@
 #lang racket/base
+
+;;;
+;;; Color Output Doctor
+;;;
+
+;; Exercises ICC profiles, transfer functions, and color-preserving image output and reports
+;; native diagnostic evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
 (require ffi/unsafe "../main.rkt" "../private/types.rkt")
 (provide color-output-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; color-output-doctor! : -> void?
+;;   Checks color-space layouts, linear-to-sRGB conversion, image ICC embedding, and PDF output
+;;   intent.
 (define (color-output-doctor!)
   (unless (and (= (ctype-sizeof _sk-transfer) 28) (= (ctype-sizeof _sk-xyz) 36)
                (= (ctype-sizeof _sk-primaries) 32)) (error 'doctor "color ABI mismatch"))
@@ -14,7 +34,8 @@
     (for ([format '(png jpeg webp)])
       (define bs (image->encoded-bytes converted format #:icc-profile profile
                                       #:icc-description "Doctor RGB" #:webp-lossless? #t))
-      (unless (regexp-match? (case format [(png) #rx#"iCCP"] [(jpeg) #rx#"ICC_PROFILE"] [(webp) #rx#"ICCP"]) bs)
+      (unless (regexp-match?
+                (case format [(png) #rx#"iCCP"] [(jpeg) #rx#"ICC_PROFILE"] [(webp) #rx#"ICCP"]) bs)
         (error 'doctor "missing explicit ICC data in ~a" format))
       (with-skia ([c (codec-from-bytes bs)] [cs (codec-color-space c)])
         (unless (color-space? cs) (error 'doctor "codec lost color space"))))

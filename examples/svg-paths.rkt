@@ -1,11 +1,37 @@
 #lang racket/base
+
+;;;
+;;; SVG Paths Example
+;;;
+
+;; Compares SVG path parsing and rendering in a visual gallery.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/match "../main.rkt")
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; bg : string?
+;;   Specifies the bg color used by this drawing.
 (define bg "#F4F6F9")
+; panel-fill : string?
+;;   Specifies the panel fill color used by this drawing.
 (define panel-fill "#FFFFFF")
+; frame-color : string?
+;;   Specifies the frame color color used by this drawing.
 (define frame-color "#CBD5E1")
+; label-color : string?
+;;   Specifies the label color color used by this drawing.
 (define label-color "#20304C")
 
+; panel : canvas? real? real? real? real? string? -> void?
+;;   Draws one labeled comparison panel using the example's shared layout.
 (define (panel c x y w h title)
   (with-skia ([fill (make-paint #:color panel-fill)]
               [stroke (make-paint #:color frame-color #:style 'stroke #:stroke-width 2)]
@@ -15,6 +41,8 @@
     (draw-rounded-rect c x y w h 16 16 stroke)
     (draw-simple-text c title (+ x 18) (+ y 30) font text)))
 
+; main : any/c -> void?
+;;   Renders the example gallery and writes it to the requested output file.
 (define (main out)
   (with-skia ([surface (make-surface 1000 700 #:background bg)]
               [stroke (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5 #:antialias? #t)]
@@ -33,11 +61,13 @@
       (match-define (list x y title) spec)
       (panel c x y 290 305 title))
 
-    (with-skia ([p (svg-path->path "M 80 160 C 80 110, 120 80, 160 110 C 200 80, 240 110, 240 160 C 240 210, 190 245, 160 270 C 130 245, 80 210, 80 160 Z")])
+    (with-skia ([p (svg-path->path
+      "M 80 160 C 80 110, 120 80, 160 110 C 200 80, 240 110, 240 160 C 240 210, 190 245, 160 270 C 130 245, 80 210, 80 160 Z")])
       (draw-path c p fill)
       (draw-path c p stroke))
 
-    (with-skia ([p (make-path '((move 410 130) (rline 70 0) (rline 25 55) (rline -60 50) (rline -65 -30) (close)))])
+    (with-skia ([p (make-path '((move 410 130) (rline 70 0) (rline 25 55) (rline -60 50) (rline -65
+      -30) (close)))])
       (draw-path c p teal)
       (draw-path c p slate))
 
@@ -53,7 +83,8 @@
       (draw-path c p slate))
 
     (with-skia ([base (make-path '((move 0 0) (line 120 0) (line 120 105) (line 0 105) (close)))]
-                [bubble (svg-path->path "M 0 40 Q 0 0 40 0 L 120 0 Q 160 0 160 40 L 160 80 Q 160 120 120 120 L 50 120 L 24 148 L 32 120 Q 0 116 0 80 Z")]
+                [bubble (svg-path->path
+                  "M 0 40 Q 0 0 40 0 L 120 0 Q 160 0 160 40 L 160 80 Q 160 120 120 120 L 50 120 L 24 148 L 32 120 Q 0 116 0 80 Z")]
                 [combined (make-path)])
       ;; Compose two local paths into one destination path inside this panel.
       (path-add-path! combined base #:dx 430 #:dy 455)
@@ -73,7 +104,13 @@
 
     (save-png surface out #:exists 'replace)))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; out : path-string?
+  ;;   Names the destination image selected by the command line.
   (define out (vector-ref (current-command-line-arguments) 0))
   (main out)
   (printf "Wrote ~a

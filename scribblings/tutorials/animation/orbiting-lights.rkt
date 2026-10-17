@@ -1,5 +1,18 @@
 #lang racket
 
+;;;
+;;; Orbiting Lights
+;;;
+
+;; Runs an animated window whose scene is shared by raster and GPU renderers.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class
          racket/cmdline
          (only-in racket/gui/base
@@ -13,6 +26,12 @@
 
 (provide open-animation-window)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; preferred-gpu-backend : -> symbol?
+;;   Chooses the platform's preferred explicitly requested GPU backend.
 (define (preferred-gpu-backend)
   (case (system-type 'os)
     [(macosx) 'metal]
@@ -22,6 +41,8 @@
     [(unix) 'opengl]
     [else #f]))
 
+; open-animation-window : symbol? -> #f
+;;   Opens the orbiting-light animation with the explicitly requested renderer.
 (define (open-animation-window renderer)
   (unless (memq renderer '(raster gpu))
     (raise-argument-error 'open-animation-window "'raster or 'gpu" renderer))
@@ -137,7 +158,13 @@
   (send ticker start frame-interval-ms #t)
   window)
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; renderer : symbol?
+  ;;   Selects renderer for the example.
   (define renderer 'raster)
   (command-line
    #:program "orbiting-lights.rkt"

@@ -1,15 +1,41 @@
 #lang racket/base
 
+;;;
+;;; Racket Draw Consumer Test
+;;;
+
+;; Covers skia/racket-draw ordinary consumer integration.
+;; This regression module protects the integration boundaries used by the package's drawing API.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require rackunit rackunit/text-ui racket/class racket/list
          (prefix-in rd: racket/draw)
          "../main.rkt" "../racket-draw.rkt" "../dc.rkt" "../dc-output.rkt")
 
 (provide racket-draw-consumer-tests)
 
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; pixel : bytes? exact-positive-integer? exact-nonnegative-integer? exact-nonnegative-integer? ->
+; (listof byte?)
+;;   Extracts a single RGBA pixel from a consumer capture.
 (define (pixel bytes width x y)
   (define i (* 4 (+ x (* y width))))
   (subbytes bytes i (+ i 4)))
 
+
+;;;
+;;; Regression Suite
+;;;
+
+; racket-draw-consumer-tests : test-suite?
+;;   Collects the regression cases for skia/racket-draw ordinary consumer integration.
 (define racket-draw-consumer-tests
   (test-suite
    "skia/racket-draw ordinary consumer integration"
@@ -73,5 +99,12 @@
 
 (module+ test
   (skia-check!)
+
+  ;;;
+  ;;; Test Entry Point
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests racket-draw-consumer-tests))
   (unless (zero? failures) (error 'racket-draw-consumer-test "~a failures" failures)))

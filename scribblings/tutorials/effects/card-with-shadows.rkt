@@ -1,5 +1,18 @@
 #lang racket
 
+;;;
+;;; Card With Shadows
+;;;
+
+;; Draws a card with shadows, blurred accents, and composed visual effects.
+;; This runnable tutorial example demonstrates public Skia APIs alongside the corresponding
+;; manual.
+
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require skia)
 
 (provide card-image-width
@@ -13,25 +26,55 @@
          draw-card-labels
          draw-card)
 
+;;;
+;;; Drawing Data and Helpers
+;;;
+
+; card-image-width : exact-integer?
+;;   Specifies card image width in the drawing's local coordinate units.
 (define card-image-width 960)
+; card-image-height : exact-integer?
+;;   Specifies card image height in the drawing's local coordinate units.
 (define card-image-height 640)
+; background-color : string?
+;;   Specifies the background color color used by this drawing.
 (define background-color "#EEF3F8")
+; ink-color : string?
+;;   Specifies the ink color color used by this drawing.
 (define ink-color "#243850")
+; muted-color : string?
+;;   Specifies the muted color color used by this drawing.
 (define muted-color "#64778B")
+; blue-color : string?
+;;   Specifies the blue color color used by this drawing.
 (define blue-color "#326DE6")
+; teal-color : string?
+;;   Specifies the teal color color used by this drawing.
 (define teal-color "#1AA6AD")
 
+; card-x : exact-integer?
+;;   Specifies card x in the drawing's local coordinate units.
 (define card-x 80)
+; card-y : exact-integer?
+;;   Specifies card y in the drawing's local coordinate units.
 (define card-y 74)
+; card-width : exact-integer?
+;;   Specifies card width in the drawing's local coordinate units.
 (define card-width 800)
+; card-height : exact-integer?
+;;   Specifies card height in the drawing's local coordinate units.
 (define card-height 478)
 
+; draw-flat-card : canvas? -> void?
+;;   Draws the flat card component in the current canvas coordinate system.
 (define (draw-flat-card canvas)
   (define white (make-paint #:color 'white))
   (draw-rounded-rect canvas
                      card-x card-y card-width card-height
                      28 28 white))
 
+; draw-shadowed-card : canvas? -> void?
+;;   Draws the shadowed card component in the current canvas coordinate system.
 (define (draw-shadowed-card canvas)
   (define shadow
     (make-drop-shadow-image-filter
@@ -43,6 +86,8 @@
                      card-x card-y card-width card-height
                      28 28 white))
 
+; draw-soft-accents : canvas? -> void?
+;;   Draws the soft accents component in the current canvas coordinate system.
 (define (draw-soft-accents canvas)
   (define blur (make-blur-image-filter 22 22))
   (define teal
@@ -54,6 +99,8 @@
   (draw-circle canvas 665 288 78 teal)
   (draw-circle canvas 744 373 58 apricot))
 
+; draw-ring-motif : canvas? -> void?
+;;   Draws the ring motif component in the current canvas coordinate system.
 (define (draw-ring-motif canvas)
   (define ring
     (make-paint #:color ink-color
@@ -73,11 +120,15 @@
   (draw-circle canvas 703 218 5 teal)
   (draw-circle canvas 804 319 5 teal))
 
+; draw-card-with-rings : canvas? -> void?
+;;   Draws the card with rings component in the current canvas coordinate system.
 (define (draw-card-with-rings canvas)
   (draw-shadowed-card canvas)
   (draw-soft-accents canvas)
   (draw-ring-motif canvas))
 
+; draw-card-labels : canvas? -> void?
+;;   Draws the card labels component in the current canvas coordinate system.
 (define (draw-card-labels canvas)
   (define face (make-typeface))
   (define kicker-font (make-font face #:size 17))
@@ -102,11 +153,19 @@
   (draw-simple-text canvas "GEOMETRY  /  COLOR  /  LIGHT" 132 514 caption-font muted)
   (draw-simple-text canvas "10" 829 514 caption-font muted))
 
+; draw-card : canvas? -> void?
+;;   Draws the card component in the current canvas coordinate system.
 (define (draw-card canvas)
   (draw-card-with-rings canvas)
   (draw-card-labels canvas))
 
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
+  ; surface : surface?
+  ;;   Owns the raster drawing target used to produce the example's output.
   (define surface
     (make-surface card-image-width card-image-height
                   #:background background-color))

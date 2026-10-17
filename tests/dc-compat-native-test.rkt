@@ -1,24 +1,72 @@
 #lang racket/base
+
+;;;
+;;; DC Compat Native Test
+;;;
+
+;; Covers skia DC text, bitmap and region native execution.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list racket/math
          (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt")
 (provide dc-compat-native-tests dc-compat-native-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; font : font%
+;;   Provides a pixel-sized, unaligned font for native DC text comparisons.
 (define font (rd:make-font #:size 16 #:size-in-pixels? #t #:hinting 'unaligned))
+
+; with-dc : procedure? [exact-positive-integer? exact-positive-integer? real?] -> any
+;;   Scopes a native DC with the test font and requested backing scale.
 (define (with-dc proc [w 160] [h 64] [backing 1])
   (define dc (new skia-dc% [width w] [height h] [backing-scale backing] [smoothing 'unsmoothed]))
   (dynamic-wind void (lambda () (send dc set-font font) (proc dc)) (lambda () (send dc close))))
+
+; extent : dc<%> string? [any/c exact-nonnegative-integer?] -> (listof real?)
+;;   Collects width, height, descent, and leading for a combined or uncombined text request.
 (define (extent dc str [mode #f] [offset 0])
   (call-with-values (lambda () (send dc get-text-extent str #f mode offset)) list))
+
+; at : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
+;;   Reads one premultiplied RGBA device pixel from the DC.
 (define (at dc x y)
-  (define-values (w h) (send dc get-pixel-size)) (define bs (send dc get-rgba-bytes #:premultiplied? #t))
+  (define-values (w h) (send dc get-pixel-size))
+  (define bs (send dc get-rgba-bytes #:premultiplied? #t))
   (define i (* 4 (+ x (* y w)))) (bytes->list (subbytes bs i (+ i 4))))
+
+; bitmap : exact-positive-integer? exact-positive-integer? bytes? [boolean? real?] -> bitmap%
+;;   Builds a Racket bitmap from unscaled ARGB storage at the chosen backing scale.
 (define (bitmap w h argb [alpha #t] [backing 1])
   (define bm (rd:make-bitmap w h alpha #:backing-scale backing))
   (send bm set-argb-pixels 0 0 (* w backing) (* h backing) argb #f #f #:unscaled? #t) bm)
+
+; solid : byte? byte? byte? [byte?] -> bitmap%
+;;   Builds a one-pixel bitmap, converting RGBA arguments to ARGB storage order.
 (define (solid r g b [a 255]) (bitmap 1 1 (bytes a r g b)))
+
+; red : color%
+;;   Provides the Racket Draw red color object used by bitmap and text checks.
 (define red (make-object rd:color% 255 0 0))
+
+; ink-count : dc<%> -> exact-nonnegative-integer?
+;;   Counts pixels with nonzero alpha in a DC capture.
 (define (ink-count dc)
   (define b (send dc get-rgba-bytes))
   (for/sum ([i (in-range 3 (bytes-length b) 4)] #:when (> (bytes-ref b i) 0)) 1))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-compat-native-tests : test-suite?
+;;   Collects the regression cases for skia DC text, bitmap and region native execution.
 (define dc-compat-native-tests
   (test-suite
    "Skia DC text, bitmap and region native execution"
@@ -36,13 +84,16 @@
                   (for ([n (in-list e)]) (check-true (and (real? n) (<= 0 n 10000))))))))
    (test-case "character widths are additive"
      (with-dc (lambda (dc)
-                (check-= (car (extent dc "AV")) (+ (car (extent dc "A")) (car (extent dc "V"))) 0.001))))
+                (check-= (car (extent dc "AV")) (+ (car (extent dc "A")) (car (extent dc "V")))
+                  0.001))))
    (test-case "grapheme widths are additive across clusters"
      (with-dc (lambda (dc)
                 (check-= (car (extent dc "áb" 'grapheme))
-                          (+ (car (extent dc "á" 'grapheme)) (car (extent dc "b" 'grapheme))) 0.001))))
+                          (+ (car (extent dc "á" 'grapheme)) (car (extent dc "b" 'grapheme)))
+                  0.001))))
    (test-case "empty extent retains font height"
-     (with-dc (lambda (dc) (define e (extent dc "")) (check-equal? (car e) 0.0) (check-true (> (cadr e) 0)))) )
+     (with-dc (lambda (dc) (define e (extent dc "")) (check-equal? (car e) 0.0)
+                (check-true (> (cadr e) 0)))) )
    (test-case "NUL stops both measurement and drawing"
      (with-dc (lambda (dc)
                 (check-equal? (extent dc "Skia\u0000ignored" #t) (extent dc "Skia" #t))
@@ -97,7 +148,8 @@
                 (check-equal? (at dc 2 2) '(128 0 0 128)))))
    (test-case "grayscale white mask suppresses drawing"
      (with-dc (lambda (dc)
-                (send dc draw-bitmap (solid 255 0 0) 2 2 'solid red (bitmap 1 1 (bytes 255 255 255 255) #f))
+                (send dc draw-bitmap (solid 255 0 0) 2 2 'solid red
+                  (bitmap 1 1 (bytes 255 255 255 255) #f))
                 (check-equal? (at dc 2 2) '(0 0 0 0)))))
    (test-case "monochrome solid leaves white pixels transparent"
      (with-dc (lambda (dc) (define bm (rd:make-monochrome-bitmap 2 1))
@@ -117,7 +169,8 @@
      (with-dc (lambda (dc) (send dc draw-bitmap-section (solid 255 0 0) 2 2 -1 0 2 1)
                 (check-equal? (at dc 2 2) '(0 0 0 0)) (check-equal? (at dc 3 2) '(255 0 0 255)))))
    (test-case "HiDPI source has logical display size"
-     (with-dc (lambda (dc) (define bm (bitmap 1 1 (apply bytes (append* (make-list 4 '(255 255 0 0)))) #t 2))
+     (with-dc (lambda (dc)
+                (define bm (bitmap 1 1 (apply bytes (append* (make-list 4 '(255 255 0 0)))) #t 2))
                 (send dc draw-bitmap bm 2 2) (check-equal? (at dc 2 2) '(255 0 0 255))
                 (check-equal? (at dc 3 2) '(0 0 0 0)))))
    (test-case "smooth section convenience does not alter DC transform"
@@ -150,7 +203,8 @@
                 (check-equal? (at dc 7 7) '(255 255 255 255)) (check-equal? (at dc 2 2) '(0 0 0 0)))))
    (test-case "attached region uses construction transform"
      (with-dc (lambda (dc) (send dc set-origin 4 5) (define r (new rd:region% [dc dc]))
-                (send r set-rectangle 0 0 3 3) (send dc set-origin 40 50) (send dc set-clipping-region r)
+                (send r set-rectangle 0 0 3 3) (send dc set-origin 40 50)
+                (send dc set-clipping-region r)
                 (send dc clear) (check-equal? (at dc 5 6) '(255 255 255 255)))))
    (test-case "detached region uses install transform and backing scale"
      (with-dc (lambda (dc) (define r (new rd:region%)) (send r set-rectangle 0 0 2 2)
@@ -159,6 +213,10 @@
                 (check-equal? (at dc 7 10) '(0 0 0 0))) 32 24 2))
    (test-case "bad combined-text arguments leave native pixels unchanged"
      (with-dc (lambda (dc) (send dc clear) (define before (send dc get-rgba-bytes))
-                (check-exn exn:fail:skia-dc:unsupported? (lambda () (send dc draw-text "x\ny" 0 0 #t)))
+                (check-exn exn:fail:skia-dc:unsupported?
+                  (lambda () (send dc draw-text "x\ny" 0 0 #t)))
                 (check-equal? (send dc get-rgba-bytes) before))))))
+
+; dc-compat-native-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-compat-native-test-count 34)

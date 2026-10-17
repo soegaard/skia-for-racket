@@ -1,5 +1,18 @@
 #lang racket/base
 
+;;;
+;;; Reference Color Management Pure Test
+;;;
+
+;; Checks floating color ranges, transfer descriptors, byte conversion, and ICC headers without
+;; native parsing.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Native-free public color values and validation. Do not call named/native factories here.
 (require rackunit skia/color skia/color4f
          (only-in skia/image-info color-space-descriptor?)

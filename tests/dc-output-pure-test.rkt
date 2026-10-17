@@ -1,16 +1,49 @@
 #lang racket/base
+
+;;;
+;;; DC Output Pure Test
+;;;
+
+;; Covers document DC capture, lifetime and explicit pixel boundary.
+;; This source-only regression layer checks contracts and lifecycle rules before native rendering
+;; is involved.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit racket/class racket/list
          (prefix-in rd: racket/draw)
          "../private/dc-output-capture.rkt" "../private/dc-support.rkt"
          (only-in "../private/check.rkt" current-skia-byte-limit))
 (provide dc-output-pure-tests dc-output-pure-test-count)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; fill : dc<%> ... -> void?
+;;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
+;;   checks.
 (define (fill dc [color "red"])
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush color 'solid)
   (send dc draw-rectangle 2 3 8 6))
+
+; captured : procedure? [exact-positive-integer? exact-positive-integer?] -> list?
+;;   Records output-DC commands without replaying them through a native backend.
 (define (captured draw [w 32] [h 24])
   (define-values (ops _count) (capture-output-dc w h draw)) ops)
+
+; kinds : (listof output-dc-command?) -> (listof symbol?)
+;;   Extracts command kinds in capture order.
 (define (kinds ops) (map output-dc-command-kind ops))
+
+;;;
+;;; Regression Suite
+;;;
+
+; dc-output-pure-tests : test-suite?
+;;   Collects the regression cases for document DC capture, lifetime and explicit pixel boundary.
 (define dc-output-pure-tests
   (test-suite
    "Document DC capture, lifetime and explicit pixel boundary"
@@ -23,7 +56,8 @@
      (check-equal? (vector-ref (dc-ink-rgba (dc-draw-ink command)) 0) 255))
    (test-case "logical fractional dimensions are not rounded in public queries"
      (captured (lambda (dc)
-       (check-equal? (call-with-values (lambda () (send dc get-size)) list) '(32.5 24.25))) 32.5 24.25))
+       (check-equal? (call-with-values (lambda () (send dc get-size)) list) '(32.5 24.25))) 32.5
+       24.25))
    (test-case "clearing is an explicit captured operation"
      (check-equal? (kinds (captured (lambda (dc) (send dc clear)))) '(clear)))
    (test-case "copy is rejected, not an implicit whole-page screenshot"
@@ -32,9 +66,11 @@
    (test-case "erase is rejected instead of losing prior document content"
      (check-exn exn:fail:skia-dc:unsupported? (lambda () (captured (lambda (dc) (send dc erase))))))
    (test-case "pixel size is not invented for vector storage"
-     (check-exn exn:fail:skia-dc:unsupported? (lambda () (captured (lambda (dc) (send dc get-pixel-size))))))
+     (check-exn exn:fail:skia-dc:unsupported?
+       (lambda () (captured (lambda (dc) (send dc get-pixel-size))))))
    (test-case "snapshot requires the explicit output-page raster path"
-     (check-exn exn:fail:skia-dc:unsupported? (lambda () (captured (lambda (dc) (send dc snapshot))))))
+     (check-exn exn:fail:skia-dc:unsupported?
+       (lambda () (captured (lambda (dc) (send dc snapshot))))))
    (test-case "RGBA and PNG do not secretly allocate a page bitmap"
      (for ([method '(get-rgba-bytes get-png-bytes)])
        (check-exn exn:fail:skia-dc:unsupported?
@@ -84,7 +120,8 @@
    (test-case "cross-thread drawing is rejected"
      (captured (lambda (dc)
        (define ch (make-channel))
-       (thread (lambda () (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (fill dc) #f))))
+       (thread (lambda ()
+                 (channel-put ch (with-handlers ([exn:fail? (lambda (_) #t)]) (fill dc) #f))))
        (check-true (channel-get ch)))))
    (test-case "nested captures reject rather than mix destinations"
      (check-exn exn:fail? (lambda () (captured (lambda (_dc) (captured void))))))
@@ -114,7 +151,8 @@
        (check-exn exn:fail? (lambda () (current-output-dc-command-limit bad)))))
    (test-case "invalid sizes reject before the callback"
      (for ([bad (list 0 -1 +nan.0 +inf.0 32769 #f)])
-       (check-exn exn:fail? (lambda () (captured (lambda (_) (error 'wrong "callback invoked")) bad 10)))))
+       (check-exn exn:fail?
+         (lambda () (captured (lambda (_) (error 'wrong "callback invoked")) bad 10)))))
    (test-case "required keyword callback is rejected before construction"
      (check-exn exn:fail? (lambda () (captured (lambda (_dc #:required _x) (void))))))
    (test-case "multiple callback results do not become commands"
@@ -138,9 +176,19 @@
    (test-case "plain objects are not document DCs"
      (check-false (skia-output-dc? (new object%)))
      (check-exn exn:fail? (lambda () (output-dc-special! (new object%) 'url '()))))))
+
+; dc-output-pure-test-count : exact-nonnegative-integer?
+;;   Records the expected test count used by external acceptance-report checks.
 (define dc-output-pure-test-count 34)
 (module+ main
   (require rackunit/text-ui)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
   (define failures (run-tests dc-output-pure-tests))
   (printf "dc-output-pure: ~a cases, ~a failures\n" dc-output-pure-test-count failures)
   (exit (if (zero? failures) 0 1)))

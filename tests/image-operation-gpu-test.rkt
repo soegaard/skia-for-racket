@@ -1,9 +1,38 @@
 #lang racket/base
+
+;;;
+;;; Image Operation GPU Test
+;;;
+
+;; Covers direct GPU image operations.
+;; This executable supplies backend-specific drawing and transfer evidence to the GPU validation
+;; workflow.
+
+;;;
+;;; Imports and Exports
+;;;
 (require racket/cmdline racket/file racket/list racket/path json rackunit rackunit/text-ui
          "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt"
          "../private/gpu-io-trace.rkt" "image-operation-fixtures.rkt")
 (module+ main
-  (define backend 'auto) (define adapter 'hardware) (define report-path #f) (define token #f)
+
+  ;;;
+  ;;; Command-Line Run
+  ;;;
+
+  ; backend : (or/c symbol? #f)
+  ;;   Selects the explicitly requested GPU backend for this command-line run.
+  (define backend 'auto)
+  ; adapter : (or/c symbol? #f)
+  ;;   Selects Direct3D adapter policy when that backend is requested.
+  (define adapter 'hardware)
+  ; report-path : (or/c path-string? #f)
+  ;;   Holds the destination for this run's machine-readable evidence report.
+  (define report-path #f)
+  ; token : (or/c string? #f)
+  ;;   Carries the caller's run identifier into evidence so independent validation can match
+  ;;   artifacts.
+  (define token #f)
   (command-line #:once-each
     [("--backend") value "auto, egl, metal, direct3d" (set! backend (string->symbol value))]
     [("--adapter") value "hardware or warp" (set! adapter (string->symbol value))]
@@ -12,17 +41,54 @@
   (unless (and report-path token) (error 'image-gpu "--report and --token required"))
   (when (eq? backend 'auto)
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
+
+  ; create : -> gpu-context?
+  ;;   Creates an owned context for the explicitly selected EGL, Metal, or Direct3D test backend.
   (define (create)
     (case backend [(egl) (make-egl-gpu-context)]
       [(metal) (make-gpu-context #:backend 'metal)]
       [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
       [else (error 'image-gpu "unsupported backend")]))
+
+  ; reads : box? -> exact-nonnegative-integer?
+  ;;   Counts readback events in the wrapper I/O ledger, separating drawing from explicit
+  ;;   inspection.
   (define (reads ledger)
     (count (lambda (row) (equal? (hash-ref row 'kind #f) "readback")) (unbox ledger)))
+
+  ; directory : (or/c path-string? #f)
+  ;;   Holds the evidence output directory selected for this run.
   (define directory (or (path-only (string->path report-path)) (current-directory)))
-  (define ctx (create)) (define other #f) (define foreign-filter #f)
-  (define rows '()) (define failures 0) (define filter-calls 0)
-  (define cpu-rejections 0) (define cross-rejected? #f) (define retained-tested? #f)
+
+  ; ctx : gpu-context?
+  ;;   Owns the primary native GPU context used by the fixture run.
+  (define ctx (create))
+  ; other : (or/c gpu-context? #f)
+  ;;   Owns a second context used to verify cross-context resource rejection.
+  (define other #f)
+  ; foreign-filter : (or/c image-filter? #f)
+  ;;   Retains a filter using another context's image to test context-affinity rejection.
+  (define foreign-filter #f)
+
+  ; rows : (listof hash?)
+  ;;   Accumulates capture and operation evidence for the run's JSON manifest.
+  (define rows '())
+  ; failures : exact-nonnegative-integer?
+  ;;   Counts failed or errored RackUnit cases for the command-line exit status.
+  (define failures 0)
+  ; filter-calls : exact-nonnegative-integer?
+  ;;   Counts completed GPU image-filter operations for evidence coverage.
+  (define filter-calls 0)
+
+  ; cpu-rejections : exact-nonnegative-integer?
+  ;;   Counts CPU-only image operations correctly rejected for GPU-resident inputs.
+  (define cpu-rejections 0)
+  ; cross-rejected? : boolean?
+  ;;   Records successful rejection of a filter retaining an image from another context.
+  (define cross-rejected? #f)
+  ; retained-tested? : boolean?
+  ;;   Records whether a retained filter input was exercised after its source wrapper closed.
+  (define retained-tested? #f)
   (dynamic-wind void
     (lambda ()
       ;; Construction and entry of different GPU domains are never nested.
@@ -48,22 +114,29 @@
                           (draw-rect c 2 2 5 5 marker))
                         (cond
                           [(memq scene '(offset clip blur shadow))
-                           (with-skia ([cpu (make-operation-source)] [source (gpu-upload-image ctx cpu)]
+                            (with-skia ([cpu (make-operation-source)]
+                                         [source (gpu-upload-image ctx cpu)]
                                        [filter (make-operation-filter scene)])
                              (define-values (result subset offset)
-                               (gpu-image-apply-filter source filter #:subset (operation-filter-subset scene)
+                               (gpu-image-apply-filter source filter #:subset
+                                 (operation-filter-subset scene)
                                                        #:clip (operation-filter-clip scene)))
                              (set! filter-calls (add1 filter-calls))
-                             (with-skia ([im result] [visible (apply gpu-image-subset im (vector->list subset))])
+                              (with-skia ([im result]
+                                           [visible (apply gpu-image-subset im
+                                                      (vector->list subset))])
                                (check-true (gpu-image? im)) (check-true (image-texture-backed? im))
                                (check-eq? (skia-resource-gpu-context im) ctx)
                                (skia-close! cpu) (skia-close! source) (skia-close! filter)
                                (set! retained-tested? #t)
                                (set! placement (vector->list offset))
-                               (draw-image c visible (+ 24 (vector-ref offset 0)) (+ 20 (vector-ref offset 1)) #:sampling 'nearest))) ]
+                                (draw-image c visible (+ 24 (vector-ref offset 0))
+                                  (+ 20 (vector-ref offset 1)) #:sampling 'nearest))) ]
                           [(eq? scene 'raw)
-                           (with-skia ([cpu (make-operation-source)] [source (gpu-upload-image ctx cpu)]
-                                       [shader (make-raw-image-shader source)] [paint (make-paint #:shader shader #:antialias? #f)])
+                            (with-skia ([cpu (make-operation-source)]
+                                         [source (gpu-upload-image ctx cpu)]
+                                       [shader (make-raw-image-shader source)]
+                                         [paint (make-paint #:shader shader #:antialias? #f)])
                              (check-eq? (skia-resource-gpu-context shader) ctx)
                              (skia-close! source) (skia-close! shader)
                              (with-canvas-state c
@@ -71,7 +144,8 @@
                                (draw-rect c 0 0 16 12 paint)))
                            (set! placement '(0 0))]
                           [else
-                           (define-values (image offset metadata raw) (make-operation-scene-image scene))
+                            (define-values (image offset metadata raw)
+                              (make-operation-scene-image scene))
                            (with-skia ([cpu image] [source (gpu-upload-image ctx cpu)])
                              (draw-image c source 24 20 #:sampling 'nearest))
                            (set! placement '(0 0))]))
@@ -84,7 +158,8 @@
                       (call-with-output-file (build-path directory filename)
                         (lambda (out) (write-bytes captured out)) #:exists 'error)
                       (set! rows (cons (hasheq 'scene (symbol->string scene) 'file filename
-                                              'drawing_readbacks drawing-reads 'inspection_readbacks (reads ledger)
+                                              'drawing_readbacks drawing-reads
+                                         'inspection_readbacks (reads ledger)
                                               'offset placement) rows)))))
                 (test-case "CPU reads and materialization reject GPU sources"
                   (with-skia ([cpu (make-operation-source)] [source (gpu-upload-image ctx cpu)]
@@ -108,7 +183,11 @@
         (lambda ()
           (dynamic-wind void (lambda () (when other (gpu-context-close! other)))
             (lambda () (gpu-context-close! ctx)))))))
-  (define closed? (and (eq? (gpu-context-state ctx) 'closed) other (eq? (gpu-context-state other) 'closed)))
+
+  ; closed? : boolean?
+  ;;   Records whether context teardown completed with no live or failed resource releases.
+  (define closed?
+    (and (eq? (gpu-context-state ctx) 'closed) other (eq? (gpu-context-state other) 'closed)))
   (call-with-output-file report-path
     (lambda (out)
       (write-json (hasheq 'schema 1 'stage "0.72" 'run_token token
@@ -117,5 +196,6 @@
         'scenes (reverse rows) 'frames (length rows) 'filter_calls filter-calls
         'cpu_rejections cpu-rejections 'cross_context_rejected cross-rejected?
         'retained_result_tested retained-tested? 'contexts_closed closed?
-        'gui_executed #f 'physical_display_verified #f 'float_gpu_storage_verified #f) out)) #:exists 'error)
+        'gui_executed #f 'physical_display_verified #f 'float_gpu_storage_verified #f) out))
+    #:exists 'error)
   (exit (if (and (zero? failures) closed?) 0 1)))

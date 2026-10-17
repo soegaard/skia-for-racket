@@ -1,9 +1,33 @@
 #lang racket/base
+
+;;;
+;;; GPU Output Example
+;;;
+
+;; Generates output documents using an explicitly selected GPU rendering backend.
+;; This is an example-suite client of the project's drawing APIs, not library implementation.
+
 ;; An explicitly selected backend executes only the bounded raster group.
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/cmdline racket/file racket/path
          "../main.rkt" "../gpu.rkt" "../gpu-output.rkt" "../tools/gpu-test-host.rkt")
+;;;
+;;; Command-Line Entry Point
+;;;
+
 (module+ main
-  (define backend 'metal) (define host 'gui) (define prefix "output/gpu-output-example")
+  ; backend : symbol?
+  ;;   Selects backend for the example.
+  (define backend 'metal)
+  ; host : symbol?
+  ;;   Selects host for the example.
+  (define host 'gui)
+  ; prefix : string?
+  ;;   Selects the destination used by this example's output.
+  (define prefix "output/gpu-output-example")
   (command-line #:once-each
     [("--backend") b "opengl or metal" (set! backend (string->symbol b))]
     [("--host") h "gui or egl" (set! host (string->symbol h))]

@@ -1,32 +1,85 @@
 #lang racket/base
+
+;;;
+;;; Filter Graph Native Test
+;;;
+
+;; Covers advanced filter graphs: native pixels, retention, output.
+;; This native regression layer checks behavior and resource ownership against the installed
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
 (require rackunit rackunit/text-ui racket/list
          "../main.rkt")
 (provide filter-graph-native-tests)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; W : exact-positive-integer?
+;;   Sets the fixture width in pixels for drawing and storage-layout checks.
 (define W 40)
+
+; H : exact-positive-integer?
+;;   Sets the fixture height in pixels for drawing and storage-layout checks.
 (define H 32)
+
+; source : canvas? paint? -> void?
+;;   Draws the small source rectangle used to expose filter bounds and offsets.
 (define (source c p) (draw-rect c 8 8 8 8 p))
+
+; render : image-filter? [procedure?] -> bytes?
+;;   Captures a drawing with the selected image-filter graph on a temporary surface.
 (define (render f [draw source])
   (with-skia ([s (make-surface W H)]
               [p (make-paint #:color 'red #:antialias? #f #:image-filter f)])
     (draw (surface-canvas s) p)
     (surface->rgba-bytes s)))
+
+; px : bytes? exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
+;;   Reads one RGBA pixel at the fixed fixture width.
 (define (px bs x y)
   (define i (* 4 (+ x (* W y))))
   (bytes->list (subbytes bs i (+ i 4))))
+
+; alpha : bytes? exact-nonnegative-integer? exact-nonnegative-integer? -> byte?
+;;   Reads coverage from the fourth channel of a fixture pixel.
 (define (alpha bs x y) (list-ref (px bs x y) 3))
+
+; all-clear-outside? : bytes? real? real? real? real? -> boolean?
+;;   Requires zero alpha outside a half-open rectangular region.
 (define (all-clear-outside? bs x y w h)
   (for*/and ([py (in-range H)] [px (in-range W)])
     (or (and (<= x px) (< px (+ x w)) (<= y py) (< py (+ y h)))
         (= (alpha bs px py) 0))))
+
+; solid : color any/c -> image-filter?
+;;   Creates a cropped constant-color image filter while retaining its shader child.
 (define (solid color crop)
   (with-skia ([s (make-color-shader color)]) (make-shader-image-filter s #:crop crop)))
+
+; make-source-image : -> image?
+;;   Creates an owned blue source image detached from its temporary surface wrapper.
 (define (make-source-image)
   (with-skia ([s (make-surface 8 8 #:background 'blue)]) (surface-snapshot s)))
+
+; foreign-error : (-> any) -> (or/c exn? #f)
+;;   Runs the operation on another thread and returns its exception, or false on success.
 (define (foreign-error thunk)
   (define ch (make-channel))
   (define t (thread (lambda () (with-handlers ([exn? (lambda (e) (channel-put ch e))])
                                 (thunk) (channel-put ch #f)))))
   (define e (channel-get ch)) (thread-wait t) e)
+
+;;;
+;;; Regression Suite
+;;;
+
+; filter-graph-native-tests : test-suite?
+;;   Collects the regression cases for advanced filter graphs: native pixels, retention, output.
 (define filter-graph-native-tests
   (test-suite
    "Advanced filter graphs: native pixels, retention, output"
@@ -164,7 +217,8 @@
        (check-equal? (render f) (render #f))))
    (test-case "nonzero displacement with independent map and crop"
      (with-skia ([map-filter (solid (rgb 255 128 0) '(0 0 40 32))]
-                 [f (make-displacement-map-image-filter 'red 'green 8 map-filter #f #:crop '(4 4 24 24))])
+                  [f (make-displacement-map-image-filter 'red 'green 8 map-filter #f #:crop
+                       '(4 4 24 24))])
        (define bs (render f))
        (check-not-equal? bs (render #f))
        (check-true (all-clear-outside? bs 4 4 24 24))))
@@ -216,10 +270,12 @@
        (list
         (lambda () (make-distant-lit-diffuse-image-filter '(0 0 1) 'white #:crop '(4 4 24 24)))
         (lambda () (make-point-lit-diffuse-image-filter '(12 12 40) 'white #:crop '(4 4 24 24)))
-        (lambda () (make-spot-lit-diffuse-image-filter '(12 12 40) '(12 12 0) 'white #:crop '(4 4 24 24)))
+        (lambda ()
+          (make-spot-lit-diffuse-image-filter '(12 12 40) '(12 12 0) 'white #:crop '(4 4 24 24)))
         (lambda () (make-distant-lit-specular-image-filter '(0 0 1) 'white #:crop '(4 4 24 24)))
         (lambda () (make-point-lit-specular-image-filter '(12 12 40) 'white #:crop '(4 4 24 24)))
-        (lambda () (make-spot-lit-specular-image-filter '(12 12 40) '(12 12 0) 'white #:crop '(4 4 24 24)))))
+        (lambda ()
+          (make-spot-lit-specular-image-filter '(12 12 40) '(12 12 0) 'white #:crop '(4 4 24 24)))))
      (for ([ctor (in-list constructors)])
        (with-skia ([f (ctor)])
          (define bs (render f))

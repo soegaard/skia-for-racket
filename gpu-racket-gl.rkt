@@ -1,9 +1,24 @@
 #lang racket/base
+
+;;;
+;;; Racket OpenGL Provider
+;;;
+
+;; Adapts a Racket GUI OpenGL context to a GPU provider.
+;; This opt-in bridge lets the shared GPU implementation execute within the toolkit's
+;; context-activation callback.
+
+;;;
+;;; Imports and Exports
+;;;
+
 (require racket/class racket/draw
          "private/gpu-provider.rkt" "private/gpu-gl-system.rkt")
 (provide make-racket-gl-provider)
 ;; This adapter borrows an existing Racket GL host. It owns neither its window
 ;; nor its event loop, and it does not swap buffers or draw through the host DC.
+; make-racket-gl-provider : (is-a?/c gl-context<%>) -> gpu-provider?
+;;   Adapts an existing Racket gl-context<%> as an OpenGL GPU provider.
 (define (make-racket-gl-provider gl)
   (unless (is-a? gl gl-context<%>)
     (raise-argument-error 'make-racket-gl-provider "gl-context<%>" gl))

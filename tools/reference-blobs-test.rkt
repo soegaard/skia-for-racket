@@ -1,14 +1,37 @@
 #lang racket/base
 
+;;;
+;;; Reference Blobs Test
+;;;
+
+;; Checks text-blob builder consumption, copied metadata, retained fonts, intercepts, and
+;; text-on-path placement.
+;; These acceptance checks keep the Reference's documented contracts aligned with the public
+;; implementation.
+
+;;;
+;;; Imports and Exports
+;;;
+
 ;; Opt-in CPU/HarfBuzz semantics. No font file is bundled.
 ;; The selected face must contain monochrome Latin A and B outlines.
 ;; SKIA_REFERENCE_TEST_FONT may name a local font file; otherwise use the system default.
 (require rackunit racket/list racket/vector skia)
 
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; test-face : -> typeface?
+;;   Creates the explicitly configured test face, or the default face when no font path is supplied.
 (define (test-face)
   (define filename (getenv "SKIA_REFERENCE_TEST_FONT"))
   (if filename (typeface-from-file filename) (make-typeface)))
 
+
+; glyphs-ab : font? -> vector?
+;;   Requires nonmissing glyphs for A and B before using the font in placement checks.
 (define (glyphs-ab font)
   (define glyphs (font-text->glyphs font "AB"))
   (check-equal? (vector-length glyphs) 2)
@@ -16,9 +39,15 @@
               "The test face must contain A and B; set SKIA_REFERENCE_TEST_FONT otherwise")
   glyphs)
 
+
+; shape-ab : shaper? -> shaped-run?
+;;   Shapes A and B left-to-right with kerning and ligatures disabled for predictable comparison.
 (define (shape-ab shaper)
   (shape-text shaper "AB" #:direction 'ltr #:script 'latn #:features '("kern=0" "liga=0")))
 
+
+; coordinates-near : list? list? -> void?
+;;   Checks matching coordinate counts and a 0.0001 absolute tolerance.
 (define (coordinates-near actual expected)
   (check-equal? (length actual) (length expected))
   (for ([a (in-list actual)] [b (in-list expected)]) (check-= a b 0.0001)))

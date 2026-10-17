@@ -1,4 +1,17 @@
 #lang racket/base
+
+;;;
+;;; DC Output Fixtures
+;;;
+
+;; Provides shared inputs and drawing fixtures for shared DC authoring on raster, PDF, and SVG
+;; output canvases.
+;; Regression suites and diagnostic programs import these fixtures to compare behavior using
+;; consistent inputs.
+
+;;;
+;;; Imports and Exports
+;;;
 ;; Shared test/example authoring. All callbacks use dc<%>, not raw Skia
 ;; canvases, screenshots of GUI widgets, or a replacement pict/plot renderer.
 (require racket/class racket/list
@@ -7,14 +20,27 @@
          (prefix-in styles: "dc-style-fixtures.rkt"))
 (provide draw-output-vector-scene draw-output-mixed-scene draw-output-style-scene
          make-output-consumers output-label output-fill)
+
+;;;
+;;; Fixtures and Assertions
+;;;
+
+; output-fill : dc<%> color real? real? real? real? -> void?
+;;   Draws a solid rectangle without a visible pen.
 (define (output-fill dc color x y w h)
   (send dc set-pen "black" 1 'transparent)
   (send dc set-brush color 'solid)
   (send dc draw-rectangle x y w h))
+
+; output-label : dc<%> [string? real? real?] -> void?
+;;   Draws a fixed-style label used to inspect document text output.
 (define (output-label dc [text "SkiaDC063"] [x 8] [y 44])
   (send dc set-font (rd:make-font #:family 'swiss #:size 12 #:size-in-pixels? #t))
   (send dc set-text-foreground "black")
   (send dc draw-text text x y #t))
+
+; draw-output-vector-scene : dc<%> -> any
+;;   Draws geometry, clipping, and a label that should remain vector content.
 (define (draw-output-vector-scene dc)
   (send dc set-background "white") (send dc clear)
   (output-fill dc "red" 8 8 24 18)
@@ -33,6 +59,9 @@
   (output-fill dc "purple" 0 0 16 12)
   (send dc set-origin 0 0)
   (hash))
+
+; draw-output-mixed-scene : dc<%> [procedure?] -> any
+;;   Combines ordinary vector marks with an alpha group that exercises raster fallback.
 (define (draw-output-mixed-scene dc [raster-callback void])
   (send dc set-background "white") (send dc clear)
   (output-fill dc "red" 8 8 24 18)
@@ -52,9 +81,15 @@
       (send r copy 0 0 32 24 8 0))
     #:scale 2 #:label "copy-island-64x32")
   (hash))
+
+; draw-output-style-scene : dc<%> -> hash?
+;;   Draws the shared brush-style oracle and returns an empty layout record.
 (define (draw-output-style-scene dc)
   (styles:style-oracle dc)
   (hash))
+
+; make-output-consumers : -> list?
+;;   Prepares pict and plot drawing callbacks using a scoped Skia DC for text metrics.
 (define (make-output-consumers)
   (define metric-dc (new skia-dc% [width 320] [height 240] [smoothing 'smoothed]))
   (define picture
