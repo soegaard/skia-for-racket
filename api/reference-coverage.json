@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "2083a55951da3994247a262733847be5338f8e52"
+      "git_blob": "bd5bb2a178dacf491b9c5e2b045592c69f0f2a1d"
     },
     {
       "file": "api/public-api-gui.json",
@@ -13401,17 +13401,6 @@
       "label": "Image Encoding (current tag)",
       "chapter": "scribblings/reference/encoding.scrbl",
       "filename": "skia-png.html"
-    }
-  ],
-  "source_verified_additions": [
-    {
-      "evidence": "source-signature",
-      "module": "skia/gpu",
-      "name": "render-gpu->raster-image",
-      "source_path": "gpu.rkt",
-      "source_commit": "6b474cc2cca76377fa220cb054eb5b8d7d6e5ced",
-      "source_git_blob": "d12815c3e504a1d056a66e08e85d550446884a3a",
-      "source_copy": "api/reference-source/gpu.rkt.b64"
     }
   ],
   "runtime_deferred_modules": [

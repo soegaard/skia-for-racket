@@ -5,7 +5,7 @@
 Baseline: `4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1`
 (`Clarify Pict bridge introduction`). R4g adds an opt-in
 `skia/racket-draw` reference chapter. The Reference now has 1263 definitions,
-1988 documented export paths, and 71 conceptual chapters. The headless
+1988 documented export paths, and 84 conceptual chapters. The headless
 inventory records seven bridge exports, including the two unchanged
 `skia/bitmap` bindings re-exported from the bridge. No export paths are
 deferred.
