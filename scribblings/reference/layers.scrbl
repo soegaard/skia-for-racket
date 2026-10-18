@@ -9,27 +9,27 @@
 @(declare-exporting skia skia/canvas-primitives skia/layer-options skia/advanced-layers
                     #:use-sources (skia/canvas-primitives skia/layer-options skia/advanced-layers))
 
-A @deftech{canvas layer} saves canvas state and redirects drawing to an intermediate
-compositing target. Restoring the layer composites that target into its parent.
-This differs from an ordinary state save, which does not establish a separate
-compositing group. Layer creation does not return an independently owned image.
+A @deftech{canvas layer} groups drawing operations so that opacity, blending,
+or a filter can be applied to the group. Creating a layer saves the canvas state
+and directs subsequent drawing to a temporary target. Restoring the layer draws
+the completed group onto the previous target and restores the saved state.
+An ordinary state save does not create such a group.
 
-Layer bounds use local coordinates, width, and height. They are not an explicit
-canvas @tech{clip}, but Skia can restrict a layer's extent to them. Supply conservative
-bounds for all intended content and effects; do not rely on pixels outside a
-bound being retained. Use an explicit clip when exact clipping is needed.
+Layer bounds specify x, y, width, and height in @tech{local coordinates}.
+They are not a canvas @tech{clip}, but Skia may omit drawing outside them.
+Choose bounds large enough to contain all intended drawing and effects.
+Use an explicit clip to restrict drawing to an exact region.
 
-Layer creation, drawing, and discard require a live canvas on its owning thread
-and, where applicable, its current GPU context. PDF and SVG need not preserve
-every layer effect. @tech{Raster fallback} must contain the backdrop
-needed by the operation; an isolated group does not capture an outer document's
-existing pixels automatically.
+Canvas access follows the rules in @secref["skia-resources"] and, for GPU
+canvases, @secref["skia-gpu-surfaces"]. PDF and SVG may not preserve every layer
+effect. If an effect uses @tech{raster fallback}, the fallback must include any
+previous drawing needed by the effect. Drawing an isolated group does not copy
+the document's existing content into the group.
 
-@bold{Conceptual diagram.} Per-draw opacity and layer opacity are different
-routes. Drawing each translucent rectangle directly on the parent accumulates
-coverage in their overlap. A layer instead receives opaque child draws in a
-transparent intermediate target, then applies group opacity once when the layer
-is restored and composited. A normal state save has no intermediate target.
+@bold{Conceptual diagram.} Drawing two translucent rectangles directly onto a
+surface makes their overlap more opaque. Drawing two opaque rectangles in a
+layer, then applying opacity to the completed group, gives the overlap the
+same opacity as the rest of the group.
 
 @reference-figure["concept-layer-compositing.png"
                   "Two checkerboard-backed overlap panels compare separately translucent blue rectangles, whose overlap darkens, with opaque children drawn in a transparent layer and composited once at group opacity, whose overlap stays the same opacity. An arrow labels layer restore/composite."]
@@ -43,19 +43,22 @@ is restored and composited. A normal state save has no intermediate target.
           [#:bounds bounds (or/c #f list? vector?) #f]
           [#:paint paint (or/c paint? #f) #f])
           any]{
-Calls @racket[thunk] inside a layer and returns its results. The protected save
-floor prevents the callback from restoring state outside the layer. A
-continuation barrier prevents reentry after the scope ends. The prior save
-count is restored on return or escape.
+Calls @racket[thunk] with no arguments inside a new layer and returns its results.
+When the function returns, exits early, or raises an exception, the layer is
+drawn onto the previous target and the saved canvas state is restored.
 
-The optional paint supplies the compositing settings used when the layer is
-restored, not for each drawing operation inside it. Bounds are four drawing
-scalars: x, y, width, and height. Width and height must be nonnegative, and the
-computed right and bottom edges must also be drawing scalars. A false bound
-leaves bounds selection to Skia.
+The @racket[paint] argument controls how the completed layer is drawn, not each
+drawing operation inside it. The @racket[bounds] argument is a list or vector
+of four @tech{drawing scalar}s: x, y, width, and height. Width and height must
+be nonnegative, and the right and bottom edges must also be drawing scalars.
+The default, @racket[#f], lets Skia choose the bounds.
 
-Cleanup composites the layer even when the callback raises. It is state cleanup,
-not pixel rollback. An enclosing document helper can separately abort the document.
+Restoring past the state saved by this call raises an exception. A continuation
+cannot reenter the callback after the call ends.
+
+An exception does not undo drawing in the layer, although an enclosing document
+helper may still abort the document. If @racket[thunk] releases the canvas's
+target, the layer is not drawn and the saved state is not restored.
 
 @racketblock[
 (with-skia ([surface (make-surface 160 100 #:background 'white)]
@@ -88,14 +91,17 @@ The body is nonempty, may contain internal definitions, and ends with an express
 
 @section{Layer Options}
 
-A @deftech{layer-options value} is detached immutable data. It stores bounds and
-flags, not a paint, filter, canvas, or GPU object. Construction validates data
-without loading Skia. Optional paints and backdrop filters are supplied when
-the layer is actually created.
+A @deftech{layer-options value} is an immutable description of layer bounds
+and rendering flags. Use it with @racket[call-with-canvas-layer-rec] or
+@racket[canvas-save-layer-rec!]. Supply any paint or backdrop filter when
+creating the layer.
+
+The flags record requests. Whether Skia fulfills a request depends on the
+drawing backend.
 
 @defproc[(layer-options? [v any/c])
           boolean?]{
-Returns @racket[#t] for detached layer options and @racket[#f] otherwise.
+Returns @racket[#t] for a @tech{layer-options value} and @racket[#f] otherwise.
 }
 
 @defproc[(make-layer-options [#:bounds bounds (or/c #f list? vector?) #f]
@@ -103,40 +109,50 @@ Returns @racket[#t] for detached layer options and @racket[#f] otherwise.
           [#:initialize-with-previous? initialize-with-previous? boolean? #f]
           [#:f16? f16? boolean? #f])
           layer-options?]{
-Copies optional layer bounds and three boolean flags. Preserve-LCD requests
-retention of LCD text information where the backend permits it. Initialize-with-previous
-requests initialization from the previous layer's content. The F16 flag requests
-higher-precision floating-point intermediate storage. These are native requests,
-not guarantees of LCD output, a particular allocation, or a vector representation.
-All flags default to false.
+Creates a @tech{layer-options value} with the given bounds and rendering flags.
+The bounds follow the rules of @racket[call-with-canvas-layer] and are copied
+into the result.
+
+The boolean arguments request the following settings:
+
+@itemlist[
+ @item{@racket[preserve-lcd-text?] requests preservation of LCD text information.
+       @deftech{LCD text rendering} smooths text using separate coverage for
+       the red, green, and blue subpixels described by the surface's
+       @tech{pixel geometry}.}
+ @item{@racket[initialize-with-previous?] requests a copy of the current target's
+       pixels as the layer's initial content.}
+ @item{@racket[f16?] requests storage with a 16-bit floating-point value for
+       each red, green, blue, and alpha component.}]
 }
 
 @defproc[(layer-options-bounds [options layer-options?])
           (or/c #f (and/c (vector/c real? real? real? real?) immutable?))]{
-Returns the immutable copied bounds or @racket[#f] for unspecified bounds.
-}
-
-@defproc[(layer-options-flags [options layer-options?])
-          (or/c 0 2 4 6 16 18 20 22)]{
-Returns the native flag mask: mask value 2 requests LCD preservation, value 4
-requests initialization with previous content, and value 16 requests F16 storage.
-The constructor, not an arbitrary integer mask, is the public options interface.
+Returns the bounds as an immutable vector containing x, y, width, and height,
+or @racket[#f] if the bounds are unspecified.
 }
 
 @defproc[(layer-options-preserve-lcd-text? [options layer-options?])
           boolean?]{
-Reports whether the LCD-preservation flag was requested, not whether a backend fulfilled it.
+Reports whether the request to preserve @tech{LCD text rendering} is set.
 }
 
 @defproc[(layer-options-initialize-with-previous? [options layer-options?])
           boolean?]{
-Reports whether the previous-content initialization flag was requested, not whether a backend
-fulfilled it.
+Reports whether the request to initialize the layer with previous content is set.
 }
 
 @defproc[(layer-options-f16? [options layer-options?])
           boolean?]{
-Reports whether the F16-storage flag was requested, not whether a backend fulfilled it.
+Reports whether the request for 16-bit floating-point storage is set.
+}
+
+@defproc[(layer-options-flags [options layer-options?])
+          (or/c 0 2 4 6 16 18 20 22)]{
+Returns the rendering requests as a bit mask: @racket[2] for LCD text
+preservation, @racket[4] for initialization with previous content, and
+@racket[16] for 16-bit floating-point storage. The mask is the sum of the
+requested flags. Use the boolean accessors above to test individual requests.
 }
 
 @section{Backdrop Filters and Protected Layers}
@@ -148,20 +164,25 @@ Reports whether the F16-storage flag was requested, not whether a backend fulfil
           [#:backdrop backdrop (or/c image-filter? #f) #f]
           [#:clip clip (or/c #f list? vector?) #f])
           any]{
-Calls @racket[thunk] inside a protected layer and returns its results.
-The function must not require keyword arguments. The canvas owner is kept alive
-and cannot be closed during the scope. The protected save floor prevents
-restoring state outside the layer, and continuation reentry is prohibited.
+Calls @racket[thunk] with no arguments inside a new layer configured by
+@racket[options], and returns its results. The function must not require
+keyword arguments. As with @racket[call-with-canvas-layer], the layer is drawn
+onto the previous target and the saved state is restored when the function
+returns, exits early, or raises an exception.
 
-The @racket[backdrop] filter processes existing destination content used to
-initialize the layer, not new drawing inside it. The options' bounds are not
-an explicit clip. The canvas, paint, and filter must satisfy their native-use
-and GPU-context requirements.
+The @racket[paint] argument controls how the completed layer is drawn.
+The @racket[backdrop] filter processes the target's existing content to
+initialize the layer. It does not filter new drawing inside the layer.
 
-A supplied clip is an explicit local-coordinate rectangular intersection applied
-in an outer saved state before layer creation. This is distinct from the bounds
-stored in options. Cleanup restores the prior state and composites even after a
-callback exception; it does not undo previously drawn pixels.
+The @racket[clip] argument restricts drawing to a rectangle in
+@tech{local coordinates}. It uses the same x, y, width, and height format as
+layer bounds. The rectangle is intersected with the current clip before
+creating the layer, and the original clip is restored afterward. The bounds
+in @racket[options] do not provide this exact clipping.
+
+The canvas's target cannot be released during the callback. Restoring past
+the state saved by this call raises an exception. A continuation cannot
+reenter the callback after the call ends.
 
 @racketblock[
 (with-skia ([surface (make-surface 16 16)]
@@ -236,10 +257,9 @@ The layer bounds cover the whole target. Only the explicit clip creates the tran
 @reference-figure["layer-backdrop-initialization.png"
                   "Three identical striped blue-orange backgrounds with a purple circle are compared inside the same orange explicit clip. An empty source-replace layer clears the middle region, initialize-with-previous preserves it, and a backdrop blur replaces it with a softened view of the previous content."]
 
-All three panels use the same layer bounds and explicit clip.  The bounds are a
-conservative allocation/culling hint; the orange rectangle is present because
-@racket[#:clip] is what restricts the visible result.  The backdrop operates on
-the already-drawn pattern before the callback, whereas
+All three panels use the same layer bounds and explicit clip. The orange
+rectangle marks the clip that restricts the visible result. The backdrop
+filters the already-drawn pattern before the callback, whereas
 @racket[#:initialize-with-previous?] requests an unfiltered copy of that
 previous content.
 }
@@ -257,10 +277,10 @@ including when drawing raises an exception or exits early.
           [#:bounds bounds (or/c #f list? vector?) #f]
           [#:paint paint (or/c paint? #f) #f])
           exact-positive-integer?]{
-Saves a layer and returns the save count from before the push. Restore to that
-count to composite and remove the layer. Bounds and paint follow the rules of
-@racket[call-with-canvas-layer]. The caller must balance this operation, including on exceptions;
-prefer @racket[call-with-canvas-layer] for a protected scope.
+Creates a layer and returns the previous @tech{save count}. Pass the result to
+@racket[canvas-restore-to-count!] to draw the completed layer onto the previous
+target and restore the saved state. Bounds and paint follow the rules of
+@racket[call-with-canvas-layer].
 }
 
 @defproc[(canvas-save-layer-rec! [canvas canvas?]
@@ -268,21 +288,19 @@ prefer @racket[call-with-canvas-layer] for a protected scope.
           [#:paint paint (or/c paint? #f) #f]
           [#:backdrop backdrop (or/c image-filter? #f) #f])
           exact-positive-integer?]{
-Saves a layer using the options, optional compositing paint, and optional
-backdrop filter, as described for @racket[call-with-canvas-layer-rec]. The result
-is the previous save count. Referenced native inputs are checked with the canvas
-and must satisfy their GPU-context requirements.
-
-The options' bounds are not an explicit clip. The caller must balance this
-low-level save; @racket[call-with-canvas-layer-rec] provides protected cleanup.
+Creates a layer using the options, paint, and backdrop filter described for
+@racket[call-with-canvas-layer-rec]. Returns the previous @tech{save count}.
+Pass the result to @racket[canvas-restore-to-count!] to draw the completed layer
+onto the previous target and restore the saved state.
 }
 
 @section{Discarding Target Contents}
 
 @defproc[(canvas-discard! [canvas canvas?])
           void?]{
-Discards the validity of existing target content as an optimization hint.
-The operation does not clear the canvas to transparent pixels. Completely
-overwrite the discarded pixels before reading, blending with, or otherwise using them.
-This is not a portable recorded drawing operation or a memory-release guarantee.
+Allows Skia to discard the target's current pixels. Use this operation only
+when the pixels will be completely overwritten before being read or blended
+with new drawing. It does not clear the target to transparent pixels or
+guarantee that memory is released. Its effect is not preserved by all recording
+backends.
 }

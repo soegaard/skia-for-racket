@@ -8,23 +8,24 @@
 @defmodule[skia/specialized-canvases #:no-declare]
 @(declare-exporting skia skia/specialized-canvases #:use-sources (skia/specialized-canvases))
 
-These scoped canvases discard drawing, forward it to several targets, or count
-native overdraw. Each helper calls a function with one @tech{borrowed canvas} and
-preserves its return values. Callbacks must not require keyword arguments.
-The supplied canvas expires on return or escape and must not be retained.
-Continuation reentry is prohibited.
+Specialized canvases let a drawing function run without producing pixels,
+send the same drawing to several surfaces, or measure @tech{overdraw}.
+Each helper calls a function with a canvas and returns the function's results.
+The function must not require keyword arguments. The supplied canvas cannot
+be used after the function returns or exits early. A continuation cannot
+reenter the callback after the call ends.
 
-Target-based helpers borrow the supplied surfaces, not their ownership. Each
-surface must have a balanced root canvas: @tech{save count} 1, identity full matrix,
-and a full rectangular device clip. Targets cannot already be borrowed by
-another specialized-canvas scope. While borrowed, use the supplied wrapper,
-not a target's ordinary canvas or operations that close or repurpose that target.
+Each supplied surface must have a canvas with @tech{save count} 1, no coordinate
+transformation, and a rectangular clip covering the entire surface. A surface
+already in use by another specialized-canvas call cannot be supplied.
+During the callback, use the supplied canvas instead of accessing the target
+surfaces directly. Do not release the targets or use them for another purpose.
 
-Cleanup destroys the wrapper before releasing the target borrows and restores
-every target's original drawing state, including on exceptions. It does not undo
-drawing already performed. Target surfaces remain caller-owned. Specialized
-canvases do not provide document annotations and cannot be treated as PDF or SVG
-canvases. No wrapper creates a GPU context or performs automatic readback.
+The helpers restore the targets' original canvas state when the callback
+returns, exits early, or raises an exception. They do not undo drawing or release
+the target surfaces. See @secref["skia-gpu-surfaces"] for access to GPU surfaces;
+these helpers do not copy GPU pixels to CPU memory. Specialized canvases do not
+support the document annotations provided by PDF and SVG canvases.
 
 @section{No-Draw Canvases}
 
@@ -32,14 +33,13 @@ canvases. No wrapper creates a GPU context or performs automatic readback.
           [height (integer-in 1 32768)]
           [proc (-> canvas? any)])
           any]{
-Calls the function with a native no-draw canvas of the given dimensions.
-Drawing produces no pixels, but native canvas construction, graphics-state
-changes, validation, and callback side effects still occur. The usual logical
-four-bytes-per-pixel budget applies even though no output image is allocated.
+Calls @racket[proc] with a canvas of the given dimensions that discards drawing.
+Canvas state changes and argument checks still occur. The function runs
+normally and may allocate resources or have other effects.
 
-This is not a sandbox or a static validator for arbitrary drawing programs.
-The callback may still allocate other native resources. Both its execution and
-cleanup must complete normally for the helper to return values.
+The size @racket[(* 4 width height)] must not exceed
+@racket[(current-skia-byte-limit)], even though the canvas does not allocate
+storage for pixels.
 }
 
 @section{N-Way Canvases}
@@ -47,16 +47,12 @@ cleanup must complete normally for the helper to return values.
 @defproc[(call-with-nway-canvas [surfaces (listof surface?)]
           [proc (-> canvas? any)])
           any]{
-Calls the function with a canvas forwarding drawing to between 1 and 64
-distinct surfaces. The list must be nonempty, with no duplicate surface wrappers.
-All targets must have identical dimensions and execution backends. Each target
-must also have save count 1, an identity full matrix, and a full rectangular
-device clip. Resource validation rejects incompatible GPU contexts before
-borrowing targets; matching backend names alone do not prove that contexts are
-compatible.
+Calls @racket[proc] once with a canvas that forwards drawing to every surface in
+@racket[surfaces]. The list must contain between 1 and 64 distinct surfaces
+with the same dimensions and backend. GPU surfaces must belong to the same
+GPU context.
 
-The callback runs once, not once per target. A failure is not a transaction over
-target pixels: earlier drawing may remain in some or all targets.
+If drawing raises an exception, earlier drawing may remain in some or all targets.
 
 @racketblock[
 (with-skia ([a (make-surface 16 16)]
@@ -73,23 +69,23 @@ Both targets contain the blue rectangle and have their root canvas state restore
 
 @reference-figure["nway-canvas.png"
                   "A nearest-neighbor enlargement of one actual 16 by 16 target from the n-way callback. Its blue square occupies x two through nine and y two through nine; the white surrounding area is the preview background."]
-
-The renderer invokes @racket[call-with-nway-canvas] and captures target @racket[a] after the
-callback; it does not redraw a similar rectangle on an ordinary canvas.
 }
 
 @section{Overdraw Canvases}
 
+@deftech{Overdraw} is drawing over the same pixel more than once. An overdraw
+canvas estimates how many times drawing covers each pixel.
+
 @defproc[(call-with-overdraw-canvas [surface surface?]
           [proc (-> canvas? any)])
           any]{
-Calls the function with a native overdraw-counting wrapper over an Alpha8
-surface. The target must satisfy the root-state rules and have Alpha8 storage;
-initialize its samples to zero before collecting fresh counts. The wrapper does
-not clear it automatically.
+Calls @racket[proc] with a canvas that stores estimated @tech{overdraw} counts
+in @racket[surface]'s alpha channel. The surface must use the @racket['alpha-8]
+format, which stores only an eight-bit alpha component per pixel; see
+@secref["skia-pixel-descriptions"].
 
-The alpha channel stores saturating eight-bit counts using Skia's overdraw
-approximations. It is not a hardware fragment, occlusion, or performance counter,
-and it does not promise an exact count for every high-level drawing primitive.
-The surface is not released by this helper.
+Clear the surface to zero before collecting new counts. The helper does not
+clear it automatically. Counts stop increasing at 255. They are estimates
+based on Skia's drawing operations, not exact counts for every drawing
+primitive or measurements of GPU performance.
 }

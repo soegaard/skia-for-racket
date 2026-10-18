@@ -5,22 +5,23 @@
 
 @title[#:tag "skia-canvas-state"]{Canvas State}
 
-A @tech{canvas} carries a @tech{canvas transform}, a @tech{clip}, and a stack of saved drawing states.
-These operations change how subsequent drawing is placed; they do not transform
-pixels that have already been drawn. Several wrappers for the same target share
-this state. Canvas operations require a live canvas and its owner's thread; a GPU
-canvas also requires its matching active lease.
+A @tech{canvas} keeps a @tech{canvas transform}, a @tech{clip}, and a stack of
+saved drawing states. Changing this state affects subsequent drawing, not
+pixels that have already been drawn. Canvas wrappers for the same target share
+this state.
+
+See @secref["skia-resources"] for general rules about resource lifetimes and
+Racket threads, and @secref["skia-gpu-surfaces"] for access to GPU canvases.
 
 @local-table-of-contents[#:style 'immediate-only]
 
 @section[#:tag "skia-canvas-clear"]{Clearing}
 
 @defproc[(canvas-clear! [canvas canvas?] [color color?]) void?]{
-Replaces the content inside the current clip with @racket[color], using source
-replacement rather than source-over blending. The current transform does not
-move the clear operation. Clearing with transparent color therefore removes
-existing content inside the clip. The operation does not reset the transform,
-clip, or save stack.
+Fills the current clip with @racket[color], replacing existing pixels instead
+of blending with them. A transparent color removes the content inside the clip.
+The current transform does not affect the operation. The transform, clip,
+and saved states are unchanged.
 }
 
 @section[#:tag "skia-canvas-save"]{Saving and Restoring State}
@@ -32,16 +33,15 @@ drawing or restore mutations of a @tech{paint} or @tech{path}.
 
 @defproc[(call-with-canvas-state [canvas canvas?] [proc (-> any)]) any]{
 Saves the canvas state, calls @racket[proc] with no arguments, and returns its
-results. On normal return or escape, the saved transform and clip are restored,
-including when @racket[proc] saved additional states. The scope prevents explicit
-restoration below its protected save count and establishes a continuation
-barrier. A continuation cannot re-enter an expired scope.
+results. When @racket[proc] returns, exits early, or raises an exception, the
+saved transform and clip are restored. Any additional states saved by
+@racket[proc] are removed.
 
-Closing an ordinary CPU owner in @racket[proc] does not cause restoration through
-an invalid native pointer: the cleanup skips native restoration for a closed
-owner. Other borrowing and GPU restrictions on closing still apply. In normal
-use, keep the owner alive for the entire scope.
+Restoring past the state saved by this call raises an exception. A continuation
+cannot reenter the callback after the call ends.
 
+If @racket[proc] releases the canvas's target, its state is not restored.
+The release rules in @secref["skia-resources"] still apply.
 
 @racketblock[
 (with-skia ([surface (make-surface 200 110 #:background 'white)])
@@ -66,7 +66,6 @@ use, keep the owner alive for the entire scope.
          #:contracts ([canvas-expr canvas?])]{
 Like @racket[call-with-canvas-state], with @racket[body] as the function body.
 The canvas expression is evaluated once. Internal definitions are permitted.
-The form restores canvas state, not pixels or resource lifetimes.
 
 @racketblock[
 (with-skia ([surface (make-surface 100 80 #:background 'white)]
@@ -94,7 +93,7 @@ Canvas concatenation uses the product @math{C M}, where @math{C} is the current
 transform and @math{M} is the newly supplied transform. A point is mapped by
 @math{M} first and by @math{C} second. Consequently, translating and then scaling
 scales the drawing's local coordinates without scaling the earlier translation.
-See @racket[matrix-compose] for the corresponding operation on detached values.
+See @racket[matrix-compose] for the corresponding operation on matrices.
 
 @bold{Conceptual diagram.} The two transform orders use @math{T=(10,20)}, uniform
 @math{S=2}, and @math{p=(3,4)}. @racket[(matrix-compose T S)] maps the point
@@ -107,15 +106,43 @@ gives @math{S T}. Existing pixels do not move when a later transform changes.
                   "Two coordinate-grid panels show p=(3,4), the initial rightward-x/downward-y axes, and mapped points (16,28) for T after S versus (26,48) for S after T. Each panel names the matching canvas-call order."]
 
 @defproc[(canvas-translate! [canvas canvas?] [x real?] [y real?]) void?]{
-Concatenates a translation by @racket[x] and @racket[y] in the current local
-coordinate system. The displacement is transformed by any earlier scale or
-rotation. Both arguments must be @tech{drawing scalar}s.
+Translates the local coordinate system by @racket[x] and @racket[y]. The
+displacement is transformed by any earlier scale or rotation. Both arguments
+must be @tech{drawing scalar}s.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [guide (make-paint #:color "#D9DEE4")]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 20 20 50 35 guide)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 75 30)
+    (draw-rect canvas 20 20 50 35 paint)))
+]
+@reference-figure["canvas-translate.png"
+                  "A gray reference rectangle and the same rectangle translated down and right in blue."]
 }
 
 @defproc[(canvas-scale! [canvas canvas?] [x real?] [y real? x]) void?]{
-Concatenates scaling by @racket[x] horizontally and @racket[y] vertically. A
-negative factor reflects an axis. A zero factor is accepted and makes the
-transform singular. Omitting @racket[y] uses @racket[x] on both axes.
+Scales the local coordinate system by @racket[x] horizontally and @racket[y]
+vertically. A negative factor reflects an axis. A zero factor collapses that
+axis and makes the transform noninvertible. Omitting @racket[y] uses
+@racket[x] on both axes.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)]
+            [guide (make-paint #:color "#D9DEE4")]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 18 18 45 30 guide)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 75 20)
+    (canvas-scale! canvas 1.8 1.6)
+    (draw-rect canvas 0 0 45 30 paint)))
+]
+@reference-figure["canvas-scale.png"
+                  "A small gray reference rectangle and a larger blue rectangle produced by canvas scaling."]
 
 
 @racketblock[
@@ -140,9 +167,23 @@ transform singular. Omitting @racket[y] uses @racket[x] on both axes.
 }
 
 @defproc[(canvas-rotate! [canvas canvas?] [degrees real?]) void?]{
-Concatenates a rotation about the local origin by @racket[degrees]. Positive
+Rotates the local coordinate system about its origin by @racket[degrees]. Positive
 angles rotate clockwise in the initial downward-y coordinate system. Translate
 the origin first to rotate around another point.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 120 #:background 'white)]
+            [guide (make-paint #:color "#D9DEE4")]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (draw-rect canvas 55 40 70 40 guide)
+  (with-canvas-state canvas
+    (canvas-translate! canvas 90 60)
+    (canvas-rotate! canvas 28)
+    (draw-rect canvas -35 -20 70 40 paint)))
+]
+@reference-figure["canvas-rotate.png"
+                  "A blue rectangle rotated clockwise over a gray unrotated reference rectangle."]
 
 
 @racketblock[
@@ -167,10 +208,21 @@ Like @racket[canvas-rotate!], but the angle is measured in radians.
 }
 
 @defproc[(canvas-skew! [canvas canvas?] [x real?] [y real?]) void?]{
-Concatenates a shear with horizontal factor @racket[x] and vertical factor
-@racket[y]. The factors are not angles: the local mapping is
+Shears the local coordinate system with horizontal factor @racket[x] and
+vertical factor @racket[y]. The factors are not angles: the local mapping is
 @math{u' = u + x v} and @math{v' = y u + v} for an input point
 with coordinates @math{u} and @math{v}.
+
+@racketblock[
+(with-skia ([surface (make-surface 180 110 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (canvas-translate! canvas 60 0)
+  (canvas-skew! canvas 0.55 0)
+  (draw-rect canvas 0 30 60 45 paint))
+]
+@reference-figure["canvas-skew.png"
+                  "A blue rectangle sheared horizontally by the canvas skew transform."]
 }
 
 @defproc[(canvas-reset-transform! [canvas canvas?]) void?]{
@@ -194,20 +246,16 @@ separation explicitly.
 @reference-figure["canvas-reset-transform-stage9.png"
                   "A literal-pixel capture of the 200 by 110 target: a translated blue 70 by 45 rectangle and an equally sized orange rectangle drawn after reset-transform replaces the transform with identity."]
 
-The preview enlarges the captured target only after the program runs. Resetting the transform
-therefore does not retain a hidden device-density scale.
 }
 
 @defproc[(canvas-transform [canvas canvas?]) matrix?]{
-Returns a detached snapshot of the current two-dimensional affine transform.
-The call raises an exception when the current native transform contains
-perspective or three-dimensional components that the six-coefficient
-@tech{affine matrix} cannot represent. It does not silently discard them.
+Returns the current transform as an @tech{affine matrix}. Raises an exception
+if the transform contains perspective or three-dimensional components that
+an affine matrix cannot represent.
 }
 
 @defproc[(canvas-set-transform! [canvas canvas?] [matrix matrix?]) void?]{
-Replaces the current transform with @racket[matrix]. The matrix is a detached
-value; the canvas does not borrow its storage. The clip is unchanged.
+Replaces the current transform with @racket[matrix]. The clip is unchanged.
 
 
 @racketblock[
@@ -224,14 +272,13 @@ value; the canvas does not borrow its storage. The clip is unchanged.
 @reference-figure["canvas-set-transform-stage9.png"
                   "A literal-pixel capture of a blue rectangle through the installed translation and nonuniform-scale transform; its placement and size come from the replacement matrix."]
 
-As with reset-transform, the figure is enlarged only after capturing the example's actual target.
 }
 
 @defproc[(canvas-concat! [canvas canvas?] [matrix matrix?]) void?]{
-Concatenates @racket[matrix] after the current transform, using the product
+Combines the current transform with @racket[matrix] using the product
 @math{C M}, where @math{C} is the current transform and @math{M} is
-@racket[matrix]. The canvas reads the coefficients during the call. The
-resulting native transform uses single-precision arithmetic.
+@racket[matrix]. A point is mapped by @racket[matrix] first and by the previous
+transform second. The calculation uses single-precision arithmetic.
 }
 
 @section[#:tag "skia-clipping"]{Clipping}
@@ -261,6 +308,28 @@ rectangle's coverage from the current clip. Neither operation enlarges the clip.
 @tech{Antialiasing} permits fractional edge coverage. Zero extents are accepted; the
 computed right and bottom coordinates must be @tech{drawing scalar}s.
 
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (canvas-clip-rect! canvas 20 15 120 70)
+  (canvas-clip-rect! canvas 65 30 90 45 #:operation 'intersect)
+  (draw-paint canvas paint))
+]
+@reference-figure["clip-intersect.png"
+                  "Blue paint appears only in the intersection of two rectangular canvas clips."]
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define canvas (surface-canvas surface))
+  (canvas-clip-rect! canvas 20 15 140 70)
+  (canvas-clip-rect! canvas 60 30 60 40 #:operation 'difference)
+  (draw-paint canvas paint))
+]
+@reference-figure["clip-difference.png"
+                  "A blue rectangular clipped area with a white rectangular hole removed by difference clipping."]
+
 The following comparison starts each operation with the same clip, covering the
 left six columns of an eight-column surface. A second rectangle either intersects
 that clip or is subtracted from it. Each state scope restores the original clip
@@ -288,10 +357,6 @@ clip; it does not select everything outside the rectangle across the surface.
 @reference-figure["clip-within-existing-clip.png"
                   "Nearest-neighbor enlargements of the two actual eight-by-six clip states. Intersection leaves only the central two-by-two blue area; difference leaves the initial six-column blue region with that two-by-two area removed. The legend identifies samples at y three with x coordinates three, one, and seven."]
 
-Both panels start with the same left-six-column clip. The sample legend identifies
-the positions tested by the example; the image adds no marks to the pixel results.
-
-
 @racketblock[
 (with-skia ([surface (make-surface 220 100 #:background 'white)])
   (define canvas (surface-canvas surface))
@@ -309,8 +374,7 @@ the positions tested by the example; the image adds no marks to the pixel result
 @reference-figure["clip-antialias-stage9.png"
                   "Two literal-pixel clipped rectangles compare a hard fractional clip edge on the left with an antialiased edge on the right, whose boundary pixels have intermediate blue coverage."]
 
-The source target is captured at one device pixel per coordinate unit and enlarged afterwards;
-scaling the program first would turn the half-pixel edges into integral edges and hide the comparison.
+The figure enlarges the result to show the partially covered edge pixels.
 }
 
 @defproc[(canvas-clip-path! [canvas canvas?] [path skia-path?]
@@ -318,7 +382,7 @@ scaling the program first would turn the half-pixel edges into integral edges an
                            [#:antialias? antialias? boolean? #f]) void?]{
 Like @racket[canvas-clip-rect!], but uses the filled region of @racket[path] and
 its fill rule. Paint stroke settings do not affect this operation. Subsequent
-mutation or closure of the path does not change the established clip.
+changes to the path, or releasing it, do not change the established clip.
 
 
 @racketblock[
@@ -339,18 +403,16 @@ mutation or closure of the path does not change the established clip.
 
 @(declare-exporting skia)
 
-Clip queries describe the current saved drawing state. Bounds can be conservative
-and do not replace a clip or prove that a shape will draw visible pixels.
+Clip queries describe the current canvas state. Their bounds may include
+areas outside the clip and do not establish whether a shape will draw visible pixels.
 
 @defproc[(canvas-clip-rounded-rect! [canvas canvas?]
           [shape rounded-rect?]
           [#:operation operation (or/c 'intersect 'difference) 'intersect]
           [#:antialias? antialias? boolean? #f])
           void?]{
-Combines the current clip with the native-normalized rounded boundary in local
-coordinates. The current transform applies; antialiasing is optional and off by
-default. The boundary is preserved through a path representation so unequal
-corner radii are not reduced to a single SVG radius pair.
+Like @racket[canvas-clip-rect!], but uses the rounded boundary of @racket[shape].
+Each corner's radius is preserved, including in SVG output.
 
 
 @racketblock[
@@ -368,18 +430,19 @@ corner radii are not reduced to a single SVG radius pair.
 
 @defproc[(canvas-local-clip-bounds [canvas canvas?])
           (or/c #f (and/c (vector/c real? real? real? real?) immutable?))]{
-Returns detached conservative clip bounds in current local coordinates, or
-@racket[#f] when native bounds are unavailable. Inverse mapping and antialiasing
-can expand these bounds. Changing the transform can change the reported bounds
-without changing the device clip.
+Returns an immutable vector containing the clip bounds' x, y, width, and height
+in current @tech{local coordinates}, or @racket[#f] if the bounds are unavailable.
+The bounds may include areas outside the clip because of antialiasing or the
+conversion from device coordinates. Changing the transform can change these
+bounds without changing the clip.
 }
 
 @defproc[(canvas-device-clip-bounds [canvas canvas?])
           (or/c #f (and/c (vector/c exact-integer? exact-integer? exact-integer? exact-integer?)
           immutable?))]{
-Returns detached integer clip bounds in device coordinates, or @racket[#f]
-when native bounds are unavailable. The current local transform does not move
-these coordinates.
+Returns an immutable vector containing the clip bounds' x, y, width, and height
+in @tech{device coordinates}, or @racket[#f] if the bounds are unavailable.
+Changing the canvas transform does not change these bounds.
 }
 
 @defproc[(canvas-clip-empty? [canvas canvas?])
@@ -400,10 +463,11 @@ An empty clip is not reported as rectangular.
           [width (and/c real? (>=/c 0))]
           [height (and/c real? (>=/c 0))])
           boolean?]{
-Returns @racket[#t] when the transformed local rectangle can be rejected
-against the current clip. A false result does not prove intersection or visible
-output. The query has no paint argument and does not expand the rectangle for
-strokes, filters, or other painted extents.
+Returns @racket[#t] if a quick test establishes that the rectangle cannot cover
+any part of the current clip. The current transform applies to the rectangle.
+A @racket[#f] result does not establish that the rectangle intersects the clip
+or will draw visible pixels. The test does not account for strokes, filters,
+or other effects that extend drawing beyond the rectangle.
 }
 
 @section[#:tag "skia-canvas-manual-state"]{Manual Canvas State Management}
@@ -425,102 +489,23 @@ Returns the current number of states, including the base state.
 
 @defproc[(canvas-restore! [canvas canvas?]) void?]{
 Restores the previous transform and clip by removing the top state. An attempt
-to remove the base state, or a state protected by an enclosing state or layer
-scope, raises an exception instead of silently doing nothing.
+to remove the base state, or a state saved by an enclosing state or layer
+helper, raises an exception.
 }
 
 @defproc[(canvas-restore-to-count! [canvas canvas?]
                                   [count exact-positive-integer?]) void?]{
-Restores states until the save count is @racket[count]. The requested count must
-be at least the current protected floor and no greater than the current save
-count. A count equal to the current count leaves the state unchanged.
+Restores states until the save count is @racket[count]. Raises an exception if
+@racket[count] exceeds the current save count or would remove a state saved by
+an enclosing state or layer helper. A count equal to the current save count
+leaves the state unchanged.
 }
 
 @section[#:tag "skia-canvas-backend"]{Backend Queries}
 
 @defproc[(canvas-execution-backend [canvas canvas?]) symbol?]{
-Returns the execution backend of a valid canvas. Ordinary targets report
+Returns the canvas's execution backend. Ordinary targets report
 @racket['raster], @racket['recording], @racket['pdf], or @racket['svg]; GPU targets
 report the selected GPU backend, such as @racket['opengl], @racket['metal], or
 @racket['direct3d]. Specialized canvases report their declared execution backend.
-Unlike @racket[surface-backend], this operation validates native use of the canvas.
-A backend name does not guarantee that every paint effect is supported.
 }
-
-@section{Additional Visual Examples}
-
-These examples isolate common transform and clip operations.
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)]
-            [guide (make-paint #:color "#D9DEE4")]
-            [paint (make-paint #:color "#326DE6")])
-  (define canvas (surface-canvas surface))
-  (draw-rect canvas 20 20 50 35 guide)
-  (with-canvas-state canvas
-    (canvas-translate! canvas 75 30)
-    (draw-rect canvas 20 20 50 35 paint)))
-]
-@reference-figure["canvas-translate.png"
-                  "A gray reference rectangle and the same rectangle translated down and right in blue."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 110 #:background 'white)]
-            [guide (make-paint #:color "#D9DEE4")]
-            [paint (make-paint #:color "#326DE6")])
-  (define canvas (surface-canvas surface))
-  (draw-rect canvas 18 18 45 30 guide)
-  (with-canvas-state canvas
-    (canvas-translate! canvas 75 20)
-    (canvas-scale! canvas 1.8 1.6)
-    (draw-rect canvas 0 0 45 30 paint)))
-]
-@reference-figure["canvas-scale.png"
-                  "A small gray reference rectangle and a larger blue rectangle produced by canvas scaling."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 120 #:background 'white)]
-            [guide (make-paint #:color "#D9DEE4")]
-            [paint (make-paint #:color "#326DE6")])
-  (define canvas (surface-canvas surface))
-  (draw-rect canvas 55 40 70 40 guide)
-  (with-canvas-state canvas
-    (canvas-translate! canvas 90 60)
-    (canvas-rotate! canvas 28)
-    (draw-rect canvas -35 -20 70 40 paint)))
-]
-@reference-figure["canvas-rotate.png"
-                  "A blue rectangle rotated clockwise over a gray unrotated reference rectangle."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 110 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (define canvas (surface-canvas surface))
-  (canvas-translate! canvas 60 0)
-  (canvas-skew! canvas 0.55 0)
-  (draw-rect canvas 0 30 60 45 paint))
-]
-@reference-figure["canvas-skew.png"
-                  "A blue rectangle sheared horizontally by the canvas skew transform."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (define canvas (surface-canvas surface))
-  (canvas-clip-rect! canvas 20 15 120 70)
-  (canvas-clip-rect! canvas 65 30 90 45 #:operation 'intersect)
-  (draw-paint canvas paint))
-]
-@reference-figure["clip-intersect.png"
-                  "Blue paint appears only in the intersection of two rectangular canvas clips."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (define canvas (surface-canvas surface))
-  (canvas-clip-rect! canvas 20 15 140 70)
-  (canvas-clip-rect! canvas 60 30 60 40 #:operation 'difference)
-  (draw-paint canvas paint))
-]
-@reference-figure["clip-difference.png"
-                  "A blue rectangular clipped area with a white rectangular hole removed by difference clipping."]
