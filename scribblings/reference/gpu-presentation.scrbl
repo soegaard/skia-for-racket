@@ -120,7 +120,8 @@ frame or later activation does not revive the old frame.
 
 @defproc[(gpu-frame-canvas [frame gpu-frame?]) canvas?]{
 Returns the borrowed canvas while @racket[frame] is live on its original owner
-thread. It raises after callback exit or from another execution owner.
+thread. It raises an exception after callback exit, from another Racket thread,
+or from within a future.
 }
 
 @defproc[(gpu-frame-context [frame gpu-frame?]) gpu-context?]{
@@ -130,7 +131,7 @@ do not close it independently.
 }
 
 @defproc[(gpu-frame-info [frame gpu-frame?]) (and/c hash? immutable?)]{
-Returns an immutable hash containing physical and logical extents, scale factors,
+Returns an immutable hash table containing physical and logical extents, scale factors,
 backend, target generation, frame index, and backend-specific target diagnostics.
 This query can also be called after the frame expires.
 }

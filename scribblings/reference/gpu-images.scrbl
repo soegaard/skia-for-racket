@@ -50,7 +50,7 @@ it is ready for execution. A closed resource raises an exception.
 
 @defproc[(gpu-image-info [image gpu-image?]) (and/c hash? immutable?)]{
 Returns metadata after verifying native texture backing and validity
-for the owning active context. The hash includes @racket['width],
+for the owning active context. The hash table includes @racket['width],
 @racket['height], @racket['backend], @racket['context_generation],
 @racket['unique_id], @racket['texture_backed], and @racket['context_matches].
 The unique identifier is process-local, not a pixel-content hash. This operation

@@ -31,10 +31,10 @@ the result.
                 [positions
                  (or/c (listof (or/c (list/c real? real?) (vector/c real? real?)))
                        (vectorof (or/c (list/c real? real?) (vector/c real? real?))))]) text-blob?]{
-Creates an owned text blob from nonempty glyph and position sequences of
-equal length. Positions are relative to the blob's origin. Glyph IDs belong
+Creates an owned text blob from nonempty glyph and position lists or vectors
+of equal length. Positions are relative to the blob's origin. Glyph IDs belong
 to the font's typeface; this is not a character-mapping or shaping operation.
-The input payload is bounded by
+The size of the copied input data is bounded by
 @racket[current-skia-byte-limit].
 
 The blob copies glyphs and positions and captures font settings. Later mutation
@@ -167,7 +167,7 @@ still consumed.
 @defproc[(text-blob-builder-run-count [builder text-blob-builder?])
           exact-nonnegative-integer?]{
 Returns the number of nonempty runs successfully appended to an open builder.
-Appending an empty glyph sequence does not increase the count. This counts
+Appending an empty glyph list or vector does not increase the count. This counts
 logical appends, not any merging of adjacent runs performed by native storage.
 }
 
@@ -176,13 +176,13 @@ logical appends, not any merging of adjacent runs performed by native storage.
 Glyph inputs are lists or vectors of unsigned 16-bit glyph IDs. Each ID must
 also be less than the glyph count of the selected font's typeface; zero is
 permitted. These operations do not map characters, shape text, or select a
-fallback typeface. Position and transform sequences must match the glyph
+fallback typeface. Position and transform lists or vectors must match the glyph
 count. A point may be a two-element list or vector.
 
 Input counts must fit a signed 32-bit integer. Copied inputs and accumulated
 run data are checked against @racket[current-skia-byte-limit]. The limit bounds
-the wrapper's charged payload and bookkeeping, not all native font caches or
-allocator overhead. Exceeding a limit raises an exception.
+the sizes counted for copied data and bookkeeping, not all native font caches
+or allocator overhead. Exceeding a limit raises an exception.
 
 An empty append still validates its options and resources, but creates no run
 and captures no font. Invalid arguments detected before native run allocation
@@ -203,14 +203,14 @@ The four glyph-based append functions accept @racket[#:text] and
 may be a Racket string or a byte string containing valid UTF-8; malformed byte
 sequences are rejected. Supplied text is retained as immutable UTF-8 bytes.
 
-The @tech{cluster offset} sequence contains one exact nonnegative integer per glyph. Each
-integer is a byte offset inside the supplied UTF-8 text, at the beginning of a
-Unicode scalar value. It is not a Racket character index or necessarily a
+The @tech{cluster offset} list or vector contains one exact nonnegative integer
+per glyph. Each integer is a byte offset inside the supplied UTF-8 text, at the
+beginning of a Unicode scalar value. It is not a Racket character index or necessarily a
 grapheme boundary. Repeated and descending offsets are permitted, so clusters
 can describe ligatures, combining marks, and right-to-left glyph order.
 
 Nonempty glyphs require nonempty text when metadata is supplied. An empty run
-can have empty text and an empty cluster sequence, but cannot retain nonempty
+can have empty text and an empty cluster list or vector, but cannot retain nonempty
 text that would otherwise be discarded. Supplying metadata does not reshape,
 reorder, or reposition glyphs. The caller is responsible for making the text,
 glyphs, and cluster associations agree; the library checks their representation
@@ -308,7 +308,7 @@ is performed. The shared run-input and metadata rules apply.
                                      (vectorof exact-nonnegative-integer?) #f) #f]) void?]{
 Appends a run with an explicit two-dimensional origin for each glyph, relative
 to the blob's origin. No additional run-origin translation is applied. Unlike
-@racket[make-positioned-text-blob], this function accepts empty sequences as
+@racket[make-positioned-text-blob], this function accepts empty lists or vectors as
 an append that creates no run. The shared run-input and metadata rules apply.
 
 @racketblock[
@@ -561,7 +561,7 @@ supplied positions. Glyph and position counts must agree, and all IDs must belon
 to the font's typeface. Empty inputs return an owned empty path after validating
 the font.
 
-The path is independent of the input sequences and the font's lifetime. Font
+The path is independent of the input lists or vectors and the font's lifetime. Font
 size, scale, and skew are applied, but no paint, canvas transform, shaping, or
 fallback is added. Glyphs without monochrome outlines contribute no contour;
 this is not a general conversion of bitmap or color glyphs to vectors. The

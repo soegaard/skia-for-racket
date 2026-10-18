@@ -97,9 +97,10 @@ scaling, but does not move the group's logical red content or become visible col
 
 @defproc[(output-raster-executor? [v any/c])
           boolean?]{
-Identifies an executor object supplied by the output integration interface. The @racket['cpu]
-symbol is accepted by @racket[draw-output-group], but is not such an object. The predicate does
-not certify that an executor's scope is still live or that its backend is available.
+Identifies an output raster executor value supplied by the output integration
+interface. The @racket['cpu] symbol is accepted by @racket[draw-output-group],
+but is not an executor value. The predicate does not certify that an executor's
+scope is still live or that its backend is available.
 }
 
 @defproc[(output-group-report? [v any/c])
@@ -128,7 +129,7 @@ not a successful draw.
           (or/c 'native-compatible 'raster-target 'explicit-raster 'isolated-compositing
                   'backend-fallback 'unknown-provenance 'discarded-semantics 'vector-required
                   'annotation-would-be-lost 'native-text-would-be-lost 'device-space-clip)]{
-Returns the symbolic reason for the decision, separate from diagnostic exception text.
+Returns a symbol identifying the reason for the decision, separate from diagnostic exception text.
 }
 
 @defproc[(output-group-report-bounds [report output-group-report?])
@@ -181,9 +182,9 @@ rejected work is not reported as completed.
 
 @defproc[(output-group-report->jsexpr [report output-group-report?])
           (and/c hash? immutable?)]{
-Returns a JSON-compatible hash of the report. Rectangles become lists, symbolic
-classifications become strings, and nested reports appear under @racket['captured_children]. A
-false pixel size remains false.
+Returns a JSON-compatible hash table of the report. Rectangles become lists,
+classification symbols become strings, and nested reports appear under
+@racket['captured_children]. A false pixel size remains false.
 }
 
 @defproc[(exn:fail:output-group? [v any/c])

@@ -231,9 +231,9 @@ The rectangle moves to the right; the false input slot receives that drawing.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a filter drawing its inputs in order with source-over blending.
-Later inputs are composited over earlier ones. The sequence must be nonempty,
+Later inputs are composited over earlier ones. The list or vector must be nonempty,
 fit the native signed-int count, and fit the pointer-array byte limit. Each
-false entry draws the dynamic source again. The input sequence is copied.
+false entry draws the dynamic source again. The input list or vector is copied.
 
 @racketblock[
 (with-skia ([shift (make-offset-image-filter 55 0)]
@@ -372,7 +372,7 @@ value reverses displacements. A false input slot uses the dynamic source.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a convolution filter with exactly @math{width height} row-major
-kernel coefficients. The copied coefficient payload must fit the byte limit.
+kernel coefficients. The copied coefficient data must fit the byte limit.
 Offset selects the kernel's alignment and must lie within its dimensions;
 false uses @math{(floor(width/2), floor(height/2))}. The weighted sum is scaled
 by gain and then bias is added. Bias uses the native eight-bit channel scale:

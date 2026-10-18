@@ -103,7 +103,7 @@ to test individual requests.
 
 @defproc[(surface-properties->jsexpr [properties surface-properties?])
           (and/c hash? immutable?)]{
-Returns an immutable JSON-compatible hash with keys @racket['pixel_geometry], @racket['flags],
+Returns an immutable JSON-compatible hash table with keys @racket['pixel_geometry], @racket['flags],
 @racket['device_independent_fonts], @racket['dynamic_msaa], and @racket['always_dither]. Pixel
 geometry is represented by a string.
 }

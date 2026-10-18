@@ -113,7 +113,7 @@ necessarily a file selected by an override.
 
 @defproc[(native-abi-catalog)
           (and/c hash? immutable?)]{
-Returns the immutable installed ABI catalogue. Nested hashes and strings are immutable too. It
+Returns the immutable installed ABI catalogue. Nested hash tables and strings are immutable too. It
 records supported ABI profiles, layout sizes, and reviewed expectations. Reading it loads no
 native library and performs no network request. A profile in the catalogue is a compatibility
 policy, not a runtime observation.
@@ -148,7 +148,7 @@ is not a rendering test.
 @defproc[(skia-native-symbol-inventory [names (listof symbol?)])
           (listof hash?)]{
 Runs Skia preflight, then checks the requested symbol addresses in that same loaded library.
-Results preserve input order, including duplicates. Each immutable result hash contains a string
+Results preserve input order, including duplicates. Each immutable result hash table contains a string
 @racket['name] and boolean @racket['available]. Missing symbols yield false; they are not
 invoked.
 

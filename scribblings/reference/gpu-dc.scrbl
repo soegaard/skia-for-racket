@@ -53,7 +53,7 @@ its presenter has already activated the correct GPU context, so the callback
 must not add another @racket[call-with-gpu-context] scope around this operation.
 Nested GPU-DC scopes are rejected.
 
-The callback must be callable with one positional argument. Its DC becomes
+The callback must be a procedure that accepts one positional argument. Its DC becomes
 invalid on normal return, exception, or escape. The staging target is a
 same-context full-color RGBA/BGRA/F16/F32 surface. The color-space
 descriptor, sample request, and @tech{surface-properties value} form part of

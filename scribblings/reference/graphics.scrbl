@@ -109,7 +109,7 @@ change explicitly. The wrapper adds no scope that automatically restores it.
 
 @defproc[(skia-cache-statistics)
           (and/c hash? immutable?)]{
-Returns current cache observations in an immutable hash. The keys are @racket['scope],
+Returns current cache observations in an immutable hash table. The keys are @racket['scope],
 @racket['atomic?], @racket['font-bytes-used], @racket['font-byte-limit],
 @racket['font-count-used], @racket['font-count-limit], @racket['resource-bytes-used],
 @racket['resource-byte-limit], and @racket['resource-single-allocation-byte-limit]. The scope is
@@ -144,6 +144,9 @@ GPU context's cache.
 
 @section[#:tag "skia-memory-statistics"]{Bounded Memory Reports}
 
+A memory report contains @tt{memory-statistic} structures. Each entry describes
+an observed value, which is an unsigned 64-bit integer or an immutable string.
+
 @defproc[(skia-memory-statistics [#:detailed? detailed? boolean? #f] [#:dump-wrapped?
           dump-wrapped? boolean? #f] [#:max-entries max-entries (integer-in 0 65536) 4096]
           [#:string-limit string-limit (integer-in 0 65536) 4096] [#:byte-limit byte-limit
@@ -153,16 +156,16 @@ Collects a native memory report for process-global Skia caches. The flags reques
 detailed reporting and inclusion of wrapped objects. Names, units, and string values depend on
 the native backend; they are not a fixed allocation inventory.
 
-The entry limit bounds retained records. The string limit bounds each copied native string in
+The entry limit bounds retained entries. The string limit bounds each copied native string in
 UTF-8 bytes; the byte limit bounds aggregate copied strings. The expression @racket[(+ (*
 max-entries 128) byte-limit)] must fit @racket[current-skia-byte-limit]. Zero limits are valid.
-Oversized records are omitted and counted, not shortened into apparently complete values.
+Oversized entries are omitted and counted, not shortened into apparently complete values.
 Invalid native strings or callback data raise after native cleanup.
 
 The report is not an atomic process-memory snapshot. The callback provider is process-global; a
 second module instance or place cannot replace an already claimed provider table. The same
 provider is shared with GPU memory reporting, but this function's report has CPU-cache scope.
-No application callback runs while Skia is collecting the records.
+No application callback runs while Skia is collecting the entries.
 }
 
 @defproc[(memory-statistics? [v any/c])
@@ -173,7 +176,7 @@ data representation.
 
 @defproc[(memory-statistics-entries [report memory-statistics?])
           (and/c (vectorof memory-statistic?) immutable?)]{
-Returns the retained records in native observation order as an immutable vector.
+Returns the retained entries in native observation order as an immutable vector.
 }
 
 @defproc[(memory-statistics-detailed? [report memory-statistics?])
@@ -188,19 +191,19 @@ Returns whether inclusion of wrapped native objects was requested.
 
 @defproc[(memory-statistics-truncated? [report memory-statistics?])
           boolean?]{
-Reports whether any observed record was omitted because of the configured bounds.
+Reports whether any observed entry was omitted because of the configured bounds.
 }
 
 @defproc[(memory-statistics-dropped-count [report memory-statistics?])
           exact-nonnegative-integer?]{
-Returns the number of omitted observed records, not bytes omitted or all allocations absent from
+Returns the number of omitted observed entries, not bytes omitted or all allocations absent from
 the native report.
 }
 
 @defproc[(memory-statistics-string-bytes [report memory-statistics?])
           exact-nonnegative-integer?]{
 Returns the aggregate UTF-8 bytes retained for names, value names, units, and string values.
-Numeric payloads are not counted as strings.
+Numeric values are not counted as strings.
 }
 
 @defproc[(memory-statistics-scope [report memory-statistics?])
@@ -210,19 +213,19 @@ Returns the origin of the report. A GPU report is not a report of all process-gl
 
 @defproc[(memory-statistics->jsexpr [report memory-statistics?])
           (and/c hash? immutable?)]{
-Returns a JSON-compatible hash with scope, an explicit false atomic flag, requested
+Returns a JSON-compatible hash table with scope, an explicit false atomic flag, requested
 options, truncation information, string-byte count, and a list of entries. Entry kinds and scope
 symbols become strings. The conversion does not query native memory again.
 }
 
 @defproc[(memory-statistic? [v any/c])
           boolean?]{
-Returns @racket[#t] for an immutable numeric or string record and @racket[#f] otherwise.
+Returns @racket[#t] for a @tt{memory-statistic} structure and @racket[#f] otherwise.
 }
 
 @defproc[(memory-statistic-kind [entry memory-statistic?])
           (or/c 'numeric 'string)]{
-Returns the payload kind.
+Returns @racket['numeric] or @racket['string], indicating the type of the stored value.
 }
 
 @defproc[(memory-statistic-name [entry memory-statistic?])
@@ -237,12 +240,12 @@ Returns the copied name of the reported value.
 
 @defproc[(memory-statistic-units [entry memory-statistic?])
           (or/c #f (and/c string? immutable?))]{
-Returns copied units for a numeric record, or @racket[#f] for a string record.
+Returns copied units for a numeric entry, or @racket[#f] for a string entry.
 }
 
 @defproc[(memory-statistic-value [entry memory-statistic?])
           (or/c (integer-in 0 #xffffffffffffffff)
                 (and/c string? immutable?))]{
-Returns the unsigned 64-bit numeric payload or copied immutable string, according to
+Returns the stored unsigned 64-bit integer or immutable string, according to
 @racket[memory-statistic-kind].
 }

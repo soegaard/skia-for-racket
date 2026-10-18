@@ -103,7 +103,7 @@ Returns the stored threshold, including @racket[-1] for native platform selectio
 
 @defproc[(gpu-context-options->jsexpr [options gpu-context-options?])
           (and/c hash? immutable?)]{
-Returns an immutable JSON-compatible hash with keys
+Returns an immutable JSON-compatible hash table with keys
 @racket['avoid_stencil_buffers], @racket['runtime_program_cache_size],
 @racket['glyph_cache_texture_maximum_bytes], @racket['allow_path_mask_caching],
 @racket['manual_mipmapping], and @racket['buffer_map_threshold]. These are the

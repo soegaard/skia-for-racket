@@ -111,25 +111,25 @@ is instantiated. Its value is copied into the instance and stays fixed for
 that instance. A child binding supplies a shader, color filter, or blender
 resource for the program to use.
 
-Binding dictionaries are hashes with symbol or string keys. Keys match reflected
+Bindings are supplied in hash tables with symbol or string keys. Keys match reflected
 names exactly after symbols are converted to strings. Missing names, unknown
 names, and two keys with the same normalized spelling are rejected. Thus
-@racket['gain] and @racket["gain"] cannot both name entries in one dictionary.
+@racket['gain] and @racket["gain"] cannot both name entries in one hash table.
 Every reflected uniform and child must be supplied; there are no implicit
-zero uniforms or null-child fallbacks. The default empty hashes work only
+zero uniforms or null-child fallbacks. The default empty hash tables work only
 when the corresponding reflected set is empty.
 
 A nonarray scalar uniform takes one number. Vectors, matrices, and all arrays
 require a flat list or vector of exactly the reflected component count.
-A scalar array of length one still requires a sequence. Matrices use SkSL's
-column-major component order, with array elements consecutive. Floating
+A scalar array of length one still requires a one-element list or vector.
+Matrices use SkSL's column-major component order, with array elements consecutive. Floating
 components are packed as single-precision values. Integer
 components are exact signed 32-bit integers. Half-precision declarations still
 occupy four bytes per supplied component; the flag describes shader arithmetic,
 not a two-byte host buffer.
 
 Instances retain the compiled effect and child native resources. They copy the
-bound uniform values; mutating a hash or input vector afterward does not update
+bound uniform values; mutating a hash table or input vector afterward does not update
 an existing instance. Create another instance to use new values. Caller-owned
 wrappers are not transferred. Closing them after
 successful construction does not invalidate the instance, but GPU-dependent
@@ -141,7 +141,7 @@ Returns a new immutable byte string packed according to the stored uniform
 layout and the rules in @secref["skia-runtime-bindings"]. It uses native byte
 order and the reflected offsets, not std140 padding. Its length equals
 @racket[(runtime-effect-uniform-byte-size effect)]. It is not a portable serialization
-format and is not accepted in place of the binding hash by instance factories.
+format and is not accepted in place of the binding hash table by instance factories.
 
 This packing operation does not call the native library and works after the
 effect is closed. It still validates the current byte limit and all bindings.
@@ -188,7 +188,7 @@ replacement for the canvas transform. Binding and retention rules follow
           [#:uniforms uniforms hash? (hash)]
           [#:children children hash? (hash)]) color-filter?]{
 Returns an owned color-filter instance. The effect must be open and compiled
-for the color-filter stage. Uniforms, child types, complete binding dictionaries,
+for the color-filter stage. Uniforms, child types, complete binding hash tables,
 and native retention follow @secref["skia-runtime-bindings"]. No local-matrix
 option is accepted for this stage.
 }
@@ -198,7 +198,7 @@ option is accepted for this stage.
           [#:uniforms uniforms hash? (hash)]
           [#:children children hash? (hash)]) blender?]{
 Returns an owned blender instance. The effect must be open and compiled
-for the blender stage. Uniforms, child types, complete binding dictionaries,
+for the blender stage. Uniforms, child types, complete binding hash tables,
 and native retention follow @secref["skia-runtime-bindings"]. No local-matrix
 option is accepted for this stage.
 }
@@ -297,7 +297,7 @@ Returns @racket[#t] for a runtime-uniform description and @racket[#f] otherwise.
 }
 
 @defproc[(runtime-uniform-name [uniform runtime-uniform?]) string?]{
-Returns the immutable, nonempty uniform name used by binding dictionaries.
+Returns the immutable, nonempty uniform name used as a key in binding hash tables.
 }
 
 @defproc[(runtime-uniform-offset [uniform runtime-uniform?]) exact-nonnegative-integer?]{
@@ -344,7 +344,7 @@ Returns @racket[#t] for a runtime-child description and
 }
 
 @defproc[(runtime-child-name [child runtime-child?]) string?]{
-Returns the immutable, nonempty child name used by the child-binding hash.
+Returns the immutable, nonempty child name used as a key in the child-binding hash table.
 }
 
 @defproc[(runtime-child-kind [child runtime-child?]) (or/c 'shader 'color-filter 'blender)]{

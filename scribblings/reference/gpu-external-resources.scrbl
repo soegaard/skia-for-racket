@@ -52,9 +52,9 @@ not grant access to, extend, or synchronize the native resource.
 }
 
 @defproc[(gpu-external-texture-close! [texture gpu-external-texture?]) void?]{
-Retires the token and its retained backend references on the creating execution
-owner. Closing an active token raises. Closing an already retired token is
-harmless. The state is marked retired before its backend retirement action runs,
+Retires the token and its retained backend references on the creating Racket
+thread, outside a future. Closing an active token raises. Closing an already
+retired token is harmless. The state is marked retired before its backend retirement action runs,
 so an indeterminate native retirement is not silently retried.
 
 Closing a token does not close its GPU context. Queued native releases still
@@ -71,8 +71,9 @@ caller's external storage and follows the normal GPU-image lifetime rules.
 Backend handoff synchronization and validation occur before control returns.
 There is no CPU pixel readback in the production copy path.
 
-A token belonging to another context, another execution owner, or the wrong
-state is rejected. Nested external-resource operations are not supported.
+A token belonging to another context or in the wrong state is rejected. The
+operation must run on the token's creating Racket thread, outside a future.
+Nested external-resource operations are not supported.
 }
 
 @section{Borrowing External Drawing Targets}

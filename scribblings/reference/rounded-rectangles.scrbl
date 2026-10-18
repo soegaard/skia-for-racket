@@ -107,7 +107,7 @@ Classifies the native-normalized shape. Empty has no area; rect has square
 corners; oval is an ellipse; simple uses equal corner radii; nine-patch has
 matching radius components along each side; complex is a remaining valid
 rounded rectangle. The query classifies the normalized shape, not just the
-literal radius array.
+supplied radii.
 }
 
 @defproc[(make-nine-patch-rounded-rect [x real?]

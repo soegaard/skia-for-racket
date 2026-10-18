@@ -38,9 +38,9 @@ that a context can be created.
 @defproc[(gpu-backend-capabilities [backend (or/c 'opengl 'metal 'direct3d)])
           (and/c hash? immutable?)]{
 Returns a declaration of the wrapper's support for @racket[backend].
-The hash contains @racket['backend], @racket['engine], @racket['native_backend],
+The hash table contains @racket['backend], @racket['engine], @racket['native_backend],
 @racket['owned_context], @racket['platforms], @racket['software_selection], and
-@racket['features]. The feature hash describes offscreen rendering, images,
+@racket['features]. The feature hash table describes offscreen rendering, images,
 explicit transfers, cache controls, presentation, document execution, and
 external-resource interoperation.
 
@@ -48,7 +48,7 @@ The @racket['scope] is @racket["wrapper-declarations"], and
 @racket['runtime_availability] is @racket["not-probed"]. The
 @racket['native_probe_performed], @racket['hardware_acceleration_verified],
 @racket['visible_pixels_verified], and @racket['performance_measured] fields
-are all @racket[#f]. Nested hashes and strings are immutable. No field in this
+are all @racket[#f]. Nested hash tables and strings are immutable. No field in this
 result certifies that the selected backend works on the current machine.
 
 @examples[#:eval backend-eval
@@ -102,9 +102,9 @@ The callbacks have the following obligations:
        true value only when the intended host is current and safe for this thread.
        The wrapper checks this before using the host; it does not create or repair
        a native current-context binding on the provider's behalf.}
- @item{The @racket[describe] function accepts no arguments. It supplies a hash
+ @item{The @racket[describe] function accepts no arguments. It supplies a hash table
        with symbol keys and diagnostic values: strings, booleans, finite
-       real numbers, lists of such values, or nested symbol-keyed hashes. Symbols
+       real numbers, lists of such values, or nested symbol-keyed hash tables. Symbols
        as values, vectors, native pointers, and functions are not accepted.
        The OpenGL constructor copies this information into its context report.}
  @item{The optional @racket[resolve] function accepts a native function name as
@@ -114,7 +114,7 @@ The callbacks have the following obligations:
        after returning from the native call rather than allowing them to cross
        native frames.}]
 
-All callbacks must be callable without extra required keyword arguments. The
+All callbacks must be procedures with no required keyword arguments. The
 constructor's positional-arity check does not establish their behavior.
 
 Only external OpenGL providers are accepted by @racket[make-gpu-context].

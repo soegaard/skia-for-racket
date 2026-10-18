@@ -229,7 +229,7 @@ Returns explanatory diagnostic text, not a separate capability test.
 
 @defproc[(output-audit-event-details [event output-audit-event?])
           (and/c hash? immutable?)]{
-Returns an immutable hash of event details, such as raster dimensions and execution metadata.
+Returns an immutable hash table of event details, such as raster dimensions and execution metadata.
 }
 
 @defproc[(output-audit-report? [v any/c])
@@ -272,9 +272,9 @@ test; it is not proof of useful page content.
 
 @defproc[(output-audit-report->jsexpr [report output-audit-report?])
           (and/c hash? immutable?)]{
-Returns a JSON-compatible hash containing the backend, mode, page count, blocking and
-vector-only summaries, scope qualification, and event details. Symbolic backend, mode,
-operation, feature, and status values are converted to strings. This serialization is a report,
+Returns a JSON-compatible hash table containing the backend, mode, page count, blocking and
+vector-only summaries, scope qualification, and event details. Backend, mode,
+operation, feature, and status symbols are converted to strings. This serialization is a report,
 not an executable drawing.
 }
 

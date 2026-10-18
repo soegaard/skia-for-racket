@@ -97,7 +97,7 @@ context must remain open.
           [color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565
                            'rgba-1010102 'rgba-f16 'rgba-f32)])
          (and/c hash? immutable?)]{
-Queries the active context's native format limits. The returned hash identifies
+Queries the active context's native format limits. The returned hash table identifies
 its backend and generation, the color type, @racket['max_sample_count], and
 @racket['max_render_target_size]. The @racket['renderable] field is true exactly
 when the maximum sample count is positive.
@@ -111,7 +111,7 @@ succeed on the selected machine before the report is available.
 @defproc[(gpu-surface-info [surface gpu-surface?]) (and/c hash? immutable?)]{
 Returns metadata after checking the live surface's native context and
 backend association. The surface must be used in its owning activation.
-The hash records dimensions, color and alpha types, top-left origin, backend,
+The hash table records dimensions, color and alpha types, top-left origin, backend,
 context generation, budgeted status, surface properties, and the requested and
 maximum sample counts. The actual sample count remains false, not a copy of
 the request. The report does not read pixels or certify visible presentation.

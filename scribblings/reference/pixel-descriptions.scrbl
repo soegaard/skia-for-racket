@@ -150,11 +150,12 @@ must fit @racket[current-skia-byte-limit]. No storage is allocated.
 each logical pixel occupies four bytes, so tight row length is 12. With a
 16-byte stride, the two rows start at offsets 0 and 16. Pixel bytes occupy
 0--11 and 16--27; the remaining cells are padding rather than a fourth pixel.
-The resulting @racket['(16 28 32)] distinguishes stride, minimum addressable
-length, and complete allocation (which includes final-row padding).
+The three returned values are 16, 28, and 32: the stride, minimum addressable
+length, and complete allocation (which includes final-row padding), respectively.
+The example below collects these values into a list.
 
 @reference-figure["concept-pixel-stride.png"
-                  "Two 16-byte rows are divided into three colored four-byte RGBA pixels and four gray padding bytes. Labels identify row starts at offsets zero and sixteen, the stride arrow, and the returned tuple (16, 28, 32)."]
+                  "Two 16-byte rows are divided into three colored four-byte RGBA pixels and four gray padding bytes. Labels identify row starts at offsets zero and sixteen, the stride arrow, and the three returned values: 16, 28, and 32."]
 
 @examples[#:eval pixel-eval
 (define info (make-image-info 3 2))

@@ -250,7 +250,7 @@ a singular matrix is not promised to have a useful sampling interpretation.
 
 @(declare-exporting skia skia/effects #:use-sources (skia/effects))
 
-These factories return owned shaders. Their input arrays and numeric
+These factories return owned shaders. Their input data and numeric
 parameters are copied, while native child resources are retained. Closing
 caller-owned children after construction does not invalidate the result.
 GPU-dependent children preserve their context restrictions.

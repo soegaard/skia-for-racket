@@ -42,7 +42,7 @@ Returns @racket[#t] for a region wrapper, including a closed one, and
 Returns an independently owned region containing the union of the supplied
 rectangles. The outer collection can be a list or vector. Inputs are validated
 before native construction and are not retained as mutable data. Empty input
-returns an empty region. The submitted rectangle payload is bounded by
+returns an empty region. The size counted for the submitted rectangle data is bounded by
 @racket[current-skia-byte-limit].
 }
 

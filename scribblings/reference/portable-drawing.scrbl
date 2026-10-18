@@ -153,7 +153,7 @@ become lists, and fixed colors become packed ARGB integers. Missing colors use
 @section{Drawing Lowered Image Batches}
 
 These image functions accept nearest or linear sampling and a byte alpha
-multiplier. They do not accept an arbitrary paint, sprite tint array, or blend
+multiplier. They do not accept an arbitrary paint, per-sprite tint colors, or blend
 mode. They draw source-over, in input or cell order. Repeated source rectangles
 share temporary subset images during one call; those temporaries are released
 before return, including on failure. The original image remains caller-owned.

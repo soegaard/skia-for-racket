@@ -130,7 +130,7 @@ inversion and contrast adjustment. Brightness inversion complements the RGB
 channels; lightness inversion operates on HSL lightness. None disables inversion.
 Negative contrast reduces channel contrast and positive contrast increases it;
 zero leaves that adjustment neutral. Alpha is preserved. The configuration
-payload must fit the current byte limit.
+data must fit the current byte limit.
 }
 
 @defproc[(make-table-color-filter
@@ -149,7 +149,7 @@ The 256-byte table must fit the byte limit.
           [#:blue blue (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]) color-filter?]{
 Returns a filter with a separate table for each channel. A false table leaves
 that channel unchanged. Each supplied table has exactly 256 byte entries;
-the aggregate copied table payload must fit @racket[current-skia-byte-limit].
+the combined size of the copied tables must fit @racket[current-skia-byte-limit].
 Supplying no tables returns an owned identity filter, not @racket[#f].
 
 @racketblock[

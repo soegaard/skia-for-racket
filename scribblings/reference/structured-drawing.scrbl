@@ -16,7 +16,7 @@ call does not promise vector preservation in PDF or SVG. Portable alternatives
 are described in @secref["skia-portable-drawing"].
 
 Point collections are lists or vectors of two-coordinate lists or vectors.
-Input arrays are validated and copied before submission, and their counts and
+Inputs are validated and copied before submission, and their counts and
 byte sizes are bounded by
 @racket[current-skia-byte-limit].
 
@@ -31,7 +31,7 @@ coordinates. Construct it with @racket[make-vertices] and draw it with
 stroking, a @tech{path} is usually simpler.
 
 A @deftech{vertices resource} owns a native immutable mesh and Racket copies
-of its submitted arrays. Drawing requires its live native resource. Its metadata
+of its input lists or vectors. Drawing requires its live native resource. Its metadata
 queries read the Racket copies and remain usable after explicit closure,
 without requiring its creating thread. The copies describe submitted values,
 not a readback of the native binary32 arrays.
@@ -57,10 +57,11 @@ position. Texture coordinates use the same point format as positions; colors
 are @tech{color specification}s. The mesh's copies are independent of later
 changes to the caller's collections.
 
-Indices, when supplied, must be unsigned 16-bit exact integers within the
-position array. There must be at least three submitted indices or, without an
-index array, three positions. Triangles mode requires that submitted count to
-be divisible by three. An explicitly empty index array is not treated as omitted.
+Indices, when supplied, must be unsigned 16-bit exact integers less than the
+number of positions. There must be at least three indices or, when
+@racket[indices] is @racket[#f], three positions. Triangles mode requires that
+count to be divisible by three. An explicitly empty list or vector of indices
+is not treated as omitted.
 
 @racketblock[
 (with-skia ([surface (make-surface 24 24 #:background 'white)]
@@ -127,7 +128,7 @@ Returns the number of positions, not the number of indices or triangles.
 Draws the live mesh with the supplied paint. The blend-mode argument combines
 mesh colors with paint shading. The paint's own blend mode then controls
 composition with the destination; these are distinct stages. Position, color,
-and texture-coordinate arrays are retained by the mesh, not the canvas wrapper.
+and texture-coordinate data are retained by the mesh, not the canvas wrapper.
 }
 
 @section{Cubic Patches}

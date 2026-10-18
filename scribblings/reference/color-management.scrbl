@@ -89,7 +89,7 @@ when declared linear sRGB. Alpha premultiplication and RGBA/BGRA byte order are
 separate storage topics.
 
 @reference-figure["concept-color-interpretation.png"
-                  "One input byte tuple (128,128,128) branches to an sRGB declaration and a linear-sRGB declaration, then into the same sRGB destination. The two destination swatches are labeled 128 and approximately 188, showing interpretation followed by conversion."]
+                  "The RGB channel values (128,128,128) branch to an sRGB declaration and a linear-sRGB declaration, then into the same sRGB destination. The two destination swatches are labeled 128 and approximately 188, showing interpretation followed by conversion."]
 }
 
 @defproc[(color-space=? [a color-space?] [b color-space?]) boolean?]{
@@ -343,9 +343,9 @@ actually encoded in the described space.
 @defproc[(color-space-from-icc-bytes [profile bytes?]) color-space?]{
 Returns an owned color-space resource parsed from nonempty ICC bytes. The
 input length must fit @racket[current-skia-byte-limit]. Native parsing or an
-unsupported native color-space representation raises an exception. The result
-does not borrow the byte string; changing or releasing it after construction
-is safe. Input may be mutable or immutable.
+unsupported native color-space representation raises an exception. The input
+byte string is copied; later changes to it do not affect the color space.
+Input may be mutable or immutable.
 
 Successful import does not guarantee that the original bytes are accepted as
 an encoder's @racket[#:icc-profile] override. Those overrides impose the

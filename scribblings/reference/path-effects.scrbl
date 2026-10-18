@@ -35,7 +35,7 @@ Returns an effect that alternates drawn and skipped distances along a stroke.
 The first interval is drawn, the second is skipped, and the pattern repeats.
 Intervals are nonnegative real numbers in a list or vector of even length,
 with at least two entries and a positive sum. Zero entries are allowed, but
-an all-zero pattern is rejected. The copied interval array must fit
+an all-zero pattern is rejected. The copied interval data must fit
 @racket[current-skia-byte-limit].
 
 The phase shifts the start within the repeating pattern and may be negative.
@@ -214,7 +214,7 @@ the other's output. Both input effects are retained.
           [phase real? 0]
           [#:style style (or/c 'translate 'rotate 'morph) 'translate]) path-effect?]{
 Returns an effect that repeats the supplied stamp path along the drawn path.
-The stamp must contain at least one point, and its copied point payload must
+The stamp must contain at least one point, and its copied point data must
 fit @racket[current-skia-byte-limit]. The advance must remain positive after
 single-precision rounding. Phase offsets the repetitions.
 
@@ -262,7 +262,7 @@ Its coefficients are copied; it is not the canvas's current transform.
 @defproc[(make-2d-path-effect [matrix matrix?] [path skia-path?]) path-effect?]{
 Returns an effect that places copies of a stamp path on a two-dimensional
 lattice within the input region. The matrix must have a representable inverse.
-The stamp must contain points, and its copied point payload must fit the byte
+The stamp must contain points, and its copied point data must fit the byte
 limit. Later mutation or closure of the stamp does not change the effect.
 }
 

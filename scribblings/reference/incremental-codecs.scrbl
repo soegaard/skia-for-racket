@@ -154,7 +154,7 @@ incremental decoding nor snapshot conversion applies this orientation to pixels.
 
 @defproc[(codec-incremental-statistics [session codec-incremental-session?])
           (and/c hash? immutable?)]{
-Returns an immutable hash with diagnostic counters. Keys
+Returns an immutable hash table with diagnostic counters. Keys
 @racket['header-attempts], @racket['start-calls], @racket['decode-calls], and
 @racket['pixel-allocations] count native work. Keys @racket['input-bytes] and
 @racket['visible-input-bytes] distinguish accepted data from the prefix exposed
@@ -164,7 +164,7 @@ native inputs; @racket['decoder-retained?] reports decoder retention, and
 @racket['pixel-bytes] reports currently retained destination storage.
 
 Input counts remain as diagnostics after retained input storage is discarded;
-they are not current allocation sizes. The returned hash is a snapshot, not a
+they are not current allocation sizes. The returned hash table is a snapshot, not a
 live view or a guarantee of exact native heap use.
 }
 

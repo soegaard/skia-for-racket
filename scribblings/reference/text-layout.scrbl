@@ -9,13 +9,13 @@
 
 A @deftech{text layout} arranges @tech{shaped runs} into horizontal lines. The layout
 origin is the upper-left corner of its layout box, not the @tech{baseline} origin
-used by @racket[draw-simple-text] and @racket[draw-shaped-text]. The line records
+used by @racket[draw-simple-text] and @racket[draw-shaped-text]. The lines
 supply baseline positions relative to that box.
 
 For the baseline-relative @tech{font metrics} that determine a layout's first baseline
 and reported height, see @secref["skia-font-metrics"].
 
-Layout values and their line records are Racket structures. A layout keeps its
+Layout values and their lines are Racket structures. A layout keeps its
 required shaper and, for mixed text, its font manager reachable. Both must remain
 open when the layout is drawn. Retaining a reference does not prevent explicit closure.
 
@@ -188,7 +188,7 @@ and line-height rules follow @secref["skia-layout-options"]. Vertical directions
 are not accepted, and there is no single forced-script keyword.
 
 Automatic direction resolves each paragraph's base direction from its text.
-Run records are in visual order within each line. Their cluster offsets are
+Runs are in visual order within each line. Their cluster offsets are
 relative to individual run text, not global paragraph positions.
 
 The result keeps the base shaper and font manager reachable. Fallback families
@@ -307,14 +307,16 @@ layout. These accessors expose its dimensions, lines, and runs for callers that
 need to inspect placement. Inspection does not reflow text or keep the required
 shaper and font manager open.
 
-@subsection{Single-Font Layout Records}
+@subsection{Single-Font Layout Values}
+
+The lines in a single-font layout are @tt{text-layout-line} structures.
 
 @defproc[(text-layout? [v any/c]) boolean?]{
 Returns @racket[#t] for a single-font text-layout value and @racket[#f] otherwise.
 }
 
 @defproc[(text-layout-lines [layout text-layout?]) (listof text-layout-line?)]{
-Returns the line records in top-to-bottom order.
+Returns the lines in top-to-bottom order.
 }
 
 @defproc[(text-layout-width [layout text-layout?]) real?]{
@@ -330,11 +332,11 @@ Returns the chosen baseline-to-baseline step.
 }
 
 @defproc[(text-layout-line-count [layout text-layout?]) exact-nonnegative-integer?]{
-Returns the number of line records, including retained empty lines.
+Returns the number of lines, including retained empty lines.
 }
 
 @defproc[(text-layout-line? [v any/c]) boolean?]{
-Returns @racket[#t] for a single-font line record and @racket[#f] otherwise.
+Returns @racket[#t] for a single-font line structure and @racket[#f] otherwise.
 }
 
 @defproc[(text-layout-line-text [line text-layout-line?]) string?]{
@@ -362,14 +364,17 @@ Returns the line's horizontal advance measure after @tech{justification}, not it
 Returns the direction used for start/end alignment of this line.
 }
 
-@subsection{Mixed-Text Layout Records}
+@subsection{Mixed-Text Layout Values}
+
+The lines in a mixed-text layout are @tt{mixed-text-line} structures. Each line
+contains @tt{mixed-text-run} structures in visual order.
 
 @defproc[(mixed-text-layout? [v any/c]) boolean?]{
 Returns @racket[#t] for a mixed-text-layout value and @racket[#f] otherwise.
 }
 
 @defproc[(mixed-text-layout-lines [layout mixed-text-layout?]) (listof mixed-text-line?)]{
-Returns the line records in top-to-bottom order.
+Returns the lines in top-to-bottom order.
 }
 
 @defproc[(mixed-text-layout-width [layout mixed-text-layout?]) real?]{
@@ -389,7 +394,7 @@ Returns the number of lines, including retained empty lines.
 }
 
 @defproc[(mixed-text-line? [v any/c]) boolean?]{
-Returns @racket[#t] for a mixed-text line record and @racket[#f] otherwise.
+Returns @racket[#t] for a mixed-text line structure and @racket[#f] otherwise.
 }
 
 @defproc[(mixed-text-line-text [line mixed-text-line?]) string?]{
@@ -418,7 +423,7 @@ Returns the line's resolved paragraph direction for alignment.
 }
 
 @defproc[(mixed-text-run? [v any/c]) boolean?]{
-Returns @racket[#t] for a mixed-text run record and @racket[#f] otherwise.
+Returns @racket[#t] for a mixed-text run structure and @racket[#f] otherwise.
 }
 
 @defproc[(mixed-text-run-text [run mixed-text-run?]) string?]{

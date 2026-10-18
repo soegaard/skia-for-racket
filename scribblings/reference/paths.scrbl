@@ -437,8 +437,8 @@ originally supplied.
 
 The inspection functions copy their results while the native path is valid.
 Their results are Racket structures and coordinate lists, not live iterators.
-A snapshot charges a bounded logical payload against
-@racket[current-skia-byte-limit]; this is not an exact Racket heap-size estimate.
+The size counted for a snapshot must fit @racket[current-skia-byte-limit];
+this is not an exact Racket heap-size estimate.
 
 @defproc[(path-segments [path skia-path?]
                        [#:mode mode (or/c 'normal 'raw) 'normal]
@@ -1060,9 +1060,10 @@ an empty accumulator. Operations are @racket['union], @racket['difference],
 in input order. The input paths remain unchanged and the result is independently owned.
 An empty batch returns an owned empty path.
 
-The batch is bounded by @racket[current-path-operation-limit] and by the submitted
-point/verb payload under @racket[current-skia-byte-limit]. These are not native
-heap or running-time bounds. Failure raises without publishing a partial result.
+The number of operations is bounded by @racket[current-path-operation-limit].
+The size counted for submitted point and verb data must fit
+@racket[current-skia-byte-limit]. These are not native heap or running-time
+bounds. Failure raises without publishing a partial result.
 
 @racketblock[
 (with-skia ([outer (make-path)] [hole (make-path)])

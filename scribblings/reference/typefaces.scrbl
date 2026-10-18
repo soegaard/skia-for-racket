@@ -292,7 +292,7 @@ immutable name string. The index must be less than
 
 @defproc[(font-style-set-styles [styles font-style-set?]) (vectorof font-style-entry?)]{
 Returns an immutable vector of all style descriptions in enumeration order.
-The copied descriptions and UTF-8 name payload are charged against
+The copied descriptions and UTF-8 name bytes count toward
 @racket[current-skia-byte-limit]; this is not an exact Racket heap-size estimate.
 }
 

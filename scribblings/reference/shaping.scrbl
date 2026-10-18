@@ -127,7 +127,7 @@ right-to-left output. They are not a complete caret-position or selection map.
 The string has two Racket characters and three UTF-8 bytes. The cluster offset for the
 second character starts at byte offset 2, not character index 1.
 
-@bold{Conceptual diagram.} Characters, UTF-8 byte offsets, glyph records, and
+@bold{Conceptual diagram.} Characters, UTF-8 byte offsets, glyph IDs, and
 stored glyph origins are distinct data. The first table shows @racket["éA"]:
 character starts 0 and 1 correspond to byte starts 0 and 2.
 A ligature can map multiple characters to one glyph only when the selected font
@@ -135,7 +135,7 @@ actually forms it; cluster starts are not a full caret map, and RTL starts can
 descend.
 
 @reference-figure["concept-text-clusters.png"
-                  "A table aligns e-acute and A character entries with UTF-8 byte starts zero through one and two, glyph records, and cluster starts. A second row illustrates several characters mapping to one shaped glyph only for a verified ligature font."]
+                  "A table aligns e-acute and A character entries with UTF-8 byte starts zero through one and two, glyph IDs, and cluster starts. A second row illustrates several characters mapping to one shaped glyph only for a verified ligature font."]
 
 The run records glyph positions, not bounds. It contains no typeface identity
 check that would make its glyph IDs portable to an unrelated shaper.

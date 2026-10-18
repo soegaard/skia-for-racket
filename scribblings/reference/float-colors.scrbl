@@ -220,14 +220,14 @@ The geometric transform does not change the filled region.
 @(declare-exporting skia skia/float-colors #:use-sources (skia/float-colors))
 
 The shaders retain their colors and source interpretation independently of
-caller-owned input arrays or ICC bytes. Their wrappers are owned resources.
+caller-supplied lists, vectors, or ICC byte strings. Their wrappers are owned resources.
 Native construction failure raises an exception. The floating-point gradient
 interface uses @racket[#:stops] rather than the byte-color interface's
 @racket[#:positions], and its positions must increase strictly.
 
-A color sequence contains at least two @tech{floating-point colors}, in a list or
-vector. Its count must fit a signed native integer, and its charged input
-payload of 64 bytes per color must fit @racket[current-skia-byte-limit]. A
+A color list or vector contains at least two @tech{floating-point colors}.
+Its count must fit a signed native integer. The byte-limit check counts 64 bytes
+per color, and the total must fit @racket[current-skia-byte-limit]. A
 nonfalse stops list or vector must have the same length. @tech{Gradient stop} positions lie between
 zero and one and must remain strictly increasing after binary32 conversion;
 two distinct Racket numbers that round to the same stop are rejected. Omitted

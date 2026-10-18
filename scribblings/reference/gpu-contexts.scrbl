@@ -170,7 +170,7 @@ future. No active GPU scope is required, and the query remains available after
 abandonment or closure. It does not activate the provider or refresh native
 capability and cache measurements.
 
-The hash combines construction-time diagnostics with current wrapper fields:
+The hash table combines construction-time diagnostics with current wrapper fields:
 @racket['backend] and @racket['provider] are strings; @racket['generation] is
 an exact positive integer; @racket['state] is a string; @racket['live_children],
 @racket['pending_releases], and @racket['failed_releases] are counts; and
