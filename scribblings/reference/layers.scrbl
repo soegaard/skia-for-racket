@@ -100,8 +100,8 @@ For these settings, use @racket[call-with-canvas-layer-rec]. Like
 the canvas state afterward. Its @racket[#:options] argument accepts a
 @tech{layer-options value} describing the requested setup.
 
-A @deftech{layer-options value} is an immutable description of layer bounds
-and rendering flags. Creating an options value does not itself create a layer.
+A @deftech{layer-options value} describes layer bounds and rendering flags. It
+is immutable. Creating an options value does not itself create a layer.
 Supply any paint or backdrop filter separately when creating the layer. A
 backdrop filter can initialize the layer from filtered existing content.
 For manual layer management, pass the same options to
