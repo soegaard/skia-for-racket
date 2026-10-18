@@ -139,7 +139,7 @@ jobs:
           PLTUSERHOME: ${{ runner.temp }}/racket-user
         run: |
           raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
-          raco setup --no-zo --pkgs skia-for-racket
+          raco setup --pkgs skia-for-racket
       - name: Check Reference coverage, bindings, and installed links
         env:
           PLTUSERHOME: ${{ runner.temp }}/racket-user
