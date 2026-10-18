@@ -11,11 +11,30 @@
 @defmodule[skia/color4f #:no-declare]
 @(declare-exporting skia skia/color4f #:use-sources (skia/color4f))
 
+Floating-point colors are useful for color-managed or higher-precision drawing.
+Use them when you need to:
+
+@itemlist[
+ @item{specify a color in a particular source color space, such as linear sRGB;}
+ @item{preserve fractional or extended RGB values instead of immediately
+       reducing them to eight-bit channels; or}
+ @item{create color-managed paints with @racket[make-paint/color4f] or
+       @seclink["skia-float-shaders"]{floating-point gradients}.}]
+
+The source space matters. An opaque gray with RGB components of 0.5 in linear
+sRGB becomes approximately 188 per channel when drawn to an eight-bit sRGB
+surface. The same components interpreted as sRGB become 128.
+
+For ordinary UI drawing, the byte-valued @tech{color specification}s, such as
+@racket['red] or @racket["#326DE6"], are usually simpler. Floating-point colors
+do not themselves enable HDR output or make an eight-bit target higher
+precision; the target surface's format still determines the stored precision.
+
 A @deftech{floating-point color} is a detached immutable value with red, green,
 blue, and alpha components. It uses @tech{unpremultiplied alpha}: RGB values are not
 multiplied by alpha and need not lie between zero and alpha. RGB may be negative
-or greater than one. A value does not carry a color space, choose a pixel
-format, or enable HDR output merely by containing extended components.
+or greater than one. A value does not carry a color space or choose a pixel
+format.
 
 Floating-point colors are distinct from the byte-valued @tech{color specification}s
 accepted by @racket[color?]. Operations whose names end in @tt{color4f} or
@@ -115,8 +134,7 @@ copying them. A valid-looking header is not sufficient: native interpretation
 must also succeed. See @secref["skia-color-space-descriptors"].
 
 The target's color space and storage determine color conversion, clipping,
-and quantization. Drawing a floating-point color into an eight-bit surface
-does not turn that surface into floating-point storage. Native resources must
+and quantization. Native resources must
 be open and used according to their thread and GPU-context lifetime rules.
 
 @defproc[(make-paint/color4f [color color4f?]
@@ -143,8 +161,7 @@ paint allocation, the new paint is released before the exception is raised.
   (surface-pixel surface 0 0))
 ]
 
-The RGB bytes are approximately 188, not 128: the supplied components describe
-linear light, while the destination stores sRGB-encoded bytes. Alpha is 255.
+The pixel has RGB bytes of approximately 188 and alpha 255.
 
 
 @racketblock[
