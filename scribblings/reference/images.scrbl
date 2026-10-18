@@ -6,10 +6,14 @@
 @title[#:tag "skia-images"]{Images}
 
 An @deftech{image} is an immutable source of pixels for drawing, encoding, or
-readback. Its native storage is owned by its resource wrapper. Immutability
-means that drawing to another target does not edit the image; it does not mean
-that decoding must already be complete or that storage must be CPU-resident.
-An image snapshot and its source @tech{surface} have separate lifetimes.
+readback. Drawing to another target does not change its pixels. Pixel decoding
+can be deferred, and pixels may be stored in CPU or GPU memory.
+
+An image value wraps a native Skia object. Racket can reclaim a CPU image when
+it becomes unreachable. Use @racket[skia-close!] to release it at a specific
+time; see @secref["skia-resources"]. An image returned by
+@racket[surface-snapshot] remains usable after its source @tech{surface} is
+released.
 
 The constructors here create CPU-compatible images. @tech{GPU images} satisfy the
 same @racket[image?] predicate but retain additional context requirements.

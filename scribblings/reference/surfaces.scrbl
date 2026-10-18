@@ -1,52 +1,68 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract file/convertible skia))
+          (for-label racket/base racket/contract skia))
 
 @title[#:tag "skia-surfaces"]{Surfaces and Canvas Access}
 
-A @deftech{surface} owns a pixel-based drawing target. A @deftech{canvas}
-provides access to a drawing target and carries drawing state, including the
-current @tech{canvas transform} and @tech{clip}. A surface has an associated canvas;
-canvases can also belong to recordings, documents, or @tech{GPU frames}.
+A @deftech{surface} is a drawing target that stores pixels. A @deftech{canvas}
+provides drawing operations for a target and keeps track of drawing state,
+including the current @tech{canvas transform} and @tech{clip}. A surface has an
+associated canvas; canvases can also draw into recordings, documents, or
+@tech{GPU frames}.
 
-Several canvas wrappers obtained from one surface refer to the same target and
-state; they are not independent layers. A surface canvas is a
-@tech{borrowed canvas}, not an independently closeable resource.
+Use @racket[make-surface] to create a surface and @racket[surface-canvas] to
+obtain its canvas. See @secref["skia-resources"] for general rules about resource
+lifetimes and Racket threads.
 
 @local-table-of-contents[#:style 'immediate-only]
+
+@section{Working with Surfaces}
+
+In DrRacket's interactions window, evaluating a surface created by
+@racket[make-surface] displays its current pixels. Evaluate the surface again
+after drawing to see the updated pixels. Use @racket[save-png] to save the
+drawing to a file, or @racket[surface->png-bytes] to obtain PNG bytes; see
+@secref["skia-encoding"].
+
+The following example displays a blue rectangle:
+
+@racketblock[
+(require skia)
+(define surface (make-surface 120 80 #:background 'white))
+(canvas-clear! (surface-canvas surface) 'blue)
+surface
+]
 
 @section{Construction and Canvas Access}
 
 @defproc[(surface? [v any/c]) boolean?]{
-Returns @racket[#t] for a Skia surface and @racket[#f] otherwise. The predicate
-recognizes CPU and GPU surfaces, including closed ones. It does not establish
-that a surface is open or CPU-backed.
+Returns @racket[#t] for a Skia surface and @racket[#f] otherwise.
 }
 
 @defproc[(canvas? [v any/c]) boolean?]{
-Returns @racket[#t] for a Skia canvas and @racket[#f] otherwise. A canvas still
-satisfies this predicate after its owner or scope has expired.
+Returns @racket[#t] for a Skia canvas and @racket[#f] otherwise.
 }
 
 @defproc[(make-surface [width (integer-in 1 32768)]
                        [height (integer-in 1 32768)]
                        [#:background background color? 'transparent]
                        [#:color-space space (or/c color-space? #f) #f]) surface?]{
-Creates an owned CPU raster surface with the given pixel dimensions and clears
-it to @racket[background]. It uses eight-bit RGBA storage with premultiplied
-alpha. The required @racket[(* 4 width height)] bytes must not exceed
-@racket[(current-skia-byte-limit)]. Native allocation can still fail below that
-limit.
+Creates a surface containing a bitmap that is @racket[width] pixels wide and
+@racket[height] pixels high. It initially fills every pixel with
+@racket[background], which defaults to @racket['transparent].
 
-The @racket[space] argument supplies a color-space tag. The default @racket[#f]
-leaves the surface untagged; it does not declare sRGB. A supplied color-space
-resource must be open on the appropriate thread during construction. The native
-surface retains its own reference to that space, rather than taking ownership
-of the caller's wrapper.
+Each pixel has eight-bit red, green, blue, and alpha components. The RGB
+components use @tech{premultiplied alpha}. The bitmap requires
+@racket[(* 4 width height)] bytes of storage. This size must not exceed
+@racket[(current-skia-byte-limit)]. Creation can still fail if memory is
+unavailable.
 
-The constructor requires the native Skia library. It does not initialize a GUI,
-create a GPU context, or select a fallback backend. See
+The @racket[space] argument associates a @tech{color space} with the surface.
+The default, @racket[#f], means that no color space is associated with the
+surface.
+
+The returned surface is a resource with its own lifetime. See
 @secref["skia-resources"] for release rules.
 
 @racketblock[
@@ -55,15 +71,12 @@ create a GPU context, or select a fallback backend. See
 }
 
 @defproc[(surface-canvas [surface surface?]) canvas?]{
-Returns a canvas for @racket[surface]. The surface must be open, accessible on
-the owning thread, and not exclusively borrowed by another target scope.
-The result borrows the surface's lifetime. Closing the surface invalidates it.
-The call does not clear pixels or reset the surface's drawing state.
+Returns a canvas wrapper for @racket[surface]. Each call returns a new wrapper,
+but all wrappers for one surface access the same canvas and share its drawing
+state. The call does not clear pixels or reset that state.
 
-For a GPU surface, the matching GPU activation is also required and the returned
-canvas is limited to that activation's lease. Retaining the wrapper outside
-that scope does not extend the lease. Use the canvas supplied by each GPU frame
-callback during that callback, rather than keeping a canvas for a later frame.
+The returned canvas cannot be used after @racket[surface] is released.
+For GPU surfaces, see @secref["skia-gpu-surfaces"].
 
 @racketblock[
 (define surface (make-surface 120 80))
@@ -74,53 +87,34 @@ callback during that callback, rather than keeping a canvas for a later frame.
 @section{Dimensions and Backing}
 
 @defproc[(surface-width [surface surface?]) exact-positive-integer?]{
-Returns the stored width of @racket[surface] in pixels. This is a metadata query:
-it remains available after closure and does not require GPU activation.
+Returns the stored width of @racket[surface] in pixels.
 }
 
 @defproc[(surface-height [surface surface?]) exact-positive-integer?]{
-Returns the stored height of @racket[surface] in pixels, including after closure.
-Like @racket[surface-width], it does not validate the surface for drawing.
+Returns the stored height of @racket[surface] in pixels.
 }
 
 @defproc[(surface-backend [surface surface?]) symbol?]{
-Returns @racket['raster] for an ordinary CPU surface or the selected GPU backend
-for a GPU surface. The result describes backing, not resource liveness. It can
-be read after closure and without activating a GPU context.
+Returns @racket['raster] for a surface stored in CPU memory, or the selected
+backend for a @tech{GPU surface}. Surfaces created by @racket[make-surface]
+use @racket['raster].
 }
 
 @defproc[(surface-color-space [surface surface?]) (or/c color-space? #f)]{
-Returns an independently owned reference to the surface's color space, or
-@racket[#f] for an untagged surface. A returned resource can be closed separately
-and remains usable after the surface is closed. The surface must be valid for
-native use; GPU surfaces require their matching active context.
+Returns the @tech{color space} associated with @racket[surface], or @racket[#f]
+if no color space is associated with it.
 }
 
 @section[#:tag "skia-surface-readback"]{Snapshots and Pixel Copies}
 
-The following operations accept CPU surfaces. They reject GPU surfaces instead
-of performing an implicit readback. A GPU application must request a CPU copy
-through its explicit GPU-transfer API first. These operations read pixels, not
-the canvas's current local coordinate system.
-
-@subsection{Standard PNG Conversion}
-
-Surfaces implement @racketmodname[file/convertible]'s protocol for
-@racket['png-bytes]. It is equivalent to calling @racket[surface->png-bytes]
-with its defaults, so each conversion reflects the surface's current pixels;
-encoded data is not cached. The returned bytes are detached from the surface.
-Unsupported conversion requests return the exact supplied default without
-checking the resource or doing native work. Supported requests preserve the
-ordinary lifetime, thread, byte-limit, and encoder errors even when a default
-is supplied. GPU surfaces remain convertible values, but PNG conversion still
-requires an explicit CPU transfer and never initiates implicit readback.
+The operations in this section require a surface whose pixels are stored in
+CPU memory, such as one created by @racket[make-surface]. For GPU surfaces,
+see @secref["skia-gpu-surfaces"] for snapshots and
+@secref["skia-gpu-transfers"] for pixel copies.
 
 @defproc[(surface-snapshot [surface surface?]) image?]{
-Returns an owned immutable image of the surface's current pixels. Subsequent
-drawing to the surface does not change the snapshot, and the image remains
-usable after the surface is closed. The native implementation may share storage
-until a write requires separation; the call does not promise an immediate copy
-of every pixel. The image has its own lifetime.
+Returns an @tech{image} of @racket[surface]'s current pixels. Later drawing
+to @racket[surface] does not change the image.
 
 @racketblock[
 (with-skia ([surface (make-surface 2 1 #:background 'red)]
@@ -132,32 +126,39 @@ of every pixel. The image has its own lifetime.
 @reference-figure["surface-snapshot-independence.png"
                   "Two nearest-neighbor enlargements of the same two-by-one surface at different times. The snapshot remains two opaque red pixels, while the surface after clear has two opaque blue pixels."]
 
-The snapshot is captured before clearing the surface. Both panels show actual 2 by 1 results at
-the same scale, rather than colors painted as an illustration.
+The snapshot keeps the two red pixels captured before the surface is cleared
+to blue. Both results are enlarged to make the pixels visible.
 }
 
 @defproc[(surface->rgba-bytes [surface surface?]
                              [#:premultiplied? premultiplied? boolean? #f]
                              [#:color-space space (or/c color-space? #f) #f]) bytes?]{
-Returns a new mutable byte string containing tightly packed rows from top to
-bottom. Each pixel has red, green, blue, and alpha bytes in that order; the row
-length is four times the surface width. The result has no row padding and does
-not borrow the surface. Its length must fit @racket[current-skia-byte-limit].
+Returns a new mutable byte string containing @racket[surface]'s pixels. Rows
+are stored from top to bottom, with pixels from left to right. Each pixel
+occupies four bytes: red, green, blue, and alpha, in that order. There are no
+extra bytes between rows.
 
-The default returns unpremultiplied RGB. Supplying @racket[#t] requests RGB
-multiplied by alpha. Low-alpha conversion may lose precision, and RGB at zero
-alpha cannot be recovered from premultiplied storage. A supplied @racket[space]
-requests a destination color space for native pixel conversion. The default
-@racket[#f] requests an untagged destination; it does not attach an sRGB profile.
-Native read or conversion failure raises an exception rather than returning
-partial bytes.
+The default uses @tech{unpremultiplied alpha}. When @racket[premultiplied?]
+is @racket[#t], the result uses @tech{premultiplied alpha}. Converting from
+premultiplied storage can lose precision, especially for small alpha values.
+The original RGB values cannot be recovered when alpha is zero.
+
+The @racket[space] argument selects a destination @tech{color space} for the
+pixel conversion. The default, @racket[#f], specifies no destination color
+space. The byte string does not include color-space information.
+
+The byte string's length is four times the product of the surface width and
+height. It must not exceed @racket[(current-skia-byte-limit)].
+If reading or converting the pixels fails, the function raises an exception.
 }
 
 @defproc[(surface-pixel [surface surface?]
                         [x exact-nonnegative-integer?]
                         [y exact-nonnegative-integer?]) rgba?]{
-Returns one pixel as an unpremultiplied @racket[rgba] value. The coordinates are
-integer pixel indices: @racket[x] must be less than the width and @racket[y]
-less than the height. The canvas transform and clip do not affect the query.
-The result is detached; it does not include a color-space tag.
+Returns the pixel at @racket[x], @racket[y] as an @racket[rgba] value using
+@tech{unpremultiplied alpha}. The top-left pixel has both coordinates equal
+to @racket[0].
+The @racket[x] coordinate must be less than the surface width, and @racket[y]
+must be less than the surface height. The @tech{canvas transform} and
+@tech{clip} do not affect which pixel is read.
 }

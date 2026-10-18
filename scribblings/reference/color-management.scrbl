@@ -13,6 +13,12 @@ interpretation, not the channel values. The @racket[color-space?] predicate is
 provided by @racketmodname[skia], not @racketmodname[skia/color]. The standard
 constructors and queries are also provided by @racketmodname[skia].
 
+A color-space value wraps a native Skia object. Racket can reclaim it when
+the value becomes unreachable. Use @racket[skia-close!] to release it at a
+specific time; see @secref["skia-resources"]. A color space obtained from an
+image or surface remains usable after that image or surface is released.
+Releasing a color-space value does not change images or surfaces that use it.
+
 An omitted or @racket[#f] color-space argument does not mean sRGB. Its meaning
 depends on the operation; for @racket[make-surface] and @racket[rgba-bytes->image],
 it creates an untagged result rather than selecting a default profile.

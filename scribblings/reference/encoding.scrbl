@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia))
+@(require (for-label racket/base racket/contract file/convertible skia))
 
 @title[#:tag '("skia-png" "skia-encoding")]{Image Encoding}
 
@@ -83,6 +83,13 @@ an ICC override changes their description. Neither changes the source image.
 Encodes a temporary snapshot of an open CPU surface as PNG. The options have
 the same meaning as for @racket[save-png], but no output file is opened.
 The temporary image is released when encoding finishes or raises an exception.
+
+Surfaces also support PNG conversion through @racketmodname[file/convertible].
+The expression @racket[(convert surface 'png-bytes)] is equivalent to
+@racket[(surface->png-bytes surface)] with the default options. Other conversion
+requests return the supplied default value without inspecting the surface.
+For a @racket['png-bytes] request, conversion errors raise exceptions even when
+a default value is supplied.
 }
 
 @defproc[(image->png-bytes [image image?]
