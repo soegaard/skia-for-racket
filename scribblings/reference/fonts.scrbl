@@ -412,8 +412,8 @@ fallback, combining marks, or contextual forms.
 }
 
 @defproc[(font-text->glyphs [font font?] [text string?]) (vectorof (integer-in 0 #xffff))]{
-Maps UTF-8 text directly to glyph IDs without shaping or fallback. A missing
-mapping yields glyph zero. The nonempty result is a new mutable vector; the
+Maps the characters in @racket[text] to glyph IDs without shaping or fallback.
+A missing mapping yields glyph zero. The nonempty result is a new mutable vector; the
 empty result is an empty vector. The native glyph buffer is bounded by
 @racket[current-skia-byte-limit].
 }

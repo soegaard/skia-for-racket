@@ -45,8 +45,7 @@ pixels; a gradient is not a color-profile declaration.
 @section{Constant and Linear Shaders}
 
 @defproc[(make-color-shader [color color?]) shader?]{
-Returns a shader that produces the same color at every coordinate. Its input
-is normalized to the byte-valued color representation.
+Returns a shader that produces @racket[color] at every coordinate.
 }
 
 @defproc[(make-linear-gradient-shader [x0 real?] [y0 real?] [x1 real?] [y1 real?]

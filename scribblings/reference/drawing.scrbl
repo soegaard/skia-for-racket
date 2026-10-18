@@ -126,8 +126,7 @@ although it need not produce visible output.
 
 The @racket[#f] option leaves the contour open for stroking. Filling still uses
 an implicit closing edge, as for any open path contour. Use a stroke paint to
-draw an unfilled open polyline. The temporary path used by this function is
-released before the call returns.
+draw an unfilled open polyline.
 
 @racketblock[
 (with-skia ([surface (make-surface 120 80 #:background 'white)]

@@ -125,8 +125,7 @@ per-character fallback.
 Draws the layout box with origin at @racket[x] and @racket[y], using each line's
 stored x offset and baseline. The canvas transform
 and existing clip apply; this operation does not clip to the box or reflow text.
-The layout's shaper must remain open. Temporary blobs or paths are released by
-the underlying shaped-run drawing operations.
+The layout's shaper must remain open.
 
 @racketblock[
 (with-skia ([surface (make-surface 260 150 #:background 'white)]

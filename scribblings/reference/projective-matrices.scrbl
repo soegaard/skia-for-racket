@@ -59,14 +59,13 @@ The immutable three by three identity matrix.
 
 @defproc[(vector->matrix3 [coefficients vector?])
           matrix3?]{
-Copies exactly nine row-major coefficients into a new matrix, applying the
-binary32 checks. Later mutation of the input vector does not change the result.
+Copies exactly nine row-major coefficients into a new matrix. Later mutation
+of the input vector does not change the result.
 }
 
 @defproc[(matrix3->vector [matrix matrix3?])
           (and/c vector? immutable?)]{
-Returns the immutable nine-coefficient row-major vector. No copy is needed to
-protect the matrix, and no native storage is borrowed.
+Returns the immutable nine-coefficient row-major vector.
 }
 
 @defproc[(matrix3-ref [matrix matrix3?]
@@ -74,7 +73,7 @@ protect the matrix, and no native storage is borrowed.
           [column (integer-in 0 2)])
           real?]{
 Returns the coefficient at the zero-based row and column. Indices are not
-wrapped or interchanged with the native storage order.
+wrapped.
 }
 
 @defproc[(matrix3-compose [matrix matrix3?]
@@ -125,8 +124,7 @@ homogeneous division, even when that third coefficient is not 1.
 
 @defproc[(matrix->matrix3 [matrix matrix?])
           matrix3?]{
-Embeds a six-coefficient affine matrix into homogeneous coordinates and rounds
-its coefficients to binary32.
+Embeds a six-coefficient affine matrix into homogeneous coordinates.
 }
 
 @defproc[(matrix3->matrix [matrix matrix3?])
@@ -204,14 +202,13 @@ The immutable four by four identity matrix.
 
 @defproc[(vector->matrix4 [coefficients vector?])
           matrix4?]{
-Copies exactly sixteen row-major coefficients, checking and rounding them to
-binary32. Later mutation of the input vector has no effect.
+Copies exactly sixteen row-major coefficients into a new matrix. Later
+mutation of the input vector does not change the result.
 }
 
 @defproc[(matrix4->vector [matrix matrix4?])
           (and/c vector? immutable?)]{
-Returns the immutable sixteen-coefficient row-major vector, not the
-column-major storage representation used by the native canvas ABI.
+Returns the immutable sixteen-coefficient row-major vector.
 }
 
 @defproc[(matrix4-ref [matrix matrix4?]
@@ -296,7 +293,7 @@ stricter than asking whether its projection onto z = 0 happens to be affine.
 @defproc[(matrix->matrix4 [matrix matrix?])
           matrix4?]{
 Embeds an affine matrix into four-dimensional homogeneous coordinates,
-preserving a unit z axis and rounding its coefficients to binary32.
+preserving a unit z axis.
 }
 
 @defproc[(matrix4->matrix [matrix matrix4?])
@@ -401,9 +398,8 @@ promise that PDF or SVG preserves a perspective transformation.
 
 @defproc[(canvas-matrix4 [canvas canvas?])
           matrix4?]{
-Returns the full native canvas matrix as a detached row-major value. The
-native storage layout is converted before return. A nonfinite native matrix
-cannot be represented and raises an exception.
+Returns the full native canvas matrix as a detached row-major value. A
+nonfinite native matrix cannot be represented and raises an exception.
 }
 
 @defproc[(canvas-set-matrix3! [canvas canvas?]

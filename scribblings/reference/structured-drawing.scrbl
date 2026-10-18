@@ -48,8 +48,8 @@ use their corresponding connected triangle organizations.
 
 Texture coordinates and colors, when supplied, must each have one entry per
 position. Texture coordinates use the same point format as positions; colors
-are color specifications copied as packed ARGB integers. They do not remain
-linked to the caller's collections.
+are @tech{color specification}s. The mesh's copies are independent of later
+changes to the caller's collections.
 
 Indices, when supplied, must be unsigned 16-bit exact integers within the
 position array. There must be at least three submitted indices or, without an
@@ -71,7 +71,7 @@ be divisible by three. An explicitly empty index array is not treated as omitted
 The figure is a magnification of the exact 24 by 24 drawing target. The white paint preserves
 the mesh's vertex colors under color modulation; it is not an additional white triangle.
 
-The mesh contains three vertices. Its native arrays do not borrow the input lists.
+The mesh contains three vertices.
 }
 
 @defproc[(vertices-mode [mesh vertices?])
@@ -144,8 +144,8 @@ Returns @racket[#t] for a cubic-patch specification and @racket[#f] otherwise.
           cubic-patch?]{
 Copies exactly twelve two-coordinate boundary points. Optional colors and
 texture coordinates each contain exactly four entries, in corner order, rather
-than twelve entries. Colors are stored as packed ARGB values. This constructor
-creates no native resource; submission storage is allocated only while drawing.
+than twelve entries. Colors are @tech{color specification}s. The result is a
+detached specification that needs no explicit closure.
 }
 
 @defproc[(cubic-patch-points [patch cubic-patch?])
@@ -174,8 +174,7 @@ Returns the immutable four-point shader-coordinate vector, or @racket[#f] when o
           void?]{
 Tessellates and draws the patch with native Skia. The blend-mode argument
 combines patch colors with paint shading, independently of destination blending
-selected by the paint. Temporary arrays are retained only for the synchronous
-call; the detached patch remains reusable afterward.
+selected by the paint. The detached patch remains reusable afterward.
 
 @racketblock[
 (define patch
@@ -237,8 +236,8 @@ more than the x-division count times one more than the y-division count. Each
 entry is @racket['default], @racket['transparent], or @racket['fixed-color].
 Colors require explicit cell types and must also cover the whole grid. Any
 fixed-color cell requires the color vector, including entries for the other
-cell types. Colors are copied as packed ARGB values; unused entries still
-undergo normal validation.
+cell types. Every color entry must be a valid @tech{color specification}, even
+when its cell type does not use the color.
 
 
 @racketblock[
@@ -377,8 +376,8 @@ location in the atlas image.
 Draws one image batch with matching transform and source-rectangle counts.
 Every transform must satisfy @racket[atlas-transform?]. Source rectangles are
 nonempty rectangles contained in the image; fractional source coordinates are
-allowed. Optional packed colors are supplied as color
-specifications, one per sprite. They combine with source samples using
+allowed. Optional colors are @tech{color specification}s, one per sprite.
+They combine with source samples using
 @racket[blend-mode]; the optional paint controls the resulting destination draw.
 
 A supplied cull rectangle is a local native rejection hint, not a clip. The

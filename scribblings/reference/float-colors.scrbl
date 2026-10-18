@@ -114,8 +114,7 @@ The constructors with a required @racket[#:color-space] keyword accept
 copying them. A valid-looking header is not sufficient: native interpretation
 must also succeed. See @secref["skia-color-space-descriptors"].
 
-These operations convert color components to binary32 at the native boundary.
-The target's color space and storage determine further conversion, clipping,
+The target's color space and storage determine color conversion, clipping,
 and quantization. Drawing a floating-point color into an eight-bit surface
 does not turn that surface into floating-point storage. Native resources must
 be open and used according to their thread and GPU-context lifetime rules.

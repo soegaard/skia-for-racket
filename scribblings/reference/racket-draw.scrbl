@@ -62,9 +62,8 @@ dimensions as the source bitmap. Its own loaded mask is not applied
 recursively. In physical mode, the bridge chooses the nearest mask pixel for each
 source-pixel center, accounting for differing backing scales.
 
-Pixel readback uses premultiplied ARGB samples. The bridge reorders them to
-premultiplied RGBA and multiplies every premultiplied component by the resolved
-mask coverage. Invalid premultiplied source samples, where an RGB component
+The bridge multiplies each premultiplied RGB component and alpha by the
+resolved mask coverage. Invalid premultiplied source samples, where an RGB component
 exceeds alpha, raise an exception. Fully transparent output has zero RGB.
 Monochrome black and white samples remain literal black and white; this is a
 pixel copy, not the foreground/background stencil behavior of a bitmap draw.

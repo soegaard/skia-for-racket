@@ -62,9 +62,8 @@ Returns a pure specification with zero bounds and zero radii, equivalent to
 
 @section{Normalization and Transformations}
 
-These operations create temporary native rounded rectangles and copy the results
-back into detached values. They require Skia, but the returned values have no
-native lifetime. Inputs are unchanged. Native normalization can reduce oversized
+These operations require Skia but return detached values that need no explicit
+closure. Inputs are unchanged. Native normalization can reduce oversized
 radii and replace degenerate corners; inspect the result rather than assuming
 that supplied radii were retained. Radius components and inset/outset distances
 must be nonnegative after binary32 rounding. A negative input that rounds to

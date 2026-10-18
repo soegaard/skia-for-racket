@@ -1003,7 +1003,7 @@ and traversal direction; recognition alone does not imply a closed contour.
 @defproc[(path-as-rounded-rect [path path?])
           (or/c rounded-rect? #f)]{
 Returns a detached, native-normalized rounded rectangle when recognized, or
-@racket[#f] otherwise. No native rounded-rectangle handle escapes.
+@racket[#f] otherwise.
 }
 
 @defproc[(path-rectangle? [v any/c])

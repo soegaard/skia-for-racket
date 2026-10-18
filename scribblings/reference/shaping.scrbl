@@ -166,9 +166,8 @@ lifetime rules. The caller is responsible for matching the run to its shaping
 font. The operation does not
 close its arguments.
 
-An empty run draws nothing. For other runs the function creates and releases
-a temporary text blob, or a temporary outline path when outline output is
-selected. Outline output has the limitations of @racket[shaped-run->path].
+An empty run draws nothing. When outline output is selected, drawing has the
+limitations of @racket[shaped-run->path].
 }
 
 @section[#:tag "skia-shaped-run-inspection"]{Inspecting Shaped Runs}

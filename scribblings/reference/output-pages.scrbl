@@ -53,8 +53,8 @@ point equivalents must each be from 0.001 through 14400.
 Margins are a nonnegative real number applied to all four sides, or a list
 of four such values in left, top, right, bottom order. This is not CSS order.
 The paired horizontal and vertical margins must leave a positive content area.
-The background is @racket[#f] for no background drawing or a color specification
-normalized to an RGBA value. The clip flag controls clipping to the content area.
+The background is @racket[#f] for no background drawing or a
+@tech{color specification}. The clip flag controls clipping to the content area.
 
 The callback must accept one canvas argument and have no required keyword
 arguments. It draws in page units with its origin at the content area's upper-left.
@@ -111,7 +111,7 @@ Returns the page's length unit.
 Returns the normalized left, top, right, bottom margins in page units.
 }
 @defproc[(output-page-background [page output-page?]) (or/c rgba? #f)]{
-Returns the normalized background color or @racket[#f] for no background drawing.
+Returns the background as an RGBA color or @racket[#f] for no background drawing.
 }
 @defproc[(output-page-clip? [page output-page?]) boolean?]{
 Returns whether drawing is clipped to the content rectangle.

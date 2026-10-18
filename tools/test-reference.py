@@ -1431,6 +1431,65 @@ class R2ProseTests(unittest.TestCase):
         self.assertIn('last\nmatrix acts on a point first', text)
         self.assertIn('single precision', text)
 
+    def test_inputs_are_described_without_automatic_encoding_or_packing(self):
+        fonts = ' '.join(self.text('fonts.scrbl').split())
+        self.assertIn('Maps the characters in @racket[text] to glyph IDs', fonts)
+        self.assertNotIn('Maps UTF-8 text', fonts)
+        structured = ' '.join(self.text('structured-drawing.scrbl').split())
+        self.assertIn('Optional colors are @tech{color specification}s, one per sprite',
+                      structured)
+        for phrase in ('Optional packed colors', 'copied as packed ARGB',
+                       'Colors are stored as packed ARGB'):
+            self.assertNotIn(phrase, structured)
+        self.assertNotIn('normalized to the byte-valued color representation',
+                         ' '.join(self.text('shaders.scrbl').split()))
+        self.assertNotIn('normalized to an RGBA value',
+                         ' '.join(self.text('output-pages.scrbl').split()))
+
+    def test_matrix_entries_omit_routine_native_preparation(self):
+        affine = ' '.join(self.text('matrices.scrbl').split())
+        projective = ' '.join(self.text('projective-matrices.scrbl').split())
+        for phrase in ('same checks and rounding', 'rounded and range-checked',
+                       'no native conversion or allocation'):
+            self.assertNotIn(phrase, affine)
+        for phrase in ('native storage layout is converted',
+                       'storage representation used by the native canvas ABI',
+                       'applying the binary32 checks'):
+            self.assertNotIn(phrase, projective)
+        # Precision remains a shared rule; vector ownership and failures remain explicit.
+        self.assertIn('Mapping operations round input coordinates and results', affine)
+        self.assertIn('later mutation of the vector does not change the matrix', affine)
+        self.assertIn('Mapping queries instead return immutable binary64 coordinate vectors',
+                      projective)
+        self.assertIn('nonfinite native matrix cannot be represented and raises an exception',
+                      projective)
+
+    def test_caller_visible_conversion_results_and_restrictions_are_preserved(self):
+        cases = {
+            'structured-drawing.scrbl': (
+                'Returns the immutable packed-ARGB color vector',
+                'exactly four entries, in corner order',
+                'even when its cell type does not use the color',
+                "independent of later changes to the caller's collections"),
+            'shaping.scrbl': ('UTF-8 byte offset into @racket[text]',
+                             'limitations of @racket[shaped-run->path]'),
+            'text-blobs.scrbl': ('malformed byte sequences are rejected',),
+            'pdf-documents.scrbl': ('Metadata strings must not contain NUL',),
+            'float-colors.scrbl': ('does not round the stored RGB to binary32',
+                                  'stores the converted color in extended sRGB'),
+            'rounded-rectangles.scrbl': ('must be nonnegative after binary32 rounding',
+                                        'Inputs are unchanged'),
+            'output-pages.scrbl': ('Returns the background as an RGBA color',),
+            'racket-draw.scrbl': ('premultiplied RGB component and alpha',
+                                 'exceeds alpha, raise an exception'),
+            'raster-buffers.scrbl': ('Floating-point samples can lose range and precision',),
+        }
+        for chapter, phrases in cases.items():
+            text = ' '.join(self.text(chapter).split())
+            for phrase in phrases:
+                with self.subTest(chapter=chapter, phrase=phrase):
+                    self.assertIn(phrase, text)
+
     def test_surface_snapshot_documents_independent_pixels(self):
         self.assertIn('Later drawing\nto @racket[surface] does not change the image.',
                       self.text('surfaces.scrbl'))

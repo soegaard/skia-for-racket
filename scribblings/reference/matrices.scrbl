@@ -74,13 +74,12 @@ Returns the vertical translation coefficient.
 
 @defproc[(matrix->vector [matrix matrix?]) (vectorof real?)]{
 Returns an immutable six-element vector in the order
-@tt{xx, yx, xy, yy, x0, y0}. It contains copied coefficient values, not native storage.
+@tt{xx, yx, xy, yy, x0, y0}.
 }
 
 @defproc[(vector->matrix [coefficients (vector/c real? real? real? real? real? real?)]) matrix?]{
-Returns a matrix from the six coefficients in @racket[coefficients], applying
-the same checks and rounding as @racket[make-matrix]. The input may be mutable;
-later mutation of the vector does not change the matrix.
+Returns a matrix from the six coefficients in @racket[coefficients]. The input
+may be mutable; later mutation of the vector does not change the matrix.
 }
 
 @section{Common Transforms}
@@ -154,7 +153,7 @@ For the same two orders shown as local canvas coordinates and calls, see
                   "A blue rectangle rotated about its center and translated to the middle of a white canvas."]
 
 @defproc[(matrix-invert [matrix matrix?]) (or/c matrix? #f)]{
-Returns the inverse of @racket[matrix], rounded to the matrix representation.
+Returns the inverse of @racket[matrix].
 Returns @racket[#f] when the determinant of the stored linear coefficients is
 zero, or an inverse coefficient is outside the accepted range. The test does
 not use an arbitrary near-zero tolerance. A returned inverse can still magnify
@@ -170,7 +169,6 @@ rounding errors when the original matrix is poorly conditioned.
 
 @defproc[(matrix-map-point [matrix matrix?] [x real?] [y real?]) (values real? real?)]{
 Returns the transformed point as two values, including the translation terms.
-Input coordinates and both results are rounded and range-checked.
 }
 
 @defproc[(matrix-map-vector [matrix matrix?] [x real?] [y real?]) (values real? real?)]{
@@ -302,8 +300,7 @@ coordinates 3 and 4 maps to coordinates 10 and 20.
           (vector/c real? real? real? real?)]{
 Returns the immutable vector of coefficients in order @math{scos},
 @math{ssin}, @math{tx}, and @math{ty}. They map a local point to
-@math{(scos x - ssin y + tx, ssin x + scos y + ty)}. The vector is detached;
-no native conversion or allocation occurs in this query.
+@math{(scos x - ssin y + tx, ssin x + scos y + ty)}. The vector is detached.
 }
 
 @close-eval[atlas-eval]

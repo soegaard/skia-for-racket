@@ -132,7 +132,7 @@ length, or a byte-limit failure leave the buffer unchanged. The buffer must be i
           boolean? #f])
           bytes?]{
 Returns a detached mutable, tightly packed RGBA8888 copy. The default is @tech{unpremultiplied alpha}.
-This converts storage format and alpha representation through the native pixel reader, retaining
+This converts storage format and alpha representation while retaining
 the buffer's color interpretation rather than implicitly converting to sRGB. Floating-point
 samples can lose range and precision. There is no row padding in the result.
 }
