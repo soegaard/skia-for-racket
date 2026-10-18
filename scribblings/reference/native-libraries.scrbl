@@ -11,19 +11,20 @@
 @defmodule[skia/native-capabilities #:no-declare]
 @(declare-exporting skia skia/native-capabilities #:use-sources (skia/native-capabilities))
 
-Native availability checks explicitly load and preflight libraries. Importing a public library or
-reading the installed ABI catalogue does not establish native availability. Symbol presence, ABI
+Native availability checks load the native libraries and check their compatibility with this
+package. Importing a public library or reading the installed ABI catalogue does not establish
+native availability. Symbol presence, ABI
 compatibility, successful backend creation, and hardware acceleration are separate claims.
 
 The Skia library is selected once per process-local module instance and shared with its lazy GPU
 registries. Set @envvar{RACKET_SKIA_LIBRARY} before the first native use to select an explicit
 library file. The default search uses the packaged platform library and the system library
-search. Selection and preflight results are cached; changing an environment variable afterward
-is not a supported library-switching operation.
+search. Library selection and compatibility-check results are cached; changing an environment
+variable afterward is not a supported library-switching operation.
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Skia Preflight}
+@section{Skia Compatibility Checks}
 
 @(declare-exporting skia)
 
@@ -46,17 +47,17 @@ Use @racket[skia-check!] to receive the diagnostic exception instead of @racket[
 @defproc[(skia-native-version)
           string?]{
 Returns the loaded library's milestone and increment as a string such as @racket["119.0"], after
-preflight. This is not the NuGet package version and does not uniquely identify the binary or
-its optional backend configuration.
+@racket[skia-check!] succeeds. This is not the NuGet package version and does not uniquely
+identify the binary or its optional backend configuration.
 }
 
 @defproc[(skia-native-library-path)
           path-string?]{
-Returns the name or path used to load the selected library, after preflight.
+Returns the name or path used to load the selected library, after @racket[skia-check!] succeeds.
 This need not be the fully resolved path of the file actually loaded.
 }
 
-@section{HarfBuzz Preflight}
+@section{HarfBuzz Compatibility Checks}
 
 @(declare-exporting skia)
 
@@ -84,13 +85,14 @@ an ordinary failure exception. Use the checking function when the reason for fai
 
 @defproc[(harfbuzz-native-version)
           string?]{
-Returns the loaded native HarfBuzz version as a dotted major/minor/micro string after preflight,
-not the package version.
+Returns the loaded native HarfBuzz version as a dotted major/minor/micro string
+after @racket[harfbuzz-check!] succeeds. This is not the package version.
 }
 
 @defproc[(harfbuzz-native-library-path)
           path-string?]{
-Returns the name or path used to load the selected HarfBuzz library, after preflight.
+Returns the name or path used to load the selected HarfBuzz library, after
+@racket[harfbuzz-check!] succeeds.
 This need not be the fully resolved path of the file actually loaded.
 }
 
@@ -137,16 +139,16 @@ or backend creation.
 
 @defproc[(skia-native-capabilities)
           (and/c hash? immutable?)]{
-Runs Skia preflight and returns its report with the selected library name or path, native version,
-supported profile, pointer size, and required CPU symbol/layout results. The flags for optional GPU symbol
-probing, backend creation, and hardware acceleration remain false: this operation has not
-established those properties. The version functions do not certify package identity. The report
-is not a rendering test.
+Checks library compatibility with @racket[skia-check!] and returns a report containing the
+selected library name or path, native version, supported profile, pointer size, and required CPU
+symbol/layout results. The flags for optional GPU symbol probing, backend creation, and hardware
+acceleration remain false: this operation has not established those properties. The version
+functions do not certify package identity. The report is not a rendering test.
 }
 
 @defproc[(skia-native-symbol-inventory [names (listof symbol?)])
           (listof hash?)]{
-Runs Skia preflight, then checks the requested symbol addresses in that same loaded library.
+Runs @racket[skia-check!], then checks the requested symbol addresses in that same loaded library.
 Results preserve input order, including duplicates. Each immutable result hash table contains a string
 @racket['name] and boolean @racket['available]. Missing symbols yield false; they are not
 invoked.

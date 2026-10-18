@@ -161,12 +161,12 @@ their logical sizes differ.
 @reference-figure["picture-pict-viewport-density.png"
                   "Two magnified Racket pict previews made from the same nonzero 100-by-70 picture viewport: the left was rasterized at scale one and the right at scale three, while both retain the same logical dimensions."]
 
-The usual image and surface dimension limits still apply. In addition, the
-bridge preflights the two simultaneous Racket byte buffers used during transfer:
-the RGBA readback and its ARGB copy together require twice the physical RGBA
-byte count within @racket[current-skia-byte-limit]. A @racket[picture->pict]
-call also owns its temporary CPU raster surface until the independent pict has
-been created.
+The usual image and surface dimension limits still apply. Before transferring
+pixels, the bridge checks that @racket[current-skia-byte-limit] can hold both
+temporary byte strings: the RGBA pixels and their ARGB copy. Together, these
+require eight bytes per pixel. This is not a total-memory bound: a
+@racket[picture->pict] call also owns its temporary CPU raster surface until the
+independent pict has been created.
 
 Bitmap-backed picts use Racket's ordinary baseline convention: ascent equals
 the pict's logical height and descent is zero.

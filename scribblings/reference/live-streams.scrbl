@@ -188,10 +188,15 @@ fallback. Native and port failures can still raise under any policy.
 @section[#:tag "skia-native-publication"]{Writing to Native Output Streams}
 
 The following writers append at the destination stream's current end and return
-the bytes written by this call, not the accumulated total. They use the remaining
-captured/current stream budget and require some budget to remain. The stream is
-exclusively pinned during writing. A failure after pinning can leave partial
-output and make further use fail; close that stream instead of retrying on it.
+the bytes written by this call, not the accumulated total. At the start of the call,
+the remaining capacity is the smaller of the stream's stored limit and
+@racket[current-skia-byte-limit], minus bytes already written. The call raises an
+exception if no capacity remains.
+
+The writer has exclusive use of the stream until it finishes. Attempts to access
+the stream's native data or close it during that time raise an exception. A failure
+after the writer takes exclusive use can leave partial output and prevent further
+use; close that stream instead of retrying on it.
 Successful writing leaves the stream open. No close or cancellation keyword
 is provided by these three native-stream operations.
 

@@ -116,8 +116,9 @@ resource for the program to use.
 
 Bindings are supplied in hash tables with symbol or string keys. Keys must exactly
 match the compiled effect's uniform or child names after symbols are converted to strings.
-Missing names, unknown names, and two keys with the same normalized spelling are rejected. Thus
-@racket['gain] and @racket["gain"] cannot both name entries in one hash table.
+Missing names, unknown names, and duplicate names after converting symbol keys
+to strings are rejected. For example, @racket['gain] and @racket["gain"] cannot
+both appear as keys in one hash table.
 Every uniform and child in the compiled effect must be supplied; there are no implicit
 zero uniforms or null-child fallbacks. The default empty hash tables work only
 when the effect has no corresponding uniforms or children.

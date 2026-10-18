@@ -71,8 +71,9 @@ Defines a destination at the given point in a PDF or SVG document.
 The @racket[name] must be valid for a @tech{named destination} and must not already
 be defined in that document, even at the same point. PDF destinations can be
 referenced across pages.
-SVG destinations capture the current affine point and become named views when
-the SVG is finalized.
+For SVG, the current affine canvas transform is applied to the point when the
+destination is defined. The resulting position is stored and added as a named
+view when the SVG is finalized.
 
 A picture-recording canvas rejects this operation; define document destinations
 after replaying a picture on a live PDF or SVG canvas. An ordinary raster canvas

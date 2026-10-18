@@ -87,7 +87,8 @@ The scale, format, color, and native-support rules are those of
 Validates the requested output options, buffers the unread port input, and
 starts a session. Buffering, cancellation, close behavior, and the one-byte
 limit probe follow @racket[buffered-port->input-stream]. The explicit limit bounds
-encoded input; later row batches use the captured/current decoding byte limit.
+encoded input; later row batches use the smaller of the byte limit in effect when
+the session was created and @racket[current-skia-byte-limit].
 No live port callback remains attached to the session.
 }
 

@@ -27,8 +27,8 @@ need not describe the same moment. This also applies to @racket[skia-cache-stati
 @defproc[(skia-initialize!)
           void?]{
 Explicitly initializes Skia's global graphics state. Ordinary resource operations already
-perform their required native preflight; this is not a substitute for checking ownership or a
-guarantee that a GPU backend is available.
+perform the required native-library compatibility checks; this is not a substitute for
+checking ownership or a guarantee that a GPU backend is available.
 }
 
 @section{Cache Queries and Limits}

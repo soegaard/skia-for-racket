@@ -70,7 +70,9 @@ Returns the selected backing backend.
 }
 
 @defmethod[(get-render-capabilities) (and/c hash? immutable?)]{
-Returns immutable lifetime, storage-path, and raster-only capability metadata.
+Returns an immutable hash table describing the renderer, drawing-context lifetime,
+whether drawing state persists between callbacks, and support for cached-pixel
+presentation and bitmap transfer.
 }
 
 @defmethod[(get-render-info) (and/c hash? immutable?)]{

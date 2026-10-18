@@ -47,10 +47,9 @@ The function must accept one positional argument and no required keywords. The
 GPU raster execution, and a created context is closed when the dynamic extent
 ends. The executor must not escape the call.
 
-With @racket['error], backend unavailability is propagated. With @racket['cpu],
-an unavailable context factory may use the output layer's explicit CPU raster
-fallback. Other failures, including application callback errors and failures
-after GPU execution has begun, are not re-run on the CPU. The option is
-therefore a bounded unavailability policy, not a general runtime renderer
-fallback.
+With @racket[#:on-unavailable 'error], backend unavailability is propagated.
+With @racket[#:on-unavailable 'cpu], CPU rendering is used only if
+@racket[make-context] reports GPU unavailability. Other context-creation errors,
+callback errors, and failures during GPU rendering, readback, or cleanup propagate
+without retrying on the CPU.
 }

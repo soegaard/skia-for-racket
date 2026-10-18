@@ -85,7 +85,9 @@ code.
   (list @racket['vector] "Vector geometry or document metadata; attached features are separate.")
   (list @racket['embedded-raster] "Existing raster samples are embedded, not made into vectors.")
   (list @racket['native-expansion] "Native expansion or rasterization may occur.")
-  (list @racket['needs-raster] "Use an explicit raster boundary for the conservative policy.")
+  (list @racket['needs-raster]
+        @elem{Render the affected content into an image explicitly, for example with
+              @racket[draw-rasterized]; do not rely on automatic rasterization.})
   (list @racket['viewer-dependent] "Appearance depends on the document viewer or its fonts.")
   (list @racket['rasterized] "Content is rendered into an explicit raster representation.")
   (list @racket['discarded] "Document features such as interactivity are lost.")
@@ -276,9 +278,10 @@ test; it is not proof of useful page content.
 
 @defproc[(output-audit-report->jsexpr [report output-audit-report?])
           (and/c hash? immutable?)]{
-Returns a JSON-compatible hash table containing the backend, mode, page count, blocking and
-vector-only summaries, scope qualification, and event details. Backend, mode,
-operation, feature, and status symbols are converted to strings. This serialization is a report,
+Returns a JSON-compatible hash table containing the backend, mode, page count,
+blocking and vector-only summaries, and event details. Its top-level @racket['scope]
+entry describes what the audit checks and its limitations. Backend, mode, operation,
+feature, and status symbols are converted to strings. This serialization is a report,
 not an executable drawing.
 }
 

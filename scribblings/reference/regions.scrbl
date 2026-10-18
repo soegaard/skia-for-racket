@@ -101,7 +101,7 @@ An empty second region does not count as contained by this native predicate.
           boolean?]{
 Reports whether the two regions share any pixels. This is an exact region
 query, unlike @racket[region-quick-reject-rect?] and @racket[region-quick-reject?],
-which provide sufficient quick-rejection tests.
+which can rule out overlap but return @racket[#f] when the quick test is inconclusive.
 }
 
 @defproc[(region-intersects-rect? [region region?]
@@ -115,24 +115,26 @@ Reports whether the region shares any pixels with the rectangle.
           [rectangle (or/c (list/c exact-integer? exact-integer? exact-integer? exact-integer?)
                  (vector/c exact-integer? exact-integer? exact-integer? exact-integer?))])
           boolean?]{
-Returns @racket[#t] only when containment is established by the inexpensive
-native test. A false result is inconclusive; use @racket[region-contains-rect?]
-when an exact answer is needed.
+Uses a quick test to check containment. A @racket[#t] result means the rectangle
+is entirely inside the region; @racket[#f] is inconclusive. Use
+@racket[region-contains-rect?] when an exact answer is needed.
 }
 
 @defproc[(region-quick-reject-rect? [region region?]
           [rectangle (or/c (list/c exact-integer? exact-integer? exact-integer? exact-integer?)
                  (vector/c exact-integer? exact-integer? exact-integer? exact-integer?))])
           boolean?]{
-Returns @racket[#t] when disjointness is established cheaply. A false result
-means not proven disjoint, not definitely intersecting.
+Uses a quick test to rule out overlap. A @racket[#t] result means the region and
+rectangle share no pixels; @racket[#f] is inconclusive. Use
+@racket[region-intersects-rect?] when an exact answer is needed.
 }
 
 @defproc[(region-quick-reject? [a region?]
           [b region?])
           boolean?]{
-Returns @racket[#t] when the regions are cheaply proved disjoint. A false
-result is inconclusive; use @racket[region-intersects?] for exact intersection.
+Uses a quick test to rule out overlap. A @racket[#t] result means the regions
+share no pixels; @racket[#f] is inconclusive. Use @racket[region-intersects?]
+when an exact answer is needed.
 }
 
 @section{Set Operations and Conversion}

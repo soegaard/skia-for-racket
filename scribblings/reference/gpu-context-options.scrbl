@@ -21,12 +21,11 @@ A @deftech{GPU context options} value is an immutable Racket structure containin
 requests used when constructing a @tech{GPU context}. Constructing or inspecting
 options does not load Skia or probe a backend.
 
-Options are requests, not reports of effective native settings. Backend support
-and driver workarounds can affect their use. Passing an explicit value to
-@racket[make-gpu-context] selects an options-taking native factory. Passing
-@racket[#f] selects the native-default factory instead, even when the explicit
-value would contain the wrapper's defaults. Neither route provides native
-readback of the effective options.
+Passing @racket[#f] as @racket[#:options] to @racket[make-gpu-context] uses Skia's
+native defaults. Passing an options value supplies the settings stored in that
+value, including the defaults from @racket[make-gpu-context-options]. Options
+are requests: backend support and driver workarounds can affect which requests
+take effect. The API does not report the effective settings.
 
 @section{Construction}
 
@@ -58,9 +57,8 @@ Creates an immutable options value with the following requests:
        A value of @racket[-1] delegates the choice to the native platform;
        nonnegative values are explicit thresholds.}]
 
-An explicit value is copied synchronously by the native factory when a context
-is constructed. These settings cannot be changed on an existing context by
-constructing another options value.
+Skia copies the supplied settings during context construction. These settings
+cannot be changed on an existing context by constructing another options value.
 
 @examples[#:eval options-eval
   (define defaults (make-gpu-context-options))

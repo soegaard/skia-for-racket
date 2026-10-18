@@ -23,7 +23,7 @@ thread, except for the type predicates.
 
 Stream constructors accept a positive exact @racket[#:limit] no greater than
 @racket[2147483647] or @racket[current-skia-byte-limit]. Later operations use the
-smaller of the captured limit and the current byte limit. Input operations check
+smaller of the stream's stored limit and @racket[current-skia-byte-limit]. Input operations check
 the whole stream length, not only the unread suffix. Output operations check the
 accumulated size. These limits do not bound every native allocation.
 
