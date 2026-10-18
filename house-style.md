@@ -112,6 +112,11 @@ Names should identify the role of a value: `canvas`, `paint`, `baseline-y`, or
 Follow the [Racket reference style](https://docs.racket-lang.org/style/reference-style.html)
 for prose, terminology, examples, and Scribble markup.
 
+Omit routine conversion details, but document restrictions and observable
+behavior that matter to the caller. Describe accepted inputs and results rather
+than routine C-interface preparation. Retain details that affect validity,
+precision, returned representations, ownership, or failure behavior.
+
 Use [`deftech` and `tech`](https://docs.racket-lang.org/scribble/section-links.html)
 to connect technical terms with their explanations:
 
