@@ -12,6 +12,11 @@
 @defmodule[skia/output #:no-declare]
 @(declare-exporting skia skia/output #:use-sources (skia/output))
 
+Use an output page when one drawing callback should be rendered with the same
+page dimensions and margins to PDF, SVG, or a raster image. Create it with
+@racket[make-output-page], then export with @racket[output->bytes] or render an
+image with @racket[output-page->image].
+
 An @deftech{output page} is a detached description containing dimensions, units,
 margins, a background, and a drawing callback. It owns no native resource.
 Exporting it invokes the callback again; it is not a recorded @tech{picture}. Resources

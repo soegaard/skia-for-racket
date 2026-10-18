@@ -153,6 +153,11 @@ Display P3 even when its transfer function is sRGB.
 @defmodule[skia/color-space #:no-declare]
 @(declare-exporting skia skia/color-space #:use-sources (skia/color-space))
 
+To construct an RGB color space with @racket[make-rgb-color-space], choose how
+its channel values encode light as well as its RGB gamut. The transfer
+functions below describe that encoding; gamuts are described in
+@secref["skia-xyz-d50"].
+
 A @deftech{transfer function} is a detached immutable description with seven
 coefficients in order @tt{g, a, b, c, d, e, f}. Its nonnegative-domain formula is
 @math{c x + f} when @math{x < d}, and @math{(a x + b)^g + e} otherwise. The forward
@@ -223,6 +228,10 @@ Inversion requires native Skia; it does not modify the argument.
 @section[#:tag "skia-xyz-d50"]{RGB Gamuts and XYZ-D50 Matrices}
 
 @(declare-exporting skia skia/color-space #:use-sources (skia/color-space))
+
+The gamut argument of @racket[make-rgb-color-space] selects the RGB primaries
+and white point. Use a named gamut or supply a matrix computed from custom
+primaries and a white point with @racket[primaries->xyz-d50].
 
 An @deftech{XYZ-D50 matrix} is a row-major three-by-three matrix relating
 linear RGB to CIE XYZ with the D50 reference white. It is represented by nine
@@ -362,6 +371,10 @@ The result is @racket['(#t #f #t)]. The two resources have independent lifetimes
 
 @defmodule[skia/image-info #:no-declare]
 @(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
+
+Use a detached description when storing color-space settings without keeping
+a native resource open. For example, @racket[make-image-info] accepts this form
+through @racket[#:color-space], instead of a live color-space resource.
 
 A @deftech{color-space descriptor} is @racket[#f], @racket['srgb],
 @racket['linear-srgb], or complete immutable ICC bytes with the required header.

@@ -12,6 +12,11 @@
 @defmodule[skia/image-info #:no-declare]
 @(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
 
+When a raster buffer or surface needs an explicit pixel format, use
+@racket[make-image-info] to describe it. Pass the result to
+@racket[make-raster-buffer-from-info] or @racket[make-surface-from-info] to
+allocate the buffer or surface in a supported format.
+
 A @deftech{pixel description} specifies dimensions, storage format, alpha type,
 and a detached @tech{color-space descriptor}. It contains no pixels or native handle.
 @tech[#:key "scanline batch"]{Scanline batches} and incremental snapshots carry these

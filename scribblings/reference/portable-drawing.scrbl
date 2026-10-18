@@ -56,6 +56,12 @@ paint effects portable.
 
 @section{Detached Grid Plans}
 
+Use @racket[image-nine-plan] or @racket[image-lattice-plan] to inspect how a
+source image will be divided and placed before drawing. The returned cells
+describe source and destination rectangles and can be exported with
+@racket[image-grid-plan->jsexpr]. The portable drawing functions compute their
+plans for you.
+
 Plans use row-major cell order. Each cell has integer source-image geometry and
 finite destination geometry. Adjacent cells share rounded binary32 destination
 edges rather than rounding their widths independently. A plan can include cells

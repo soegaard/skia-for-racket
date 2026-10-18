@@ -95,6 +95,11 @@ bound to an instance and remains valid after closure.
 
 @section[#:tag "skia-runtime-bindings"]{Uniform and Child Bindings}
 
+Reuse a compiled runtime effect with different parameters or input effects by
+creating separate instances. Pass numeric values through @racket[#:uniforms]
+and child resources through @racket[#:children] to @racket[runtime-effect->shader],
+@racket[runtime-effect->color-filter], or @racket[runtime-effect->blender].
+
 A @deftech{uniform} is a named numeric parameter supplied when a runtime effect
 is instantiated. Its value is copied into the instance and stays fixed for
 that instance. A child binding supplies a shader, color filter, or blender

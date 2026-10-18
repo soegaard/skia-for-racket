@@ -13,6 +13,11 @@
 @(declare-exporting skia skia/output-policy skia/output-audit #:use-sources (skia/output-policy
                     skia/output-audit))
 
+Use these interfaces to inspect known compatibility risks before publishing a
+PDF or SVG file, or to reject exports that violate a chosen policy.
+@racket[analyze-output-page] produces a report without exporting document bytes;
+@racket[output->bytes/audit] combines export with a report and optional rejection.
+
 An @deftech{output audit} records known representation risks encountered while an output
 callback executes. It is not static analysis, a pixel comparison, a font-embedding check, an ICC
 validator, or a PDF/A conformance test. The policy table describes the supported serialization

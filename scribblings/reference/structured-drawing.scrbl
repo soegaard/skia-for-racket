@@ -126,6 +126,10 @@ and texture-coordinate arrays are retained by the mesh, not the canvas wrapper.
 
 @section{Cubic Patches}
 
+Use a cubic patch to draw a four-sided curved region with interpolated corner
+colors or to map a shader across it. Create the boundary and corner data with
+@racket[make-cubic-patch], then draw it with @racket[draw-patch].
+
 A @deftech{cubic patch} is a detached immutable Coons-patch specification. Its
 boundary has four cubic curves, with corners at point indices 0, 3, 6, and 9.
 Indices 1 and 2 are the first edge's control points, and the same pattern continues
@@ -194,6 +198,12 @@ selected by the paint. The detached patch remains reusable afterward.
 }
 
 @section{Nine-Patch and Lattice Images}
+
+Use nine-patch or lattice drawing to resize an image while preserving borders
+when space permits, as with a resizable panel. @racket[draw-image-nine] accepts
+a single center rectangle. For additional divisions or per-cell styles,
+create a specification with @racket[make-image-lattice] and pass it to
+@racket[draw-image-lattice].
 
 An @deftech{image lattice} is a detached specification of integer image divisions
 and optional cell styles. Image bounds use coordinates, width, and height.

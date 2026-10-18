@@ -194,6 +194,10 @@ exception rather than producing another blob.
 
 @subsection[#:tag "skia-text-run-metadata"]{Optional Text and Clusters}
 
+Supply text and cluster metadata when a glyph run must retain its association
+with the original text. Glyph IDs alone do not recover that text. The
+associations can later be inspected through @racket[text-blob-runs].
+
 The four glyph-based append functions accept @racket[#:text] and
 @racket[#:clusters]. Both must be @racket[#f], or both must be supplied. Text
 may be a Racket string or a byte string containing valid UTF-8; malformed byte

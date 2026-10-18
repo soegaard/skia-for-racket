@@ -197,6 +197,12 @@ Returns the face's declared slant: upright, italic, or oblique.
 @defmodule[skia/typefaces #:no-declare]
 @(declare-exporting skia skia/typefaces #:use-sources (skia/typefaces))
 
+To choose a face within a family, obtain its available styles with
+@racket[font-manager-style-set]. Create a style request with
+@racket[make-font-style] and pass it to @racket[font-style-set-match]. A style
+request selects among available faces; it does not change an existing
+typeface's design.
+
 The font-style, style-set, copied-data, and metadata bindings are also provided
 by @racketmodname[skia/typefaces]. A @deftech{font style} is a detached, immutable
 weight/width/slant description, not a typeface and not a native resource.

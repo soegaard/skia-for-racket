@@ -12,6 +12,11 @@
 @(declare-exporting skia/gpu skia/gpu-context-options
                     #:use-sources (skia/gpu-context-options))
 
+Use context options to set cache budgets or other context-wide rendering
+settings. Create the value with @racket[make-gpu-context-options] and pass it
+as @racket[#:options] to @racket[make-gpu-context]. These settings apply to the
+context, not to an individual surface or drawing operation.
+
 A @deftech{GPU context options} value contains immutable requests used when
 constructing a @tech{GPU context}. It is a @tech{detached value}, not a native resource; it
 needs no explicit release. Constructing or inspecting options does not load
