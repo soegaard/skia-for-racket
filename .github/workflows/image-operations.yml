@@ -91,10 +91,9 @@ jobs:
           variant: CS
       - name: Check source and install document inspector dependencies
         run: |
+          python -m pip install -r tools/dc-output-requirements.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test-image-operations.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pip install -r tools/dc-output-requirements.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install pinned native libraries
         run: |

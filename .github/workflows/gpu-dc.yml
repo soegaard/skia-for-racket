@@ -97,7 +97,6 @@ jobs:
           variant: CS
       - name: Check inspector contracts
         run: |
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test-gpu-dc-consumers.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install pinned Skia and HarfBuzz libraries
