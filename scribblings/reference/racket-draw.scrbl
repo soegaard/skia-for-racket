@@ -42,8 +42,10 @@ conversion is in progress.
           [#:resolution resolution (or/c 'physical 'logical) 'physical]
           [#:mask mask (or/c 'loaded #f (is-a?/c draw:bitmap%)) 'loaded])
          image?]{
-Returns an owned, CPU-resident, untagged Skia image containing a snapshot of
-the public pixels of @racket[bitmap]. The result does not refer to the source bitmap.
+Creates a Skia image by copying the pixels of @racket[bitmap]. Later changes to
+the bitmap do not affect the image.
+
+The image is stored in CPU memory and has no color-space tag.
 
 The @racket[resolution] argument determines the copied pixel dimensions. With
 @racket['physical], the default, each dimension is the ceiling of the bitmap's
@@ -186,8 +188,9 @@ that distinction explicit in both directions.
           [path (is-a?/c draw:dc-path%)]
           [#:fill-style fill-style (or/c 'odd-even 'winding) 'odd-even])
          skia-path?]{
-Returns an independently owned Skia path built from the public geometry of
-@racket[path]. The bridge copies moves, lines, cubic Bézier segments, closed
+Creates a Skia path by copying the geometry of @racket[path].
+
+The bridge copies moves, lines, cubic Bézier segments, closed
 subpaths, and a possible final open subpath. Later mutation of the Draw path
 does not change the result.
 

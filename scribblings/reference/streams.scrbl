@@ -122,9 +122,11 @@ same as the pointer-sized integer range. A failed move raises an exception.
 
 @defproc[(input-stream-duplicate [stream skia-input-stream?])
           skia-input-stream?]{
-Returns an independently owned input stream at position zero with the same
-length and backing kind. The original cursor is unchanged. Closing either
-wrapper does not close the other. A duplicate of a file stream is not a promise
+Creates another input stream with the same length and backing kind.
+
+The new stream is independently owned and starts at position zero. The original
+cursor is unchanged. Closing either wrapper does not close the other. A duplicate
+of a file stream is not a promise
 of copied file contents.
 
 @racketblock[
@@ -194,9 +196,11 @@ count; it is not a lifetime total across detach operations.
 
 @defproc[(output-stream->bytes [stream skia-output-stream?])
           (and/c bytes? (not/c immutable?))]{
-Returns an independent mutable copy of all bytes in a memory output stream,
-without clearing it. File output streams are rejected. Later writes or mutation
-of the returned byte string do not change the other value.
+Copies all bytes from a memory output stream without clearing it.
+
+The returned byte string is mutable. File output streams are rejected. Later
+writes to the stream do not change the returned bytes, and mutating those bytes
+does not change the stream.
 }
 
 @defproc[(output-stream-detach-input! [stream skia-output-stream?])

@@ -179,9 +179,12 @@ callback time or total native memory. An active collector cannot be used from an
 
 @defproc[(call-with-output-label [label string?] [thunk (-> any)])
           any]{
-Copies a label containing 1 through 200 characters and runs @racket[thunk] with that label in
-the audit scope. Labels nest from outer to inner in reported events. The callback's values are
-preserved. A label does not create a document annotation or a clipping region.
+Runs @racket[thunk] with @racket[label] attached to its audit events and returns
+the callback's values.
+
+The label is copied and must contain 1 through 200 characters. Labels nest from
+outer to inner in reported events. A label does not create a document annotation
+or a clipping region.
 }
 
 @defform[(with-output-label label-expr body ...+)]{

@@ -291,8 +291,11 @@ drawing to use raster output.
                          [#:scale scale (real-in 1/1024 1024) (current-raster-output-scale)]
                          [#:padding padding (or/c real? list?) 0]
                          [#:color-space color-space (or/c color-space? #f) #f]) void?]{
-Draws the callback into a temporary transparent CPU surface, then draws its
-snapshot onto the destination. The callback receives a separate borrowed canvas
+Draws the content produced by @racket[proc] as an image on @racket[canvas].
+
+The callback draws into a temporary, transparent surface in CPU memory. A
+snapshot of that surface is then drawn onto the destination.
+The callback receives a separate borrowed canvas
 with a local origin corresponding to @racket[x] and @racket[y] on the target.
 It does not inherit the target's transform or clip. The final image drawing does
 honor the target's transform and clip, and uses linear sampling.

@@ -72,9 +72,11 @@ no page active. The document is released on success or escape.
                                   [width (real-in 1/1000 14400)]
                                   [height (real-in 1/1000 14400)]
                                   [proc (-> canvas? any)]) any]{
-Begins a protected page, calls @racket[proc] with its canvas, ends the page on
-normal return, and returns all of the callback's results. Ending this page
-manually or finishing the document inside the callback is not permitted.
+Calls @racket[proc] to draw one PDF page and returns all of the callback's results.
+
+The callback receives the new page's canvas. The page ends automatically when
+the callback returns normally. Ending this page manually or finishing the
+document inside the callback is not permitted.
 The canvas must not escape for later use.
 
 If the callback raises any value, receives a break, or escapes through a

@@ -208,10 +208,13 @@ The count is not an EXIF-normalized coordinate or a byte offset.
 
 @defproc[(codec-incremental-snapshot [session codec-incremental-session?])
           incremental-snapshot?]{
-Returns an immutable Racket structure containing a byte-string copy of the whole
-destination, including padding, with its pixel description and current progress.
-The byte string is immutable. Native incremental start must have succeeded and
-the destination buffer must not have been released. The copy must fit the
+Copies the current destination pixels into a snapshot, together with their
+pixel description and decoding progress.
+
+The snapshot is an immutable Racket structure. Its pixel data are an immutable
+byte string containing the entire destination buffer, including padding.
+Native incremental start must have succeeded, and the destination buffer must
+not have been released. The copy must fit the
 effective byte limit. The operation does not run another decoding step.
 
 A snapshot can describe incomplete output; its existence is not success.
@@ -247,9 +250,10 @@ Returns the progress captured with these pixels, not the session's later progres
 
 @defproc[(incremental-snapshot->raster-buffer [snapshot incremental-snapshot?])
           raster-buffer?]{
-Copies the snapshot into an independently owned raster buffer, preserving its
-format and stride. Storage validation and allocation can fail. The operation
-does not require complete progress and therefore does not certify a complete
+Copies the snapshot's pixels into a raster buffer, preserving their format and stride.
+
+The buffer is independently owned. Storage validation and allocation can fail.
+The operation does not require complete progress and therefore does not certify a complete
 image. It neither advances the decoder nor applies encoded orientation.
 
 @racketblock[

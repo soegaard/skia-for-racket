@@ -353,8 +353,10 @@ additional matrix/TRC restrictions documented by @racket[save-png].
 }
 
 @defproc[(color-space->icc-bytes [space color-space?]) bytes?]{
-Returns a new mutable byte string containing an ICC v4 RGB monitor profile
-constructed from the space's numerical transfer function and XYZ-D50 matrix.
+Exports the color space as an ICC profile.
+
+The result is a new mutable byte string. It contains an ICC v4 RGB monitor
+profile constructed from the space's numerical transfer function and XYZ-D50 matrix.
 This is not the original imported profile: descriptions, other metadata, tag
 layout, and original bytes are not preserved. The native space must be open.
 Missing numerical descriptions, coefficients outside the ICC signed 15.16
@@ -412,7 +414,9 @@ returns mutable bytes, even though it can describe a valid color space.
 @defproc[(image-convert-color-space [image image?] [destination color-space?]
                                    [#:source-color-space source (or/c color-space? #f) #f])
          image?]{
-Returns a new owned CPU image with samples converted to @racket[destination].
+Converts the image's colors to @racket[destination] and returns a new image.
+
+The result is an owned resource stored in CPU memory.
 A tagged input supplies its own source interpretation and rejects a nonfalse
 @racket[source]. An untagged input requires an explicit open source color space;
 the operation does not guess sRGB. The destination must also be open.

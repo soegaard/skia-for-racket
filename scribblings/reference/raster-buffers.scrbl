@@ -45,11 +45,12 @@ a buffer borrow; it does not lend pixel storage to the caller.
 
 @defproc[(raster-buffer->image [buffer raster-buffer?])
           image?]{
-Returns an independently owned image containing copied pixels in the buffer's
-color and alpha format. The buffer must be open and have no active canvas or
-pixmap scope. The storage copy must fit @racket[current-skia-byte-limit]. Later
-buffer mutation or closure does not change the image. The operation does not
-normalize an encoded orientation, concatenate separate scanline batches, or
+Creates an image by copying the buffer's pixels, preserving their color and
+alpha format. Later buffer mutation or closure does not change the image.
+
+The image is independently owned. The buffer must be open and have no active
+canvas or pixmap scope. The storage copy must fit @racket[current-skia-byte-limit].
+The operation does not normalize an encoded orientation, concatenate separate scanline batches, or
 certify that incremental decoding was complete.
 }
 
@@ -59,8 +60,10 @@ certify that incremental decoding was complete.
           [#:row-bytes row-bytes (or/c #f exact-positive-integer?) #f] [#:color-space space
           (or/c #f color-space?) #f])
           raster-buffer?]{
-Creates an owned RGBA8888 premultiplied buffer initialized to transparent black. The default
-stride is four times the width. An explicit stride must be at least that large and divisible by
+Creates a raster buffer of the given size, initialized to transparent black.
+
+The buffer uses RGBA8888 pixels with premultiplied alpha. The default stride is
+four times the width. An explicit stride must be at least that large and divisible by
 four. The full stride times height must fit @racket[current-skia-byte-limit] and the native
 signed pointer-arithmetic range. Padding is initialized to zero.
 
@@ -371,8 +374,10 @@ interpretation is the destination's; this operation does not convert samples bet
 
 @defproc[(pixmap->rgba-bytes [view pixmap?] [#:premultiplied? premultiplied? boolean? #f])
           bytes?]{
-Returns tightly packed, mutable RGBA8888 bytes for the view. Alpha is unpremultiplied by
-default. Storage-format and alpha conversion follow @racket[raster-buffer->rgba-bytes]; no
+Copies the view's pixels into a mutable byte string in RGBA8888 format.
+
+Rows are tightly packed, and alpha is unpremultiplied by default.
+Storage-format and alpha conversion follow @racket[raster-buffer->rgba-bytes]; no
 implicit sRGB conversion occurs.
 }
 
@@ -435,8 +440,10 @@ destination storage.
 
 @defproc[(raster-buffer-extract-alpha [buffer raster-buffer?])
           raster-buffer?]{
-Returns an independent Alpha8 buffer containing normalized alpha quantized to eight bits.
-Formats without alpha yield 255. Two-bit alpha expands by multiplication by 85; floating-point
+Extracts the buffer's alpha channel into a separate Alpha8 buffer.
+
+The result stores normalized alpha quantized to eight bits. Formats without
+alpha yield 255. Two-bit alpha expands by multiplication by 85; floating-point
 alpha rounds to the nearest eight-bit value. RGB and the source color-space description are not
 copied. The source must be idle.
 }

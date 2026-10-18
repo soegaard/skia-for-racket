@@ -35,7 +35,8 @@ create a GPU context, or initialize a GUI.
 @defproc[(image->pict [image image?]
                       [#:backing-scale backing-scale (and/c real? (>/c 0)) 1])
          pict:pict?]{
-Returns an ordinary Racket pict containing an eager copy of the CPU image.
+Creates a Racket pict by copying the image's pixels before returning.
+
 The source must be live and CPU-accessible. A GPU-dependent image is rejected
 instead of being read back implicitly; transfer it explicitly with the GPU
 raster-transfer API first.
@@ -67,10 +68,10 @@ source precision is not preserved in the returned pict.
 @defproc[(surface->pict [surface surface?]
                         [#:backing-scale backing-scale (and/c real? (>/c 0)) 1])
          pict:pict?]{
-Returns a pict from an eager snapshot of the CPU surface's current pixels. The
-result uses the same logical-size and sRGB rules as @racket[image->pict]. The
-snapshot and transfer finish before the function returns, so subsequent drawing
-to the surface cannot change the pict.
+Creates a Racket pict by copying the surface's current pixels before returning.
+Subsequent drawing to the surface cannot change the pict.
+
+The result uses the same logical-size and sRGB rules as @racket[image->pict].
 
 A GPU surface is not an implicit bridge source. Obtain an explicit CPU image
 with the GPU transfer API before converting it to a pict. Ordinary closed-value,
@@ -88,9 +89,11 @@ owner-thread, and active-borrow restrictions remain in force during conversion.
                            (and/c real? (>/c 0)))) #f]
           [#:raster-scale raster-scale (and/c real? (>/c 0)) 1])
          pict:pict?]{
-Returns an ordinary pict by replaying @racket[picture] once into a transparent
-CPU sRGB surface. The picture must be replayable on a CPU raster target;
-GPU-dependent content used by the picture is not transferred implicitly.
+Creates a Racket pict by replaying @racket[picture] once.
+
+The drawing uses a temporary, transparent sRGB surface in CPU memory. The
+picture must be replayable on a CPU raster target; GPU-dependent content used
+by the picture is not transferred implicitly.
 
 When @racket[bounds] is @racket[#f], the viewport uses
 @racket[(vector 0 0 (picture-width picture) (picture-height picture))].

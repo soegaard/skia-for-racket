@@ -77,7 +77,9 @@ does not close the caller's resource wrappers. A byte request is not proof of
 bytes released, and a cache limit is not a hard allocation cap.
 
 @defproc[(gpu-cache-info [context gpu-context?]) (and/c hash? immutable?)]{
-Returns an immutable hash table containing the backend, context generation,
+Reports the context's budgeted cache usage and limit.
+
+The result is an immutable hash table containing the backend, context generation,
 @racket['limit_bytes], @racket['budgeted_resources], and @racket['budgeted_bytes].
 The usage count and bytes describe budgeted resources, not total VRAM.
 The @racket['purgeable_bytes], @racket['total_gpu_bytes], and

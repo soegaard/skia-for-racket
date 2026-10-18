@@ -141,11 +141,13 @@ be open and used according to their thread and GPU-context lifetime rules.
                             [#:style style (or/c 'fill 'stroke 'stroke-and-fill) 'fill]
                             [#:stroke-width width (and/c real? (>=/c 0)) 1]
                             [#:antialias? antialias? boolean? #t]) paint?]{
-Returns an owned mutable paint with the specified color, its source
-interpretation, and the displayed drawing settings. Other settings use
-@racket[make-paint]'s defaults; this constructor does not accept its complete keyword set.
-Set additional settings
-through the documented paint mutators.
+Creates a paint using @racket[color], interpreted in the color space given by
+@racket[space].
+
+The paint is mutable and is an owned resource. The supplied style, stroke width,
+and antialiasing settings control its drawing behavior. Other settings use
+@racket[make-paint]'s defaults; this constructor does not accept its complete
+keyword set. Set additional settings through the documented paint mutators.
 
 The native paint stores the converted color in extended sRGB, not the supplied
 source space. It does not store a reference to the caller's ICC byte string.

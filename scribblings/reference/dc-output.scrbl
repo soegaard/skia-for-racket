@@ -107,10 +107,12 @@ than once runs the page's authoring callback once per export.
           [#:scale scale (real-in 1/1024 1024) (current-raster-output-scale)]
           [#:label label string? "dc-explicit-raster"])
          void?]{
-Runs @racket[draw] once on an isolated transparent CPU DC of the requested
-logical size, then inserts the resulting pixels at @racket[x] and @racket[y].
-The child DC closes on every exit and cannot be used afterward or resumed. Its callback
-must accept one positional argument and no required keywords.
+Draws the content produced by @racket[draw] as an image at @racket[x] and @racket[y].
+
+The callback runs once on a separate CPU drawing context of the requested logical
+size, starting with transparent pixels. The child DC closes on every exit and
+cannot be used afterward or resumed. Its callback must accept one positional
+argument and no required keywords.
 
 On an output DC, the operation becomes an explicitly audited bounded raster
 group. The @racket['require-vector] policy rejects before the child callback runs. On an

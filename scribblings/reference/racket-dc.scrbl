@@ -79,9 +79,11 @@ implicitly merged.
 }
 
 @defmethod[(snapshot) image?]{
-Returns an independently owned CPU Skia image of the root backing. The image
-remains usable after the drawing context closes and must be closed through the
-ordinary Skia resource protocol.
+Captures the root backing as a Skia image.
+
+The image is stored in CPU memory and is independently owned. It remains usable
+after the drawing context closes and must be closed through the ordinary Skia
+resource protocol.
 
 This complete headless example uses ordinary Racket Draw methods, takes an
 owned snapshot, and closes the persistent DC in all cases. No window, event

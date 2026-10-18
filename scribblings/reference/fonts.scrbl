@@ -558,10 +558,11 @@ text layout.
 
 @defproc[(font-glyph-paths [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
           (integer-in 0 #xffff)))]) (vectorof (or/c skia-path? #f))]{
-Returns an immutable vector of independently owned glyph-outline paths,
-with @racket[#f] for glyphs without paths. Each outline includes the native
-per-glyph transform, including font size, scale, and skew. Every path in the
-vector has its own resource lifetime.
+Returns a path for each supplied glyph, or @racket[#f] for a glyph without an outline.
+
+The results are stored in an immutable vector. Each path is independently owned
+and includes the glyph's native transform, including font size, scale, and skew.
+Every path in the vector has its own resource lifetime.
 Partial results are released if construction fails.
 
 @racketblock[

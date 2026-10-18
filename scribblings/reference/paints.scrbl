@@ -477,10 +477,12 @@ contains a stroke width of 0 and @racket[#f].
                           [#:cull cull (or/c list? vector? #f) #f]
                           [#:matrix matrix matrix? matrix-identity])
          (values skia-path? boolean?)]{
-Returns a new owned path for the geometry produced by the paint's style, stroke
-settings, and path effect, together with a boolean indicating whether the
-result is fillable. A @racket[#f] flag denotes hairline geometry, not allocation
-failure: the returned path still has its own lifetime and must be released.
+Computes the path geometry produced by the paint's style, stroke settings,
+and path effect.
+
+Returns two values: a new owned path and a boolean indicating whether it is
+fillable. A @racket[#f] flag denotes hairline geometry, not allocation failure:
+the returned path still has its own lifetime and must be released.
 
 The optional cull rectangle is a four-element list or vector of x, y, width,
 and height in local coordinates. Extents must be nonnegative, and positive

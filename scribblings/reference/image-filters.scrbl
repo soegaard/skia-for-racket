@@ -372,8 +372,11 @@ value reverses displacements. A false input slot uses the dynamic source.
           [#:crop crop
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
-Returns a convolution filter with exactly @math{width height} row-major
-kernel coefficients. The copied coefficient data must fit the byte limit.
+Creates a convolution filter that combines neighboring input samples using
+@racket[kernel].
+
+The kernel must contain exactly @math{width height} coefficients in row-major
+order. The copied coefficient data must fit the byte limit.
 Offset selects the kernel's alignment and must lie within its dimensions;
 false uses @math{(floor(width/2), floor(height/2))}. The weighted sum is scaled
 by gain and then bias is added. Bias uses the native eight-bit channel scale:
@@ -765,10 +768,12 @@ identity combinations.
 @defproc[(make-picture-image-filter [picture picture?]
                                     [#:target target (or/c list? vector? #f) #f]
                                     [#:crop crop (or/c list? vector? #f) #f]) image-filter?]{
-Returns an owned image-filter source that renders a recorded picture. It keeps
-its own native reference to the picture, independently of the caller's wrapper,
-and ignores the dynamic source supplied to the surrounding graph. This operation rasterizes picture
-content for filtering; it does not guarantee vector replay on PDF or SVG.
+Creates an image filter that renders @racket[picture] instead of using the
+dynamic source supplied to the surrounding graph.
+
+The filter is an owned resource and keeps its own native reference to the
+picture, independently of the caller's wrapper. It rasterizes picture content
+for filtering; it does not guarantee vector replay on PDF or SVG.
 
 The optional target is a four-element x, y, width, height list or vector with
 positive extents. It selects the picture's rasterization rectangle, not a

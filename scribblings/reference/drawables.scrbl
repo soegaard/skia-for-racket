@@ -111,8 +111,10 @@ not choose CPU versus GPU execution.
 
 @defproc[(drawable->picture [drawable drawable?])
           picture?]{
-Returns an independently owned native picture snapshot with the drawable's
-nominal dimensions. Closing the drawable afterward does not invalidate the picture.
+Creates a picture of the drawable's recorded content.
+
+The picture has the drawable's nominal dimensions and is independently owned.
+Closing the drawable afterward does not invalidate it.
 
 
 @racketblock[

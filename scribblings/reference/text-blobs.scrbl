@@ -31,9 +31,11 @@ the result.
                 [positions
                  (or/c (listof (or/c (list/c real? real?) (vector/c real? real?)))
                        (vectorof (or/c (list/c real? real?) (vector/c real? real?))))]) text-blob?]{
-Creates an owned text blob from nonempty glyph and position lists or vectors
-of equal length. Positions are relative to the blob's origin. Glyph IDs belong
-to the font's typeface; this is not a character-mapping or shaping operation.
+Creates a text blob from the supplied glyphs and positions.
+
+The glyph and position lists or vectors must be nonempty and have equal lengths.
+Positions are relative to the blob's origin. Glyph IDs belong to the font's
+typeface; this is not a character-mapping or shaping operation.
 The size of the copied input data is bounded by
 @racket[current-skia-byte-limit].
 
@@ -84,9 +86,10 @@ open. Outline output uses @racket[text-blob->path].
 }
 
 @defproc[(text-blob->path [blob text-blob?]) skia-path?]{
-Returns an owned path of positioned monochrome glyph outlines without
-baking in a paint or canvas transform. The path is independent of the blob's
-lifetime.
+Converts the blob's glyph outlines to a path at their recorded positions.
+
+The path contains monochrome outlines, without applying a paint or canvas
+transform. It is an owned resource and remains usable after the blob is closed.
 
 For a blob made by @racket[make-positioned-text-blob], glyphs without outlines
 are omitted. Blobs made with a text-blob builder or
@@ -460,7 +463,9 @@ text, reshape glyphs, or expose native run-buffer addresses.
 }
 
 @defproc[(text-blob-run-font [blob text-blob?] [index exact-nonnegative-integer?]) font?]{
-Returns a new owned mutable font copied from the selected run's captured font.
+Copies the font settings captured by the selected run into a new font.
+
+The returned font is mutable and independently owned.
 The zero-based @racket[index] must be less than @racket[(text-blob-run-count blob)].
 Mutating or closing this font does not change the blob. Closing the blob does
 not close the returned font. Invalid indices and closed blobs raise exceptions.

@@ -123,6 +123,9 @@ non-obvious consequence for the caller. Preserve meaningful restrictions on
 contained resources, mutable data, threads, and callback scopes; an immutable
 structure can still contain a mutable value or a native resource.
 
+Avoid vague uses of "retained." Explain what is stored, copied, or kept alive,
+while preserving meaningful resource-lifetime rules.
+
 Omit routine conversion details, but document restrictions and observable
 behavior that matter to the caller. Describe accepted inputs and results rather
 than routine C-interface preparation. Retain details that affect validity,

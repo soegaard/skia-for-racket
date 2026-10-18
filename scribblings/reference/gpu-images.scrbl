@@ -49,8 +49,10 @@ it is ready for execution. A closed resource raises an exception.
 }
 
 @defproc[(gpu-image-info [image gpu-image?]) (and/c hash? immutable?)]{
-Returns metadata after verifying native texture backing and validity
-for the owning active context. The hash table includes @racket['width],
+Returns metadata about the GPU image.
+
+The operation checks that the image is texture-backed and valid for its owning
+context, which must be active. The hash table includes @racket['width],
 @racket['height], @racket['backend], @racket['context_generation],
 @racket['unique_id], @racket['texture_backed], and @racket['context_matches].
 The unique identifier is process-local, not a pixel-content hash. This operation
@@ -62,8 +64,10 @@ does not read pixels; its readback-path description is informational.
 @defproc[(gpu-upload-image [context gpu-context?] [image image?]
                            [#:mipmapped? mipmapped? boolean? #f]
                            [#:budgeted? budgeted? boolean? #t]) gpu-image?]{
-Returns an independently owned, valid texture-backed image for the active
-@racket[context]. A CPU image is uploaded. A GPU image from that same context
+Returns a GPU image for use in @racket[context], uploading the source if needed.
+
+The context must be active. The result is independently owned and backed by a
+valid texture. A CPU image is uploaded. A GPU image from that same context
 may reuse its native storage; the result still owns its own reference. The
 source wrapper is not consumed. An image from another GPU context is rejected;
 read it back explicitly before uploading it to a different context.
@@ -77,9 +81,11 @@ incompatible native result is released and rejected.
 }
 
 @defproc[(gpu-surface-snapshot [surface gpu-surface?]) gpu-image?]{
-Returns an independently owned GPU image of the surface's current contents.
-The native save/layer stack must be balanced at save count 1. Later drawing to
-or closure of the surface does not alter the image's captured contents. The
+Captures the surface's current contents as a GPU image.
+
+The image is independently owned. The native save/layer stack must be balanced
+at save count 1. Later drawing to or closure of the surface does not alter the
+image's captured contents. The
 snapshot remains tied to the same context and must be retired before context
 closure. This operation performs no CPU pixel readback and does not promise
 that preceding GPU commands have completed.
@@ -89,9 +95,11 @@ that preceding GPU commands have completed.
                           [x exact-nonnegative-integer?] [y exact-nonnegative-integer?]
                           [width exact-positive-integer?] [height exact-positive-integer?])
          gpu-image?]{
-Returns an independently owned GPU image of a nonempty integer rectangle fully
-inside @racket[image]. The dimensions also undergo the ordinary checked image
-size and byte-limit checks. The source is unchanged and the result remains
+Creates a GPU image from the selected rectangle of @racket[image].
+
+The result is independently owned. The rectangle must be nonempty, use integer
+coordinates, and lie fully inside the source image. The dimensions also undergo
+the ordinary checked image size and byte-limit checks. The source is unchanged and the result remains
 associated with its context. Native storage may be shared; this is not a CPU
 copy, a resampling operation, or a transfer to another GPU context.
 }
@@ -106,9 +114,11 @@ copy, a resampling operation, or a transfer to another GPU context.
                  (and/c (vector/c exact-nonnegative-integer? exact-nonnegative-integer?
                                   exact-positive-integer? exact-positive-integer?) immutable?)
                  (and/c (vector/c exact-integer? exact-integer?) immutable?))]{
-Applies @racket[filter] in the image's active context. Returns an owned GPU image,
-a valid source rectangle within that image, and its destination offset. The
-last two results are immutable vectors. They have the same placement
+Applies @racket[filter] to the image in its active GPU context.
+
+Returns three values: the result image, a valid source rectangle within that
+image, and its destination offset. The image is an owned GPU resource; the last
+two results are immutable vectors. They have the same placement
 convention as @racket[image-apply-filter]: extract the valid rectangle and place
 its upper-left corner at the returned offset. Do not assume the entire returned
 image is the filter's valid output.

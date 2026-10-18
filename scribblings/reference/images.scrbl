@@ -146,8 +146,10 @@ offset, see @secref["skia-image-filter-results"].
 @defproc[(image-subset [image image?]
                       [x exact-nonnegative-integer?] [y exact-nonnegative-integer?]
                       [width exact-positive-integer?] [height exact-positive-integer?]) image?]{
-Returns an independently owned raster subset. The rectangle must fit entirely
-within the image; it is not silently clipped. Unlike drawing source rectangles,
+Creates a raster image from the selected rectangle of @racket[image].
+
+The result is independently owned. The rectangle must fit entirely within the
+image; it is not silently clipped. Unlike drawing source rectangles,
 these coordinates and extents must be exact integers. The subset remains usable
 after the source is closed, although native storage may be shared. GPU-dependent
 images require an explicit GPU-subset or transfer operation instead.
@@ -233,8 +235,10 @@ the supplied RGBA bytes.
 @defproc[(image->rgba-bytes [image image?]
                            [#:premultiplied? premultiplied? boolean? #f]
                            [#:color-space space (or/c color-space? #f) #f]) bytes?]{
-Returns a new mutable, tightly packed RGBA byte string. Row order, alpha
-interpretation, destination color-space selection, and size limits are the
+Copies the image's pixels into a mutable RGBA byte string, with no padding
+between rows.
+
+Row order, alpha interpretation, destination color-space selection, and size limits are the
 same as for @racket[surface->rgba-bytes]. The read may trigger deferred decoding.
 A failed native read raises an exception instead of returning partial bytes.
 The image itself is unchanged.

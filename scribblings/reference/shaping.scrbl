@@ -268,9 +268,11 @@ IDs; the run does not record enough information to verify that relationship.
 }
 
 @defproc[(shaped-run->path [shaper shaper?] [run shaped-run?]) skia-path?]{
-Returns an owned path assembled from the run's available monochrome glyph
-outlines at their stored positions. The run origin is zero. The shaper must
-match the run's glyph IDs. Empty runs yield an empty path.
+Converts the run's glyph outlines to a path at their stored positions.
+
+The path is an owned resource and contains only monochrome outlines.
+The run origin is zero. The shaper must match the run's glyph IDs. Empty runs
+yield an empty path.
 
 Glyphs without monochrome outlines are omitted; bitmap-only and color glyph
 appearance is not preserved by this conversion. The path remains usable after

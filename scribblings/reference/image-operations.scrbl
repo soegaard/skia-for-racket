@@ -70,16 +70,20 @@ intermediate native memory.
 
 @defproc[(image->non-texture-image [image image?])
           image?]{
-Returns an independently owned non-texture image. Native storage may be shared, and the result
-is not promised to be eagerly decoded. The input must already be CPU-owned and
-non-texture-backed; the name does not authorize implicit GPU readback.
+Returns an image that does not use a GPU texture.
+
+The result is independently owned, but may share native storage with the source.
+Its pixels need not already be decoded. The input must already be CPU-owned and
+non-texture-backed; this operation does not perform GPU readback.
 }
 
 @defproc[(image->raster-image [image image?])
           image?]{
-Returns an independently owned, non-lazy CPU image with immediately available pixels. Failure to
-obtain those properties raises an exception. The result remains valid after closing the source
-wrapper, but is not a mutable raster buffer.
+Returns an image whose pixels are immediately available in CPU memory.
+
+The result does not defer decoding. Failure to obtain these properties raises
+an exception. It is independently owned and remains valid after the source
+wrapper closes, but it is not a mutable raster buffer.
 }
 
 @racketblock[
@@ -175,7 +179,9 @@ color-space conversion.
           [#:row-bytes row-bytes (or/c #f exact-positive-integer?) #f] [#:sampling sampling
           (or/c 'nearest 'linear) 'linear] [#:cache? cache? boolean? #f])
           raster-buffer?]{
-Returns a new owned mutable buffer. An omitted description uses @racket[image->image-info]; an
+Copies the image's pixels into a new raster buffer that can be edited.
+
+The buffer is an owned resource. An omitted description uses @racket[image->image-info]; an
 explicit description selects the destination dimensions and format. Matching dimensions use
 @racket[image-read-pixmap!]; different dimensions use @racket[image-scale-pixmap!]. Sampling is
 validated even when resizing is unnecessary.
@@ -193,10 +199,13 @@ change. Failure releases the new buffer and leaves the source unchanged.
                   (and/c (vector/c exact-integer? exact-integer?
                                    exact-positive-integer? exact-positive-integer?) immutable?)
                   (and/c (vector/c exact-integer? exact-integer?) immutable?))]{
-Applies a CPU filter and returns an owned result image, an immutable source rectangle within
-that image, and an immutable placement offset. The source rectangle uses x, y, width, and
-height. The offset places its upper-left corner in the original filtering coordinates; it does
-not necessarily place the full returned image at the origin.
+Applies @racket[filter] to @racket[image] on the CPU.
+
+Returns three values: the result image, a source rectangle within that image,
+and a placement offset. The image is an owned resource; the rectangle and
+offset are immutable vectors. The source rectangle uses x, y, width, and
+height. The offset places its upper-left corner in the original filtering
+coordinates; it does not necessarily place the full returned image at the origin.
 
 The optional input subset defaults to the whole image. Subset and clip use exact integers, with
 positive dimensions no greater than 32768 and signed 32-bit edges. The subset must be inside the
@@ -250,10 +259,13 @@ actual 12 by 10 destination; its checkerboard is not stored in that destination.
 
 @defproc[(image->bitmap [image image?])
           (is-a?/c bitmap%)]{
-Returns an independent mutable Racket bitmap with an alpha channel. Pixel access follows
-@racket[image->rgba-bytes] with premultiplied alpha, including that function's format and
-CPU-access restrictions. The bytes are reordered from RGBA to ARGB; this is not a promise of
-preserving extended floating-point values or ICC metadata.
+Creates a Racket bitmap by copying the image's pixels. The bitmap can be edited
+independently of the source and has an alpha channel.
+
+Pixel access follows @racket[image->rgba-bytes] with premultiplied alpha, including
+that function's format and CPU-access restrictions. The bytes are reordered from
+RGBA to ARGB; this is not a promise of preserving extended floating-point values
+or ICC metadata.
 
 Closing the source does not close the bitmap. The result follows Racket bitmap ownership, not
 @racket[skia-close!]. This conversion does not create a window or expose a borrowed native
@@ -267,10 +279,13 @@ implicit conversion on image-consuming operations.
 
 @defproc[(surface->bitmap [surface surface?])
           (is-a?/c bitmap%)]{
-Returns an independent mutable Racket bitmap with an alpha channel. Pixel access follows
-@racket[surface->rgba-bytes] with premultiplied alpha, including that function's format and
-CPU-access restrictions. The bytes are reordered from RGBA to ARGB; this is not a promise of
-preserving extended floating-point values or ICC metadata.
+Creates a Racket bitmap by copying the surface's pixels. The bitmap can be edited
+independently of the source and has an alpha channel.
+
+Pixel access follows @racket[surface->rgba-bytes] with premultiplied alpha, including
+that function's format and CPU-access restrictions. The bytes are reordered from
+RGBA to ARGB; this is not a promise of preserving extended floating-point values
+or ICC metadata.
 
 Closing the source does not close the bitmap. The result follows Racket bitmap ownership, not
 @racket[skia-close!]. This conversion does not create a window or expose a borrowed native

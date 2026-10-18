@@ -305,8 +305,9 @@ not mean the entire image has been read.
 
 @defproc[(scanline-batch->raster-buffer [batch scanline-batch?])
           raster-buffer?]{
-Copies a nonempty batch into an independently owned raster buffer, preserving
-its format and stride. An empty decoded batch is rejected. The new buffer starts
+Copies the batch's decoded rows into a raster buffer, preserving their format and stride.
+
+The buffer is independently owned. An empty decoded batch is rejected. The new buffer starts
 at local row zero; the batch's first-row field must be used separately when
 placing it into the full image. This operation neither fills missing rows nor
 applies the encoded orientation.

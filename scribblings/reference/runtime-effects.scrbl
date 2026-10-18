@@ -40,8 +40,10 @@ The predicate remains true after closure.
 @defproc[(make-runtime-effect
           [source string?]
           [#:kind kind (or/c 'shader 'color-filter 'blender) 'shader]) runtime-effect?]{
-Compiles a nonempty, NUL-free SkSL source string for the selected stage and
-returns an owned effect. Both the character count and UTF-8 byte count must
+Compiles @racket[source] as an SkSL program for the selected stage.
+
+The result is an owned effect. The source string must be nonempty and contain
+no NUL characters. Both the character count and UTF-8 byte count must
 fit @racket[current-skia-byte-limit]. The source and reflection information
 are copied; changing a mutable source string afterward has no effect.
 
@@ -138,7 +140,9 @@ children preserve their context, thread, and lifetime restrictions.
 
 @defproc[(runtime-effect-uniform-bytes [effect runtime-effect?] [bindings hash?])
          (and/c bytes? immutable?)]{
-Returns a new immutable byte string packed according to the stored uniform
+Packs the uniform values in @racket[bindings] into a byte string for @racket[effect].
+
+The result is a new immutable byte string. Packing follows the stored uniform
 layout and the rules in @secref["skia-runtime-bindings"]. It uses native byte
 order and the reflected offsets, not std140 padding. Its length equals
 @racket[(runtime-effect-uniform-byte-size effect)]. It is not a portable serialization
@@ -163,8 +167,11 @@ Packing remains possible; creating a shader from the closed effect does not.
           [#:uniforms uniforms hash? (hash)]
           [#:children children hash? (hash)]
           [#:local-matrix local-matrix (or/c matrix? #f) #f]) shader?]{
-Returns an owned shader instance of an open shader-kind effect. Every child
-must be an open shader, color filter, or blender of the reflected kind; false
+Creates a shader from @racket[effect] using the supplied uniforms and children.
+
+The shader is an owned resource. The effect must be open and compiled for the
+shader stage. Every child must be an open shader, color filter, or blender of
+the reflected kind; false
 children are rejected. The optional affine local matrix must have a
 representable inverse. It affects local shader coordinates and is not a
 replacement for the canvas transform. Binding and retention rules follow

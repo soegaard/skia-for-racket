@@ -75,8 +75,10 @@ provider or check whether its host still exists.
           [#:current? current? procedure?]
           [#:describe describe procedure? (lambda () (hasheq))]
           [#:get-proc-address resolve (or/c procedure? #f) #f]) gpu-provider?]{
-Creates a provider value owned by the current Racket thread. Construction checks
-callback arities but does not invoke them, activate the host, or load Skia.
+Creates a GPU provider from the supplied callbacks.
+
+The provider belongs to the current Racket thread. Construction checks callback
+arities but does not invoke them, activate the host, or load Skia.
 The provider stores references to its callback procedures. It does not acquire
 or destroy the host context; the caller must keep that host alive until its Skia
 context is closed, or use the

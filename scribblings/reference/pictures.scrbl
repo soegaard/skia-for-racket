@@ -240,8 +240,10 @@ Passing these checks does not establish that the payload is safe or decodable.
 The native decoder may still reject it.
 
 @defproc[(picture->bytes [picture picture?]) (and/c bytes? (not/c immutable?))]{
-Returns an independent mutable SKP byte string for an open CPU-compatible
-picture. The copied result is limited by @racket[current-skia-byte-limit]; this
+Serializes @racket[picture] in SKP format and returns the bytes.
+
+The result is a new mutable byte string. The picture must be open and
+CPU-compatible. The copied result is limited by @racket[current-skia-byte-limit]; this
 does not bound all native allocations during serialization. Resource-backed
 content may impose additional serialization restrictions.
 }
@@ -250,9 +252,11 @@ content may impose additional serialization restrictions.
                             [#:trusted? trusted? boolean? #f]
                             [#:width width (or/c #f (and/c real? (>=/c 0))) #f]
                             [#:height height (or/c #f (and/c real? (>=/c 0))) #f]) picture?]{
-Returns an owned picture decoded from a copied snapshot of trusted SKP data.
-Later mutation of @racket[data] does not modify the picture. The caller must
-explicitly pass @racket[#:trusted? #t]; the default raises an exception.
+Decodes SKP data and returns a picture.
+
+The data must be trusted: the caller must explicitly pass @racket[#:trusted? #t];
+the default raises an exception. The returned picture is an owned resource.
+The input bytes are copied, so later mutation of @racket[data] does not modify the picture.
 
 Without overrides, the native cull width and height become the nominal size.
 Both overrides must be given together and must be nonnegative.

@@ -88,7 +88,9 @@ Returns the mesh's submitted topology.
 
 @defproc[(vertices-positions [mesh vertices?])
           (and/c vector? immutable?)]{
-Returns the immutable vector of immutable two-coordinate position vectors.
+Returns the mesh's vertex positions.
+
+The result is an immutable vector of immutable two-coordinate vectors.
 The query remains available after the mesh is closed.
 }
 
@@ -107,8 +109,9 @@ The entries are integers from 0 through 4294967295, not the original color synta
 
 @defproc[(vertices-indices [mesh vertices?])
           (or/c #f (and/c vector? immutable?))]{
-Returns the immutable unsigned 16-bit index vector, or @racket[#f] when
-positions are submitted directly in order.
+Returns the vertex indices, or @racket[#f] when positions are submitted directly in order.
+
+The result is an immutable vector of unsigned 16-bit integers.
 }
 
 @defproc[(vertices-count [mesh vertices?])
@@ -160,7 +163,9 @@ than twelve entries. Colors are @tech{color specification}s.
 
 @defproc[(cubic-patch-points [patch cubic-patch?])
           (and/c vector? immutable?)]{
-Returns the immutable twelve-point boundary vector with immutable point entries.
+Returns the patch's twelve boundary points.
+
+The result is an immutable vector, and each point entry is also immutable.
 }
 
 @defproc[(cubic-patch-colors [patch cubic-patch?])

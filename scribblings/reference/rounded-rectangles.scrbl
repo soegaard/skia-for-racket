@@ -53,9 +53,12 @@ Returns the stored immutable bounds as coordinates, width, and height.
 
 @defproc[(rounded-rect-radii [shape rounded-rect?])
           (and/c vector? immutable?)]{
-Returns an immutable vector of four immutable two-coordinate radius vectors
-in top-left, top-right, bottom-right, bottom-left order. These are the stored
-specification values, not necessarily the native-normalized radii.
+Returns the radii for the four corners, in top-left, top-right, bottom-right,
+bottom-left order.
+
+The result is an immutable vector containing four immutable two-coordinate
+vectors. These are the stored specification values, not necessarily the
+native-normalized radii.
 }
 
 @defproc[(make-empty-rounded-rect)
@@ -154,8 +157,10 @@ operation; use path and paint geometry for that purpose.
 @defproc[(rounded-rect-transform [shape rounded-rect?]
           [transform matrix?])
           (or/c rounded-rect? #f)]{
-Returns the native-normalized affine image when it can be represented as a
-rounded rectangle, or @racket[#f] otherwise. Not every affine transformation
+Applies the affine transform and returns a rounded rectangle, or @racket[#f]
+if the transformed shape cannot be represented as one.
+
+The result uses native-normalized bounds and radii. Not every affine transformation
 preserves this representation. The operation does not silently approximate,
 flatten, or rasterize an unrepresentable shape. For general affine geometry,
 add the rounded rectangle to a path and use @racket[path-transform].

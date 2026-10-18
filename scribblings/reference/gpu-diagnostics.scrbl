@@ -42,11 +42,13 @@ correctness. No flush, submission, wait, or pixel readback is implied.
 @(declare-exporting skia/gpu)
 
 @defproc[(gpu-smoke-test [context gpu-context?]) (and/c hash? immutable?)]{
-Runs a fixed synchronous 8 by 8 GPU rendering diagnostic. The context must be
-ready and owned by the calling thread. The function enters the context as
-needed, creates private target and paint resources, draws four fixed color
-regions, flushes, submits with CPU completion, reads RGBA pixels, and verifies
-the expected pattern before returning.
+Checks GPU rendering by drawing a fixed 8 by 8 pattern and comparing the pixels
+with the expected result.
+
+The context must be ready and owned by the calling thread. The function enters
+the context as needed, creates private target and paint resources, and draws
+four fixed color regions. It flushes and submits the work, waits for completion,
+then reads and verifies the RGBA pixels before returning.
 
 The result records the dimensions, transfer format, backend identity,
 and immutable RGBA bytes. Temporary GPU resources are retired on exit. This is

@@ -84,8 +84,10 @@ the returned color-space resource. The query does not convert any samples.
           [#:normalize-origin? normalize? boolean? #t]
           [#:color-space space (or/c color-space? #f) #f])
           image?]{
-Decodes the selected zero-based frame into a new CPU image with premultiplied
-RGBA8888 storage. The index must be less than the result of @racket[codec-frame-count]. Each
+Decodes the selected frame into a new image.
+
+The image is stored in CPU memory as RGBA8888 pixels with premultiplied alpha.
+The frame index is zero-based and must be less than @racket[(codec-frame-count codec)]. Each
 encoded dimension must lie from 1 through 32768, and the full four-byte-per-pixel
 allocation must fit @racket[current-skia-byte-limit]. Any non-success native
 result, including incomplete input, raises an exception instead of returning
@@ -125,18 +127,22 @@ the source surface.
           [#:normalize-origin? normalize? boolean? #t]
           [#:color-space space (or/c color-space? #f) #f])
           image?]{
-Constructs a temporary codec with @racket[codec-from-bytes], decodes @racket[index]
-with @racket[codec->image], and closes the codec. The returned image is independent.
-Orientation, color-space, frame-dependency, and decode-failure rules are unchanged.
+Decodes frame @racket[index] from @racket[encoded] and returns it as an image.
+
+Input rules follow @racket[codec-from-bytes]; orientation, color-space,
+frame-dependency, and decode-failure rules follow @racket[codec->image]. The
+temporary codec is closed before returning, without invalidating the image.
 }
 
 @defproc[(image-frame-from-file [filename path-string?] [index (integer-in 0 2147483647) 0]
           [#:normalize-origin? normalize? boolean? #t]
           [#:color-space space (or/c color-space? #f) #f])
           image?]{
-Constructs a temporary codec with @racket[codec-from-file], decodes @racket[index]
-with @racket[codec->image], and closes the codec. The returned image is independent.
-Orientation, color-space, frame-dependency, and decode-failure rules are unchanged.
+Decodes frame @racket[index] from @racket[filename] and returns it as an image.
+
+Input rules follow @racket[codec-from-file]; orientation, color-space,
+frame-dependency, and decode-failure rules follow @racket[codec->image]. The
+temporary codec is closed before returning, without invalidating the image.
 }
 
 @section[#:tag "skia-encoded-metadata"]{Encoded Metadata}
