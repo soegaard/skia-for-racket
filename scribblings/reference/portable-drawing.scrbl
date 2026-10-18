@@ -12,9 +12,9 @@
 @defmodule[skia/portable-drawing #:no-declare]
 @(declare-exporting skia skia/portable-drawing #:use-sources (skia/portable-drawing))
 
-These functions explicitly lower markers and image batches to ordinary shapes
-and image rectangles before recording. They do not change the native batch
-functions or silently select a backend. Portable image lowering still embeds
+These functions convert markers and image batches into ordinary shape and
+image-rectangle drawing commands before recording. They do not change the native batch
+functions or silently select a backend. Drawing images this way still embeds
 raster image samples; it is not conversion to vector geometry or a guarantee
 about every viewer, font, color profile, or paint effect.
 
@@ -147,10 +147,10 @@ other kinds. This is not the packed integer used by @racket[image-lattice-colors
 Returns JSON-compatible cell descriptions with row, column, kind, source,
 destination, and color keys. Kind symbols become strings, coordinate vectors
 become lists, and fixed colors become packed ARGB integers. Missing colors use
-@racket[#f], not a fabricated color. An empty plan returns an empty list.
+@racket[#f]. An empty plan returns an empty list.
 }
 
-@section{Drawing Lowered Image Batches}
+@section{Drawing Image Grids and Atlases}
 
 These image functions accept nearest or linear sampling and a byte alpha
 multiplier. They do not accept an arbitrary paint, per-sprite tint colors, or blend

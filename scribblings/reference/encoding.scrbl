@@ -66,7 +66,7 @@ Color Spaces} for examples of tags and conversion.
 
 The byte-returning encoders produce new mutable byte strings. They neither
 write files nor close their input resources. The entire result must fit
-@racket[current-skia-byte-limit]. Encoding may first decode or materialize
+@racket[current-skia-byte-limit]. Encoding may first decode or generate
 CPU-compatible pixels; GPU-dependent input is rejected. Native failure raises
 an exception rather than returning a partially encoded result.
 

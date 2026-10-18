@@ -3,10 +3,11 @@
 @title[#:tag "skia-reference-documents-output" #:style 'toc]{Documents and Output}
 
 PDF and SVG documents provide vector-oriented output targets with explicit
-lifecycle and publication rules. Output pages add backend-neutral page
+lifecycle and file-saving rules. Output pages add backend-neutral page
 descriptions and controlled raster fallback. Links, auditing, and bounded output
-groups preserve or report document semantics. Raster fallback normally executes
-on the CPU; an explicit GPU executor can instead render a selected fallback
+groups help preserve document features such as interactivity or report when those
+features would be lost. Raster fallback normally executes on the CPU; an
+explicit GPU executor can instead render a selected fallback
 before reading it back into CPU-owned document content.
 
 @local-table-of-contents[]

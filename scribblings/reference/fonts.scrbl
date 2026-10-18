@@ -536,7 +536,7 @@ The optional paint participates in native bounds measurement.
                      [#:paint paint (or/c paint? #f) #f]) (values (vectorof real?) (vectorof
                      (list/c real? real? real? real?)))]{
 Returns the advance-width vector and bounds vector as two values, using
-the same native query and semantics as @racket[font-glyph-widths] and
+the same native query and behavior as @racket[font-glyph-widths] and
 @racket[font-glyph-bounds]. Both vectors are empty for empty input.
 }
 

@@ -234,8 +234,9 @@ not be a directory, and the path must not contain NUL. The default rejects an
 existing file or symbolic link; @racket['replace] permits truncation.
 
 Opening the native writer can create or truncate the destination immediately.
-This interface is not atomic exclusive creation, temporary-file publication, or
-rollback on failure. The caller must control the path during the operation.
+This interface does not guarantee atomic exclusive creation. It writes directly
+to the destination, without a temporary file or rollback on failure.
+The caller must control the path during the operation.
 Use @racket[output-stream-flush!] or close the stream to flush buffered output;
 no durability guarantee is implied.
 }
@@ -243,7 +244,7 @@ no durability guarantee is implied.
 @defproc[(output-stream-flush! [stream skia-output-stream?])
           void?]{
 Requests a native flush of a memory or file output stream. The stream remains
-open and its accumulated count is unchanged. Flushing does not make publication
+open and its accumulated count is unchanged. Flushing does not make file writing
 atomic or guarantee that data has reached durable storage.
 }
 

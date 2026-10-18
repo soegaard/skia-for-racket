@@ -1063,7 +1063,7 @@ An empty batch returns an owned empty path.
 The number of operations is bounded by @racket[current-path-operation-limit].
 The size counted for submitted point and verb data must fit
 @racket[current-skia-byte-limit]. These are not native heap or running-time
-bounds. Failure raises without publishing a partial result.
+bounds. Failure raises without returning a partial result.
 
 @racketblock[
 (with-skia ([outer (make-path)] [hole (make-path)])

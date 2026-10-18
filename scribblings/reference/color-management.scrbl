@@ -421,9 +421,10 @@ A tagged input supplies its own source interpretation and rejects a nonfalse
 @racket[source]. An untagged input requires an explicit open source color space;
 the operation does not guess sRGB. The destination must also be open.
 
-This operation stages eight-bit unpremultiplied RGBA samples and preserves
-pixel dimensions, not the original pixel format or precision. Floating-point
-images are rejected rather than silently reduced to eight bits. Conversion can
+This operation uses an intermediate buffer of eight-bit RGBA pixels with
+unpremultiplied alpha. It preserves pixel dimensions, not the original pixel
+format or precision. Floating-point images are rejected rather than silently
+reduced to eight bits. Conversion can
 clip or quantize colors, and does not promise a lossless round trip. A
 GPU-dependent input is rejected; this operation does not perform implicit GPU
 readback. The input image is unchanged, and the result remains usable after the

@@ -133,8 +133,8 @@ and result must fit the context's texture-size limit.
 
 A context-independent filter is accepted. A filter with GPU dependencies must
 belong to this same context. The output must be a valid same-context texture and
-must not narrow the source's floating-point storage precision. An empty or failed
-native result raises; it is not fabricated into a successful empty image.
+must not reduce the source's floating-point pixel precision. An empty or failed
+native result raises an exception.
 Neither CPU fallback nor an implicit readback occurs.
 
 This helper applies an offset filter and uses both placement results. It expects

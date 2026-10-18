@@ -14,7 +14,7 @@ user units, not a request to allocate an equally sized raster surface.
 
 Finalization completes the XML and invalidates the drawing canvas. The document
 must remain open to retrieve the finished bytes. Releasing unfinished storage
-is not a way to publish SVG. For shared physical sizes in PDF and SVG, use the
+does not finish or save the SVG. For shared physical sizes in PDF and SVG, use the
 @seclink["skia-output-pages"]{output-page interface}.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -33,7 +33,7 @@ passes a canvas to a drawing callback, finishes the document, and releases it.
           [#:title title string? ""]
           [#:description description string? ""]
           [#:id-prefix id-prefix string? "skia"]) void?]{
-Runs @racket[call-with-svg-bytes] and publishes the completed output according
+Runs @racket[call-with-svg-bytes] and saves the completed output according
 to @racket[save-svg]'s file rules. The destination is resolved and checked before
 the callback, so changing @racket[current-directory] cannot redirect the file.
 Callback and finalization failures leave any existing destination untouched.
@@ -128,10 +128,10 @@ Unlike a PDF document, an SVG with no drawing commands may be finished.
 @defproc[(svg-document-abort! [document svg-document?]) void?]{
 Releases the native storage and marks the document aborted. It can be repeated
 on the owning thread. It invalidates the canvas and prevents later byte retrieval,
-but does not remove previously published files.
+but does not remove previously saved files.
 }
 
-@section{Reading and Publishing SVG}
+@section{Reading and Saving SVG}
 
 @defproc[(svg-document->bytes [document svg-document?])
           (and/c bytes? (not/c immutable?))]{
@@ -147,11 +147,11 @@ size requirements as @racket[svg-document->bytes].
 
 @defproc[(save-svg [document svg-document?] [filename path-string?]
                    [#:exists exists (or/c 'error 'replace) 'error]) void?]{
-Publishes the finished SVG to a file without finishing or closing the document.
+Saves the finished SVG to a file without finishing or closing the document.
 The parent directory must exist. The default refuses an existing destination;
 @racket['replace] permits replacement. The helper writes a temporary file in the
 same directory and renames it only after a complete successful write. Failure
-before publication does not replace an existing file with partial XML.
+before the rename does not replace an existing file with partial XML.
 
 @racketblock[
 (with-skia ([document (make-svg-document 120 80 #:title "A blue circle")]
@@ -164,7 +164,7 @@ before publication does not replace an existing file with partial XML.
 @reference-figure["svg-document.png"
                   "A raster content preview of the same centered blue-circle drawing commands as the SVG example. It is not a rendering or verification of the exported SVG file."]
 
-The preview shows the callback's geometry only; SVG representation and publication remain
+The preview shows the callback's geometry only; SVG representation and file saving remain
 separate checks.
 }
 

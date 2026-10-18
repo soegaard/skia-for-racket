@@ -143,7 +143,8 @@ precision reduction. Failure closes the new buffer rather than returning it.
 @defproc[(gpu-image->raster-buffer [image gpu-image?]
           [#:info info (or/c image-info? #f) #f]
           [#:row-bytes row-bytes (or/c exact-nonnegative-integer? #f) #f]) raster-buffer?]{
-Like @racket[gpu-surface->raster-buffer], after same-context image staging.
+Like @racket[gpu-surface->raster-buffer], after drawing the image into a temporary
+GPU surface in the same context.
 A false description uses @racket[image->image-info] for the original image.
 Dimensions must match; no resizing is performed. The result owns independent
 CPU storage and survives closure of the image and context.
@@ -153,15 +154,16 @@ CPU storage and survives closure of the image and context.
 Reads the surface's pixels into an image in CPU memory.
 
 The image is independently owned. The readback preserves the surface's selected
-format and color interpretation, rather than always staging through eight-bit
-RGBA. The intermediate CPU buffer is
-closed after the image copy. The result is not a GPU image and may outlive the
+format and color interpretation, rather than always using an intermediate buffer
+of eight-bit RGBA pixels. The intermediate CPU buffer is closed after the image
+copy. The result is not a GPU image and may outlive the
 surface and context.
 }
 
 @defproc[(gpu-image->raster-image [image gpu-image?]) image?]{
-Like @racket[gpu-surface->raster-image], using the GPU image's staging and typed
-readback route. The source remains owned by its caller; the result is an
+Like @racket[gpu-surface->raster-image], after drawing the image into a temporary
+GPU surface in the same context. Readback preserves the image's format and color
+interpretation. The source remains owned by its caller; the result is an
 independent CPU image.
 }
 
@@ -182,9 +184,9 @@ color-space tag is present. Supported tagged conversions are performed by the
 native readback; this function does not silently relabel samples.
 
 The operation waits for GPU work, reads into temporary tight storage, and
-validates the result before committing pixels. A failed read or invalid converted
-sample leaves the destination unchanged. Destination row padding is never
-committed. Native format support can still make a well-formed request fail.
+validates the result before copying pixels to the destination. A failed read or
+invalid converted sample leaves the destination unchanged. Destination row padding is never
+changed. Native format support can still make a well-formed request fail.
 }
 
 @defproc[(gpu-surface-read-raster-buffer! [surface gpu-surface?]
@@ -198,15 +200,16 @@ The context must be active and the surface save/layer stack balanced.
 
 Unlike @racket[gpu-surface-read-pixmap!], this writer exposes the destination to
 the native readback directly. A native failure can leave partial writes;
-rollback is not promised. Use the typed pixmap writer for staged publication,
-or a returning-copy operation when no partially modified destination may escape.
+rollback is not promised. Use @racket[gpu-surface-read-pixmap!] to check pixels
+in temporary storage before changing the destination, or an operation that
+returns a new copy when the caller must never receive partially written pixels.
 }
 
 @defproc[(gpu-image-read-raster-buffer! [image gpu-image?]
                                       [destination raster-buffer?]) void?]{
-Like @racket[gpu-surface-read-raster-buffer!], after drawing the image into its
-same-context staging surface. The destination must match the original image's
-dimensions and use RGBA8888 premultiplied storage. The direct destination write
+Like @racket[gpu-surface-read-raster-buffer!], after drawing the image into a
+temporary GPU surface in the same context. The destination must match the original
+image's dimensions and use RGBA8888 premultiplied storage. The direct destination write
 can leave partial writes after a native failure, just like the surface operation.
 }
 

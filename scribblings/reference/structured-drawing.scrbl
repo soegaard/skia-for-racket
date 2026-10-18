@@ -323,8 +323,8 @@ Its entries correspond to every grid cell, not only fixed-color cells.
 Draws the image as a nine-patch grid. The nonempty integer center rectangle
 must lie wholly inside the image. Its edges delimit the stretchable center
 spans; destination coordinates use current local canvas coordinates. The
-optional paint modifies native image drawing. For explicit rectangle-based
-lowering, use @racket[draw-image-nine/portable].
+optional paint modifies native image drawing. To draw the grid as separate
+image rectangles, use @racket[draw-image-nine/portable].
 
 @racketblock[
 (with-skia ([source (make-surface 30 30 #:background "#F4D35E")]
@@ -354,7 +354,7 @@ lowering, use @racket[draw-image-nine/portable].
 Draws the selected lattice inside the local destination rectangle. Source
 bounds must be nonempty and inside the image, and all divisions must be strictly
 interior to those bounds. The optional paint applies to native image drawing.
-For explicit rectangle-based lowering, use @racket[draw-image-lattice/portable].
+To draw the grid as separate image rectangles, use @racket[draw-image-lattice/portable].
 
 
 @racketblock[
@@ -409,7 +409,8 @@ They combine with source samples using
 A supplied cull rectangle is a local native rejection hint, not a clip. The
 budget accounts for the native expansion to six vertices per sprite. An empty
 batch draws nothing but still validates the canvas, image, paint, and options.
-For the more restricted portable lowering, use @racket[draw-atlas/portable].
+To draw the atlas as separate image rectangles, use @racket[draw-atlas/portable],
+which accepts a more restricted set of inputs.
 
 @racketblock[
 (with-skia ([source (make-surface 32 16 #:background 'red)]

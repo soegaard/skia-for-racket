@@ -27,8 +27,8 @@ a generation change.
 The executor does not close @racket[context]. Each raster operation activates
 that exact context, creates a temporary GPU surface, replays the captured
 picture, and converts the result to a CPU-owned raster image before returning it
-to the output layer. A captured picture with affinity to a different GPU
-context is rejected instead of being transferred implicitly.
+to the output layer. A recorded picture that depends on resources from a different
+GPU context is rejected instead of being transferred implicitly.
 
 Pass the executor to @racket[draw-output-group] using its
 @racket[#:raster-executor] argument. The executor is used only when the group's

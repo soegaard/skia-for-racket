@@ -14,16 +14,15 @@ supported. Wrap that part in @racket[draw-output-group] and choose whether to
 prefer vector output, require it, or force a raster image. This makes the
 representation decision local to the selected region.
 
-A @deftech{bounded output group} captures a drawing callback once, then selects native replay or
-explicit @tech{raster fallback} for a PDF, SVG, or CPU-raster destination. It returns
-an immutable report describing that decision. Capturing the callback is not a
-preflight/retry loop: replay never
-reruns the Racket authoring code.
+A @deftech{bounded output group} calls the drawing callback once and records the
+commands it produces. It then selects native replay or explicit @tech{raster fallback}
+for a PDF, SVG, or CPU-raster destination and returns an immutable report describing
+that decision. Later replay uses the recorded commands without calling the callback again.
 
 Representation policy and raster execution are separate. CPU execution is the default. A GPU
 raster executor belongs to the GPU output interface; its use does not turn a rasterized group
-into vector content. Groups do not repair unknown resource provenance or recover annotations
-that were already flattened.
+into vector content. Groups do not establish output compatibility for resources
+whose compatibility is unknown or recover annotations that were already flattened.
 
 @section{Drawing Bounded Groups}
 
@@ -52,7 +51,8 @@ The @racket['prefer-vector] policy chooses native replay only when the captured 
 it; native replay can still embed existing images or depend on viewer behavior. The
 @racket['require-vector] policy requires every captured feature to be vector-compatible and is
 not valid for a raster destination. The @racket['raster] policy requests isolated rasterization,
-but does not waive unknown provenance or known semantic loss.
+but still rejects resources whose output compatibility is unknown and operations
+known to discard document features such as annotations.
 
 Destination-dependent compositing is isolated against transparency, not the receiving canvas's
 backdrop. Include needed background drawing inside the callback. Groups reject device-coordinate
@@ -71,8 +71,8 @@ outer audit accept rasterization. A later failure does not trigger a second auth
 
 Callback values are ignored, and its canvas expires on exit. Failure before replay draws no
 group to the destination, but ordinary callback side effects persist. Failures during actual
-replay or image publication are not promised to roll back destination pixels. A policy rejection
-raises @racket[exn:fail:output-group?] with its report. The optional label is copied without the
+replay or drawing the raster image can leave the destination pixels partially changed.
+A policy rejection raises @racket[exn:fail:output-group?] with its report. The optional label is copied without the
 200-character restriction of @racket[call-with-output-label].
 }
 

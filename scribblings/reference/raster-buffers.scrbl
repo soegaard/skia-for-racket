@@ -413,8 +413,9 @@ the two views must belong to distinct buffers. The destination must be writable.
 must be tagged or both untagged; a tagged/untagged pair raises an exception rather than assuming
 sRGB.
 
-Native conversion is staged and validated before committing pixels. A failed conversion leaves
-the destination unchanged, including padding. This operation does not resize pixels.
+Pixels are converted and checked in temporary storage before the destination is changed.
+A failed conversion leaves the destination unchanged, including padding.
+This operation does not resize pixels.
 }
 
 @defproc[(pixmap-scale! [destination pixmap?] [source pixmap?] [#:sampling sampling (or/c

@@ -217,7 +217,8 @@ can have empty text and an empty cluster list or vector, but cannot store nonemp
 text that would otherwise be discarded. Supplying metadata does not reshape,
 reorder, or reposition glyphs. The caller is responsible for making the text,
 glyphs, and cluster associations agree; the library checks their representation
-and ranges, not that semantic correspondence.
+and ranges, not whether the supplied glyphs and cluster offsets actually
+correspond to the text.
 
 @defproc[(text-blob-builder-add-run!
           [builder text-blob-builder?] [font font?]
@@ -382,8 +383,8 @@ Use @racket[make-atlas-transform] for placement by scale, angle, and anchor.
 Appends a positioned run using the glyphs and positions already stored in
 @racket[run], translated by @racket[origin]. The font is copied from the open
 @racket[shaper]; text is not shaped again. The caller must use a shaper whose
-captured font agrees with the one used to create the run. There is no automatic
-font-provenance check or fallback selection.
+captured font agrees with the one used to create the run. The function does not
+check whether the run was shaped with that font or select a fallback font.
 
 When @racket[text] is supplied, the run's clusters supply its UTF-8 byte offsets
 and are checked against that text according to @secref["skia-text-run-metadata"].

@@ -13,7 +13,7 @@
 @(declare-exporting skia skia/output-policy skia/output-audit #:use-sources (skia/output-policy
                     skia/output-audit))
 
-Use these interfaces to inspect known compatibility risks before publishing a
+Use these interfaces to inspect known compatibility risks before saving a
 PDF or SVG file, or to reject exports that violate a chosen policy.
 @racket[analyze-output-page] produces a report without exporting document bytes;
 @racket[output->bytes/audit] combines export with a report and optional rejection.
@@ -23,8 +23,8 @@ callback executes. It is not static analysis, a pixel comparison, a font-embeddi
 validator, or a PDF/A conformance test. The policy table describes the supported serialization
 policy; it does not probe arbitrary native builds or predict a viewer's exact output.
 
-An @deftech{output preflight} executes the callback to
-check output compatibility before publication. Metrics, resource construction, graphics-state changes,
+An @deftech{output preflight} executes the callback to check output compatibility
+before exporting the document. Metrics, resource construction, graphics-state changes,
 and explicit raster work still occur. Ordinary Racket side effects are not rolled back. Do not
 use these operations to analyze untrusted or nonterminating callbacks.
 
@@ -53,8 +53,8 @@ Returns @racket[#t] for an immutable capability description and @racket[#f] othe
           output-capability?]{
 Returns the capability entry for the backend and a symbol in @racket[output-feature-names]. An
 unknown spelling raises; it does not mean supported. Ordinary raster features are classified as
-@racket['rasterized], while annotation loss and unknown provenance remain visible. The operation
-does not load native code or draw.
+@racket['rasterized], while annotation loss and resources with unknown output compatibility
+are still reported. The operation does not load native code or draw.
 }
 
 @defproc[(output-capability-backend [capability output-capability?])
@@ -88,8 +88,8 @@ code.
   (list @racket['needs-raster] "Use an explicit raster boundary for the conservative policy.")
   (list @racket['viewer-dependent] "Appearance depends on the document viewer or its fonts.")
   (list @racket['rasterized] "Content is rendered into an explicit raster representation.")
-  (list @racket['discarded] "Semantics such as interactivity are lost.")
-  (list @racket['unknown] "The operation or resource provenance is not established.")
+  (list @racket['discarded] "Document features such as interactivity are lost.")
+  (list @racket['unknown] "Output compatibility has not been established for the operation or resource.")
   (list @racket['unsupported] "Reserved blocking status for an unsupported operation."))]
 
 @examples[#:eval policy-eval
@@ -116,9 +116,9 @@ is the single-execution alternative.
           (real-in 1 9600) 144] [#:id-prefix id-prefix (or/c string? #f) #f] [#:encoding-quality
           quality (or/c (integer-in 0 101) #f) #f] [#:pdfa? pdfa? boolean? #f])
           output-audit-report?]{
-Executes each page callback once in preflight mode and returns a report without returning or
-publishing document bytes. Native target drawing calls are observed but suppressed. Explicit
-raster groups, native allocations, and ordinary callback side effects still run. Invalid
+Executes each page callback once in preflight mode and returns a report without returning
+document bytes or writing a file. Native target drawing calls are observed but suppressed.
+Explicit raster groups, native allocations, and ordinary callback side effects still run. Invalid
 resources, callback exceptions, and document-finalization errors propagate.
 }
 
@@ -137,7 +137,8 @@ The @racket['error] policy raises before an operation classified as @racket['nee
 @racket['unsupported], @racket['unknown], or @racket['discarded]. Embedded images, native
 expansion, and viewer-dependent text are permitted but reported. The @racket['vector-only]
 policy rejects every status other than @racket['vector], including ordinary images and explicit
-raster groups. These policies do not certify visual or semantic equivalence.
+raster groups. These checks do not guarantee identical appearance or preservation
+of document features such as searchable text and links.
 }
 
 @defproc[(save-output/audit [source (or/c output-page? (listof output-page?))] [filename
@@ -148,11 +149,11 @@ raster groups. These policies do not certify visual or semantic equivalence.
           id-prefix (or/c string? #f) #f] [#:encoding-quality quality (or/c (integer-in 0 101)
           #f) #f] [#:pdfa? pdfa? boolean? #f])
           output-audit-report?]{
-Publishes a completed audited document and returns its report. The default policy is
+Saves a completed audited document to a file and returns its report. The default policy is
 @racket['error], unlike @racket[output->bytes/audit]. The destination is resolved before
-callbacks run. Drawing, auditing, and finalization complete before publication through the
-normal temporary-file/rename writer. An audit rejection does not truncate or replace the
-destination. Callback side effects are not undone.
+callbacks run. Drawing, auditing, and finalization complete before the document is
+written to a temporary file and renamed to the destination. An audit rejection
+does not truncate or replace the destination. Callback side effects are not undone.
 }
 
 @racketblock[
@@ -284,7 +285,7 @@ not an executable drawing.
 @defproc[(exn:fail:output-audit? [v any/c])
           boolean?]{
 Returns @racket[#t] for an output-policy rejection exception. Other argument, lifetime, native,
-and publication errors retain their ordinary exception types.
+and output-writing errors retain their ordinary exception types.
 }
 
 @defproc[(exn:fail:output-audit-event [exception exn:fail:output-audit?])
@@ -293,8 +294,9 @@ Returns the event that caused the policy rejection. It does not mean that preced
 callback side effects have been rolled back.
 }
 
-Explicit rasterization resolves representation risks, not every semantic risk. It loses
-searchable text and annotations, and cannot certify padding, backdrop completeness, or color
-fidelity. Unknown provenance stays unknown. Recorded pictures store conservative feature
+Explicit rasterization can represent drawing effects as pixels, but does not preserve
+every document feature. It loses searchable text and annotations, and does not guarantee
+enough padding, a complete backdrop, or accurate colors. Resources with unknown output
+compatibility remain classified as unknown. Recorded pictures store conservative feature
 summaries; closing a child wrapper does not remove a warning already included in the summary.
 The audit does not intercept foreign code that bypasses Skia's public wrappers.

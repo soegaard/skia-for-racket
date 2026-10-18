@@ -239,9 +239,9 @@ physical print size.
                       [#:id-prefix id-prefix (or/c string? #f) #f]
                       [#:encoding-quality quality (or/c (integer-in 0 101) #f) #f]
                       [#:pdfa? pdfa? boolean? #f]) void?]{
-Exports as in @racket[output->bytes] and publishes the completed file. The format
+Exports as in @racket[output->bytes] and saves the completed file. The format
 is explicit; it is not inferred from the filename suffix. The destination is
-resolved before callbacks run. Its parent directory must exist. Publication
+resolved before callbacks run. Its parent directory must exist. Saving
 uses the temporary-file and rename rules of @racket[save-pdf] or @racket[save-svg].
 }
 
@@ -273,9 +273,9 @@ Use @racket[draw-rasterized] to request this explicitly, or a
 Selects native text drawing or monochrome outline conversion for the drawing
 helpers that honor this parameter. Its initial value is @racket['native].
 It is not a global backend switch and does not retroactively alter an already
-recorded picture. Outline conversion does not embed a font or preserve text
-semantics; unavailable monochrome glyph outlines have the behavior documented
-by the relevant text-to-path operation.
+recorded picture. Outline conversion does not embed a font or preserve text as
+searchable, selectable text; unavailable monochrome glyph outlines have the behavior
+documented by the relevant text-to-path operation.
 }
 
 @defparam[current-raster-output-scale scale (real-in 1/1024 1024)]{

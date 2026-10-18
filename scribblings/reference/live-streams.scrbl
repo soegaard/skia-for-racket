@@ -11,8 +11,8 @@ A @deftech{live port operation} exchanges chunks with a Racket port while native
 work is in progress. The image, picture, and byte-copy operations do not first
 buffer the complete encoded transfer as the @secref["skia-buffered-ports"]
 adapters do. Document output is different: it records complete pictures and
-performs an @tech{output preflight} export before publishing. The call is synchronous: it
-returns after native work and cleanup have finished. No persistent port-backed
+performs an @tech{output preflight} export before writing to the port. The call is
+synchronous: it returns after native work and cleanup have finished. No persistent port-backed
 image or codec is returned.
 
 The caller must give the operation exclusive use of its ports until it returns.
@@ -165,9 +165,9 @@ also apply.
 Exports output pages to a Racket port and returns the byte count. PDF accepts
 one through 1024 pages; SVG requires exactly one. Each application drawing
 callback runs once to record its page. The recorded commands are preflighted
-against the selected output policy and then replayed for publication. An authoring
-or preflight failure writes no bytes to the destination. Later publication
-failures can leave partial output.
+against the selected output policy and then replayed to write the document.
+An authoring or preflight failure writes no bytes to the destination. Later
+failures while writing can leave partial output.
 
 The text-mode and DPI rules are those of @racket[output->bytes]. The automatic
 mode uses native text for PDF and outlines for SVG. SVG output includes physical
@@ -190,9 +190,9 @@ fallback. Native and port failures can still raise under any policy.
 The following writers append at the destination stream's current end and return
 the bytes written by this call, not the accumulated total. They use the remaining
 captured/current stream budget and require some budget to remain. The stream is
-exclusively pinned during publication. A failure after pinning can leave partial
+exclusively pinned during writing. A failure after pinning can leave partial
 output and make further use fail; close that stream instead of retrying on it.
-Successful publication leaves the stream open. No close or cancellation keyword
+Successful writing leaves the stream open. No close or cancellation keyword
 is provided by these three native-stream operations.
 
 @defproc[(image-write-stream! [image image?] [stream skia-output-stream?]
@@ -222,9 +222,9 @@ The operation uses the same SKP representation and compatibility limitations as
           [#:text-mode mode (or/c 'auto 'native 'outline) 'auto]
           [#:raster-dpi dpi (real-in 1 9600) 144])
           exact-nonnegative-integer?]{
-Publishes one through 1024 output pages as PDF to a native output stream.
+Writes one through 1024 output pages as PDF to a native output stream.
 It follows @racket[output->port]'s record-once and preflight rules, using the
-stream's budget. There is no format argument: SVG publication is provided by
+stream's budget. There is no format argument: SVG output is provided by
 @racket[output->port], where its physical-size header can be handled correctly.
 The automatic text mode is native. The caller owns the output stream, which
 remains open after the operation.

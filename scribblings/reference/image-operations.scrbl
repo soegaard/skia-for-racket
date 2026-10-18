@@ -13,8 +13,8 @@
 CPU-accessible. These queries distinguish validity, deferred generation, texture backing, and
 immediately available pixels. None of those properties alone proves the others.
 
-The materialization, pixel-transfer, and filtering functions require CPU images. They reject
-GPU-owned or texture-backed inputs instead of silently reading back a texture. Transfer a GPU
+The functions that prepare CPU images, transfer pixels, or apply filters require CPU images.
+They reject GPU-owned or texture-backed inputs instead of silently reading back a texture. Transfer a GPU
 image explicitly before using these operations. Ordinary image queries still enforce the
 source resource's lifetime, thread, and any GPU-context restrictions.
 
@@ -36,8 +36,8 @@ or report that all RGB samples happen to be zero.
 
 @defproc[(image-lazy-generated? [image image?])
           boolean?]{
-Reports whether the image uses deferred generation. The query itself does not force pixel
-decoding or materialization.
+Reports whether the image uses deferred generation. The query itself does not
+decode or generate pixels.
 }
 
 @defproc[(image-texture-backed? [image image?])
@@ -60,11 +60,11 @@ read back pixels and exposes no borrowed pointer. A false result is not a claim 
 decoding will fail.
 }
 
-@section{Materialization}
+@section{Preparing CPU Images}
 
-The following operations reject silent narrowing of floating-point storage: F32 must remain F32,
+The following operations do not silently reduce floating-point pixel precision: F32 must remain F32,
 and F16 may remain F16 or become F32. Native allocation or validity failure raises rather than
-publishing an invalid image. Extents are checked conservatively at 16 bytes per pixel against
+returning an invalid image. Extents are checked conservatively at 16 bytes per pixel against
 both the current byte limit and the native signed allocation range. This is not a bound on all
 intermediate native memory.
 
@@ -105,9 +105,10 @@ either both have a color-space interpretation or both be untagged. A tagged/unta
 instead of silently assigning sRGB. Pixel-format and color-space conversion are performed only
 after those checks.
 
-Writes are staged and validated before destination mutation. Failed native reads, scaling, or
-invalid converted samples leave the destination unchanged. Only pixel bytes are committed;
-@tech{row padding} is preserved. The caching option is a native caching hint,
+Pixel data are prepared and checked in temporary storage before the destination is changed.
+Failed native reads, scaling, or invalid converted samples leave the destination unchanged.
+Only pixel bytes are copied to the destination; @tech{row padding} is preserved.
+The caching option is a native caching hint,
 not an ownership transfer or a promise that data will remain cached.
 
 @defproc[(image-read-pixmap! [image image?] [destination pixmap?] [#:source-x x
@@ -211,12 +212,12 @@ The optional input subset defaults to the whole image. Subset and clip use exact
 positive dimensions no greater than 32768 and signed 32-bit edges. The subset must be inside the
 image. The required clip bounds the requested output. The clip relative to the subset must also
 have representable edges. The native result rectangle and its offset are checked against both
-the result image and the requested clip before publication.
+the result image and the requested clip before the values are returned.
 
-GPU-dependent filters are rejected. Implicit floating-point narrowing is rejected under the same
-rules as materialization. Extents use the conservative 16-byte-per-pixel budget. A null native
-result raises; it is not converted into an apparently successful empty image. The returned image
-is independent of subsequent closure of the input wrappers.
+GPU-dependent filters are rejected. Floating-point pixel precision is preserved:
+F32 must remain F32, and F16 may remain F16 or become F32.
+Extents use the conservative 16-byte-per-pixel budget. A null native result raises
+an exception. The returned image is independent of subsequent closure of the input wrappers.
 }
 
 @bold{Conceptual diagram.} The result has three distinct coordinate facts: the

@@ -73,10 +73,10 @@ pixel copy, not the foreground/background stencil behavior of a bitmap draw.
 No PNG encoding, color-space conversion, or profile inference occurs. The
 result is created with no Skia color-space tag. The selected source and mask
 dimensions must satisfy the ordinary Skia image limits. Before allocating the
-bridge buffers, the function also requires a conservative charge of 12 bytes
-per output pixel plus 4 bytes per mask pixel, when a mask is used, to fit
-@racket[current-skia-byte-limit]. That charge is an admission check for bridge
-storage, not a bound on all memory used internally by Racket Draw or Skia.
+conversion buffers, the function checks a conservative size estimate: 12 bytes
+per output pixel plus 4 bytes per mask pixel, when a mask is used. This estimate
+must fit @racket[current-skia-byte-limit]. The check does not bound all memory
+used internally by Racket Draw or Skia.
 Readback or native image-construction failure raises without returning a
 partial image.
 }

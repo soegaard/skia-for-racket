@@ -55,8 +55,8 @@ an object, activate a context, or prove that a later operation will succeed.
 
 @section{Explicit Release}
 
-Explicit release, successful completion, and publication are different actions.
-Closing abandoned storage does not finish a document or publish an output file.
+Closing a resource, finishing a document, and saving a file are separate operations.
+Closing abandoned storage does not finish a document or save an output file.
 GPU contexts and borrowed frame targets have additional activation, generation,
 thread, synchronization, and teardown requirements; the CPU rules do not replace
 those requirements.

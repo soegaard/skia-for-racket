@@ -147,8 +147,8 @@ draw an unfilled open polyline.
 These primitives use the same resource, transform, and clip rules as the other
 drawing functions. Batch input is validated before drawing;
 an empty point batch still requires a valid canvas and paint. Native point
-batches do not imply portable SVG output. Use @racket[draw-markers] for
-explicitly lowered marker geometry.
+batches do not imply portable SVG output. Use @racket[draw-markers] to draw
+markers as ordinary shapes.
 
 @defproc[(draw-point [canvas canvas?]
           [x real?]

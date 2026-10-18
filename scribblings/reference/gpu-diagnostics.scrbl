@@ -21,7 +21,7 @@ returning an ambiguous report.
 
 The report records the requested interface mode, selected factory, validation
 status, and that extension queries use the context-owned interface. These fields
-describe construction provenance. They do not prove that a particular Skia
+describe how the interface was created. They do not prove that a particular Skia
 operation uses an extension or that the driver is hardware accelerated.
 }
 

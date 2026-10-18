@@ -3,8 +3,8 @@
 @title[#:tag "skia-reference-images" #:style 'toc]{Images and Encoding}
 
 Images are immutable pixel sources for drawing and readback. CPU-compatible
-operations inspect, copy, or materialize their pixels, while encoding functions
-produce PNG, JPEG, or WebP data and files.
+operations inspect, copy, or make their pixels available in CPU memory, while
+encoding functions produce PNG, JPEG, or WebP data and files.
 
 @local-table-of-contents[]
 

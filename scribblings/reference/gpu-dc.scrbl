@@ -54,15 +54,16 @@ must not add another @racket[call-with-gpu-context] scope around this operation.
 Nested GPU-DC scopes are rejected.
 
 The callback must be a procedure that accepts one positional argument. Its DC becomes
-invalid on normal return, exception, or escape. The staging target is a
-same-context full-color RGBA/BGRA/F16/F32 surface. The color-space
+invalid on normal return, exception, or escape. Drawing takes place on a temporary
+full-color RGBA/BGRA/F16/F32 surface in the same GPU context. The color-space
 descriptor, sample request, and @tech{surface-properties value} form part of
-the staging configuration and reuse key. See @secref["skia-surface-properties"]
+the temporary surface's configuration and determine whether it can be reused.
+See @secref["skia-surface-properties"]
 for pixel geometry and rendering flags.
 
 After successful drawing, a GPU snapshot is copied GPU-to-GPU onto the presenter
 frame. The presenter owns submission and presentation. No automatic CPU readback
-is part of a normal frame. A failed callback does not commit the staging root to
+is part of a normal frame. A failed callback does not copy the temporary surface to
 the frame, and unfinished alpha groups are discarded.
 }
 
@@ -84,17 +85,17 @@ be balanced. The surface itself is not closed by this operation.
 
 Logical dimensions default to the surface's physical dimensions. Independent
 X/Y device scales are physical extent divided by logical extent; the DC's
-reported backing scale remains 1. A true @racket[clear?] clears the root before
-the callback, while false preserves existing root pixels. Pixel persistence does
+reported backing scale remains 1. A true @racket[clear?] clears the surface before
+the callback, while false preserves its existing pixels. Pixel persistence does
 not imply DC-state persistence: the DC always expires at callback exit.
 
 The borrowed target must use RGBA8888, BGRA8888, F16, or F32 storage so that
 transparent alpha intermediates can be represented. Drawing directly into the
 same surface concurrently with the callback is unsupported. A user exception
-can leave pixels already drawn on the borrowed root; this operation is not a
-pixel transaction.
+can leave pixels already drawn on the borrowed surface; this operation does not
+roll back those changes.
 
 The DC's @tt{snapshot}, @tt{get-rgba-bytes}, and @tt{get-png-bytes} extensions
-perform explicit synchronous CPU transfers of the root. They are separate from
-ordinary GPU drawing and presentation.
+copy the surface's pixels to CPU memory and wait for the transfer to finish.
+They are separate from ordinary GPU drawing and presentation.
 }

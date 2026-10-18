@@ -159,9 +159,9 @@ the requested count, not the returned count. Bottom-up short reads retain the
 successfully decoded rows in top-to-bottom order and report their actual first
 output row. Row padding is initialized to zero.
 
-Validation or staging-allocation failures before the native read leave the
-session usable. An exception after attempting the native read changes the state
-to @racket['failed]. No caller-owned byte string is partially mutated.
+Failures while validating inputs or allocating temporary storage before the native
+read leave the session usable. An exception after attempting the native read
+changes the state to @racket['failed]. No caller-owned byte string is partially mutated.
 
 @racketblock[
 (with-skia ([surface (make-surface 3 2 #:background 'blue)]

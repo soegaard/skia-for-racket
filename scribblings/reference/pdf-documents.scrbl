@@ -40,7 +40,7 @@ Their callbacks add pages with @racket[with-document-page] or
           [#:raster-dpi raster-dpi (real-in 1 9600) 144]
           [#:encoding-quality encoding-quality (integer-in 0 101) 101]
           [#:pdfa? pdfa? boolean? #f]) void?]{
-Runs @racket[call-with-pdf-bytes] and publishes the completed bytes using the
+Runs @racket[call-with-pdf-bytes] and saves the completed bytes using the
 file rules of @racket[save-pdf]. It resolves and checks the destination before
 calling @racket[proc]. Changing @racket[current-directory] in the callback does
 not redirect the output. Callback or finalization failure leaves an existing
@@ -97,7 +97,7 @@ resume drawing on an expired page.
   (list result (document-state document) (document-page-count document)))
 ]
 
-This example completes a page but deliberately does not publish a file.
+This example completes a page but deliberately does not save a file.
 
 @reference-figure["pdf-document.png"
                   "A raster content preview of the same blue-rectangle drawing commands as the PDF page. It is not a rendering or verification of the exported PDF file."]
@@ -119,7 +119,7 @@ protection, abort-on-escape, and lifetime rules apply.
 
 For automatic document cleanup and finalization, use @racket[call-with-pdf-file]
 or @racket[call-with-pdf-bytes]. Explicit construction gives control over when
-to add pages, finish the document, and publish its bytes. The caller must release
+to add pages, finish the document, and save its bytes. The caller must release
 the document, including when an operation fails.
 
 @defproc[(document? [v any/c]) boolean?]{
@@ -221,7 +221,7 @@ thread. Aborting does not remove a file already saved or change a byte string
 already returned to the caller.
 }
 
-@section{Reading and Publishing PDF}
+@section{Reading and Saving PDF}
 
 @defproc[(document->pdf-bytes [document document?]) (and/c bytes? (not/c immutable?))]{
 Returns a fresh mutable copy of a finished document's bytes. It does not finish
@@ -236,7 +236,7 @@ exist. The default refuses an existing file or link; @racket['replace] permits
 replacement. The complete byte string is obtained before writing begins.
 It is written to a temporary file in the destination directory. That file is
 renamed only after writing succeeds.
-A failed read, write, or rename does not publish a partial PDF. The helper does
+A failed read, write, or rename does not leave a partial PDF at the destination. The helper does
 not finish or close the supplied document.
 
 @racketblock[

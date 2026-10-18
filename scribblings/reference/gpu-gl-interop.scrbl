@@ -56,8 +56,8 @@ renderbuffer. The wrapper queries and verifies those properties; @racket[width]
 and @racket[height] must match the actual attachments.
 
 The color-space argument describes the pixels; it does not convert their
-existing values. The target uses premultiplied RGBA semantics. The callback must
-leave the canvas save/layer stack balanced. Cleanup restores an unbalanced stack
+existing values. The target uses RGBA pixels with premultiplied alpha. The callback
+must leave the canvas save/layer stack balanced. Cleanup restores an unbalanced stack
 before reporting the error, but drawing already performed is not rolled back.
 Issued work is submitted even when the callback raises. The default waits before
 returning the host storage; false requests only same-context ordered reuse.
@@ -75,7 +75,7 @@ returning the host storage; false requests only same-context ordered reuse.
 Validates and temporarily borrows the host's level-zero @tt{GL_RGBA8} 2D texture,
 then copies it on the GPU into a new Skia-owned image. The returned image does
 not alias the host texture and follows the ordinary GPU-image lifetime and
-context-affinity rules. No CPU readback occurs.
+context restrictions. No CPU readback occurs.
 
 The original texture must have identity swizzle, base level zero, and no compare
 mode. The @racket[premultiplied?] argument describes its input alpha representation;

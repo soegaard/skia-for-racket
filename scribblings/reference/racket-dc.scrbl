@@ -30,7 +30,7 @@ DC implementation and never turns ordinary conversions into live DC adapters.
 @section{Persistent Raster Drawing Context}
 
 @defclass[skia-dc% object% (draw:dc<%>)]{
-Implements @racket[draw:dc<%>] with a persistent CPU-raster backing owned by the
+Implements @racket[draw:dc<%>] with a persistent CPU pixel buffer owned by the
 creating Racket thread.
 
 @defconstructor[([width exact-positive-integer? 640]
@@ -41,7 +41,7 @@ creating Racket thread.
 Creates a drawing context with the given logical size and backing scale. Physical
 pixel dimensions are the ceilings of the logical dimensions multiplied by
 @racket[backing-scale] and must satisfy the ordinary Skia dimension and byte
-limits. The backing starts transparent; @racket[background] is the color used by
+limits. The pixel buffer starts transparent; @racket[background] is the color used by
 @method[draw:dc<%> clear].
 
 The context belongs to the creating thread. Futures and other threads cannot use
@@ -68,18 +68,18 @@ scale is not 1.
 }
 
 @defmethod[(get-rgba-bytes [#:premultiplied? premultiplied? boolean? #f]) bytes?]{
-Returns copied physical RGBA bytes from the root backing. A true
+Returns copied physical RGBA bytes from the drawing context's main pixel buffer. A true
 @racket[premultiplied?] requests premultiplied samples. An unfinished alpha group
 is not merged for this query.
 }
 
 @defmethod[(get-png-bytes) bytes?]{
-Returns a PNG encoding of the root backing. An unfinished alpha group is not
-implicitly merged.
+Returns a PNG encoding of the drawing context's main pixel buffer. An unfinished
+alpha group is not implicitly merged.
 }
 
 @defmethod[(snapshot) image?]{
-Captures the root backing as a Skia image.
+Captures the drawing context's main pixel buffer as a Skia image.
 
 The image is stored in CPU memory and is independently owned. It remains usable
 after the drawing context closes and must be closed through the ordinary Skia
@@ -144,7 +144,7 @@ has run successfully.
 Draws a bitmap subsection with linear sampling while preserving the caller's
 smoothing setting. It follows the same copied-pixel, mask, and source-rectangle
 rules as the ordinary bitmap methods. The legacy @racket['xor] bitmap style has
-the same solid-drawing semantics as the compatibility layer's other bitmap
+the same solid-drawing behavior as the compatibility layer's other bitmap
 methods; it is not a bitwise XOR operation.
 }
 
@@ -164,9 +164,9 @@ Returns whether @racket[v] is an instance of @racket[skia-dc%].
 }
 
 @defproc[(skia-dc-capabilities) (and/c hash? immutable?)]{
-Returns declarations for the historical raster-DC capability surface,
-including supported drawing families and explicit exclusions. It performs no
-native capability probe and does not certify universal drop-in compatibility.
+Returns the library's declared support for raster drawing operations, including
+its limitations. It does not query native capabilities or guarantee that this
+drawing context can replace every other implementation of @racket[draw:dc<%>].
 }
 
 @defproc[(skia-dc-compatibility [target (or/c 'raster 'gpu 'pdf 'svg) 'raster])

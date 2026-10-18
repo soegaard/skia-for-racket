@@ -289,11 +289,11 @@ exceptions. Width and height have the same paired-override meaning.
 
 @defproc[(save-picture [picture picture?] [filename path-string?]
                        [#:exists exists (or/c 'error 'replace) 'error]) void?]{
-Serializes the picture and publishes the completed SKP file. The destination's
+Serializes the picture and saves the completed SKP file. The destination's
 parent directory must already exist. The default refuses an existing destination;
 @racket['replace] permits replacement. A temporary file in the same directory
-is renamed only after serialization and writing succeed. The helper removes an
-unpublished temporary file on escape; it does not create parent directories.
+is renamed only after serialization and writing succeed. If the operation escapes
+before the rename, the helper removes the temporary file; it does not create parent directories.
 }
 
 @section{Picture Shaders}

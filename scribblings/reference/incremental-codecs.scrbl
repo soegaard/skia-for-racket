@@ -21,10 +21,10 @@ not read a Racket port or keep arbitrary port callbacks. It decodes the first fr
 encoded dimensions and @tech{encoded orientation}, without subset selection, scaling, or a
 fallback to one-shot decoding.
 
-Input and decoded pixels can both remain resident. Incremental decoding is not
-a promise of constant memory. The supported destination is byte RGBA8888 or
-BGRA8888, with @tech{premultiplied alpha} or @tech{unpremultiplied alpha}. Floating-point destinations
-are not accepted by this interface.
+The encoded input and decoded pixels can remain in memory at the same time.
+Incremental decoding is not a promise of constant memory. The supported destination
+is byte RGBA8888 or BGRA8888, with @tech{premultiplied alpha} or
+@tech{unpremultiplied alpha}. Floating-point destinations are not accepted by this interface.
 
 Progressive input is supported for PNG at complete chunk boundaries. Partial PNG
 chunks can be accepted by feed without yet becoming visible to the native codec.
@@ -96,9 +96,8 @@ A native incomplete-input result means @racket['needs-input] before a final feed
 and terminal @racket['incomplete] afterward. Native success means complete;
 other native failures mean failed. Terminal calls return the existing progress
 without retrying or reopening the decoder. Wrapper exceptions mark failure,
-release the session's storage, and raise rather than returning fictitious native
-success. A byte-limit failure before the decoding attempt need not make the
-session terminal.
+release the session's storage, and propagate to the caller. A byte-limit failure
+before the decoding attempt need not make the session terminal.
 
 The cancellation event is polled before entering the native ownership scope.
 This is cancellation between steps, not interruption midway through an atomic
