@@ -304,7 +304,8 @@ pixels already drawn.
 Combines the current clip with the transformed rectangle. The default
 @racket['intersect] keeps only their overlap; @racket['difference] removes the
 rectangle's coverage from the current clip. Neither operation enlarges the clip.
-@tech{Antialiasing} permits fractional edge coverage. Zero extents are accepted.
+The @racket[antialias?] argument requests @tech{antialiasing} for the clip's
+edges and defaults to @racket[#f]. Zero extents are accepted.
 
 @racketblock[
 (with-skia ([surface (make-surface 180 100 #:background 'white)]
@@ -430,7 +431,7 @@ Each corner's radius is preserved, including in SVG output.
           (or/c #f (and/c (vector/c real? real? real? real?) immutable?))]{
 Returns an immutable vector containing the clip bounds' x, y, width, and height
 in current @tech{local coordinates}, or @racket[#f] if the bounds are unavailable.
-The bounds may include areas outside the clip because of antialiasing or the
+The bounds may include areas outside the clip because of @tech{antialiasing} or the
 conversion from device coordinates. Changing the transform can change these
 bounds without changing the clip.
 }

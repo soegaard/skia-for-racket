@@ -65,8 +65,8 @@ The boolean arguments request the following rendering settings:
 @itemlist[
  @item{@racket[fonts?] requests device-independent font rendering.}
  @item{@racket[msaa?] requests dynamic multisample antialiasing for GPU surfaces.
-       @deftech{Multisample antialiasing} (MSAA) smooths edges by sampling
-       coverage at several positions within each pixel. Dynamic MSAA allows
+       @deftech{Multisample antialiasing} (MSAA) is a form of @tech{antialiasing}
+       that samples coverage at several positions within each pixel. Dynamic MSAA allows
        Skia to use these samples internally even when the surface does not
        store multiple samples per pixel.}
  @item{@racket[dither?] requests dithering for all drawing. @deftech{Dithering}

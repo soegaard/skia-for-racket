@@ -361,7 +361,7 @@ the rectangular decomposition. The region and paint must remain valid during the
           [#:operation operation (or/c 'intersect 'difference) 'intersect])
           void?]{
 Combines the current clip with the integer region in device coordinates.
-The current canvas transform does not transform the region. No antialiasing
+The current canvas transform does not transform the region. No @tech{antialiasing}
 option is provided. For a local-coordinate boundary clip, convert the region
 with @racket[region->path] and use @racket[canvas-clip-path!] instead.
 

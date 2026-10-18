@@ -117,6 +117,11 @@ behavior that matter to the caller. Describe accepted inputs and results rather
 than routine C-interface preparation. Retain details that affect validity,
 precision, returned representations, ownership, or failure behavior.
 
+Explain a concept once; explain how each operation uses it locally. Put shared
+explanations in a common conceptual section and link to them from API entries.
+Retain operation-specific defaults, effects, restrictions, and exceptions
+rather than repeating the general definition.
+
 Use [`deftech` and `tech`](https://docs.racket-lang.org/scribble/section-links.html)
 to connect technical terms with their explanations:
 

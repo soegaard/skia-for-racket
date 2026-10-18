@@ -49,6 +49,15 @@ describe a rectangle by position and size, not by opposite corners. Its computed
 right and bottom coordinates must also fit the drawing-scalar range. The
 same limits apply to rectangle bounds enlarged by padding.
 
+@section[#:tag "skia-antialiasing"]{Pixel Coverage and Antialiasing}
+
+@deftech{Antialiasing} smooths shape edges by allowing fractional pixel coverage.
+A boundary pixel can be partially covered instead of being either fully covered
+or excluded. This applies to both drawn shapes and clipping boundaries.
+
+Antialiasing is distinct from image sampling, which determines how source pixels
+are selected or interpolated when drawing an image. See @secref["skia-image-drawing"].
+
 @section{Errors and Stability}
 
 Invalid argument types, option symbols, or argument relationships raise an

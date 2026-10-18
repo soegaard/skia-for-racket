@@ -1402,6 +1402,44 @@ class R2ProseTests(unittest.TestCase):
     def text(self, name):
         return (ROOT / checks.REFERENCE / name).read_text()
 
+    def test_antialiasing_has_one_definition_in_foundations(self):
+        self.assertIn('@include-section["notation.scrbl"]', self.text('foundations.scrbl'))
+        notation = self.text('notation.scrbl')
+        self.assertIn('@section[#:tag "skia-antialiasing"]{Pixel Coverage and Antialiasing}',
+                      notation)
+        self.assertIn('@deftech{Antialiasing}', notation)
+        self.assertIn('Antialiasing is distinct from image sampling', notation)
+        definitions = []
+        for path in (ROOT / checks.REFERENCE).rglob('*.scrbl'):
+            definitions.extend(path.name for _ in
+                               re.finditer(r'@deftech\{antialiasing\}', path.read_text(), re.I))
+        self.assertEqual(definitions, ['notation.scrbl'])
+        for chapter in ('paints.scrbl', 'canvases.scrbl', 'images.scrbl',
+                        'regions.scrbl', 'surface-properties.scrbl'):
+            with self.subTest(chapter=chapter):
+                text = self.text(chapter)
+                self.assertIn('@tech{antialiasing}', text)
+                self.assertNotIn('smooths shape edges by allowing fractional pixel coverage', text)
+                self.assertNotIn('permits fractional edge coverage', text)
+
+    def test_antialiasing_entries_keep_operation_specific_behavior(self):
+        cases = {
+            'paints.scrbl': ('for shape edges and defaults to @racket[#t]',
+                             'does not control image resampling',
+                             'does not guarantee that every destination or operation implements'),
+            'canvases.scrbl': ("for the clip's edges and defaults to @racket[#f]",),
+            'images.scrbl': ("Sampling is independent of a paint's @tech{antialiasing} setting",),
+            'regions.scrbl': ('No @tech{antialiasing} option is provided',),
+            'surface-properties.scrbl': ('@deftech{Multisample antialiasing}',
+                                         'coverage at several positions within each pixel',
+                                         'depends on the drawing backend'),
+        }
+        for chapter, phrases in cases.items():
+            text = ' '.join(self.text(chapter).split())
+            for phrase in phrases:
+                with self.subTest(chapter=chapter, phrase=phrase):
+                    self.assertIn(phrase, text)
+
     def test_general_numeric_limits_are_centralized(self):
         notation = self.text('notation.scrbl')
         self.assertIn('@deftech{drawing scalar}', notation)

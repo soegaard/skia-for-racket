@@ -45,8 +45,8 @@ The style selects filling, stroking, or both. Stroke width is measured in local
 drawing units; zero requests a @tech{hairline} rather than no stroke. The
 @tech{stroke cap} controls open stroke ends, while the @tech{stroke join}
 controls corners. The @tech{miter limit} bounds sharp miter joins.
-@deftech{Antialiasing} smooths shape edges by allowing fractional pixel coverage.
-It does not control image resampling.
+The @racket[antialias?] argument requests @tech{antialiasing} for shape edges
+and defaults to @racket[#t]. It does not control image resampling.
 
 A shader supplies the drawing colors when present; the paint's color alpha
 still modulates the result. Without a shader, the color supplies the paint's
@@ -316,7 +316,7 @@ it does not disable stroking. The width must be nonnegative.
 }
 
 @defproc[(paint-set-antialias! [paint paint?] [antialias? boolean?]) void?]{
-Sets whether the paint requests antialiased shape edges. Image resampling is
+Sets whether the paint requests @tech{antialiasing} for shape edges. Image resampling is
 controlled separately by the sampling option of an image operation. A setting
 does not guarantee that every destination or operation implements antialiasing.
 
@@ -431,7 +431,7 @@ Returns the current stroke-join setting.
 Returns the current dimensionless miter limit.
 }
 @defproc[(paint-antialias? [paint paint?]) boolean?]{
-Reports whether the paint requests antialiased shape edges. This is a setting
+Reports whether the paint requests @tech{antialiasing} for shape edges. This is a setting
 query, not a predicate for recognizing paint values.
 }
 @defproc[(paint-dither? [paint paint?]) boolean?]{
