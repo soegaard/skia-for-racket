@@ -14,7 +14,7 @@
           "arity_mask": "4",
           "export_kind": "syntax",
           "kind": "procedure",
-          "name": "call-with-canvas-layer-rec",
+          "name": "call-with-canvas-layer/options",
           "phase": "0",
           "required_keywords": []
         },
@@ -36,7 +36,7 @@
           "arity_mask": "2",
           "export_kind": "syntax",
           "kind": "procedure",
-          "name": "canvas-save-layer-rec!",
+          "name": "canvas-save-layer/options!",
           "phase": "0",
           "required_keywords": []
         }
@@ -5188,7 +5188,7 @@
           "arity_mask": "4",
           "export_kind": "syntax",
           "kind": "procedure",
-          "name": "call-with-canvas-layer-rec",
+          "name": "call-with-canvas-layer/options",
           "phase": "0",
           "required_keywords": []
         },
@@ -5673,7 +5673,7 @@
           "arity_mask": "2",
           "export_kind": "syntax",
           "kind": "procedure",
-          "name": "canvas-save-layer-rec!",
+          "name": "canvas-save-layer/options!",
           "phase": "0",
           "required_keywords": []
         },

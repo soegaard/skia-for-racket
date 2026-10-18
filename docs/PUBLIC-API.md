@@ -86,9 +86,9 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
-| call-with-canvas-layer-rec | stable | 0 | procedure | 2 | none | #:backdrop, #:clip, #:options, #:paint |
+| call-with-canvas-layer/options | stable | 0 | procedure | 2 | none | #:backdrop, #:clip, #:options, #:paint |
 | canvas-discard! | stable | 0 | procedure | 1 | none | none |
-| canvas-save-layer-rec! | stable | 0 | procedure | 1 | none | #:backdrop, #:options, #:paint |
+| canvas-save-layer/options! | stable | 0 | procedure | 1 | none | #:backdrop, #:options, #:paint |
 ### annotations.rkt
 
 Stable export/call-boundary target for the 0.78 API. Feature-specific ownership, failure and backend limits still apply.
@@ -799,7 +799,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | blender? | stable | 0 | procedure | 1 | none | none |
 | buffered-port->input-stream | stable | 0 | procedure | 1 | none | #:cancel-evt, #:close?, #:limit |
 | call-with-canvas-layer | stable | 0 | procedure | 2 | none | #:bounds, #:paint |
-| call-with-canvas-layer-rec | stable | 0 | procedure | 2 | none | #:backdrop, #:clip, #:options, #:paint |
+| call-with-canvas-layer/options | stable | 0 | procedure | 2 | none | #:backdrop, #:clip, #:options, #:paint |
 | call-with-canvas-matrix | stable | 0 | procedure | 3 | none | #:replace? |
 | call-with-canvas-state | stable | 0 | procedure | 2 | none | none |
 | call-with-document-page | stable | 0 | procedure | 4 | none | none |
@@ -846,7 +846,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | canvas-save! | stable | 0 | procedure | 1 | none | none |
 | canvas-save-count | stable | 0 | procedure | 1 | none | none |
 | canvas-save-layer! | stable | 0 | procedure | 1 | none | #:bounds, #:paint |
-| canvas-save-layer-rec! | stable | 0 | procedure | 1 | none | #:backdrop, #:options, #:paint |
+| canvas-save-layer/options! | stable | 0 | procedure | 1 | none | #:backdrop, #:options, #:paint |
 | canvas-scale! | stable | 0 | procedure | 2, 3 | none | none |
 | canvas-set-matrix3! | stable | 0 | procedure | 2 | none | none |
 | canvas-set-matrix4! | stable | 0 | procedure | 2 | none | none |
