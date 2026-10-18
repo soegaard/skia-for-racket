@@ -186,7 +186,7 @@ operand order and operations of @racket[region-op]. The original region is uncha
 
 @defproc[(region-clear! [region region?])
           void?]{
-Mutates the region to the empty set. Earlier detached snapshots remain valid.
+Mutates the region to the empty set.
 }
 
 @defproc[(region-set-rect! [region region?]
@@ -194,7 +194,7 @@ Mutates the region to the empty set. Earlier detached snapshots remain valid.
                  (vector/c exact-integer? exact-integer? exact-integer? exact-integer?))])
           void?]{
 Replaces the region with the supplied rectangle. An empty rectangle clears it.
-Validation precedes mutation; earlier detached snapshots are unaffected.
+Validation precedes mutation.
 }
 
 @defproc[(region-translate [region region?]
@@ -219,11 +219,11 @@ Returns a new owned boundary path. An empty region yields an empty path.
 The path has no dependency on the region's later mutation or lifetime.
 }
 
-@section{Detached Rectangles and Spans}
+@section{Rectangles and Spans}
 
 The following operations snapshot their results synchronously. No borrowed native
 iterator escapes. Sequence variants create the snapshot when called, not when
-iteration begins, and can be traversed after the source closes. Snapshot counts
+iteration begins. Snapshot counts
 and payloads are bounded by @racket[current-skia-byte-limit]; this is not a bound
 on all internal region storage.
 
@@ -272,8 +272,7 @@ endpoints return an empty list.
 spans
 ]
 
-The snapshot contains @racket[#(0 4)] and @racket[#(6 8)] and remains usable
-after the region is closed.
+The snapshot contains @racket[#(0 4)] and @racket[#(6 8)].
 }
 
 @racketblock[

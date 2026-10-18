@@ -17,8 +17,8 @@ page dimensions and margins to PDF, SVG, or a raster image. Create it with
 @racket[make-output-page], then export with @racket[output->bytes] or render an
 image with @racket[output-page->image].
 
-An @deftech{output page} is a detached description containing dimensions, units,
-margins, a background, and a drawing callback. It owns no native resource.
+An @deftech{output page} is an immutable Racket structure containing dimensions,
+units, margins, a background, and a drawing callback.
 Exporting it invokes the callback again; it is not a recorded @tech{picture}. Resources
 captured by the callback must remain open whenever the page is drawn.
 
@@ -63,8 +63,8 @@ The background is @racket[#f] for no background drawing or a
 
 The callback must accept one canvas argument and have no required keyword
 arguments. It draws in page units with its origin at the content area's upper-left.
-Its results are discarded. Capturing a closed paint or image does not become
-safe merely because the page itself is a detached value.
+Its results are discarded. Any paint or image captured by the callback must
+remain open whenever the callback uses it.
 
 @bold{Conceptual diagram.} Margins are left, top, right, bottom--not CSS order.
 They define a content rectangle whose upper-left corner is the callback origin.

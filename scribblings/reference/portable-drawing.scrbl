@@ -18,8 +18,8 @@ functions or silently select a backend. Portable image lowering still embeds
 raster image samples; it is not conversion to vector geometry or a guarantee
 about every viewer, font, color profile, or paint effect.
 
-The planning operations return detached immutable cells without reading pixels,
-loading Skia, or retaining an image. The drawing operations require live canvases,
+The planning operations return immutable cell structures without reading pixels
+or loading Skia. The drawing operations require live canvases,
 images, and paints, with their ordinary lifetime and context restrictions.
 
 @section{Marker Geometry}
@@ -54,7 +54,7 @@ paint effects portable.
                   "Three blue circular markers followed by three orange square markers."]
 }
 
-@section{Detached Grid Plans}
+@section{Grid Plans}
 
 Use @racket[image-nine-plan] or @racket[image-lattice-plan] to inspect how a
 source image will be divided and placed before drawing. The returned cells
@@ -69,7 +69,7 @@ with zero destination area, which the drawing functions omit.
 
 @defproc[(image-grid-cell? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached grid-plan cell and @racket[#f] otherwise.
+Returns @racket[#t] for a grid-plan cell and @racket[#f] otherwise.
 }
 
 @defproc[(image-nine-plan [image-width (integer-in 1 1073741823)]
@@ -138,7 +138,7 @@ edges. A zero extent means the drawing function omits this cell.
 
 @defproc[(image-grid-cell-color [cell image-grid-cell?])
           (or/c rgba? #f)]{
-Returns a detached RGBA record for a fixed-color cell, or @racket[#f] for
+Returns an @racket[rgba] value for a fixed-color cell, or @racket[#f] for
 other kinds. This is not the packed integer used by @racket[image-lattice-colors].
 }
 

@@ -30,7 +30,7 @@ For ordinary UI drawing, the byte-valued @tech{color specification}s, such as
 do not themselves enable HDR output or make an eight-bit target higher
 precision; the target surface's format still determines the stored precision.
 
-A @deftech{floating-point color} is a detached immutable value with red, green,
+A @deftech{floating-point color} is an immutable Racket structure with red, green,
 blue, and alpha components. It uses @tech{unpremultiplied alpha}: RGB values are not
 multiplied by alpha and need not lie between zero and alpha. RGB may be negative
 or greater than one. A value does not carry a color space or choose a pixel
@@ -64,7 +64,6 @@ are retained, not clipped.
 The constructor converts components to inexact Racket numbers but does not
 round the stored RGB to binary32. Native drawing operations perform that
 conversion later. Construction changes neither color space nor alpha convention.
-The result is detached and must not be passed to @racket[skia-close!].
 
 @examples[#:eval float-color-eval
 (define extended (make-color4f 1.25 -0.25 0.5 0.5))
@@ -179,9 +178,9 @@ The pixel has RGB bytes of approximately 188 and alpha 255.
 }
 
 @defproc[(paint-color4f [paint paint?]) color4f?]{
-Returns the paint's stored unpremultiplied extended-sRGB color as a detached
-value. This is not the original color in the setter's source space, and it
-does not sample the paint's shader or apply its filters. Unlike
+Returns the paint's stored unpremultiplied extended-sRGB color as a
+@tech{floating-point color}. This is not the original color in the setter's
+source space, and it does not sample the paint's shader or apply its filters. Unlike
 @racket[paint-color], this query does not quantize the result to RGBA bytes.
 }
 

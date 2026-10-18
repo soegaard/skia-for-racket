@@ -204,8 +204,8 @@ request selects among available faces; it does not change an existing
 typeface's design.
 
 The font-style, style-set, copied-data, and metadata bindings are also provided
-by @racketmodname[skia/typefaces]. A @deftech{font style} is a detached, immutable
-weight/width/slant description, not a typeface and not a native resource.
+by @racketmodname[skia/typefaces]. A @deftech{font style} is an immutable Racket
+structure describing weight, width, and slant, not a typeface.
 
 A @deftech{font-style set} is an owned collection of the styles available for a
 font family. It retains the native data needed to inspect styles and obtain
@@ -225,7 +225,7 @@ The width names denote classes 1 through 9 in this order:
 The slants are @racket['upright], @racket['italic], and @racket['oblique].
 
 @defproc[(font-style? [v any/c]) boolean?]{
-Returns @racket[#t] for a detached font-style value and @racket[#f] otherwise.
+Returns @racket[#t] for a font-style value and @racket[#f] otherwise.
 }
 
 @defproc[(make-font-style [#:weight weight (or/c (integer-in 0 1000) 'invisible 'thin 'extra-light
@@ -285,9 +285,9 @@ Returns the number of entries in the open style set.
 
 @defproc[(font-style-set-ref [styles font-style-set?] [index (integer-in 0 #x7fffffff)])
           font-style-entry?]{
-Returns a detached description of the indexed style. The index must be
-less than @racket[(font-style-set-count styles)]. The result, including its
-immutable name string, remains useful after the set is closed.
+Returns an immutable structure describing the indexed style, including its
+immutable name string. The index must be less than
+@racket[(font-style-set-count styles)].
 }
 
 @defproc[(font-style-set-styles [styles font-style-set?]) (vectorof font-style-entry?)]{
@@ -297,7 +297,7 @@ The copied descriptions and UTF-8 name payload are charged against
 }
 
 @defproc[(font-style-entry? [v any/c]) boolean?]{
-Returns @racket[#t] for a detached style-entry description and @racket[#f] otherwise.
+Returns @racket[#t] for a style-entry description and @racket[#f] otherwise.
 }
 
 @defproc[(font-style-entry-index [entry font-style-entry?]) exact-nonnegative-integer?]{
@@ -309,7 +309,7 @@ Returns the copied style name. The name can be empty.
 }
 
 @defproc[(font-style-entry-style [entry font-style-entry?]) font-style?]{
-Returns the detached weight, width, and slant description.
+Returns the weight, width, and slant description.
 }
 
 @defproc[(font-style-set-typeface [styles font-style-set?] [index (integer-in 0 #x7fffffff)])
@@ -327,7 +327,7 @@ Matching selects an available style; it does not synthesize every requested styl
 }
 
 @defproc[(typeface-style [face typeface?]) font-style?]{
-Returns a detached style description for the actual face.
+Returns a style description for the actual face.
 }
 
 @section{Copied Font Data and Metadata}

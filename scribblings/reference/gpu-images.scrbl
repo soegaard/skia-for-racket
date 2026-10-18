@@ -49,7 +49,7 @@ it is ready for execution. A closed resource raises an exception.
 }
 
 @defproc[(gpu-image-info [image gpu-image?]) (and/c hash? immutable?)]{
-Returns detached metadata after verifying native texture backing and validity
+Returns metadata after verifying native texture backing and validity
 for the owning active context. The hash includes @racket['width],
 @racket['height], @racket['backend], @racket['context_generation],
 @racket['unique_id], @racket['texture_backed], and @racket['context_matches].
@@ -108,7 +108,7 @@ copy, a resampling operation, or a transfer to another GPU context.
                  (and/c (vector/c exact-integer? exact-integer?) immutable?))]{
 Applies @racket[filter] in the image's active context. Returns an owned GPU image,
 a valid source rectangle within that image, and its destination offset. The
-last two results are detached immutable vectors. They have the same placement
+last two results are immutable vectors. They have the same placement
 convention as @racket[image-apply-filter]: extract the valid rectangle and place
 its upper-left corner at the returned offset. Do not assume the entire returned
 image is the filter's valid output.

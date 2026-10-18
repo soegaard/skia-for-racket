@@ -18,7 +18,7 @@ are described in @secref["skia-portable-drawing"].
 Point collections are lists or vectors of two-coordinate lists or vectors.
 Input arrays are validated and copied before submission, and their counts and
 byte sizes are bounded by
-@racket[current-skia-byte-limit]. Detached specifications retain no canvas.
+@racket[current-skia-byte-limit].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -30,9 +30,9 @@ coordinates. Construct it with @racket[make-vertices] and draw it with
 @racket[draw-vertices]. For a flat-colored outline that needs filling or
 stroking, a @tech{path} is usually simpler.
 
-A @deftech{vertices resource} owns a native immutable mesh and detached copies
+A @deftech{vertices resource} owns a native immutable mesh and Racket copies
 of its submitted arrays. Drawing requires its live native resource. Its metadata
-queries read the detached copies and remain usable after explicit closure,
+queries read the Racket copies and remain usable after explicit closure,
 without requiring its creating thread. The copies describe submitted values,
 not a readback of the native binary32 arrays.
 
@@ -88,7 +88,7 @@ Returns the mesh's submitted topology.
 @defproc[(vertices-positions [mesh vertices?])
           (and/c vector? immutable?)]{
 Returns the immutable vector of immutable two-coordinate position vectors.
-This is detached metadata, including after native closure.
+The query remains available after the mesh is closed.
 }
 
 @defproc[(vertices-texture-coordinates [mesh vertices?])
@@ -136,7 +136,7 @@ Use a cubic patch to draw a four-sided curved region with interpolated corner
 colors or to map a shader across it. Create the boundary and corner data with
 @racket[make-cubic-patch], then draw it with @racket[draw-patch].
 
-A @deftech{cubic patch} is a detached immutable Coons-patch specification. Its
+A @deftech{cubic patch} is an immutable Racket structure specifying a Coons patch. Its
 boundary has four cubic curves, with corners at point indices 0, 3, 6, and 9.
 Indices 1 and 2 are the first edge's control points, and the same pattern continues
 around the other edges; points 10 and 11 return to corner 0. Twelve points are
@@ -154,8 +154,7 @@ Returns @racket[#t] for a cubic-patch specification and @racket[#f] otherwise.
           cubic-patch?]{
 Copies exactly twelve two-coordinate boundary points. Optional colors and
 texture coordinates each contain exactly four entries, in corner order, rather
-than twelve entries. Colors are @tech{color specification}s. The result is a
-detached specification that needs no explicit closure.
+than twelve entries. Colors are @tech{color specification}s.
 }
 
 @defproc[(cubic-patch-points [patch cubic-patch?])
@@ -184,7 +183,7 @@ Returns the immutable four-point shader-coordinate vector, or @racket[#f] when o
           void?]{
 Tessellates and draws the patch with native Skia. The blend-mode argument
 combines patch colors with paint shading, independently of destination blending
-selected by the paint. The detached patch remains reusable afterward.
+selected by the paint.
 
 @racketblock[
 (define patch
@@ -211,8 +210,8 @@ a single center rectangle. For additional divisions or per-cell styles,
 create a specification with @racket[make-image-lattice] and pass it to
 @racket[draw-image-lattice].
 
-An @deftech{image lattice} is a detached specification of integer image divisions
-and optional cell styles. Image bounds use coordinates, width, and height.
+An @deftech{image lattice} is an immutable Racket structure specifying integer image
+divisions and optional cell styles. Image bounds use coordinates, width, and height.
 Lattices alternate fixed and stretchable spans, starting with a fixed span.
 When the destination is smaller than the fixed spans, those spans shrink and
 stretchable spans can collapse. This is not equal-size tiling.
@@ -349,8 +348,7 @@ lowering, use @racket[draw-image-nine/portable].
 Draws the selected lattice inside the local destination rectangle. Source
 bounds must be nonempty and inside the image, and all divisions must be strictly
 interior to those bounds. The optional paint applies to native image drawing.
-The detached lattice and image remain unchanged. For explicit rectangle-based
-lowering, use @racket[draw-image-lattice/portable].
+For explicit rectangle-based lowering, use @racket[draw-image-lattice/portable].
 
 
 @racketblock[

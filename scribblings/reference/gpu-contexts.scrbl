@@ -131,7 +131,7 @@ A failed close is not silently replaced with abandonment.
 ]
 
 On macOS, when a Metal context can be created, the following expression returns
-detached context information and closes the context before returning:
+context information and closes the context before returning:
 @racket[(call-with-new-gpu-context gpu-context-info #:backend 'metal)].
 Defining the helper alone creates no context.
 }
@@ -165,7 +165,7 @@ releasing its tracked native ownership.
 }
 
 @defproc[(gpu-context-info [context gpu-context?]) (and/c hash? immutable?)]{
-Returns detached context information on the owning Racket thread, outside a
+Returns context information on the owning Racket thread, outside a
 future. No active GPU scope is required, and the query remains available after
 abandonment or closure. It does not activate the provider or refresh native
 capability and cache measurements.
@@ -255,8 +255,8 @@ number of release jobs processed by that call. It does not collect garbage or
 retire live wrappers. A ready or closing context requires the correct active
 GPU scope. An abandoned context requires no current host.
 
-The queue is detached before its jobs are processed. A failed release is not
-retried: its record is quarantined, other detached jobs are attempted, and an
+Pending jobs are removed from the queue before processing. A failed release is not
+retried: its record is quarantined, the remaining jobs are attempted, and an
 exception is raised instead of returning a successful count. There is no
 successful drain for a closed or @racket['release-failed] context.
 }
@@ -264,7 +264,7 @@ successful drain for a closed or @racket['release-failed] context.
 @defproc[(gpu-drain-pending-contexts! [#:abandon? abandon? boolean? #f])
           (listof (and/c hash? immutable?))]{
 Attempts shutdown for pending contexts owned by the calling Racket thread.
-It must run outside GPU execution scopes. The result contains one detached
+It must run outside GPU execution scopes. The result contains one
 context report for each selected context; the order is unspecified. Contexts
 owned by other threads are not processed.
 

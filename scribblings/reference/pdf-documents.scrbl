@@ -63,8 +63,7 @@ Creates a document with the settings described at @racket[make-pdf-document]
 and calls @racket[proc] with it. After the callback returns, the helper discards
 its results, finishes the document, and returns the document's bytes.
 The callback must complete at least one page and leave
-no page active. The document is released on success or escape. Returning bytes
-transfers only the detached byte string, not the document resource.
+no page active. The document is released on success or escape.
 }
 
 @section[#:tag "skia-pdf-page-scopes"]{Drawing PDF Pages}

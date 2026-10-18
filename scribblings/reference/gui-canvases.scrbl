@@ -75,7 +75,7 @@ storage when needed.
 }
 
 @defmethod[(get-skia-info) (and/c hash? immutable?)]{
-Returns detached lifetime, geometry, and paint/presentation diagnostics.
+Returns lifetime, geometry, and paint/presentation diagnostics.
 }
 
 @defmethod[(closed?) boolean?]{
@@ -157,7 +157,7 @@ Returns the wrapper's closed state.
 }
 
 @defmethod[(get-skia-info) (and/c hash? immutable?)]{
-Returns detached frame and lifetime diagnostics. The result states explicitly
+Returns frame and lifetime diagnostics. The result states explicitly
 that implicit CPU readback and visible-pixel verification have not occurred.
 }
 }

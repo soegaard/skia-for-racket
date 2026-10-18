@@ -97,7 +97,7 @@ Returns a new mutable, tightly packed eight-bit RGBA byte string. Its length is
 four times the surface width times its height. The result uses unpremultiplied
 alpha unless requested otherwise. A supplied live color space selects the
 readback destination interpretation; false uses the surface's native color
-space. The color-space argument is not a detached descriptor.
+space. The color-space argument accepts a resource, not a color-space descriptor.
 
 The operation performs a @tech{GPU flush}, @tech{GPU submission}, and
 @tech{GPU wait} before copying pixels. Float or

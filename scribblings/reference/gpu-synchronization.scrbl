@@ -77,12 +77,12 @@ does not close the caller's resource wrappers. A byte request is not proof of
 bytes released, and a cache limit is not a hard allocation cap.
 
 @defproc[(gpu-cache-info [context gpu-context?]) (and/c hash? immutable?)]{
-Returns a detached hash containing the backend, context generation,
+Returns an immutable hash containing the backend, context generation,
 @racket['limit_bytes], @racket['budgeted_resources], and @racket['budgeted_bytes].
 The usage count and bytes describe budgeted resources, not total VRAM.
 The @racket['purgeable_bytes], @racket['total_gpu_bytes], and
-@racket['limit_is_hard_allocation_cap] fields are false. The report remains
-usable after context closure but is not an atomic account of all driver memory.
+@racket['limit_is_hard_allocation_cap] fields are false. The report is not an
+atomic account of all driver memory.
 }
 
 @defproc[(gpu-set-cache-limit! [context gpu-context?] [bytes exact-nonnegative-integer?]) void?]{
@@ -129,7 +129,7 @@ live image/surface wrappers or replace orderly context closure.
           [#:max-entries max-entries (integer-in 0 65536) 4096]
           [#:string-limit string-limit (integer-in 0 65536) 4096]
           [#:byte-limit byte-limit exact-nonnegative-integer? 1048576]) memory-statistics?]{
-Returns a detached memory report for the active context. Its scope is
+Returns a memory report for the active context. Its scope is
 @racket['gpu-context-skia-resources], not
 @racket['process-global-skia-caches]. Use the existing
 @racket[memory-statistics-entries] and related accessors to inspect it.
@@ -143,6 +143,5 @@ and a dropped count, not silently presented as a complete report.
 The report is not an atomic snapshot, a total-VRAM measurement, or proof that
 wrapped external allocations are fully accounted for. Native names and report
 contents can vary. The collector cannot run during a live-stream operation or
-from its port-service callback. Detached results require no later activation
-and remain usable after the context closes.
+from its port-service callback.
 }

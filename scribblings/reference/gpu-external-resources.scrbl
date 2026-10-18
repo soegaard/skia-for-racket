@@ -45,7 +45,7 @@ underlying native resource is currently usable.
 
 @defproc[(gpu-external-texture-info [texture gpu-external-texture?])
           (and/c hash? immutable?)]{
-Returns detached diagnostic information on the token's creating thread. The
+Returns diagnostic information on the token's creating thread. The
 report includes its backend, context generation, handoff state, backend-specific
 observations, and @racket['raw_handles_exposed] set to false. The report does
 not grant access to, extend, or synchronize the native resource.

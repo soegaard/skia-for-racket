@@ -47,7 +47,6 @@ or a claim that all features are supported on every backend.
 @defproc[(output-capability? [v any/c])
           boolean?]{
 Returns @racket[#t] for an immutable capability description and @racket[#f] otherwise.
-Descriptions contain no native resources.
 }
 
 @defproc[(output-capability-for [backend (or/c 'pdf 'svg 'raster)] [feature symbol?])
@@ -192,7 +191,7 @@ contain internal definitions and must end with an expression. It can return mult
 
 @defproc[(output-audit-event? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached immutable observed event and @racket[#f] otherwise.
+Returns @racket[#t] for an immutable observed event and @racket[#f] otherwise.
 }
 
 @defproc[(output-audit-event-page [event output-audit-event?])
@@ -230,13 +229,12 @@ Returns explanatory diagnostic text, not a separate capability test.
 
 @defproc[(output-audit-event-details [event output-audit-event?])
           (and/c hash? immutable?)]{
-Returns detached ordinary-value details, such as raster dimensions and execution metadata. The
-result holds no native resource or callback.
+Returns an immutable hash of event details, such as raster dimensions and execution metadata.
 }
 
 @defproc[(output-audit-report? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached immutable report and @racket[#f] otherwise.
+Returns @racket[#t] for an immutable report and @racket[#f] otherwise.
 }
 
 @defproc[(output-audit-report-backend [report output-audit-report?])
@@ -274,7 +272,7 @@ test; it is not proof of useful page content.
 
 @defproc[(output-audit-report->jsexpr [report output-audit-report?])
           (and/c hash? immutable?)]{
-Returns a detached JSON-compatible hash containing the backend, mode, page count, blocking and
+Returns a JSON-compatible hash containing the backend, mode, page count, blocking and
 vector-only summaries, scope qualification, and event details. Symbolic backend, mode,
 operation, feature, and status values are converted to strings. This serialization is a report,
 not an executable drawing.

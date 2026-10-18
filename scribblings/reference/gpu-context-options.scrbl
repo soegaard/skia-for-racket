@@ -17,10 +17,9 @@ settings. Create the value with @racket[make-gpu-context-options] and pass it
 as @racket[#:options] to @racket[make-gpu-context]. These settings apply to the
 context, not to an individual surface or drawing operation.
 
-A @deftech{GPU context options} value contains immutable requests used when
-constructing a @tech{GPU context}. It is a @tech{detached value}, not a native resource; it
-needs no explicit release. Constructing or inspecting options does not load
-Skia or probe a backend. The same value can be used on different Racket threads.
+A @deftech{GPU context options} value is an immutable Racket structure containing
+requests used when constructing a @tech{GPU context}. Constructing or inspecting
+options does not load Skia or probe a backend.
 
 Options are requests, not reports of effective native settings. Backend support
 and driver workarounds can affect their use. Passing an explicit value to

@@ -12,9 +12,9 @@ same rounded boundary will be used for drawing, clipping, and path
 construction. For a single drawing operation with the same radii at every
 corner, @racket[draw-rounded-rect] is simpler.
 
-A @deftech{rounded rectangle} is a detached immutable specification of a rectangle
-and four pairs of corner radii. It is not an owned native resource. Drawing or
-path construction normalizes that specification according to Skia's rounded
+A @deftech{rounded rectangle} is an immutable Racket structure containing a
+rectangle and four pairs of corner radii. Drawing or path construction normalizes
+that specification according to Skia's rounded
 rectangle rules. The stored radii are not a promise that those radii fit the bounds.
 
 Corners are ordered top-left, top-right, bottom-right, bottom-left. The two
@@ -67,9 +67,9 @@ Returns a pure specification with zero bounds and zero radii, equivalent to
 
 @section{Normalization and Transformations}
 
-These operations require Skia but return detached values that need no explicit
-closure. Inputs are unchanged. Native normalization can reduce oversized
-radii and replace degenerate corners; inspect the result rather than assuming
+These operations require Skia and return new rounded-rectangle values.
+Native normalization can reduce oversized radii and replace degenerate corners;
+inspect the result rather than assuming
 that supplied radii were retained. Radius components and inset/outset distances
 must be nonnegative after binary32 rounding. A negative input that rounds to
 negative zero is accepted as zero; offsets remain signed.
@@ -183,7 +183,7 @@ add the rounded rectangle to a path and use @racket[path-transform].
 @reference-figure["rounded-rect-inset-outset.png"
                   "Three concentric rounded-rectangle outlines: a large orange outset expanded by 12 horizontal and 8 vertical units, the dark original, and a smaller blue inset using the same distances. Their corner radii change with the native rounded-rectangle rules."]
 
-Insets and outsets change detached rounded-rectangle specifications; they are
+Insets and outsets produce new rounded-rectangle specifications; they are
 not strokes.  A translation or axis-aligned scale can produce another
 representable rounded rectangle, but that is not a distinct visual concept from
 the canvas transforms shown elsewhere.  The deliberately numerical shear case

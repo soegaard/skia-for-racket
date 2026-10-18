@@ -440,10 +440,9 @@ inside that scope; closing it again during scope cleanup is harmless.
 
 @(declare-exporting skia skia/text-blobs #:use-sources (skia/text-blobs))
 
-A @deftech{text run description} is a detached immutable value containing a
-run's positioning mode, glyphs, coordinates, and optional text metadata. It
-contains no borrowed font or native pointer and remains usable after the blob
-closes. Obtain an independently owned font separately with
+A @deftech{text run description} is an immutable Racket structure containing a
+run's positioning mode, glyphs, coordinates, and optional text metadata.
+Obtain an independently owned font separately with
 @racket[text-blob-run-font].
 
 @defproc[(text-blob-run-count [blob text-blob?]) exact-nonnegative-integer?]{
@@ -453,7 +452,7 @@ nonempty successful appends, even if native storage merges adjacent runs.
 }
 
 @defproc[(text-blob-runs [blob text-blob?]) (vectorof text-run-info?)]{
-Returns an immutable vector of detached run descriptions in append order.
+Returns an immutable vector of run descriptions in append order.
 The run descriptions and their nested data are immutable. A blob made with
 @racket[make-positioned-text-blob] is described as one @racket['positioned] run
 without text or cluster metadata. This query does not reconstruct the original
@@ -468,8 +467,7 @@ not close the returned font. Invalid indices and closed blobs raise exceptions.
 }
 
 @defproc[(text-run-info? [v any/c]) boolean?]{
-Returns @racket[#t] for a text run description and @racket[#f] otherwise. A run
-description is a detached value, not a resource requiring explicit closure.
+Returns @racket[#t] for a text run description and @racket[#f] otherwise.
 }
 
 @defproc[(text-run-info-positioning [run text-run-info?])

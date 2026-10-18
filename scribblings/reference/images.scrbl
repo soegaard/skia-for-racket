@@ -157,8 +157,8 @@ images require an explicit GPU-subset or transfer operation instead.
 
 Images implement @racketmodname[file/convertible]'s protocol. A live CPU image accepts
 @racket['png-bytes], with the same encoder defaults, color/alpha behavior,
-byte limit, and failure behavior as @racket[image->png-bytes]. The result is a
-detached byte string. Other conversion requests return their supplied default
+byte limit, and failure behavior as @racket[image->png-bytes].
+Other conversion requests return their supplied default
 unchanged (including a function value) without inspecting or decoding the
 image. A supported request propagates its ordinary error instead of using the
 default.

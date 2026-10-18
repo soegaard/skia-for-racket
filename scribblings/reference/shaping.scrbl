@@ -10,8 +10,9 @@
 The process of @deftech{shaping} maps text to glyphs and positions using a
 @tech{typeface}'s layout rules. It can combine characters into ligatures, select
 contextual forms, position marks, and apply kerning. A @deftech{shaper} uses
-HarfBuzz with one captured @tech{font}. A @deftech{shaped run} holds copied @tech{glyph IDs},
-@tech{cluster offsets}, positions, and @tech{advances}; it does not own a native font.
+HarfBuzz with one captured @tech{font}. A @deftech{shaped run} is an immutable
+Racket structure containing @tech{glyph IDs}, @tech{cluster offsets}, positions,
+and @tech{advances}. Drawing a run also requires its shaper.
 
 Shaping one run is not paragraph layout. It does not choose fallback fonts,
 split mixed scripts into separate runs, or apply the Unicode bidirectional
@@ -58,8 +59,7 @@ The result is @racket[#t]; changing the original font does not resize the shaper
                 [#:features features (or/c (listof string?) (vectorof string?)) '()]) shaped-run?]{
 Shapes @racket[text] with @racket[shape-text], draws it with
 @racket[draw-shaped-run], and returns the shaped run. All shaping options have
-the same meaning as in @racket[shape-text]. The result is a detached run, not
-a retained canvas or a text-blob resource.
+the same meaning as in @racket[shape-text].
 
 @racketblock[
 (with-skia ([surface (make-surface 240 80 #:background 'white)]
@@ -91,7 +91,7 @@ match the font used to shape the run.
                 [#:script script (or/c symbol? string? #f) #f]
                 [#:language language (or/c string? #f) #f]
                 [#:features features (or/c (listof string?) (vectorof string?)) '()]) shaped-run?]{
-Shapes @racket[text] with the captured font and returns a detached run.
+Shapes @racket[text] with the captured font and returns a shaped run.
 An empty string produces empty glyph, cluster, and position lists and zero
 advances. Glyph zero denotes a missing glyph; this operation does not invoke
 @tech{font fallback}.

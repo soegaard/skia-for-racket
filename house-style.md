@@ -112,6 +112,17 @@ Names should identify the role of a value: `canvas`, `paint`, `baseline-y`, or
 Follow the [Racket reference style](https://docs.racket-lang.org/style/reference-style.html)
 for prose, terminology, examples, and Scribble markup.
 
+Explain when and why to use a value before describing its representation.
+Mention simpler alternatives where useful.
+
+Describe ordinary Racket data using ordinary Racket terminology, such as
+structures, lists, vectors, hash tables, and byte strings. Do not call these
+values "detached" or repeat that ordinary data does not need to be closed.
+Mention copying, ownership, or lifetime only when there is a specific,
+non-obvious consequence for the caller. Preserve meaningful restrictions on
+contained resources, mutable data, threads, and callback scopes; an immutable
+structure can still contain a mutable value or a native resource.
+
 Omit routine conversion details, but document restrictions and observable
 behavior that matter to the caller. Describe accepted inputs and results rather
 than routine C-interface preparation. Retain details that affect validity,

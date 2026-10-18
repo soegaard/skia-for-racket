@@ -38,10 +38,9 @@ Returns @racket[#t] for a raster buffer, including a closed one, and @racket[#f]
 
 @defproc[(raster-buffer-image-info [buffer raster-buffer?])
           image-info?]{
-Returns a detached description of an open buffer's dimensions, storage format,
-alpha type, and color interpretation. The description remains usable after the
-buffer closes. This metadata query is permitted during a buffer borrow; it does
-not lend pixel storage to the caller.
+Returns a description of an open buffer's dimensions, storage format,
+alpha type, and color interpretation. This metadata query is permitted during
+a buffer borrow; it does not lend pixel storage to the caller.
 }
 
 @defproc[(raster-buffer->image [buffer raster-buffer?])
@@ -121,7 +120,7 @@ operation requires the source to be idle.
 
 @defproc[(raster-buffer->storage-bytes [buffer raster-buffer?])
           bytes?]{
-Returns a detached mutable copy of the full allocation, including all row padding. Its length is
+Returns a mutable byte-string copy of the full allocation, including all row padding. Its length is
 @racket[raster-buffer-byte-size]. The buffer must be idle, and the copy must fit the current
 byte limit. Modifying the returned bytes does not modify the buffer.
 }
@@ -130,14 +129,15 @@ byte limit. Modifying the returned bytes does not modify the buffer.
           void?]{
 Replaces the full allocation, including padding. The input length must equal
 @racket[raster-buffer-byte-size], not merely the minimum length that contains the final row's
-pixels. A detached copy is validated before any destination write. Invalid samples, incorrect
+pixels. A copy of the input is validated before any destination write. Invalid samples, incorrect
 length, or a byte-limit failure leave the buffer unchanged. The buffer must be idle.
 }
 
 @defproc[(raster-buffer->rgba-bytes [buffer raster-buffer?] [#:premultiplied? premultiplied?
           boolean? #f])
           bytes?]{
-Returns a detached mutable, tightly packed RGBA8888 copy. The default is @tech{unpremultiplied alpha}.
+Returns a mutable byte string containing tightly packed RGBA8888 pixels. The
+default is @tech{unpremultiplied alpha}.
 This converts storage format and alpha representation while retaining
 the buffer's color interpretation rather than implicitly converting to sRGB. Floating-point
 samples can lose range and precision. There is no row padding in the result.
@@ -202,7 +202,7 @@ Returns the view's write permission. The view must be live and used on its creat
 
 @defproc[(pixmap-image-info [view pixmap?])
           image-info?]{
-Returns the view's detached image description, with the view's dimensions. The view must be live
+Returns the view's image description, with the view's dimensions. The view must be live
 and used on its creating thread.
 }
 
@@ -275,7 +275,7 @@ require a writable view. Raw sample and storage-byte operations do not perform c
 @defproc[(pixmap-sample [view pixmap?] [x exact-nonnegative-integer?] [y
           exact-nonnegative-integer?])
           (and/c vector? immutable?)]{
-Returns the stored logical channels as a detached immutable vector. Its length and component
+Returns the stored logical channels as an immutable vector. Its length and component
 interpretation follow the view's format. Floating-point channels retain the stored
 premultiplication; this operation does not return the unpremultiplied color of
 @racket[pixmap-color4f].
@@ -351,7 +351,7 @@ padding do not affect the result.
 
 @defproc[(pixmap->storage-bytes [view pixmap?])
           bytes?]{
-Returns a detached mutable copy of the view's pixels in their stored format. Rows are tightly
+Returns a mutable byte-string copy of the view's pixels in their stored format. Rows are tightly
 packed even when the buffer or subset has a larger stride. No padding bytes are included.
 }
 
@@ -473,7 +473,7 @@ copied. The source must be idle.
 
 @defproc[(image->image-info [image image?])
           image-info?]{
-Returns a detached description of the image's dimensions, native color/alpha types, and copied
+Returns a description of the image's dimensions, native color/alpha types, and copied
 color interpretation. Unsupported native formats can raise an exception because not every native
 image format has a public @racket[image-info?] representation. The operation does not decode or
 copy the image's pixels.
@@ -545,9 +545,9 @@ displayed color.
 
 @defproc[(color-space->descriptor [space color-space?])
           (or/c 'srgb 'linear-srgb (and/c bytes? immutable?))]{
-Returns a detached color-space description. Standard spaces use their named symbols; other
-spaces use copied immutable ICC bytes. The result survives closure of the source resource. ICC
-export has the representation and quantization limits described in
+Returns a color-space descriptor. Standard spaces use their named symbols; other
+spaces use copied immutable ICC bytes. ICC export has the representation and
+quantization limits described in
 @secref["skia-color-management"]. It is not a pixel conversion.
 }
 
@@ -555,7 +555,7 @@ export has the representation and quantization limits described in
           (or/c #f color-space?)]{
 Returns @racket[#f] for an absent description, or a newly owned native color space for a named
 description or copied ICC bytes. Mutable byte input is accepted and copied;
-@racket[color-space-descriptor?] describes already-detached values and therefore has a stricter
-immutability requirement. Structural header acceptance does not ensure that the native library
+@racket[color-space-descriptor?] instead requires ICC byte strings to be immutable.
+Structural header acceptance does not ensure that the native library
 supports the profile.
 }

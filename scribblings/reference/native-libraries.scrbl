@@ -121,7 +121,7 @@ policy, not a runtime observation.
 
 @defproc[(native-abi-profiles)
           (listof hash?)]{
-Returns the supported profiles from the installed catalogue, as detached immutable data. The
+Returns the supported profiles from the installed catalogue as immutable hash tables. The
 list is not a list of libraries found on the machine. It does not verify optional entry points
 or backend creation.
 }

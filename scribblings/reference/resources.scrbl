@@ -5,7 +5,7 @@
 
 @title[#:tag "skia-resources"]{Resources and Lifetimes}
 
-Skia uses native resources alongside @tech{detached values}. Resource kind,
+Skia uses native resources alongside ordinary Racket data. Resource kind,
 ownership, and scope determine when a value remains valid and how it should be
 released.
 
@@ -23,10 +23,6 @@ A @deftech{borrowed canvas} has no independent native lifetime. Its owner and
 any callback or GPU activation that supplied it must remain valid. Keeping the
 Racket wrapper reachable does not keep an expired target valid.
 
-A @deftech{detached value} contains ordinary copied information rather than an
-owned native handle. An RGBA color is a detached value; a @tech{paint} is not. Detached
-values do not need @racket[skia-close!].
-
 A resource predicate recognizes the kind of value, not whether it is open.
 Native use and explicit release of an ordinary CPU resource belong to the Racket
 thread that created it. A reference to the wrapper does not permit cross-thread
@@ -36,8 +32,9 @@ native access.
 owns its borrowed canvas, which becomes invalid when the surface closes; an
 independently owned snapshot can remain open afterward. Similarly, a buffer's
 pixmap and subset are callback-scoped views even if their wrappers are retained.
-This does not generalize every detached result: layouts retain live shapers, and
-GPU leases and frames have their own activation and thread rules.
+Ordinary Racket structures can also contain resources: text layouts retain
+shapers that must remain open when drawn. GPU leases and frames have their own
+activation and thread rules.
 
 @reference-figure["concept-resource-lifetimes.png"
                   "A time axis shows a CPU surface and its borrowed canvas valid until owner closure, an independent snapshot continuing afterward, and pixmap/subset views valid only during a buffer callback. Gray segments mark invalid views."]
@@ -45,7 +42,7 @@ GPU leases and frames have their own activation and thread rules.
 @defproc[(skia-resource? [v any/c]) boolean?]{
 Returns @racket[#t] when @racket[v] is an @tech{owned resource} accepted by the
 ordinary Skia resource protocol, and @racket[#f] otherwise. A closed resource
-still satisfies the predicate. Borrowed canvases and detached values do not.
+still satisfies the predicate. Borrowed canvases do not.
 This predicate is not a classifier for every object in the separate GPU APIs.
 }
 

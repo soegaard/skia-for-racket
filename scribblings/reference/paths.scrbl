@@ -335,7 +335,7 @@ zero and must be less than @racket[(path-point-count path)].
 }
 
 @defproc[(path-points [path skia-path?]) (listof (list/c real? real?))]{
-Returns detached coordinate pairs for all stored points in order. Use
+Returns coordinate pairs for all stored points in order. Use
 @racket[path-segments] when the distinction between endpoints and control
 points is needed.
 }
@@ -420,7 +420,7 @@ source spelling, relative commands, or exact curve representation.
 }
 
 @defproc[(path->commands [path skia-path?]) list?]{
-Returns a detached list of commands accepted by @racket[make-path], derived
+Returns a list of commands accepted by @racket[make-path], derived
 from raw native path iteration. Commands use absolute coordinates. The list
 does not carry the fill rule, so copy that separately when reconstructing a
 path. It describes the native geometry, not necessarily the exact commands
@@ -436,8 +436,7 @@ originally supplied.
 @section[#:tag "skia-path-iteration"]{Inspecting Segments and Contours}
 
 The inspection functions copy their results while the native path is valid.
-Their result records and coordinate lists are detached values, not native
-iterators or resources. A later mutation or closure of the source is safe.
+Their results are Racket structures and coordinate lists, not live iterators.
 A snapshot charges a bounded logical payload against
 @racket[current-skia-byte-limit]; this is not an exact Racket heap-size estimate.
 
@@ -469,7 +468,7 @@ flag. Neither snapshot changes the source path.
 @defproc[(in-path-segments [path skia-path?]
                           [#:mode mode (or/c 'normal 'raw) 'normal]
                           [#:force-closed? force-closed? boolean? #f]) sequence?]{
-Returns a sequence over the same detached snapshot as @racket[path-segments].
+Returns a sequence over the same snapshot as @racket[path-segments].
 The snapshot is taken when this function is called, not when iteration begins.
 }
 
@@ -502,7 +501,7 @@ iteration. A close verb itself returns @racket[#f], as do all raw-mode segments.
 @defproc[(path-contours [path skia-path?]
                        [#:mode mode (or/c 'normal 'raw) 'normal]
                        [#:force-closed? force-closed? boolean? #f]) (listof path-contour?)]{
-Groups a detached segment snapshot into contours. A move begins a new group.
+Groups a segment snapshot into contours. A move begins a new group.
 The mode and forced-closure restrictions are those of @racket[path-segments].
 }
 
@@ -746,7 +745,7 @@ remove a redundant command from the independently returned path.
                              [distance (and/c real? (>=/c 0))]
                              [#:mode mode (or/c 'position 'tangent 'position+tangent)
                                     'position+tangent]) (or/c matrix? #f)]{
-Returns a detached placement matrix at @racket[distance]. Position mode supplies
+Returns a placement matrix at @racket[distance]. Position mode supplies
 translation to the measured point; tangent mode supplies a rotation aligning
 the x axis with the tangent; the default combines both. An unavailable
 measurement returns @racket[#f].
@@ -823,8 +822,7 @@ checked for nonnegativity after binary32 rounding; a negative input that rounds
 to negative zero is therefore accepted as zero.
 
 The operations require live paths on their owning thread. Construction changes
-the destination path, not its paint or a canvas. Recognition returns detached
-values that survive later path mutation and closure. Native recognition tests
+the destination path, not its paint or a canvas. Native recognition tests
 stored representations, not arbitrary geometric equivalence.
 
 @defproc[(path-arc-to! [path path?]
@@ -965,8 +963,7 @@ affine matrices are allowed. This is not a projective path transformation.
           void?]{
 Clears the path's contours for reuse while retaining native storage where
 possible. Native rewind resets the fill type to winding, like
-@racket[path-reset!], but preserves internal storage for reuse. Earlier detached
-point, segment, and contour snapshots are unaffected.
+@racket[path-reset!], but preserves internal storage for reuse.
 }
 
 @defproc[(path-verbs [path path?])
@@ -988,7 +985,6 @@ not produce repeated names. This is a summary, not contour order.
 Returns the tight rectangle reported by native path operations. Native failure
 raises an exception. The result is not a control-point bound, a painted stroke
 or filter bound, or a finite description of the area outside an inverse path.
-The returned vector is detached.
 }
 
 @defproc[(path-as-line [path path?])
@@ -1007,14 +1003,14 @@ otherwise. An arbitrary curve with a similar outline need not be recognized.
 
 @defproc[(path-as-rectangle [path path?])
           (or/c path-rectangle? #f)]{
-Returns a detached rectangle description when native recognition succeeds,
+Returns a rectangle description when native recognition succeeds,
 or @racket[#f] otherwise. The description records bounds, explicit closure,
 and traversal direction; recognition alone does not imply a closed contour.
 }
 
 @defproc[(path-as-rounded-rect [path path?])
           (or/c rounded-rect? #f)]{
-Returns a detached, native-normalized rounded rectangle when recognized, or
+Returns a native-normalized rounded rectangle when recognized, or
 @racket[#f] otherwise.
 }
 

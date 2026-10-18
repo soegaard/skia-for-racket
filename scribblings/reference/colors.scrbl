@@ -13,8 +13,7 @@
 @(declare-exporting skia skia/color #:use-sources (skia/color))
 
 A @deftech{color specification} is an @racket[rgba] value, a supported color-name
-symbol, a hexadecimal string, or an unsigned ARGB integer. These are
-@tech{detached value}s, not closeable native resources.
+symbol, a hexadecimal string, or an unsigned ARGB integer.
 
 The supported names are @indexed-racket['transparent], @indexed-racket['black],
 @indexed-racket['white], @indexed-racket['red], @indexed-racket['green],

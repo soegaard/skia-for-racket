@@ -97,7 +97,7 @@ context must remain open.
           [color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565
                            'rgba-1010102 'rgba-f16 'rgba-f32)])
          (and/c hash? immutable?)]{
-Queries the active context's native format limits. The detached hash identifies
+Queries the active context's native format limits. The returned hash identifies
 its backend and generation, the color type, @racket['max_sample_count], and
 @racket['max_render_target_size]. The @racket['renderable] field is true exactly
 when the maximum sample count is positive.
@@ -109,7 +109,7 @@ succeed on the selected machine before the report is available.
 }
 
 @defproc[(gpu-surface-info [surface gpu-surface?]) (and/c hash? immutable?)]{
-Returns detached metadata after checking the live surface's native context and
+Returns metadata after checking the live surface's native context and
 backend association. The surface must be used in its owning activation.
 The hash records dimensions, color and alpha types, top-left origin, backend,
 context generation, budgeted status, surface properties, and the requested and
@@ -118,9 +118,8 @@ the request. The report does not read pixels or certify visible presentation.
 }
 
 @defproc[(gpu-surface->image-info [surface gpu-surface?]) image-info?]{
-Returns a detached pixel description. The dimensions and color/alpha type are
+Returns a pixel description. The dimensions and color/alpha type are
 read from a temporary texture-backed snapshot, and the surface's color space
 is copied into a descriptor. The snapshot is released before returning.
-The owning activation is required, but no CPU pixel readback occurs. The
-returned description remains usable after the surface and context are closed.
+The owning activation is required, but no CPU pixel readback occurs.
 }

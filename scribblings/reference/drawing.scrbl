@@ -252,7 +252,7 @@ A sweep of at least a full turn in magnitude draws the oval.
 
 @section{Rounded-Rectangle Values}
 
-The functions in this section draw the detached rounded-rectangle
+The functions in this section draw the rounded-rectangle
 specifications described in @secref["skia-rounded-rectangles"].
 
 @defproc[(draw-rrect [canvas canvas?]
@@ -260,7 +260,7 @@ specifications described in @secref["skia-rounded-rectangles"].
           [paint paint?])
           void?]{
 Draws the native-normalized rounded rectangle with the paint's fill/stroke
-style. The detached specification is unchanged. Normalization can reduce radii
+style. Normalization can reduce radii
 that do not fit the supplied bounds.
 }
 

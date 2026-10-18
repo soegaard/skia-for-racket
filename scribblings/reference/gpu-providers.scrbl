@@ -37,7 +37,7 @@ that a context can be created.
 
 @defproc[(gpu-backend-capabilities [backend (or/c 'opengl 'metal 'direct3d)])
           (and/c hash? immutable?)]{
-Returns a detached declaration of the wrapper's support for @racket[backend].
+Returns a declaration of the wrapper's support for @racket[backend].
 The hash contains @racket['backend], @racket['engine], @racket['native_backend],
 @racket['owned_context], @racket['platforms], @racket['software_selection], and
 @racket['features]. The feature hash describes offscreen rendering, images,
@@ -103,7 +103,7 @@ The callbacks have the following obligations:
        The wrapper checks this before using the host; it does not create or repair
        a native current-context binding on the provider's behalf.}
  @item{The @racket[describe] function accepts no arguments. It supplies a hash
-       with symbol keys and detached diagnostic values: strings, booleans, finite
+       with symbol keys and diagnostic values: strings, booleans, finite
        real numbers, lists of such values, or nested symbol-keyed hashes. Symbols
        as values, vectors, native pointers, and functions are not accepted.
        The OpenGL constructor copies this information into its context report.}

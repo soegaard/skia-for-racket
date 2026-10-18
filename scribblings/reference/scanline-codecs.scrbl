@@ -30,7 +30,7 @@ native consumption order, not EXIF orientation normalization.
 
 All session operations except the predicate require the creating Racket thread.
 The state query also works after closure. Other session queries require an open
-resource. Returned batches and their descriptions are detached values.
+resource.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -102,13 +102,13 @@ the resource is released.
 
 @defproc[(codec-scanline-info [session codec-scanline-session?])
           image-info?]{
-Returns the detached full-output pixel description, using negotiated dimensions
+Returns the full-output pixel description, using negotiated dimensions
 and the selected output color/alpha format. It is not the size of the last batch.
 }
 
 @defproc[(codec-scanline-source-info [session codec-scanline-session?])
           encoded-image-info?]{
-Returns detached metadata for the original encoded source, before scaling and
+Returns metadata for the original encoded source, before scaling and
 orientation normalization. This may describe different dimensions and formats
 from @racket[codec-scanline-info].
 }
@@ -147,7 +147,7 @@ order and the unchanged index for top-down order.
           [count exact-positive-integer? 1]
           [#:row-bytes row-bytes (or/c exact-nonnegative-integer? #f) #f])
           scanline-batch?]{
-Requests @racket[count] rows and returns a detached batch. The count must not
+Requests @racket[count] rows and returns a scanline batch. The count must not
 exceed the remaining rows; requesting zero or reading after completion is an
 error. The stride follows @racket[image-info-storage-layout]. The requested
 batch allocation, including padding, must fit the smaller of the session's
@@ -206,21 +206,21 @@ the cursor by the requested count. A successful final skip marks completion but
 does not supply decoded pixels for the skipped rows.
 }
 
-@section{Detached Row Batches}
+@section{Row Batches}
 
-A @deftech{scanline batch} contains only decoded rows, their @tech{row stride} and output-row
-origin, and the counts for one request. Its accessors remain usable after the
-session closes. Consecutive bottom-up batches must be placed by their first-row
+A @deftech{scanline batch} is an immutable Racket structure containing decoded rows,
+their @tech{row stride} and output-row origin, and the counts for one request.
+Consecutive bottom-up batches must be placed by their first-row
 fields, not blindly concatenated as if they arrived in top-down order.
 
 @defproc[(scanline-batch? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached scanline batch and @racket[#f] otherwise.
+Returns @racket[#t] for a scanline batch and @racket[#f] otherwise.
 }
 
 @defproc[(scanline-batch-info [batch scanline-batch?])
           image-info?]{
-Returns the detached batch description. Its height is the successfully decoded
+Returns the batch description. Its height is the successfully decoded
 row count, not the requested count or full image height.
 }
 
@@ -292,7 +292,7 @@ Returns the number of rows actually decoded, at most the requested count.
 
 @defproc[(scanline-batch-bytes [batch scanline-batch?])
           (and/c bytes? immutable?)]{
-Returns the detached immutable storage bytes for successfully decoded rows,
+Returns the immutable storage bytes for successfully decoded rows,
 including initialized row padding but excluding native fill rows. An empty batch
 contains an empty byte string.
 }

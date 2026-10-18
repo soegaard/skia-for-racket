@@ -18,8 +18,8 @@ drawing. For a single canvas translation or rotation, the corresponding
 canvas operation is usually simpler.
 
 An @deftech{affine matrix} maps two-dimensional coordinates by a linear
-transformation followed by translation. Skia represents it as an immutable,
-detached Racket value with coefficients in the order
+transformation followed by translation. Skia represents it as an immutable
+Racket structure with coefficients in the order
 @tt{xx, yx, xy, yy, x0, y0}. The mapping is
 @math{x' = xx x + xy y + x0} and @math{y' = yx x + yy y + y0}.
 This order matches a six-element SVG affine transform; it is not row-major
@@ -30,8 +30,7 @@ rounded to IEEE single precision when stored. Mapping operations round input
 coordinates and results in the same way. A computed coefficient or result
 outside the numeric limits in @secref["skia-scalars"] raises an exception,
 except that @racket[matrix-invert] returns
-@racket[#f] when an inverse is unavailable. Matrices need neither
-@racket[with-skia] nor @racket[skia-close!].
+@racket[#f] when an inverse is unavailable.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -260,10 +259,10 @@ replacement for the existing canvas transform-order comparison.
 @defmodule[skia/geometry-primitives #:no-declare]
 @(declare-exporting skia skia/geometry-primitives #:use-sources (skia/geometry-primitives))
 
-An @deftech{atlas transform} is a detached immutable value representing uniform
+An @deftech{atlas transform} is an immutable Racket structure representing uniform
 scale, rotation, and translation. It is used for sprite placement and for the
 per-glyph transforms accepted by @racket[text-blob-builder-add-transformed-run!].
-It is not a six-coefficient @tech{affine matrix} and contains no native resource.
+It is distinct from the six-coefficient @tech{affine matrix} type.
 
 @defproc[(atlas-transform? [v any/c]) boolean?]{
 Returns @racket[#t] for an atlas transform and @racket[#f] otherwise. A raw
@@ -306,7 +305,7 @@ coordinates 3 and 4 maps to coordinates 10 and 20.
           (vector/c real? real? real? real?)]{
 Returns the immutable vector of coefficients in order @math{scos},
 @math{ssin}, @math{tx}, and @math{ty}. They map a local point to
-@math{(scos x - ssin y + tx, ssin x + scos y + ty)}. The vector is detached.
+@math{(scos x - ssin y + tx, ssin x + scos y + ty)}.
 }
 
 @close-eval[atlas-eval]

@@ -6,7 +6,7 @@
 
 These diagnostics report properties of a selected @tech{GPU context}.
 They are diagnostics, not hardware attestations, performance measurements, or
-implicit synchronization barriers. Detached results contain no native pointers.
+implicit synchronization barriers.
 
 @section{OpenGL Interface Diagnostics}
 
@@ -15,7 +15,7 @@ implicit synchronization barriers. Detached results contain no native pointers.
                     #:use-sources (skia/gpu-diagnostics))
 
 @defproc[(gpu-gl-interface-info [context gpu-context?]) (and/c hash? immutable?)]{
-Returns a detached description of the exact Skia GL interface retained by an
+Returns a description of the exact Skia GL interface retained by an
 active OpenGL @racket[context]. Non-OpenGL contexts are rejected instead of
 returning an ambiguous report.
 
@@ -48,7 +48,7 @@ needed, creates private target and paint resources, draws four fixed color
 regions, flushes, submits with CPU completion, reads RGBA pixels, and verifies
 the expected pattern before returning.
 
-The detached result records the dimensions, transfer format, backend identity,
+The result records the dimensions, transfer format, backend identity,
 and immutable RGBA bytes. Temporary GPU resources are retired on exit. This is
 a functional diagnostic with an explicit readback; it is not a general drawing
 API, benchmark, presentation test, or proof of hardware acceleration.

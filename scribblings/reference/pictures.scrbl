@@ -130,8 +130,8 @@ surface limits. GPU readback is not implicit.
 }
 
 @defproc[(picture-width [picture picture?]) (and/c real? (>=/c 0))]{
-Returns the stored nominal width. This detached metadata remains readable after
-closure. It is not a measurement of visible ink or a fresh native culling query.
+Returns the stored nominal width. The query remains available after the picture
+is closed. It is not a measurement of visible ink or a fresh native culling query.
 }
 
 @defproc[(picture-height [picture picture?]) (and/c real? (>=/c 0))]{
@@ -147,7 +147,7 @@ are not needed for ordinary playback.
 
 @defproc[(picture-cull-bounds [picture picture?])
           (and/c (vector/c real? real? real? real?) immutable?)]{
-Returns a detached four-element vector containing the native culling rectangle's
+Returns an immutable four-element vector containing the native culling rectangle's
 x coordinate, y coordinate, width, and height. The picture must be open. These
 bounds can differ from the nominal dimensions, especially with an R-tree index;
 they are not an exact visible-ink bound.

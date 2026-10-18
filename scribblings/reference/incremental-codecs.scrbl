@@ -35,8 +35,7 @@ simulate a decoder capability.
 The session is an @tech{owned resource} tied to its creating Racket thread.
 Only the type predicate is independent of that thread. The state query also
 works after closure; other operations require an open resource. Closing destroys
-the decoder before releasing pixels it might retain. Progress and snapshots are
-detached and survive session closure.
+the decoder before releasing pixels it might retain.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -88,8 +87,8 @@ from accepted input size in @racket[codec-incremental-statistics].
           [#:cancel-evt cancel (or/c evt? #f) #f])
           incremental-progress?]{
 Attempts header construction, native incremental start, or continued decoding
-and returns detached progress. No new native attempt is made when neither the
-visible input size nor final flag has changed since the previous attempt.
+and returns an incremental progress value. No new native attempt is made when
+neither the visible input size nor final flag has changed since the previous attempt.
 Once started, the same destination is retained between calls. Before native use,
 all destination bytes, including padding, are initialized to zero.
 
@@ -141,7 +140,7 @@ query to return @racket['closed].
 
 @defproc[(codec-incremental-info [session codec-incremental-session?])
           (or/c image-info? #f)]{
-Returns the detached output description once dimensions are known, or
+Returns the output description once dimensions are known, or
 @racket[#f] beforehand. Metadata availability alone does not establish successful
 incremental start or a usable snapshot.
 }
@@ -155,7 +154,7 @@ incremental decoding nor snapshot conversion applies this orientation to pixels.
 
 @defproc[(codec-incremental-statistics [session codec-incremental-session?])
           (and/c hash? immutable?)]{
-Returns a detached immutable hash with diagnostic counters. Keys
+Returns an immutable hash with diagnostic counters. Keys
 @racket['header-attempts], @racket['start-calls], @racket['decode-calls], and
 @racket['pixel-allocations] count native work. Keys @racket['input-bytes] and
 @racket['visible-input-bytes] distinguish accepted data from the prefix exposed
@@ -171,16 +170,16 @@ live view or a guarantee of exact native heap use.
 
 @section{Progress and Pixel Snapshots}
 
-An @deftech{incremental progress value} separates session state, a native or
-wrapper result, and the native initialized-row report. A row report of
-@racket[#f] means unknown, not zero. All allocated destination memory is
+An @deftech{incremental progress value} is an immutable Racket structure recording
+session state, a native or wrapper result, and the native initialized-row report.
+A row report of @racket[#f] means unknown, not zero. All allocated destination memory is
 initialized before use; that fact does not make uncompleted rows valid image
 content. Interlaced decoding may revisit pixels, so a progress value is not a
 promise that each previously visited row is final.
 
 @defproc[(incremental-progress? [v any/c])
           boolean?]{
-Returns @racket[#t] for detached incremental progress and @racket[#f] otherwise.
+Returns @racket[#t] for an incremental progress value and @racket[#f] otherwise.
 }
 
 @defproc[(incremental-progress-state [progress incremental-progress?])
@@ -208,15 +207,15 @@ The count is not an EXIF-normalized coordinate or a byte offset.
 
 @defproc[(codec-incremental-snapshot [session codec-incremental-session?])
           incremental-snapshot?]{
-Returns a detached immutable copy of the whole destination, including padding,
-with its pixel description and current progress. Native incremental start must
-have succeeded and the destination must still be retained. The copy must fit
-the effective byte limit. The operation does not run another decoding step.
+Returns an immutable Racket structure containing a byte-string copy of the whole
+destination, including padding, with its pixel description and current progress.
+The byte string is immutable. Native incremental start must have succeeded and
+the destination must still be retained. The copy must fit the effective byte
+limit. The operation does not run another decoding step.
 
 A snapshot can describe incomplete output; its existence is not success.
 Completion or a reported terminal native failure can leave pixels available,
-whereas cancellation or a wrapper exception may release them. Snapshot data
-remains valid after the session closes and is unaffected by later decoding.
+whereas cancellation or a wrapper exception may release them.
 }
 
 @defproc[(incremental-snapshot? [v any/c])
@@ -226,7 +225,7 @@ Returns @racket[#t] for an incremental pixel snapshot and @racket[#f] otherwise.
 
 @defproc[(incremental-snapshot-info [snapshot incremental-snapshot?])
           image-info?]{
-Returns the detached full-destination pixel description.
+Returns the full-destination pixel description.
 }
 
 @defproc[(incremental-snapshot-row-bytes [snapshot incremental-snapshot?])
@@ -265,8 +264,6 @@ image. It neither advances the decoder nor applies encoded orientation.
               [image (raster-buffer->image buffer)])
     (list (image-width image) (image-height image))))
 ]
-
-The detached snapshot remains usable after the session closes.
 
 @racketblock[
 (with-skia ([source (make-surface 100 70 #:background "#F4D35E")]

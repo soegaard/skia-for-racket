@@ -149,7 +149,7 @@ GPU context's cache.
           [#:string-limit string-limit (integer-in 0 65536) 4096] [#:byte-limit byte-limit
           exact-nonnegative-integer? 1048576])
           memory-statistics?]{
-Collects a detached native memory report for process-global Skia caches. The flags request
+Collects a native memory report for process-global Skia caches. The flags request
 detailed reporting and inclusion of wrapped objects. Names, units, and string values depend on
 the native backend; they are not a fixed allocation inventory.
 
@@ -167,7 +167,7 @@ No application callback runs while Skia is collecting the records.
 
 @defproc[(memory-statistics? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached memory report, including a GPU-context report using the same
+Returns @racket[#t] for a memory report, including a GPU-context report using the same
 data representation.
 }
 
@@ -210,14 +210,14 @@ Returns the origin of the report. A GPU report is not a report of all process-gl
 
 @defproc[(memory-statistics->jsexpr [report memory-statistics?])
           (and/c hash? immutable?)]{
-Returns a detached JSON-compatible hash with scope, an explicit false atomic flag, requested
+Returns a JSON-compatible hash with scope, an explicit false atomic flag, requested
 options, truncation information, string-byte count, and a list of entries. Entry kinds and scope
 symbols become strings. The conversion does not query native memory again.
 }
 
 @defproc[(memory-statistic? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached immutable numeric or string record and @racket[#f] otherwise.
+Returns @racket[#t] for an immutable numeric or string record and @racket[#f] otherwise.
 }
 
 @defproc[(memory-statistic-kind [entry memory-statistic?])

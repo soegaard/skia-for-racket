@@ -34,7 +34,7 @@ expired DC are rejected.
 }
 
 @defproc[(output-dc-capabilities) (and/c hash? immutable?)]{
-Returns detached declarations for the output-DC compatibility surface. The
+Returns declarations for the output-DC compatibility surface. The
 result describes deferred vector commands, callback-only lifetime, annotations,
 and explicit raster groups; it does not run a document exporter or native probe.
 }
@@ -61,7 +61,7 @@ expires and releases its selection locks before native replay begins. A callback
 exception or escape therefore emits none of that capture's drawing commands,
 although ordinary callback side effects remain.
 
-The returned detached report records backend, command count, logical size,
+The returned report records backend, command count, logical size,
 selected policies, group reports, and the fact that the capture DC has expired.
 The @racket['require-vector] policy is valid only for document receivers and rejects any
 operation that would require raster representation.
@@ -84,7 +84,7 @@ operation that would require raster representation.
           [#:policy policy (or/c 'prefer-vector 'require-vector) 'prefer-vector]
           [#:on-report on-report (-> (and/c hash? immutable?) any) void])
          output-page?]{
-Creates an ordinary detached output-page description whose drawing callback is
+Creates an output-page description whose drawing callback is
 adapted through @racket[call-with-output-dc]. The page constructor retains the
 usual physical-unit, background, and content-clipping rules from
 @racket[make-output-page]. A margin is either one nonnegative real number

@@ -128,7 +128,7 @@ Unlike a PDF document, an SVG with no drawing commands may be finished.
 @defproc[(svg-document-abort! [document svg-document?]) void?]{
 Releases the native storage and marks the document aborted. It can be repeated
 on the owning thread. It invalidates the canvas and prevents later byte retrieval,
-but does not alter detached results or files returned by earlier successful calls.
+but does not remove previously published files.
 }
 
 @section{Reading and Publishing SVG}

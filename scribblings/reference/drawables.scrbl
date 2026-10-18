@@ -134,7 +134,7 @@ nominal dimensions. Closing the drawable afterward does not invalidate the pictu
 
 @defproc[(drawable-bounds [drawable drawable?])
           (and/c (vector/c real? real? real? real?) immutable?)]{
-Returns detached native bounds as coordinates, width, and height. They are
+Returns native bounds as a vector of coordinates, width, and height. They are
 not a proof of exact visible ink or a replacement for effect padding.
 }
 

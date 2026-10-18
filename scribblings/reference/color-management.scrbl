@@ -165,7 +165,7 @@ its channel values encode light as well as its RGB gamut. The transfer
 functions below describe that encoding; gamuts are described in
 @secref["skia-xyz-d50"].
 
-A @deftech{transfer function} is a detached immutable description with seven
+A @deftech{transfer function} is an immutable Racket structure with seven
 coefficients in order @tt{g, a, b, c, d, e, f}. Its nonnegative-domain formula is
 @math{c x + f} when @math{x < d}, and @math{(a x + b)^g + e} otherwise. The forward
 functions used to construct RGB color spaces decode encoded channels into
@@ -173,9 +173,8 @@ linear-light values. An inverse encodes in the other direction.
 
 The coefficient representation supports these standard-dynamic-range formulas,
 not arbitrary lookup tables, PQ, HLG, or tone mapping. Coefficients are rounded
-to IEEE binary32 when stored. Detached values do not require
-closing. Native-backed operations in this section still require the installed
-Skia library, even though their returned descriptions are detached.
+to IEEE binary32 when stored. Native-backed operations in this section require
+the installed Skia library.
 
 @defproc[(transfer-function? [v any/c]) boolean?]{
 Returns @racket[#t] for a transfer-function value and @racket[#f] otherwise.
@@ -207,8 +206,8 @@ not load the native library.
 
 @defproc[(named-transfer-function [name (or/c 'srgb 'linear 'gamma-2.2 'rec2020)])
          transfer-function?]{
-Returns a detached copy of the named native transfer coefficients. The names
-select sRGB, linear, a power of 2.2, or the standard-dynamic-range Rec. 2020
+Returns a transfer-function structure with the named native coefficients. The
+names select sRGB, linear, a power of 2.2, or the standard-dynamic-range Rec. 2020
 function, respectively. The result describes channel encoding, not an RGB gamut.
 This operation requires native Skia. Rec. 2020 here does not select an HDR
 transfer function.
@@ -225,8 +224,8 @@ nonfinite result raises an exception. Evaluation does not require native Skia.
 
 @defproc[(transfer-function-invert [transfer transfer-function?])
          (or/c transfer-function? #f)]{
-Returns detached coefficients for the native inverse, or @racket[#f] when the
-native inversion reports failure. The inverse uses the same coefficient
+Returns a transfer-function structure for the native inverse, or @racket[#f]
+when the native inversion reports failure. The inverse uses the same coefficient
 representation and can introduce rounding error. This is not an independent
 proof that a user-supplied discontinuous function is globally invertible.
 Inversion requires native Skia; it does not modify the argument.
@@ -253,7 +252,7 @@ functions, alter alpha, or convert a complete image by themselves.
          (and/c (vectorof real?) immutable?)]{
 Returns the named native RGB-to-XYZ-D50 matrix as nine row-major coefficients.
 The selected gamut does not choose a transfer function. This operation requires
-native Skia and returns no closeable resource.
+native Skia.
 }
 
 @defproc[(primaries->xyz-d50
@@ -295,17 +294,15 @@ not make the Display P3 primaries sRGB primaries.
 
 @defproc[(color-space-transfer-function [space color-space?])
          (or/c transfer-function? #f)]{
-Returns a detached numerical transfer description for an open color space,
-or @racket[#f] when no such description is available. The result remains usable
-after the color-space resource closes. An invalid or closed resource raises an
-exception; it is not reported as an unavailable numerical description.
+Returns a numerical transfer description for an open color space, or
+@racket[#f] when no such description is available. An invalid or closed resource
+raises an exception; it is not reported as an unavailable numerical description.
 }
 
 @defproc[(color-space-xyz-d50 [space color-space?])
          (or/c #f (and/c (vectorof real?) immutable?))]{
-Returns nine detached row-major coefficients for an open space's XYZ-D50
-matrix, or @racket[#f] when the native query cannot supply one. Closing the
-space does not invalidate a returned vector. The result is not a complete
+Returns nine row-major coefficients for an open space's XYZ-D50 matrix, or
+@racket[#f] when the native query cannot supply one. The result is not a complete
 color conversion without the corresponding transfer function.
 }
 
@@ -317,7 +314,7 @@ Each input must contain nine coefficients. With column color vectors,
 @racket[b] acts first. Singular inputs are permitted for multiplication, unlike
 the gamut required by @racket[make-rgb-color-space]. The inputs are copied and
 not mutated. A nonfinite native result raises an exception. Native Skia is
-required, even though the input and output matrices are detached values.
+required.
 }
 
 @defproc[(xyz-d50-invert [matrix (or/c (listof real?) (vectorof real?))])
@@ -379,21 +376,20 @@ samples or write a file.
 The result is @racket['(#t #f #t)]. The two resources have independent lifetimes.
 }
 
-@section[#:tag "skia-color-space-descriptors"]{Detached Color-Space Descriptions}
+@section[#:tag "skia-color-space-descriptors"]{Color-Space Descriptors}
 
 @defmodule[skia/image-info #:no-declare]
 @(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
 
-Use a detached description when storing color-space settings without keeping
-a native resource open. For example, @racket[make-image-info] accepts this form
+Use a color-space descriptor to express color-space settings as a symbol or
+ICC profile bytes. For example, @racket[make-image-info] accepts this form
 through @racket[#:color-space], instead of a live color-space resource.
 
 A @deftech{color-space descriptor} is @racket[#f], @racket['srgb],
 @racket['linear-srgb], or complete immutable ICC bytes with the required header.
-It is detached data, not a live @racket[color-space?] resource. APIs that require
-an explicit source interpretation reject @racket[#f]. Some such APIs also accept
-mutable ICC bytes by copying them; their argument contracts therefore differ
-from this representation predicate.
+APIs that require an explicit source interpretation reject @racket[#f]. Some
+such APIs also accept mutable ICC bytes by copying them; their argument
+contracts therefore differ from this representation predicate.
 
 @defproc[(color-space-descriptor? [v any/c]) boolean?]{
 Returns @racket[#t] for @racket[#f], the two named descriptors, or an immutable

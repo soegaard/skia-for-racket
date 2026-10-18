@@ -10,7 +10,6 @@
 A @deftech{font} combines a @tech{typeface} with a size, horizontal scale,
 skew, and rendering settings. Fonts are mutable @tech{owned resource}s.
 Native font operations require resources to be open on their owning thread.
-Inspecting detached metrics values does not require a live font.
 
 A @deftech{glyph ID} is a typeface-specific index, not a Unicode code point.
 Glyph zero is the missing-glyph index. A glyph ID from one face must not be
@@ -279,8 +278,8 @@ nor ascent and descent are the ink bounds of this particular string; use
 @racket[simple-text-bounds] when string geometry is required.
 
 @defproc[(font-get-metrics [font font?]) font-metrics?]{
-Returns a detached metrics snapshot. Later font mutation or closure does
-not change the snapshot. Metrics do not include the canvas transform or the
+Returns a metrics snapshot as an immutable Racket structure.
+Metrics do not include the canvas transform or the
 paint's effects; use @racket[simple-text-bounds] for a particular simple string.
 
 @racketblock[
@@ -292,7 +291,7 @@ paint's effects; use @racket[simple-text-bounds] for a particular simple string.
 }
 
 @defproc[(font-metrics? [v any/c]) boolean?]{
-Returns @racket[#t] for a detached font-metrics value and @racket[#f] otherwise.
+Returns @racket[#t] for a font-metrics value and @racket[#f] otherwise.
 }
 
 @defproc[(font-metrics-top [metrics font-metrics?]) real?]{
@@ -561,8 +560,8 @@ text layout.
           (integer-in 0 #xffff)))]) (vectorof (or/c skia-path? #f))]{
 Returns an immutable vector of independently owned glyph-outline paths,
 with @racket[#f] for glyphs without paths. Each outline includes the native
-per-glyph transform, including font size, scale, and skew. The container is a
-detached value, but every path it contains has its own resource lifetime.
+per-glyph transform, including font size, scale, and skew. Every path in the
+vector has its own resource lifetime.
 Partial results are released if construction fails.
 
 @racketblock[

@@ -74,7 +74,7 @@ Returns immutable lifetime, storage-path, and raster-only capability metadata.
 }
 
 @defmethod[(get-render-info) (and/c hash? immutable?)]{
-Returns detached selection, callback-count, last-size, close-state, and
+Returns selection, callback-count, last-size, close-state, and
 implementation diagnostics.
 }
 

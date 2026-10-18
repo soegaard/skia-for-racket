@@ -52,9 +52,9 @@ file-backed @racket[make-file-input-stream] via @racket[codec-from-stream].
 
 @defproc[(codec-info [codec codec?])
           encoded-image-info?]{
-Returns detached encoded metadata. Obtaining the metadata does not decode all
+Returns encoded metadata. Obtaining the metadata does not decode all
 pixels, normalize orientation, or enforce the full-raster allocation limits of
-@racket[codec->image]. The metadata remains usable after the codec closes.
+@racket[codec->image].
 }
 
 @defproc[(codec-frame-count [codec codec?])
@@ -141,10 +141,9 @@ Orientation, color-space, frame-dependency, and decode-failure rules are unchang
 
 @section[#:tag "skia-encoded-metadata"]{Encoded Metadata}
 
-An @deftech{encoded image description} is a detached value reporting dimensions,
+An @deftech{encoded image description} is an immutable Racket structure reporting dimensions,
 format, native color and alpha types, @tech{encoded orientation}, and animation metadata
-count. It is not a @tech{pixel description}. Its accessors need
-neither an open codec nor a native library call.
+count. It is not a @tech{pixel description}.
 
 @defproc[(encoded-image-info? [v any/c])
           boolean?]{
@@ -236,7 +235,7 @@ when implementing animation playback. Decode its pixels separately with
 @racket[codec->image]; that operation reconstructs the frame's dependencies
 without requiring you to supply earlier frames.
 
-Frame information is detached from the codec. Durations are in milliseconds,
+Frame information is stored in an immutable Racket structure. Durations are in milliseconds,
 indices are zero-based, and rectangles remain in encoded pixel coordinates.
 
 @defproc[(codec-frame-info [codec codec?] [index (integer-in 0 2147483647)])
@@ -249,7 +248,7 @@ The result does not contain the frame's pixels.
 
 @defproc[(codec-frame-info? [v any/c])
           boolean?]{
-Returns @racket[#t] for detached frame information and @racket[#f] otherwise.
+Returns @racket[#t] for frame information and @racket[#f] otherwise.
 }
 
 @defproc[(codec-frame-info-index [info codec-frame-info?])

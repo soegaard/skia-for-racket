@@ -125,9 +125,8 @@ geometry is represented by a string.
 @defproc[(surface-properties-of [surface surface?])
           surface-properties?]{
 Returns an immutable copy of @racket[surface]'s properties. Accepts both raster
-surfaces and GPU surfaces. The copy remains usable after the surface is
-released. Raises an exception if Skia reports a flag or pixel geometry that
-the library does not recognize.
+surfaces and GPU surfaces. Raises an exception if Skia reports a flag or pixel
+geometry that the library does not recognize.
 
 The surface must be open. See @secref["skia-resources"] for the general resource
 rules and @secref["skia-gpu-surfaces"] for access to GPU surfaces.

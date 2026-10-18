@@ -124,7 +124,7 @@ loop, or GUI canvas is involved.
 }
 
 @defmethod[(get-capabilities) (and/c hash? immutable?)]{
-Returns the same detached wrapper declarations as @racket[skia-dc-capabilities].
+Returns the same wrapper declarations as @racket[skia-dc-capabilities].
 The result is not evidence that a native renderer, font, GUI, or GPU operation
 has run successfully.
 }
@@ -162,7 +162,7 @@ Returns whether @racket[v] is an instance of @racket[skia-dc%].
 }
 
 @defproc[(skia-dc-capabilities) (and/c hash? immutable?)]{
-Returns detached declarations for the historical raster-DC capability surface,
+Returns declarations for the historical raster-DC capability surface,
 including supported drawing families and explicit exclusions. It performs no
 native capability probe and does not certify universal drop-in compatibility.
 }

@@ -28,7 +28,7 @@ of the separately constructed persistent @racket[skia-dc%] class.
 }
 
 @defproc[(skia-gpu-dc-capabilities) (and/c hash? immutable?)]{
-Returns detached declarations for GPU DC lifetime, device scaling, GPU alpha
+Returns declarations for GPU DC lifetime, device scaling, GPU alpha
 groups, explicit snapshots, and presentation behavior. It performs no native
 GPU probe and does not initialize a GUI.
 }
@@ -55,7 +55,7 @@ Nested GPU-DC scopes are rejected.
 
 The callback must be callable with one positional argument. Its DC becomes
 invalid on normal return, exception, or escape. The staging target is a
-same-context full-color RGBA/BGRA/F16/F32 surface. The detached color-space
+same-context full-color RGBA/BGRA/F16/F32 surface. The color-space
 descriptor, sample request, and @tech{surface-properties value} form part of
 the staging configuration and reuse key. See @secref["skia-surface-properties"]
 for pixel geometry and rendering flags.

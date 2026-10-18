@@ -23,12 +23,12 @@ The bridge converts standalone values rather than drawing contexts. Use
 @racket[draw:dc<%>] interface. These functions do not create a live view,
 share native handles, or provide zero-copy storage.
 
-Successful conversions are detached from their sources. The @racket[bitmap->image]
-and @racket[dc-path->skia-path] functions return owned Skia resources, which should be
-managed with @racket[with-skia], @racket[call-with-skia-resource], or
+The @racket[bitmap->image] and @racket[dc-path->skia-path] functions return owned
+Skia resources, which should be managed with @racket[with-skia],
+@racket[call-with-skia-resource], or
 @racket[skia-close!]. Conversions in the other direction return ordinary
-Racket Draw objects, and @racket[color%->rgba] returns an immutable Skia value;
-those results are not Skia resources. Later mutation of a mutable source, or
+Racket Draw objects, and @racket[color%->rgba] returns an immutable @racket[rgba] value.
+Later mutation of a mutable source, or
 closing a Skia source, does not change an already converted result. The bridge
 does not make concurrent mutation of a Racket Draw source safe while a
 conversion is in progress.
@@ -167,13 +167,12 @@ inclusive range from 0 through 1. The returned alpha byte is
 @racket[(inexact->exact (round (* 255 alpha)))].
 
 An exception is raised if the object reports a non-byte RGB component or an
-invalid alpha value. No Draw object or native Skia resource is retained.
+invalid alpha value.
 }
 
 @defproc[(rgba->color% [color rgba?]) (is-a?/c draw:color%)]{
 Returns a fresh Racket Draw @racket[draw:color%] with the same RGB bytes and
-alpha @racket[(/ (rgba-alpha color) 255.0)]. The result is independent of the
-input value and is not a Skia resource.
+alpha @racket[(/ (rgba-alpha color) 255.0)].
 }
 
 @section{Paths}
@@ -206,10 +205,9 @@ allocation or native construction fails; it does not return a partial path.
           [path skia-path?]
           [#:conic-subdivisions power (or/c #f (integer-in 0 5)) #f])
          (values (is-a?/c draw:dc-path%) (or/c 'odd-even 'winding))]{
-Returns two detached values: a fresh Racket Draw @racket[draw:dc-path%] and the
+Returns two values: a fresh Racket Draw @racket[draw:dc-path%] and the
 Draw fill style required to preserve the Skia path's fill rule. The source path
-must be live and used on its owning Racket thread. The returned Draw path is
-not a Skia resource.
+must be live and used on its owning Racket thread.
 
 Moves, lines, cubic Bézier segments, and close operations map directly.
 Quadratic Bézier segments are degree-elevated to cubics without geometric

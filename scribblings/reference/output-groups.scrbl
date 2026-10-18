@@ -16,7 +16,7 @@ representation decision local to the selected region.
 
 A @deftech{bounded output group} captures a drawing callback once, then selects native replay or
 explicit @tech{raster fallback} for a PDF, SVG, or CPU-raster destination. It returns
-a detached report describing that decision. Capturing the callback is not a
+an immutable report describing that decision. Capturing the callback is not a
 preflight/retry loop: replay never
 reruns the Racket authoring code.
 
@@ -104,8 +104,7 @@ not certify that an executor's scope is still live or that its backend is availa
 
 @defproc[(output-group-report? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached immutable group report and @racket[#f] otherwise. A report
-contains no live drawing callback or native object.
+Returns @racket[#t] for an immutable group report and @racket[#f] otherwise.
 }
 
 @defproc[(output-group-report-backend [report output-group-report?])
@@ -182,7 +181,7 @@ rejected work is not reported as completed.
 
 @defproc[(output-group-report->jsexpr [report output-group-report?])
           (and/c hash? immutable?)]{
-Returns a detached JSON-compatible hash of the report. Rectangles become lists, symbolic
+Returns a JSON-compatible hash of the report. Rectangles become lists, symbolic
 classifications become strings, and nested reports appear under @racket['captured_children]. A
 false pixel size remains false.
 }

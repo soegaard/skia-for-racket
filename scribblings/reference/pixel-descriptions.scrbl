@@ -17,11 +17,11 @@ When a raster buffer or surface needs an explicit pixel format, use
 @racket[make-raster-buffer-from-info] or @racket[make-surface-from-info] to
 allocate the buffer or surface in a supported format.
 
-A @deftech{pixel description} specifies dimensions, storage format, alpha type,
-and a detached @tech{color-space descriptor}. It contains no pixels or native handle.
+A @deftech{pixel description} is an immutable Racket structure specifying
+dimensions, storage format, alpha type, and a @tech{color-space descriptor}.
+It describes pixels but does not contain them.
 @tech[#:key "scanline batch"]{Scanline batches} and incremental snapshots carry these
-descriptions so their byte
-strings can be interpreted without keeping the decoder open.
+descriptions so their byte strings can be interpreted.
 
 Constructing a description validates its representation, not native decoder or
 GPU support. It neither allocates a pixel buffer nor performs color conversion.
@@ -36,7 +36,7 @@ samples; it does not request multiplication or division of their components.
 
 @defproc[(image-info? [v any/c])
           boolean?]{
-Returns @racket[#t] for a detached pixel description and @racket[#f] otherwise.
+Returns @racket[#t] for a pixel description and @racket[#f] otherwise.
 }
 
 @defproc[(make-image-info [width (integer-in 0 32768)] [height (integer-in 0 32768)]
@@ -82,7 +82,7 @@ multiplication by alpha; unpremultiplied RGB is stored independently.
 
 @defproc[(image-info-color-space [info image-info?])
           color-space-descriptor?]{
-Returns the detached color-space description: @racket[#f], @racket['srgb],
+Returns the color-space description: @racket[#f], @racket['srgb],
 @racket['linear-srgb], or immutable ICC bytes. It is not a live color-space resource.
 }
 

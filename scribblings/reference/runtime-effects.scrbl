@@ -89,14 +89,14 @@ of four and can be zero. This snapshot query remains valid after closure.
 }
 
 @defproc[(runtime-effect-uniforms [effect runtime-effect?]) (listof runtime-uniform?)]{
-Returns the stored ordered list of detached uniform descriptions. No native
-pointer is exposed. The descriptions and list remain usable after closure.
+Returns the stored ordered list of uniform-description structures.
+The query remains available after the effect is closed.
 }
 
 @defproc[(runtime-effect-children [effect runtime-effect?]) (listof runtime-child?)]{
-Returns the stored ordered list of detached child-slot descriptions. The
+Returns the stored ordered list of child-slot description structures. The
 indices are contiguous from zero. This does not return the resources later
-bound to an instance and remains valid after closure.
+bound to an instance. The query remains available after the effect is closed.
 }
 
 @section[#:tag "skia-runtime-bindings"]{Uniform and Child Bindings}
@@ -293,8 +293,7 @@ though the program receives source first; and
 @section{Uniform Descriptions}
 
 @defproc[(runtime-uniform? [v any/c]) boolean?]{
-Returns @racket[#t] for a detached runtime-uniform description and
-@racket[#f] otherwise. Descriptions require no resource cleanup.
+Returns @racket[#t] for a runtime-uniform description and @racket[#f] otherwise.
 }
 
 @defproc[(runtime-uniform-name [uniform runtime-uniform?]) string?]{
@@ -340,7 +339,7 @@ packing still uses four bytes per component.
 @section{Child Descriptions}
 
 @defproc[(runtime-child? [v any/c]) boolean?]{
-Returns @racket[#t] for a detached runtime-child description and
+Returns @racket[#t] for a runtime-child description and
 @racket[#f] otherwise. It does not test an actual shader or filter instance.
 }
 

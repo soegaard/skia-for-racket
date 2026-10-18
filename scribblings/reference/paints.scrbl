@@ -243,7 +243,7 @@ all backing pixels. The copy preserves any GPU-context dependency.
 }
 
 @defproc[(paint-color [paint paint?]) rgba?]{
-Returns the paint's color as a detached eight-bit @racket[rgba] value. It does
+Returns the paint's color as an eight-bit @racket[rgba] value. It does
 not sample an attached shader or apply the paint's color filter. For paints
 configured through extended-color APIs, this byte-valued query is not a
 precision-preserving substitute for the corresponding extended-color query.
@@ -283,7 +283,7 @@ recorded operation. An invalid setting raises an exception. These setters use
 the same option meanings as @racket[make-paint].
 
 @defproc[(paint-set-color! [paint paint?] [color color?]) void?]{
-Sets the paint's byte-valued color, including its alpha. It does not detach an
+Sets the paint's byte-valued color, including its alpha. It does not remove an
 existing shader. When a shader supplies RGB, the paint's alpha still modulates
 its output.
 }
@@ -374,7 +374,7 @@ attached through the advanced blending API.
 Attaches @racket[shader], retaining the native shader independently of the
 argument's wrapper. Passing @racket[#f] removes it. Explicitly closing the
 argument wrapper afterward does not remove the paint's reference. GPU-dependent
-content is not detached by this retention and must be used in its own context.
+content must still be used in its own context.
 }
 
 @defproc[(paint-set-path-effect! [paint paint?] [effect (or/c path-effect? #f)]) void?]{

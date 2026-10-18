@@ -112,7 +112,7 @@ inside the clickable rectangle.
 @defproc[(destination-id [name string?]) (and/c string? immutable?)]{
 Returns the ASCII identifier used for a valid destination name: @tt{dest-}
 followed by the lowercase hexadecimal UTF-8 bytes. The encoding distinguishes
-names exactly; the result is detached immutable data, not a registered destination.
+names exactly. Returning the identifier does not register a destination.
 }
 
 @defproc[(svg-destination-id [name string?] [#:id-prefix id-prefix string? "skia"])

@@ -15,10 +15,9 @@ supply baseline positions relative to that box.
 For the baseline-relative @tech{font metrics} that determine a layout's first baseline
 and reported height, see @secref["skia-font-metrics"].
 
-Layout values and their line records are ordinary Racket values, not resources
-to close with @racket[skia-close!]. A layout keeps its required shaper and, for
-mixed text, its font manager reachable. Both must remain open when the layout
-is drawn. Retaining a reference does not prevent explicit closure.
+Layout values and their line records are Racket structures. A layout keeps its
+required shaper and, for mixed text, its font manager reachable. Both must remain
+open when the layout is drawn. Retaining a reference does not prevent explicit closure.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -497,7 +496,7 @@ text to insert for display when a line breaks at that index.
 (list (layout-break-opportunity-index break) (layout-break-opportunity-insert break))
 ]
 
-The result is @racket['(4 "-")]. The value owns no native resource.
+The result is @racket['(4 "-")].
 }
 
 @subsection{A Selected Break Changes the Display Only}

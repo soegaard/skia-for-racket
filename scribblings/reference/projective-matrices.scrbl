@@ -19,8 +19,8 @@ translation, rotation, scaling, and shearing, the simpler
 @seclink["skia-matrices"]{affine matrices} are sufficient. A projective canvas
 transform does not provide a complete 3D renderer.
 
-The detached immutable @deftech{matrix3} and @deftech{matrix4} values store three
-by three and four by four matrices. They are distinct from the six-coefficient
+The immutable Racket structures @deftech{matrix3} and @deftech{matrix4} store
+three by three and four by four matrices. They are distinct from the six-coefficient
 @tech{affine matrix} type. Public coefficient vectors are row-major, and matrices
 multiply column vectors. Composition applies the rightmost operand first.
 
@@ -263,22 +263,22 @@ omitting @racket[z] uses 1. Zero and negative scales are allowed.
 @defproc[(matrix4-rotate-x-degrees [degrees real?])
           matrix4?]{
 Returns a rotation around the x-axis. Angles follow the affine degree
-normalization, including exact quarter turns. The result is a detached matrix;
-it does not install camera or depth-buffer state.
+normalization, including exact quarter turns. Constructing the matrix does not
+install camera or depth-buffer state.
 }
 
 @defproc[(matrix4-rotate-y-degrees [degrees real?])
           matrix4?]{
 Returns a rotation around the y-axis. Angles follow the affine degree
-normalization, including exact quarter turns. The result is a detached matrix;
-it does not install camera or depth-buffer state.
+normalization, including exact quarter turns. Constructing the matrix does not
+install camera or depth-buffer state.
 }
 
 @defproc[(matrix4-rotate-z-degrees [degrees real?])
           matrix4?]{
 Returns a rotation around the z-axis. Angles follow the affine degree
-normalization, including exact quarter turns. The result is a detached matrix;
-it does not install camera or depth-buffer state.
+normalization, including exact quarter turns. Constructing the matrix does not
+install camera or depth-buffer state.
 }
 
 @defproc[(matrix4-perspective [distance (and/c real? (>/c 0))])
@@ -405,7 +405,7 @@ promise that PDF or SVG preserves a perspective transformation.
 
 @defproc[(canvas-matrix4 [canvas canvas?])
           matrix4?]{
-Returns the full native canvas matrix as a detached row-major value. A
+Returns the full native canvas matrix as a @tech{matrix4} value. A
 nonfinite native matrix cannot be represented and raises an exception.
 }
 

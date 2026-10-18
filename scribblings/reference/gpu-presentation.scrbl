@@ -49,8 +49,8 @@ this accessor does not activate the context or perform native work.
 }
 
 @defproc[(gpu-presenter-info [presenter gpu-presenter?]) (and/c hash? immutable?)]{
-Returns a detached owner-thread diagnostic snapshot. It includes the backend,
-state, target generation, acquired/presented/skipped/cancelled counts, queued
+Returns a diagnostic snapshot on the presenter's owner thread. It includes the
+backend, state, target generation, acquired/presented/skipped/cancelled counts, queued
 redraw state, the last frame/error, frame-target cache information, and adapter
 diagnostics. Presentation counts are request counts, not observed screen frames.
 }
@@ -102,7 +102,7 @@ from a finalizer thread.
 @defproc[(gpu-drain-pending-presenters!)
          (listof (and/c hash? immutable?))]{
 Attempts pending presenter cleanup owned by the current thread and returns their
-detached diagnostic snapshots. The function rejects calls from inside an active
+diagnostic snapshots. The function rejects calls from inside an active
 GPU or presentation frame. It does not drain presenters owned by other threads.
 }
 
@@ -130,10 +130,9 @@ do not close it independently.
 }
 
 @defproc[(gpu-frame-info [frame gpu-frame?]) (and/c hash? immutable?)]{
-Returns immutable metadata that remains usable after frame expiration. It
-contains physical and logical extents, scale factors, backend, target generation,
-frame index, and backend-specific target diagnostics. It contains no borrowed
-canvas or native pointer.
+Returns an immutable hash containing physical and logical extents, scale factors,
+backend, target generation, frame index, and backend-specific target diagnostics.
+This query can also be called after the frame expires.
 }
 
 @defproc[(gpu-frame-width [frame gpu-frame?]) exact-positive-integer?]{
