@@ -56,8 +56,9 @@ Nested GPU-DC scopes are rejected.
 The callback must be callable with one positional argument. Its DC becomes
 invalid on normal return, exception, or escape. The staging target is a
 same-context full-color RGBA/BGRA/F16/F32 surface. The detached color-space
-descriptor, sample request, and surface-property value form part of the staging
-configuration and reuse key.
+descriptor, sample request, and @tech{surface-properties value} form part of
+the staging configuration and reuse key. See @secref["skia-surface-properties"]
+for pixel geometry and rendering flags.
 
 After successful drawing, a GPU snapshot is copied GPU-to-GPU onto the presenter
 frame. The presenter owns submission and presentation. No automatic CPU readback

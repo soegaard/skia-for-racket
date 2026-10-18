@@ -4005,9 +4005,23 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_surface_property_flags_are_requests_not_hardware_evidence(self):
         text = ' '.join(self.text('surface-properties').split())
-        for phrase in ('records a request', 'not a measurement', 'survives surface closure'):
+        for phrase in ('The flags record requests',
+                       'reports the request, not whether it took effect',
+                       'copy remains usable after the surface is released'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('surface-properties-flags')[1], ['integer-in', '0', '7'])
+
+    def test_surface_properties_live_with_gpu_surfaces_but_remain_findable_for_raster(self):
+        include = '@include-section["surface-properties.scrbl"]'
+        gpu = self.text('gpu-rendering')
+        self.assertEqual(gpu.count(include), 1)
+        self.assertLess(gpu.index('@include-section["gpu-surfaces.scrbl"]'),
+                        gpu.index(include))
+        self.assertNotIn(include, self.text('surfaces-and-canvases'))
+        self.assertIn('@secref["skia-surface-properties"]', self.text('surfaces'))
+        self.assertIn('@racket[surface-properties-of]', self.text('surfaces'))
+        self.assertIn('Accepts both raster surfaces and GPU surfaces',
+                      ' '.join(self.text('surface-properties').split()))
 
     def test_audit_policies_distinguish_preflight_and_single_pass_publication(self):
         text = ' '.join(self.text('output-audit').split())

@@ -1,7 +1,8 @@
 #lang scribble/manual
 
 @(require scribble/eval
-          (for-label racket/base racket/contract skia skia/surface-properties))
+          (for-label racket/base racket/contract skia skia/surface-properties
+                     skia/gpu skia/gpu-dc))
 
 @(define properties-eval (make-base-eval))
 @(properties-eval '(require skia/surface-properties))
@@ -11,13 +12,33 @@
 @defmodule[skia/surface-properties #:no-declare]
 @(declare-exporting skia skia/surface-properties #:use-sources (skia/surface-properties))
 
-A @deftech{surface-properties value} is an immutable description of a surface's
-pixel geometry and rendering settings. @deftech{Pixel geometry} describes the
-arrangement of red, green, and blue subpixels within a display pixel.
+A @deftech{surface-properties value} describes a drawing target's pixel
+geometry and requests settings for font rendering, @tech{multisample antialiasing},
+and @tech{dithering}. These rendering settings are separate from the surface's
+dimensions, pixel format, and @tech{color space}.
 
-The rendering flags record requests. Whether Skia fulfills a request depends
-on the drawing backend. Creating a properties value does not change an
-existing surface.
+@deftech{Pixel geometry} describes the arrangement of red, green, and blue
+subpixels within a display pixel. For example, @racket['rgb-h] describes
+subpixels arranged horizontally in red-green-blue order. It does not describe
+the order in which color components are stored in the surface's memory. The
+default, @racket['unknown], leaves the display's subpixel arrangement unspecified.
+
+Use @racket[make-surface-properties] to create a value, then pass it as the
+@racket[#:surface-properties] argument to @racket[make-gpu-surface]. The same
+argument to @racket[call-with-gpu-frame-dc] configures the GPU surface used for
+drawing during its callback. Omitting the argument uses unknown pixel geometry
+and leaves all rendering flags unset.
+
+A properties value is immutable and can be reused for several surfaces.
+Creating one does not allocate a surface or change an existing surface.
+The flags record requests; whether Skia fulfills them depends on the drawing
+backend. Inspecting a flag reports the request, not whether it took effect.
+
+In the current API, custom properties can be supplied when creating GPU
+surfaces, but not through the raster constructors @racket[make-surface] or
+@racket[make-surface-from-info]. Properties are not exclusive to GPU surfaces:
+@racket[surface-properties-of] can inspect either a raster surface or a GPU
+surface.
 
 @section{Creating and Inspecting Properties}
 
@@ -103,8 +124,10 @@ geometry is represented by a string.
 
 @defproc[(surface-properties-of [surface surface?])
           surface-properties?]{
-Returns a copy of @racket[surface]'s properties. Raises an exception if Skia
-reports a flag or pixel geometry that the library does not recognize.
+Returns an immutable copy of @racket[surface]'s properties. Accepts both raster
+surfaces and GPU surfaces. The copy remains usable after the surface is
+released. Raises an exception if Skia reports a flag or pixel geometry that
+the library does not recognize.
 
 The surface must be open. See @secref["skia-resources"] for the general resource
 rules and @secref["skia-gpu-surfaces"] for access to GPU surfaces.

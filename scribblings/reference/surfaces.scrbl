@@ -86,6 +86,10 @@ For GPU surfaces, see @secref["skia-gpu-surfaces"].
 
 @section{Dimensions and Backing}
 
+For pixel geometry and rendering flags, use @racket[surface-properties-of],
+documented in @secref["skia-surface-properties"]. It accepts both raster surfaces
+and GPU surfaces.
+
 @defproc[(surface-width [surface surface?]) exact-positive-integer?]{
 Returns the stored width of @racket[surface] in pixels.
 }

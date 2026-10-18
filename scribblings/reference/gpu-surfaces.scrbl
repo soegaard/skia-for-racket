@@ -43,6 +43,10 @@ already be active. The result retains its context and an independent reference
 to @racket[space], when supplied. The caller may close the original color-space
 wrapper after successful construction. The surface origin is top-left.
 
+The @racket[properties] argument supplies the surface's pixel geometry and
+rendering flags; see @secref["skia-surface-properties"]. The default leaves pixel
+geometry unspecified and all flags unset.
+
 The omitted alpha type selects @racket['opaque] when @racket[opaque?] is true,
 and @racket['premul] otherwise. An explicit @racket['premul] conflicts with
 @racket[opaque?] set to true. Opaque targets require an opaque background.
