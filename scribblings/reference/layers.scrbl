@@ -91,10 +91,21 @@ The body is nonempty, may contain internal definitions, and ends with an express
 
 @section{Layer Options}
 
+The simple layer interface accepts bounds and a paint. Some layers need
+additional setup: initial content copied from the current target, F16 color
+storage, or preservation of LCD text information.
+
+For these settings, use @racket[call-with-canvas-layer-rec]. Like
+@racket[call-with-canvas-layer], it runs a callback inside a layer and restores
+the canvas state afterward. Its @racket[#:options] argument accepts a
+@tech{layer-options value} describing the requested setup.
+
 A @deftech{layer-options value} is an immutable description of layer bounds
-and rendering flags. Use it with @racket[call-with-canvas-layer-rec] or
-@racket[canvas-save-layer-rec!]. Supply any paint or backdrop filter when
-creating the layer.
+and rendering flags. Creating an options value does not itself create a layer.
+Supply any paint or backdrop filter separately when creating the layer. A
+backdrop filter can initialize the layer from filtered existing content.
+For manual layer management, pass the same options to
+@racket[canvas-save-layer-rec!].
 
 The flags record requests. Whether Skia fulfills a request depends on the
 drawing backend.
