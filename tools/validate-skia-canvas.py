@@ -163,6 +163,7 @@ def execute(root, directory, racket, *, require_gui=False, runner=None):
         common.require(sources_before == source_fingerprint(root),
                        'source changed during canvas validation')
         checks['source_unchanged'] = True
+        state['status'] = 'passed'
         common.write_json(directory / 'validation.json', state)
         gui_summary = (f'{GUI_CASES} required GUI cases + both text load orders'
                        if require_gui else 'GUI NOT RUN (headless mode)')

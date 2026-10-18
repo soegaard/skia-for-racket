@@ -84,6 +84,7 @@ class CanvasValidationTests(unittest.TestCase):
         status, report, calls, passed_exists = self.simulate()
         self.assertEqual(status, 0)
         self.assertTrue(passed_exists)
+        self.assertEqual(report['status'], 'passed')
         self.assertEqual(report['pure_cases'], validation.PURE_CASES)
         self.assertEqual(report['native_cases'], validation.NATIVE_CASES)
         self.assertEqual(report['gui'], dict(required=False, executed=False, status='not-run', cases=0, text_load_orders=[]))
@@ -94,6 +95,7 @@ class CanvasValidationTests(unittest.TestCase):
     def test_required_gui_success_records_explicit_complete_execution(self):
         status, report, calls, _ = self.simulate(require_gui=True)
         self.assertEqual(status, 0)
+        self.assertEqual(report['status'], 'passed')
         self.assertEqual({k: report['gui'][k] for k in ('required', 'executed', 'status', 'cases')},
                          dict(required=True, executed=True, status='passed', cases=validation.GUI_CASES))
         self.assertEqual([result['load_order'] for result in report['gui']['text_load_orders']], ['gtk-first', 'skia-first'])
