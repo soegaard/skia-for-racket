@@ -623,7 +623,7 @@ See [EGL ownership](docs/GPU-EGL.md), [interop contracts](docs/GPU-INTEROP.md),
 and [desktop/headless validation](docs/GPU-HEADLESS-TESTING.md).
 `tools/validate-gpu.sh` retains presentation/parity tests and adds GL interop.
 `tools/validate-gpu-headless.sh` runs the Linux EGL gate with display variables
-removed and no GUI host. Both update source sums only after selected success.
+removed and no GUI host. Both publish evidence only after selected success.
 
 Baseline: `e5f93e529fd875661a0b0019d5b9d897ff8c9dc0` (0.42), whose macOS
 automated and interactive checks passed. New Racket/native execution remains

@@ -527,7 +527,7 @@ Includes focused acceptance and central regression integration.
   strict timing/trace/PNG/resource inspectors and independent runner tests.
 - Reports distinguish budgeted cache from total memory, host latency from GPU
   timestamps/display latency, and measured data from unexecuted authoring gates.
-- Preserved earlier validators, last-step source sums and deferred Linux CI gate.
+- Preserved earlier validators, validation sequencing and the deferred Linux CI gate.
 
 ## 0.44.0 — GPU-assisted bounded document fallbacks
 
@@ -541,7 +541,7 @@ Includes focused acceptance and central regression integration.
   changing GPU lifetime/affinity checks or public drawing operations.
 - Added 35 pure and 42 live source cases per backend, 16 PDF/SVG documents per
   backend, actual vector/image/link/placement inspection and SVG PNG comparison.
-- Extended selected-Racket desktop/headless runners; source sums update last.
+- Extended selected-Racket desktop/headless runners with the same validation sequencing.
   Linux EGL acceptance stays deferred to future CI by the maintainer.
 
 ## 0.43.0 — EGL headless contexts and explicit external GL boundaries
@@ -630,7 +630,7 @@ Includes focused acceptance and central regression integration.
 - Added 35 pure and 33 live-GPU source cases, eight direct CPU/GPU scene pairs,
   full PNG pixel inspection, explicit comparison bounds and transfer traces.
 - Extended the selected-Racket validator; inspector reports publish on success
-  and source sums update last. The 0.38 GC-test correction is preserved.
+  and preserves validation sequencing. The 0.38 GC-test correction is preserved.
 - This authoring delivery did not execute Racket or native GPU rendering.
   Hardware/platform support and performance remain established only by host runs.
 
@@ -649,7 +649,7 @@ Includes focused acceptance and central regression integration.
   installer/validator PowerShell entry points, without changing CPU constructors.
 - Added 64 pure source test cases, protected-flag-aware GPU ABI mirrors,
   diagnostic/PNG inspection, synthetic Python tests, docs and a selected-Racket
-  runner that regenerates source sums only after selected validation succeeds.
+  runner that publishes evidence only after selected validation succeeds.
 - No public GPU surface/image API yet. Authoring checks did not execute Racket,
   live Skia/GL/Metal, Windows installation, or full-checkout native validation.
 
@@ -970,7 +970,7 @@ Includes focused acceptance and central regression integration.
 
 - Added a pure-Racket conformance harness for Unicode 15.1 `LineBreakTest.txt` and `BidiCharacterTest.txt`, including the library's documented default-grapheme-cluster line-break tailoring.
 - Added `tools/unicode-conformance.rkt` plus `tools/run-unicode-conformance.sh`, which can use an offline Unicode-data directory or fetch the pinned 15.1 test files from unicode.org.
-- Added parser/smoke-vector regression tests and a reproducible source-checksum updater.
+- Added parser/smoke-vector regression tests and reproducible source-validation tooling.
 - The multi-megabyte Unicode test corpora are development inputs and are not vendored in the package.
 - No new native symbols or ABI structs are required.
 

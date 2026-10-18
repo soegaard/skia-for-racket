@@ -21,7 +21,6 @@ existing native symbol audits, compilation, doctor, the full suite, and one
 combined visual registry. Compilation and every Racket execution use the same
 selected interpreter. In particular `tests/*.rkt` are compiled explicitly;
 dynamically loaded suites cannot silently reuse another Racket's compiled files.
-Source sums are updated only after the preceding checks succeed.
 
 **Expected tests: 971** (418 pure + 6 lifetime + 547 native).
 The new suites contain **59 pure and 36 native** cases. `--pure` runs 424.

@@ -29,8 +29,8 @@ RACKET="$RACKET" bash tools/validate-geometry-primitives.sh
 One selected interpreter compiles all test modules using
 `"$RACKET" -l raco -- make ... tests/*.rkt`. No bare `raco` is selected from PATH.
 The script runs source checks, the new inspector's 14 self-tests, seven host-C
-mirrors, symbol audits, doctor, all suites, the visual registry, structural
-inspection, and finally source-checksum regeneration.
+mirrors, symbol audits, doctor, all suites, the visual registry, and structural
+inspection.
 
 ## Review
 

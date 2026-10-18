@@ -24,7 +24,7 @@ execution. It compiles **all `tests/*.rkt`**, including dynamic-require targets;
 it does not choose `raco` independently from PATH or delete compiled caches.
 It runs source checks, inspector self-tests, five existing C ABI mirrors,
 both symbol audits, doctor, the full suite, one combined example registry,
-SVG/link-target inspection, and source-checksum regeneration.
+SVG/link-target inspection, and source-tree integrity checks.
 
 | Check | Expected |
 |---|---:|

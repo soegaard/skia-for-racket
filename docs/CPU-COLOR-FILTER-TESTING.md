@@ -11,8 +11,7 @@ RACKET="$RACKET" bash tools/validate-color-filters.sh
 The validator uses that same interpreter for compilation and execution through
 `racket -l raco -- make`, and explicitly compiles **all** `tests/*.rkt` before
 the dynamically loaded native suites. It runs the new doctor separately after
-the existing cumulative doctor. Source sums are regenerated only after the
-selected validation succeeds.
+the existing cumulative doctor.
 
 Expected totals:
 

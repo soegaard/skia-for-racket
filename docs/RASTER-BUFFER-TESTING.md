@@ -29,8 +29,8 @@ The inspector contains **22 synthetic self-tests** (two require optional pypdf).
 Open `output/raster-buffers-0.37.review.html` and its linked PDF. The combined
 runner writes three PDF pages, three SVGs, three raster references, six separate
 source snapshot PNGs, four export audits, group decisions, actual native memory
-samples, and an inspection JSON report. No source sums are updated until all
-selected checks succeed. The inspection report is published only on success.
+samples, and an inspection JSON report. The inspection report is published only
+on success.
 
 | Page | Visual check | Primary image placements in each format |
 |---|---|---|

@@ -20,6 +20,29 @@ from validation_regressions import add_regression_argument, global_compile_targe
 import stream_validation as checks
 
 ROOT = Path(__file__).resolve().parents[1]
+SOURCE_EXCLUDES = {'.git', '__pycache__', 'compiled', 'downloads', 'output'}
+
+
+def source_fingerprint(root: Path, output: Path) -> str:
+    """Hash the source tree while excluding validator-generated output."""
+    digest = hashlib.sha256()
+    files = 0
+    ignored_output = output.resolve()
+    for directory, names, filenames in os.walk(root, followlinks=False):
+        base = Path(directory)
+        names[:] = sorted(name for name in names
+                           if name not in SOURCE_EXCLUDES and (base / name).resolve() != ignored_output)
+        for name in sorted(filenames):
+            path = base / name
+            checks.need(path.is_file() and not path.is_symlink(),
+                        'unsafe source path: ' + str(path))
+            relative = path.relative_to(root).as_posix()
+            digest.update(relative.encode('utf-8') + b'\0')
+            digest.update(path.read_bytes())
+            digest.update(b'\0')
+            files += 1
+    checks.need(files > 0, 'empty source tree')
+    return digest.hexdigest()
 
 
 def main(argv=None, *, root=ROOT):
@@ -68,6 +91,7 @@ def main(argv=None, *, root=ROOT):
             report.update(failed_command=command, failed_log=str(log))
             raise
     try:
+        before = source_fingerprint(root, output)
         run([sys.executable, root/'tools/api-inventory.py', '--check'])
         run([sys.executable, root/'tools/test-streams.py'])
         run([racket, root/'tools/check-package-version.rkt'])
@@ -87,7 +111,8 @@ def main(argv=None, *, root=ROOT):
         result = checks.inspect(output/'native', token)
         (output/'inspection.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         report['byte_oracles_passed'] = True
-        report['status'] = 'passed'
+        checks.need(before == source_fingerprint(root, output), 'source changed during stream validation')
+        report.update(status='passed', source_sha256=before)
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
         print('Streams FAILED: ' + report['error'], file=sys.stderr)

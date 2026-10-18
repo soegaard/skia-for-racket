@@ -420,8 +420,8 @@ checks.
 
 Review the expected API delta: one new public module and exactly three new
 constructor bindings there; no accidental exports or changes in existing
-modules. Refresh approved generated inventories and source sums through the
-repository's existing tools after implementation checks. Do not blindly
+modules. Refresh approved generated inventories through the repository's
+existing tools after implementation checks. Do not blindly
 regenerate snapshots to conceal unexpected drift.
 
 ## 8. Acceptance tests

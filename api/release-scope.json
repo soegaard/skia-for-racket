@@ -1656,7 +1656,7 @@
     "tools/test-release-candidate.py": "0f63f9af33d45fa75f81cd0487922d6b361f86d04b9fe2570f3fdf8d5ac03b64",
     "tools/test-release-scope.py": "d47e20c23ed560fbfef1bc66cba34893d05ee742f32082f15c701af0db784bf2",
     "tools/test-small-gaps.py": "841e7f9fadbe2fff129142002c61917d64ecc15a066b36532c3204d71d9bc645",
-    "tools/test-streams.py": "d441968eb5d557a75e59eeec274e16170999535fc810935c9e565426499d2dc7",
+    "tools/test-streams.py": "ef6363b6c042483f59ef159e80b42c8ec4ef1378d413bd857be58d830503f300",
     "tools/test-text-blobs.py": "3ba95306caeeadfb1db7a5a38e6f6b56d304af2f648f498306b4ac3e8130f7aa",
     "tools/test-typefaces.py": "1ad209c0398ae324354abd66049b84b564a61abd11bf78e827aee7888b2ab5b0",
     "tools/test-validation-regressions.py": "9b14e3cb0c84549f379f63aa917a1614dbc48bfce54f21a3e1947fbac736cc8f",
@@ -1668,7 +1668,7 @@
     "tools/validate-release-candidate.py": "82ee1977b563c9121c905d74bb9ea95ad12af61ebfbb933ae8d3feb75a985b93",
     "tools/validate-release-scope.py": "21c6a01b133d614bee0880233718a933ce7ed6b6e1259ca5cad3599c3b15cdef",
     "tools/validate-small-gaps.py": "49bbe8426cfcb543dd624e03a6fc6cf3084218d775cc6a458140742afc6d04c2",
-    "tools/validate-streams.py": "0c089d92f5d1ea825e2abde0325f3a52d2c74571ac7a530bf2d355c727312ce1",
+    "tools/validate-streams.py": "d7ea60c386e08ddb22826d6b54e29884b754de957c65b446c0f4b4558a823a89",
     "typefaces.rkt": "ff231db70239765f93d303c2d87f84e532c1d11fbb89f7c466876bd1f5953b7f",
     "unsafe/gpu-d3d12.rkt": "e13af9b048c4cde46da62f19973a7e9bbd7755aad244e52995778443212741d0",
     "unsafe/gpu-metal.rkt": "f8d5eac4300e9527ebf99e05759a6f1c5e1bb33d0649d23b8455f6c51f198c8d"

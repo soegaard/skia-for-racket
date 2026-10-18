@@ -4,7 +4,7 @@
 Uses the selected RACKET for compilation and every Racket subprocess. Explicit
 EGL configuration is shared by all probes. Display variables are removed, not
 replaced with a hidden window/Xvfb. GPU_MODE=optional permits only initial
-unavailability; source sums are updated last after the selected gates succeed.
+unavailability.
 """
 from __future__ import annotations
 import json

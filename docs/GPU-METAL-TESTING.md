@@ -68,9 +68,8 @@ and alpha in `parity.review.html`; these checks do not promise universal pixel
 identity. Device names, native version and platform are retained with results.
 
 No successful inspection or review is published after failed checks. A failed
-reinspection removes stale success files for that prefix. Source sums are
-regenerated **last**, only after every selected automated check succeeds. The
-C ABI mirrors are still local layout checks, not evidence of Metal execution.
+reinspection removes stale success files for that prefix. The C ABI mirrors are
+still local layout checks, not evidence of Metal execution.
 
 ## Headless Metal-only checks
 

@@ -44,8 +44,7 @@ minimize/restore, multiple independent windows and moves between displays with
 different backing scales. Close each canvas explicitly through its window's
 close handler; hiding alone retains its resources. See
 [the canvas contract and evidence limits](docs/SKIA-CANVAS.md) and
-[CI operation and artifacts](docs/CI.md). Regenerate source sums last after all
-selected host checks; CI only checks them. This stage does not add a GPU facade;
+[CI operation and artifacts](docs/CI.md). This stage does not add a GPU facade;
 that remains the 0.59 roadmap step.
 
 ## Historical revision: CI and portability matrix (0.46)
@@ -55,8 +54,7 @@ macOS runs include the two benchmark-report corrections. Rendering APIs and
 native versions do not change in this stage.
 
 Run the normal selected-Racket GPU validator locally before committing. It now
-includes CI infrastructure regressions and still updates source sums last.
-CI checks that manifest without rewriting it, installs the source ZIP in a fresh
+includes CI infrastructure regressions. CI installs the source ZIP in a fresh
 user home, then compiles and tests the installed copy from another directory.
 
 See [CI operation, artifacts and local reproduction](docs/CI.md) and the
@@ -77,7 +75,7 @@ desktop runner also exercises two sustained windows per recreated pair. No-wait
 submission is not completion, cache accounting is not total memory, and queued
 presentation is not observed physical pixels. Reviews retain raw JSON/CSV,
 compare actual CPU/GPU PNGs and name all completion and cleanup boundaries.
-Source sums still update last. Authoring source checks do not execute Racket.
+Authoring source checks do not execute Racket.
 
 ## Previous revision: GPU-assisted document fallbacks (0.44)
 
@@ -112,8 +110,8 @@ are checked against executable suite structure and inspector advertisements.
 
 Authoring includes Python tests and native ctypes EGL/GL probes on software
 Mesa, not Racket/Ganesh execution or hardware validation. No successful Mac
-run can substitute for the new Linux headless gate. Both runners regenerate
-source sums last; failures never publish a successful combined inspection.
+run can substitute for the new Linux headless gate. Failures never publish a
+successful combined inspection.
 
 ## Previous revision: unified presentation (0.42)
 
@@ -126,8 +124,8 @@ output require separate 0.42 evidence; see
 The runner retains every preceding regression/parity check, adds 53 pure and
 28 live presenter source cases per selected backend, and exercises two windows
 with three pixel extents each. Raw target/queue/expiry/cleanup reports are
-inspected without normal-frame readback or CPU completion waits. Source sums
-update last. The new C mirror checks actual Cocoa geometry SDK declarations
+inspected without normal-frame readback or CPU completion waits. The new C
+mirror checks actual Cocoa geometry SDK declarations
 on macOS, local mirrors only elsewhere. Patch validation uses ordinary Git
 application without relaxed context or recounted headers.
 
@@ -154,7 +152,7 @@ Required macOS validation needs both backends; optional absence is explicit.
 Metal rendering does not certify Metal window presentation. No performance or
 universal pixel-identity claim is made. Patch delivery uses Git-generated
 hunks with meaningful context, independent line-count checks, and ordinary
-forward/reverse application checks; source sums are regenerated last.
+forward/reverse application checks.
 
 ## Previous revision: GPU images (0.40)
 
@@ -166,7 +164,7 @@ This adds 33 pure and 42 live RackUnit source cases. The runner retains CPU
 regressions, foundation probes, surface comparisons and window checks, then
 runs two GPU-image retained-graph workflows and numerical PNG inspection.
 Every dynamically loaded new Racket module is compiled with the selected
-Racket. Source sums are regenerated only after all selected checks succeed.
+Racket.
 
 Authoring validation does not execute Racket or native Skia. Complete modified
 source files were verified by pinned Git blob hashes; larger core/native/doc
