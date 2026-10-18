@@ -93,8 +93,8 @@ partially initialized pixels.
 
 The codec reconstructs the requested frame's dependencies into a fresh buffer.
 Calls need not be made in frame order. A false color-space option preserves the
-source tag; a supplied live space requests conversion during decoding and is
-retained independently by the returned image.
+source tag; a supplied live space requests conversion during decoding. The
+returned image keeps its own native reference to that color space.
 
 The default permutes pixels to top-left orientation without resampling. Origins
 that exchange axes also exchange the output width and height. Disabling

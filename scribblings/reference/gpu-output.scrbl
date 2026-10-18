@@ -14,8 +14,8 @@ raster group by itself.
 
 A GPU executor renders the temporary target in one exact @tech{GPU context}, performs
 an explicit synchronous @tech{GPU readback}, and gives the output layer a CPU-owned @tech{image}.
-The resulting document therefore retains no GPU resource. This is not a
-zero-copy path and makes no performance or hardware-acceleration guarantee.
+The resulting document therefore does not depend on GPU resources after export.
+This is not a zero-copy path and makes no performance or hardware-acceleration guarantee.
 
 @defproc[(make-gpu-raster-executor [context gpu-context?])
          output-raster-executor?]{

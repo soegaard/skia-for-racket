@@ -332,7 +332,7 @@ Returns the chosen baseline-to-baseline step.
 }
 
 @defproc[(text-layout-line-count [layout text-layout?]) exact-nonnegative-integer?]{
-Returns the number of lines, including retained empty lines.
+Returns the number of lines, including empty lines in the layout.
 }
 
 @defproc[(text-layout-line? [v any/c]) boolean?]{
@@ -390,7 +390,7 @@ Returns the baseline-to-baseline step.
 }
 
 @defproc[(mixed-text-layout-line-count [layout mixed-text-layout?]) exact-nonnegative-integer?]{
-Returns the number of lines, including retained empty lines.
+Returns the number of lines, including empty lines in the layout.
 }
 
 @defproc[(mixed-text-line? [v any/c]) boolean?]{

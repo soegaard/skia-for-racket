@@ -156,8 +156,9 @@ Collects a native memory report for process-global Skia caches. The flags reques
 detailed reporting and inclusion of wrapped objects. Names, units, and string values depend on
 the native backend; they are not a fixed allocation inventory.
 
-The entry limit bounds retained entries. The string limit bounds each copied native string in
-UTF-8 bytes; the byte limit bounds aggregate copied strings. The expression @racket[(+ (*
+The entry limit bounds the number of entries stored in the report. The string limit bounds
+each copied native string in UTF-8 bytes; the byte limit bounds aggregate copied strings.
+The expression @racket[(+ (*
 max-entries 128) byte-limit)] must fit @racket[current-skia-byte-limit]. Zero limits are valid.
 Oversized entries are omitted and counted, not shortened into apparently complete values.
 Invalid native strings or callback data raise after native cleanup.
@@ -176,7 +177,7 @@ data representation.
 
 @defproc[(memory-statistics-entries [report memory-statistics?])
           (and/c (vectorof memory-statistic?) immutable?)]{
-Returns the retained entries in native observation order as an immutable vector.
+Returns the report's entries in native observation order as an immutable vector.
 }
 
 @defproc[(memory-statistics-detailed? [report memory-statistics?])
@@ -202,7 +203,7 @@ the native report.
 
 @defproc[(memory-statistics-string-bytes [report memory-statistics?])
           exact-nonnegative-integer?]{
-Returns the aggregate UTF-8 bytes retained for names, value names, units, and string values.
+Returns the total number of UTF-8 bytes stored for names, value names, units, and string values.
 Numeric values are not counted as strings.
 }
 

@@ -246,7 +246,8 @@ execution and invalidates borrowed canvases, but does not force the state to
 @racket['closed] or close live children. The owning thread must retire children
 and perform closure or drain pending context shutdowns. GC and custodian
 notifications use this request mechanism; they do not perform off-thread native
-teardown. A dead owner can therefore leave resources retained for safety.
+teardown. If the owning thread has terminated, resources may therefore be left
+allocated rather than released from the wrong thread.
 }
 
 @defproc[(gpu-drain-releases! [context gpu-context?]) exact-nonnegative-integer?]{

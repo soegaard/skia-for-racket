@@ -2,9 +2,10 @@
 
 @title[#:tag "skia-reference-recording" #:style 'toc]{Recording}
 
-Pictures record canvas commands and retained drawing data. Recorded drawables
-capture that content for retained or immediate playback. Neither representation
-reruns the Racket function that originally produced the drawing.
+Pictures record drawing commands and the data needed to replay them. Recorded
+drawables can be referenced by another recording or replay their commands
+immediately into a canvas. Neither representation reruns the Racket function
+that originally produced the drawing.
 
 @local-table-of-contents[]
 

@@ -274,7 +274,7 @@ match the run's glyph IDs. Empty runs yield an empty path.
 
 Glyphs without monochrome outlines are omitted; bitmap-only and color glyph
 appearance is not preserved by this conversion. The path remains usable after
-the shaper is closed and does not retain paint settings.
+the shaper is closed and does not include paint settings.
 }
 
 @section{Additional Visual Examples}

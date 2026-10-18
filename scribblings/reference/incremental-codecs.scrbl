@@ -16,8 +16,8 @@ chunks and needs to control when decoding advances. Create a session with
 only for the PNG cases described below; other formats wait for final input.
 
 An @deftech{incremental decoding session} accepts explicitly fed encoded bytes
-and retains a native decoder and destination between steps. It does not read a
-Racket port or keep arbitrary port callbacks. It decodes the first frame at the
+and keeps a native decoder and destination pixel buffer between steps. It does
+not read a Racket port or keep arbitrary port callbacks. It decodes the first frame at the
 encoded dimensions and @tech{encoded orientation}, without subset selection, scaling, or a
 fallback to one-shot decoding.
 
@@ -35,7 +35,7 @@ simulate a decoder capability.
 The session is an @tech{owned resource} tied to its creating Racket thread.
 Only the type predicate is independent of that thread. The state query also
 works after closure; other operations require an open resource. Closing destroys
-the decoder before releasing pixels it might retain.
+the decoder before releasing the pixel buffer it may still reference.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -61,7 +61,7 @@ bound relative to the image width is checked when the header reveals dimensions.
 A false stride selects tight storage then.
 
 The limit must not exceed @racket[2147483647] or @racket[current-skia-byte-limit].
-It bounds retained encoded input and destination allocations separately; it is
+It bounds the stored encoded input and destination allocations separately; it is
 not their combined heap budget. Later operations also honor a lowered current
 limit. The constructor requires native incremental support from the live-stream
 bridge, but does not start a port operation or decode pixels.
@@ -76,7 +76,7 @@ not itself decode pixels. Empty input is allowed; an empty final feed seals an
 existing prefix. No further feed is permitted once input is final or the session
 is terminal.
 
-A quota rejection leaves the retained prefix and final flag unchanged. Invalid
+A quota rejection leaves the stored input prefix and final flag unchanged. Invalid
 PNG framing discovered after appending can instead fail the session. A final
 prefix may be truncated: declaring final means no more input will arrive, not
 that the image is valid or complete. PNG chunk visibility is reflected separately
@@ -89,14 +89,14 @@ from accepted input size in @racket[codec-incremental-statistics].
 Attempts header construction, native incremental start, or continued decoding
 and returns an incremental progress value. No new native attempt is made when
 neither the visible input size nor final flag has changed since the previous attempt.
-Once started, the same destination is retained between calls. Before native use,
-all destination bytes, including padding, are initialized to zero.
+Once started, the decoder writes into the same destination buffer on successive
+calls. Before native use, all destination bytes, including padding, are initialized to zero.
 
 A native incomplete-input result means @racket['needs-input] before a final feed
 and terminal @racket['incomplete] afterward. Native success means complete;
 other native failures mean failed. Terminal calls return the existing progress
 without retrying or reopening the decoder. Wrapper exceptions mark failure,
-release retained storage, and raise rather than returning fictitious native
+release the session's storage, and raise rather than returning fictitious native
 success. A byte-limit failure before the decoding attempt need not make the
 session terminal.
 
@@ -160,10 +160,11 @@ Returns an immutable hash table with diagnostic counters. Keys
 @racket['visible-input-bytes] distinguish accepted data from the prefix exposed
 to the decoder, and @racket['input-final?] reports whether input is sealed.
 Keys @racket['stream-creations] and @racket['stream-destructions] count the private
-native inputs; @racket['decoder-retained?] reports decoder retention, and
-@racket['pixel-bytes] reports currently retained destination storage.
+native inputs; @racket['decoder-retained?] reports whether the session still has
+a native decoder, and @racket['pixel-bytes] reports the number of bytes in its
+currently allocated destination buffer.
 
-Input counts remain as diagnostics after retained input storage is discarded;
+Input counts remain as diagnostics after the stored input is discarded;
 they are not current allocation sizes. The returned hash table is a snapshot, not a
 live view or a guarantee of exact native heap use.
 }
@@ -210,8 +211,8 @@ The count is not an EXIF-normalized coordinate or a byte offset.
 Returns an immutable Racket structure containing a byte-string copy of the whole
 destination, including padding, with its pixel description and current progress.
 The byte string is immutable. Native incremental start must have succeeded and
-the destination must still be retained. The copy must fit the effective byte
-limit. The operation does not run another decoding step.
+the destination buffer must not have been released. The copy must fit the
+effective byte limit. The operation does not run another decoding step.
 
 A snapshot can describe incomplete output; its existence is not success.
 Completion or a reported terminal native failure can leave pixels available,

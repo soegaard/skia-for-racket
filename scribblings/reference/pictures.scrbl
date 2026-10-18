@@ -14,8 +14,8 @@ rerunning the Racket code that constructed it. Record the drawing with
 @tech{image} instead when you want a fixed pixel result rather than a recording
 of drawing commands.
 
-A @deftech{picture} is an immutable recording of drawing commands and their
-retained drawing data. Replaying a picture sends those commands to a @tech{canvas};
+A @deftech{picture} is an immutable recording of drawing commands and the data
+needed to replay them. Replaying a picture sends those commands to a @tech{canvas};
 it does not call the Racket function that originally recorded them. A picture
 can contain image drawing as well as geometry and text. Recording pixels does
 not turn them into vector geometry.
@@ -23,9 +23,9 @@ not turn them into vector geometry.
 A @deftech{picture recorder} owns a recording canvas while recording is active.
 A finished picture owns its recording independently of the recorder and of the
 caller's paints and paths. Closing those wrappers does not discard the picture.
-Retaining a GPU-backed dependency does not remove its context or thread rules.
-The ordinary CPU examples do not imply that such a recording is portable
-between GPU contexts or serializable without readback.
+GPU-backed resources used by the picture still have their context and thread
+restrictions. The ordinary CPU examples do not imply that such a recording is
+portable between GPU contexts or serializable without readback.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -42,7 +42,7 @@ Returns @racket[#t] for a picture, including a closed picture, and @racket[#f] o
 Records @racket[proc] on a fresh canvas with culling bounds at the origin and
 returns the finished picture. The callback's results are discarded. The
 recorder is released on success or escape; the returned picture is not released.
-Do not retain the callback's canvas for later drawing.
+Do not use the callback's canvas after the callback returns.
 
 Unlike @racket[picture-recorder-begin-recording!], this helper requires exact positive
 integer extents and applies the usual @racket[(* 4 width height)] byte-limit
@@ -168,7 +168,8 @@ It is not a count of Racket callback invocations or a timing prediction.
 
 @defproc[(picture-approximate-bytes-used [picture picture?]) exact-nonnegative-integer?]{
 Returns the native estimate of picture storage. It is not the serialized byte
-length, a complete accounting of retained resources, or a process-memory limit.
+length, a complete accounting of resources kept alive by the picture, or a
+process-memory limit.
 }
 
 @section[#:tag "skia-picture-recorders"]{Explicit Recorder Management}
@@ -277,7 +278,7 @@ size can preserve placement when reloading an R-tree recording.
                            [#:width width (or/c #f (and/c real? (>=/c 0))) #f]
                            [#:height height (or/c #f (and/c real? (>=/c 0))) #f]) picture?]{
 Reads a bounded snapshot from a binary file and decodes it as in
-@racket[picture-from-bytes]. The file is not retained or kept open. Trust is
+@racket[picture-from-bytes]. The file is closed after reading. Trust is
 checked before reading; file, framing, size, and native decoding errors raise
 exceptions. Width and height have the same paired-override meaning.
 }
@@ -299,10 +300,11 @@ unpublished temporary file on escape; it does not create parent directories.
                              [#:sampling sampling (or/c 'nearest 'linear) 'nearest]
                              [#:local-matrix matrix (or/c matrix? #f) #f]
                              [#:tile-rect tile (or/c list? vector? #f) #f]) shader?]{
-Returns an owned shader that samples the recorded picture. The shader retains
-the picture independently of its wrapper. A supplied local affine matrix must
-have a representable inverse. A tile rectangle contains x, y, width, and height,
-with positive extents; omitting it uses the native picture bounds. Tile modes
+Returns an owned shader that samples the recorded picture. The shader keeps its
+own native reference to the picture, independently of the caller's wrapper.
+A supplied local affine matrix must have a representable inverse. A tile
+rectangle contains x, y, width, and height, with positive extents; omitting it
+uses the native picture bounds. Tile modes
 and sampling control repeated picture sampling, not
 the geometry of a later drawing operation. Picture-shader use can rasterize the
 recording and does not guarantee vector output.

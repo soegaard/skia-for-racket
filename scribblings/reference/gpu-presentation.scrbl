@@ -109,8 +109,8 @@ GPU or presentation frame. It does not drain presenters owned by other threads.
 @section{Frame Lifetime and Geometry}
 
 @defproc[(gpu-frame? [v any/c]) boolean?]{
-Returns whether @racket[v] is a presentation-frame wrapper. Retaining a frame
-after its callback does not retain access to its canvas or context.
+Returns whether @racket[v] is a presentation-frame wrapper. Keeping a reference
+to a frame does not allow access to its canvas or context after the callback ends.
 }
 
 @defproc[(gpu-frame-expired? [frame gpu-frame?]) boolean?]{

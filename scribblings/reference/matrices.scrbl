@@ -279,8 +279,8 @@ Returns a transform that maps the local @racket[anchor] to coordinates
 @racket[x] and @racket[y], with uniform @racket[scale] and rotation by
 @racket[degrees]. Positive angles rotate clockwise in downward-positive drawing
 coordinates. The scale must be nonnegative. Zero scale is accepted and
-collapses local points to the target location. The anchor is copied, not
-retained as a mutable input.
+collapses local points to the target location. The anchor is copied; later
+changes to an input vector do not change the transform.
 
 For angle @math{r} in radians and anchor coordinates @math{ax} and @math{ay},
 the four coefficients are @math{scos = scale cos(r)},

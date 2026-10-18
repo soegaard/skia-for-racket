@@ -6,7 +6,7 @@
 @title[#:tag "skia-paints"]{Paints}
 
 A @deftech{paint} supplies the appearance of a drawing operation. It holds values such
-as a color and stroke width, and may retain @tech{shaders}, effects, or filters.
+as a color and stroke width, and may have @tech{shaders}, effects, or filters attached.
 It does not contain the shape being drawn or the current @tech{canvas transform}.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -15,7 +15,7 @@ It does not contain the shape being drawn or the current @tech{canvas transform}
 
 @defproc[(paint? [v any/c]) boolean?]{
 Returns @racket[#t] for a Skia paint and @racket[#f] otherwise. The result does
-not indicate whether the paint is open or whether it retains GPU-dependent
+not indicate whether the paint is open or whether it uses GPU-dependent
 content.
 }
 
@@ -231,15 +231,15 @@ Vector Output and Raster Fallbacks}.
 @section[#:tag "skia-paint-inspection"]{Copying and Inspecting Paints}
 
 These operations require an open paint on its owning thread. A paint that
-retains GPU-dependent content also carries that content's context restrictions.
-Reading a retained shader or filter returns an owned wrapper, not a borrowed
+uses GPU-dependent content also carries that content's context restrictions.
+Reading an attached shader or filter returns an owned wrapper, not a borrowed
 field of the paint.
 
 @defproc[(paint-copy [paint paint?]) paint?]{
 Returns a new owned paint with the same settings. Later mutation of either
 paint does not change the other's settings. Native shader, effect, and filter
-objects may be shared through retained references; this is not a deep copy of
-all backing pixels. The copy preserves any GPU-context dependency.
+objects may be shared through each paint's own native references; this is not a
+deep copy of all backing pixels. The copy preserves any GPU-context dependency.
 }
 
 @defproc[(paint-color [paint paint?]) rgba?]{
@@ -267,12 +267,13 @@ Returns an independently owned reference to the attached color filter, or
 
 @defproc[(paint-mask-filter [paint paint?]) (or/c mask-filter? #f)]{
 Returns an independently owned reference to the attached mask filter, or
-@racket[#f]. A shader-backed mask can retain a GPU-context dependency.
+@racket[#f]. A shader-backed mask may depend on a GPU context.
 }
 
 @defproc[(paint-image-filter [paint paint?]) (or/c image-filter? #f)]{
 Returns an independently owned reference to the attached image filter, or
-@racket[#f]. The result retains its own dependencies rather than borrowing the paint.
+@racket[#f]. The result keeps its own native references to the filter's inputs
+rather than borrowing the paint.
 }
 
 @section[#:tag "skia-paint-mutation"]{Changing Paints}
@@ -371,32 +372,32 @@ attached through the advanced blending API.
 }
 
 @defproc[(paint-set-shader! [paint paint?] [shader (or/c shader? #f)]) void?]{
-Attaches @racket[shader], retaining the native shader independently of the
-argument's wrapper. Passing @racket[#f] removes it. Explicitly closing the
+Attaches @racket[shader] using the paint's own native reference, independently of
+the argument's wrapper. Passing @racket[#f] removes it. Explicitly closing the
 argument wrapper afterward does not remove the paint's reference. GPU-dependent
 content must still be used in its own context.
 }
 
 @defproc[(paint-set-path-effect! [paint paint?] [effect (or/c path-effect? #f)]) void?]{
-Attaches a retained reference to @racket[effect], or removes the path effect
-when @racket[effect] is @racket[#f]. It does not mutate the caller's path.
+Attaches @racket[effect] using the paint's own native reference, or removes the
+path effect when @racket[effect] is @racket[#f]. It does not mutate the caller's path.
 }
 
 @defproc[(paint-set-color-filter! [paint paint?] [filter (or/c color-filter? #f)]) void?]{
-Attaches a retained reference to @racket[filter], or removes the color filter
-when @racket[filter] is @racket[#f].
+Attaches @racket[filter] using the paint's own native reference, or removes the
+color filter when @racket[filter] is @racket[#f].
 }
 
 @defproc[(paint-set-mask-filter! [paint paint?] [filter (or/c mask-filter? #f)]) void?]{
-Attaches a retained reference to @racket[filter], or removes the mask filter
-when @racket[filter] is @racket[#f]. Retained shader-backed masks preserve their
-GPU-context dependencies.
+Attaches @racket[filter] using the paint's own native reference, or removes the
+mask filter when @racket[filter] is @racket[#f]. Attached shader-backed masks
+preserve their GPU-context dependencies.
 }
 
 @defproc[(paint-set-image-filter! [paint paint?] [filter (or/c image-filter? #f)]) void?]{
-Attaches a retained reference to @racket[filter], or removes the image filter
-when @racket[filter] is @racket[#f]. The caller's wrapper is not transferred to
-the paint.
+Attaches @racket[filter] using the paint's own native reference, or removes the
+image filter when @racket[filter] is @racket[#f]. The caller's wrapper is not
+transferred to the paint.
 
 @racketblock[
 (with-skia ([paint (make-paint #:color 'red)]

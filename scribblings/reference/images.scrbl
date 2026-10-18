@@ -34,7 +34,7 @@ that the resource is valid for native use.
 Creates an image from a nonempty encoded file. The file must exist, its size
 must fit @racket[current-skia-byte-limit], and its path must not contain an
 embedded NUL. Native image construction applies the dimension checks described
-for @racket[image-from-bytes]. The native image retains encoded data
+for @racket[image-from-bytes]. The native image stores the encoded data
 for deferred decoding; no Racket input port remains open on the caller's behalf.
 }
 
@@ -169,8 +169,8 @@ default.
   (convert image 'png-bytes))
 ]
 
-GPU images also satisfy @racket[convertible?], but @racket['png-bytes] retains
-the ordinary explicit-transfer error. Convert a GPU image through its explicit
+GPU images also satisfy @racket[convertible?], but converting one to
+@racket['png-bytes] raises an error requiring explicit transfer. Convert a GPU image through its explicit
 GPU raster-transfer API before converting the resulting CPU image; conversion
 never performs hidden readback.
 
@@ -243,7 +243,7 @@ The image itself is unchanged.
 @section{Image Properties}
 
 Use @racket[image-width] and @racket[image-height] for image dimensions. These
-queries inspect storage formats, color spaces, and retained encoded data;
+queries inspect storage formats, color spaces, and stored encoded data;
 ordinary drawing does not require them.
 
 @defproc[(image-color-type [image image?]) symbol?]{
@@ -269,9 +269,9 @@ a GPU image, although querying the GPU image requires its normal context rules.
 }
 
 @defproc[(image-original-encoded-bytes [image image?]) (or/c bytes? #f)]{
-Returns a new mutable copy of retained encoded data when the native image has
-such data, or @racket[#f] otherwise. It does not encode raster pixels. A surface
-snapshot or a raw-byte image therefore need not have an original encoded form.
+Returns a new mutable copy of the encoded data stored by the native image, or
+@racket[#f] when no encoded data are available. It does not encode raster pixels.
+A surface snapshot or a raw-byte image therefore need not have an original encoded form.
 The copied data must fit @racket[current-skia-byte-limit]. GPU-dependent input
 is not accepted by this ordinary CPU API.
 }

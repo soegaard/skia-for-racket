@@ -45,9 +45,9 @@ satisfies the predicate. The predicate does not activate or test its context.
           [#:surface-properties properties surface-properties? (make-surface-properties)])
          gpu-surface?]{
 Creates and initializes an owned surface in @racket[context]. The context must
-already be active. The result retains its context and an independent reference
-to @racket[space], when supplied. The caller may close the original color-space
-wrapper after successful construction. The surface origin is top-left.
+already be active. The surface keeps a reference to its context and its own
+native reference to @racket[space], when supplied. The caller may close the
+original color-space wrapper after successful construction. The surface origin is top-left.
 
 The @racket[properties] argument supplies the surface's pixel geometry and
 rendering flags; see @secref["skia-surface-properties"]. The default leaves pixel

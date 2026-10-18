@@ -148,8 +148,8 @@ Set additional settings
 through the documented paint mutators.
 
 The native paint stores the converted color in extended sRGB, not the supplied
-source space. It does not retain the caller's ICC byte string. On failure after
-paint allocation, the new paint is released before the exception is raised.
+source space. It does not store a reference to the caller's ICC byte string.
+On failure after paint allocation, the new paint is released before the exception is raised.
 
 @racketblock[
 (with-skia ([srgb (make-srgb-color-space)]
@@ -219,8 +219,9 @@ The geometric transform does not change the filled region.
 
 @(declare-exporting skia skia/float-colors #:use-sources (skia/float-colors))
 
-The shaders retain their colors and source interpretation independently of
-caller-supplied lists, vectors, or ICC byte strings. Their wrappers are owned resources.
+The shaders copy their color data. Later changes to caller-supplied vectors or
+ICC byte strings do not affect the shader's colors or source interpretation.
+Their wrappers are owned resources.
 Native construction failure raises an exception. The floating-point gradient
 interface uses @racket[#:stops] rather than the byte-color interface's
 @racket[#:positions], and its positions must increase strictly.
@@ -243,8 +244,7 @@ The shared @racket[#:color-space] argument describes all supplied colors.
 @defproc[(make-color4f-shader [color color4f?]
                              [#:color-space space (or/c 'srgb 'linear-srgb bytes?)]) shader?]{
 Returns an owned constant-color shader with the explicit source interpretation.
-The color is not first reduced to a packed eight-bit value. Its native color
-space is retained independently of the temporary resource used during construction.
+The color is not first reduced to a packed eight-bit value.
 }
 
 @defproc[(make-linear-gradient-color4f-shader

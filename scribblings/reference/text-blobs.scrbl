@@ -8,7 +8,7 @@
 @(declare-exporting skia)
 
 A @deftech{text blob} is an owned native object containing glyphs and their
-placement. It retains the @tech{font} information needed to draw them. A blob does
+placement. It stores the @tech{font} information needed to draw them. A blob does
 not contain a @tech{paint}, perform paragraph wrapping, or turn @tech{glyph IDs} into a
 portable character string.
 
@@ -89,15 +89,16 @@ baking in a paint or canvas transform. The path is independent of the blob's
 lifetime.
 
 For a blob made by @racket[make-positioned-text-blob], glyphs without outlines
-are omitted. Retained multi-run blobs use a stricter conversion: a glyph with
+are omitted. Blobs made with a text-blob builder or
+@racket[shaped-run->text-blob/on-path] use a stricter conversion: a glyph with
 visible bounds but no monochrome outline raises an exception instead of being
 silently dropped. This operation is not a general vectorization of color or
 bitmap glyphs.
 
-The builder can retain multiple runs with independently captured font settings.
+The builder can store multiple runs with independently captured font settings.
 Here the left panel is the completed two-run blob; the right panel draws the
 path returned by @racket[text-blob->path]. The source font changes size between
-appends, so the large exclamation mark belongs to a separate retained run.
+appends, so the large exclamation mark belongs to a separate run.
 
 @racketblock[
 (with-skia ([surface (make-surface 420 175 #:background 'white)]
@@ -115,7 +116,7 @@ appends, so the large exclamation mark belongs to a separate retained run.
   (with-skia ([blob (text-blob-builder-finish! builder)]
               [outline (text-blob->path blob)])
     (define canvas (surface-canvas surface))
-    (draw-simple-text canvas "completed blob: two retained runs" 18 24
+    (draw-simple-text canvas "completed blob: two runs" 18 24
                       label-font label-paint)
     (draw-text-blob canvas blob 0 0 source-paint)
     (draw-simple-text canvas "text-blob->path" 228 24 label-font label-paint)
@@ -137,12 +138,11 @@ A @deftech{text-blob builder} collects glyph runs into one text blob. Each run
 has a positioning mode and captures its font's settings when appended. Different
 runs may use different fonts. Successful appends copy their inputs; later input
 mutation, font mutation, or closure of the original font does not change them.
-The builder and finished blob retain their own font information.
 
 Finishing consumes the builder. A finished blob is independent of the builder's
 lifetime and can be used with @racket[draw-text-blob], @racket[text-blob-bounds],
 and @racket[text-blob->path]. Closing
-an unfinished builder discards its runs and releases its retained resources.
+an unfinished builder discards its runs and releases the resources it owns.
 A builder is not a reusable accumulator, and finishing does not reset it.
 
 @defproc[(text-blob-builder? [v any/c]) boolean?]{
@@ -194,14 +194,14 @@ exception rather than producing another blob.
 
 @subsection[#:tag "skia-text-run-metadata"]{Optional Text and Clusters}
 
-Supply text and cluster metadata when a glyph run must retain its association
+Supply text and cluster metadata when a glyph run must preserve its association
 with the original text. Glyph IDs alone do not recover that text. The
 associations can later be inspected through @racket[text-blob-runs].
 
 The four glyph-based append functions accept @racket[#:text] and
 @racket[#:clusters]. Both must be @racket[#f], or both must be supplied. Text
 may be a Racket string or a byte string containing valid UTF-8; malformed byte
-sequences are rejected. Supplied text is retained as immutable UTF-8 bytes.
+sequences are rejected. Supplied text is stored as an immutable UTF-8 byte string.
 
 The @tech{cluster offset} list or vector contains one exact nonnegative integer
 per glyph. Each integer is a byte offset inside the supplied UTF-8 text, at the
@@ -210,7 +210,7 @@ grapheme boundary. Repeated and descending offsets are permitted, so clusters
 can describe ligatures, combining marks, and right-to-left glyph order.
 
 Nonempty glyphs require nonempty text when metadata is supplied. An empty run
-can have empty text and an empty cluster list or vector, but cannot retain nonempty
+can have empty text and an empty cluster list or vector, but cannot store nonempty
 text that would otherwise be discarded. Supplying metadata does not reshape,
 reorder, or reposition glyphs. The caller is responsible for making the text,
 glyphs, and cluster associations agree; the library checks their representation
@@ -227,7 +227,7 @@ and ranges, not that semantic correspondence.
 Appends a default-positioned run. Glyph positions begin at @racket[origin] in
 blob coordinates and follow the font's unshaped advances. They are not shaped
 positions or inter-glyph kerning adjustments. Use
-@racket[text-blob-builder-add-shaped-run!] to retain an already shaped result.
+@racket[text-blob-builder-add-shaped-run!] to add an already shaped result to the blob.
 Input, lifetime, and metadata rules are described in
 @secref["skia-text-run-inputs"] and @secref["skia-text-run-metadata"].
 
@@ -385,7 +385,7 @@ font-provenance check or fallback selection.
 When @racket[text] is supplied, the run's clusters supply its UTF-8 byte offsets
 and are checked against that text according to @secref["skia-text-run-metadata"].
 The original string cannot be reconstructed from the shaped run alone. With
-@racket[#f], neither text nor clusters are retained as blob metadata. The run's
+@racket[#f], neither text nor clusters are stored as blob metadata. The run's
 glyphs and positions are still used. An empty run follows the same validation
 and no-append rules as the glyph-based append functions.
 
@@ -419,7 +419,7 @@ append does not invalidate the captured blob font.
     (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
 ]
 @reference-figure["blob-shaped-run-stage8.png"
-                  "The word office is drawn from a shaped run retained inside a text-blob builder."]
+                  "The word office is drawn from a shaped run added to a text-blob builder."]
 }
 
 @defproc[(text-blob-builder-finish! [builder text-blob-builder?]) (or/c text-blob? #f)]{
@@ -430,10 +430,10 @@ exception; it does not return a partial blob. The predicate
 @racket[text-blob-builder?] remains true, but further appends, count queries,
 and finishing attempts require an open builder and therefore fail.
 
-The finished blob owns its captured font resources independently. It does not
-retain the caller's font wrappers, shaper, or builder as resources that must
-remain open. A builder already listed in @racket[with-skia] may be finished
-inside that scope; closing it again during scope cleanup is harmless.
+The finished blob owns its captured font resources independently. The caller's
+font wrappers, shaper, and builder do not need to remain open. A builder already
+listed in @racket[with-skia] may be finished inside that scope; closing it again
+during scope cleanup is harmless.
 }
 
 @section[#:tag "skia-text-blob-runs"]{Inspecting Runs}
@@ -446,7 +446,7 @@ Obtain an independently owned font separately with
 @racket[text-blob-run-font].
 
 @defproc[(text-blob-run-count [blob text-blob?]) exact-nonnegative-integer?]{
-Returns the number of logical runs retained by an open blob. A blob created
+Returns the number of logical runs stored in an open blob. A blob created
 by @racket[make-positioned-text-blob] has one run. A builder-produced blob counts
 nonempty successful appends, even if native storage merges adjacent runs.
 }
@@ -665,10 +665,11 @@ clusters are absent from the resulting blob metadata. The rules in
 ]
 
 @reference-figure["text-blob-path-snapshot.png"
-                  "A retained AB text blob drawn after its source path and shaper close. A pale reconstructed straight guide marks the original path; the orange five-unit marker and caption identify the start offset 20 and normal offset 5."]
+                  "An AB text blob drawn after its source path and shaper close. A pale reconstructed straight guide marks the original path; the orange five-unit marker and caption identify the start offset 20 and normal offset 5."]
 
-The guide is a separate retained path. The figure draws @racket[blob] directly, rather than
-calling the on-path helper again after its source resources have closed.
+The guide is a separate path reconstructed for this drawing. The figure draws
+@racket[blob] directly, rather than calling the on-path helper again after its
+source resources have closed.
 
 Each transform contains unit rotation coefficients for the horizontal path.
 Its translation includes the start offset and the five-unit normal offset;
@@ -690,7 +691,8 @@ exception. The canvas transform and clip and the supplied paint apply.
 The canvas and paint are validated even for an empty run; the path-placement
 operation then validates the other inputs. An empty run draws nothing. The
 operation does not close the caller's path, shaper, paint, or canvas owner.
-Use a retained blob instead when repeatedly drawing the same placement.
+For repeated drawing at the same placement, create a blob once with
+@racket[shaped-run->text-blob/on-path] and reuse it with @racket[draw-text-blob].
 
 @racketblock[
 (with-skia ([surface (make-surface 330 120 #:background 'white)]

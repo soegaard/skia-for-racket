@@ -128,9 +128,10 @@ components are exact signed 32-bit integers. Half-precision declarations still
 occupy four bytes per supplied component; the flag describes shader arithmetic,
 not a two-byte host buffer.
 
-Instances retain the compiled effect and child native resources. They copy the
-bound uniform values; mutating a hash table or input vector afterward does not update
-an existing instance. Create another instance to use new values. Caller-owned
+Instances keep their own native references to the compiled effect and child
+resources. They copy the bound uniform values; mutating a hash table or input
+vector afterward does not update an existing instance. Create another instance
+to use new values. Caller-owned
 wrappers are not transferred. Closing them after
 successful construction does not invalidate the instance, but GPU-dependent
 children preserve their context, thread, and lifetime restrictions.
@@ -404,8 +405,8 @@ close a returned wrapper. GPU-dependent contents retain their restrictions.
 }
 
 @defproc[(paint-set-blender! [paint paint?] [blender (or/c blender? #f)]) void?]{
-Replaces the paint's blender with a retained native reference, or restores
-implicit source-over when @racket[blender] is false. The caller's wrapper
+Replaces the paint's blender, keeping the paint's own native reference to
+@racket[blender], or restores implicit source-over when @racket[blender] is false. The caller's wrapper
 remains independently owned. Setting an ordinary mode with
 @racket[paint-set-blend-mode!] subsequently replaces a custom blender.
 }

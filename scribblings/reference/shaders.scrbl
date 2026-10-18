@@ -14,8 +14,8 @@ then shade different shapes.
 A @deftech{shader} supplies colors as a function of @tech{local coordinates}.
 Attaching it to a @tech{paint} changes the color source, not the geometry. Shader
 resources are immutable: a transformed or combined shader is a new owned
-wrapper. Combinations retain their native inputs rather than borrowing the
-caller's wrappers, and preserve any GPU-context dependency.
+wrapper. Combined shaders keep their own native references to their inputs
+rather than borrowing the caller's wrappers, and preserve any GPU-context dependency.
 
 @defproc[(shader? [v any/c]) boolean?]{
 Returns @racket[#t] for a shader resource and @racket[#f] otherwise. The result
@@ -171,9 +171,9 @@ A circle pair rejected by native Skia raises an exception rather than returning
                            [#:tile-y tile-y (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
                            [#:sampling sampling (or/c 'nearest 'linear) 'nearest]) shader?]{
 Returns a shader that samples @racket[image], with image pixels initially
-aligned to local drawing units. The native shader retains the image, so closing
-the caller's image wrapper does not invalidate the shader. A GPU image still
-restricts the shader to its GPU context. Use @racket[shader-with-local-matrix]
+aligned to local drawing units. The shader keeps its own native reference to
+the image, so closing the caller's image wrapper does not invalidate the shader.
+A GPU image still restricts the shader to its GPU context. Use @racket[shader-with-local-matrix]
 to change the image's local placement or scale.
 
 @racketblock[
@@ -240,9 +240,9 @@ result with the drawing target.
 
 @defproc[(shader-with-local-matrix [shader shader?] [matrix matrix?]) shader?]{
 Returns a new shader whose local mapping includes @racket[matrix]. The source
-shader is unchanged and retained by the result. For an invertible local matrix,
-its inverse maps incoming coordinates to the source shader: a scale of two
-therefore makes its pattern twice as large. Native rejection raises an exception;
+shader is unchanged, and the result keeps its own native reference to it. For an
+invertible local matrix, its inverse maps incoming coordinates to the source
+shader: a scale of two therefore makes its pattern twice as large. Native rejection raises an exception;
 a singular matrix is not promised to have a useful sampling interpretation.
 }
 
@@ -251,8 +251,8 @@ a singular matrix is not promised to have a useful sampling interpretation.
 @(declare-exporting skia skia/effects #:use-sources (skia/effects))
 
 These factories return owned shaders. Their input data and numeric
-parameters are copied, while native child resources are retained. Closing
-caller-owned children after construction does not invalidate the result.
+parameters are copied, while the shader keeps its own native references to
+child resources. Closing caller-owned children after construction does not invalidate the result.
 GPU-dependent children preserve their context restrictions.
 
 @defproc[(make-fractal-noise-shader
@@ -312,15 +312,15 @@ Returns an owned shader that draws nothing. It is a shader resource, not
 
 @defproc[(shader-with-color-filter [shader shader?] [filter color-filter?]) shader?]{
 Returns a shader applying the color filter to the source shader's output.
-Both resources are retained independently. This changes shader output before
-the paint is composited with the target; it does not change the source shader.
+The result keeps its own native references to both inputs. This changes shader
+output before the paint is composited with the target; it does not change the source shader.
 }
 
 @defproc[(make-blender-shader [blender blender?] [destination shader?] [source shader?]) shader?]{
-Returns a shader combining two shader results through a retained blender.
+Returns a shader combining two shader results through @racket[blender].
 Destination precedes source in the argument list. The paint's own blend mode
 then combines this shader result with the drawing target. All three input
-resources are retained.
+resources are kept alive by the result's own native references.
 }
 
 @section[#:tag "skia-raw-image-shaders"]{Raw Image Samples}
@@ -336,9 +336,9 @@ Creates an owned shader that treats image channels as raw numeric samples. It sk
 image shader's color-space conversion and unpremultiplication. This is useful for data textures,
 but is not a drop-in way to display a tagged color image correctly.
 
-The shader retains the image independently and preserves any GPU dependency. A supplied local
-affine matrix must be invertible. Sampling is nearest by default; the public interface accepts
-nearest or linear, not cubic sampling. Raw sample interpretation has no promised direct PDF/SVG
+The shader keeps its own native reference to the image and preserves any GPU dependency.
+A supplied local affine matrix must be invertible. Sampling is nearest by default; the public
+interface accepts nearest or linear, not cubic sampling. Raw sample interpretation has no promised direct PDF/SVG
 representation; use an explicit bounded raster group for document output.
 }
 

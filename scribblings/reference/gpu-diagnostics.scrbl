@@ -15,7 +15,7 @@ implicit synchronization barriers.
                     #:use-sources (skia/gpu-diagnostics))
 
 @defproc[(gpu-gl-interface-info [context gpu-context?]) (and/c hash? immutable?)]{
-Returns a description of the exact Skia GL interface retained by an
+Returns a description of the exact Skia GL interface used by an
 active OpenGL @racket[context]. Non-OpenGL contexts are rejected instead of
 returning an ambiguous report.
 
@@ -26,7 +26,7 @@ operation uses an extension or that the driver is hardware accelerated.
 }
 
 @defproc[(gpu-gl-has-extension? [context gpu-context?] [name string?]) boolean?]{
-Reports whether the retained Skia GL interface for the active OpenGL
+Reports whether the Skia GL interface used by the active OpenGL
 @racket[context] advertises @racket[name]. The name must be one ASCII identifier
 of 1 through 255 characters, begin with a letter, and contain only letters,
 digits, and underscores. An unknown well-formed extension returns false;

@@ -31,10 +31,10 @@ native access.
 @bold{Conceptual diagram.} Lifetime relationships are timelines. A CPU surface
 owns its borrowed canvas, which becomes invalid when the surface closes; an
 independently owned snapshot can remain open afterward. Similarly, a buffer's
-pixmap and subset are callback-scoped views even if their wrappers are retained.
-Ordinary Racket structures can also contain resources: text layouts retain
-shapers that must remain open when drawn. GPU leases and frames have their own
-activation and thread rules.
+pixmap and subset are callback-scoped views even if the caller keeps references
+to their wrappers. Ordinary Racket structures can also contain resources: text
+layouts contain references to shapers that must remain open when drawn. GPU
+leases and frames have their own activation and thread rules.
 
 @reference-figure["concept-resource-lifetimes.png"
                   "A time axis shows a CPU surface and its borrowed canvas valid until owner closure, an independent snapshot continuing afterward, and pixmap/subset views valid only during a buffer callback. Gray segments mark invalid views."]
@@ -69,8 +69,8 @@ fallback cleanup; it does not schedule a second native release.
 The operation can raise when an exclusive borrow or protected use forbids
 closure. A failed close must not be treated as successful release. A borrowed
 canvas cannot be closed with this function; close its owner at the permitted
-point instead. Resources that retain their own native references to another
-object follow the retention rules of their constructors.
+point instead. A resource may keep another native object alive through its own
+reference to that object; see the constructor's rules for its input resources.
 }
 
 @section{Scoped Resource Management}

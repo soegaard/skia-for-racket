@@ -7,7 +7,7 @@
 @title[#:tag "skia-gui-canvases"]{GUI Drawing Canvases}
 
 These GUI classes present Skia drawing through Racket @racket[canvas%] widgets.
-The raster canvas retains one CPU drawing context across repaints; the GPU canvas
+The raster canvas reuses one CPU drawing context across repaints; the GPU canvas
 creates a fresh @tech[#:key "GPU drawing context"]{drawing context} for each
 @tech{GPU frame}. Both belong to their
 eventspace handler thread, but their pixel and drawing-context lifetimes differ.

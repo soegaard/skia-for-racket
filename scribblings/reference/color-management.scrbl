@@ -277,8 +277,8 @@ Returns an owned RGB color-space resource with the supplied transfer function
 and gamut. Named arguments select the corresponding native descriptions. A
 matrix argument must contain exactly nine row-major coefficients and have a
 nonzero determinant after binary32 rounding. Native rejection raises an
-exception. The result retains the descriptions independently of caller-owned
-vectors; later mutation of an input vector has no effect.
+exception. The input coefficients are copied; later mutation of an input vector
+has no effect on the color space.
 
 @racketblock[
 (with-skia ([p3 (make-rgb-color-space 'srgb 'display-p3)]

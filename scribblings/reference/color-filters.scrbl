@@ -17,8 +17,9 @@ pixels. Attach one to a @tech{paint}, wrap a @tech{shader} with
 @racket[shader-with-color-filter], or use @racket[make-color-filter-image-filter]
 inside a @tech{filter graph}.
 
-Constructors return @tech{owned resources} and retain any input filters independently
-of the caller's wrappers. Native construction failure raises an exception.
+Constructors return @tech{owned resources} that keep their own native references
+to any input filters, independently of the caller's wrappers. Native construction
+failure raises an exception.
 Applying a filter does not change the input image's stored pixels or its
 color-space metadata.
 
@@ -76,8 +77,9 @@ This operation is separate from blending the final paint into the drawing target
 
 @defproc[(make-compose-color-filter [outer color-filter?] [inner color-filter?]) color-filter?]{
 Returns a filter applying @racket[inner] before @racket[outer]. Each stage
-sees the preceding stage's output, including its clamping. Both filters are
-retained. Their caller-owned wrappers may subsequently be closed.
+sees the preceding stage's output, including its clamping. The result keeps its
+own native references to both filters. Their caller-owned wrappers may
+subsequently be closed.
 }
 
 @section{Additional Color Filters}
@@ -112,7 +114,7 @@ image as linear. Applying it to already-linear values performs another conversio
 Returns a filter interpolating between the two filters' results for the same
 input color. Weight zero selects the first result and weight one selects the
 second. This is not composition. Both input filters must be supplied and open,
-including at the endpoints; they are retained independently.
+including at the endpoints; the result keeps its own native references to both filters.
 }
 
 @defproc[(make-luma-color-filter) color-filter?]{

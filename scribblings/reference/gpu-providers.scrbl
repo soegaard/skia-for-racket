@@ -77,8 +77,9 @@ provider or check whether its host still exists.
           [#:get-proc-address resolve (or/c procedure? #f) #f]) gpu-provider?]{
 Creates a provider value owned by the current Racket thread. Construction checks
 callback arities but does not invoke them, activate the host, or load Skia.
-The value retains its callbacks. It does not acquire or destroy the host context;
-the caller must keep that host alive until its Skia context is closed, or use the
+The provider stores references to its callback procedures. It does not acquire
+or destroy the host context; the caller must keep that host alive until its Skia
+context is closed, or use the
 explicit lost-host abandonment protocol before destroying it.
 
 The @racket[name] is a diagnostic label. The pair of @racket[backend] and
@@ -93,7 +94,7 @@ The callbacks have the following obligations:
 @itemlist[
  @item{The @racket[activate] function accepts one zero-argument callback. It must
        activate the intended host, invoke that callback exactly once, synchronously
-       on the provider's creating thread, and retain the host for the whole call.
+       on the provider's creating thread, and keep the host alive and current for the whole call.
        It must not save the callback for later or reenter it through a continuation.
        The callback's multiple values are preserved; the provider's own return
        values do not replace them. Intercepting a callback failure does not turn

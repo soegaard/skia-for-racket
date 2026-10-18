@@ -85,7 +85,7 @@ operation that would require raster representation.
           [#:on-report on-report (-> (and/c hash? immutable?) any) void])
          output-page?]{
 Creates an output-page description whose drawing callback is
-adapted through @racket[call-with-output-dc]. The page constructor retains the
+adapted through @racket[call-with-output-dc]. The page constructor follows the
 usual physical-unit, background, and content-clipping rules from
 @racket[make-output-page]. A margin is either one nonnegative real number
 applied to all four sides or four nonnegative real numbers in left, top,
@@ -109,7 +109,7 @@ than once runs the page's authoring callback once per export.
          void?]{
 Runs @racket[draw] once on an isolated transparent CPU DC of the requested
 logical size, then inserts the resulting pixels at @racket[x] and @racket[y].
-The child closes on every exit and cannot be retained or resumed. Its callback
+The child DC closes on every exit and cannot be used afterward or resumed. Its callback
 must accept one positional argument and no required keywords.
 
 On an output DC, the operation becomes an explicitly audited bounded raster
@@ -172,7 +172,7 @@ raster group is represented as an image in SVG output.
 
 The first result is one explicit raster group, and the final boolean is true
 for the inspected SVG @tt{<image} element. Callback DCs expire after each
-capture; unlike @racket[skia-dc%], neither is an object to retain or close.
+capture; unlike @racket[skia-dc%], they cannot be reused afterward and are not closed by the caller.
 
 @section{Document Annotations}
 

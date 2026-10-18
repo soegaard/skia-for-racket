@@ -17,7 +17,7 @@ For smooth curves or an antialiased boundary in local coordinates, use a
 
 An @deftech{integer region} represents a set of integer-coordinate pixels using
 rectangular bands. It is an owned native resource, not an antialiased path or a
-list that retains its original rectangle decomposition. Native operations require
+list preserving the original rectangle decomposition. Native operations require
 a live region on its owning thread. A predicate recognizes even a closed wrapper.
 
 Rectangle inputs are four-element lists or vectors of coordinates, width, and
@@ -41,9 +41,9 @@ Returns @racket[#t] for a region wrapper, including a closed one, and
           region?]{
 Returns an independently owned region containing the union of the supplied
 rectangles. The outer collection can be a list or vector. Inputs are validated
-before native construction and are not retained as mutable data. Empty input
-returns an empty region. The size counted for the submitted rectangle data is bounded by
-@racket[current-skia-byte-limit].
+before native construction; later changes to input vectors do not change the
+region. Empty input returns an empty region. The size counted for the submitted
+rectangle data is bounded by @racket[current-skia-byte-limit].
 }
 
 @defproc[(region-copy [region region?])
@@ -347,7 +347,7 @@ with the same half-open interval and validation rules.
           void?]{
 Draws the region under the current canvas transform and clip. A fill paint
 draws the boundary as one path, avoiding seams between touching bands in SVG.
-Stroke and stroke-and-fill paints retain native region drawing, which can stroke
+Stroke and stroke-and-fill paints use native region drawing, which can stroke
 the rectangular decomposition. The region and paint must remain valid during the call.
 
 @racketblock[

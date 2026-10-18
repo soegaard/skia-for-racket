@@ -90,7 +90,7 @@ owner-thread, and active-borrow restrictions remain in force during conversion.
          pict:pict?]{
 Returns an ordinary pict by replaying @racket[picture] once into a transparent
 CPU sRGB surface. The picture must be replayable on a CPU raster target;
-retained GPU-dependent content is not transferred implicitly.
+GPU-dependent content used by the picture is not transferred implicitly.
 
 When @racket[bounds] is @racket[#f], the viewport uses
 @racket[(vector 0 0 (picture-width picture) (picture-height picture))].

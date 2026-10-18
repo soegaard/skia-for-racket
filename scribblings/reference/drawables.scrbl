@@ -10,19 +10,19 @@
 
 For ordinary recording and replay, the @tech{picture} interface is sufficient.
 Use a recorded drawable when you need @racket[draw-drawable]'s choice between
-retaining a drawable in another recording and immediately replaying its
-commands into that recording. Create one with @racket[call-with-drawable] or
+storing a reference to a drawable in another recording and immediately replaying
+its commands into that recording. Create one with @racket[call-with-drawable] or
 convert an existing picture with @racket[picture->drawable].
 
 A @deftech{recorded drawable} owns native drawing content captured from a
 @tech{picture}. Playback does not invoke a Racket callback. This API exposes recorded
 content, not an application-defined native callback or an editable scene.
 A drawable is an @tech{owned resource}; native operations require it to be open
-on its owning thread with any retained GPU dependencies in their proper context.
+on its owning thread with any GPU resources it uses in their proper context.
 
-Conversion retains the necessary native content independently. It does not
-turn a raster image into vector geometry or discard the output restrictions
-of captured resources.
+The drawable's drawing data remain valid after the source picture is closed.
+Conversion does not turn a raster image into vector geometry or discard the
+output restrictions of captured resources.
 
 @section{Construction}
 
@@ -35,8 +35,8 @@ Returns @racket[#t] for a drawable wrapper, including a closed one, and
 @defproc[(picture->drawable [picture picture?])
           drawable?]{
 Returns an owned recorded drawable capturing the picture's content, culling
-bounds, and nominal dimensions. It retains the native drawing information it
-needs, so the caller may close the original picture after successful construction.
+bounds, and nominal dimensions. The caller may close the original picture after
+successful construction without invalidating the drawable.
 No Racket drawing callback runs during later playback.
 }
 
@@ -84,13 +84,14 @@ The callback count is 1 despite two playbacks.
           [#:mode mode (or/c 'retained 'immediate) 'retained])
           void?]{
 Draws the recorded content with an optional affine transform. Retained mode
-uses the canvas drawable operation, allowing a recording to retain the drawable.
+uses the canvas drawable operation, allowing a recording to keep a native reference
+to the drawable for later playback.
 Immediate mode executes the drawable's native drawing on the current canvas.
 Neither mode calls back into the original Racket authoring function.
 
-The current canvas state and retained-resource restrictions still apply. The
-optional transform is not a projective matrix, and mode does not choose CPU
-versus GPU execution.
+The current canvas state and restrictions on resources used by the drawable
+still apply. The optional transform is not a projective matrix, and mode does
+not choose CPU versus GPU execution.
 
 @racketblock[
 (with-skia ([surface (make-surface 120 50 #:background 'white)]
@@ -146,7 +147,7 @@ a persistent content hash or a count of authoring callbacks.
 
 @defproc[(drawable-approximate-bytes-used [drawable drawable?])
           exact-nonnegative-integer?]{
-Returns the native storage estimate. It is not the total memory retained by
+Returns the native storage estimate. It is not the total memory used by
 all referenced images, typefaces, or other resources.
 }
 

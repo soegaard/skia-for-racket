@@ -128,7 +128,7 @@ Returns the number of positions, not the number of indices or triangles.
 Draws the live mesh with the supplied paint. The blend-mode argument combines
 mesh colors with paint shading. The paint's own blend mode then controls
 composition with the destination; these are distinct stages. Position, color,
-and texture-coordinate data are retained by the mesh, not the canvas wrapper.
+and texture-coordinate data are stored in the mesh, not the canvas wrapper.
 }
 
 @section{Cubic Patches}

@@ -317,7 +317,7 @@ although final image drawing does.
 Text mode is forced to @racket['native] inside the callback so that native
 rendered glyphs can be captured. Callback results are ignored and temporary
 resources are released on success or escape. A failed callback does not draw
-the final snapshot onto the target. The callback canvas must not be retained.
+the final snapshot onto the target. The canvas cannot be used after the callback ends.
 
 This is explicit CPU rasterization, not automatic GPU readback. A GPU-surface
 target is rejected. PDF and SVG can embed the resulting raster image, but that

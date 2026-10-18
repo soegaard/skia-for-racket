@@ -43,7 +43,7 @@ conversion is in progress.
           [#:mask mask (or/c 'loaded #f (is-a?/c draw:bitmap%)) 'loaded])
          image?]{
 Returns an owned, CPU-resident, untagged Skia image containing a snapshot of
-the public pixels of @racket[bitmap]. The source bitmap is not retained.
+the public pixels of @racket[bitmap]. The result does not refer to the source bitmap.
 
 The @racket[resolution] argument determines the copied pixel dimensions. With
 @racket['physical], the default, each dimension is the ceiling of the bitmap's
@@ -51,7 +51,7 @@ logical dimension multiplied by its backing scale, and the bridge requests
 unscaled pixel readback. With @racket['logical], the output dimensions are the
 bitmap's logical width and height and the bridge requests Racket Draw's
 logical-size readback. The returned image records only the resulting pixel
-dimensions. It retains no backing scale, DPI, encoded format, palette,
+dimensions. It stores no backing scale, DPI, encoded format, palette,
 loaded-mask identity, color profile, or floating-point/HDR representation.
 
 The @racket[mask] argument controls additional alpha coverage. The default

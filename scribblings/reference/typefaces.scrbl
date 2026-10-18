@@ -208,8 +208,9 @@ by @racketmodname[skia/typefaces]. A @deftech{font style} is an immutable Racket
 structure describing weight, width, and slant, not a typeface.
 
 A @deftech{font-style set} is an owned collection of the styles available for a
-font family. It retains the native data needed to inspect styles and obtain
-their typefaces independently of the font manager's wrapper.
+font family. It keeps its own native reference to the style collection, so
+closing the font manager's wrapper does not prevent inspecting styles or
+obtaining their typefaces.
 
 The weight names denote the following integers: @racket['invisible] is 0,
 @racket['thin] is 100, @racket['extra-light] is 200, @racket['light] is 300,

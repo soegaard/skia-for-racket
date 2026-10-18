@@ -127,8 +127,8 @@ A saved raster callback DC can remain a live persistent object after callback
 return, but @method[skia-render-canvas<%> get-dc] does not expose it outside the
 callback; use @method[skia-render-canvas<%> get-raster-dc] explicitly. A saved
 GPU callback DC expires permanently at frame exit. Portable callbacks should
-initialize the drawing state they need instead of depending on retained raster
-state.
+initialize the drawing state they need instead of depending on raster DC state
+left by a previous callback.
 }
 
 @defproc[(skia-render-canvas? [v any/c]) boolean?]{

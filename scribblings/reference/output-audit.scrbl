@@ -38,7 +38,7 @@ The list @racket['(pdf svg raster)] of output representation backends.
 
 @defthing[output-feature-names list?]{
 The list of recognized feature symbols accepted by @racket[output-capability-for]. Features
-describe operations and retained resource properties, such as @racket['geometry],
+describe operations and properties of the resources they use, such as @racket['geometry],
 @racket['image], @racket['native-text], @racket['runtime-shader], @racket['annotation], and
 @racket['projective-transform]. The list is a policy vocabulary, not an inventory of functions
 or a claim that all features are supported on every backend.
@@ -292,6 +292,6 @@ callback side effects have been rolled back.
 
 Explicit rasterization resolves representation risks, not every semantic risk. It loses
 searchable text and annotations, and cannot certify padding, backdrop completeness, or color
-fidelity. Unknown provenance stays unknown. Recorded pictures retain conservative feature
-summaries; closing a child wrapper does not remove a retained warning. The audit does not
-intercept foreign code that bypasses Skia's public wrappers.
+fidelity. Unknown provenance stays unknown. Recorded pictures store conservative feature
+summaries; closing a child wrapper does not remove a warning already included in the summary.
+The audit does not intercept foreign code that bypasses Skia's public wrappers.

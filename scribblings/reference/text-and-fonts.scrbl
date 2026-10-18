@@ -3,7 +3,7 @@
 @title[#:tag "skia-reference-text-fonts" #:style 'toc]{Text and Fonts}
 
 Font managers and typefaces select glyph designs; fonts add size and rendering
-settings. Shaping produces positioned glyph runs, text blobs retain reusable
+settings. Shaping produces positioned glyph runs, text blobs store reusable
 glyph placement, and text layout arranges runs into lines.
 
 @local-table-of-contents[]

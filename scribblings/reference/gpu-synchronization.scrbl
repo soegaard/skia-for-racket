@@ -94,8 +94,9 @@ limit or the number of bytes freed. It does not impose a total GPU-memory cap.
 @defproc[(gpu-purge-unlocked! [context gpu-context?]
                             [#:scratch-only? scratch-only? boolean? #f]) void?]{
 Requests purging of unlocked cache resources, optionally restricted to scratch
-resources. Locked or retained resources need not be released. This operation
-does not promise a particular reduction in memory use or CPU completion.
+resources. Resources that are locked or still referenced by other objects may
+remain allocated. This operation does not promise a particular reduction in
+memory use or CPU completion.
 }
 
 @defproc[(gpu-purge-bytes! [context gpu-context?] [bytes exact-nonnegative-integer?]

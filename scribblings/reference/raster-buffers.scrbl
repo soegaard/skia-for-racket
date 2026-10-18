@@ -64,18 +64,19 @@ stride is four times the width. An explicit stride must be at least that large a
 four. The full stride times height must fit @racket[current-skia-byte-limit] and the native
 signed pointer-arithmetic range. Padding is initialized to zero.
 
-A supplied live color space is retained independently; closing its wrapper does not invalidate
-the buffer. The space describes the stored samples. It does not convert incoming colors or make
-a metadata assignment into a sample conversion.
+The buffer keeps its own native reference to a supplied live color space; closing its wrapper
+does not invalidate the buffer. The space describes the stored samples. It does not convert
+incoming colors or make a metadata assignment into a sample conversion.
 }
 
 @defproc[(make-raster-buffer-from-info [info image-info?] [#:row-bytes row-bytes (or/c #f
           exact-positive-integer?) #f])
           raster-buffer?]{
 Creates an owned buffer in the specified integer or floating-point format. Both dimensions must
-be positive. The stride follows @racket[image-info-storage-layout]. The color-space description
-is materialized and retained independently. Invalid or unsupported ICC data can fail at this
-point even when its header was accepted by @racket[make-image-info].
+be positive. The stride follows @racket[image-info-storage-layout]. When present,
+the color-space description is used to create a native color space owned by the buffer.
+Invalid or unsupported ICC data can fail at this point even when its header was
+accepted by @racket[make-image-info].
 
 The byte-grid explanation in @secref["skia-pixel-descriptions"] distinguishes
 row stride, minimum addressable bytes, final-row padding, and allocation size.
@@ -498,7 +499,7 @@ required keywords. Pixels are not copied or cleared on entry.
 The canvas is borrowed, protected by a canvas-state scope, and expires on exit. Buffer storage
 cannot be accessed through a second canvas or pixmap scope while this callback runs. Drawn
 pixels persist after an exception; state restoration is not a transaction. Do not close the
-buffer or retain the canvas for later use.
+buffer during the callback or use the canvas after the callback ends.
 
 @racketblock[
 (with-skia ([buffer (make-raster-buffer 160 80)])

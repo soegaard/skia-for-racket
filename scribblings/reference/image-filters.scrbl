@@ -22,11 +22,11 @@ supplied when the graph is used, not a transparent image and not a disabled bran
 For example, two false
 inputs to a blend node refer to the same source. A composition substitutes
 one graph into another's source slots. A paint filter processes each drawing
-operation, not everything already present on the canvas. Explicit source nodes retain
-an @tech{image} or @tech{shader}.
+operation, not everything already present on the canvas. Explicit source nodes use
+an @tech{image} or @tech{shader} specified when the node is constructed.
 
 Each constructor returns an owned filter and retains native references to its
-inputs. Closing caller-owned input wrappers afterward is permitted. Retained
+inputs. Closing caller-owned input wrappers afterward is permitted.
 GPU-dependent content preserves its context restrictions. Operations require
 open resources on their owning thread; native rejection raises an exception.
 
@@ -164,9 +164,9 @@ The crop can remove part of the shadow as well as the source.
           [#:crop crop
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
-Returns a graph node applying a color filter to its input. The color filter
-is retained. A false image input uses the dynamic source; it does not suppress
-the color operation.
+Returns a graph node applying a color filter to its input. The node keeps its
+own native reference to the color filter. A false image input uses the dynamic
+source; it does not suppress the color operation.
 }
 
 @defproc[(make-compose-image-filter
@@ -283,7 +283,8 @@ premultiplied channel, where @math{S} is foreground and @math{D} is background.
 Results are clamped to the channel range. When @racket[enforce-premul?] is
 true, RGB is additionally limited by the resulting alpha. With it false,
 the caller can produce colors inconsistent with premultiplied alpha.
-The inputs are retained and false slots denote the dynamic source.
+The result keeps its own native references to supplied input filters. False
+slots denote the dynamic source.
 }
 
 @section{Morphology, Displacement, and Convolution}
@@ -436,7 +437,7 @@ result, not the original source.
           [#:crop crop
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
-Returns a filter that draws a retained image instead of the dynamic source.
+Returns a filter that draws @racket[image] instead of the dynamic source.
 The source defaults to the full image and must be a positive rectangle inside
 it. A missing destination uses the source rectangle itself, preserving its
 coordinates and scale; it does not automatically relocate a subset to the
@@ -466,8 +467,9 @@ Closing the caller's image wrapper does not invalidate the filter.
           [#:crop crop
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
-Returns an image-filter source that evaluates the retained shader. It does
-not filter the dynamic source. Dithering requests reduction of quantization
+Returns an image-filter source that evaluates @racket[shader]. It keeps its
+own native reference to the shader and does not filter the dynamic source.
+Dithering requests reduction of quantization
 artifacts when supported by the destination. A crop is useful for bounding
 otherwise unbounded shader content. Shader GPU dependencies remain in force.
 
@@ -750,8 +752,9 @@ visibility system.
          image-filter?]{
 Returns a filter using the supplied blender to combine foreground and
 background. The foreground is the blender's source and the background is its
-destination. The blender and explicit inputs are retained. False slots refer
-to the dynamic source, including for identity combinations.
+destination. The result keeps its own native references to the blender and
+supplied input filters. False slots refer to the dynamic source, including for
+identity combinations.
 }
 
 
@@ -762,9 +765,9 @@ to the dynamic source, including for identity combinations.
 @defproc[(make-picture-image-filter [picture picture?]
                                     [#:target target (or/c list? vector? #f) #f]
                                     [#:crop crop (or/c list? vector? #f) #f]) image-filter?]{
-Returns an owned image-filter source that renders a recorded picture. It retains
-the picture independently of the caller's wrapper and ignores the dynamic
-source supplied to the surrounding graph. This operation rasterizes picture
+Returns an owned image-filter source that renders a recorded picture. It keeps
+its own native reference to the picture, independently of the caller's wrapper,
+and ignores the dynamic source supplied to the surrounding graph. This operation rasterizes picture
 content for filtering; it does not guarantee vector replay on PDF or SVG.
 
 The optional target is a four-element x, y, width, height list or vector with
@@ -773,7 +776,8 @@ fit-to-size transform of the recorded commands.
 Omitting it uses the picture's native cull rectangle. The result is clipped to
 both the target and the picture's cull rectangle. The optional crop uses the
 common image-filter output-region rules. The source picture must be open
-during construction; retained GPU dependencies keep their own affinity rules.
+during construction; GPU resources used by the picture still have their context
+and thread restrictions.
 
 @racketblock[
 (with-skia ([surface (make-surface 420 175 #:background 'white)]
@@ -799,7 +803,7 @@ during construction; retained GPU dependencies keep their own affinity rules.
             [target-bound (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
             [crop-bound (make-paint #:color "#7D5BA6" #:style 'stroke #:stroke-width 2)])
   (define canvas (surface-canvas surface))
-  ;; Preview it once, then prove that the two filters retain the recording.
+  ;; Preview it once, then show that the two filters work after the picture is closed.
   (draw-picture canvas picture #:x 12 #:y 30)
   (skia-close! picture)
   (define (render-filter paint)

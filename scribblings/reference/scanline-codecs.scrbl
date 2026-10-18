@@ -332,6 +332,6 @@ code is reported as @racket['unknown-result], not treated as success.
 
 @defproc[(exn:fail:codec-scanline-native-code [exception exn:fail:codec-scanline?])
           exact-integer?]{
-Returns the numeric native result retained with the exception. This value is
+Returns the numeric native result stored in the exception. This value is
 for diagnostics; no automatic fallback decode is performed.
 }

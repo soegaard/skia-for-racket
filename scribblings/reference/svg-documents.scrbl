@@ -48,8 +48,8 @@ Callback and finalization failures leave any existing destination untouched.
 Creates an SVG document and calls @racket[proc] with its canvas. After the
 callback returns, the helper discards its results, finishes the XML, and returns
 the bytes. Settings have the meaning described at @racket[make-svg-document].
-The document is released on success or escape; the canvas cannot be retained
-for later drawing. Bytes are returned only if both drawing and finalization succeed.
+The document is released on success or escape; the canvas cannot be used
+after the callback ends. Bytes are returned only if both drawing and finalization succeed.
 }
 
 @defproc[(call-with-svg-string [width (real-in 1/1000 32768)]

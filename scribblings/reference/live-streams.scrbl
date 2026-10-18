@@ -24,7 +24,7 @@ Racket thread.
 The positive exact @racket[#:limit] must not exceed @racket[2147483647] or
 @racket[current-skia-byte-limit]. It bounds logical transfer/storage quantities,
 not the total native heap. Decoding still allocates pixels, and document
-recording can retain substantial additional storage. Streaming output is not a
+recording can require substantial additional storage. Streaming output is not a
 constant-memory authoring guarantee.
 
 A cancellation event is checked during I/O. Cancellation and failures can leave
@@ -226,5 +226,6 @@ Publishes one through 1024 output pages as PDF to a native output stream.
 It follows @racket[output->port]'s record-once and preflight rules, using the
 stream's budget. There is no format argument: SVG publication is provided by
 @racket[output->port], where its physical-size header can be handled correctly.
-The automatic text mode is native. The caller retains the open output stream.
+The automatic text mode is native. The caller owns the output stream, which
+remains open after the operation.
 }

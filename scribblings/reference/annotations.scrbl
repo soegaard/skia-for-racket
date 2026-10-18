@@ -49,7 +49,7 @@ execution.
 Associates a link rectangle with a URI. The rectangle uses current local canvas
 coordinates.
 Zero-width or zero-height rectangles emit no URI annotation, but their arguments
-are still validated. Picture recordings retain the URI annotation for replay.
+are still validated. Picture recordings store the URI annotation for replay.
 Ordinary raster targets ignore the annotation after validation; an active output
 policy may reject annotation loss instead of accepting that no-op.
 

@@ -56,7 +56,7 @@ alternating bands.
 @reference-figure["dashed-line.png"
                   "A blue horizontal dashed line on a white background."]
 
-Closing the caller's dash wrapper does not remove the paint's retained effect.
+Closing the caller's dash wrapper does not remove the paint's attached effect.
 
 
 @racketblock[
@@ -165,8 +165,8 @@ not x coordinates or individual curve parameters.
 
 @defproc[(make-compose-path-effect [outer path-effect?] [inner path-effect?]) path-effect?]{
 Returns an effect that applies @racket[inner] first, then @racket[outer].
-The result retains both effects; closing either input wrapper does not
-invalidate the result. Composition is not generally commutative.
+The result keeps its own native references to both effects; closing either
+input wrapper does not invalidate the result. Composition is not generally commutative.
 
 
 @racketblock[
@@ -187,7 +187,7 @@ invalidate the result. Composition is not generally commutative.
 @defproc[(make-sum-path-effect [first path-effect?] [second path-effect?]) path-effect?]{
 Returns an effect that applies both effects to the original geometry and
 combines the resulting paths. Unlike composition, neither effect receives
-the other's output. Both input effects are retained.
+the other's output. The result keeps its own native references to both input effects.
 
 
 @racketblock[
@@ -380,9 +380,9 @@ must satisfy @math{0 <= low < high <= 255}. This is not a geometric canvas clip.
 
 @defproc[(make-shader-mask-filter [shader shader?]) mask-filter?]{
 Returns a mask filter using the shader's alpha to modulate shape coverage.
-It does not use the shader's RGB as the paint color. The shader is retained;
-closing its caller-owned wrapper does not invalidate the filter. A shader
-that depends on a GPU context preserves that dependency.
+It does not use the shader's RGB as the paint color. The filter keeps its own
+native reference to the shader; closing its caller-owned wrapper does not
+invalidate the filter. A shader that depends on a GPU context preserves that dependency.
 }
 
 @racketblock[
