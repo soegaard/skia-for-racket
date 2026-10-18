@@ -8,6 +8,12 @@
 @defmodule[skia/pictures #:no-declare]
 @(declare-exporting skia skia/pictures #:use-sources (skia/pictures))
 
+Use a picture to draw reusable artwork at several positions or scales without
+rerunning the Racket code that constructed it. Record the drawing with
+@racket[call-with-picture] and replay it with @racket[draw-picture]. Choose an
+@tech{image} instead when you want a fixed pixel result rather than a recording
+of drawing commands.
+
 A @deftech{picture} is an immutable recording of drawing commands and their
 retained drawing data. Replaying a picture sends those commands to a @tech{canvas};
 it does not call the Racket function that originally recorded them. A picture

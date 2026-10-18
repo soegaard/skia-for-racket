@@ -7,6 +7,11 @@
 
 @(declare-exporting skia)
 
+Use a path effect for dashed strokes or repeated shapes along an outline.
+Use a mask filter to soften a shape's coverage, as with a blurred edge. These
+settings belong to the paint, so the same effect can be reused on different
+shapes without rebuilding their paths.
+
 A @deftech{path effect} changes the geometry used for drawing without mutating
 its input path. A @deftech{mask filter} changes the coverage of a shape rather
 than the colors inside an image. Attach them with @racket[make-paint],

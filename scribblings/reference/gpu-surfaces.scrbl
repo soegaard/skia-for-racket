@@ -6,6 +6,12 @@
 
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
+Use a GPU surface for an intermediate drawing that will feed later GPU
+operations, such as rendering an offscreen scene and then filtering or
+compositing it. Create the target with @racket[make-gpu-surface] and obtain
+a reusable image of its content with @racket[gpu-surface-snapshot]. To draw
+directly into a window frame, use the @seclink["skia-gpu-presentation"]{presentation API}.
+
 A @deftech{GPU surface} is an owned offscreen drawing target associated with
 one @tech{GPU context}. It also satisfies @racket[surface?]. Use the ordinary
 Skia drawing operations on the canvas returned by @racket[surface-canvas];

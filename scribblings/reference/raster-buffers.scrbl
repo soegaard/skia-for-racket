@@ -8,6 +8,12 @@
 @defmodule[skia/raster-buffers #:no-declare]
 @(declare-exporting skia skia/raster-buffers #:use-sources (skia/raster-buffers))
 
+Use a raster buffer when you need to inspect or edit individual pixel samples,
+exchange raw pixel storage, or alternate direct pixel edits with canvas
+drawing. A @tech{pixmap} provides scoped access to those pixels. For drawing
+shapes and saving the result without direct sample access, a @tech{surface}
+is usually simpler.
+
 A @deftech{raster buffer} owns mutable CPU pixel storage. Its format and color interpretation are
 described by @racket[raster-buffer-image-info]. A @deftech{pixmap} is a temporary view of that
 storage, not an independently owned resource. Use @racket[call-with-raster-buffer-pixmap] to
@@ -246,6 +252,12 @@ attempt to draw with the expired pixmap.
 The result is @racket['(#t expired)]. The wrapper remains recognizable, but its borrow has ended.
 
 @section[#:tag "skia-pixel-samples"]{Samples, Colors, and Byte Copies}
+
+Use @racket[pixmap-sample] and @racket[pixmap-set-sample!] when an algorithm
+needs the stored channel values, including their bit depths and
+premultiplication. Use @racket[pixmap-color4f] instead to read an
+unpremultiplied color in the pixmap's color space. This distinction matters
+when processing pixels numerically rather than just displaying them.
 
 A @deftech{pixel sample} contains stored logical channels, not necessarily a display color.
 Integer channels use the widths returned by @racket[image-info-channel-bits]. BGRA storage still

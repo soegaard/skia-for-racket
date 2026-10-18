@@ -7,6 +7,13 @@
 @defmodule[skia/gpu-interop #:no-declare]
 @(declare-exporting skia/gpu-interop #:use-sources (skia/gpu-interop))
 
+Use a texture handoff when combining Skia with another Metal or Direct3D
+renderer that owns the texture. With a backend-specific handoff token,
+@racket[gpu-import-image] copies its content into a Skia-owned GPU image, while
+@racket[call-with-gpu-external-surface] lets Skia draw temporarily into the
+external texture. These routes avoid a CPU pixel transfer; they do not permit
+both renderers to access the texture concurrently.
+
 An @deftech{external GPU texture handoff} is an opaque, owner-thread token that
 coordinates one transfer between a caller-owned native texture and one exact
 @tech{GPU context}. The safe API never exposes a native pointer. Backend-specific

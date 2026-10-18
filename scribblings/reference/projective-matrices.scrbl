@@ -12,6 +12,13 @@
 @defmodule[skia/projective-matrix #:no-declare]
 @(declare-exporting skia skia/projective-matrix #:use-sources (skia/projective-matrix))
 
+Use projective matrices for perspective effects, such as making a flat drawing
+appear to recede into the distance. Apply a matrix to later drawing with
+@racket[canvas-concat-matrix3!] or @racket[canvas-concat-matrix4!]. For ordinary
+translation, rotation, scaling, and shearing, the simpler
+@seclink["skia-matrices"]{affine matrices} are sufficient. A projective canvas
+transform does not provide a complete 3D renderer.
+
 The detached immutable @deftech{matrix3} and @deftech{matrix4} values store three
 by three and four by four matrices. They are distinct from the six-coefficient
 @tech{affine matrix} type. Public coefficient vectors are row-major, and matrices

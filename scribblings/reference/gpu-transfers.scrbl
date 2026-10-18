@@ -6,6 +6,12 @@
 
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
+Use readback when GPU-rendered content must be encoded as an image file,
+examined pixel by pixel on the CPU, or passed to a CPU-only image operation.
+If the result will only be drawn again in the same GPU context, keep it as a
+@tech{GPU image} instead. For a single GPU drawing that should return a CPU
+image, @racket[render-gpu->raster-image] manages rendering and readback together.
+
 A @deftech{GPU readback} explicitly copies drawing results into CPU memory.
 The operations here are synchronous and can wait for submitted work. Except
 for the one-shot constructor, they require the owning context to be active.

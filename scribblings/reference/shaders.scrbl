@@ -6,6 +6,11 @@
 
 @title[#:tag "skia-shaders"]{Shaders and Gradients}
 
+Use a shader when a shape should be filled with a gradient, an image pattern,
+or a procedural texture instead of one solid color. Create the shader and
+pass it to @racket[make-paint] through @racket[#:shader]; the same paint can
+then shade different shapes.
+
 A @deftech{shader} supplies colors as a function of @tech{local coordinates}.
 Attaching it to a @tech{paint} changes the color source, not the geometry. Shader
 resources are immutable: a transformed or combined shader is a new owned

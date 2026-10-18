@@ -5,6 +5,12 @@
 
 @title[#:tag "skia-paths"]{Paths}
 
+Use a path for a custom outline, curved boundary, or shape with holes that the
+basic drawing primitives cannot express directly. Build it with
+@racket[make-path] and the path-mutating operations, then fill or stroke it with
+@racket[draw-path], or use it as a clip with @racket[canvas-clip-path!]. The same
+geometry can be reused with different paints and transforms.
+
 A @deftech{path} stores @tech{contours} made from straight segments, quadratic and
 cubic Bézier curves, rational quadratic curves, and close commands. It is an
 owned, mutable native resource. A @deftech{contour} starts with a move and can
@@ -598,6 +604,12 @@ geometry to preserve the represented region. Failure raises an exception.
 }
 
 @section[#:tag "skia-path-measure"]{Measuring Contours}
+
+Use a path measure when distances along a curve matter: for example, to place
+markers at regular intervals, move an object along a route, or draw only part
+of a contour. Create it with @racket[make-path-measure], then query positions
+with @racket[path-measure-position+tangent] or extract a portion with
+@racket[path-measure-segment].
 
 A @deftech{path measure} is an owned native resource that measures one contour
 at a time from a snapshot of a path. It does not measure stroke outlines or a

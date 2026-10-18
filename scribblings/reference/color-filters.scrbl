@@ -7,6 +7,11 @@
 
 @(declare-exporting skia)
 
+Use a color filter to tint artwork, make it grayscale, or adjust its contrast
+while keeping the same geometry. It is suitable for changes computed from
+each input color independently. For blur, shadows, or other effects that need
+neighboring pixels, use an @tech{image filter} instead.
+
 A @deftech{color filter} changes colors without resampling neighboring
 pixels. Attach one to a @tech{paint}, wrap a @tech{shader} with
 @racket[shader-with-color-filter], or use @racket[make-color-filter-image-filter]

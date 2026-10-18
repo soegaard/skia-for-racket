@@ -7,6 +7,12 @@
 
 @(declare-exporting skia)
 
+Use a runtime effect when the built-in gradients, filters, or blend modes
+cannot express the drawing effect you need. Write the color calculation in
+SkSL, compile it with @racket[make-runtime-effect], and create a shader, color
+filter, or blender instance for use in drawing. Built-in effects are simpler
+when they already provide the required behavior.
+
 A @deftech{runtime effect} is a compiled SkSL program for one stage of drawing:
 a @tech{shader}, @tech{color filter}, or blender. Compilation produces an effect resource;
 creating an instance binds its @tech{uniforms} and child resources. A @deftech{blender}

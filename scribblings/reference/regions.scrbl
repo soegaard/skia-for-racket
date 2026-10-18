@@ -9,6 +9,12 @@
 @(declare-exporting skia skia/geometry-primitives skia/geometry
                     #:use-sources (skia/geometry-primitives skia/geometry))
 
+Use an integer region to combine rectangular pixel areas, test which points
+they contain, or restrict drawing to a device-pixel clip. Create the areas
+with @racket[make-region] and apply a clip with @racket[canvas-clip-region!].
+For smooth curves or an antialiased boundary in local coordinates, use a
+@tech{path} instead.
+
 An @deftech{integer region} represents a set of integer-coordinate pixels using
 rectangular bands. It is an owned native resource, not an antialiased path or a
 list that retains its original rectangle decomposition. Native operations require

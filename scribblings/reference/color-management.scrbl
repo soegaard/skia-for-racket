@@ -7,6 +7,13 @@
 
 @(declare-exporting skia)
 
+Use an explicit color space when combining content from different color spaces
+or preparing pixels for an output with a known color interpretation. For
+example, pass a space from @racket[make-srgb-color-space] to
+@racket[make-surface] through @racket[#:color-space] to create an sRGB drawing
+target. A color-space label describes what channel values mean; assigning a
+label is not itself a conversion of existing pixels.
+
 A @deftech{color space} describes how color samples are interpreted. A color-space
 resource is different from a @tech{color specification}: it supplies the
 interpretation, not the channel values. The @racket[color-space?] predicate is
@@ -325,6 +332,11 @@ an ill-conditioned matrix.
 @section[#:tag "skia-icc-profiles"]{ICC Profiles}
 
 @(declare-exporting skia)
+
+Use ICC profiles to exchange color-space descriptions with image files or
+other software. Import profile bytes with @racket[color-space-from-icc-bytes]
+when interpreting externally supplied colors, or export a supported space
+with @racket[color-space->icc-bytes] when another consumer needs its profile.
 
 An @deftech{ICC profile} is an external color-space description stored as bytes. Import,
 export, and encoder overrides have different restrictions. Neither an ICC

@@ -7,6 +7,11 @@
 
 @(declare-exporting skia)
 
+Use a rounded-rectangle value when corners need different radii, or when the
+same rounded boundary will be used for drawing, clipping, and path
+construction. For a single drawing operation with the same radii at every
+corner, @racket[draw-rounded-rect] is simpler.
+
 A @deftech{rounded rectangle} is a detached immutable specification of a rectangle
 and four pairs of corner radii. It is not an owned native resource. Drawing or
 path construction normalizes that specification according to Skia's rounded

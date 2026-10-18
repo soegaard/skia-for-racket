@@ -11,6 +11,12 @@
 @defmodule[skia/matrix #:no-declare]
 @(declare-exporting skia skia/matrix #:use-sources (skia/matrix))
 
+Use an affine matrix to combine translations, rotations, scales, or shears into
+one reusable transform. Apply it to drawing with @racket[canvas-concat!], or
+use @racket[matrix-map-point] to calculate transformed coordinates without
+drawing. For a single canvas translation or rotation, the corresponding
+canvas operation is usually simpler.
+
 An @deftech{affine matrix} maps two-dimensional coordinates by a linear
 transformation followed by translation. Skia represents it as an immutable,
 detached Racket value with coefficients in the order

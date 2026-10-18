@@ -8,6 +8,12 @@
 @defmodule[skia/output-groups #:no-declare]
 @(declare-exporting skia skia/output-groups #:use-sources (skia/output-groups))
 
+Use a bounded output group when one part of a PDF or SVG drawing may need
+rasterization but the surrounding content should remain vector where
+supported. Wrap that part in @racket[draw-output-group] and choose whether to
+prefer vector output, require it, or force a raster image. This makes the
+representation decision local to the selected region.
+
 A @deftech{bounded output group} captures a drawing callback once, then selects native replay or
 explicit @tech{raster fallback} for a PDF, SVG, or CPU-raster destination. It returns
 a detached report describing that decision. Capturing the callback is not a

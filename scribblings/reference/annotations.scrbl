@@ -11,6 +11,11 @@
 @defmodule[skia/annotations #:no-declare]
 @(declare-exporting skia skia/annotations #:use-sources (skia/annotations))
 
+Use annotations to make parts of an exported PDF or SVG clickable. A URI link
+can point to an external address; a named destination lets a link jump to a location
+within the document, such as a section heading. These provide navigation in
+the exported document, not mouse-event handling on a drawing canvas.
+
 A @deftech{named destination} associates a case-sensitive name with a point in
 one @tech{PDF document} or @tech{SVG document}. A link rectangle refers to a URI or to a named
 destination. Annotations do not paint a visible label or border; draw those

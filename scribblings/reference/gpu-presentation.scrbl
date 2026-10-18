@@ -6,6 +6,12 @@
 
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
+Use the presenter interface when you need to request redraws or inspect the
+rendering state of a GPU window. The @seclink["skia-gpu-widgets"]{GPU widgets}
+manage presenters for their windows. In a render callback, use the supplied
+frame to obtain the current drawing canvas and pixel dimensions; it is the
+window's current target, not an offscreen surface to keep for later.
+
 A @deftech{GPU presenter} owns the presentation adapter and @tech{GPU context} for one
 window target. A presenter belongs to its creating GUI/eventspace handler thread.
 A @deftech{GPU frame} is a short-lived value delivered to the presenter's render

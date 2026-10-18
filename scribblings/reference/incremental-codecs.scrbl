@@ -8,6 +8,13 @@
 @defmodule[skia/codec-incremental #:no-declare]
 @(declare-exporting skia skia/codec-incremental #:use-sources (skia/codec-incremental))
 
+Use incremental decoding when your application receives encoded bytes in
+chunks and needs to control when decoding advances. Create a session with
+@racket[make-codec-incremental], supply each chunk with
+@racket[codec-incremental-feed!], and attempt decoding with
+@racket[codec-incremental-step!]. Decoding before all input arrives is supported
+only for the PNG cases described below; other formats wait for final input.
+
 An @deftech{incremental decoding session} accepts explicitly fed encoded bytes
 and retains a native decoder and destination between steps. It does not read a
 Racket port or keep arbitrary port callbacks. It decodes the first frame at the

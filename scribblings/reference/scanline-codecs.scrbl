@@ -8,6 +8,13 @@
 @defmodule[skia/codec-scanlines #:no-declare]
 @(declare-exporting skia skia/codec-scanlines #:use-sources (skia/codec-scanlines))
 
+Use scanline decoding when you can process an image a few rows at a time
+without collecting a complete decoded image. Start a session with
+@racket[codec-scanline-from-bytes] or @racket[codec-scanline-from-stream], then
+request batches with @racket[codec-scanline-read!]. This controls returned batch
+size, not total decoder memory use. It is not a way to feed an unfinished
+encoded download.
+
 A @deftech{scanline session} decodes the first frame in row batches using a
 private native codec. It is an @tech{owned resource} with one forward cursor,
 not a public codec that another operation can reset. Construction negotiates

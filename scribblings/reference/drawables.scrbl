@@ -8,6 +8,12 @@
 @defmodule[skia/drawables #:no-declare]
 @(declare-exporting skia skia/drawables #:use-sources (skia/drawables))
 
+For ordinary recording and replay, the @tech{picture} interface is sufficient.
+Use a recorded drawable when you need @racket[draw-drawable]'s choice between
+retaining a drawable in another recording and immediately replaying its
+commands into that recording. Create one with @racket[call-with-drawable] or
+convert an existing picture with @racket[picture->drawable].
+
 A @deftech{recorded drawable} owns native drawing content captured from a
 @tech{picture}. Playback does not invoke a Racket callback. This API exposes recorded
 content, not an application-defined native callback or an editable scene.

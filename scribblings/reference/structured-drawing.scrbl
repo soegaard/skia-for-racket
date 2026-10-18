@@ -24,6 +24,12 @@ byte sizes are bounded by
 
 @section{Triangle Meshes}
 
+Use a triangle mesh for artwork defined by vertices, especially when colors
+should interpolate between vertices or a shader should follow custom texture
+coordinates. Construct it with @racket[make-vertices] and draw it with
+@racket[draw-vertices]. For a flat-colored outline that needs filling or
+stroking, a @tech{path} is usually simpler.
+
 A @deftech{vertices resource} owns a native immutable mesh and detached copies
 of its submitted arrays. Drawing requires its live native resource. Its metadata
 queries read the detached copies and remain usable after explicit closure,
@@ -365,6 +371,12 @@ lowering, use @racket[draw-image-lattice/portable].
 }
 
 @section{Transformed Image Batches}
+
+Use @racket[draw-atlas] when many sprites come from rectangular areas of one
+image, such as a sprite sheet. Supply one source rectangle and one
+@tech{atlas transform} per sprite to place, rotate, and scale them in a single
+batch. For one image or one source rectangle, the ordinary image-drawing
+functions are simpler.
 
 Each @tech{atlas transform} maps a sprite's local source origin, not its absolute
 location in the atlas image.

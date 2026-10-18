@@ -6,6 +6,12 @@
 
 @(declare-exporting skia/gpu)
 
+Manage a GPU context explicitly when you need offscreen GPU drawing or want
+to reuse GPU surfaces and images across several rendering operations. Create
+it with @racket[make-gpu-context] and perform GPU work within
+@racket[call-with-gpu-context]. For window drawing, the
+@seclink["skia-gpu-widgets"]{GPU widgets} can manage the context for you.
+
 A @deftech{GPU context} owns Skia's connection to one native graphics host and
 tracks its GPU-dependent resources. A @tech{GPU provider} activates that host.
 Context creation is explicit: importing a library, recognizing a backend name,

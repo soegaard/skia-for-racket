@@ -7,6 +7,10 @@
 
 @(declare-exporting skia)
 
+Use image filters for effects such as blurs, drop shadows, or displacement of
+rendered content. Combine them when an effect needs several stages, such as
+blurring a source before blending it with another input.
+
 An @deftech{image filter} processes drawing content, potentially using nearby
 pixels and producing output beyond the original geometry. A @deftech{filter graph}
 connects filters by their input slots. Attach its final filter with

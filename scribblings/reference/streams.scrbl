@@ -8,6 +8,13 @@
 @defmodule[skia/streams #:no-declare]
 @(declare-exporting skia skia/streams #:use-sources (skia/streams))
 
+Use a native stream when you need file-backed input for a constructor such as
+@racket[codec-from-stream], or need to read, seek, and copy native stream bytes
+explicitly. For ordinary image loading from a filename or byte string, the
+direct image constructors are simpler. To connect a Racket port, use the
+@seclink["skia-buffered-ports"]{buffered adapters} here or the
+@seclink["skia-live-streams"]{live-port interfaces}.
+
 A @deftech{native stream} reads or writes bytes through Skia. Input streams have
 independent cursors; output streams accumulate bytes in memory or write to a file.
 They are @tech{owned resource}s, not Racket ports. Closing a stream releases its

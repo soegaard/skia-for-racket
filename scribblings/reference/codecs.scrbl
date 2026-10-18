@@ -7,6 +7,13 @@
 
 @(declare-exporting skia)
 
+Use a codec when you need image metadata before decoding pixels, access to
+individual animation frames, or control over orientation and destination
+color space during decoding. Open one with @racket[codec-from-file] or
+@racket[codec-from-bytes], then decode a selected frame with
+@racket[codec->image]. For simply loading an image to draw, use
+@racket[image-from-file] or @racket[image-from-bytes].
+
 An image @deftech{codec} owns an encoded source and provides metadata and frame
 decoding. It is an @tech{owned resource}, not a decoded image. Its operations
 require an open codec on its owning thread. Successful construction or metadata
@@ -223,6 +230,11 @@ exposes one selectable frame for a still image.
 }
 
 @section{Animation Frame Information}
+
+Use @racket[codec-frame-info] to inspect a frame's duration and update behavior
+when implementing animation playback. Decode its pixels separately with
+@racket[codec->image]; that operation reconstructs the frame's dependencies
+without requiring you to supply earlier frames.
 
 Frame information is detached from the codec. Durations are in milliseconds,
 indices are zero-based, and rectangles remain in encoded pixel coordinates.

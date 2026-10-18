@@ -6,6 +6,12 @@
 
 @(declare-exporting skia/gpu #:use-sources (skia/gpu))
 
+Use a GPU image when an image will remain in GPU drawing or filtering without
+an intermediate CPU pixel copy. Upload a CPU image with @racket[gpu-upload-image]
+or capture GPU drawing with @racket[gpu-surface-snapshot], then reuse the result
+in the same context. For encoding or direct CPU pixel access, first use an
+explicit @tech{GPU readback}.
+
 A @deftech{GPU image} is an owned @tech{image} tied to one @tech{GPU context}. It also satisfies
 @racket[image?]. Draw a GPU image with the ordinary canvas image-drawing
 functions, such as @racket[draw-image] and @racket[draw-image-rect], while
