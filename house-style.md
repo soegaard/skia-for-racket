@@ -115,6 +115,9 @@ for prose, terminology, examples, and Scribble markup.
 Explain when and why to use a value before describing its representation.
 Mention simpler alternatives where useful.
 
+Lead with what an operation does, then explain important qualifications
+separately.
+
 Describe ordinary Racket data using ordinary Racket terminology, such as
 structures, lists, vectors, hash tables, and byte strings. Do not call these
 values "detached" or repeat that ordinary data does not need to be closed.
