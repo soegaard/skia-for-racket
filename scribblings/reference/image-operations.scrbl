@@ -187,9 +187,9 @@ explicit description selects the destination dimensions and format. Matching dim
 @racket[image-read-pixmap!]; different dimensions use @racket[image-scale-pixmap!]. Sampling is
 validated even when resizing is unnecessary.
 
-The destination stride defaults to tight storage. Supplying a format authorizes that conversion,
-including explicit precision reduction; it does not authorize a tagged/untagged interpretation
-change. Failure releases the new buffer and leaves the source unchanged.
+The destination stride defaults to tight storage. An explicitly selected destination format
+may reduce pixel precision. Source and destination must still either both specify a color
+space or both be untagged. Failure releases the new buffer and leaves the source unchanged.
 }
 
 @section[#:tag "skia-image-filter-results"]{Filtering and Result Placement}

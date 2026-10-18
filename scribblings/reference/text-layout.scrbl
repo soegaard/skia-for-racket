@@ -219,8 +219,8 @@ clip or automatic reflow.
 
 Fallback fonts and shapers are created as needed during this call and released
 on return or exceptional exit. Failure to recover a recorded fallback family
-raises an exception. Drawing is not transactional: earlier runs may already
-have changed the canvas before a later failure.
+raises an exception. If drawing a later run fails, drawing already performed
+by earlier runs is not undone.
 
 @racketblock[
 (with-skia ([surface (make-surface 300 90 #:background 'white)]

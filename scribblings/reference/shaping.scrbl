@@ -137,8 +137,9 @@ descend.
 @reference-figure["concept-text-clusters.png"
                   "A table aligns e-acute and A character entries with UTF-8 byte starts zero through one and two, glyph IDs, and cluster starts. A second row illustrates several characters mapping to one shaped glyph only for a verified ligature font."]
 
-The run records glyph positions, not bounds. It contains no typeface identity
-check that would make its glyph IDs portable to an unrelated shaper.
+The run records glyph positions, not bounds. Glyph IDs refer to the typeface
+used to shape the text. The caller must supply a shaper whose font matches the
+one used to create the run; the library does not check this.
 
 
 @racketblock[

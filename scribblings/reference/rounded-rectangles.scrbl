@@ -13,9 +13,9 @@ construction. For a single drawing operation with the same radii at every
 corner, @racket[draw-rounded-rect] is simpler.
 
 A @deftech{rounded rectangle} is an immutable Racket structure containing a
-rectangle and four pairs of corner radii. Drawing or path construction normalizes
-that specification according to Skia's rounded
-rectangle rules. The stored radii are not a promise that those radii fit the bounds.
+rectangle and four pairs of corner radii. Drawing and path construction use
+@seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}
+to adjust the bounds and radii when needed. The stored radii need not fit the bounds.
 
 Corners are ordered top-left, top-right, bottom-right, bottom-left. The two
 components at each corner
@@ -57,8 +57,8 @@ Returns the radii for the four corners, in top-left, top-right, bottom-right,
 bottom-left order.
 
 The result is an immutable vector containing four immutable two-coordinate
-vectors. These are the stored specification values, not necessarily the
-native-normalized radii.
+vectors. These are the stored specification values, which may differ from the
+radii used after normalization.
 }
 
 @defproc[(make-empty-rounded-rect)
@@ -68,19 +68,20 @@ Returns a rounded rectangle at @math{(0, 0)} with zero width, height, and corner
 }
 
 
-@section{Normalization and Transformations}
+@section[#:tag "skia-rounded-rectangle-normalization"]{Normalization and Transformations}
 
 These operations require Skia and return new rounded-rectangle values.
-Native normalization can reduce oversized radii and replace degenerate corners;
-inspect the result rather than assuming
-that supplied radii were retained. Radius components and inset/outset distances
-must be nonnegative after binary32 rounding. A negative input that rounds to
+Normalization adjusts bounds and corner radii according to Skia's rounded-rectangle
+rules. It can reduce oversized radii and replace degenerate corners; inspect
+the result rather than assuming that the supplied radii are unchanged.
+Radius components and inset/outset distances must be nonnegative after binary32
+rounding. A negative input that rounds to
 negative zero is accepted as zero; offsets remain signed.
 
 @defproc[(rounded-rect-normalize [shape rounded-rect?])
           rounded-rect?]{
-Returns native-normalized bounds and radii. The result is checked for native
-validity and does not alias mutable native storage.
+Returns a new rounded rectangle with bounds and corner radii adjusted according
+to Skia's rounded-rectangle rules. An invalid result from Skia raises an exception.
 
 @racketblock[
 (define shape (make-rounded-rect 0 0 20 10 #:radii 30))
@@ -106,7 +107,7 @@ records the radii that Skia can represent within the bounds.
 
 @defproc[(rounded-rect-type [shape rounded-rect?])
           (or/c 'empty 'rect 'oval 'simple 'nine-patch 'complex)]{
-Classifies the native-normalized shape. Empty has no area; rect has square
+Classifies the shape after normalization. Empty has no area; rect has square
 corners; oval is an ellipse; simple uses equal corner radii; nine-patch has
 matching radius components along each side; complex is a remaining valid
 rounded rectangle. The query classifies the normalized shape, not just the
@@ -122,9 +123,9 @@ supplied radii.
           [right real?]
           [bottom real?])
           rounded-rect?]{
-Returns a native-normalized specification with corner pairs left/top,
-right/top, right/bottom, and left/bottom. The four side arguments are radius
-components, not margins and not an image nine-patch grid. Positive bounds must
+Constructs a rounded rectangle with corner pairs left/top, right/top,
+right/bottom, and left/bottom, and returns its normalized form. The four side
+arguments are radius components, not margins and not an image nine-patch grid. Positive bounds must
 remain representable after edge rounding.
 }
 
@@ -160,7 +161,7 @@ operation; use path and paint geometry for that purpose.
 Applies the affine transform and returns a rounded rectangle, or @racket[#f]
 if the transformed shape cannot be represented as one.
 
-The result uses native-normalized bounds and radii. Not every affine transformation
+The result uses normalized bounds and radii. Not every affine transformation
 preserves this representation. The operation does not silently approximate,
 flatten, or rasterize an unrepresentable shape. For general affine geometry,
 add the rounded rectangle to a path and use @racket[path-transform].

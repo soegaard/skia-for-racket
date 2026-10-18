@@ -88,11 +88,12 @@ closed, or failed presenter.
 @section{Presenter Cleanup}
 
 @defproc[(gpu-presenter-close! [presenter gpu-presenter?]) void?]{
-Requests deterministic owner-thread closure. Closing during a frame cancels
-presentation and defers destruction until the frame unwinds. Frame-target cache
-resources retire before the adapter closes its context. Live application GPU
-children can make close fail; the closing presenter remains available for an
-explicit cleanup retry after those children retire.
+Requests closure of the presenter. Call this on the presenter's owning thread.
+If a frame is active, presentation is cancelled and cleanup is deferred until
+the frame ends. Cached frame-target resources are closed before the adapter
+closes its context. If application-owned resources in its GPU context are still
+open, closure can fail. The presenter remains in @racket['closing] state; close
+those resources and retry closing the presenter.
 
 Repeated close after successful closure is harmless. Finalizer and custodian
 fallback only request owner-side cleanup; they do not destroy GUI or GPU objects

@@ -45,8 +45,7 @@ Returns the number of families enumerated by @racket[manager].
 @defproc[(font-manager-family-name [manager font-manager?] [index exact-nonnegative-integer?])
           string?]{
 Returns the family name at the zero-based @racket[index]. The index must be
-less than @racket[(font-manager-family-count manager)]. The name is copied into
-a Racket string; it is not a borrowed native string.
+less than @racket[(font-manager-family-count manager)].
 }
 
 @defproc[(font-manager-families [manager font-manager?]) (listof string?)]{

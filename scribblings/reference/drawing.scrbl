@@ -259,9 +259,10 @@ specifications described in @secref["skia-rounded-rectangles"].
           [shape rounded-rect?]
           [paint paint?])
           void?]{
-Draws the native-normalized rounded rectangle with the paint's fill/stroke
-style. Normalization can reduce radii
-that do not fit the supplied bounds.
+Draws the rounded rectangle with the paint's fill/stroke style. The bounds and
+radii are adjusted using
+@seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}
+before drawing.
 }
 
 @defproc[(draw-double-rounded-rect [canvas canvas?]
@@ -271,8 +272,9 @@ that do not fit the supplied bounds.
           void?]{
 Draws the outer rounded rectangle with the inner shape removed. For a
 nonempty inner rectangle, its entire bounding rectangle must fit inside the
-native-normalized outer rounded shape. This is a conservative containment
-requirement, not an arbitrary Boolean subtraction. Failure raises instead of
+outer rounded shape after
+@seclink["skia-rounded-rectangle-normalization"]{normalization}. This is a conservative
+containment requirement, not an arbitrary Boolean subtraction. Failure raises instead of
 submitting undefined native geometry. An inner shape with zero width or height
 is ignored and the outer shape is drawn alone.
 

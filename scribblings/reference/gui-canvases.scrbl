@@ -145,7 +145,8 @@ pixels. Request a frame with @method[skia-gpu-canvas% refresh] instead.
 }
 
 @defmethod[(close-skia) void?]{
-Closes the GPU canvas through the presenter lifetime protocol.
+Closes the GPU canvas using @racket[gpu-presenter-close!], with the same
+owning-thread, deferred-cleanup, and cleanup-retry rules.
 }
 
 @defmethod[(close) void?]{

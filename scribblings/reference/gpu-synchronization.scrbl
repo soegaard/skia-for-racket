@@ -44,8 +44,7 @@ failure raises an exception. No pixel readback or presentation is performed.
 @defproc[(gpu-flush-and-submit! [context gpu-context?]
                               [#:wait? wait? boolean? #f]) void?]{
 Flushes the context, then submits its work with the given wait request.
-A failure of either stage propagates. This is not a transaction that undoes
-already submitted work.
+A failure of either stage propagates and does not undo work already submitted.
 }
 
 @defproc[(gpu-wait! [context gpu-context?]) void?]{
@@ -83,8 +82,8 @@ The result is an immutable hash table containing the backend, context generation
 @racket['limit_bytes], @racket['budgeted_resources], and @racket['budgeted_bytes].
 The usage count and bytes describe budgeted resources, not total VRAM.
 The @racket['purgeable_bytes], @racket['total_gpu_bytes], and
-@racket['limit_is_hard_allocation_cap] fields are false. The report is not an
-atomic account of all driver memory.
+@racket['limit_is_hard_allocation_cap] fields are false. The reported values need
+not describe the same moment and do not account for all driver memory.
 }
 
 @defproc[(gpu-set-cache-limit! [context gpu-context?] [bytes exact-nonnegative-integer?]) void?]{
@@ -143,8 +142,8 @@ maximum entry overhead, estimated as 128 bytes per entry, plus
 individually and in total. Limit-induced omissions are reported as truncation
 and a dropped count, not silently presented as a complete report.
 
-The report is not an atomic snapshot, a total-VRAM measurement, or proof that
-wrapped external allocations are fully accounted for. Native names and report
-contents can vary. The collector cannot run during a live-stream operation or
+The reported values need not describe the same moment. They do not measure total
+VRAM or guarantee that all wrapped external allocations are included. Native names
+and report contents can vary. The collector cannot run during a live-stream operation or
 from its port-service callback.
 }

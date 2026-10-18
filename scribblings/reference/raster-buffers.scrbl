@@ -180,7 +180,7 @@ true. The buffer is exclusively borrowed until the callback exits, normally or e
 
 The view and all its subsets expire on exit and are restricted to the callback's thread. Keeping
 a wrapper does not extend its lifetime. Do not close the buffer during the callback. Completed
-writes persist after an exception; scope cleanup is not pixel rollback. Continuations cannot
+writes are not undone if the callback raises an exception. Continuations cannot
 reenter the scope after leaving it.
 }
 
@@ -507,8 +507,8 @@ required keywords. Pixels are not copied or cleared on entry.
 
 The canvas is borrowed, protected by a canvas-state scope, and expires on exit. Buffer storage
 cannot be accessed through a second canvas or pixmap scope while this callback runs. Drawn
-pixels persist after an exception; state restoration is not a transaction. Do not close the
-buffer during the callback or use the canvas after the callback ends.
+pixels remain after an exception; restoring the canvas state does not undo pixel changes.
+Do not close the buffer during the callback or use the canvas after the callback ends.
 
 @racketblock[
 (with-skia ([buffer (make-raster-buffer 160 80)])

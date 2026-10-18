@@ -72,9 +72,9 @@ bridge, but does not start a port operation or decode pixels.
           exact-nonnegative-integer?]{
 Appends a copy of @racket[data] and returns the number of bytes accepted.
 Mutation of @racket[data] after return does not affect the session. Feeding does
-not itself decode pixels. Empty input is allowed; an empty final feed seals an
-existing prefix. No further feed is permitted once input is final or the session
-is terminal.
+not itself decode pixels. Empty input is allowed. You can pass an empty byte
+string with @racket[#:final? #t] to declare that no more input will arrive.
+No further feed is permitted once input is final or the session is terminal.
 
 A quota rejection leaves the stored input prefix and final flag unchanged. Invalid
 PNG framing discovered after appending can instead fail the session. A final
@@ -99,10 +99,9 @@ without retrying or reopening the decoder. Wrapper exceptions mark failure,
 release the session's storage, and propagate to the caller. A byte-limit failure
 before the decoding attempt need not make the session terminal.
 
-The cancellation event is polled before entering the native ownership scope.
-This is cancellation between steps, not interruption midway through an atomic
-native decode. A ready event cancels a nonterminal session; terminal progress
-is preserved. No partial-input decode is substituted for an unsupported format.
+The cancellation event is polled before each decoding step. Cancellation cannot
+interrupt a step already in progress. A ready event cancels a nonterminal session;
+terminal progress is preserved. No partial-input decode is substituted for an unsupported format.
 
 @racketblock[
 (with-skia ([surface (make-surface 3 2 #:background 'blue)]

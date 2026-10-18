@@ -16,9 +16,9 @@ all native allocations. Purging a cache does not close application-owned
 surfaces, images, fonts, or paints.
 
 Global graphics calls are rejected from live-port service callbacks and while a
-live stream operation is active. Native calls are synchronized individually. A
-sequence of queries, including @racket[skia-cache-statistics], is not an atomic
-joint snapshot.
+live stream operation is active. Native calls are synchronized individually.
+Cache values are read separately and may change between reads, so the results
+need not describe the same moment. This also applies to @racket[skia-cache-statistics].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -164,8 +164,9 @@ max-entries 128) byte-limit)] must fit @racket[current-skia-byte-limit]. Zero li
 Oversized entries are omitted and counted, not shortened into apparently complete values.
 Invalid native strings or callback data raise after native cleanup.
 
-The report is not an atomic process-memory snapshot. The callback provider is process-global; a
-second module instance or place cannot replace an already claimed provider table. The same
+The reported values need not describe the same moment and do not account for all
+process memory. The callback provider is process-global; a second module instance
+or place cannot replace an already claimed provider table. The same
 provider is shared with GPU memory reporting, but this function's report has CPU-cache scope.
 No application callback runs while Skia is collecting the entries.
 }

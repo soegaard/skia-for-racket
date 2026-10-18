@@ -17,8 +17,8 @@ encoded download.
 
 A @deftech{scanline session} decodes the first frame in row batches using a
 private native codec. It is an @tech{owned resource} with one forward cursor,
-not a public codec that another operation can reset. Construction negotiates
-native scaled dimensions and starts scanline decoding; unsupported formats or
+not a public codec that another operation can reset. Construction asks the decoder
+for supported scaled dimensions and starts scanline decoding; unsupported formats or
 output conversions raise an exception. It does not fall back to decoding the
 entire image and then returning selected rows.
 
@@ -49,16 +49,17 @@ Returns @racket[#t] for a scanline session, including a closed one, and @racket[
           [#:color-space space (or/c #f 'srgb 'linear-srgb bytes?) 'srgb])
           codec-scanline-session?]{
 Starts a session from copied, nonempty encoded bytes. The scale follows
-@racket[codec-scaled-dimensions]; the resulting size is negotiated, not guaranteed
-to be the requested ratio. Pixel-format and alpha combinations follow
-@racket[make-image-info], and native scanline support is checked separately.
+@racket[codec-scaled-dimensions]: the decoder chooses supported dimensions for the
+requested scale. These may differ from the exact requested ratio. Pixel-format
+and alpha combinations follow @racket[make-image-info], and native scanline support
+is checked separately.
 The default requests unpremultiplied RGBA8888 in sRGB. The destination description
 is independent of the encoded source metadata.
 
 The session checks that at least one output row fits the byte limit without
 allocating a full output raster. Requested batches are bounded separately.
-Bottom-up decoding is rejected if negotiated height differs from encoded height,
-because this wrapper does not invent scaled bottom-up row coordinates.
+Bottom-up decoding is supported only when the output height equals the encoded
+image height; a different output height raises an exception.
 }
 
 @defproc[(codec-scanline-from-stream [stream skia-input-stream?]
@@ -102,7 +103,7 @@ the resource is released.
 
 @defproc[(codec-scanline-info [session codec-scanline-session?])
           image-info?]{
-Returns the full-output pixel description, using negotiated dimensions
+Returns the full-output pixel description, using the dimensions chosen by the decoder
 and the selected output color/alpha format. It is not the size of the last batch.
 }
 

@@ -83,7 +83,8 @@ The mesh contains three vertices.
 
 @defproc[(vertices-mode [mesh vertices?])
           (or/c 'triangles 'triangle-strip 'triangle-fan)]{
-Returns the mesh's submitted topology.
+Returns the mode supplied to @racket[make-vertices], which determines how
+vertices are grouped into triangles.
 }
 
 @defproc[(vertices-positions [mesh vertices?])
@@ -97,8 +98,8 @@ The query remains available after the mesh is closed.
 @defproc[(vertices-texture-coordinates [mesh vertices?])
           (or/c #f (and/c vector? immutable?))]{
 Returns the copied immutable point vector, or @racket[#f] if texture
-coordinates were omitted. Values are shader coordinates, not normalized UVs
-imposed by this interface.
+coordinates were omitted. These coordinates use the shader's coordinate
+system; they are not required to lie between zero and one.
 }
 
 @defproc[(vertices-colors [mesh vertices?])

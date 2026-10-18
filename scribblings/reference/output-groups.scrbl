@@ -54,8 +54,9 @@ not valid for a raster destination. The @racket['raster] policy requests isolate
 but still rejects resources whose output compatibility is unknown and operations
 known to discard document features such as annotations.
 
-Destination-dependent compositing is isolated against transparency, not the receiving canvas's
-backdrop. Include needed background drawing inside the callback. Groups reject device-coordinate
+For blend modes that depend on background pixels, the group starts with a transparent
+background rather than the content already drawn on the destination canvas. Include
+any needed background drawing in the callback. Groups reject device-coordinate
 region clips, whose replay would ignore the intended local placement. Rasterization that would
 lose annotations or document-native text is rejected rather than silently accepted.
 

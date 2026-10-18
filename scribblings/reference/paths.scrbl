@@ -917,8 +917,9 @@ An out-of-range index raises an exception; it is not reduced modulo four.
           [#:direction direction (or/c 'cw 'ccw) 'cw]
           [#:start-index start (integer-in 0 7) 0])
           void?]{
-Adds the native-normalized rounded rectangle as a new contour. The start index
-selects one of Skia's eight tangent points, not one of four corner centers.
+Adds the rounded rectangle as a new contour, after adjusting its bounds and radii
+using @seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}.
+The start index selects one of Skia's eight tangent points, not one of four corner centers.
 Indices follow the clockwise boundary: the top edge's left and right tangent
 points, the right edge's top and bottom points, the bottom edge's right and left
 points, and the left edge's bottom and top points. Direction changes traversal,
@@ -1010,8 +1011,9 @@ and traversal direction; recognition alone does not imply a closed contour.
 
 @defproc[(path-as-rounded-rect [path path?])
           (or/c rounded-rect? #f)]{
-Returns a native-normalized rounded rectangle when recognized, or
-@racket[#f] otherwise.
+Returns a rounded rectangle when the path is recognized as one, or @racket[#f]
+otherwise. The returned bounds and radii follow
+@seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}.
 }
 
 @defproc[(path-rectangle? [v any/c])

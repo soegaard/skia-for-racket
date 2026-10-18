@@ -102,7 +102,7 @@ The default permutes pixels to top-left orientation without resampling. Origins
 that exchange axes also exchange the output width and height. Disabling
 normalization preserves encoded coordinates. These coordinates differ from a
 frame rectangle reported by @racket[codec-frame-info], which always uses encoded
-coordinates. No scaling or subset negotiation is applied by this function.
+coordinates. This function neither scales the image nor selects a subset.
 
 @racketblock[
 (with-skia ([surface (make-surface 3 2 #:background 'blue)])
