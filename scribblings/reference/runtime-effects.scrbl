@@ -45,7 +45,8 @@ Compiles @racket[source] as an SkSL program for the selected stage.
 The result is an owned effect. The source string must be nonempty and contain
 no NUL characters. Both the character count and UTF-8 byte count must
 fit @racket[current-skia-byte-limit]. The source and reflection information
-are copied; changing a mutable source string afterward has no effect.
+(the compiler's descriptions of uniforms and children) are copied; changing a
+mutable source string afterward has no effect.
 
 A shader entry point receives local coordinates. A color-filter entry point
 receives a color. A blender entry point receives source and destination colors,
@@ -86,7 +87,7 @@ not generated backend code. The query remains available after closure.
 }
 
 @defproc[(runtime-effect-uniform-byte-size [effect runtime-effect?]) exact-nonnegative-integer?]{
-Returns the size of the reflected uniform buffer in bytes. It is a multiple
+Returns the uniform buffer size reported by the compiler, in bytes. It is a multiple
 of four and can be zero. This snapshot query remains valid after closure.
 }
 
@@ -113,16 +114,16 @@ is instantiated. Its value is copied into the instance and stays fixed for
 that instance. A child binding supplies a shader, color filter, or blender
 resource for the program to use.
 
-Bindings are supplied in hash tables with symbol or string keys. Keys match reflected
-names exactly after symbols are converted to strings. Missing names, unknown
-names, and two keys with the same normalized spelling are rejected. Thus
+Bindings are supplied in hash tables with symbol or string keys. Keys must exactly
+match the compiled effect's uniform or child names after symbols are converted to strings.
+Missing names, unknown names, and two keys with the same normalized spelling are rejected. Thus
 @racket['gain] and @racket["gain"] cannot both name entries in one hash table.
-Every reflected uniform and child must be supplied; there are no implicit
+Every uniform and child in the compiled effect must be supplied; there are no implicit
 zero uniforms or null-child fallbacks. The default empty hash tables work only
-when the corresponding reflected set is empty.
+when the effect has no corresponding uniforms or children.
 
 A nonarray scalar uniform takes one number. Vectors, matrices, and all arrays
-require a flat list or vector of exactly the reflected component count.
+require a flat list or vector of exactly the component count reported by the compiler.
 A scalar array of length one still requires a one-element list or vector.
 Matrices use SkSL's column-major component order, with array elements consecutive. Floating
 components are packed as single-precision values. Integer
@@ -144,7 +145,7 @@ Packs the uniform values in @racket[bindings] into a byte string for @racket[eff
 
 The result is a new immutable byte string. Packing follows the stored uniform
 layout and the rules in @secref["skia-runtime-bindings"]. It uses native byte
-order and the reflected offsets, not std140 padding. Its length equals
+order and the offsets reported by the compiler, not std140 padding. Its length equals
 @racket[(runtime-effect-uniform-byte-size effect)]. It is not a portable serialization
 format and is not accepted in place of the binding hash table by instance factories.
 
@@ -171,8 +172,8 @@ Creates a shader from @racket[effect] using the supplied uniforms and children.
 
 The shader is an owned resource. The effect must be open and compiled for the
 shader stage. Every child must be an open shader, color filter, or blender of
-the reflected kind; false
-children are rejected. The optional affine local matrix must have a
+the kind required by the compiled effect; false children are rejected.
+The optional affine local matrix must have a
 representable inverse. It affects local shader coordinates and is not a
 replacement for the canvas transform. Binding and retention rules follow
 @secref["skia-runtime-bindings"].
@@ -315,8 +316,8 @@ Returns the byte offset in the effect uniform buffer. The offset is a multiple o
 @defproc[(runtime-uniform-type
           [uniform runtime-uniform?])
          (or/c 'float 'float2 'float3 'float4 'float2x2 'float3x3 'float4x4 'int 'int2 'int3 'int4)]{
-Returns the reflected numeric type. A half declaration uses the corresponding
-floating type here; query its half-precision flag separately.
+Returns the uniform's numeric type as reported by the compiler. A half declaration
+uses the corresponding floating type here; query its half-precision flag separately.
 }
 
 @defproc[(runtime-uniform-count [uniform runtime-uniform?]) exact-positive-integer?]{
@@ -361,7 +362,7 @@ even if it can otherwise participate in drawing.
 }
 
 @defproc[(runtime-child-index [child runtime-child?]) exact-nonnegative-integer?]{
-Returns the zero-based reflected slot index. Callers bind by name rather
+Returns the child's zero-based slot index in the compiled effect. Callers bind by name rather
 than passing a native pointer array.
 }
 

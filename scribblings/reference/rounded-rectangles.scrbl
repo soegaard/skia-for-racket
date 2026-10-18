@@ -63,7 +63,7 @@ native-normalized radii.
 
 @defproc[(make-empty-rounded-rect)
           rounded-rect?]{
-Returns a pure specification with zero bounds and zero radii, equivalent to
+Returns a rounded rectangle at @math{(0, 0)} with zero width, height, and corner radii, equivalent to
 @racket[(make-rounded-rect 0 0 0 0)].
 }
 

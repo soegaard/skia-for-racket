@@ -60,8 +60,8 @@ pixels, normalize orientation, or enforce the full-raster allocation limits of
 @defproc[(codec-frame-count [codec codec?])
           exact-positive-integer?]{
 Returns the number of frame indices exposed by the codec. A still image has
-one frame, even when its native animation metadata table is empty. This count
-does not certify that every frame's pixel decode will succeed.
+one frame, even when its native animation metadata table is empty. Successfully
+reading the frame count does not guarantee that every frame can be decoded.
 }
 
 @defproc[(codec-repetition-count [codec codec?])

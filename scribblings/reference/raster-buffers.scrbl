@@ -50,8 +50,9 @@ alpha format. Later buffer mutation or closure does not change the image.
 
 The image is independently owned. The buffer must be open and have no active
 canvas or pixmap scope. The storage copy must fit @racket[current-skia-byte-limit].
-The operation does not normalize an encoded orientation, concatenate separate scanline batches, or
-certify that incremental decoding was complete.
+The operation does not normalize an encoded orientation or concatenate separate scanline batches.
+It does not check whether incremental decoding has finished; a successful copy can contain
+an incomplete image.
 }
 
 @section{Allocation and Copies}
@@ -318,7 +319,7 @@ out-of-range native alpha result raises an exception.
 
 @defproc[(pixmap-fill! [view pixmap?] [color color?])
           void?]{
-Fills the view through the native color eraser. Opaque storage forces maximum alpha rather than
+Fills the view's pixels with the supplied color. Opaque storage forces maximum alpha rather than
 storing the supplied translucent alpha. Only the view's pixels are written, not row padding or
 pixels outside a subset.
 }
@@ -565,6 +566,5 @@ quantization limits described in
 Returns @racket[#f] for an absent description, or a newly owned native color space for a named
 description or copied ICC bytes. Mutable byte input is accepted and copied;
 @racket[color-space-descriptor?] instead requires ICC byte strings to be immutable.
-Structural header acceptance does not ensure that the native library
-supports the profile.
+An ICC profile can pass the header checks but still be unsupported by Skia.
 }

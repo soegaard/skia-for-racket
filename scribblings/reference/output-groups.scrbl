@@ -64,10 +64,14 @@ ordinary dimension and RGBA byte limits are checked when rasterization is select
 as an RGBA allocation requirement on a native vector group. A supplied color space is validated
 before the callback and used by raster fallback; it does not convert existing document content.
 
-A false executor inherits only through the verified enclosing group capture, otherwise selecting
-CPU. An explicit @racket['cpu] overrides inheritance. Executor lifetime/thread checks happen
-before authoring; GPU acquisition, when selected, is delayed until representation policy and any
-outer audit accept rasterization. A later failure does not trigger a second authoring pass.
+When @racket[#:raster-executor] is @racket[#f], a group drawn on its enclosing group's
+recording canvas uses that group's executor; a group drawn on any other supported
+canvas uses the CPU.
+Passing @racket['cpu] explicitly always selects the CPU.
+
+The executor's lifetime and thread requirements are checked before the drawing callback runs.
+GPU acquisition, when selected, is delayed until the output policy and any enclosing audit
+allow rasterization. A later failure does not rerun the drawing callback.
 
 Callback values are ignored, and its canvas expires on exit. Failure before replay draws no
 group to the destination, but ordinary callback side effects persist. Failures during actual

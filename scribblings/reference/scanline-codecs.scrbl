@@ -19,8 +19,8 @@ A @deftech{scanline session} decodes the first frame in row batches using a
 private native codec. It is an @tech{owned resource} with one forward cursor,
 not a public codec that another operation can reset. Construction negotiates
 native scaled dimensions and starts scanline decoding; unsupported formats or
-output conversions raise an exception. There is no complete-decode-and-slice
-fallback.
+output conversions raise an exception. It does not fall back to decoding the
+entire image and then returning selected rows.
 
 Input is already available as copied bytes, a private stream duplicate, or a
 fully buffered port. A short scanline read is not a request to feed more input;

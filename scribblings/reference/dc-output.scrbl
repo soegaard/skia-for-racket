@@ -12,8 +12,9 @@
 
 The @racketmodname[skia/dc-output] library adapts the supported Racket
 @racket[draw:dc<%>] drawing subset to Skia PDF, SVG, and CPU-raster canvases.
-Authoring is captured once into a callback-scoped DC and replayed through the
-existing output-policy machinery. The bridge does not render an entire document
+The drawing callback runs once with a temporary drawing context. Its drawing commands
+are recorded and then replayed according to the selected output policy. The drawing
+context can be used only during the callback. The bridge does not render an entire document
 to a bitmap and does not add an implicit GPU fallback.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -34,8 +35,8 @@ expired DC are rejected.
 }
 
 @defproc[(output-dc-capabilities) (and/c hash? immutable?)]{
-Returns declarations for the output-DC compatibility surface. The
-result describes deferred vector commands, callback-only lifetime, annotations,
+Describes the output drawing context's declared support for drawing features and
+its lifetime rules. The result covers deferred vector commands, callback-only lifetime, annotations,
 and explicit raster groups; it does not run a document exporter or native probe.
 }
 
@@ -51,7 +52,7 @@ and explicit raster groups; it does not run a document exporter or native probe.
           [#:raster-scale raster-scale (real-in 1/1024 1024)
            (current-raster-output-scale)])
          (and/c hash? immutable?)]{
-Captures one drawing callback and replays its commands onto @racket[canvas]. The
+Calls @racket[draw] once, records its drawing commands, and replays them onto @racket[canvas]. The
 receiver must be a live PDF, SVG, or CPU-raster canvas with an affine 2D
 transform. A GPU surface and an unrelated picture recorder are rejected.
 

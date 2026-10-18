@@ -9,14 +9,14 @@
 
 A @deftech{GPU flush} makes pending Skia work available for submission.
 A @deftech{GPU submission} requests backend execution. A @deftech{GPU wait}
-requests completion for the CPU. These are different boundaries: none presents
-a window, exports a native fence, or transfers pixels
+requests that submitted GPU work finish before the call returns. These are different
+operations: none presents a window, exports a native fence, or transfers pixels
 by itself. These operations require the owning Racket thread and
 an active, usable @tech{GPU context}. Detected native context loss requests shutdown and
 raises; it does not retry rendering on the CPU.
 
-@bold{Conceptual diagram.} Pending drawing, flush, submission, and requested
-CPU completion are separate boundaries. @tech{GPU readback} and presentation are separate
+@bold{Conceptual diagram.} Pending drawing, flush, submission, and waiting for
+GPU work to finish are separate steps. @tech{GPU readback} and presentation are separate
 routes from submitted work: readback produces an independent CPU result, while
 presentation is requested through its presentation API. A completed wait alone
 neither copies pixels nor presents them; presentation success is a request, not
@@ -28,16 +28,16 @@ proof of physical display.
 @section{Flush, Submit, and Wait}
 
 @defproc[(gpu-flush! [context gpu-context?]) void?]{
-Performs a @tech{GPU flush} for the context. It does not request CPU completion.
+Performs a @tech{GPU flush} for the context. It does not request a wait for GPU work to finish.
 Use @racket[gpu-submit!] to submit flushed work, or
 @racket[gpu-flush-and-submit!] for both operations.
 }
 
 @defproc[(gpu-submit! [context gpu-context?] [#:wait? wait? boolean? #f]) void?]{
 Requests @tech{GPU submission} of previously flushed work. A true @racket[wait?]
-requests CPU completion of submitted work. This operation does not first flush
-all pending Skia commands;
-use @racket[gpu-wait!] when those commands must be included. Native submission
+requests that the submitted GPU work finish before this call returns. This operation
+does not first flush all pending Skia commands; use @racket[gpu-wait!] when those
+commands must be included. Native submission
 failure raises an exception. No pixel readback or presentation is performed.
 }
 
@@ -60,7 +60,7 @@ Flushes work associated with a surface owned by @racket[context]. The surface
 must be live with a balanced save/layer stack at save count 1. A CPU or document
 target is rejected rather than uploaded. The flush may include dependent work;
 it is not a guarantee that unrelated work will remain unexecuted. It requests
-neither submission nor CPU completion.
+neither submission nor a wait for GPU work to finish.
 }
 
 @defproc[(gpu-flush-image! [context gpu-context?] [image gpu-image?]) void?]{
@@ -98,7 +98,7 @@ limit or the number of bytes freed. It does not impose a total GPU-memory cap.
 Requests purging of unlocked cache resources, optionally restricted to scratch
 resources. Resources that are locked or still referenced by other objects may
 remain allocated. This operation does not promise a particular reduction in
-memory use or CPU completion.
+memory use or guarantee that GPU work has finished when it returns.
 }
 
 @defproc[(gpu-purge-bytes! [context gpu-context?] [bytes exact-nonnegative-integer?]
@@ -113,14 +113,14 @@ is not a guarantee that this many bytes can be freed. The result is void.
 Requests native cleanup based on how long resources have been unused. The exact
 nonnegative age is measured in milliseconds. It is not a delay: the function
 does not schedule a future callback or sleep for that duration. It returns no
-freed-byte count and does not guarantee CPU completion.
+freed-byte count and does not guarantee that GPU work has finished when it returns.
 }
 
 @defproc[(gpu-free-resources! [context gpu-context?]) void?]{
 Requests release of context resources without abandoning the context. The
 context remains usable. The native implementation may flush and submit work,
-but this operation does not provide a CPU completion fence. It does not retire
-live image/surface wrappers or replace orderly context closure.
+but this operation does not guarantee that GPU work has finished when it returns.
+It does not retire live image/surface wrappers or replace orderly context closure.
 }
 
 @section{Bounded Memory Reports}

@@ -252,8 +252,8 @@ Returns the progress captured with these pixels, not the session's later progres
 Copies the snapshot's pixels into a raster buffer, preserving their format and stride.
 
 The buffer is independently owned. Storage validation and allocation can fail.
-The operation does not require complete progress and therefore does not certify a complete
-image. It neither advances the decoder nor applies encoded orientation.
+The operation accepts snapshots taken before decoding finishes, so the returned buffer
+may contain an incomplete image. It neither advances the decoder nor applies encoded orientation.
 
 @racketblock[
 (with-skia ([surface (make-surface 3 2 #:background 'blue)]

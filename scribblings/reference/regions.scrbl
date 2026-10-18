@@ -221,9 +221,8 @@ The path has no dependency on the region's later mutation or lifetime.
 
 @section{Rectangles and Spans}
 
-The following operations snapshot their results synchronously. No borrowed native
-iterator escapes. Sequence variants create the snapshot when called, not when
-iteration begins. Snapshot counts
+The following operations copy their results before returning. Sequence functions
+make that copy when called, not when iteration begins. Snapshot counts
 and payloads are bounded by @racket[current-skia-byte-limit]; this is not a bound
 on all internal region storage.
 

@@ -458,7 +458,8 @@ Returns the inferred script tag, or @racket[#f] when no specific script is selec
 
 @defproc[(mixed-text-run-family [run mixed-text-run?]) (or/c string? #f)]{
 Returns the recorded fallback family name, or @racket[#f] when the base shaper
-is used. A false result is not itself proof of complete glyph coverage.
+is used. A @racket[#f] result does not guarantee that the base shaper's font
+contains every required glyph.
 }
 
 @section{Additional Break Opportunities}

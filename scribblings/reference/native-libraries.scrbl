@@ -52,9 +52,8 @@ its optional backend configuration.
 
 @defproc[(skia-native-library-path)
           path-string?]{
-Returns the library request used for the selected library, after preflight. It may be a complete
-filesystem path or a loader search name. It is not promised to be the resolved canonical
-filesystem identity of the loaded binary.
+Returns the name or path used to load the selected library, after preflight.
+This need not be the fully resolved path of the file actually loaded.
 }
 
 @section{HarfBuzz Preflight}
@@ -91,8 +90,8 @@ not the package version.
 
 @defproc[(harfbuzz-native-library-path)
           path-string?]{
-Returns the selected HarfBuzz library request after preflight. A loader search name is possible;
-a canonical resolved path is not promised.
+Returns the name or path used to load the selected HarfBuzz library, after preflight.
+This need not be the fully resolved path of the file actually loaded.
 }
 
 @section{Installed ABI Catalogue}
@@ -138,8 +137,8 @@ or backend creation.
 
 @defproc[(skia-native-capabilities)
           (and/c hash? immutable?)]{
-Runs Skia preflight and returns its report with the selected request, native version, supported
-profile, pointer size, and required CPU symbol/layout results. The flags for optional GPU symbol
+Runs Skia preflight and returns its report with the selected library name or path, native version,
+supported profile, pointer size, and required CPU symbol/layout results. The flags for optional GPU symbol
 probing, backend creation, and hardware acceleration remain false: this operation has not
 established those properties. The version functions do not certify package identity. The report
 is not a rendering test.

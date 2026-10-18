@@ -22,9 +22,9 @@ infer sharing groups. Nested external-resource handoffs are rejected.
                                     [#:wait? wait? boolean? #f]) any]{
 Flushes and submits queued Skia work, then calls @racket[proc] while the same
 native OpenGL context remains current. The callback's multiple values are
-returned. With @racket[wait?] false, ordering uses the same command stream but
-does not promise CPU completion of preceding work; true requests that completion
-before the callback.
+returned. With @racket[wait?] false, preceding GPU work is ordered on the same
+command stream but need not have finished when the callback begins. A true value
+requests that it finish before the callback.
 
 The callback must keep the native context current and must not reenter Skia GPU
 operations. On exit, including exceptional exit, the wrapper invalidates Skia's

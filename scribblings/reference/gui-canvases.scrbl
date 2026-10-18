@@ -43,10 +43,10 @@ Supported style flags are @racket['border], @racket['control-border],
 @racket['no-focus], @racket['deleted], and @racket['no-autoclear].
 }
 
-The drawing-context identity and drawing state survive ordinary repaint and
-backing resize, although resized raster storage replaces the old root pixels.
-The @racket['no-autoclear] style suppresses automatic root clearing; it does not
-preserve pixels when the backing is replaced. The final GUI copy is a CPU pixel
+The same drawing-context object and drawing settings are kept across repaints and
+resizing. Resizing the pixel buffer replaces its contents.
+The @racket['no-autoclear] style suppresses automatic clearing of the pixel buffer;
+it does not preserve pixels when that buffer is replaced. The final GUI copy is a CPU pixel
 transfer, not GPU rendering or zero-copy presentation.
 
 @defmethod[#:mode override (get-dc) object?]{
