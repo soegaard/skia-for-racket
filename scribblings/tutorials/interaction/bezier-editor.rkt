@@ -18,7 +18,7 @@
          (only-in racket/gui/base
                   canvas% frame% vertical-panel% horizontal-panel%
                   button% queue-callback)
-         skia
+         (except-in skia draw-points)
          skia/bitmap
          skia/gpu
          skia/gpu-gui
