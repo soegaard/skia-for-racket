@@ -3420,7 +3420,7 @@
   "workflow": ".github/workflows/release-candidate.yml",
   "workflow_sources": {
     ".github/workflows/acceptance.yml": "92d8dcbfd57cfac73744f07fa29665012824e81dbbcd22a0969bec5b40182f4f",
-    ".github/workflows/advanced-canvases.yml": "5ec821b8989eeaaecccb4f7d17b6622231a9dd40883c4ee75e3b1ca288192de8",
+    ".github/workflows/advanced-canvases.yml": "fe175352fdf69f0df917b962ee46a162fdfca98938a82c1b27086fab06557bee",
     ".github/workflows/api-inventory.yml": "dc349b25c4b5cda43949e5cb581328320bc49b2d74aad3032e38e1a0d87929a6",
     ".github/workflows/ci.yml": "59718bff94928d5e521a52c9fa36576bc5496f08c806c60b60037dc6697530df",
     ".github/workflows/codec-queries.yml": "9d1c55901a2ca349effa67410e172fd5929a87801e5f846f7bd89a7c928a8d79",
