@@ -1431,8 +1431,9 @@ class R2ProseTests(unittest.TestCase):
         self.assertIn('last\nmatrix acts on a point first', text)
         self.assertIn('single precision', text)
 
-    def test_surface_snapshot_does_not_promise_eager_copy(self):
-        self.assertIn('does not promise an immediate copy', self.text('surfaces.scrbl'))
+    def test_surface_snapshot_documents_independent_pixels(self):
+        self.assertIn('Later drawing\nto @racket[surface] does not change the image.',
+                      self.text('surfaces.scrbl'))
 
     def test_image_sampling_defaults_differ(self):
         definitions, _ = checks.document_definitions(ROOT)
@@ -1786,7 +1787,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 315)
+        self.assertEqual(count, 316)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -2135,8 +2136,10 @@ class R3TextSemanticsTests(unittest.TestCase):
         self.assertIn('copies glyphs and positions', self.text('text-blobs'))
 
     def test_character_counts_and_cluster_bytes_are_distinguished(self):
-        self.assertIn('The count is not a UTF-8 byte offset.', ' '.join(self.text('fonts').split()))
-        self.assertIn('A cluster is a UTF-8 byte offset', self.text('shaping'))
+        self.assertIn('The count is not a UTF-8 byte offset.',
+                      ' '.join(self.text('fonts').split()))
+        self.assertIn('A @deftech{cluster offset} is a UTF-8 byte offset',
+                      self.text('shaping'))
         self.assertIn('not a Racket character', self.text('shaping'))
         self.assertIn('paragraph-relative Racket character index', self.text('text-layout'))
 
@@ -2230,8 +2233,8 @@ class R3aEditorialCleanupTests(unittest.TestCase):
         self.assertIn('explicit @racket[#:script] affects shaping but does not enable', prose)
         self.assertIn('CJK or Arabic expansion opportunities', prose)
         self.assertIn('script inference when @racket[#:script] is @racket[#f]', prose)
-        shared = self.text('text-layout').split('@defproc[(layout-text', 1)[0]
-        self.assertIn('does not enable these script-specific justification opportunities', shared)
+        self.assertIn('does not enable the script-specific CJK or Arabic expansion opportunities',
+                      prose)
 
     def test_break_text_describes_results_and_keeps_boundary_caveats(self):
         prose = ' '.join(self.entry('fonts', 'font-break-text').split())
@@ -2599,7 +2602,7 @@ class R3EffectsSemanticsTests(unittest.TestCase):
         self.assertIn('two false inputs to a blend node refer to the same source', text)
 
     def test_crop_and_canvas_clip_are_not_conflated(self):
-        self.assertIn('not a\ncanvas clip', self.text('image-filters'))
+        self.assertIn('not a\ncanvas @tech{clip}', self.text('image-filters'))
         self.assertIn('collapse after native rounding are rejected', self.text('image-filters'))
 
     def test_blur_and_convolution_reject_mirror(self):
@@ -3081,7 +3084,7 @@ class R3eOutputSourceTests(unittest.TestCase):
                                  'body', '...+']]])
         self.assertEqual(self.header('call-with-document-page')[1], 'any')
         self.assertIn('returns all of the callback', text)
-        self.assertIn('aborts the whole document', self.normalized('pdf-documents'))
+        self.assertIn('whole document is aborted', self.normalized('pdf-documents'))
 
     def test_pdf_dimensions_quality_and_literal_metadata_defaults(self):
         header = self.header('make-pdf-document')
@@ -3779,8 +3782,11 @@ class R3gaGeometryTests(unittest.TestCase):
 
     def test_layer_options_do_not_turn_bounds_into_clips_or_cleanup_into_rollback(self):
         text = self.text('layers.scrbl')
-        for phrase in ('not an explicit', 'conservative', 'not pixel rollback',
-                       'composites even', 'pinned', 'does not clear'):
+        for phrase in ('not a canvas @tech{clip}',
+                       'Use an explicit clip to restrict drawing to an exact region.',
+                       'The clip, rather than the layer bound, excludes',
+                       'An exception does not undo drawing in the layer',
+                       'does not clear the target to transparent pixels'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('layer-options-flags')[1],
                          ['or/c', '0', '2', '4', '6', '16', '18', '20', '22'])
@@ -3816,8 +3822,9 @@ class R3gaGeometryTests(unittest.TestCase):
 
     def test_specialized_canvases_preserve_borrowing_and_target_requirements(self):
         text = ' '.join(self.text('specialized-canvases.scrbl').split())
-        for phrase in ('save count 1', '1 and 64', 'distinct surfaces', 'Alpha8',
-                       'expires', 'does not undo', 'matching backend names alone',
+        for phrase in ('@tech{save count} 1', '1 and 64', 'distinct surfaces', 'alpha-8',
+                       'cannot be used after the function returns or exits early', 'do not undo drawing',
+                       'GPU surfaces must belong to the same GPU context',
                        'does not clear it automatically'):
             self.assertIn(phrase, text)
 
@@ -3855,7 +3862,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 315)
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 316)
         self.assertEqual(sum(f == 'examples' for f, _ in forms), 25)
         text = (ROOT / 'tools/reference-native-test.rkt').read_text()
         self.assertIn('(in-range 2)', text)
@@ -4054,7 +4061,7 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_audit_policies_distinguish_preflight_and_single_pass_publication(self):
         text = ' '.join(self.text('output-audit').split())
-        for phrase in ('preflight executes the callback too', 'twice',
+        for phrase in ('@deftech{output preflight} executes the callback', 'twice',
                        'side effects are not rolled back',
                        'default @racket[\'report]', 'does not truncate or replace'):
             self.assertIn(phrase, text)
@@ -4143,7 +4150,7 @@ class R3gbRasterTests(unittest.TestCase):
     def test_displayed_examples_remain_opt_in_native_code(self):
         forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, _, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(forms.count('racketblock'), 315)
+        self.assertEqual(forms.count('racketblock'), 316)
         self.assertEqual(forms.count('examples'), 25)
         for name in ('raster-buffers', 'image-operations', 'graphics', 'output-groups'):
             self.assertNotIn('@examples', self.text(name))
@@ -4719,7 +4726,7 @@ class R4bDocumentationTests(unittest.TestCase):
         text = ' '.join(self.text('gpu-transfers').split())
         for phrase in ('leaves the destination unchanged', 'can leave partial writes',
                        'rollback is not promised', 'Row padding is initialized',
-                       'This is conversion, not scaling', 'same-context staging GPU surface'):
+                       'This is conversion, not scaling', 'temporary GPU surface in the same context'):
             self.assertIn(phrase, text)
 
     def test_filter_placement_returns_owned_image_and_two_immutable_vectors(self):
@@ -5109,7 +5116,7 @@ class R4cInteropTests(unittest.TestCase):
 
     def test_external_token_lifetime_and_native_platform_rules_are_local(self):
         external = self.text('gpu-external-resources')
-        for phrase in ('active', 'call-with-gpu-context', 'creating thread',
+        for phrase in ('active', '@tech{GPU activation}', 'creating thread',
                        'does not satisfy @racket[skia-resource?]',
                        'not\nmanaged by @racket[with-skia]',
                        '@racket[gpu-external-texture-close!]'):
@@ -5344,7 +5351,7 @@ class R4dPresentationTests(unittest.TestCase):
 
     def test_gpu_output_documents_explicit_readback_and_bounded_fallback(self):
         text = ' '.join(self.text('gpu-output').split())
-        for phrase in ('explicit synchronous readback', 'CPU-owned image',
+        for phrase in ('explicit synchronous @tech{GPU readback}', 'CPU-owned @tech{image}',
                        'does not close', 'not a general runtime renderer fallback'):
             self.assertIn(phrase, text)
 
@@ -5370,7 +5377,7 @@ class R4dPresentationTests(unittest.TestCase):
     def test_examples_are_unchanged_by_r4d(self):
         forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
-        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 315)
+        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 316)
         self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
 
     def test_gpu_output_remains_in_r4d_after_r4e_completion(self):
@@ -5579,7 +5586,7 @@ class R4eDcIntegrationTests(unittest.TestCase):
     def test_examples_remain_unchanged_by_r4e(self):
         forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
-        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 315)
+        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 316)
         self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
 
     def test_source_review_contains_r4e_chapters_cases_and_pinned_inventories(self):
