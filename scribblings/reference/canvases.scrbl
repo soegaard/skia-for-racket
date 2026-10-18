@@ -277,15 +277,15 @@ Replaces the current transform with @racket[matrix]. The clip is unchanged.
 Combines the current transform with @racket[matrix] using the product
 @math{C M}, where @math{C} is the current transform and @math{M} is
 @racket[matrix]. A point is mapped by @racket[matrix] first and by the previous
-transform second. The calculation uses single-precision arithmetic.
+transform second.
 }
 
 @section[#:tag "skia-clipping"]{Clipping}
 
-A @deftech{clip} limits the coverage affected by later drawing. The geometry supplied to
-a clipping operation is transformed by the current transform when the operation
-runs. Subsequent transform changes do not move the established clip. Saving and
-restoring canvas state is the usual way to apply a temporary clip.
+A @deftech{clip} limits where later drawing can appear. When a clip is created,
+its shape is positioned using the current transform. Later changes to the
+transform do not move the clip. Save and restore canvas state to apply a clip
+temporarily.
 
 @bold{Conceptual diagram.} Establishing a local @math{(0,0,75,55)} clip after
 translation by @math{(40,55)} fixes target coverage at @math{(40,55,75,55)}.
