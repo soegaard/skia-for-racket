@@ -12,9 +12,8 @@ lifetime and backend restrictions.
 Unless an entry says otherwise, drawing functions use the canvas's current
 @tech[#:key "canvas transform"]{transform} and @tech{clip}.
 Functions that accept a @tech{paint} do not mutate it, and no
-function retains a @tech{borrowed canvas} for later use. Coordinates are
-@tech{drawing scalar}s. Drawing to a recording stores an operation rather than
-immediately producing pixels.
+function retains a @tech{borrowed canvas} for later use. Drawing to a recording
+stores an operation rather than immediately producing pixels.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -31,10 +30,9 @@ specified @racket[paint]. The current canvas transform and clip apply. The paint
 selects a fill, a stroke, or both. Drawing does not reset the transform, clip,
 or paint.
 
-The coordinates and dimensions must be @tech{drawing scalar}s. The computed
-right and bottom coordinates must also be in range. Width and height may be
-zero but must not be negative. Stroke and filter output may extend outside the
-rectangle's geometric bounds; the receiving clip still applies.
+Width and height may be zero but must not be negative. Stroke and filter output
+may extend outside the rectangle's geometric bounds; the receiving clip still
+applies.
 
 The canvas and paint must be valid for native use. GPU-dependent paint content
 requires the matching active GPU context; it is not implicitly read back for
@@ -147,8 +145,8 @@ released before the call returns.
 
 @section[#:tag "skia-drawing-batches"]{Points and Arcs}
 
-These primitives use the same drawing-scalar, resource, transform, and clip
-rules as the other drawing functions. Batch input is validated before drawing;
+These primitives use the same resource, transform, and clip rules as the other
+drawing functions. Batch input is validated before drawing;
 an empty point batch still requires a valid canvas and paint. Native point
 batches do not imply portable SVG output. Use @racket[draw-markers] for
 explicitly lowered marker geometry.

@@ -33,9 +33,8 @@ open resources on their owning thread; native rejection raises an exception.
 Filter coordinates are @tech{local coordinates}, transformed with the drawing
 operation. Rectangles are lists or vectors of @tt{x, y, width, height}, not
 left/top/right/bottom coordinates. Width and height are nonnegative. Source,
-lens, and tile rectangles specifically require positive extents. Coordinates,
-coefficients, and computed edges must be drawing scalars. Positive extents that
-collapse after native rounding are rejected.
+lens, and tile rectangles specifically require positive extents. Positive
+extents that collapse after native rounding are rejected.
 
 The optional crop constrains the filter node's output region. It is not a
 canvas @tech{clip} and does not move pixels. Cropping a child before a blur can produce
@@ -577,8 +576,8 @@ Lighting filters interpret input alpha as a height field, scaled by
 compute a lit surface, not the input's original RGB illuminated in place.
 Diffuse output uses Lambert-style lighting; specular output uses a highlight
 exponent. The light color supplies RGB; its alpha is not a surface opacity.
-Surface scale is a signed drawing scalar. Coefficient must be nonnegative
-before conversion. The direction, location, and target use three drawing-scalar
+Surface scale may be positive, zero, or negative. Coefficient must be nonnegative
+before conversion. The direction, location, and target each have three
 coordinates. A distant light's direction must be nonzero after native rounding;
 a spotlight's location and target must remain distinct after rounding. The
 current two-dimensional drawing transform does not turn these into a
@@ -765,8 +764,8 @@ source supplied to the surrounding graph. This operation rasterizes picture
 content for filtering; it does not guarantee vector replay on PDF or SVG.
 
 The optional target is a four-element x, y, width, height list or vector with
-positive extents and drawing-scalar coordinates. It selects the picture's
-rasterization rectangle, not a fit-to-size transform of the recorded commands.
+positive extents. It selects the picture's rasterization rectangle, not a
+fit-to-size transform of the recorded commands.
 Omitting it uses the picture's native cull rectangle. The result is clipped to
 both the target and the picture's cull rectangle. The optional crop uses the
 common image-filter output-region rules. The source picture must be open

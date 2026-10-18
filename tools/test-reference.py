@@ -1396,6 +1396,35 @@ class R2ProseTests(unittest.TestCase):
     def text(self, name):
         return (ROOT / checks.REFERENCE / name).read_text()
 
+    def test_general_numeric_limits_are_centralized(self):
+        notation = self.text('notation.scrbl')
+        self.assertIn('@deftech{drawing scalar}', notation)
+        for phrase in ('-3.402823e38', '3.402823e38', 'coefficients',
+                       'components supplied in lists or vectors', 'padding'):
+            self.assertIn(phrase, notation)
+        # Projective matrices deliberately use a wider range than the general rule.
+        exceptions = {'notation.scrbl', 'projective-matrices.scrbl'}
+        for path in (ROOT / checks.REFERENCE).rglob('*.scrbl'):
+            if path.name not in exceptions:
+                with self.subTest(chapter=path.name):
+                    self.assertNotRegex(path.read_text(), r'drawing[\s-]+scalars?')
+
+    def test_operation_specific_numeric_restrictions_remain_explicit(self):
+        cases = {
+            'shaders.scrbl': ('Radii must be nonnegative', 'endpoints must differ'),
+            'codecs.scrbl': ('must remain strictly positive after binary32',
+                            'positive value that rounds to zero is rejected'),
+            'image-filters.scrbl': ('positive extents', 'distinct after rounding'),
+            'text-blobs.scrbl': ('strictly less than @racket[bottom]',),
+        }
+        for chapter, phrases in cases.items():
+            text = ' '.join(self.text(chapter).split())
+            for phrase in phrases:
+                with self.subTest(chapter=chapter, phrase=phrase):
+                    self.assertIn(phrase, text)
+        for chapter in ('matrices.scrbl', 'paths.scrbl', 'output-pages.scrbl'):
+            self.assertIn('@secref["skia-scalars"]', self.text(chapter))
+
     def test_matrix_order_and_rounding_are_explicit(self):
         text = self.text('matrices.scrbl')
         self.assertIn('xx, yx, xy, yy, x0, y0', text)
@@ -1414,7 +1443,7 @@ class R2ProseTests(unittest.TestCase):
         text = self.text('images.scrbl')
         self.assertIn("'nearest]", text)
         self.assertIn("'linear]", text)
-        self.assertIn('fractional drawing scalars', text)
+        self.assertIn('coordinates and sizes can be fractional', text)
 
     def test_path_measure_distance_difference_is_explicit(self):
         text = self.text('paths.scrbl')

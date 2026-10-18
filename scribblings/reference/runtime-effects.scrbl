@@ -112,7 +112,7 @@ A nonarray scalar uniform takes one number. Vectors, matrices, and all arrays
 require a flat list or vector of exactly the reflected component count.
 A scalar array of length one still requires a sequence. Matrices use SkSL's
 column-major component order, with array elements consecutive. Floating
-components are drawing scalars packed as single-precision values. Integer
+components are packed as single-precision values. Integer
 components are exact signed 32-bit integers. Half-precision declarations still
 occupy four bytes per supplied component; the flag describes shader arithmetic,
 not a two-byte host buffer.
@@ -413,7 +413,7 @@ remains independently owned. Setting an ordinary mode with
 Returns a blender computing @math{k1 S D + k2 S + k3 D + k4} for each
 normalized premultiplied component, where @math{S} is source and @math{D} is
 destination. Results are clamped. With enforcement enabled, resulting RGB is
-also limited by resulting alpha. Coefficients must be drawing scalars.
+also limited by resulting alpha.
 This same algebra is available as @racket[make-arithmetic-image-filter] for
 combining image-filter inputs.
 }

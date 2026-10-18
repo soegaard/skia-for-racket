@@ -161,9 +161,9 @@ check that would make its glyph IDs portable to an unrelated shaper.
 @defproc[(draw-shaped-run [canvas canvas?] [shaper shaper?] [run shaped-run?] [x real?] [y real?]
           [paint paint?]) void?]{
 Draws the run with its origin translated by @racket[x] and @racket[y].
-For a nonempty run, the coordinates must be drawing scalars and the canvas,
-shaper, and paint must satisfy their native-use lifetime rules. The caller is
-responsible for matching the run to its shaping font. The operation does not
+For a nonempty run, the canvas, shaper, and paint must satisfy their native-use
+lifetime rules. The caller is responsible for matching the run to its shaping
+font. The operation does not
 close its arguments.
 
 An empty run draws nothing. For other runs the function creates and releases

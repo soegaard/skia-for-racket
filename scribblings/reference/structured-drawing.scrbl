@@ -16,8 +16,8 @@ call does not promise vector preservation in PDF or SVG. Portable alternatives
 are described in @secref["skia-portable-drawing"].
 
 Point collections are lists or vectors of two-coordinate lists or vectors.
-Coordinates are @tech{drawing scalar}s. Input arrays are validated and copied before
-submission, and their counts and byte sizes are bounded by
+Input arrays are validated and copied before submission, and their counts and
+byte sizes are bounded by
 @racket[current-skia-byte-limit]. Detached specifications retain no canvas.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -376,8 +376,8 @@ location in the atlas image.
           void?]{
 Draws one image batch with matching transform and source-rectangle counts.
 Every transform must satisfy @racket[atlas-transform?]. Source rectangles are
-nonempty drawing-scalar rectangles contained in the image; fractional source
-coordinates are allowed. Optional packed colors are supplied as color
+nonempty rectangles contained in the image; fractional source coordinates are
+allowed. Optional packed colors are supplied as color
 specifications, one per sprite. They combine with source samples using
 @racket[blend-mode]; the optional paint controls the resulting destination draw.
 

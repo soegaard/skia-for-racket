@@ -19,7 +19,7 @@ multiply column vectors. Composition applies the rightmost operand first.
 
 Coefficients and mapping inputs must be finite reals in the full binary32 range,
 from -3.4028234663852886e38 through 3.4028234663852886e38, and are rounded to
-binary32 on entry. This range is slightly wider than the ordinary drawing-scalar
+binary32 on entry. This range is slightly wider than the ordinary @tech{drawing scalar}
 range. New matrix results are also rounded; unrepresentable results raise.
 Mapping queries instead return immutable binary64 coordinate vectors, or
 @racket[#f] when a finite result is unavailable.

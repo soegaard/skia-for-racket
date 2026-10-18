@@ -12,8 +12,8 @@ and four pairs of corner radii. It is not an owned native resource. Drawing or
 path construction normalizes that specification according to Skia's rounded
 rectangle rules. The stored radii are not a promise that those radii fit the bounds.
 
-Coordinates and radius components are @tech{drawing scalar}s. Corners are ordered
-top-left, top-right, bottom-right, bottom-left. The two components at each corner
+Corners are ordered top-left, top-right, bottom-right, bottom-left. The two
+components at each corner
 are its horizontal and vertical radii. Use @racket[draw-rrect] to draw a value,
 @racket[canvas-clip-rounded-rect!] to clip with one, or @racket[path-add-rrect!]
 to convert its boundary to path commands.
@@ -35,8 +35,8 @@ Returns a copied specification. A nonnegative real radius uses that value for
 both components at every corner. Otherwise, radii must be a list or vector of
 four two-element point lists or vectors, with nonnegative components.
 
-Bounds use nonnegative dimensions and finite drawing-scalar edges. Stored bounds
-reflect the native rectangle's binary32 edges; radius components are stored as
+Bounds use nonnegative dimensions. Stored bounds reflect the native rectangle's
+binary32 edges; radius components are stored as
 inexact values and converted on native submission. This constructor does not load
 Skia or normalize oversized radii. Zero dimensions are allowed.
 }

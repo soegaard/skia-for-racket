@@ -32,9 +32,9 @@ the result.
                  (or/c (listof (or/c (list/c real? real?) (vector/c real? real?)))
                        (vectorof (or/c (list/c real? real?) (vector/c real? real?))))]) text-blob?]{
 Creates an owned text blob from nonempty glyph and position sequences of
-equal length. Each position contains drawing scalars relative to the blob's
-origin. Glyph IDs belong to the font's typeface; this is not a character-mapping
-or shaping operation. The input payload is bounded by
+equal length. Positions are relative to the blob's origin. Glyph IDs belong
+to the font's typeface; this is not a character-mapping or shaping operation.
+The input payload is bounded by
 @racket[current-skia-byte-limit].
 
 The blob copies glyphs and positions and captures font settings. Later mutation
@@ -64,7 +64,7 @@ its text content, and is not a persistent identifier across program runs.
 
 @defproc[(draw-text-blob [canvas canvas?] [blob text-blob?] [x real?] [y real?] [paint paint?])
           void?]{
-Draws the blob translated by the drawing scalars @racket[x] and @racket[y].
+Draws the blob translated by @racket[x] and @racket[y].
 The canvas transform, clip, and supplied paint apply. Reusing a blob does not
 reshape it or consult the original font wrapper. The operation leaves the blob
 open. Outline output uses @racket[text-blob->path].
@@ -176,8 +176,7 @@ logical appends, not any merging of adjacent runs performed by native storage.
 Glyph inputs are lists or vectors of unsigned 16-bit glyph IDs. Each ID must
 also be less than the glyph count of the selected font's typeface; zero is
 permitted. These operations do not map characters, shape text, or select a
-fallback typeface. Coordinates and transform coefficients must be
-@tech{drawing scalar}s. Position and transform sequences must match the glyph
+fallback typeface. Position and transform sequences must match the glyph
 count. A point may be a two-element list or vector.
 
 Input counts must fit a signed 32-bit integer. Copied inputs and accumulated
@@ -521,9 +520,9 @@ or descend; they are not an index into the positions vector.
                               [#:paint paint (or/c paint? #f) #f])
           (vectorof (list/c real? real?))]{
 Returns an immutable vector of horizontal intervals where glyph outlines
-intersect the band between @racket[top] and @racket[bottom]. Both bounds must
-be drawing scalars with @racket[top] strictly less than @racket[bottom]. Each
-interval is a list of its left and right endpoints, with left no greater than
+intersect the band between @racket[top] and @racket[bottom]. The value of
+@racket[top] must be strictly less than @racket[bottom]. Each interval is a list
+of its left and right endpoints, with left no greater than
 right. An empty vector means no intersections were reported.
 
 Coordinates are relative to the blob's stored origin; a later draw translation,
@@ -556,9 +555,9 @@ stored glyph positions share the same coordinate system.
                             (vectorof (or/c (list/c real? real?) (vector/c real? real?))))])
           skia-path?]{
 Returns an owned path containing the font's monochrome glyph outlines at the
-supplied positions. Glyph and position counts must agree, all IDs must belong
-to the font's typeface, and coordinates must be drawing scalars. Empty inputs
-return an owned empty path after validating the font.
+supplied positions. Glyph and position counts must agree, and all IDs must belong
+to the font's typeface. Empty inputs return an owned empty path after validating
+the font.
 
 The path is independent of the input sequences and the font's lifetime. Font
 size, scale, and skew are applied, but no paint, canvas transform, shaping, or
@@ -599,8 +598,8 @@ font; it does not reshape text or bend individual glyph outlines.
 The zero-based @racket[contour] selects by the same contour iteration used by
 @racket[make-path-measure] and @racket[path-measure-next-contour!]. The
 @racket[closed?] option affects measurement without modifying @racket[path].
-Offsets must be drawing scalars. For a glyph origin with coordinates
-@math{gx} and @math{gy}, its contour distance is @math{start + gx}, and its
+For a glyph origin with coordinates @math{gx} and @math{gy}, its contour distance
+is @math{start + gx}, and its
 normal displacement is @math{normal + gy}.
 
 At the sampled point @math{(px, py)}, let the unit tangent be @math{(tx, ty)}.

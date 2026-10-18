@@ -20,10 +20,10 @@ This order matches a six-element SVG affine transform; it is not row-major
 order for a three-by-three matrix.
 
 Affine-matrix operations are independent of native Skia. Coefficients are
-checked against the @tech{drawing scalar} range and rounded to IEEE
-single precision when stored. Mapping operations round input coordinates and
-results in the same way. A computed coefficient or result outside the accepted
-range raises an exception, except that @racket[matrix-invert] returns
+rounded to IEEE single precision when stored. Mapping operations round input
+coordinates and results in the same way. A computed coefficient or result
+outside the numeric limits in @secref["skia-scalars"] raises an exception,
+except that @racket[matrix-invert] returns
 @racket[#f] when an inverse is unavailable. Matrices need neither
 @racket[with-skia] nor @racket[skia-close!].
 
@@ -275,9 +275,9 @@ four-element coefficient vector is not an atlas-transform value.
 Returns a transform that maps the local @racket[anchor] to coordinates
 @racket[x] and @racket[y], with uniform @racket[scale] and rotation by
 @racket[degrees]. Positive angles rotate clockwise in downward-positive drawing
-coordinates. Inputs and computed coefficients must be drawing scalars; the
-scale must be nonnegative. Zero scale is accepted and collapses local points
-to the target location. The anchor is copied, not retained as a mutable input.
+coordinates. The scale must be nonnegative. Zero scale is accepted and
+collapses local points to the target location. The anchor is copied, not
+retained as a mutable input.
 
 For angle @math{r} in radians and anchor coordinates @math{ax} and @math{ay},
 the four coefficients are @math{scos = scale cos(r)},

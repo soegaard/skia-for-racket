@@ -160,8 +160,8 @@ functions used to construct RGB color spaces decode encoded channels into
 linear-light values. An inverse encodes in the other direction.
 
 The coefficient representation supports these standard-dynamic-range formulas,
-not arbitrary lookup tables, PQ, HLG, or tone mapping. Coefficients are drawing
-scalars rounded to IEEE binary32 when stored. Detached values do not require
+not arbitrary lookup tables, PQ, HLG, or tone mapping. Coefficients are rounded
+to IEEE binary32 when stored. Detached values do not require
 closing. Native-backed operations in this section still require the installed
 Skia library, even though their returned descriptions are detached.
 
@@ -230,8 +230,7 @@ numbers, not by an affine drawing matrix. A @deftech{chromaticity} describes a
 primary or white point through its CIE x and y coordinates.
 
 Matrix and chromaticity inputs may be lists or vectors. Input coefficients
-are copied, checked as drawing scalars, and rounded to binary32. Returned
-matrices are immutable vectors. These operations do not decode transfer
+are copied. Returned matrices are immutable vectors. These operations do not decode transfer
 functions, alter alpha, or convert a complete image by themselves.
 
 @defproc[(named-xyz-d50 [name (or/c 'srgb 'adobe-rgb 'display-p3 'rec2020 'xyz)])
@@ -298,7 +297,7 @@ color conversion without the corresponding transfer function.
                         [b (or/c (listof real?) (vectorof real?))])
          (and/c (vectorof real?) immutable?)]{
 Returns the matrix product @math{a b} as nine row-major binary32 coefficients.
-Each input must contain nine drawing scalars. With column color vectors,
+Each input must contain nine coefficients. With column color vectors,
 @racket[b] acts first. Singular inputs are permitted for multiplication, unlike
 the gamut required by @racket[make-rgb-color-space]. The inputs are copied and
 not mutated. A nonfinite native result raises an exception. Native Skia is
@@ -309,7 +308,7 @@ required, even though the input and output matrices are detached values.
          (or/c #f (and/c (vectorof real?) immutable?))]{
 Returns the native inverse as nine row-major coefficients, or @racket[#f]
 when inversion fails or produces nonfinite coefficients. The argument must
-contain nine drawing scalars; singular input is accepted and yields no inverse.
+contain nine coefficients; singular input is accepted and yields no inverse.
 The input is not modified. A returned inverse can amplify rounding error for
 an ill-conditioned matrix.
 }

@@ -49,8 +49,8 @@ drawn onto the previous target and the saved canvas state is restored.
 
 The @racket[paint] argument controls how the completed layer is drawn, not each
 drawing operation inside it. The @racket[bounds] argument is a list or vector
-of four @tech{drawing scalar}s: x, y, width, and height. Width and height must
-be nonnegative, and the right and bottom edges must also be drawing scalars.
+of four real numbers: x, y, width, and height. Width and height must be
+nonnegative.
 The default, @racket[#f], lets Skia choose the bounds.
 
 Restoring past the state saved by this call raises an exception. A continuation

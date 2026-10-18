@@ -24,9 +24,9 @@ captured by the callback must remain open whenever the page is drawn.
 @defproc[(unit->points [value real?] [unit (or/c 'pt 'in 'mm 'cm 'px) 'pt]) real?]{
 Converts a length to points. The factors are exactly 1 for points, 72 for inches,
 @racket[360/127] for millimeters, @racket[3600/127] for centimeters, and
-@racket[3/4] for CSS pixels at 96 pixels per inch. The input and result must lie
-within the drawing-scalar range. Exact inputs retain exact arithmetic; the
-conversion does not query a display's DPI.
+@racket[3/4] for CSS pixels at 96 pixels per inch. Exact inputs retain exact
+arithmetic; the conversion does not query a display's DPI. Raises an exception
+if the result falls outside the numeric limits in @secref["skia-scalars"].
 
 @examples[#:eval unit-eval
 (eval:check (unit->points 1 'in) 72)
@@ -47,10 +47,10 @@ Returns @racket[#t] for an output-page description and @racket[#f] otherwise.
                            [#:background background (or/c color? #f) #f]
                            [#:clip? clip? boolean? #t]) output-page?]{
 Returns a page description without invoking @racket[draw] or allocating native
-storage. Width and height are positive drawing scalars in @racket[unit]. Their
+storage. Width and height are positive lengths in @racket[unit]. Their
 point equivalents must each be from 0.001 through 14400.
 
-Margins are a nonnegative drawing scalar applied to all four sides, or a list
+Margins are a nonnegative real number applied to all four sides, or a list
 of four such values in left, top, right, bottom order. This is not CSS order.
 The paired horizontal and vertical margins must leave a positive content area.
 The background is @racket[#f] for no background drawing or a color specification
@@ -297,7 +297,7 @@ margins. It enlarges the raster region without shrinking or moving the original
 logical content. Pixel dimensions are the ceilings of the padded extents times
 @racket[scale]; both dimensions and the RGBA allocation must fit the ordinary
 surface limits. The snapshot is placed at the original origin minus left/top
-padding. Coordinates and padded dimensions must remain drawing scalars.
+padding.
 
 @bold{Conceptual diagram.} Padding creates a larger transparent raster region
 around unchanged logical content. The callback still receives local @racket[(0,0)]

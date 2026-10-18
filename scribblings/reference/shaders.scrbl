@@ -31,7 +31,7 @@ outside the interval. Image shaders select a separate mode for each axis.
 A @deftech{gradient stop} pairs a color with a position along a gradient.
 Gradient colors are a list or vector of at least two @tech{color specification}s.
 Positions, when supplied, are a list or vector of the same length, containing
-nondecreasing drawing scalars between zero and one. Repeated positions are
+nondecreasing real numbers between zero and one. Repeated positions are
 permitted for sharp transitions. Omitted positions are evenly spaced. Skia
 extends the first and last colors to interval endpoints when their positions
 are inside the interval. The temporary color and position arrays together must
@@ -56,8 +56,8 @@ is normalized to the byte-valued color representation.
                                       (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]) shader?]{
 Returns a gradient whose parameter is zero at the first endpoint and one at
 the second. The parameter is constant along lines perpendicular to the line
-joining the endpoints. Both endpoints must be drawing scalars and must differ
-after the wrapper's numeric conversion. Color and position restrictions are
+joining the endpoints. The endpoints must differ after the wrapper's numeric
+conversion. Color and position restrictions are
 listed in @secref["skia-tile-modes"]. Native construction can fail even when
 wrapper checks pass, for example when precision makes geometry degenerate.
 
@@ -83,7 +83,7 @@ wrapper checks pass, for example when precision makes geometry degenerate.
                                       (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]) shader?]{
 Returns a gradient centered at coordinates @racket[x] and @racket[y]. The
 parameter is distance from the center divided by @racket[radius]. The radius
-must be a positive drawing scalar. Colors, positions, and tiling follow
+must be positive. Colors, positions, and tiling follow
 @secref["skia-tile-modes"].
 
 @racketblock[
@@ -131,7 +131,7 @@ the start must be less than the end. Color stops and tiling follow
 Returns a gradient described by two circles. The first circle corresponds to
 parameter zero and the second to one. The native conical interpolation varies
 both center and radius; it is not simply distance from one fixed center.
-Radii must be nonnegative drawing scalars, and the two circles must differ.
+Radii must be nonnegative, and the two circles must differ.
 A circle pair rejected by native Skia raises an exception rather than returning
 @racket[#f]. Stop and tile restrictions are those in @secref["skia-tile-modes"].
 
@@ -262,7 +262,7 @@ GPU-dependent children preserve their context restrictions.
 Returns a Perlin fractal-noise shader. Base frequencies control variation
 along the local x and y axes. Each octave increases frequency and decreases
 its contribution. Frequencies must be nonnegative after single-precision
-rounding; the seed is a drawing scalar, not restricted to an integer. The octave count is exact
+rounding; the seed need not be an integer. The octave count is exact
 and may be zero.
 
 An optional positive integer tile size requests periodic noise. It is a

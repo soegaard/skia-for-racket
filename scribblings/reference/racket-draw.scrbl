@@ -199,9 +199,8 @@ to Skia's @racket['even-odd] fill rule, and @racket['winding] maps to
 @racket['winding]. The default is @racket['odd-even]; callers that intend to
 draw the source with winding fill should pass @racket['winding] explicitly.
 
-Each coordinate must be a @tech{drawing scalar}. The function raises an
-exception if public path data are invalid or if allocation or native
-construction fails; it does not return a partial path.
+The function raises an exception if public path data are invalid or if
+allocation or native construction fails; it does not return a partial path.
 }
 
 @defproc[(skia-path->dc-path

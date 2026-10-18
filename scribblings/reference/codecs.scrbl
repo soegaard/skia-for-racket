@@ -309,7 +309,7 @@ apply its result in a subsequent @racket[codec->image] call.
 @defproc[(codec-scaled-dimensions [codec codec?] [scale (and/c real? (>/c 0))])
           (values exact-positive-integer? exact-positive-integer?)]{
 Returns the native decoder's proposed pixel dimensions for @racket[scale].
-The scale must be a drawing scalar that remains strictly positive after binary32
+The scale must remain strictly positive after binary32
 rounding. A positive value that rounds to zero is rejected. Scales above one
 are accepted as queries, but returned dimensions do not exceed the encoded size.
 The result may be a supported approximation rather than the requested ratio.

@@ -39,8 +39,7 @@ content.
           [#:color-filter color-filter (or/c color-filter? #f) #f]
           [#:mask-filter mask-filter (or/c mask-filter? #f) #f]
           [#:image-filter image-filter (or/c image-filter? #f) #f]) paint?]{
-Creates an owned mutable paint with the specified settings. Numeric stroke
-width and miter limit must also be @tech{drawing scalar}s.
+Creates an owned mutable paint with the specified settings.
 
 The style selects filling, stroking, or both. Stroke width is measured in local
 drawing units; zero requests a @tech{hairline} rather than no stroke. The
@@ -299,8 +298,7 @@ Some primitives, such as @racket[draw-line], always use stroke behavior.
                                  [width (and/c real? (>=/c 0))]) void?]{
 Sets the stroke width in local drawing units. Zero selects a @deftech{hairline},
 a stroke whose width is one device pixel regardless of the canvas transform;
-it does not disable stroking. The width must be a nonnegative
-@tech{drawing scalar}.
+it does not disable stroking. The width must be nonnegative.
 
 
 @racketblock[
@@ -358,7 +356,7 @@ limited by @racket[paint-set-miter-limit!].
                                 [limit (and/c real? (>=/c 0))]) void?]{
 Sets the dimensionless @deftech{miter limit}. It limits how far a sharp miter join can
 extend relative to the stroke width; a join that exceeds the limit is beveled.
-The limit must be a nonnegative @tech{drawing scalar}.
+The limit must be nonnegative.
 }
 
 @defproc[(paint-set-blend-mode! [paint paint?]

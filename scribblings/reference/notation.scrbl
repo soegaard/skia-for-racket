@@ -27,8 +27,11 @@ A @deftech{drawing scalar} is a real number in the inclusive range
 and NaNs. Native drawing uses single-precision floating-point coordinates;
 exact inputs are not a promise of exact geometry after conversion.
 
-The signatures use @racket[real?] for coordinate arguments. Unless an entry
-states otherwise, each such argument must also be a @tech{drawing scalar}.
+Unless an entry states otherwise, this range applies to real-valued drawing
+parameters, including coordinates, dimensions, angles, scale factors, and
+coefficients. It also applies to components supplied in lists or vectors,
+such as points, rectangles, and matrices. Individual entries state additional
+restrictions or exceptions rather than repeating this general rule.
 A nonnegative dimension may be zero. A pixel dimension instead uses an exact
 integer and follows the bounds stated by the constructor.
 
@@ -43,7 +46,8 @@ order and point-application order.
 
 The arguments @racket[_x], @racket[_y], @racket[_width], and @racket[_height]
 describe a rectangle by position and size, not by opposite corners. Its computed
-right and bottom coordinates must also fit the drawing-scalar range.
+right and bottom coordinates must also fit the drawing-scalar range. The
+same limits apply to rectangle bounds enlarged by padding.
 
 @section{Errors and Stability}
 

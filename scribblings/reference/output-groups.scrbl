@@ -29,8 +29,8 @@ that were already flattened.
           [#:raster-executor executor (or/c #f 'cpu output-raster-executor?) #f])
           output-group-report?]{
 Captures @racket[draw] with a borrowed recording canvas whose local origin is placed at
-@racket[x] and @racket[y] on the destination. The positive logical dimensions and padded edges
-must remain drawing scalars. Padding accepts a nonnegative scalar or the left/top/right/bottom
+@racket[x] and @racket[y] on the destination. Logical dimensions must be positive.
+Padding accepts a nonnegative real number or the left/top/right/bottom
 list forms used by @racket[draw-rasterized]. It enlarges the captured region without shrinking
 the original content. Both replay strategies use the same padded local clip.
 

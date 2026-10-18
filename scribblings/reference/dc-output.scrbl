@@ -87,8 +87,8 @@ operation that would require raster representation.
 Creates an ordinary detached output-page description whose drawing callback is
 adapted through @racket[call-with-output-dc]. The page constructor retains the
 usual physical-unit, background, and content-clipping rules from
-@racket[make-output-page]. A margin is either one nonnegative drawing scalar
-applied to all four sides or four nonnegative drawing scalars in left, top,
+@racket[make-output-page]. A margin is either one nonnegative real number
+applied to all four sides or four nonnegative real numbers in left, top,
 right, bottom order. The horizontal and vertical margin pairs must leave a
 positive content width and height.
 

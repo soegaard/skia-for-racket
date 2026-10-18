@@ -13,9 +13,9 @@ pixels. Attach one to a @tech{paint}, wrap a @tech{shader} with
 inside a @tech{filter graph}.
 
 Constructors return @tech{owned resources} and retain any input filters independently
-of the caller's wrappers. Numeric coefficients must be @tech{drawing scalars}. Native
-construction failure raises an exception. Applying a filter does not change
-the input image's stored pixels or its color-space metadata.
+of the caller's wrappers. Native construction failure raises an exception.
+Applying a filter does not change the input image's stored pixels or its
+color-space metadata.
 
 @section{Core Color Filters}
 

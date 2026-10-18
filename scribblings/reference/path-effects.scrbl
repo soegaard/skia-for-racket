@@ -16,7 +16,7 @@ The constructors return owned resources. A paint or composed effect retains
 its own native references to its inputs; it does not take ownership of the
 caller's wrappers. Inputs must be open on the appropriate owning thread when
 used. GPU-dependent inputs retain their context restrictions. Native rejection
-raises an exception. Numeric arguments must also be @tech{drawing scalar}s.
+raises an exception.
 
 @section{Path Effects}
 
@@ -28,7 +28,7 @@ The predicate remains true after the resource is closed.
 @defproc[(make-dash-path-effect [intervals (or/c list? vector?)] [phase real? 0]) path-effect?]{
 Returns an effect that alternates drawn and skipped distances along a stroke.
 The first interval is drawn, the second is skipped, and the pattern repeats.
-Intervals are nonnegative drawing scalars in a list or vector of even length,
+Intervals are nonnegative real numbers in a list or vector of even length,
 with at least two entries and a positive sum. Zero entries are allowed, but
 an all-zero pattern is rejected. The copied interval array must fit
 @racket[current-skia-byte-limit].

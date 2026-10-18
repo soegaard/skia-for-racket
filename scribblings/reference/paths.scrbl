@@ -17,7 +17,7 @@ For explicit conversion to and from Racket @racket[dc-path%] values, see
 separate Draw value and rejects topology that one @racket[dc-path%] cannot
 represent without changing open contours.
 
-Path coordinates are @tech{local coordinates} and must be @tech{drawing scalar}s.
+Path coordinates are @tech{local coordinates}.
 Construction and mutation do not use a canvas's current transform. Each native
 operation requires an open path on its owning thread. A copied or transformed
 path has its own lifetime.
@@ -228,8 +228,7 @@ The native path resource remains open.
 These operations append a contour; they do not replace the existing geometry.
 The @racket['cw] and @racket['ccw] directions refer to clockwise and
 counterclockwise winding in the initial downward-y coordinate system. Widths,
-heights, and radii must be nonnegative. Rectangle right and bottom coordinates
-must also be in the drawing-scalar range.
+heights, and radii must be nonnegative.
 
 @defproc[(path-add-rect! [path skia-path?] [x real?] [y real?]
                         [width (and/c real? (>=/c 0))]
@@ -617,8 +616,8 @@ Creates a measure of an independent snapshot of @racket[path]. Later mutation
 or closure of the path does not affect it. Forced closure includes a closing
 segment for each open contour without changing the source.
 
-The positive drawing scalar @racket[resolution-scale] controls approximation
-precision; values above one request finer measurement at additional cost. It is
+The positive @racket[resolution-scale] controls approximation precision;
+values above one request finer measurement at additional cost. It is
 not a geometric scale factor and does not multiply reported lengths.
 }
 
@@ -648,7 +647,7 @@ Advances to the next contour and returns @racket[#t] when one exists. Returns
                                        [distance (and/c real? (>=/c 0))])
          (values (or/c real? #f) (or/c real? #f) (or/c real? #f) (or/c real? #f))]{
 Returns the position x and y and the unit tangent x and y at @racket[distance].
-The distance must be a nonnegative drawing scalar no greater than the current
+The distance must be nonnegative and no greater than the current
 contour's measured length. An out-of-range value raises an exception.
 An unavailable position, such as on a zero-length contour, returns four
 @racket[#f] values instead of uninitialized coordinates.
@@ -804,9 +803,8 @@ second contour rather than another distance on the curve.
 @(declare-exporting skia skia/geometry #:use-sources (skia/geometry))
 
 These operations extend the path construction and inspection interfaces.
-Coordinates and angles are @tech{drawing scalar}s rounded to binary32 before
-native use. Angles are in degrees. A positive oval sweep is clockwise in the
-usual unreflected coordinate system with the y-axis pointing downward.
+Angles are in degrees. A positive oval sweep is clockwise in the usual
+unreflected coordinate system with the y-axis pointing downward.
 Rectangle arguments use coordinates, width, and height; positive extents must
 remain positive when the right and bottom edges are rounded. Arc radii are
 checked for nonnegativity after binary32 rounding; a negative input that rounds
@@ -844,9 +842,10 @@ degenerate behavior; this operation does not create an alternative arc algorithm
           [#:direction direction (or/c 'cw 'ccw) 'cw])
           void?]{
 Appends an elliptical arc from the current point to the point displaced by
-@racket[dx] and @racket[dy]. The relative endpoint must also remain in drawing-scalar
-range. The radii, axis rotation, and arc choices have the same meanings as in
-@racket[path-arc-to!].
+@racket[dx] and @racket[dy]. Raises an exception if adding the offsets to the
+current point produces an endpoint outside the numeric limits in
+@secref["skia-scalars"]. The radii, axis rotation, and arc choices have the same
+meanings as in @racket[path-arc-to!].
 }
 
 @defproc[(path-arc-to-oval! [path path?]

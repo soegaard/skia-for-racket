@@ -42,7 +42,7 @@ execution.
                               [width (and/c real? (>=/c 0))]
                               [height (and/c real? (>=/c 0))] [uri string?]) void?]{
 Associates a link rectangle with a URI. The rectangle uses current local canvas
-coordinates and must satisfy the normal drawing-scalar rectangle checks.
+coordinates.
 Zero-width or zero-height rectangles emit no URI annotation, but their arguments
 are still validated. Picture recordings retain the URI annotation for replay.
 Ordinary raster targets ignore the annotation after validation; an active output
@@ -62,7 +62,7 @@ that the target exists.
 
 @defproc[(canvas-define-destination! [canvas canvas?] [name string?]
                                     [x real?] [y real?]) void?]{
-Defines a destination at the given drawing-scalar point in a PDF or SVG document.
+Defines a destination at the given point in a PDF or SVG document.
 The @racket[name] must be valid for a @tech{named destination} and must not already
 be defined in that document, even at the same point. PDF destinations can be
 referenced across pages.
@@ -83,7 +83,7 @@ are permitted, but finishing the PDF or SVG fails if any referenced name is
 undefined. Zero-size and fully clipped references are still checked at finish;
 visibility does not make a misspelled name acceptable.
 
-The rectangle uses local coordinates and the normal drawing-scalar checks.
+The rectangle uses local coordinates.
 Picture recording rejects named links rather than deferring their document
 scope. Ordinary raster targets perform no link registration after validation,
 subject to the active output policy.

@@ -107,8 +107,7 @@ gives @math{S T}. Existing pixels do not move when a later transform changes.
 
 @defproc[(canvas-translate! [canvas canvas?] [x real?] [y real?]) void?]{
 Translates the local coordinate system by @racket[x] and @racket[y]. The
-displacement is transformed by any earlier scale or rotation. Both arguments
-must be @tech{drawing scalar}s.
+displacement is transformed by any earlier scale or rotation.
 
 @racketblock[
 (with-skia ([surface (make-surface 180 100 #:background 'white)]
@@ -305,8 +304,7 @@ pixels already drawn.
 Combines the current clip with the transformed rectangle. The default
 @racket['intersect] keeps only their overlap; @racket['difference] removes the
 rectangle's coverage from the current clip. Neither operation enlarges the clip.
-@tech{Antialiasing} permits fractional edge coverage. Zero extents are accepted; the
-computed right and bottom coordinates must be @tech{drawing scalar}s.
+@tech{Antialiasing} permits fractional edge coverage. Zero extents are accepted.
 
 @racketblock[
 (with-skia ([surface (make-surface 180 100 #:background 'white)]

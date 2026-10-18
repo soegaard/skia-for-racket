@@ -42,9 +42,8 @@ Returns @racket[#t] for a font resource and @racket[#f] otherwise. Closure does 
                 [#:force-auto-hinting? force-auto-hinting? boolean? #f]
                 [#:baseline-snap? baseline-snap? boolean? #t]) font?]{
 Creates an owned mutable font. The size is measured in local drawing units,
-not necessarily device pixels or typographic points. Size, horizontal scale,
-and skew must be @tech{drawing scalar}s. Size and horizontal scale must be
-positive; skew is a shear factor, not an angle.
+not necessarily device pixels or typographic points. Size and horizontal scale
+must be positive; skew is a shear factor, not an angle.
 
 The font retains the supplied face through a native reference. Closing the
 caller's face wrapper does not invalidate the font. With @racket[#f], the
@@ -78,9 +77,9 @@ baseline; paragraph line breaking is provided by @racket[layout-text].
 @defproc[(draw-simple-text [canvas canvas?] [text string?] [x real?] [y real?]
                   [font font?] [paint paint?]) void?]{
 Draws unshaped text with the @tech{baseline} origin at coordinates @racket[x] and
-@racket[y], using @racket[font] and @racket[paint]. The coordinates must be
-drawing scalars. The canvas transform and clip apply. The operation does not
-close its arguments. It is suitable only when direct character-to-glyph mapping
+@racket[y], using @racket[font] and @racket[paint]. The canvas transform and clip
+apply. The operation does not close its arguments. It is suitable only when
+direct character-to-glyph mapping
 and ordinary advances are sufficient.
 
 The baseline-relative metric diagram in @secref["skia-font-metrics"] explains
@@ -167,7 +166,7 @@ Returns the font's size in local drawing units.
 }
 
 @defproc[(font-set-size! [font font?] [value (and/c real? (>/c 0))]) void?]{
-Sets the font's size in local drawing units. The new size must be a positive drawing scalar.
+Sets the font's size in local drawing units. The new size must be positive.
 Existing shapers and text blobs keep their captured font settings.
 }
 
@@ -176,7 +175,7 @@ Returns the font's horizontal scale factor.
 }
 
 @defproc[(font-set-scale-x! [font font?] [value (and/c real? (>/c 0))]) void?]{
-Sets the font's horizontal scale factor. The new factor must be a positive drawing scalar.
+Sets the font's horizontal scale factor. The new factor must be positive.
 Existing shapers and text blobs keep their captured font settings.
 }
 
@@ -185,7 +184,7 @@ Returns the font's horizontal shear factor.
 }
 
 @defproc[(font-set-skew-x! [font font?] [value real?]) void?]{
-Sets the font's horizontal shear factor. The factor must be a drawing scalar; it is not an angle.
+Sets the font's horizontal shear factor. The factor is not an angle.
 Existing shapers and text blobs keep their captured font settings.
 }
 
@@ -428,7 +427,7 @@ usable after the font is closed. It has not been placed at a text position.
 
 @defproc[(simple-text-path [font font?] [text string?] [x real? 0] [y real? 0]) skia-path?]{
 Returns an owned path for the unshaped string placed at the given baseline
-origin. Coordinates must be drawing scalars. The font is not closed or mutated.
+origin. The font is not closed or mutated.
 The result contains monochrome outlines; it is not a general conversion of
 bitmap or color glyph rendering into vectors.
 
@@ -547,16 +546,15 @@ the same native query and semantics as @racket[font-glyph-widths] and
                      [#:origin origin (or/c (list/c real? real?) (vector/c real? real?)) '(0 0)])
                      (vectorof (list/c real? real?))]{
 Returns glyph origins obtained by accumulating ordinary advances from
-@racket[origin]. Both origin coordinates must be drawing scalars. This does
-not apply shaping, pair kerning, or a canvas transform.
+@racket[origin]. This does not apply shaping, pair kerning, or a canvas transform.
 }
 
 @defproc[(font-glyph-x-positions [font font?] [glyphs (or/c (listof (integer-in 0 #xffff))
           (vectorof (integer-in 0 #xffff)))]
                      [#:origin origin real? 0]) (vectorof real?)]{
-Returns horizontal glyph origins accumulated from the drawing scalar
-@racket[origin]. The result is the x-coordinate counterpart of
-@racket[font-glyph-positions], not a shaped text layout.
+Returns horizontal glyph origins accumulated from @racket[origin]. The result
+is the x-coordinate counterpart of @racket[font-glyph-positions], not a shaped
+text layout.
 }
 
 @defproc[(font-glyph-paths [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
@@ -601,7 +599,7 @@ Partial results are released if construction fails.
                      [#:paint paint (or/c paint? #f) #f]) (values exact-nonnegative-integer? real?)]{
 Returns the number of Racket characters in the longest leading unshaped prefix
 that fits @racket[max-width], followed by its measured width. The count is not
-a UTF-8 byte offset. The width must be a nonnegative @tech{drawing scalar}.
+a UTF-8 byte offset. The width must be nonnegative.
 
 The boundary need not be a word or grapheme boundary. This is not Unicode line
 breaking or shaping-aware wrapping. An empty input returns 0 and 0.0.

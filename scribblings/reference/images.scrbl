@@ -118,7 +118,7 @@ Use a reflected canvas transform to mirror an image.
                              [#:sampling sampling (or/c 'nearest 'linear) 'linear]
                              [#:paint paint (or/c paint? #f) #f]) void?]{
 Draws the selected source rectangle into the destination rectangle. Source
-coordinates and sizes can be fractional drawing scalars, but the entire source
+coordinates and sizes can be fractional, but the entire source
 rectangle must fit inside the image. Destination position and size follow the
 same rules as @racket[draw-image-rect]. Zero source or destination extents are
 accepted by the wrapper but need not produce visible output.

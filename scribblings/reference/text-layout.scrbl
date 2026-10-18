@@ -42,7 +42,7 @@ mixed-direction paragraph layout or font fallback.
                 [#:line-height line-height (or/c (and/c real? (>/c 0)) #f) #f]) text-layout?]{
 Returns a layout using one shaper and the rules in
 @secref["skia-layout-options"]. Width and line height, when supplied, must be
-positive drawing scalars. Script, language, and features are interpreted as
+positive. Script, language, and features are interpreted as
 in @racket[shape-text]. A language string must not contain NUL.
 
 For justification, an explicit @racket[#:script] affects shaping but does not
@@ -122,8 +122,8 @@ per-character fallback.
 
 @defproc[(draw-text-layout [canvas canvas?] [layout text-layout?] [x real?] [y real?] [paint
           paint?]) void?]{
-Draws the layout box with origin at the drawing scalars @racket[x] and
-@racket[y], using each line's stored x offset and baseline. The canvas transform
+Draws the layout box with origin at @racket[x] and @racket[y], using each line's
+stored x offset and baseline. The canvas transform
 and existing clip apply; this operation does not clip to the box or reflow text.
 The layout's shaper must remain open. Temporary blobs or paths are released by
 the underlying shaped-run drawing operations.
@@ -214,9 +214,9 @@ contain every glyph.
 
 @defproc[(draw-mixed-text-layout [canvas canvas?] [layout mixed-text-layout?] [x real?] [y real?]
           [paint paint?]) void?]{
-Draws the stored layout at its upper-left box origin. The coordinates must
-be drawing scalars. The base shaper and font manager must be open, even for an
-empty line. The canvas transform and existing clip apply without an added box
+Draws the stored layout at its upper-left box origin. The base shaper and font
+manager must be open, even for an empty line. The canvas transform and existing
+clip apply without an added box
 clip or automatic reflow.
 
 Fallback fonts and shapers are created as needed during this call and released

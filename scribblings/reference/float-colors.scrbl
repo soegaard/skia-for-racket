@@ -126,9 +126,9 @@ be open and used according to their thread and GPU-context lifetime rules.
                             [#:stroke-width width (and/c real? (>=/c 0)) 1]
                             [#:antialias? antialias? boolean? #t]) paint?]{
 Returns an owned mutable paint with the specified color, its source
-interpretation, and the displayed drawing settings. Stroke width must also be
-a drawing scalar. Other settings use @racket[make-paint]'s defaults; this
-constructor does not accept its complete keyword set. Set additional settings
+interpretation, and the displayed drawing settings. Other settings use
+@racket[make-paint]'s defaults; this constructor does not accept its complete keyword set.
+Set additional settings
 through the documented paint mutators.
 
 The native paint stores the converted color in extended sRGB, not the supplied
@@ -241,7 +241,7 @@ space is retained independently of the temporary resource used during constructi
           [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a linear gradient from @racket[start] to @racket[end]. The endpoints
-contain drawing scalars and must be distinct after native point conversion.
+must be distinct after native point conversion.
 The color, stop, tile, and local-matrix rules are specified in
 @secref["skia-float-shaders"].
 
@@ -269,8 +269,8 @@ The color, stop, tile, and local-matrix rules are specified in
           [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a radial gradient from @racket[center] outward to @racket[radius].
-The center and positive radius must be drawing scalars. The shared gradient
-rules are specified in @secref["skia-float-shaders"].
+The radius must be positive. The shared gradient rules are specified in
+@secref["skia-float-shaders"].
 
 
 @racketblock[
@@ -298,9 +298,8 @@ rules are specified in @secref["skia-float-shaders"].
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns an angular gradient around @racket[center]. Angles are in degrees;
 the end angle must exceed the start angle. Positive angles follow clockwise
-rotation in downward-positive drawing coordinates. The center and angles must
-be drawing scalars. Stops, tiling, and the local matrix follow
-@secref["skia-float-shaders"].
+rotation in downward-positive drawing coordinates. Stops, tiling, and the local
+matrix follow @secref["skia-float-shaders"].
 
 
 @racketblock[
@@ -332,7 +331,7 @@ be drawing scalars. Stops, tiling, and the local matrix follow
           [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a gradient between circles with the given centers and nonnegative
-radii. Centers and radii must be drawing scalars; the native circles must differ.
+radii. The native circles must differ.
 The constructor can reject a configuration that the native backend cannot
 represent. The remaining rules follow @secref["skia-float-shaders"].
 

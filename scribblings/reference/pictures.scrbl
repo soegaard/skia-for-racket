@@ -194,8 +194,7 @@ the native resource remains open. Use @racket[skia-closed?] for the latter.
           [width (and/c real? (>=/c 0))] [height (and/c real? (>=/c 0))]
           [#:spatial-index spatial-index (or/c 'none 'rtree) 'none]) canvas?]{
 Begins a recording and returns its @tech{borrowed canvas}. The recorder must be open
-and must not already be recording. Coordinates, extents, and computed right
-and bottom coordinates must be drawing scalars. Zero extents are permitted.
+and must not already be recording. Zero extents are permitted.
 The rectangle is a culling bound, not a promise that drawing outside it will
 be preserved or clipped in a particular way. Add an explicit canvas clip when
 clipping is required.
@@ -249,7 +248,7 @@ Later mutation of @racket[data] does not modify the picture. The caller must
 explicitly pass @racket[#:trusted? #t]; the default raises an exception.
 
 Without overrides, the native cull width and height become the nominal size.
-Both overrides must be given together and must be nonnegative drawing scalars.
+Both overrides must be given together and must be nonnegative.
 They change only the nominal size used by scaled playback, not the recorded
 commands, cull rectangle, or coordinate origin. Supplying the original nominal
 size can preserve placement when reloading an R-tree recording.
@@ -297,8 +296,8 @@ unpublished temporary file on escape; it does not create parent directories.
 Returns an owned shader that samples the recorded picture. The shader retains
 the picture independently of its wrapper. A supplied local affine matrix must
 have a representable inverse. A tile rectangle contains x, y, width, and height,
-with positive extents and drawing-scalar coordinates; omitting it uses the native
-picture bounds. Tile modes and sampling control repeated picture sampling, not
+with positive extents; omitting it uses the native picture bounds. Tile modes
+and sampling control repeated picture sampling, not
 the geometry of a later drawing operation. Picture-shader use can rasterize the
 recording and does not guarantee vector output.
 
