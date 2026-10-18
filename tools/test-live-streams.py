@@ -108,7 +108,8 @@ class Sources(unittest.TestCase):
             self.assertIn(f'(define live-stream-{kind}-test-count {n})',s)
     def test_native_import_manifest(self):
         source=self.text('private/live-port-native.rkt')
-        rows=dict(re.findall(r'^\(define-raw (sk_\w+) (\(_fun[^\n]*\))\)$',source,re.M))
+        rows={name:' '.join(signature.split())
+              for name,signature in re.findall(r'^\(define-raw\s+(sk_\w+)\s+(\(_fun.*?\))\)',source,re.M|re.S)}
         manifest=json.loads(self.text('api/live-stream-ffi.json'))
         self.assertEqual(rows,manifest['standard']|manifest['xamarin'])
         self.assertEqual(len(manifest['xamarin']),6)

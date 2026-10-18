@@ -1651,7 +1651,7 @@
     "tools/test-image-operation-documents.py": "596c436b293a4a57007d900ae7ccdabe074565e8cb9d93337fd8ba66271bff06",
     "tools/test-image-operations.py": "5e0ed11388cae3029d098ea6fbc5de04ff5d977a4a190def43a74ad521c17b0b",
     "tools/test-integer-pixels.py": "89ed3677a4ceb4b4ff482e76fe7a39a8993350c64bc3dff07d04a730447a3c2f",
-    "tools/test-live-streams.py": "695fada475c59010f707fdde09770aa4e6524008794d3d6f01bf0388a42b7492",
+    "tools/test-live-streams.py": "a87250d36115a39b70422645e898b27ef20701933b8b02b373b58928ccfb83ca",
     "tools/test-public-api.py": "1b4a7afe85bf5d5e396c73d6b9163423a4a9efc59fd455bb9ca3a5608fe53fe0",
     "tools/test-release-candidate.py": "2d0e9e3b6039e3c9797f01966f5d1d5cedab20705811d714b10477f48d62623c",
     "tools/test-release-scope.py": "d47e20c23ed560fbfef1bc66cba34893d05ee742f32082f15c701af0db784bf2",

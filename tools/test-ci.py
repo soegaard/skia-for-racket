@@ -467,7 +467,8 @@ class WorkflowAndIntegration(unittest.TestCase):
             self.assertNotIn('--profile canvas', jobs[name])
     def test_gui_modules_are_explicitly_omitted_from_headless_tests(self):
         info = (HERE.parent / 'info.rkt').read_text()
-        omit = next(line for line in info.splitlines() if line.startswith('(define test-omit-paths '))
+        start = info.index('(define test-omit-paths')
+        omit = info[start:info.index('\n\n', start)]
         self.assertIn('"canvas.rkt"', omit)
         self.assertIn('"tests/canvas-gui-test.rkt"', omit)
         self.assertIn('"tests/canvas-text-load-order.rkt"', omit)
