@@ -118,6 +118,9 @@ Mention simpler alternatives where useful.
 Lead with what an operation does, then explain important qualifications
 separately.
 
+Prefer concrete descriptions over implementation jargon, while keeping public
+names and meaningful technical and resource-lifetime distinctions unchanged.
+
 Describe ordinary Racket data using ordinary Racket terminology, such as
 structures, lists, vectors, hash tables, and byte strings. Do not call these
 values "detached" or repeat that ordinary data does not need to be closed.
