@@ -21,6 +21,8 @@ from reference_review import (check_review_html, inspect_link_scopes, package_re
 from reference_gpu_surface_evidence import check_gpu_surface_receipt
 
 ROOT = Path(__file__).resolve().parents[1]
+COMMAND_TIMEOUT_SECONDS = 600
+NATIVE_CPU_TIMEOUT_SECONDS = 1800
 
 
 def main(argv=None):
@@ -97,8 +99,9 @@ def main(argv=None):
     def save():
         (output / 'validation.json').write_text(json.dumps(report, indent=2) + '\n')
 
-    def run(label, command):
-        entry = dict(label=label, command=list(map(str, command)), status='running', executed=False)
+    def run(label, command, *, timeout=COMMAND_TIMEOUT_SECONDS):
+        entry = dict(label=label, command=list(map(str, command)), timeout_seconds=timeout,
+                     status='running', executed=False)
         report['commands'].append(entry)
         save()
         log = output / (label + '.log')
@@ -107,7 +110,7 @@ def main(argv=None):
                 out.write('$ ' + repr(entry['command']) + '\n')
                 out.flush()
                 result = subprocess.run(entry['command'], cwd=ROOT, stdout=out,
-                                        stderr=subprocess.STDOUT, timeout=600, check=False)
+                                        stderr=subprocess.STDOUT, timeout=timeout, check=False)
             entry['executed'] = True
             entry['returncode'] = result.returncode
             entry['status'] = 'passed' if result.returncode == 0 else 'failed'
@@ -289,7 +292,8 @@ def main(argv=None):
                                     ROOT / 'tools/reference-raster-test.rkt',
                                     ROOT / 'tests/pict-native-test.rkt',
                                     ROOT / 'tests/racket-draw-native-test.rkt',
-                                    ROOT / 'tests/racket-draw-consumer-test.rkt'])
+                                    ROOT / 'tests/racket-draw-consumer-test.rkt'],
+                    timeout=NATIVE_CPU_TIMEOUT_SECONDS)
                 report['native_executed'] = True
             if args.gpu_context_backend:
                 gpu_output = output / 'gpu-context.json'

@@ -912,6 +912,12 @@ class BuildPlanTests(unittest.TestCase):
         self.assertNotIn('reference', labels)
         self.assertFalse(report['scribble_rendered'])
 
+    def test_native_cpu_batch_has_an_extended_timeout(self):
+        report = self.execute('--native')
+        timeouts = {row['label']: row['timeout_seconds'] for row in report['commands']}
+        self.assertEqual(timeouts['native-cpu'], self.runner.NATIVE_CPU_TIMEOUT_SECONDS)
+        self.assertEqual(timeouts['color-tests'], self.runner.COMMAND_TIMEOUT_SECONDS)
+
     def test_render_does_not_silently_skip_missing_racket(self):
         with (patch.object(self.runner, 'source_hashes', return_value={}),
               patch.object(self.runner, 'inspect_link_scopes', return_value={}),
