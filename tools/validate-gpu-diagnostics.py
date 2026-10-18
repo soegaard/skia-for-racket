@@ -59,8 +59,7 @@ def main(argv=None,*,root=ROOT):
         racket=shutil.which(args.racket)
         if not racket and Path(args.racket).is_file():racket=str(Path(args.racket).resolve())
         v.need(bool(racket),'Racket interpreter not found')
-        manifest=(root/'SOURCE-SHA256SUMS.txt').read_bytes()
-        for tool,extra in [('update-source-sums.py',['--check']),('api-inventory.py',['--check']),('test-gpu-diagnostics.py',[])]:
+        for tool, extra in [('api-inventory.py',['--check']),('test-gpu-diagnostics.py',[])]:
             run([sys.executable,root/'tools'/tool,*extra])
         run([racket,root/'tools/check-package-version.rkt'])
         roots=['main.rkt','gpu.rkt','gpu-egl.rkt','gpu-diagnostics.rkt',
@@ -83,8 +82,6 @@ def main(argv=None,*,root=ROOT):
         run([racket,root/'tests/gpu-diagnostics-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,'--report',receipt,'--token',token])
         result=v.inspect(receipt,token,backend,args.adapter)
         report.update(gpu_executed=True,byte_oracles_passed=True,inspection=result)
-        v.need((root/'SOURCE-SHA256SUMS.txt').read_bytes()==manifest,'source manifest changed during validation')
-        report['source_manifest_sha256']=hashlib.sha256(manifest).hexdigest()
         report['status']='passed'
         print('GPU diagnostics passed.')
         code=0

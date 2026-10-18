@@ -4,24 +4,19 @@ This batch adds five independent examples. It changes no public library API,
 renderer policy, or native binding. Tutorial 16 has its own small model module;
 it does not import files from Tutorial 15.
 
-## Source manifest
 
 After applying the patch, run from the full working checkout:
 
 ```sh
-python3 tools/update-source-sums.py
-python3 tools/update-source-sums.py --check
 git diff --check
 ```
 
-Review and commit the source manifest with the tutorial changes. Regeneration
 must use the full checkout, including any other local changes. No public-API
 approval command is needed for these documentation-local additions.
 
 ## Compile, test, render, and build the five manuals
 
 The batch checker runs real Racket commands. It does not approve snapshots,
-rewrite the source manifest, replace a failed image with a placeholder, or
 silently skip a failed native operation.
 
 ```sh

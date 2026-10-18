@@ -54,7 +54,7 @@ class Orchestration(unittest.TestCase):
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         commands=[]
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'SOURCE-SHA256SUMS.txt').write_text('synthetic')
+            root=Path(directory)
             (root/'run-tests.rkt').write_text('(define-runtime-path x "tests/unrelated-native-test.rkt")')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command)

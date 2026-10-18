@@ -36,7 +36,6 @@ require = gui_checks.pixels.require
 PURE_CASES = 32
 NATIVE_CASES = 14
 SOURCES = tuple(dict.fromkeys((*render.SOURCES, *consumer.SOURCES,
-    "SOURCE-SHA256SUMS.txt",
     "private/gpu-presenter.rkt", "private/gpu-io-trace.rkt", "private/gpu-frame-target-cache.rkt",
     "tests/gpu-frame-target-pure-test.rkt", "tests/gpu-frame-target-native-test.rkt",
     "tools/validate-gpu-frame-reuse.py", "tools/test-gpu-frame-reuse.py")))
@@ -161,7 +160,6 @@ def main(argv=None, *, root=ROOT):
         racket = str(Path(executable).resolve())
         result["racket_executable"] = racket
         before = fingerprint(root)
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root),
                                                      object_pairs_hook=gui_checks.pixels.unique_object))
         native, _ = base.select_backends(args.backend, identity)
@@ -195,7 +193,6 @@ def main(argv=None, *, root=ROOT):
             result["gui_reuse"] = inspect_gui_reuse(directory / "baseline", baseline, identity, args.adapter)
             result["gui_reuse_passed"] = True
         require(fingerprint(root) == before, "source changed during validation")
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         result.update(status="passed", source_sha256=before)
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"

@@ -23,4 +23,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/projective-matrices.rkt output/projective-matrices-0.32
 python3 tools/inspect-projective-matrices.py --probe-prefix output/projective-matrices-0.32
-python3 tools/update-source-sums.py

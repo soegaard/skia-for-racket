@@ -108,7 +108,6 @@ This stage does not claim vector serialization for these effect families.
 
 ## Acceptance
 
-`tools/validate-effects.py` requires the source manifest and reconciled capability
 inventory, compiles all new Racket workers/examples, runs `run-tests.rkt`, generates
 32 actual PDF/SVG documents, and inspects their raster bounds/vector/link structure.
 `--require-renderers` requires Poppler and librsvg and compares independently

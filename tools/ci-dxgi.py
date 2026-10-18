@@ -43,8 +43,9 @@ def main() -> int:
               'github': {k: os.environ.get(k) for k in ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')}}
     code = 1
     try:
-        report['source_files_verified'] = ci.manifest.check(root)
-        report['source_manifest_sha256'] = ci.sha256(root / ci.manifest.NAME)
+        report['source_files_verified'] = len(ci.source_paths(root))
+        ci.require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=root),
+                   'CI checkout must be clean before validation')
         row = next(row for row in load_matrix()['cpu'] if row['id'] == 'windows-x64')
         # Reuse the FULL isolated-install/CPU/ABI path. The hook executes before
         # source re-verification, artifact copying and temporary-home destruction.
@@ -52,7 +53,8 @@ def main() -> int:
         ci.require(report['checks'].get('required_dxgi_warp') is True, 'DXGI WARP gate did not execute')
         ci.require(report['checks'].get('required_backend_parity_presentation') is True,
                    'shared presentation parity gate did not execute')
-        ci.manifest.check(root)
+        ci.require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=root),
+                   'source changed during CI validation')
         report['status'] = 'passed'
         code = 0
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as exc:

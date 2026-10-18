@@ -45,8 +45,6 @@ def main(argv=None,*,root=ROOT):
         except (OSError,subprocess.SubprocessError):
             report.update(failed_command=command,failed_log=str(log));raise
     try:
-        run([sys.executable,root/'tools/update-source-sums.py','--check'])
-        before=hashlib.sha256((root/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
         run([sys.executable,root/'tools/api-inventory.py','--check'])
         run([sys.executable,root/'tools/test-live-streams.py'])
         run([racket,root/'tools/check-package-version.rkt'])
@@ -67,9 +65,7 @@ def main(argv=None,*,root=ROOT):
         report['probe']=probe.run_probe(root,output/'probe',racket,run,args.require_renderers)
         checks.need(report['probe'].get('status')=='passed','retained probe did not pass')
         report['probe_passed']=True
-        run([sys.executable,root/'tools/update-source-sums.py','--check'])
-        checks.need(before==hashlib.sha256((root/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest(),'source changed during validation')
-        report.update(status='passed',source_manifest_sha256=before)
+        report['status'] = 'passed'
     except Exception as error:
         report['error']=type(error).__name__+': '+str(error);print('Live streams FAILED: '+report['error'],file=sys.stderr)
         if report.get('failed_log'):

@@ -108,6 +108,5 @@ result for this release. Hardware EGL drivers, Racket expansion/RackUnit, and
 Mac/Windows external GL use still require actual host runs.
 
 Patch delivery uses normal Git-generated hunks and forward/reverse application
-checks, not relaxed context flags. `SOURCE-SHA256SUMS.txt` is regenerated only
 as the final selected runner step. Preserve failed diagnostics rather than
 replacing them with an old successful run's files.

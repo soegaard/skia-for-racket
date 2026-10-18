@@ -63,7 +63,6 @@ def main(argv=None, *, root=ROOT):
     try:
         report["summary"] = source_contracts(root)
         report["source_audit_passed"] = True
-        run([sys.executable, root / "tools/update-source-sums.py", "--check"])
         run([sys.executable, root / "tools/test-small-gaps.py"])
         if args.racket:
             racket = shutil.which(args.racket)
@@ -82,7 +81,6 @@ def main(argv=None, *, root=ROOT):
             report["native_executed"] = True
             run([racket, root / "examples/small-gaps.rkt"])
         source_contracts(root)
-        run([sys.executable, root / "tools/update-source-sums.py", "--check"])
         report["status"] = "passed"
     except Exception as exc:
         report["error"] = f"{type(exc).__name__}: {exc}"

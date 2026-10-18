@@ -35,9 +35,7 @@ SOURCES = (
     "tests/dc-output-pure-test.rkt", "tests/dc-output-native-test.rkt",
     "tests/dc-output-fixtures.rkt", "tests/dc-consumer-fixtures.rkt", "tests/dc-style-fixtures.rkt",
     "tools/dc-output-doctor.rkt", "examples/dc-output.rkt", "tools/dc_output_validation.py",
-    "tools/validate-dc-output.py", "tools/test-dc-output.py", "tools/dc-output-requirements.txt",
-    "tools/update-source-sums.py", "tools/ci-identity.rkt", "tools/validate-dc.py",
-    "info.rkt", "run-tests.rkt", "SOURCE-SHA256SUMS.txt")
+    "tools/validate-dc-output.py", "tools/test-dc-output.py", "tools/dc-output-requirements.txt")
 
 
 def fingerprint(root: Path):
@@ -88,7 +86,7 @@ class Runner:
         start = time.monotonic()
         try:
             process = subprocess.run(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", SKIA_SOURCE_SUMS_MODE="check"),
+                env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
                 timeout=self.timeout, check=False)
             file.write_bytes(process.stdout)
             text = process.stdout.decode("utf-8", errors="replace")
@@ -155,8 +153,6 @@ def main(argv=None, *, root=ROOT):
                 renderers[name] = str(Path(resolved).resolve())
             result["renderers"] = renderers
         before = fingerprint(root)
-        manifest = [sys.executable, root/"tools/update-source-sums.py", "--check"]
-        runner.run(manifest, root)
         ident = identity(json.loads(runner.run([racket, root/"tools/ci-identity.rkt"], root), object_pairs_hook=checks.unique))
         result["identity"] = ident
         modules = ["dc-output.rkt", "tests/dc-output-pure-test.rkt", "tests/dc-output-native-test.rkt",
@@ -198,7 +194,6 @@ def main(argv=None, *, root=ROOT):
         result["structure_passed"] = True
         result["independent_pixels_verified"] = bool(args.require_renderers)
         checks.require(fingerprint(root) == before, "source changed during document validation")
-        runner.run(manifest, root)
         result.update(status="passed", source_sha256=before)
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"

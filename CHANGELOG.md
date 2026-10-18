@@ -559,7 +559,7 @@ Includes focused acceptance and central regression integration.
 - Added raw-report/PNG headless/interop inspection, runner regression tests,
   examples and ownership/validation guides. Racket/Ganesh host acceptance remains
   separate from authoring source checks and native ctypes EGL/GL probes.
-- Preserved the accepted GL/Metal presenters and final source-sum sequencing.
+- Preserved the accepted GL/Metal presenters and validation sequencing.
 
 ## 0.42.0 — unified window presentation
 
@@ -577,7 +577,7 @@ Includes focused acceptance and central regression integration.
   diagnostics, strict submission/lifetime inspection, SDK geometry mirrors,
   examples and reference/validation guides. Host execution remains required.
 - Kept physical display inspection separate from automated submission evidence,
-  all preceding CPU/GPU parity gates and final source-sum sequencing intact.
+  all preceding CPU/GPU parity gates and validation sequencing intact.
 
 ## 0.41.0 — offscreen Metal parity
 
@@ -593,7 +593,7 @@ Includes focused acceptance and central regression integration.
   orchestration checks, headless examples and API/validation documentation.
 - Added patch-hunk count/context and ordinary Git application regression tests.
 - Preserved CPU defaults, explicit transfers, retained affinity, GL window
-  behavior and final source-sum sequencing. Metal presentation, external
+  behavior and validation sequencing. Metal presentation, external
   interop and performance conclusions remain outside this release.
 
 ## 0.40.0 — GPU images and transitive context affinity

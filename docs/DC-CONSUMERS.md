@@ -122,7 +122,6 @@ available. `dc.inspection.json` contains the consumer checks and reference
 difference statistics; `dc.review.html` includes all **sixteen** old/new PNGs.
 
 The source fingerprint includes the new fixtures, native suite, doctor,
-inspector and example. The source manifest remains the independent complete
 package inventory. Requiring this stage's test data never substitutes for
 running the actual native acceptance gate.
 
@@ -136,7 +135,6 @@ python3 tools/test-dc.py &&
 python3 tools/test-ci.py &&
 "$RACO" make dc.rkt tools/dc-doctor.rkt examples/dc-consumers.rkt run-tests.rkt &&
 python3 tools/validate-dc.py --racket "$RACKET" &&
-python3 tools/update-source-sums.py --check &&
 git diff --check
 ```
 

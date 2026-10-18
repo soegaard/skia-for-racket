@@ -244,7 +244,6 @@ python tools/validate-image-operations.py \
 Use the existing `tools/dc-output-requirements.txt` environment. Required viewers
 are `pdftoppm` and `rsvg-convert`; a missing required viewer is a failure.
 Linux CI uses Mesa/EGL on Racket 8.18 and 9.3. Windows uses D3D12/WARP on 9.3.
-Native setup, source manifest and full regression checks precede acceptance.
 The canonical Racket package version is checked early using `version/utils`.
 
 The fixture matrix covers offset, nonzero subset/clip, blur halo, offset shadow,

@@ -64,12 +64,6 @@ def synthetic_tree(root: Path):
     (root / "info.rkt").write_text('#lang info\n(define version "0.78")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
     inv.check_report(root, CATALOG, write=True)
     (root / "tools").mkdir(exist_ok=True)
-    # The real manifest validator is independently tested in existing source CI.
-    (root / "tools/update-source-sums.py").write_text(
-        'def check(root, *, manifest_only):\n'
-        '    assert manifest_only is False\n'
-        '    return 123\n')
-    (root / "SOURCE-SHA256SUMS.txt").write_text("synthetic manifest\n")
 
 
 def mutate_cap(c, ident, field, value):

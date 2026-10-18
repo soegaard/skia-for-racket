@@ -44,7 +44,7 @@ def fixture(root: Path):
                           'main.rkt': '#lang racket/base\n',
                           'tools/example.rkt': '#lang racket/base\n'}.items():
         p = root / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(content)
-    ci.manifest.update(root)
+    git(root, 'add', '--all')
     return root
 
 
@@ -114,77 +114,11 @@ class Matrix(unittest.TestCase):
             with self.assertRaises(ValueError): ci_matrix.main()
 
 
-class Manifest(unittest.TestCase):
+
+class Packaging(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root = fixture(Path(self.temp.name) / 'source root')
-    def test_valid(self): self.assertEqual(ci.manifest.check(self.root), 4)
-    def test_update_is_deterministic(self):
-        before = (self.root / ci.manifest.NAME).read_bytes(); ci.manifest.update(self.root)
-        self.assertEqual(before, (self.root / ci.manifest.NAME).read_bytes())
-    def test_check_never_rewrites_mismatch(self):
-        before = (self.root / ci.manifest.NAME).read_bytes(); (self.root / 'main.rkt').write_text('changed')
-        with self.assertRaises(ValueError): ci.manifest.check(self.root)
-        self.assertEqual(before, (self.root / ci.manifest.NAME).read_bytes())
-    def test_added_source_not_silent(self):
-        (self.root / 'new-file').write_text('new')
-        with self.assertRaises(ValueError): ci.manifest.check(self.root)
-    def test_ignored_generated_is_not_source(self):
-        (self.root / 'compiled').mkdir(); (self.root / 'compiled/a.zo').write_bytes(b'compiled')
-        self.assertEqual(ci.manifest.check(self.root), 4)
-    def test_setup_racket_windows_scratch_is_not_source(self):
-        (self.root / 'chocopkg/tools').mkdir(parents=True)
-        (self.root / 'chocopkg/racket.nuspec').write_text('runner scratch')
-        (self.root / 'chocopkg/tools/chocolateyInstall.ps1').write_text('runner scratch')
-        self.assertEqual(ci.manifest.check(self.root), 4)
-    def test_tracked_deletion_requires_staging(self):
-        git(self.root, 'add', 'main.rkt'); (self.root / 'main.rkt').unlink()
-        with self.assertRaises(ValueError): ci.manifest.update(self.root)
-    def test_manifest_only_copy_without_git(self):
-        target = Path(self.temp.name) / 'copy'; shutil.copytree(self.root, target, ignore=shutil.ignore_patterns('.git'))
-        self.assertEqual(ci.manifest.check(target, manifest_only=True), 4)
-        with self.assertRaises(subprocess.CalledProcessError): ci.manifest.check(target)
-    def test_manifest_only_still_checks_bytes(self):
-        (self.root / 'main.rkt').write_text('changed')
-        with self.assertRaises(ValueError): ci.manifest.check(self.root, manifest_only=True)
-    def test_duplicate_entries(self):
-        p = self.root / ci.manifest.NAME; p.write_text(p.read_text() * 2)
-        with self.assertRaises(ValueError): ci.manifest.check(self.root)
-    def test_empty_manifest(self):
-        (self.root / ci.manifest.NAME).write_text('')
-        with self.assertRaises(ValueError): ci.manifest.read_manifest(self.root)
-    def test_self_reference(self):
-        (self.root / ci.manifest.NAME).write_text('0' * 64 + '  ' + ci.manifest.NAME + '\n')
-        with self.assertRaises(ValueError): ci.manifest.read_manifest(self.root)
-    def test_malformed_digest(self):
-        (self.root / ci.manifest.NAME).write_text('not-a-hash  main.rkt\n')
-        with self.assertRaises(ValueError): ci.manifest.read_manifest(self.root)
-    def test_unsafe_paths(self):
-        for name in ('../secret', '/absolute', 'x/../y', 'x//y', './x', 'C:/x', 'x\\y', 'x\ny'):
-            with self.subTest(name=name), self.assertRaises(ValueError): ci.manifest.safe_path(self.root, name)
-    def test_symlink_is_rejected(self):
-        # Windows developer mode/elevation may be needed; use the path probe in
-        # that environment only when an actual symlink can be created.
-        target = self.root / 'alias'
-        try: target.symlink_to(self.root / 'main.rkt')
-        except (OSError, NotImplementedError): self.skipTest('host cannot create a test symlink')
-        with self.assertRaises(ValueError): ci.manifest.safe_path(self.root, 'alias')
-    def test_cli_environment_readonly_mode(self):
-        with patch.object(ci.manifest, 'ROOT', self.root), patch.dict(os.environ,
-             {'SKIA_SOURCE_SUMS_MODE': 'check', 'SKIA_SOURCE_SUMS_MANIFEST_ONLY': '1'}), quiet():
-            self.assertEqual(ci.manifest.main([]), 0)
-    def test_manifest_only_cannot_update(self):
-        with patch.dict(os.environ, {'SKIA_SOURCE_SUMS_MODE': 'update', 'SKIA_SOURCE_SUMS_MANIFEST_ONLY': '1'}):
-            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit): ci.manifest.main([])
-    def test_invalid_environment_is_not_update(self):
-        with patch.dict(os.environ, {'SKIA_SOURCE_SUMS_MODE': 'maybe'}):
-            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit): ci.manifest.main([])
-    def test_subdirectory_not_a_root(self):
-        with self.assertRaises(ValueError): ci.manifest.git_paths(self.root / 'tools')
-
-
-class Packaging(unittest.TestCase):
-    setUp = Manifest.setUp
     def test_archive_reproducible(self):
         a = Path(self.temp.name) / 'a.zip'; b = a.with_name('b.zip')
         ci.make_source_archive(self.root, a); ci.make_source_archive(self.root, b)
@@ -201,10 +135,7 @@ class Packaging(unittest.TestCase):
         (installed / 'main.rkt').write_text('changed')
         with self.assertRaises(ValueError): ci.verify_install(self.root, installed, home, home / 'source.zip')
     def test_native_binary_not_packaged(self):
-        (self.root / 'leaked.dll').write_bytes(b'not executable'); ci.manifest.update(self.root)
-        with self.assertRaises(ValueError): ci.make_source_archive(self.root, self.root.parent / 'source.zip')
-    def test_archive_changed_sources_rejected(self):
-        (self.root / 'main.rkt').write_text('changed')
+        (self.root / 'leaked.dll').write_bytes(b'not executable'); git(self.root, 'add', 'leaked.dll')
         with self.assertRaises(ValueError): ci.make_source_archive(self.root, self.root.parent / 'source.zip')
     def test_windows_uses_existing_installer_and_exact_racket(self):
         commands = ci.install_commands(Path('installed'), '/selected Racket/racket.exe', 'windows')
@@ -302,7 +233,7 @@ class EnvironmentAndIdentity(unittest.TestCase):
         clean = ci.clean_environment(dirty)
         for k in (*ci.OVERRIDE_KEYS, *ci.DISPLAY_KEYS, 'GPU_STRESS_FRAMES', 'SKIP_C_ABI', 'SKIA_EGL_PLATFORM'):
             self.assertNotIn(k, clean)
-        self.assertEqual(clean['GPU_MODE'], 'required'); self.assertEqual(clean['SKIA_SOURCE_SUMS_MODE'], 'check')
+        self.assertEqual(clean['GPU_MODE'], 'required')
     def test_isolated_home_and_addon(self):
         home = Path('/isolated/home'); env = ci.clean_environment({'PLTADDONDIR': 'old'}, home)
         self.assertEqual(env['PLTUSERHOME'], str(home)); self.assertEqual(env['PLTADDONDIR'], str(home / 'addon'))
@@ -487,7 +418,6 @@ class WorkflowAndIntegration(unittest.TestCase):
         text = (HERE / 'ci.py').read_text()
         self.assertIn('tools/validate-gpu-headless.py', text)
         self.assertNotIn("GPU_STRESS_FRAMES='", text)
-        self.assertIn("SKIA_SOURCE_SUMS_MANIFEST_ONLY='1'", text)
     def test_import_smoke_contract_matches_reader(self):
         self.assertIn("'gui_instantiated #f", (HERE / 'ci-import-smoke.rkt').read_text())
         self.assertIn("imports.get('gui_instantiated') is False", (HERE / 'ci.py').read_text())
@@ -495,14 +425,13 @@ class WorkflowAndIntegration(unittest.TestCase):
         s = (HERE / 'ci-abi/CMakeLists.txt').read_text()
         for name in ci.ABI_NAMES: self.assertIn(name, s)
         self.assertIn('if(MSVC)', s); self.assertIn('add_test', s)
-    def test_local_runners_integrate_ci_and_keep_sums_last(self):
+    def test_local_runners_integrate_ci(self):
         for name in ('test-validate-gpu-images.py', 'test-validate-gpu-headless.py'):
             spec = importlib.util.spec_from_file_location('ci_integration_' + name, HERE / name)
             m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
             result = m.Checks().simulate()
             self.assertEqual(result[0], 0); calls = result[1]
             self.assertIn('tools/test-ci.py', [c[1] for c in calls])
-            self.assertEqual(calls[-1][1], 'tools/update-source-sums.py')
             report = result[2] if name.endswith('images.py') else result[3]
             self.assertEqual(report['stage'], '0.46')
 
@@ -563,7 +492,6 @@ class Orchestration(unittest.TestCase):
         self.assertTrue(any(a[1].endswith('native-abi-lab.py') for a in c))
         self.assertIn('--no-cache', next(a for a in c if 'install' in a))
         self.assertTrue(any('--check-pkg-deps' in a for a in c)); self.assertTrue(any(a[0] == 'ctest' for a in c))
-        self.assertEqual(c[-1][-2:], ['--check', '--manifest-only'])
         native = next(i for i, a in enumerate(c) if 'install-native' in a[1])
         pure = next(i for i, a in enumerate(c) if '--pure' in a)
         self.assertLess(pure, native)
@@ -582,7 +510,7 @@ class Orchestration(unittest.TestCase):
         self.assertIsNone(error)
         command = next(c for c in calls if c[1].endswith('validate-dc.py'))
         self.assertIn('addon', command[1])
-        self.assertIn('--manifest-only', command)
+        self.assertNotIn('--manifest-only', command)
         self.assertEqual(command[command.index('--racket') + 1], report['racket_executable'])
         self.assertTrue(report['checks']['dc_foundation'])
     def test_dc_failure_blocks_success(self):
@@ -616,7 +544,7 @@ class Orchestration(unittest.TestCase):
         command = calls[ix]
         validator = next(a for a in command if a.endswith('validate-skia-canvas.py'))
         self.assertIn('addon', validator)
-        self.assertIn('--require-gui', command); self.assertIn('--manifest-only', command)
+        self.assertIn('--require-gui', command); self.assertNotIn('--manifest-only', command)
         self.assertEqual(command[command.index('--racket') + 1], report['racket_executable'])
         for env in envs:
             for key in ci.DISPLAY_KEYS: self.assertNotIn(key, env)
@@ -654,12 +582,10 @@ class DriverResults(unittest.TestCase):
             code = ci.main(['--profile', 'source', '--id', 'source'])
         result = json.loads((self.root / 'output/ci-source/ci-report.json').read_text())
         return code, result
-    def test_success_keeps_manifest_and_disclaims_hardware(self):
-        before = (self.root / ci.manifest.NAME).read_bytes()
+    def test_success_disclaims_hardware(self):
         code, result = self.run_driver(lambda runner, root, report: report.update(gpu={'status': 'not-run'}))
         self.assertEqual(code, 0); self.assertEqual(result['status'], 'passed')
         self.assertFalse(result['hardware_performance_claimed'])
-        self.assertEqual(before, (self.root / ci.manifest.NAME).read_bytes())
     def test_failure_has_machine_readable_report(self):
         def fail(*args): raise RuntimeError('explicit synthetic failure')
         code, result = self.run_driver(fail)
@@ -673,10 +599,10 @@ class DriverResults(unittest.TestCase):
     def test_stale_directory_is_not_reused(self):
         self.run_driver(lambda *args: None)
         with self.assertRaises(FileExistsError): self.run_driver(lambda *args: None)
-    def test_corrupt_installed_manifest_is_not_authoritative(self):
+    def test_changed_installed_source_is_rejected(self):
         home = Path(self.temp.name) / 'home'; installed = home / 'addon/skia'
         shutil.copytree(self.root, installed)
-        (installed / ci.manifest.NAME).write_text('0' * 64 + '  main.rkt\n')
+        (installed / 'main.rkt').write_text('changed')
         with self.assertRaises(ValueError): ci.verify_install(self.root, installed, home, home / 'source.zip')
 
 

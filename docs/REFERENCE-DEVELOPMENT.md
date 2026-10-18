@@ -452,7 +452,6 @@ scripts. Its ordinary source checker runs in staging and after extraction.
 It is not a complete installation for native execution or a rendered manual.
 Reference-only previews remain suitable for editing. Neither tutorial links
 nor the existing integrated publication checks are changed by this revision.
-Regenerate the repository-wide `SOURCE-SHA256SUMS.txt` only in the full checkout.
 
 ## Earlier R3g-b implementation
 
@@ -523,7 +522,6 @@ complete installation for native execution or tutorial rendering. Reference-only
 editing previews and integrated publication remain separate. This revision does
 not change their rendering, cross-reference, or archive-validation rules.
 
-Regenerate `SOURCE-SHA256SUMS.txt` in the complete checkout and commit it with
 the documentation changes. Do not generate the repository-wide manifest from
 a partial source-review fixture. Neither library implementation nor tutorial
 programs are changed by this documentation batch.
@@ -608,7 +606,6 @@ remaining public export; documenting a shared CPU type does not count its GPU
 or GUI operations as documented. This revision does not claim complete CPU
 coverage or platform acceptance.
 
-Regenerate `SOURCE-SHA256SUMS.txt` in the complete checkout after applying the
 patch. A checksum file generated from a partial authoring fixture must not
 replace the repository-wide source inventory.
 
@@ -956,7 +953,6 @@ python3 -B tools/check-reference.py --render --quick --native --racket "$RACKET"
 Use fresh output paths and ensure the `skia` collection resolves to the revised
 checkout. Source review requires the two original hash-pinned API inventories.
 Synthetic Python inventories are explicitly not substitutes for those files.
-Regenerate `SOURCE-SHA256SUMS.txt` only in the full checkout and commit it with
 the source changes. Keep downloaded patches and output directories outside it.
 
 ## Earlier R3d development
@@ -1720,6 +1716,4 @@ screen-reader evidence.
 
 ## Source inventory
 
-Run `python3 tools/update-source-sums.py` and then its `--check` mode in the full
-checkout after applying a patch. Never regenerate `SOURCE-SHA256SUMS.txt` from a
 partial fixture. Commit the updated manifest together with the source changes.

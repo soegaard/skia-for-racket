@@ -170,7 +170,6 @@ python tools/validate-d3d12.py --adapter hardware --adapter-index 0
 ```
 
 The local validator creates a fresh `output/gpu-d3d12-0.48-*` directory, retains
-command logs and failures, and verifies (never rewrites) the source manifest at
 the end. CI retains `ci-report.json`, `commands.json`, logs, native provenance and
 flat JSON/PNG evidence from the installed copy. CMake build products and native
 DLLs are not uploaded. SDK/Racket-call success is reported only after those

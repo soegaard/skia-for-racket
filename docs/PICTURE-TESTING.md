@@ -61,7 +61,6 @@ Do not use `tools/replay-picture-probe.rkt` on untrusted external SKPs: it
 explicitly opts into native trusted decoding. It is a development probe, not a
 safe file-viewing service.
 
-The successful validator's last step regenerates `SOURCE-SHA256SUMS.txt`.
 
 ## Authoring validation boundary
 

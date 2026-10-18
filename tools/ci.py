@@ -8,7 +8,6 @@ cache is restored. Successful workflow execution is evidence, not configuration.
 from __future__ import annotations
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -26,9 +25,6 @@ from ci_matrix import load_matrix
 from native_abi import catalog as native_abi_catalog, default_version
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location('ci_source_manifest', ROOT / 'tools/update-source-sums.py')
-manifest = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(manifest)
 DISPLAY_KEYS = ('DISPLAY', 'WAYLAND_DISPLAY', 'MIR_SOCKET')
 OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTCOMPILEDROOTS',
                  'PLT_PKG_NOSETUP', 'PLT_SETUP_OPTIONS', 'PLT_COMPILED_FILE_CHECK',
@@ -101,10 +97,10 @@ def clean_environment(environ: dict[str, str], home: Path | None = None) -> dict
     # Ignore ambient validator switches. A CI lane cannot become a silent skip.
     for key in tuple(env):
         if key.startswith(('GPU_BENCH_', 'GPU_STRESS_', 'SKIA_EGL_')) or key in (
-                'SKIP_C_ABI', 'SKIA_GPU_VALIDATION_RUN', 'SKIA_SOURCE_SUMS_MANIFEST_ONLY'):
+                'SKIP_C_ABI', 'SKIA_GPU_VALIDATION_RUN'):
             env.pop(key, None)
     env.update(PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
-               GPU_MODE='required', REQUIRE_HARDWARE='0', SKIA_SOURCE_SUMS_MODE='check')
+               GPU_MODE='required', REQUIRE_HARDWARE='0')
     if home is not None:
         env['PLTUSERHOME'] = str(home)
         env['PLTADDONDIR'] = str(home / 'addon')
@@ -119,25 +115,39 @@ def validate_identity(data: dict, row: dict) -> None:
     require(type(data.get('pointer_bytes')) is int and data['pointer_bytes'] == 8, 'CI lane requires 64-bit Racket')
 
 
+def source_paths(root: Path) -> list[str]:
+    raw = subprocess.check_output(['git', 'ls-files', '--cached', '-z'], cwd=root)
+    names = []
+    for name in raw.decode('utf-8').split('\0'):
+        if not name:
+            continue
+        path = root / name
+        require(not Path(name).is_absolute() and '\\' not in name and ':' not in name
+                and all(part not in ('', '.', '..') for part in Path(name).parts),
+                'unsafe Git source path: ' + repr(name))
+        require(path.is_file() and not path.is_symlink(), 'missing/unsafe Git source path: ' + name)
+        names.append(name)
+    require(names, 'empty Git source inventory')
+    return sorted(names)
+
+
 def make_source_archive(root: Path, destination: Path) -> dict:
-    rows = manifest.read_manifest(root)
+    names = source_paths(root)
     require(not destination.exists(), 'source archive destination already exists')
     with zipfile.ZipFile(destination, 'w', compression=zipfile.ZIP_STORED) as archive:
-        for name in sorted([*rows, manifest.NAME]):
+        for name in names:
             parts = Path(name).parts
             require(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads') for p in parts),
                     'generated/developer files must not enter the source package')
             require(not name.endswith(('.nupkg', '.so', '.dylib', '.dll', '.exe', '.pyc')),
                     'native/compiled binary must not enter the clean source package')
-            data = manifest.safe_path(root, name).read_bytes()
-            if name in rows:
-                require(hashlib.sha256(data).hexdigest() == rows[name], 'source changed while packaging: ' + name)
+            data = (root / name).read_bytes()
             info = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_STORED
             info.create_system = 3
             info.external_attr = 0o100644 << 16
             archive.writestr(info, data)
-    return {'files': len(rows) + 1, 'sha256': sha256(destination), 'contains_native_binaries': False}
+    return {'files': len(names), 'sha256': sha256(destination), 'contains_native_binaries': False}
 
 
 def verify_install(root: Path, installed: Path, home: Path, archive: Path) -> None:
@@ -145,11 +155,9 @@ def verify_install(root: Path, installed: Path, home: Path, archive: Path) -> No
     require(installed.is_relative_to(home.resolve()), 'package did not resolve inside the isolated user home')
     require(not installed.is_relative_to(root.resolve()), 'package resolved into the checkout instead of an installed copy')
     require(installed != archive.parent.resolve(), 'package is linked to staging')
-    require((installed / manifest.NAME).read_bytes() == (root / manifest.NAME).read_bytes(),
-            'installed source manifest differs from the checkout')
-    for name, digest in manifest.read_manifest(root).items():
-        path = manifest.safe_path(installed, name)
-        require(path.is_file() and sha256(path) == digest, 'installed source differs: ' + name)
+    for name in source_paths(root):
+        path = installed / name
+        require(path.is_file() and sha256(path) == sha256(root / name), 'installed source differs: ' + name)
 
 
 def install_commands(installed: Path, racket: str, os_name: str) -> list[list[str]]:
@@ -392,7 +400,7 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                 # Raster DC evidence is produced by the INSTALLED package and
                 # retained directly inside this job's artifact, even on failure.
                 runner.run([sys.executable, installed / 'tools/validate-dc.py',
-                            '--racket', racket, '--manifest-only',
+                            '--racket', racket,
                             '--output', runner.output / 'dc-foundation'], cwd=away)
                 report['checks']['dc_foundation'] = True
                 # Required negative compatibility gate, on one clean Linux lane.
@@ -417,7 +425,7 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                 runner.run(['xvfb-run', '--auto-servernum',
                             '--server-args=-screen 0 1280x960x24',
                             sys.executable, installed / 'tools/validate-skia-canvas.py',
-                            '--racket', racket, '--manifest-only', '--require-gui',
+                            '--racket', racket, '--require-gui',
                             '--output', canvas_output], cwd=away)
                 report['canvas'] = validate_canvas(canvas_output)
                 report['checks']['raster_canvas_required_gui'] = True
@@ -427,8 +435,7 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                 require(sys.platform.startswith('linux'), 'EGL CI lane requires Linux')
                 env.update(LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe',
                            SKIA_EGL_PLATFORM='surfaceless', SKIA_EGL_DEVICE_INDEX='0',
-                           SKIA_EGL_SURFACE=row['surface'],
-                           SKIA_SOURCE_SUMS_MANIFEST_ONLY='1')
+                           SKIA_EGL_SURFACE=row['surface'])
                 # Leave the full 0.45 default stress size intact (3 x 180).
                 runner.run([sys.executable, installed / 'tools/validate-gpu-headless.py'], cwd=away)
                 runs = list((installed / 'output').glob('gpu-0.46-headless-*'))
@@ -439,11 +446,8 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
             # Exceptions propagate; finally still retains partial evidence.
             if extra_checks is not None:
                 extra_checks(runner, installed, away, env, report)
-            # Check against the checkout's manifest again, not just a possibly
-            # changed manifest in the installed copy.
             verify_install(root, installed, home, archive)
-            runner.run([sys.executable, installed / 'tools/update-source-sums.py', '--check', '--manifest-only'], cwd=away)
-            report['checks']['installed_source_unchanged'] = True
+            report['checks']['installed_source_matches_checkout'] = True
         finally:
             copy_artifacts(installed, runner.output)
 
@@ -498,13 +502,15 @@ def main(argv: list[str] | None = None) -> int:
             row = rows[0]
             report['matrix'] = row
         report['source_commit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-        report['source_manifest_sha256'] = sha256(ROOT / manifest.NAME)
-        report['source_files_verified'] = manifest.check(ROOT)
+        report['source_files_verified'] = len(source_paths(ROOT))
+        require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT),
+                'CI checkout must be clean before validation')
         if args.profile == 'source':
             source_checks(runner, ROOT, report)
         else:
             package_checks(runner, ROOT, row, args.profile, report)
-        manifest.check(ROOT)  # never rewrite the checkout to manufacture success
+        require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT),
+                'source changed during CI validation')
         report['checks']['checkout_source_unchanged'] = True
         report['status'] = 'passed'
         code = 0

@@ -190,7 +190,7 @@ class Orchestration(unittest.TestCase):
         m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
         commands=[]
         with tempfile.TemporaryDirectory(prefix='diagnostics source ') as tmp:
-            root=Path(tmp);(root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest\n')
+            root=Path(tmp)
             (root/'run-tests.rkt').write_text('(define-runtime-path another "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 c=list(map(str,command));commands.append(c);name=Path(c[1]).name;out=kwargs['stdout']
@@ -203,7 +203,6 @@ class Orchestration(unittest.TestCase):
                 if name=='gpu-diagnostics-gpu-test.rkt':
                     receipt=Path(c[c.index('--report')+1]);token=c[c.index('--token')+1]
                     synthetic_evidence(receipt.parent,token,backend,'hardware')
-                    if manifest_change:(root/'SOURCE-SHA256SUMS.txt').write_text('changed\n')
                 out.flush();return subprocess.CompletedProcess(c,0)
             args=['--racket','definitely-no-racket' if missing_racket else sys.executable,'--directory',str(root/'out'),'--backend',backend]
             if mode is not None:args+=['--regressions',mode]
@@ -239,7 +238,6 @@ class Orchestration(unittest.TestCase):
         rc,r,c=self.invoke('none',failure='gpu-diagnostics-gpu-test.rkt');self.assertEqual(rc,1);self.assertFalse(r['byte_oracles_passed']);self.assertEqual(r['commands'][-1]['status'],'failed')
     def test_timeout(self):self.assertEqual(self.invoke('none',failure='gpu-diagnostics-gpu-test.rkt',timeout=True)[0],1)
     def test_partial_native_suite(self):self.assertEqual(self.invoke('none',partial=True)[0],1)
-    def test_manifest_mutation(self):self.assertEqual(self.invoke('none',manifest_change=True)[0],1)
     def test_no_racket_is_not_a_skip(self):
         rc,r,c=self.invoke('none',missing_racket=True);self.assertEqual(rc,1);self.assertFalse(r['gpu_executed']);self.assertEqual(c,[])
 

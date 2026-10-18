@@ -203,7 +203,6 @@ def main(argv=None) -> int:
                 atomic_text(root / name, text)
             raise
         print('Updated the reflected API snapshot/index and the reviewed source ledger/report.')
-        print('Review and commit these files. Regenerate SOURCE-SHA256SUMS.txt, then run')
         print('tools/validate-public-api.py for the full headless + GUI check.')
         return 0
     except Exception as error:

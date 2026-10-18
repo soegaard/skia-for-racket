@@ -18,7 +18,6 @@ RACKET="$RACKET" bash tools/validate-gpu.sh
 
 The runner retains the CPU regressions, ABI mirrors, 0.38 OpenGL/Metal probes,
 and 0.39 offscreen/window checks. It then adds the GPU-image live suite and two
-image workflows before regenerating `SOURCE-SHA256SUMS.txt` last. Each run has
 its own `output/gpu-0.40-*/` directory. Prior probe JSON keeps its original stage
 label, since those are deliberately unchanged regression diagnostics.
 

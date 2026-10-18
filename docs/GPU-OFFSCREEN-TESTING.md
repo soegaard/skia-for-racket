@@ -45,7 +45,6 @@ One fresh `output/gpu-0.39-*/` directory receives all results. The sequence is:
    image check after both contexts are closed. Then actual PNG/trace inspection.
 5. `gpu-window-doctor.rkt`: three resizes, GPU draw/blit/submit/swap, native format
    and size queries, expiration and release checks. Then window-trace inspection.
-6. `SOURCE-SHA256SUMS.txt` regeneration, last, after every selected step succeeds.
 
 Source-case counts are checked structure, not new execution claims. Inspector
 self-tests exercise synthetic inputs and are not Racket/GPU tests. The ordinary

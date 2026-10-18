@@ -161,20 +161,15 @@ def execute(root, racket, directory, run, *, backend, host, adapter=None, adapte
     directory = directory.resolve()
     require(directory != root, 'source root is not an evidence directory')
     require(isinstance(racket, str) and bool(racket), 'selected interpreter required')
-    manifest = root / 'SOURCE-SHA256SUMS.txt'
-    require(manifest.is_file() and not manifest.is_symlink(), 'source manifest required')
-    before = sha256(manifest)
     progress = dict(schema=1, stage=STAGE, status='running', validation_run=directory.name,
                     backend=backend, host=host, adapter=adapter, adapter_index=adapter_index,
-                    scope=scope, source_manifest_sha256=before, suites=[],
                     hardware_acceleration_verified=False, visible_pixels_verified=False,
-                    speedup_claimed=False)
+                    speedup_claimed=False, suites=[])
     try:
         # The caller supplies SKIA_GPU_VALIDATION_RUN; each raw report must echo it.
         identity = json.loads(run([racket, root / 'tools/ci-identity.rkt']))
         check_identity(identity, backend)
         progress['identity'] = identity
-        run([sys.executable, root / 'tools/update-source-sums.py', '--check', '--manifest-only'])
         declaration = json.loads(run([racket, root / 'tools/gpu-backend-doctor.rkt']))
         expected = dict(schema=1, native_probe_performed=False,
                         backends=[declared_capabilities(b) for b in BACKEND_IDS])
@@ -200,10 +195,8 @@ def execute(root, racket, directory, run, *, backend, host, adapter=None, adapte
             progress['suites'].append(check_receipt(name, raw, inspected, root=root, run_id=directory.name,
                                                    identity=identity, backend=backend, adapter=adapter,
                                                    adapter_index=adapter_index))
-        run([sys.executable, root / 'tools/update-source-sums.py', '--check', '--manifest-only'])
-        require(sha256(manifest) == before, 'source manifest changed during parity validation')
         # Bind the complete retained evidence to the aggregate. Do not publish
-        # any success marker until every doctor/inspector and source check passes.
+        # any success marker until every doctor and inspector passes.
         artifacts = []
         for p in sorted(directory.iterdir()):
             require(p.is_file() and not p.is_symlink(), 'unexpected evidence directory/symlink')
@@ -218,7 +211,7 @@ def execute(root, racket, directory, run, *, backend, host, adapter=None, adapte
                         offscreen_stress_frames=540 if 'performance' in names else 0,
                         presentation_stress_frames=1080 if 'redraw' in names else 0,
                         measured_host_latency='performance' in names or 'redraw' in names,
-                        backend_suite_copies=0, source_unchanged=True, artifacts=artifacts)
+                        backend_suite_copies=0, artifacts=artifacts)
         write_json(directory / RESULT, progress)
         return progress
     except BaseException as exc:

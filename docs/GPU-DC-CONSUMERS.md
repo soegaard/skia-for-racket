@@ -105,7 +105,6 @@ Install the pinned native libraries first. Use one selected Racket consistently:
 ```sh
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 
-python3 tools/update-source-sums.py --check
 python3 tools/test-gpu-dc-consumers.py
 "$RACKET" run-tests.rkt
 python3 tools/validate-gpu-dc-consumers.py --racket "$RACKET" --require-gui

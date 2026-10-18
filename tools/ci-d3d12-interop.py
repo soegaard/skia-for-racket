@@ -32,12 +32,14 @@ def main():
                   github={k: os.environ.get(k) for k in ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')})
     code = 1
     try:
-        report['source_files_verified'] = ci.manifest.check(root)
-        report['source_manifest_sha256'] = ci.sha256(root / ci.manifest.NAME)
+        report['source_files_verified'] = len(ci.source_paths(root))
+        ci.require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=root),
+                   'CI checkout must be clean before validation')
         row = next(r for r in load_matrix()['cpu'] if r['id'] == 'windows-x64')
         ci.package_checks(runner, root, row, 'cpu', report, extra_checks=interop_checks)
         ci.require(report['checks'].get('required_d3d12_interop') is True, 'interop gate did not execute')
-        ci.manifest.check(root)
+        ci.require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=root),
+                   'source changed during CI validation')
         report['status'] = 'passed'; code = 0
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as e:
         report.update(status='failed', error=str(e))

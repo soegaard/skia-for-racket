@@ -221,7 +221,6 @@ more general path representation is wanted.
 
 ## Acceptance and evidence
 
-`tools/validate-geometry-completion.py` first checks the source manifest and
 inventory, then the Python source/parser tests. It compiles `run-tests.rkt`, every
 native suite named by its runtime-path declarations, and the new workers/example
 before running regressions. This preserves the 0.66 recompilation fix without

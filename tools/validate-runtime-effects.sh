@@ -23,4 +23,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/runtime-effects.rkt output/runtime-effects-0.28
 python3 tools/inspect-runtime-effects.py --probe-prefix output/runtime-effects-0.28
-python3 tools/update-source-sums.py

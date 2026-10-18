@@ -49,9 +49,8 @@ class Checks(unittest.TestCase):
                 report=json.loads((directory/('validation.json' if rc==0 else 'validation.failed.json')).read_text())
                 return rc,calls,environments,report
             finally:os.chdir(before)
-    def test_full_headless_pipeline_and_sums_last(self):
+    def test_full_headless_pipeline(self):
         rc,calls,_,r=self.simulate();self.assertEqual(rc,0);self.assertTrue(r['headless_rendering_verified'])
-        self.assertEqual(calls[-1][1],'tools/update-source-sums.py')
         self.assertEqual([a[1] for a in calls if '--prefix' in a],['tools/gpu-egl-doctor.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-image-doctor.rkt','tools/gpu-interop-doctor.rkt','tools/gpu-output-doctor.rkt','tools/gpu-performance-doctor.rkt'])
     def test_all_child_processes_have_no_display_environment(self):
         _,_,envs,_=self.simulate()
@@ -92,19 +91,14 @@ class Checks(unittest.TestCase):
         self.assertEqual(len([a for a in calls if '--prefix' in a]),1)
     def test_required_initialization_skip_fails(self):
         rc,calls,_,_=self.simulate(initial='unavailable');self.assertEqual(rc,1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
     def test_optional_does_not_pass_after_native_failure(self):
         rc,calls,_,_=self.simulate(mode='optional',failure='tools/gpu-interop-doctor.rkt');self.assertEqual(rc,1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
     def test_optional_does_not_skip_after_lifecycle_success(self):
         rc,calls,_,_=self.simulate(mode='optional',later='unavailable');self.assertEqual(rc,1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
-    def test_inspector_failure_blocks_sums(self):
+    def test_inspector_failure_fails_validation(self):
         rc,calls,_,_=self.simulate(failure='tools/inspect-gpu-headless.py',inspector_only=True);self.assertEqual(rc,1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
-    def test_combined_failure_blocks_sums(self):
+    def test_combined_failure_fails_validation(self):
         rc,calls,_,_=self.simulate(failure='tools/inspect-gpu-headless.py',directory_only=True);self.assertEqual(rc,1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
     def test_off_runs_cpu_and_pure_checks_only(self):
         rc,calls,_,r=self.simulate(mode='off');self.assertEqual(rc,0);self.assertFalse(r['headless_rendering_verified'])
         self.assertTrue(any(a[1]=='run-tests.rkt' for a in calls));self.assertFalse(any('--prefix' in a for a in calls))

@@ -22,7 +22,6 @@ reported; a test/render/readback/inspection failure cannot become a skip. `off`
 runs the CPU/pure checks without a document-GPU success claim.
 
 All results are written into a new `output/gpu-0.44-*/` directory.
-`SOURCE-SHA256SUMS.txt` is regenerated **last**, only after every selected check
 succeeds. No hashes are generated from a source-only delivery bundle.
 
 The source inventory adds **35 pure cases** and **42 live cases per selected

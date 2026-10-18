@@ -34,7 +34,6 @@ class FakeRunner:
         self.bad_output = bad_output or {}
         self.identity = IDENTITY if identity is None else identity
         self.mutate = mutate
-        self.manifests = 0
 
     def run(self, argv, *, cwd):
         argv = [str(part) for part in argv]
@@ -43,10 +42,8 @@ class FakeRunner:
         filename = Path(argv[1]).name
         if self.failure and any(Path(arg).name == self.failure for arg in argv):
             raise RuntimeError('injected command failure: ' + self.failure)
-        if filename == 'update-source-sums.py':
-            self.manifests += 1
-            if self.mutate and self.manifests == 2:
-                (self.root / 'canvas.rkt').write_text('changed during validation\n', encoding='utf-8')
+        if self.mutate and filename == 'canvas-dc-native-test.rkt':
+            (self.root / 'canvas.rkt').write_text('changed during validation\n', encoding='utf-8')
         if filename == 'ci-identity.rkt':
             return json.dumps(self.identity)
         if filename == 'canvas-text-load-order.rkt':
@@ -75,11 +72,10 @@ class CanvasValidationTests(unittest.TestCase):
                 file = root / name
                 file.parent.mkdir(parents=True, exist_ok=True)
                 file.write_text('synthetic source fixture\n', encoding='utf-8')
-            (root / 'SOURCE-SHA256SUMS.txt').write_text('synthetic source manifest\n', encoding='utf-8')
             runner = FakeRunner(root, **options)
             with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                 status = validation.execute(root, output, '/chosen/racket', require_gui=require_gui,
-                                            manifest_only=True, runner=runner)
+                                            runner=runner)
             report_file = output / ('validation.json' if status == 0 else 'validation.failed.json')
             report = json.loads(report_file.read_text(encoding='utf-8'))
             return status, report, runner.calls, (output / 'validation.json').exists()
@@ -178,16 +174,6 @@ class CanvasValidationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertFalse(report['checks']['pure_lifecycle'])
         self.assertFalse(any(Path(arg).name == 'canvas-dc-pure-test.rkt' for call in calls for arg in call))
-
-    def test_both_manifest_checks_are_read_only_and_include_installed_package_mode(self):
-        status, _, calls, _ = self.simulate(require_gui=True)
-        self.assertEqual(status, 0)
-        manifests = [call for call in calls if Path(call[1]).name == 'update-source-sums.py']
-        self.assertEqual(len(manifests), 2)
-        for command in manifests:
-            self.assertIn('--check', command)
-            self.assertIn('--manifest-only', command)
-        self.assertEqual(calls[-1], manifests[-1])
 
     def test_duplicate_or_missing_completion_markers_are_rejected(self):
         clean = suite_output('canvas-gui', validation.GUI_CASES)

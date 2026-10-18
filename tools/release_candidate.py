@@ -7,7 +7,6 @@ not a new independent pixel test or an authorization to publish a 1.0 release.
 from __future__ import annotations
 import datetime as dt
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -76,24 +75,26 @@ def source_contracts(root):
     return expected
 
 
-def manifest_module(root):
-    spec = importlib.util.spec_from_file_location('release_manifest', relative(root, 'tools/update-source-sums.py'))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def clean_source(root):
     need(Path(git(root, 'rev-parse', '--show-toplevel').decode().strip()).resolve() == root.resolve(), 'not repository root')
     sha = git(root, 'rev-parse', 'HEAD').decode().strip()
     need(SHA.fullmatch(sha) is not None, 'invalid source commit')
-    need(not git(root, 'diff', '--name-only') and not git(root, 'diff', '--cached', '--name-only'),
-         'candidate must be committed with a clean index and working tree')
-    # Includes independently discovered, unignored source paths. Untracked source
-    # cannot silently enter or be left out of the release ZIP.
-    manifest = manifest_module(root)
-    count = manifest.check(root)
-    return dict(commit=sha, manifest_sha256=digest(relative(root, manifest.NAME)), files=count)
+    need(not git(root, 'status', '--porcelain'), 'candidate must be committed with a clean working tree')
+    files = [name for name in git(root, 'ls-files', '--cached', '-z').decode().split('\0') if name]
+    need(files, 'candidate has no committed source files')
+    return dict(commit=sha, files=len(files))
+
+
+def source_files(root):
+    names = [name for name in git(root, 'ls-files', '--cached', '-z').decode().split('\0') if name]
+    need(names, 'source archive has no Git-tracked files')
+    for name in names:
+        parts = PurePosixPath(name).parts
+        need(not PurePosixPath(name).is_absolute() and '\\' not in name and ':' not in name
+             and all(part not in ('', '.', '..') for part in parts), 'unsafe source archive member')
+        file = relative(root, name)
+        need(file.is_file() and not file.is_symlink(), 'missing/unsafe source archive member: ' + name)
+    return sorted(names)
 
 
 def verify_needs(value, policy):
@@ -307,10 +308,8 @@ class GitHubReader:
 
 
 def source_archive(root, destination):
-    manifest = manifest_module(root)
-    rows = manifest.read_manifest(root)
     need(not destination.exists(), 'source archive already exists')
-    names = sorted([*rows, manifest.NAME])
+    names = source_files(root)
     with zipfile.ZipFile(destination, 'x', compression=zipfile.ZIP_STORED) as archive:
         for name in names:
             parts = PurePosixPath(name).parts
@@ -318,8 +317,6 @@ def source_archive(root, destination):
             need(not name.endswith(('.dll', '.so', '.dylib', '.exe', '.pyc', '.nupkg')), 'native/binary source archive member')
             file = relative(root, name)
             data = file.read_bytes()
-            if name in rows:
-                need(hashlib.sha256(data).hexdigest() == rows[name], 'source mutated during packaging: ' + name)
             entry = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
             entry.create_system = 3
             entry.external_attr = 0o100644 << 16

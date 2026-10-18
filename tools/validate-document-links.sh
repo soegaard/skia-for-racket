@@ -23,4 +23,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/document-links.rkt output/document-links-0.27
 python3 tools/inspect-document-links.py --probe-prefix output/document-links-0.27
-python3 tools/update-source-sums.py

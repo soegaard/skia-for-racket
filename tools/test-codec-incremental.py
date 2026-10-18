@@ -193,7 +193,7 @@ class Orchestration(unittest.TestCase):
         spec=importlib.util.spec_from_file_location('incremental_validator_test',ROOT/'tools/validate-codec-incremental.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);commands=[]
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);(root/'SOURCE-SHA256SUMS.txt').write_text('synthetic\n')
+            root=Path(temporary)
             (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command)
@@ -207,7 +207,6 @@ class Orchestration(unittest.TestCase):
                 if name=='codec-incremental-doctor.rkt':
                     directory=Path(command[command.index('--directory')+1]);token=command[command.index('--token')+1]
                     receipt=synthetic_evidence(directory,token)
-                    if mutate:(root/'SOURCE-SHA256SUMS.txt').write_text('changed\n')
                     if bad_evidence:
                         receipt['one_shot_fallback']=True
                         (directory/'incremental.json').write_text(json.dumps(receipt))
@@ -243,7 +242,6 @@ class Orchestration(unittest.TestCase):
     def test_example_failure(self):self.assertEqual(self.invoke('none',failure='codec-incremental.rkt')[0],1)
     def test_source_failure(self):self.assertEqual(self.invoke('none',failure='api-inventory.py')[0],1)
     def test_partial_summary(self):self.assertEqual(self.invoke('none',partial=True)[0],1)
-    def test_changed_manifest(self):self.assertEqual(self.invoke('none',mutate=True)[0],1)
     def test_inspector_failure(self):
         rc,r,_=self.invoke('none',bad_evidence=True);self.assertEqual(rc,1);self.assertFalse(r['incremental_decode_executed'])
     def test_timeout_is_failure(self):

@@ -28,7 +28,6 @@ MODULES = ("dc.rkt", "private/dc-font-name-native.rkt", "examples/dc-closure.rkt
            "tests/dc-closure-pure-test.rkt", "tests/dc-closure-native-test.rkt")
 SOURCES = (*MODULES, "private/dc-font-name.rkt", "private/dc-text-spec.rkt", "private/dc-text.rkt",
            "private/dc-compatibility.rkt", "tests/dc-consumer-fixtures.rkt", "run-tests.rkt", "info.rkt",
-           "SOURCE-SHA256SUMS.txt", "tools/validate-dc-closure.py", "tools/test-dc-closure.py",
            "tools/validate-dc-output.py", "tools/validate-gpu-frame-reuse.py")
 
 
@@ -130,8 +129,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         racket = str(Path(executable).resolve())
         result["racket_executable"] = racket
         before = fingerprint(root)
-        manifest = [sys.executable, root / "tools/update-source-sums.py", "--check"]
-        runner.run(manifest, root)
         identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root), object_pairs_hook=unique))
         result["identity"] = identity
         native, _ = base.select_backends(args.backend, identity)
@@ -166,7 +163,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
             result["gui_baseline_passed"] = True
         runner.timeout = args.timeout
         require(fingerprint(root) == before, "source changed during validation")
-        runner.run(manifest, root)
         result.update(status="passed", source_sha256=before)
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"

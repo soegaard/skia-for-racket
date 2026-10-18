@@ -169,7 +169,6 @@ placements.
 
 ```bash
 python3 -m pip install -r tools/dc-output-requirements.txt
-python3 tools/update-source-sums.py --check
 python3 tools/api-inventory.py --check
 python3 tools/test-font-queries.py
 python3 tools/validate-font-queries.py --racket "$RACKET" \

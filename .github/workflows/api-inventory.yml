@@ -35,7 +35,6 @@ jobs:
           variant: CS
       - name: Verify inventory and source contracts before network/native setup
         run: |
-          python tools/update-source-sums.py --check
           python tools/test-api-inventory.py
           python tools/api-inventory.py --check
           python tools/test-release-scope.py

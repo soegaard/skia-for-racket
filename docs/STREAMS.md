@@ -220,7 +220,6 @@ python tools/validate-streams.py --racket /path/to/racket --regressions none
 Full is the standalone default. Feature-only mode does not run or compile the
 global regression graph, but **always** compiles and runs the 35 stream pure and
 39 stream native cases, the example, and the native stream doctor. It also checks
-source checksums, the inventory, the numeric package version, and the independent
 byte/pixel inspector. `streams.json`, three binary captures, inspection output,
 commands and complete logs are retained under a new `output/streams-0.75a-*`
 directory. Generated font fixtures are used internally, not distributed as font

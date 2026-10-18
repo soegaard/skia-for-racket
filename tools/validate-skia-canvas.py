@@ -92,7 +92,7 @@ class Runner:
         print('+', subprocess.list2cmdline(argv), flush=True)
         started = time.monotonic()
         try:
-            env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', SKIA_SOURCE_SUMS_MODE='check')
+            env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
             completed = subprocess.run(argv, cwd=cwd, env=env, stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT, timeout=self.timeout, check=False)
             logfile.write_bytes(completed.stdout)
@@ -115,7 +115,7 @@ class Runner:
             common.write_json(self.directory / 'commands.json', self.commands)
 
 
-def execute(root, directory, racket, *, require_gui=False, manifest_only=False, runner=None):
+def execute(root, directory, racket, *, require_gui=False, runner=None):
     root, directory = Path(root), Path(directory)
     runner = runner or Runner(directory)
     checks = dict(pure_lifecycle=False, native_pixels_and_bitmap_bridge=False,
@@ -129,11 +129,6 @@ def execute(root, directory, racket, *, require_gui=False, manifest_only=False, 
     for name in ('validation.json', 'validation.failed.json'):
         (directory / name).unlink(missing_ok=True)
     try:
-        manifest_command = [sys.executable, root / 'tools/update-source-sums.py', '--check']
-        if manifest_only:
-            manifest_command.append('--manifest-only')
-        runner.run(manifest_command, cwd=root)
-        manifest_before = common.sha256(root / 'SOURCE-SHA256SUMS.txt')
         sources_before = source_fingerprint(root)
         identity = common.json.loads(runner.run([racket, root / 'tools/ci-identity.rkt'], cwd=root),
                                      object_pairs_hook=common.pairs_unique)
@@ -165,12 +160,9 @@ def execute(root, directory, racket, *, require_gui=False, manifest_only=False, 
             gui.update(status='passed', cases=GUI_CASES)
             checks['required_gui'] = True
             state['presentation_submission_verified'] = True
-        runner.run(manifest_command, cwd=root)
-        common.require(manifest_before == common.sha256(root / 'SOURCE-SHA256SUMS.txt')
-                       and sources_before == source_fingerprint(root),
-                       'source or manifest changed during canvas validation')
+        common.require(sources_before == source_fingerprint(root),
+                       'source changed during canvas validation')
         checks['source_unchanged'] = True
-        state.update(status='passed', source_manifest_sha256=manifest_before, sources=sources_before)
         common.write_json(directory / 'validation.json', state)
         gui_summary = (f'{GUI_CASES} required GUI cases + both text load orders'
                        if require_gui else 'GUI NOT RUN (headless mode)')
@@ -190,7 +182,6 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--racket', default=os.environ.get('RACKET', 'racket'))
     parser.add_argument('--output', type=Path, help='new evidence directory; existing paths are refused')
-    parser.add_argument('--manifest-only', action='store_true', help='installed source package without Git inventory')
     parser.add_argument('--require-gui', '--gui', action='store_true',
                         help='require actual shown-window/eventspace tests; missing display fails')
     args = parser.parse_args(argv)
@@ -207,8 +198,7 @@ def main(argv=None):
         parent = ROOT / 'output'
         parent.mkdir(exist_ok=True)
         directory = Path(tempfile.mkdtemp(prefix='skia-canvas-0.58-', dir=parent))
-    return execute(ROOT, directory, str(Path(executable).resolve()),
-                   require_gui=args.require_gui, manifest_only=args.manifest_only)
+    return execute(ROOT, directory, str(Path(executable).resolve()), require_gui=args.require_gui)
 
 
 if __name__ == '__main__':

@@ -90,7 +90,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         result["racket_executable"] = str(Path(racket).resolve())
         before = fingerprint(root)
         result["source_sha256"] = before
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root)))
         result["identity"] = identity
         worker_identity = {k: identity[k] for k in ("version", "os", "architecture", "vm")}
@@ -128,7 +127,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
             result[suite + "_bounded_comparisons"] = len(inspected["bounded_comparisons"])
         if fingerprint(root) != before:
             raise RuntimeError("source changed during validation")
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         result["status"] = "passed"
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"

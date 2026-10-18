@@ -252,8 +252,7 @@ def build_sdk(root, directory, run, architecture, *, build_directory=None):
 
 def execute(root, racket, directory, run):
     require(directory.is_dir() and not any(directory.iterdir()), 'evidence directory must be fresh and empty')
-    before = {p: digest(root / p) for p in (*SOURCES, 'SOURCE-SHA256SUMS.txt')}
-    run([sys.executable, root / 'tools/update-source-sums.py', '--check'])
+    before = {p: digest(root / p) for p in SOURCES}
     identity = json.loads(run([racket, root / 'tools/ci-identity.rkt']))
     require(identity.get('os') == 'macosx' and identity.get('architecture') in ('aarch64', 'x86_64')
             and identity.get('vm') == 'chez-scheme' and exact(identity.get('pointer_bytes'), 8), 'requires 64-bit macOS Racket CS')
@@ -266,7 +265,6 @@ def execute(root, racket, directory, run):
     result = inspect(directory)
     raw = read_json(directory / 'metal-interop.diagnostic.json')
     require(raw['racket_version'] == identity['version'] and raw['architecture'] == identity['architecture'], 'doctor interpreter differs')
-    run([sys.executable, root / 'tools/update-source-sums.py', '--check'])
     require(before == {p: digest(root / p) for p in before}, 'source changed while validating')
     result.update(identity=identity, sdk=sdk, source_sha256=before)
     page = '<!doctype html><meta charset="utf-8"><title>Metal interop validation</title><h1>Metal interop</h1>'

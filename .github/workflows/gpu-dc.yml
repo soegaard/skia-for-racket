@@ -48,9 +48,8 @@ jobs:
           architecture: x64
           distribution: full
           variant: CS
-      - name: Check committed source manifest and validator unit tests
+      - name: Run validator unit tests
         run: |
-          python tools/update-source-sums.py --check
           python tools/test-validate-gpu-dc.py
           python tools/test-gpu-dc-consumers.py
       - name: Install pinned native libraries
@@ -96,9 +95,8 @@ jobs:
           architecture: x64
           distribution: full
           variant: CS
-      - name: Check source manifest and inspector contracts
+      - name: Check inspector contracts
         run: |
-          python tools/update-source-sums.py --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test-gpu-dc-consumers.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

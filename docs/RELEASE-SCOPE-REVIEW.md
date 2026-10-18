@@ -77,7 +77,6 @@ per family together with exact source/checker/policy hashes. The verifier still
 checks complete production-source discovery, all binding registries, public
 anchors, catalogue classification, and deterministic generated reports. Changed
 source, test, policy, or checker inputs require deliberate review; updating
-`SOURCE-SHA256SUMS.txt` alone is not approval.
 
 The 0.78b installer accepts only the exact, clean starting commit above. It
 validates the old inventory and review, applies narrowly scoped changes in a

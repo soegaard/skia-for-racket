@@ -215,7 +215,6 @@ physical-unit pages, links (two pages for PDF), and pict/plot in direct,
 recorded-procedure and recorded-datum modes on both formats.
 
 ```bash
-# Keep the virtual environment OUTSIDE the source manifest's checkout.
 python3 -m venv "$HOME/.venvs/skia-dc-output"
 PYTHON="$HOME/.venvs/skia-dc-output/bin/python"
 "$PYTHON" -m pip install -r tools/dc-output-requirements.txt

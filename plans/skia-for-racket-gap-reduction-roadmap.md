@@ -49,7 +49,6 @@ Use separate statuses: supported; supported with limits; equivalent Racket imple
 
 Make the design decisions needed later: a general image-info value, existing RGBA API compatibility, ownership of referenced color spaces, float-color representation, mutable pixel leases, and explicit CPU/GPU transfer names. Preserve the declared Racket/draw minimum unless a separately accepted migration changes it.
 
-**Deliverables:** machine-readable inventory, generated human-readable report, drift checker, reviewed contract decisions, and a source manifest.
 
 **Acceptance:** every audited feature has a disposition; known existing capabilities such as path iteration and GPU transfers are not falsely missing; no coverage percentage conflates overloads, C bindings, and public functionality.
 
@@ -444,7 +443,6 @@ Audit the pinned factory and actual Windows native build first. Add an exporter 
 
 ## Common definition of done
 
-Every implementation stage includes real binding/layout checks, a reviewed public ownership contract, pure argument/state tests, relevant native regression tests, documentation/examples, and updated source checksums.
 
 Drawing/effect stages also require actual raster pixels and the supported GPU paths; document-facing stages require native PDF/SVG inspection and independent rendering where applicable. Unsupported backend/format combinations are reported as such, never as successful coverage. GPU normal-frame I/O ledgers must not acquire hidden CPU readbacks.
 

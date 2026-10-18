@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import subprocess
 import tempfile
 import types
 import unittest
@@ -500,30 +501,26 @@ class SourcePackaging(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);write(self.root,'main.rkt','#lang racket/base\n')
-        write(self.root,'SOURCE-SHA256SUMS.txt','synthetic manifest bytes\n')
-        self.rows={'main.rkt':rc.digest(self.root/'main.rkt')}
-        self.manifest=types.SimpleNamespace(NAME='SOURCE-SHA256SUMS.txt',read_manifest=lambda _:self.rows)
+        subprocess.run(['git','init','-q'],cwd=self.root,check=True)
+        subprocess.run(['git','add','main.rkt'],cwd=self.root,check=True)
     def build(self,name):
-        with patch.object(rc,'manifest_module',return_value=self.manifest):return rc.source_archive(self.root,self.root/name)
+        return rc.source_archive(self.root,self.root/name)
     def test_reproducible_zip(self):
         self.assertEqual(self.build('a.zip')['sha256'],self.build('b.zip')['sha256'])
     def test_roundtrip_source_bytes(self):
         self.build('a.zip')
         with zipfile.ZipFile(self.root/'a.zip') as z:
             self.assertEqual(z.read('main.rkt'),(self.root/'main.rkt').read_bytes())
-            self.assertEqual(z.namelist(),['SOURCE-SHA256SUMS.txt','main.rkt'])
+            self.assertEqual(z.namelist(),['main.rkt'])
             self.assertTrue(all(i.date_time==(1980,1,1,0,0,0) for i in z.infolist()))
-    def test_source_mutation_rejected(self):
-        write(self.root,'main.rkt','mutated')
-        with self.assertRaises(ValueError):self.build('a.zip')
     def test_existing_zip_refused(self):
         self.build('a.zip')
         with self.assertRaises(ValueError):self.build('a.zip')
     def test_native_file_excluded(self):
-        write(self.root,'native.dll','synthetic');self.rows['native.dll']=rc.digest(self.root/'native.dll')
+        write(self.root,'native.dll','synthetic');subprocess.run(['git','add','native.dll'],cwd=self.root,check=True)
         with self.assertRaises(ValueError):self.build('a.zip')
     def test_generated_member_excluded(self):
-        write(self.root,'output/data.txt','synthetic');self.rows['output/data.txt']=rc.digest(self.root/'output/data.txt')
+        write(self.root,'output/data.txt','synthetic');subprocess.run(['git','add','-f','output/data.txt'],cwd=self.root,check=True)
         with self.assertRaises(ValueError):self.build('a.zip')
 
 

@@ -163,7 +163,7 @@ class Orchestration(unittest.TestCase):
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         commands=[]
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);(root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest\n')
+            root=Path(temporary)
             (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command);name=Path(command[1]).name
@@ -174,7 +174,6 @@ class Orchestration(unittest.TestCase):
                     if name==suite+'-test.rkt':out.write('incomplete\n' if partial else f'{count} success(es) 0 failure(s) 0 error(s) {count} test(s) run\n{suite}: {count} cases, 0 failures\n')
                 if name=='codec-scanline-doctor.rkt':
                     synthetic_evidence(Path(command[command.index('--directory')+1]),command[command.index('--token')+1])
-                    if mutate:(root/'SOURCE-SHA256SUMS.txt').write_text('changed')
                 out.flush();return subprocess.CompletedProcess(command,0)
             args=['--racket',sys.executable,'--directory',str(root/'out')]
             if mode is not None:args+=['--regressions',mode]
@@ -203,7 +202,6 @@ class Orchestration(unittest.TestCase):
         self.assertFalse(any(Path(x[1]).name=='codec-scanline-doctor.rkt' for x in c))
     def test_pure_failure(self):self.assertEqual(self.invoke('none',failure='codec-scanline-pure-test.rkt')[0],1)
     def test_partial_output(self):self.assertEqual(self.invoke('none',partial=True)[0],1)
-    def test_manifest_change(self):self.assertEqual(self.invoke('none',mutate=True)[0],1)
     def test_source_gate(self):self.assertEqual(self.invoke('none',failure='api-inventory.py')[0],1)
     def test_example_failure(self):self.assertEqual(self.invoke('none',failure='codec-scanlines.rkt')[0],1)
 

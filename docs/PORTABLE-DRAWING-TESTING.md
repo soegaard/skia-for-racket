@@ -18,7 +18,6 @@ RACKET="$RACKET" PYTHON="/path/to/venv/bin/python" CHECK_PDF=1 \
   bash tools/validate-portable-drawing.sh
 ```
 
-The source checksums are regenerated only after every preceding selected check succeeds. Inspection output is first written to a temporary file; a failed inspection never publishes an empty replacement report or gets hidden by `tee`.
 
 ## Review files
 

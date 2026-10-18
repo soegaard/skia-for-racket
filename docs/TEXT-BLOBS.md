@@ -293,7 +293,6 @@ From the repository root, with the intended Racket selected:
 ```bash
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 python3 -m pip install -r tools/dc-output-requirements.txt
-python3 tools/update-source-sums.py --check
 python3 tools/api-inventory.py --check
 python3 tools/test-text-blobs.py
 python3 tools/test-text-blob-documents.py
@@ -308,7 +307,6 @@ requires GPU pixels and document structure. A Mac host should run the Metal gate
 above. The ordinary full test runner includes the new native and pure suites.
 
 The validator uses a fresh output directory, records command logs and invocation
-identity, and checks the source manifest before and after. A failure reports its
 actual log path. GUI, physical display, and unrequested GPU/viewer execution are
 never inferred from a source-only or baseline CI pass.
 

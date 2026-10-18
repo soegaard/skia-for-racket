@@ -205,7 +205,6 @@ changing the existing raw GPU widget's public drawing interface.
 ## Validation
 
 ```bash
-python3 tools/update-source-sums.py --check
 python3 tools/test-validate-gpu-dc.py
 python3 tools/validate-gpu-dc.py --racket "$RACKET" --require-gui
 "$RACKET" examples/skia-gpu-canvas.rkt

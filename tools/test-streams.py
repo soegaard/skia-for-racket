@@ -120,7 +120,6 @@ class Orchestration(unittest.TestCase):
         commands=[]
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
-            (root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest\n')
             (root/'run-tests.rkt').write_text('(define-runtime-path some-test "tests/unrelated-native-test.rkt")\n')
             def execute(command, **kwargs):
                 command=list(map(str,command));commands.append(command)
@@ -134,7 +133,6 @@ class Orchestration(unittest.TestCase):
                         out.write('incomplete\n' if partial else f'{count} success(es) 0 failure(s) 0 error(s) {count} test(s) run\n{suite}: {count} cases, 0 failures\n')
                 if name=='stream-doctor.rkt':
                     fixtures(Path(command[command.index('--directory')+1]),command[command.index('--token')+1])
-                    if mutate:(root/'SOURCE-SHA256SUMS.txt').write_text('changed')
                 out.flush()
                 return subprocess.CompletedProcess(command,0)
             args=['--racket',sys.executable,'--directory',str(root/'out')]

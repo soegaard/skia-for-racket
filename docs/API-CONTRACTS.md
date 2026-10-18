@@ -230,7 +230,6 @@ xvfb-run -a python3 tools/validate-public-api.py --racket "$(command -v racket)"
 
 Neither validator has an automatic approval option. Intentional future API
 changes require reviewing the snapshot diff, this policy, generated index,
-release-scope inputs, and source checksums together. Rerun the actual reflection
 checks on the supported Racket/platform matrix. Do not regenerate the source
 manifest merely to erase evidence of an unreviewed semantic/API change.
 

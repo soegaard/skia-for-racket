@@ -57,9 +57,6 @@ def main(argv=None):
                            timeout=args.timeout,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
-        manifest=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
-        report['manifest_before']=manifest
         run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
         run([sys.executable,ROOT/'tools/test-effects.py'])
         if args.regressions == 'full':
@@ -105,11 +102,8 @@ def main(argv=None):
                  '--report',out/'gpu.json','--token',token])
             gpu_receipt(out/'gpu.json',token,backend)
             report['gpu_passed']=True; report['backend']=backend
-        run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
-        after=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
-        if after!=manifest: raise ValueError('source manifest changed during validation')
-        report['manifest_after']=after
         report['status']='passed'
+        report['status'] = 'passed'
     except (OSError,ValueError,ImportError,subprocess.SubprocessError) as error:
         report['error']=type(error).__name__+': '+str(error)
         print('Effects FAILED: '+report['error'],file=sys.stderr)

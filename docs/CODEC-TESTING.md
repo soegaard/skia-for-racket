@@ -72,10 +72,8 @@ bash tools/audit-harfbuzz-symbols.sh &&
 "$RACKET" run-tests.rkt &&
 mkdir -p output &&
 "$RACKET" examples/advanced-codecs.rkt output/advanced-codecs-0.20.png &&
-python3 tools/update-source-sums.py
 ```
 
-The existing `SOURCE-SHA256SUMS.txt` is deliberately not rewritten from an
 incomplete checkout. The last command above regenerates it from your complete
 patched repository; include that change when committing the stage.
 

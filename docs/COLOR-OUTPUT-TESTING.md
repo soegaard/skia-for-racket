@@ -41,7 +41,6 @@ Expected results:
 The script runs source checks, inspector self-tests, all five host-C layout
 mirrors, both symbol audits, compilation, doctor, the entire test runner,
 the combined visual registry, and structural/ICC inspection. Its final step
-regenerates `SOURCE-SHA256SUMS.txt` from the complete local checkout. The patch
 does not overwrite that manifest using a partial authoring checkout.
 
 The source checker's `racket_execution: NOT RUN` field describes that Python

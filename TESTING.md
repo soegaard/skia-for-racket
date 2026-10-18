@@ -56,7 +56,6 @@ native versions do not change in this stage.
 
 Run the normal selected-Racket GPU validator locally before committing. It now
 includes CI infrastructure regressions and still updates source sums last.
-Commit the resulting SOURCE-SHA256SUMS.txt with all new workflow/tool files.
 CI checks that manifest without rewriting it, installs the source ZIP in a fresh
 user home, then compiles and tests the installed copy from another directory.
 
@@ -96,7 +95,6 @@ SVG PNG pixels supply numerical CPU/GPU comparison. PDF rendered pixels,
 PDF/A conformance, universal byte identity and performance are not certified.
 
 Source checks and synthetic Python tests do not establish Racket/native passes.
-The source manifest is regenerated only after all selected host checks pass.
 Review output-opengl.review.html and output-metal.review.html on macOS.
 
 ## Previous revision: EGL headless and external GL (0.43)
@@ -481,7 +479,6 @@ mkdir -p output &&
 "$RACKET" examples/script-justification.rkt output/script-justification.png &&
 "$RACKET" examples/color-spaces.rkt output/color-spaces.png &&
 RACKET="$RACKET" bash tools/run-unicode-conformance.sh &&
-python3 tools/update-source-sums.py
 ```
 
 A successful rackunit/native run should report **54 pure + 6 lifetime + 132

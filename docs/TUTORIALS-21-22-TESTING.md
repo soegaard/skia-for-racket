@@ -4,13 +4,9 @@ The bouncing-sprite and Star Squadron tutorials share documentation-local atlas,
 clock, and window helpers. No public library API or native bindings are changed.
 Both use original Skia-generated artwork. No external asset download is required.
 
-## Installation and source checksums
 
-Apply the patch to the reviewed checkout and regenerate the source manifest:
 
 ```sh
-python3 tools/update-source-sums.py
-python3 tools/update-source-sums.py --check
 git diff --check
 ```
 

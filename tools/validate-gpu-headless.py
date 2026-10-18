@@ -130,7 +130,6 @@ def main() -> int:
                      '--egl-surface',surface,*extra])
                 run([sys.executable,'tools/inspect-gpu-performance.py','--probe-prefix',performance_prefix])
                 performance_verified=True
-        run([sys.executable,'tools/update-source-sums.py'])
         report=dict(status='passed-selected-checks',stage='0.46',gpu_mode=mode,identity=identity.strip(),
           validation_run=directory.name,commands=commands,skips=skips,display_variables_removed=list(DISPLAY_VARIABLES),
           egl_platform=platform,egl_device_index=index,egl_surface=surface,headless_rendering_verified=verified,

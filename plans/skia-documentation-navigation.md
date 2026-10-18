@@ -254,7 +254,6 @@ Preserve the separately copied [landing page's](/Users/soegaard/Dropbox/GitHub/s
 
 Check review/source hashing and archive inputs if this follow-up introduces new dependencies or assets. Preserve existing statements about partial bundles. A complete HTML bundle must include every navigation target and both assets; a partial bundle must state its limitation. Verify extraction/relocation without relying on the original checkout.
 
-The source-inventory workflow checks [SOURCE-SHA256SUMS.txt](/Users/soegaard/Dropbox/GitHub/skia-for-racket/SOURCE-SHA256SUMS.txt). Refresh it through [the existing generator](/Users/soegaard/Dropbox/GitHub/skia-for-racket/tools/update-source-sums.py) at the appropriate final integration point. Because it includes non-ignored files and other work may be active, inspect the inventory rather than blindly incorporating unrelated transient output. Preserve manual deployment triggers and permissions; do not dispatch publication as a test.
 
 ## Validation plan
 

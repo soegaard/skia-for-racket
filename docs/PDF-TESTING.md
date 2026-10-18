@@ -82,10 +82,8 @@ bash tools/audit-harfbuzz-symbols.sh &&
 
 mkdir -p output &&
 "$RACKET" examples/pdf-documents.rkt output/pdf-documents-0.21.pdf &&
-python3 tools/update-source-sums.py
 ```
 
-`SOURCE-SHA256SUMS.txt` is deliberately not modified by the patch; regenerate
 it in the complete patched checkout as above. Nothing is pushed to GitHub by
 this delivery.
 

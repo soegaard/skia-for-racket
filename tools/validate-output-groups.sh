@@ -19,4 +19,3 @@ mkdir -p output
 "$RACKET" examples/output-groups.rkt output/output-groups-0.34
 python3 tools/inspect-output-groups.py --probe-prefix output/output-groups-0.34 \
   | tee output/output-groups-0.34.inspection.json
-python3 tools/update-source-sums.py

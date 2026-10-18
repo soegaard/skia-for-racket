@@ -483,7 +483,6 @@ Before considering a tutorial finished, check the following.
 - Do the Scribble examples execute?
 - Does the complete `.rkt` example run?
 - Does the documentation build?
-- Are source checksums regenerated?
 - Do the relevant tests pass?
 
 ## 17. Useful External References
@@ -520,8 +519,6 @@ RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 "$RACKET" scribblings/tutorials/gpu/gpu-offscreen.rkt \
   scribblings/tutorials/gpu/figures/metal-reference.png
 
-python3 tools/update-source-sums.py
-python3 tools/update-source-sums.py --check
 ```
 
 The generator uses `render-gpu->raster-image` with the shared `draw-scene`

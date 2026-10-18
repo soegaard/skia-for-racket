@@ -67,7 +67,6 @@ left is red, upper right green, lower left blue, lower right yellow. These are
 GPU readbacks, not synthetic reference images. Inspector self-tests use synthetic
 fixtures and are a separate form of evidence.
 
-`SOURCE-SHA256SUMS.txt` is regenerated last, only after every selected check has
 succeeded. The distributed patch does not pretend to supply a freshly validated
 full-repository checksum manifest from an incomplete authoring checkout.
 

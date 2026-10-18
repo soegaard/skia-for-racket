@@ -69,7 +69,6 @@ network errors, digest mismatches, unsafe ZIPs and truncated pages fail the gate
 there is no successful fallback to the `needs` summary alone.
 
 After the evidence passes, the gate creates `skia-for-racket-source.zip` from the
-checked source manifest, with sorted entries, fixed timestamps and normalized
 modes. It records the commit, source-manifest digest, policy digest, archive
 digest, job/step evidence, artifact metadata and individually verified evidence
 ZIPs. It rechecks the committed source before and after packaging. The native

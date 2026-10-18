@@ -31,7 +31,6 @@ The script does not select a separate `raco` from PATH or delete compiled trees.
 It checks source structure, runs the inspector's synthetic self-tests, compiles
 all six prior C mirrors, audits both native libraries, compiles, runs doctor and
 all test suites, renders the combined registry, inspects SVG/report structures,
-and regenerates `SOURCE-SHA256SUMS.txt` only after those steps succeed.
 
 Expected new doctor message:
 

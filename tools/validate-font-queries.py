@@ -90,9 +90,6 @@ def main(argv=None):
                 report.update(failed_command=command, failed_log=str(log)); raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable, ROOT/'tools/update-source-sums.py', '--check'])
-        before = hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
-        report['manifest_before'] = before
         run([sys.executable, ROOT/'tools/api-inventory.py', '--check'])
         run([sys.executable, ROOT/'tools/test-font-queries.py'])
         run([sys.executable, ROOT/'tools/test-font-query-documents.py'])
@@ -120,10 +117,7 @@ def main(argv=None):
                  '--report', out/'gpu.json', '--token', token])
             fv.gpu_receipt(out/'gpu.json', token, backend, args.adapter)
             report.update(gpu_executed=True, gpu_passed=True, backend=backend, adapter=args.adapter)
-        run([sys.executable, ROOT/'tools/update-source-sums.py', '--check'])
-        after = hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
-        if before != after: raise ValueError('source manifest changed during validation')
-        report.update(manifest_after=after, status='passed')
+        report['status'] = 'passed'
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
         print('Font queries FAILED: ' + report['error'], file=sys.stderr)

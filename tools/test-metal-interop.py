@@ -178,7 +178,7 @@ class Runner(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)/'source';self.directory=Path(self.temp.name)/'evidence'
         self.directory.mkdir();self.root.mkdir()
-        for name in (*m.SOURCES,'SOURCE-SHA256SUMS.txt'):
+        for name in m.SOURCES:
             p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('synthetic source '+name)
         self.commands=[];self.fail=None;self.os='macosx';self.sdk_bad=False;self.mutate=False
     def fake_run(self,argv):
@@ -197,7 +197,6 @@ class Runner(unittest.TestCase):
     def test_complete_sequence(self):
         result=self.go();self.assertTrue(result['metal_execution_verified'])
         self.assertEqual(sum('--timeout-case' in c for c in self.commands),1)
-        self.assertEqual(sum('--check' in c for c in self.commands),2)
         self.assertTrue((self.directory/'metal-interop.inspection.json').is_file())
     def test_selected_racket_compiles(self):
         self.go();compile=next(c for c in self.commands if 'make' in c)

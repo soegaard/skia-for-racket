@@ -60,7 +60,6 @@ success outputs. No inspector treats a skipped/cancelled frame as submitted,
 a queued CPU wait as normal asynchronous presentation, or a pending/quarantined
 release as clean teardown. Source sums are regenerated **last**, after every
 selected automatic check succeeds. A failing run writes `validation.failed.json`
-and does not update `SOURCE-SHA256SUMS.txt` early.
 
 The JSON field `presentation_submission_verified` is indexed by backend.
 `presentation_summary_verified` means the combined native reports passed.

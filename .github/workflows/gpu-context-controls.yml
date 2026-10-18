@@ -47,7 +47,6 @@ jobs:
           variant: CS
       - name: Verify source and install pinned native libraries
         run: |
-          python tools/update-source-sums.py --check
           python -m pip install -r tools/dc-output-requirements.txt
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
@@ -96,7 +95,6 @@ jobs:
           variant: CS
       - name: Verify source and install pinned native libraries
         run: |
-          python tools/update-source-sums.py --check
           python -m pip install -r tools/dc-output-requirements.txt
           python tools/install-native-windows.py --racket (Get-Command racket).Source
       - name: Required context options and targeted lifecycle execution

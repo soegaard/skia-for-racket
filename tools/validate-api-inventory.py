@@ -8,7 +8,6 @@ Existing native/rendering suites remain independent acceptance requirements.
 """
 from __future__ import annotations
 import argparse
-import importlib.util
 import math
 from pathlib import Path
 import subprocess
@@ -18,17 +17,6 @@ import uuid
 
 import api_inventory as inventory
 from api_inventory_native import observe
-
-
-def source_manifest(root: Path):
-    name = root / "tools/update-source-sums.py"
-    spec = importlib.util.spec_from_file_location("source_sums_for_inventory", name)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    # A normal source checkout is mandatory here. Installed-copy validation is
-    # already covered by the existing CI harness; never silently downgrade.
-    count = module.check(root, manifest_only=False)
-    return {"files": count, "sha256": inventory.digest(root / "SOURCE-SHA256SUMS.txt")}
 
 
 def main(argv=None, *, root=inventory.ROOT):
@@ -53,8 +41,6 @@ def main(argv=None, *, root=inventory.ROOT):
               "upstream_passed": False, "native_required": bool(args.native_library), "native_observed": False,
               "rendering_executed": False, "backend_created": False, "hardware_verified": False}
     try:
-        before = source_manifest(root)
-        report["manifest_before"] = before
         catalog = inventory.load_catalog(root)
         report["summary"] = inventory.validate_catalog(catalog)
         report["catalog_passed"] = True
@@ -74,14 +60,11 @@ def main(argv=None, *, root=inventory.ROOT):
             report["native_resolution_counts"] = {"resolved": sum(native["symbols"].values()),
                                                     "missing": len(symbols) - sum(native["symbols"].values())}
             report["native_library_sha256"] = native["library_sha256"]
-        # Hash every audited project source again: a changed checkout cannot get
-        # a green receipt even when the manifest was regenerated during the run.
+        # Recheck every audited project source: a changed checkout cannot get a
+        # green receipt even while the validator is running.
         after_source = inventory.validate_sources(root, catalog)
         inventory.require(after_source == source, "audited source changed during validation")
         inventory.check_report(root, inventory.load_catalog(root))
-        after = source_manifest(root)
-        inventory.require(before == after, "source manifest changed during validation")
-        report["manifest_after"] = after
         report["status"] = "passed"
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         report["error"] = type(error).__name__ + ": " + str(error)

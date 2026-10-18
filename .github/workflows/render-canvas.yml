@@ -50,7 +50,6 @@ jobs:
           variant: CS
       - name: Source contracts and actual example compilation
         run: |
-          python tools/update-source-sums.py --check
           python tools/test-render-canvas.py
           python tools/test-gpu-frame-reuse.py
           racket -l raco -- make render-canvas.rkt examples/render-canvas.rkt examples/gpu-dc-consumers.rkt
@@ -97,7 +96,6 @@ jobs:
       - name: Source contracts
         shell: pwsh
         run: |
-          python tools/update-source-sums.py --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test-render-canvas.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

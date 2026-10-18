@@ -83,9 +83,6 @@ def main(argv=None):
                 raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable, ROOT/'tools/update-source-sums.py', '--check'])
-        before = hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
-        report['manifest_before'] = before
         run([sys.executable, ROOT/'tools/api-inventory.py', '--check'])
         run([sys.executable, ROOT/'tools/test-typefaces.py'])
         run([sys.executable, ROOT/'tools/test-typeface-document-inspector.py'])
@@ -109,11 +106,7 @@ def main(argv=None):
         result = inspect_documents(out/'documents', token, render=render)
         (out/'inspection.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         report.update(documents_passed=True, independent_renderers_passed=args.require_renderers)
-        run([sys.executable, ROOT/'tools/update-source-sums.py', '--check'])
-        after = hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
-        if before != after:
-            raise ValueError('source manifest changed during validation')
-        report.update(manifest_after=after, status='passed')
+        report['status'] = 'passed'
     except (OSError, ValueError, ImportError, subprocess.SubprocessError) as error:
         report['error'] = type(error).__name__ + ': ' + str(error)
         print('Typefaces FAILED: ' + report['error'], file=sys.stderr)

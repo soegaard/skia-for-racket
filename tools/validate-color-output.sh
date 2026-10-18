@@ -25,4 +25,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/color-output.rkt output/color-output-0.26
 python3 tools/inspect-color-output.py --probe-prefix output/color-output-0.26
-python3 tools/update-source-sums.py

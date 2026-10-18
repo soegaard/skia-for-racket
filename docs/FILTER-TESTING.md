@@ -43,7 +43,6 @@ New C layouts: `sk_isize_t` 8, `sk_ipoint_t` 8, `sk_point3_t` 12 bytes.
 The script retains the codec, PDF, and M33/M44 layout checks as well.
 It runs the source checker, inspector self-tests, four C mirrors, both symbol
 audits, compiler, doctor, complete test runner, example and SVG inspector, then
-regenerates `SOURCE-SHA256SUMS.txt`. A failure stops the sequence.
 
 ## Visual review
 

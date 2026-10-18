@@ -21,7 +21,6 @@ RACKET="$RACKET" bash tools/validate-path-matrix.sh
 The script runs static checks, eight synthetic inspector tests, codec/PDF/matrix
 C layout mirrors, both native symbol audits, compilation, doctor, every source
 suite, and the one combined visual runner. It then inspects the actual SVGs and
-regenerates `SOURCE-SHA256SUMS.txt`. It fails at the first unsuccessful command.
 
 Compilation uses the same selected interpreter as execution:
 
@@ -86,5 +85,4 @@ were checked against their Git blob hashes. This is not a full-checkout test,
 Racket compilation, native rendering, or a new Unicode conformance result.
 
 Nothing is pushed to GitHub. The patch does not contain native libraries, font
-files, generated .zo files, or a fabricated probe output. The source checksum
 manifest is regenerated from the actual patched checkout after the host run.

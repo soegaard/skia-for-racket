@@ -52,7 +52,6 @@ class Harness:
         self.commands = []
         self.inspections = []
         self.modules = {}
-        (root/'SOURCE-SHA256SUMS.txt').write_text('synthetic source identity\n')
         (root/'run-tests.rkt').write_text(
             '#lang racket/base\n(define-runtime-path other "tests/unrelated-native-test.rkt")\n')
 

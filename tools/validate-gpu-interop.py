@@ -26,13 +26,16 @@ def main():
     runner = ci.Runner(logs, dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1'))
     code = 1
     try:
-        ci.manifest.check(root)
+        ci.source_paths(root)
+        ci.require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=root),
+                   'checkout must be clean before validation')
         racket = shutil.which(args.racket)
         ci.require(bool(racket), 'selected RACKET not found')
         evidence = directory / 'gpu-interop-probe'; evidence.mkdir()
         result = execute(root, racket, evidence, lambda argv: runner.run(argv, cwd=root),
                          selection=args.adapter, index=args.adapter_index)
-        ci.manifest.check(root)
+        ci.require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=root),
+                   'source changed during validation')
         ci.write_json(directory / 'validation.json', result)
         code = 0
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as e:

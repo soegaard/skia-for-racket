@@ -84,5 +84,4 @@ visual outputs have **not** been run in the authoring environment. Performed
 checks are recorded separately in the delivered validation JSON. Host-C mirrors
 and synthetic Python inspection cannot replace the selected-Racket/native run.
 
-The final successful host-script step regenerates `SOURCE-SHA256SUMS.txt`.
 No native binaries or fonts are included, and no repository changes are pushed.

@@ -23,4 +23,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/canvas-primitives.rkt output/canvas-primitives-0.30
 python3 tools/inspect-canvas-primitives.py --probe-prefix output/canvas-primitives-0.30
-python3 tools/update-source-sums.py

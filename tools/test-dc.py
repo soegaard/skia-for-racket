@@ -218,12 +218,11 @@ for name in ('gpu_execution_verified','gui_initialized','full_drop_in_compatibil
 
 
 class Orchestration(unittest.TestCase):
-    def simulate(self, fail=None, mutate=False, manifest_only=False, consumer_failure=False):
+    def simulate(self, fail=None, mutate=False, consumer_failure=False):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t)/'source'; root.mkdir(); directory=Path(t)/'evidence'; directory.mkdir()
             for name in d.SOURCE_PATHS:
                 p=root/name; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('; synthetic source\n')
-            (root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest checked by injected command')
             calls=[]
             class Fake:
                 def run(self, argv, *, cwd):
@@ -240,17 +239,13 @@ class Orchestration(unittest.TestCase):
                         if mutate: (root/'dc.rkt').write_text('; changed by test')
                     return ''
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                result=v.execute(root,directory,'/selected/racket',manifest_only=manifest_only,runner=Fake())
+                result=v.execute(root,directory,'/selected/racket',runner=Fake())
             path=directory/('validation.json' if result==0 else 'validation.failed.json')
             return result,calls,d.read_json(path),sorted(x.name for x in directory.iterdir())
     def test_order_and_identity(self):
         code,calls,raw,names=self.simulate(); self.assertEqual(code,0)
-        self.assertIn('--check',calls[0]); self.assertIn('--check',calls[-1])
-        self.assertEqual(calls[2][0],'/selected/racket'); self.assertIn('make',calls[2])
+        self.assertEqual(calls[1][0],'/selected/racket'); self.assertIn('make',calls[1])
         self.assertTrue(raw['checks']['native_dc_and_pixels']); self.assertIn('dc.review.html',names)
-    def test_manifest_only_installation(self):
-        code,calls,raw,names=self.simulate(manifest_only=True)
-        self.assertEqual(code,0); self.assertIn('--manifest-only',calls[0]); self.assertIn('--manifest-only',calls[-1])
     def test_compile_failure(self):
         code,_,raw,names=self.simulate(fail='make'); self.assertEqual(code,1)
         self.assertNotIn('native_dc_and_pixels',raw['checks']); self.assertNotIn('validation.json',names)
@@ -265,7 +260,6 @@ class Orchestration(unittest.TestCase):
         self.assertNotIn('validation.json',names)
         self.assertNotIn('dc.inspection.json',names)
     def test_identity_failure(self): self.assertEqual(self.simulate(fail='ci-identity.rkt')[0],1)
-    def test_manifest_failure(self): self.assertEqual(self.simulate(fail='update-source-sums.py')[0],1)
     def test_source_mutation(self):
         code,_,raw,names=self.simulate(mutate=True); self.assertEqual(code,1)
         self.assertIn('source changed',raw['error']); self.assertNotIn('dc.inspection.json',names)
@@ -362,7 +356,7 @@ class Integration(unittest.TestCase):
         self.assertIn("installed / 'tools/validate-dc.py'",text)
         self.assertIn("report['checks']['dc_foundation'] = True",text)
         self.assertIn("'--output', runner.output / 'dc-foundation'",text)
-        self.assertIn("'--manifest-only'",text)
+        self.assertNotIn("'--manifest-only'",text)
     def test_source_and_local_tests_wired(self):
         self.assertIn("'test-dc.py'",(HERE/'ci.py').read_text())
         self.assertIn("'tools/test-dc.py'",(HERE/'validate-gpu.py').read_text())

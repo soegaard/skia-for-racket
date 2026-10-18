@@ -262,12 +262,6 @@ class Runner(unittest.TestCase):
     def test_duplicate_json_baseline(self):
         code, _, _, _ = simulate(report_text='{"status":"passed","status":"failed"}')
         self.assertEqual(code, 1)
-    def test_manifest_checked_at_both_ends(self):
-        code, _, commands, _ = simulate()
-        self.assertEqual(code, 0)
-        manifests = [c for c in commands if c[1].endswith("update-source-sums.py")]
-        self.assertEqual(len(manifests), 2)
-        self.assertTrue(all("--check" in c for c in manifests))
     def test_invalid_cli_combinations(self):
         for opts in (("--backend", "metal"), ("--adapter", "warp"), ("--timeout", "nan"), ("--timeout", "0")):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit): v.main(opts)

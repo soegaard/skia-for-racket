@@ -18,7 +18,6 @@ The selected Racket invokes `raco make` with `-l raco -- make` and explicitly
 compiles `tests/*.rkt`. No separate `raco` is chosen from PATH. The script runs
 source checks, inspector self-tests, all six existing C ABI mirrors, both native
 symbol audits, doctor, the entire suite, the combined probe runner, the output
-inspector, and finally `tools/update-source-sums.py`.
 
 Expected results: **728 cases**, comprising **293 pure + 6 lifetime + 429 native**.
 The new suites add **30 pure and 28 native** cases. Symbol counts remain
@@ -79,5 +78,4 @@ mirrors, and synthetic inspector tests are separate checks. Existing complete
 small code files were verified by Git blob hash; core/native/doctor and large
 documentation hunks were checked against fetched source contexts, not an entire
 verified checkout. The machine-readable delivery validation record lists the
-individual checks. `SOURCE-SHA256SUMS.txt` is intentionally regenerated on the
 complete host checkout rather than computed from partial source contexts.

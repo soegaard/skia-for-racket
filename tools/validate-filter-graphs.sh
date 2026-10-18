@@ -25,4 +25,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/filter-graphs.rkt output/filter-graphs-0.25
 python3 tools/inspect-filter-graphs.py --probe-prefix output/filter-graphs-0.25
-python3 tools/update-source-sums.py

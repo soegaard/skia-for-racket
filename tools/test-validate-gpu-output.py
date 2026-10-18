@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mocked runner checks: document failures may not become source-manifest success."""
+"""Mocked runner checks for the GPU document-validation pipeline."""
 import importlib.util
 from pathlib import Path
 import unittest
@@ -16,31 +16,29 @@ headless=load('output_headless_tests','test-validate-gpu-headless.py')
 class Checks(unittest.TestCase):
     def desk(self,**options):return desktop.Checks().simulate(**options)
     def egl(self,**options):return headless.Checks().simulate(**options)
-    def no_sums(self,calls):self.assertFalse(any('tools/update-source-sums.py' in call for call in calls))
-    def test_both_desktop_backends_and_sums_last(self):
+    def test_both_desktop_backends_are_checked(self):
         rc,calls,report,_=self.desk();self.assertEqual(rc,0)
         probes=[a for a in calls if a[1]=='tools/gpu-output-doctor.rkt']
         self.assertEqual([a[a.index('--backend')+1] for a in probes],['opengl','metal'])
         self.assertEqual(report['gpu_document_output_verified'],{'opengl':True,'metal':True})
-        self.assertEqual(calls[-1][1],'tools/update-source-sums.py')
     def test_desktop_preserves_interop_before_document_validation(self):
         _,calls,_,_=self.desk()
         self.assertLess(next(i for i,a in enumerate(calls) if a[1]=='tools/gpu-interop-doctor.rkt'),
                         next(i for i,a in enumerate(calls) if a[1]=='tools/gpu-output-doctor.rkt'))
-    def test_desktop_native_failure_blocks_sums(self):
-        rc,calls,_,_=self.desk(failure='tools/gpu-output-doctor.rkt');self.assertEqual(rc,1);self.no_sums(calls)
-    def test_desktop_document_inspection_failure_blocks_sums(self):
+    def test_desktop_native_failure_fails_validation(self):
+        rc,_,_,_=self.desk(failure='tools/gpu-output-doctor.rkt');self.assertEqual(rc,1)
+    def test_desktop_document_inspection_failure_fails_validation(self):
         rc,calls,_,_=self.desk(failure='tools/inspect-gpu-output.py',failure_probe_only=True)
-        self.assertEqual(rc,1);self.no_sums(calls)
+        self.assertEqual(rc,1)
     def test_optional_document_failure_is_not_absence(self):
         rc,calls,_,_=self.desk(mode='optional',failure='tools/gpu-output-doctor.rkt')
-        self.assertEqual(rc,1);self.no_sums(calls)
+        self.assertEqual(rc,1)
     def test_optional_document_absence_is_explicit(self):
         rc,calls,report,_=self.desk(mode='optional',unavailable=('output-metal',))
         self.assertEqual(rc,0);self.assertFalse(report['gpu_document_output_verified']['metal'])
         self.assertTrue(any('output-metal unavailable' in text for text in report['skips']))
     def test_required_document_absence_fails(self):
-        rc,calls,_,_=self.desk(unavailable=('output-metal',));self.assertEqual(rc,1);self.no_sums(calls)
+        rc,calls,_,_=self.desk(unavailable=('output-metal',));self.assertEqual(rc,1)
     def test_off_has_no_document_gpu_claim(self):
         rc,calls,report,_=self.desk(mode='off');self.assertEqual(rc,0)
         self.assertEqual(report['gpu_document_output_verified'],{})
@@ -60,18 +58,17 @@ class Checks(unittest.TestCase):
     def test_desktop_does_not_claim_separate_ci_gate(self):
         _,_,report,_=self.desk();self.assertFalse(report['egl_headless_verified'])
         self.assertIn('separate required',report['egl_validation_note']);self.assertIn('CI',report['egl_validation_note'])
-    def test_headless_document_pipeline_and_sums_last(self):
+    def test_headless_document_pipeline(self):
         rc,calls,envs,report=self.egl();self.assertEqual(rc,0)
         self.assertTrue(report['gpu_document_output_verified'])
         command,=[a for a in calls if a[1]=='tools/gpu-output-doctor.rkt']
         self.assertEqual(command[0],headless.RACKET)
         self.assertEqual(command[command.index('--host')+1],'egl')
-        self.assertEqual(calls[-1][1],'tools/update-source-sums.py')
-    def test_headless_native_failure_blocks_sums(self):
-        rc,calls,_,_=self.egl(failure='tools/gpu-output-doctor.rkt');self.assertEqual(rc,1);self.no_sums(calls)
-    def test_headless_document_inspection_failure_blocks_sums(self):
+    def test_headless_native_failure_fails_validation(self):
+        rc,_,_,_=self.egl(failure='tools/gpu-output-doctor.rkt');self.assertEqual(rc,1)
+    def test_headless_document_inspection_failure_fails_validation(self):
         rc,calls,_,_=self.egl(failure='tools/inspect-gpu-output.py',inspector_only=True)
-        self.assertEqual(rc,1);self.no_sums(calls)
+        self.assertEqual(rc,1)
     def test_headless_document_probes_do_not_get_optional_after_initialization(self):
         _,calls,_,_=self.egl(mode='optional')
         command,=[a for a in calls if a[1]=='tools/gpu-output-doctor.rkt'];self.assertNotIn('--optional',command)

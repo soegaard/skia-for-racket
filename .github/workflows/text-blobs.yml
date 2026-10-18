@@ -54,7 +54,6 @@ jobs:
           variant: CS
       - name: Check source and install pinned native libraries
         run: |
-          python tools/update-source-sums.py --check
           python tools/test-text-blobs.py
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
@@ -92,7 +91,6 @@ jobs:
           variant: CS
       - name: Check source and install document inspector dependencies
         run: |
-          python tools/update-source-sums.py --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test-text-blobs.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

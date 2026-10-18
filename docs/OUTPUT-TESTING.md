@@ -77,10 +77,8 @@ mkdir -p output &&
 python3 tools/inspect-vector-output.py \
   --probe-prefix output/vector-output-0.23 &&
 
-python3 tools/update-source-sums.py
 ```
 
-The patch does not modify `SOURCE-SHA256SUMS.txt`; the last command regenerates
 it from the actual complete checkout. Nothing is automatically committed or
 pushed. `git apply --check` must succeed against your working tree; stop rather
 than forcing a conflicting patch onto locally changed source.

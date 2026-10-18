@@ -167,8 +167,7 @@ python3 tools/test-native-abi.py &&
 "$RACKET" run-tests.rkt &&
 python3 tools/native-abi-lab.py --candidate --racket "$RACKET" \
   --output "output/native-abi-0.47-$(date +%Y%m%d-%H%M%S)" &&
-SKIA_SOURCE_SUMS_MODE=check bash tools/validate-gpu.sh &&
-python3 tools/update-source-sums.py --check
+bash tools/validate-gpu.sh &&
 ```
 
 The desktop GPU validator retains its existing interactive/visual inspection

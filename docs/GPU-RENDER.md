@@ -141,13 +141,10 @@ never fabricates a runtime observation or weakens the general validators.
 ```bash
 python3 tools/accept-gpu-render-api.py --racket /absolute/path/to/racket
 python3 tools/accept-gpu-render-api.py --racket /absolute/path/to/racket --accept
-python3 tools/update-source-sums.py
-python3 tools/update-source-sums.py --check
 python3 tools/validate-public-api.py --racket /absolute/path/to/racket
 ```
 
 The accepted snapshot, generated index, and updated release-source review and
-report must be reviewed and committed with this addition. The source manifest
 is regenerated on the complete checkout,
 including those reflected files. Tests and source declarations are not evidence
 that the selected native backend has actually executed on this machine.

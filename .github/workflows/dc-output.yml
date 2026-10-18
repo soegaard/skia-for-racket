@@ -52,7 +52,6 @@ jobs:
           variant: CS
       - name: Source contracts and example compilation
         run: |
-          python tools/update-source-sums.py --check
           python tools/test-dc-output.py
           python tools/test-dc-closure.py
           racket -l raco -- make dc-output.rkt tools/dc-output-doctor.rkt examples/dc-output.rkt examples/dc-closure.rkt

@@ -124,7 +124,7 @@ class Orchestration(unittest.TestCase):
         m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
         calls=[]
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest\n')
+            root=Path(t)
             (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kw):
                 command=list(map(str,command));calls.append(command);name=Path(command[1]).name
@@ -136,7 +136,6 @@ class Orchestration(unittest.TestCase):
                 if name=='gpu-context-control-gpu-test.rkt':
                     report=Path(command[command.index('--report')+1])
                     synthetic_evidence(report.parent,command[command.index('--token')+1],command[command.index('--backend')+1],command[command.index('--adapter')+1])
-                    if changed:(root/'SOURCE-SHA256SUMS.txt').write_text('changed')
                 log.flush();return subprocess.CompletedProcess(command,0)
             args=['--racket',sys.executable,'--backend','egl','--directory',str(root/'out')]
             if mode:args+=['--regressions',mode]
@@ -166,7 +165,6 @@ class Orchestration(unittest.TestCase):
     def test_gpu_failure(self):
         code,r,_=self.invoke('none',failure='gpu-context-control-gpu-test.rkt');self.assertEqual(code,1);self.assertFalse(r['byte_oracles_passed'])
     def test_partial_summary(self):self.assertEqual(self.invoke('none',partial=True)[0],1)
-    def test_source_change(self):self.assertEqual(self.invoke('none',changed=True)[0],1)
 
 class Sources(unittest.TestCase):
     def text(self,name):return (ROOT/name).read_text(encoding='utf-8')

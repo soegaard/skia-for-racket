@@ -70,7 +70,6 @@ Linux end-to-end acceptance remains **deferred to future GitHub Actions CI**, as
 agreed for the 0.43 baseline. This stage adds no CI workflow and claims no Linux
 Racket/Ganesh execution here.
 
-Both validators update `SOURCE-SHA256SUMS.txt` only after **all selected checks**,
 including the new inspectors, succeed. The authoring delivery records separately
 which Python/C/source/patch checks ran and which Racket/GPU/hardware gates did not.
 The recurring macOS CoreAnalytics/OpenGL context warning is not resolved by a

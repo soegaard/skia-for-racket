@@ -424,8 +424,7 @@ def main(argv=None, *, root=ROOT):
         if args.require_renderers:
             for executable in ('pdftoppm', 'rsvg-convert'):
                 need(shutil.which(executable), 'required renderer missing: ' + executable)
-        initial = (root/'SOURCE-SHA256SUMS.txt').read_bytes()
-        for name, options in (('update-source-sums.py', ['--check']), ('api-inventory.py', ['--check']),
+        for name, options in (('api-inventory.py', ['--check']),
                               ('check-gpu-source.py', ['--require-integration']),
                               ('test-advanced-canvases.py', []), ('test-advanced-canvas-documents.py', [])):
             runner.run([sys.executable, root/'tools'/name, *options])
@@ -459,8 +458,6 @@ def main(argv=None, *, root=ROOT):
                                                 render=args.require_renderers, runner=runner)
         report['documents_checked'] = True
         report['independent_renderers_executed'] = args.require_renderers
-        need((root/'SOURCE-SHA256SUMS.txt').read_bytes() == initial, 'source manifest changed during acceptance')
-        runner.run([sys.executable, root/'tools/update-source-sums.py', '--check'])
         report['status'] = 'passed'
     except Exception as error:
         report['error'] = type(error).__name__ + ': ' + str(error)

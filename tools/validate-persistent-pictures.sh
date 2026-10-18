@@ -26,4 +26,3 @@ mkdir -p output
 "$RACKET" tools/replay-picture-probe.rkt output/persistent-pictures-0.33.cache.skp \
   output/persistent-pictures-0.33.fresh 240 140
 python3 tools/inspect-persistent-pictures.py --probe-prefix output/persistent-pictures-0.33
-python3 tools/update-source-sums.py

@@ -238,7 +238,6 @@ mapping. A buffer snapshot itself is never such a hidden conversion boundary.
 ## Verification and acceptance
 
 ```bash
-python tools/update-source-sums.py --check
 python tools/api-inventory.py --check
 python tools/test-float-pixels.py
 python tools/test-float-pixel-documents.py

@@ -43,4 +43,3 @@ esac
 "$PYTHON" tools/inspect-portable-drawing.py --probe-prefix "$PREFIX" "${PDF_ARGS[@]}" > "$WORK/inspection.json"
 cp "$WORK/inspection.json" "$PREFIX.inspection.json"
 cat "$PREFIX.inspection.json"
-"$PYTHON" tools/update-source-sums.py

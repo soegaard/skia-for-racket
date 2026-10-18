@@ -100,7 +100,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         racket = str(Path(racket).resolve())
         result["racket_executable"] = racket
         before = fingerprint(root)
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root), object_pairs_hook=checks.pixels.unique_object))
         result["identity"] = identity
         native, gpu_backend = base.select_backends(args.backend, identity)
@@ -146,7 +145,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
                     bounded_comparisons=len(inspected["bounded_comparisons"])))
         if fingerprint(root) != before:
             raise RuntimeError("source changed during validation")
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         result.update(status="passed", source_sha256=before)
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"

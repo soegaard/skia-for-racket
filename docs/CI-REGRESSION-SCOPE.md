@@ -112,11 +112,8 @@ not claim that the entire repository now runs global tests only five times.
 
 ## Checking the change
 
-After applying the patch, regenerate the source manifest and run:
 
 ```bash
-python tools/update-source-sums.py
-python tools/update-source-sums.py --check
 python tools/test-validation-regressions.py
 python tools/test-dc-closure.py
 python tools/test-ci.py

@@ -55,7 +55,7 @@ class Checks(unittest.TestCase):
             finally:
                 os.chdir(before)
 
-    def test_required_runs_all_stages_and_manifest_last(self):
+    def test_required_runs_all_stages(self):
         rc, calls, report, directory = self.simulate()
         self.assertEqual(rc, 0)
         self.assertTrue(directory.startswith('gpu-0.46-'))
@@ -64,7 +64,6 @@ class Checks(unittest.TestCase):
         for path in ('run-tests.rkt','tools/gpu-offscreen-doctor.rkt','tools/gpu-window-doctor.rkt',
                      'tools/gpu-image-doctor.rkt','tools/inspect-gpu-images.py'):
             self.assertIn(path, paths)
-        self.assertEqual(calls[-1][1], 'tools/update-source-sums.py')
         self.assertLess(paths.index('tools/gpu-window-doctor.rkt'), paths.index('tools/gpu-image-doctor.rkt'))
 
     def test_selected_racket_compiles_dynamic_image_modules(self):
@@ -78,17 +77,15 @@ class Checks(unittest.TestCase):
             if len(a)>1 and (a[1].endswith('-doctor.rkt') or a[1]=='run-tests.rkt'):
                 self.assertEqual(a[0], RACKET)
 
-    def test_live_image_failure_does_not_update_manifest(self):
+    def test_live_image_failure_stops_before_inspection(self):
         rc, calls, report, _ = self.simulate(failure='tools/gpu-image-doctor.rkt')
         self.assertEqual(rc, 1); self.assertEqual(report['status'], 'failed')
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
         self.assertFalse(any('tools/inspect-gpu-images.py' in a and '--probe-prefix' in a for a in calls))
 
-    def test_image_inspection_failure_does_not_update_manifest(self):
+    def test_image_inspection_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-images.py', failure_probe_only=True)
         self.assertTrue(any('tools/gpu-image-doctor.rkt' in a and '--prefix' in a for a in calls))
         self.assertEqual(rc, 1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
     def test_optional_initialization_skip_is_explicit(self):
         rc, calls, report, _ = self.simulate(mode='optional', unavailable=('images-opengl','images-metal'))
@@ -103,7 +100,6 @@ class Checks(unittest.TestCase):
     def test_optional_does_not_hide_render_failure(self):
         rc, calls, report, _ = self.simulate(mode='optional', failure='tools/gpu-image-doctor.rkt')
         self.assertEqual(rc, 1); self.assertEqual(report['status'], 'failed')
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
     def test_off_explicitly_skips_live_work_but_runs_pure_checks(self):
         rc, calls, report, _ = self.simulate(mode='off')
@@ -136,21 +132,18 @@ class Checks(unittest.TestCase):
         self.assertNotIn('metal', window)
         self.assertNotIn('--backend', window)
 
-    def test_metal_failure_cannot_update_manifest(self):
+    def test_metal_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/gpu-metal-doctor.rkt')
         self.assertEqual(rc,1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
-    def test_parity_inspection_failure_cannot_update_manifest(self):
+    def test_parity_inspection_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-parity.py', failure_probe_only=True)
         self.assertEqual(rc,1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
-    def test_combined_parity_failure_cannot_update_manifest(self):
+    def test_combined_parity_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-parity.py', failure_directory_only=True)
         self.assertEqual(rc, 1)
         self.assertTrue(any('tools/inspect-gpu-parity.py' in a and '--directory' in a for a in calls))
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
     def test_selected_racket_compiles_metal_and_cross_backend_tools(self):
         _, calls, _, _ = self.simulate()
@@ -190,21 +183,18 @@ class Checks(unittest.TestCase):
             self.assertIn(path, c)
         self.assertEqual(c[0], RACKET)
 
-    def test_presenter_failure_cannot_update_manifest(self):
+    def test_presenter_failure_fails_validation(self):
         rc, calls, report, _ = self.simulate(failure='tools/gpu-presenter-doctor.rkt')
         self.assertEqual(rc, 1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
         self.assertEqual(report['status'], 'failed')
 
-    def test_presenter_inspection_failure_cannot_update_manifest(self):
+    def test_presenter_inspection_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-presentation.py', failure_probe_only=True)
         self.assertEqual(rc, 1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
-    def test_combined_presenter_failure_cannot_update_manifest(self):
+    def test_combined_presenter_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-presentation.py', failure_directory_only=True)
         self.assertEqual(rc, 1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
     def test_optional_presenter_unavailability_is_explicit(self):
         rc, calls, report, _ = self.simulate(mode='optional', unavailable=('presentation-metal',))
@@ -217,7 +207,6 @@ class Checks(unittest.TestCase):
     def test_optional_presenter_test_failure_is_not_an_initialization_skip(self):
         rc, calls, _, _ = self.simulate(mode='optional', failure='tools/gpu-presenter-doctor.rkt')
         self.assertEqual(rc, 1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
     def test_off_does_not_claim_presenter_submission(self):
         rc, calls, report, _ = self.simulate(mode='off')
@@ -242,15 +231,13 @@ class Checks(unittest.TestCase):
         self.assertNotIn('--host', probe)
         self.assertFalse(any('tools/gpu-egl-doctor.rkt' in a and '--prefix' in a for a in calls))
 
-    def test_interop_failure_blocks_manifest(self):
+    def test_interop_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/gpu-interop-doctor.rkt')
         self.assertEqual(rc, 1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
-    def test_interop_inspector_failure_blocks_manifest(self):
+    def test_interop_inspector_failure_fails_validation(self):
         rc, calls, _, _ = self.simulate(failure='tools/inspect-gpu-headless.py', failure_probe_only=True)
         self.assertEqual(rc, 1)
-        self.assertFalse(any('tools/update-source-sums.py' in a for a in calls))
 
     def test_optional_interop_initialization_skip(self):
         rc, calls, report, _ = self.simulate(mode='optional', unavailable=('interop-opengl',))

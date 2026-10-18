@@ -187,7 +187,7 @@ def decision_for(cap: dict, policy: dict) -> dict:
 def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -> dict[str, str]:
     # Freeze the exact implementation and test sources examined by the existing
     # inventory, plus the review/checker semantics. Deliberate changes require
-    # a new review, not just regenerating Markdown or the source manifest.
+    # a new review, not just regenerating Markdown.
     hashes = dict(inventory_hashes)
     names = {'tools/api_inventory.py', 'tools/release_scope.py', 'tools/validate-release-scope.py',
              'tools/test-release-scope.py', 'tools/ci.py', 'run-tests.rkt',
@@ -230,7 +230,7 @@ def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -
         names.update(cap['test_sources'])
     for name in sorted(names):
         hashes[name] = file_hash(path_at(root, name))
-    need(REVIEW not in hashes and REPORT not in hashes and 'SOURCE-SHA256SUMS.txt' not in hashes,
+    need(REVIEW not in hashes and REPORT not in hashes,
          'self-referential review input')
     return dict(sorted(hashes.items()))
 
@@ -417,7 +417,7 @@ def main(argv=None, *, root=ROOT) -> int:
                   release_ready=False, commands=[])
     try:
         # Unlike --write on the Markdown generator, this never regenerates a
-        # source manifest or review ledger as a way to make checks turn green.
+        # review ledger as a way to make checks turn green.
         summary = audit(root, write=args.write)
         report.update(source_audit_passed=True, summary=summary)
         if args.racket:

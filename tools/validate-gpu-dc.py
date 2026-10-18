@@ -26,7 +26,6 @@ HEADLESS = ("gpu-dc.rkt", "private/gpu-dc-scope.rkt", "private/gpu-dc-native.rkt
             "tests/gpu-dc-pure-test.rkt", "tests/gpu-dc-native-test.rkt")
 GUI = ("gpu-canvas.rkt", "tests/gpu-dc-gui-test.rkt", "examples/skia-gpu-canvas.rkt")
 SOURCES = (*HEADLESS, *GUI, "private/dc-render.rkt", "private/dc-class.rkt", "private/dc-alpha.rkt", "gpu-gui.rkt",
-           "gpu.rkt", "info.rkt", "run-tests.rkt", "SOURCE-SHA256SUMS.txt",
            "tools/validate-gpu-dc.py", "tools/test-validate-gpu-dc.py")
 
 
@@ -84,7 +83,7 @@ class Runner:
         started = time.monotonic()
         try:
             result = subprocess.run(args, cwd=root,
-                env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", SKIA_SOURCE_SUMS_MODE="check"),
+                env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=self.timeout, check=False)
             logfile.write_bytes(result.stdout)
             entry["returncode"] = result.returncode
@@ -142,7 +141,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         result["racket_executable"] = str(Path(racket).resolve())
         before = fingerprint(root)
         result["source_sha256"] = before
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         identity = validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root)))
         result["identity"] = identity
         native, gui = select_backends(args.backend, identity)
@@ -167,7 +165,6 @@ def main(argv=None, *, root: Path = ROOT) -> int:
             result["gui_tests_passed"] = True
         if fingerprint(root) != before:
             raise RuntimeError("source changed during validation")
-        runner.run([sys.executable, root / "tools/update-source-sums.py", "--check"], root)
         result["status"] = "passed"
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"

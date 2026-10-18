@@ -36,8 +36,6 @@ jobs:
           architecture: x64
           distribution: full
           variant: CS
-      - name: Verify the checked-in source inventory
-        run: python3 tools/update-source-sums.py --check
       - name: Install pinned Skia and HarfBuzz libraries
         run: |
           bash tools/install-native.sh
@@ -132,8 +130,6 @@ jobs:
           architecture: x64
           distribution: full
           variant: CS
-      - name: Verify the checked-in source inventory
-        run: python3 tools/update-source-sums.py --check
       - name: Install pinned Skia and HarfBuzz libraries
         run: |
           bash tools/install-native.sh

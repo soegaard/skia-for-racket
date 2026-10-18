@@ -269,7 +269,6 @@ image content, not a claim that raster samples become vector geometry.
 
 ```bash
 python -m pip install -r tools/dc-output-requirements.txt
-python tools/update-source-sums.py --check
 python tools/api-inventory.py --check
 python tools/test-integer-pixels.py
 RACKET="/Applications/Racket v9.3.0.2/bin/racket"

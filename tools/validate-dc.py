@@ -30,7 +30,7 @@ class Runner:
         print('+', subprocess.list2cmdline(argv), flush=True)
         started = time.monotonic()
         try:
-            env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', SKIA_SOURCE_SUMS_MODE='check')
+            env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
             completed = subprocess.run(argv, cwd=cwd, env=env, stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT, timeout=self.timeout, check=False)
             output = completed.stdout
@@ -56,18 +56,13 @@ class Runner:
             validation.write_json(self.directory / 'commands.json', self.commands)
 
 
-def execute(root, directory, racket, *, manifest_only=False, runner=None):
+def execute(root, directory, racket, *, runner=None):
     runner = runner or Runner(directory)
     checks = {}
     state = dict(schema=1, stage='0.57', status='running', validation_run=directory.name,
                  racket_executable=racket, checks=checks, gpu_execution_verified=False,
                  full_drop_in_compatibility=False)
     try:
-        manifest_command = [sys.executable, root/'tools/update-source-sums.py', '--check']
-        if manifest_only:
-            manifest_command.append('--manifest-only')
-        runner.run(manifest_command, cwd=root)
-        before_manifest = validation.sha256(root/'SOURCE-SHA256SUMS.txt')
         before = validation.source_fingerprint(root)
         identity_text = runner.run([racket, root/'tools/ci-identity.rkt'], cwd=root)
         identity = validation.json.loads(identity_text)
@@ -88,12 +83,9 @@ def execute(root, directory, racket, *, manifest_only=False, runner=None):
         runner.run([racket, root/'tools/dc-doctor.rkt', '--directory', directory], cwd=root)
         inspected = validation.inspect_directory(directory, identity=identity)
         checks['native_dc_and_pixels'] = True
-        runner.run(manifest_command, cwd=root)
-        validation.require(before_manifest == validation.sha256(root/'SOURCE-SHA256SUMS.txt') and
-                           before == validation.source_fingerprint(root), 'source changed during DC validation')
+        validation.require(before == validation.source_fingerprint(root), 'source changed during DC validation')
         checks['source_unchanged'] = True
-        state.update(status='passed', source_manifest_sha256=before_manifest, sources=before,
-                     inspection=inspected)
+        state.update(status='passed', sources=before, inspection=inspected)
         validation.write_review(directory, inspected)
         validation.write_json(directory/'dc.inspection.json', inspected)
         validation.write_json(directory/'validation.json', state)
@@ -132,7 +124,6 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--racket', default=os.environ.get('RACKET', 'racket'))
     parser.add_argument('--output', type=Path, help='new evidence directory; existing paths are refused')
-    parser.add_argument('--manifest-only', action='store_true', help='installed source package without Git inventory')
     args = parser.parse_args(argv)
     executable = shutil.which(args.racket)
     if not executable:
@@ -146,7 +137,7 @@ def main(argv=None):
     else:
         parent = ROOT/'output'; parent.mkdir(exist_ok=True)
         directory = Path(tempfile.mkdtemp(prefix='dc-0.57-', dir=parent))
-    return execute(ROOT, directory, str(Path(executable).resolve()), manifest_only=args.manifest_only)
+    return execute(ROOT, directory, str(Path(executable).resolve()))
 
 
 if __name__ == '__main__':

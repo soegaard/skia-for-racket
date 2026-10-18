@@ -16,7 +16,6 @@ inspectors, and native ABI probes. It is not the public drawing API.
 | [validate-release-candidate.py](validate-release-candidate.py), [release_candidate.py](release_candidate.py) | Assemble and validate release-candidate evidence. |
 | [validate-release-scope.py](validate-release-scope.py), [release_scope.py](release_scope.py), [release_graph.py](release_graph.py) | Validate release scope and its dependency/evidence graph. |
 | [install-native.sh](install-native.sh), [install-native-windows.py](install-native-windows.py), [install-native-windows.ps1](install-native-windows.ps1), [install-harfbuzz.sh](install-harfbuzz.sh) | Explicit native dependency installation, distinct from read-only checks. |
-| [update-source-sums.py](update-source-sums.py) | Refresh source-integrity checksums after intentional source changes. |
 
 ## File families
 

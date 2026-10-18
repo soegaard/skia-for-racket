@@ -46,7 +46,6 @@ def present_event():
 def source_fixture(root):
     for name in parity.SOURCE_PATHS:
         path=root/name; path.parent.mkdir(parents=True,exist_ok=True); path.write_text('; synthetic workload ' + name)
-    (root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest; subprocess verification is injected')
 
 
 def reports(root, directory, name, backend='direct3d', adapter='warp', index=0):
@@ -264,7 +263,6 @@ class RunnerTests(unittest.TestCase):
             if '--prefix' in a:self.assertIn('warp',a);self.assertIn('direct3d',a)
             if 'gpu-performance-doctor.rkt' in Path(a[1]).name or 'gpu-redraw-doctor.rkt' in Path(a[1]).name:
                 self.assertEqual(a[-len(parity.TIMING_ARGS):],parity.TIMING_ARGS)
-        self.assertEqual(sum('--manifest-only' in a for a in calls),2)
     def test_offscreen_scope(self):self.assertEqual(len(self.simulate()[1]['suites']),4)
     def test_presentation_scope(self):self.assertEqual([x['name'] for x in self.simulate(scope='presentation')[1]['suites']],['redraw'])
     def test_compile_failure(self):
@@ -277,10 +275,6 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.simulate(identity_change=lambda r:r.update(os='unix'))
     def test_wrong_report_failure(self):
         with self.assertRaises(ValueError):self.simulate(change=lambda n,r,i,root:r.update(validation_run='other'))
-    def test_manifest_mutation(self):
-        def change(n,r,i,root):
-            if n=='performance':(root/'SOURCE-SHA256SUMS.txt').write_text('changed')
-        with self.assertRaises(ValueError):self.simulate(change=change)
     def test_reuse_rejected_without_deleting_evidence(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);source_fixture(root);e=root/'e';e.mkdir();(e/'old.txt').write_text('old')

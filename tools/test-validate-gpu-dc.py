@@ -130,7 +130,6 @@ class Workflow(unittest.TestCase):
         code, _, commands = self.run_gate(["--require-gui"])
         self.assertEqual(code, 0)
         for command in commands:
-            if not any("update-source-sums.py" in item for item in command):
                 self.assertEqual(command[0], "/selected/racket")
 
 class SourceContract(unittest.TestCase):

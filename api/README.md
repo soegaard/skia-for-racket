@@ -120,7 +120,6 @@ claimed to be expanded/reflected exports. Native callbacks/GUI code are not run.
 A change to an anchored public declaration or discovered module must be reviewed.
 
 `validate-api-inventory.py` requires a real complete Git checkout and verifies the
-source manifest before and after. It hashes audited source files and publishes a
 success receipt only after all selected gates pass. Its output is a fresh
 `output/api-inventory-0.67-*` directory. It never silently treats a fragment fixture
 as a complete checkout. Keep the existing full Racket and rendering validators.
@@ -182,7 +181,6 @@ and input/observation evidence is retained.
    `docs/SKIASHARP-GAPS.md` after catalog and full-source checks. It cannot bless
    an unknown native symbol or missing source anchor automatically.
 4. Run the Python tests, manifest updater, checker and selected validation gates.
-   Include the regenerated source manifest in the commit.
 
 Runtime test-source references do not become execution receipts when edited.
 New public modules require explicit inventory additions. Future API sketches in

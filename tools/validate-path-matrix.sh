@@ -25,4 +25,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/path-matrix.rkt output/path-matrix-0.24
 python3 tools/inspect-path-matrix.py --probe-prefix output/path-matrix-0.24
-python3 tools/update-source-sums.py

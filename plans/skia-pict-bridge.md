@@ -551,7 +551,6 @@ checkout so a relative-path import cannot hide a packaging error.
 | `scribblings/reference/pict.scrbl` | New reference chapter with contracts and raster/ownership guarantees. |
 | Reference include/coverage files | Register the chapter and real binding targets. |
 | API policy, public inventories, API contracts, changelog | Declare the small additive module and its behavior. |
-| `SOURCE-SHA256SUMS.txt` | Update at the implementation's normal validated packaging step. |
 
 These file names are the intended organization, not a requirement to create
 one more validation framework. Reuse existing fixture/report infrastructure
@@ -604,11 +603,9 @@ Run checks in this order:
 4. Selected PDF/SVG representation and independently rendered output checks.
 5. Aggregate pure/native regression checks appropriate to touched modules.
 6. Public API inventory/signature review and reference rendering/link checks.
-7. Installed-package validation, source-sum maintenance/check, and diff review.
 
 Use existing tools such as `run-tests.rkt`, `tools/validate-dc.py`,
 `tools/validate-public-api.py`, `tools/check-reference.py`, and
-`tools/update-source-sums.py` with their current supported options. New
 consumer tests must actually be reached by the installed-package gate; adding
 test files or updating a case count is not execution evidence.
 

@@ -23,4 +23,3 @@ bash tools/audit-harfbuzz-symbols.sh
 mkdir -p output
 "$RACKET" examples/geometry-primitives.rkt output/geometry-primitives-0.31
 python3 tools/inspect-geometry-primitives.py --probe-prefix output/geometry-primitives-0.31
-python3 tools/update-source-sums.py

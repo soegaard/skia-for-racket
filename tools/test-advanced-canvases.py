@@ -178,10 +178,9 @@ class Safety(unittest.TestCase):
 
 class Orchestration(unittest.TestCase):
     """Commands and receipts are mocked; no execution evidence is manufactured."""
-    def simulate(self, *, fail=None, mutate=False):
+    def simulate(self, *, fail=None):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
-            (root/'SOURCE-SHA256SUMS.txt').write_text('synthetic manifest')
             (root/'run-tests.rkt').write_text('(define-runtime-path native-file "tests/native-test.rkt")')
             directory=root/'evidence'
             commands=[]
@@ -189,8 +188,6 @@ class Orchestration(unittest.TestCase):
                 command=list(map(str,command));commands.append(command)
                 if fail and any(fail in x for x in command):
                     raise subprocess.CalledProcessError(1,command)
-                if mutate and any(x.endswith('advanced-canvas-doctor.rkt') for x in command):
-                    (root/'SOURCE-SHA256SUMS.txt').write_text('changed source')
             with patch.object(v.shutil,'which',return_value=sys.executable), \
                  patch.object(v.Runner,'run',autospec=True,side_effect=execute), \
                  patch.object(v,'inspect_gpu',return_value={'status':'synthetic'}), \
@@ -217,11 +214,6 @@ class Orchestration(unittest.TestCase):
         code,report,commands=self.simulate(fail='run-tests.rkt')
         self.assertEqual(code,1);self.assertFalse(report['regressions_passed'])
         self.assertFalse(any('--adapter' in c for c in commands))
-    def test_mutated_manifest_rejects_publication(self):
-        code,report,_=self.simulate(mutate=True)
-        self.assertEqual(code,1);self.assertIn('manifest changed',report['error'])
-
-
 class Sources(unittest.TestCase):
     """Require real integrated files. The bundle verifier runs other classes only."""
     def source(self,name):return (ROOT/name).read_text(encoding='utf-8')

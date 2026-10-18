@@ -1342,7 +1342,7 @@
         },
         {
           "expected": "success",
-          "name": "Check committed source manifest and validator unit tests",
+          "name": "Run validator unit tests",
           "number": 6
         },
         {
@@ -1406,7 +1406,7 @@
         },
         {
           "expected": "success",
-          "name": "Check committed source manifest and validator unit tests",
+          "name": "Run validator unit tests",
           "number": 6
         },
         {
@@ -1463,7 +1463,7 @@
         },
         {
           "expected": "success",
-          "name": "Check source manifest and inspector contracts",
+          "name": "Check inspector contracts",
           "number": 5
         },
         {
@@ -3420,27 +3420,27 @@
   "workflow": ".github/workflows/release-candidate.yml",
   "workflow_sources": {
     ".github/workflows/acceptance.yml": "92d8dcbfd57cfac73744f07fa29665012824e81dbbcd22a0969bec5b40182f4f",
-    ".github/workflows/advanced-canvases.yml": "57bba9fb5e3eae3e1644e64fa420d5c059f35fec7942e0ef711a89f181540c34",
-    ".github/workflows/api-inventory.yml": "13b047298149e92a2ef7e6c5bd8102b05bb09d659b7eadec4072f7055cc19335",
+    ".github/workflows/advanced-canvases.yml": "5ec821b8989eeaaecccb4f7d17b6622231a9dd40883c4ee75e3b1ca288192de8",
+    ".github/workflows/api-inventory.yml": "dc349b25c4b5cda43949e5cb581328320bc49b2d74aad3032e38e1a0d87929a6",
     ".github/workflows/ci.yml": "59718bff94928d5e521a52c9fa36576bc5496f08c806c60b60037dc6697530df",
     ".github/workflows/codec-queries.yml": "9d1c55901a2ca349effa67410e172fd5929a87801e5f846f7bd89a7c928a8d79",
-    ".github/workflows/dc-output.yml": "34c848fb5646644cf740ee49093685d22a3f3b70ede0f0494432aeea008c1f5d",
-    ".github/workflows/effects.yml": "0cd2eba4af8257d6d3a2a72ac976de410e79c16494bd2629579ded472503fa84",
-    ".github/workflows/float-pixels.yml": "1cabd34cb8264a373a9e2c8d20553a7c6d335a6e896872fad599ab2536ab9a0f",
-    ".github/workflows/font-queries.yml": "13f5997097bb248852853667e0fa34fa413a1b9dde7d18955479ece1bc60e232",
-    ".github/workflows/geometry-completion.yml": "829fd45a2d51e3d2196d281b70b5e63850bd44c307e46c5395d4f436aeb9d00a",
+    ".github/workflows/dc-output.yml": "ce1630891294c50acd74704f0f279106d9d4d7c11b9e747e03ce2a8ab6d658e1",
+    ".github/workflows/effects.yml": "d966185613337c8e196b3726649900220ad9ca5a567b5e32c96e2a922520a3bc",
+    ".github/workflows/float-pixels.yml": "bd53ff3f4c9cbd7ca5d37745c43414a7183ec7905b315b1c4fae16aaf9d05b32",
+    ".github/workflows/font-queries.yml": "8a2f5f235d0a0609f066287c79a264e33c044676f2008199a57baebd086a7d7e",
+    ".github/workflows/geometry-completion.yml": "c03eaa028bf27f950453f675e36b5a24159323d0ae4625faf428f7a7ed9c0304",
     ".github/workflows/global-caches.yml": "786a7c0283c5a9836559e01cd6fc1b90869c26f070239e7b6e0d8918ede483f9",
-    ".github/workflows/gpu-context-controls.yml": "5785db1d6457ec2a3cbfb77059c5a19f56fb3a84784639dfef2c4d6fcfb17605",
-    ".github/workflows/gpu-dc.yml": "b745321a3942b296f86a4c125eaf54a264b8b91051e1f6cddfed1ee523a829df",
-    ".github/workflows/gpu-formats.yml": "07064220263e4778a507318adad9f3aef168c89cb06b6b13f464ab27649cc4bc",
-    ".github/workflows/image-operations.yml": "fcca1f456ca9d6440d99aa33d5215f56431d6fd177b430ba20e92a8c7d63513c",
-    ".github/workflows/integer-pixels.yml": "b10df7ed7bd4c6d039d69239b96c5dc3934089500320f3193bb92a5f569b7cba",
-    ".github/workflows/pages.yml": "624247ad2a065c9c1483b336d9dd754cc4a8dd72945d30966a650b130d6dd28d",
+    ".github/workflows/gpu-context-controls.yml": "7ba4ba34c1f793aa65ae331f10cc840f434b4e30ace9a32e383caffa1b2e70f3",
+    ".github/workflows/gpu-dc.yml": "926a30722bfb06fdba218150c1371bd01f363d46db240e010a27b9c44171a8ef",
+    ".github/workflows/gpu-formats.yml": "1b0e6b1b1134047352a88a4a6107303e6fa0f9a203470811af7990635ac8c423",
+    ".github/workflows/image-operations.yml": "ee21aebfe5d49f2f7abdd3408e558218d7571f0f10d5fa248c9c39f7dd4fe1a3",
+    ".github/workflows/integer-pixels.yml": "9ce4e100da7b41689900a3a7f0492c1b1c7bf504809927f7b2d2e87bf255071d",
+    ".github/workflows/pages.yml": "cfdbd0b27a4d3f99b452967e24f5557309e2d2616b00efd4006d51e76f4a935b",
     ".github/workflows/release-candidate.yml": "ee0b2e8a78248e07ffc1c25a95d1ca5c834f3dbf1a2a600bc5bb24971a475251",
-    ".github/workflows/render-canvas.yml": "d414afcdc2e0494ebeccf4dc753f4b1e551bd363047877090393473f49f5850c",
+    ".github/workflows/render-canvas.yml": "addc9044b832f4d5b4de4cabe7fe260fd54b06e79ec30d4149895d7f496b9961",
     ".github/workflows/streams.yml": "e752477496427754ae2cdbdb64b8e20aa6b80140ce4ef5f9f8d32b227e6a741e",
-    ".github/workflows/text-blobs.yml": "074a1b2ccaa66be1dee820a723436bfe2a24dd7bf606ecec842cc395efd77892",
-    ".github/workflows/typefaces.yml": "50df5dfe8897327cb073d69b7fc0ff4e249211db962254d7a1d09d773e531df4",
+    ".github/workflows/text-blobs.yml": "17f7c802358deeaa089747c58a1363f25dbe1936560930807bd03bef76a895c2",
+    ".github/workflows/typefaces.yml": "53a927b9b96a9f525d7d949743be4d20b28e5e1d2e7f5488891e7497e1ad1f6e",
     "tools/ci-matrix.json": "b3e7f9298c6694337234d39eae47a66217d056ff97dc38b8b6d2ba5cdf7771e9",
     "tools/ci_matrix.py": "d799db9446dd27784a58a8f6e101ff6bc63d702a793b351b5e31cc510ee25044",
     "tools/validation_regressions.py": "f6aaef346fe50b0fa9900d22bea79007b3540180f2c89a3f18bf64f3622b3634"

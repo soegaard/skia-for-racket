@@ -80,8 +80,6 @@ def main(argv=None):
                 report.update(failed_command=command,failed_log=str(log));raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
-        before=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest();report['manifest_before']=before
         run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
         run([sys.executable,ROOT/'tools/test-text-blobs.py'])
         run([sys.executable,ROOT/'tools/test-text-blob-documents.py'])
@@ -113,10 +111,7 @@ def main(argv=None):
             gpu=inspect_gpu(out/'gpu',token,backend,args.adapter)
             (out/'gpu-inspection.json').write_text(json.dumps(gpu,indent=2)+'\n',encoding='utf-8')
             report['gpu_passed']=True
-        run([sys.executable,ROOT/'tools/update-source-sums.py','--check'])
-        after=hashlib.sha256((ROOT/'SOURCE-SHA256SUMS.txt').read_bytes()).hexdigest()
-        if after!=before:raise ValueError('source manifest changed during validation')
-        report.update(manifest_after=after,status='passed')
+        report['status'] = 'passed'
     except Exception as error:
         report['error']=type(error).__name__+': '+str(error)
         print('Text blobs FAILED: '+report['error'],file=sys.stderr)

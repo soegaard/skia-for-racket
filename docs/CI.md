@@ -77,7 +77,6 @@ retained under `dc-foundation/`, including partial evidence on failure.
 The two new RackUnit suites also run in `run-tests.rkt`; pure replay must work
 before Skia installation. Missing images, count reductions and failed commands
 block success. Text samples do not certify Cairo/Pango glyph equivalence.
-The source manifest and all established CPU/GPU jobs/workloads remain required.
 No `pict`, plot, style-expansion, GUI or GPU-facade acceptance is claimed here.
 
 ## Workflow and required result
@@ -123,7 +122,6 @@ macOS hardware validation and from the hosted CPU-only lanes.
 command. Its identity must match the lane's OS, architecture, CS VM, release and
 64-bit pointer size. Python's architecture is not used as a substitute.
 
-The driver verifies the committed source manifest and creates a deterministic
 source-only ZIP. Generated/compiled files and native binaries are rejected. It
 installs that ZIP into a new Racket user home and addon directory, resolves the
 `skia` collection there, and verifies every installed source byte against the
@@ -175,19 +173,10 @@ stress. The 0.45 defaults (three cycles of 180 frames) are not reduced for CI.
 Software benchmark timings are not hardware-performance evidence or speed gates.
 Physical window presentation remains outside these headless jobs.
 
-## Source manifests
 
-The ordinary local validators still update `SOURCE-SHA256SUMS.txt` **last**, after
-all selected checks pass. Commit that file along with changes, including new
-workflow files. `tools/update-source-sums.py --check` instead verifies both the
-Git source inventory and file contents, without modifying the manifest.
-
-CI sets `SKIA_SOURCE_SUMS_MODE=check`. Installed source archives contain no Git
-metadata, so the headless runner additionally uses
-`SKIA_SOURCE_SUMS_MANIFEST_ONLY=1`. In that explicit mode every manifest-listed
-source byte is verified, but there is no independent Git-inventory claim. The
-checkout inventory was checked before archive creation and is checked again at
-the end. Runtime native assets and compiled/output files are not source entries.
+The CI driver requires a clean Git checkout, archives its tracked files, and
+compares the installed package files to that checkout. Runtime native assets and
+compiled/output files are not source entries.
 
 `.gitattributes` keeps text checkouts at LF on Windows as well as Unix, while
 binary fixtures stay binary. Stale, malformed or unsafe manifests fail; CI never
@@ -220,7 +209,6 @@ The usual maintainer sequence remains:
 
 ```sh
 RACKET="/Applications/Racket v9.3.0.2/bin/racket" bash tools/validate-gpu.sh
-python3 tools/update-source-sums.py --check
 ```
 
 To run only the CI infrastructure regression tests (no native/GPU execution):
@@ -266,7 +254,6 @@ The chosen actions and runner labels were checked against their primary docs:
 Older versioned inspectors retain their historical baseline-status notes.
 The 0.46 `ci-report.json` identifies what the current CI lane actually verified;
 a desktop report never certifies a separate Linux run. Updating action pins also
-requires refreshing the source manifest before the update can pass CI.
 
 A pinned action does not freeze hosted OS images, NuGet infrastructure or distro
 packages. Preserve run metadata when comparing later results.

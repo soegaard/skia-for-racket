@@ -329,7 +329,7 @@ def generated_report(policy: dict, snapshots: dict[str, dict]) -> str:
     lines += ['', '## Updating the baseline', '',
               'The validator and probe never rewrite expected snapshots. An intentional API change '
               'requires a separately reviewed baseline update, a generated-document diff, a release-review '
-              'update, source checksums, and fresh runtime checks. Exact comparison flags additions as '
+              'update and fresh runtime checks. Exact comparison flags additions as '
               'well as removals and changed arities/keywords.', '',
               '### Reference', '',
               'Racket reflection: `module->exports`, `dynamic-require`, `procedure-arity-mask`, '

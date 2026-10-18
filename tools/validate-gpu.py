@@ -196,9 +196,8 @@ def main() -> int:
                                                      inspector='tools/inspect-gpu-performance.py')
                 redraw_passed[backend] = probe('redraw', 'redraw-'+backend, backend=backend,
                                                 inspector='tools/inspect-gpu-performance.py')
-        # Repository manifest regeneration is deliberately LAST, after every
-        # selected check succeeds. Optional/off runs retain explicit skips.
-        run([sys.executable,'tools/update-source-sums.py'])
+        # Publish the evidence only after every selected check succeeds.
+        # Optional/off runs retain explicit skips.
         report = {'status':'passed-selected-checks','stage':'0.46','gpu_mode':mode,'identity':identity.strip(),
                   'commands':commands,'skips':skips,'hardware_string_requirement':hardware,
                   'performance_measured':any(performance_passed.values()) or any(redraw_passed.values()),
@@ -221,7 +220,7 @@ def main() -> int:
         return 0
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
         # A failure record is explicitly named; no successful inspection report
-        # is synthesized, and the source manifest has not been updated early.
+        # is synthesized.
         (directory/'validation.failed.json').write_text(json.dumps(
             {'status':'failed','error':str(error),'commands':commands,'skips':skips},indent=2)+'\n')
         print(f'Validation FAILED: {error}\nDetails: {directory}',file=sys.stderr)

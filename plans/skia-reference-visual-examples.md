@@ -247,7 +247,6 @@ The presenter, GPU widget, GPU DC, and GPU-output chapters can link to that comm
 - The source checker fails before runtime execution with `wrong canonical chapter: raster-buffer?`. There are exactly three observed chapter-map mismatches in [api/reference-coverage.json](/Users/soegaard/Dropbox/GitHub/skia-for-racket/api/reference-coverage.json): `raster-buffer?`, `raster-buffer-image-info`, and `raster-buffer->image` still name `pixel-descriptions.scrbl`; their definitions are in `raster-buffers.scrbl`. Reconcile these mappings against the existing chapter organization before using the checker as an acceptance gate. Do not weaken the canonical-definition check.
 - The existing displayed-example suite, run through Racket 9.3.0.2, finishes with **7/590 test failures**. Five occur in `incremental-codecs.scrbl` and two in `live-streams.scrbl`, with `live-ffi: managed callbacks already claimed by another module or place`. The runner creates a fresh namespace for every block and retry; this is consistent with repeated module initialization conflicting with native callback ownership, but the failure does not by itself prove the remedy. Reproduce the affected blocks in fresh processes, then fix runner isolation if confirmed. Do not change live-stream ownership semantics or suppress exceptions to make an illustration check pass.
 - Native font probing confirms that the default face on this machine is Helvetica and lacks the Hebrew glyphs used in F11. The existing PNGs independently show those missing glyphs.
-- No Reference source, generator, PNG, API file, or source checksum was edited during this planning pass. The pre-existing untracked pict and Racket Draw plans remain untouched.
 
 The source-check receipt is under `/private/tmp/skia-reference-editor-source-20261016/`. These failures are pre-existing validation work, not evidence that all drawing examples are invalid. Resolve them in a small validation commit or report their independently reproduced status while continuing editorial work that does not depend on them.
 
@@ -291,7 +290,6 @@ python3 -B tools/check-reference.py --racket "$SKIA_DOC_RACKET" \
   --output /private/tmp/skia-reference-visual-integrated-check
 ```
 
-Publication is not part of the current planning request. Before a future implementation commit, follow the repository's checksum workflow using `tools/update-source-sums.py` and its `--check` mode. Its inventory includes nonignored untracked files, including unrelated plans, so inspect that scope before updating; do not blindly stage or publish all untracked files. Keep source/asset changes and their checksum update coherent.
 
 ## 8 Work batches and completion criteria
 

@@ -64,7 +64,6 @@ bash tools/audit-harfbuzz-symbols.sh &&
 mkdir -p output &&
 "$RACKET" examples/svg-documents.rkt output/svg-documents-0.22 &&
 python3 tools/inspect-svg-output.py --probe-prefix output/svg-documents-0.22 &&
-python3 tools/update-source-sums.py
 ```
 
 Expected individual Racket suite sizes, in runner order:
@@ -121,5 +120,4 @@ RACKET="/Applications/Racket v9.3.0.2/bin/racket" \
 
 No new conformance total, leak-measurement result, benchmark, GPU result, or
 cross-platform renderer-equivalence result is claimed for this stage.
-`SOURCE-SHA256SUMS.txt` is intentionally not patched: the final command
 regenerates it from the complete local checkout.
