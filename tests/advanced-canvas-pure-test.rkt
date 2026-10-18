@@ -62,12 +62,12 @@
      (define record (make-sk-save-layer-rec #f #f #f 22))
      (check-equal? (ptr-ref (ptr-add record (* 3 pointer)) _int) 22))
    (test-case "bad layer options reject before native work"
-     (check-exn exn:fail? (lambda () (canvas-save-layer-rec! #f #:options 3))))
+     (check-exn exn:fail? (lambda () (canvas-save-layer/options! #f #:options 3))))
    (test-case "bad paint and backdrop reject"
-     (check-exn exn:fail? (lambda () (canvas-save-layer-rec! #f #:paint 'bad)))
-     (check-exn exn:fail? (lambda () (canvas-save-layer-rec! #f #:backdrop 'bad))))
+     (check-exn exn:fail? (lambda () (canvas-save-layer/options! #f #:paint 'bad)))
+     (check-exn exn:fail? (lambda () (canvas-save-layer/options! #f #:backdrop 'bad))))
    (test-case "layer callback must have no required keyword"
-     (check-exn exn:fail? (lambda () (call-with-canvas-layer-rec #f (lambda (#:x x) x)))))
+     (check-exn exn:fail? (lambda () (call-with-canvas-layer/options #f (lambda (#:x x) x)))))
    (test-case "discard rejects a noncanvas"
      (check-exn exn:fail? (lambda () (canvas-discard! #f))))
    (test-case "drawable predicates do not allocate"

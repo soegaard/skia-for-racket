@@ -1970,13 +1970,13 @@ The following links cover the font and text interfaces.
 
 @racket[layer-options:layer-options-f16?]
 
-@racket[canvas-save-layer-rec!]
+@racket[canvas-save-layer/options!]
 
-@racket[advanced-layers:canvas-save-layer-rec!]
+@racket[advanced-layers:canvas-save-layer/options!]
 
-@racket[call-with-canvas-layer-rec]
+@racket[call-with-canvas-layer/options]
 
-@racket[advanced-layers:call-with-canvas-layer-rec]
+@racket[advanced-layers:call-with-canvas-layer/options]
 
 @racket[canvas-discard!]
 

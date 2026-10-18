@@ -44,46 +44,46 @@
    (test-case "default record draws and restores the stack"
      (with-skia ([s (make-surface 16 12)])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c (lambda () (rectangle c 1 1 4 4 'red)))
+       (call-with-canvas-layer/options c (lambda () (rectangle c 1 1 4 4 'red)))
        (check-equal? (surface-pixel s 2 2) (rgb 255 0 0)) (check-equal? (canvas-save-count c) 1)))
    (test-case "unscoped layer returns previous save count"
      (with-skia ([s (make-surface 8 8)])
        (define c (surface-canvas s))
-       (define count (canvas-save-layer-rec! c))
+       (define count (canvas-save-layer/options! c))
        (check-equal? count 1) (rectangle c 0 0 2 2 'red)
        (canvas-restore-to-count! c count) (check-equal? (pixel-alpha s 1 1) 255)))
    (test-case "layer paint modulates completed content"
      (with-skia ([s (make-surface 8 8 #:background 'white)]
                  [p (make-paint #:color (rgba 0 0 0 128))])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c (lambda () (rectangle c 0 0 8 8 'red)) #:paint p)
+       (call-with-canvas-layer/options c (lambda () (rectangle c 0 0 8 8 'red)) #:paint p)
        (check-= (rgba-green (surface-pixel s 4 4)) 127 1)))
    (test-case "explicit clip supplies actual bounded drawing"
      (with-skia ([s (make-surface 8 8)])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c (lambda () (canvas-clear! c 'red)) #:clip '(2 2 3 3))
+       (call-with-canvas-layer/options c (lambda () (canvas-clear! c 'red)) #:clip '(2 2 3 3))
        (check-equal? (pixel-alpha s 0 0) 0) (check-equal? (pixel-alpha s 3 3) 255)))
    (test-case "clip and transform are restored"
      (with-skia ([s (make-surface 8 8)])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c (lambda () (canvas-translate! c 5 5)) #:clip '(2 2 3 3))
+       (call-with-canvas-layer/options c (lambda () (canvas-translate! c 5 5)) #:clip '(2 2 3 3))
        (rectangle c 0 0 1 1 'blue) (check-equal? (surface-pixel s 0 0) (rgb 0 0 255))))
    (test-case "initialize with previous retains existing pixels"
      (with-skia ([s (make-surface 8 8 #:background 'red)] [p (make-paint #:blend-mode 'src)])
-       (call-with-canvas-layer-rec (surface-canvas s) void #:paint p
+       (call-with-canvas-layer/options (surface-canvas s) void #:paint p
          #:options (make-layer-options #:initialize-with-previous? #t))
        (check-equal? (surface-pixel s 3 3) (rgb 255 0 0))))
    (test-case "backdrop field really filters previous contents"
      (with-skia ([s (make-surface 8 8 #:background 'red)]
                  [cf (make-color-matrix-filter '#(0 0 0 0 0  0 0 0 0 0  0 0 0 0 1  0 0 0 1 0))]
                  [f (make-color-filter-image-filter cf)] [p (make-paint #:blend-mode 'src)])
-       (call-with-canvas-layer-rec (surface-canvas s) void #:backdrop f #:paint p)
+       (call-with-canvas-layer/options (surface-canvas s) void #:backdrop f #:paint p)
        (check-equal? (surface-pixel s 3 3) (rgb 0 0 255))))
    (test-case "F16 layer flag executes on a float target"
      (with-skia ([b (make-raster-buffer-from-info (make-image-info 4 4 #:color-type 'rgba-f16))])
        (call-with-raster-buffer-canvas b
          (lambda (c)
-           (call-with-canvas-layer-rec c
+           (call-with-canvas-layer/options c
              (lambda () (canvas-clear-color4f! c (make-color4f 0.25 0.5 0.75 1)))
              #:options (make-layer-options #:f16? #t))))
        (call-with-raster-buffer-pixmap b
@@ -97,43 +97,43 @@
    (test-case "LCD preservation flag can be requested without font claims"
      (with-skia ([s (make-surface 8 8)])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c (lambda () (rectangle c 0 0 4 4 'red))
+       (call-with-canvas-layer/options c (lambda () (rectangle c 0 0 4 4 'red))
          #:options (make-layer-options #:preserve-lcd-text? #t))
        (check-equal? (pixel-alpha s 1 1) 255)))
    (test-case "exceptions restore and unpin the owner"
      (with-skia ([s (make-surface 8 8)])
        (define c (surface-canvas s))
        (check-exn #rx"body failure" (lambda ()
-         (call-with-canvas-layer-rec c (lambda () (canvas-save! c) (error 'test "body failure")))))
+         (call-with-canvas-layer/options c (lambda () (canvas-save! c) (error 'test "body failure")))))
        (check-equal? (canvas-save-count c) 1)
        (skia-close! s) (check-true (skia-closed? s))))
    (test-case "protected restore cannot pop the scoped layer"
      (with-skia ([s (make-surface 8 8)])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c
+       (call-with-canvas-layer/options c
          (lambda () (check-exn #rx"protected" (lambda () (canvas-restore-to-count! c 1)))))))
    (test-case "new layer scope pins CPU target against closure"
      (with-skia ([s (make-surface 8 8)])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c
+       (call-with-canvas-layer/options c
          (lambda () (check-exn #rx"pinned" (lambda () (skia-close! s)))
                     (rectangle c 0 0 2 2 'red)))
        (check-equal? (pixel-alpha s 1 1) 255)))
    (test-case "native layer retains supplied paint across its closure"
      (with-skia ([s (make-surface 8 8)] [p (make-paint #:color (rgba 0 0 0 128))])
        (define c (surface-canvas s))
-       (call-with-canvas-layer-rec c
+       (call-with-canvas-layer/options c
          (lambda () (skia-close! p) (rectangle c 0 0 8 8 'red)) #:paint p)
        (check-= (pixel-alpha s 4 4) 128 1)))
    (test-case "closed backdrop rejects before save count changes"
      (with-skia ([s (make-surface 8 8)] [f (make-offset-image-filter 0 0)])
        (skia-close! f) (define c (surface-canvas s))
-       (check-exn exn:fail? (lambda () (canvas-save-layer-rec! c #:backdrop f)))
+       (check-exn exn:fail? (lambda () (canvas-save-layer/options! c #:backdrop f)))
        (check-equal? (canvas-save-count c) 1)))
    (test-case "layer preserves multiple callback values"
      (with-skia ([s (make-surface 8 8)])
        (check-equal? (call-with-values
-                       (lambda () (call-with-canvas-layer-rec (surface-canvas s)
+                       (lambda () (call-with-canvas-layer/options (surface-canvas s)
                                     (lambda () (values 2 3)))) list)
                      '(2 3))))
    (test-case "discard does not prevent an explicit complete overwrite"
@@ -185,7 +185,7 @@
                    [d (call-with-drawable 8 8
                         (lambda (c)
                           (rectangle c 1 1 3 3 'red)
-                          (call-with-canvas-layer-rec c void
+                          (call-with-canvas-layer/options c void
                             #:backdrop (and (eq? mode 'backdrop) filter)
                             #:options (make-layer-options
                                         #:initialize-with-previous? (eq? mode 'initialization)))))]

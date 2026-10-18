@@ -46,7 +46,7 @@
 ;   Draws one half-opacity layer and a separate opaque comparison rectangle.
 (define (draw-advanced-layer c)
   (with-skia ([p (make-paint #:color (rgba 0 0 0 128))])
-    (call-with-canvas-layer-rec c (lambda () (rectangle c 8 8 24 24 'red)) #:paint p))
+    (call-with-canvas-layer/options c (lambda () (rectangle c 8 8 24 24 'red)) #:paint p))
   (rectangle c 36 16 20 16 'blue))
 
 ; draw-advanced-initialization : canvas? -> void?
@@ -54,7 +54,7 @@
 (define (draw-advanced-initialization c)
   (rectangle c 8 8 24 24 'red)
   (with-skia ([p (make-paint #:blend-mode 'src)])
-    (call-with-canvas-layer-rec c void #:paint p
+    (call-with-canvas-layer/options c void #:paint p
       #:options (make-layer-options #:initialize-with-previous? #t)))
   (rectangle c 36 16 20 16 'blue))
 
@@ -63,5 +63,5 @@
 (define (draw-advanced-backdrop c)
   (rectangle c 8 8 24 24 'red)
   (with-skia ([f (make-offset-image-filter 4 0)] [p (make-paint #:blend-mode 'src)])
-    (call-with-canvas-layer-rec c void #:backdrop f #:paint p #:clip '(4 4 32 32)))
+    (call-with-canvas-layer/options c void #:backdrop f #:paint p #:clip '(4 4 32 32)))
   (rectangle c 36 16 20 16 'blue))

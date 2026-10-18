@@ -151,7 +151,7 @@
             ;; affinity: the recorded backdrop must follow its GPU input.
             (set! foreign
               (call-with-drawable 8 8
-                (lambda (c) (call-with-canvas-layer-rec c void #:backdrop foreign-filter)))))))
+                (lambda (c) (call-with-canvas-layer/options c void #:backdrop foreign-filter)))))))
       (call-with-gpu-context context
         (lambda ()
           (test! "group opacity on the selected GPU"
@@ -195,7 +195,7 @@
               (with-skia ([s (make-gpu-surface context 8 6 #:color-type 'rgba-f16)])
                 (define c (surface-canvas s))
                 (parameterize ([current-gpu-io-ledger ledger])
-                  (call-with-canvas-layer-rec c
+                  (call-with-canvas-layer/options c
                     (lambda ()
                       (canvas-clear-color4f! c (make-color4f 0.25 0.5 0.75 1)))
                     #:options (make-layer-options #:f16? #t)))
@@ -216,7 +216,7 @@
               (with-skia ([s (make-gpu-surface context 8 8)])
                 (define c (surface-canvas s))
                 (check-exn #rx"different GPU contexts"
-                  (lambda () (canvas-save-layer-rec! c #:backdrop foreign-filter)))
+                  (lambda () (canvas-save-layer/options! c #:backdrop foreign-filter)))
                 (check-equal? (canvas-save-count c) 1))
               (hash-set! checks 'foreign_backdrop_rejected #t)))
           (test! "exceptional layer exit unpins GPU target and restores state"
@@ -224,7 +224,7 @@
               (with-skia ([s (make-gpu-surface context 8 8)])
                 (define c (surface-canvas s))
                 (check-exn #rx"expected layer failure" (lambda ()
-                                                         (call-with-canvas-layer-rec c
+                                                         (call-with-canvas-layer/options c
                                                            (lambda () (canvas-save! c)
                                                             (error 'test "expected layer failure")))))
                 (check-equal? (canvas-save-count c) 1))

@@ -17,7 +17,7 @@
          "private/advanced-canvas-types.rkt" "private/check.rkt"
          "private/audit-trace.rkt"
          (submod "private/core.rkt" advanced-canvas-internals))
-(provide canvas-save-layer-rec! call-with-canvas-layer-rec canvas-discard!)
+(provide canvas-save-layer/options! call-with-canvas-layer/options canvas-discard!)
 
 ;;;
 ;;; Native Layer Arguments
@@ -51,25 +51,25 @@
 ;;; Public Layer Operations
 ;;;
 
-; canvas-save-layer-rec! : canvas? [#:options layer-options?]
-;                          [#:paint (or/c #f paint?)]
-;                          [#:backdrop (or/c #f image-filter?)] -> exact-integer?
+; canvas-save-layer/options! : canvas? [#:options layer-options?]
+;                              [#:paint (or/c #f paint?)]
+;                              [#:backdrop (or/c #f image-filter?)] -> exact-integer?
 ;   Pushes an explicitly configured layer and returns the prior canvas save count.
-(define (canvas-save-layer-rec! c #:options [options (make-layer-options)]
-                                #:paint [paint #f] #:backdrop [backdrop #f])
-  (define who 'canvas-save-layer-rec!)
+(define (canvas-save-layer/options! c #:options [options (make-layer-options)]
+                                    #:paint [paint #f] #:backdrop [backdrop #f])
+  (define who 'canvas-save-layer/options!)
   (define-values (bounds ph bh) (layer-arguments who options paint backdrop))
   (save-layer who c options bounds ph bh))
 
-; call-with-canvas-layer-rec : canvas? (-> any) [#:options layer-options?]
-;                             [#:paint (or/c #f paint?)]
-;                             [#:backdrop (or/c #f image-filter?)]
-;                             [#:clip (or/c #f list? vector?)] -> any
+; call-with-canvas-layer/options : canvas? (-> any) [#:options layer-options?]
+;                                 [#:paint (or/c #f paint?)]
+;                                 [#:backdrop (or/c #f image-filter?)]
+;                                 [#:clip (or/c #f list? vector?)] -> any
 ;   Runs a callback in a protected layer and composites it when the scope exits.
-(define (call-with-canvas-layer-rec c thunk #:options [options (make-layer-options)]
-                                    #:paint [paint #f] #:backdrop [backdrop #f]
-                                    #:clip [clip #f])
-  (define who 'call-with-canvas-layer-rec)
+(define (call-with-canvas-layer/options c thunk #:options [options (make-layer-options)]
+                                        #:paint [paint #f] #:backdrop [backdrop #f]
+                                        #:clip [clip #f])
+  (define who 'call-with-canvas-layer/options)
   (unless (and (procedure? thunk) (procedure-arity-includes? thunk 0)
                (let-values ([(required allowed) (procedure-keywords thunk)]) (null? required)))
     (raise-argument-error who "procedure accepting zero arguments without required keywords" thunk))

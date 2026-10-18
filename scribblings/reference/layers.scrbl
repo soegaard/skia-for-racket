@@ -95,7 +95,7 @@ The simple layer interface accepts bounds and a paint. Some layers need
 additional setup: initial content copied from the current target, F16 color
 storage, or preservation of LCD text information.
 
-For these settings, use @racket[call-with-canvas-layer-rec]. Like
+For these settings, use @racket[call-with-canvas-layer/options]. Like
 @racket[call-with-canvas-layer], it runs a callback inside a layer and restores
 the canvas state afterward. Its @racket[#:options] argument accepts a
 @tech{layer-options value} describing the requested setup.
@@ -105,7 +105,7 @@ is immutable. Creating an options value does not itself create a layer.
 Supply any paint or backdrop filter separately when creating the layer. A
 backdrop filter can initialize the layer from filtered existing content.
 For manual layer management, pass the same options to
-@racket[canvas-save-layer-rec!].
+@racket[canvas-save-layer/options!].
 
 The flags record requests. Whether Skia fulfills a request depends on the
 drawing backend.
@@ -168,7 +168,7 @@ requested flags. Use the boolean accessors above to test individual requests.
 
 @section{Backdrop Filters and Protected Layers}
 
-@defproc[(call-with-canvas-layer-rec [canvas canvas?]
+@defproc[(call-with-canvas-layer/options [canvas canvas?]
           [thunk (-> any)]
           [#:options options layer-options? (make-layer-options)]
           [#:paint paint (or/c paint? #f) #f]
@@ -199,7 +199,7 @@ reenter the callback after the call ends.
 (with-skia ([surface (make-surface 16 16)]
             [ink (make-paint #:color 'blue)])
   (define canvas (surface-canvas surface))
-  (call-with-canvas-layer-rec
+  (call-with-canvas-layer/options
    canvas
    (lambda () (draw-rect canvas 0 0 16 16 ink))
    #:options (make-layer-options #:bounds '(0 0 16 16))
@@ -236,19 +236,22 @@ The layer bounds cover the whole target. Only the explicit clip creates the tran
       (draw-pattern layer-canvas)
       (case kind
         [(empty)
-         (call-with-canvas-layer-rec layer-canvas void #:paint replace
-                                     #:options (make-layer-options #:bounds zone)
-                                     #:clip zone)]
+         (call-with-canvas-layer/options layer-canvas void
+                                         #:paint replace
+                                         #:options (make-layer-options #:bounds zone)
+                                         #:clip zone)]
         [(initialized)
-         (call-with-canvas-layer-rec layer-canvas void #:paint replace
-                                     #:options (make-layer-options #:bounds zone
-                                                                   #:initialize-with-previous? #t)
-                                     #:clip zone)]
+         (call-with-canvas-layer/options layer-canvas void
+                                         #:paint replace
+                                         #:options (make-layer-options #:bounds zone
+                                                                       #:initialize-with-previous? #t)
+                                         #:clip zone)]
         [(backdrop)
          (with-skia ([blur (make-blur-image-filter 4 4)])
-           (call-with-canvas-layer-rec layer-canvas void #:paint replace #:backdrop blur
-                                       #:options (make-layer-options #:bounds zone)
-                                       #:clip zone))])
+           (call-with-canvas-layer/options layer-canvas void
+                                           #:paint replace #:backdrop blur
+                                           #:options (make-layer-options #:bounds zone)
+                                           #:clip zone))])
       (surface-snapshot page)))
   (with-skia ([empty-image (render-panel 'empty)]
               [initialized-image (render-panel 'initialized)]
@@ -278,7 +281,7 @@ previous content.
 @section[#:tag "skia-layer-manual-state"]{Manual Layer Management}
 
 Use @racket[with-canvas-layer] or @racket[call-with-canvas-layer] for a simple
-layer, and @racket[call-with-canvas-layer-rec] for layer options and backdrop
+layer, and @racket[call-with-canvas-layer/options] for layer options and backdrop
 filters. These helpers restore the canvas state automatically. The save
 operations in this section leave the layer active after returning. The caller
 must restore the returned save count with @racket[canvas-restore-to-count!],
@@ -294,13 +297,13 @@ target and restore the saved state. Bounds and paint follow the rules of
 @racket[call-with-canvas-layer].
 }
 
-@defproc[(canvas-save-layer-rec! [canvas canvas?]
+@defproc[(canvas-save-layer/options! [canvas canvas?]
           [#:options options layer-options? (make-layer-options)]
           [#:paint paint (or/c paint? #f) #f]
           [#:backdrop backdrop (or/c image-filter? #f) #f])
           exact-positive-integer?]{
 Creates a layer using the options, paint, and backdrop filter described for
-@racket[call-with-canvas-layer-rec]. Returns the previous @tech{save count}.
+@racket[call-with-canvas-layer/options]. Returns the previous @tech{save count}.
 Pass the result to @racket[canvas-restore-to-count!] to draw the completed layer
 onto the previous target and restore the saved state.
 }

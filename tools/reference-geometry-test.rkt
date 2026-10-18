@@ -190,7 +190,7 @@
       (check-equal?
        (call-with-values
         (lambda ()
-          (call-with-canvas-layer-rec canvas
+          (call-with-canvas-layer/options canvas
             (lambda () (draw-rect canvas 0 0 16 16 paint) (values 1 2))
             #:options (make-layer-options #:bounds '(0 0 16 16)) #:clip '(2 2 12 12)))
         list) '(1 2))

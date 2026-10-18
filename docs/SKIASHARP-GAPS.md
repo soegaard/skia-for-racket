@@ -36,7 +36,7 @@ See [API decisions](API-DESIGN-DECISIONS.md) for the additive image-info/color/l
 | [abi.version](#abi-version) — Native version guards | supported-with-limits | — | `native-capabilities:skia-native-capabilities` |
 | [abi.convenience](#abi-convenience) — Native version string and default packed-color query | racket-equivalent | — | `native-capabilities:skia-native-capabilities` |
 | [canvas.float-color](#canvas-float-color) — Floating-color clear and color drawing | supported-with-limits | — | `float-colors:canvas-clear-color4f!`; `float-colors:draw-color4f` |
-| [canvas.layer-record](#canvas-layer-record) — Full layer record / backdrop control | supported-with-limits | — | `advanced-layers:canvas-save-layer-rec!`; `advanced-layers:call-with-canvas-layer-rec`; `layer-options:make-layer-options` |
+| [canvas.layer-record](#canvas-layer-record) — Full layer record / backdrop control | supported-with-limits | — | `advanced-layers:canvas-save-layer/options!`; `advanced-layers:call-with-canvas-layer/options`; `layer-options:make-layer-options` |
 | [canvas.rounded-clip](#canvas-rounded-clip) — Rounded-rectangle clipping through checked paths | racket-equivalent | — | `canvas-primitives:canvas-clip-rounded-rect!` |
 | [canvas.discard](#canvas-discard) — Discard destination-content hint | supported-with-limits | — | `advanced-layers:canvas-discard!` |
 | [canvas.raw-owners](#canvas-raw-owners) — Raw bitmap/raster canvas construction and owner access | racket-equivalent | — | `main:surface-canvas`; `raster-buffers:call-with-raster-buffer-canvas` |
@@ -345,7 +345,7 @@ Checked pinned SaveLayerRec bounds, paint, backdrop and LCD/initialize-previous/
 
 **Backend declaration:** Ordinary raster and same-domain Ganesh OpenGL/Metal/Direct3D drawing. NWay requires same-backend owned targets; Alpha8 overdraw needs native format support. NoDraw has no output pixels. Source references are not execution receipts; selected backend acceptance is separate from physical display/HDR verification.
 
-**Public source anchors:** `advanced-layers.rkt:canvas-save-layer-rec!`, `advanced-layers.rkt:call-with-canvas-layer-rec`, `layer-options.rkt:make-layer-options`.
+**Public source anchors:** `advanced-layers.rkt:canvas-save-layer/options!`, `advanced-layers.rkt:call-with-canvas-layer/options`, `layer-options.rkt:make-layer-options`.
 **Implementation:** [advanced-layers.rkt](../advanced-layers.rkt), [drawables.rkt](../drawables.rkt), [layer-options.rkt](../layer-options.rkt), [output-policy.rkt](../output-policy.rkt), [private/advanced-canvas-types.rkt](../private/advanced-canvas-types.rkt), [private/audit-trace.rkt](../private/audit-trace.rkt), [private/core.rkt](../private/core.rkt), [private/lifetime.rkt](../private/lifetime.rkt), [private/native.rkt](../private/native.rkt), [specialized-canvases.rkt](../specialized-canvases.rkt).
 **Test sources, not execution receipts:** [tests/advanced-canvas-pure-test.rkt](../tests/advanced-canvas-pure-test.rkt), [tests/advanced-canvas-native-test.rkt](../tests/advanced-canvas-native-test.rkt), [tests/advanced-canvas-gpu-test.rkt](../tests/advanced-canvas-gpu-test.rkt), [tools/test-advanced-canvases.py](../tools/test-advanced-canvases.py), [tools/test-advanced-canvas-documents.py](../tools/test-advanced-canvas-documents.py), [tools/validate-advanced-canvases.py](../tools/validate-advanced-canvases.py).
 

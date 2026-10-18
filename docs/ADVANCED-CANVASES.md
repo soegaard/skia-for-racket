@@ -42,24 +42,24 @@ restoring/compositing an F16 layer is a bit-preserving or extended-range-preserv
 copy into the destination.
 
 ```racket
-(canvas-save-layer-rec! canvas
+(canvas-save-layer/options! canvas
   #:options (make-layer-options)
   #:paint #f
   #:backdrop #f)
 
-(call-with-canvas-layer-rec canvas thunk
+(call-with-canvas-layer/options canvas thunk
   #:options (make-layer-options)
   #:paint #f
   #:backdrop #f
   #:clip #f)
 ```
 
-`canvas-save-layer-rec!` creates the native layer and returns the previous save
+`canvas-save-layer/options!` creates the native layer and returns the previous save
 count. Restore with the ordinary canvas restore operations. The existing
 `canvas-save-layer!` and `call-with-canvas-layer` are unchanged; this is the
-additive entry point for the richer C record.
+additive entry point for the additional layer options.
 
-`call-with-canvas-layer-rec` takes a zero-argument thunk. It returns the thunk's
+`call-with-canvas-layer/options` takes a zero-argument thunk. It returns the thunk's
 values, pins the owner against explicit closure during the scope, protects its
 restore floor, and restores native canvas state on normal return, exception or
 continuation escape. Native restoration composites the layer even after a user
@@ -81,7 +81,7 @@ contract. Use `#:clip` or the existing explicit clip operations to bound drawing
 
 ```racket
 (with-skia ([opacity (make-paint #:color (rgba 0 0 0 128))])
-  (call-with-canvas-layer-rec canvas
+  (call-with-canvas-layer/options canvas
     (lambda ()
       (draw-rect canvas 8 8 24 24 red-paint)
       (draw-circle canvas 28 20 10 blue-paint))

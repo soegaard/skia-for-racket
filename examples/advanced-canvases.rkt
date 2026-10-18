@@ -24,7 +24,7 @@
     (call-with-nway-canvas (list left right)
       (lambda (c)
         (with-skia ([opacity (make-paint #:color (rgba 0 0 0 160))])
-          (call-with-canvas-layer-rec c (lambda () (draw-drawable c d))
+          (call-with-canvas-layer/options c (lambda () (draw-drawable c d))
             #:paint opacity #:clip '(0 0 160 100)))))
     (surface-snapshot left)))
 

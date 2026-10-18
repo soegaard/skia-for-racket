@@ -415,11 +415,11 @@
       "public_equivalents": [
         {
           "module": "advanced-layers.rkt",
-          "name": "canvas-save-layer-rec!"
+          "name": "canvas-save-layer/options!"
         },
         {
           "module": "advanced-layers.rkt",
-          "name": "call-with-canvas-layer-rec"
+          "name": "call-with-canvas-layer/options"
         },
         {
           "module": "layer-options.rkt",

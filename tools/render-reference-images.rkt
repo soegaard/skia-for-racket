@@ -359,7 +359,7 @@
                [dark (make-paint #:color "#D9DEE4")]
                [light (make-paint #:color "#F1F3F5")])
      (define layer-canvas (surface-canvas surface))
-     (call-with-canvas-layer-rec
+     (call-with-canvas-layer/options
       layer-canvas
       (lambda () (draw-rect layer-canvas 0 0 16 16 ink))
       #:options (make-layer-options #:bounds '(0 0 16 16))
@@ -396,17 +396,17 @@
          (draw-pattern layer-canvas)
          (case kind
            [(empty)
-            (call-with-canvas-layer-rec layer-canvas void #:paint replace
+            (call-with-canvas-layer/options layer-canvas void #:paint replace
                                         #:options (make-layer-options #:bounds zone)
                                         #:clip zone)]
            [(initialized)
-            (call-with-canvas-layer-rec layer-canvas void #:paint replace
+            (call-with-canvas-layer/options layer-canvas void #:paint replace
                                         #:options (make-layer-options #:bounds zone
                                                                       #:initialize-with-previous? #t)
                                         #:clip zone)]
            [(backdrop)
             (with-skia ([blur (make-blur-image-filter 4 4)])
-              (call-with-canvas-layer-rec layer-canvas void #:paint replace #:backdrop blur
+              (call-with-canvas-layer/options layer-canvas void #:paint replace #:backdrop blur
                                           #:options (make-layer-options #:bounds zone)
                                           #:clip zone))])
          (surface-snapshot page)))

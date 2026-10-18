@@ -906,7 +906,7 @@
              (eq? (specialized-canvas-owner-kind owner) 'overdraw)
              (memq who '(draw-simple-text draw-text-blob draw-picture draw-drawable
                           canvas-save-layer! call-with-canvas-layer
-                          canvas-save-layer-rec! call-with-canvas-layer-rec)))
+                          canvas-save-layer/options! call-with-canvas-layer/options)))
     (error who
       "overdraw diagnostics support direct primitives, not text, recorded content, or layers"))
   (call-with-owned
