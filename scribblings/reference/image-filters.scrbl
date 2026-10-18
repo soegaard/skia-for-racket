@@ -47,14 +47,14 @@ not imply an infinite pixel allocation. Native bounds, drawing clips, memory
 limits, and output-backend restrictions still apply.
 
 @bold{Conceptual diagram.} A graph connects inputs; constructing it does not
-process pixels. The two executed fixtures use the same crop and blur in opposite
+process pixels. The two renderings use the same crop and blur in opposite
 orders: cropping before blur changes the blur's input, while cropping after blur
 restricts its output. A false input slot is the @tech{dynamic source}. Thus
 @racket[(make-compose-image-filter outer inner)] feeds the inner graph's output
 into the outer graph's dynamic-source slots.
 
 @reference-figure["concept-filter-graph.png"
-                  "Two filtered fixtures compare source-to-crop-to-blur with source-to-blur-to-crop; red rectangles show the same crop in each. Below, a directed box graph labels the dynamic source, crop, blur, and output, with explanatory text that false input slots receive the dynamic source."]
+                  "Two renderings compare source-to-crop-to-blur with source-to-blur-to-crop; red rectangles show the same crop in each. Below, a directed box graph labels the dynamic source, crop, blur, and output, with explanatory text that false input slots receive the dynamic source."]
 
 @defproc[(image-filter? [v any/c]) boolean?]{
 Returns @racket[#t] for an image-filter resource and @racket[#f] otherwise.
@@ -73,8 +73,9 @@ a particular output backend can preserve the filter without rasterization.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a Gaussian blur of the input colors and alpha. At least one sigma
-must be positive. Sigma is a standard deviation in each local axis, not a
-hard support radius. Decal samples outside the input as transparent; clamp
+must be positive. Each sigma is the blur's standard deviation along its local axis,
+not an exact distance beyond which the blur stops affecting pixels.
+Decal samples outside the input as transparent; clamp
 extends edge samples and repeat tiles them. Mirror is rejected by this API.
 Non-decal edge behavior should be used with an explicit crop; the native
 legacy no-crop path does not provide the same crop-relative tiling guarantee.

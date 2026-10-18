@@ -146,7 +146,7 @@ is zero, both byte lengths are zero, but the stride is still validated.
 The stride and full allocation must fit @racket[2147483647], and the allocation
 must fit @racket[current-skia-byte-limit]. No storage is allocated.
 
-@bold{Conceptual diagram.} In this existing three-by-two RGBA8888 fixture,
+@bold{Conceptual diagram.} In this three-by-two RGBA8888 example,
 each logical pixel occupies four bytes, so tight row length is 12. With a
 16-byte stride, the two rows start at offsets 0 and 16. Pixel bytes occupy
 0--11 and 16--27; the remaining cells are padding rather than a fourth pixel.

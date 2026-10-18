@@ -142,8 +142,8 @@ has a positioning mode and captures its font's settings when appended. Different
 runs may use different fonts. Successful appends copy their inputs; later input
 mutation, font mutation, or closure of the original font does not change them.
 
-Finishing consumes the builder. A finished blob is independent of the builder's
-lifetime and can be used with @racket[draw-text-blob], @racket[text-blob-bounds],
+Finishing closes the builder; it cannot be reused. A finished blob is independent
+of the builder's lifetime and can be used with @racket[draw-text-blob], @racket[text-blob-bounds],
 and @racket[text-blob->path]. Closing
 an unfinished builder discards its runs and releases the resources it owns.
 A builder is not a reusable accumulator, and finishing does not reset it.
@@ -164,7 +164,7 @@ an exception. The builder follows the ordinary resource lifetime rules.
 ]
 
 The result is @racket['(#f #t)]: an empty builder produces no blob, but is
-still consumed.
+still closed.
 }
 
 @defproc[(text-blob-builder-run-count [builder text-blob-builder?])
@@ -427,8 +427,8 @@ append does not invalidate the captured blob font.
 }
 
 @defproc[(text-blob-builder-finish! [builder text-blob-builder?]) (or/c text-blob? #f)]{
-Consumes an open builder and returns an owned blob containing its runs, in
-append order. When the builder has no nonempty runs, the result is @racket[#f].
+Creates an owned text blob containing the builder's runs in append order.
+The builder must be open. When it has no nonempty runs, the result is @racket[#f].
 Both outcomes close the builder. Native failure also closes it and raises an
 exception; it does not return a partial blob. The predicate
 @racket[text-blob-builder?] remains true, but further appends, count queries,

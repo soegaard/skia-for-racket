@@ -29,10 +29,10 @@ constant-memory authoring guarantee.
 
 A cancellation event is checked during I/O. Cancellation and failures can leave
 partly consumed input or partly written output. They do not roll back bytes or
-restore port positions. Ports remain open by default. Once an operation takes
-ownership under a true close option, cleanup closes the selected ports after
-native teardown, including on failure. Validation or document-authoring failures
-before launch do not take ownership. Native output streams are distinct from
+restore port positions. Ports remain open by default. Once the live transfer is launched,
+a true close option makes cleanup close the selected ports after native teardown,
+including on failure. If validation or document drawing fails before launch, the
+operation does not close the ports. Native output streams are distinct from
 Racket ports and follow the rules in @secref["skia-native-publication"].
 
 @defproc[(live-streams-check!)

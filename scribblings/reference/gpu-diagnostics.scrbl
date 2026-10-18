@@ -4,9 +4,10 @@
 
 @title[#:tag "skia-gpu-diagnostics"]{GPU Diagnostics}
 
-These diagnostics report properties of a selected @tech{GPU context}.
-They are diagnostics, not hardware attestations, performance measurements, or
-implicit synchronization barriers.
+The property queries below report information about a @tech{GPU context} without
+measuring performance or synchronizing GPU work. @racket[gpu-smoke-test] instead
+draws a fixed pattern, waits for completion, and checks the resulting pixels.
+Neither establishes that rendering is hardware accelerated.
 
 @section{OpenGL Interface Diagnostics}
 

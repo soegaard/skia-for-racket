@@ -38,9 +38,9 @@ working GPU backend.
 @defproc[(skia-available?)
           boolean?]{
 Runs @racket[skia-check!] and returns @racket[#t] on success. An ordinary failure exception is
-caught and produces @racket[#f]. This is an active load/preflight attempt, not a
-side-effect-free search for a filename. Use @racket[skia-check!] to receive the
-diagnostic exception instead of @racket[#f].
+caught and produces @racket[#f]. Calling this function can load the native library
+and check compatibility; it does not merely check whether a file exists.
+Use @racket[skia-check!] to receive the diagnostic exception instead of @racket[#f].
 }
 
 @defproc[(skia-native-version)

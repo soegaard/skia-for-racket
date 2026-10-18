@@ -220,14 +220,11 @@ Extents use the conservative 16-byte-per-pixel budget. A null native result rais
 an exception. The returned image is independent of subsequent closure of the input wrappers.
 }
 
-@bold{Conceptual diagram.} The result has three distinct coordinate facts: the
-original filtering coordinates, a selected source rectangle inside the returned
-image, and an offset in the original coordinates. The offset places the selected
-source rectangle's upper-left corner; it does not necessarily place the full
-returned image's origin. The highlighted returned-source values in the figure
-come from the executed offset-filter fixture. Its final panel is a labeled
-placement schematic, so the source/offset relationship stays visible even when
-a native result has a full-image source rectangle.
+@bold{Conceptual diagram.} The source rectangle selects pixels within the returned
+image. The offset places that rectangle's upper-left corner in the original
+filtering coordinates; it does not necessarily give the position of the returned image's origin.
+The highlighted values come from an offset-filter example, and the final panel
+illustrates their placement.
 
 @reference-figure["concept-image-placement.png"
                   "An input image, its returned filtered image with the native returned source rectangle highlighted, and a placement panel connected by an arrow. Red marks the selected source rectangle and purple brackets mark the returned offset position where its upper-left corner is placed."]

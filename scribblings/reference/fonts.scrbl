@@ -465,8 +465,9 @@ to measure a complete unshaped string without working with individual glyph IDs.
 
 Batch glyph queries return immutable vectors of copied measurements. Their
 inputs may be lists or vectors of unsigned 16-bit glyph IDs. Each ID must be
-less than the current typeface's glyph count. Query payloads are bounded by
-@racket[current-skia-byte-limit]; this is not a limit on all native font caches.
+less than the current typeface's glyph count. Estimated storage for the glyph IDs,
+temporary result buffers, and returned values must fit @racket[current-skia-byte-limit].
+This is not a limit on native font-cache memory.
 
 @defproc[(font-embedded-bitmaps? [font font?]) boolean?]{
 Reports whether use of embedded glyph bitmaps is requested.

@@ -299,16 +299,17 @@ the outlined input rectangles.
 
 @defproc[(mask-filter? [v any/c]) boolean?]{
 Returns @racket[#t] for a mask-filter resource and @racket[#f] otherwise.
-The result does not indicate liveness or independence from a GPU context.
+The result does not indicate whether the resource is open or whether it depends
+on a GPU context.
 }
 
 @defproc[(make-blur-mask-filter
           [sigma (and/c real? (>/c 0))]
           [#:style style (or/c 'normal 'solid 'outer 'inner) 'normal]
           [#:respect-ctm? respect-ctm? boolean? #t]) mask-filter?]{
-Returns a Gaussian blur of the shape's coverage. Sigma is the standard
-deviation, not a radius specifying an exact support boundary. Normal style
-blurs inside and outside the shape. Solid style preserves its interior and
+Returns a Gaussian blur of the shape's coverage. Sigma is the blur's standard
+deviation, not an exact distance beyond which the blur stops affecting pixels.
+Normal style blurs inside and outside the shape. Solid style preserves its interior and
 adds an outer blur. Outer style keeps only the exterior blur. Inner style
 keeps only the interior blur.
 

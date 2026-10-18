@@ -229,8 +229,8 @@ open subpath. A Skia path containing an open contour followed by another
 contour cannot be represented without closing or reordering geometry, so the
 function raises instead. Empty paths are accepted.
 
-Both path directions apply a conservative 64-byte charge per copied or
-predicted output command against @racket[current-skia-byte-limit]. For Skia
+Both conversion functions use a conservative estimate of 64 bytes per copied or
+expected output command when checking @racket[current-skia-byte-limit]. For Skia
 conics, the prediction includes the requested subdivision expansion. If
 validation or conversion fails, neither function returns a partially converted
 path.

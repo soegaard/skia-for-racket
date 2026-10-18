@@ -261,8 +261,9 @@ The optional cancellation event is checked while transferring and waiting for
 progress. Cancellation, breaks, and I/O failures can leave partial I/O; consumed
 or written bytes are not restored. Binary input containing a special value is
 rejected. With @racket[#:close? #t], the port is closed when the transfer scope
-ends, on success or failure. Argument validation before entering that scope does
-not take ownership of the port. The default leaves it open.
+ends, on success or failure. If argument validation fails before the transfer
+starts, the function does not close the port, even when @racket[#:close?] is
+@racket[#t]. The default leaves it open.
 
 @defproc[(buffered-port->input-stream [input input-port?]
           [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
@@ -281,8 +282,8 @@ The returned stream owns its copied bytes, not the input port.
 Copies all contents of a memory output stream to the Racket output port and
 returns the number of bytes written. The native stream remains open and is not
 cleared. File output streams are rejected. The close option concerns the Racket
-port, not the native stream. A failure while making the initial snapshot does
-not take ownership of the port.
+port, not the native stream. If making the initial snapshot fails, the function
+does not close the output port, even when @racket[#:close?] is @racket[#t].
 }
 
 @section[#:tag "skia-stream-consumers"]{Constructing Resources from Streams}

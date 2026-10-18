@@ -125,7 +125,7 @@ or from within a future.
 }
 
 @defproc[(gpu-frame-context [frame gpu-frame?]) gpu-context?]{
-Returns the presenter's context under the same owner/liveness checks as
+Returns the presenter's context under the same owning-thread and active-frame checks as
 @racket[gpu-frame-canvas]. The returned context is borrowed from the presenter;
 do not close it independently.
 }

@@ -101,7 +101,7 @@ Returns the matrix with its rows and columns interchanged.
           (or/c matrix3? #f)]{
 Returns the binary32 inverse, or @racket[#f] when the stored matrix is singular
 or any inverse coefficient is outside the finite binary32 range. Singularity is
-an exact test on the stored values, not a tolerance-based test on input intent.
+checked exactly using the stored, rounded matrix values; no tolerance is used.
 }
 
 @defproc[(matrix3-perspective [px real?]

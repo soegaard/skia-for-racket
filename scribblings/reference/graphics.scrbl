@@ -156,8 +156,9 @@ Collects a native memory report for process-global Skia caches. The flags reques
 detailed reporting and inclusion of wrapped objects. Names, units, and string values depend on
 the native backend; they are not a fixed allocation inventory.
 
-The entry limit bounds the number of entries stored in the report. The string limit bounds
-each copied native string in UTF-8 bytes; the byte limit bounds aggregate copied strings.
+The entry limit bounds the number of entries stored in the report.
+@racket[#:string-limit] limits each copied string's UTF-8 byte length;
+@racket[#:byte-limit] limits their combined byte length.
 The expression @racket[(+ (*
 max-entries 128) byte-limit)] must fit @racket[current-skia-byte-limit]. Zero limits are valid.
 Oversized entries are omitted and counted, not shortened into apparently complete values.
