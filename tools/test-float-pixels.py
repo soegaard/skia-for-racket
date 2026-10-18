@@ -85,11 +85,12 @@ class Sources(unittest.TestCase):
         self.assertIn('tests/float-pixel-gpu-test.rkt',self.text('info.rkt'))
     def test_float_precision_provenance_survives_recordings_and_replacement(self):
         audit=self.text('private/audit-trace.rkt')
+        normalized=' '.join(audit.split())
         for term in ('audit-mark-float-pixels!',"'(image raster-image surface)",
                      "'(paint picture drawable image-filter path image raster-image unknown)",
                      "'(sk_paint_set_color sk_paint_set_color4f)",
                      "'(sk_canvas_clear sk_canvas_clear_color4f sk_drawable_draw)"):
-            self.assertIn(term,audit)
+            self.assertIn(term,normalized)
         policy=self.text('output-policy.rkt')
         self.assertIn('(float-color needs-raster needs-raster',policy)
         self.assertIn('(float-pixels needs-raster needs-raster',policy)

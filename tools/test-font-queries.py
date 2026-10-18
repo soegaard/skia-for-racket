@@ -78,9 +78,10 @@ class Sources(unittest.TestCase):
                        '#:force-auto-hinting? [force-auto-hinting? #f]',
                        '#:baseline-snap? [baseline-snap? #t]'):
             self.assertIn(clause, source)
-        self.assertIn('(font-native-get \'fallback-font base-font sk_font_is_embedded_bitmaps)', source)
-        self.assertIn('(font-native-get \'fallback-font base-font sk_font_is_force_auto_hinting)', source)
-        self.assertIn('(font-native-get \'fallback-font base-font sk_font_is_baseline_snap)', source)
+        normalized = ' '.join(source.split())
+        self.assertIn('(font-native-get \'fallback-font base-font sk_font_is_embedded_bitmaps)', normalized)
+        self.assertIn('(font-native-get \'fallback-font base-font sk_font_is_force_auto_hinting)', normalized)
+        self.assertIn('(font-native-get \'fallback-font base-font sk_font_is_baseline_snap)', normalized)
     def test_typeface_mutation_releases_only_the_private_default_owner(self):
         source = self.text('fonts.rkt')
         self.assertIn('(list (font-h who f) (typeface-h who face))', source)

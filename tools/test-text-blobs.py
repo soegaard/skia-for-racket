@@ -105,7 +105,7 @@ class Sources(unittest.TestCase):
         self.assertIn('no monochrome outline; explicit raster output is required',source)
     def test_snapshots_and_builder_remain_CPU_independent(self):
         source=self.text('private/lifetime.rkt')
-        self.assertIn('text-blob text-blob-builder shaper shaper-font',source)
+        self.assertIn('text-blob text-blob-builder shaper shaper-font',' '.join(source.split()))
     def test_UTF8_clusters_are_strict_and_copied(self):
         source=self.text('private/text-run-util.rkt')
         for needed in ('(bytes->string/utf-8 bs #f)','bytes->immutable-bytes','(bytes-copy text)', '(< c size)', '#xc0', '#x80'):

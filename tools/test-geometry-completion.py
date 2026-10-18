@@ -138,7 +138,8 @@ class Sources(unittest.TestCase):
     def test_regressions_and_gpu_omit_registered(self):
         s=self.text('run-tests.rkt')
         self.assertIn('(run-tests geometry-completion-pure-tests)',s)
-        self.assertIn("dynamic-require geometry-completion-native-tests-file 'geometry-completion-native-tests",s)
+        self.assertIn("dynamic-require geometry-completion-native-tests-file 'geometry-completion-native-tests",
+                      ' '.join(s.split()))
         self.assertIn('tests/geometry-completion-gpu-test.rkt',self.text('info.rkt'))
     def test_version_and_native_pins(self):
         s=self.text('info.rkt')
