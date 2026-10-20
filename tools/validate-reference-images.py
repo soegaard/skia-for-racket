@@ -110,6 +110,7 @@ LOGICAL_SIZES = {
     "points-modes.png": (220, 90),
     "arc-wedge.png": (190, 90),
     "double-rounded-rect.png": (180, 100),
+    "draw-color-device-clip.png": (160, 160),
     "region-clip.png": (180, 90),
     "image-subrect.png": (220, 90),
     "font-bounds.png": (250, 90),

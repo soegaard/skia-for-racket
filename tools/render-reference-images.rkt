@@ -3911,6 +3911,19 @@
  #:background 'white)
 
 (render-reference-image
+ "draw-color-device-clip.png" 160 160
+ (lambda (canvas)
+   ;; Draw on the literal 8 by 8 surface before enlarging its pixels for display.
+   (with-skia ([surface (make-surface 8 8 #:background 'white)])
+     (define source-canvas (surface-canvas surface))
+     (canvas-clip-rect! source-canvas 0 0 4 8)
+     (canvas-translate! source-canvas 100 100)
+     (draw-color source-canvas 'red)
+     (with-skia ([image (surface-snapshot surface)])
+       (draw-image-rect canvas image 16 16 128 128 #:sampling 'nearest))))
+ #:background "#E8ECF0")
+
+(render-reference-image
  "draw-color-clipped-stage9.png" 180 100
  (lambda (canvas)
    (with-skia ([path (make-path)]

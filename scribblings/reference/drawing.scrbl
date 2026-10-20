@@ -329,8 +329,13 @@ rather than source-over blends by default.
   (map (lambda (x) (color->argb (surface-pixel surface x 2))) '(2 6)))
 ]
 
+@reference-figure["draw-color-device-clip.png"
+                  "An enlarged eight-by-eight result: the left four columns are red and the right four columns remain white, despite the translated canvas. The gray margin belongs only to the preview."]
+
 The point inside the clip becomes red even though the transform moved local
-geometry away; the point outside the clip remains white.
+geometry away; the point outside the clip remains white. The figure enlarges
+the 8 by 8 result with nearest-neighbor sampling. The gray margin belongs only
+to the preview.
 
 
 @racketblock[
