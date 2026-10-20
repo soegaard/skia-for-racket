@@ -15,10 +15,32 @@ with @racket[make-region] and apply a clip with @racket[canvas-clip-region!].
 For smooth curves or an antialiased boundary in local coordinates, use a
 @tech{path} instead.
 
-An @deftech{integer region} represents a set of integer-coordinate pixels using
-rectangular bands. It is an owned native resource, not an antialiased path or a
-list preserving the original rectangle decomposition. Native operations require
-a live region on its owning thread. A predicate recognizes even a closed wrapper.
+An @deftech{integer region} represents a set of integer-coordinate pixels.
+A single region can contain several disconnected areas.
+
+This example creates one region from two rectangles and fills it in blue.
+Each rectangle is written as @racket[(x y width height)].
+
+@racketblock[
+(with-skia ([region (make-region '((15 15 55 50) (90 15 50 50)))]
+            [paint (make-paint #:color "#326DE6")]
+            [surface (make-surface 155 80 #:background 'white)])
+  (draw-region (surface-canvas surface) region paint)
+  (list (region-contains-point? region 30 30)
+        (region-contains-point? region 80 30)))
+]
+
+@reference-figure["region.png"
+                  "One integer region contains two disjoint blue rectangles on a white background; the gap between them is outside the region."]
+
+Both blue areas belong to the same region. The expression returns
+@racket['(#t #f)]: the pixel at @math{(30, 30)} is inside the left rectangle,
+while the pixel at @math{(80, 30)} lies in the gap.
+
+A region stores the covered pixels as rectangular bands, not as the original
+list of rectangles. It is an owned native resource, not an antialiased path.
+Native operations require a live region on its owning thread. A predicate
+recognizes even a closed wrapper.
 
 Rectangle inputs are four-element lists or vectors of coordinates, width, and
 height. Coordinates and computed right and bottom edges must be exact integers
@@ -351,15 +373,8 @@ draws the boundary as one path, avoiding seams between touching bands in SVG.
 Stroke and stroke-and-fill paints use native region drawing, which can stroke
 the rectangular decomposition. The region and paint must remain valid during the call.
 
-@racketblock[
-(with-skia ([region (make-region '((15 15 55 50) (90 15 50 50)))]
-            [paint (make-paint #:color "#326DE6")]
-            [surface (make-surface 155 80 #:background 'white)])
-  (draw-region (surface-canvas surface) region paint))
-]
-
-@reference-figure["region.png"
-                  "Two disjoint blue rectangular bands drawn from one integer region on a white background."]
+See the @seclink["skia-regions"]{introductory example} for drawing a region
+containing two disjoint rectangles.
 }
 
 @defproc[(canvas-clip-region! [canvas canvas?]
