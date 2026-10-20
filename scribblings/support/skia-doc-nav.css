@@ -5,6 +5,7 @@
   --skia-doc-reference: #245db0;
   --skia-doc-guide: #006b5e;
   --skia-doc-tutorials: #7540a8;
+  --skia-doc-edge-wash-width: 3rem;
 }
 
 .skia-doc-nav-shell {
@@ -228,6 +229,11 @@
    ready class only when there is a real unused right margin for it. */
 @media (min-width: 40rem) {
   @supports selector(body:has(.skia-doc-nav-shell)) {
+    /* Keep the width measurable even while the bar has no generated content. */
+    body:has(.skia-doc-nav-shell)::after {
+      inline-size: var(--skia-doc-edge-wash-width);
+    }
+
     html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--reference)::after,
     html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--guide)::after,
     html.skia-doc-edge-wash-ready body:has(.skia-doc-nav-shell--tutorials)::after {
@@ -236,7 +242,6 @@
       z-index: 10;
       inset-block: 0;
       inset-inline-end: var(--skia-doc-edge-wash-inset, 0px);
-      inline-size: 3rem;
       pointer-events: none;
     }
 
@@ -247,7 +252,7 @@
       position: fixed;
       z-index: 11;
       top: 50%;
-      right: calc(var(--skia-doc-edge-wash-inset, 0px) + 1.5rem);
+      right: calc(var(--skia-doc-edge-wash-inset, 0px) + var(--skia-doc-edge-wash-width) / 2);
       transform: translate(50%, -50%) rotate(-90deg);
       color: #fff;
       font-family: system-ui, sans-serif;
