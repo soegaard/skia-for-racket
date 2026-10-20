@@ -144,11 +144,15 @@ draw an unfilled open polyline.
 
 @section[#:tag "skia-drawing-batches"]{Points and Arcs}
 
-These primitives use the same resource, transform, and clip rules as the other
-drawing functions. Batch input is validated before drawing;
-an empty point batch still requires a valid canvas and paint. Native point
-batches do not imply portable SVG output. Use @racket[draw-markers] to draw
-markers as ordinary shapes.
+Use @racket[draw-point] to place a round or square mark at a coordinate, and
+@racket[draw-points] to draw several marks or line segments with the same paint.
+The paint's stroke width controls their thickness. For a connected outline
+with joined corners, use @racket[draw-polygon] or @racket[draw-path] instead.
+
+Use @racket[draw-arc] to draw part of a circle or ellipse, for example in a gauge
+or progress indicator. The bounding rectangle determines the oval, and the start
+and sweep angles select the portion to draw. An arc can also form a filled
+shape, such as a pie-chart wedge.
 
 @defproc[(draw-point [canvas canvas?]
           [x real?]
@@ -182,6 +186,10 @@ draws independent points. Lines mode draws independent consecutive pairs and
 requires an even count. Polygon mode draws consecutive capped segments without
 closing the final point to the first. These segments are not a joined path:
 paint joins do not join their endpoints. A single polygon point draws nothing.
+
+All input points are validated before drawing. An empty list or vector still
+requires a valid canvas and paint. Point batches do not guarantee portable SVG
+output; use @racket[draw-markers] to draw markers as ordinary shapes.
 
 The submitted buffer, including the explicit segment-pair expansion for polygon
 mode, must fit the native count and @racket[current-skia-byte-limit]. Input
