@@ -12,6 +12,10 @@ manage presenters for their windows. In a render callback, use the supplied
 frame to obtain the current drawing canvas and pixel dimensions; it is the
 window's current target, not an offscreen surface to keep for later.
 
+A @deftech{presentation adapter} is the private, platform-specific bridge between
+a GUI window and its GPU backend. For each frame, it obtains the window's current
+drawing target and asks the system to display the completed drawing.
+
 A @deftech{GPU presenter} owns the presentation adapter and @tech{GPU context} for one
 window target. A presenter belongs to its creating GUI/eventspace handler thread.
 A @deftech{GPU frame} is a short-lived value delivered to the presenter's render
