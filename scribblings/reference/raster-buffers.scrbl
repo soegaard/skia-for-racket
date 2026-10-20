@@ -269,7 +269,7 @@ Integer channels use the widths returned by @racket[image-info-channel-bits]. BG
 uses logical RGBA channel order in a sample. Premultiplied integer RGB must not exceed alpha
 when both are compared at their respective bit depths. Opaque storage requires maximum alpha.
 
-Floating-point samples contain four finite channels within the selected binary16 or binary32
+Floating-point samples contain four finite channels within the selected binary16 or @tech{binary32}
 range. Alpha is between zero and one. Extended RGB may be negative or greater than alpha.
 Premultiplied zero alpha requires zero RGB, including after storage rounding. Binary16 storage
 reads and writes preserve subnormal values; native drawing is not promised to do so.

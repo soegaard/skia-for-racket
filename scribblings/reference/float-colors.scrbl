@@ -56,14 +56,12 @@ do not load native Skia.
                       [alpha real? 1]) color4f?]{
 Returns a color with the supplied unpremultiplied components. RGB inputs must
 be finite and lie between minus and plus
-@math{(2 - 2^(-23)) 2^127}, the largest finite IEEE binary32 magnitude.
+@math{(2 - 2^(-23)) 2^127}, the largest finite @tech{binary32} magnitude.
 After conversion to an inexact Racket number, alpha
 must lie between zero and one, inclusive. Negative and extended RGB values
 are retained, not clipped.
 
-The constructor converts components to inexact Racket numbers but does not
-round the stored RGB to binary32. Native drawing operations perform that
-conversion later. Construction changes neither color space nor alpha convention.
+Construction changes neither color space nor alpha convention.
 
 @examples[#:eval float-color-eval
 (define extended (make-color4f 1.25 -0.25 0.5 0.5))
@@ -232,7 +230,7 @@ A color list or vector contains at least two @tech{floating-point colors}.
 Its count must fit a signed native integer. The byte-limit check counts 64 bytes
 per color, and the total must fit @racket[current-skia-byte-limit]. A
 nonfalse stops list or vector must have the same length. @tech{Gradient stop} positions lie between
-zero and one and must remain strictly increasing after binary32 conversion;
+zero and one and must remain strictly increasing after @tech{binary32} rounding;
 two distinct Racket numbers that round to the same stop are rejected. Omitted
 stops are evenly distributed. This interface therefore does not accept equal
 stops for abrupt color transitions.

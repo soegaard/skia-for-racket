@@ -33,8 +33,8 @@ stroking, a @tech{path} is usually simpler.
 A @deftech{vertices resource} owns a native immutable mesh and Racket copies
 of its input lists or vectors. Drawing requires its live native resource. Its metadata
 queries read the Racket copies and remain usable after explicit closure,
-without requiring its creating thread. The copies describe submitted values,
-not a readback of the native binary32 arrays.
+without requiring its creating thread. The queries describe the saved inputs,
+not the rounded coordinates used for drawing.
 
 @defproc[(vertices? [v any/c])
           boolean?]{

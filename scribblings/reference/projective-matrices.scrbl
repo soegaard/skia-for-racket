@@ -24,9 +24,9 @@ three by three and four by four matrices. They are distinct from the six-coeffic
 @tech{affine matrix} type. Public coefficient vectors are row-major, and matrices
 multiply column vectors. Composition applies the rightmost operand first.
 
-Coefficients and mapping inputs must be finite reals in the full binary32 range,
+Coefficients and mapping inputs must be finite reals in the full @tech{binary32} range,
 from -3.4028234663852886e38 through 3.4028234663852886e38, and are rounded to
-binary32 on entry. This range is slightly wider than the ordinary @tech{drawing scalar}
+that precision on entry. This range is slightly wider than the ordinary @tech{drawing scalar}
 range. New matrix results are also rounded. Constructors and composition
 operations raise an exception if a coefficient is nonfinite or lies outside
 this range.
@@ -93,7 +93,7 @@ wrapped.
 Returns the left-to-right matrix product, applying the rightmost transform
 first to a point. Zero arguments return the identity. Each multiplication uses
 exact products and sums of its stored inputs, then rounds the resulting matrix
-to binary32 before the next multiplication.
+to @tech{binary32} before the next multiplication.
 }
 
 @defproc[(matrix3-transpose [matrix matrix3?])
@@ -103,8 +103,8 @@ Returns the matrix with its rows and columns interchanged.
 
 @defproc[(matrix3-invert [matrix matrix3?])
           (or/c matrix3? #f)]{
-Returns the binary32 inverse, or @racket[#f] when the stored matrix is singular
-or any inverse coefficient is outside the finite binary32 range. Singularity is
+Returns the inverse, or @racket[#f] when the stored matrix is singular
+or any inverse coefficient is outside the finite @tech{binary32} range. Singularity is
 checked exactly using the stored, rounded matrix values; no tolerance is used.
 }
 
@@ -233,8 +233,8 @@ Returns the coefficient at the zero-based row and column.
           ...)
           matrix4?]{
 Returns the matrix product, applying the rightmost operand first. Zero
-arguments return identity. Exact arithmetic and per-multiplication binary32
-rounding follow @racket[matrix3-compose].
+arguments return identity. The arithmetic and rounding rules are the same as
+for @racket[matrix3-compose].
 }
 
 @defproc[(matrix4-transpose [matrix matrix4?])
@@ -245,7 +245,7 @@ Returns the matrix with rows and columns interchanged.
 @defproc[(matrix4-invert [matrix matrix4?])
           (or/c matrix4? #f)]{
 Returns the inverse, or @racket[#f] for a singular matrix or an inverse whose
-coefficients exceed the finite binary32 range. No singularity epsilon is used.
+coefficients exceed the finite @tech{binary32} range. No singularity epsilon is used.
 }
 
 @defproc[(matrix4-translate [x real?]
@@ -288,10 +288,10 @@ install camera or depth-buffer state.
 @defproc[(matrix4-perspective [distance (and/c real? (>/c 0))])
           matrix4?]{
 Returns a matrix mapping homogeneous coordinates x, y, z, 1 to x, y, z,
-@racket[(+ 1 (/ z distance))]. The distance must remain positive after binary32
-rounding and its reciprocal must fit in binary32. The camera interpretation is
-at z = -distance looking along positive z. No depth buffer or near/far clipping
-planes are established.
+@racket[(+ 1 (/ z distance))]. The distance must remain positive when rounded to
+@tech{binary32}, and its reciprocal must fit in that format's finite range.
+The camera interpretation is at z = -distance looking along positive z.
+No depth buffer or near/far clipping planes are established.
 }
 
 @defproc[(matrix4-affine-2d? [matrix matrix4?])

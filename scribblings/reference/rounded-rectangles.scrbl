@@ -78,7 +78,7 @@ These operations require Skia and return new rounded-rectangle values.
 Normalization adjusts bounds and corner radii according to Skia's rounded-rectangle
 rules. It can reduce oversized radii and replace degenerate corners; inspect
 the result rather than assuming that the supplied radii are unchanged.
-Radius components and inset/outset distances must be nonnegative after binary32
+Radius components and inset/outset distances must be nonnegative after @tech{binary32}
 rounding. A negative input that rounds to
 negative zero is accepted as zero; offsets remain signed.
 

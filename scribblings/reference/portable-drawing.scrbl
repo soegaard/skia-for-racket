@@ -66,9 +66,9 @@ describe source and destination rectangles and can be exported with
 plans for you.
 
 Plans use row-major cell order. Each cell has integer source-image geometry and
-finite destination geometry. Adjacent cells share rounded binary32 destination
-edges rather than rounding their widths independently. A plan can include cells
-with zero destination area, which the drawing functions omit.
+finite destination geometry. Adjacent cells use the same coordinates for their
+shared destination edges. A plan can include cells with zero destination area,
+which the drawing functions omit.
 
 @defproc[(image-grid-cell? [v any/c])
           boolean?]{

@@ -22,10 +22,13 @@ gives its name and value contract without an application form.
 
 @section[#:tag "skia-scalars"]{Coordinates and Numeric Limits}
 
+@deftech{binary32} is the IEEE 754 single-precision floating-point format,
+using 32 bits per number. Skia uses this format for drawing coordinates;
+exact inputs do not guarantee exact geometry.
+
 A @deftech{drawing scalar} is a real number in the inclusive range
 @racket[-3.402823e38] through @racket[3.402823e38]. The range excludes infinities
-and NaNs. Native drawing uses single-precision floating-point coordinates;
-exact inputs are not a promise of exact geometry after conversion.
+and NaNs.
 
 Unless an entry states otherwise, this range applies to real-valued drawing
 parameters, including coordinates, dimensions, angles, scale factors, and

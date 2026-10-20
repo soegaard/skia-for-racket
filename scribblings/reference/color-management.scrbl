@@ -172,9 +172,8 @@ functions used to construct RGB color spaces decode encoded channels into
 linear-light values. An inverse encodes in the other direction.
 
 The coefficient representation supports these standard-dynamic-range formulas,
-not arbitrary lookup tables, PQ, HLG, or tone mapping. Coefficients are rounded
-to IEEE binary32 when stored. Native-backed operations in this section require
-the installed Skia library.
+not arbitrary lookup tables, PQ, HLG, or tone mapping. Native-backed operations
+in this section require the installed Skia library.
 
 @defproc[(transfer-function? [v any/c]) boolean?]{
 Returns @racket[#t] for a transfer-function value and @racket[#f] otherwise.
@@ -183,7 +182,7 @@ A seven-element vector is not itself a transfer-function value.
 
 @defproc[(make-transfer-function [g real?] [a real?] [b real?] [c real?]
                                  [d real?] [e real?] [f real?]) transfer-function?]{
-Returns a transfer function with the seven supplied coefficients. After binary32
+Returns a transfer function with the seven supplied coefficients. After @tech{binary32}
 rounding, @racket[g] must be positive; @racket[a], @racket[c], and @racket[d] must
 be nonnegative; and @math{a d + b} must be nonnegative. The constructor does not
 require the two branches to meet continuously or make the function invertible.
@@ -217,9 +216,9 @@ transfer function.
                                     [x (real-in 0 3.402823e38)]) real?]{
 Returns the transfer formula evaluated at @racket[x]. The argument is a
 nonnegative finite real in the displayed range; it is not restricted to 0
-through 1. This Racket computation uses the stored coefficients without first
-rounding @racket[x] to binary32 and without clamping the result. A non-real or
-nonfinite result raises an exception. Evaluation does not require native Skia.
+through 1. The formula is evaluated in Racket using @racket[x] and the stored
+coefficients, without clamping the result. A non-real or nonfinite result
+raises an exception. Evaluation does not require native Skia.
 }
 
 @defproc[(transfer-function-invert [transfer transfer-function?])
@@ -276,7 +275,7 @@ exception. Passing these elementary checks alone does not guarantee a usable gam
 Returns an owned RGB color-space resource with the supplied transfer function
 and gamut. Named arguments select the corresponding native descriptions. A
 matrix argument must contain exactly nine row-major coefficients and have a
-nonzero determinant after binary32 rounding. Native rejection raises an
+nonzero determinant after @tech{binary32} rounding. Native rejection raises an
 exception. The input coefficients are copied; later mutation of an input vector
 has no effect on the color space.
 
@@ -309,7 +308,7 @@ color conversion without the corresponding transfer function.
 @defproc[(xyz-d50-concat [a (or/c (listof real?) (vectorof real?))]
                         [b (or/c (listof real?) (vectorof real?))])
          (and/c (vectorof real?) immutable?)]{
-Returns the matrix product @math{a b} as nine row-major binary32 coefficients.
+Returns the matrix product @math{a b} as nine row-major coefficients.
 Each input must contain nine coefficients. With column color vectors,
 @racket[b] acts first. Singular inputs are permitted for multiplication, unlike
 the gamut required by @racket[make-rgb-color-space]. The inputs are copied and

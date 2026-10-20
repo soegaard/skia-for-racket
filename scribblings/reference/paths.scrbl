@@ -823,7 +823,7 @@ Angles are in degrees. A positive oval sweep is clockwise in the usual
 unreflected coordinate system with the y-axis pointing downward.
 Rectangle arguments use coordinates, width, and height; positive extents must
 remain positive when the right and bottom edges are rounded. Arc radii are
-checked for nonnegativity after binary32 rounding; a negative input that rounds
+checked for nonnegativity after @tech{binary32} rounding; a negative input that rounds
 to negative zero is therefore accepted as zero.
 
 The operations require live paths on their owning thread. Construction changes
@@ -1051,7 +1051,7 @@ Returns the recognized traversal direction.
           (listof (and/c vector? immutable?))]{
 Approximates a rational quadratic with ordinary quadratic segments. The three
 points are its start, control point, and end. The weight must remain strictly
-positive after binary32 rounding. The subdivision exponent limits the result
+positive after @tech{binary32} rounding. The subdivision exponent limits the result
 to at most @racket[(expt 2 power)] segments, rather than specifying an error tolerance.
 
 Each segment is an immutable vector of three immutable two-coordinate point
