@@ -7,10 +7,13 @@
 @defmodule[skia/gpu-output #:no-declare]
 @(declare-exporting skia/gpu-output #:use-sources (skia/gpu-output))
 
-These functions provide an explicit GPU @tech{raster executor} for bounded @tech{raster fallbacks} in
-PDF and SVG output. The executor changes where the temporary raster is drawn; it
-does not change the output policy or turn a vector-compatible group into a
-raster group by itself.
+Use these functions to render @tech[#:key "bounded output group"]{output groups}
+on the GPU when those groups are included as images in a PDF or SVG document.
+By default, this rendering uses the CPU.
+
+The functions provide a GPU @tech{raster executor} for @racket[draw-output-group].
+Selecting this executor changes how a rasterized group is drawn; it does not
+change which groups are rasterized.
 
 A GPU executor renders the temporary target in one exact @tech{GPU context}, performs
 an explicit synchronous @tech{GPU readback}, and gives the output layer a CPU-owned @tech{image}.

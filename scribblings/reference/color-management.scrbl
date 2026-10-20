@@ -348,7 +348,7 @@ Input may be mutable or immutable.
 
 Successful import does not guarantee that the original bytes are accepted as
 an encoder's @racket[#:icc-profile] override. Those overrides impose the
-additional matrix/TRC restrictions documented by @racket[save-png].
+additional matrix/TRC restrictions described in @secref["skia-encoding-options"].
 }
 
 @defproc[(color-space->icc-bytes [space color-space?]) bytes?]{
