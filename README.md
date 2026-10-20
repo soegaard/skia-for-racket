@@ -295,7 +295,7 @@ from the actual X/Y target extents, including HiDPI rounding.
 
 ```bash
 python3 tools/validate-gpu-dc.py --racket "$RACKET" --require-gui
-"$RACKET" examples/skia-gpu-canvas.rkt
+"$RACKET" examples/skia-canvas-on-gpu.rkt
 ```
 
 ## Persistent raster GUI canvas

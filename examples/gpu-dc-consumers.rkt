@@ -36,7 +36,7 @@
        [callback (lambda (choice _event) (set! selected (send choice get-selection))
                     (when canvas (send canvas refresh)))])
   (set! canvas
-    (new skia-gpu-canvas% [parent panel] [backend (backend)] [min-width 320] [min-height 240]
+    (new skia-canvas-on-gpu% [parent panel] [backend (backend)] [min-width 320] [min-height 240]
          [paint-callback (lambda (_canvas dc) (exercise-consumer! (list-ref workloads selected)
            dc))]))
   (send window show #t)

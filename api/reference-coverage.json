@@ -12969,7 +12969,7 @@
       "space": null
     },
     {
-      "name": "skia-gpu-canvas%",
+      "name": "skia-canvas-on-gpu%",
       "chapter": "scribblings/reference/gui-canvases.scrbl",
       "canonical_module": "skia/gpu-canvas",
       "exports": [
@@ -12979,7 +12979,7 @@
       "space": null
     },
     {
-      "name": "skia-gpu-canvas?",
+      "name": "skia-canvas-on-gpu?",
       "chapter": "scribblings/reference/gui-canvases.scrbl",
       "canonical_module": "skia/gpu-canvas",
       "exports": [
@@ -12989,7 +12989,7 @@
       "space": null
     },
     {
-      "name": "skia-gpu-window%",
+      "name": "skia-window-on-gpu%",
       "chapter": "scribblings/reference/gui-canvases.scrbl",
       "canonical_module": "skia/gpu-canvas",
       "exports": [

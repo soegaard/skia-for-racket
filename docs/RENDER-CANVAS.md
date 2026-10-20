@@ -2,7 +2,7 @@
 
 `skia/render-canvas` provides a single construction function and protocol for
 raster and GPU GUI drawing. It does not rename or replace `skia-canvas%`,
-`skia-gpu-canvas%`, or either existing drawing-context contract.
+`skia-canvas-on-gpu%`, or either existing drawing-context contract.
 
 ## Construction
 

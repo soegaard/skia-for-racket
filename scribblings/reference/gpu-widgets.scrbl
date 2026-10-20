@@ -2,7 +2,7 @@
 
 @(require (for-label racket/base racket/class racket/contract
                      (except-in racket/gui/base make-font)
-                     skia skia/gpu skia/gpu-gui))
+                     skia skia/gpu skia/gpu-gui skia/canvas skia/gpu-canvas))
 
 @title[#:tag "skia-gpu-widgets"]{GPU Widgets for Direct Skia Drawing}
 
@@ -16,9 +16,12 @@ canvas to draw on. The frame and its borrowed canvas are valid only during
 that callback. The @racket[gpu-window%] class provides a convenience window
 containing one such canvas widget.
 
-If your drawing code uses Racket drawing-context methods instead, choose a
-canvas from @secref["skia-gui-canvases"]. Those classes supply a drawing context
-to the paint callback rather than a GPU frame, and offer CPU and GPU rendering.
+Both @racket[gpu-canvas%] and @racket[skia-canvas-on-gpu%] use Skia. The latter is
+the GPU counterpart of @racket[skia-canvas%] in the Racket drawing-context
+interface. It adapts @racket[gpu-canvas%]'s frames into drawing contexts for
+the paint callback. If your code uses Racket drawing-context methods instead
+of direct Skia functions, see @secref["skia-gui-canvases"] for the CPU and GPU
+choices.
 
 The @racketmodname[skia/gpu-gui] library initializes Racket's GUI layer and
 uses the @tech{GPU presenter} API to display frames. Construction and

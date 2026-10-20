@@ -82,7 +82,7 @@ to be imported by comparison tools instead of run alone.
 - [script-justification.rkt](script-justification.rkt) — Compares script-aware justification and paragraph layout behavior.
 - [shaping.rkt](shaping.rkt) — Renders shaped text examples that expose glyph placement and language behavior.
 - [skia-canvas.rkt](skia-canvas.rkt) — Opens raster-backed Skia drawing-context windows for interactive lifecycle review.
-- [skia-gpu-canvas.rkt](skia-gpu-canvas.rkt) — Opens a GPU-backed drawing-context window without retaining frame-local resources.
+- [skia-canvas-on-gpu.rkt](skia-canvas-on-gpu.rkt) — Opens a GPU-backed drawing-context window without retaining frame-local resources.
 - [small-gaps.rkt](small-gaps.rkt) — Demonstrates linear RGB basis conversion using XYZ-D50 matrices.
 - [streams.rkt](streams.rkt) — Demonstrates native memory-stream ownership transfer, duplication, and reading.
 - [svg-documents.rkt](svg-documents.rkt) — Exports SVG probe pages and separate raster references from shared drawing callbacks.

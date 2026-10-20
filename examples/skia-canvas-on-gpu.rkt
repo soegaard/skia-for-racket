@@ -1,7 +1,7 @@
 #lang racket/base
 
 ;;;
-;;; Skia GPU Canvas Example
+;;; Skia Canvas on GPU Example
 ;;;
 
 ;; Opens a GPU-backed drawing-context window without retaining frame-local resources.
@@ -40,7 +40,7 @@
   (new button% [parent controls] [label "Close"]
        [callback (lambda (_b _e) (send canvas close-skia) (send window show #f))])
   (set! canvas
-    (new skia-gpu-canvas% [parent panel] [min-width 360] [min-height 280]
+    (new skia-canvas-on-gpu% [parent panel] [min-width 360] [min-height 280]
          [paint-callback
           (lambda (c dc)
             (set! frames (add1 frames))

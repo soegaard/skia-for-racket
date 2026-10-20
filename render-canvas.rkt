@@ -180,7 +180,7 @@
 ;   Lazily constructs the GPU implementation with matching close and status methods.
 (define gpu-class
   (delay/sync
-    (let ([gpu% (dynamic-require gpu-module 'skia-gpu-canvas%)])
+    (let ([gpu% (dynamic-require gpu-module 'skia-canvas-on-gpu%)])
       ;; Add the one query missing from the raw GPU class so the shared mixin
       ;; can use an actual superclass method in both modes.
       (callback-canvas-class

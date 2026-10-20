@@ -160,11 +160,11 @@ frame submission, or an offscreen caller uses the existing GPU submission API.
 
 ## GUI entry point
 
-Import `skia/gpu-canvas` explicitly. It exports `skia-gpu-canvas%`,
-`skia-gpu-canvas?` and the convenience `skia-gpu-window%`.
+Import `skia/gpu-canvas` explicitly. It exports `skia-canvas-on-gpu%`,
+`skia-canvas-on-gpu?` and the convenience `skia-window-on-gpu%`.
 
 ```racket
-(new skia-gpu-canvas%
+(new skia-canvas-on-gpu%
      [parent panel]
      [backend 'auto]
      [paint-callback (lambda (canvas dc) ...)]
@@ -207,7 +207,7 @@ changing the existing raw GPU widget's public drawing interface.
 ```bash
 python3 tools/test-validate-gpu-dc.py
 python3 tools/validate-gpu-dc.py --racket "$RACKET" --require-gui
-"$RACKET" examples/skia-gpu-canvas.rkt
+"$RACKET" examples/skia-canvas-on-gpu.rkt
 ```
 
 The new validator requires 33 instrumented-renderer cases and 15 real GPU

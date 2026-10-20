@@ -12,16 +12,18 @@ paint callback receives the GUI canvas widget and a Skia-backed drawing
 context implementing the documented drawing subset of that interface.
 
 Choose @racket[skia-canvas%] for CPU rendering with a drawing context that
-persists between repaints. Choose @racket[skia-gpu-canvas%] for GPU rendering;
+persists between repaints. Choose @racket[skia-canvas-on-gpu%] for GPU rendering;
 it creates a fresh @tech[#:key "GPU drawing context"]{drawing context} for
 each @tech{GPU frame}, valid only during the paint callback. Both widgets
 belong to their eventspace handler thread, and their pixel and drawing-context
 lifetimes differ as described below.
 
-The @racket[skia-gpu-canvas%] class is a subclass of @racket[gpu-canvas%]. It
-uses the same GPU presentation machinery but supplies a Racket drawing context
-instead of passing a GPU frame to the application callback. To draw directly
-with Skia's drawing functions instead, see @secref["skia-gpu-widgets"].
+The @racket[skia-canvas-on-gpu%] class is the GPU counterpart of
+@racket[skia-canvas%] in this drawing-context interface. It subclasses
+@racket[gpu-canvas%], using the same GPU presentation machinery but supplying
+a Racket drawing context instead of a GPU frame to the application callback.
+Both GPU classes use Skia. To draw directly with Skia's drawing functions instead, see
+@secref["skia-gpu-widgets"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -112,7 +114,7 @@ Returns whether @racket[v] is an instance of @racket[skia-canvas%].
 @defmodule[skia/gpu-canvas #:no-declare]
 @(declare-exporting skia/gpu-canvas #:use-sources (skia/gpu-canvas))
 
-@defclass[skia-gpu-canvas% gpu-canvas% ()]{
+@defclass[skia-canvas-on-gpu% gpu-canvas% ()]{
 Adapts each presenter frame to a frame-scoped Skia drawing context. Unlike
 @racket[skia-canvas%], the drawing context exists only during one frame callback;
 retaining it does not extend its lifetime.
@@ -153,7 +155,7 @@ unpresented frame.
 
 @defmethod[(present) void?]{
 Raises an unsupported-operation exception instead of redisplaying cached GPU
-pixels. Request a frame with @method[skia-gpu-canvas% refresh] instead.
+pixels. Request a frame with @method[skia-canvas-on-gpu% refresh] instead.
 }
 
 @defmethod[(close-skia) void?]{
@@ -162,7 +164,7 @@ owning-thread, deferred-cleanup, and cleanup-retry rules.
 }
 
 @defmethod[(close) void?]{
-Closes the same resources as @method[skia-gpu-canvas% close-skia].
+Closes the same resources as @method[skia-canvas-on-gpu% close-skia].
 }
 
 @defmethod[(skia-closed?) boolean?]{
@@ -175,16 +177,16 @@ that implicit CPU readback and visible-pixel verification have not occurred.
 }
 }
 
-@defproc[(skia-gpu-canvas? [v any/c]) boolean?]{
-Returns whether @racket[v] is an instance of @racket[skia-gpu-canvas%].
+@defproc[(skia-canvas-on-gpu? [v any/c]) boolean?]{
+Returns whether @racket[v] is an instance of @racket[skia-canvas-on-gpu%].
 }
 
 @section{GPU Drawing-Context Window}
 
 @(declare-exporting skia/gpu-canvas #:use-sources (skia/gpu-canvas))
 
-@defclass[skia-gpu-window% frame% ()]{
-Provides a convenience frame around one @racket[skia-gpu-canvas%].
+@defclass[skia-window-on-gpu% frame% ()]{
+Provides a convenience frame around one @racket[skia-canvas-on-gpu%].
 
 @defconstructor[([label string? "Skia GPU DC"]
                  [width exact-nonnegative-integer? 640]
@@ -201,7 +203,7 @@ Provides a convenience frame around one @racket[skia-gpu-canvas%].
 Creates a GPU drawing-context window.
 }
 
-@defmethod[(get-skia-canvas) (is-a?/c skia-gpu-canvas%)]{
+@defmethod[(get-skia-canvas) (is-a?/c skia-canvas-on-gpu%)]{
 Returns the child canvas.
 }
 

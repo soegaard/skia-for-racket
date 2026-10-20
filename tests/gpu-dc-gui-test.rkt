@@ -71,7 +71,7 @@
   (if (eq? (car result) 'exception) (raise (cdr result)) (apply values (cdr result))))
 (struct window (frame canvas paints dcs ready errors) #:transparent)
 ;; frame: owned GUI frame, hidden during with-window cleanup.
-;; canvas: child skia-gpu-canvas% whose GPU resources are explicitly closed.
+;; canvas: child skia-canvas-on-gpu% whose GPU resources are explicitly closed.
 ;; paints: box of the nonnegative paint-callback count.
 ;; dcs: box of borrowed frame DCs, newest first; retained to check that every
 ;; completed callback leaves an expired DC.
@@ -88,7 +88,7 @@
      (define paints (box 0)) (define dcs (box '())) (define ready (make-semaphore 0))
      (define errors (box '()))
      (define c
-       (new skia-gpu-canvas% [parent f] [backend (backend)] [adapter (adapter)]
+       (new skia-canvas-on-gpu% [parent f] [backend (backend)] [adapter (adapter)]
             [min-width 40] [min-height 30]
             [on-error (lambda (e) (set-box! errors (cons e (unbox errors))) (semaphore-post ready))]
             [paint-callback
@@ -152,7 +152,7 @@
      (with-window
        (lambda (w)
          (on-handler (lambda ()
-           (check-true (skia-gpu-canvas? (window-canvas w)))
+           (check-true (skia-canvas-on-gpu? (window-canvas w)))
            (check-exn #rx"only during" (lambda () (send (window-canvas w) get-dc)))
            (for ([dc (in-list (unbox (window-dcs w)))]) (check-false (send dc ok?))))))
        #:paint (lambda (c dc)

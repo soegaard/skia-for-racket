@@ -2409,9 +2409,9 @@ Experimental GUI integration: owner/eventspace and callback-scoped lifetimes rem
 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
-| skia-gpu-canvas% | experimental | 0 | class | — | — | — |
-| skia-gpu-canvas? | experimental | 0 | procedure | 1 | none | none |
-| skia-gpu-window% | experimental | 0 | class | — | — | — |
+| skia-canvas-on-gpu% | experimental | 0 | class | — | — | — |
+| skia-canvas-on-gpu? | experimental | 0 | procedure | 1 | none | none |
+| skia-window-on-gpu% | experimental | 0 | class | — | — | — |
 ### gpu-gui.rkt
 
 Experimental GUI integration: owner/eventspace and callback-scoped lifetimes remain mandatory; import requires a graphical session.

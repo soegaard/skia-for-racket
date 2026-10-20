@@ -19,7 +19,7 @@
          "gpu-gui.rkt" "gpu-dc.rkt"
          (only-in "gpu.rkt" gpu-frame-info)
          (only-in "private/dc-support.rkt" dc-unsupported))
-(provide skia-gpu-canvas% skia-gpu-canvas? skia-gpu-window%)
+(provide skia-canvas-on-gpu% skia-canvas-on-gpu? skia-window-on-gpu%)
 
 ;;;
 ;;; GUI Thread, Callback, and Color Validation
@@ -46,25 +46,25 @@
      (make-object rd:color% (send value red) (send value green) (send value blue) (send value alpha))]
     [(string? value)
      (or (send rd:the-color-database find-color value)
-         (raise-argument-error 'skia-gpu-canvas% "known color name" value))]
-    [else (raise-argument-error 'skia-gpu-canvas% "color% object or color name" value)]))
+         (raise-argument-error 'skia-canvas-on-gpu% "known color name" value))]
+    [else (raise-argument-error 'skia-canvas-on-gpu% "color% object or color name" value)]))
 
 ;;;
 ;;; Frame-Scoped Drawing-Context Canvas
 ;;;
 
-; skia-gpu-canvas% : class?
+; skia-canvas-on-gpu% : class?
 ;   Adapts GPU presentation frames to short-lived Skia drawing contexts for GUI paint callbacks.
-(define skia-gpu-canvas%
+(define skia-canvas-on-gpu%
   (class gpu-canvas%
     (init parent [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f]
           [paint-callback void] [on-error raise] [background "white"]
           [smoothing 'smoothed] [automatic? #t] [min-width 1] [min-height 1])
     (define space (gui:current-eventspace))
-    (handler! 'skia-gpu-canvas% space)
-    (callback! 'skia-gpu-canvas% paint-callback 2)
+    (handler! 'skia-canvas-on-gpu% space)
+    (callback! 'skia-canvas-on-gpu% paint-callback 2)
     (unless (memq smoothing '(unsmoothed smoothed aligned))
-      (raise-argument-error 'skia-gpu-canvas% "'unsmoothed, 'smoothed, or 'aligned" smoothing))
+      (raise-argument-error 'skia-canvas-on-gpu% "'unsmoothed, 'smoothed, or 'aligned" smoothing))
     (define paint-proc paint-callback)
     (define background-value (canvas-color background))
     (define smoothing-value smoothing)
@@ -137,17 +137,17 @@
               'implicit_cpu_readback #f 'visible_pixels_verified #f 'performance_measured #f))
     (set! ready? #t)))
 
-; skia-gpu-canvas? : any/c -> boolean?
-;   Returns whether v is an instance of skia-gpu-canvas%.
-(define (skia-gpu-canvas? value) (is-a? value skia-gpu-canvas%))
+; skia-canvas-on-gpu? : any/c -> boolean?
+;   Returns whether v is an instance of skia-canvas-on-gpu%.
+(define (skia-canvas-on-gpu? value) (is-a? value skia-canvas-on-gpu%))
 
 ;;;
 ;;; Canvas Window and Resource Cleanup
 ;;;
 
-; skia-gpu-window% : class?
+; skia-window-on-gpu% : class?
 ;   Hosts a Skia GPU canvas and closes its native presentation resources with the window.
-(define skia-gpu-window%
+(define skia-window-on-gpu%
   (class gui:frame%
     (init [label "Skia GPU DC"] [width 640] [height 480]
           [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f]
@@ -155,7 +155,7 @@
           [smoothing 'smoothed] [automatic? #t])
     (super-new [label label] [width width] [height height])
     (define canvas
-      (new skia-gpu-canvas% [parent this] [backend backend] [adapter adapter]
+      (new skia-canvas-on-gpu% [parent this] [backend backend] [adapter adapter]
            [adapter-index adapter-index] [sync-interval sync-interval]
            [paint-callback paint-callback] [on-error on-error] [background background]
            [smoothing smoothing] [automatic? automatic?]))

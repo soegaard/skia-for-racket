@@ -261,7 +261,7 @@ class SourceContracts(unittest.TestCase):
         source=self.source("render-canvas.rkt")
         self.assertIn("(class* base% (skia-render-canvas<%>)",source)
         self.assertIn("(inherit/super closed? get-skia-info)",source)
-        self.assertIn("'skia-canvas%",source);self.assertIn("'skia-gpu-canvas%",source)
+        self.assertIn("'skia-canvas%",source);self.assertIn("'skia-canvas-on-gpu%",source)
         self.assertNotIn("vertical-panel%",source)
     def test_no_raw_gpu_transfers_in_facade(self):
         source=self.source("render-canvas.rkt")

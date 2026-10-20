@@ -51,7 +51,7 @@
       (on-handler
        (lambda ()
          (set! frame (new gui:frame% [label "Skia GPU consumer acceptance"] [width 380] [height 300]))
-         (set! canvas (new skia-gpu-canvas% [parent frame] [backend backend]
+         (set! canvas (new skia-canvas-on-gpu% [parent frame] [backend backend]
                            [adapter (and (eq? backend 'direct3d) adapter)]
                            [automatic? #f] [min-width 320] [min-height 240]))
          (send frame show #t)))

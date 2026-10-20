@@ -27,7 +27,7 @@
         {
           "export_kind": "value",
           "kind": "class",
-          "name": "skia-gpu-canvas%",
+          "name": "skia-canvas-on-gpu%",
           "phase": "0"
         },
         {
@@ -35,14 +35,14 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
-          "name": "skia-gpu-canvas?",
+          "name": "skia-canvas-on-gpu?",
           "phase": "0",
           "required_keywords": []
         },
         {
           "export_kind": "value",
           "kind": "class",
-          "name": "skia-gpu-window%",
+          "name": "skia-window-on-gpu%",
           "phase": "0"
         }
       ],
