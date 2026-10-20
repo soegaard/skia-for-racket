@@ -39,7 +39,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends unzip curl fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgtk-3-0t64 libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri
-      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+      - uses: Bogdanp/setup-racket@8889db76ff6cdc86df8aa09fdd1729cd090b7144
         with:
           version: ${{ matrix.racket }}
           architecture: x64
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
-      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+      - uses: Bogdanp/setup-racket@8889db76ff6cdc86df8aa09fdd1729cd090b7144
         with:
           version: '9.3'
           architecture: x64

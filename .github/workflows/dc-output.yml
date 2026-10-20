@@ -44,7 +44,7 @@ jobs:
             unzip curl fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk \
             libcairo2 libpango-1.0-0 libpangocairo-1.0-0 poppler-utils librsvg2-bin
           python -m pip install -r tools/dc-output-requirements.txt
-      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd
+      - uses: Bogdanp/setup-racket@8889db76ff6cdc86df8aa09fdd1729cd090b7144
         with:
           version: ${{ matrix.racket }}
           architecture: x64
