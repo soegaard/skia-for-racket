@@ -31,16 +31,43 @@ that the resource is valid for native use.
 }
 
 @defproc[(image-from-file [filename path-string?]) image?]{
-Creates an image from a nonempty encoded file. The file must exist, its size
-must fit @racket[current-skia-byte-limit], and its path must not contain an
+Creates an image from a nonempty encoded file. The default SkiaSharp 3.119.1
+library supports these file types:
+
+@;{Decoder list: mono/skia at 40f75dc0051d141913c07c20d4c19590c7da0cb7,
+   src/codec/SkCodec.cpp and gn/skia.gni; mono/SkiaSharp v3.119.1,
+   native/macos/build.cake, native/linux/build.cake, and native/windows/build.cake.
+   SkIcoCodec.cpp also recognizes CUR. SkRawCodec.cpp reads JPEG previews
+   before falling back to DNG decoding.}
+@itemlist[
+ @item{PNG (@tt{.png}).}
+ @item{JPEG (@tt{.jpg}, @tt{.jpeg}).}
+ @item{WebP (@tt{.webp}).}
+ @item{GIF (@tt{.gif}).}
+ @item{BMP (@tt{.bmp}).}
+ @item{Windows icons and cursors (@tt{.ico}, @tt{.cur}).}
+ @item{WBMP (@tt{.wbmp}).}
+ @item{DNG (@tt{.dng}).}
+]
+
+The format is detected from the file contents, not the filename extension.
+For some other camera-raw formats, Skia reads an embedded JPEG preview rather
+than the raw sensor data. Using a different native library can change the
+available decoders.
+
+The file must exist, its size must fit @racket[current-skia-byte-limit],
+and its path must not contain an
 embedded NUL. Native image construction applies the dimension checks described
 for @racket[image-from-bytes]. The native image stores the encoded data
 for deferred decoding; no Racket input port remains open on the caller's behalf.
 }
 
 @defproc[(image-from-bytes [encoded bytes?]) image?]{
-Creates an owned image from a copy of encoded image data. The bytes must be
-nonempty and fit @racket[current-skia-byte-limit]. The decoded width and height
+Creates an owned image from a copy of encoded image data. The supported formats
+are listed under @racket[image-from-file].
+
+The bytes must be nonempty and fit @racket[current-skia-byte-limit].
+The decoded width and height
 must satisfy the same dimension and RGBA-size limits as @racket[make-surface].
 An unsupported or invalid image raises an exception; no @racket[#f] result is
 used for decode failure.
