@@ -11,3 +11,9 @@ native/*/
 __pycache__/
 *.py[cod]
 /chocopkg/
+
+# Personal notes and editor temporary files
+TODO.md
+.#*
+\#*#
+*~
