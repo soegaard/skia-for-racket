@@ -7,7 +7,7 @@
 @defmodule[skia/gpu-output #:no-declare]
 @(declare-exporting skia/gpu-output #:use-sources (skia/gpu-output))
 
-These functions provide an explicit GPU executor for bounded @tech{raster fallbacks} in
+These functions provide an explicit GPU @tech{raster executor} for bounded @tech{raster fallbacks} in
 PDF and SVG output. The executor changes where the temporary raster is drawn; it
 does not change the output policy or turn a vector-compatible group into a
 raster group by itself.
@@ -19,7 +19,7 @@ This is not a zero-copy path and makes no performance or hardware-acceleration g
 
 @defproc[(make-gpu-raster-executor [context gpu-context?])
          output-raster-executor?]{
-Creates an output raster executor that borrows @racket[context]. The context
+Creates a GPU @tech{raster executor} that borrows @racket[context]. The context
 must be ready, have no pending shutdown request, and be used from its owner
 thread. The executor records the context generation and rejects later use after
 a generation change.
@@ -41,7 +41,7 @@ GPU raster execution. See @secref["skia-output-groups"].
           [proc (-> output-raster-executor? any)]
           [#:on-unavailable on-unavailable (or/c 'error 'cpu) 'error])
          any]{
-Calls @racket[proc] with a scoped output raster executor and returns its values.
+Calls @racket[proc] with a scoped @tech{raster executor} and returns its values.
 The function must accept one positional argument and no required keywords. The
 @racket[make-context] function is invoked lazily when the scope first needs
 GPU raster execution, and a created context is closed when the dynamic extent

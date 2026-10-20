@@ -19,9 +19,13 @@ commands it produces. It then selects native replay or explicit @tech{raster fal
 for a PDF, SVG, or CPU-raster destination and returns an immutable report describing
 that decision. Later replay uses the recorded commands without calling the callback again.
 
-Representation policy and raster execution are separate. CPU execution is the default. A GPU
-raster executor belongs to the GPU output interface; its use does not turn a rasterized group
-into vector content. Groups do not establish output compatibility for resources
+A @deftech{raster executor} determines how a group's recorded drawing commands
+are rendered into a temporary image. The default uses the CPU; a GPU executor
+uses a @tech{GPU context}. The output policy determines whether the group is
+rasterized. Using a GPU executor does not turn a rasterized group into vector
+content. See @secref["skia-gpu-output"] for GPU executors.
+
+Groups do not establish output compatibility for resources
 whose compatibility is unknown or recover annotations that were already flattened.
 
 @section{Drawing Bounded Groups}
@@ -70,9 +74,14 @@ recording canvas uses that group's executor; a group drawn on any other supporte
 canvas uses the CPU.
 Passing @racket['cpu] explicitly always selects the CPU.
 
-The executor's lifetime and thread requirements are checked before the drawing callback runs.
-GPU acquisition, when selected, is delayed until the output policy and any enclosing audit
-allow rasterization. A later failure does not rerun the drawing callback.
+Before running the drawing callback, the function checks that the
+@tech{raster executor} is still usable and is being used from the correct thread.
+
+If the executor creates a GPU context on demand, it does so only after the
+output policy and any enclosing output audit allow rasterization.
+
+If a later step fails, the exception propagates without calling the drawing
+callback again.
 
 Callback values are ignored, and its canvas expires on exit. Failure before replay draws no
 group to the destination, but ordinary callback side effects persist. Failures during actual
@@ -105,7 +114,7 @@ scaling, but does not move the group's logical red content or become visible col
 
 @defproc[(output-raster-executor? [v any/c])
           boolean?]{
-Identifies an output raster executor value supplied by the output integration
+Identifies an output @tech{raster executor} value supplied by the output integration
 interface. The @racket['cpu] symbol is accepted by @racket[draw-output-group],
 but is not an executor value. The predicate does not certify that an executor's
 scope is still live or that its backend is available.

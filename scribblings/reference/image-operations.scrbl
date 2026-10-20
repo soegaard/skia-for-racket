@@ -62,32 +62,57 @@ decoding will fail.
 
 @section{Preparing CPU Images}
 
-The following operations preserve floating-point pixel precision: F32 must
-remain F32, and F16 may remain F16 or become F32. If Skia cannot create a valid
-CPU image or returns an image with lower precision, the operation raises an
-exception and releases any rejected result. Extents are checked conservatively
-at 16 bytes per pixel against both the current byte limit and the native signed
-allocation range. Exceeding either limit raises an exception. This is not a
-bound on all intermediate native memory.
+Use @racket[image->raster-image] when you want an image's pixels ready in CPU
+memory, with any required decoding or generation completed before the function
+returns. For ordinary drawing, this preparation is usually unnecessary:
+drawing can decode the image as needed.
+
+The related @racket[image->non-texture-image] provides a weaker guarantee: the
+result does not use a GPU texture, but its pixels may still need decoding.
+
+Both functions require a CPU image that does not use a GPU texture. Passing a
+GPU-owned or texture-backed image raises an exception; neither function
+transfers pixels from the GPU. For that, see @secref["skia-gpu-transfers"].
+
+The result and source are separate image resources. Closing either does not
+close the other, although they may share pixel storage.
+
+These operations do not reduce floating-point color precision. Images with
+32-bit floating-point components keep that format; images with 16-bit
+floating-point components may use either 16-bit or 32-bit components in the
+result. If Skia cannot create a valid CPU image meeting these requirements,
+the operation raises an exception.
+
+The image's width and height must each be between 1 and 32768 pixels. These
+operations also check the image size using an estimate of 16 bytes per pixel,
+regardless of its actual pixel format. If either dimension is outside its
+allowed range, or @math{width × height × 16} exceeds either
+@racket[current-skia-byte-limit] or 2,147,483,647 bytes, the operation raises an
+exception. This check does not limit the total memory Skia may use internally.
 
 @defproc[(image->non-texture-image [image image?])
           image?]{
 Returns an image that does not use a GPU texture.
 
-The result is independently owned, but may share native storage with the source.
-Its pixels need not already be decoded. The input must already be CPU-owned and
-non-texture-backed; this operation does not perform GPU readback.
+Its pixels may still be decoded or generated later. Use
+@racket[image->raster-image] if you need the pixels to be available immediately.
 }
 
 @defproc[(image->raster-image [image image?])
           image?]{
 Returns an image whose pixels are immediately available in CPU memory.
 
-If the resulting image still defers decoding or does not provide immediately
-available pixels, the function closes it and raises an exception. A successful
-result is independently owned and remains valid after the source wrapper
-closes, but it is not a mutable raster buffer.
+Any required decoding or pixel generation finishes before the function
+returns. If Skia cannot provide the pixels immediately, the function raises
+an exception.
+
+The result is still an immutable image. To obtain pixels that you can edit,
+use @racket[image->raster-buffer] instead.
 }
+
+The following example prepares an image loaded from PNG data, closes the
+source, and checks that the result no longer defers decoding and has
+immediately available pixels:
 
 @racketblock[
 (with-skia ([surface (make-surface 2 2 #:background 'red)]
@@ -99,7 +124,7 @@ closes, but it is not a mutable raster buffer.
     (list (image-lazy-generated? raster) (image-pixels-available? raster))))
 ]
 
-The result is @racket['(#f #t)]. Closing the source wrapper does not close the raster result.
+The result is @racket['(#f #t)].
 
 @section{Copies into Pixel Views}
 
