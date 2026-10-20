@@ -36,14 +36,19 @@ Returns @racket[#t] for a rounded-rectangle specification and @racket[#f] otherw
           [height (and/c real? (>=/c 0))]
           [#:radii radii (or/c real? list? vector?) 0])
           rounded-rect?]{
-Returns a copied specification. A nonnegative real radius uses that value for
-both components at every corner. Otherwise, radii must be a list or vector of
-four two-element point lists or vectors, with nonnegative components.
+Creates a rounded rectangle with its upper-left corner at
+@math{(x, y)} and the given width and height.
 
-Bounds use nonnegative dimensions. Stored bounds reflect the native rectangle's
-binary32 edges; radius components are stored as
-inexact values and converted on native submission. This constructor does not load
-Skia or normalize oversized radii. Zero dimensions are allowed.
+A single radius supplies both the horizontal and vertical radius at every
+corner. Alternatively, supply a list or vector of four radius pairs, ordered
+top-left, top-right, bottom-right, bottom-left. Each pair is a two-element list
+or vector.
+
+Width, height, and radii must be nonnegative; zero is allowed.
+
+The constructor preserves oversized radii. When the shape is used for drawing,
+clipping, or path construction, Skia adjusts them to fit the rectangle according
+to its @seclink["skia-rounded-rectangle-normalization"]{normalization rules}.
 }
 
 @defproc[(rounded-rect-bounds [shape rounded-rect?])
