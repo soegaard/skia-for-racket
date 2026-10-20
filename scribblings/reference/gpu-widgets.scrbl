@@ -47,16 +47,26 @@ presenter.
                  [adapter (or/c #f 'hardware 'warp) #f]
                  [adapter-index (or/c #f exact-nonnegative-integer?) #f]
                  [sync-interval (or/c #f (integer-in 0 1)) #f]
-                 [render procedure? void]
+                 [render (-> gpu-frame? any) void]
                  [on-error procedure? raise]
                  [background color? 'white]
                  [automatic? boolean? #t]
                  [min-width exact-nonnegative-integer? 1]
                  [min-height exact-nonnegative-integer? 1])]{
-Creates a GPU canvas. The @racket[render] function must accept one frame and
-@racket[on-error] must accept one raised value; neither may require keyword
-arguments. Direct3D adapter and synchronization options are rejected for other
-backends. WARP uses adapter index zero.
+Creates a GPU canvas.
+
+The @racket[render] callback receives one @tech{GPU frame} and runs on the
+widget's eventspace handler thread. Use @racket[gpu-frame-canvas] to obtain
+the Skia canvas for drawing. The callback may return any number of values;
+they are ignored. The default callback, @racket[void], does not draw.
+
+The frame's canvas and GPU context are borrowed and may be used only during
+the callback. Do not close these borrowed resources independently.
+The @racket[on-error] callback receives one raised value. Neither callback
+may require keyword arguments.
+
+Direct3D adapter and synchronization options are rejected for other backends.
+WARP uses adapter index zero.
 }
 
 @defmethod[(get-gpu-presenter) gpu-presenter?]{
@@ -102,12 +112,18 @@ Provides a convenience frame containing one @racket[gpu-canvas%].
                  [adapter (or/c #f 'hardware 'warp) #f]
                  [adapter-index (or/c #f exact-nonnegative-integer?) #f]
                  [sync-interval (or/c #f (integer-in 0 1)) #f]
-                 [render procedure? void]
+                 [render (-> gpu-frame? any) void]
                  [on-error procedure? raise]
                  [background color? 'white]
                  [automatic? boolean? #t])]{
-Creates a GPU window using the same backend, callback, and scheduling rules as
+Creates a GPU window using the same backend and scheduling rules as
 @racket[gpu-canvas%].
+
+The @racket[render] callback is passed to the child @racket[gpu-canvas%]. It
+receives one @tech{GPU frame}, not the window object, and its return values
+are ignored. The callback runs on the window's eventspace handler thread.
+The keyword-argument restrictions and borrowed-frame lifetime rules are the
+same as for @racket[gpu-canvas%].
 }
 
 @defmethod[(get-gpu-canvas) (is-a?/c gpu-canvas%)]{

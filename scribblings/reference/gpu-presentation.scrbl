@@ -83,10 +83,18 @@ is deferred until that work unwinds instead of recursively switching contexts.
 }
 
 @defproc[(gpu-presenter-set-render! [presenter gpu-presenter?]
-                                    [render procedure?]) void?]{
-Replaces the one-argument frame callback and requests one redraw. The @racket[render]
-callback must accept one positional argument. Replacement is rejected for a closing,
-closed, or failed presenter.
+                                    [render (-> gpu-frame? any)]) void?]{
+Replaces the presenter's render callback and requests one redraw. Call this
+function on the presenter's owner thread. Replacement is rejected for a
+closing, closed, or failed presenter.
+
+The @racket[render] callback receives one @tech{GPU frame} and runs on the
+presenter's owner thread. It must not require keyword arguments and may
+return any number of values, which are ignored. Use @racket[gpu-frame-canvas]
+to obtain the Skia canvas for drawing.
+
+The frame's canvas and GPU context are borrowed and may be used only during
+the callback. Do not close these borrowed resources independently.
 }
 
 @section{Presenter Cleanup}
