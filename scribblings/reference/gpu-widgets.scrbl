@@ -4,15 +4,26 @@
                      (except-in racket/gui/base make-font)
                      skia skia/gpu skia/gpu-gui))
 
-@title[#:tag "skia-gpu-widgets"]{GPU GUI Widgets}
+@title[#:tag "skia-gpu-widgets"]{GPU Widgets for Direct Skia Drawing}
 
 @defmodule[skia/gpu-gui #:no-declare]
 @(declare-exporting skia/gpu-gui #:use-sources (skia/gpu-gui))
 
+Use @racket[gpu-canvas%] when you want to draw directly with Skia functions
+such as @racket[draw-circle] and @racket[draw-path]. Its render callback
+receives a @tech{GPU frame}; call @racket[gpu-frame-canvas] to obtain the Skia
+canvas to draw on. The frame and its borrowed canvas are valid only during
+that callback. The @racket[gpu-window%] class provides a convenience window
+containing one such canvas widget.
+
+If your drawing code uses Racket drawing-context methods instead, choose a
+canvas from @secref["skia-gui-canvases"]. Those classes supply a drawing context
+to the paint callback rather than a GPU frame, and offer CPU and GPU rendering.
+
 The @racketmodname[skia/gpu-gui] library initializes Racket's GUI layer and
-provides widgets backed by the @tech{GPU presenter} API. Construction and widget-specific
-operations belong to the creating eventspace's handler thread. Use
-@racket[queue-callback] to schedule such work from another thread.
+uses the @tech{GPU presenter} API to display frames. Construction and
+widget-specific operations belong to the creating eventspace's handler
+thread. Use @racket[queue-callback] to schedule such work from another thread.
 
 Backend selection is fixed for a widget's lifetime. With @racket['auto], the widget
 selects Metal on macOS and OpenGL elsewhere; this is a selection rule, not a failure fallback.

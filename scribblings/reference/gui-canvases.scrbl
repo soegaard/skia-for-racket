@@ -4,13 +4,24 @@
                      (prefix-in draw: racket/draw)
                      skia/canvas skia/gpu skia/gpu-gui skia/gpu-canvas))
 
-@title[#:tag "skia-gui-canvases"]{GUI Drawing Canvases}
+@title[#:tag "skia-gui-canvases"]{GUI Canvases with Racket Drawing Contexts}
 
-These GUI classes present Skia drawing through Racket @racket[canvas%] widgets.
-The raster canvas reuses one CPU drawing context across repaints; the GPU canvas
-creates a fresh @tech[#:key "GPU drawing context"]{drawing context} for each
-@tech{GPU frame}. Both belong to their
-eventspace handler thread, but their pixel and drawing-context lifetimes differ.
+Use these classes when your drawing code uses methods from Racket's
+@racket[draw:dc<%>] interface, such as @method[draw:dc<%> draw-ellipse]. The
+paint callback receives the GUI canvas widget and a Skia-backed drawing
+context implementing the documented drawing subset of that interface.
+
+Choose @racket[skia-canvas%] for CPU rendering with a drawing context that
+persists between repaints. Choose @racket[skia-gpu-canvas%] for GPU rendering;
+it creates a fresh @tech[#:key "GPU drawing context"]{drawing context} for
+each @tech{GPU frame}, valid only during the paint callback. Both widgets
+belong to their eventspace handler thread, and their pixel and drawing-context
+lifetimes differ as described below.
+
+The @racket[skia-gpu-canvas%] class is a subclass of @racket[gpu-canvas%]. It
+uses the same GPU presentation machinery but supplies a Racket drawing context
+instead of passing a GPU frame to the application callback. To draw directly
+with Skia's drawing functions instead, see @secref["skia-gpu-widgets"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
