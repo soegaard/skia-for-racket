@@ -30,8 +30,9 @@ operation uses an extension or that the driver is hardware accelerated.
 Reports whether the Skia GL interface used by the active OpenGL
 @racket[context] advertises @racket[name]. The name must be one ASCII identifier
 of 1 through 255 characters, begin with a letter, and contain only letters,
-digits, and underscores. An unknown well-formed extension returns false;
-malformed names and non-OpenGL contexts raise.
+digits, and underscores. If the name violates these requirements or
+@racket[context] does not use OpenGL, the function raises an exception.
+A well-formed name that the interface does not advertise returns @racket[#f].
 
 The query examines the interface used to create this Ganesh context. Extension
 membership alone does not certify rendering support, a driver path, or visual

@@ -107,8 +107,10 @@ space. The color-space argument accepts a resource, not a color-space descriptor
 The operation performs a @tech{GPU flush}, @tech{GPU submission}, and
 @tech{GPU wait} before copying pixels. Float or
 higher-bit-depth sources are explicitly converted to eight-bit output.
-The output allocation must fit @racket[current-skia-byte-limit]. Failure returns
-no partial byte string. Later GPU changes do not alter a successful result.
+The output allocation must fit @racket[current-skia-byte-limit]; exceeding it
+raises an exception before allocating the output. If GPU synchronization or
+pixel readback fails, the function raises an exception without returning a
+partial byte string. Later GPU changes do not alter a successful result.
 }
 
 @defproc[(gpu-image->rgba-bytes [image gpu-image?]
@@ -130,14 +132,17 @@ Reads the surface's pixels into a new raster buffer in CPU memory.
 The buffer is an owned resource, and readback finishes before the call returns.
 False @racket[info] uses @racket[gpu-surface->image-info]. An explicit description
 selects the destination format and color interpretation, but its dimensions
-must equal the surface dimensions. This is conversion, not scaling.
+must equal the surface dimensions. If they differ, the function raises an
+exception before allocating the buffer. This is conversion, not scaling.
 
 The stride follows @racket[image-info-storage-layout]; false selects a tight
 stride. Row padding is initialized and is not filled from GPU memory. The
 source and destination must either both have color-space tags or both be
-untagged; implicit tagged/untagged reinterpretation is rejected. An explicit
-compatible destination format permits conversion, including intentional
-precision reduction. Failure closes the new buffer rather than returning it.
+untagged. If only one is tagged, the function closes the new buffer and raises
+an exception before reading pixels. An explicit compatible destination format
+permits conversion, including intentional precision reduction. If GPU
+synchronization, readback, or pixel conversion fails, the function closes the
+new buffer and raises an exception rather than returning it.
 }
 
 @defproc[(gpu-image->raster-buffer [image gpu-image?]

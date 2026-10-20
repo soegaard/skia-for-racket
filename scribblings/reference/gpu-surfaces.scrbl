@@ -69,10 +69,11 @@ target. A supported query does not guarantee that allocation will succeed.
 
 The @racket[budgeted?] argument selects native cache accounting, not a hard
 memory limit. Setting it to false does not bypass the wrapper's size checks.
-Construction checks the native context association, copied surface properties,
-and resulting dimensions and color/alpha format. It raises instead of silently
-substituting a CPU target or a different pixel format. A failed construction
-does not return an uninitialized or partially constructed surface.
+If Skia returns a surface that does not belong to the requested GPU context or
+does not match the requested surface properties, dimensions, or color/alpha
+format, the constructor releases it and raises an exception. It does not
+substitute a CPU target or a different pixel format, or return an uninitialized
+or partially constructed surface.
 
 The following helper returns a GPU image of a red tile. The surface and paint
 are closed before it returns; the image remains owned by the caller and its

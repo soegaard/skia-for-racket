@@ -62,11 +62,13 @@ decoding will fail.
 
 @section{Preparing CPU Images}
 
-The following operations do not silently reduce floating-point pixel precision: F32 must remain F32,
-and F16 may remain F16 or become F32. Native allocation or validity failure raises rather than
-returning an invalid image. Extents are checked conservatively at 16 bytes per pixel against
-both the current byte limit and the native signed allocation range. This is not a bound on all
-intermediate native memory.
+The following operations preserve floating-point pixel precision: F32 must
+remain F32, and F16 may remain F16 or become F32. If Skia cannot create a valid
+CPU image or returns an image with lower precision, the operation raises an
+exception and releases any rejected result. Extents are checked conservatively
+at 16 bytes per pixel against both the current byte limit and the native signed
+allocation range. Exceeding either limit raises an exception. This is not a
+bound on all intermediate native memory.
 
 @defproc[(image->non-texture-image [image image?])
           image?]{
@@ -81,9 +83,10 @@ non-texture-backed; this operation does not perform GPU readback.
           image?]{
 Returns an image whose pixels are immediately available in CPU memory.
 
-The result does not defer decoding. Failure to obtain these properties raises
-an exception. It is independently owned and remains valid after the source
-wrapper closes, but it is not a mutable raster buffer.
+If the resulting image still defers decoding or does not provide immediately
+available pixels, the function closes it and raises an exception. A successful
+result is independently owned and remains valid after the source wrapper
+closes, but it is not a mutable raster buffer.
 }
 
 @racketblock[
@@ -101,9 +104,9 @@ The result is @racket['(#f #t)]. Closing the source wrapper does not close the r
 @section{Copies into Pixel Views}
 
 The following writes require a live writable destination @tech{pixmap}. Source and destination must
-either both have a color-space interpretation or both be untagged. A tagged/untagged pair raises
-instead of silently assigning sRGB. Pixel-format and color-space conversion are performed only
-after those checks.
+either both have a color-space interpretation or both be untagged. If only one
+is tagged, the operation raises an exception before converting or writing pixels;
+it does not assign sRGB to the untagged value.
 
 Pixel data are prepared and checked in temporary storage before the destination is changed.
 Failed native reads, scaling, or invalid converted samples leave the destination unchanged.
@@ -117,8 +120,8 @@ not an ownership transfer or a promise that data will remain cached.
           void?]{
 Copies an image rectangle to the entire destination view without resizing. The source rectangle
 begins at the given coordinates and has the destination's dimensions. It must lie wholly inside
-the image; partial clipping is rejected rather than leaving an apparently initialized
-destination.
+the image. If any part lies outside the image, the function raises an exception
+without changing the destination.
 }
 
 @defproc[(image-scale-pixmap! [image image?] [destination pixmap?] [#:sampling sampling (or/c

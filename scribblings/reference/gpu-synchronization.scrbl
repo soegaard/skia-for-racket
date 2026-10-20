@@ -12,8 +12,9 @@ A @deftech{GPU submission} requests backend execution. A @deftech{GPU wait}
 requests that submitted GPU work finish before the call returns. These are different
 operations: none presents a window, exports a native fence, or transfers pixels
 by itself. These operations require the owning Racket thread and
-an active, usable @tech{GPU context}. Detected native context loss requests shutdown and
-raises; it does not retry rendering on the CPU.
+an active, usable @tech{GPU context}. If an operation detects that the native
+context has been lost, it requests context shutdown and raises an exception;
+it does not retry rendering on the CPU.
 
 @bold{Conceptual diagram.} Pending drawing, flush, submission, and waiting for
 GPU work to finish are separate steps. @tech{GPU readback} and presentation are separate

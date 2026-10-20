@@ -51,8 +51,9 @@ Returns @racket[#t] for an immutable capability description and @racket[#f] othe
 
 @defproc[(output-capability-for [backend (or/c 'pdf 'svg 'raster)] [feature symbol?])
           output-capability?]{
-Returns the capability entry for the backend and a symbol in @racket[output-feature-names]. An
-unknown spelling raises; it does not mean supported. Ordinary raster features are classified as
+Returns the capability entry for the backend and a symbol in @racket[output-feature-names].
+If @racket[feature] is not in that list, the function raises an exception.
+Ordinary raster features are classified as
 @racket['rasterized], while annotation loss and resources with unknown output compatibility
 are still reported. The operation does not load native code or draw.
 }
@@ -135,11 +136,13 @@ Exports each page once and returns completed mutable document bytes and an immut
 default @racket['report] policy collects observations without repairing unsupported native
 behavior. The resulting file can still omit an effect when the caller chooses that policy.
 
-The @racket['error] policy raises before an operation classified as @racket['needs-raster],
+The @racket['error] policy raises an exception satisfying @racket[exn:fail:output-audit?]
+before an operation classified as @racket['needs-raster],
 @racket['unsupported], @racket['unknown], or @racket['discarded]. Embedded images, native
 expansion, and viewer-dependent text are permitted but reported. The @racket['vector-only]
-policy rejects every status other than @racket['vector], including ordinary images and explicit
-raster groups. These checks do not guarantee identical appearance or preservation
+policy raises the same exception before any operation with a status other than
+@racket['vector], including ordinary images and explicit raster groups.
+These checks do not guarantee identical appearance or preservation
 of document features such as searchable text and links.
 }
 
@@ -175,9 +178,11 @@ The result is @racket['(#t #f)]. The report describes observed operations, not a
 @section{Labels, Events, and Reports}
 
 @defparam[current-output-audit-event-limit limit exact-positive-integer?]{
-Limits the number of collected events. Its initial value is 100000. Exceeding it raises rather
-than returning a report that appears complete. This is an event-count bound, not a bound on
-callback time or total native memory. An active collector cannot be used from another thread.
+Limits the number of collected events. Its initial value is 100000. If recording
+the next event would exceed the limit, the audit raises an exception without
+returning a complete report or output. This is an event-count bound, not a bound
+on callback time or total native memory. Using an active collector from a thread
+other than the one that created it also raises an exception.
 }
 
 @defproc[(call-with-output-label [label string?] [thunk (-> any)])

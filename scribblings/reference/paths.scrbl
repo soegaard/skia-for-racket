@@ -525,7 +525,9 @@ These operations work on filled path geometry and respect the input fill
 rules. They do not combine stroked outlines, painted pixels, or filters. Results
 are new owned paths; the inputs are unchanged. Skia can reduce curve order and
 rearrange contours, so result commands need not resemble the input commands.
-A native failure raises an exception and releases the incomplete result.
+If Skia reports that it cannot complete the requested path operation, the
+function releases the incomplete result and raises an exception. No partial
+path is returned.
 
 @defproc[(path-op [first skia-path?] [second skia-path?]
                   [operation (or/c 'difference 'intersect 'union 'xor 'reverse-difference)])
@@ -586,7 +588,8 @@ resolved by Skia. It is not a point-count minimizer or a command-preserving copy
 @defproc[(path-as-winding [path skia-path?]) skia-path?]{
 Returns a winding-rule path representing the input's filled region. Unlike
 merely setting the fill rule, this operation can change contour directions or
-geometry to preserve the represented region. Failure raises an exception.
+geometry to preserve the represented region. If Skia cannot construct an
+equivalent winding-rule path, the function raises an exception.
 
 
 @racketblock[
@@ -696,9 +699,11 @@ An unavailable position, such as on a zero-length contour, returns four
                               [#:start-with-move-to? start-with-move-to? boolean? #t])
          (or/c skia-path? #f)]{
 Returns a new owned path for the portion between @racket[start] and
-@racket[stop]. Both distances must be within the current contour and
-@racket[start] must be less than @racket[stop]. An invalid range raises an
-exception. A native extraction with no resulting segment returns @racket[#f].
+@racket[stop]. Both distances must lie between zero and the current contour's
+length, inclusive, and @racket[start] must be less than @racket[stop]. If either
+condition is violated, the function raises an exception before extracting a
+segment. If the range is valid but Skia produces no segment, the function
+returns @racket[#f].
 
 The default starts the result with a move to the segment's starting point.
 Passing @racket[#f] omits that move. This binding always creates a new result
@@ -983,9 +988,10 @@ not produce repeated names. This is a summary, not contour order.
 
 @defproc[(path-fill-bounds [path path?])
           (and/c (vector/c real? real? real? real?) immutable?)]{
-Returns the tight rectangle reported by native path operations. Native failure
-raises an exception. The result is not a control-point bound, a painted stroke
-or filter bound, or a finite description of the area outside an inverse path.
+Returns the tight rectangle reported by native path operations. If Skia cannot
+compute the bounds, the function raises an exception. The result is not a
+control-point bound, a painted stroke or filter bound, or a finite description
+of the area outside an inverse path.
 }
 
 @defproc[(path-as-line [path path?])
@@ -1064,8 +1070,10 @@ An empty batch returns an owned empty path.
 
 The number of operations is bounded by @racket[current-path-operation-limit].
 The size counted for submitted point and verb data must fit
-@racket[current-skia-byte-limit]. These are not native heap or running-time
-bounds. Failure raises without returning a partial result.
+@racket[current-skia-byte-limit]. Exceeding either limit raises an exception
+before the path operations are submitted to Skia. These are not native heap or
+running-time bounds. If Skia cannot complete the combination, the function
+raises an exception without returning a partial path.
 
 @racketblock[
 (with-skia ([outer (make-path)] [hole (make-path)])

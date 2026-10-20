@@ -27,8 +27,12 @@ multiply column vectors. Composition applies the rightmost operand first.
 Coefficients and mapping inputs must be finite reals in the full binary32 range,
 from -3.4028234663852886e38 through 3.4028234663852886e38, and are rounded to
 binary32 on entry. This range is slightly wider than the ordinary @tech{drawing scalar}
-range. New matrix results are also rounded; unrepresentable results raise.
-Mapping queries instead return immutable vectors whose coordinates are
+range. New matrix results are also rounded. Constructors and composition
+operations raise an exception if a coefficient is nonfinite or lies outside
+this range.
+The inversion functions instead return @racket[#f] if the matrix is singular
+or an inverse coefficient would lie outside the range.
+Mapping queries return immutable vectors whose coordinates are
 double-precision flonums, or @racket[#f] when a finite result is unavailable.
 
 These values and their arithmetic do not load Skia. Arithmetic uses the exact

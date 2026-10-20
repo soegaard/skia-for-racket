@@ -75,9 +75,11 @@ read it back explicitly before uploading it to a different context.
 The image dimensions must fit the reported maximum texture size and the
 wrapper's four-byte-per-pixel dimension check. The mipmap and budget flags are
 requests, not confirmation of allocation size or effective cache usage.
-Native failure raises rather than returning a CPU image. An implicit upload
-must not narrow F32 storage, or reduce F16 storage to an integer format; an
-incompatible native result is released and rejected.
+If Skia cannot create a valid texture-backed image for @racket[context], the
+function raises an exception rather than returning a CPU image. An upload
+must not narrow F32 storage or reduce F16 storage to an integer format. If the
+result violates either precision requirement, the function releases it and
+raises an exception.
 }
 
 @defproc[(gpu-surface-snapshot [surface gpu-surface?]) gpu-image?]{

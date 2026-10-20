@@ -31,7 +31,9 @@ variable afterward is not a supported library-switching operation.
 @defproc[(skia-check!)
           void?]{
 Loads the selected library, checks its supported ABI and Racket foreign-structure layouts, and
-resolves the required CPU entry points. Failures raise with loader or compatibility diagnostics.
+resolves the required CPU entry points. If the library cannot be loaded, its ABI
+or structure layouts are incompatible, or a required CPU entry point is missing,
+the function raises an exception with loader or compatibility diagnostics.
 It does not create a surface, open a window, probe all optional GPU symbols, or certify a
 working GPU backend.
 }
@@ -73,8 +75,9 @@ does not load or verify a library.
 @defproc[(harfbuzz-check!)
           void?]{
 Loads the selected HarfBuzz library, verifies its native version, and resolves the required
-shaping entry points. Incompatible versions or missing symbols raise. The function does not
-locate fonts, shape text, or guarantee font coverage.
+shaping entry points. If the library cannot be loaded, its version is incompatible,
+or a required shaping entry point is missing, the function raises an exception.
+The function does not locate fonts, shape text, or guarantee font coverage.
 }
 
 @defproc[(harfbuzz-available?)

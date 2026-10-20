@@ -77,6 +77,31 @@ The width, height, and radii must be nonnegative; the computed right and bottom
 coordinates must also be in range. The paint selects filling, stroking, or both.
 }
 
+@defproc[(draw-double-rounded-rect [canvas canvas?]
+          [outer rounded-rect?]
+          [inner rounded-rect?]
+          [paint paint?])
+          void?]{
+Draws the outer rounded rectangle with the inner shape removed. For a
+nonempty inner rectangle, its entire bounding rectangle must fit inside the
+outer rounded shape after
+@seclink["skia-rounded-rectangle-normalization"]{normalization}. Otherwise, the
+function raises an exception. This is a conservative containment requirement,
+not an arbitrary Boolean subtraction. An inner shape with zero width or height
+is ignored and the outer shape is drawn alone.
+
+@racketblock[
+(define outer (make-rounded-rect 20 15 140 70 #:radii 20))
+(define inner (make-rounded-rect 55 35 70 30 #:radii 10))
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (draw-double-rounded-rect (surface-canvas surface) outer inner paint))
+]
+
+@reference-figure["double-rounded-rect.png"
+                  "A blue rounded rectangular frame formed by subtracting a smaller rounded rectangle from a larger one."]
+}
+
 @defproc[(draw-circle [canvas canvas?] [x real?] [y real?]
                       [radius (and/c real? (>=/c 0))] [paint paint?]) void?]{
 Draws a circle centered at coordinates @racket[x] and @racket[y]. Its radius is
@@ -267,7 +292,7 @@ A sweep of at least a full turn in magnitude draws the oval.
 
 @section{Rounded-Rectangle Values}
 
-The functions in this section draw the rounded-rectangle
+Use @racket[draw-rrect] to draw the rounded-rectangle
 specifications described in @secref["skia-rounded-rectangles"].
 
 @defproc[(draw-rrect [canvas canvas?]
@@ -278,31 +303,6 @@ Draws the rounded rectangle with the paint's fill/stroke style. The bounds and
 radii are adjusted using
 @seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}
 before drawing.
-}
-
-@defproc[(draw-double-rounded-rect [canvas canvas?]
-          [outer rounded-rect?]
-          [inner rounded-rect?]
-          [paint paint?])
-          void?]{
-Draws the outer rounded rectangle with the inner shape removed. For a
-nonempty inner rectangle, its entire bounding rectangle must fit inside the
-outer rounded shape after
-@seclink["skia-rounded-rectangle-normalization"]{normalization}. This is a conservative
-containment requirement, not an arbitrary Boolean subtraction. Failure raises instead of
-submitting undefined native geometry. An inner shape with zero width or height
-is ignored and the outer shape is drawn alone.
-
-@racketblock[
-(define outer (make-rounded-rect 20 15 140 70 #:radii 20))
-(define inner (make-rounded-rect 55 35 70 30 #:radii 10))
-(with-skia ([surface (make-surface 180 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (draw-double-rounded-rect (surface-canvas surface) outer inner paint))
-]
-
-@reference-figure["double-rounded-rect.png"
-                  "A blue rounded rectangular frame formed by subtracting a smaller rounded rectangle from a larger one."]
 }
 
 @section{Device-Clip Color}

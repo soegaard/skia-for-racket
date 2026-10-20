@@ -38,7 +38,9 @@ Racket ports and follow the rules in @secref["skia-native-publication"].
 @defproc[(live-streams-check!)
           void?]{
 Initializes and checks the live-stream support library and its native bridge.
-Raises an exception when unavailable or invoked reentrantly from port service.
+If either cannot be loaded or initialized, the function raises an exception.
+Calling it from a callback servicing an ongoing live-port operation also raises
+an exception.
 Successful initialization does not establish support for every image format or
 requested decoding operation.
 }

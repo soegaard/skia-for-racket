@@ -162,7 +162,9 @@ The entry limit bounds the number of entries stored in the report.
 The expression @racket[(+ (*
 max-entries 128) byte-limit)] must fit @racket[current-skia-byte-limit]. Zero limits are valid.
 Oversized entries are omitted and counted, not shortened into apparently complete values.
-Invalid native strings or callback data raise after native cleanup.
+If collection detects a missing string, invalid UTF-8, or a numeric statistic
+that is not an unsigned 64-bit integer, the function releases the native
+reporting resources and raises an exception.
 
 The reported values need not describe the same moment and do not account for all
 process memory. The callback provider is process-global; a second module instance

@@ -123,8 +123,8 @@ a fresh frame-scoped drawing context.
 }
 
 @defmethod[#:mode override (get-dc) object?]{
-Returns the active frame's drawing context only while a paint callback is live.
-It raises outside that scope.
+Returns the active frame's drawing context while a paint callback is running.
+Calling this method when no paint callback is running raises an exception.
 }
 
 @defmethod[#:mode override (refresh) void?]{
@@ -135,8 +135,9 @@ Requests a GPU frame through the inherited presenter scheduler.
            (refresh-now [proc (or/c #f procedure?) #f]
                         [#:flush? flush? boolean? #t])
            void?]{
-Performs synchronous GPU drawing. A false @racket[flush?] is unsupported because
-there is no persistent unpresented frame.
+Performs synchronous GPU drawing. Passing @racket[#f] for @racket[flush?]
+raises an unsupported-operation exception because there is no persistent
+unpresented frame.
 }
 
 @defmethod[(present) void?]{

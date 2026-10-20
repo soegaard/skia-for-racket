@@ -77,8 +77,8 @@ conversion buffers, the function checks a conservative size estimate: 12 bytes
 per output pixel plus 4 bytes per mask pixel, when a mask is used. This estimate
 must fit @racket[current-skia-byte-limit]. The check does not bound all memory
 used internally by Racket Draw or Skia.
-Readback or native image-construction failure raises without returning a
-partial image.
+If reading the bitmap's pixels or constructing the Skia image fails, the
+function raises an exception without returning a partial image.
 }
 
 The @racket[image->bitmap] and @racket[surface->bitmap] functions are
@@ -215,8 +215,10 @@ must be live and used on its owning Racket thread.
 Moves, lines, cubic Bézier segments, and close operations map directly.
 Quadratic Bézier segments are degree-elevated to cubics without geometric
 approximation, although ordinary numeric roundoff can change coordinates. A
-conic with weight 1 is handled as a quadratic. Other rational conics have no
-direct @racket[draw:dc-path%] representation and therefore raise by default.
+conic with weight 1 is handled as a quadratic. Conic weights must be positive;
+otherwise, the function raises an exception. Other rational conics have no
+direct @racket[draw:dc-path%] representation. If one is present and
+@racket[power] is @racket[#f], the function raises an exception.
 
 The @racket[power] argument requests an explicit vector approximation for
 non-unit conics. Its value ranges from zero through five. A conic is subdivided
@@ -227,7 +229,7 @@ on expansion, not a geometric-error tolerance and not a raster fallback.
 Racket Draw permits any number of closed subpaths followed by at most one final
 open subpath. A Skia path containing an open contour followed by another
 contour cannot be represented without closing or reordering geometry, so the
-function raises instead. Empty paths are accepted.
+function raises an exception. Empty paths are accepted.
 
 Both conversion functions use a conservative estimate of 64 bytes per copied or
 expected output command when checking @racket[current-skia-byte-limit]. For Skia

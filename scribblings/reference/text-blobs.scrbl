@@ -618,9 +618,12 @@ normal offset places the baseline below the path.
 
 Every glyph-origin distance must lie between zero and the selected contour's
 length, inclusive. A nonempty run requires positive measurable length and a
-valid tangent frame. Origins outside the range raise an exception: there is
-no fitting, clipping, or wraparound, even on a closed contour. This check covers
-origins, not the full visible glyph extents. Glyphs may extend beyond an endpoint.
+valid tangent frame at every glyph origin. If an origin is outside the range
+or the required length or tangent is unavailable for a nonempty run, the
+function raises an exception before constructing the blob.
+There is no fitting, clipping, or wraparound, even on a closed contour. This
+check covers origins, not the full visible glyph extents. Glyphs may extend
+beyond an endpoint.
 Right-to-left and vertical runs are not reordered; stored x positions still
 select distances and stored y positions still select normal offsets.
 
@@ -642,7 +645,8 @@ An empty run returns @racket[#f], but still validates the path, shaper, contour
 selection, offsets, and metadata. With @racket[text], the run's clusters are
 validated against the supplied UTF-8 text; with @racket[#f], both text and
 clusters are absent from the resulting blob metadata. The rules in
-@secref["skia-text-run-metadata"] apply. Failure returns no partial blob.
+@secref["skia-text-run-metadata"] apply. If Skia cannot construct the blob,
+the function raises an exception without returning a partial blob.
 
 @racketblock[
 (with-skia ([surface (make-surface 330 100 #:background 'white)]

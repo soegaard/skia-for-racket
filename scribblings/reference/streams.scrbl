@@ -52,11 +52,14 @@ The input length must fit @racket[limit].
           [filename path-string?]
           [#:limit limit exact-positive-integer? (current-skia-byte-limit)])
           skia-input-stream?]{
-Opens an existing regular file at position zero. The path must not contain NUL,
-and the file size must fit @racket[limit]. This is a file-backed stream, not an
-immutable snapshot of the file's contents. The caller must keep the file stable
-while using the stream or resources constructed from its duplicates. Native
-open or capability failures raise an exception.
+Opens an existing regular file at position zero. This is a file-backed stream,
+not an immutable snapshot of the file's contents. The caller must keep the file
+stable while using the stream or resources constructed from its duplicates.
+
+The function raises an exception if the path contains NUL, does not name an
+existing regular file, or the file exceeds @racket[limit]. It also raises an
+exception if Skia cannot open the file or the resulting stream cannot report
+its length and current position.
 }
 
 @defproc[(input-stream-length [stream skia-input-stream?])

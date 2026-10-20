@@ -35,9 +35,10 @@ pbuffer is not an application render target or a window.
 
 The constructor creates desktop OpenGL, not OpenGL ES. Consequently its explicit
 interface selection is limited to @racket['default], @racket['auto], and
-@racket['desktop]. Missing EGL facilities, a mismatched device, context creation
-failure, or Ganesh construction failure raises; there is no GLX, GUI, different
-backend, or CPU fallback. The returned context follows the ownership, thread,
+@racket['desktop]. If required EGL facilities are missing, the selected device
+cannot be used, or EGL or Ganesh context creation fails, the constructor raises
+an exception. There is no GLX, GUI, different-backend, or CPU fallback.
+The returned context follows the ownership, thread,
 shutdown, and close rules in @secref["skia-gpu-contexts"].
 
 The owned adapter saves and restores a previously current native binding around

@@ -53,8 +53,9 @@ not grant access to, extend, or synchronize the native resource.
 
 @defproc[(gpu-external-texture-close! [texture gpu-external-texture?]) void?]{
 Retires the token and starts backend cleanup of its native references on the
-creating Racket thread, outside a future. Closing an active token raises. Closing
-an already retired token is harmless. The state is marked retired before its
+creating Racket thread, outside a future. If the token is active in a handoff,
+the function raises an exception without retiring it. Closing an already
+retired token is harmless. The state is marked retired before its
 backend retirement action runs, so an indeterminate native retirement is not
 silently retried.
 
@@ -72,9 +73,12 @@ caller's external storage and follows the normal GPU-image lifetime rules.
 Backend handoff synchronization and validation occur before control returns.
 There is no CPU pixel readback in the production copy path.
 
-A token belonging to another context or in the wrong state is rejected. The
-operation must run on the token's creating Racket thread, outside a future.
-Nested external-resource operations are not supported.
+The token must belong to @racket[context] and be in the ready state. If it
+belongs to another context or is active, consumed, or retired, the function
+raises an exception before starting the copy. The operation must run on the
+token's creating Racket thread, outside a future. Calling it from another
+thread, from a future, or during another external-resource operation also
+raises an exception.
 }
 
 @section{Borrowing External Drawing Targets}
@@ -87,6 +91,8 @@ target. The @racket[proc] callback receives only a borrowed Skia canvas and its 
 values are returned. The canvas expires at callback exit. It cannot be used as
 an independently owned surface, snapshot source, or native-resource handle.
 
+The token, context, thread, and nesting restrictions of @racket[gpu-import-image]
+also apply here; violating them raises an exception before @racket[proc] runs.
 The backend verifies that the token is suitable for rendering before entering
 the active state. The callback must obey the ordinary canvas-state rules; native
 completion and resource retirement still run on exceptional or nonlocal exit.
