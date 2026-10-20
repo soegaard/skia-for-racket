@@ -35,10 +35,13 @@ geometric diameter or side length, not stroke width. Paint style remains
 meaningful, so stroke paints outline the marker geometry. Markers overlap in
 input order rather than being combined into one path.
 
+Use this function for point markers in SVG output. It draws ordinary shapes,
+avoiding the version-specific Skia SVG limitation described under
+@racket[draw-point]. Attached paint effects still have their own backend
+restrictions.
+
 The complete batch, including computed marker bounds, is validated before drawing.
-Empty input still requires a live canvas and paint. This avoids the isolated-point
-operation used by @racket[draw-points], but does not make arbitrary attached
-paint effects portable.
+Empty input still requires a live canvas and paint.
 
 @racketblock[
 (with-skia ([surface (make-surface 180 90 #:background 'white)]

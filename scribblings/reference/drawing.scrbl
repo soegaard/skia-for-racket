@@ -163,6 +163,9 @@ Draws a point using the paint's stroke width and cap. A round cap gives a
 round mark; the other caps give a square mark. A zero stroke width uses native
 hairline coverage. Paint style does not turn the point into a filled path.
 
+The Skia version used by this package (m119, supplied by SkiaSharp 3.119.1)
+does not implement isolated-point drawing in its SVG writer. For SVG output,
+use @racket[draw-markers] to draw circles or squares instead.
 
 @racketblock[
 (with-skia ([surface (make-surface 220 100 #:background 'white)]
@@ -188,8 +191,12 @@ closing the final point to the first. These segments are not a joined path:
 paint joins do not join their endpoints. A single polygon point draws nothing.
 
 All input points are validated before drawing. An empty list or vector still
-requires a valid canvas and paint. Point batches do not guarantee portable SVG
-output; use @racket[draw-markers] to draw markers as ordinary shapes.
+requires a valid canvas and paint.
+
+For SVG output, use @racket[draw-markers] instead of @racket['points] mode.
+This mode is unsupported by the Skia SVG writer used by this package, as
+described under @racket[draw-point]. This limitation does not affect
+@racket['lines] or @racket['polygon] mode.
 
 The submitted buffer, including the explicit segment-pair expansion for polygon
 mode, must fit the native count and @racket[current-skia-byte-limit]. Input
