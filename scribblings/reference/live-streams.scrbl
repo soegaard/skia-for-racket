@@ -178,8 +178,8 @@ keywords of @racket[output->bytes]. Named destinations cannot be authored on
 the intermediate picture-recording canvas; use direct document output when such
 annotations are required.
 
-The default @racket['error] policy rejects features classified as needing raster
-fallback, unsupported, unknown, or discarded. The @racket['vector-only] policy
+The default @racket['error] policy rejects features classified as needing
+@tech{raster fallback}, unsupported, unknown, or discarded. The @racket['vector-only] policy
 rejects every feature not classified as vector, including embedded raster images.
 The @racket['report] policy does not reject those classifications, but this
 function returns only a byte count, not the internally collected audit report.

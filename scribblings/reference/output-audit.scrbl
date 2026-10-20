@@ -13,19 +13,47 @@
 @(declare-exporting skia skia/output-policy skia/output-audit #:use-sources (skia/output-policy
                     skia/output-audit))
 
-Use these interfaces to inspect known compatibility risks before saving a
-PDF or SVG file, or to reject exports that violate a chosen policy.
-@racket[analyze-output-page] produces a report without exporting document bytes;
-@racket[output->bytes/audit] combines export with a report and optional rejection.
+Use these interfaces for optional checks when exporting PDF or SVG documents.
+A drawing that works on a pixel surface may use effects that the selected
+document format cannot preserve directly. These checks are provided by the
+Racket library, rather than by native Skia APIs.
 
-An @deftech{output audit} records known representation risks encountered while an output
-callback executes. It is not static analysis, a pixel comparison, a font-embedding check, an ICC
-validator, or a PDF/A conformance test. The policy table describes the supported serialization
-policy; it does not probe arbitrary native builds or predict a viewer's exact output.
+An @deftech{output audit} records drawing features used while the drawing
+callback runs and reports their known compatibility with the selected output
+format. Use @racket[analyze-output-page] to obtain a report without exporting
+document bytes, or @racket[output->bytes/audit] to export and obtain a report
+in the same call.
 
-An @deftech{output preflight} executes the callback to check output compatibility
-before exporting the document. Metrics, resource construction, graphics-state changes,
-and explicit raster work still occur. Ordinary Racket side effects are not rolled back. Do not
+An @deftech{output policy} sets requirements for the exported drawing, such as
+whether raster images are acceptable or vector output is required. Audit
+policies and output-group policies serve different purposes:
+
+@itemlist[
+ @item{@bold{Audit policies} control whether findings are reported or cause an
+   exception. The @racket['report] policy records findings without rejecting
+   the export. The @racket['error] policy rejects features that need
+   rasterization, are unsupported, have unknown compatibility, or discard
+   document features. The @racket['vector-only] policy permits only features
+   classified as vector. These policies do not repair the drawing or
+   automatically rasterize it.}
+ @item{@bold{Output-group policies} choose how one group's recorded drawing is
+   represented. With @racket[draw-output-group], @racket['prefer-vector]
+   prefers vector output, @racket['require-vector] requires it, and
+   @racket['raster] requests an image. See @secref["skia-output-groups"] for the
+   restrictions on each choice.}]
+
+These choices are separate: requesting @racket['raster] for a group does not
+override an enclosing @racket['vector-only] audit, which rejects that image.
+
+The checks use the library's table of known output limitations. They do not
+compare rendered pixels, verify font embedding, validate ICC profiles, or
+test PDF/A conformance. They neither probe the capabilities of an arbitrary
+Skia build nor guarantee how a document viewer will display the result.
+
+An @deftech{output preflight} executes the drawing callback to check output
+compatibility before exporting the document. This is not static analysis:
+resource creation, measurements, canvas-state changes, and explicit raster
+drawing still take place. Ordinary Racket side effects are not undone. Do not
 use these operations to analyze untrusted or nonterminating callbacks.
 
 @local-table-of-contents[#:style 'immediate-only]

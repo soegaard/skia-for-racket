@@ -4,7 +4,7 @@
 
 PDF and SVG documents provide vector-oriented output targets with explicit
 lifecycle and file-saving rules. Output pages add backend-neutral page
-descriptions and controlled raster fallback. Links, auditing, and bounded output
+descriptions and controlled @tech{raster fallback}. Links, auditing, and bounded output
 groups help preserve document features such as interactivity or report when those
 features would be lost. Raster fallback normally executes on the CPU; an
 explicit GPU executor can instead render a selected fallback

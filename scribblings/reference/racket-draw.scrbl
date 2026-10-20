@@ -224,7 +224,7 @@ The @racket[power] argument requests an explicit vector approximation for
 non-unit conics. Its value ranges from zero through five. A conic is subdivided
 into at most @racket[(expt 2 power)] quadratic segments, and each resulting
 quadratic is then degree-elevated to a cubic. The subdivision power is a bound
-on expansion, not a geometric-error tolerance and not a raster fallback.
+on expansion, not a geometric-error tolerance and not a @tech{raster fallback}.
 
 Racket Draw permits any number of closed subpaths followed by at most one final
 open subpath. A Skia path containing an open contour followed by another

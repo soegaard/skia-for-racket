@@ -14,6 +14,10 @@ supported. Wrap that part in @racket[draw-output-group] and choose whether to
 prefer vector output, require it, or force a raster image. This makes the
 representation decision local to the selected region.
 
+The group's @tech{output policy} chooses its representation. It is separate
+from the audit policies in @secref["skia-output-audit"], which can reject
+features used by an export, including a group's raster image.
+
 A @deftech{bounded output group} calls the drawing callback once and records the
 commands it produces. It then selects native replay or explicit @tech{raster fallback}
 for a PDF, SVG, or CPU-raster destination and returns an immutable report describing
@@ -21,7 +25,7 @@ that decision. Later replay uses the recorded commands without calling the callb
 
 A @deftech{raster executor} determines how a group's recorded drawing commands
 are rendered into a temporary image. The default uses the CPU; a GPU executor
-uses a @tech{GPU context}. The output policy determines whether the group is
+uses a @tech{GPU context}. The group's policy determines whether the group is
 rasterized. Using a GPU executor does not turn a rasterized group into vector
 content. See @secref["skia-gpu-output"] for GPU executors.
 
@@ -78,7 +82,7 @@ Before running the drawing callback, the function checks that the
 @tech{raster executor} is still usable and is being used from the correct thread.
 
 If the executor creates a GPU context on demand, it does so only after the
-output policy and any enclosing output audit allow rasterization.
+group's policy and any enclosing @tech{output audit} allow rasterization.
 
 If a later step fails, the exception propagates without calling the drawing
 callback again.

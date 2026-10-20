@@ -193,7 +193,7 @@ are validated before the first callback is invoked.
 Automatic text mode selects @racket['native] for PDF and @racket['outline] for
 SVG. Explicit modes override that choice. Neither mode is a guarantee of
 searchable text or exact reproduction of glyphs with no monochrome outline.
-Use explicit raster fallback when pixels, rather than outlines, must be preserved.
+Use explicit @tech{raster fallback} when pixels, rather than outlines, must be preserved.
 
 The title is PDF title metadata or SVG title metadata. The description becomes
 the PDF subject or SVG description. The PDF settings for raster DPI, encoding
@@ -263,11 +263,18 @@ implicit transfer.
 
 @section[#:tag "skia-raster-fallback"]{Text Representation and Explicit Raster Fallback}
 
-A @deftech{raster fallback} replaces a drawing region with an image rendered
-on a temporary pixel surface. PDF and SVG output can embed that image, but the
-region then contains pixels rather than vector geometry or searchable text.
-Use @racket[draw-rasterized] to request this explicitly, or a
-@tech{bounded output group} to select it according to an output policy.
+A @deftech{raster fallback} renders part of a drawing as an image instead of
+representing it as vector shapes or text. Use it when PDF or SVG output cannot
+reproduce a drawing effect directly. The surrounding content can remain
+vector-based.
+
+The image preserves the rendered appearance at the chosen resolution, but may
+become pixelated when enlarged. Text within that image is no longer searchable
+or selectable.
+
+Use @racket[draw-rasterized] to request this explicitly, or
+@racket[draw-output-group] to select it for a @tech{bounded output group}
+according to an output policy.
 
 @defparam[current-text-output-mode mode (or/c 'native 'outline)]{
 Selects native text drawing or monochrome outline conversion for the drawing
