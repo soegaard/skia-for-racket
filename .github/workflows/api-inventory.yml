@@ -27,7 +27,7 @@ jobs:
           python-version: '3.12'
       - name: Install release graph parser
         run: python -m pip install -r tools/release-requirements.txt
-      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+      - uses: Bogdanp/setup-racket@8889db76ff6cdc86df8aa09fdd1729cd090b7144 # v1.16
         with:
           version: ${{ matrix.racket }}
           architecture: x64
