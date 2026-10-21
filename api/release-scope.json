@@ -1273,7 +1273,7 @@
   "reviewed_commit": "4a6082274e06456aa385fa9337c31528f2f44a4a",
   "schema": 1,
   "source_hashes": {
-    ".github/workflows/api-inventory.yml": "dc349b25c4b5cda43949e5cb581328320bc49b2d74aad3032e38e1a0d87929a6",
+    ".github/workflows/api-inventory.yml": "b309a4a0591b86862b4354007c286402a9fee2a748aba81c66f43a1bd58648a1",
     ".github/workflows/release-candidate.yml": "ee0b2e8a78248e07ffc1c25a95d1ca5c834f3dbf1a2a600bc5bb24971a475251",
     "advanced-layers.rkt": "4d9397694f94c1ad419b6338cbc0f15376cebf4e6ac499b8b4bfb6096e3c49a1",
     "annotations.rkt": "85247ad744814b5f86b620ff5141d377677786ee91d3b31fb8434d6b73e15173",
@@ -1286,7 +1286,7 @@
     "api/public-api-gui.json": "851b7b56d6589ffb82f7d73267d70425ec7c52e17000ce01de391685d715cb3e",
     "api/public-api-headless.json": "9f636057e84e7aa3c524828028f89105a8f4e7d815b43e3cc079056bae45ab29",
     "api/public-api-policy.json": "7a160b82f142aeaaf92d8fee91f820d92552ef4256e31734c3f63e465b5defbb",
-    "api/release-candidate-policy.json": "224bc7cf569a92e1eb860d1752bbe6484e0b0fbd0fb4b9042d51ad553c1ede91",
+    "api/release-candidate-policy.json": "98efddd244385f84c1faeadc470ad4224abdda6b791bd1f76990179771689907",
     "api/release-scope-policy.json": "9b8fb15c01d2b5574ca4d5c07c7cc23bbe40c57ef13a754622cf7c287b7891a7",
     "api/upstream-m119.json": "2f9c0b11fe053edf90caaa20d83cc2215bfff5fa2383586afae12e9f6f4dde62",
     "bitmap.rkt": "407b1586ad29a109024c1e9f9af67ae63342e22aca609fb3b42e8d86adf4d090",
