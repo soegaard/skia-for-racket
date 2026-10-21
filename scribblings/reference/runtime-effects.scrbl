@@ -48,7 +48,7 @@ fit @racket[current-skia-byte-limit]. The source and reflection information
 (the compiler's descriptions of uniforms and children) are copied; changing a
 mutable source string afterward has no effect.
 
-A shader entry point receives local coordinates. A color-filter entry point
+A shader entry point receives @tech{local coordinates}. A color-filter entry point
 receives a color. A blender entry point receives source and destination colors,
 in that order. The compiler checks that the entry point fits the chosen stage.
 Compilation failure raises an exception satisfying @racket[exn:fail:skia-sksl?];
@@ -176,7 +176,7 @@ shader stage. Every child must be an open shader, color filter, or blender of
 the kind required by the compiled effect; false children are rejected.
 The optional affine local matrix must have a
 representable inverse. It affects local shader coordinates and is not a
-replacement for the canvas transform. Binding and retention rules follow
+replacement for the @tech{canvas transform}. Binding and retention rules follow
 @secref["skia-runtime-bindings"].
 
 @racketblock[

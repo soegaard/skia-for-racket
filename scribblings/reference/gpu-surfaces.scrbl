@@ -49,7 +49,7 @@ already be active. The surface keeps a reference to its context and its own
 native reference to @racket[space], when supplied. The caller may close the
 original color-space wrapper after successful construction. The surface origin is top-left.
 
-The @racket[properties] argument supplies the surface's pixel geometry and
+The @racket[properties] argument supplies the surface's @tech{pixel geometry} and
 rendering flags; see @secref["skia-surface-properties"]. The default leaves pixel
 geometry unspecified and all flags unset.
 
@@ -57,7 +57,7 @@ The omitted alpha type selects @racket['opaque] when @racket[opaque?] is true,
 and @racket['premul] otherwise. An explicit @racket['premul] conflicts with
 @racket[opaque?] set to true. Opaque targets require an opaque background.
 RGBX8888, Gray8, and RGB565 require opaque alpha; Alpha8 has no color-space
-interpretation and rejects a nonfalse @racket[space]. Unpremultiplied alpha is
+interpretation and rejects a nonfalse @racket[space]. @tech{Unpremultiplied alpha} is
 not a supported drawing-target format.
 
 The format-aware storage estimate must fit @racket[current-skia-byte-limit].
@@ -119,7 +119,7 @@ the request. The report does not read pixels or certify visible presentation.
 }
 
 @defproc[(gpu-surface->image-info [surface gpu-surface?]) image-info?]{
-Returns a pixel description. The dimensions and color/alpha type are
+Returns a @tech{pixel description}. The dimensions and color/alpha type are
 read from a temporary texture-backed snapshot, and the surface's color space
 is copied into a descriptor. The snapshot is released before returning.
 The owning activation is required, but no CPU pixel readback occurs.

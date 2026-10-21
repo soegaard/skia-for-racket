@@ -223,7 +223,7 @@ All encoders and file writers in this chapter accept @racket[#:color-space],
 @racket[#:icc-profile] to specify how the encoded color values should be
 interpreted. Neither option changes the source image or surface.
 
-Supplying a color space with @racket[#:color-space] requests conversion in
+Supplying a @tech{color space} with @racket[#:color-space] requests conversion in
 temporary storage before encoding. The source must already have a color-space
 tag; the operation does not guess the meaning of untagged samples.
 

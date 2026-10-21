@@ -7,7 +7,7 @@
 @(declare-exporting skia/gpu)
 
 Manage a GPU context explicitly when you need offscreen GPU drawing or want
-to reuse GPU surfaces and images across several rendering operations. Create
+to reuse @tech{GPU surfaces} and images across several rendering operations. Create
 it with @racket[make-gpu-context] and perform GPU work within
 @racket[call-with-gpu-context]. For window drawing, the
 @seclink["skia-gpu-widgets"]{GPU widgets} can manage the context for you.
@@ -210,7 +210,8 @@ scopes. This is the lost-host route: it does not activate the provider. Use it
 when the host is no longer safe to activate, not as a substitute for normal
 successful rendering or as a request to clear pixels.
 
-Successful abandonment prevents future drawing and invalidates borrowed canvases.
+Successful abandonment prevents future drawing and invalidates
+@tech[#:key "borrowed canvas"]{borrowed canvases}.
 It does not close child wrappers or release the context itself. Retire the
 children with @racket[skia-close!], then use @racket[gpu-context-close!].
 Repeated abandonment of an abandoned or closed context is harmless. A context

@@ -36,13 +36,14 @@ become a GPU image merely because Skia caches a texture for it while drawing.
 
 @defproc[(image-residency [image image?]) (or/c 'cpu 'gpu)]{
 Returns the live wrapper's ownership classification. This query rejects a closed
-image, but does not require a GPU activation or inspect native texture storage.
+image, but does not require a @tech{GPU activation} or inspect native texture storage.
 The result is not a report of all cached copies or a readiness test.
 }
 
 @defproc[(skia-resource-gpu-context [resource skia-resource?]) (or/c gpu-context? #f)]{
 Returns the existing context wrapper associated with a live resource, or false
-when the resource has no GPU dependency. Borrowed canvases are not accepted.
+when the resource has no GPU dependency.
+@tech[#:key "borrowed canvas"]{Borrowed canvases} are not accepted.
 This query requires no GPU activation and creates no new native reference.
 The result is not an independently owned context and does not establish that
 it is ready for execution. A closed resource raises an exception.
@@ -86,7 +87,7 @@ raises an exception.
 Captures the surface's current contents as a GPU image.
 
 The image is independently owned. The native save/layer stack must be balanced
-at save count 1. Later drawing to or closure of the surface does not alter the
+at @tech{save count} 1. Later drawing to or closure of the surface does not alter the
 image's captured contents. The
 snapshot remains tied to the same context and must be retired before context
 closure. This operation performs no CPU pixel readback and does not promise

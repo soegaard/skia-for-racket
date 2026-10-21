@@ -122,7 +122,7 @@ per-character fallback.
 @defproc[(draw-text-layout [canvas canvas?] [layout text-layout?] [x real?] [y real?] [paint
           paint?]) void?]{
 Draws the layout box with origin at @racket[x] and @racket[y], using each line's
-stored x offset and baseline. The canvas transform
+stored x offset and baseline. The @tech{canvas transform}
 and existing clip apply; this operation does not clip to the box or reflow text.
 The layout's shaper must remain open.
 
@@ -432,7 +432,7 @@ have been removed; the text is not a source-position map.
 }
 
 @defproc[(mixed-text-run-shaped-run [run mixed-text-run?]) shaped-run?]{
-Returns the copied glyphs, cluster offsets, positions, and advances. Cluster
+Returns the copied glyphs, @tech{cluster offsets}, positions, and advances. Cluster
 offsets refer to this run's text, not the original complete paragraph.
 }
 
@@ -441,7 +441,7 @@ Returns the run's x offset within its line, before adding the line and layout or
 }
 
 @defproc[(mixed-text-run-width [run mixed-text-run?]) real?]{
-Returns the run's horizontal advance measure after any justification adjustments.
+Returns the run's horizontal @tech{advance} measure after any @tech{justification} adjustments.
 }
 
 @defproc[(mixed-text-run-direction [run mixed-text-run?]) (or/c 'ltr 'rtl)]{

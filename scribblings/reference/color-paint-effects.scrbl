@@ -2,9 +2,9 @@
 
 @title[#:tag "skia-reference-color-paint-effects" #:style 'toc]{Color, Paint, and Effects}
 
-Colors and color spaces describe channel values and their interpretation.
-Paints combine colors with shaders, blend modes, path effects, and filters to
-determine how drawing is rendered. Runtime effects provide programmable
+Colors and @tech{color spaces} describe channel values and their interpretation.
+Paints combine colors with shaders, @tech{blend modes}, @tech{path effects}, and filters to
+determine how drawing is rendered. @tech{Runtime effects} provide programmable
 shaders, color filters, and blenders.
 
 @local-table-of-contents[]

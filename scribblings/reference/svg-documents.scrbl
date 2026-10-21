@@ -108,7 +108,7 @@ Aborting reports @racket['aborted]; ordinary release reports @racket['closed].
 }
 
 @defproc[(svg-document-canvas [document svg-document?]) canvas?]{
-Returns a borrowed canvas for an open, unfinished document. Repeated calls may
+Returns a @tech{borrowed canvas} for an open, unfinished document. Repeated calls may
 produce different wrappers for the same drawing target. Finishing, aborting,
 or releasing the document ends the lifetime of all those wrappers.
 }
@@ -118,7 +118,7 @@ Completes the SVG XML, normalizes generated IDs and metadata, and finalizes
 annotations. The document must be open with no active protected canvas-state
 scope. A second call on a still-open finished document is harmless.
 
-All referenced named destinations must be defined. A missing destination is
+All referenced @tech{named destinations} must be defined. A missing destination is
 reported before the canvas is destroyed, so a manual caller can define it and
 retry. A failure after native finalization starts aborts and releases the
 document. The complete output must fit @racket[current-skia-byte-limit].

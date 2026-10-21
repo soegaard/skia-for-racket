@@ -306,9 +306,9 @@ before the rename, the helper removes the temporary file; it does not create par
                              [#:tile-rect tile (or/c list? vector? #f) #f]) shader?]{
 Returns an owned shader that samples the recorded picture. The shader keeps its
 own native reference to the picture, independently of the caller's wrapper.
-A supplied local affine matrix must have a representable inverse. A tile
+A supplied local @tech{affine matrix} must have a representable inverse. A tile
 rectangle contains x, y, width, and height, with positive extents; omitting it
-uses the native picture bounds. Tile modes
+uses the native picture bounds. @tech{Tile modes}
 and sampling control repeated picture sampling, not
 the geometry of a later drawing operation. Picture-shader use can rasterize the
 recording and does not guarantee vector output.

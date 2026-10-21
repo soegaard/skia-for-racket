@@ -25,7 +25,7 @@ default, @racket['unknown], leaves the display's subpixel arrangement unspecifie
 
 Use @racket[make-surface-properties] to create a value, then pass it as the
 @racket[#:surface-properties] argument to @racket[make-gpu-surface]. The same
-argument to @racket[call-with-gpu-frame-dc] configures the GPU surface used for
+argument to @racket[call-with-gpu-frame-dc] configures the @tech{GPU surface} used for
 drawing during its callback. Omitting the argument uses unknown pixel geometry
 and leaves all rendering flags unset.
 

@@ -25,7 +25,7 @@ byte sizes are bounded by
 @section{Triangle Meshes}
 
 Use a triangle mesh for artwork defined by vertices, especially when colors
-should interpolate between vertices or a shader should follow custom texture
+should interpolate between vertices or a @tech{shader} should follow custom texture
 coordinates. Construct it with @racket[make-vertices] and draw it with
 @racket[draw-vertices]. For a flat-colored outline that needs filling or
 stroking, a @tech{path} is usually simpler.

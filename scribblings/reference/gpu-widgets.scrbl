@@ -12,7 +12,7 @@
 Use @racket[gpu-canvas%] when you want to draw directly with Skia functions
 such as @racket[draw-circle] and @racket[draw-path]. Its render callback
 receives a @tech{GPU frame}; call @racket[gpu-frame-canvas] to obtain the Skia
-canvas to draw on. The frame and its borrowed canvas are valid only during
+canvas to draw on. The frame and its @tech{borrowed canvas} are valid only during
 that callback. The @racket[gpu-window%] class provides a convenience window
 containing one such canvas widget.
 
@@ -63,7 +63,7 @@ widget's eventspace handler thread. Use @racket[gpu-frame-canvas] to obtain
 the Skia canvas for drawing. The callback may return any number of values;
 they are ignored. The default callback, @racket[void], does not draw.
 
-The frame's canvas and GPU context are borrowed and may be used only during
+The frame's canvas and @tech{GPU context} are borrowed and may be used only during
 the callback. Do not close these borrowed resources independently.
 The @racket[on-error] callback receives one raised value. Neither callback
 may require keyword arguments.

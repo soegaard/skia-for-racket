@@ -274,7 +274,7 @@ or selectable.
 
 Use @racket[draw-rasterized] to request this explicitly, or
 @racket[draw-output-group] to select it for a @tech{bounded output group}
-according to an output policy.
+according to an @tech{output policy}.
 
 @defparam[current-text-output-mode mode (or/c 'native 'outline)]{
 Selects native text drawing or monochrome outline conversion for the drawing
@@ -302,10 +302,10 @@ Draws the content produced by @racket[proc] as an image on @racket[canvas].
 
 The callback draws into a temporary, transparent surface in CPU memory. A
 snapshot of that surface is then drawn onto the destination.
-The callback receives a separate borrowed canvas
+The callback receives a separate @tech{borrowed canvas}
 with a local origin corresponding to @racket[x] and @racket[y] on the target.
 It does not inherit the target's transform or clip. The final image drawing does
-honor the target's transform and clip, and uses linear sampling.
+honor the target's transform and clip, and uses @tech{linear sampling}.
 
 Padding has the same nonnegative left, top, right, bottom interpretation as page
 margins. It enlarges the raster region without shrinking or moving the original

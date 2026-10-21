@@ -76,7 +76,7 @@ baseline; paragraph line breaking is provided by @racket[layout-text].
 @defproc[(draw-simple-text [canvas canvas?] [text string?] [x real?] [y real?]
                   [font font?] [paint paint?]) void?]{
 Draws unshaped text with the @tech{baseline} origin at coordinates @racket[x] and
-@racket[y], using @racket[font] and @racket[paint]. The canvas transform and clip
+@racket[y], using @racket[font] and @racket[paint]. The @tech{canvas transform} and clip
 apply. The operation does not close its arguments. It is suitable only when
 direct character-to-glyph mapping
 and ordinary advances are sufficient.
@@ -157,7 +157,7 @@ its target rectangle is @math{(origin-x+bx, baseline-y+by, bw, bh)}.
 Use @racket[make-font] to choose settings when creating a font. The operations
 in this section inspect or change an existing font. Drawing with
 @racket[draw-simple-text] and measuring with @racket[measure-simple-text] do not
-require changing these settings. Existing shapers and text blobs keep their
+require changing these settings. Existing @tech{shapers} and @tech{text blobs} keep their
 captured font settings.
 
 @defproc[(font-size [font font?]) real?]{
@@ -401,7 +401,7 @@ guide; the advance is the next origin, not an ink bound.
 For unshaped text, use @racket[draw-simple-text], @racket[measure-simple-text],
 or @racket[simple-text-bounds]. Use @racket[draw-shaped-text] when shaping is
 needed. The operations in this section expose individual glyph IDs and outlines;
-they do not perform contextual shaping or font fallback.
+they do not perform contextual @tech{shaping} or @tech{font fallback}.
 
 @defproc[(font-char->glyph [font font?] [character (or/c char? (integer-in 0 #xd7ff) (integer-in
           #xe000 #x10ffff))]) (integer-in 0 #xffff)]{

@@ -9,7 +9,7 @@
 
 Use a codec when you need image metadata before decoding pixels, access to
 individual animation frames, or control over orientation and destination
-color space during decoding. Open one with @racket[codec-from-file] or
+@tech{color space} during decoding. Open one with @racket[codec-from-file] or
 @racket[codec-from-bytes], then decode a selected frame with
 @racket[codec->image]. For simply loading an image to draw, use
 @racket[image-from-file] or @racket[image-from-bytes].
@@ -86,7 +86,7 @@ the returned color-space resource. The query does not convert any samples.
           image?]{
 Decodes the selected frame into a new image.
 
-The image is stored in CPU memory as RGBA8888 pixels with premultiplied alpha.
+The image is stored in CPU memory as RGBA8888 pixels with @tech{premultiplied alpha}.
 The frame index is zero-based and must be less than @racket[(codec-frame-count codec)]. Each
 encoded dimension must lie from 1 through 32768, and the full four-byte-per-pixel
 allocation must fit @racket[current-skia-byte-limit]. Any non-success native

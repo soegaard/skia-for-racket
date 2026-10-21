@@ -104,7 +104,7 @@ the resource is released.
 
 @defproc[(codec-scanline-info [session codec-scanline-session?])
           image-info?]{
-Returns the full-output pixel description, using the dimensions chosen by the decoder
+Returns the full-output @tech{pixel description}, using the dimensions chosen by the decoder
 and the selected output color/alpha format. It is not the size of the last batch.
 }
 
@@ -159,7 +159,7 @@ A short native read returns only successfully decoded rows and changes the state
 to @racket['incomplete]. Native fill rows are excluded. The cursor advances by
 the requested count, not the returned count. Bottom-up short reads retain the
 successfully decoded rows in top-to-bottom order and report their actual first
-output row. Row padding is initialized to zero.
+output row. @tech{Row padding} is initialized to zero.
 
 Failures while validating inputs or allocating temporary storage before the native
 read leave the session usable. An exception after attempting the native read

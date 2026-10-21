@@ -46,12 +46,12 @@ execution.
 @defproc[(canvas-annotate-url! [canvas canvas?] [x real?] [y real?]
                               [width (and/c real? (>=/c 0))]
                               [height (and/c real? (>=/c 0))] [uri string?]) void?]{
-Associates a link rectangle with a URI. The rectangle uses current local canvas
-coordinates.
+Associates a link rectangle with a URI. The rectangle uses current
+@tech[#:key "local coordinates"]{local canvas coordinates}.
 Zero-width or zero-height rectangles emit no URI annotation, but their arguments
 are still validated. Picture recordings store the URI annotation for replay.
-Ordinary raster targets ignore the annotation after validation; an active output
-policy may reject annotation loss instead of accepting that no-op.
+Ordinary raster targets ignore the annotation after validation; an active
+@tech{output policy} may reject annotation loss instead of accepting that no-op.
 
 The URI must be a nonempty printable ASCII string with valid percent escapes.
 Spaces, non-ASCII characters, quotes, angle brackets, backslashes, carets,
@@ -71,7 +71,7 @@ Defines a destination at the given point in a PDF or SVG document.
 The @racket[name] must be valid for a @tech{named destination} and must not already
 be defined in that document, even at the same point. PDF destinations can be
 referenced across pages.
-For SVG, the current affine canvas transform is applied to the point when the
+For SVG, the current affine @tech{canvas transform} is applied to the point when the
 destination is defined. The resulting position is stored and added as a named
 view when the SVG is finalized.
 
@@ -89,7 +89,7 @@ are permitted, but finishing the PDF or SVG fails if any referenced name is
 undefined. Zero-size and fully clipped references are still checked at finish;
 visibility does not make a misspelled name acceptable.
 
-The rectangle uses local coordinates.
+The rectangle uses @tech{local coordinates}.
 Picture recording rejects named links rather than deferring their document
 scope. Ordinary raster targets perform no link registration after validation,
 subject to the active output policy.

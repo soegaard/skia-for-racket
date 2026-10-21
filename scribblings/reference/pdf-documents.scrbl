@@ -203,7 +203,7 @@ After success, the page's canvas is no longer usable.
 
 @defproc[(document-finish! [document document?]) void?]{
 Finalizes a document that is open between pages and has at least one completed
-page. Every named destination referenced by the document must be defined.
+page. Every @tech{named destination} referenced by the document must be defined.
 A missing destination is reported before finalization, allowing a manual caller
 to add the missing destination on another page and retry.
 

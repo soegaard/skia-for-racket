@@ -13,7 +13,7 @@ not contain a @tech{paint}, perform paragraph wrapping, or turn @tech{glyph IDs}
 portable character string.
 
 Single-run construction and the multi-run builder API produce blobs that can
-be drawn repeatedly with different paints or canvas transforms. Native
+be drawn repeatedly with different paints or @tech{canvas transforms}. Native
 operations require open resources on their owning thread. Drawing also follows
 the canvas's and paint's GPU-context conditions when applicable.
 
@@ -35,7 +35,7 @@ Creates a text blob from the supplied glyphs and positions.
 
 The glyph and position lists or vectors must be nonempty and have equal lengths.
 Positions are relative to the blob's origin. Glyph IDs belong to the font's
-typeface; this is not a character-mapping or shaping operation.
+typeface; this is not a character-mapping or @tech{shaping} operation.
 The size of the copied input data is bounded by
 @racket[current-skia-byte-limit].
 
@@ -56,7 +56,7 @@ blob. The paint and canvas origin are selected separately when drawing.
 @defproc[(text-blob-bounds [blob text-blob?]) (values real? real? real? real?)]{
 Returns the native blob bounds as x, y, width, and height, relative to
 its stored origin. The bounds can be conservative and include no later canvas
-transform, paint stroke, or image filter. They are not the blob's advance.
+transform, paint stroke, or @tech{image filter}. They are not the blob's @tech{advance}.
 }
 
 @defproc[(text-blob-unique-id [blob text-blob?]) exact-integer?]{
@@ -366,7 +366,7 @@ It maps the glyph's local point with coordinates @math{x} and @math{y} to
 @math{(scos x - ssin y + tx, ssin x + scos y + ty)}. Font size, horizontal
 scale, and skew already contribute to the glyph's local geometry.
 
-These four coefficients are not an affine matrix's six coefficients. They do
+These four coefficients are not an @tech{affine matrix}'s six coefficients. They do
 not express independent x/y scaling, a general shear, or a reflection. A
 zero-scale transform is accepted. Input coefficients and metadata are copied;
 the shared run-input and metadata rules apply.

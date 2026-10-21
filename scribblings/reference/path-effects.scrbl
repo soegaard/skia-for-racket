@@ -313,7 +313,7 @@ Normal style blurs inside and outside the shape. Solid style preserves its inter
 adds an outer blur. Outer style keeps only the exterior blur. Inner style
 keeps only the interior blur.
 
-When @racket[respect-ctm?] is true, the current canvas transform affects the
+When @racket[respect-ctm?] is true, the current @tech{canvas transform} affects the
 blur size; otherwise the blur size is interpreted in device space.
 This filter blurs shape coverage, not arbitrary neighboring image colors.
 For that operation use @racket[make-blur-image-filter].

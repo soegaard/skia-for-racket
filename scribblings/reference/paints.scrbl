@@ -54,7 +54,7 @@ solid RGBA value. The default @tech{blend mode} places source content over the
 existing destination, taking alpha into account. The other accepted modes are
 specified in @secref["skia-blend-modes"].
 
-Each supplied shader, path effect, or filter must be open when attached. The
+Each supplied shader, @tech{path effect}, or filter must be open when attached. The
 paint retains its own native reference; it does not take ownership of the
 caller's wrapper. Closing that wrapper after attachment does not remove the
 attached effect. A supplied GPU-dependent resource also makes the paint subject
@@ -420,7 +420,7 @@ operations. Reading a setting is not a pixel readback.
 Returns the paint's current geometry style.
 }
 @defproc[(paint-stroke-width [paint paint?]) real?]{
-Returns the current stroke width. A result of zero denotes a hairline.
+Returns the current stroke width. A result of zero denotes a @tech{hairline}.
 }
 @defproc[(paint-cap [paint paint?]) (or/c 'butt 'round 'square)]{
 Returns the current stroke-cap setting.
@@ -436,7 +436,7 @@ Reports whether the paint requests @tech{antialiasing} for shape edges. This is 
 query, not a predicate for recognizing paint values.
 }
 @defproc[(paint-dither? [paint paint?]) boolean?]{
-Reports whether the paint requests dithering when reducing color precision.
+Reports whether the paint requests @tech{dithering} when reducing color precision.
 The setting does not guarantee that a particular destination applies dithering.
 }
 
@@ -485,7 +485,7 @@ fillable. A @racket[#f] flag denotes hairline geometry, not allocation failure:
 the returned path still has its own lifetime and must be released.
 
 The optional cull rectangle is a four-element list or vector of x, y, width,
-and height in local coordinates. Extents must be nonnegative, and positive
+and height in @tech{local coordinates}. Extents must be nonnegative, and positive
 extents must remain positive after native rounding. It is a culling hint, not
 a promise that the result is clipped to that rectangle. The matrix supplies
 the local-to-device context used by native stroke/path-effect calculation;

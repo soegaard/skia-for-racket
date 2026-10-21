@@ -2541,7 +2541,7 @@ class R3BlobSemanticsTests(unittest.TestCase):
                      ['vector/c'] + ['real?'] * 4]
         self.assertEqual(fields['transforms'][1],
                          ['or/c', ['listof', transform], ['vectorof', transform]])
-        self.assertIn('not an affine matrix\'s six coefficients', self.text())
+        self.assertIn('not an @tech{affine matrix}\'s six coefficients', self.text())
 
     def test_shaped_append_does_not_offer_caller_supplied_cluster_offsets(self):
         fields = {f[0]: f for f in self.header('text-blob-builder-add-shaped-run!')[0][1:]}
@@ -4165,7 +4165,7 @@ class R3gbRasterTests(unittest.TestCase):
         text = ' '.join(self.text('raster-buffers').split())
         for phrase in ('full allocation, including all row padding', 'Rows are tightly packed',
                        'input length must equal', 'at least the minimum byte length',
-                       'new row padding stays zero'):
+                       'new @tech{row padding} stays zero'):
             self.assertIn(phrase, text)
 
     def test_borrowed_views_expire_without_changing_wrapper_predicates(self):
@@ -4882,7 +4882,7 @@ class R4bDocumentationTests(unittest.TestCase):
     def test_surface_request_does_not_claim_actual_msaa_or_unlimited_unbudgeted_memory(self):
         text = ' '.join(self.text('gpu-surfaces').split())
         for phrase in ('actual count is not exposed', 'format-aware storage estimate',
-                       'does not bypass', 'Unpremultiplied alpha is not',
+                       'does not bypass', '@tech{Unpremultiplied alpha} is not',
                        'no separate GPU canvas drawing language'):
             self.assertIn(phrase, text)
         args = self.header('make-gpu-surface')[0]
@@ -4892,14 +4892,14 @@ class R4bDocumentationTests(unittest.TestCase):
         text = ' '.join(self.text('gpu-images').split())
         self.assertIn('ownership classification', text)
         self.assertIn('caches a texture', text)
-        self.assertIn('does not require a GPU activation', text)
+        self.assertIn('does not require a @tech{GPU activation}', text)
         self.assertEqual(self.header('image-residency')[1], ['or/c', ['quote', 'cpu'],
                                                            ['quote', 'gpu']])
 
     def test_transfers_distinguish_staged_commit_from_direct_partial_writes(self):
         text = ' '.join(self.text('gpu-transfers').split())
         for phrase in ('leaves the destination unchanged', 'can leave partial writes',
-                       'rollback is not promised', 'Row padding is initialized',
+                       'rollback is not promised', '@tech{Row padding} is initialized',
                        'This is conversion, not scaling', 'temporary GPU surface in the same context'):
             self.assertIn(phrase, text)
 
@@ -5492,7 +5492,7 @@ class R4dPresentationTests(unittest.TestCase):
         text = ' '.join(self.text('gpu-output').split())
         for phrase in ('Pass the executor to @racket[draw-output-group]',
                        '@racket[#:raster-executor] argument',
-                       "used only when the group's output policy selects rasterization",
+                       "used only when the group's @tech{output policy} selects rasterization",
                        'one positional argument and no required keywords'):
             self.assertIn(phrase, text)
         header = self.header('call-with-gpu-raster-executor')

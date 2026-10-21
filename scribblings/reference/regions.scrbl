@@ -12,7 +12,7 @@
 Use an integer region to combine rectangular pixel areas, test which points
 they contain, or restrict drawing to a device-pixel clip. Create the areas
 with @racket[make-region] and apply a clip with @racket[canvas-clip-region!].
-For smooth curves or an antialiased boundary in local coordinates, use a
+For smooth curves or an antialiased boundary in @tech{local coordinates}, use a
 @tech{path} instead.
 
 An @deftech{integer region} represents a set of integer-coordinate pixels.
@@ -46,7 +46,7 @@ Rectangle inputs are four-element lists or vectors of coordinates, width, and
 height. Coordinates and computed right and bottom edges must be exact integers
 from -1073741823 through 1073741823. Dimensions are exact nonnegative integers.
 Right and bottom edges are excluded. Empty rectangles are allowed unless an
-entry says otherwise. Region drawing follows the canvas transform; region
+entry says otherwise. Region drawing follows the @tech{canvas transform}; region
 clipping instead uses @tech{device coordinates}.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -381,7 +381,7 @@ containing two disjoint rectangles.
           [region region?]
           [#:operation operation (or/c 'intersect 'difference) 'intersect])
           void?]{
-Combines the current clip with the integer region in device coordinates.
+Combines the current clip with the integer region in @tech{device coordinates}.
 The current canvas transform does not transform the region. No @tech{antialiasing}
 option is provided. For a local-coordinate boundary clip, convert the region
 with @racket[region->path] and use @racket[canvas-clip-path!] instead.

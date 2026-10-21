@@ -2,9 +2,9 @@
 
 @title[#:tag "skia-reference-gpu-rendering" #:style 'toc]{GPU Contexts and Resources}
 
-Backend declarations, providers, and context options describe how GPU contexts
-are created. A live context establishes the owner-thread execution scope for GPU
-surfaces and images. Surface properties describe rendering settings supplied
+Backend declarations, providers, and context options describe how @tech{GPU contexts}
+are created. A live context establishes the owner-thread execution scope for @tech{GPU
+surfaces} and images. Surface properties describe rendering settings supplied
 when creating GPU surfaces. Transfer, synchronization, cache, and diagnostic
 operations make movement and execution boundaries explicit.
 

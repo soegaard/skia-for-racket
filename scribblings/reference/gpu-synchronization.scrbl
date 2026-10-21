@@ -57,7 +57,7 @@ or an unrelated queue.
 
 @defproc[(gpu-flush-surface! [context gpu-context?] [surface gpu-surface?]) void?]{
 Flushes work associated with a surface owned by @racket[context]. The surface
-must be live with a balanced save/layer stack at save count 1. A CPU or document
+must be live with a balanced save/layer stack at @tech{save count} 1. A CPU or document
 target is rejected rather than uploaded. The flush may include dependent work;
 it is not a guarantee that unrelated work will remain unexecuted. It requests
 neither submission nor a wait for GPU work to finish.

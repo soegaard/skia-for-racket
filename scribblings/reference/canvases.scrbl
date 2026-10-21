@@ -380,7 +380,7 @@ The figure enlarges the result to show the partially covered edge pixels.
                            [#:operation operation (or/c 'intersect 'difference) 'intersect]
                            [#:antialias? antialias? boolean? #f]) void?]{
 Like @racket[canvas-clip-rect!], but uses the filled region of @racket[path] and
-its fill rule. Paint stroke settings do not affect this operation. Subsequent
+its @tech{fill rule}. Paint stroke settings do not affect this operation. Subsequent
 changes to the path, or releasing it, do not change the established clip.
 
 
@@ -432,7 +432,7 @@ Each corner's radius is preserved, including in SVG output.
 Returns an immutable vector containing the clip bounds' x, y, width, and height
 in current @tech{local coordinates}, or @racket[#f] if the bounds are unavailable.
 The bounds may include areas outside the clip because of @tech{antialiasing} or the
-conversion from device coordinates. Changing the transform can change these
+conversion from @tech{device coordinates}. Changing the transform can change these
 bounds without changing the clip.
 }
 

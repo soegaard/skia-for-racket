@@ -96,7 +96,7 @@ operation, not HSV and not a change of RGB color-space metadata.
 }
 
 @defproc[(make-linear-to-srgb-gamma-color-filter) color-filter?]{
-Returns a filter applying the sRGB encoding transfer function to RGB channels.
+Returns a filter applying the sRGB encoding @tech{transfer function} to RGB channels.
 Alpha is unchanged. This is a channel operation, not a full gamut conversion;
 it does not inspect or replace the source image's color-space tag.
 }

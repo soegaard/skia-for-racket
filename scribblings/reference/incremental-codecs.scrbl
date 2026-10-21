@@ -87,7 +87,7 @@ from accepted input size in @racket[codec-incremental-statistics].
           [#:cancel-evt cancel (or/c evt? #f) #f])
           incremental-progress?]{
 Attempts header construction, native incremental start, or continued decoding
-and returns an incremental progress value. No new native attempt is made when
+and returns an @tech{incremental progress value}. No new native attempt is made when
 neither the visible input size nor final flag has changed since the previous attempt.
 Once started, the decoder writes into the same destination buffer on successive
 calls. Before native use, all destination bytes, including padding, are initialized to zero.
@@ -207,7 +207,7 @@ The count is not an EXIF-normalized coordinate or a byte offset.
 @defproc[(codec-incremental-snapshot [session codec-incremental-session?])
           incremental-snapshot?]{
 Copies the current destination pixels into a snapshot, together with their
-pixel description and decoding progress.
+@tech{pixel description} and decoding progress.
 
 The snapshot is an immutable Racket structure. Its pixel data are an immutable
 byte string containing the entire destination buffer, including padding.

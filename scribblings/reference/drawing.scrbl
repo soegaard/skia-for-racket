@@ -26,8 +26,8 @@ stores an operation rather than immediately producing pixels.
                     [paint paint?]) void?]{
 Draws a rectangle on @racket[canvas] with its upper-left corner at coordinates
 @racket[x] and @racket[y], the given @racket[width] and @racket[height], and the
-specified @racket[paint]. The current canvas transform and clip apply. The paint's style
-selects a fill, a stroke, or both. Drawing does not reset the transform, clip,
+specified @racket[paint]. The current @tech{canvas transform} and @tech{clip} apply.
+The paint's style selects a fill, a stroke, or both. Drawing does not reset the transform, clip,
 or paint.
 
 Width and height may be zero but must not be negative. Stroke and filter output
@@ -35,7 +35,7 @@ may extend outside the rectangle's geometric bounds; the receiving clip still
 applies.
 
 The canvas and paint must be valid for native use. GPU-dependent paint content
-requires the matching active GPU context; it is not implicitly read back for
+requires the matching active @tech{GPU context}; it is not implicitly read back for
 CPU or document drawing. A recorded or document operation does not by itself
 promise immediate pixels or a vector-only representation.
 
@@ -136,8 +136,8 @@ right and bottom coordinates follow the same restrictions as @racket[draw-rect].
 
 @defproc[(draw-path [canvas canvas?] [path skia-path?] [paint paint?]) void?]{
 Draws the contours of @racket[path] using @racket[paint]. Filling uses the path's
-fill rule. Stroking follows its contours, with the paint's width, cap, join, and
-path effect. The path itself is unchanged. A recording captures the drawing
+@tech{fill rule}. Stroking follows its contours, with the paint's width, cap, join, and
+@tech{path effect}. The path itself is unchanged. A recording captures the drawing
 operation; later mutation of the source path does not edit earlier drawing.
 }
 

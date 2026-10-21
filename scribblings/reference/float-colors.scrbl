@@ -15,7 +15,7 @@ Floating-point colors are useful for color-managed or higher-precision drawing.
 Use them when you need to:
 
 @itemlist[
- @item{specify a color in a particular source color space, such as linear sRGB;}
+ @item{specify a color in a particular source @tech{color space}, such as linear sRGB;}
  @item{preserve fractional or extended RGB values instead of immediately
        reducing them to eight-bit channels; or}
  @item{create color-managed paints with @racket[make-paint/color4f] or
@@ -92,7 +92,7 @@ not round the components to native floats, premultiply them, or attach a color s
 @defproc[(color->color4f [color color?]) color4f?]{
 Returns a floating-point color obtained by dividing each RGBA byte component
 by 255. This normalizes the numerical range; it does not decode the sRGB
-transfer function or otherwise convert between color spaces.
+@tech{transfer function} or otherwise convert between color spaces.
 
 @examples[#:eval float-color-eval
 (eval:check (color4f->vector (color->color4f 'red))

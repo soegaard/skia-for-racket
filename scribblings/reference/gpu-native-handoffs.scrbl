@@ -8,7 +8,7 @@
 
 The libraries documented here are explicitly unsafe. Their pointer arguments
 must already designate live native objects of the stated interface or
-Objective-C protocol on the exact device owned by the supplied GPU context. A successful
+Objective-C protocol on the exact device owned by the supplied @tech{GPU context}. A successful
 FFI predicate or native interface query cannot make an arbitrary, forged, or
 freed address safe. Violating these preconditions can crash the process.
 
@@ -49,8 +49,8 @@ texture and producer buffer and pins the context.
 
 The reviewed storage is ordinary RGBA8Unorm 2D storage with one mip level,
 array element, depth, and sample. It requires tracked hazards and ShaderRead
-usage; drawing additionally requires RenderTarget usage and premultiplied
-alpha. Unsupported views, heaps, buffers, IOSurface/remote/shareable storage,
+usage; drawing additionally requires RenderTarget usage and @tech{premultiplied
+alpha}. Unsupported views, heaps, buffers, IOSurface/remote/shareable storage,
 managed or memoryless modes, nonidentity swizzles, ShaderWrite, other formats,
 arrays, mipmaps, and multisampling are rejected.
 

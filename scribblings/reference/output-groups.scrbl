@@ -50,7 +50,7 @@ Padding accepts a nonnegative real number or the left/top/right/bottom
 list forms used by @racket[draw-rasterized]. It enlarges the captured region without shrinking
 the original content. Both replay strategies use the same padded local clip.
 
-The destination is a supported document or CPU-raster canvas. An ordinary picture recorder has
+The destination is a supported document or CPU-raster canvas. An ordinary @tech{picture recorder} has
 no output backend and is rejected. A recording canvas created by an enclosing output-group
 capture can inherit that capture's backend; an unrelated recorder cannot. An outer document
 matrix must be affine. Put perspective inside the group callback when raster fallback is needed.
@@ -62,7 +62,7 @@ not valid for a raster destination. The @racket['raster] policy requests isolate
 but still rejects resources whose output compatibility is unknown and operations
 known to discard document features such as annotations.
 
-For blend modes that depend on background pixels, the group starts with a transparent
+For @tech{blend modes} that depend on background pixels, the group starts with a transparent
 background rather than the content already drawn on the destination canvas. Include
 any needed background drawing in the callback. Groups reject device-coordinate
 region clips, whose replay would ignore the intended local placement. Rasterization that would

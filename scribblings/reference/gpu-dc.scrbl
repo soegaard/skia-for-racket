@@ -10,8 +10,8 @@
 @(declare-exporting skia/gpu-dc #:use-sources (skia/gpu-dc))
 
 The @racketmodname[skia/gpu-dc] library supplies the supported Racket
-@racket[draw:dc<%>] drawing subset on Ganesh GPU surfaces. Importing the library
-does not initialize a GUI or create a GPU context; native GPU drawing code is
+@racket[draw:dc<%>] drawing subset on Ganesh @tech{GPU surfaces}. Importing the library
+does not initialize a GUI or create a @tech{GPU context}; native GPU drawing code is
 loaded on first use.
 
 A @deftech[#:key "GPU drawing context"]{GPU DC} is a callback-scoped implementation
@@ -55,8 +55,8 @@ Nested GPU-DC scopes are rejected.
 
 The callback must be a procedure that accepts one positional argument. Its DC becomes
 invalid on normal return, exception, or escape. Drawing takes place on a temporary
-full-color RGBA/BGRA/F16/F32 surface in the same GPU context. The color-space
-descriptor, sample request, and @tech{surface-properties value} form part of
+full-color RGBA/BGRA/F16/F32 surface in the same GPU context. The @tech{color-space
+descriptor}, sample request, and @tech{surface-properties value} form part of
 the temporary surface's configuration and determine whether it can be reused.
 See @secref["skia-surface-properties"]
 for pixel geometry and rendering flags.

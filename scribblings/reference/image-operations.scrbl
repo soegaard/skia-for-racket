@@ -14,8 +14,8 @@ CPU-accessible. These queries distinguish validity, deferred generation, texture
 immediately available pixels. None of those properties alone proves the others.
 
 The functions that prepare CPU images, transfer pixels, or apply filters require CPU images.
-They reject GPU-owned or texture-backed inputs instead of silently reading back a texture. Transfer a GPU
-image explicitly before using these operations. Ordinary image queries still enforce the
+They reject GPU-owned or texture-backed inputs instead of silently reading back a texture. Transfer a
+@tech{GPU image} explicitly before using these operations. Ordinary image queries still enforce the
 source resource's lifetime, thread, and any GPU-context restrictions.
 
 @local-table-of-contents[#:style 'immediate-only]
@@ -288,7 +288,7 @@ actual 12 by 10 destination; its checkerboard is not stored in that destination.
 Creates a Racket bitmap by copying the image's pixels. The bitmap can be edited
 independently of the source and has an alpha channel.
 
-Pixel access follows @racket[image->rgba-bytes] with premultiplied alpha, including
+Pixel access follows @racket[image->rgba-bytes] with @tech{premultiplied alpha}, including
 that function's format and CPU-access restrictions. The bytes are reordered from
 RGBA to ARGB; this is not a promise of preserving extended floating-point values
 or ICC metadata.

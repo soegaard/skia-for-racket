@@ -9,7 +9,7 @@
 
 Use a texture handoff when combining Skia with another Metal or Direct3D
 renderer that owns the texture. With a backend-specific handoff token,
-@racket[gpu-import-image] copies its content into a Skia-owned GPU image, while
+@racket[gpu-import-image] copies its content into a Skia-owned @tech{GPU image}, while
 @racket[call-with-gpu-external-surface] lets Skia draw temporarily into the
 external texture. These routes avoid a CPU pixel transfer; they do not permit
 both renderers to access the texture concurrently.

@@ -42,7 +42,7 @@ extends the first and last colors to interval endpoints when their positions
 are inside the interval. The temporary color and position arrays together must
 fit @racket[current-skia-byte-limit], at four bytes per color and per position.
 
-The gradient is parameterized in local coordinates before the canvas transform.
+The gradient is parameterized in local coordinates before the @tech{canvas transform}.
 These byte-color constructors do not accept a separate interpolation color space.
 Destination color processing and finite native precision still affect rendered
 pixels; a gradient is not a color-profile declaration.
@@ -173,7 +173,8 @@ A circle pair rejected by native Skia raises an exception rather than returning
 Returns a shader that samples @racket[image], with image pixels initially
 aligned to local drawing units. The shader keeps its own native reference to
 the image, so closing the caller's image wrapper does not invalidate the shader.
-A GPU image still restricts the shader to its GPU context. Use @racket[shader-with-local-matrix]
+A @tech{GPU image} still restricts the shader to its GPU context.
+Use @racket[shader-with-local-matrix]
 to change the image's local placement or scale.
 
 @racketblock[
@@ -311,7 +312,7 @@ Returns an owned shader that draws nothing. It is a shader resource, not
 }
 
 @defproc[(shader-with-color-filter [shader shader?] [filter color-filter?]) shader?]{
-Returns a shader applying the color filter to the source shader's output.
+Returns a shader applying the @tech{color filter} to the source shader's output.
 The result keeps its own native references to both inputs. This changes shader
 output before the paint is composited with the target; it does not change the source shader.
 }
@@ -337,7 +338,7 @@ image shader's color-space conversion and unpremultiplication. This is useful fo
 but is not a drop-in way to display a tagged color image correctly.
 
 The shader keeps its own native reference to the image and preserves any GPU dependency.
-A supplied local affine matrix must be invertible. Sampling is nearest by default; the public
+A supplied local @tech{affine matrix} must be invertible. Sampling is nearest by default; the public
 interface accepts nearest or linear, not cubic sampling. Raw sample interpretation has no promised direct PDF/SVG
 representation; use an explicit bounded raster group for document output.
 }

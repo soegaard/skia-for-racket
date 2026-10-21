@@ -28,14 +28,14 @@ thread. The executor records the context generation and rejects later use after
 a generation change.
 
 The executor does not close @racket[context]. Each raster operation activates
-that exact context, creates a temporary GPU surface, replays the captured
+that exact context, creates a temporary @tech{GPU surface}, replays the captured
 picture, and converts the result to a CPU-owned raster image before returning it
 to the output layer. A recorded picture that depends on resources from a different
 GPU context is rejected instead of being transferred implicitly.
 
 Pass the executor to @racket[draw-output-group] using its
 @racket[#:raster-executor] argument. The executor is used only when the group's
-output policy selects rasterization; a group that remains vector does not invoke
+@tech{output policy} selects rasterization; a group that remains vector does not invoke
 GPU raster execution. See @secref["skia-output-groups"].
 }
 

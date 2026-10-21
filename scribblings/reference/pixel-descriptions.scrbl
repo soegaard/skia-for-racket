@@ -12,7 +12,7 @@
 @defmodule[skia/image-info #:no-declare]
 @(declare-exporting skia skia/image-info #:use-sources (skia/image-info))
 
-When a raster buffer or surface needs an explicit pixel format, use
+When a @tech{raster buffer} or surface needs an explicit pixel format, use
 @racket[make-image-info] to describe it. Pass the result to
 @racket[make-raster-buffer-from-info] or @racket[make-surface-from-info] to
 allocate the buffer or surface in a supported format.

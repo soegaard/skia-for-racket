@@ -72,7 +72,7 @@ a decoded first image or picture, not a resumable port-backed decoder.
           [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
           image?]{
 Decodes the first image from live input and returns an independently owned CPU
-image. The default applies the encoded orientation; disabling it preserves
+image. The default applies the @tech{encoded orientation}; disabling it preserves
 encoded pixel coordinates. Unsupported decoding and incomplete required input
 raise exceptions. The port need not remain open after successful return.
 Use @racket[codec-from-port/buffered] for explicit animation-frame access.
@@ -167,14 +167,14 @@ also apply.
 Exports output pages to a Racket port and returns the byte count. PDF accepts
 one through 1024 pages; SVG requires exactly one. Each application drawing
 callback runs once to record its page. The recorded commands are preflighted
-against the selected output policy and then replayed to write the document.
+against the selected @tech{output policy} and then replayed to write the document.
 An authoring or preflight failure writes no bytes to the destination. Later
 failures while writing can leave partial output.
 
 The text-mode and DPI rules are those of @racket[output->bytes]. The automatic
 mode uses native text for PDF and outlines for SVG. SVG output includes physical
 point dimensions. This function does not accept the metadata or identifier
-keywords of @racket[output->bytes]. Named destinations cannot be authored on
+keywords of @racket[output->bytes]. @tech{Named destinations} cannot be authored on
 the intermediate picture-recording canvas; use direct document output when such
 annotations are required.
 

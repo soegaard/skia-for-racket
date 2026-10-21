@@ -13,7 +13,7 @@
 The @racketmodname[skia/dc-output] library adapts the supported Racket
 @racket[draw:dc<%>] drawing subset to Skia PDF, SVG, and CPU-raster canvases.
 The drawing callback runs once with a temporary drawing context. Its drawing commands
-are recorded and then replayed according to the selected output policy. The drawing
+are recorded and then replayed according to the selected @tech{output policy}. The drawing
 context can be used only during the callback. The bridge does not render an entire document
 to a bitmap and does not add an implicit GPU fallback.
 
@@ -54,7 +54,7 @@ and explicit raster groups; it does not run a document exporter or native probe.
          (and/c hash? immutable?)]{
 Calls @racket[draw] once, records its drawing commands, and replays them onto @racket[canvas]. The
 receiver must be a live PDF, SVG, or CPU-raster canvas with an affine 2D
-transform. A GPU surface and an unrelated picture recorder are rejected.
+transform. A @tech{GPU surface} and an unrelated @tech{picture recorder} are rejected.
 
 The @racket[draw] function must accept one positional DC argument with no
 required keyword arguments. Its result values are ignored. The capture DC
@@ -202,7 +202,7 @@ validation.
                                [width (and/c real? (>=/c 0))]
                                [height (and/c real? (>=/c 0))]
                                [name string?]) void?]{
-Adds a link rectangle to a named destination through an output DC. Forward
+Adds a link rectangle to a @tech{named destination} through an output DC. Forward
 references retain the document-level rules of @racket[canvas-link-destination!].
 On ordinary raster or GPU DCs, the operation validates its arguments and does
 not register a link.

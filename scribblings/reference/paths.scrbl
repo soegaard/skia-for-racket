@@ -63,7 +63,8 @@ A @deftech{fill rule} determines which points are inside a path for filling.
 The @racket['winding] rule fills points with nonzero signed winding number.
 The @racket['even-odd] rule fills points crossed an odd number of times by a ray
 to the exterior. Both treat open contours as closed for filling. Explicit
-closure still matters for stroke caps and joins. Reversing an inner contour
+closure still matters for @tech{stroke caps} and @tech[#:key "stroke join"]{joins}.
+Reversing an inner contour
 can create a winding-rule hole; an even-odd hole does not depend on direction.
 
 @bold{Conceptual diagram.} Winding considers a signed total, while even-odd
@@ -243,7 +244,7 @@ heights, and radii must be nonnegative.
 Appends a closed rectangle with the given position, size, and winding direction.
 }
 
-Use @racket[path-add-rounded-rect!] to append a closed rounded rectangle with
+Use @racket[path-add-rounded-rect!] to append a closed @tech{rounded rectangle} with
 the same horizontal and vertical radii at every corner:
 
 @racketblock0[

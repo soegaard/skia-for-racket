@@ -30,7 +30,7 @@ satisfies it.
 @defproc[(make-shaper [font font?]) shaper?]{
 Creates an owned shaper using a snapshot of @racket[font] and its typeface
 data. Later mutation or closure of the original font does not change the shaper.
-The captured font is also used when turning shaped runs into text blobs.
+The captured font is also used when turning shaped runs into @tech{text blobs}.
 
 Construction requires native Skia, HarfBuzz, and usable font data. Copying the
 font data is subject to @racket[current-skia-byte-limit]. An unsupported font
@@ -174,8 +174,8 @@ limitations of @racket[shaped-run->path].
 @section[#:tag "skia-shaped-run-inspection"]{Inspecting Shaped Runs}
 
 For drawing without inspecting glyph data, use @racket[draw-shaped-text] or
-@racket[draw-shaped-run]. These accessors expose glyph IDs, cluster offsets,
-positions, and advances. Glyph indices and UTF-8 byte offsets are not Racket
+@racket[draw-shaped-run]. These accessors expose @tech{glyph IDs}, @tech{cluster offsets},
+positions, and @tech{advances}. Glyph indices and UTF-8 byte offsets are not Racket
 character indices.
 
 @defproc[(shaped-run? [v any/c]) boolean?]{
@@ -196,7 +196,7 @@ entire paragraph containing the string.
 Returns glyph positions relative to the run origin. Horizontal positions
 accumulate advances and include HarfBuzz x offsets, scaled by font size and
 horizontal scale. Vertical positions accumulate the signed y advances and
-subtract the scaled y offsets. The operation does not apply a canvas transform.
+subtract the scaled y offsets. The operation does not apply a @tech{canvas transform}.
 
 Vertical directions preserve the native signed advance convention; this API
 does not automatically lay out vertical paragraphs in downward-positive canvas

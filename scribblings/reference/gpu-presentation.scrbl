@@ -13,7 +13,7 @@ frame to obtain the current drawing canvas and pixel dimensions; it is the
 window's current target, not an offscreen surface to keep for later.
 
 A @deftech{presentation adapter} is the private, platform-specific bridge between
-a GUI window and its GPU backend. For each frame, it obtains the window's current
+a GUI window and its @tech{GPU backend}. For each frame, it obtains the window's current
 drawing target and asks the system to display the completed drawing.
 
 A @deftech{GPU presenter} owns the presentation adapter and @tech{GPU context} for one
@@ -132,7 +132,7 @@ frame or later activation does not revive the old frame.
 }
 
 @defproc[(gpu-frame-canvas [frame gpu-frame?]) canvas?]{
-Returns the borrowed canvas while @racket[frame] is live on its original owner
+Returns the @tech{borrowed canvas} while @racket[frame] is live on its original owner
 thread. It raises an exception after callback exit, from another Racket thread,
 or from within a future.
 }

@@ -50,7 +50,8 @@ alpha format. Later buffer mutation or closure does not change the image.
 
 The image is independently owned. The buffer must be open and have no active
 canvas or pixmap scope. The storage copy must fit @racket[current-skia-byte-limit].
-The operation does not normalize an encoded orientation or concatenate separate scanline batches.
+The operation does not normalize an @tech{encoded orientation} or concatenate separate
+@tech[#:key "scanline batch"]{scanline batches}.
 It does not check whether incremental decoding has finished; a successful copy can contain
 an incomplete image.
 }
@@ -63,7 +64,7 @@ an incomplete image.
           raster-buffer?]{
 Creates a raster buffer of the given size, initialized to transparent black.
 
-The buffer uses RGBA8888 pixels with premultiplied alpha. The default stride is
+The buffer uses RGBA8888 pixels with @tech{premultiplied alpha}. The default stride is
 four times the width. An explicit stride must be at least that large and divisible by
 four. The full stride times height must fit @racket[current-skia-byte-limit] and the native
 signed pointer-arithmetic range. Padding is initialized to zero.
@@ -119,7 +120,7 @@ query is also allowed during its canvas or pixmap scope.
           raster-buffer?]{
 Returns an independently owned copy with the same dimensions, format, and color interpretation.
 An omitted stride selects tight storage, not the source stride. Only pixel bytes are copied; the
-new row padding stays zero. Subsequent writes to either buffer do not affect the other. This
+new @tech{row padding} stays zero. Subsequent writes to either buffer do not affect the other. This
 operation requires the source to be idle.
 }
 
@@ -555,7 +556,7 @@ displayed color.
 
 @defproc[(color-space->descriptor [space color-space?])
           (or/c 'srgb 'linear-srgb (and/c bytes? immutable?))]{
-Returns a color-space descriptor. Standard spaces use their named symbols; other
+Returns a @tech{color-space descriptor}. Standard spaces use their named symbols; other
 spaces use copied immutable ICC bytes. ICC export has the representation and
 quantization limits described in
 @secref["skia-color-management"]. It is not a pixel conversion.

@@ -422,7 +422,7 @@ unavailable. With fewer than two glyphs the result is an empty vector. Every
 glyph must be below the face's glyph count, including in a one-glyph input.
 
 For @math{n} glyphs the nonempty result has @math{n - 1} entries.
-This query is not a replacement for OpenType shaping or contextual positioning;
+This query is not a replacement for OpenType @tech{shaping} or contextual positioning;
 use @racket[shape-text] for those operations.
 }
 

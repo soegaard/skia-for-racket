@@ -155,8 +155,8 @@ become lists, and fixed colors become packed ARGB integers. Missing colors use
 
 @section{Drawing Image Grids and Atlases}
 
-These image functions accept nearest or linear sampling and a byte alpha
-multiplier. They do not accept an arbitrary paint, per-sprite tint colors, or blend
+These image functions accept @tech[#:key "nearest sampling"]{nearest} or @tech{linear sampling}
+and a byte alpha multiplier. They do not accept an arbitrary paint, per-sprite tint colors, or blend
 mode. They draw source-over, in input or cell order. Repeated source rectangles
 share temporary subset images during one call; those temporaries are released
 before return, including on failure. The original image remains caller-owned.
@@ -230,7 +230,7 @@ full-grid validation occurs before drawing.
           [#:sampling sampling (or/c 'nearest 'linear) 'linear]
           [#:alpha alpha byte? 255])
           void?]{
-Draws matching atlas transforms and source rectangles as separate transformed
+Draws matching @tech{atlas transforms} and source rectangles as separate transformed
 image rectangles. Unlike @racket[draw-atlas], every source rectangle must have
 integer coordinates and dimensions. The rectangles must be nonempty and inside
 the image. This prevents silent rounding of fractional atlas selections.

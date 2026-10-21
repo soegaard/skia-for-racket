@@ -8,7 +8,7 @@
 
 Use readback when GPU-rendered content must be encoded as an image file,
 examined pixel by pixel on the CPU, or passed to a CPU-only image operation.
-If the result will only be drawn again in the same GPU context, keep it as a
+If the result will only be drawn again in the same @tech{GPU context}, keep it as a
 @tech{GPU image} instead. For a single GPU drawing that should return a CPU
 image, @racket[render-gpu->raster-image] manages rendering and readback together.
 
@@ -32,7 +32,7 @@ to the CPU.
 Runs @racket[draw] on the GPU and returns the result as an image in CPU memory.
 
 The helper creates a context and an offscreen surface using RGBA8888 pixels
-with premultiplied alpha. It calls @racket[draw] once with the surface's borrowed
+with @tech{premultiplied alpha}. It calls @racket[draw] once with the surface's borrowed
 Skia canvas, then reads back the pixels. The returned image is an owned resource.
 The callback must accept one positional argument and no required keywords.
 Its zero, one, or multiple results are ignored.
@@ -42,7 +42,7 @@ OpenGL requires a matching provider. Metal and Direct3D create owned native
 hosts and reject a supplied provider. Direct3D defaults to hardware adapter zero;
 WARP requires index zero. Adapter selection is rejected for other backends.
 These choices have the same platform and availability restrictions as
-@racket[make-gpu-context]. The call must occur outside existing GPU activations.
+@racket[make-gpu-context]. The call must occur outside existing @tech{GPU activations}.
 
 The dimensions undergo the ordinary four-byte-per-pixel budget check before
 context creation, followed by the native surface limits. The callback must
@@ -80,7 +80,7 @@ the owning context with @racket[call-with-gpu-context].
 
 A surface readback requires a balanced save/layer stack at @tech{save count} 1.
 Reading a GPU image first draws it into a temporary GPU surface in the same
-context. This uses one-to-one scaling, nearest sampling, and source replacement.
+context. This uses one-to-one scaling, @tech{nearest sampling}, and source replacement.
 The temporary surface preserves the source color type and color interpretation.
 Opaque images use opaque storage; other images use premultiplied storage.
 Creating the temporary surface can fail if its format is unsupported or
@@ -99,10 +99,10 @@ their ordinary CPU thread and lifetime rules.
 Reads the surface's pixels into a new mutable RGBA byte string in CPU memory.
 
 Each channel occupies eight bits, and rows have no padding. The byte-string
-length is four times the surface width times its height. The result uses unpremultiplied
-alpha unless requested otherwise. A supplied live color space selects the
+length is four times the surface width times its height. The result uses @tech{unpremultiplied
+alpha} unless requested otherwise. A supplied live color space selects the
 readback destination interpretation; false uses the surface's native color
-space. The color-space argument accepts a resource, not a color-space descriptor.
+space. The color-space argument accepts a resource, not a @tech{color-space descriptor}.
 
 The operation performs a @tech{GPU flush}, @tech{GPU submission}, and
 @tech{GPU wait} before copying pixels. Float or
@@ -136,7 +136,7 @@ must equal the surface dimensions. If they differ, the function raises an
 exception before allocating the buffer. This is conversion, not scaling.
 
 The stride follows @racket[image-info-storage-layout]; false selects a tight
-stride. Row padding is initialized and is not filled from GPU memory. The
+stride. @tech{Row padding} is initialized and is not filled from GPU memory. The
 source and destination must either both have color-space tags or both be
 untagged. If only one is tagged, the function closes the new buffer and raises
 an exception before reading pixels. An explicit compatible destination format

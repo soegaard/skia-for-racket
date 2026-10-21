@@ -20,7 +20,7 @@ are sufficient when the exact release time does not matter. Fallback cleanup
 has no predictable timing; use explicit release when its timing matters.
 
 A @deftech{borrowed canvas} has no independent native lifetime. Its owner and
-any callback or GPU activation that supplied it must remain valid. Keeping the
+any callback or @tech{GPU activation} that supplied it must remain valid. Keeping the
 Racket wrapper reachable does not keep an expired target valid.
 
 A resource predicate recognizes the kind of value, not whether it is open.
@@ -31,10 +31,10 @@ native access.
 @bold{Conceptual diagram.} Lifetime relationships are timelines. A CPU surface
 owns its borrowed canvas, which becomes invalid when the surface closes; an
 independently owned snapshot can remain open afterward. Similarly, a buffer's
-pixmap and subset are callback-scoped views even if the caller keeps references
-to their wrappers. Ordinary Racket structures can also contain resources: text
-layouts contain references to shapers that must remain open when drawn. GPU
-leases and frames have their own activation and thread rules.
+@tech{pixmap} and subset are callback-scoped views even if the caller keeps references
+to their wrappers. Ordinary Racket structures can also contain resources: @tech{text
+layouts} contain references to @tech{shapers} that must remain open when drawn.
+@tech{GPU leases} and @tech[#:key "GPU frame"]{frames} have their own activation and thread rules.
 
 @reference-figure["concept-resource-lifetimes.png"
                   "A time axis shows a CPU surface and its borrowed canvas valid until owner closure, an independent snapshot continuing afterward, and pixmap/subset views valid only during a buffer callback. Gray segments mark invalid views."]
@@ -57,7 +57,7 @@ an object, activate a context, or prove that a later operation will succeed.
 
 Closing a resource, finishing a document, and saving a file are separate operations.
 Closing abandoned storage does not finish a document or save an output file.
-GPU contexts and borrowed frame targets have additional activation, generation,
+@tech{GPU contexts} and borrowed frame targets have additional activation, generation,
 thread, synchronization, and teardown requirements; the CPU rules do not replace
 those requirements.
 
