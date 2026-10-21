@@ -795,6 +795,13 @@ class ReaderTests(unittest.TestCase):
         text = '@defproc[(f) any/c]{Example: @racket["}"] text.} @defproc[(g) any/c]{Next.}'
         self.assertEqual([name for name, _, _ in checks.commands(text)], ['defproc', 'defproc'])
 
+    def test_prose_semicolon_in_layout_header_is_not_a_racket_comment(self):
+        text = '@itemlist[@item{First; second.}] @defproc[(f) any/c]{Example.}'
+        forms = list(checks.commands(text))
+        self.assertEqual([name for name, _, _ in forms], ['itemlist', 'defproc'])
+        self.assertIsNone(forms[0][1])
+        self.assertEqual(forms[1][1], [['f'], 'any/c'])
+
     def test_unclosed_string(self):
         with self.assertRaises(checks.CheckError):
             checks.Reader('"hello').read()
@@ -1029,11 +1036,11 @@ class EditorialRevisionTests(unittest.TestCase):
         self.assertIn('@seclink["skia-rounded-rectangles"]', text)
 
     def test_icc_responsibility_and_validation_are_distinct(self):
-        text = (ROOT / checks.REFERENCE / 'encoding.scrbl').read_text()
+        text = ' '.join((ROOT / checks.REFERENCE / 'encoding.scrbl').read_text().split())
         self.assertIn('The caller is responsible', text)
         self.assertIn('does not verify that it agrees with those samples', text)
         self.assertIn("checks the profile's format", text)
-        self.assertIn('profile does not convert the samples', text)
+        self.assertIn('Attaching a profile does not convert the samples', text)
 
     def test_supported_color_names_are_indexed_once(self):
         text = (ROOT / checks.REFERENCE / 'colors.scrbl').read_text()
@@ -1527,7 +1534,7 @@ class R2ProseTests(unittest.TestCase):
     def test_operation_specific_numeric_restrictions_remain_explicit(self):
         cases = {
             'shaders.scrbl': ('Radii must be nonnegative', 'endpoints must differ'),
-            'codecs.scrbl': ('must remain strictly positive after binary32',
+            'codecs.scrbl': ('must remain strictly positive after @tech{binary32}',
                             'positive value that rounds to zero is rejected'),
             'image-filters.scrbl': ('positive extents', 'distinct after rounding'),
             'text-blobs.scrbl': ('strictly less than @racket[bottom]',),
@@ -1574,8 +1581,7 @@ class R2ProseTests(unittest.TestCase):
         # Precision remains a shared rule; vector ownership and failures remain explicit.
         self.assertIn('Mapping operations round input coordinates and results', affine)
         self.assertIn('later mutation of the vector does not change the matrix', affine)
-        self.assertIn('Mapping queries instead return immutable binary64 coordinate vectors',
-                      projective)
+        self.assertIn('finite binary64 result is unavailable', projective)
         self.assertIn('nonfinite native matrix cannot be represented and raises an exception',
                       projective)
 
@@ -1590,10 +1596,10 @@ class R2ProseTests(unittest.TestCase):
                              'limitations of @racket[shaped-run->path]'),
             'text-blobs.scrbl': ('malformed byte sequences are rejected',),
             'pdf-documents.scrbl': ('Metadata strings must not contain NUL',),
-            'float-colors.scrbl': ('does not round the stored RGB to binary32',
-                                  'stores the converted color in extended sRGB'),
-            'rounded-rectangles.scrbl': ('must be nonnegative after binary32 rounding',
-                                        'Inputs are unchanged'),
+            'float-colors.scrbl': ('does not round the components to native floats',
+                                  'or attach a color space'),
+            'rounded-rectangles.scrbl': ('must be nonnegative after @tech{binary32} rounding',
+                                        'return new rounded-rectangle values'),
             'output-pages.scrbl': ('Returns the background as an RGBA color',),
             'racket-draw.scrbl': ('premultiplied RGB component and alpha',
                                  'exceeds alpha, raise an exception'),
@@ -1961,7 +1967,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 315)
+        self.assertEqual(count, 316)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -2319,10 +2325,10 @@ class R3TextSemanticsTests(unittest.TestCase):
 
     def test_layout_requires_live_dependencies_without_claiming_owned_resource(self):
         text = self.text('text-layout')
-        self.assertIn('ordinary Racket values, not resources', text)
+        self.assertIn('The result keeps the base shaper and font manager reachable', text)
         self.assertIn('Both the shaper and manager must remain open', text)
         self.assertIn('does not own a permanent native', text)
-        self.assertIn('Drawing is not transactional', text)
+        self.assertIn('Changes in available fonts can affect later drawing', text)
 
     def test_shape_and_layout_directions_are_not_conflated(self):
         shaped = self.header('shaping', 'shape-text')[0]
@@ -2548,18 +2554,18 @@ class R3BlobSemanticsTests(unittest.TestCase):
         self.assertIn('#:text', fields)
         self.assertNotIn('#:clusters', fields)
         self.assertIn("The original string cannot be reconstructed", self.text())
-        self.assertIn('no automatic\nfont-provenance check', self.text())
+        self.assertIn('check whether the run was shaped with that font', self.text())
 
     def test_input_byte_offsets_are_distinguished_from_character_indices(self):
         prose = ' '.join(self.text().split())
         self.assertIn('not a Racket character index or necessarily a grapheme boundary', prose)
         self.assertIn('Repeated and descending offsets are permitted', prose)
-        self.assertIn('not that semantic correspondence', prose)
+        self.assertIn('not whether the supplied glyphs and cluster offsets actually', prose)
         self.assertIn('malformed byte sequences are rejected', prose)
 
     def test_builder_lifetime_and_error_boundary_are_local_and_explicit(self):
         prose = ' '.join(self.text().split())
-        self.assertIn('Finishing consumes the builder', prose)
+        self.assertIn('Finishing closes the builder', prose)
         self.assertIn('An empty append still validates its options and resources', prose)
         self.assertIn('before native run allocation leave the builder available', prose)
         self.assertIn('failure after native run allocation begins closes the builder', prose)
@@ -2580,10 +2586,10 @@ class R3BlobSemanticsTests(unittest.TestCase):
 
     def test_run_font_is_owned_and_independent_not_a_borrow(self):
         prose = ' '.join(self.text().split())
-        self.assertIn('new owned mutable font copied', prose)
+        self.assertIn('Copies the font settings captured by the selected run into a new font', prose)
         self.assertIn('Closing the blob does not close the returned font', prose)
-        self.assertIn('remains usable after the blob closes', prose)
-        self.assertIn('A transformed run returns an empty vector here', prose)
+        self.assertIn('not close the returned font', prose)
+        self.assertIn('Returns an immutable vector of four-coefficient lists for a transformed run', prose)
 
     def test_intercepts_reject_partial_answers_for_transformed_runs(self):
         prose = ' '.join(self.text().split())
@@ -2825,14 +2831,14 @@ class R3EffectsSemanticsTests(unittest.TestCase):
 
     def test_runtime_binding_hashes_are_complete_and_normalized(self):
         text = ' '.join(self.text('runtime-effects').split())
-        for phrase in ('Missing names, unknown names', 'same normalized spelling',
-                       'Every reflected uniform and child must be supplied',
+        for phrase in ('Missing names, unknown names', 'after symbols are converted to strings',
+                       'Every uniform and child in the compiled effect must be supplied',
                        'no implicit zero uniforms or null-child fallbacks'):
             self.assertIn(phrase, text)
 
     def test_scalar_array_and_half_uniform_packing_rules_are_explicit(self):
         text = ' '.join(self.text('runtime-effects').split())
-        self.assertIn('A scalar array of length one still requires a sequence', text)
+        self.assertIn('A scalar array of length one still requires a one-element list or vector', text)
         self.assertIn("column-major component order", text)
         self.assertIn('four bytes per supplied component', text)
 
@@ -2958,11 +2964,11 @@ class R3dColorSemanticsTests(unittest.TestCase):
         fields = {f[0] for f in self.header('make-paint/color4f', 'float-colors')[0][1:]}
         self.assertEqual(fields, {'color', '#:color-space', '#:style', '#:stroke-width',
                                   '#:antialias?'})
-        self.assertIn("does not accept its complete keyword set", self.text('float-colors'))
+        self.assertIn("this constructor does not accept its complete", self.text('float-colors'))
 
     def test_float_gradient_stop_keyword_and_strict_rounding_rule(self):
         text = ' '.join(self.text('float-colors').split())
-        self.assertIn('strictly increasing after binary32 conversion', text)
+        self.assertIn('strictly increasing after @tech{binary32} rounding', text)
         self.assertIn('two distinct Racket numbers that round to the same stop are rejected', text)
         for name in FLOAT_COLOR_EXPORTS:
             if 'gradient' not in name:
@@ -2976,7 +2982,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
         self.assertEqual(h[0][1:], [['red', 'real?'], ['green', 'real?'],
                                   ['blue', 'real?'], ['alpha', 'real?', '1']])
         text = ' '.join(self.text('float-colors').split())
-        self.assertIn('does not round the stored RGB to binary32', text)
+        self.assertIn('does not round the components to native floats', text)
         self.assertIn('After conversion to an inexact Racket number, alpha', text)
         self.assertIn('not multiplied by alpha', text)
 
@@ -2992,7 +2998,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
     def test_transfer_constructor_and_evaluation_have_distinct_rounding(self):
         text = ' '.join(self.text('color-management').split())
         self.assertIn('does not require the two branches to meet continuously', text)
-        self.assertIn('without first rounding @racket[x] to binary32', text)
+        self.assertIn('formula is evaluated in Racket using @racket[x]', text)
         self.assertEqual(self.header('transfer-function-evaluate', 'color-management')[0][2],
                          ['x', ['real-in', '0', '3.402823e38']])
 
@@ -3023,7 +3029,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
     def test_ICC_export_is_mutable_and_not_a_byte_preserving_round_trip(self):
         self.assertEqual(self.header('color-space->icc-bytes', 'color-management')[1], 'bytes?')
         text = ' '.join(self.text('color-management').split())
-        self.assertIn('new mutable byte string containing an ICC v4', text)
+        self.assertIn('new mutable byte string. It contains an ICC v4 RGB monitor', text)
         self.assertIn('not the original imported profile', text)
         self.assertIn('need not give bit-identical coefficients', text)
         self.assertIn('additional matrix/TRC restrictions', text)
@@ -3039,7 +3045,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
         text = ' '.join(self.text('color-management').split())
         self.assertIn('untagged input requires an explicit open source color space', text)
         self.assertIn('Floating-point images are rejected', text)
-        self.assertIn('stages eight-bit unpremultiplied RGBA samples', text)
+        self.assertIn('intermediate buffer of eight-bit RGBA pixels', text)
         self.assertIn('GPU-dependent input is rejected', text)
         self.assertEqual(self.header('image-convert-color-space', 'color-management')[0][3],
                          ['#:source-color-space', 'source', ['or/c', 'color-space?', '#f'], '#f'])
@@ -3247,7 +3253,7 @@ class R3eOutputSourceTests(unittest.TestCase):
         text = self.normalized('image-filters')
         self.assertIn('make-picture-image-filter', text)
         self.assertIn('not a fit-to-size transform', text)
-        self.assertIn('ignores the dynamic source', text)
+        self.assertIn('instead of using the dynamic source supplied to the surrounding graph', text)
         self.assertEqual(self.header('make-picture-image-filter')[1], 'image-filter?')
 
     def test_pdf_page_macro_grammar_and_callback_values(self):
@@ -3325,7 +3331,7 @@ class R3eOutputSourceTests(unittest.TestCase):
     def test_fallback_has_explicit_bounds_scope_and_gpu_exclusion(self):
         text = self.normalized('output-pages')
         for phrase in ('does not inherit', 'ceilings of the padded extents',
-                       'GPU-surface target is rejected', 'callback canvas must not be retained',
+                       'GPU-surface target is rejected', 'The canvas cannot be used after the callback ends',
                        'failed callback does not draw the final snapshot'):
             self.assertIn(phrase, text)
         field = next(f for f in self.header('draw-rasterized')[0][1:] if f[0] == '#:scale')
@@ -3342,7 +3348,7 @@ class R3eOutputSourceTests(unittest.TestCase):
         text = self.normalized('annotations')
         self.assertIn('Validation does not access the network', text)
         self.assertIn('valid percent escapes', text)
-        self.assertIn('not a registered destination', text)
+        self.assertIn('that the target exists', text)
         self.assertIn('(eval:check (destination-id "A") "dest-41")', text)
 
     def test_native_tests_are_separate_and_wired_into_acceptance(self):
@@ -3556,7 +3562,7 @@ class R3fStreamCodecTests(unittest.TestCase):
 
     def test_stream_limits_and_native_long_are_not_conflated(self):
         text = self.prose('streams')
-        self.assertIn('smaller of the captured limit and the current byte limit', text)
+        self.assertIn("smaller of the stream's stored limit and @racket[current-skia-byte-limit]", text)
         self.assertIn('whole stream length, not only the unread suffix', text)
         self.assertIn("platform's signed C @tt{long}", text)
         self.assertIn('not necessarily the same as the pointer-sized integer range', text)
@@ -3564,7 +3570,7 @@ class R3fStreamCodecTests(unittest.TestCase):
     def test_file_writer_documents_immediate_truncation_and_nonatomic_failure(self):
         text = self.prose('streams')
         self.assertIn('create or truncate the destination immediately', text)
-        self.assertIn('not atomic exclusive creation', text)
+        self.assertIn('does not guarantee atomic exclusive creation', text)
         self.assertIn('no durability guarantee is implied', text)
         self.assertIn('failed native write may have written a prefix', text)
 
@@ -3572,7 +3578,7 @@ class R3fStreamCodecTests(unittest.TestCase):
         text = self.prose('streams')
         self.assertIn('one-byte probe', text)
         self.assertIn('@racket[(add1 limit)] bytes', text)
-        self.assertIn('before entering that scope does not take ownership', text)
+        self.assertIn('does not close the port, even when @racket[#:close?] is', text)
         self.assertIn('do not retain live port callbacks', text)
 
     def test_resource_stream_constructors_use_byte_zero_not_callers_cursor(self):
@@ -3610,7 +3616,7 @@ class R3fStreamCodecTests(unittest.TestCase):
 
     def test_live_stream_failure_poisoning_is_not_successful_rollback(self):
         text = self.prose('live-streams')
-        self.assertIn('make further use fail; close that stream instead of retrying', text)
+        self.assertIn('prevent further use; close that stream instead of retrying', text)
         self.assertIn('partial', text)
         self.assertIn('exclusive', text)
         self.assertEqual(self.header('output-write-stream!')[1], 'exact-nonnegative-integer?')
@@ -3628,14 +3634,14 @@ class R3fStreamCodecTests(unittest.TestCase):
         self.assertIn('Calls need not be made in frame order', text)
         self.assertIn('premultiplied', text)
         self.assertIn('incomplete', text)
-        self.assertIn('No scaling or subset negotiation is applied', text)
+        self.assertIn('neither scales the image nor selects a subset', text)
 
     def test_negotiation_and_orientation_are_not_resampling_or_subset_decoding(self):
         text = self.prose('codecs')
         self.assertIn('without resampling', text)
         self.assertIn('encoded coordinates', text)
         self.assertIn('contain', text)
-        self.assertIn('strictly positive after binary32 rounding', text)
+        self.assertIn('strictly positive after @tech{binary32} rounding', text)
         self.assertEqual(self.header('codec-supported-subset')[1][0], 'or/c')
 
     def test_pixel_descriptions_have_zero_size_and_format_constraints(self):
@@ -3658,10 +3664,10 @@ class R3fStreamCodecTests(unittest.TestCase):
 
     def test_decoded_buffers_are_not_views_of_native_decoder_storage(self):
         text = self.prose('raster-buffers')
-        self.assertIn('independently owned image containing copied pixels', text)
+        self.assertIn("Creates an image by copying the buffer's pixels", text)
         self.assertIn('no active canvas or pixmap scope', text)
         self.assertIn('does not change the image', text)
-        self.assertIn('certify that incremental decoding was complete', text)
+        self.assertIn('does not check whether incremental decoding has finished', text)
 
     def test_scanline_state_and_requested_vs_decoded_count_are_separate(self):
         text = self.prose('scanline-codecs')
@@ -3704,8 +3710,8 @@ class R3fStreamCodecTests(unittest.TestCase):
         text = self.prose('incremental-codecs')
         self.assertIn('declaring final means no more input will arrive', text)
         self.assertIn('terminal @racket[\'incomplete] afterward', text)
-        self.assertIn('A quota rejection leaves the retained prefix and final flag unchanged', text)
-        self.assertIn('cancellation between steps', text)
+        self.assertIn('A quota rejection leaves the stored input prefix and final flag unchanged', text)
+        self.assertIn('cancellation event is polled before each decoding step', text)
         self.assertEqual(self.header('codec-incremental-feed!')[1], 'exact-nonnegative-integer?')
 
     def test_incremental_snapshot_progress_does_not_certify_complete_image(self):
@@ -3713,7 +3719,7 @@ class R3fStreamCodecTests(unittest.TestCase):
         self.assertIn('row report of @racket[#f] means unknown, not zero', text)
         self.assertIn('Interlaced decoding may revisit pixels', text)
         self.assertIn('snapshot can describe incomplete output', text)
-        self.assertIn('remains valid after the session closes', text)
+        self.assertIn('snapshot can describe incomplete output', text)
         self.assertEqual(self.header('incremental-snapshot-bytes')[1],
                          ['and/c', 'bytes?', 'immutable?'])
 
@@ -3967,7 +3973,7 @@ class R3gaGeometryTests(unittest.TestCase):
 
     def test_region_queries_distinguish_half_open_snapshots_and_quick_rejection(self):
         text = self.text('regions.scrbl')
-        for phrase in ('Right and bottom edges are excluded', 'not proven disjoint',
+        for phrase in ('Right and bottom edges are excluded', 'quick test is inconclusive',
                        'not when', 'device coordinates', 'Empty results are valid resources'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('region-spans')[1][-1][-1], 'immutable?')
@@ -3975,7 +3981,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_vertex_metadata_has_an_explicit_post_closure_exception(self):
         text = self.text('structured-drawing.scrbl')
         for phrase in ('after explicit closure', 'without requiring its creating thread',
-                       'not a readback', '65536', 'unsigned 16-bit', 'not the number of indices'):
+                       'saved inputs,', '65536', 'unsigned 16-bit', 'not the number of indices'):
             self.assertIn(phrase, text)
 
     def test_lattice_cells_and_portable_atlas_restrictions_are_separate(self):
@@ -4067,7 +4073,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 315)
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 316)
         self.assertEqual(sum(f == 'examples' for f, _ in forms), 25)
         text = (ROOT / 'tools/reference-native-test.rkt').read_text()
         self.assertIn('(in-range 2)', text)
@@ -4202,7 +4208,7 @@ class R3gbRasterTests(unittest.TestCase):
     def test_borrowed_views_expire_without_changing_wrapper_predicates(self):
         text = ' '.join(self.text('raster-buffers').split())
         for phrase in ('including an expired wrapper', 'subsets expire on exit',
-                       'creating thread', 'not pixel rollback', 'second canvas or pixmap scope'):
+                       'creating thread', 'exclusively borrowed until the callback exits', 'second canvas or pixmap scope'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('call-with-raster-buffer-pixmap')[1], 'any')
 
@@ -4216,7 +4222,7 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_staged_conversion_and_direct_scaling_have_different_failure_guarantees(self):
         text = ' '.join(self.text('raster-buffers').split())
-        self.assertIn('staged and validated before committing pixels', text)
+        self.assertIn('validated before any destination write', text)
         self.assertIn('writes through the native scaler directly', text)
         self.assertIn('does not promise that a failed native call', text)
 
@@ -4235,7 +4241,7 @@ class R3gbRasterTests(unittest.TestCase):
         self.assertIn('immutable?', result[3])
         self.assertEqual(self.by_name['image-apply-filter']['required_keywords'], ['clip'])
         text = ' '.join(self.text('image-operations').split())
-        self.assertIn('not converted into an apparently successful empty image', text)
+        self.assertIn('A null native result raises an exception', text)
 
     def test_raw_shader_contract_does_not_advertise_cubic_sampling(self):
         header = self.header('make-raw-image-shader')
@@ -4248,7 +4254,7 @@ class R3gbRasterTests(unittest.TestCase):
         text = ' '.join(self.text('surface-properties').split())
         for phrase in ('The flags record requests',
                        'reports the request, not whether it took effect',
-                       'copy remains usable after the surface is released'):
+                       "Returns an immutable copy of @racket[surface]'s properties"):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('surface-properties-flags')[1], ['integer-in', '0', '7'])
 
@@ -4266,8 +4272,8 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_audit_policies_distinguish_preflight_and_single_pass_publication(self):
         text = ' '.join(self.text('output-audit').split())
-        for phrase in ('@deftech{output preflight} executes the callback', 'twice',
-                       'side effects are not rolled back',
+        for phrase in ('An @deftech{output preflight} executes the drawing callback', 'twice',
+                       'Ordinary Racket side effects are not undone',
                        'default @racket[\'report]', 'does not truncate or replace'):
             self.assertIn(phrase, text)
         for name, value in [('output->bytes/audit', 'report'), ('save-output/audit', 'error')]:
@@ -4276,8 +4282,8 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_group_policies_do_not_erase_unknowns_or_capture_receiver_backdrops(self):
         text = ' '.join(self.text('output-groups').split())
-        for phrase in ('never reruns the Racket authoring code', 'isolated against transparency',
-                       'unknown provenance', 'does not trigger a second authoring pass',
+        for phrase in ('uses the recorded commands without calling the callback again', 'transparent background rather than the content already drawn',
+                       'resources whose compatibility is unknown', 'without calling the drawing callback again',
                        'device-coordinate region clips'):
             self.assertIn(phrase, text)
         field = next(x for x in self.header('draw-output-group')[0][1:]
@@ -4286,7 +4292,7 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_cache_setters_return_old_settings_and_have_process_scope(self):
         text = ' '.join(self.text('graphics').split())
-        for phrase in ('previous setting', 'not bytes freed', 'not an atomic joint snapshot',
+        for phrase in ('previous setting', 'not bytes freed', 'Cache limits are settings, not a hard cap',
                        'while a live stream operation is active', 'not a hard cap'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('skia-set-font-cache-count-limit!')[1],
@@ -4302,14 +4308,14 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_native_capability_queries_do_not_certify_acceleration(self):
         text = ' '.join(self.text('native-libraries').split())
-        for phrase in ('active load/preflight attempt', 'flags for optional GPU symbol probing',
+        for phrase in ('does not create a surface, open a window', 'flags for optional GPU symbol probing',
                        'hardware acceleration remain false', 'they are not invoked',
                        'not a runtime observation'):
             self.assertIn(phrase, text)
 
     def test_native_library_source_declarations_do_not_leak_into_sibling_sections(self):
         text = self.text('native-libraries')
-        harfbuzz = text.split('@section{HarfBuzz Preflight}', 1)[1]
+        harfbuzz = text.split('@section{HarfBuzz Compatibility Checks}', 1)[1]
         harfbuzz = harfbuzz.split('@section{Installed ABI Catalogue}', 1)[0]
         self.assertIn('@(declare-exporting skia)', harfbuzz)
         self.assertNotIn('#:use-sources', harfbuzz)
@@ -4355,7 +4361,7 @@ class R3gbRasterTests(unittest.TestCase):
     def test_displayed_examples_remain_opt_in_native_code(self):
         forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, _, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(forms.count('racketblock'), 315)
+        self.assertEqual(forms.count('racketblock'), 316)
         self.assertEqual(forms.count('examples'), 25)
         for name in ('raster-buffers', 'image-operations', 'graphics', 'output-groups'):
             self.assertNotIn('@examples', self.text(name))
@@ -4621,8 +4627,9 @@ class R4aContextTests(unittest.TestCase):
                       'hardware_acceleration_verified', 'performance_measured'):
             self.assertIn(field, text)
         self.assertIn('not-probed', text)
-        self.assertIn('native-default factory', self.text('gpu-context-options'))
-        self.assertIn('Neither route provides native readback of the effective options',
+        self.assertIn("uses Skia's native defaults",
+                      ' '.join(self.text('gpu-context-options').split()))
+        self.assertIn('The API does not report the effective settings',
                       ' '.join(self.text('gpu-context-options').split()))
 
     def test_provider_contract_distinguishes_host_ownership_and_callback_obligations(self):
@@ -4654,7 +4661,7 @@ class R4aContextTests(unittest.TestCase):
         self.assertIn('request flag is separate', text)
         self.assertIn('called from another Racket thread', text)
         self.assertIn('GC and custodian', text)
-        self.assertIn('dead owner', text)
+        self.assertIn('If the owning thread has terminated', text)
         result = self.header('gpu-context-state')[1]
         self.assertNotIn(['quote', 'shutdown-requested'], result)
         self.assertIn(['quote', 'release-failed'], result)
@@ -4948,7 +4955,7 @@ class R4bDocumentationTests(unittest.TestCase):
     def test_flush_submit_wait_and_cache_setter_have_distinct_results(self):
         text = ' '.join(self.text('gpu-synchronization').split())
         self.assertIn('does not first flush', text)
-        self.assertIn('neither submission nor CPU completion', text)
+        self.assertIn('neither submission nor a wait for GPU work to finish', text)
         self.assertIn('returns void, not the previous', text)
         for name in ('gpu-flush!', 'gpu-submit!', 'gpu-wait!', 'gpu-set-cache-limit!'):
             self.assertEqual(self.header(name)[1], 'void?')
@@ -5353,8 +5360,8 @@ class R4cInteropTests(unittest.TestCase):
 
     def test_diagnostics_do_not_claim_hardware_or_implicit_synchronization(self):
         text = ' '.join(self.text('gpu-diagnostics').split())
-        for phrase in ('not hardware attestations', 'No flush, submission, wait, or pixel readback',
-                       'fixed synchronous 8 by 8', 'not a general drawing API'):
+        for phrase in ('Neither establishes that rendering is hardware accelerated', 'No flush, submission, wait, or pixel readback',
+                       'fixed 8 by 8 pattern', 'not a general drawing API'):
             self.assertIn(phrase, text)
 
     def test_link_probe_mentions_every_new_public_alias(self):
@@ -5557,7 +5564,7 @@ class R4dPresentationTests(unittest.TestCase):
     def test_gpu_output_documents_explicit_readback_and_bounded_fallback(self):
         text = ' '.join(self.text('gpu-output').split())
         for phrase in ('explicit synchronous @tech{GPU readback}', 'CPU-owned @tech{image}',
-                       'does not close', 'not a general runtime renderer fallback'):
+                       'does not close', 'callback errors, and failures during GPU rendering'):
             self.assertIn(phrase, text)
 
     def test_link_probe_covers_all_r4d_exports(self):
@@ -5582,7 +5589,7 @@ class R4dPresentationTests(unittest.TestCase):
     def test_examples_are_unchanged_by_r4d(self):
         forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
-        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 315)
+        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 316)
         self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
 
     def test_gpu_output_remains_in_r4d_after_r4e_completion(self):
@@ -5701,9 +5708,9 @@ class R4eDcIntegrationTests(unittest.TestCase):
         raster = ' '.join(self.text('racket-dc').split())
         output = ' '.join(self.text('dc-output').split())
         gpu = ' '.join(self.text('gpu-dc').split())
-        self.assertIn('persistent CPU-raster backing', raster)
+        self.assertIn('persistent CPU-raster implementation', raster)
         self.assertIn('idempotent on the owner thread', raster)
-        self.assertIn('callback-scoped DC', output)
+        self.assertIn('callback-scoped output DC values', output)
         self.assertIn('capture DC expires', output)
         self.assertIn('fresh GPU drawing context', gpu)
         self.assertIn('invalid on normal return, exception, or escape', gpu)
@@ -5747,7 +5754,7 @@ class R4eDcIntegrationTests(unittest.TestCase):
         text = ' '.join(self.text('gpu-dc').split())
         for phrase in ('RGBA/BGRA/F16/F32', 'GPU-to-GPU', 'No automatic CPU readback',
                        'exact owning @racket[call-with-gpu-context] activation',
-                       'not a pixel transaction', 'explicit synchronous CPU transfers'):
+                       'does not roll back those changes', 'copy the surface\'s pixels to CPU memory'):
             self.assertIn(phrase, text)
         frame = self.header('call-with-gpu-frame-dc')[0]
         color = next(arg for arg in frame if isinstance(arg, list) and arg[0] == '#:color-type')
@@ -5791,7 +5798,7 @@ class R4eDcIntegrationTests(unittest.TestCase):
     def test_examples_remain_unchanged_by_r4e(self):
         forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
-        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 315)
+        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 316)
         self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
 
     def test_source_review_contains_r4e_chapters_cases_and_pinned_inventories(self):
@@ -5864,7 +5871,7 @@ class R4fPictBridgeTests(unittest.TestCase):
                        'without encoding and decoding PNG',
                        'GPU-dependent image is rejected',
                        'Tagged images are read into sRGB',
-                       'twice the physical RGBA byte count',
+                       'Together, these require eight bytes per pixel',
                        'Ceiling can make the actual x and y pixel scales differ slightly'):
             self.assertIn(phrase, prose)
         self.assertIn('@racketmodname[skia/bitmap]', prose)

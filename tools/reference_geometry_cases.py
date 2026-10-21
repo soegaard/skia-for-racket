@@ -7,9 +7,9 @@ uses the real pinned files.
 No native execution is claimed by this data module.
 """
 
-GA_MODULES = {'advanced-layers.rkt': ['call-with-canvas-layer-rec',
+GA_MODULES = {'advanced-layers.rkt': ['call-with-canvas-layer/options',
                          'canvas-discard!',
-                         'canvas-save-layer-rec!'],
+                         'canvas-save-layer/options!'],
  'canvas-matrix.rkt': ['call-with-canvas-matrix',
                        'canvas-concat-matrix3!',
                        'canvas-concat-matrix4!',
@@ -216,7 +216,7 @@ GA_MODULES = {'advanced-layers.rkt': ['call-with-canvas-layer-rec',
                               'call-with-overdraw-canvas']}
 
 GA_PROCEDURES = {'call-with-canvas-layer': (4, ['bounds', 'paint']),
- 'call-with-canvas-layer-rec': (4, ['backdrop', 'clip', 'options', 'paint']),
+ 'call-with-canvas-layer/options': (4, ['backdrop', 'clip', 'options', 'paint']),
  'call-with-canvas-matrix': (8, ['replace?']),
  'call-with-drawable': (8, []),
  'call-with-nodraw-canvas': (8, []),
@@ -234,7 +234,7 @@ GA_PROCEDURES = {'call-with-canvas-layer': (4, ['bounds', 'paint']),
  'canvas-matrix4': (2, []),
  'canvas-quick-reject?': (32, []),
  'canvas-save-layer!': (2, ['bounds', 'paint']),
- 'canvas-save-layer-rec!': (2, ['backdrop', 'options', 'paint']),
+ 'canvas-save-layer/options!': (2, ['backdrop', 'options', 'paint']),
  'canvas-set-matrix3!': (4, []),
  'canvas-set-matrix4!': (4, []),
  'conic->quadratics': (16, ['subdivisions']),

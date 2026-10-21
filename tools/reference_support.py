@@ -142,6 +142,43 @@ def brace_end(text, position):
     return pos
 
 
+def scribble_header_end(text, position):
+    """Skip a bracketed Scribble header whose contents are not Racket code.
+
+    Most command headers are Racket expressions and ``Reader`` gives their
+    callers a useful structured value.  A few layout forms, such as
+    ``@itemlist[...]``, instead contain Scribble prose.  In that prose a
+    semicolon is punctuation, not a Racket line comment, so it must be skipped
+    with a delimiter matcher rather than ``Reader``.
+    """
+    need(text[position:position + 1] in ('[', '('), 'expected Scribble header')
+    closing = {'[': ']', '(': ')'}
+    stack, pos = [closing[text[position]]], position + 1
+    while stack:
+        need(pos < len(text), 'unclosed Scribble header')
+        ch = text[pos]
+        if ch == '"':
+            pos += 1
+            while pos < len(text):
+                if text[pos] == '\\':
+                    pos += 2
+                elif text[pos] == '"':
+                    pos += 1
+                    break
+                else:
+                    pos += 1
+            else:
+                raise CheckError('unterminated string in Scribble header')
+            continue
+        if ch in '([{':
+            stack.append({'(': ')', '[': ']', '{': '}'}[ch])
+        elif ch in ')]}':
+            need(ch == stack[-1], 'mismatched Scribble header delimiter')
+            stack.pop()
+        pos += 1
+    return pos
+
+
 def commands(text, *, recursive=False):
     """Read top-level @ commands; do not mistake example code for a definition."""
     pos = 0
@@ -176,8 +213,18 @@ def commands(text, *, recursive=False):
         header = None
         if text[pos:pos + 1] == '[':
             reader = Reader(text, pos)
-            header = reader.read()
-            pos = reader.position
+            try:
+                header = reader.read()
+                pos = reader.position
+            except CheckError:
+                # Definition and include headers are evidence consumed by the
+                # checker, so malformed ones must still fail closed.  Other
+                # commands can have prose in their brackets; retain their
+                # position while treating that header as opaque.
+                need(name not in DEFINITION_FORMS | OTHER_DEFINITIONS
+                     | {'include-section', 'include-reference-section'},
+                     f'malformed @{name} header')
+                pos = scribble_header_end(text, pos)
         body_start = pos if text[pos:pos + 1] == '{' else None
         if body_start is not None:
             pos = brace_end(text, pos)

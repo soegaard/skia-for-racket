@@ -8054,7 +8054,7 @@
       "space": null
     },
     {
-      "name": "canvas-save-layer-rec!",
+      "name": "canvas-save-layer/options!",
       "chapter": "scribblings/reference/layers.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -8065,7 +8065,7 @@
       "space": null
     },
     {
-      "name": "call-with-canvas-layer-rec",
+      "name": "call-with-canvas-layer/options",
       "chapter": "scribblings/reference/layers.scrbl",
       "canonical_module": "skia",
       "exports": [
