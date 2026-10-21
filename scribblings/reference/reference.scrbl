@@ -86,8 +86,8 @@ A @bold{Skia Guide} is planned.
 @include-reference-section["documents-and-output.scrbl"]
 @include-reference-section["streams-pixels-codecs.scrbl"]
 @include-reference-section["gpu-rendering.scrbl"]
-@include-reference-section["gpu-interoperability-output.scrbl"]
 @include-reference-section["presentation-and-gui.scrbl"]
+@include-reference-section["gpu-interoperability-output.scrbl"]
 @include-reference-section["racket-integration.scrbl"]
 
 @(decorate-reference-index (index-section))

@@ -2,13 +2,16 @@
 
 @title[#:tag "skia-reference-gpu-interop-output" #:style 'toc]{Native GPU Interoperability}
 
-Native GPU interoperability crosses the boundary between Skia-owned GPU work
-and host-owned OpenGL, Metal, or Direct3D resources. OpenGL handoffs operate
-within the active host context. External-texture tokens provide a single-use
-safe boundary, while the Metal and Direct3D constructors accept raw native
-pointers through explicitly unsafe libraries. None of these interfaces relaxes
-the ownership, context, synchronization, or thread rules of the resources
-involved.
+This chapter covers advanced integration with an application that already uses
+OpenGL, Metal, or Direct3D. It describes how Skia can work with that
+application's native GPU commands or resources.
+
+Most programs do not need this chapter. To draw only with Skia, start with
+@seclink["skia-reference-gpu-rendering"]{GPU Contexts and Resources}. For a
+Racket GUI window, continue with
+@seclink["skia-reference-presentation-gui"]{Presentation and GUI}. Read this
+chapter only when another library or engine already owns GPU commands, a
+context, or a texture that you need to exchange with Skia.
 
 @local-table-of-contents[]
 
