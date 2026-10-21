@@ -9221,7 +9221,7 @@
     },
     {
       "name": "image-grid-cell?",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9232,7 +9232,7 @@
     },
     {
       "name": "image-nine-plan",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9243,7 +9243,7 @@
     },
     {
       "name": "image-lattice-plan",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9254,7 +9254,7 @@
     },
     {
       "name": "image-grid-cell-row",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9265,7 +9265,7 @@
     },
     {
       "name": "image-grid-cell-column",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9276,7 +9276,7 @@
     },
     {
       "name": "image-grid-cell-kind",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9287,7 +9287,7 @@
     },
     {
       "name": "image-grid-cell-source",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9298,7 +9298,7 @@
     },
     {
       "name": "image-grid-cell-destination",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9309,7 +9309,7 @@
     },
     {
       "name": "image-grid-cell-color",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9320,7 +9320,7 @@
     },
     {
       "name": "image-grid-plan->jsexpr",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9331,7 +9331,7 @@
     },
     {
       "name": "draw-image-nine/portable",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -9342,7 +9342,7 @@
     },
     {
       "name": "draw-image-lattice/portable",
-      "chapter": "scribblings/reference/portable-drawing.scrbl",
+      "chapter": "scribblings/reference/structured-drawing.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",

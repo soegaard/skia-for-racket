@@ -1,7 +1,12 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract skia skia/geometry-primitives))
+          scribble/eval
+          (for-label racket/base racket/contract skia skia/geometry-primitives
+                     skia/portable-drawing))
+
+@(define grid-eval (make-base-eval))
+@(grid-eval '(require skia/portable-drawing))
 
 @title[#:tag "skia-structured-drawing"]{Meshes, Patches, Image Grids, and Atlases}
 
@@ -9,11 +14,15 @@
 @(declare-exporting skia skia/geometry-primitives #:use-sources (skia/geometry-primitives))
 
 These interfaces draw triangle meshes, @tech[#:key "cubic patch"]{cubic patches},
-image grids, and transformed image batches. They use the native Skia canvas,
-its current transform and clip,
-and the normal resource lifetime and context restrictions. A successful native
-call does not promise vector preservation in PDF or SVG. Portable alternatives
-are described in @secref["skia-portable-drawing"].
+image grids, and transformed image batches. Drawing uses the canvas's current
+@tech{canvas transform} and @tech{clip}, with the normal resource lifetime and
+context restrictions. A successful native call does not promise vector
+preservation in PDF or SVG.
+
+Portable image-grid drawing and grid planning are described after the native
+nine-patch and lattice operations. Those functions are also available from
+@racketmodname[skia/portable-drawing]. Portable markers and atlas drawing are
+described in @secref["skia-portable-drawing"].
 
 Point collections are lists or vectors of two-coordinate lists or vectors.
 Inputs are validated and copied before submission, and their counts and
@@ -374,6 +383,208 @@ To draw the grid as separate image rectangles, use @racket[draw-image-lattice/po
 @reference-figure["lattice-native-stage10.png"
                   "A native image lattice stretches a yellow center while preserving narrow blue border cells."]
 }
+
+@section[#:tag "skia-portable-image-grids"]{Portable Image-Grid Drawing}
+
+@(declare-exporting skia skia/portable-drawing #:use-sources (skia/portable-drawing))
+
+Use @racket[draw-image-nine/portable] or @racket[draw-image-lattice/portable] to
+draw the grids described above as separate image rectangles. These functions
+calculate the cell layout for you; you do not need to construct a @tech{grid plan}.
+They use ordinary drawing commands before recording, without changing
+@racket[draw-image-nine] or @racket[draw-image-lattice] or silently selecting a
+backend. The images still contain raster pixels; drawing them this way does not
+turn them into vector geometry or guarantee identical results in every viewer.
+
+The image-grid functions below and @racket[draw-atlas/portable] accept
+@tech[#:key "nearest sampling"]{nearest} or @tech{linear sampling} and a byte alpha
+multiplier. They do not accept an arbitrary paint, per-sprite tint colors, or
+blend mode. They draw source-over, in input or cell order. Repeated source
+rectangles share temporary subset images during one call; those temporaries
+are released before return, including on failure. The original image remains
+caller-owned.
+
+@defproc[(draw-image-nine/portable [canvas canvas?]
+          [image image?]
+          [center (or/c (list/c exact-integer? exact-integer? exact-integer? exact-integer?)
+                 (vector/c exact-integer? exact-integer? exact-integer? exact-integer?))]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [#:sampling sampling (or/c 'nearest 'linear) 'linear]
+          [#:alpha alpha byte? 255])
+          void?]{
+Draws a nine-patch image as ordinary image rectangles, using the layout
+calculated by @racket[image-nine-plan]. Empty source or destination cells are
+omitted. Source samples are sliced without resampling before destination drawing;
+interpolation then follows the chosen sampling mode.
+The alpha multiplier applies to each cell.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 30 30 #:background "#326DE6")]
+              [orange (make-paint #:color "#EFA02B")])
+    (draw-circle (surface-canvas source) 15 15 8 orange)
+    (with-skia ([image (surface-snapshot source)])
+      (draw-image-nine/portable canvas image '(8 8 14 14) 15 10 170 100
+                                #:sampling 'nearest #:alpha 128))))
+]
+@reference-figure["portable-nine-alpha-stage10.png"
+                  "A portable nine-patch is drawn at half alpha, revealing the white background through the image."]
+}
+
+@defproc[(draw-image-lattice/portable [canvas canvas?]
+          [image image?]
+          [lattice image-lattice?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [#:sampling sampling (or/c 'nearest 'linear) 'linear]
+          [#:alpha alpha byte? 255])
+          void?]{
+Draws an image lattice as image rectangles and plain fixed-color rectangles,
+using the layout calculated by @racket[image-lattice-plan]. Transparent or
+zero-area cells are omitted. The alpha multiplier also scales fixed-color alpha,
+using nearest byte rounding. The lattice's full-grid validation occurs before drawing.
+
+
+@racketblock[
+(with-skia ([surface (make-surface 200 120 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([source (make-surface 30 30 #:background "#E8EEF9")]
+              [blue (make-paint #:color "#326DE6")])
+    (draw-rect (surface-canvas source) 0 0 10 30 blue)
+    (draw-rect (surface-canvas source) 20 0 10 30 blue)
+    (with-skia ([image (surface-snapshot source)])
+      (define lattice (make-image-lattice '(10 20) '(10 20)))
+      (draw-image-lattice/portable canvas image lattice 15 10 170 100 #:sampling 'nearest))))
+]
+@reference-figure["portable-lattice-stage10.png"
+                  "A portable lattice stretches the center spans while drawing each cell as ordinary rectangles."]
+}
+
+@section[#:tag "skia-image-grid-plans"]{Grid Plans}
+
+@(declare-exporting skia skia/portable-drawing #:use-sources (skia/portable-drawing))
+
+A @deftech{grid plan} describes how an image is divided into rectangular cells
+and where each cell goes in a destination rectangle. This is useful for resizing
+an image of a framed panel or button: the corners and border thickness can stay
+the same while the center stretches. If the destination is too small to fit the
+fixed parts, those parts shrink instead.
+
+Use @racket[image-nine-plan] for a three-by-three grid of corners, edges, and a
+center. Use @racket[image-lattice-plan] for an @tech{image lattice} with other
+divisions or cells that are skipped or filled with a fixed color. The lattice
+specifies the source divisions; the plan calculates the resulting rectangles
+for a particular destination position and size.
+
+Call these planning functions when you need to inspect the cell layout, check
+how it changes at different sizes, or export the rectangles with
+@racket[image-grid-plan->jsexpr]. They calculate the layout from image dimensions
+and division information, without needing an image or canvas. They do not draw
+anything or load Skia.
+
+If you only want to draw the resized image, use
+@racket[draw-image-nine/portable] or @racket[draw-image-lattice/portable]; they
+compute their plans for you. If all parts of the image should scale together,
+use the simpler @racket[draw-image-rect] instead.
+
+A plan is a list of cell structures, recognized by @racket[image-grid-cell?], in
+row-major order: left to right within each row, from top to bottom. Each cell
+has integer source-image geometry and finite destination geometry in
+@tech{local coordinates}. Adjacent cells use the same coordinates for their
+shared destination edges. A plan can
+include cells with zero destination area, which the drawing functions omit.
+
+@defproc[(image-grid-cell? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a grid-plan cell and @racket[#f] otherwise.
+}
+
+@defproc[(image-nine-plan [image-width (integer-in 1 1073741823)]
+          [image-height (integer-in 1 1073741823)]
+          [center (or/c (list/c exact-integer? exact-integer? exact-integer? exact-integer?)
+                 (vector/c exact-integer? exact-integer? exact-integer? exact-integer?))]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))])
+          (listof image-grid-cell?)]{
+Returns the nine row-major cells for an image and its nonempty center
+rectangle. The center must lie within the supplied image dimensions. Fixed
+outer spans retain their size when possible; if they do not fit, they shrink
+proportionally and the corresponding center span collapses.
+
+@examples[#:eval grid-eval
+ (define cells (image-nine-plan 10 10 '(2 2 6 6) 0 0 20 20))
+ (eval:check (image-grid-cell-source (list-ref cells 4)) #(2 2 6 6))
+ (eval:check (image-grid-cell-destination (list-ref cells 4)) #(2.0 2.0 16.0 16.0))]
+
+The two-pixel borders retain their widths while the center expands to sixteen pixels.
+}
+
+@defproc[(image-lattice-plan [image-width (integer-in 1 1073741823)]
+          [image-height (integer-in 1 1073741823)]
+          [lattice image-lattice?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))])
+          (listof image-grid-cell?)]{
+Returns the row-major cells for the lattice after checking bounds and
+interior divisions against the image dimensions. Cell kinds and fixed colors
+are preserved. An undivided axis maps its whole source extent to the destination.
+The plan does not contain sampled image pixels.
+}
+
+@defproc[(image-grid-cell-row [cell image-grid-cell?])
+          exact-nonnegative-integer?]{
+Returns the zero-based row index in the plan.
+}
+
+@defproc[(image-grid-cell-column [cell image-grid-cell?])
+          exact-nonnegative-integer?]{
+Returns the zero-based column index in the plan.
+}
+
+@defproc[(image-grid-cell-kind [cell image-grid-cell?])
+          (or/c 'default 'transparent 'fixed-color)]{
+Returns whether the cell samples the source image, is omitted, or uses a
+fixed color.
+}
+
+@defproc[(image-grid-cell-source [cell image-grid-cell?])
+          (and/c (vector/c exact-integer? exact-integer? exact-integer? exact-integer?) immutable?)]{
+Returns the immutable source rectangle, using coordinates, width, and height.
+Some grid edge cells can have zero extent.
+}
+
+@defproc[(image-grid-cell-destination [cell image-grid-cell?])
+          (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the immutable destination rectangle derived from the shared rounded
+edges. A zero extent means the drawing function omits this cell.
+}
+
+@defproc[(image-grid-cell-color [cell image-grid-cell?])
+          (or/c rgba? #f)]{
+Returns an @racket[rgba] value for a fixed-color cell, or @racket[#f] for
+other kinds. This is not the packed integer used by @racket[image-lattice-colors].
+}
+
+@defproc[(image-grid-plan->jsexpr [plan (listof image-grid-cell?)])
+          (listof hash?)]{
+Returns JSON-compatible cell descriptions with row, column, kind, source,
+destination, and color keys. Kind symbols become strings, coordinate vectors
+become lists, and fixed colors become packed ARGB integers. Missing colors use
+@racket[#f]. An empty plan returns an empty list.
+}
+
+@close-eval[grid-eval]
 
 @section{Transformed Image Batches}
 

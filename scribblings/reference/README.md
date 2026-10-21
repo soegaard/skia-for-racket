@@ -70,7 +70,7 @@ Shared collection navigation comes from [../support/](../support/README.md).
 - [pict-bridge.scrbl](pict-bridge.scrbl) — API specification for Pict Bridge.
 - [pictures.scrbl](pictures.scrbl) — API specification for Pictures.
 - [pixel-descriptions.scrbl](pixel-descriptions.scrbl) — API specification for Pixel Descriptions.
-- [portable-drawing.scrbl](portable-drawing.scrbl) — API specification for Portable Drawing.
+- [portable-drawing.scrbl](portable-drawing.scrbl) — Portable marker and atlas drawing, with links to image-grid drawing and planning.
 - [presentation-and-gui.scrbl](presentation-and-gui.scrbl) — Subject-group assembly for Presentation And Gui.
 - [projective-matrices.scrbl](projective-matrices.scrbl) — API specification for Projective Matrices.
 - [racket-dc.scrbl](racket-dc.scrbl) — API specification for Racket DC.
@@ -90,7 +90,7 @@ Shared collection navigation comes from [../support/](../support/README.md).
 - [specialized-canvases.scrbl](specialized-canvases.scrbl) — API specification for Specialized Canvases.
 - [streams-pixels-codecs.scrbl](streams-pixels-codecs.scrbl) — Subject-group assembly for Streams Pixels Codecs.
 - [streams.scrbl](streams.scrbl) — API specification for Streams.
-- [structured-drawing.scrbl](structured-drawing.scrbl) — API specification for Structured Drawing.
+- [structured-drawing.scrbl](structured-drawing.scrbl) — Meshes, patches, nine-patch and lattice images, portable image-grid drawing, grid plans, and native atlas drawing.
 - [surface-properties.scrbl](surface-properties.scrbl) — API specification for Surface Properties.
 - [surfaces-and-canvases.scrbl](surfaces-and-canvases.scrbl) — Subject-group assembly for Surfaces And Canvases.
 - [surfaces.scrbl](surfaces.scrbl) — API specification for Surfaces.

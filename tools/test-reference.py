@@ -4025,13 +4025,44 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_pure_examples_use_public_modules_and_checked_results(self):
         for chapter, evaluator, module in (
             ('projective-matrices.scrbl', 'projective-eval', 'skia/projective-matrix'),
-            ('portable-drawing.scrbl', 'grid-eval', 'skia/portable-drawing')):
+            ('structured-drawing.scrbl', 'grid-eval', 'skia/portable-drawing')):
             text = self.text(chapter)
             self.assertIn(f"({evaluator} '(require {module}))", text)
             self.assertIn(f'@examples[#:eval {evaluator}', text)
             self.assertIn('eval:check', text)
             self.assertIn(f'@close-eval[{evaluator}]', text)
             self.assertLess(text.index(f'@(define {evaluator}'), text.index('@title'))
+
+    def test_image_grids_follow_nine_patches_before_atlas_drawing(self):
+        text = self.text('structured-drawing.scrbl')
+        headings = ('@section{Nine-Patch and Lattice Images}',
+                    '@section[#:tag "skia-portable-image-grids"]{Portable Image-Grid Drawing}',
+                    '@section[#:tag "skia-image-grid-plans"]{Grid Plans}',
+                    '@section{Transformed Image Batches}')
+        positions = [text.index(heading) for heading in headings]
+        self.assertEqual(positions, sorted(positions))
+        declaration = ('@(declare-exporting skia skia/portable-drawing '
+                       '#:use-sources (skia/portable-drawing))')
+        for start, end in zip(positions[1:3], positions[2:4]):
+            section = text[start:end]
+            self.assertEqual(section.count(declaration), 1)
+            self.assertLess(section.index(declaration), section.index('@defproc'))
+        grid_names = ('draw-image-nine/portable', 'draw-image-lattice/portable',
+                      'image-nine-plan', 'image-lattice-plan', 'image-grid-plan->jsexpr',
+                      'image-grid-cell?', 'image-grid-cell-row', 'image-grid-cell-column',
+                      'image-grid-cell-kind', 'image-grid-cell-source',
+                      'image-grid-cell-destination', 'image-grid-cell-color')
+        for name in grid_names:
+            self.assertEqual(self.by_name[name]['chapter'],
+                             'scribblings/reference/structured-drawing.scrbl')
+        for name in ('draw-markers', 'draw-atlas/portable'):
+            self.assertEqual(self.by_name[name]['chapter'],
+                             'scribblings/reference/portable-drawing.scrbl')
+        portable = self.text('portable-drawing.scrbl')
+        self.assertIn('{Portable Markers and Atlases}', portable)
+        self.assertIn('@secref["skia-portable-image-grids"]', portable)
+        self.assertIn('@secref["skia-image-grid-plans"]', portable)
+        self.assertNotIn('grid-eval', portable)
 
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
