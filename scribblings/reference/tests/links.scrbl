@@ -2040,9 +2040,7 @@ The following links cover the font and text interfaces.
 
 @racket[geometry:path-add-rect-start!]
 
-@racket[path-add-rrect!]
-
-@racket[geometry:path-add-rrect!]
+@racket[geometry:path-add-rounded-rect!]
 
 @racket[path-add-polygon!]
 

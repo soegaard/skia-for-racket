@@ -14,6 +14,8 @@
 (require rackunit rackunit/text-ui racket/list
          "../private/geometry-completion-util.rkt" "../private/check.rkt"
          "../private/types.rkt" "../matrix.rkt" "../output-policy.rkt"
+         (only-in "../main.rkt" path-add-rounded-rect! make-rounded-rect)
+         (only-in "../geometry.rkt" [path-add-rounded-rect! geometry-path-add-rounded-rect!])
          (only-in (submod "../private/audit-trace.rkt" testing)
                   uses put-slot! features after-native!))
 (provide geometry-completion-pure-tests)
@@ -35,6 +37,31 @@
 (define geometry-completion-pure-tests
   (test-suite
    "0.67 pure geometry domains and paint provenance"
+   (test-case "rounded rectangle path forms share one public procedure"
+     (check-eq? path-add-rounded-rect! geometry-path-add-rounded-rect!)
+     (check-equal? (procedure-arity path-add-rounded-rect!) '(2 7))
+     (define-values (required allowed) (procedure-keywords path-add-rounded-rect!))
+     (check-equal? required '())
+     (check-equal? allowed '(#:direction #:start-index))
+     (for ([arity (in-list '(0 1 3 4 5 6 8))])
+       (bad (lambda () (apply path-add-rounded-rect! (make-list arity #f))))))
+   (test-case "rounded rectangle value form validates before native work"
+     (define shape (make-rounded-rect 0 0 40 20 #:radii 4))
+     (check-exn #rx"path-add-rounded-rect!:.*rounded-rect\\?"
+                (lambda () (path-add-rounded-rect! #f 'not-a-rounded-rect)))
+     (for ([start (in-list '(-1 8 1.0 #f))])
+       (bad (lambda () (path-add-rounded-rect! #f shape #:start-index start))))
+     (bad (lambda () (path-add-rounded-rect! #f shape #:direction 'invalid))))
+   (test-case "rounded rectangle coordinate form rejects invalid arguments"
+     (for ([coordinates (in-list '((+inf.0 0 40 20 4 4) (0 +nan.0 40 20 4 4)
+                                   (0 0 -1 20 4 4) (0 0 40 -1 4 4)
+                                   (0 0 40 20 -1 4) (0 0 40 20 4 -1)
+                                   (3e38 0 3e38 20 4 4)))])
+       (bad (lambda () (apply path-add-rounded-rect! #f coordinates))))
+     (bad (lambda () (path-add-rounded-rect! #f 0 0 40 20 4 4 #:direction 'invalid)))
+     (for ([start (in-list '(0 #f))])
+       (check-exn #rx"#:start-index requires the rounded-rectangle value form"
+                  (lambda () (path-add-rounded-rect! #f 0 0 40 20 4 4 #:start-index start)))))
    (test-case "finite scalar rejects NaN and infinities"
      (for ([v (in-list (list +nan.0 +inf.0 -inf.0 1e100))])
        (bad (lambda () (geometry-float 'test v)))))

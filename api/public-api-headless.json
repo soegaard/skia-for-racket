@@ -2692,10 +2692,10 @@
             "direction",
             "start-index"
           ],
-          "arity_mask": "4",
-          "export_kind": "syntax",
+          "arity_mask": "132",
+          "export_kind": "value",
           "kind": "procedure",
-          "name": "path-add-rrect!",
+          "name": "path-add-rounded-rect!",
           "phase": "0",
           "required_keywords": []
         },
@@ -12388,24 +12388,13 @@
         },
         {
           "allowed_keywords": [
-            "direction"
-          ],
-          "arity_mask": "128",
-          "export_kind": "syntax",
-          "kind": "procedure",
-          "name": "path-add-rounded-rect!",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [
             "direction",
             "start-index"
           ],
-          "arity_mask": "4",
-          "export_kind": "syntax",
+          "arity_mask": "132",
+          "export_kind": "value",
           "kind": "procedure",
-          "name": "path-add-rrect!",
+          "name": "path-add-rounded-rect!",
           "phase": "0",
           "required_keywords": []
         },

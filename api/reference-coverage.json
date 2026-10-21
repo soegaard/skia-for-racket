@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "4310fe0f786206ce33c70fc7da3eb6f7c7b2bbca"
+      "git_blob": "83c229a242a3e2f155b4ee65f6134744d41e4255"
     },
     {
       "file": "api/public-api-gui.json",
@@ -1288,10 +1288,11 @@
     },
     {
       "name": "path-add-rounded-rect!",
-      "chapter": "scribblings/reference/paths.scrbl",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
       "canonical_module": "skia",
       "exports": [
-        "skia"
+        "skia",
+        "skia/geometry"
       ],
       "phase": "0",
       "space": null
@@ -8230,17 +8231,6 @@
     },
     {
       "name": "path-add-rect-start!",
-      "chapter": "scribblings/reference/paths.scrbl",
-      "canonical_module": "skia",
-      "exports": [
-        "skia",
-        "skia/geometry"
-      ],
-      "phase": "0",
-      "space": null
-    },
-    {
-      "name": "path-add-rrect!",
       "chapter": "scribblings/reference/paths.scrbl",
       "canonical_module": "skia",
       "exports": [

@@ -243,15 +243,18 @@ heights, and radii must be nonnegative.
 Appends a closed rectangle with the given position, size, and winding direction.
 }
 
-@defproc[(path-add-rounded-rect! [path skia-path?] [x real?] [y real?]
-                                [width (and/c real? (>=/c 0))]
-                                [height (and/c real? (>=/c 0))]
-                                [radius-x (and/c real? (>=/c 0))]
-                                [radius-y (and/c real? (>=/c 0))]
-                                [#:direction direction (or/c 'cw 'ccw) 'cw]) void?]{
-Appends a closed rounded rectangle. Skia scales radii that are too large so the
-corners fit. A zero radius in either direction reduces the shape to a rectangle.
-}
+Use @racket[path-add-rounded-rect!] to append a closed rounded rectangle with
+the same horizontal and vertical radii at every corner:
+
+@racketblock0[
+(path-add-rounded-rect! path x y width height radius-x radius-y
+                        #:direction 'cw)
+]
+
+It also accepts a rounded-rectangle value for per-corner radii or an explicit
+starting point. See its @racket[path-add-rounded-rect!] entry in
+@seclink["skia-rounded-rectangles"]{Rounded Rectangles} for both calling forms
+and their options.
 
 @defproc[(path-add-oval! [path skia-path?] [x real?] [y real?]
                         [width (and/c real? (>=/c 0))]
@@ -915,20 +918,6 @@ The native full-oval and degenerate cases are preserved.
 Adds a rectangle contour with an explicit starting corner. Indices 0, 1, 2,
 and 3 select top-left, top-right, bottom-right, and bottom-left, respectively.
 An out-of-range index raises an exception; it is not reduced modulo four.
-}
-
-@defproc[(path-add-rrect! [path path?]
-          [shape rounded-rect?]
-          [#:direction direction (or/c 'cw 'ccw) 'cw]
-          [#:start-index start (integer-in 0 7) 0])
-          void?]{
-Adds the rounded rectangle as a new contour, after adjusting its bounds and radii
-using @seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}.
-The start index selects one of Skia's eight tangent points, not one of four corner centers.
-Indices follow the clockwise boundary: the top edge's left and right tangent
-points, the right edge's top and bottom points, the bottom edge's right and left
-points, and the left edge's bottom and top points. Direction changes traversal,
-not the indexing convention. The shape remains unchanged.
 }
 
 @defproc[(path-add-polygon! [path path?]

@@ -7,18 +7,30 @@ three-argument value form and eight-argument coordinate form. Drawing Primitives
 introduces the coordinate form and links to the full entry. Both public modules,
 `skia` and `skia/canvas-primitives`, export the same procedure.
 
+`path-add-rounded-rect!` is also documented once, in Rounded Rectangles, with
+its two-argument value form and seven-argument coordinate form. Paths introduces
+the coordinate form and links to the full entry. `skia` and `skia/geometry`
+export the same procedure. Both forms accept `#:direction`, but only the
+value form accepts `#:start-index`; the existing default starting points are
+preserved.
+
+The short calling-form summaries use `racketblock0` for display only. Reserve
+`racketblock` for complete examples: the native example runner executes every
+such block in isolation, so a signature with placeholder arguments is not one.
+
 The source and runtime declaration readers support `defproc*` for one procedure
-with disjoint finite arities and no keyword arguments. They combine the arity
-masks and preserve each form's argument metadata; other case signatures remain
-unsupported. API snapshots and their coverage pins must change together when
+with disjoint finite arities and optional keywords. They combine the arity
+masks and allowed keywords while preserving each form's argument metadata.
+Required keywords, rest arguments, and overlapping arities remain unsupported
+in `defproc*`. API snapshots and their coverage pins must change together when
 the calling forms change.
 
 ## Opt-in Racket Draw bridge
 
 Baseline: `4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1`
 (`Clarify Pict bridge introduction`). R4g adds an opt-in
-`skia/racket-draw` reference chapter. The Reference now has 1262 definitions,
-1987 documented export paths, and 84 conceptual chapters. The headless
+`skia/racket-draw` reference chapter. The Reference now has 1261 definitions,
+1986 documented export paths, and 84 conceptual chapters. The headless
 inventory records seven bridge exports, including the two unchanged
 `skia/bitmap` bindings re-exported from the bridge. No export paths are
 deferred.

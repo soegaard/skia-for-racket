@@ -85,7 +85,8 @@
       (draw-path c p stroke))
 
     (with-skia ([p (make-path)])
-      (path-add-rounded-rect! p 70 425 210 170 30 30)
+          (define shape (make-rounded-rect 70 425 210 170 #:radii 30))
+          (path-add-rounded-rect! p shape)
       (draw-path c p teal)
       (draw-path c p slate))
 

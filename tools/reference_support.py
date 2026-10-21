@@ -229,22 +229,23 @@ def procedure_shape(header):
 
 
 def procedure_cases_shape(header):
-    """Read disjoint finite calling forms for one procedure, without keywords."""
+    """Read disjoint finite calling forms for one procedure, with optional keywords."""
     need(isinstance(header, list) and len(header) == 1
          and isinstance(header[0], list) and header[0], 'invalid procedure cases')
     need(all(isinstance(case, list) and len(case) == 2 for case in header[0]),
          'invalid procedure case')
     cases = [procedure_shape(case) for case in header[0]]
-    name, mask = cases[0]['name'], 0
+    name, mask, keywords = cases[0]['name'], 0, set()
     for case in cases:
         need(case['name'] == name, 'procedure cases must use the same name')
         arity = int(case['arity_mask'])
-        need(arity >= 0 and not case['allowed_keywords'],
-             'procedure cases require finite arities without keywords')
+        need(arity >= 0 and not case['required_keywords'],
+             'procedure cases require finite arities with optional keywords only')
         need(not (mask & arity), 'overlapping procedure cases')
         mask |= arity
+        keywords.update(case['allowed_keywords'])
     return dict(name=name, kind='procedure', arity_mask=str(mask),
-                allowed_keywords=[], required_keywords=[], arguments=[],
+                allowed_keywords=sorted(keywords), required_keywords=[], arguments=[],
                 cases=[case['arguments'] for case in cases])
 
 

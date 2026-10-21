@@ -2309,6 +2309,9 @@ integers and may differ from the picture's recorded size.
 (path-rconic-to! path dcx dcy dx dy weight)
 (path-rcubic-to! path dcx1 dcy1 dcx2 dcy2 dx dy)
 
+(path-add-rounded-rect! path shape
+                        #:direction [direction 'cw]
+                        #:start-index [start 0])
 (path-add-rounded-rect! path x y width height rx ry
                         #:direction [direction 'cw])
 (path-add-path! destination source
@@ -2330,6 +2333,12 @@ integers and may differ from the picture's recorded size.
 Relative commands behave like their Skia counterparts: offsets are interpreted
 from the current point. `path-add-path!` replays one path into another with an
 optional translation and either `'append` or `'extend` mode.
+
+`path-add-rounded-rect!` appends a closed rounded rectangle. Supply a
+`rounded-rect?` value for per-corner radii or an explicit starting point;
+supply coordinates and two radii for shared corner radii. Both forms accept
+`#:direction`, but only the value form accepts `#:start-index`. Their default
+starting points can differ, which matters for operations such as dashed strokes.
 
 `svg-path->path` parses SVG *path data* only, not a full SVG document. The
 accepted grammar is the usual `M/L/H/V/C/S/Q/T/A/Z` path-data language as

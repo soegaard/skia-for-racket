@@ -256,6 +256,12 @@ receiving canvas.
 
 @section[#:tag "next-steps"]{Where to Go From Here}
 
+To try rounded operands, use @racket[path-add-rounded-rect!]. Its coordinate
+form takes a position, size, and two radii shared by all four corners. Its
+value form takes a @racket[make-rounded-rect] result, which can specify different
+radii at each corner. Both forms append a closed contour that can participate
+in the same Boolean operations.
+
 The operations combine filled areas. A stroke-to-path conversion can turn a painted
 outline into an operand. The @api-link[] covers that conversion and operation failures.
 A failed operation raises an error; it is not an empty but valid result.

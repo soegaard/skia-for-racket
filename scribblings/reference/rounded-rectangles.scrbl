@@ -11,7 +11,8 @@ Use a rounded-rectangle value when corners need different radii, or when the
 same rounded boundary will be used for drawing, clipping, and path
 construction. For a single drawing operation with the same radii at every
 corner, use the coordinate-based form of @racket[draw-rounded-rect] without
-creating a separate value.
+creating a separate value. For path construction with shared corner radii,
+@racket[path-add-rounded-rect!] also accepts coordinates directly.
 
 A @deftech{rounded rectangle} is an immutable Racket structure containing a
 rectangle and four pairs of corner radii. Drawing and path construction use
@@ -21,7 +22,7 @@ to adjust the bounds and radii when needed. The stored radii need not fit the bo
 Corners are ordered top-left, top-right, bottom-right, bottom-left. The two
 components at each corner
 are its horizontal and vertical radii. Use @racket[draw-rounded-rect] to draw a value,
-@racket[canvas-clip-rounded-rect!] to clip with one, or @racket[path-add-rrect!]
+@racket[canvas-clip-rounded-rect!] to clip with one, or @racket[path-add-rounded-rect!]
 to convert its boundary to path commands.
 
 @section{Drawing}
@@ -49,6 +50,49 @@ coordinates must also be in range.
 Both forms use @seclink["skia-rounded-rectangle-normalization"]{Skia's
 normalization rules}: overlapping radii are scaled to fit, and a corner
 with a zero radius component becomes square.
+}
+
+@section{Path Construction}
+
+@defproc*[([(path-add-rounded-rect! [path skia-path?]
+                                  [shape rounded-rect?]
+                                  [#:direction direction (or/c 'cw 'ccw) 'cw]
+                                  [#:start-index start (integer-in 0 7) 0]) void?]
+           [(path-add-rounded-rect! [path skia-path?] [x real?] [y real?]
+                                   [width (and/c real? (>=/c 0))]
+                                   [height (and/c real? (>=/c 0))]
+                                   [radius-x (and/c real? (>=/c 0))]
+                                   [radius-y (and/c real? (>=/c 0))]
+                                   [#:direction direction (or/c 'cw 'ccw) 'cw]) void?])]{
+Appends a closed rounded rectangle to @racket[path], leaving its existing
+contours in place.
+
+The first form takes a @tech{rounded rectangle}, normally created with
+@racket[make-rounded-rect]. Use it for different radii at each corner, to reuse
+a shape, or to choose the contour's starting point with @racket[#:start-index].
+
+The second form takes the rectangle's position and size directly. Its
+@racket[radius-x] and @racket[radius-y] apply to all four corners. The width,
+height, and radii must be nonnegative; the computed right and bottom
+coordinates must also be in range.
+
+Both forms use @seclink["skia-rounded-rectangle-normalization"]{Skia's
+normalization rules}: overlapping radii are scaled to fit, and a corner
+with a zero radius component becomes square. The @racket['cw] and
+@racket['ccw] directions select clockwise and counterclockwise winding in
+the initial downward-y coordinate system.
+
+Only the value form accepts @racket[#:start-index]. Indices 0 through 7
+select the boundary's tangent points in clockwise order: the top edge's
+left and right points, the right edge's top and bottom points, the bottom
+edge's right and left points, and the left edge's bottom and top points.
+Direction changes traversal, not this indexing convention. An out-of-range
+index raises an exception; it is not reduced modulo eight. Supplying
+@racket[#:start-index] with the coordinate form also raises an exception.
+
+The two forms can start the contour at different points. Use the value
+form with an explicit start index when the starting point matters, for
+example when aligning a dashed stroke.
 }
 
 @section{Specifications}

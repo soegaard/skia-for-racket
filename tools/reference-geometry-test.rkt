@@ -91,7 +91,7 @@
     (check-equal? (rounded-rect-bounds normalized) #(0.0 0.0 20.0 10.0))
     (check-false (rounded-rect-transform normalized (matrix-rotate-degrees 30)))
     (with-skia ([path (make-path)])
-      (path-add-rrect! path normalized)
+      (path-add-rounded-rect! path normalized)
       (check-true (rounded-rect? (path-as-rounded-rect path)))))
 
   ;;;

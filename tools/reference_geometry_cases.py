@@ -1,8 +1,9 @@
 """Pinned call-boundary fixtures for R3g-a, independent of Scribble signatures.
 
 The rows describe the ten selected modules in public-api-headless.json, including
-both calling forms of draw-rounded-rect. Synthetic test snapshots using these
-rows exercise the checker; the ordinary checker uses the real pinned files.
+both calling forms of draw-rounded-rect and path-add-rounded-rect!. Synthetic
+test snapshots using these rows exercise the checker; the ordinary checker
+uses the real pinned files.
 No native execution is claimed by this data module.
 """
 
@@ -115,7 +116,7 @@ GA_MODULES = {'advanced-layers.rkt': ['call-with-canvas-layer-rec',
                   'path-add-arc!',
                   'path-add-polygon!',
                   'path-add-rect-start!',
-                  'path-add-rrect!',
+                  'path-add-rounded-rect!',
                   'path-add-transformed!',
                   'path-arc-to!',
                   'path-arc-to-oval!',
@@ -338,7 +339,7 @@ GA_PROCEDURES = {'call-with-canvas-layer': (4, ['bounds', 'paint']),
  'path-add-arc!': (128, []),
  'path-add-polygon!': (4, ['closed?']),
  'path-add-rect-start!': (64, ['direction']),
- 'path-add-rrect!': (4, ['direction', 'start-index']),
+    'path-add-rounded-rect!': (132, ['direction', 'start-index']),
  'path-add-transformed!': (8, ['mode']),
  'path-arc-to!': (64, ['direction', 'large?']),
  'path-arc-to-oval!': (128, ['force-move?']),

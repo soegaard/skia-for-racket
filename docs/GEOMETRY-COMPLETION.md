@@ -36,11 +36,17 @@ form appends the tangent arc; it does not imply a final line to `(x2,y2)`.
 
 ```racket
 (path-add-rect-start! path x y width height start #:direction [direction 'cw])
-(path-add-rrect! path rounded-rect #:direction [direction 'cw] #:start-index [start 0])
+(path-add-rounded-rect! path rounded-rect #:direction [direction 'cw] #:start-index [start 0])
+(path-add-rounded-rect! path x y width height rx ry #:direction [direction 'cw])
 (path-add-polygon! path points #:closed? [closed? #t])
 (path-add-transformed! path other affine-matrix #:mode [mode 'append])
 (path-rewind! path)
 ```
+
+`path-add-rounded-rect!` accepts either a rounded-rectangle value or coordinates
+with shared corner radii. Only the value form accepts `#:start-index`; supplying
+it with the coordinate form raises an exception. Both forms preserve their
+existing default starting points, which can differ.
 
 Rectangle starts are indices 0..3 in the native TL/TR/BR/BL ordering; rounded
 rectangle starts are the native eight tangent-point indices. Out-of-range indices
@@ -216,7 +222,7 @@ Types are `empty`, `rect`, `oval`, `simple`, `nine-patch`, or `complex`.
 
 Not every affine image of an RRect is another native RRect. Unrepresentable
 transforms return `#f`; the API does not silently flatten, approximate or rasterize
-the shape. Use `path-add-rrect!` followed by the existing path transform when a
+the shape. Use `path-add-rounded-rect!` followed by the existing path transform when a
 more general path representation is wanted.
 
 ## Acceptance and evidence

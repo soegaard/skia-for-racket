@@ -68,7 +68,7 @@ hairline. The endpoints may coincide.
 For a rectangle with the same corner radii at every corner, use the
 coordinate-based form of @racket[draw-rounded-rect]:
 
-@racketblock[
+@racketblock0[
 (draw-rounded-rect canvas x y width height radius-x radius-y paint)
 ]
 

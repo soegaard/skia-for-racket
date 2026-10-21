@@ -1176,7 +1176,7 @@
         },
         {
           "module": "geometry.rkt",
-          "name": "path-add-rrect!"
+          "name": "path-add-rounded-rect!"
         },
         {
           "module": "geometry.rkt",

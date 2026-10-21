@@ -263,7 +263,7 @@
          path-rmove-to! path-rline-to!
          path-quad-to! path-rquad-to! path-conic-to! path-rconic-to!
          path-cubic-to! path-rcubic-to! path-close! path-reset!
-         path-add-rect! path-add-rounded-rect! path-add-oval! path-add-circle!
+         path-add-rect! path-add-oval! path-add-circle!
          path-add-path! path-add-reversed-path!
          path-point-count path-point-ref path-points path-last-point path-convex?
          svg-path->path path->svg-path
@@ -3299,17 +3299,6 @@
   (define dir (choice 'path-add-rect! direction direction-values))
   (call-with-owned 'path-add-rect! (list (path-h 'path-add-rect! p))
     (lambda (pp) (sk_path_add_rect pp r dir))))
-
-; path-add-rounded-rect! : skia-path? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
-;   (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:direction (or/c 'cw 'ccw)] -> void?
-;   Appends a closed rounded rectangle.
-(define (path-add-rounded-rect! p x y w h rx ry #:direction [direction 'cw])
-  (define r (rect 'path-add-rounded-rect! x y w h))
-  (define frx (nonnegative-scalar 'path-add-rounded-rect! rx))
-  (define fry (nonnegative-scalar 'path-add-rounded-rect! ry))
-  (define dir (choice 'path-add-rounded-rect! direction direction-values))
-  (call-with-owned 'path-add-rounded-rect! (list (path-h 'path-add-rounded-rect! p))
-    (lambda (pp) (sk_path_add_rounded_rect pp r frx fry dir))))
 
 ; path-add-oval! : skia-path? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:direction
 ;   (or/c 'cw 'ccw)] -> void?

@@ -131,7 +131,7 @@
       [(rrect)
        (define rr (rounded-rect-offset (make-nine-patch-rounded-rect 8 8 40 32 6 6 6 6) 4 0))
        (with-skia ([p (make-path)])
-         (path-add-rrect! p rr #:start-index 3) (draw-path c p green-p))]
+         (path-add-rounded-rect! p rr #:start-index 3) (draw-path c p green-p))]
       [(polygon)
        (with-skia ([p (make-path)])
          (path-add-polygon! p '((8 8) (56 8) (32 40))) (draw-path c p red-p))]

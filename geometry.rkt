@@ -24,7 +24,7 @@
          (only-in (submod "private/core.rkt" geometry-internals)
                   path-h paint-h region-resource-handle call-with-native-temporary))
 (provide path-arc-to! path-rarc-to! path-arc-to-oval! path-tangent-arc-to! path-add-arc!
-         path-add-rect-start! path-add-rrect! path-add-polygon! path-add-transformed!
+         path-add-rect-start! path-add-rounded-rect! path-add-polygon! path-add-transformed!
          path-rewind! path-verbs path-segment-kinds path-fill-bounds
          path-as-line path-as-oval path-as-rectangle path-as-rounded-rect
          path-rectangle? path-rectangle-bounds path-rectangle-closed? path-rectangle-direction
@@ -640,14 +640,38 @@
       (call-with-native-temporary who 'rrect sk_rrect_new sk_rrect_delete
         (lambda (rp) (and (sk_path_is_rrect pp rp) (rrect-value who rp)))))))
 
-; path-add-rrect! : path? rounded-rect? [#:direction (or/c 'cw 'ccw)] [#:start-index (integer-in 0
-;   7)] -> void?
-;   Adds the native-normalized rounded rectangle as a new contour.
-(define (path-add-rrect! p rr #:direction [direction 'cw] #:start-index [start 0])
-  (define who 'path-add-rrect!)
-  (define index (geometry-start-index who start 8))
-  (define dir (choice who direction direction-values))
-  ;; Validate the value before inspecting or mutating the path.
-  (unless (rounded-rect? rr) (raise-argument-error who "rounded-rect?" rr))
-  (mutate-path who p
-    (lambda (pp) (with-rrect who rr (lambda (rp) (sk_path_add_rrect_start pp rp dir index))))))
+; path-add-rounded-rect! : skia-path? rounded-rect? [#:direction (or/c 'cw 'ccw)]
+;   [#:start-index (integer-in 0 7)] -> void?
+; path-add-rounded-rect! : skia-path? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) [#:direction (or/c 'cw 'ccw)] -> void?
+;   Appends a closed rounded rectangle from a value or coordinates with shared corner radii.
+(define path-add-rounded-rect!
+  (let ([unspecified-start (gensym 'start-index)])
+    ;; Keep exact positional arities despite the keyword dispatcher's rest argument.
+    (procedure-reduce-keyword-arity
+     (lambda (#:direction [direction 'cw] #:start-index [start unspecified-start] . arguments)
+       (define who 'path-add-rounded-rect!)
+       (apply
+        (case-lambda
+          [(path shape)
+           (define index
+             (geometry-start-index who (if (eq? start unspecified-start) 0 start) 8))
+           (define dir (choice who direction direction-values))
+           ;; Validate the value before inspecting or mutating the path.
+           (unless (rounded-rect? shape) (raise-argument-error who "rounded-rect?" shape))
+           (mutate-path who path
+             (lambda (pp)
+               (with-rrect who shape
+                 (lambda (rp) (sk_path_add_rrect_start pp rp dir index)))))]
+          [(path x y width height radius-x radius-y)
+           (unless (eq? start unspecified-start)
+             (raise-arguments-error who "#:start-index requires the rounded-rectangle value form"
+                                    "start-index" start))
+           (define bounds (rect who x y width height))
+           (define rx (nonnegative-scalar who radius-x))
+           (define ry (nonnegative-scalar who radius-y))
+           (define dir (choice who direction direction-values))
+           (call-with-owned who (list (path-h who path))
+             (lambda (pp) (sk_path_add_rounded_rect pp bounds rx ry dir)))])
+        arguments))
+     '(2 7) '() '(#:direction #:start-index) 'path-add-rounded-rect!)))

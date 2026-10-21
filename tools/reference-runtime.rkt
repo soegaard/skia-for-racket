@@ -228,7 +228,7 @@
 
 
 ; record-procedure-cases! : list? -> void?
-;   Records disjoint finite calling forms for one procedure, rejecting keywords and mixed names.
+;   Records disjoint finite calling forms with optional keywords, rejecting mixed names.
 (define (record-procedure-cases! cases)
   (need (and (list? cases) (pair? cases)) "invalid procedure cases")
   (for ([entry (in-list cases)])
@@ -243,13 +243,17 @@
   (define mask
     (for/fold ([mask 0]) ([shape (in-list shapes)])
       (define arity (string->number (hash-ref shape 'arity_mask)))
-      (need (and (>= arity 0) (null? (hash-ref shape 'allowed_keywords)))
-            "procedure cases require finite arities without keywords")
+      (need (and (>= arity 0) (null? (hash-ref shape 'required_keywords)))
+            "procedure cases require finite arities with optional keywords only")
       (need (zero? (bitwise-and mask arity)) "overlapping procedure cases")
       (bitwise-ior mask arity)))
+  (define keywords
+    (sort (remove-duplicates
+           (append-map (lambda (shape) (hash-ref shape 'allowed_keywords)) shapes))
+          string<?))
   (record! name
            (hasheq 'kind "procedure" 'arity_mask (number->string mask)
-                   'allowed_keywords '() 'required_keywords '() 'arguments '()
+                   'allowed_keywords keywords 'required_keywords '() 'arguments '()
                    'cases (map (lambda (shape) (hash-ref shape 'arguments)) shapes))))
 
 

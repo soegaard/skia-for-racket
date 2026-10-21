@@ -472,7 +472,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | path-add-arc! | stable | 0 | procedure | 7 | none | none |
 | path-add-polygon! | stable | 0 | procedure | 2 | none | #:closed? |
 | path-add-rect-start! | stable | 0 | procedure | 6 | none | #:direction |
-| path-add-rrect! | stable | 0 | procedure | 2 | none | #:direction, #:start-index |
+| path-add-rounded-rect! | stable | 0 | procedure | 2, 7 | none | #:direction, #:start-index |
 | path-add-transformed! | stable | 0 | procedure | 3 | none | #:mode |
 | path-arc-to! | stable | 0 | procedure | 6 | none | #:direction, #:large? |
 | path-arc-to-oval! | stable | 0 | procedure | 7 | none | #:force-move? |
@@ -1527,8 +1527,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | path-add-rect! | stable | 0 | procedure | 5 | none | #:direction |
 | path-add-rect-start! | stable | 0 | procedure | 6 | none | #:direction |
 | path-add-reversed-path! | stable | 0 | procedure | 2 | none | none |
-| path-add-rounded-rect! | stable | 0 | procedure | 7 | none | #:direction |
-| path-add-rrect! | stable | 0 | procedure | 2 | none | #:direction, #:start-index |
+| path-add-rounded-rect! | stable | 0 | procedure | 2, 7 | none | #:direction, #:start-index |
 | path-add-transformed! | stable | 0 | procedure | 3 | none | #:mode |
 | path-arc-to! | stable | 0 | procedure | 6 | none | #:direction, #:large? |
 | path-arc-to-oval! | stable | 0 | procedure | 7 | none | #:force-move? |
