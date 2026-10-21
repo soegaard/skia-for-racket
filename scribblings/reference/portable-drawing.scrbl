@@ -59,16 +59,34 @@ Empty input still requires a live canvas and paint.
 
 @section{Grid Plans}
 
-Use @racket[image-nine-plan] or @racket[image-lattice-plan] to inspect how a
-source image will be divided and placed before drawing. The returned cells
-describe source and destination rectangles and can be exported with
-@racket[image-grid-plan->jsexpr]. The portable drawing functions compute their
-plans for you.
+A @deftech{grid plan} describes how an image is divided into rectangular cells
+and where each cell goes in a destination rectangle. This is useful for resizing
+an image of a framed panel or button: the corners and border thickness can stay
+the same while the center stretches. If the destination is too small to fit the
+fixed parts, those parts shrink instead.
 
-Plans use row-major cell order. Each cell has integer source-image geometry and
-finite destination geometry. Adjacent cells use the same coordinates for their
-shared destination edges. A plan can include cells with zero destination area,
-which the drawing functions omit.
+Use @racket[image-nine-plan] for a three-by-three grid of corners, edges, and a
+center. Use @racket[image-lattice-plan] for an @tech{image lattice} with other
+divisions or cells that are skipped or filled with a fixed color. The lattice
+specifies the source divisions; the plan calculates the resulting rectangles
+for a particular destination position and size.
+
+Call these planning functions when you need to inspect the cell layout, check
+how it changes at different sizes, or export the rectangles with
+@racket[image-grid-plan->jsexpr]. They calculate the layout from image dimensions
+and division information, without needing an image or canvas, and do not draw
+anything.
+
+If you only want to draw the resized image, use
+@racket[draw-image-nine/portable] or @racket[draw-image-lattice/portable]; they
+compute their plans for you. If all parts of the image should scale together,
+use the simpler @racket[draw-image-rect] instead.
+
+A plan is a list of cell structures, recognized by @racket[image-grid-cell?], in
+row-major order: left to right within each row, from top to bottom. Each cell has integer source-image
+geometry and finite destination geometry in @tech{local coordinates}. Adjacent
+cells use the same coordinates for their shared destination edges. A plan can
+include cells with zero destination area, which the drawing functions omit.
 
 @defproc[(image-grid-cell? [v any/c])
           boolean?]{
