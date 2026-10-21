@@ -11,9 +11,25 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require rackunit racket/vector "../main.rkt"
+(require rackunit racket/list racket/string racket/vector "../main.rkt"
          (only-in "../canvas-primitives.rkt" [draw-rounded-rect primitive-draw-rounded-rect]))
 (provide canvas-pure-tests)
+
+;;;
+;;; Error Message Assertions
+;;;
+
+; check-drawing-error : procedure? list? string? ... -> void?
+;   Checks the public procedure name, calling form, and complete diagnostic fields.
+(define (check-drawing-error thunk form . fields)
+  (check-exn
+   (lambda (e)
+     (and (exn:fail:contract? e)
+          (string-prefix? (exn-message e) (format "~a:" (car form)))
+          (for/and ([field (in-list (cons (format "calling form: ~s" form) fields))])
+            (string-contains? (string-append "\n" (exn-message e) "\n")
+                              (format "\n  ~a\n" field)))))
+   thunk))
 
 ;;;
 ;;; Regression Suite
@@ -24,6 +40,139 @@
 (define canvas-pure-tests
   (test-suite
    "Canvas primitives: validation without native loading"
+   (test-case "circle radius error identifies the argument and calling form"
+     (check-drawing-error
+      (lambda () (draw-circle #f 1 2 -10 #f))
+      '(draw-circle canvas x y radius paint)
+      "expected: nonnegative finite real" "given: -10"
+      "argument: radius" "argument position: 4th"))
+   (test-case "callers without a calling form keep their existing diagnostics"
+     (check-exn
+      (lambda (e)
+        (and (exn:fail:contract? e)
+             (string-prefix? (exn-message e) "canvas-translate!:")
+             (string-contains? (exn-message e) "finite real representable as a C float")
+             (not (string-contains? (exn-message e) "calling form:"))))
+      (lambda () (canvas-translate! #f +inf.0 0))))
+   (test-case "all line coordinates have distinct argument positions"
+     (for ([name (in-list '(x0 y0 x1 y1))]
+           [index (in-naturals 1)]
+           [position (in-list '(2nd 3rd 4th 5th))])
+       (check-drawing-error
+        (lambda () (apply draw-line (list-set '(#f 0 0 1 1 #f) index +nan.0)))
+        '(draw-line canvas x0 y0 x1 y1 paint)
+        (format "argument: ~a" name) (format "argument position: ~a" position))))
+   (test-case "scalar restrictions retain location information"
+     (for ([value (in-list (list +nan.0 +inf.0 -inf.0 1e39 'not-a-number))])
+       (check-drawing-error
+        (lambda () (draw-circle #f 0 0 value #f))
+        '(draw-circle canvas x y radius paint)
+        "expected: finite real representable as a C float"
+        "argument: radius" "argument position: 4th"))
+     (check-drawing-error
+      (lambda () (draw-point #f 0 +inf.0 #f)) '(draw-point canvas x y paint)
+      "argument: y" "argument position: 3rd"))
+   (test-case "rectangle extents and computed edges identify their inputs"
+     (check-drawing-error
+      (lambda () (draw-rect #f 0 0 -1 2 #f)) '(draw-rect canvas x y width height paint)
+      "argument: width" "argument position: 4th")
+     (check-drawing-error
+      (lambda () (draw-oval #f 0 0 1 -2 #f)) '(draw-oval canvas x y width height paint)
+      "argument: height" "argument position: 5th")
+     (check-drawing-error
+      (lambda () (draw-rect #f 3e38 0 3e38 1 #f)) '(draw-rect canvas x y width height paint)
+      "arguments: x, width" "argument positions: 2nd, 4th"
+      "computed edge: \"x + width\"")
+     (check-drawing-error
+      (lambda () (draw-oval #f 0 3e38 1 3e38 #f)) '(draw-oval canvas x y width height paint)
+      "arguments: y, height" "argument positions: 3rd, 5th"
+      "computed edge: \"y + height\""))
+   (test-case "keywords are identified by name instead of a positional index"
+     (check-drawing-error
+      (lambda () (draw-points #f '() #f #:mode 'triangle))
+      '(draw-points canvas points paint #:mode mode)
+      "argument: mode" "argument keyword: #:mode" "allowed: '(lines points polygon)")
+     (check-drawing-error
+      (lambda () (draw-polygon #f '() #f #:closed? 1))
+      '(draw-polygon canvas points paint #:closed? closed?)
+      "argument: closed?" "argument keyword: #:closed?")
+     (check-drawing-error
+      (lambda () (draw-arc #f 0 0 1 1 0 90 #f #:use-center? 1))
+      '(draw-arc canvas x y width height start sweep paint #:use-center? use-center?)
+      "argument: use-center?" "argument keyword: #:use-center?")
+     (check-drawing-error
+      (lambda () (draw-color #f 'red #:blend-mode 'bad-mode))
+      '(draw-color canvas color #:blend-mode mode)
+      "argument: mode" "argument keyword: #:blend-mode"))
+   (test-case "arc angles retain their public names and positions"
+     (check-drawing-error
+      (lambda () (draw-arc #f 0 0 1 1 0 +inf.0 #f))
+      '(draw-arc canvas x y width height start sweep paint #:use-center? use-center?)
+      "argument: sweep" "argument position: 7th"))
+   (test-case "nested point errors identify the containing argument and coordinate"
+     (check-drawing-error
+      (lambda () (draw-points #f '#(#(0 0) #(1 +inf.0)) #f))
+      '(draw-points canvas points paint #:mode mode)
+      "argument: points" "argument position: 2nd" "point index (0-based): 1" "coordinate: 'y")
+     (check-drawing-error
+      (lambda () (draw-polygon #f '((0 0) (bad 1)) #f))
+      '(draw-polygon canvas points paint #:closed? closed?)
+      "argument: points" "argument position: 2nd" "point index (0-based): 1" "coordinate: 'x")
+     (check-drawing-error
+      (lambda () (draw-points #f '((0 0) (1 2 3)) #f))
+      '(draw-points canvas points paint #:mode mode)
+      "argument: points" "point index (0-based): 1")
+     (check-drawing-error
+      (lambda () (draw-polygon #f '((0 0) bad) #f))
+      '(draw-polygon canvas points paint #:closed? closed?)
+      "argument: points" "point index (0-based): 1"))
+   (test-case "point counts and budgets retain their explanations and argument locations"
+     (check-drawing-error
+      (lambda () (draw-points #f '((0 0)) #f #:mode 'lines))
+      '(draw-points canvas points paint #:mode mode)
+      "argument: points" "argument position: 2nd" "count: 1")
+     (parameterize ([current-skia-byte-limit 8])
+       (check-drawing-error
+        (lambda () (draw-points #f '((0 0) (1 1)) #f))
+        '(draw-points canvas points paint #:mode mode)
+        "argument: points" "required bytes: 16")))
+   (test-case "rounded rectangle errors describe the selected calling form"
+     (check-drawing-error
+      (lambda () (draw-rounded-rect #f #f #f)) '(draw-rounded-rect canvas shape paint)
+      "argument: shape" "argument position: 2nd")
+     (check-drawing-error
+      (lambda () (draw-rounded-rect #f 0 0 10 10 -1 2 #f))
+      '(draw-rounded-rect canvas x y width height radius-x radius-y paint)
+      "argument: radius-x" "argument position: 6th")
+     (check-drawing-error
+      (lambda () (draw-rounded-rect #f 0 0 10 10 1 -2 #f))
+      '(draw-rounded-rect canvas x y width height radius-x radius-y paint)
+      "argument: radius-y" "argument position: 7th")
+     (check-drawing-error
+      (lambda () (draw-rounded-rect #f (make-rounded-rect 0 0 10 10) #f))
+      '(draw-rounded-rect canvas shape paint)
+      "argument: paint" "argument position: 3rd")
+     (check-drawing-error
+      (lambda () (draw-rounded-rect #f 0 0 10 10 1 2 #f))
+      '(draw-rounded-rect canvas x y width height radius-x radius-y paint)
+      "argument: paint" "argument position: 8th")
+     (check-drawing-error
+      (lambda () (draw-double-rounded-rect #f (make-rounded-rect 0 0 10 10) #f #f))
+      '(draw-double-rounded-rect canvas outer inner paint)
+      "argument: inner" "argument position: 3rd"))
+   (test-case "resource and color type errors name the public drawing procedure"
+     (check-drawing-error
+      (lambda () (draw-paint #f #f)) '(draw-paint canvas paint)
+      "expected: paint?" "argument: paint" "argument position: 2nd")
+     (check-drawing-error
+      (lambda () (draw-path #f #f #f)) '(draw-path canvas path paint)
+      "expected: skia-path?" "argument: path" "argument position: 2nd")
+     (check-drawing-error
+      (lambda () (draw-color #f 'not-a-color)) '(draw-color canvas color #:blend-mode mode)
+      "expected: color?" "argument: color" "argument position: 2nd")
+     (check-drawing-error
+      (lambda () (draw-color #f 'red)) '(draw-color canvas color #:blend-mode mode)
+      "expected: canvas?" "argument: canvas" "argument position: 1st"))
    (test-case "rounded rect is a pure immutable value"
      (define r (make-rounded-rect 1 2 30 40))
      (check-true (rounded-rect? r))

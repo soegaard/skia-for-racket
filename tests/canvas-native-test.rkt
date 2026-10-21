@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 
-(require rackunit racket/list racket/file "../main.rkt")
+(require rackunit racket/list racket/file racket/string "../main.rkt")
 (provide canvas-native-tests)
 
 ;;;
@@ -52,6 +52,34 @@
   (test-suite
    "Canvas primitives: native geometry, queries, and layers"
 
+   ;;;
+   ;;; Argument Diagnostics
+   ;;;
+
+   (test-case "invalid canvases report the public drawing call"
+     (with-skia ([paint (make-paint)] [path (make-path)])
+       (for ([draw (in-list (list (lambda () (draw-circle #f 0 0 1 paint))
+                                  (lambda () (draw-points #f '() paint))
+                                  (lambda () (draw-path #f path paint))
+                                  (lambda () (draw-polygon #f '((0 0) (1 1)) paint))))]
+             [name (in-list '(draw-circle draw-points draw-path draw-polygon))])
+         (check-exn
+          (lambda (e)
+            (and (exn:fail:contract? e)
+                 (string-prefix? (exn-message e) (format "~a:" name))
+                 (string-contains? (exn-message e) "argument: canvas\n")
+                 (string-contains? (exn-message e) "argument position: 1st\n")
+                 (string-contains? (exn-message e) (format "calling form: (~a " name))))
+          draw))))
+   (test-case "polygon paint type errors do not name its internal draw-path call"
+     (with-skia ([surface (make-surface 8 8)])
+       (check-exn
+        (lambda (e)
+          (and (exn:fail:contract? e)
+               (string-prefix? (exn-message e) "draw-polygon:")
+               (string-contains? (exn-message e) "argument: paint\n")
+               (string-contains? (exn-message e) "argument position: 3rd\n")))
+        (lambda () (draw-polygon (surface-canvas surface) '((0 0) (1 1)) #f)))))
    ;;;
    ;;; Points, Arcs, and Rounded Geometry
    ;;;
@@ -151,7 +179,15 @@
        (check-equal? (rgba-alpha (surface-pixel s 30 30)) 0)))
    (test-case "non-contained inner rectangle raises before drawing"
      (with-skia ([s (make-surface 20 20)] [p (make-paint)])
-       (check-exn exn:fail:contract?
+       (check-exn
+         (lambda (e)
+           (and (exn:fail:contract? e)
+                (string-contains? (exn-message e) "inner bounding rectangle must fit wholly")
+                (string-contains? (exn-message e) "arguments: outer, inner\n")
+                (string-contains? (exn-message e) "argument positions: 2nd, 3rd\n")
+                (string-contains?
+                 (exn-message e)
+                 "calling form: (draw-double-rounded-rect canvas outer inner paint)")))
          (lambda () (draw-double-rounded-rect (surface-canvas s)
                       (make-rounded-rect 0 0 10 10) (make-rounded-rect 8 8 10 10) p)))))
 

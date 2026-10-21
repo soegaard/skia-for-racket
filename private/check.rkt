@@ -5,10 +5,65 @@
 ;;;
 
 ;; Checks dimensions, scalars, strings, glyphs, and symbolic options before native calls.
-;; Centralizes the public API's common value restrictions and native enum mappings.
+;; Centralizes the public API's common value restrictions, native enum mappings,
+;; and argument-location reporting for drawing primitives.
 
-(require "types.rkt")
+(require racket/string "types.rkt")
 (provide (all-defined-out))
+
+;;;
+;;; Argument Locations in Error Messages
+;;;
+
+;; A calling form is a list beginning with the public procedure name, followed by
+;; positional argument names and keyword/name pairs. Locations are argument names,
+;; keywords, or lists of names when a restriction involves several arguments.
+;; Only callers that supply a form opt in; other validation messages stay unchanged.
+
+; argument-ordinal : exact-positive-integer? -> string?
+;   Formats a one-based argument position, including the special suffixes for 11 through 13.
+(define (argument-ordinal n)
+  (format "~a~a" n
+          (cond [(<= 11 (modulo n 100) 13) "th"]
+                [else (case (modulo n 10) [(1) "st"] [(2) "nd"] [(3) "rd"] [else "th"])])))
+
+; call-argument-fields : list? (or/c symbol? keyword? (listof symbol?)) -> list?
+;   Describes an argument's name and position, or keyword, and the selected calling form.
+(define (call-argument-fields form argument)
+  (define (literal v) (unquoted-printing-string (format "~a" v)))
+  (define positional
+    (let loop ([args (cdr form)])
+      (cond [(null? args) '()]
+            [(keyword? (car args)) (loop (cddr args))]
+            [else (cons (car args) (loop (cdr args)))])))
+  (define (position name)
+    (for/first ([candidate (in-list positional)] [n (in-naturals 1)]
+                #:when (eq? name candidate))
+      (argument-ordinal n)))
+  (append
+   (cond
+     [(keyword? argument)
+      (list "argument" (literal (cadr (memq argument form)))
+            "argument keyword" (literal argument))]
+     [(list? argument)
+      (list "arguments" (literal (string-join (map symbol->string argument) ", "))
+            "argument positions" (literal (string-join (map position argument) ", ")))]
+     [else (list "argument" (literal argument) "argument position" (literal (position argument)))])
+   (list "calling form" (literal form))))
+
+; raise-call-arguments-error : symbol? string? (or/c list? #f) any/c any/c ... -> none/c
+;   Raises a contract exception with existing diagnostic fields and optional argument location.
+(define (raise-call-arguments-error who message form argument . fields)
+  (apply raise-arguments-error who message
+         (append fields (if form (call-argument-fields form argument) '()))))
+
+; raise-call-argument-error : symbol? string? any/c [(or/c list? #f) any/c list?] -> none/c
+;   Reports a rejected value, preserving the ordinary error format when no form is supplied.
+(define (raise-call-argument-error who expected value [form #f] [argument #f] [details '()])
+  (if form
+      (apply raise-call-arguments-error who "contract violation" form argument
+             "expected" (unquoted-printing-string expected) "given" value details)
+      (raise-argument-error who expected value)))
 
 ;;;
 ;;; Allocation Bounds and Scalar Checks
@@ -37,45 +92,49 @@
                            "limit" (current-skia-byte-limit)))
   n)
 
-; scalar : symbol? real? -> inexact-real?
+; scalar : symbol? real? [(or/c list? #f) any/c list?] -> inexact-real?
 ;   Rejects nonfinite or out-of-float-range inputs and returns an inexact drawing scalar.
-(define (scalar who v)
+(define (scalar who v [form #f] [argument #f] [details '()])
   ;; Reject infinities, NaNs and values that overflow a C float.
   (unless (and (real? v) (<= -3.402823e38 v 3.402823e38))
-    (raise-argument-error who "finite real representable as a C float" v))
+    (raise-call-argument-error who "finite real representable as a C float"
+                              v form argument details))
   (exact->inexact v))
 
-; nonnegative-scalar : symbol? real? -> inexact-real?
+; nonnegative-scalar : symbol? real? [(or/c list? #f) any/c] -> inexact-real?
 ;   Requires a nonnegative drawing scalar without clamping negative input.
-(define (nonnegative-scalar who v)
-  (define f (scalar who v))
+(define (nonnegative-scalar who v [form #f] [argument #f])
+  (define f (scalar who v form argument))
   (unless (>= f 0)
-    (raise-argument-error who "nonnegative finite real" v))
+    (raise-call-argument-error who "nonnegative finite real" v form argument))
   f)
 
-; boolean : symbol? boolean? -> boolean?
+; boolean : symbol? boolean? [(or/c list? #f) any/c] -> boolean?
 ;   Rejects nonboolean truthy values before native conversion.
-(define (boolean who v)
-  (unless (boolean? v) (raise-argument-error who "boolean?" v))
+(define (boolean who v [form #f] [argument #f])
+  (unless (boolean? v) (raise-call-argument-error who "boolean?" v form argument))
   v)
 
-; choice : symbol? symbol? hash? -> any/c
+; choice : symbol? symbol? hash? [(or/c list? #f) any/c] -> any/c
 ;   Resolves a closed symbolic option, reporting sorted allowed names on failure.
-(define (choice who v table)
+(define (choice who v table [form #f] [argument #f])
   (hash-ref table v
             (lambda ()
-              (raise-arguments-error who "invalid option"
-                                     "given" v
-                                     "allowed" (sort (hash-keys table) symbol<?)))))
+              (raise-call-arguments-error who "invalid option" form argument
+                                          "given" v
+                                          "allowed" (sort (hash-keys table) symbol<?)))))
 
-; rect : symbol? real? real? real? real? -> sk-rect?
+; rect : symbol? real? real? real? real? [(or/c list? #f)] -> sk-rect?
 ;   Checks x/y/width/height and converted right/bottom edges for native rectangle construction.
-(define (rect who x y w h)
-  (define fx (scalar who x))
-  (define fy (scalar who y))
-  (define fw (nonnegative-scalar who w))
-  (define fh (nonnegative-scalar who h))
-  (make-sk-rect fx fy (scalar who (+ fx fw)) (scalar who (+ fy fh))))
+(define (rect who x y w h [form #f])
+  (define fx (scalar who x form 'x))
+  (define fy (scalar who y form 'y))
+  (define fw (nonnegative-scalar who w form 'width))
+  (define fh (nonnegative-scalar who h form 'height))
+  (make-sk-rect
+   fx fy
+   (scalar who (+ fx fw) form '(x width) '("computed edge" "x + width"))
+   (scalar who (+ fy fh) form '(y height) '("computed edge" "y + height"))))
 
 ;;;
 ;;; Drawing and Encoding Enumerations

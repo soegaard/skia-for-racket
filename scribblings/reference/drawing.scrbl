@@ -15,6 +15,24 @@ Functions that accept a @tech{paint} do not mutate it, and no
 function retains a @tech{borrowed canvas} for later use. Drawing to a recording
 stores an operation rather than immediately producing pixels.
 
+When a primitive rejects an argument's type or value, its contract-error message
+identifies the argument by name and position, or by keyword, and shows the calling
+form. For example, a negative radius passed to @racket[draw-circle] raises an
+@racket[exn:fail:contract?] exception with a message like:
+
+@verbatim{
+draw-circle: contract violation
+  expected: nonnegative finite real
+  given: -10
+  argument: radius
+  argument position: 4th
+  calling form: (draw-circle canvas x y radius paint)
+}
+
+Positions count from one, including the canvas argument. Errors within a point
+list also identify the point by its zero-based index and, when relevant, its
+@racket[x] or @racket[y] coordinate.
+
 @local-table-of-contents[#:style 'immediate-only]
 
 @section{Shapes, Paint, and Paths}

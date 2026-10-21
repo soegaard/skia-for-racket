@@ -38,11 +38,11 @@
 ;; The specification preserves requested radii. Native normalization may reduce
 ;; overlapping radii when the rectangle is submitted or explicitly normalized.
 
-; sequence-list : symbol? (or/c list? vector?) -> list?
+; sequence-list : symbol? (or/c list? vector?) [(or/c list? #f) any/c list?] -> list?
 ;   Normalizes ordered coordinate sequences to lists.
-(define (sequence-list who v)
+(define (sequence-list who v [form #f] [argument #f] [details '()])
   (cond [(list? v) v] [(vector? v) (vector->list v)]
-        [else (raise-argument-error who "list? or vector?" v)]))
+        [else (raise-call-argument-error who "list? or vector?" v form argument details)]))
 
 ; rectangle-spec : symbol? any/c -> sk-rect?
 ;   Validates a four-element x/y/width/height rectangle and converts it to native edges.
@@ -80,10 +80,10 @@
                             (vector->immutable-vector
                              (list->vector (map (lambda (xy) (apply vector-immutable xy)) rs)))))
 
-; check-rounded-rect : symbol? any/c -> void?
-;   Requires a detached rounded-rectangle value before native conversion.
-(define (check-rounded-rect who rr)
-  (unless (rounded-rect? rr) (raise-argument-error who "rounded-rect?" rr)))
+; check-rounded-rect : symbol? any/c [(or/c list? #f) any/c] -> void?
+;   Requires a rounded-rectangle value before native conversion.
+(define (check-rounded-rect who rr [form #f] [argument #f])
+  (unless (rounded-rect? rr) (raise-call-argument-error who "rounded-rect?" rr form argument)))
 
 ; call-with-rrect : symbol? rounded-rect? procedure? -> any/c
 ;   Lends a temporary native rounded rectangle and retains its corner-radius buffer through the
@@ -108,41 +108,46 @@
 ;   Maps public point-drawing modes to their native ABI enumeration.
 (define point-modes (hasheq 'points 0 'lines 1 'polygon 2))
 
-; checked-points : symbol? any/c symbol? -> list?
+; checked-points : symbol? any/c symbol? list? -> list?
 ;   Checks point shape, native coordinate ranges, pair counts, and expanded polygon buffer budgets.
-(define (checked-points who points mode)
-  (define xs (sequence-list who points))
+(define (checked-points who points mode form)
+  (define xs (sequence-list who points form 'points))
   (define n (length xs))
   (define submitted (if (eq? mode 'polygon) (* 2 (max 0 (sub1 n))) n))
   (define budget-count (max n submitted))
   (unless (and (<= budget-count #x7fffffff)
                (<= (* budget-count 8) (current-skia-byte-limit)))
-    (raise-arguments-error who "point buffer exceeds native count or current-skia-byte-limit"
-                           "count" n "submitted count" submitted
-                           "required bytes" (* budget-count 8)))
+    (raise-call-arguments-error who "point buffer exceeds native count or current-skia-byte-limit"
+                                form 'points "count" n "submitted count" submitted
+                                "required bytes" (* budget-count 8)))
   (when (and (eq? mode 'lines) (odd? n))
-    (raise-arguments-error who "'lines requires an even point count (independent pairs)" "count" n))
-  (for/list ([point (in-list xs)])
-    (define xy (sequence-list who point))
+    (raise-call-arguments-error who "'lines requires an even point count (independent pairs)"
+                                form 'points "count" n))
+  (for/list ([point (in-list xs)] [i (in-naturals)])
+    (define details (list "point index (0-based)" i))
+    (define xy (sequence-list who point form 'points details))
     (unless (= (length xy) 2)
-      (raise-argument-error who "two-element point list/vector" point))
-    (map (lambda (v) (scalar who v)) xy)))
+      (raise-call-argument-error who "two-element point list/vector" point form 'points details))
+    (for/list ([value (in-list xy)] [coordinate (in-list '(x y))])
+      (scalar who value form 'points (append details (list "coordinate" coordinate))))))
 
 ; draw-point : canvas? real? real? paint? -> void?
 ;   Draws a point using the paint's stroke width and cap.
 (define (draw-point c x y paint)
   (define who 'draw-point)
-  (define fx (scalar who x))
-  (define fy (scalar who y))
-  (call-on-canvas who c (list (paint-h who paint))
-                  (lambda (cp pp) (sk_canvas_draw_point cp fx fy pp))))
+  (define form '(draw-point canvas x y paint))
+  (define fx (scalar who x form 'x))
+  (define fy (scalar who y form 'y))
+  (call-on-canvas who c (list (paint-h who paint form))
+                  (lambda (cp pp) (sk_canvas_draw_point cp fx fy pp)) form))
 
 ; draw-points : canvas? (or/c list? vector?) paint? [#:mode (or/c 'points 'lines 'polygon)] -> void?
 ;   Draws a list or vector of two-coordinate point lists or vectors.
 (define (draw-points c points paint #:mode [mode 'points])
   (define who 'draw-points)
-  (define requested-mode (choice who mode point-modes))
-  (define source (checked-points who points mode))
+  (define form '(draw-points canvas points paint #:mode mode))
+  (define requested-mode (choice who mode point-modes form '#:mode))
+  (define source (checked-points who points mode form))
   ;; Point-mode polygons are independent capped segments, not joined paths.
   ;; The pinned SVG writer joins mode-2 vertices, so submit explicit line pairs
   ;; on every backend (and in recordings) to preserve the specified semantics.
@@ -153,7 +158,7 @@
   (define m (if (eq? mode 'polygon) 1 requested-mode))
   (define n (if (and (eq? mode 'polygon) (= (length source) 1)) 0 (length xy)))
   (call-on-canvas
-   who c (list (paint-h who paint))
+   who c (list (paint-h who paint form))
    (lambda (cp pp)
      ;; A zero-sized set still validates both live, same-thread resources.
      (unless (zero? n)
@@ -162,7 +167,8 @@
          (ptr-set! data _float (* i 2) (car p))
          (ptr-set! data _float (add1 (* i 2)) (cadr p)))
        (sk_canvas_draw_points cp m n data pp)
-       (void/reference-sink data xy))))
+       (void/reference-sink data xy)))
+   form)
   (void))
 
 ; draw-arc : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) real? real? paint?
@@ -170,12 +176,13 @@
 ;   Draws an arc of the oval bounds.
 (define (draw-arc c x y width height start sweep paint #:use-center? [use-center? #f])
   (define who 'draw-arc)
-  (define bounds (rect who x y width height))
-  (define a (scalar who start))
-  (define b (scalar who sweep))
-  (boolean who use-center?)
-  (call-on-canvas who c (list (paint-h who paint))
-                  (lambda (cp pp) (sk_canvas_draw_arc cp bounds a b use-center? pp))))
+  (define form '(draw-arc canvas x y width height start sweep paint #:use-center? use-center?))
+  (define bounds (rect who x y width height form))
+  (define a (scalar who start form 'start))
+  (define b (scalar who sweep form 'sweep))
+  (boolean who use-center? form '#:use-center?)
+  (call-on-canvas who c (list (paint-h who paint form))
+                  (lambda (cp pp) (sk_canvas_draw_arc cp bounds a b use-center? pp)) form))
 
 ; draw-rounded-rect : canvas? rounded-rect? paint? -> void?
 ; draw-rounded-rect : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
@@ -185,27 +192,30 @@
   (case-lambda
     [(canvas shape paint)
      (define who 'draw-rounded-rect)
-     (check-rounded-rect who shape)
-     (call-on-canvas who canvas (list (paint-h who paint))
+     (define form '(draw-rounded-rect canvas shape paint))
+     (check-rounded-rect who shape form 'shape)
+     (call-on-canvas who canvas (list (paint-h who paint form))
        (lambda (cp pp)
-         (call-with-rrect who shape (lambda (rp) (sk_canvas_draw_rrect cp rp pp)))))]
+         (call-with-rrect who shape (lambda (rp) (sk_canvas_draw_rrect cp rp pp)))) form)]
     [(canvas x y width height radius-x radius-y paint)
      (define who 'draw-rounded-rect)
-     (define bounds (rect who x y width height))
-     (define rx (nonnegative-scalar who radius-x))
-     (define ry (nonnegative-scalar who radius-y))
-     (call-on-canvas who canvas (list (paint-h who paint))
-       (lambda (cp pp) (sk_canvas_draw_round_rect cp bounds rx ry pp)))]))
+     (define form '(draw-rounded-rect canvas x y width height radius-x radius-y paint))
+     (define bounds (rect who x y width height form))
+     (define rx (nonnegative-scalar who radius-x form 'radius-x))
+     (define ry (nonnegative-scalar who radius-y form 'radius-y))
+     (call-on-canvas who canvas (list (paint-h who paint form))
+       (lambda (cp pp) (sk_canvas_draw_round_rect cp bounds rx ry pp)) form)]))
 
 ; draw-double-rounded-rect : canvas? rounded-rect? rounded-rect? paint? -> void?
 ;   Draws the outer rounded rectangle with the inner shape removed.
 (define (draw-double-rounded-rect c outer inner paint)
   (define who 'draw-double-rounded-rect)
-  (check-rounded-rect who outer)
-  (check-rounded-rect who inner)
+  (define form '(draw-double-rounded-rect canvas outer inner paint))
+  (check-rounded-rect who outer form 'outer)
+  (check-rounded-rect who inner form 'inner)
   (define ib (rectangle-spec who (rounded-rect-bounds inner)))
   (call-on-canvas
-   who c (list (paint-h who paint))
+   who c (list (paint-h who paint form))
    (lambda (cp pp)
      (call-with-rrect
       who outer
@@ -218,10 +228,12 @@
            ;; Sufficient, deliberately conservative containment test. Skia says
            ;; a non-contained inner shape has undefined drawing behavior.
            (unless (sk_rrect_contains op ib)
-             (raise-arguments-error
+             (raise-call-arguments-error
               who "inner bounding rectangle must fit wholly inside outer rounded shape"
+                                    form '(outer inner)
                                     "inner bounds" (rounded-rect-bounds inner)))
-           (call-with-rrect who inner (lambda (ip) (sk_canvas_draw_drrect cp op ip pp)))])))))
+           (call-with-rrect who inner (lambda (ip) (sk_canvas_draw_drrect cp op ip pp)))]))))
+   form)
   (void))
 
 ; draw-color : canvas? color? [#:blend-mode (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in
@@ -230,8 +242,13 @@
 ;   'saturation 'color 'luminosity)] -> void?
 ;   Blends the color across the current device clip, independently of the current local transform.
 (define (draw-color c color #:blend-mode [mode 'src-over])
+  (define form '(draw-color canvas color #:blend-mode mode))
+  (unless (color? color)
+    (raise-call-argument-error 'draw-color "color?" color form 'color))
   (define argb (color->argb color))
-  (define m (choice 'draw-color mode blend-values))
+  (define m (choice 'draw-color mode blend-values form '#:blend-mode))
+  (unless (canvas? c)
+    (raise-call-argument-error 'draw-color "canvas?" c form 'canvas))
   ;; The color covers the device clip, independent of the local transform.
   ;; SkSVGDevice implements drawPaint as a transformed device-sized rect; reset
   ;; only the matrix while keeping the existing device-space clip intact.

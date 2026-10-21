@@ -767,10 +767,11 @@
      (call-with-skia-resource expression
        (lambda (id) (with-skia (rest ...) body ...)))]))
 
-; typed-handle : symbol? any/c procedure? procedure? string? -> (or/c owned? domain-resource?)
+; typed-handle : symbol? any/c procedure? procedure? string? [(or/c list? #f) any/c] ->
+;   (or/c owned? domain-resource?)
 ;   Checks a wrapper predicate before extracting its private lifetime cell.
-(define (typed-handle who v pred accessor description)
-  (unless (pred v) (raise-argument-error who description v))
+(define (typed-handle who v pred accessor description [form #f] [argument #f])
+  (unless (pred v) (raise-call-argument-error who description v form argument))
   (accessor v))
 
 ; surface-h : symbol? surface? -> (or/c owned? domain-resource?)
@@ -780,9 +781,10 @@
   (check-unborrowed-target! who v)
   handle)
 
-; paint-h : symbol? paint? -> (or/c owned? domain-resource?)
+; paint-h : symbol? paint? [(or/c list? #f)] -> (or/c owned? domain-resource?)
 ;   Checks paint? before returning the wrapper's private lifetime cell.
-(define (paint-h who v) (typed-handle who v paint? paint-handle "paint?"))
+(define (paint-h who v [form #f])
+  (typed-handle who v paint? paint-handle "paint?" form 'paint))
 
 ; shader-h : symbol? shader? -> (or/c owned? domain-resource?)
 ;   Checks shader? before returning the wrapper's private lifetime cell.
@@ -822,9 +824,10 @@
 (define (picture-recorder-h who v)
   (typed-handle who v picture-recorder? picture-recorder-handle "picture-recorder?"))
 
-; path-h : symbol? skia-path? -> (or/c owned? domain-resource?)
+; path-h : symbol? skia-path? [(or/c list? #f)] -> (or/c owned? domain-resource?)
 ;   Checks skia-path? before returning the wrapper's private lifetime cell.
-(define (path-h who v) (typed-handle who v skia-path? skia-path-handle "skia-path?"))
+(define (path-h who v [form #f])
+  (typed-handle who v skia-path? skia-path-handle "skia-path?" form 'path))
 
 ; path-measure-h : symbol? path-measure? -> (or/c owned? domain-resource?)
 ;   Checks path-measure? before returning the wrapper's private lifetime cell.
@@ -856,11 +859,11 @@
 ;   Checks shaper? before returning the wrapper's private lifetime cell.
 (define (shaper-h who v) (typed-handle who v shaper? shaper-handle "shaper?"))
 
-; canvas-owner : symbol? canvas? -> any
+; canvas-owner : symbol? canvas? [(or/c list? #f)] -> any
 ;   Checks canvas and GPU-lease validity before returning the resource that owns the borrowed
 ;   canvas.
-(define (canvas-owner who c)
-  (unless (canvas? c) (raise-argument-error who "canvas?" c))
+(define (canvas-owner who c [form #f])
+  (unless (canvas? c) (raise-call-argument-error who "canvas?" c form 'canvas))
   (when (gpu-canvas? c) (domain-check-lease! who (gpu-canvas-lease c)))
   (define owner (canvas-resource c))
   (when (specialized-canvas-owner? owner)
@@ -893,11 +896,12 @@
         [(svg-document? owner) (set-svg-document-floors! owner floors)]
         [else (error 'set-owner-floors! "unsupported owner")]))
 
-; call-on-canvas : symbol? canvas? (listof (or/c owned? domain-resource?)) procedure? -> any
+; call-on-canvas : symbol? canvas? (listof (or/c owned? domain-resource?)) procedure?
+;   [(or/c list? #f)] -> any
 ;   Scopes the destination and auxiliary resources, then supplies their checked native pointers to
 ;   the drawing operation.
-(define (call-on-canvas who c others proc)
-  (define owner (canvas-owner who c))
+(define (call-on-canvas who c others proc [form #f])
+  (define owner (canvas-owner who c form))
   (check-unborrowed-target! who owner)
   ;; m119 Overdraw's text implementation does not support every transformed
   ;; glyph run. Restrict the safe diagnostic surface to direct primitives;
@@ -3121,59 +3125,79 @@
 ; draw-paint : canvas? paint? -> void?
 ;   Draws paint across the current clip without a separate geometric shape.
 (define (draw-paint c p)
-  (call-on-canvas 'draw-paint c (list (paint-h 'draw-paint p)) sk_canvas_draw_paint))
+  (define form '(draw-paint canvas paint))
+  (call-on-canvas 'draw-paint c (list (paint-h 'draw-paint p form)) sk_canvas_draw_paint form))
 
 ; draw-line : canvas? real? real? real? real? paint? -> void?
 ;   Draws a line segment from coordinates x0, y0 to coordinates x1, y1.
 (define (draw-line c x0 y0 x1 y1 p)
-  (define coordinates (map (lambda (x) (scalar 'draw-line x)) (list x0 y0 x1 y1)))
-  (call-on-canvas 'draw-line c (list (paint-h 'draw-line p))
-    (lambda (cp pp) (apply sk_canvas_draw_line cp (append coordinates (list pp))))))
+  (define form '(draw-line canvas x0 y0 x1 y1 paint))
+  (define coordinates
+    (for/list ([value (in-list (list x0 y0 x1 y1))] [name (in-list '(x0 y0 x1 y1))])
+      (scalar 'draw-line value form name)))
+  (call-on-canvas 'draw-line c (list (paint-h 'draw-line p form))
+    (lambda (cp pp) (apply sk_canvas_draw_line cp (append coordinates (list pp)))) form))
 
 ; draw-rect : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) paint? -> void?
 ;   Draws a rectangle on canvas with its upper-left corner at coordinates x and y, the given width
 ;   and height, and the specified paint.
 (define (draw-rect c x y w h p)
-  (define r (rect 'draw-rect x y w h))
-  (call-on-canvas 'draw-rect c (list (paint-h 'draw-rect p))
-    (lambda (cp pp) (sk_canvas_draw_rect cp r pp))))
+  (define form '(draw-rect canvas x y width height paint))
+  (define r (rect 'draw-rect x y w h form))
+  (call-on-canvas 'draw-rect c (list (paint-h 'draw-rect p form))
+    (lambda (cp pp) (sk_canvas_draw_rect cp r pp)) form))
 
 ; draw-circle : canvas? real? real? (and/c real? (>=/c 0)) paint? -> void?
 ;   Draws a circle centered at coordinates x and y.
 (define (draw-circle c x y radius p)
-  (define fx (scalar 'draw-circle x))
-  (define fy (scalar 'draw-circle y))
-  (define fr (nonnegative-scalar 'draw-circle radius))
-  (call-on-canvas 'draw-circle c (list (paint-h 'draw-circle p))
-    (lambda (cp pp) (sk_canvas_draw_circle cp fx fy fr pp))))
+  (define form '(draw-circle canvas x y radius paint))
+  (define fx (scalar 'draw-circle x form 'x))
+  (define fy (scalar 'draw-circle y form 'y))
+  (define fr (nonnegative-scalar 'draw-circle radius form 'radius))
+  (call-on-canvas 'draw-circle c (list (paint-h 'draw-circle p form))
+    (lambda (cp pp) (sk_canvas_draw_circle cp fx fy fr pp)) form))
 
 ; draw-oval : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) paint? -> void?
 ;   Draws the ellipse inscribed in the rectangle given by position and size.
 (define (draw-oval c x y w h p)
-  (define r (rect 'draw-oval x y w h))
-  (call-on-canvas 'draw-oval c (list (paint-h 'draw-oval p))
-    (lambda (cp pp) (sk_canvas_draw_oval cp r pp))))
+  (define form '(draw-oval canvas x y width height paint))
+  (define r (rect 'draw-oval x y w h form))
+  (call-on-canvas 'draw-oval c (list (paint-h 'draw-oval p form))
+    (lambda (cp pp) (sk_canvas_draw_oval cp r pp)) form))
 
 ; draw-path : canvas? skia-path? paint? -> void?
 ;   Draws the contours of path using paint.
 (define (draw-path c path p)
-  (call-on-canvas 'draw-path c (list (path-h 'draw-path path) (paint-h 'draw-path p))
-                 sk_canvas_draw_path))
+  (define form '(draw-path canvas path paint))
+  (call-on-canvas 'draw-path c (list (path-h 'draw-path path form) (paint-h 'draw-path p form))
+                 sk_canvas_draw_path form))
 
 ; draw-polygon : canvas? (and/c pair? (listof (list/c real? real?))) paint? [#:closed? boolean?] ->
 ;   void?
 ;   Draws connected straight segments through points.
 (define (draw-polygon c points p #:closed? [closed? #t])
-  (boolean 'draw-polygon closed?)
+  (define form '(draw-polygon canvas points paint #:closed? closed?))
+  (boolean 'draw-polygon closed? form '#:closed?)
   (unless (and (list? points) (pair? points))
-    (raise-argument-error 'draw-polygon "nonempty list of (list x y) points" points))
+    (raise-call-argument-error 'draw-polygon "nonempty list of (list x y) points"
+                               points form 'points))
   (define commands
     (for/list ([pt (in-list points)] [i (in-naturals)])
       (match pt
         [(list x y)
-         (list (if (= i 0) 'move 'line) (scalar 'draw-polygon x) (scalar 'draw-polygon y))]
-        [_ (raise-argument-error 'draw-polygon "(list x y) point" pt)])))
+         (list (if (= i 0) 'move 'line)
+               (scalar 'draw-polygon x form 'points
+                       (list "point index (0-based)" i "coordinate" 'x))
+               (scalar 'draw-polygon y form 'points
+                       (list "point index (0-based)" i "coordinate" 'y)))]
+        [_ (raise-call-argument-error 'draw-polygon "(list x y) point" pt form 'points
+                                      (list "point index (0-based)" i))])))
   (with-skia ([path (make-path (if closed? (append commands '((close))) commands))])
+    ;; Keep draw-path's native dispatch and output auditing, but identify the public
+    ;; polygon arguments if their types are wrong. Lifetime checks still run there.
+    (paint-h 'draw-polygon p form)
+    (unless (canvas? c)
+      (raise-call-argument-error 'draw-polygon "canvas?" c form 'canvas))
     (draw-path c path p)))
 
 ;;;

@@ -44,7 +44,7 @@ an independent native probe.
 | [annotation-native-test.rkt](annotation-native-test.rkt) | document links and destinations: native backends. |
 | [annotation-pure-test.rkt](annotation-pure-test.rkt) | document annotations: pure contracts and SVG finishing. |
 | [canvas-native-test.rkt](canvas-native-test.rkt) | canvas primitives: native geometry, queries, and layers. |
-| [canvas-pure-test.rkt](canvas-pure-test.rkt) | canvas primitives: validation without native loading. |
+| [canvas-pure-test.rkt](canvas-pure-test.rkt) | Canvas primitives: validation and argument-error messages without native loading. |
 | [canvas-text-load-order.rkt](canvas-text-load-order.rkt) | Checks Skia and Pango text rendering under different library load orders. |
 | [codec-incremental-native-test.rkt](codec-incremental-native-test.rkt) | retained incremental codec, feed framing and pixel ownership. |
 | [codec-incremental-pure-test.rkt](codec-incremental-pure-test.rkt) | incremental input framing and detached progress. |
