@@ -1,7 +1,8 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract racket/sequence skia skia/geometry))
+          (for-label racket/base racket/contract racket/sequence skia
+                     (except-in skia/geometry path-add-rounded-rect!)))
 
 @title[#:tag "skia-paths"]{Paths}
 
