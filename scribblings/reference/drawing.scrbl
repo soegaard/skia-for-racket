@@ -105,7 +105,7 @@ is ignored and the outer shape is drawn alone.
 @defproc[(draw-circle [canvas canvas?] [x real?] [y real?]
                       [radius (and/c real? (>=/c 0))] [paint paint?]) void?]{
 Draws a circle centered at coordinates @racket[x] and @racket[y]. Its radius is
-measured in local coordinates, so nonuniform canvas scaling produces an ellipse.
+measured in @tech{local coordinates}, so nonuniform canvas scaling produces an ellipse.
 The radius may be zero but must not be negative.
 }
 
